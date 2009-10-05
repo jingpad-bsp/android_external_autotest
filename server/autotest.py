@@ -711,14 +711,26 @@ def _get_autodir(host):
     client_autodir_paths = global_config.global_config.get_config_value(
             'AUTOSERV', 'client_autodir_paths', type=list,
             default=['/usr/local/autotest', '/home/autotest'])
+
+    # Look for a preinstalled autotest binary
     for path in client_autodir_paths:
         try:
             autotest_binary = os.path.join(path, 'bin', 'autotest')
             host.run('test -x %s' % utils.sh_escape(autotest_binary))
-            logging.debug('Found autodir at %s', path)
+            logging.debug('Found autotest binary at %s', path)
             return path
         except error.AutoservRunError:
             logging.debug('%s does not exist on %s', path, host.hostname)
+
+    # Look for a location to create the autotest folder
+    for path in client_autodir_paths:
+        try:
+            host.run('mkdir -p %s' % utils.sh_escape(path))
+            logging.debug('Created autotest folder at %s', path)
+            return path
+        except error.AutoservRunError:
+            logging.debug('Unable to create %s on %s', path, host.hostname)
+
     raise error.AutotestRunError('Cannot figure out autotest directory')
 
 
