@@ -39,6 +39,8 @@ class _GenericBackend(object):
 
 
     def execute(self, query, parameters=None):
+        if parameters is None:
+            parameters = ()
         self._cursor.execute(query, parameters)
         self.rowcount = self._cursor.rowcount
         return self._cursor.fetchall()
@@ -97,9 +99,31 @@ class _SqliteBackend(_GenericBackend):
         return super(_SqliteBackend, self).execute(query, parameters)
 
 
+class _DjangoBackend(_GenericBackend):
+    def __init__(self):
+        from django.db import backend, connection, transaction
+        super(_DjangoBackend, self).__init__(backend.Database)
+        self._django_connection = connection
+        self._django_transaction = transaction
+
+
+    def connect(self, host=None, username=None, password=None, db_name=None):
+        self._connection = self._django_connection
+        self._cursor = self._connection.cursor()
+
+
+    def execute(self, query, parameters=None):
+        try:
+            return super(_DjangoBackend, self).execute(query,
+                                                       parameters=parameters)
+        finally:
+            self._django_transaction.commit_unless_managed()
+
+
 _BACKEND_MAP = {
-    'mysql' : _MySqlBackend,
-    'sqlite' : _SqliteBackend,
+    'mysql': _MySqlBackend,
+    'sqlite': _SqliteBackend,
+    'django': _DjangoBackend,
 }
 
 
@@ -245,12 +269,45 @@ class DatabaseConnection(object):
 
 
     @classmethod
-    def get_test_database(cls, file_path=':memory:'):
+    def get_test_database(cls, file_path=':memory:', **constructor_kwargs):
         """
         Factory method returning a DatabaseConnection for a temporary in-memory
         database.
         """
-        database = cls()
+        database = cls(**constructor_kwargs)
         database.reconnect_enabled = False
         database.connect(db_type='sqlite', db_name=file_path)
         return database
+
+
+class TranslatingDatabase(DatabaseConnection):
+    """
+    Database wrapper than applies arbitrary substitution regexps to each query
+    string.  Useful for SQLite testing.
+    """
+    def __init__(self, translators):
+        """
+        @param translation_regexps: list of callables to apply to each query
+                string (in order).  Each accepts a query string and returns a
+                (possibly) modified query string.
+        """
+        super(TranslatingDatabase, self).__init__()
+        self._translators = translators
+
+
+    def execute(self, query, parameters=None, try_reconnecting=None):
+        for translator in self._translators:
+            query = translator(query)
+        return super(TranslatingDatabase, self).execute(
+                query, parameters=parameters, try_reconnecting=try_reconnecting)
+
+
+    @classmethod
+    def make_regexp_translator(cls, search_re, replace_str):
+        """
+        Returns a translator that calls re.sub() on the query with the given
+        search and replace arguments.
+        """
+        def translator(query):
+            return re.sub(search_re, replace_str, query)
+        return translator

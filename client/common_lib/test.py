@@ -41,8 +41,6 @@ class base_test:
         os.mkdir(self.debugdir)
         self.configure_crash_handler()
         self.bindir = bindir
-        if hasattr(job, 'libdir'):
-            self.libdir = job.libdir
         self.srcdir = os.path.join(self.bindir, 'src')
         self.tmpdir = tempfile.mkdtemp("_" + self.tagged_testname,
                                        dir=job.tmpdir)
@@ -55,63 +53,11 @@ class base_test:
 
 
     def configure_crash_handler(self):
-        """
-        Configure the crash handler by:
-         * Setting up core size to unlimited
-         * Putting an appropriate crash handler on /proc/sys/kernel/core_pattern
-         * Create files that the crash handler will use to figure which tests
-           are active at a given moment
-
-        The crash handler will pick up the core file and write it to
-        self.debugdir, and perform analysis on it to generate a report. The
-        program also outputs some results to syslog.
-
-        If multiple tests are running, an attempt to verify if we still have
-        the old PID on the system process table to determine whether it is a
-        parent of the current test execution. If we can't determine it, the
-        core file and the report file will be copied to all test debug dirs.
-        """
-        self.pattern_file = '/proc/sys/kernel/core_pattern'
-        try:
-            # Enable core dumps
-            resource.setrlimit(resource.RLIMIT_CORE, (-1, -1))
-            # Trying to backup core pattern and register our script
-            self.core_pattern_backup = open(self.pattern_file, 'r').read()
-            pattern_file = open(self.pattern_file, 'w')
-            tools_dir = os.path.join(self.autodir, 'tools')
-            crash_handler_path = os.path.join(tools_dir, 'crash_handler.py')
-            pattern_file.write('|' + crash_handler_path + ' %p %t %u %s %h %e')
-            # Writing the files that the crash handler is going to use
-            self.debugdir_tmp_file = ('/tmp/autotest_results_dir.%s' %
-                                      os.getpid())
-            utils.open_write_close(self.debugdir_tmp_file, self.debugdir + "\n")
-        except Exception, e:
-            self.crash_handling_enabled = False
-            logging.error('Crash handling system disabled: %s' % e)
-        else:
-            self.crash_handling_enabled = True
-            logging.debug('Crash handling system enabled.')
+        pass
 
 
     def crash_handler_report(self):
-        """
-        If core dumps are found on the debugdir after the execution of the
-        test, let the user know.
-        """
-        if self.crash_handling_enabled:
-            core_dirs = glob.glob('%s/crash.*' % self.debugdir)
-            if core_dirs:
-                logging.warning('Programs crashed during test execution:')
-                for dir in core_dirs:
-                    logging.warning('Please verify %s for more info', dir)
-            # Remove the debugdir info file
-            os.unlink(self.debugdir_tmp_file)
-            # Restore the core pattern backup
-            try:
-                utils.open_write_close(self.pattern_file,
-                                       self.core_pattern_backup)
-            except EnvironmentError:
-                pass
+        pass
 
 
     def assert_(self, expr, msg='Assertion failed.'):
@@ -161,13 +107,19 @@ class base_test:
         if not self._new_keyval:
             return
 
+        # create a dict from the keyvals suitable as an environment for eval
+        keyval_env = self._keyvals[-1]['perf'].copy()
+        keyval_env['__builtins__'] = None
         self._new_keyval = False
         failures = []
+
+        # evaluate each constraint using the current keyvals
         for constraint in constraints:
-            print "___________________ constraint = %s" % constraint
-            print "___________________ keyvals = %s" % self._keyvals[-1]['perf']
+            logging.info('___________________ constraint = %s', constraint)
+            logging.info('___________________ keyvals = %s', keyval_env)
+
             try:
-                if not eval(constraint, self._keyvals[-1]['perf']):
+                if not eval(constraint, keyval_env):
                     failures.append('%s: constraint was not met' % constraint)
             except:
                 failures.append('could not evaluate constraint: %s'
@@ -240,9 +192,15 @@ class base_test:
             hook(self)
 
         if profile_only:
+            if not self.job.profilers.present():
+                self.job.record('WARN', None, None, 'No profilers have been '
+                                'added but profile_only is set - nothing '
+                                'will be run')
             self.run_once_profiling(postprocess_profiled_run, *args, **dargs)
         else:
+            self.before_run_once()
             self.run_once(*args, **dargs)
+            self.after_run_once()
 
         for hook in self.after_iteration_hooks:
             hook(self)
@@ -251,7 +209,7 @@ class base_test:
         self.analyze_perf_constraints(constraints)
 
 
-    def execute(self, iterations=None, test_length=None, profile_only=False,
+    def execute(self, iterations=None, test_length=None, profile_only=None,
                 _get_time=time.time, postprocess_profiled_run=None,
                 constraints=(), *args, **dargs):
         """
@@ -269,8 +227,8 @@ class base_test:
             be silently ignored if you specify both.
 
         @param profile_only: If true run X iterations with profilers enabled.
-            Otherwise run X iterations and one with profiling if profiles are
-            enabled.
+            If false run X iterations and one with profiling if profiles are
+            enabled. If None, default to the value of job.default_profile_only.
 
         @param _get_time: [time.time] Used for unit test time injection.
 
@@ -285,6 +243,8 @@ class base_test:
         profilers = self.job.profilers
         if profilers.active():
             profilers.stop(self)
+        if profile_only is None:
+            profile_only = self.job.default_profile_only
         # If the user called this test in an odd way (specified both iterations
         # and test_length), let's warn them.
         if iterations and test_length:
@@ -335,8 +295,12 @@ class base_test:
         # Do a profiling run if necessary
         if profilers.present():
             self.drop_caches_between_iterations()
+            profilers.before_start(self)
+
+            self.before_run_once()
             profilers.start(self)
             print 'Profilers present. Profiling run started'
+
             try:
                 self.run_once(*args, **dargs)
 
@@ -354,6 +318,8 @@ class base_test:
                 profilers.stop(self)
                 profilers.report(self)
 
+            self.after_run_once()
+
 
     def postprocess(self):
         pass
@@ -364,6 +330,23 @@ class base_test:
 
 
     def cleanup(self):
+        pass
+
+
+    def before_run_once(self):
+        """
+        Override in tests that need it, will be called before any run_once()
+        call including the profiling run (when it's called before starting
+        the profilers).
+        """
+        pass
+
+
+    def after_run_once(self):
+        """
+        Called after every run_once (including from a profiled run when it's
+        called after stopping the profilers).
+        """
         pass
 
 
@@ -425,6 +408,11 @@ class base_test:
 
                 _call_test_function(self.execute, *p_args, **p_dargs)
             except Exception:
+                try:
+                    logging.exception('Exception escaping from test:')
+                except:
+                    pass # don't let logging exceptions here interfere
+
                 # Save the exception while we run our cleanup() before
                 # reraising it.
                 exc_info = sys.exc_info()

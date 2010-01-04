@@ -1,6 +1,6 @@
 import os, time, pickle, logging, shutil
 
-from autotest_lib.server import utils, profiler
+from autotest_lib.server import utils
 
 
 # import any site hooks for the crashdump and crashinfo collection
@@ -42,6 +42,10 @@ def wait_for_machine_to_recover(host, hours_to_wait=4.0):
     @returns: True if the machine comes back up, False otherwise
     """
     current_time = time.strftime("%b %d %H:%M:%S", time.localtime())
+    if host.is_up():
+        logging.info("%s already up, collecting crash info", host.hostname)
+        return True
+
     logging.info("Waiting four hours for %s to come up (%s)",
                  host.hostname, current_time)
     if not host.wait_up(timeout=hours_to_wait * 3600):
@@ -119,12 +123,9 @@ def collect_uncollected_logs(host):
 
     @param host: The RemoteHost to collect from
     """
-    if not host.job.uncollected_log_file:
-        host.job.uncollected_log_file = ''
-
-    if host.job and os.path.exists(host.job.uncollected_log_file):
+    if host.job:
         try:
-            logs = pickle.load(open(host.job.uncollected_log_file))
+            logs = host.job.get_client_logs()
             for hostname, remote_path, local_path in logs:
                 if hostname == host.hostname:
                     logging.info("Retrieving logs from %s:%s into %s",

@@ -2,7 +2,6 @@ package autotest.common.table;
 
 import autotest.common.UnmodifiableSublistView;
 
-import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONObject;
 
 import java.util.ArrayList;
@@ -17,8 +16,35 @@ import java.util.TreeSet;
  * filtering.
  */
 public class ArrayDataSource<T extends JSONObject> implements DataSource {
-    protected SortedSet<T> data;
-    
+    private class ArrayQuery extends DefaultQuery {
+        public ArrayQuery() {
+            super(null);
+        }
+
+        @Override
+        public void getPage(Integer start, Integer maxCount, SortSpec[] sortOn,
+                            DataCallback callback) {
+            List<JSONObject> sortedData = new ArrayList<JSONObject>(data);
+            if (sortOn != null) {
+                Collections.sort(sortedData, new JSONObjectComparator(sortOn));
+            }
+            int startInt = start != null ? start.intValue() : 0;
+            int maxCountInt = maxCount != null ? maxCount.intValue() : data.size();
+            int size = Math.min(maxCountInt, data.size() - startInt);
+            List<JSONObject> subList =
+                new UnmodifiableSublistView<JSONObject>(sortedData, startInt, size);
+            callback.handlePage(subList);
+        }
+
+        @Override
+        public void getTotalResultCount(DataCallback callback) {
+            callback.handleTotalResultCount(data.size());
+        }
+    }
+
+    private SortedSet<T> data;
+    private Query theQuery = new ArrayQuery(); // only need one for each instance
+
     /**
      * @param sortKeys keys that will be used to keep items sorted internally. We
      * do this to ensure we can find and remove items quickly.
@@ -47,36 +73,10 @@ public class ArrayDataSource<T extends JSONObject> implements DataSource {
     public Collection<T> getItems() {
         return Collections.unmodifiableCollection(data);
     }
-    
-    private JSONArray createJSONArray(Collection<T> objects) {
-        JSONArray result = new JSONArray();
-        int count = 0;
-        for (T object : objects) {
-            result.set(count, object);
-            count++;
-        }
-        return result;
-    }
-    
-    public void getPage(Integer start, Integer maxCount, SortSpec[] sortOn,
-                        DataCallback callback) {
-        List<T> sortedData = new ArrayList<T>(data);
-        if (sortOn != null) {
-            Collections.sort(sortedData, new JSONObjectComparator(sortOn));
-        }
-        int startInt = start != null ? start.intValue() : 0;
-        int maxCountInt = maxCount != null ? maxCount.intValue() : data.size();
-        int size = Math.min(maxCountInt, data.size() - startInt);
-        List<T> subList =
-            new UnmodifiableSublistView<T>(sortedData, startInt, size);
-        callback.handlePage(createJSONArray(subList));
-    }
 
-    public void updateData(JSONObject params, DataCallback callback) {
-        callback.onGotData(data.size());
-    }
-
-    public int getNumResults() {
-        return data.size();
+    @Override
+    public void query(JSONObject params, DataCallback callback) {
+        // ignore params since we don't support filtering
+        callback.onQueryReady(theQuery);
     }
 }

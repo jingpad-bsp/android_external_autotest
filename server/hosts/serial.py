@@ -114,15 +114,18 @@ class SerialHost(SiteHost):
 
 
     def hardreset(self, timeout=DEFAULT_REBOOT_TIMEOUT, wait=True,
-                  conmux_command='hardreset', num_attempts=1):
+                  conmux_command='hardreset', num_attempts=1,
+                  **wait_for_restart_kwargs):
         """
         Reach out and slap the box in the power switch.
-        Args:
-                conmux_command: The command to run via the conmux interface
-                timeout: timelimit in seconds before the machine is
-                considered unreachable
-                wait: Whether or not to wait for the machine to reboot
-
+        @params conmux_command: The command to run via the conmux interface
+        @params timeout: timelimit in seconds before the machine is
+                         considered unreachable
+        @params wait: Whether or not to wait for the machine to reboot
+        @params num_attempts: Number of times to attempt hard reset erroring
+                              on the last attempt.
+        @params **wait_for_restart_kwargs: keyword arguments passed to
+                wait_for_restart()
         """
         conmux_command = "'~$%s'" % conmux_command
         def reboot():
@@ -133,17 +136,25 @@ class SerialHost(SiteHost):
                     'Hard reset unavailable')
             self.record("GOOD", None, "reboot.start", "hard reset")
             if wait:
-                for _ in xrange(num_attempts):
+                warning_msg = ('Serial console failed to respond to hard reset '
+                               'attempt (%s/%s)')
+                for attempt in xrange(num_attempts-1):
                     try:
-                        self.wait_for_restart(timeout)
+                        self.wait_for_restart(timeout, log_failure=False,
+                                              **wait_for_restart_kwargs)
                     except error.AutoservShutdownError:
-                        msg = "Serial console failed to respond to hard reset"
-                        logging.warning(msg)
+                        logging.warning(warning_msg, attempt+1, num_attempts)
                     else:
                         break
                 else:
-                    msg = "Host did not shutdown"
-                    raise error.AutoservShutdownError(msg)
+                    # Run on num_attempts=1 or last retry
+                    try:
+                        self.wait_for_restart(timeout,
+                                              **wait_for_restart_kwargs)
+                    except error.AutoservShutdownError:
+                        logging.warning(warning_msg, num_attempts, num_attempts)
+                        msg = "Host did not shutdown"
+                        raise error.AutoservShutdownError(msg)
 
         if self.job:
             self.job.disable_warnings("POWER_FAILURE")

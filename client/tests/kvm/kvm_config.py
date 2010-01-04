@@ -83,7 +83,7 @@ class config:
         @param filter: A regular expression that defines the filter.
         @param dict: Dictionary that will be inspected.
         """
-        filter = re.compile(r"(\.|^)" + filter + r"(\.|$)")
+        filter = re.compile(r"(\.|^)(%s)(\.|$)" % filter)
         return bool(filter.search(dict["name"]))
 
 
@@ -501,7 +501,7 @@ class config:
 
 if __name__ == "__main__":
     parser = optparse.OptionParser()
-    parser.add_option('-f', '--file', dest="filename", action='store_true',
+    parser.add_option('-f', '--file', dest="filename", action='store',
                       help='path to a config file that will be parsed. '
                            'If not specified, will parse kvm_tests.cfg '
                            'located inside the kvm test dir.')
@@ -513,7 +513,7 @@ if __name__ == "__main__":
     debug = options.debug
 
     if not filename:
-        filename = os.path.join(os.path.dirname(sys.argv[0]), "kvm_tests.cfg")
+        filename = os.path.join(os.path.dirname(sys.argv[0]), "tests.cfg")
 
     # Here we configure the stand alone program to use the autotest
     # logging system.

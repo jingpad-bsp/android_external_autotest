@@ -548,6 +548,8 @@ class ExternalPackage(object):
             if self.hex_sum != checksum.hexdigest():
                 logging.warning('Bad checksum for %s fetched from %s.',
                                 self.name, url)
+                logging.warning('Got %s', checksum.hexdigest())
+                logging.warning('Expected %s', self.hex_sum)
                 os.unlink(local_path)
                 continue
             logging.info('Good checksum.')
@@ -638,11 +640,10 @@ class MySQLdbPackage(ExternalPackage):
 
 
 class DjangoPackage(ExternalPackage):
-    version = '1.0.2'
-    local_filename = 'Django-%s-final.tar.gz' % version
-    urls = ('http://media.djangoproject.com/releases/%s/%s'
-            % (version, local_filename),)
-    hex_sum = 'f2d9088f17aff47ea17e5767740cab67b2a73b6b'
+    version = '1.1.1'
+    local_filename = 'Django-%s.tar.gz' % version
+    urls = ('http://www.djangoproject.com/download/%s/tarball/' % version,)
+    hex_sum = '441c54f0e90730bf4a55432b64519169b1e6ef20'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (

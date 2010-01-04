@@ -5,13 +5,18 @@ Autotest scheduler
 """
 
 
+import common
 import datetime, errno, optparse, os, pwd, Queue, re, shutil, signal
 import smtplib, socket, stat, subprocess, sys, tempfile, time, traceback
-import itertools, logging, weakref
-import common
+import itertools, logging, weakref, gc
+
 import MySQLdb
+
 from autotest_lib.scheduler import scheduler_logging_config
 from autotest_lib.frontend import setup_django_environment
+
+import django.db
+
 from autotest_lib.client.common_lib import global_config, logging_manager
 from autotest_lib.client.common_lib import host_protections, utils
 from autotest_lib.database import database_connection
@@ -19,6 +24,7 @@ from autotest_lib.frontend.afe import models, rpc_utils, readonly_connection
 from autotest_lib.scheduler import drone_manager, drones, email_manager
 from autotest_lib.scheduler import monitor_db_cleanup
 from autotest_lib.scheduler import status_server, scheduler_config
+from autotest_lib.scheduler import gc_stats
 
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
 PID_FILE_PREFIX = 'monitor_db'
@@ -203,7 +209,7 @@ def init():
     os.environ['PATH'] = AUTOTEST_SERVER_DIR + ':' + os.environ['PATH']
     global _db
     _db = database_connection.DatabaseConnection(DB_CONFIG_SECTION)
-    _db.connect()
+    _db.connect(db_type='django')
 
     # ensure Django connection is in autocommit
     setup_django_environment.enable_autocommit()
@@ -236,8 +242,10 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
     @param queue_entry - A HostQueueEntry object - If supplied and no Job
             object was supplied, this will be used to lookup the Job object.
     """
-    autoserv_argv = [_autoserv_path, '-p', '-m', machines,
+    autoserv_argv = [_autoserv_path, '-p',
                      '-r', drone_manager.WORKING_DIRECTORY]
+    if machines:
+        autoserv_argv += ['-m', machines]
     if job or queue_entry:
         if not job:
             job = queue_entry.job
@@ -255,12 +263,13 @@ class HostScheduler(object):
     def _get_ready_hosts(self):
         # avoid any host with a currently active queue entry against it
         hosts = Host.fetch(
-            joins='LEFT JOIN host_queue_entries AS active_hqe '
-                  'ON (hosts.id = active_hqe.host_id AND '
+            joins='LEFT JOIN afe_host_queue_entries AS active_hqe '
+                  'ON (afe_hosts.id = active_hqe.host_id AND '
                       'active_hqe.active)',
             where="active_hqe.host_id IS NULL "
-                  "AND NOT hosts.locked "
-                  "AND (hosts.status IS NULL OR hosts.status = 'Ready')")
+                  "AND NOT afe_hosts.locked "
+                  "AND (afe_hosts.status IS NULL "
+                          "OR afe_hosts.status = 'Ready')")
         return dict((host.id, host) for host in hosts)
 
 
@@ -292,11 +301,12 @@ class HostScheduler(object):
     @classmethod
     def _get_job_acl_groups(cls, job_ids):
         query = """
-        SELECT jobs.id, acl_groups_users.aclgroup_id
-        FROM jobs
-        INNER JOIN users ON users.login = jobs.owner
-        INNER JOIN acl_groups_users ON acl_groups_users.user_id = users.id
-        WHERE jobs.id IN (%s)
+        SELECT afe_jobs.id, afe_acl_groups_users.aclgroup_id
+        FROM afe_jobs
+        INNER JOIN afe_users ON afe_users.login = afe_jobs.owner
+        INNER JOIN afe_acl_groups_users ON
+                afe_acl_groups_users.user_id = afe_users.id
+        WHERE afe_jobs.id IN (%s)
         """
         return cls._get_many2many_dict(query, job_ids)
 
@@ -305,7 +315,7 @@ class HostScheduler(object):
     def _get_job_ineligible_hosts(cls, job_ids):
         query = """
         SELECT job_id, host_id
-        FROM ineligible_host_queues
+        FROM afe_ineligible_host_queues
         WHERE job_id IN (%s)
         """
         return cls._get_many2many_dict(query, job_ids)
@@ -315,7 +325,7 @@ class HostScheduler(object):
     def _get_job_dependencies(cls, job_ids):
         query = """
         SELECT job_id, label_id
-        FROM jobs_dependency_labels
+        FROM afe_jobs_dependency_labels
         WHERE job_id IN (%s)
         """
         return cls._get_many2many_dict(query, job_ids)
@@ -325,7 +335,7 @@ class HostScheduler(object):
     def _get_host_acls(cls, host_ids):
         query = """
         SELECT host_id, aclgroup_id
-        FROM acl_groups_hosts
+        FROM afe_acl_groups_hosts
         WHERE host_id IN (%s)
         """
         return cls._get_many2many_dict(query, host_ids)
@@ -337,7 +347,7 @@ class HostScheduler(object):
             return {}, {}
         query = """
         SELECT label_id, host_id
-        FROM hosts_labels
+        FROM afe_hosts_labels
         WHERE host_id IN (%s)
         """ % cls._get_sql_id_list(host_ids)
         rows = _db.execute(query)
@@ -627,6 +637,12 @@ class Dispatcher(object):
         self._24hr_upkeep = monitor_db_cleanup.TwentyFourHourUpkeep(_db)
         self._host_agents = {}
         self._queue_entry_agents = {}
+        self._tick_count = 0
+        self._last_garbage_stats_time = time.time()
+        self._seconds_between_garbage_stats = 60 * (
+                global_config.global_config.get_config_value(
+                        scheduler_config.CONFIG_SECTION,
+                        'gc_stats_interval_mins', type=int, default=6*60))
 
 
     def initialize(self, recover_hosts=True):
@@ -641,22 +657,40 @@ class Dispatcher(object):
 
 
     def tick(self):
+        self._garbage_collection()
         _drone_manager.refresh()
         self._run_cleanup()
         self._find_aborting()
         self._process_recurring_runs()
         self._schedule_delay_tasks()
-        self._schedule_new_jobs()
         self._schedule_running_host_queue_entries()
         self._schedule_special_tasks()
+        self._schedule_new_jobs()
         self._handle_agents()
         _drone_manager.execute_actions()
         email_manager.manager.send_queued_emails()
+        django.db.reset_queries()
+        self._tick_count += 1
 
 
     def _run_cleanup(self):
         self._periodic_cleanup.run_cleanup_maybe()
         self._24hr_upkeep.run_cleanup_maybe()
+
+
+    def _garbage_collection(self):
+        threshold_time = time.time() - self._seconds_between_garbage_stats
+        if threshold_time < self._last_garbage_stats_time:
+            # Don't generate these reports very often.
+            return
+
+        self._last_garbage_stats_time = time.time()
+        # Force a full level 0 collection (because we can, it doesn't hurt
+        # at this interval).
+        gc.collect()
+        logging.info('Logging garbage collector stats on tick %d.',
+                     self._tick_count)
+        gc_stats._log_garbage_collector_stats()
 
 
     def _register_agent_for_ids(self, agent_dict, object_ids, agent):
@@ -670,7 +704,8 @@ class Dispatcher(object):
             agent_dict[object_id].remove(agent)
 
 
-    def add_agent(self, agent):
+    def add_agent_task(self, agent_task):
+        agent = Agent(agent_task)
         self._agents.append(agent)
         agent.dispatcher = self
         self._register_agent_for_ids(self._host_agents, agent.host_ids, agent)
@@ -707,11 +742,12 @@ class Dispatcher(object):
 
 
     def _recover_processes(self):
-        self._register_pidfiles()
+        agent_tasks = self._create_recovery_agent_tasks()
+        self._register_pidfiles(agent_tasks)
         _drone_manager.refresh()
-        self._recover_all_recoverable_entries()
+        self._recover_tasks(agent_tasks)
         self._recover_pending_entries()
-        self._check_for_remaining_active_entries()
+        self._check_for_unrecovered_verifying_entries()
         self._reverify_remaining_hosts()
         # reinitialize drones after killing orphaned processes, since they can
         # leave around files when they die
@@ -719,50 +755,128 @@ class Dispatcher(object):
         _drone_manager.reinitialize_drones()
 
 
-    def _register_pidfiles(self):
-        # during recovery we may need to read pidfiles for both running and
-        # parsing entries
+    def _create_recovery_agent_tasks(self):
+        return (self._get_queue_entry_agent_tasks()
+                + self._get_special_task_agent_tasks(is_active=True))
+
+
+    def _get_queue_entry_agent_tasks(self):
+        # host queue entry statuses handled directly by AgentTasks (Verifying is
+        # handled through SpecialTasks, so is not listed here)
+        statuses = (models.HostQueueEntry.Status.STARTING,
+                    models.HostQueueEntry.Status.RUNNING,
+                    models.HostQueueEntry.Status.GATHERING,
+                    models.HostQueueEntry.Status.PARSING)
+        status_list = ','.join("'%s'" % status for status in statuses)
         queue_entries = HostQueueEntry.fetch(
-            where="status IN ('Running', 'Gathering', 'Parsing')")
-        special_tasks = models.SpecialTask.objects.filter(is_active=True)
-        for execution_entry in itertools.chain(queue_entries, special_tasks):
-            for pidfile_name in _ALL_PIDFILE_NAMES:
-                pidfile_id = _drone_manager.get_pidfile_id_from(
-                    execution_entry.execution_path(), pidfile_name=pidfile_name)
-                _drone_manager.register_pidfile(pidfile_id)
+                where='status IN (%s)' % status_list)
+
+        agent_tasks = []
+        used_queue_entries = set()
+        for entry in queue_entries:
+            if self.get_agents_for_entry(entry):
+                # already being handled
+                continue
+            if entry in used_queue_entries:
+                # already picked up by a synchronous job
+                continue
+            agent_task = self._get_agent_task_for_queue_entry(entry)
+            agent_tasks.append(agent_task)
+            used_queue_entries.update(agent_task.queue_entries)
+        return agent_tasks
 
 
-    def _get_recovery_run_monitor(self, execution_path, pidfile_name, orphans):
-        run_monitor = PidfileRunMonitor()
-        run_monitor.attach_to_existing_process(execution_path,
-                                               pidfile_name=pidfile_name)
-        if run_monitor.has_process():
-            orphans.discard(run_monitor.get_process())
-            return run_monitor, '(process %s)' % run_monitor.get_process()
-        return None, 'without process'
+    def _get_special_task_agent_tasks(self, is_active=False):
+        special_tasks = models.SpecialTask.objects.filter(
+                is_active=is_active, is_complete=False)
+        return [self._get_agent_task_for_special_task(task)
+                for task in special_tasks]
+
+
+    def _get_agent_task_for_queue_entry(self, queue_entry):
+        """
+        Construct an AgentTask instance for the given active HostQueueEntry,
+        if one can currently run it.
+        @param queue_entry: a HostQueueEntry
+        @returns an AgentTask to run the queue entry
+        """
+        task_entries = queue_entry.job.get_group_entries(queue_entry)
+        self._check_for_duplicate_host_entries(task_entries)
+
+        if queue_entry.status in (models.HostQueueEntry.Status.STARTING,
+                                  models.HostQueueEntry.Status.RUNNING):
+            if queue_entry.is_hostless():
+                return HostlessQueueTask(queue_entry=queue_entry)
+            return QueueTask(queue_entries=task_entries)
+        if queue_entry.status == models.HostQueueEntry.Status.GATHERING:
+            return GatherLogsTask(queue_entries=task_entries)
+        if queue_entry.status == models.HostQueueEntry.Status.PARSING:
+            return FinalReparseTask(queue_entries=task_entries)
+
+        raise SchedulerError('_get_agent_task_for_queue_entry got entry with '
+                             'invalid status %s: %s' % (entry.status, entry))
+
+
+    def _check_for_duplicate_host_entries(self, task_entries):
+        parsing_status = models.HostQueueEntry.Status.PARSING
+        for task_entry in task_entries:
+            using_host = (task_entry.host is not None
+                          and task_entry.status != parsing_status)
+            if using_host:
+                self._assert_host_has_no_agent(task_entry)
+
+
+    def _assert_host_has_no_agent(self, entry):
+        """
+        @param entry: a HostQueueEntry or a SpecialTask
+        """
+        if self.host_has_agent(entry.host):
+            agent = tuple(self._host_agents.get(entry.host.id))[0]
+            raise SchedulerError(
+                    'While scheduling %s, host %s already has a host agent %s'
+                    % (entry, entry.host, agent.task))
+
+
+    def _get_agent_task_for_special_task(self, special_task):
+        """
+        Construct an AgentTask class to run the given SpecialTask and add it
+        to this dispatcher.
+        @param special_task: a models.SpecialTask instance
+        @returns an AgentTask to run this SpecialTask
+        """
+        self._assert_host_has_no_agent(special_task)
+
+        special_agent_task_classes = (CleanupTask, VerifyTask, RepairTask)
+        for agent_task_class in special_agent_task_classes:
+            if agent_task_class.TASK_TYPE == special_task.task:
+                return agent_task_class(task=special_task)
+
+        raise SchedulerError('No AgentTask class for task', str(special_task))
+
+
+    def _register_pidfiles(self, agent_tasks):
+        for agent_task in agent_tasks:
+            agent_task.register_necessary_pidfiles()
+
+
+    def _recover_tasks(self, agent_tasks):
+        orphans = _drone_manager.get_orphaned_autoserv_processes()
+
+        for agent_task in agent_tasks:
+            agent_task.recover()
+            if agent_task.monitor and agent_task.monitor.has_process():
+                orphans.discard(agent_task.monitor.get_process())
+            self.add_agent_task(agent_task)
+
+        self._check_for_remaining_orphan_processes(orphans)
 
 
     def _get_unassigned_entries(self, status):
         for entry in HostQueueEntry.fetch(where="status = '%s'" % status):
-            if not self.get_agents_for_entry(entry):
+            if entry.status == status and not self.get_agents_for_entry(entry):
+                # The status can change during iteration, e.g., if job.run()
+                # sets a group of queue entries to Starting
                 yield entry
-
-
-    def _recover_entries_with_status(self, status, orphans, pidfile_name,
-                                     recover_entries_fn):
-        for queue_entry in self._get_unassigned_entries(status):
-            queue_entries = queue_entry.job.get_group_entries(queue_entry)
-            run_monitor, process_string = self._get_recovery_run_monitor(
-                    queue_entry.execution_path(), pidfile_name, orphans)
-            if not run_monitor:
-                # _schedule_running_host_queue_entries should schedule and
-                # recover these entries
-                continue
-
-            logging.info('Recovering %s entry %s %s',status.lower(),
-                         ', '.join(str(entry) for entry in queue_entries),
-                         process_string)
-            recover_entries_fn(queue_entry.job, queue_entries, run_monitor)
 
 
     def _check_for_remaining_orphan_processes(self, orphans):
@@ -779,164 +893,69 @@ class Dispatcher(object):
             raise RuntimeError(subject + '\n' + message)
 
 
-    def _recover_running_entries(self, orphans):
-        def recover_entries(job, queue_entries, run_monitor):
-            queue_task = QueueTask(job=job, queue_entries=queue_entries,
-                                   recover_run_monitor=run_monitor)
-            self.add_agent(Agent(task=queue_task,
-                                 num_processes=len(queue_entries)))
-
-        self._recover_entries_with_status(models.HostQueueEntry.Status.RUNNING,
-                                          orphans, _AUTOSERV_PID_FILE,
-                                          recover_entries)
-
-
-    def _recover_gathering_entries(self, orphans):
-        def recover_entries(job, queue_entries, run_monitor):
-            gather_task = GatherLogsTask(job, queue_entries,
-                                         recover_run_monitor=run_monitor)
-            self.add_agent(Agent(gather_task))
-
-        self._recover_entries_with_status(
-            models.HostQueueEntry.Status.GATHERING,
-            orphans, _CRASHINFO_PID_FILE, recover_entries)
-
-
-    def _recover_parsing_entries(self, orphans):
-        def recover_entries(job, queue_entries, run_monitor):
-            reparse_task = FinalReparseTask(queue_entries,
-                                            recover_run_monitor=run_monitor)
-            self.add_agent(Agent(reparse_task, num_processes=0))
-
-        self._recover_entries_with_status(models.HostQueueEntry.Status.PARSING,
-                                          orphans, _PARSER_PID_FILE,
-                                          recover_entries)
-
-
     def _recover_pending_entries(self):
         for entry in self._get_unassigned_entries(
                 models.HostQueueEntry.Status.PENDING):
+            logging.info('Recovering Pending entry %s', entry)
             entry.on_pending()
 
 
-    def _recover_all_recoverable_entries(self):
-        orphans = _drone_manager.get_orphaned_autoserv_processes()
-        self._recover_running_entries(orphans)
-        self._recover_gathering_entries(orphans)
-        self._recover_parsing_entries(orphans)
-        self._recover_special_tasks(orphans)
-        self._check_for_remaining_orphan_processes(orphans)
-
-
-    def _recover_special_tasks(self, orphans):
-        """\
-        Recovers all special tasks that have started running but have not
-        completed.
-        """
-
-        tasks = models.SpecialTask.objects.filter(is_active=True,
-                                                  is_complete=False)
-        # Use ordering to force NULL queue_entry_id's to the end of the list
-        for task in tasks.order_by('-queue_entry__id'):
-            if self.host_has_agent(task.host):
-                raise SchedulerError(
-                        "%s already has a host agent %s." % (
-                                task, self._host_agents.get(task.host.id)))
-
-            run_monitor, process_string = self._get_recovery_run_monitor(
-                    task.execution_path(), _AUTOSERV_PID_FILE, orphans)
-
-            logging.info('Recovering %s %s', task, process_string)
-            self._recover_special_task(task, run_monitor)
-
-
-    def _recover_special_task(self, task, run_monitor):
-        """\
-        Recovers a single special task.
-        """
-        if task.task == models.SpecialTask.Task.VERIFY:
-            agent_task = self._recover_verify(task, run_monitor)
-        elif task.task == models.SpecialTask.Task.REPAIR:
-            agent_task = self._recover_repair(task, run_monitor)
-        elif task.task == models.SpecialTask.Task.CLEANUP:
-            agent_task = self._recover_cleanup(task, run_monitor)
-        else:
-            # Should never happen
-            logging.error(
-                "Special task id %d had invalid task %s", (task.id, task.task))
-
-        self.add_agent(Agent(agent_task))
-
-
-    def _recover_verify(self, task, run_monitor):
-        """\
-        Recovers a verify task.
-        No associated queue entry: Verify host
-        With associated queue entry: Verify host, and run associated queue
-                                     entry
-        """
-        return VerifyTask(task=task, recover_run_monitor=run_monitor)
-
-
-    def _recover_repair(self, task, run_monitor):
-        """\
-        Recovers a repair task.
-        Always repair host
-        """
-        return RepairTask(task=task, recover_run_monitor=run_monitor)
-
-
-    def _recover_cleanup(self, task, run_monitor):
-        """\
-        Recovers a cleanup task.
-        No associated queue entry: Clean host
-        With associated queue entry: Clean host, verify host if needed, and
-                                     run associated queue entry
-        """
-        return CleanupTask(task=task, recover_run_monitor=run_monitor)
-
-
-    def _check_for_remaining_active_entries(self):
+    def _check_for_unrecovered_verifying_entries(self):
         queue_entries = HostQueueEntry.fetch(
-                where='active AND NOT complete AND status NOT IN '
-                      '("Starting", "Gathering", "Pending")')
+                where='status = "%s"' % models.HostQueueEntry.Status.VERIFYING)
+        unrecovered_hqes = []
+        for queue_entry in queue_entries:
+            special_tasks = models.SpecialTask.objects.filter(
+                    task__in=(models.SpecialTask.Task.CLEANUP,
+                              models.SpecialTask.Task.VERIFY),
+                    queue_entry__id=queue_entry.id,
+                    is_complete=False)
+            if special_tasks.count() == 0:
+                unrecovered_hqes.append(queue_entry)
 
-        unrecovered_active_hqes = [entry for entry in queue_entries
-                                   if not self.get_agents_for_entry(entry) and
-                                      not self._host_has_scheduled_special_task(
-                                              entry.host)]
-        if unrecovered_active_hqes:
-            message = '\n'.join(str(hqe) for hqe in unrecovered_active_hqes)
+        if unrecovered_hqes:
+            message = '\n'.join(str(hqe) for hqe in unrecovered_hqes)
             raise SchedulerError(
-                    '%d unrecovered active host queue entries:\n%s' %
-                    (len(unrecovered_active_hqes), message))
+                    '%d unrecovered verifying host queue entries:\n%s' %
+                    (len(unrecovered_hqes), message))
+
+
+    def _get_prioritized_special_tasks(self):
+        """
+        Returns all queued SpecialTasks prioritized for repair first, then
+        cleanup, then verify.
+        """
+        queued_tasks = models.SpecialTask.objects.filter(is_active=False,
+                                                         is_complete=False,
+                                                         host__locked=False)
+        # exclude hosts with active queue entries unless the SpecialTask is for
+        # that queue entry
+        queued_tasks = models.Host.objects.add_join(
+                queued_tasks, 'afe_host_queue_entries', 'host_id',
+                join_condition='afe_host_queue_entries.active',
+                force_left_join=True)
+        queued_tasks = queued_tasks.extra(
+                where=['(afe_host_queue_entries.id IS NULL OR '
+                       'afe_host_queue_entries.id = '
+                               'afe_special_tasks.queue_entry_id)'])
+
+        # reorder tasks by priority
+        task_priority_order = [models.SpecialTask.Task.REPAIR,
+                               models.SpecialTask.Task.CLEANUP,
+                               models.SpecialTask.Task.VERIFY]
+        def task_priority_key(task):
+            return task_priority_order.index(task.task)
+        return sorted(queued_tasks, key=task_priority_key)
 
 
     def _schedule_special_tasks(self):
-        tasks = models.SpecialTask.objects.filter(is_active=False,
-                                                  is_complete=False,
-                                                  host__locked=False)
-        # We want lower ids to come first, but the NULL queue_entry_ids need to
-        # come last
-        tasks = tasks.extra(select={'isnull' : 'queue_entry_id IS NULL'})
-        tasks = tasks.extra(order_by=['isnull', 'id'])
-
-        for task in tasks:
+        """
+        Execute queued SpecialTasks that are ready to run on idle hosts.
+        """
+        for task in self._get_prioritized_special_tasks():
             if self.host_has_agent(task.host):
                 continue
-
-            if task.task == models.SpecialTask.Task.CLEANUP:
-                    agent_task = CleanupTask(task=task)
-            elif task.task == models.SpecialTask.Task.VERIFY:
-                    agent_task = VerifyTask(task=task)
-            elif task.task == models.SpecialTask.Task.REPAIR:
-                agent_task = RepairTask(task=task)
-            else:
-                email_manager.manager.enqueue_notify_email(
-                        'Special task with invalid task', task)
-                continue
-
-            self.add_agent(Agent(agent_task))
+            self.add_agent_task(self._get_agent_task_for_special_task(task))
 
 
     def _reverify_remaining_hosts(self):
@@ -963,7 +982,7 @@ class Dispatcher(object):
                 logging.info(print_message, host.hostname)
             models.SpecialTask.objects.create(
                     task=models.SpecialTask.Task.CLEANUP,
-                    host=models.Host(id=host.id))
+                    host=models.Host.objects.get(id=host.id))
 
 
     def _recover_hosts(self):
@@ -977,9 +996,9 @@ class Dispatcher(object):
     def _get_pending_queue_entries(self):
         # prioritize by job priority, then non-metahost over metahost, then FIFO
         return list(HostQueueEntry.fetch(
-            joins='INNER JOIN jobs ON (job_id=jobs.id)',
+            joins='INNER JOIN afe_jobs ON (job_id=afe_jobs.id)',
             where='NOT complete AND NOT active AND status="Queued"',
-            order_by='jobs.priority DESC, meta_host, job_id'))
+            order_by='afe_jobs.priority DESC, meta_host, job_id'))
 
 
     def _refresh_pending_queue_entries(self):
@@ -1030,63 +1049,41 @@ class Dispatcher(object):
             self._run_queue_entry(queue_entry, host)
 
 
+    def _schedule_hostless_job(self, queue_entry):
+        self.add_agent_task(HostlessQueueTask(queue_entry))
+
+
     def _schedule_new_jobs(self):
         queue_entries = self._refresh_pending_queue_entries()
         if not queue_entries:
             return
 
         for queue_entry in queue_entries:
-            if (queue_entry.atomic_group_id is None or
-                queue_entry.host_id is not None):
+            is_unassigned_atomic_group = (
+                    queue_entry.atomic_group_id is not None
+                    and queue_entry.host_id is None)
+            if is_unassigned_atomic_group:
+                self._schedule_atomic_group(queue_entry)
+            elif queue_entry.is_hostless():
+                self._schedule_hostless_job(queue_entry)
+            else:
                 assigned_host = self._host_scheduler.find_eligible_host(
                         queue_entry)
-                if assigned_host:
+                if assigned_host and not self.host_has_agent(assigned_host):
                     self._run_queue_entry(queue_entry, assigned_host)
-            else:
-                self._schedule_atomic_group(queue_entry)
 
 
     def _schedule_running_host_queue_entries(self):
-        entries = HostQueueEntry.fetch(
-                where="status IN "
-                      "('Starting', 'Running', 'Gathering', 'Parsing')")
-        for entry in entries:
-            if self.get_agents_for_entry(entry):
-                continue
-
-            task_entries = entry.job.get_group_entries(entry)
-            for task_entry in task_entries:
-                if (task_entry.status != models.HostQueueEntry.Status.PARSING
-                        and self.host_has_agent(task_entry.host)):
-                    agent = self._host_agents.get(task_entry.host.id)[0]
-                    raise SchedulerError('Attempted to schedule on host that '
-                                         'already has agent: %s (previous '
-                                         'agent task: %s)'
-                                         % (task_entry, agent.task))
-
-            if entry.status in (models.HostQueueEntry.Status.STARTING,
-                                models.HostQueueEntry.Status.RUNNING):
-                params = entry.job.get_autoserv_params(task_entries)
-                agent_task = QueueTask(job=entry.job,
-                                       queue_entries=task_entries, cmd=params)
-            elif entry.status == models.HostQueueEntry.Status.GATHERING:
-                agent_task = GatherLogsTask(
-                        job=entry.job, queue_entries=task_entries)
-            elif entry.status == models.HostQueueEntry.Status.PARSING:
-                agent_task = FinalReparseTask(queue_entries=task_entries)
-            else:
-                raise SchedulerError('_schedule_running_host_queue_entries got '
-                                     'entry with invalid status %s: %s'
-                                     % (entry.status, entry))
-
-            self.add_agent(Agent(agent_task, num_processes=len(task_entries)))
+        for agent_task in self._get_queue_entry_agent_tasks():
+            self.add_agent_task(agent_task)
 
 
     def _schedule_delay_tasks(self):
-        for entry in HostQueueEntry.fetch(where="status = 'Waiting'"):
+        for entry in HostQueueEntry.fetch(where='status = "%s"' %
+                                          models.HostQueueEntry.Status.WAITING):
             task = entry.job.schedule_delayed_callback_task(entry)
             if task:
-                self.add_agent(Agent(task, num_processes=0))
+                self.add_agent_task(task)
 
 
     def _run_queue_entry(self, queue_entry, host):
@@ -1104,22 +1101,24 @@ class Dispatcher(object):
     def _can_start_agent(self, agent, num_started_this_cycle,
                          have_reached_limit):
         # always allow zero-process agents to run
-        if agent.num_processes == 0:
+        if agent.task.num_processes == 0:
             return True
         # don't allow any nonzero-process agents to run after we've reached a
         # limit (this avoids starvation of many-process agents)
         if have_reached_limit:
             return False
         # total process throttling
-        if agent.num_processes > _drone_manager.max_runnable_processes():
+        max_runnable_processes = _drone_manager.max_runnable_processes(
+                agent.task.owner_username)
+        if agent.task.num_processes > max_runnable_processes:
             return False
         # if a single agent exceeds the per-cycle throttling, still allow it to
         # run when it's the first agent in the cycle
         if num_started_this_cycle == 0:
             return True
         # per-cycle throttling
-        if (num_started_this_cycle + agent.num_processes >
-            scheduler_config.config.max_processes_started_per_cycle):
+        if (num_started_this_cycle + agent.task.num_processes >
+                scheduler_config.config.max_processes_started_per_cycle):
             return False
         return True
 
@@ -1134,7 +1133,7 @@ class Dispatcher(object):
                                              have_reached_limit):
                     have_reached_limit = True
                     continue
-                num_started_this_cycle += agent.num_processes
+                num_started_this_cycle += agent.task.num_processes
             agent.tick()
             if agent.is_done():
                 logging.info("agent finished")
@@ -1214,23 +1213,27 @@ class PidfileRunMonitor(object):
         self._start_time = time.time()
 
 
-    def run(self, command, working_directory, nice_level=None, log_file=None,
-            pidfile_name=None, paired_with_pidfile=None):
+    def run(self, command, working_directory, num_processes, nice_level=None,
+            log_file=None, pidfile_name=None, paired_with_pidfile=None,
+            username=None):
         assert command is not None
         if nice_level is not None:
             command = ['nice', '-n', str(nice_level)] + command
         self._set_start_time()
         self.pidfile_id = _drone_manager.execute_command(
             command, working_directory, pidfile_name=pidfile_name,
-            log_file=log_file, paired_with_pidfile=paired_with_pidfile)
+            num_processes=num_processes, log_file=log_file,
+            paired_with_pidfile=paired_with_pidfile, username=username)
 
 
     def attach_to_existing_process(self, execution_path,
-                                   pidfile_name=_AUTOSERV_PID_FILE):
+                                   pidfile_name=_AUTOSERV_PID_FILE,
+                                   num_processes=None):
         self._set_start_time()
         self.pidfile_id = _drone_manager.get_pidfile_id_from(
             execution_path, pidfile_name=pidfile_name)
-        _drone_manager.register_pidfile(self.pidfile_id)
+        if num_processes is not None:
+            _drone_manager.declare_process_count(self.pidfile_id, num_processes)
 
 
     def kill(self):
@@ -1371,43 +1374,35 @@ class Agent(object):
         success - bool, True if this task succeeded.
         queue_entry_ids - A sequence of HostQueueEntry ids this task handles.
         host_ids - A sequence of Host ids this task represents.
-
-    The following attribute is written to all task objects:
-        agent - A reference to the Agent instance that the task has been
-                added to.
     """
 
 
-    def __init__(self, task, num_processes=1):
+    def __init__(self, task):
         """
         @param task: A task as described in the class docstring.
-        @param num_processes: The number of subprocesses the Agent represents.
-                This is used by the Dispatcher for managing the load on the
-                system.  Defaults to 1.
         """
         self.task = task
-        task.agent = self
 
         # This is filled in by Dispatcher.add_agent()
         self.dispatcher = None
-        self.num_processes = num_processes
 
         self.queue_entry_ids = task.queue_entry_ids
         self.host_ids = task.host_ids
 
         self.started = False
+        self.finished = False
 
 
     def tick(self):
         self.started = True
-        if self.task:
+        if not self.finished:
             self.task.poll()
             if self.task.is_done():
-                self.task = None
+                self.finished = True
 
 
     def is_done(self):
-        return self.task is None
+        return self.finished
 
 
     def abort(self):
@@ -1415,7 +1410,7 @@ class Agent(object):
             self.task.abort()
             if self.task.aborted:
                 # tasks can choose to ignore aborts
-                self.task = None
+                self.finished = True
 
 
 class DelayedCallTask(object):
@@ -1454,8 +1449,7 @@ class DelayedCallTask(object):
         self.host_ids = ()
         self.success = False
         self.queue_entry_ids = ()
-        # This is filled in by Agent.add_task().
-        self.agent = None
+        self.num_processes = 0
 
 
     def poll(self):
@@ -1473,20 +1467,25 @@ class DelayedCallTask(object):
 
 
 class AgentTask(object):
-    def __init__(self, cmd=None, working_directory=None,
-                 pidfile_name=None, paired_with_pidfile=None,
-                 recover_run_monitor=None):
+    class _NullMonitor(object):
+        pidfile_id = None
+
+        def has_process(self):
+            return True
+
+
+    def __init__(self, log_file_name=None):
+        """
+        @param log_file_name: (optional) name of file to log command output to
+        """
         self.done = False
-        self.cmd = cmd
-        self._working_directory = working_directory
-        self.agent = None
-        self.monitor = recover_run_monitor
-        self.started = bool(recover_run_monitor)
+        self.started = False
         self.success = None
         self.aborted = False
+        self.monitor = None
         self.queue_entry_ids = []
         self.host_ids = []
-        self.log_file = None
+        self._log_file_name = log_file_name
 
 
     def _set_ids(self, host=None, queue_entries=None):
@@ -1501,18 +1500,17 @@ class AgentTask(object):
     def poll(self):
         if not self.started:
             self.start()
-        self.tick()
+        if not self.done:
+            self.tick()
 
 
     def tick(self):
-        if self.monitor:
-            exit_code = self.monitor.exit_code()
-            if exit_code is None:
-                return
-            success = (exit_code == 0)
-        else:
-            success = False
+        assert self.monitor
+        exit_code = self.monitor.exit_code()
+        if exit_code is None:
+            return
 
+        success = (exit_code == 0)
         self.finished(success)
 
 
@@ -1522,28 +1520,45 @@ class AgentTask(object):
 
     def finished(self, success):
         if self.done:
+            assert self.started
             return
+        self.started = True
         self.done = True
         self.success = success
         self.epilog()
 
 
     def prolog(self):
+        """
+        To be overridden.
+        """
         assert not self.monitor
+        self.register_necessary_pidfiles()
+
+
+    def _log_file(self):
+        if not self._log_file_name:
+            return None
+        return os.path.join(self._working_directory(), self._log_file_name)
 
 
     def cleanup(self):
-        if self.monitor and self.log_file:
-            self.monitor.try_copy_to_results_repository(self.log_file)
+        log_file = self._log_file()
+        if self.monitor and log_file:
+            self.monitor.try_copy_to_results_repository(log_file)
 
 
     def epilog(self):
+        """
+        To be overridden.
+        """
         self.cleanup()
+        logging.info("%s finished with success=%s", type(self).__name__,
+                     self.success)
+
 
 
     def start(self):
-        assert self.agent
-
         if not self.started:
             self.prolog()
             self.run()
@@ -1597,15 +1612,113 @@ class AgentTask(object):
         self._parse_results(queue_entries)
 
 
-    def run(self, pidfile_name=_AUTOSERV_PID_FILE, paired_with_pidfile=None):
+    def _command_line(self):
+        """
+        Return the command line to run.  Must be overridden.
+        """
+        raise NotImplementedError
+
+
+    @property
+    def num_processes(self):
+        """
+        Return the number of processes forked by this AgentTask's process.  It
+        may only be approximate.  To be overridden if necessary.
+        """
+        return 1
+
+
+    def _paired_with_monitor(self):
+        """
+        If this AgentTask's process must run on the same machine as some
+        previous process, this method should be overridden to return a
+        PidfileRunMonitor for that process.
+        """
+        return self._NullMonitor()
+
+
+    @property
+    def owner_username(self):
+        """
+        Return login of user responsible for this task.  May be None.  Must be
+        overridden.
+        """
+        raise NotImplementedError
+
+
+    def _working_directory(self):
+        """
+        Return the directory where this AgentTask's process executes.  Must be
+        overridden.
+        """
+        raise NotImplementedError
+
+
+    def _pidfile_name(self):
+        """
+        Return the name of the pidfile this AgentTask's process uses.  To be
+        overridden if necessary.
+        """
+        return _AUTOSERV_PID_FILE
+
+
+    def _check_paired_results_exist(self):
+        if not self._paired_with_monitor().has_process():
+            email_manager.manager.enqueue_notify_email(
+                    'No paired results in task',
+                    'No paired results in task %s at %s'
+                    % (self, self._paired_with_monitor().pidfile_id))
+            self.finished(False)
+            return False
+        return True
+
+
+    def _create_monitor(self):
         assert not self.monitor
-        if self.cmd:
-            self.monitor = PidfileRunMonitor()
-            self.monitor.run(self.cmd, self._working_directory,
-                             nice_level=AUTOSERV_NICE_LEVEL,
-                             log_file=self.log_file,
-                             pidfile_name=pidfile_name,
-                             paired_with_pidfile=paired_with_pidfile)
+        self.monitor = PidfileRunMonitor()
+
+
+    def run(self):
+        if not self._check_paired_results_exist():
+            return
+
+        self._create_monitor()
+        self.monitor.run(
+                self._command_line(), self._working_directory(),
+                num_processes=self.num_processes,
+                nice_level=AUTOSERV_NICE_LEVEL, log_file=self._log_file(),
+                pidfile_name=self._pidfile_name(),
+                paired_with_pidfile=self._paired_with_monitor().pidfile_id,
+                username=self.owner_username)
+
+
+    def register_necessary_pidfiles(self):
+        pidfile_id = _drone_manager.get_pidfile_id_from(
+                self._working_directory(), self._pidfile_name())
+        _drone_manager.register_pidfile(pidfile_id)
+
+        paired_pidfile_id = self._paired_with_monitor().pidfile_id
+        if paired_pidfile_id:
+            _drone_manager.register_pidfile(paired_pidfile_id)
+
+
+    def recover(self):
+        if not self._check_paired_results_exist():
+            return
+
+        self._create_monitor()
+        self.monitor.attach_to_existing_process(
+                self._working_directory(), pidfile_name=self._pidfile_name(),
+                num_processes=self.num_processes)
+        if not self.monitor.has_process():
+            # no process to recover; wait to be started normally
+            self.monitor = None
+            return
+
+        self.started = True
+        logging.info('Recovering process %s for %s at %s'
+                     % (self.monitor.get_process(), type(self).__name__,
+                        self._working_directory()))
 
 
 class TaskWithJobKeyvals(object):
@@ -1642,7 +1755,7 @@ class TaskWithJobKeyvals(object):
                                     for key, value in keyval_dict.iteritems())
         # always end with a newline to allow additional keyvals to be written
         keyval_contents += '\n'
-        _drone_manager.attach_file_to_execution(self._working_directory,
+        _drone_manager.attach_file_to_execution(self._working_directory(),
                                                 keyval_contents,
                                                 file_path=keyval_path)
 
@@ -1652,7 +1765,7 @@ class TaskWithJobKeyvals(object):
 
 
     def _write_host_keyvals(self, host):
-        keyval_path = os.path.join(self._working_directory, 'host_keyvals',
+        keyval_path = os.path.join(self._working_directory(), 'host_keyvals',
                                    host.hostname)
         platform, all_labels = host.platform_and_labels()
         keyval_dict = dict(platform=platform, labels=','.join(all_labels))
@@ -1668,7 +1781,9 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
     host = None
     queue_entry = None
 
-    def __init__(self, task, extra_command_args, **kwargs):
+    def __init__(self, task, extra_command_args):
+        super(SpecialAgentTask, self).__init__()
+
         assert (self.TASK_TYPE is not None,
                 'self.TASK_TYPE must be overridden')
 
@@ -1678,21 +1793,32 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
             self.queue_entry = HostQueueEntry(id=task.queue_entry.id)
 
         self.task = task
-        kwargs['working_directory'] = task.execution_path()
         self._extra_command_args = extra_command_args
-        super(SpecialAgentTask, self).__init__(**kwargs)
 
 
     def _keyval_path(self):
-        return os.path.join(self._working_directory, self._KEYVAL_FILE)
+        return os.path.join(self._working_directory(), self._KEYVAL_FILE)
+
+
+    def _command_line(self):
+        return _autoserv_command_line(self.host.hostname,
+                                      self._extra_command_args,
+                                      queue_entry=self.queue_entry)
+
+
+    def _working_directory(self):
+        return self.task.execution_path()
+
+
+    @property
+    def owner_username(self):
+        if self.task.requested_by:
+            return self.task.requested_by.login
+        return None
 
 
     def prolog(self):
         super(SpecialAgentTask, self).prolog()
-        self.cmd = _autoserv_command_line(self.host.hostname,
-                                          self._extra_command_args,
-                                          queue_entry=self.queue_entry)
-        self._working_directory = self.task.execution_path()
         self.task.activate()
         self._write_host_keyvals(self.host)
 
@@ -1715,32 +1841,40 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
 
         # copy results logs into the normal place for job results
         self.monitor.try_copy_results_on_drone(
-                source_path=self._working_directory + '/',
+                source_path=self._working_directory() + '/',
                 destination_path=self.queue_entry.execution_path() + '/')
 
         self._copy_results([self.queue_entry])
-        self.queue_entry.handle_host_failure()
-        if self.queue_entry.job.parse_failed_repair:
-            self._parse_results([self.queue_entry])
+
+        if not self.queue_entry.job.parse_failed_repair:
+            self.queue_entry.set_status(models.HostQueueEntry.Status.FAILED)
+            return
 
         pidfile_id = _drone_manager.get_pidfile_id_from(
                 self.queue_entry.execution_path(),
                 pidfile_name=_AUTOSERV_PID_FILE)
         _drone_manager.register_pidfile(pidfile_id)
+        self._parse_results([self.queue_entry])
 
 
     def cleanup(self):
         super(SpecialAgentTask, self).cleanup()
-        self.task.finish()
-        if self.monitor and self.monitor.has_process():
-            self._copy_results([self.task])
+
+        # We will consider an aborted task to be "Failed"
+        self.task.finish(bool(self.success))
+
+        if self.monitor:
+            if self.monitor.has_process():
+                self._copy_results([self.task])
+            if self.monitor.pidfile_id is not None:
+                _drone_manager.unregister_pidfile(self.monitor.pidfile_id)
 
 
 class RepairTask(SpecialAgentTask):
     TASK_TYPE = models.SpecialTask.Task.REPAIR
 
 
-    def __init__(self, task, recover_run_monitor=None):
+    def __init__(self, task):
         """\
         queue_entry: queue entry to mark failed if this repair fails.
         """
@@ -1750,8 +1884,7 @@ class RepairTask(SpecialAgentTask):
         protection = host_protections.Protection.get_attr_name(protection)
 
         super(RepairTask, self).__init__(
-                task, ['-R', '--host-protection', protection],
-                recover_run_monitor=recover_run_monitor)
+                task, ['-R', '--host-protection', protection])
 
         # *don't* include the queue entry in IDs -- if the queue entry is
         # aborted, we want to leave the repair task running
@@ -1800,6 +1933,8 @@ class PreJobTask(SpecialAgentTask):
         self._copy_to_results_repository()
 
         if self.host.protection == host_protections.Protection.DO_NOT_VERIFY:
+            # effectively ignore failure for these hosts
+            self.success = True
             return
 
         if self.queue_entry:
@@ -1812,24 +1947,24 @@ class PreJobTask(SpecialAgentTask):
                 self._fail_queue_entry()
                 return
 
-            queue_entry = models.HostQueueEntry(id=self.queue_entry.id)
+            queue_entry = models.HostQueueEntry.objects.get(
+                    id=self.queue_entry.id)
         else:
             queue_entry = None
 
         models.SpecialTask.objects.create(
-                host=models.Host(id=self.host.id),
+                host=models.Host.objects.get(id=self.host.id),
                 task=models.SpecialTask.Task.REPAIR,
-                queue_entry=queue_entry)
+                queue_entry=queue_entry,
+                requested_by=self.task.requested_by)
 
 
 class VerifyTask(PreJobTask):
     TASK_TYPE = models.SpecialTask.Task.VERIFY
 
 
-    def __init__(self, task, recover_run_monitor=None):
-        super(VerifyTask, self).__init__(
-                task, ['-v'], recover_run_monitor=recover_run_monitor)
-
+    def __init__(self, task):
+        super(VerifyTask, self).__init__(task, ['-v'])
         self._set_ids(host=self.host, queue_entries=[self.queue_entry])
 
 
@@ -1860,79 +1995,52 @@ class VerifyTask(PreJobTask):
                 self.host.set_status(models.Host.Status.READY)
 
 
-class CleanupHostsMixin(object):
-    def _reboot_hosts(self, job, queue_entries, final_success,
-                      num_tests_failed):
-        reboot_after = job.reboot_after
-        do_reboot = (
-                # always reboot after aborted jobs
-                self._final_status == models.HostQueueEntry.Status.ABORTED
-                or reboot_after == models.RebootAfter.ALWAYS
-                or (reboot_after == models.RebootAfter.IF_ALL_TESTS_PASSED
-                    and final_success and num_tests_failed == 0))
-
-        for queue_entry in queue_entries:
-            if do_reboot:
-                # don't pass the queue entry to the CleanupTask. if the cleanup
-                # fails, the job doesn't care -- it's over.
-                models.SpecialTask.objects.create(
-                        host=models.Host(id=queue_entry.host.id),
-                        task=models.SpecialTask.Task.CLEANUP)
-            else:
-                queue_entry.host.set_status(models.Host.Status.READY)
-
-
-class QueueTask(AgentTask, TaskWithJobKeyvals, CleanupHostsMixin):
-    def __init__(self, job, queue_entries, cmd=None, recover_run_monitor=None):
-        self.job = job
+class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
+    """
+    Common functionality for QueueTask and HostlessQueueTask
+    """
+    def __init__(self, queue_entries):
+        super(AbstractQueueTask, self).__init__()
+        self.job = queue_entries[0].job
         self.queue_entries = queue_entries
-        self.group_name = queue_entries[0].get_group_name()
-        super(QueueTask, self).__init__(
-                cmd, self._execution_path(),
-                recover_run_monitor=recover_run_monitor)
-        self._set_ids(queue_entries=queue_entries)
 
 
     def _keyval_path(self):
-        return os.path.join(self._execution_path(), self._KEYVAL_FILE)
+        return os.path.join(self._working_directory(), self._KEYVAL_FILE)
 
 
-    def _execution_path(self):
-        return self.queue_entries[0].execution_path()
+    def _command_line(self):
+        return self.job.get_autoserv_params(self.queue_entries)
+
+
+    @property
+    def num_processes(self):
+        return len(self.queue_entries)
+
+
+    @property
+    def owner_username(self):
+        return self.job.owner
+
+
+    def _working_directory(self):
+        return self._get_consistent_execution_path(self.queue_entries)
 
 
     def prolog(self):
-        for entry in self.queue_entries:
-            if entry.status not in (models.HostQueueEntry.Status.STARTING,
-                                    models.HostQueueEntry.Status.RUNNING):
-                raise SchedulerError('Queue task attempting to start '
-                                     'entry with invalid status %s: %s'
-                                     % (entry.status, entry))
-            if entry.host.status not in (models.Host.Status.PENDING,
-                                         models.Host.Status.RUNNING):
-                raise SchedulerError('Queue task attempting to start on queue '
-                                     'entry with invalid host status %s: %s'
-                                     % (entry.host.status, entry))
-
         queued_key, queued_time = self._job_queued_keyval(self.job)
         keyval_dict = {queued_key: queued_time}
-        if self.group_name:
-            keyval_dict['host_group_name'] = self.group_name
+        group_name = self.queue_entries[0].get_group_name()
+        if group_name:
+            keyval_dict['host_group_name'] = group_name
         self._write_keyvals_before_job(keyval_dict)
         for queue_entry in self.queue_entries:
-            self._write_host_keyvals(queue_entry.host)
             queue_entry.set_status(models.HostQueueEntry.Status.RUNNING)
-            queue_entry.update_field('started_on', datetime.datetime.now())
-            queue_entry.host.set_status(models.Host.Status.RUNNING)
-            queue_entry.host.update_field('dirty', 1)
-        if self.job.synch_count == 1 and len(self.queue_entries) == 1:
-            # TODO(gps): Remove this if nothing needs it anymore.
-            # A potential user is: tko/parser
-            self.job.write_to_machines_file(self.queue_entries[0])
+            queue_entry.set_started_on_now()
 
 
     def _write_lost_process_error_file(self):
-        error_file_path = os.path.join(self._execution_path(), 'job_failure')
+        error_file_path = os.path.join(self._working_directory(), 'job_failure')
         _drone_manager.write_lines_to_file(error_file_path,
                                            [_LOST_PROCESS_ERROR])
 
@@ -1946,13 +2054,10 @@ class QueueTask(AgentTask, TaskWithJobKeyvals, CleanupHostsMixin):
         if self.monitor.lost_process:
             self._write_lost_process_error_file()
 
-        for queue_entry in self.queue_entries:
-            queue_entry.set_status(models.HostQueueEntry.Status.GATHERING)
-
 
     def _write_status_comment(self, comment):
         _drone_manager.write_lines_to_file(
-            os.path.join(self._execution_path(), 'status.log'),
+            os.path.join(self._working_directory(), 'status.log'),
             ['INFO\t----\t----\t' + comment],
             paired_with_process=self.monitor.get_process())
 
@@ -1988,50 +2093,92 @@ class QueueTask(AgentTask, TaskWithJobKeyvals, CleanupHostsMixin):
 
 
     def abort(self):
-        super(QueueTask, self).abort()
+        super(AbstractQueueTask, self).abort()
         self._log_abort()
         self._finish_task()
 
 
     def epilog(self):
-        super(QueueTask, self).epilog()
+        super(AbstractQueueTask, self).epilog()
         self._finish_task()
-        logging.info("queue_task finished with success=%s", self.success)
+
+
+class QueueTask(AbstractQueueTask):
+    def __init__(self, queue_entries):
+        super(QueueTask, self).__init__(queue_entries)
+        self._set_ids(queue_entries=queue_entries)
+
+
+    def prolog(self):
+        for entry in self.queue_entries:
+            if entry.status not in (models.HostQueueEntry.Status.STARTING,
+                                    models.HostQueueEntry.Status.RUNNING):
+                raise SchedulerError('Queue task attempting to start '
+                                     'entry with invalid status %s: %s'
+                                     % (entry.status, entry))
+            if entry.host.status not in (models.Host.Status.PENDING,
+                                         models.Host.Status.RUNNING):
+                raise SchedulerError('Queue task attempting to start on queue '
+                                     'entry with invalid host status %s: %s'
+                                     % (entry.host.status, entry))
+
+        super(QueueTask, self).prolog()
+
+        for queue_entry in self.queue_entries:
+            self._write_host_keyvals(queue_entry.host)
+            queue_entry.host.set_status(models.Host.Status.RUNNING)
+            queue_entry.host.update_field('dirty', 1)
+        if self.job.synch_count == 1 and len(self.queue_entries) == 1:
+            # TODO(gps): Remove this if nothing needs it anymore.
+            # A potential user is: tko/parser
+            self.job.write_to_machines_file(self.queue_entries[0])
+
+
+    def _finish_task(self):
+        super(QueueTask, self)._finish_task()
+
+        for queue_entry in self.queue_entries:
+            queue_entry.set_status(models.HostQueueEntry.Status.GATHERING)
 
 
 class PostJobTask(AgentTask):
-    def __init__(self, queue_entries, pidfile_name, logfile_name,
-                 recover_run_monitor=None):
-        self._queue_entries = queue_entries
-        self._pidfile_name = pidfile_name
+    def __init__(self, queue_entries, log_file_name):
+        super(PostJobTask, self).__init__(log_file_name=log_file_name)
 
-        self._execution_path = self._get_consistent_execution_path(
-                queue_entries)
-        self._results_dir = _drone_manager.absolute_path(self._execution_path)
+        self.queue_entries = queue_entries
+
         self._autoserv_monitor = PidfileRunMonitor()
-        self._autoserv_monitor.attach_to_existing_process(self._execution_path)
-        self._paired_with_pidfile = self._autoserv_monitor.pidfile_id
+        self._autoserv_monitor.attach_to_existing_process(
+                self._working_directory())
 
+
+    def _command_line(self):
         if _testing_mode:
-            command = 'true'
-        else:
-            command = self._generate_command(self._results_dir)
-
-        super(PostJobTask, self).__init__(
-                cmd=command, working_directory=self._execution_path,
-                recover_run_monitor=recover_run_monitor)
-
-        self.log_file = os.path.join(self._execution_path, logfile_name)
-        self._final_status = self._determine_final_status()
+            return 'true'
+        return self._generate_command(
+                _drone_manager.absolute_path(self._working_directory()))
 
 
     def _generate_command(self, results_dir):
         raise NotImplementedError('Subclasses must override this')
 
 
+    @property
+    def owner_username(self):
+        return self.queue_entries[0].job.owner
+
+
+    def _working_directory(self):
+        return self._get_consistent_execution_path(self.queue_entries)
+
+
+    def _paired_with_monitor(self):
+        return self._autoserv_monitor
+
+
     def _job_was_aborted(self):
         was_aborted = None
-        for queue_entry in self._queue_entries:
+        for queue_entry in self.queue_entries:
             queue_entry.update_from_database()
             if was_aborted is None: # first queue entry
                 was_aborted = bool(queue_entry.aborted)
@@ -2045,7 +2192,7 @@ class PostJobTask(AgentTask):
         return was_aborted
 
 
-    def _determine_final_status(self):
+    def _final_status(self):
         if self._job_was_aborted():
             return models.HostQueueEntry.Status.ABORTED
 
@@ -2055,24 +2202,8 @@ class PostJobTask(AgentTask):
         return models.HostQueueEntry.Status.FAILED
 
 
-    def run(self):
-        # Make sure we actually have results to work with.
-        # This should never happen in normal operation.
-        if not self._autoserv_monitor.has_process():
-            email_manager.manager.enqueue_notify_email(
-                    'No results in post-job task',
-                    'No results in post-job task at %s' %
-                    self._autoserv_monitor.pidfile_id)
-            self.finished(False)
-            return
-
-        super(PostJobTask, self).run(
-            pidfile_name=self._pidfile_name,
-            paired_with_pidfile=self._paired_with_pidfile)
-
-
     def _set_all_statuses(self, status):
-        for queue_entry in self._queue_entries:
+        for queue_entry in self.queue_entries:
             queue_entry.set_status(status)
 
 
@@ -2082,7 +2213,7 @@ class PostJobTask(AgentTask):
         pass
 
 
-class GatherLogsTask(PostJobTask, CleanupHostsMixin):
+class GatherLogsTask(PostJobTask):
     """
     Task responsible for
     * gathering uncollected logs (if Autoserv crashed hard or was killed)
@@ -2090,24 +2221,31 @@ class GatherLogsTask(PostJobTask, CleanupHostsMixin):
     * spawning CleanupTasks for hosts, if necessary
     * spawning a FinalReparseTask for the job
     """
-    def __init__(self, job, queue_entries, recover_run_monitor=None):
-        self._job = job
+    def __init__(self, queue_entries, recover_run_monitor=None):
+        self._job = queue_entries[0].job
         super(GatherLogsTask, self).__init__(
-            queue_entries, pidfile_name=_CRASHINFO_PID_FILE,
-            logfile_name='.collect_crashinfo.log',
-            recover_run_monitor=recover_run_monitor)
+            queue_entries, log_file_name='.collect_crashinfo.log')
         self._set_ids(queue_entries=queue_entries)
 
 
     def _generate_command(self, results_dir):
         host_list = ','.join(queue_entry.host.hostname
-                             for queue_entry in self._queue_entries)
+                             for queue_entry in self.queue_entries)
         return [_autoserv_path , '-p', '--collect-crashinfo', '-m', host_list,
                 '-r', results_dir]
 
 
+    @property
+    def num_processes(self):
+        return len(self.queue_entries)
+
+
+    def _pidfile_name(self):
+        return _CRASHINFO_PID_FILE
+
+
     def prolog(self):
-        for queue_entry in self._queue_entries:
+        for queue_entry in self.queue_entries:
             if queue_entry.status != models.HostQueueEntry.Status.GATHERING:
                 raise SchedulerError('Gather task attempting to start on '
                                      'non-gathering entry: %s' % queue_entry)
@@ -2122,19 +2260,38 @@ class GatherLogsTask(PostJobTask, CleanupHostsMixin):
     def epilog(self):
         super(GatherLogsTask, self).epilog()
 
-        self._copy_and_parse_results(self._queue_entries,
+        self._copy_and_parse_results(self.queue_entries,
                                      use_monitor=self._autoserv_monitor)
+        self._reboot_hosts()
 
+
+    def _reboot_hosts(self):
         if self._autoserv_monitor.has_process():
-            final_success = (self._final_status ==
+            final_success = (self._final_status() ==
                              models.HostQueueEntry.Status.COMPLETED)
             num_tests_failed = self._autoserv_monitor.num_tests_failed()
         else:
             final_success = False
             num_tests_failed = 0
 
-        self._reboot_hosts(self._job, self._queue_entries, final_success,
-                           num_tests_failed)
+        reboot_after = self._job.reboot_after
+        do_reboot = (
+                # always reboot after aborted jobs
+                self._final_status() == models.HostQueueEntry.Status.ABORTED
+                or reboot_after == models.RebootAfter.ALWAYS
+                or (reboot_after == models.RebootAfter.IF_ALL_TESTS_PASSED
+                    and final_success and num_tests_failed == 0))
+
+        for queue_entry in self.queue_entries:
+            if do_reboot:
+                # don't pass the queue entry to the CleanupTask. if the cleanup
+                # fails, the job doesn't care -- it's over.
+                models.SpecialTask.objects.create(
+                        host=models.Host.objects.get(id=queue_entry.host.id),
+                        task=models.SpecialTask.Task.CLEANUP,
+                        requested_by=self._job.owner_model())
+            else:
+                queue_entry.host.set_status(models.Host.Status.READY)
 
 
     def run(self):
@@ -2152,9 +2309,7 @@ class CleanupTask(PreJobTask):
 
 
     def __init__(self, task, recover_run_monitor=None):
-        super(CleanupTask, self).__init__(
-                task, ['--cleanup'], recover_run_monitor=recover_run_monitor)
-
+        super(CleanupTask, self).__init__(task, ['--cleanup'])
         self._set_ids(host=self.host, queue_entries=[self.queue_entry])
 
 
@@ -2167,20 +2322,21 @@ class CleanupTask(PreJobTask):
 
 
     def _finish_epilog(self):
-        if not self.queue_entry:
+        if not self.queue_entry or not self.success:
             return
 
-        if self.host.protection == host_protections.Protection.DO_NOT_VERIFY:
+        do_not_verify_protection = host_protections.Protection.DO_NOT_VERIFY
+        should_run_verify = (
+                self.queue_entry.job.run_verify
+                and self.host.protection != do_not_verify_protection)
+        if should_run_verify:
+            entry = models.HostQueueEntry.objects.get(id=self.queue_entry.id)
+            models.SpecialTask.objects.create(
+                    host=models.Host.objects.get(id=self.host.id),
+                    queue_entry=entry,
+                    task=models.SpecialTask.Task.VERIFY)
+        else:
             self.queue_entry.on_pending()
-        elif self.success:
-            if self.queue_entry.job.run_verify:
-                entry = models.HostQueueEntry(id=self.queue_entry.id)
-                models.SpecialTask.objects.create(
-                        host=models.Host(id=self.host.id),
-                        queue_entry=entry,
-                        task=models.SpecialTask.Task.VERIFY)
-            else:
-                self.queue_entry.on_pending()
 
 
     def epilog(self):
@@ -2196,14 +2352,29 @@ class CleanupTask(PreJobTask):
 class FinalReparseTask(PostJobTask):
     _num_running_parses = 0
 
-    def __init__(self, queue_entries, recover_run_monitor=None):
-        super(FinalReparseTask, self).__init__(
-                queue_entries, pidfile_name=_PARSER_PID_FILE,
-                logfile_name='.parse.log',
-                recover_run_monitor=recover_run_monitor)
+    def __init__(self, queue_entries):
+        super(FinalReparseTask, self).__init__(queue_entries,
+                                               log_file_name='.parse.log')
         # don't use _set_ids, since we don't want to set the host_ids
         self.queue_entry_ids = [entry.id for entry in queue_entries]
-        self._parse_started = self.started
+
+
+    def _generate_command(self, results_dir):
+        return [_parser_path, '--write-pidfile', '-l', '2', '-r', '-o', '-P',
+                results_dir]
+
+
+    @property
+    def num_processes(self):
+        return 0 # don't include parser processes in accounting
+
+
+    def _pidfile_name(self):
+        return _PARSER_PID_FILE
+
+
+    def _parse_started(self):
+        return bool(self.monitor)
 
 
     @classmethod
@@ -2223,7 +2394,7 @@ class FinalReparseTask(PostJobTask):
 
 
     def prolog(self):
-        for queue_entry in self._queue_entries:
+        for queue_entry in self.queue_entries:
             if queue_entry.status != models.HostQueueEntry.Status.PARSING:
                 raise SchedulerError('Parse task attempting to start on '
                                      'non-parsing entry: %s' % queue_entry)
@@ -2233,18 +2404,13 @@ class FinalReparseTask(PostJobTask):
 
     def epilog(self):
         super(FinalReparseTask, self).epilog()
-        self._set_all_statuses(self._final_status)
-
-
-    def _generate_command(self, results_dir):
-        return [_parser_path, '--write-pidfile', '-l', '2', '-r', '-o', '-P',
-                results_dir]
+        self._set_all_statuses(self._final_status())
 
 
     def tick(self):
         # override tick to keep trying to start until the parse count goes down
         # and we can, at which point we revert to default behavior
-        if self._parse_started:
+        if self._parse_started():
             super(FinalReparseTask, self).tick()
         else:
             self._try_starting_parse()
@@ -2261,15 +2427,37 @@ class FinalReparseTask(PostJobTask):
 
         # actually run the parse command
         super(FinalReparseTask, self).run()
-
         self._increment_running_parses()
-        self._parse_started = True
 
 
     def finished(self, success):
         super(FinalReparseTask, self).finished(success)
-        if self._parse_started:
+        if self._parse_started():
             self._decrement_running_parses()
+
+
+class HostlessQueueTask(AbstractQueueTask):
+    def __init__(self, queue_entry):
+        super(HostlessQueueTask, self).__init__([queue_entry])
+        self.queue_entry_ids = [queue_entry.id]
+
+
+    def prolog(self):
+        self.queue_entries[0].update_field('execution_subdir', 'hostless')
+        super(HostlessQueueTask, self).prolog()
+
+
+    def _final_status(self):
+        if self.queue_entries[0].aborted:
+            return models.HostQueueEntry.Status.ABORTED
+        if self.monitor.exit_code() == 0:
+            return models.HostQueueEntry.Status.COMPLETED
+        return models.HostQueueEntry.Status.FAILED
+
+
+    def _finish_task(self):
+        super(HostlessQueueTask, self)._finish_task()
+        self.queue_entries[0].set_status(self._final_status())
 
 
 class DBError(Exception):
@@ -2358,8 +2546,9 @@ class DBObject(object):
 
     def _compare_fields_in_row(self, row):
         """
-        Given a row as returned by a SELECT query, compare it to our existing
-        in memory fields.
+        Given a row as returned by a SELECT query, compare it to our existing in
+        memory fields.  Fractional seconds are stripped from datetime values
+        before comparison.
 
         @param row - A sequence of values corresponding to fields named in
                 The class attribute _fields.
@@ -2369,8 +2558,13 @@ class DBObject(object):
         """
         self._assert_row_length(row)
         differences = {}
+        datetime_cmp_fmt = '%Y-%m-%d %H:%M:%S'  # Leave off the microseconds.
         for field, row_value in itertools.izip(self._fields, row):
             current_value = getattr(self, field)
+            if (isinstance(current_value, datetime.datetime)
+                and isinstance(row_value, datetime.datetime)):
+                current_value = current_value.strftime(datetime_cmp_fmt)
+                row_value = row_value.strftime(datetime_cmp_fmt)
             if current_value != row_value:
                 differences[field] = (current_value, row_value)
         return differences
@@ -2478,18 +2672,18 @@ class DBObject(object):
 
 
 class IneligibleHostQueue(DBObject):
-    _table_name = 'ineligible_host_queues'
+    _table_name = 'afe_ineligible_host_queues'
     _fields = ('id', 'job_id', 'host_id')
 
 
 class AtomicGroup(DBObject):
-    _table_name = 'atomic_groups'
+    _table_name = 'afe_atomic_groups'
     _fields = ('id', 'name', 'description', 'max_number_of_machines',
                'invalid')
 
 
 class Label(DBObject):
-    _table_name = 'labels'
+    _table_name = 'afe_labels'
     _fields = ('id', 'name', 'kernel_config', 'platform', 'invalid',
                'only_if_needed', 'atomic_group_id')
 
@@ -2500,7 +2694,7 @@ class Label(DBObject):
 
 
 class Host(DBObject):
-    _table_name = 'hosts'
+    _table_name = 'afe_hosts'
     _fields = ('id', 'hostname', 'locked', 'synch_id', 'status',
                'invalid', 'protection', 'locked_by_id', 'lock_time', 'dirty')
 
@@ -2515,11 +2709,12 @@ class Host(DBObject):
         Returns a tuple (platform_name, list_of_all_label_names).
         """
         rows = _db.execute("""
-                SELECT labels.name, labels.platform
-                FROM labels
-                INNER JOIN hosts_labels ON labels.id = hosts_labels.label_id
-                WHERE hosts_labels.host_id = %s
-                ORDER BY labels.name
+                SELECT afe_labels.name, afe_labels.platform
+                FROM afe_labels
+                INNER JOIN afe_hosts_labels ON
+                        afe_labels.id = afe_hosts_labels.label_id
+                WHERE afe_hosts_labels.host_id = %s
+                ORDER BY afe_labels.name
                 """, (self.id,))
         platform = None
         all_labels = []
@@ -2571,7 +2766,7 @@ class Host(DBObject):
 
 
 class HostQueueEntry(DBObject):
-    _table_name = 'host_queue_entries'
+    _table_name = 'afe_host_queue_entries'
     _fields = ('id', 'job_id', 'host_id', 'status', 'meta_host',
                'active', 'complete', 'deleted', 'execution_subdir',
                'atomic_group_id', 'aborted', 'started_on')
@@ -2627,8 +2822,8 @@ class HostQueueEntry(DBObject):
         if self.meta_host:
             yield Label(id=self.meta_host, always_query=False)
         labels = Label.fetch(
-                joins="JOIN jobs_dependency_labels AS deps "
-                      "ON (labels.id = deps.label_id)",
+                joins="JOIN afe_jobs_dependency_labels AS deps "
+                      "ON (afe_labels.id = deps.label_id)",
                 where="deps.job_id = %d" % self.job.id)
         for label in labels:
             yield label
@@ -2646,10 +2841,6 @@ class HostQueueEntry(DBObject):
             self.update_field('host_id', None)
 
         self.host = host
-
-
-    def get_host(self):
-        return self.host
 
 
     def queue_log_record(self, log_line):
@@ -2675,8 +2866,8 @@ class HostQueueEntry(DBObject):
 
     def set_execution_subdir(self, subdir=None):
         if subdir is None:
-            assert self.get_host()
-            subdir = self.get_host().hostname
+            assert self.host
+            subdir = self.host.hostname
         self.update_field('execution_subdir', subdir)
 
 
@@ -2704,9 +2895,9 @@ class HostQueueEntry(DBObject):
 
 
     def set_status(self, status):
-        self.update_field('status', status)
+        logging.info("%s -> %s", self, status)
 
-        logging.info("%s -> %s", self, self.status)
+        self.update_field('status', status)
 
         if status in (models.HostQueueEntry.Status.QUEUED,
                       models.HostQueueEntry.Status.PARSING):
@@ -2727,6 +2918,7 @@ class HostQueueEntry(DBObject):
                       models.HostQueueEntry.Status.ABORTED):
             self.update_field('complete', True)
             self.update_field('active', False)
+            self._on_complete()
 
         should_email_status = (status.lower() in _notify_email_statuses or
                                'all' in _notify_email_statuses)
@@ -2734,6 +2926,17 @@ class HostQueueEntry(DBObject):
             self._email_on_status(status)
 
         self._email_on_job_complete()
+
+
+    def _on_complete(self):
+        self.job.stop_if_necessary()
+        if not self.execution_subdir:
+            return
+        # unregister any possible pidfiles associated with this queue entry
+        for pidfile_name in _ALL_PIDFILE_NAMES:
+            pidfile_id = _drone_manager.get_pidfile_id_from(
+                    self.execution_path(), pidfile_name=pidfile_name)
+            _drone_manager.unregister_pidfile(pidfile_id)
 
 
     def _email_on_status(self, status):
@@ -2781,9 +2984,9 @@ class HostQueueEntry(DBObject):
             else:
                 assert assigned_host.id == self.host_id
 
-        logging.info("%s/%s/%s scheduled on %s, status=%s",
+        logging.info("%s/%s/%s (job %s, entry %s) scheduled on %s, status=%s",
                      self.job.name, self.meta_host, self.atomic_group_id,
-                     self.host.hostname, self.status)
+                     self.job.id, self.id, self.host.hostname, self.status)
 
         self._do_schedule_pre_job_tasks()
 
@@ -2805,16 +3008,6 @@ class HostQueueEntry(DBObject):
             self.set_host(None)
 
 
-    def handle_host_failure(self):
-        """\
-        Called when this queue entry's host has failed verification and
-        repair.
-        """
-        assert not self.meta_host
-        self.set_status(models.HostQueueEntry.Status.FAILED)
-        self.job.stop_if_necessary()
-
-
     @property
     def aborted_by(self):
         self._load_abort_info()
@@ -2832,11 +3025,12 @@ class HostQueueEntry(DBObject):
         if hasattr(self, "_aborted_by"):
             return
         rows = _db.execute("""
-                SELECT users.login, aborted_host_queue_entries.aborted_on
-                FROM aborted_host_queue_entries
-                INNER JOIN users
-                ON users.id = aborted_host_queue_entries.aborted_by_id
-                WHERE aborted_host_queue_entries.queue_entry_id = %s
+                SELECT afe_users.login,
+                        afe_aborted_host_queue_entries.aborted_on
+                FROM afe_aborted_host_queue_entries
+                INNER JOIN afe_users
+                ON afe_users.id = afe_aborted_host_queue_entries.aborted_by_id
+                WHERE afe_aborted_host_queue_entries.queue_entry_id = %s
                 """, (self.id,))
         if rows:
             self._aborted_by, self._aborted_on = rows[0]
@@ -2880,9 +3074,11 @@ class HostQueueEntry(DBObject):
         elif self.status == Status.VERIFYING:
             models.SpecialTask.objects.create(
                     task=models.SpecialTask.Task.CLEANUP,
-                    host=models.Host(id=self.host.id))
+                    host=models.Host.objects.get(id=self.host.id),
+                    requested_by=self.job.owner_model())
 
         self.set_status(Status.ABORTED)
+        self.job.abort_delay_ready_task()
 
 
     def get_group_name(self):
@@ -2909,8 +3105,18 @@ class HostQueueEntry(DBObject):
         return self.execution_tag()
 
 
+    def set_started_on_now(self):
+        self.update_field('started_on', datetime.datetime.now())
+
+
+    def is_hostless(self):
+        return (self.host_id is None
+                and self.meta_host is None
+                and self.atomic_group_id is None)
+
+
 class Job(DBObject):
-    _table_name = 'jobs'
+    _table_name = 'afe_jobs'
     _fields = ('id', 'owner', 'name', 'priority', 'control_file',
                'control_type', 'created_on', 'synch_count', 'timeout',
                'run_verify', 'email_list', 'reboot_before', 'reboot_after',
@@ -2934,6 +3140,15 @@ class Job(DBObject):
     def __init__(self, id=None, row=None, **kwargs):
         assert id or row
         super(Job, self).__init__(id=id, row=row, **kwargs)
+        self._owner_model = None # caches model instance of owner
+
+
+    def owner_model(self):
+        # work around the fact that the Job owner field is a string, not a
+        # foreign key
+        if not self._owner_model:
+            self._owner_model = models.User.objects.get(login=self.owner)
+        return self._owner_model
 
 
     def is_server_job(self):
@@ -2946,7 +3161,7 @@ class Job(DBObject):
 
     def get_host_queue_entries(self):
         rows = _db.execute("""
-                SELECT * FROM host_queue_entries
+                SELECT * FROM afe_host_queue_entries
                 WHERE job_id= %s
         """, (self.id,))
         entries = [HostQueueEntry(row=i) for i in rows]
@@ -2997,6 +3212,22 @@ class Job(DBObject):
         return pending_entries.count()
 
 
+    def _max_hosts_needed_to_run(self, atomic_group):
+        """
+        @param atomic_group: The AtomicGroup associated with this job that we
+                are using to set an upper bound on the threshold.
+        @returns The maximum number of HostQueueEntries assigned a Host before
+                this job can run.
+        """
+        return min(self._hosts_assigned_count(),
+                   atomic_group.max_number_of_machines)
+
+
+    def _min_hosts_needed_to_run(self):
+        """Return the minumum number of hsots needed to run this job."""
+        return self.synch_count
+
+
     def is_ready(self):
         # NOTE: Atomic group jobs stop reporting ready after they have been
         # started to avoid launching multiple copies of one atomic job.
@@ -3005,7 +3236,7 @@ class Job(DBObject):
         pending_count = self._pending_count()
         atomic_and_has_started = self._atomic_and_has_started()
         ready = (pending_count >= self.synch_count
-                 and not self._atomic_and_has_started())
+                 and not atomic_and_has_started)
 
         if not ready:
             logging.info(
@@ -3021,7 +3252,7 @@ class Job(DBObject):
         sql = "job_id=%s" % self.id
         if clause:
             sql += " AND (%s)" % clause
-        return self.count(sql, table='host_queue_entries')
+        return self.count(sql, table='afe_host_queue_entries')
 
 
     def num_queued(self):
@@ -3070,7 +3301,7 @@ class Job(DBObject):
 
 
     def write_to_machines_file(self, queue_entry):
-        hostname = queue_entry.get_host().hostname
+        hostname = queue_entry.host.hostname
         file_path = os.path.join(self.tag(), '.machines')
         _drone_manager.write_lines_to_file(file_path, [hostname])
 
@@ -3104,6 +3335,14 @@ class Job(DBObject):
 
 
     def get_group_entries(self, queue_entry_from_group):
+        """
+        @param queue_entry_from_group: A HostQueueEntry instance to find other
+                group entries on this job for.
+
+        @returns A list of HostQueueEntry objects all executing this job as
+                part of the same group as the one supplied (having the same
+                execution_subdir).
+        """
         execution_subdir = queue_entry_from_group.execution_subdir
         return list(HostQueueEntry.fetch(
             where='job_id=%s AND execution_subdir=%s',
@@ -3114,8 +3353,9 @@ class Job(DBObject):
         assert queue_entries
         execution_path = queue_entries[0].execution_path()
         control_path = self._write_control_file(execution_path)
-        hostnames = ','.join([entry.get_host().hostname
-                              for entry in queue_entries])
+        hostnames = ','.join(entry.host.hostname
+                             for entry in queue_entries
+                             if not entry.is_hostless())
 
         execution_tag = queue_entries[0].execution_tag()
         params = _autoserv_command_line(
@@ -3134,7 +3374,7 @@ class Job(DBObject):
         if self.reboot_before == models.RebootBefore.ALWAYS:
             return True
         elif self.reboot_before == models.RebootBefore.IF_DIRTY:
-            return queue_entry.get_host().dirty
+            return queue_entry.host.dirty
         return False
 
 
@@ -3164,15 +3404,15 @@ class Job(DBObject):
             queue_entry.on_pending()
             return
 
+        queue_entry = models.HostQueueEntry.objects.get(id=queue_entry.id)
         models.SpecialTask.objects.create(
-                host=models.Host(id=queue_entry.host_id),
-                queue_entry=models.HostQueueEntry(id=queue_entry.id),
-                task=task)
+                host=models.Host.objects.get(id=queue_entry.host_id),
+                queue_entry=queue_entry, task=task)
 
 
     def _assign_new_group(self, queue_entries, group_name=''):
         if len(queue_entries) == 1:
-            group_subdir_name = queue_entries[0].get_host().hostname
+            group_subdir_name = queue_entries[0].host.hostname
         else:
             group_subdir_name = self._next_group_name(group_name)
             logging.info('Running synchronous job %d hosts %s as %s',
@@ -3226,10 +3466,11 @@ class Job(DBObject):
 
     def run_if_ready(self, queue_entry):
         """
-        @returns An Agent instance to ultimately run this job if enough hosts
-                are ready for it to run.
-        @returns None and potentially cleans up excess hosts if this Job
-                is not ready to run.
+        Run this job by kicking its HQEs into status='Starting' if enough
+        hosts are ready for it to run.
+
+        Cleans up by kicking HQEs into status='Stopped' if this Job is not
+        ready to run.
         """
         if not self.is_ready():
             self.stop_if_necessary()
@@ -3253,9 +3494,8 @@ class Job(DBObject):
         assert queue_entry.job_id == self.id
         assert queue_entry.atomic_group
         delay = scheduler_config.config.secs_to_wait_for_atomic_group_hosts
-        pending_threshold = min(self._hosts_assigned_count(),
-                                queue_entry.atomic_group.max_number_of_machines)
-        over_max_threshold = (self._pending_count() >= pending_threshold)
+        over_max_threshold = (self._pending_count() >=
+                self._max_hosts_needed_to_run(queue_entry.atomic_group))
         delay_expired = (self._delay_ready_task and
                          time.time() >= self._delay_ready_task.end_time)
 
@@ -3264,6 +3504,13 @@ class Job(DBObject):
             self.run(queue_entry)
         else:
             queue_entry.set_status(models.HostQueueEntry.Status.WAITING)
+
+
+    def request_abort(self):
+        """Request that this Job be aborted on the next scheduler cycle."""
+        queue_entries = HostQueueEntry.fetch(where="job_id=%s" % self.id)
+        for hqe in queue_entries:
+            hqe.update_field('aborted', True)
 
 
     def schedule_delayed_callback_task(self, queue_entry):
@@ -3275,7 +3522,14 @@ class Job(DBObject):
         delay = scheduler_config.config.secs_to_wait_for_atomic_group_hosts
 
         def run_job_after_delay():
-            logging.info('Job %s done waiting for extra hosts.', self.id)
+            logging.info('Job %s done waiting for extra hosts.', self)
+            # Check to see if the job is still relevant.  It could have aborted
+            # while we were waiting or hosts could have disappearred, etc.
+            if self._pending_count() < self._min_hosts_needed_to_run():
+                logging.info('Job %s had too few Pending hosts after waiting '
+                             'for extras.  Not running.', self)
+                self.request_abort()
+                return
             return self.run(queue_entry)
 
         logging.info('Job %s waiting up to %s seconds for more hosts.',
@@ -3301,10 +3555,16 @@ class Job(DBObject):
     def _finish_run(self, queue_entries):
         for queue_entry in queue_entries:
             queue_entry.set_status(models.HostQueueEntry.Status.STARTING)
+        self.abort_delay_ready_task()
+
+
+    def abort_delay_ready_task(self):
+        """Abort the delayed task associated with this job, if any."""
         if self._delay_ready_task:
             # Cancel any pending callback that would try to run again
             # as we are already running.
             self._delay_ready_task.abort()
+
 
     def __str__(self):
         return '%s-%s' % (self.id, self.owner)

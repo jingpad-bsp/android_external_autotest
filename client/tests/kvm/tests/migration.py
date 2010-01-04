@@ -1,4 +1,4 @@
-import logging
+import logging, time
 from autotest_lib.client.common_lib import error
 import kvm_subprocess, kvm_test_utils, kvm_utils
 
@@ -20,91 +20,63 @@ def run_migration(test, params, env):
     @param env: Dictionary with the test environment.
     """
     vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-
-    # See if migration is supported
-    s, o = vm.send_monitor_cmd("help info")
-    if not "info migrate" in o:
-        raise error.TestError("Migration is not supported")
-
-    # Log into guest and get the output of migration_test_command
     session = kvm_test_utils.wait_for_login(vm)
-    migration_test_command = params.get("migration_test_command")
-    reference_output = session.get_command_output(migration_test_command)
-    session.close()
 
-    # Clone the main VM and ask it to wait for incoming migration
-    dest_vm = vm.clone()
-    dest_vm.create(for_migration=True)
+    # Get the output of migration_test_command
+    test_command = params.get("migration_test_command")
+    reference_output = session.get_command_output(test_command)
+
+    # Start some process in the background (and leave the session open)
+    background_command = params.get("migration_bg_command", "")
+    session.sendline(background_command)
+    time.sleep(5)
+
+    # Start another session with the guest and make sure the background
+    # process is running
+    session2 = kvm_test_utils.wait_for_login(vm)
 
     try:
-        # Define the migration command
-        cmd = "migrate -d tcp:localhost:%d" % dest_vm.migration_port
-        logging.debug("Migration command: %s" % cmd)
+        check_command = params.get("migration_bg_check_command", "")
+        if session2.get_command_status(check_command, timeout=30) != 0:
+            raise error.TestError("Could not start background process '%s'" %
+                                  background_command)
+        session2.close()
 
-        # Migrate
-        s, o = vm.send_monitor_cmd(cmd)
-        if s:
-            logging.error("Migration command failed (command: %r, output: %r)"
-                          % (cmd, o))
-            raise error.TestFail("Migration command failed")
+        # Migrate the VM
+        dest_vm = kvm_test_utils.migrate(vm, env)
 
-        # Define some helper functions
-        def mig_finished():
-            s, o = vm.send_monitor_cmd("info migrate")
-            return s == 0 and not "Migration status: active" in o
+        # Log into the guest again
+        logging.info("Logging into guest after migration...")
+        session2 = kvm_utils.wait_for(dest_vm.remote_login, 30, 0, 2)
+        if not session2:
+            raise error.TestFail("Could not log into guest after migration")
+        logging.info("Logged in after migration")
 
-        def mig_succeeded():
-            s, o = vm.send_monitor_cmd("info migrate")
-            return s == 0 and "Migration status: completed" in o
+        # Make sure the background process is still running
+        if session2.get_command_status(check_command, timeout=30) != 0:
+            raise error.TestFail("Could not find running background process "
+                                 "after migration: '%s'" % background_command)
 
-        def mig_failed():
-            s, o = vm.send_monitor_cmd("info migrate")
-            return s == 0 and "Migration status: failed" in o
+        # Get the output of migration_test_command
+        output = session2.get_command_output(test_command)
 
-        # Wait for migration to finish
-        if not kvm_utils.wait_for(mig_finished, 90, 2, 2,
-                                  "Waiting for migration to finish..."):
-            raise error.TestFail("Timeout elapsed while waiting for migration "
-                                 "to finish")
+        # Compare output to reference output
+        if output != reference_output:
+            logging.info("Command output before migration differs from "
+                         "command output after migration")
+            logging.info("Command: %s" % test_command)
+            logging.info("Output before:" +
+                         kvm_utils.format_str_for_message(reference_output))
+            logging.info("Output after:" +
+                         kvm_utils.format_str_for_message(output))
+            raise error.TestFail("Command '%s' produced different output "
+                                 "before and after migration" % test_command)
 
-        # Report migration status
-        if mig_succeeded():
-            logging.info("Migration finished successfully")
-        elif mig_failed():
-            raise error.TestFail("Migration failed")
-        else:
-            raise error.TestFail("Migration ended with unknown status")
+    finally:
+        # Kill the background process
+        if session2 and session2.is_alive():
+            session2.get_command_output(params.get("migration_bg_kill_command",
+                                                   ""))
 
-        # Kill the source VM
-        vm.destroy(gracefully=False)
-
-        # Replace the source VM with the new cloned VM
-        kvm_utils.env_register_vm(env, params.get("main_vm"), dest_vm)
-
-    except:
-        dest_vm.destroy(gracefully=False)
-        raise
-
-    # Log into guest and get the output of migration_test_command
-    logging.info("Logging into guest after migration...")
-
-    session = dest_vm.remote_login()
-    if not session:
-        raise error.TestFail("Could not log into guest after migration")
-
-    logging.info("Logged in after migration")
-
-    output = session.get_command_output(migration_test_command)
+    session2.close()
     session.close()
-
-    # Compare output to reference output
-    if output != reference_output:
-        logging.info("Command output before migration differs from command "
-                     "output after migration")
-        logging.info("Command: %s" % params.get("migration_test_command"))
-        logging.info("Output before:" +
-                     kvm_utils.format_str_for_message(reference_output))
-        logging.info("Output after:" +
-                     kvm_utils.format_str_for_message(output))
-        raise error.TestFail("Command produced different output before and "
-                             "after migration")

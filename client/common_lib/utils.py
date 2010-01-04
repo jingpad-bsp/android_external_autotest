@@ -34,11 +34,16 @@ _the_null_stream = _NullStream()
 DEFAULT_STDOUT_LEVEL = logging.DEBUG
 DEFAULT_STDERR_LEVEL = logging.ERROR
 
-def get_stream_tee_file(stream, level):
+# prefixes for logging stdout/stderr of commands
+STDOUT_PREFIX = '[stdout] '
+STDERR_PREFIX = '[stderr] '
+
+
+def get_stream_tee_file(stream, level, prefix=''):
     if stream is None:
         return _the_null_stream
     if stream is TEE_TO_LOGS:
-        return logging_manager.LoggingFile(level=level)
+        return logging_manager.LoggingFile(level=level, prefix=prefix)
     return stream
 
 
@@ -46,9 +51,20 @@ class BgJob(object):
     def __init__(self, command, stdout_tee=None, stderr_tee=None, verbose=True,
                  stdin=None, stderr_level=DEFAULT_STDERR_LEVEL):
         self.command = command
-        self.stdout_tee = get_stream_tee_file(stdout_tee, DEFAULT_STDOUT_LEVEL)
-        self.stderr_tee = get_stream_tee_file(stderr_tee, stderr_level)
+        self.stdout_tee = get_stream_tee_file(stdout_tee, DEFAULT_STDOUT_LEVEL,
+                                              prefix=STDOUT_PREFIX)
+        self.stderr_tee = get_stream_tee_file(stderr_tee, stderr_level,
+                                              prefix=STDERR_PREFIX)
         self.result = CmdResult(command)
+
+        # allow for easy stdin input by string, we'll let subprocess create
+        # a pipe for stdin input and we'll write to it in the wait loop
+        if isinstance(stdin, basestring):
+            self.string_stdin = stdin
+            stdin = subprocess.PIPE
+        else:
+            self.string_stdin = None
+
         if verbose:
             logging.debug("Running '%s'" % command)
         self.sp = subprocess.Popen(command, stdout=subprocess.PIPE,
@@ -331,34 +347,41 @@ def get_stderr_level(stderr_is_expected):
 
 def run(command, timeout=None, ignore_status=False,
         stdout_tee=None, stderr_tee=None, verbose=True, stdin=None,
-        stderr_is_expected=None):
+        stderr_is_expected=None, args=()):
     """
     Run a command on the host.
 
-    Args:
-            command: the command line string
-            timeout: time limit in seconds before attempting to
-                    kill the running process. The run() function
-                    will take a few seconds longer than 'timeout'
-                    to complete if it has to kill the process.
-            ignore_status: do not raise an exception, no matter what
-                    the exit code of the command is.
-            stdout_tee: optional file-like object to which stdout data
-                        will be written as it is generated (data will still
-                        be stored in result.stdout)
-            stderr_tee: likewise for stderr
-            verbose: if True, log the command being run
-            stdin: stdin to pass to the executed process
+    @param command: the command line string.
+    @param timeout: time limit in seconds before attempting to kill the
+            running process. The run() function will take a few seconds
+            longer than 'timeout' to complete if it has to kill the process.
+    @param ignore_status: do not raise an exception, no matter what the exit
+            code of the command is.
+    @param stdout_tee: optional file-like object to which stdout data
+            will be written as it is generated (data will still be stored
+            in result.stdout).
+    @param stderr_tee: likewise for stderr.
+    @param verbose: if True, log the command being run.
+    @param stdin: stdin to pass to the executed process (can be a file
+            descriptor, a file object of a real file or a string).
+    @param args: sequence of strings of arguments to be given to the command
+            inside " quotes after they have been escaped for that; each
+            element in the sequence will be given as a separate command
+            argument
 
-    Returns:
-            a CmdResult object
+    @return a CmdResult object
 
-    Raises:
-            CmdError: the exit code of the command
-                    execution was not 0
+    @raise CmdError: the exit code of the command execution was not 0
     """
+    if isinstance(args, basestring):
+        raise TypeError('Got a string for the "args" keyword argument, '
+                        'need a sequence.')
+
+    for arg in args:
+        command += ' "%s"' % sh_escape(arg)
     if stderr_is_expected is None:
         stderr_is_expected = ignore_status
+
     bg_job = join_bg_jobs(
         (BgJob(command, stdout_tee, stderr_tee, verbose, stdin=stdin,
                stderr_level=get_stderr_level(stderr_is_expected)),),
@@ -372,13 +395,14 @@ def run(command, timeout=None, ignore_status=False,
 
 def run_parallel(commands, timeout=None, ignore_status=False,
                  stdout_tee=None, stderr_tee=None):
-    """Beahves the same as run with the following exceptions:
+    """
+    Behaves the same as run() with the following exceptions:
 
     - commands is a list of commands to run in parallel.
     - ignore_status toggles whether or not an exception should be raised
       on any error.
 
-    returns a list of CmdResult objects
+    @return: a list of CmdResult objects
     """
     bg_jobs = []
     for command in commands:
@@ -446,42 +470,78 @@ def _wait_for_commands(bg_jobs, start_time, timeout):
     # a 1 second timeout is used in select.
     SELECT_TIMEOUT = 1
 
-    select_list = []
+    read_list = []
+    write_list = []
     reverse_dict = {}
+
     for bg_job in bg_jobs:
-        select_list.append(bg_job.sp.stdout)
-        select_list.append(bg_job.sp.stderr)
-        reverse_dict[bg_job.sp.stdout] = (bg_job,True)
-        reverse_dict[bg_job.sp.stderr] = (bg_job,False)
+        read_list.append(bg_job.sp.stdout)
+        read_list.append(bg_job.sp.stderr)
+        reverse_dict[bg_job.sp.stdout] = (bg_job, True)
+        reverse_dict[bg_job.sp.stderr] = (bg_job, False)
+        if bg_job.string_stdin:
+            write_list.append(bg_job.sp.stdin)
+            reverse_dict[bg_job.sp.stdin] = bg_job
 
     if timeout:
         stop_time = start_time + timeout
         time_left = stop_time - time.time()
     else:
         time_left = None # so that select never times out
+
     while not timeout or time_left > 0:
-        # select will return when stdout is ready (including when it is
+        # select will return when we may write to stdin or when there is
+        # stdout/stderr output we can read (including when it is
         # EOF, that is the process has terminated).
-        ready, _, _ = select.select(select_list, [], [], SELECT_TIMEOUT)
+        read_ready, write_ready, _ = select.select(read_list, write_list, [],
+                                                   SELECT_TIMEOUT)
 
         # os.read() has to be used instead of
         # subproc.stdout.read() which will otherwise block
-        for fileno in ready:
-            bg_job,stdout = reverse_dict[fileno]
-            bg_job.process_output(stdout)
+        for file_obj in read_ready:
+            bg_job, is_stdout = reverse_dict[file_obj]
+            bg_job.process_output(is_stdout)
 
-        remaining_jobs = [x for x in bg_jobs if x.result.exit_status is None]
-        if len(remaining_jobs) == 0:
-            return False
-        for bg_job in remaining_jobs:
+        for file_obj in write_ready:
+            # we can write PIPE_BUF bytes without blocking
+            # POSIX requires PIPE_BUF is >= 512
+            bg_job = reverse_dict[file_obj]
+            file_obj.write(bg_job.string_stdin[:512])
+            bg_job.string_stdin = bg_job.string_stdin[512:]
+            # no more input data, close stdin, remove it from the select set
+            if not bg_job.string_stdin:
+                file_obj.close()
+                write_list.remove(file_obj)
+                del reverse_dict[file_obj]
+
+        all_jobs_finished = True
+        for bg_job in bg_jobs:
+            if bg_job.result.exit_status is not None:
+                continue
+
             bg_job.result.exit_status = bg_job.sp.poll()
+            if bg_job.result.exit_status is not None:
+                # process exited, remove its stdout/stdin from the select set
+                read_list.remove(bg_job.sp.stdout)
+                read_list.remove(bg_job.sp.stderr)
+                del reverse_dict[bg_job.sp.stdout]
+                del reverse_dict[bg_job.sp.stderr]
+            else:
+                all_jobs_finished = False
+
+        if all_jobs_finished:
+            return False
 
         if timeout:
             time_left = stop_time - time.time()
 
     # Kill all processes which did not complete prior to timeout
-    for bg_job in [x for x in bg_jobs if x.result.exit_status is None]:
-        print '* Warning: run process timeout (%s) fired' % timeout
+    for bg_job in bg_jobs:
+        if bg_job.result.exit_status is not None:
+            continue
+
+        logging.warn('run process timeout (%s) fired on: %s', timeout,
+                     bg_job.command)
         nuke_subprocess(bg_job.sp)
         bg_job.result.exit_status = bg_job.sp.poll()
 
@@ -541,10 +601,9 @@ def nuke_subprocess(subproc):
             return subproc.poll()
 
 
-def nuke_pid(pid):
+def nuke_pid(pid, signal_queue=(signal.SIGTERM, signal.SIGKILL)):
     # the process has not terminated within timeout,
     # kill it via an escalating series of signals.
-    signal_queue = [signal.SIGTERM, signal.SIGKILL]
     for sig in signal_queue:
         if signal_pid(pid, sig):
             return
@@ -568,13 +627,34 @@ def system_parallel(commands, timeout=None, ignore_status=False):
 
 
 def system_output(command, timeout=None, ignore_status=False,
-                  retain_output=False):
+                  retain_output=False, args=()):
+    """
+    Run a command and return the stdout output.
+
+    @param command: command string to execute.
+    @param timeout: time limit in seconds before attempting to kill the
+            running process. The function will take a few seconds longer
+            than 'timeout' to complete if it has to kill the process.
+    @param ignore_status: do not raise an exception, no matter what the exit
+            code of the command is.
+    @param retain_output: set to True to make stdout/stderr of the command
+            output to be also sent to the logging system
+    @param args: sequence of strings of arguments to be given to the command
+            inside " quotes after they have been escaped for that; each
+            element in the sequence will be given as a separate command
+            argument
+
+    @return a string with the stdout output of the command.
+    """
     if retain_output:
         out = run(command, timeout=timeout, ignore_status=ignore_status,
-                  stdout_tee=TEE_TO_LOGS, stderr_tee=TEE_TO_LOGS).stdout
+                  stdout_tee=TEE_TO_LOGS, stderr_tee=TEE_TO_LOGS,
+                  args=args).stdout
     else:
-        out = run(command, timeout=timeout, ignore_status=ignore_status).stdout
-    if out[-1:] == '\n': out = out[:-1]
+        out = run(command, timeout=timeout, ignore_status=ignore_status,
+                  args=args).stdout
+    if out[-1:] == '\n':
+        out = out[:-1]
     return out
 
 

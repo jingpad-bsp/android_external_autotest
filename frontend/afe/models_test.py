@@ -92,8 +92,11 @@ class SpecialTaskUnittest(unittest.TestCase,
         task.update_object(is_active=True)
         self.assertEquals(task.status, 'Running')
 
-        task.update_object(is_active=False, is_complete=True)
+        task.update_object(is_active=False, is_complete=True, success=True)
         self.assertEquals(task.status, 'Completed')
+
+        task.update_object(success=False)
+        self.assertEquals(task.status, 'Failed')
 
 
     def test_activate(self):
@@ -106,9 +109,36 @@ class SpecialTaskUnittest(unittest.TestCase,
     def test_finish(self):
         task = self._create_task()
         task.activate()
-        task.finish()
+        task.finish(True)
         self.assertFalse(task.is_active)
         self.assertTrue(task.is_complete)
+        self.assertTrue(task.success)
+
+
+    def test_requested_by_from_queue_entry(self):
+        job = self._create_job(hosts=[0])
+        task = models.SpecialTask.objects.create(
+                host=self.hosts[0], task=models.SpecialTask.Task.VERIFY,
+                queue_entry=job.hostqueueentry_set.all()[0])
+        self.assertEquals(task.requested_by.login, 'my_user')
+
+
+class HostQueueEntryUnittest(unittest.TestCase,
+                             frontend_test_utils.FrontendTestMixin):
+    def setUp(self):
+        self._frontend_common_setup()
+
+
+    def tearDown(self):
+        self._frontend_common_teardown()
+
+
+    def test_execution_path(self):
+        entry = self._create_job(hosts=[1]).hostqueueentry_set.all()[0]
+        entry.execution_subdir = 'subdir'
+        entry.save()
+
+        self.assertEquals(entry.execution_path(), '1-my_user/subdir')
 
 
 if __name__ == '__main__':

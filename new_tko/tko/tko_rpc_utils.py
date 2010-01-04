@@ -78,9 +78,9 @@ def _construct_machine_label_header_sql(machine_labels):
     """
     Example result for machine_labels=['Index', 'Diskful']:
     CONCAT_WS(",",
-              IF(FIND_IN_SET("Diskful", test_attributes_host_labels.value),
+              IF(FIND_IN_SET("Diskful", tko_test_attributes_host_labels.value),
                  "Diskful", NULL),
-              IF(FIND_IN_SET("Index", test_attributes_host_labels.value),
+              IF(FIND_IN_SET("Index", tko_test_attributes_host_labels.value),
                  "Index", NULL))
 
     This would result in field values "Diskful,Index", "Diskful", "Index", NULL.
@@ -89,29 +89,21 @@ def _construct_machine_label_header_sql(machine_labels):
     if_clauses = []
     for label in machine_labels:
         if_clauses.append(
-            'IF(FIND_IN_SET("%s", test_attributes_host_labels.value), '
+            'IF(FIND_IN_SET("%s", tko_test_attributes_host_labels.value), '
                '"%s", NULL)' % (label, label))
     return 'CONCAT_WS(",", %s)' % ', '.join(if_clauses)
-
-
-def add_machine_label_headers(machine_label_headers, extra_selects):
-    for field_name, machine_labels in machine_label_headers.iteritems():
-        extra_selects[field_name] = (
-            _construct_machine_label_header_sql(machine_labels))
 
 
 class GroupDataProcessor(object):
     _MAX_GROUP_RESULTS = 80000
 
-    def __init__(self, query, group_by, header_groups, fixed_headers,
-                 extra_select_fields):
+    def __init__(self, query, group_by, header_groups, fixed_headers):
         self._query = query
         self._group_by = self.uniqify(group_by)
         self._header_groups = header_groups
         self._fixed_headers = dict((field, set(values))
                                    for field, values
                                    in fixed_headers.iteritems())
-        self._extra_select_fields = extra_select_fields
 
         self._num_group_fields = len(group_by)
         self._header_value_sets = [set() for i
@@ -132,7 +124,7 @@ class GroupDataProcessor(object):
     def _fetch_data(self):
         self._restrict_header_values()
         self._group_dicts = models.TestView.objects.execute_group_query(
-            self._query, self._group_by, self._extra_select_fields)
+            self._query, self._group_by)
 
 
     @staticmethod
@@ -223,24 +215,3 @@ class GroupDataProcessor(object):
     def get_info_dict(self):
         return {'groups' : self._group_dicts,
                 'header_values' : self._header_values}
-
-
-def extract_presentation_params(test_filter_data):
-    """
-    Extract presentation-related parameters from test_filter_data -- pagination
-    limits and sorting.
-    """
-    extracted_data = {}
-    for key in ('query_start', 'query_limit', 'sort_by'):
-        extracted_data[key] = test_filter_data.pop(key, None)
-    return extracted_data
-
-
-def get_iteration_view_query(result_keys, test_filter_data):
-    filter_data = dict(test_filter_data) # copy, don't mutate
-    extract_presentation_params(filter_data)
-    test_ids = models.TestView.objects.query_test_ids(filter_data)
-    test_views = models.TestView.objects.filter(pk__in=test_ids)
-    iteration_views = models.TestView.objects.join_iterations(test_views,
-                                                              result_keys)
-    return iteration_views

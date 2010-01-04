@@ -55,7 +55,7 @@ def create_image(params, root_dir):
 
     logging.debug("Running qemu-img command:\n%s" % qemu_img_cmd)
     (status, output) = kvm_subprocess.run_fg(qemu_img_cmd, logging.debug,
-                                             "(qemu-img) ", timeout=30)
+                                             "(qemu-img) ", timeout=120)
 
     if status is None:
         logging.error("Timeout elapsed while waiting for qemu-img command "
@@ -143,13 +143,13 @@ class VM:
         @param root_dir: Optional new base directory for relative filenames
         @param address_cache: A dict that maps MAC addresses to IP addresses
         """
-        if name == None:
+        if name is None:
             name = self.name
-        if params == None:
+        if params is None:
             params = self.params.copy()
-        if root_dir == None:
+        if root_dir is None:
             root_dir = self.root_dir
-        if address_cache == None:
+        if address_cache is None:
             address_cache = self.address_cache
         return VM(name, params, root_dir, address_cache)
 
@@ -190,11 +190,11 @@ class VM:
                nic_model -- string to pass as 'model' parameter for this
                NIC (e.g. e1000)
         """
-        if name == None:
+        if name is None:
             name = self.name
-        if params == None:
+        if params is None:
             params = self.params
-        if root_dir == None:
+        if root_dir is None:
             root_dir = self.root_dir
 
         # Start constructing the qemu command
@@ -252,6 +252,8 @@ class VM:
                 if script_path:
                     script_path = kvm_utils.get_path(root_dir, script_path)
                     qemu_cmd += ",downscript=%s" % script_path
+                else:
+                    qemu_cmd += ",downscript=no"
             # Proceed to next NIC
             vlan += 1
 
@@ -259,10 +261,26 @@ class VM:
         if mem:
             qemu_cmd += " -m %s" % mem
 
+        smp = params.get("smp")
+        if smp:
+            qemu_cmd += " -smp %s" % smp
+
         iso = params.get("cdrom")
         if iso:
             iso = kvm_utils.get_path(root_dir, iso)
             qemu_cmd += " -cdrom %s" % iso
+
+        # We may want to add {floppy_otps} parameter for -fda
+        # {fat:floppy:}/path/. However vvfat is not usually recommended
+        floppy = params.get("floppy")
+        if floppy:
+            floppy = kvm_utils.get_path(root_dir, floppy)
+            qemu_cmd += " -fda %s" % floppy
+
+        tftp = params.get("tftp")
+        if tftp:
+            tftp = kvm_utils.get_path(root_dir, tftp)
+            qemu_cmd += " -tftp %s" % tftp
 
         extra_params = params.get("extra_params")
         if extra_params:
@@ -306,11 +324,11 @@ class VM:
         """
         self.destroy()
 
-        if name != None:
+        if name is not None:
             self.name = name
-        if params != None:
+        if params is not None:
             self.params = params
-        if root_dir != None:
+        if root_dir is not None:
             self.root_dir = root_dir
         name = self.name
         params = self.params
@@ -327,20 +345,26 @@ class VM:
             if params.get("md5sum_1m"):
                 logging.debug("Comparing expected MD5 sum with MD5 sum of "
                               "first MB of ISO file...")
-                actual_md5sum = kvm_utils.md5sum_file(iso, 1048576)
-                expected_md5sum = params.get("md5sum_1m")
+                actual_hash = kvm_utils.hash_file(iso, 1048576, method="md5")
+                expected_hash = params.get("md5sum_1m")
                 compare = True
             elif params.get("md5sum"):
                 logging.debug("Comparing expected MD5 sum with MD5 sum of ISO "
                               "file...")
-                actual_md5sum = kvm_utils.md5sum_file(iso)
-                expected_md5sum = params.get("md5sum")
+                actual_hash = kvm_utils.hash_file(iso, method="md5")
+                expected_hash = params.get("md5sum")
+                compare = True
+            elif params.get("sha1sum"):
+                logging.debug("Comparing expected SHA1 sum with SHA1 sum of "
+                              "ISO file...")
+                actual_hash = kvm_utils.hash_file(iso, method="sha1")
+                expected_hash = params.get("sha1sum")
                 compare = True
             if compare:
-                if actual_md5sum == expected_md5sum:
-                    logging.debug("MD5 sums match")
+                if actual_hash == expected_hash:
+                    logging.debug("Hashes match")
                 else:
-                    logging.error("Actual MD5 sum differs from expected one")
+                    logging.error("Actual hash differs from expected one")
                     return False
 
         # Make sure the following code is not executed by more than one thread
@@ -453,7 +477,7 @@ class VM:
             end_time = time.time() + timeout
             while time.time() < end_time:
                 try:
-                    o += s.recv(16384)
+                    o += s.recv(1024)
                     if o.splitlines()[-1].split()[-1] == "(qemu)":
                         return (True, o)
                 except:
@@ -469,27 +493,32 @@ class VM:
         except:
             logging.debug("Could not connect to monitor socket")
             return (1, "")
-        status, data = read_up_to_qemu_prompt(s, timeout)
-        if not status:
-            s.close()
-            logging.debug("Could not find (qemu) prompt; output so far:" \
-                    + kvm_utils.format_str_for_message(data))
-            return (1, "")
-        # Send command
-        s.sendall(command + "\n")
-        # Receive command output
-        data = ""
-        if block:
+
+        # Send the command and get the resulting output
+        try:
             status, data = read_up_to_qemu_prompt(s, timeout)
-            data = "\n".join(data.splitlines()[1:])
             if not status:
-                s.close()
-                logging.debug("Could not find (qemu) prompt after command;"
-                              " output so far: %s",
-                               kvm_utils.format_str_for_message(data))
-                return (1, data)
-        s.close()
-        return (0, data)
+                logging.debug("Could not find (qemu) prompt; output so far:" +
+                              kvm_utils.format_str_for_message(data))
+                return (1, "")
+            # Send command
+            s.sendall(command + "\n")
+            # Receive command output
+            data = ""
+            if block:
+                status, data = read_up_to_qemu_prompt(s, timeout)
+                data = "\n".join(data.splitlines()[1:])
+                if not status:
+                    logging.debug("Could not find (qemu) prompt after command; "
+                                  "output so far:" +
+                                  kvm_utils.format_str_for_message(data))
+                    return (1, data)
+            return (0, data)
+
+        # Clean up before exiting
+        finally:
+            s.shutdown(socket.SHUT_RDWR)
+            s.close()
 
 
     def destroy(self, gracefully=True):
@@ -553,6 +582,10 @@ class VM:
         finally:
             if self.process:
                 self.process.close()
+            try:
+                os.unlink(self.monitor_file_name)
+            except OSError:
+                pass
 
 
     def is_alive(self):
@@ -671,6 +704,7 @@ class VM:
         username = self.params.get("username", "")
         password = self.params.get("password", "")
         prompt = self.params.get("shell_prompt", "[\#\$]")
+        linesep = eval("'%s'" % self.params.get("shell_linesep", r"\n"))
         client = self.params.get("shell_client")
         address = self.get_address(nic_index)
         port = self.get_port(int(self.params.get("shell_port")))
@@ -681,13 +715,13 @@ class VM:
 
         if client == "ssh":
             session = kvm_utils.ssh(address, port, username, password,
-                                    prompt, timeout)
+                                    prompt, linesep, timeout)
         elif client == "telnet":
             session = kvm_utils.telnet(address, port, username, password,
-                                       prompt, timeout)
+                                       prompt, linesep, timeout)
         elif client == "nc":
             session = kvm_utils.netcat(address, port, username, password,
-                                       prompt, timeout)
+                                       prompt, linesep, timeout)
 
         if session:
             session.set_status_test_command(self.params.get("status_test_"
@@ -787,3 +821,46 @@ class VM:
             return self.uuid
         else:
             return self.params.get("uuid", None)
+
+
+    def get_cpu_count(self):
+        """
+        Get the cpu count of the VM.
+        """
+        try:
+            session = self.remote_login()
+            if session:
+                cmd = self.params.get("cpu_chk_cmd")
+                s, count = session.get_command_status_output(cmd)
+                if s == 0:
+                    return int(count)
+            return None
+        finally:
+            session.close()
+
+
+    def get_memory_size(self):
+        """
+        Get memory size of the VM.
+        """
+        try:
+            session = self.remote_login()
+            if session:
+                cmd = self.params.get("mem_chk_cmd")
+                s, mem_str = session.get_command_status_output(cmd)
+                if s != 0:
+                    return None
+                mem = re.findall("([0-9][0-9][0-9]+)", mem_str)
+                mem_size = 0
+                for m in mem:
+                    mem_size += int(m)
+                if "GB" in mem_str:
+                    mem_size *= 1024
+                elif "MB" in mem_str:
+                    pass
+                else:
+                    mem_size /= 1024
+                return int(mem_size)
+            return None
+        finally:
+            session.close()

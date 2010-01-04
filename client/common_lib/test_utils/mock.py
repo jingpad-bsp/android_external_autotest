@@ -386,6 +386,16 @@ class mock_god:
     def stub_with(self, namespace, symbol, new_attribute):
         original_attribute = getattr(namespace, symbol,
                                      self.NONEXISTENT_ATTRIBUTE)
+
+        # You only want to save the original attribute in cases where it is
+        # directly associated with the object in question. In cases where
+        # the attribute is actually inherited via some sort of hierarchy
+        # you want to delete the stub (restoring the original structure)
+        attribute_is_inherited = (hasattr(namespace, '__dict__') and
+                                  symbol not in namespace.__dict__)
+        if attribute_is_inherited:
+            original_attribute = self.NONEXISTENT_ATTRIBUTE
+
         newstub = (namespace, symbol, original_attribute, new_attribute)
         self._stubs.append(newstub)
         setattr(namespace, symbol, new_attribute)
@@ -405,6 +415,18 @@ class mock_god:
         attr = getattr(namespace, symbol)
         mock_class = self.create_mock_class_obj(attr, symbol)
         self.stub_with(namespace, symbol, mock_class)
+
+
+    def stub_function_to_return(self, namespace, symbol, object_to_return):
+        """Stub out a function with one that always returns a fixed value.
+
+        @param namespace The namespace containing the function to stub out.
+        @param symbol The attribute within the namespace to stub out.
+        @param object_to_return The value that the stub should return whenever
+            it is called.
+        """
+        self.stub_with(namespace, symbol,
+                       lambda *args, **dargs: object_to_return)
 
 
     def _perform_unstub(self, stub):

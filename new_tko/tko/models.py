@@ -2,6 +2,8 @@ from django.db import models as dbmodels, connection
 from django.utils import datastructures
 from autotest_lib.frontend.afe import model_logic, readonly_connection
 
+_quote_name = connection.ops.quote_name
+
 class TempManager(model_logic.ExtendedManager):
     _GROUP_COUNT_NAME = 'group_count'
 
@@ -15,34 +17,17 @@ class TempManager(model_logic.ExtendedManager):
         field_names = []
         for field in fields:
             if field in extra_select_fields:
-                field_names.append(field)
+                field_names.append(extra_select_fields[field][0])
             else:
                 field_names.append(self._get_key_unless_is_function(field))
         return field_names
 
 
-    def _get_group_query_sql(self, query, group_by, extra_select_fields):
-        group_fields = self._get_field_names(group_by, extra_select_fields)
-
-        # Clone the queryset, so that we don't change the original
-        query = query.all()
-
-        # In order to use query.extra(), we need to first clear the limits
-        # and then add them back in after the extra
-        low = query.query.low_mark
-        high = query.query.high_mark
-        query.query.clear_limits()
-
-        select_fields = dict(
-            (field_name, self._get_key_unless_is_function(field_sql))
-            for field_name, field_sql in extra_select_fields.iteritems())
-        query = query.extra(select=select_fields)
-
-        query.query.set_limits(low=low, high=high)
-
+    def _get_group_query_sql(self, query, group_by):
         sql, params = query.query.as_sql()
 
         # insert GROUP BY clause into query
+        group_fields = self._get_field_names(group_by, query.query.extra_select)
         group_by_clause = ' GROUP BY ' + ', '.join(group_fields)
         group_by_position = sql.rfind('ORDER BY')
         if group_by_position == -1:
@@ -55,24 +40,21 @@ class TempManager(model_logic.ExtendedManager):
 
 
     def _get_column_names(self, cursor):
-        """\
+        """
         Gets the column names from the cursor description. This method exists
-        so that it can be mocked in the unit test for sqlite3 compatibility."
+        so that it can be mocked in the unit test for sqlite3 compatibility.
         """
         return [column_info[0] for column_info in cursor.description]
 
 
-    def execute_group_query(self, query, group_by, extra_select_fields=[]):
+    def execute_group_query(self, query, group_by):
         """
         Performs the given query grouped by the fields in group_by with the
-        given extra select fields added.  extra_select_fields should be a dict
-        mapping field alias to field SQL.  Usually, the extra fields will use
-        group aggregation functions.  Returns a list of dicts, where each dict
-        corresponds to single row and contains a key for each grouped field as
-        well as all of the extra select fields.
+        given query's extra select fields added.  Returns a list of dicts, where
+        each dict corresponds to single row and contains a key for each grouped
+        field as well as all of the extra select fields.
         """
-        sql, params = self._get_group_query_sql(query, group_by,
-                                                extra_select_fields)
+        sql, params = self._get_group_query_sql(query, group_by)
         cursor = readonly_connection.connection().cursor()
         cursor.execute(sql, params)
         field_names = self._get_column_names(cursor)
@@ -94,14 +76,19 @@ class TempManager(model_logic.ExtendedManager):
 
 
     def _get_num_groups_sql(self, query, group_by):
-        group_fields = self._get_field_names(group_by)
+        group_fields = self._get_field_names(group_by, query.query.extra_select)
         query = query.order_by() # this can mess up the query and isn't needed
 
         sql, params = query.query.as_sql()
         from_ = sql[sql.find(' FROM'):]
-        return ('SELECT COUNT(DISTINCT %s) %s' % (','.join(group_fields),
+        return ('SELECT DISTINCT %s %s' % (','.join(group_fields),
                                                   from_),
                 params)
+
+
+    def _cursor_rowcount(self, cursor):
+        """To be stubbed by tests"""
+        return cursor.rowcount
 
 
     def get_num_groups(self, query, group_by):
@@ -112,17 +99,17 @@ class TempManager(model_logic.ExtendedManager):
         sql, params = self._get_num_groups_sql(query, group_by)
         cursor = readonly_connection.connection().cursor()
         cursor.execute(sql, params)
-        return cursor.fetchone()[0]
+        return self._cursor_rowcount(cursor)
 
 
 class Machine(dbmodels.Model):
     machine_idx = dbmodels.AutoField(primary_key=True)
-    hostname = dbmodels.CharField(unique=True, max_length=300)
+    hostname = dbmodels.CharField(unique=True, max_length=255)
     machine_group = dbmodels.CharField(blank=True, max_length=240)
     owner = dbmodels.CharField(blank=True, max_length=240)
 
     class Meta:
-        db_table = 'machines'
+        db_table = 'tko_machines'
 
 
 class Kernel(dbmodels.Model):
@@ -132,7 +119,7 @@ class Kernel(dbmodels.Model):
     printable = dbmodels.CharField(max_length=300)
 
     class Meta:
-        db_table = 'kernels'
+        db_table = 'tko_kernels'
 
 
 class Patch(dbmodels.Model):
@@ -142,7 +129,7 @@ class Patch(dbmodels.Model):
     the_hash = dbmodels.CharField(blank=True, max_length=105, db_column='hash')
 
     class Meta:
-        db_table = 'patches'
+        db_table = 'tko_patches'
 
 
 class Status(dbmodels.Model):
@@ -150,12 +137,12 @@ class Status(dbmodels.Model):
     word = dbmodels.CharField(max_length=30)
 
     class Meta:
-        db_table = 'status'
+        db_table = 'tko_status'
 
 
 class Job(dbmodels.Model):
     job_idx = dbmodels.AutoField(primary_key=True)
-    tag = dbmodels.CharField(unique=True, max_length=300)
+    tag = dbmodels.CharField(unique=True, max_length=100)
     label = dbmodels.CharField(max_length=300)
     username = dbmodels.CharField(max_length=240)
     machine = dbmodels.ForeignKey(Machine, db_column='machine_idx')
@@ -165,7 +152,7 @@ class Job(dbmodels.Model):
     afe_job_id = dbmodels.IntegerField(null=True, default=None)
 
     class Meta:
-        db_table = 'jobs'
+        db_table = 'tko_jobs'
 
 
 class Test(dbmodels.Model, model_logic.ModelExtensions,
@@ -200,7 +187,7 @@ class Test(dbmodels.Model, model_logic.ModelExtensions,
 
 
     class Meta:
-        db_table = 'tests'
+        db_table = 'tko_tests'
 
 
 class TestAttribute(dbmodels.Model, model_logic.ModelExtensions):
@@ -212,7 +199,7 @@ class TestAttribute(dbmodels.Model, model_logic.ModelExtensions):
     objects = model_logic.ExtendedManager()
 
     class Meta:
-        db_table = 'test_attributes'
+        db_table = 'tko_test_attributes'
 
 
 class IterationAttribute(dbmodels.Model, model_logic.ModelExtensions):
@@ -226,7 +213,7 @@ class IterationAttribute(dbmodels.Model, model_logic.ModelExtensions):
     objects = model_logic.ExtendedManager()
 
     class Meta:
-        db_table = 'iteration_attributes'
+        db_table = 'tko_iteration_attributes'
 
 
 class IterationResult(dbmodels.Model, model_logic.ModelExtensions):
@@ -240,19 +227,20 @@ class IterationResult(dbmodels.Model, model_logic.ModelExtensions):
     objects = model_logic.ExtendedManager()
 
     class Meta:
-        db_table = 'iteration_result'
+        db_table = 'tko_iteration_result'
 
 
 class TestLabel(dbmodels.Model, model_logic.ModelExtensions):
     name = dbmodels.CharField(max_length=80, unique=True)
     description = dbmodels.TextField(blank=True)
-    tests = dbmodels.ManyToManyField(Test, blank=True)
+    tests = dbmodels.ManyToManyField(Test, blank=True,
+                                     db_table='tko_test_labels_tests')
 
     name_field = 'name'
     objects = model_logic.ExtendedManager()
 
     class Meta:
-        db_table = 'test_labels'
+        db_table = 'tko_test_labels'
 
 
 class SavedQuery(dbmodels.Model, model_logic.ModelExtensions):
@@ -262,7 +250,7 @@ class SavedQuery(dbmodels.Model, model_logic.ModelExtensions):
     url_token = dbmodels.TextField()
 
     class Meta:
-        db_table = 'saved_queries'
+        db_table = 'tko_saved_queries'
 
 
 class EmbeddedGraphingQuery(dbmodels.Model, model_logic.ModelExtensions):
@@ -279,7 +267,7 @@ class EmbeddedGraphingQuery(dbmodels.Model, model_logic.ModelExtensions):
     cached_png = dbmodels.TextField(editable=False)
 
     class Meta:
-        db_table = 'embedded_graphing_queries'
+        db_table = 'tko_embedded_graphing_queries'
 
 
 # views
@@ -304,14 +292,16 @@ class TestViewManager(TempManager):
                             suffix=None, exclude=False):
         if suffix is None:
             suffix = self._get_include_exclude_suffix(exclude)
-        return self.add_join(query_set, 'test_attributes', join_key='test_idx',
+        return self.add_join(query_set, 'tko_test_attributes',
+                             join_key='test_idx',
                              join_condition=join_condition,
                              suffix=suffix, exclude=exclude)
 
 
     def _add_label_pivot_table_join(self, query_set, suffix, join_condition='',
                                     exclude=False, force_left_join=False):
-        return self.add_join(query_set, 'test_labels_tests', join_key='test_id',
+        return self.add_join(query_set, 'tko_test_labels_tests',
+                             join_key='test_id',
                              join_condition=join_condition,
                              suffix=suffix, exclude=exclude,
                              force_left_join=force_left_join)
@@ -323,12 +313,12 @@ class TestViewManager(TempManager):
 
         # since we're not joining from the original table, we can't use
         # self.add_join() again
-        second_join_alias = 'test_labels' + suffix
+        second_join_alias = 'tko_test_labels' + suffix
         second_join_condition = ('%s.id = %s.testlabel_id' %
                                  (second_join_alias,
-                                  'test_labels_tests' + suffix))
+                                  'tko_test_labels_tests' + suffix))
         filter_object = self._CustomSqlQ()
-        filter_object.add_join('test_labels',
+        filter_object.add_join('tko_test_labels',
                                second_join_condition,
                                query_set.query.LOUTER,
                                alias=second_join_alias)
@@ -336,39 +326,209 @@ class TestViewManager(TempManager):
 
 
     def _get_label_ids_from_names(self, label_names):
-        assert label_names
         label_ids = list( # listifying avoids a double query below
-                TestLabel.objects.filter(name__in=label_names).values('id'))
+                TestLabel.objects.filter(name__in=label_names)
+                .values_list('name', 'id'))
         if len(label_ids) < len(set(label_names)):
                 raise ValueError('Not all labels found: %s' %
                                  ', '.join(label_names))
-        return [str(label['id']) for label in label_ids]
+        return dict(name_and_id for name_and_id in label_ids)
 
 
     def _include_or_exclude_labels(self, query_set, label_names, exclude=False):
-        label_ids = self._get_label_ids_from_names(label_names)
+        label_ids = self._get_label_ids_from_names(label_names).itervalues()
         suffix = self._get_include_exclude_suffix(exclude)
-        condition = ('test_labels_tests%s.testlabel_id IN (%s)' %
-                     (suffix, ','.join(label_ids)))
+        condition = ('tko_test_labels_tests%s.testlabel_id IN (%s)' %
+                     (suffix,
+                      ','.join(str(label_id) for label_id in label_ids)))
         return self._add_label_pivot_table_join(query_set,
                                                 join_condition=condition,
                                                 suffix=suffix,
                                                 exclude=exclude)
 
 
-    def get_query_set_with_joins(self, filter_data, include_host_labels=False):
-        include_labels = filter_data.pop('include_labels', [])
-        exclude_labels = filter_data.pop('exclude_labels', [])
+    def _add_custom_select(self, query_set, select_name, select_sql):
+        return query_set.extra(select={select_name: select_sql})
+
+
+    def _add_select_value(self, query_set, alias):
+        return self._add_custom_select(query_set, alias,
+                                       _quote_name(alias) + '.value')
+
+
+    def _add_select_ifnull(self, query_set, alias, non_null_value):
+        select_sql = "IF(%s.id IS NOT NULL, '%s', NULL)" % (_quote_name(alias),
+                                                            non_null_value)
+        return self._add_custom_select(query_set, alias, select_sql)
+
+
+    def _join_label_column(self, query_set, label_name, label_id):
+        table_name = TestLabel.tests.field.m2m_db_table()
+        alias = 'label_' + label_name
+        condition = "%s.testlabel_id = %s" % (_quote_name(alias), label_id)
+        query_set = self.add_join(query_set, table_name,
+                                  join_key='test_id', join_condition=condition,
+                                  alias=alias, force_left_join=True)
+
+        query_set = self._add_select_ifnull(query_set, alias, label_name)
+        return query_set
+
+
+    def _join_label_columns(self, query_set, label_names):
+        label_id_map = self._get_label_ids_from_names(label_names)
+        for label_name in label_names:
+            query_set = self._join_label_column(query_set, label_name,
+                                                label_id_map[label_name])
+        return query_set
+
+
+    def _join_attribute(self, test_view_query_set, attribute,
+                        alias=None, extra_join_condition=None):
+        """
+        Join the given TestView QuerySet to TestAttribute.  The resulting query
+        has an additional column for the given attribute named
+        "attribute_<attribute name>".
+        """
+        table_name = TestAttribute._meta.db_table
+        if not alias:
+            alias = 'attribute_' + attribute
+        condition = "%s.attribute = '%s'" % (_quote_name(alias),
+                                             self.escape_user_sql(attribute))
+        if extra_join_condition:
+            condition += ' AND (%s)' % extra_join_condition
+        query_set = self.add_join(test_view_query_set, table_name,
+                                  join_key='test_idx', join_condition=condition,
+                                  alias=alias, force_left_join=True)
+
+        query_set = self._add_select_value(query_set, alias)
+        return query_set
+
+
+    def _join_machine_label_columns(self, query_set, machine_label_names):
+        for label_name in machine_label_names:
+            alias = 'machine_label_' + label_name
+            condition = "FIND_IN_SET('%s', %s)" % (
+                    label_name, _quote_name(alias) + '.value')
+            query_set = self._join_attribute(query_set, 'host-labels',
+                                             alias=alias,
+                                             extra_join_condition=condition)
+            query_set = self._add_select_ifnull(query_set, alias, label_name)
+        return query_set
+
+
+    def _join_one_iteration_key(self, query_set, result_key, first_alias=None):
+        table_name = IterationResult._meta.db_table
+        alias = 'iteration_' + result_key
+        condition_parts = ["%s.attribute = '%s'" %
+                           (_quote_name(alias),
+                            self.escape_user_sql(result_key))]
+        if first_alias:
+            # after the first join, we need to match up iteration indices,
+            # otherwise each join will expand the query by the number of
+            # iterations and we'll have extraneous rows
+            condition_parts.append('%s.iteration = %s.iteration' %
+                                   (_quote_name(alias),
+                                    _quote_name(first_alias)))
+
+        condition = ' and '.join(condition_parts)
+        # add a join to IterationResult
+        query_set = self.add_join(query_set, table_name, join_key='test_idx',
+                                  join_condition=condition, alias=alias)
+        # select the iteration value and index for this join
+        query_set = self._add_select_value(query_set, alias)
+        if not first_alias:
+            # for first join, add iteration index select too
+            query_set = self._add_custom_select(
+                    query_set, 'iteration_index',
+                    _quote_name(alias) + '.iteration')
+
+        return query_set, alias
+
+
+    def _join_iterations(self, test_view_query_set, result_keys):
+        """Join the given TestView QuerySet to IterationResult for one result.
+
+        The resulting query looks like a TestView query but has one row per
+        iteration.  Each row includes all the attributes of TestView, an
+        attribute for each key in result_keys and an iteration_index attribute.
+
+        We accomplish this by joining the TestView query to IterationResult
+        once per result key.  Each join is restricted on the result key (and on
+        the test index, like all one-to-many joins).  For the first join, this
+        is the only restriction, so each TestView row expands to a row per
+        iteration (per iteration that includes the key, of course).  For each
+        subsequent join, we also restrict the iteration index to match that of
+        the initial join.  This makes each subsequent join produce exactly one
+        result row for each input row.  (This assumes each iteration contains
+        the same set of keys.  Results are undefined if that's not true.)
+        """
+        if not result_keys:
+            return test_view_query_set
+
+        query_set, first_alias = self._join_one_iteration_key(
+                test_view_query_set, result_keys[0])
+        for result_key in result_keys[1:]:
+            query_set, _ = self._join_one_iteration_key(query_set, result_key,
+                                                        first_alias=first_alias)
+        return query_set
+
+
+    def get_query_set_with_joins(self, filter_data):
+        """
+        Add joins for querying over test-related items.
+
+        These parameters are supported going forward:
+        * test_attribute_fields: list of attribute names.  Each attribute will
+                be available as a column attribute_<name>.value.
+        * test_label_fields: list of label names.  Each label will be available
+                as a column label_<name>.id, non-null iff the label is present.
+        * iteration_fields: list of iteration result names.  Each
+                result will be available as a column iteration_<name>.value.
+                Note that this changes the semantics to return iterations
+                instead of tests -- if a test has multiple iterations, a row
+                will be returned for each one.  The iteration index is also
+                available as iteration_<name>.iteration.
+        * machine_label_fields: list of machine label names.  Each will be
+                available as a column machine_label_<name>.id, non-null iff the
+                label is present on the machine used in the test.
+
+        These parameters are deprecated:
+        * include_labels
+        * exclude_labels
+        * include_attributes_where
+        * exclude_attributes_where
+
+        Additionally, this method adds joins if the following strings are
+        present in extra_where (this is also deprecated):
+        * test_labels
+        * test_attributes_host_labels
+        """
         query_set = self.get_query_set()
+
+        test_attributes = filter_data.pop('test_attribute_fields', [])
+        for attribute in test_attributes:
+            query_set = self._join_attribute(query_set, attribute)
+
+        test_labels = filter_data.pop('test_label_fields', [])
+        query_set = self._join_label_columns(query_set, test_labels)
+
+        machine_labels = filter_data.pop('machine_label_fields', [])
+        query_set = self._join_machine_label_columns(query_set, machine_labels)
+
+        iteration_keys = filter_data.pop('iteration_fields', [])
+        query_set = self._join_iterations(query_set, iteration_keys)
+
+        # everything that follows is deprecated behavior
+
         joined = False
 
-        # TODO: make this feature obsolete in favor of include_labels and
-        # exclude_labels
         extra_where = filter_data.get('extra_where', '')
-        if 'test_labels' in extra_where:
+        if 'tko_test_labels' in extra_where:
             query_set = self._add_label_joins(query_set)
             joined = True
 
+        include_labels = filter_data.pop('include_labels', [])
+        exclude_labels = filter_data.pop('exclude_labels', [])
         if include_labels:
             query_set = self._include_or_exclude_labels(query_set,
                                                         include_labels)
@@ -398,83 +558,32 @@ class TestViewManager(TempManager):
         if not joined:
             filter_data['no_distinct'] = True
 
-        # TODO: make test_attributes_host_labels obsolete too
-        if include_host_labels or 'test_attributes_host_labels' in extra_where:
+        if 'tko_test_attributes_host_labels' in extra_where:
             query_set = self._add_attribute_join(
                 query_set, suffix='_host_labels',
-                join_condition='test_attributes_host_labels.attribute = '
+                join_condition='tko_test_attributes_host_labels.attribute = '
                                '"host-labels"')
 
         return query_set
 
 
-    def query_test_ids(self, filter_data):
-        dicts = self.model.query_objects(filter_data).values('test_idx')
+    def query_test_ids(self, filter_data, apply_presentation=True):
+        query = self.model.query_objects(filter_data,
+                                         apply_presentation=apply_presentation)
+        dicts = query.values('test_idx')
         return [item['test_idx'] for item in dicts]
 
 
     def query_test_label_ids(self, filter_data):
         query_set = self.model.query_objects(filter_data)
         query_set = self._add_label_joins(query_set, suffix='_list')
-        rows = self._custom_select_query(query_set, ['test_labels_list.id'])
+        rows = self._custom_select_query(query_set, ['tko_test_labels_list.id'])
         return [row[0] for row in rows if row[0] is not None]
 
 
     def escape_user_sql(self, sql):
         sql = super(TestViewManager, self).escape_user_sql(sql)
         return sql.replace('test_idx', self.get_key_on_this_table('test_idx'))
-
-
-    def _join_one_iteration_key(self, query_set, result_key, index):
-        suffix = '_%s' % index
-        table_name = IterationResult._meta.db_table
-        alias = table_name + suffix
-        condition_parts = ["%s.attribute = '%s'" %
-                           (alias, self.escape_user_sql(result_key))]
-        if index > 0:
-            # after the first join, we need to match up iteration indices,
-            # otherwise each join will expand the query by the number of
-            # iterations and we'll have extraneous rows
-            first_alias = table_name + '_0'
-            condition_parts.append('%s.iteration = %s.iteration' %
-                                   (alias, first_alias))
-
-        condition = ' and '.join(condition_parts)
-        # add a join to IterationResult
-        query_set = self.add_join(query_set, table_name, join_key='test_idx',
-                                  join_condition=condition, suffix=suffix)
-        # select the iteration value for this join
-        query_set = query_set.extra(select={result_key: '%s.value' % alias})
-        if index == 0:
-            # pull the iteration index from the first join
-            query_set = query_set.extra(
-                    select={'iteration_index': '%s.iteration' % alias})
-
-        return query_set
-
-
-    def join_iterations(self, test_view_query_set, result_keys):
-        """
-        Join the given TestView QuerySet to IterationResult.  The resulting
-        query looks like a TestView query but has one row per iteration.  Each
-        row includes all the attributes of TestView, an attribute for each key
-        in result_keys and an iteration_index attribute.
-
-        We accomplish this by joining the TestView query to IterationResult
-        once per result key.  Each join is restricted on the result key (and on
-        the test index, like all one-to-many joins).  For the first join, this
-        is the only restriction, so each TestView row expands to a row per
-        iteration (per iteration that includes the key, of course).  For each
-        subsequent join, we also restrict the iteration index to match that of
-        the initial join.  This makes each subsequent join produce exactly one
-        result row for each input row.  (This assumes each iteration contains
-        the same set of keys.)
-        """
-        query_set = test_view_query_set
-        for index, result_key in enumerate(result_keys):
-            query_set = self._join_one_iteration_key(query_set, result_key,
-                                                     index)
-        return query_set
 
 
 class TestView(dbmodels.Model, model_logic.ModelExtensions):
@@ -536,21 +645,14 @@ class TestView(dbmodels.Model, model_logic.ModelExtensions):
 
 
     @classmethod
-    def query_objects(cls, filter_data, initial_query=None):
+    def query_objects(cls, filter_data, initial_query=None,
+                      apply_presentation=True):
         if initial_query is None:
             initial_query = cls.objects.get_query_set_with_joins(filter_data)
-        return super(TestView, cls).query_objects(filter_data,
-                                                  initial_query=initial_query)
-
-
-    @classmethod
-    def list_objects(cls, filter_data, initial_query=None, fields=None):
-        # include extra fields
-        if fields is None:
-            fields = cls.get_field_dict().keys() + cls.extra_fields.keys()
-        return super(TestView, cls).list_objects(filter_data, initial_query,
-                                                 fields)
+        return super(TestView, cls).query_objects(
+                filter_data, initial_query=initial_query,
+                apply_presentation=apply_presentation)
 
 
     class Meta:
-        db_table = 'test_view_2'
+        db_table = 'tko_test_view_2'

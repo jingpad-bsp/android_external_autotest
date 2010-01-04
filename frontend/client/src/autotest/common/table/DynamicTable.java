@@ -2,17 +2,15 @@ package autotest.common.table;
 
 import autotest.common.SimpleCallback;
 import autotest.common.table.DataSource.DataCallback;
+import autotest.common.table.DataSource.Query;
 import autotest.common.table.DataSource.SortDirection;
 import autotest.common.table.DataSource.SortSpec;
 import autotest.common.ui.Paginator;
 
-import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.user.client.ui.HTMLPanel;
 import com.google.gwt.user.client.ui.Image;
-import com.google.gwt.user.client.ui.SourcesTableEvents;
-import com.google.gwt.user.client.ui.TableListener;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,8 +20,7 @@ import java.util.List;
 /**
  * Extended DataTable supporting sorting, filtering and pagination.
  */
-public class DynamicTable extends DataTable 
-                          implements DataCallback, TableListener {
+public class DynamicTable extends DataTable implements DataCallback {
     public static final int NO_COLUMN = -1;
     public static final String SORT_UP_IMAGE = "arrow_up.png",
                                SORT_DOWN_IMAGE = "arrow_down.png";
@@ -53,6 +50,7 @@ public class DynamicTable extends DataTable
     }
     
     protected DataSource dataSource;
+    private Query currentQuery;
     
     private boolean clientSortable = false;
     private SortIndicator[] sortIndicators;
@@ -161,7 +159,7 @@ public class DynamicTable extends DataTable
         paginator.addCallback(new SimpleCallback() {
             public void doCallback(Object source) {
                 setPaginatorStart(((Paginator) source).getStart());
-                refresh();
+                fetchPage();
             } 
         });
         paginator.setResultsPerPage(rowsPerPage.intValue());
@@ -221,39 +219,62 @@ public class DynamicTable extends DataTable
         }
     }
     
+    public boolean isAnyUserFilterActive() {
+        for (Filter filter : filters) {
+            if (filter.isUserControlled() && filter.isActive()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
     
     // DATA MANAGEMENT
     
     public void refresh() {
         JSONObject params = new JSONObject();
         addFilterParams(params);
-        dataSource.updateData(params, this);
+        dataSource.query(params, this);
     }
-    
-    public void onGotData(int totalCount) {
+
+    @Override
+    public void onQueryReady(Query query) {
+        currentQuery = query;
+        if (!paginators.isEmpty()) {
+            query.getTotalResultCount(this);
+        }
+        fetchPage();
+    }
+
+    private void fetchPage() {
         Integer start = null, limit = null;
         SortSpec[] sortOn = null;
         if (!paginators.isEmpty()) {
-            updatePaginatorTotalResults(totalCount);
             Paginator p = paginators.get(0);
             start = Integer.valueOf(p.getStart());
             limit = Integer.valueOf(p.getResultsPerPage());
         }
-        
+
         if (!sortColumns.isEmpty()) {
             sortOn = new SortSpec[sortColumns.size()];
             sortColumns.toArray(sortOn);
         }
-        dataSource.getPage(start, limit, sortOn, this); 
+        currentQuery.getPage(start, limit, sortOn, this);
     }
 
-    public void handlePage(JSONArray data) {
+    @Override
+    public void handleTotalResultCount(int totalCount) {
+        updatePaginatorTotalResults(totalCount);
+    }
+
+    public void handlePage(List<JSONObject> data) {
         clear();
         addRows(data);
         refreshPaginators();
         notifyListenersRefreshed();
     }
-    
+
     public String[] getRowData(int row) {
         String[] data = new String[columns.length];
         for (int i = 0; i < columns.length; i++) {
@@ -272,12 +293,16 @@ public class DynamicTable extends DataTable
         this.dataSource = dataSource;
     }
     
+    public Query getCurrentQuery() {
+        return currentQuery;
+    }
+    
     
     // INPUT
     
     @Override
-    public void onCellClicked(SourcesTableEvents sender, int row, int cell) {
-        if (clientSortable && row == headerRow) {
+    protected void onCellClicked(int row, int cell, boolean isRightClick) {
+        if (row == headerRow) {
             if (isWidgetColumn(cell)) {
                 // ignore sorting on widget columns
                 return;
@@ -295,7 +320,7 @@ public class DynamicTable extends DataTable
             return;
         }
         
-        super.onCellClicked(sender, row, cell);
+        super.onCellClicked(row, cell, isRightClick);
     }
     
     private SortDirection invertSortDirection(SortDirection direction) {

@@ -349,7 +349,8 @@ def get_acl_groups(**filter_data):
 # jobs
 
 def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
-                          client_control_file='', use_container=False):
+                          client_control_file='', use_container=False,
+                          profile_only=None, upload_kernel_config=False):
     """
     Generates a client-side control file to load a kernel and run tests.
 
@@ -367,6 +368,13 @@ def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
         control file.
     @param use_container unused argument today.  TODO: Enable containers
         on the host during a client side test.
+    @param profile_only A boolean that indicates what default profile_only
+        mode to use in the control file. Passing None will generate a
+        control file that does not explcitly set the default mode at all.
+    @param upload_kernel_config: if enabled it will generate server control
+            file code that uploads the kernel config file to the client and
+            tells the client of the new (local) path when compiling the kernel;
+            the tests must be server side tests
 
     @returns a dict with the following keys:
         control_file: str, The control file text.
@@ -385,7 +393,8 @@ def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
     cf_info['control_file'] = control_file.generate_control(
         tests=test_objects, kernels=kernel, platform=label,
         profilers=profiler_objects, is_server=cf_info['is_server'],
-        client_control_file=client_control_file)
+        client_control_file=client_control_file, profile_only=profile_only,
+        upload_kernel_config=upload_kernel_config)
     return cf_info
 
 
@@ -394,7 +403,7 @@ def create_job(name, priority, control_file, control_type,
                atomic_group_name=None, synch_count=None, is_template=False,
                timeout=None, max_runtime_hrs=None, run_verify=True,
                email_list='', dependencies=(), reboot_before=None,
-               reboot_after=None, parse_failed_repair=None):
+               reboot_after=None, parse_failed_repair=None, hostless=False):
     """\
     Create and enqueue a job.
 
@@ -415,6 +424,7 @@ def create_job(name, priority, control_file, control_type,
     @param reboot_after Never, If all tests passed, or Always
     @param parse_failed_repair if true, results of failed repairs launched by
     this job will be parsed as part of the job.
+    @param hostless if true, create a hostless job
 
     @param hosts List of hosts to run job on.
     @param meta_hosts List where each entry is a label name, and for each entry
@@ -428,12 +438,24 @@ def create_job(name, priority, control_file, control_type,
     user = thread_local.get_user()
     owner = user.login
     # input validation
-    if not (hosts or meta_hosts or one_time_hosts or atomic_group_name):
+    if not (hosts or meta_hosts or one_time_hosts or atomic_group_name
+            or hostless):
         raise model_logic.ValidationError({
             'arguments' : "You must pass at least one of 'hosts', "
                           "'meta_hosts', 'one_time_hosts', "
-                          "or 'atomic_group_name'"
+                          "'atomic_group_name', or 'hostless'"
             })
+
+    if hostless:
+        if hosts or meta_hosts or one_time_hosts or atomic_group_name:
+            raise model_logic.ValidationError({
+                    'hostless': 'Hostless jobs cannot include any hosts!'})
+        server_type = models.Job.ControlType.get_string(
+                models.Job.ControlType.SERVER)
+        if control_type != server_type:
+            raise model_logic.ValidationError({
+                    'control_type': 'Hostless jobs cannot use client-side '
+                                    'control files'})
 
     labels_by_name = dict((label.name, label)
                           for label in models.Label.objects.all())
@@ -536,11 +558,14 @@ def abort_host_queue_entries(**filter_data):
 def reverify_hosts(**filter_data):
     """\
     Schedules a set of hosts for verify.
+
+    @returns A list of hostnames that a verify task was created for.
     """
     hosts = models.Host.query_objects(filter_data)
     models.AclGroup.check_for_acl_violation_hosts(hosts)
     models.SpecialTask.schedule_special_task(hosts,
                                              models.SpecialTask.Task.VERIFY)
+    return list(sorted(host.hostname for host in hosts))
 
 
 def get_jobs(not_yet_run=False, running=False, finished=False, **filter_data):

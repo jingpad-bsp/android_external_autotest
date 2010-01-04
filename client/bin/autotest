@@ -6,6 +6,7 @@ import os, sys, shutil
 import common
 from optparse import OptionParser
 from autotest_lib.client.bin import job
+from autotest_lib.client.common_lib import global_config
 
 
 # Use the name of the binary to find the real installation directory
@@ -34,8 +35,8 @@ parser.add_option("-t", "--tag", dest="tag", type="string", default="default",
 parser.add_option("-H", "--harness", dest="harness", type="string", default='',
                         help="set the harness type")
 
-parser.add_option("-U", "--user", dest="autoserv_user", type="string",
-                        default='', help="set the autoserv username")
+parser.add_option("-U", "--user", dest="user", type="string",
+                        default='', help="set the job username")
 
 parser.add_option("-l", "--external_logging", dest="log", action="store_true",
                         default=False, help="enable external logging")
@@ -58,5 +59,10 @@ options, args = parser.parse_args()
 if len(args) != 1:
     usage()
 
+drop_caches = global_config.global_config.get_config_value('CLIENT',
+                                                           'drop_caches',
+                                                           type=bool,
+                                                           default=True)
+
 # JOB: run the specified job control file.
-job.runjob(os.path.realpath(args[0]), options)
+job.runjob(os.path.realpath(args[0]), drop_caches, options)

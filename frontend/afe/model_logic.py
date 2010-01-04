@@ -9,7 +9,6 @@ from django.db.models.sql import query
 from django.utils import datastructures
 from autotest_lib.frontend.afe import readonly_connection
 
-
 class ValidationError(Exception):
     """\
     Data validation error in adding or updating an object. The associated
@@ -115,7 +114,8 @@ class ExtendedManager(dbmodels.Manager):
             for join_alias, join in self._customSqlQ._joins.iteritems():
                 join_table, join_type, condition = join
                 join_clause += ' %s %s AS %s ON (%s)' % (
-                    join_type, join_table, join_alias, condition)
+                    join_type, _quote_name(join_table),
+                    _quote_name(join_alias), condition)
 
             if join_clause:
                 from_.append(join_clause)
@@ -158,24 +158,28 @@ class ExtendedManager(dbmodels.Manager):
         return query_set.filter(filter_object)
 
 
-    def add_join(self, query_set, join_table, join_key,
-                 join_condition='', suffix='', exclude=False,
-                 force_left_join=False):
+    def add_join(self, query_set, join_table, join_key, join_condition='',
+                 alias=None, suffix='', exclude=False, force_left_join=False):
         """
         Add a join to query_set.
         @param join_table table to join to
         @param join_key field referencing back to this model to use for the join
         @param join_condition extra condition for the ON clause of the join
-        @param suffix suffix to add to join_table for the join alias
+        @param alias alias to use for for join
+        @param suffix suffix to add to join_table for the join alias, if no
+                alias is provided
         @param exclude if true, exclude rows that match this join (will use a
         LEFT OUTER JOIN and an appropriate WHERE condition)
         @param force_left_join - if true, a LEFT OUTER JOIN will be used
         instead of an INNER JOIN regardless of other options
         """
-        join_from_table = self.model._meta.db_table
-        join_from_key = self.model._meta.pk.name
-        join_alias = join_table + suffix
-        full_join_key = join_alias + '.' + join_key
+        join_from_table = _quote_name(self.model._meta.db_table)
+        join_from_key = _quote_name(self.model._meta.pk.name)
+        if alias:
+            join_alias = alias
+        else:
+            join_alias = join_table + suffix
+        full_join_key = _quote_name(join_alias) + '.' + _quote_name(join_key)
         full_join_condition = '%s = %s.%s' % (full_join_key, join_from_table,
                                               join_from_key)
         if join_condition:
@@ -617,8 +621,52 @@ class ModelExtensions(object):
         self.save()
 
 
+    # see query_objects()
+    _SPECIAL_FILTER_KEYS = ('query_start', 'query_limit', 'sort_by',
+                            'extra_args', 'extra_where', 'no_distinct')
+
+
     @classmethod
-    def query_objects(cls, filter_data, valid_only=True, initial_query=None):
+    def _extract_special_params(cls, filter_data):
+        """
+        @returns a tuple of dicts (special_params, regular_filters), where
+        special_params contains the parameters we handle specially and
+        regular_filters is the remaining data to be handled by Django.
+        """
+        regular_filters = dict(filter_data)
+        special_params = {}
+        for key in cls._SPECIAL_FILTER_KEYS:
+            if key in regular_filters:
+                special_params[key] = regular_filters.pop(key)
+        return special_params, regular_filters
+
+
+    @classmethod
+    def apply_presentation(cls, query, filter_data):
+        """
+        Apply presentation parameters -- sorting and paging -- to the given
+        query.
+        @returns new query with presentation applied
+        """
+        special_params, _ = cls._extract_special_params(filter_data)
+        sort_by = special_params.get('sort_by', None)
+        if sort_by:
+            assert isinstance(sort_by, list) or isinstance(sort_by, tuple)
+            query = query.extra(order_by=sort_by)
+
+        query_start = special_params.get('query_start', None)
+        query_limit = special_params.get('query_limit', None)
+        if query_start is not None:
+            if query_limit is None:
+                raise ValueError('Cannot pass query_start without query_limit')
+            # query_limit is passed as a page size
+            query_limit += query_start
+        return query[query_start:query_limit]
+
+
+    @classmethod
+    def query_objects(cls, filter_data, valid_only=True, initial_query=None,
+                      apply_presentation=True):
         """\
         Returns a QuerySet object for querying the given model_class
         with the given filter_data.  Optional special arguments in
@@ -630,43 +678,37 @@ class ModelExtensions(object):
         -extra_args: keyword args to pass to query.extra() (see Django
          DB layer documentation)
         -extra_where: extra WHERE clause to append
+        -no_distinct: if True, a DISTINCT will not be added to the SELECT
         """
-        filter_data = dict(filter_data) # copy so we don't mutate the original
-        query_start = filter_data.pop('query_start', None)
-        query_limit = filter_data.pop('query_limit', None)
-        if query_start and not query_limit:
-            raise ValueError('Cannot pass query_start without '
-                             'query_limit')
-        sort_by = filter_data.pop('sort_by', None)
-        extra_args = filter_data.pop('extra_args', {})
-        extra_where = filter_data.pop('extra_where', None)
-        if extra_where:
-            # escape %'s
-            extra_where = cls.objects.escape_user_sql(extra_where)
-            extra_args.setdefault('where', []).append(extra_where)
-        use_distinct = not filter_data.pop('no_distinct', False)
+        special_params, regular_filters = cls._extract_special_params(
+                filter_data)
 
         if initial_query is None:
             if valid_only:
                 initial_query = cls.get_valid_manager()
             else:
                 initial_query = cls.objects
-        query = initial_query.filter(**filter_data)
+
+        query = initial_query.filter(**regular_filters)
+
+        use_distinct = not special_params.get('no_distinct', False)
         if use_distinct:
             query = query.distinct()
 
-        # other arguments
+        extra_args = special_params.get('extra_args', {})
+        extra_where = special_params.get('extra_where', None)
+        if extra_where:
+            # escape %'s
+            extra_where = cls.objects.escape_user_sql(extra_where)
+            extra_args.setdefault('where', []).append(extra_where)
         if extra_args:
             query = query.extra(**extra_args)
             query = query._clone(klass=ReadonlyQuerySet)
 
-        # sorting + paging
-        if sort_by:
-            assert isinstance(sort_by, list) or isinstance(sort_by, tuple)
-            query = query.order_by(*sort_by)
-        if query_start is not None and query_limit is not None:
-            query_limit += query_start
-        return query[query_start:query_limit]
+        if apply_presentation:
+            query = cls.apply_presentation(query, filter_data)
+
+        return query
 
 
     @classmethod
@@ -695,12 +737,13 @@ class ModelExtensions(object):
 
 
     @classmethod
-    def list_objects(cls, filter_data, initial_query=None, fields=None):
+    def list_objects(cls, filter_data, initial_query=None):
         """\
         Like query_objects, but return a list of dictionaries.
         """
         query = cls.query_objects(filter_data, initial_query=initial_query)
-        field_dicts = [model_object.get_object_dict(fields)
+        extra_fields = query.query.extra_select.keys()
+        field_dicts = [model_object.get_object_dict(extra_fields=extra_fields)
                        for model_object in query]
         return field_dicts
 
@@ -741,12 +784,15 @@ class ModelExtensions(object):
         return result_objects
 
 
-    def get_object_dict(self, fields=None):
+    def get_object_dict(self, extra_fields=None):
         """\
-        Return a dictionary mapping fields to this object's values.
+        Return a dictionary mapping fields to this object's values.  @param
+        extra_fields: list of extra attribute names to include, in addition to
+        the fields defined on this object.
         """
-        if fields is None:
-            fields = self.get_field_dict().iterkeys()
+        fields = self.get_field_dict().keys()
+        if extra_fields:
+            fields += extra_fields
         object_dict = dict((field_name, getattr(self, field_name))
                            for field_name in fields)
         self.clean_object_dicts([object_dict])
@@ -901,3 +947,50 @@ class ModelWithAttributes(object):
             self.delete_attribute(attribute)
         else:
             self.set_attribute(attribute, value)
+
+
+class ModelWithHashManager(dbmodels.Manager):
+    """Manager for use with the ModelWithHash abstract model class"""
+
+    def create(self, **kwargs):
+        raise Exception('ModelWithHash manager should use get_or_create() '
+                        'instead of create()')
+
+
+    def get_or_create(self, **kwargs):
+        kwargs['the_hash'] = self.model._compute_hash(**kwargs)
+        return super(ModelWithHashManager, self).get_or_create(**kwargs)
+
+
+class ModelWithHash(dbmodels.Model):
+    """Superclass with methods for dealing with a hash column"""
+
+    the_hash = dbmodels.CharField(max_length=40, unique=True)
+
+    objects = ModelWithHashManager()
+
+    class Meta:
+        abstract = True
+
+
+    @classmethod
+    def _compute_hash(cls, **kwargs):
+        raise NotImplementedError('Subclasses must override _compute_hash()')
+
+
+    def save(self, force_insert=False, **kwargs):
+        """Prevents saving the model in most cases
+
+        We want these models to be immutable, so the generic save() operation
+        will not work. These models should be instantiated through their the
+        model.objects.get_or_create() method instead.
+
+        The exception is that save(force_insert=True) will be allowed, since
+        that creates a new row. However, the preferred way to make instances of
+        these models is through the get_or_create() method.
+        """
+        if not force_insert:
+            # Allow a forced insert to happen; if it's a duplicate, the unique
+            # constraint will catch it later anyways
+            raise Exception('ModelWithHash is immutable')
+        super(ModelWithHash, self).save(force_insert=force_insert, **kwargs)

@@ -1,4 +1,4 @@
-import pickle, os, tempfile, logging
+import cPickle, os, tempfile, logging
 import common
 from autotest_lib.scheduler import drone_utility, email_manager
 from autotest_lib.client.common_lib import error, global_config
@@ -8,12 +8,18 @@ AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value('SCHEDULER',
                                                  'drone_installation_directory')
 
 class _AbstractDrone(object):
+    """
+    Attributes:
+    * allowed_users: set of usernames allowed to use this drone.  if None,
+            any user can use this drone.
+    """
     def __init__(self):
         self._calls = []
         self.hostname = None
         self.enabled = True
         self.max_processes = 0
         self.active_processes = 0
+        self.allowed_users = None
 
 
     def shutdown(self):
@@ -24,6 +30,12 @@ class _AbstractDrone(object):
         if self.max_processes == 0:
             return 1.0
         return float(self.active_processes) / self.max_processes
+
+
+    def usable_by(self, user):
+        if self.allowed_users is None:
+            return True
+        return user in self.allowed_users
 
 
     def _execute_calls_impl(self, calls):
@@ -58,6 +70,10 @@ class _AbstractDrone(object):
         self.clear_call_queue()
 
 
+    def set_autotest_install_dir(self, path):
+        pass
+
+
 class _LocalDrone(_AbstractDrone):
     def __init__(self):
         super(_LocalDrone, self).__init__()
@@ -80,26 +96,15 @@ class _LocalDrone(_AbstractDrone):
 
 
 class _RemoteDrone(_AbstractDrone):
-    _temporary_directory = None
-
     def __init__(self, hostname):
         super(_RemoteDrone, self).__init__()
         self.hostname = hostname
         self._host = drone_utility.create_host(hostname)
-        self._drone_utility_path = os.path.join(AUTOTEST_INSTALL_DIR,
-                                                'scheduler',
-                                                'drone_utility.py')
-
-        try:
-            self._host.run('mkdir -p ' + self._temporary_directory,
-                           timeout=10)
-        except error.AutoservError:
-            pass
+        self._autotest_install_dir = AUTOTEST_INSTALL_DIR
 
 
-    @classmethod
-    def set_temporary_directory(cls, temporary_directory):
-        cls._temporary_directory = temporary_directory
+    def set_autotest_install_dir(self, path):
+        self._autotest_install_dir = path
 
 
     def shutdown(self):
@@ -108,23 +113,15 @@ class _RemoteDrone(_AbstractDrone):
 
 
     def _execute_calls_impl(self, calls):
-        calls_fd, calls_filename = tempfile.mkstemp(suffix='.pickled_calls')
-        calls_file = os.fdopen(calls_fd, 'w+')
-        pickle.dump(calls, calls_file)
-        calls_file.flush()
-        calls_file.seek(0)
+        logging.info("Running drone_utility on %s", self.hostname)
+        drone_utility_path = os.path.join(self._autotest_install_dir,
+                                          'scheduler', 'drone_utility.py')
+        result = self._host.run('python %s' % drone_utility_path,
+                                stdin=cPickle.dumps(calls), connect_timeout=300)
 
         try:
-            logging.info("Running drone_utility on %s", self.hostname)
-            result = self._host.run('python %s' % self._drone_utility_path,
-                                    stdin=calls_file, connect_timeout=300)
-        finally:
-            calls_file.close()
-            os.remove(calls_filename)
-
-        try:
-            return pickle.loads(result.stdout)
-        except Exception: # pickle.loads can throw all kinds of exceptions
+            return cPickle.loads(result.stdout)
+        except Exception: # cPickle.loads can throw all kinds of exceptions
             logging.critical('Invalid response:\n---\n%s\n---', result.stdout)
             raise
 
@@ -140,10 +137,6 @@ class _RemoteDrone(_AbstractDrone):
         else:
             self.queue_call('send_file_to', drone.hostname, source_path,
                             destination_path, can_fail)
-
-
-def set_temporary_directory(temporary_directory):
-    _RemoteDrone.set_temporary_directory(temporary_directory)
 
 
 def get_drone(hostname):

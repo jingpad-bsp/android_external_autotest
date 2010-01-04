@@ -2,66 +2,62 @@ package autotest.tko;
 
 import autotest.common.Utils;
 import autotest.common.ui.MultiListSelectPresenter;
-import autotest.common.ui.ToggleControl;
+import autotest.common.ui.MultiListSelectPresenter.DoubleListDisplay;
+import autotest.common.ui.MultiListSelectPresenter.GeneratorHandler;
 import autotest.common.ui.MultiListSelectPresenter.Item;
-
-import com.google.gwt.event.dom.client.ClickEvent;
-import com.google.gwt.event.dom.client.ClickHandler;
-import com.google.gwt.json.client.JSONObject;
-import com.google.gwt.user.client.ui.HasText;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-class HeaderSelect implements ClickHandler {
-    public static final String HISTORY_FIXED_VALUES = "_fixed_values";
+class HeaderSelect {
+    public static class State {
+        private List<HeaderField> selectedFields;
 
-    public interface Display {
-        public MultiListSelectPresenter.DoubleListDisplay getDoubleListDisplay();
-        public MultiListSelectPresenter.ToggleDisplay getToggleDisplay();
-        public ParameterizedFieldListPresenter.Display getParameterizedFieldDisplay();
-
-        public HasText getFixedValuesInput();
-        public void setFixedValuesVisible(boolean visible);
-        public ToggleControl getFixedValuesToggle();
-    }
-
-    private HeaderFieldCollection headerFields;
-    
-    private List<HeaderField> savedSelectedFields;
-    private String savedFixedValues;
-
-    private Display display;
-    private MultiListSelectPresenter multiListSelect = new MultiListSelectPresenter();
-    private ParameterizedFieldListPresenter parameterizedFieldPresenter; 
-
-    public HeaderSelect(HeaderFieldCollection headerFields) {
-        this.headerFields = headerFields;
-        parameterizedFieldPresenter = new ParameterizedFieldListPresenter(headerFields);
-        multiListSelect.setGeneratorHandler(parameterizedFieldPresenter);
-    }
-
-    public void bindDisplay(Display display) {
-        this.display = display;
-        display.getFixedValuesToggle().addClickHandler(this);
-        display.setFixedValuesVisible(false);
-        multiListSelect.bindDisplay(display.getDoubleListDisplay());
-        multiListSelect.bindToggleDisplay(display.getToggleDisplay());
-        parameterizedFieldPresenter.bindDisplay(display.getParameterizedFieldDisplay());
-
-        for (HeaderField field : headerFields) {
-            multiListSelect.addItem(field.getItem());
+        public List<HeaderField> getSelectedFields() {
+            return new ArrayList<HeaderField>(selectedFields);
         }
-        multiListSelect.addItem(ParameterizedField.getGenerator(MachineLabelField.BASE_NAME));
+    }
+    
+    private HeaderFieldCollection headerFields;
+    private final State savedState;
+
+    protected MultiListSelectPresenter multiListSelect = new MultiListSelectPresenter();
+
+    public HeaderSelect(HeaderFieldCollection headerFields, State state) {
+        this.headerFields = headerFields;
+        savedState = state;
+    }
+
+    public void bindDisplay(DoubleListDisplay display) {
+        multiListSelect.bindDisplay(display);
+        refreshFields();
+    }
+
+    public void refreshFields() {
+        List<Item> selection = multiListSelect.getSelectedItems();
+        multiListSelect.clearItems();
+        for (HeaderField field : headerFields) {
+            if (field.isUserSelectable()) {
+                multiListSelect.addItem(field.getItem());
+            }
+        }
+        multiListSelect.restoreSelectedItems(selection);
     }
 
     public void updateStateFromView() {
-        savedSelectedFields = getSelectedItemsFromView();
-        savedFixedValues = getFixedValuesText();
-        parameterizedFieldPresenter.updateStateFromView();
+        saveToState(savedState);
+    }
+
+    protected void saveToState(State state) {
+        state.selectedFields = getSelectedItemsFromView();
+    }
+    
+    public State getStateFromView() {
+        State state = new State();
+        saveToState(state);
+        return state;
     }
     
     private List<HeaderField> getSelectedItemsFromView() {
@@ -71,27 +67,20 @@ class HeaderSelect implements ClickHandler {
         }
         return selectedFields;
     }
-
-    private String getFixedValuesText() {
-        if (!isFixedValuesActive()) {
-            return "";
-        }
-        
-        return display.getFixedValuesInput().getText();
-    }
     
     public List<HeaderField> getSelectedItems() {
-        return Collections.unmodifiableList(savedSelectedFields);
+        return savedState.getSelectedFields();
     }
     
     public void updateViewFromState() {
-        selectItemsInView(savedSelectedFields);
-        display.getFixedValuesInput().setText(savedFixedValues);
-        display.getFixedValuesToggle().setActive(!savedFixedValues.equals(""));
-        parameterizedFieldPresenter.updateViewFromState();
+        loadFromState(savedState);
     }
 
-    private void selectItemsInView(List<HeaderField> fields) {
+    public void loadFromState(State state) {
+        setSelectedItemsInView(state.selectedFields);
+    }
+
+    private void setSelectedItemsInView(List<HeaderField> fields) {
         List<String> fieldNames = new ArrayList<String>();
         for (HeaderField field : fields) {
             Item item = field.getItem();
@@ -103,19 +92,27 @@ class HeaderSelect implements ClickHandler {
         multiListSelect.setSelectedItemsByName(fieldNames);
     }
 
-    public void selectItems(List<HeaderField> fields) {
-        savedSelectedFields = new ArrayList<HeaderField>(fields);
-        savedFixedValues = "";
+    public void setSelectedItems(List<HeaderField> fields) {
+        savedState.selectedFields = new ArrayList<HeaderField>(fields);
     }
     
-    public void selectItem(HeaderField field) {
-        selectItems(Arrays.asList(new HeaderField[] {field}));
+    public void setSelectedItem(HeaderField field) {
+        setSelectedItems(Arrays.asList(new HeaderField[] {field}));
     }
-
-    @Override
-    public void onClick(ClickEvent event) {
-        assert event.getSource() == display.getFixedValuesToggle();
-        display.setFixedValuesVisible(isFixedValuesActive());
+    
+    public void selectItemInView(HeaderField field) {
+        List<HeaderField> fields = getSelectedItemsFromView();
+        if (!fields.contains(field)) {
+            fields.add(field);
+            setSelectedItemsInView(fields);
+        }
+    }
+    
+    public void deselectItemInView(HeaderField field) {
+        List<HeaderField> fields = getSelectedItemsFromView();
+        if (fields.remove(field)) {
+            setSelectedItemsInView(fields);
+        }
     }
 
     public void addHistoryArguments(Map<String, String> arguments, String name) {
@@ -125,35 +122,12 @@ class HeaderSelect implements ClickHandler {
         }
         String fieldList = Utils.joinStrings(",", fields);
         arguments.put(name, fieldList);
-        if (isFixedValuesActive()) {
-            arguments.put(name + HISTORY_FIXED_VALUES, display.getFixedValuesInput().getText());
-        }
-
-        headerFields.addHistoryArguments(arguments);
-    }
-
-    private boolean isFixedValuesActive() {
-        return !display.getToggleDisplay().getToggleMultipleLink().isActive()
-               && display.getFixedValuesToggle().isActive();
     }
 
     public void handleHistoryArguments(Map<String, String> arguments, String name) {
         String[] fields = arguments.get(name).split(",");
-        addParameterizedFields(fields);
-        headerFields.handleHistoryArguments(arguments);
         List<HeaderField> selectedFields = getHeaderFieldsFromValues(fields);
-        selectItems(selectedFields);
-        String fixedValuesText = arguments.get(name + HISTORY_FIXED_VALUES);
-        savedFixedValues = fixedValuesText;
-    }
-
-    private void addParameterizedFields(String[] sqlNames) {
-        for (String sqlName : sqlNames) {
-            if (!headerFields.containsSqlName(sqlName)) {
-                ParameterizedField field = ParameterizedField.fromSqlName(sqlName);
-                parameterizedFieldPresenter.addField(field);
-            }
-        }
+        setSelectedItems(selectedFields);
     }
 
     private List<HeaderField> getHeaderFieldsFromValues(String[] fieldSqlNames) {
@@ -164,32 +138,11 @@ class HeaderSelect implements ClickHandler {
         return fields;
     }
 
-    /**
-     * @return true if all machine label header inputs are not empty.
-     */
-    public boolean checkMachineLabelHeaders() {
-        return parameterizedFieldPresenter.areAllInputsFilled();
+    protected State getState() {
+        return savedState;
     }
 
-    public void addQueryParameters(JSONObject parameters) {
-        for (HeaderField field : getSelectedItems()) {
-            field.addQueryParameters(parameters);
-        }
-
-        List<String> fixedValues = getFixedValues();
-        if (fixedValues != null) {
-            JSONObject fixedValuesObject = 
-                Utils.setDefaultValue(parameters, "fixed_headers", new JSONObject()).isObject();
-            fixedValuesObject.put(getSelectedItems().get(0).getSqlName(), 
-                            Utils.stringsToJSON(fixedValues));
-        }
-    }
-
-    private List<String> getFixedValues() {
-        String valueText = savedFixedValues.trim();
-        if (valueText.equals("")) {
-            return null;
-        }
-        return Utils.splitListWithSpaces(valueText);
+    public void setGeneratorHandler(GeneratorHandler handler) {
+        multiListSelect.setGeneratorHandler(handler);
     }
 }

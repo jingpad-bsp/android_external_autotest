@@ -9,10 +9,10 @@ and several post-profiling tools for turning data into information.
 More Info: http://oprofile.sourceforge.net/
 Will need some libaries to compile. Do 'apt-get build-dep oprofile'
 """
-import os, shutil
+import os, shutil, time
 from autotest_lib.client.bin import utils, profiler
 from autotest_lib.client.common_lib import error
-
+import logging
 
 class oprofile(profiler.profiler):
     version = 7
@@ -120,12 +120,14 @@ class oprofile(profiler.profiler):
         if not self.setup_done:
             self._pick_binaries(True)
 
+        self.start_time = time.ctime()
         utils.system(self.opcontrol + ' --shutdown')
         utils.system(self.opcontrol + ' --reset')
         utils.system(self.opcontrol + ' --start')
 
 
     def stop(self, test):
+        self.stop_time = time.ctime()
         utils.system(self.opcontrol + ' --stop')
         utils.system(self.opcontrol + ' --dump')
 
@@ -137,12 +139,17 @@ class oprofile(profiler.profiler):
             report = self.opreport + ' -l ' + self.vmlinux
             if os.path.exists(utils.get_modules_dir()):
                 report += ' -p ' + utils.get_modules_dir()
+            logging.info('Starting oprofile: %s' % self.start_time)
             utils.system(report + ' > ' + reportfile)
+            logging.info('Ending oprofile: %s' % self.stop_time)
+
         else:
             utils.system("echo 'no vmlinux found.' > %s" % reportfile)
 
         # output profile summary report
         reportfile = test.profdir + '/oprofile.user'
-        utils.system(self.opreport + ' --long-filenames ' + ' > ' + reportfile)
+        logging.info('Starting oprofile: %s' % self.start_time)
+        utils.system(self.opreport + ' --long-filenames ' + ' >> ' + reportfile)
+        logging.info('Ending oprofile: %s' % self.stop_time)
 
         utils.system(self.opcontrol + ' --shutdown')

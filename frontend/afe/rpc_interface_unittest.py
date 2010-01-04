@@ -163,6 +163,21 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEquals(host.aclgroup_set.count(), 0)
 
 
+    def test_create_job_duplicate_hosts(self):
+        self.assertRaises(model_logic.ValidationError, self._create_job_helper,
+                          hosts=[1, 1])
+
+
+    def test_create_hostless_job(self):
+        job_id = self._create_job_helper(hostless=True)
+        job = models.Job.objects.get(pk=job_id)
+        queue_entries = job.hostqueueentry_set.all()
+        self.assertEquals(len(queue_entries), 1)
+        self.assertEquals(queue_entries[0].host, None)
+        self.assertEquals(queue_entries[0].meta_host, None)
+        self.assertEquals(queue_entries[0].atomic_group, None)
+
+
     def _setup_special_tasks(self):
         host = self.hosts[0]
 
@@ -171,10 +186,10 @@ class RpcInterfaceTest(unittest.TestCase,
 
         entry1 = job1.hostqueueentry_set.all()[0]
         entry1.update_object(started_on=datetime.datetime(2009, 1, 2),
-                             execution_subdir='1-myuser/host1')
+                             execution_subdir='host1')
         entry2 = job2.hostqueueentry_set.all()[0]
         entry2.update_object(started_on=datetime.datetime(2009, 1, 3),
-                             execution_subdir='2-myuser/host1')
+                             execution_subdir='host1')
 
         self.task1 = models.SpecialTask.objects.create(
                 host=host, task=models.SpecialTask.Task.VERIFY,
@@ -225,9 +240,9 @@ class RpcInterfaceTest(unittest.TestCase,
 
         paths = [entry['execution_path'] for entry in entries_and_tasks]
         self.assertEquals(paths, ['hosts/host1/3-verify',
-                                  '2-myuser/host1',
+                                  '2-my_user/host1',
                                   'hosts/host1/2-verify',
-                                  '1-myuser/host1',
+                                  '1-my_user/host1',
                                   'hosts/host1/1-verify'])
 
         verify2 = entries_and_tasks[2]
@@ -241,11 +256,6 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEquals(entry2['type'], 'Job')
         self.assertEquals(entry2['status'], 'Queued')
         self.assertEquals(entry2['started_on'], '2009-01-03 00:00:00')
-
-
-    def _create_job_helper(self, **kwargs):
-        return rpc_interface.create_job('test', 'Medium', 'control file',
-                                        'Server', **kwargs)
 
 
     def test_view_invalid_host(self):
@@ -269,6 +279,20 @@ class RpcInterfaceTest(unittest.TestCase,
         data = rpc_interface.get_host_queue_entries_and_special_tasks(
                 hostname='host1')
         self.assertEquals(1, len(data))
+
+
+    def test_reverify_hosts(self):
+        hostname_list = rpc_interface.reverify_hosts(id__in=[1, 2])
+        self.assertEquals(hostname_list, ['host1', 'host2'])
+        tasks = rpc_interface.get_special_tasks()
+        self.assertEquals(len(tasks), 2)
+        self.assertEquals(set(task['host']['id'] for task in tasks),
+                          set([1, 2]))
+
+        task = tasks[0]
+        self.assertEquals(task['task'], models.SpecialTask.Task.VERIFY)
+        self.assertEquals(task['requested_by'], 'my_user')
+
 
 
 if __name__ == '__main__':

@@ -154,16 +154,9 @@ class DroneUtility(object):
         return results
 
 
-    def _is_process_running(self, process):
-        # TODO: enhance this to check the process args
-        proc_path = os.path.join('/proc', str(process.pid))
-        return os.path.exists(proc_path)
-
-
     def kill_process(self, process):
-        if self._is_process_running(process):
-            os.kill(process.pid, signal.SIGCONT)
-            os.kill(process.pid, signal.SIGTERM)
+        signal_queue = (signal.SIGCONT, signal.SIGTERM, signal.SIGKILL)
+        utils.nuke_pid(process.pid, signal_queue=signal_queue)
 
 
     def _convert_old_host_log(self, log_path):
@@ -258,7 +251,7 @@ class DroneUtility(object):
         contents of the directory are copied; otherwise, the directory iself is
         copied.
         """
-        if source_path.rstrip('/') == destination_path.rstrip('/'):
+        if self._same_file(source_path, destination_path):
             return
         self._ensure_directory_exists(os.path.dirname(destination_path))
         if source_path.endswith('/'):
@@ -277,6 +270,17 @@ class DroneUtility(object):
             os.symlink(link_to, destination_path)
         else:
             shutil.copy(source_path, destination_path)
+
+
+    def _same_file(self, source_path, destination_path):
+        """Checks if the source and destination are the same
+
+        Returns True if the destination is the same as the source, False
+        otherwise. Also returns False if the destination does not exist.
+        """
+        if not os.path.exists(destination_path):
+            return False
+        return os.path.samefile(source_path, destination_path)
 
 
     def wait_for_all_async_commands(self):

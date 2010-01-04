@@ -1,11 +1,11 @@
 package autotest.afe;
 
-import autotest.common.JSONArrayList;
 import autotest.common.Utils;
 import autotest.common.table.ArrayDataSource;
 import autotest.common.table.SelectionManager;
 import autotest.common.table.TableDecorator;
 import autotest.common.table.DataSource.DefaultDataCallback;
+import autotest.common.table.DataSource.Query;
 import autotest.common.table.DynamicTable.DynamicTableListener;
 import autotest.common.table.SelectionManager.SelectionListener;
 import autotest.common.ui.NotifyManager;
@@ -62,7 +62,7 @@ public class HostSelector implements ClickHandler {
     }
     
     private ArrayDataSource<JSONObject> selectedHostData =
-        new ArrayDataSource<JSONObject>(new String[] {"hostname", "platform"});
+        new ArrayDataSource<JSONObject>(new String[] {"hostname"});
     
     private Display display;
     private HostDataSource hostDataSource = new HostDataSource();
@@ -96,7 +96,7 @@ public class HostSelector implements ClickHandler {
         availableDecorator.addSelectionPanel(true);
         
         availableTable.addListener(new DynamicTableListener() {
-            public void onRowClicked(int rowIndex, JSONObject row) {
+            public void onRowClicked(int rowIndex, JSONObject row, boolean isRightClick) {
                 availableSelection.toggleSelected(row);
             } 
             
@@ -120,7 +120,7 @@ public class HostSelector implements ClickHandler {
         });
 
         selectedTable.addListener(new DynamicTableListener() {
-            public void onRowClicked(int rowIndex, JSONObject row) {
+            public void onRowClicked(int rowIndex, JSONObject row, boolean isRightClick) {
                 if (isMetaEntry(row) || isOneTimeHost(row)) {
                     deselectRow(row);
                     selectionRefresh();
@@ -161,15 +161,15 @@ public class HostSelector implements ClickHandler {
         // figure out which hosts exist in the system and which should be one-time hosts
         JSONObject params = new JSONObject();
         params.put("hostname__in", Utils.stringsToJSON(hosts));
-        hostDataSource.updateData(params, new DefaultDataCallback () {
+        hostDataSource.query(params, new DefaultDataCallback () {
             @Override
-            public void onGotData(int totalCount) {
-                hostDataSource.getPage(null, null, null, this);
+            public void onQueryReady(Query query) {
+                query.getPage(null, null, null, this);
             }
 
             @Override
-            public void handlePage(JSONArray data) {
-                processAddByHostname(hosts, new JSONArrayList<JSONObject>(data), allowOneTimeHosts);
+            public void handlePage(List<JSONObject> data) {
+                processAddByHostname(hosts, data, allowOneTimeHosts);
             }
         });
     }

@@ -19,16 +19,13 @@ SiteHost = utils.import_site_class(
     remote.RemoteHost)
 
 
-# this constant can be passed to run() to tee stdout/stdout to the logging
-# module.
-TEE_TO_LOGS = object()
-
-
 class AbstractSSHHost(SiteHost):
-    """ This class represents a generic implementation of most of the
+    """
+    This class represents a generic implementation of most of the
     framework necessary for controlling a host via ssh. It implements
     almost all of the abstract Host methods, except for the core
-    Host.run method. """
+    Host.run method.
+    """
 
     def _initialize(self, hostname, user="root", port=22, password="",
                     *args, **dargs):
@@ -41,17 +38,21 @@ class AbstractSSHHost(SiteHost):
 
 
     def _encode_remote_paths(self, paths, escape=True):
-        """ Given a list of file paths, encodes it as a single remote path, in
-        the style used by rsync and scp. """
+        """
+        Given a list of file paths, encodes it as a single remote path, in
+        the style used by rsync and scp.
+        """
         if escape:
             paths = [utils.scp_remote_escape(path) for path in paths]
         return '%s@%s:"%s"' % (self.user, self.hostname, " ".join(paths))
 
 
     def _make_rsync_cmd(self, sources, dest, delete_dest, preserve_symlinks):
-        """ Given a list of source paths and a destination path, produces the
+        """
+        Given a list of source paths and a destination path, produces the
         appropriate rsync command for copying them. Remote paths must be
-        pre-encoded. """
+        pre-encoded.
+        """
         ssh_cmd = make_ssh_command(self.user, self.port)
         if delete_dest:
             delete_flag = "--delete"
@@ -67,21 +68,25 @@ class AbstractSSHHost(SiteHost):
 
 
     def _make_scp_cmd(self, sources, dest):
-        """ Given a list of source paths and a destination path, produces the
+        """
+        Given a list of source paths and a destination path, produces the
         appropriate scp command for encoding it. Remote paths must be
-        pre-encoded. """
+        pre-encoded.
+        """
         command = "scp -rq -P %d %s '%s'"
         return command % (self.port, " ".join(sources), dest)
 
 
     def _make_rsync_compatible_globs(self, path, is_local):
-        """ Given an rsync-style path, returns a list of globbed paths
+        """
+        Given an rsync-style path, returns a list of globbed paths
         that will hopefully provide equivalent behaviour for scp. Does not
         support the full range of rsync pattern matching behaviour, only that
         exposed in the get/send_file interface (trailing slashes).
 
         The is_local param is flag indicating if the paths should be
-        interpreted as local or remote paths. """
+        interpreted as local or remote paths.
+        """
 
         # non-trailing slash paths should just work
         if len(path) == 0 or path[-1] != "/":
@@ -112,16 +117,20 @@ class AbstractSSHHost(SiteHost):
 
 
     def _make_rsync_compatible_source(self, source, is_local):
-        """ Applies the same logic as _make_rsync_compatible_globs, but
+        """
+        Applies the same logic as _make_rsync_compatible_globs, but
         applies it to an entire list of sources, producing a new list of
-        sources, properly quoted. """
+        sources, properly quoted.
+        """
         return sum((self._make_rsync_compatible_globs(path, is_local)
                     for path in source), [])
 
 
     def _set_umask_perms(self, dest):
-        """Given a destination file/dir (recursively) set the permissions on
-        all the files and directories to the max allowed by running umask."""
+        """
+        Given a destination file/dir (recursively) set the permissions on
+        all the files and directories to the max allowed by running umask.
+        """
 
         # now this looks strange but I haven't found a way in Python to _just_
         # get the umask, apparently the only option is to try to set it
@@ -202,9 +211,6 @@ class AbstractSSHHost(SiteHost):
                                          delete_dest, preserve_symlinks)
             utils.run(rsync)
         except error.CmdError, e:
-            # logging.warn("warning: rsync failed with: %s", e)
-            logging.info("attempting to copy with scp instead")
-
             # scp has no equivalent to --delete, just drop the entire dest dir
             if delete_dest and os.path.isdir(dest):
                 shutil.rmtree(dest)
@@ -269,9 +275,6 @@ class AbstractSSHHost(SiteHost):
                                          delete_dest, preserve_symlinks)
             utils.run(rsync)
         except error.CmdError, e:
-            # logging.warn("Command rsync failed with: %s", e)
-            logging.info("Attempting to copy with scp instead")
-
             # scp has no equivalent to --delete, just drop the entire dest dir
             if delete_dest:
                 is_dir = self.run("ls -d %s/" % dest,
@@ -288,11 +291,6 @@ class AbstractSSHHost(SiteHost):
                     utils.run(scp)
                 except error.CmdError, e:
                     raise error.AutoservRunError(e.args[0], e.args[1])
-
-        self.run('find "%s" -type d -print0 | xargs -0r chmod o+rx' % dest)
-        self.run('find "%s" -type f -print0 | xargs -0r chmod o+r' % dest)
-        if self.target_file_owner:
-            self.run('chown -R %s %s' % (self.target_file_owner, dest))
 
 
     def ssh_ping(self, timeout=5):
@@ -420,13 +418,11 @@ class AbstractSSHHost(SiteHost):
     def verify_software(self):
         super(AbstractSSHHost, self).verify_software()
         try:
-            autodir = autotest._get_autodir(self)
-            if autodir:
-                self.check_diskspace(autodir,
-                                     self.AUTOTEST_GB_DISKSPACE_REQUIRED)
+            self.check_diskspace(autotest.Autotest.get_install_dir(self),
+                                 self.AUTOTEST_GB_DISKSPACE_REQUIRED)
         except error.AutoservHostError:
             raise           # only want to raise if it's a space issue
-        except Exception:
+        except autotest.AutodirNotFoundError:
             # autotest dir may not exist, etc. ignore
             logging.debug('autodir space check exception, this is probably '
                           'safe to ignore\n' + traceback.format_exc())

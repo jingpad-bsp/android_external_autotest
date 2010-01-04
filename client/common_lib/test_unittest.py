@@ -19,7 +19,10 @@ class TestTestCase(unittest.TestCase):
             class MockProfilerManager(object):
                 def active(self):
                     return False
+                def present(self):
+                    return True
             self.job = MockJob()
+            self.job.default_profile_only = False
             self.job.profilers = MockProfilerManager()
             self._new_keyval = False
             self.iteration = 0
@@ -118,7 +121,7 @@ class Test_base_test_execute(TestTestCase):
 
 
     def test_execute_profile_only(self):
-        # test that profile_only=True works.  (same as iterations=0)
+        # test that profile_only=True works.
         self.god.stub_function(self.test, 'drop_caches_between_iterations')
         self.test.drop_caches_between_iterations.expect_call()
         self.test.run_once_profiling.expect_call(None)
@@ -127,6 +130,19 @@ class Test_base_test_execute(TestTestCase):
         self.test.postprocess.expect_call()
         self.test.process_failed_constraints.expect_call()
         self.test.execute(profile_only=True, iterations=2)
+        self.god.check_playback()
+
+
+    def test_execute_default_profile_only(self):
+        # test that profile_only=True works.
+        self.god.stub_function(self.test, 'drop_caches_between_iterations')
+        for _ in xrange(3):
+            self.test.drop_caches_between_iterations.expect_call()
+            self.test.run_once_profiling.expect_call(None)
+        self.test.postprocess.expect_call()
+        self.test.process_failed_constraints.expect_call()
+        self.test.job.default_profile_only = True
+        self.test.execute(iterations=3)
         self.god.check_playback()
 
 

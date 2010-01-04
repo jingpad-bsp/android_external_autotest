@@ -17,9 +17,8 @@ def get_num_test_views(**filter_data):
     return models.TestView.query_count(filter_data)
 
 
-def get_group_counts(group_by, header_groups=[], fixed_headers={},
-                     machine_label_headers={}, extra_select_fields={},
-                     **filter_data):
+def get_group_counts(group_by, header_groups=None, fixed_headers=None,
+                     extra_select_fields=None, **filter_data):
     """
     Queries against TestView grouping by the specified fields and computings
     counts for each group.
@@ -32,11 +31,6 @@ def get_group_counts(group_by, header_groups=[], fixed_headers={},
     * fixed_headers can map header fields to lists of values.  the header will
       guaranteed to return exactly those value.  this does not work together
       with header_groups.
-    * machine_label_headers can specify special headers to be constructed from
-      machine labels.  It should map arbitrary names to lists of machine labels.
-      a field will be created with the given name containing a comma-separated
-      list indicating which of the given machine labels are on each test.  this
-      field can then be grouped on.
 
     Returns a dictionary with two keys:
     * header_values contains a list of lists, one for each header group in
@@ -48,21 +42,19 @@ def get_group_counts(group_by, header_groups=[], fixed_headers={},
       The keys for the extra_select_fields are determined by the "AS" alias of
       the field.
     """
-    extra_select_fields = dict(extra_select_fields)
-    query = models.TestView.objects.get_query_set_with_joins(
-        filter_data, include_host_labels=bool(machine_label_headers))
-    query = models.TestView.query_objects(filter_data, initial_query=query)
+    query = models.TestView.objects.get_query_set_with_joins(filter_data)
+    # don't apply presentation yet, since we have extra selects to apply
+    query = models.TestView.query_objects(filter_data, initial_query=query,
+                                          apply_presentation=False)
     count_alias, count_sql = models.TestView.objects.get_count_sql(query)
-    extra_select_fields[count_alias] = count_sql
-    if 'test_idx' not in group_by:
-        extra_select_fields['test_idx'] = 'test_idx'
-    tko_rpc_utils.add_machine_label_headers(machine_label_headers,
-                                            extra_select_fields)
+    query = query.extra(select={count_alias: count_sql})
+    if extra_select_fields:
+        query = query.extra(select=extra_select_fields)
+    query = models.TestView.apply_presentation(query, filter_data)
 
     group_processor = tko_rpc_utils.GroupDataProcessor(query, group_by,
-                                                       header_groups,
-                                                       fixed_headers,
-                                                       extra_select_fields)
+                                                       header_groups or [],
+                                                       fixed_headers or {})
     group_processor.process_group_dicts()
     return rpc_utils.prepare_for_serialization(group_processor.get_info_dict())
 
@@ -71,12 +63,13 @@ def get_num_groups(group_by, **filter_data):
     """
     Gets the count of unique groups with the given grouping fields.
     """
-    query = models.TestView.query_objects(filter_data)
+    query = models.TestView.objects.get_query_set_with_joins(filter_data)
+    query = models.TestView.query_objects(filter_data, initial_query=query)
     return models.TestView.objects.get_num_groups(query, group_by)
 
 
 def get_status_counts(group_by, header_groups=[], fixed_headers={},
-                      machine_label_headers={}, **filter_data):
+                      **filter_data):
     """
     Like get_group_counts, but also computes counts of passed, complete (and
     valid), and incomplete tests, stored in keys "pass_count', 'complete_count',
@@ -84,13 +77,12 @@ def get_status_counts(group_by, header_groups=[], fixed_headers={},
     """
     return get_group_counts(group_by, header_groups=header_groups,
                             fixed_headers=fixed_headers,
-                            machine_label_headers=machine_label_headers,
                             extra_select_fields=tko_rpc_utils.STATUS_FIELDS,
                             **filter_data)
 
 
 def get_latest_tests(group_by, header_groups=[], fixed_headers={},
-                     machine_label_headers={}, extra_info=[], **filter_data):
+                     extra_info=[], **filter_data):
     """
     Similar to get_status_counts, but return only the latest test result per
     group.  It still returns the same information (i.e. with pass count etc.)
@@ -100,19 +92,18 @@ def get_latest_tests(group_by, header_groups=[], fixed_headers={},
                       field of the return dictionary.
     """
     # find latest test per group
-    query = models.TestView.objects.get_query_set_with_joins(
-        filter_data, include_host_labels=bool(machine_label_headers))
-    query = models.TestView.query_objects(filter_data, initial_query=query)
-    query.exclude(status__in=tko_rpc_utils._INVALID_STATUSES)
-    extra_fields = {'latest_test_idx' : 'MAX(%s)' %
-                    models.TestView.objects.get_key_on_this_table('test_idx')}
-    tko_rpc_utils.add_machine_label_headers(machine_label_headers,
-                                            extra_fields)
+    query = models.TestView.objects.get_query_set_with_joins(filter_data)
+    query = models.TestView.query_objects(filter_data, initial_query=query,
+                                          apply_presentation=False)
+    query = query.exclude(status__in=tko_rpc_utils._INVALID_STATUSES)
+    query = query.extra(
+            select={'latest_test_idx' : 'MAX(%s)' %
+                    models.TestView.objects.get_key_on_this_table('test_idx')})
+    query = models.TestView.apply_presentation(query, filter_data)
 
     group_processor = tko_rpc_utils.GroupDataProcessor(query, group_by,
                                                        header_groups,
-                                                       fixed_headers,
-                                                       extra_fields)
+                                                       fixed_headers)
     group_processor.process_group_dicts()
     info = group_processor.get_info_dict()
 
@@ -149,39 +140,6 @@ def get_job_ids(**filter_data):
             # a nonstandard job tag, i.e. from contributed results
             pass
     return list(job_ids)
-
-
-# iteration support
-
-def get_iteration_views(result_keys, **test_filter_data):
-    """
-    Similar to get_test_views, but returns a dict for each iteration rather
-    than for each test.  Accepts the same filter data as get_test_views.
-
-    @param result_keys: list of iteration result keys to include.  Only
-            iterations contains all these keys will be included.
-    @returns a list of dicts, one for each iteration.  Each dict contains:
-            * all the same information as get_test_views()
-            * all the keys specified in result_keys
-            * an additional key 'iteration_index'
-    """
-    iteration_views = tko_rpc_utils.get_iteration_view_query(result_keys,
-                                                             test_filter_data)
-
-    final_filter_data = tko_rpc_utils.extract_presentation_params(
-            test_filter_data)
-    final_filter_data['no_distinct'] = True
-    fields = (models.TestView.get_field_dict().keys() + result_keys +
-              ['iteration_index'])
-    iteration_dicts = models.TestView.list_objects(
-            final_filter_data, initial_query=iteration_views, fields=fields)
-    return rpc_utils.prepare_for_serialization(iteration_dicts)
-
-
-def get_num_iteration_views(result_keys, **test_filter_data):
-    iteration_views = tko_rpc_utils.get_iteration_view_query(result_keys,
-                                                             test_filter_data)
-    return iteration_views.count()
 
 
 # test detail view
@@ -343,7 +301,7 @@ def test_label_remove_tests(label_id, **test_filter_data):
     extra_where = test_filter_data.get('extra_where', '')
     if extra_where:
         extra_where = '(' + extra_where + ') AND '
-    extra_where += 'test_labels.id = %s' % label.id
+    extra_where += 'tko_test_labels.id = %s' % label.id
     test_filter_data['extra_where'] = extra_where
     test_ids = models.TestView.objects.query_test_ids(test_filter_data)
 
@@ -425,7 +383,7 @@ def get_static_data():
         'iozone' : '32768-4096-fwrite'
     }
 
-    perf_view = [
+    tko_perf_view = [
         ['Test Index', 'test_idx'],
         ['Job Index', 'job_idx'],
         ['Test Name', 'test_name'],
@@ -459,8 +417,8 @@ def get_static_data():
     result['test_labels'] = get_test_labels(sort_by=['name'])
     result['current_user'] = {'login' : thread_local.get_user()}
     result['benchmark_key'] = benchmark_key
-    result['perf_view'] = perf_view
-    result['test_view'] = model_fields
+    result['tko_perf_view'] = tko_perf_view
+    result['tko_test_view'] = model_fields
     result['preconfigs'] = preconfigs.manager.all_preconfigs()
     result['motd'] = rpc_utils.get_motd()
 

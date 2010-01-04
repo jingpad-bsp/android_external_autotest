@@ -5,7 +5,7 @@ only RPC interface functions go into that file.
 
 __author__ = 'showard@google.com (Steve Howard)'
 
-import datetime, os
+import datetime, os, sys
 import django.http
 from autotest_lib.frontend.afe import models, model_logic
 
@@ -100,9 +100,11 @@ def extra_job_filters(not_yet_run=False, running=False, finished=False):
                 (running and finished)), ('Cannot specify more than one '
                                           'filter to this function')
 
-    not_queued = ('(SELECT job_id FROM host_queue_entries WHERE status != "%s")'
+    not_queued = ('(SELECT job_id FROM afe_host_queue_entries '
+                  'WHERE status != "%s")'
                   % models.HostQueueEntry.Status.QUEUED)
-    not_finished = '(SELECT job_id FROM host_queue_entries WHERE not complete)'
+    not_finished = ('(SELECT job_id FROM afe_host_queue_entries '
+                    'WHERE not complete)')
 
     if not_yet_run:
         where = ['id NOT IN ' + not_queued]
@@ -121,7 +123,7 @@ def extra_host_filters(multiple_labels=()):
     labels.
     """
     extra_args = {}
-    where_str = ('hosts.id in (select host_id from hosts_labels '
+    where_str = ('afe_hosts.id in (select host_id from afe_hosts_labels '
                  'where label_id=%s)')
     extra_args['where'] = [where_str] * len(multiple_labels)
     extra_args['params'] = [models.Label.smart_get(label).id
@@ -144,8 +146,8 @@ def get_host_query(multiple_labels, exclude_only_if_needed_labels,
                     str(label['id'])
                     for label in only_if_needed_labels.values('id'))
             query = models.Host.objects.add_join(
-                query, 'hosts_labels', join_key='host_id',
-                join_condition=('hosts_labels_exclude_OIN.label_id IN (%s)'
+                query, 'afe_hosts_labels', join_key='host_id',
+                join_condition=('afe_hosts_labels_exclude_OIN.label_id IN (%s)'
                                 % only_if_needed_ids),
                 suffix='_exclude_OIN', exclude=True)
 
@@ -157,9 +159,10 @@ def get_host_query(multiple_labels, exclude_only_if_needed_labels,
                     str(atomic_group['id'])
                     for atomic_group in atomic_group_labels.values('id'))
             query = models.Host.objects.add_join(
-                    query, 'hosts_labels', join_key='host_id',
-                    join_condition=('hosts_labels_exclude_AG.label_id IN (%s)'
-                                    % atomic_group_label_ids),
+                    query, 'afe_hosts_labels', join_key='host_id',
+                    join_condition=(
+                            'afe_hosts_labels_exclude_AG.label_id IN (%s)'
+                            % atomic_group_label_ids),
                     suffix='_exclude_AG', exclude=True)
 
     assert 'extra_args' not in filter_data
@@ -430,6 +433,20 @@ def get_job_info(job, preserve_metahosts=False, queue_entry_filter_data=None):
     return info
 
 
+def check_for_duplicate_hosts(host_objects):
+    host_ids = set()
+    duplicate_hostnames = set()
+    for host in host_objects:
+        if host.id in host_ids:
+            duplicate_hostnames.add(host.hostname)
+        host_ids.add(host.id)
+
+    if duplicate_hostnames:
+        raise model_logic.ValidationError(
+                {'hosts' : 'Duplicate hosts: %s'
+                 % ', '.join(duplicate_hostnames)})
+
+
 def create_new_job(owner, options, host_objects, metahost_objects,
                    atomic_group=None):
     labels_by_name = dict((label.name, label)
@@ -468,6 +485,7 @@ def create_new_job(owner, options, host_objects, metahost_objects,
                      'atomic group was specified for this job.' %
                      (', '.join(unusable_host_names),)})
 
+    check_for_duplicate_hosts(host_objects)
 
     check_job_dependencies(host_objects, dependencies)
     options['dependencies'] = [labels_by_name[label_name]
@@ -605,3 +623,19 @@ def interleave_entries(queue_entries, special_tasks):
             special_task_index += 1
 
     return interleaved_entries
+
+
+def get_sha1_hash(source):
+    """Gets the SHA-1 hash of the source string
+
+    @param source The string to hash
+    """
+    if sys.version_info < (2,5):
+        import sha
+        digest = sha.new()
+    else:
+        import hashlib
+        digest = hashlib.sha1()
+
+    digest.update(source)
+    return digest.hexdigest()

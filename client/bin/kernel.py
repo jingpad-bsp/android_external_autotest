@@ -434,9 +434,8 @@ class kernel(object):
         args = ' '.join(arglist)
 
         # add the kernel entry
-        # add_kernel(image, title='autotest', initrd='')
-        self.job.bootloader.add_kernel(self.image, tag, self.initrd, \
-                                        args = args, root = root)
+        self.job.bootloader.add_kernel(self.image, tag, initrd=self.initrd,
+                                       args=args, root=root)
 
 
     def get_kernel_build_arch(self, arch=None):
@@ -474,7 +473,9 @@ class kernel(object):
 
         for f in [self.build_dir + "/include/linux/version.h",
                   self.build_dir + "/include/linux/utsrelease.h",
-                  self.build_dir + "/include/linux/compile.h"]:
+                  self.build_dir + "/include/linux/compile.h",
+                  self.build_dir + "/include/generated/utsrelease.h",
+                  self.build_dir + "/include/generated/compile.h"]:
             if os.path.exists(f):
                 fd = open(f, 'r')
                 for line in fd.readlines():
@@ -624,7 +625,8 @@ class kernel(object):
 
 
 class rpm_kernel(object):
-    """ Class for installing rpm kernel package
+    """
+    Class for installing a binary rpm kernel package
     """
 
     def __init__(self, job, rpm_package, subdir):
@@ -636,6 +638,13 @@ class rpm_kernel(object):
             utils.system('rm -rf ' + self.log_dir)
         os.mkdir(self.log_dir)
         self.installed_as = None
+
+
+    def build(self, *args, **dargs):
+        """
+        Dummy function, binary kernel so nothing to build.
+        """
+        pass
 
 
     @log.record
@@ -719,8 +728,8 @@ class rpm_kernel(object):
         args = ' '.join(arglist)
 
         # add the kernel entry
-        self.job.bootloader.add_kernel(self.image, tag, self.initrd,
-                                       args = args, root = root)
+        self.job.bootloader.add_kernel(self.image, tag, initrd=self.initrd,
+                                       args=args, root=root)
 
 
     def boot(self, args='', ident=True):

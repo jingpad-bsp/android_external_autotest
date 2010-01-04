@@ -84,15 +84,9 @@ def _autotest_logging_handle_error(self, record):
         sys.stderr.write('Exception occurred formatting message: '
                          '%r using args %r\n' % (record.msg, record.args))
         traceback.print_stack()
+        sys.stderr.write('-' * 50 + '\n')
+        traceback.print_exc()
         sys.stderr.write('Future logging formatting exceptions disabled.\n')
-
-    if root_module_name == 'autotest_lib':
-        # Allow locally installed third party packages to be found
-        # before any that are installed on the system itself when not.
-        # running as a client.
-        # This is primarily for the benefit of frontend and tko so that they
-        # may use libraries other than those available as system packages.
-        sys.path.insert(0, os.path.join(base_path, "site-packages"))
 
 
 def _monkeypatch_logging_handle_error():

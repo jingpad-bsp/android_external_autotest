@@ -116,9 +116,12 @@ def postprocess_vm(test, params, env, name):
     vm.send_monitor_cmd("screendump %s" % scrdump_filename)
 
     if params.get("kill_vm") == "yes":
-        if not kvm_utils.wait_for(vm.is_dead,
-                float(params.get("kill_vm_timeout", 0)), 0.0, 1.0,
-                "Waiting for VM to kill itself..."):
+        kill_vm_timeout = float(params.get("kill_vm_timeout", 0))
+        if kill_vm_timeout:
+            logging.debug("'kill_vm' specified; waiting for VM to shut down "
+                          "before killing it...")
+            kvm_utils.wait_for(vm.is_dead, kill_vm_timeout, 0, 1)
+        else:
             logging.debug("'kill_vm' specified; killing VM...")
         vm.destroy(gracefully = params.get("kill_vm_gracefully") == "yes")
 
@@ -267,6 +270,11 @@ def postprocess(test, params, env):
     """
     process(test, params, env, postprocess_image, postprocess_vm)
 
+    # Warn about corrupt PPM files
+    for f in glob.glob(os.path.join(test.debugdir, "*.ppm")):
+        if not ppm_utils.image_verify_ppm_file(f):
+            logging.warn("Found corrupt PPM file: %s", f)
+
     # Should we convert PPM files to PNG format?
     if params.get("convert_ppm_files_to_png") == "yes":
         logging.debug("'convert_ppm_files_to_png' specified; converting PPM"
@@ -292,6 +300,18 @@ def postprocess(test, params, env):
         process_command(test, params, env, params.get("post_command"),
                         int(params.get("post_command_timeout", "600")),
                         params.get("post_command_noncritical") == "yes")
+
+    # Kill all unresponsive VMs
+    if params.get("kill_unresponsive_vms") == "yes":
+        logging.debug("'kill_unresponsive_vms' specified; killing all VMs "
+                      "that fail to respond to a remote login request...")
+        for vm in kvm_utils.env_get_all_vms(env):
+            if vm.is_alive():
+                session = vm.remote_login()
+                if session:
+                    session.close()
+                else:
+                    vm.destroy(gracefully=False)
 
     # Kill the tailing threads of all VMs
     for vm in kvm_utils.env_get_all_vms(env):

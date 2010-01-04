@@ -6,32 +6,6 @@ from autotest_lib.frontend.afe import models
 from autotest_lib.client.common_lib.test_utils import mock
 
 class FrontendTestMixin(object):
-    _test_db_initialized = False
-
-    def _initialize_test_db(self):
-        if self._test_db_initialized:
-            return
-
-        temp_fd, test_db_file = tempfile.mkstemp(suffix='.frontend_test')
-        FrontendTestMixin._test_db_file = test_db_file
-        os.close(temp_fd)
-
-        def cleanup_test_db():
-            os.remove(test_db_file)
-        atexit.register(cleanup_test_db)
-
-        setup_test_environment.set_test_database(test_db_file)
-        setup_test_environment.set_up()
-        FrontendTestMixin._test_db_backup = (
-            setup_test_environment.backup_test_database())
-        FrontendTestMixin._test_db_initialized = True
-
-
-    def _open_test_db(self):
-        self._initialize_test_db()
-        setup_test_environment.restore_test_database(self._test_db_backup)
-
-
     def _fill_in_test_data(self):
         """Populate the test database with some hosts and labels."""
         acl_group = models.AclGroup.objects.create(name='my_acl')
@@ -45,9 +19,9 @@ class FrontendTestMixin(object):
         acl_group.hosts = self.hosts
         models.AclGroup.smart_get('Everyone').hosts = []
 
-        labels = [models.Label.objects.create(name=name) for name in
-                  ('label1', 'label2', 'label3', 'label4', 'label5', 'label6',
-                   'label7', 'label8')]
+        self.labels = [models.Label.objects.create(name=name) for name in
+                       ('label1', 'label2', 'label3', 'label4', 'label5',
+                        'label6', 'label7', 'label8')]
 
         platform = models.Label.objects.create(name='myplatform', platform=True)
         for host in self.hosts:
@@ -58,20 +32,20 @@ class FrontendTestMixin(object):
         atomic_group2 = models.AtomicGroup.objects.create(
                 name='atomic2', max_number_of_machines=2)
 
-        self.label3 = labels[2]
+        self.label3 = self.labels[2]
         self.label3.only_if_needed = True
         self.label3.save()
-        self.label4 = labels[3]
+        self.label4 = self.labels[3]
         self.label4.atomic_group = atomic_group1
         self.label4.save()
-        self.label5 = labels[4]
+        self.label5 = self.labels[4]
         self.label5.atomic_group = atomic_group1
         self.label5.save()
-        self.hosts[0].labels.add(labels[0])  # label1
-        self.hosts[1].labels.add(labels[1])  # label2
-        self.label6 = labels[5]
-        self.label7 = labels[6]
-        self.label8 = labels[7]
+        self.hosts[0].labels.add(self.labels[0])  # label1
+        self.hosts[1].labels.add(self.labels[1])  # label2
+        self.label6 = self.labels[5]
+        self.label7 = self.labels[6]
+        self.label8 = self.labels[7]
         self.label8.atomic_group = atomic_group2
         self.label8.save()
         for hostnum in xrange(4,7):  # host5..host7
@@ -89,11 +63,12 @@ class FrontendTestMixin(object):
         thread_local.set_user(self.user)
 
 
-    def _frontend_common_setup(self):
+    def _frontend_common_setup(self, fill_data=True):
         self.god = mock.mock_god()
-        self._open_test_db()
+        setup_test_environment.set_up()
         self._setup_dummy_user()
-        self._fill_in_test_data()
+        if fill_data:
+            self._fill_in_test_data()
 
 
     def _frontend_common_teardown(self):
@@ -103,7 +78,7 @@ class FrontendTestMixin(object):
 
 
     def _create_job(self, hosts=[], metahosts=[], priority=0, active=False,
-                    synchronous=False, atomic_group=None):
+                    synchronous=False, atomic_group=None, hostless=False):
         """
         Create a job row in the test database.
 
@@ -119,6 +94,8 @@ class FrontendTestMixin(object):
                 or None if atomic scheduling is not required.  Each metahost
                 becomes a request to schedule an entire atomic group.
                 This does not support creating an active atomic group job.
+        @param hostless - if True, this job is intended to be hostless (in that
+                case, hosts, metahosts, and atomic_group must all be empty)
 
         @returns A Django frontend.afe.models.Job instance.
         """
@@ -147,6 +124,10 @@ class FrontendTestMixin(object):
             models.HostQueueEntry.objects.create(job=job,
                                                  status=status,
                                                  atomic_group_id=atomic_group)
+
+        if hostless:
+            assert not (hosts or metahosts or atomic_group)
+            models.HostQueueEntry.objects.create(job=job, status=status)
         return job
 
 

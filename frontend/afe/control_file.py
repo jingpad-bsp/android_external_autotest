@@ -28,9 +28,14 @@ def step_init():
 
 
 def boot_kernel(kernel_info):
+    # remove kernels (and associated data) not referenced by the bootloader
+    for host in job.hosts:
+        host.cleanup_kernels()
+
     testkernel = job.kernel(kernel_info['version'])
     if kernel_info['config_file']:
         testkernel.config(kernel_info['config_file'])
+    testkernel.build()
     testkernel.install()
 
     cmdline = ' '.join((kernel_info.get('cmdline', ''), '%(kernel_args)s'))
@@ -51,9 +56,12 @@ kernel_install_control = \"""
 from autotest_lib.client.common_lib import error
 
 at = autotest.Autotest()
+
+%%(upload_config_func)s
 def install_kernel(machine, kernel_info):
     host = hosts.create_host(machine)
     at.install(host=host)
+    %%(call_upload_config)s
     at.run(kernel_install_control %%%%
            {'client_kernel_list': repr([kernel_info])}, host=host)
 
@@ -100,6 +108,40 @@ def step_test():
 CLIENT_STEP_TEMPLATE = "    job.next_step('step%d')\n"
 SERVER_STEP_TEMPLATE = '    step%d()\n'
 
+UPLOAD_CONFIG_FUNC = """
+def upload_kernel_config(host, kernel_info):
+    \"""
+    If the kernel_info['config_file'] is a URL it will be downloaded
+    locally and then uploaded to the client and a copy of the original
+    dictionary with the new path to the config file will be returned.
+    If the config file is not a URL the function returns the original
+    dictionary.
+    \"""
+    import os
+    from autotest_lib.client.common_lib import autotemp, utils
+
+    config_orig = kernel_info.get('config_file')
+
+    # if the file is not an URL then we assume it's a local client path
+    if not config_orig or not utils.is_url(config_orig):
+        return kernel_info
+
+    # download it locally (on the server) and send it to the client
+    config_tmp = autotemp.tempfile('kernel_config_upload', dir=job.tmpdir)
+    try:
+        utils.urlretrieve(config_orig, config_tmp.name)
+        config_new = os.path.join(host.get_autodir(), 'tmp',
+                                  os.path.basename(config_orig))
+        host.send_file(config_tmp.name, config_new)
+    finally:
+        config_tmp.clean()
+
+    return dict(kernel_info, config_file=config_new)
+
+"""
+
+CALL_UPLOAD_CONFIG = 'kernel_info = upload_kernel_config(host, kernel_info)'
+
 
 def kernel_config_file(kernel, platform):
     if (not kernel.endswith('.rpm') and platform and
@@ -116,15 +158,20 @@ def read_control_file(test):
 
 
 def get_kernel_stanza(kernel_list, platform=None, kernel_args='',
-                      is_server=False):
+                      is_server=False, upload_kernel_config=False):
 
     template_args = {'kernel_args' : kernel_args}
 
     # add 'config_file' keys to the kernel_info dictionaries
     new_kernel_list = []
     for kernel_info in kernel_list:
-        config_file = kernel_config_file(kernel_info['version'], platform)
-        new_kernel_info = dict(kernel_info, config_file=config_file)
+        if kernel_info.get('config_file'):
+            # already got a config file from the user
+            new_kernel_info = kernel_info
+        else:
+            config_file = kernel_config_file(kernel_info['version'], platform)
+            new_kernel_info = dict(kernel_info, config_file=config_file)
+
         new_kernel_list.append(new_kernel_info)
 
     if is_server:
@@ -132,6 +179,13 @@ def get_kernel_stanza(kernel_list, platform=None, kernel_args='',
         # leave client_kernel_list as a placeholder
         template_args['client_kernel_list'] = '%(client_kernel_list)s'
         template_args['server_kernel_list'] = repr(new_kernel_list)
+
+        if upload_kernel_config:
+            template_args['call_upload_config'] = CALL_UPLOAD_CONFIG
+            template_args['upload_config_func'] = UPLOAD_CONFIG_FUNC
+        else:
+            template_args['call_upload_config'] = ''
+            template_args['upload_config_func'] = ''
     else:
         template = CLIENT_KERNEL_TEMPLATE
         template_args['client_kernel_list'] = repr(new_kernel_list)
@@ -249,15 +303,18 @@ def indent_text(text, indent):
     return '\n'.join(res)
 
 
-def _get_profiler_commands(profilers, is_server):
+def _get_profiler_commands(profilers, is_server, profile_only):
     prepend, append = [], []
+    if profile_only is not None:
+        prepend.append("job.default_profile_only = %r" % profile_only)
     for profiler in profilers:
         prepend.append("job.profilers.add('%s')" % profiler.name)
         append.append("job.profilers.delete('%s')" % profiler.name)
     return prepend, append
 
 
-def _sanity_check_generate_control(is_server, client_control_file, kernels):
+def _sanity_check_generate_control(is_server, client_control_file, kernels,
+                                   upload_kernel_config):
     """
     Sanity check some of the parameters to generate_control().
 
@@ -287,9 +344,15 @@ def _sanity_check_generate_control(is_server, client_control_file, kernels):
                     'version' not in kernel_info):
                 raise kernel_error
 
+        if upload_kernel_config and not is_server:
+            raise model_logic.ValidationError(
+                    {'upload_kernel_config': 'Cannot use upload_kernel_config '
+                                             'with client side tests'})
+
 
 def generate_control(tests, kernels=None, platform=None, is_server=False,
-                     profilers=(), client_control_file=''):
+                     profilers=(), client_control_file='', profile_only=None,
+                     upload_kernel_config=False):
     """
     Generate a control file for a sequence of tests.
 
@@ -301,20 +364,28 @@ def generate_control(tests, kernels=None, platform=None, is_server=False,
     @param profilers A list of profiler objects to enable during the tests.
     @param client_control_file Contents of a client control file to run as the
             last test after everything in tests.  Requires is_server=False.
+    @param profile_only bool, should this control file run all tests in
+            profile_only mode by default
+    @param upload_kernel_config: if enabled it will generate server control
+            file code that uploads the kernel config file to the client and
+            tells the client of the new (local) path when compiling the kernel;
+            the tests must be server side tests
 
     @returns The control file text as a string.
     """
     _sanity_check_generate_control(is_server=is_server, kernels=kernels,
-                                   client_control_file=client_control_file)
+                                   client_control_file=client_control_file,
+                                   upload_kernel_config=upload_kernel_config)
 
     control_file_text = ''
     if kernels:
-        control_file_text = get_kernel_stanza(kernels, platform,
-                                              is_server=is_server)
+        control_file_text = get_kernel_stanza(
+                kernels, platform, is_server=is_server,
+                upload_kernel_config=upload_kernel_config)
     else:
         control_file_text = EMPTY_TEMPLATE
 
-    prepend, append = _get_profiler_commands(profilers, is_server)
+    prepend, append = _get_profiler_commands(profilers, is_server, profile_only)
 
     control_file_text += get_tests_stanza(tests, is_server, prepend, append,
                                           client_control_file)

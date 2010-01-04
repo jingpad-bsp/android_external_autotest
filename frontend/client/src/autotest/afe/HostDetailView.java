@@ -11,6 +11,7 @@ import autotest.common.table.SelectionManager;
 import autotest.common.table.SimpleFilter;
 import autotest.common.table.TableDecorator;
 import autotest.common.table.DataSource.DataCallback;
+import autotest.common.table.DataSource.Query;
 import autotest.common.table.DataSource.SortDirection;
 import autotest.common.table.DynamicTable.DynamicTableListener;
 import autotest.common.table.SelectionManager.SelectableRowFilter;
@@ -25,9 +26,12 @@ import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONBoolean;
 import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.json.client.JSONString;
+import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.CheckBox;
+
+import java.util.List;
 
 public class HostDetailView extends DetailView 
                             implements DataCallback, TableActionsListener, SelectableRowFilter {
@@ -42,9 +46,25 @@ public class HostDetailView extends DetailView
         public void onJobSelected(int jobId);
     }
     
-    static class HostJobsTable extends DynamicTable {
-        private static final DataSource normalDataSource = 
-            new RpcDataSource("get_host_queue_entries", "get_num_host_queue_entries");
+    private static class HostQueueEntryDataSource extends RpcDataSource {
+        public HostQueueEntryDataSource() {
+            super("get_host_queue_entries", "get_num_host_queue_entries");
+        }
+
+        @Override
+        protected List<JSONObject> handleJsonResult(JSONValue result) {
+            List<JSONObject> resultArray = super.handleJsonResult(result);
+            for (JSONObject row : resultArray) {
+                // get_host_queue_entries() doesn't return type, so fill it in for consistency with
+                // get_host_queue_entries_and_special_tasks()
+                row.put("type", new JSONString("Job"));
+            }
+            return resultArray;
+        }
+    }
+    
+    private static class HostJobsTable extends DynamicTable {
+        private static final DataSource normalDataSource = new HostQueueEntryDataSource();
         private static final DataSource dataSourceWithSpecialTasks = 
             new RpcDataSource("get_host_queue_entries_and_special_tasks",
                               "get_num_host_queue_entries_and_special_tasks");
@@ -101,11 +121,6 @@ public class HostDetailView extends DetailView
             row.put("job__id", jobId);
             row.put("job_owner", owner);
             row.put("job_name", name);
-
-            // get_host_queue_entries() doesn't return type, so fill it in for consistency
-            if (!row.containsKey("type")) {
-                row.put("type", new JSONString("Job"));
-            }
         }
     }
     
@@ -172,16 +187,20 @@ public class HostDetailView extends DetailView
         JSONObject params = new JSONObject();
         params.put("hostname", new JSONString(hostname));
         params.put("valid_only", JSONBoolean.getInstance(false));
-        hostDataSource.updateData(params, this);
+        hostDataSource.query(params, this);
     }
-    
-    public void onGotData(int totalCount) {
-        hostDataSource.getPage(null, null, null, this);
+
+    @Override
+    public void handleTotalResultCount(int totalCount) {}
+
+    @Override
+    public void onQueryReady(Query query) {
+        query.getPage(null, null, null, this);
     }
-    
-    public void handlePage(JSONArray data) {
+
+    public void handlePage(List<JSONObject> data) {
         try {
-            currentHostObject = Utils.getSingleValueFromArray(data).isObject();
+            currentHostObject = Utils.getSingleObjectFromList(data);
         }
         catch (IllegalArgumentException exc) {
             NotifyManager.getInstance().showError("No such host found");
@@ -189,11 +208,18 @@ public class HostDetailView extends DetailView
             return;
         }
         
+        String lockedText = Utils.jsonToString(currentHostObject.get(HostDataSource.LOCKED_TEXT));
+        if (currentHostObject.get("locked").isBoolean().booleanValue()) {
+            String lockedBy = Utils.jsonToString(currentHostObject.get("locked_by"));
+            String lockedTime = Utils.jsonToString(currentHostObject.get("lock_time"));
+            lockedText += ", by " + lockedBy + " on " + lockedTime;
+        }
+        
         showField(currentHostObject, "status", "view_host_status");
         showField(currentHostObject, "platform", "view_host_platform");
         showField(currentHostObject, HostDataSource.HOST_ACLS, "view_host_acls");
         showField(currentHostObject, HostDataSource.OTHER_LABELS, "view_host_labels");
-        showField(currentHostObject, HostDataSource.LOCKED_TEXT, "view_host_locked");
+        showText(lockedText, "view_host_locked");
         showField(currentHostObject, "protection", "view_host_protection");
         String pageTitle = "Host " + hostname;
         updateLockButton();
@@ -210,7 +236,7 @@ public class HostDetailView extends DetailView
         jobsTable.setRowsPerPage(JOBS_PER_PAGE);
         jobsTable.setClickable(true);
         jobsTable.addListener(new DynamicTableListener() {
-            public void onRowClicked(int rowIndex, JSONObject row) {
+            public void onRowClicked(int rowIndex, JSONObject row, boolean isRightClick) {
                 if (isJobRow(row)) {
                     JSONObject job = row.get("job").isObject();
                     int jobId = (int) job.get("id").isNumber().doubleValue();

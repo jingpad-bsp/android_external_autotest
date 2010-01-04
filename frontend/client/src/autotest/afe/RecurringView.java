@@ -2,7 +2,7 @@ package autotest.afe;
 
 import autotest.common.JsonRpcCallback;
 import autotest.common.JsonRpcProxy;
-import autotest.common.table.ListFilter;
+import autotest.common.table.Filter;
 import autotest.common.table.SelectionManager;
 import autotest.common.table.TableDecorator;
 import autotest.common.table.DynamicTable.DynamicTableListener;
@@ -23,7 +23,9 @@ import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.FlexTable;
 import com.google.gwt.user.client.ui.HasAlignment;
+import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.Label;
+import com.google.gwt.user.client.ui.Panel;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.Widget;
@@ -38,7 +40,7 @@ public class RecurringView extends TabView implements TableActionsListener {
     private RecurringSelectListener selectListener;
     private RecurringTable recurringTable;
     private TableDecorator tableDecorator;
-    private ListFilter ownerFilter;
+    private Filter ownerFilter;
     private SelectionManager selectionManager;
     private VerticalPanel createRecurringPanel;
     private Label jobIdLbl = new Label("");
@@ -75,7 +77,7 @@ public class RecurringView extends TabView implements TableActionsListener {
         recurringTable.setRowsPerPage(RECURRINGRUN_PER_PAGE);
         recurringTable.setClickable(true);
         recurringTable.addListener(new DynamicTableListener() {
-            public void onRowClicked(int rowIndex, JSONObject row) {
+            public void onRowClicked(int rowIndex, JSONObject row, boolean isRightClick) {
                 JSONObject job = row.get("job").isObject();
                 int jobId = (int) job.get("id").isNumber().doubleValue();
                 selectListener.onRecurringSelected(jobId);
@@ -92,9 +94,12 @@ public class RecurringView extends TabView implements TableActionsListener {
         addWidget(tableDecorator, "recurring_table");
 
 
-        ownerFilter = AfeUtils.getUserFilter("owner__login");
+        ownerFilter = new JobOwnerFilter("owner__login");
         recurringTable.addFilter(ownerFilter);
-        addWidget(ownerFilter.getWidget(), "recurring_user_list");
+        Panel ownerFilterPanel = new HorizontalPanel();
+        ownerFilterPanel.add(new Label("View recurring jobs for user:"));
+        ownerFilterPanel.add(ownerFilter.getWidget());
+        addWidget(ownerFilterPanel, "recurring_user_list");
 
         initRecurringPanel();
 

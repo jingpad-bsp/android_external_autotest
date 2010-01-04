@@ -277,6 +277,11 @@ class AutoservHardwareRepairRequestedError(AutoservError):
     pass
 
 
+class AutoservInstallError(AutoservError):
+    """Error occured while installing autotest on a host"""
+    pass
+
+
 # packaging system errors
 
 class PackagingError(AutotestError):
