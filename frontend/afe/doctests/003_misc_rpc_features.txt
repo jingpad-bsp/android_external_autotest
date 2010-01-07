@@ -95,11 +95,11 @@ def step_init():
         job.next_step(boot_kernel, kernel_info)
         job.next_step(step_test, kernel_info['version'])
     if len(kernel_list) > 1:
-        job.set_run_number(1)  # Include run numbers in output directory names.
-        job.show_kernel_in_test_tag(True)  # Include kernel in output dir name.
+        job.use_sequence_number = True  # include run numbers in directory names
 def boot_kernel(kernel_info):
     # remove kernels (and associated data) not referenced by the bootloader
-    job.host.cleanup_kernels()
+    for host in job.hosts:
+        host.cleanup_kernels()
     testkernel = job.kernel(kernel_info['version'])
     if kernel_info['config_file']:
         testkernel.config(kernel_info['config_file'])
@@ -110,6 +110,10 @@ def boot_kernel(kernel_info):
 def step_test(kernel_version):
     global kernel
     kernel = kernel_version  # Set the global in case anyone is using it.
+    if len(kernel_list) > 1:
+        # this is local to a machine, safe to assume there's only one host
+        host, = job.hosts
+        job.automatic_test_tag = host.get_kernel_ver()
     job.next_step('step0')
 def step0():
     job.run_test('testname')
@@ -134,8 +138,7 @@ def step_init():
         job.next_step(boot_kernel, kernel_info)
         job.next_step(step_test, kernel_info['version'])
     if len(kernel_list) > 1:
-        job.set_run_number(1)  # Include run numbers in output directory names.
-        job.show_kernel_in_test_tag(True)  # Include kernel in output dir name.
+        job.use_sequence_number = True  # include run numbers in directory names
 def boot_kernel(kernel_info):
     # remove kernels (and associated data) not referenced by the bootloader
     for host in job.hosts:
@@ -150,6 +153,10 @@ def boot_kernel(kernel_info):
 def step_test(kernel_version):
     global kernel
     kernel = kernel_version  # Set the global in case anyone is using it.
+    if len(kernel_list) > 1:
+        # this is local to a machine, safe to assume there's only one host
+        host, = job.hosts
+        job.automatic_test_tag = host.get_kernel_ver()
     pass
 """
 from autotest_lib.client.common_lib import error
@@ -186,7 +193,7 @@ def step_init():
         # a suffix to the test name otherwise we cannot run the same test on
         # different kernel versions
         if len(kernel_list) > 1:
-            job.set_test_tag_prefix(kernel_host.get_kernel_ver())
+            job.automatic_test_tag = kernel_host.get_kernel_ver()
         step_test()
 def step_test():
     step0()
@@ -209,11 +216,11 @@ def step_init():
         job.next_step(boot_kernel, kernel_info)
         job.next_step(step_test, kernel_info['version'])
     if len(kernel_list) > 1:
-        job.set_run_number(1)  # Include run numbers in output directory names.
-        job.show_kernel_in_test_tag(True)  # Include kernel in output dir name.
+        job.use_sequence_number = True  # include run numbers in directory names
 def boot_kernel(kernel_info):
     # remove kernels (and associated data) not referenced by the bootloader
-    job.host.cleanup_kernels()
+    for host in job.hosts:
+        host.cleanup_kernels()
     testkernel = job.kernel(kernel_info['version'])
     if kernel_info['config_file']:
         testkernel.config(kernel_info['config_file'])
@@ -224,6 +231,10 @@ def boot_kernel(kernel_info):
 def step_test(kernel_version):
     global kernel
     kernel = kernel_version  # Set the global in case anyone is using it.
+    if len(kernel_list) > 1:
+        # this is local to a machine, safe to assume there's only one host
+        host, = job.hosts
+        job.automatic_test_tag = host.get_kernel_ver()
     pass
 """
 from autotest_lib.client.common_lib import error
@@ -285,7 +296,7 @@ def step_init():
         # a suffix to the test name otherwise we cannot run the same test on
         # different kernel versions
         if len(kernel_list) > 1:
-            job.set_test_tag_prefix(kernel_host.get_kernel_ver())
+            job.automatic_test_tag = kernel_host.get_kernel_ver()
         step_test()
 def step_test():
     step0()
