@@ -1,0 +1,26 @@
+AUTHOR = "Eric Li <ericli@chromium.org>"
+NAME = "AutotestClientSetup"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "General"
+TEST_TYPE = "client"
+TIME = "MEDIUM"
+DOC="""Setup a bunch of autotest tests into a platform dependent chromeos build
+(chroot) environment. 
+"""
+
+from autotest_lib.client.bin import setup_job
+
+setup_job.initialize(job)
+
+# include all tests here.
+chromeos_tests=['bonnie',
+                'compilebench',
+                'dbench',
+                'disktest',
+                'ltp',
+                'unixbench',
+                ]
+
+for cros_test in chromeos_tests:
+    setup_job.setup_test(cros_test, job)
+
