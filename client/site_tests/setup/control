@@ -19,6 +19,7 @@ chromeos_tests=['bonnie',
                 'disktest',
                 'ltp',
                 'unixbench',
+                'storage_Fio',
                 ]
 
 for cros_test in chromeos_tests:

@@ -5,11 +5,29 @@
 import re
 import os
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
 
 class storage_Fio(test.test):
-    version = 1
+    version = 2
+
+    # http://brick.kernel.dk/snaps/fio-1.36.tar.bz2
+    def setup(self, tarball = 'fio-1.36.tar.bz2'):
+        # clean
+        if os.path.exists(self.srcdir):
+            utils.system('rm -rf %s' % self.srcdir)
+
+        tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
+        utils.extract_tarball_to_dir(tarball, self.srcdir)
+
+        self.job.setup_dep(['libaio'])
+        ldflags = '-L' + self.autodir + '/deps/libaio/lib'
+        cflags = '-I' + self.autodir + '/deps/libaio/include'
+        var_ldflags = 'LDFLAGS="' + ldflags + '"'
+        var_cflags  = 'CFLAGS="' + cflags + '"'
+
+        os.chdir(self.srcdir)
+        utils.system('%s %s make' % (var_ldflags, var_cflags))
 
     def __find_free_partition(self):
         """Locate the spare root partition that we didn't boot off"""
@@ -85,9 +103,11 @@ class storage_Fio(test.test):
 
 
     def __RunFio(self, test):
+        os.chdir(self.srcdir)
+        vars = 'LD_LIBRARY_PATH="' + self.autodir + '/deps/libaio/lib"'
         os.putenv('FILENAME', self.__filename)
         os.putenv('FILESIZE', str(self.__filesize))
-        fio = utils.run('fio "%s"' % os.path.join(self.bindir, test))
+        fio = utils.run(vars + ' ./fio "%s"' % os.path.join(self.bindir, test))
         return self.__parse_fio(fio.stdout)
 
 
