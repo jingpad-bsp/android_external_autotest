@@ -493,6 +493,7 @@ void appInit()
 void appDeinit()
 {
     int a;
+
     for (a = 0; a < SUPERSHAPE_COUNT; ++a)
         freeGLObject(sSuperShapeObjects[a]);
     freeGLObject(sGroundPlane);
