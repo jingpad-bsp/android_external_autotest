@@ -1,0 +1,34 @@
+AUTHOR="Kelly Lucas <kdlucas@google.com>"
+NAME="System Test Suite: Functional"
+TIME="LONG"
+TEST_CLASS="System"
+TEST_CATEGORY="Functional"
+TEST_TYPE="CLIENT"
+
+DOC="""\
+ChromeOS System Functional test suite.
+
+Runs a battery of functional tests.
+"""
+VERSION="1"
+
+# If we need to add a any profilers, we can add them now with a statement:
+# job.profilers.add(<profiler_name>)
+
+run = run_randomly()
+run.add('gpu_SanAngeles')
+run.add('init_DaemonsRespawnWhenKilledTestCase')
+run.add('login_AuthenticationEvnVarsTests')
+run.add('login_AuthenticationTests')
+run.add('login_PamModuleLoadTest')
+run.add('network_DhclientLeaseTestCase')
+run.add('networking_DisableInterface')
+run.add('networking_WifiAuthenticationTests')
+run.add('shutdown_NoOpenFilesTestCase')
+run.add('shutdown_UnmountCleanlyTestCase')
+run.add('system_AccurateTime')
+run.add('ui_ChromeKillRestart')
+run.add('ui_ScreenSaverRunning')
+
+# Run the tests here
+run.run(job.run_test)
