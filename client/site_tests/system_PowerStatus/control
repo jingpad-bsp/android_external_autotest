@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "PowerStatus"
+TIME = "SHORT"
+TEST_CATEGORY = "Benchmark"
+TEST_CLASS = "system"
+TEST_TYPE = "client"
+
+DOC = """
+This is a sample test that collects and reports the power status of the system.
+"""
+
+job.run_test('system_PowerStatus')
