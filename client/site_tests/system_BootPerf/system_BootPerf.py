@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re, utils
+import logging, re, time, utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
@@ -28,17 +28,17 @@ class system_BootPerf(test.test):
         self.__parse_uptime_login_prompt_ready(results)
         self.__parse_disk_login_prompt_ready(results)
         self.write_perf_keyval(results)
-        
+
         # Parse other metrics generated from dev library
-        
+
         # Wait for autotest metrics to come in (timeout in v1)
-        seconds = 30 
+        seconds = 30
         time.sleep(seconds)
-        
-        try:              
+
+        try:
             # Open the metrics file using with to ensure it's closed
-            with open('/tmp/.chromeos-metrics-autotest', 'r') as metrics_file:            
-            
+            with open('/tmp/.chromeos-metrics-autotest', 'r') as metrics_file:
+
                 # Write the metric out for autotest to see
                 for name_value in metrics_file:
                     name_value_split = name_value.split('=')
@@ -47,7 +47,7 @@ class system_BootPerf(test.test):
                     else:
                         name = name_value_split[0]
                         value = name_value_split[1]
-                    self.write_perf_keyval({name : value})                                  
+                    self.write_perf_keyval({name : value})
         except IOError, e:
             print e
             raise error.TestFail('ChromeOS metrics file is missing')
