@@ -45,6 +45,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+// With regular OpenGL (instead of GLES), we use glx library functions to
+// initialize and finalyze.
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -58,18 +61,22 @@
 
 
 int gAppAlive = 1;
-
-static const char sAppName[] =
-    "San Angeles Observation OpenGL ES version example (Linux)";
 static Display *sDisplay;
 static Window sWindow;
 static int sWindowWidth = WINDOW_DEFAULT_WIDTH;
 static int sWindowHeight = WINDOW_DEFAULT_HEIGHT;
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+static const char sAppName[] =
+    "San Angeles Observation OpenGL ES version example (Linux)";
 static EGLDisplay sEglDisplay = EGL_NO_DISPLAY;
 static EGLConfig sEglConfig;
 static EGLContext sEglContext = EGL_NO_CONTEXT;
 static EGLSurface sEglSurface = EGL_NO_SURFACE;
-
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+static const char sAppName[] =
+    "San Angeles Observation OpenGL version example (Linux)";
+static GLXContext sContext;
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
 static void checkGLErrors()
 {
@@ -78,6 +85,7 @@ static void checkGLErrors()
         fprintf(stderr, "GL Error: 0x%04x\n", (int)error);
 }
 
+#ifdef SAN_ANGELES_OBSERVATION_GLES
 
 static void checkEGLErrors()
 {
@@ -86,7 +94,6 @@ static void checkEGLErrors()
     if (error && error != EGL_SUCCESS)
         fprintf(stderr, "EGL Error: 0x%04x\n", (int)error);
 }
-
 
 // Initializes and opens both X11 display and OpenGL ES.
 static int initGraphics()
@@ -182,7 +189,6 @@ static int initGraphics()
     return success != EGL_FALSE;
 }
 
-
 static void deinitGraphics()
 {
     eglMakeCurrent(sEglDisplay, NULL, NULL, NULL);
@@ -192,6 +198,67 @@ static void deinitGraphics()
     importGLDeinit();
 }
 
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+
+// Initializes and opens both X11 display and OpenGL.
+static int initGraphics()
+{
+    sDisplay = XOpenDisplay(NULL);
+    if(sDisplay == NULL)
+    {
+        fprintf(stderr, "XOpenDisplay failed\n");
+        return 0;
+    }
+    Window root_window = DefaultRootWindow(sDisplay);
+    GLint att[] = { GLX_RGBA,
+                    GLX_DEPTH_SIZE,
+                    24,
+                    GLX_DOUBLEBUFFER,
+                    None };
+    XVisualInfo *vi = glXChooseVisual(sDisplay, 0, att);
+    if (vi == NULL)
+    {
+        fprintf(stderr, "glXChooseVisual failed\n");
+        return 0;
+    }
+
+    XSetWindowAttributes swa;
+    swa.colormap = XCreateColormap(sDisplay,
+                                   root_window,
+                                   vi->visual,
+                                   AllocNone);
+    XSizeHints sh;
+    sh.flags = PMinSize | PMaxSize;
+    sh.min_width = sh.max_width = sWindowWidth;
+    sh.min_height = sh.max_height = sWindowHeight;
+    swa.border_pixel = 0;
+    swa.event_mask = ExposureMask | StructureNotifyMask |
+                     KeyPressMask | ButtonPressMask | ButtonReleaseMask;
+    sWindow = XCreateWindow(sDisplay, root_window,
+                            0, 0, sWindowWidth, sWindowHeight,
+                            0, vi->depth, InputOutput, vi->visual,
+                            CWBorderPixel | CWColormap | CWEventMask,
+                            &swa);
+    XMapWindow(sDisplay, sWindow);
+    XSetStandardProperties(sDisplay, sWindow, sAppName, sAppName,
+                           None, (void *)0, 0, &sh);
+
+    sContext = glXCreateContext(sDisplay, vi, NULL, GL_TRUE);
+    glXMakeCurrent(sDisplay, sWindow, sContext);
+
+    glEnable(GL_DEPTH_TEST);
+    return 1;
+}
+
+static void deinitGraphics()
+{
+    glXMakeCurrent(sDisplay, None, NULL);
+    glXDestroyContext(sDisplay, sContext);
+    XDestroyWindow(sDisplay, sWindow);
+    XCloseDisplay(sDisplay);
+}
+
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
 int main(int argc, char *argv[])
 {
@@ -234,9 +301,14 @@ int main(int argc, char *argv[])
             gettimeofday(&timeNow, NULL);
             appRender(timeNow.tv_sec * 1000 + timeNow.tv_usec / 1000,
                       sWindowWidth, sWindowHeight);
+#ifdef SAN_ANGELES_OBSERVATION_GLES
             checkGLErrors();
             eglSwapBuffers(sEglDisplay, sEglSurface);
             checkEGLErrors();
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+            glXSwapBuffers(sDisplay, sWindow);
+            checkGLErrors();
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
         }
     }
 
@@ -245,3 +317,4 @@ int main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
+

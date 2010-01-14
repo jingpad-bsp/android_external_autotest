@@ -1,9 +1,24 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-LINK_OPTION = -L/usr/X11R6/lib -lX11 -lm -ldl
-SRCS = demo.c importgl.c app-linux.c
+LD_OPT_GL = -L/usr/X11R6/lib -lX11 -lm -lGL -lGLU
+LD_OPT_ES = -L/usr/X11R6/lib -lX11 -lm -ldl
+SRCS_GL = demo.c app-linux.c fixedpoint-funcs.c
+SRCS_ES = demo.c app-linux.c importgl.c
+TARGET_GL = SanOGL
+TARGET_ES = SanOGLES
+GLES = -D SAN_ANGELES_OBSERVATION_GLES
 
-SanOGL: $(SRCS)
-	gcc -m32 -O3 -o $@ $^ -Iinclude -Wall $(LINK_OPTION)
+all: $(TARGET_GL) $(TARGET_ES)
+
+$(TARGET_GL): $(SRCS_GL)
+	$(CC) -m32 -O3 -o $@ $^ -Iinclude -Wall $(LD_OPT_GL)
+
+$(TARGET_ES): $(SRCS_ES)
+	$(CC) -m32 -O3 $(GLES) -o $@ $^ -Iinclude -Wall $(LD_OPT_ES)
+
+clean:
+	$(RM) $(TARGET_GL)
+	$(RM) $(TARGET_ES)
+	

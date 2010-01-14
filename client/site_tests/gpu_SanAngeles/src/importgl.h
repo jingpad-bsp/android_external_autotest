@@ -25,11 +25,11 @@
 #ifndef IMPORTGL_H_INCLUDED
 #define IMPORTGL_H_INCLUDED
 
+#ifdef SAN_ANGELES_OBSERVATION_GLES
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 #include <GLES/gl.h>
 #include <GLES/egl.h>
@@ -164,5 +164,39 @@ FNDEF(void, glViewport, (GLint x, GLint y, GLsizei width, GLsizei height));
 }
 #endif
 
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+
+// We add support for GLES compact type GLfixed and GLclampx,
+// and corresponding x-postfix functions.
+
+#include<GL/gl.h>
+#include<GL/glx.h>
+#include<GL/glu.h>
+
+#undef GLfixed
+#undef GLclampx
+
+#undef glScalex
+#undef glTranslatex
+#undef glRotatex
+#undef glColor4x
+#undef glClearColorx
+#undef glLightxv
+#undef glMaterialx
+#undef glMaterialxv
+
+typedef GLint GLfixed;
+typedef GLint GLclampx;
+
+extern void glScalex(GLfixed x, GLfixed y, GLfixed z);
+extern void glTranslatex(GLfixed x, GLfixed y, GLfixed z);
+extern void glRotatex(GLfixed angle, GLfixed x, GLfixed y, GLfixed z);
+extern void glColor4x(GLfixed r, GLfixed g, GLfixed b, GLfixed a);
+extern void glClearColorx(GLclampx red, GLclampx green, GLclampx blue, GLclampx alpha);
+extern void glLightxv(GLenum light, GLenum pname, GLfixed* params);
+extern void glMaterialx(GLenum face, GLenum pname, GLfixed param);
+extern void glMaterialxv(GLenum face, GLenum pname, GLfixed* param);
+
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
 #endif // !IMPORTGL_H_INCLUDED

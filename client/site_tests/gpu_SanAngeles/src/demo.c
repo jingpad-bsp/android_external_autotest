@@ -22,6 +22,9 @@
  * $Revision: 1.10 $
  */
 
+// The main thing here is to use GLfloat instead of GLfixed for vertex and
+// normal data.
+
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
@@ -54,6 +57,7 @@ static unsigned long randomUInt()
     return sRandomSeed >> 16;
 }
 
+#ifdef SAN_ANGELES_OBSERVATION_GLES
 
 // Capped conversion from float to fixed.
 static long floatToFixed(float value)
@@ -64,6 +68,29 @@ static long floatToFixed(float value)
 }
 
 #define FIXED(value) floatToFixed(value)
+
+#endif  // SAN_ANGELES_OBSERVATION_GLES
+
+
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+
+typedef GLfixed VertexDataType;
+#define VERTEX_DATA_FLAG GL_FIXED
+#define VERTEX_DATA_MAP(x) FIXED(x)
+typedef GLfixed NormalDataType;
+#define NORMAL_DATA_FLAG GL_FIXED
+#define NORMAL_DATA_MAP(x) FIXED(x)
+
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+
+typedef GLfloat VertexDataType;
+#define VERTEX_DATA_FLAG GL_FLOAT
+#define VERTEX_DATA_MAP(x) (x)
+typedef GLfloat NormalDataType;
+#define NORMAL_DATA_FLAG GL_FLOAT
+#define NORMAL_DATA_MAP(x) (x)
+
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
 
 // Definition of one GL object in this demo.
@@ -78,9 +105,9 @@ typedef struct {
      * components per color with GL_UNSIGNED_BYTE datatype and stride 0.
      * Normal array is supposed to use GL_FIXED datatype and stride 0.
      */
-    GLfixed *vertexArray;
+    VertexDataType *vertexArray;
     GLubyte *colorArray;
-    GLfixed *normalArray;
+    NormalDataType *normalArray;
     GLint vertexComponents;
     GLsizei count;
 } GLOBJECT;
@@ -122,13 +149,15 @@ static GLOBJECT * newGLObject(long vertices, int vertexComponents,
         return NULL;
     result->count = vertices;
     result->vertexComponents = vertexComponents;
-    result->vertexArray = (GLfixed *)malloc(vertices * vertexComponents *
-                                            sizeof(GLfixed));
+    result->vertexArray = (VertexDataType *)
+                          malloc(vertices * vertexComponents *
+                                 sizeof(VertexDataType));
     result->colorArray = (GLubyte *)malloc(vertices * 4 * sizeof(GLubyte));
     if (useNormalArray)
     {
-        result->normalArray = (GLfixed *)malloc(vertices * 3 *
-                                                sizeof(GLfixed));
+        result->normalArray = (NormalDataType *)
+                               malloc(vertices * 3 *
+                                      sizeof(NormalDataType));
     }
     else
         result->normalArray = NULL;
@@ -147,7 +176,7 @@ static void drawGLObject(GLOBJECT *object)
 {
     assert(object != NULL);
 
-    glVertexPointer(object->vertexComponents, GL_FIXED,
+    glVertexPointer(object->vertexComponents, VERTEX_DATA_FLAG,
                     0, object->vertexArray);
     glColorPointer(4, GL_UNSIGNED_BYTE, 0, object->colorArray);
 
@@ -157,7 +186,7 @@ static void drawGLObject(GLOBJECT *object)
 
     if (object->normalArray)
     {
-        glNormalPointer(GL_FIXED, 0, object->normalArray);
+        glNormalPointer(NORMAL_DATA_FLAG, 0, object->normalArray);
         glEnableClientState(GL_NORMAL_ARRAY);
     }
     else
@@ -287,9 +316,9 @@ static GLOBJECT * createSuperShape(const float *params)
                      i < (currentVertex + 6) * 3;
                      i += 3)
                 {
-                    result->normalArray[i] = FIXED(n.x);
-                    result->normalArray[i + 1] = FIXED(n.y);
-                    result->normalArray[i + 2] = FIXED(n.z);
+                    result->normalArray[i] = NORMAL_DATA_MAP(n.x);
+                    result->normalArray[i + 1] = NORMAL_DATA_MAP(n.y);
+                    result->normalArray[i + 2] = NORMAL_DATA_MAP(n.z);
                 }
                 for (i = currentVertex * 4;
                      i < (currentVertex + 6) * 4;
@@ -306,29 +335,47 @@ static GLOBJECT * createSuperShape(const float *params)
                     result->colorArray[i + 2] = (GLubyte)color[2];
                     result->colorArray[i + 3] = 0;
                 }
-                result->vertexArray[currentVertex * 3] = FIXED(pa.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pa.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pa.z);
+                result->vertexArray[currentVertex * 3] =
+                    VERTEX_DATA_MAP(pa.x);
+                result->vertexArray[currentVertex * 3 + 1] =
+                    VERTEX_DATA_MAP(pa.y);
+                result->vertexArray[currentVertex * 3 + 2] =
+                    VERTEX_DATA_MAP(pa.z);
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pb.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pb.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pb.z);
+                result->vertexArray[currentVertex * 3] =
+                    VERTEX_DATA_MAP(pb.x);
+                result->vertexArray[currentVertex * 3 + 1] =
+                    VERTEX_DATA_MAP(pb.y);
+                result->vertexArray[currentVertex * 3 + 2] =
+                    VERTEX_DATA_MAP(pb.z);
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pd.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pd.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pd.z);
+                result->vertexArray[currentVertex * 3] =
+                    VERTEX_DATA_MAP(pd.x);
+                result->vertexArray[currentVertex * 3 + 1] =
+                    VERTEX_DATA_MAP(pd.y);
+                result->vertexArray[currentVertex * 3 + 2] =
+                    VERTEX_DATA_MAP(pd.z);
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pb.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pb.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pb.z);
+                result->vertexArray[currentVertex * 3] =
+                    VERTEX_DATA_MAP(pb.x);
+                result->vertexArray[currentVertex * 3 + 1] =
+                    VERTEX_DATA_MAP(pb.y);
+                result->vertexArray[currentVertex * 3 + 2] =
+                    VERTEX_DATA_MAP(pb.z);
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pc.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pc.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pc.z);
+                result->vertexArray[currentVertex * 3] =
+                    VERTEX_DATA_MAP(pc.x);
+                result->vertexArray[currentVertex * 3 + 1] =
+                    VERTEX_DATA_MAP(pc.y);
+                result->vertexArray[currentVertex * 3 + 2] =
+                    VERTEX_DATA_MAP(pc.z);
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pd.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pd.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pd.z);
+                result->vertexArray[currentVertex * 3] =
+                    VERTEX_DATA_MAP(pd.x);
+                result->vertexArray[currentVertex * 3 + 1] =
+                    VERTEX_DATA_MAP(pd.y);
+                result->vertexArray[currentVertex * 3 + 2] =
+                    VERTEX_DATA_MAP(pd.z);
                 ++currentVertex;
             } // r0 && r1 && r2 && r3
             ++currentQuad;
@@ -384,9 +431,9 @@ static GLOBJECT * createGroundPlane()
                 const int ym = y + ((0x31 >> a) & 1);
                 const float m = (float)(cos(xm * 2) * sin(ym * 4) * 0.75f);
                 result->vertexArray[currentVertex * 2] =
-                    FIXED(xm * scale + m);
+                    VERTEX_DATA_MAP(xm * scale + m);
                 result->vertexArray[currentVertex * 2 + 1] =
-                    FIXED(ym * scale + m);
+                    VERTEX_DATA_MAP(ym * scale + m);
                 ++currentVertex;
             }
             ++currentQuad;
@@ -414,13 +461,22 @@ static void drawGroundPlane()
 
 static void drawFadeQuad()
 {
-    static const GLfixed quadVertices[] = {
+    static const VertexDataType quadVertices[] = {
+#ifdef SAN_ANGELES_OBSERVATION_GLES
         -0x10000, -0x10000,
          0x10000, -0x10000,
         -0x10000,  0x10000,
          0x10000, -0x10000,
          0x10000,  0x10000,
         -0x10000,  0x10000
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+        -1, -1,
+         1, -1,
+        -1,  1,
+         1, -1,
+         1,  1,
+        -1,  1
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
     };
 
     const int beginFade = sTick - sCurrentCamTrackStartTick;
@@ -445,7 +501,8 @@ static void drawFadeQuad()
 
         glDisableClientState(GL_COLOR_ARRAY);
         glDisableClientState(GL_NORMAL_ARRAY);
-        glVertexPointer(2, GL_FIXED, 0, quadVertices);
+        glVertexPointer(2, VERTEX_DATA_FLAG, 0, quadVertices);
+
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glEnableClientState(GL_COLOR_ARRAY);
@@ -493,13 +550,12 @@ void appInit()
 void appDeinit()
 {
     int a;
-
     for (a = 0; a < SUPERSHAPE_COUNT; ++a)
         freeGLObject(sSuperShapeObjects[a]);
     freeGLObject(sGroundPlane);
 }
 
-
+#ifdef SAN_ANGELES_OBSERVATION_GLES
 static void gluPerspective(GLfloat fovy, GLfloat aspect,
                            GLfloat zNear, GLfloat zFar)
 {
@@ -514,7 +570,7 @@ static void gluPerspective(GLfloat fovy, GLfloat aspect,
                (GLfixed)(ymin * 65536), (GLfixed)(ymax * 65536),
                (GLfixed)(zNear * 65536), (GLfixed)(zFar * 65536));
 }
-
+#endif  // SAN_ANGELES_OBSERVATION_GLES
 
 static void prepareFrame(int width, int height)
 {
@@ -608,7 +664,7 @@ static void drawModels(float zScale)
     }
 }
 
-
+#ifdef SAN_ANGELES_OBSERVATION_GLES
 /* Following gluLookAt implementation is adapted from the
  * Mesa 3D Graphics library. http://www.mesa3d.org
  */
@@ -698,7 +754,7 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
                  (GLfixed)(-eyey * 65536),
                  (GLfixed)(-eyez * 65536));
 }
-
+#endif  // SAN_ANGELES_OBSERVATION_GLES
 
 static void camTrack()
 {
@@ -791,3 +847,4 @@ void appRender(long tick, int width, int height)
     // Draw fade quad over whole window (when changing cameras).
     drawFadeQuad();
 }
+
