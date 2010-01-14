@@ -27,6 +27,7 @@ class storage_Fio(test.test):
         var_cflags  = 'CFLAGS="' + cflags + '"'
 
         os.chdir(self.srcdir)
+        utils.system('patch -p1 < ../Makefile.patch')
         utils.system('%s %s make' % (var_ldflags, var_cflags))
 
     def __find_free_partition(self):
