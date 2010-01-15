@@ -121,6 +121,13 @@ class storage_Fio(test.test):
 
 
     def run_once(self):
+        # TODO(ericli): need to find a general solution to install dep packages
+        # when tests are pre-compiled, so setup() is not called from client any
+        # more.
+        dep = 'libaio'
+        dep_dir = os.path.join(self.autodir, 'deps', dep)
+        self.job.install_pkg(dep, 'dep', dep_dir)
+
         metrics = {
             'surfing': 'iops',
             'boot': 'bw',
