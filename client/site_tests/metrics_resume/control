@@ -1,0 +1,18 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "MetricsShutdown"
+TIME = "SHORT"
+TEST_CATEGORY = "Logging"
+TEST_CLASS = "system"
+TEST_TYPE = "client"
+
+DOC = """
+This test measures the amount of time it takes to resume from suspend
+Note to compile read_hwclock use:
+gcc -l rt -o read_hwclock read_hwclock.c
+"""
+
+job.run_test('metrics_resume')
