@@ -1,0 +1,9 @@
+AUTHOR = "kdlucas@chromium.org, Kelly Lucas"
+DOC = "Verifies large file creation on stateful and tmp partitions."
+NAME = "FILE_CREATION_TEST"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "General"
+TEST_TYPE = "client"
+
+job.run_test('filesystem_FileSize')
