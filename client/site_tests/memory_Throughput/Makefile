@@ -3,8 +3,12 @@
 # found in the LICENSE file.
 
 INCLUDE_PATH = -I../../../../../chrome/files/
-LINK_PATH = -L../../../../../chrome/
-LIBS = -lbase -lpthread -lrt
+LD_OPT = -L../../../../../chrome/ -lbase -lpthread -lrt
+TARGET = memory_Throughput
+SRC = memory_Throughput.cc
 
-memory_Throughput: memory_Throughput.cc
-	g++ $(INCLUDE_PATH) $(LINK_PATH) -O3 -m32 -o $@ $< $(LIBS)
+$(TARGET): $(SRC)
+	$(CXX) $(INCLUDE_PATH) -O3 -m32 -o $@ $^ $(LD_OPT)
+
+clean:
+	$(RM) $(TARGET)

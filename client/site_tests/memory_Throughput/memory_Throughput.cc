@@ -18,13 +18,14 @@
 //   3) ./memory_Throughput -1 16 17 18
 //
 // Output semantics:
-//   Action =   c  : mem copy
-//              s  : mem set
-//              w  : mem write
-//              r  : mem read
-//              rw : mem read/write
-//   Method =   s  : sequential
-//              r  : random
+//   Action =   cp   : mem copy
+//              set  : mem set
+//              w    : mem write
+//              r    : mem read
+//              rw   : mem read+write
+//              r7w3 : mem read:write = 0.7:0.3
+//   Method =   seq  : sequential
+//              ran  : random
 
 #ifdef __SSE2__
 #include <emmintrin.h>
@@ -77,6 +78,35 @@ void MemReadWriteSequential(int** table_dst,
   int i = 0;
   while (i < table_size) {
     REPEAT_OP_64(table_dst[i] = table_src[i]; ++i);
+  }
+}
+
+// This function builds a table so that 4/7 of the entries are NULL,
+// and 3/7 of the entries are non-NULL.
+void Read7Write3TableSetup(int** table,
+                           int table_size,
+                           const int* value_non_null) {
+  int* value_local = const_cast<int*>(value_non_null);
+  int i = 0;
+  while (i < table_size) {
+    if (i % 7 < 4)
+      table[i] = NULL;
+    else
+      table[i] = value_local;
+    ++i;
+  }
+}
+
+void MemRead7Write3Sequential(int** table,
+                              int table_size,
+                              const int* value) {
+  CHECK(table_size % 64 == 0);
+  int* value_local = const_cast<int*>(value);
+  int i = 0;
+  // We read every entry.  Among them 3/7 are non-NULL, and we reset their
+  // value.  Therefore, read : write = 1 : 3/7 = 7 : 3.
+  while (i < table_size) {
+    REPEAT_OP_64(if (table[i] != NULL) table[i] = value_local; ++i);
   }
 }
 
@@ -310,6 +340,36 @@ double TestMemReadWriteSequential(int** table_dst,
 }
 
 // This function collects the time needed for
+// sequential memory read/write (70% read and 30% write) operation.
+double TestMemRead7Write3Sequential(int** table,
+                                    int num_table_entry,
+                                    const int* value,
+                                    int num_iteration,
+                                    int num_warm_up_iteration) {
+  double time_passed = 0.0;
+  struct timeval time_start, time_end;
+  int byte_size = num_table_entry * sizeof(int*);
+  for (int iteration = 0; iteration < num_iteration; ++iteration) {
+    FlushCache(table, byte_size);
+    gettimeofday(&time_start, NULL);
+    MemRead7Write3Sequential(table, num_table_entry, value);
+    gettimeofday(&time_end, NULL);
+    if (iteration < num_warm_up_iteration) {
+      continue;
+    } else if (iteration == num_warm_up_iteration) {
+      time_passed = GetPeriodInUS(time_start, time_end);
+    } else {
+      time_passed = std::min(time_passed,
+                             GetPeriodInUS(time_start, time_end));
+    }
+  }
+  // We further divide the time by 10/7 because we read every entry, and
+  // write to about 3/7 of them, so total operations are 1 + 3/7 instead
+  // of 1.
+  return NormalizeTime(time_passed, byte_size) * 7 / 10;
+}
+
+// This function collects the time needed for
 // random memory read operation.
 double TestMemReadRandomWalk(int** table,
                              int num_table_entry,
@@ -416,7 +476,7 @@ int main(int argc, char* argv[]) {
                                        kValueInt,
                                        num_iteration,
                                        kNumWarmUpIterations);
-    printf("Action = s, MemSize = %d%c, Method = s, Time = %.2f\n",
+    printf("Action = set, BlockSize = %d%c, Method = seq, Time = %.2f\n",
            mem_size,
            size_letter,
            time_passed);
@@ -427,7 +487,7 @@ int main(int argc, char* argv[]) {
                                         num_table_entry,
                                         num_iteration,
                                         kNumWarmUpIterations);
-    printf("Action = c, MemSize = %d%c, Method = s, Time = %.2f\n",
+    printf("Action = cp, BlockSize = %d%c, Method = seq, Time = %.2f\n",
            mem_size,
            size_letter,
            time_passed);
@@ -438,18 +498,18 @@ int main(int argc, char* argv[]) {
                                          kValuePointer,
                                          num_iteration,
                                          kNumWarmUpIterations);
-    printf("Action = w, MemSize = %d%c, Method = s, Time = %.2f\n",
+    printf("Action = w, BlockSize = %d%c, Method = seq, Time = %.2f\n",
            mem_size,
            size_letter,
            time_passed);
 
-    // Test 1.4: mem read/write sequential.
+    // Test 1.4: mem read+write sequential.
     time_passed = TestMemReadWriteSequential(table2.get(),
                                              table.get(),
                                              num_table_entry,
                                              num_iteration,
                                              kNumWarmUpIterations);
-    printf("Action = rw, MemSize = %d%c, Method = s, Time = %.2f\n",
+    printf("Action = rw, BlockSize = %d%c, Method = seq, Time = %.2f\n",
            mem_size,
            size_letter,
            time_passed);
@@ -461,7 +521,21 @@ int main(int argc, char* argv[]) {
       printf("ERROR: [rw correctness check]\n");
     }
 
-    // Test 2: mem read randomwalk.
+    // Test 2: mem read/write (0.7/0.3) sequential.
+    Read7Write3TableSetup(table.get(),
+                          num_table_entry,
+                          kValuePointer);
+    time_passed = TestMemRead7Write3Sequential(table.get(),
+                                               num_table_entry,
+                                               kValuePointer+1,  // Any value.
+                                               num_iteration,
+                                               kNumWarmUpIterations);
+    printf("Action = r0.7w0.3, BlockSize = %d%c, Method = seq, Time = %.2f\n",
+           mem_size,
+           size_letter,
+           time_passed);
+
+    // Test 3: mem read randomwalk.
     int head_entry_index = RandomWalkTableSetup(table.get(), num_table_entry);
     if (head_entry_index < 0) {
       printf("ERROR: [randomwalk setup]\n");
@@ -473,7 +547,7 @@ int main(int argc, char* argv[]) {
                                           kNumWarmUpIterations);
       if (time_passed < 0)  // This should never happen.
         printf("ERROR: [randomwalk]\n");
-      printf("Action = r, MemSize = %d%c, Method = r, Time = %.2f\n",
+      printf("Action = r, BlockSize = %d%c, Method = ran, Time = %.2f\n",
              mem_size,
              size_letter,
              time_passed);
