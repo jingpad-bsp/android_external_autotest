@@ -81,7 +81,8 @@ public class DataTable extends Composite implements ClickHandler, ContextMenuHan
         
         table.setCellSpacing(0);
         table.setCellPadding(0);
-        table.setStyleName("data-table");
+        table.setStylePrimaryName("data-table");
+        table.addStyleDependentName("outlined");
 
         for (int i = 0; i < columns.length; i++) {
             table.setText(0, i, columns[i][1]);
@@ -146,7 +147,11 @@ public class DataTable extends Composite implements ClickHandler, ContextMenuHan
             
             String columnKey = columns[i][0];
             JSONValue columnValue = row.get(columnKey);
-            rowText[i] = Utils.jsonToString(columnValue);
+            if (columnValue == null || columnValue.isNull() != null) {
+                rowText[i] = "";
+            } else {
+                rowText[i] = Utils.jsonToString(columnValue);
+            }
         }
         return rowText;
     }

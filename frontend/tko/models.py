@@ -155,6 +155,16 @@ class Job(dbmodels.Model):
         db_table = 'tko_jobs'
 
 
+class JobKeyval(dbmodels.Model):
+    job = dbmodels.ForeignKey(Job)
+    key = dbmodels.CharField(max_length=90)
+    value = dbmodels.CharField(blank=True, max_length=300)
+
+
+    class Meta:
+        db_table = 'tko_job_keyvals'
+
+
 class Test(dbmodels.Model, model_logic.ModelExtensions,
            model_logic.ModelWithAttributes):
     test_idx = dbmodels.AutoField(primary_key=True)
@@ -330,8 +340,8 @@ class TestViewManager(TempManager):
                 TestLabel.objects.filter(name__in=label_names)
                 .values_list('name', 'id'))
         if len(label_ids) < len(set(label_names)):
-            raise ValueError('Not all labels found: %s' %
-                             ', '.join(label_names))
+                raise ValueError('Not all labels found: %s' %
+                                 ', '.join(label_names))
         return dict(name_and_id for name_and_id in label_ids)
 
 

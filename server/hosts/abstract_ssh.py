@@ -5,13 +5,15 @@ from autotest_lib.server.hosts import remote
 from autotest_lib.client.common_lib.global_config import global_config
 
 
-enable_master_ssh = global_config.get_config_value(
-    'AUTOSERV', 'enable_master_ssh', type=bool, default=False)
+enable_master_ssh = global_config.get_config_value('AUTOSERV',
+                                                   'enable_master_ssh',
+                                                    type=bool, default=False)
 
 
 def make_ssh_command(user="root", port=22, opts='', connect_timeout=30,
                      alive_interval=300):
-    base_command = ("/usr/bin/ssh -a -q -x %s -o BatchMode=yes "
+    base_command = ("/usr/bin/ssh -a -q -x %s -o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null -o BatchMode=yes "
                     "-o ConnectTimeout=%d -o ServerAliveInterval=%d "
                     "-l %s -p %d")
     assert isinstance(connect_timeout, (int, long))
@@ -41,6 +43,7 @@ class AbstractSSHHost(SiteHost):
         self.user = user
         self.port = port
         self.password = password
+        self._use_rsync = None
 
         """
         Master SSH connection background job, socket temp directory and socket
@@ -51,10 +54,15 @@ class AbstractSSHHost(SiteHost):
         self.master_ssh_tempdir = None
         self.master_ssh_option = ''
 
+
+    def use_rsync(self):
+        if self._use_rsync is not None:
+            return self._use_rsync
+
         # Check if rsync is available on the remote host. If it's not,
         # don't try to use it for any future file transfers.
-        self.use_rsync = self._check_rsync()
-        if not self.use_rsync:
+        self._use_rsync = self._check_rsync()
+        if not self._use_rsync:
             logging.warn("rsync not available on remote host %s -- disabled",
                          self.hostname)
 
@@ -107,7 +115,8 @@ class AbstractSSHHost(SiteHost):
         appropriate scp command for encoding it. Remote paths must be
         pre-encoded.
         """
-        command = "scp -rq %s -P %d %s '%s'"
+        command = ("scp -rq %s -o StrictHostKeyChecking=no "
+                   "-o UserKnownHostsFile=/dev/null -P %d %s '%s'")
         return command % (self.master_ssh_option,
                           self.port, " ".join(sources), dest)
 
@@ -244,17 +253,17 @@ class AbstractSSHHost(SiteHost):
         dest = os.path.abspath(dest)
 
         # If rsync is disabled or fails, try scp.
-        try_scp = not self.use_rsync
-        if self.use_rsync:
+        try_scp = True
+        if self.use_rsync():
             try:
                 remote_source = self._encode_remote_paths(source)
                 local_dest = utils.sh_escape(dest)
                 rsync = self._make_rsync_cmd([remote_source], local_dest,
                                              delete_dest, preserve_symlinks)
                 utils.run(rsync)
+                try_scp = False
             except error.CmdError, e:
                 logging.warn("trying scp, rsync failed: %s" % e)
-                try_scp = True
 
         if try_scp:
             # scp has no equivalent to --delete, just drop the entire dest dir
@@ -320,16 +329,16 @@ class AbstractSSHHost(SiteHost):
         remote_dest = self._encode_remote_paths([dest])
 
         # If rsync is disabled or fails, try scp.
-        try_scp = not self.use_rsync
-        if self.use_rsync:
+        try_scp = True
+        if self.use_rsync():
             try:
                 local_sources = [utils.sh_escape(path) for path in source]
                 rsync = self._make_rsync_cmd(local_sources, remote_dest,
                                              delete_dest, preserve_symlinks)
                 utils.run(rsync)
+                try_scp = False
             except error.CmdError, e:
                 logging.warn("trying scp, rsync failed: %s" % e)
-                try_scp = True
 
         if try_scp:
             # scp has no equivalent to --delete, just drop the entire dest dir
@@ -375,8 +384,7 @@ class AbstractSSHHost(SiteHost):
         """
         Check if the remote host is up.
 
-        Returns:
-                True if the remote host is up, False otherwise
+        @returns True if the remote host is up, False otherwise
         """
         try:
             self.ssh_ping()
@@ -393,12 +401,10 @@ class AbstractSSHHost(SiteHost):
         In fact, it will wait until an ssh connection to the remote
         host can be established, and getty is running.
 
-        Args:
-                timeout: time limit in seconds before returning even
-                        if the host is not up.
+        @param timeout time limit in seconds before returning even
+            if the host is not up.
 
-        Returns:
-                True if the host was found to be up, False otherwise
+        @returns True if the host was found to be up, False otherwise
         """
         if timeout:
             end_time = time.time() + timeout
@@ -415,21 +421,28 @@ class AbstractSSHHost(SiteHost):
         return False
 
 
-    def wait_down(self, timeout=None, warning_timer=None):
+    def wait_down(self, timeout=None, warning_timer=None, old_boot_id=None):
         """
         Wait until the remote host is down or the timeout expires.
 
-        In fact, it will wait until an ssh connection to the remote
-        host fails.
+        If old_boot_id is provided, this will wait until either the machine
+        is unpingable or self.get_boot_id() returns a value different from
+        old_boot_id. If the boot_id value has changed then the function
+        returns true under the assumption that the machine has shut down
+        and has now already come back up.
 
-        Args:
-            timeout: time limit in seconds before returning even
-                     if the host is still up.
-            warning_timer: time limit in seconds that will generate
-                     a warning if the host is not down yet.
+        If old_boot_id is None then until the machine becomes unreachable the
+        method assumes the machine has not yet shut down.
 
-        Returns:
-                True if the host was found to be down, False otherwise
+        @param timeout Time limit in seconds before returning even
+            if the host is still up.
+        @param warning_timer Time limit in seconds that will generate
+            a warning if the host is not down yet.
+        @param old_boot_id A string containing the result of self.get_boot_id()
+            prior to the host being told to shut down. Can be None if this is
+            not available.
+
+        @returns True if the host was found to be down, False otherwise
         """
         current_time = time.time()
         if timeout:
@@ -438,9 +451,25 @@ class AbstractSSHHost(SiteHost):
         if warning_timer:
             warn_time = current_time + warning_timer
 
+        if old_boot_id is not None:
+            logging.debug('Host %s pre-shutdown boot_id is %s',
+                          self.hostname, old_boot_id)
+
         while not timeout or current_time < end_time:
-            if not self.is_up():
+            try:
+                new_boot_id = self.get_boot_id()
+            except error.AutoservError:
+                logging.debug('Host %s is now unreachable over ssh, is down',
+                              self.hostname)
                 return True
+            else:
+                # if the machine is up but the boot_id value has changed from
+                # old boot id, then we can assume the machine has gone down
+                # and then already come back up
+                if old_boot_id is not None and old_boot_id != new_boot_id:
+                    logging.debug('Host %s now has boot_id %s and so must '
+                                  'have rebooted', self.hostname, new_boot_id)
+                    return True
 
             if warning_timer and current_time > warn_time:
                 self.record("WARN", None, "shutdown",

@@ -21,7 +21,7 @@
 # get directory of this test file; we'll need it later
 >>> import common
 >>> from autotest_lib.frontend.afe import test
->>> import os
+>>> import os, datetime
 >>> test_path = os.path.join(os.path.dirname(test.__file__),
 ...                                          'doctests')
 >>> test_path = os.path.abspath(test_path)
@@ -505,8 +505,10 @@ True
 >>> data['control_type']
 'Client'
 
->>> data['created_on'] #doctest: +ELLIPSIS
-'200...'
+>>> today = datetime.date.today()
+>>> data['created_on'].startswith(
+...         '%d-%02d-%02d' % (today.year, today.month, today.day))
+True
 
 # get_num_jobs - useful when dealing with large numbers of jobs
 >>> rpc_interface.get_num_jobs(name='my_job')
@@ -907,8 +909,8 @@ ValidationError: {'hosts': u'Host(s) "ahost1, ahost2" are atomic group hosts but
 >>> peon_user.access_level = 0
 >>> from autotest_lib.client.common_lib.test_utils import mock
 >>> god = mock.mock_god()
->>> god.stub_function(rpc_interface.thread_local, "get_user")
->>> rpc_interface.thread_local.get_user.expect_call().and_return(peon_user)
+>>> god.stub_function(models.User, "current_user")
+>>> models.User.current_user.expect_call().and_return(peon_user)
 >>> rpc_interface.abort_host_queue_entries(job__id=job_id)
 Traceback (most recent call last):
 AclAccessViolation: You cannot abort the following job entries: 8-debug_user/two-label

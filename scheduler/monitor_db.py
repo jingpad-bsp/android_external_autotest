@@ -2097,7 +2097,8 @@ class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
 
     def prolog(self):
         queued_key, queued_time = self._job_queued_keyval(self.job)
-        keyval_dict = {queued_key: queued_time}
+        keyval_dict = self.job.keyval_dict()
+        keyval_dict[queued_key] = queued_time
         group_name = self.queue_entries[0].get_group_name()
         if group_name:
             keyval_dict['host_group_name'] = group_name
@@ -2143,6 +2144,9 @@ class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
                 aborted_on.add(t)
 
         # extract some actual, unique aborted by value and write it out
+        # TODO(showard): this conditional is now obsolete, we just need to leave
+        # it in temporarily for backwards compatibility over upgrades.  delete
+        # soon.
         assert len(aborted_by) <= 1
         if len(aborted_by) == 1:
             aborted_by_value = aborted_by.pop()
@@ -2493,6 +2497,8 @@ class FinalReparseTask(SelfThrottledPostJobTask):
 
 
 class ArchiveResultsTask(SelfThrottledPostJobTask):
+    _ARCHIVING_FAILED_FILE = '.archiver_failed'
+
     def __init__(self, queue_entries):
         super(ArchiveResultsTask, self).__init__(queue_entries,
                                                  log_file_name='.archiving.log')
@@ -2508,7 +2514,8 @@ class ArchiveResultsTask(SelfThrottledPostJobTask):
         return [_autoserv_path , '-p',
                 '--pidfile-label=%s' % self._pidfile_label(), '-r', results_dir,
                 '--use-existing-results',
-                os.path.join('..', 'scheduler', 'archive_results.control.srv')]
+                os.path.join(drones.AUTOTEST_INSTALL_DIR, 'scheduler',
+                             'archive_results.control.srv')]
 
 
     @classmethod
@@ -2526,6 +2533,14 @@ class ArchiveResultsTask(SelfThrottledPostJobTask):
 
     def epilog(self):
         super(ArchiveResultsTask, self).epilog()
+        if not self.success and self._paired_with_monitor().has_process():
+            failed_file = os.path.join(self._working_directory(),
+                                       self._ARCHIVING_FAILED_FILE)
+            paired_process = self._paired_with_monitor().get_process()
+            _drone_manager.write_lines_to_file(
+                    failed_file, ['Archiving failed with exit code %s'
+                                  % self.monitor.exit_code()],
+                    paired_with_process=paired_process)
         self._set_all_statuses(self._final_status())
 
 
@@ -3200,6 +3215,10 @@ class Job(DBObject):
         self._owner_model = None # caches model instance of owner
 
 
+    def model(self):
+        return models.Job.objects.get(id=self.id)
+
+
     def owner_model(self):
         # work around the fact that the Job owner field is a string, not a
         # foreign key
@@ -3234,6 +3253,10 @@ class Job(DBObject):
         if update_queues:
             for queue_entry in self.get_host_queue_entries():
                 queue_entry.set_status(status)
+
+
+    def keyval_dict(self):
+        return self.model().keyval_dict()
 
 
     def _atomic_and_has_started(self):
@@ -3565,9 +3588,7 @@ class Job(DBObject):
 
     def request_abort(self):
         """Request that this Job be aborted on the next scheduler cycle."""
-        queue_entries = HostQueueEntry.fetch(where="job_id=%s" % self.id)
-        for hqe in queue_entries:
-            hqe.update_field('aborted', True)
+        self.model().abort()
 
 
     def schedule_delayed_callback_task(self, queue_entry):

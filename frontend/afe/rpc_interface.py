@@ -31,7 +31,6 @@ __author__ = 'showard@google.com (Steve Howard)'
 
 import datetime
 import common
-from autotest_lib.frontend import thread_local
 from autotest_lib.frontend.afe import models, model_logic
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.client.common_lib import global_config
@@ -289,7 +288,7 @@ def get_users(**filter_data):
 
 def add_acl_group(name, description=None):
     group = models.AclGroup.add_object(name=name, description=description)
-    group.users.add(thread_local.get_user())
+    group.users.add(models.User.current_user())
     return group.id
 
 
@@ -403,7 +402,8 @@ def create_job(name, priority, control_file, control_type,
                atomic_group_name=None, synch_count=None, is_template=False,
                timeout=None, max_runtime_hrs=None, run_verify=True,
                email_list='', dependencies=(), reboot_before=None,
-               reboot_after=None, parse_failed_repair=None, hostless=False):
+               reboot_after=None, parse_failed_repair=None, hostless=False,
+               keyvals=None):
     """\
     Create and enqueue a job.
 
@@ -425,6 +425,7 @@ def create_job(name, priority, control_file, control_type,
     @param parse_failed_repair if true, results of failed repairs launched by
     this job will be parsed as part of the job.
     @param hostless if true, create a hostless job
+    @param keyvals dict of keyvals to associate with the job
 
     @param hosts List of hosts to run job on.
     @param meta_hosts List where each entry is a label name, and for each entry
@@ -435,7 +436,7 @@ def create_job(name, priority, control_file, control_type,
 
     @returns The created Job id number.
     """
-    user = thread_local.get_user()
+    user = models.User.current_user()
     owner = user.login
     # input validation
     if not (hosts or meta_hosts or one_time_hosts or atomic_group_name
@@ -532,7 +533,8 @@ def create_job(name, priority, control_file, control_type,
                    dependencies=dependencies,
                    reboot_before=reboot_before,
                    reboot_after=reboot_after,
-                   parse_failed_repair=parse_failed_repair)
+                   parse_failed_repair=parse_failed_repair,
+                   keyvals=keyvals)
     return rpc_utils.create_new_job(owner=owner,
                                     options=options,
                                     host_objects=host_objects,
@@ -550,9 +552,8 @@ def abort_host_queue_entries(**filter_data):
     host_queue_entries = list(query.select_related())
     rpc_utils.check_abort_synchronous_jobs(host_queue_entries)
 
-    user = thread_local.get_user()
     for queue_entry in host_queue_entries:
-        queue_entry.abort(user)
+        queue_entry.abort()
 
 
 def reverify_hosts(**filter_data):
@@ -563,8 +564,9 @@ def reverify_hosts(**filter_data):
     """
     hosts = models.Host.query_objects(filter_data)
     models.AclGroup.check_for_acl_violation_hosts(hosts)
-    models.SpecialTask.schedule_special_task(hosts,
-                                             models.SpecialTask.Task.VERIFY)
+    for host in hosts:
+        models.SpecialTask.schedule_special_task(host,
+                                                 models.SpecialTask.Task.VERIFY)
     return list(sorted(host.hostname for host in hosts))
 
 
@@ -585,10 +587,13 @@ def get_jobs(not_yet_run=False, running=False, finished=False, **filter_data):
     jobs = list(models.Job.query_objects(filter_data))
     models.Job.objects.populate_relationships(jobs, models.Label,
                                               'dependencies')
+    models.Job.objects.populate_relationships(jobs, models.JobKeyval, 'keyvals')
     for job in jobs:
         job_dict = job.get_object_dict()
         job_dict['dependencies'] = ','.join(label.name
                                             for label in job.dependencies)
+        job_dict['keyvals'] = dict((keyval.key, keyval.value)
+                                   for keyval in job.keyvals)
         job_dicts.append(job_dict)
     return rpc_utils.prepare_for_serialization(job_dicts)
 
@@ -750,7 +755,7 @@ def delete_recurring_runs(**filter_data):
 
 
 def create_recurring_run(job_id, start_date, loop_period, loop_count):
-    owner = thread_local.get_user().login
+    owner = models.User.current_user().login
     job = models.Job.objects.get(id=job_id)
     return job.create_recurring_job(start_date=start_date,
                                     loop_period=loop_period,
@@ -813,7 +818,7 @@ def get_static_data():
     result['tests'] = get_tests(sort_by=['name'])
     result['profilers'] = get_profilers(sort_by=['name'])
     result['current_user'] = rpc_utils.prepare_for_serialization(
-        thread_local.get_user().get_object_dict())
+        models.User.current_user().get_object_dict())
     result['host_statuses'] = sorted(models.Host.Status.names)
     result['job_statuses'] = sorted(models.HostQueueEntry.Status.names)
     result['job_timeout_default'] = models.Job.DEFAULT_TIMEOUT
