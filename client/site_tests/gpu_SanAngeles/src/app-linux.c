@@ -171,6 +171,7 @@ static int initGraphics()
         XMapWindow(sDisplay, sWindow);
         XSetStandardProperties(sDisplay, sWindow, sAppName, sAppName,
                                None, (void *)0, 0, &sh);
+        XFree(vi);
     }
     if (success != EGL_FALSE)
     {
@@ -247,6 +248,8 @@ static int initGraphics()
     glXMakeCurrent(sDisplay, sWindow, sContext);
 
     glEnable(GL_DEPTH_TEST);
+
+    XFree(vi);
     return 1;
 }
 
@@ -274,10 +277,11 @@ int main(int argc, char *argv[])
 
     appInit();
 
+    double total_time = 0.0;
+    int num_frames = 0;
+
     while (gAppAlive)
     {
-        struct timeval timeNow;
-
         while (XPending(sDisplay))
         {
             XEvent ev;
@@ -298,9 +302,12 @@ int main(int argc, char *argv[])
 
         if (gAppAlive)
         {
+            struct timeval timeNow, timeAfter;
+
             gettimeofday(&timeNow, NULL);
             appRender(timeNow.tv_sec * 1000 + timeNow.tv_usec / 1000,
                       sWindowWidth, sWindowHeight);
+            gettimeofday(&timeAfter, NULL);
 #ifdef SAN_ANGELES_OBSERVATION_GLES
             checkGLErrors();
             eglSwapBuffers(sEglDisplay, sEglSurface);
@@ -309,11 +316,16 @@ int main(int argc, char *argv[])
             glXSwapBuffers(sDisplay, sWindow);
             checkGLErrors();
 #endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
+            total_time += (timeAfter.tv_sec - timeNow.tv_sec) +
+                          (timeAfter.tv_usec - timeNow.tv_usec) / 1000000.0;
+            num_frames++;
         }
     }
 
     appDeinit();
     deinitGraphics();
+
+    fprintf(stdout, "frame_rate = %.1f\n", num_frames / total_time);
 
     return EXIT_SUCCESS;
 }

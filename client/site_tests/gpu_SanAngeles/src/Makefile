@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-LD_OPT_GL = -L/usr/X11R6/lib -lX11 -lm -lGL -lGLU
-LD_OPT_ES = -L/usr/X11R6/lib -lX11 -lm -ldl
+LD_OPT_GL = -lX11 -lm -lGL
 SRCS_GL = demo.c app-linux.c fixedpoint-funcs.c
-SRCS_ES = demo.c app-linux.c importgl.c
 TARGET_GL = SanOGL
+
+LD_OPT_ES = -lX11 -lm -ldl
+SRCS_ES = demo.c app-linux.c importgl.c
 TARGET_ES = SanOGLES
 GLES = -D SAN_ANGELES_OBSERVATION_GLES
 

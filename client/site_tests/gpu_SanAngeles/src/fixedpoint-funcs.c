@@ -80,3 +80,19 @@ void glMaterialxv(GLenum face, GLenum pname, GLfixed* params)
         fparams[i] = fixed2float(params[i]);
     glMaterialfv(face, pname, fparams);
 }
+
+void glFrustumx(GLfixed l, GLfixed r, GLfixed b,
+                GLfixed t, GLfixed n, GLfixed f)
+{
+    glFrustum(fixed2float(l), fixed2float(r), fixed2float(b),
+              fixed2float(t), fixed2float(n), fixed2float(f));
+}
+
+void glMultMatrixx(const GLfixed m[16])
+{
+    GLfloat fm[16];
+    int i;
+    for (i = 0; i < 16; ++i)
+        fm[i] = fixed2float(m[i]);
+    glMultMatrixf(fm);
+}

@@ -555,7 +555,6 @@ void appDeinit()
     freeGLObject(sGroundPlane);
 }
 
-#ifdef SAN_ANGELES_OBSERVATION_GLES
 static void gluPerspective(GLfloat fovy, GLfloat aspect,
                            GLfloat zNear, GLfloat zFar)
 {
@@ -570,7 +569,6 @@ static void gluPerspective(GLfloat fovy, GLfloat aspect,
                (GLfixed)(ymin * 65536), (GLfixed)(ymax * 65536),
                (GLfixed)(zNear * 65536), (GLfixed)(zFar * 65536));
 }
-#endif  // SAN_ANGELES_OBSERVATION_GLES
 
 static void prepareFrame(int width, int height)
 {
@@ -664,7 +662,6 @@ static void drawModels(float zScale)
     }
 }
 
-#ifdef SAN_ANGELES_OBSERVATION_GLES
 /* Following gluLookAt implementation is adapted from the
  * Mesa 3D Graphics library. http://www.mesa3d.org
  */
@@ -754,7 +751,6 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
                  (GLfixed)(-eyey * 65536),
                  (GLfixed)(-eyez * 65536));
 }
-#endif  // SAN_ANGELES_OBSERVATION_GLES
 
 static void camTrack()
 {

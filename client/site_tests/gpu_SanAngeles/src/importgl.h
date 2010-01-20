@@ -171,7 +171,6 @@ FNDEF(void, glViewport, (GLint x, GLint y, GLsizei width, GLsizei height));
 
 #include<GL/gl.h>
 #include<GL/glx.h>
-#include<GL/glu.h>
 
 #undef GLfixed
 #undef GLclampx
@@ -184,6 +183,8 @@ FNDEF(void, glViewport, (GLint x, GLint y, GLsizei width, GLsizei height));
 #undef glLightxv
 #undef glMaterialx
 #undef glMaterialxv
+#undef glFrustumx
+#undef glMultMatrixx
 
 typedef GLint GLfixed;
 typedef GLint GLclampx;
@@ -192,10 +193,14 @@ extern void glScalex(GLfixed x, GLfixed y, GLfixed z);
 extern void glTranslatex(GLfixed x, GLfixed y, GLfixed z);
 extern void glRotatex(GLfixed angle, GLfixed x, GLfixed y, GLfixed z);
 extern void glColor4x(GLfixed r, GLfixed g, GLfixed b, GLfixed a);
-extern void glClearColorx(GLclampx red, GLclampx green, GLclampx blue, GLclampx alpha);
+extern void glClearColorx(GLclampx red, GLclampx green, GLclampx blue,
+                          GLclampx alpha);
 extern void glLightxv(GLenum light, GLenum pname, GLfixed* params);
 extern void glMaterialx(GLenum face, GLenum pname, GLfixed param);
 extern void glMaterialxv(GLenum face, GLenum pname, GLfixed* param);
+extern void glFrustumx(GLfixed l, GLfixed r, GLfixed b,
+                       GLfixed t, GLfixed n, GLfixed f);
+extern void glMultMatrixx(const GLfixed m[16]);
 
 #endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
