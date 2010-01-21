@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 from autotest_lib.client.bin import test
@@ -12,5 +13,12 @@ class shutdown_NoOpenFilesTestCase(test.test):
     # partitions at the time that it wanted to unmount them. The lsof output
     # will be recorded in the shutdown_force_kill_prcesses file for you to
     # inspect.
-    if os.path.exists("/var/log/shutdown_force_kill_processes"):
+    filename = "/var/log/shutdown_force_kill_processes"
+    if os.path.exists(filename):
+      f = open(filename, 'r')
+      contents = f.read()
+      f.close()
+      logging.info("Last shutdown was not clean.  lsof output was:\n%s" %
+                   contents)
+      os.remove(filename)
       raise error.TestError("Test failed")
