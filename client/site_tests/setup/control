@@ -5,7 +5,7 @@ TEST_CLASS = "General"
 TEST_TYPE = "client"
 TIME = "MEDIUM"
 DOC="""Setup a bunch of autotest tests into a platform dependent chromeos build
-(chroot) environment. 
+(chroot) environment.
 """
 
 from autotest_lib.client.bin import setup_job
@@ -21,6 +21,7 @@ chromeos_tests=['bonnie',
                 'ltp',
                 'unixbench',
                 'storage_Fio',
+                'storage_SsdDetection',
                 ]
 
 for cros_test in chromeos_tests:
