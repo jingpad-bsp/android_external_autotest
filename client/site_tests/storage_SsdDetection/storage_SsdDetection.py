@@ -14,7 +14,8 @@ class storage_SsdDetection(test.test):
     def setup(self):
         self.job.setup_dep(['hdparm'])
         # create a empty srcdir to prevent the error that checks .version file
-        utils.system('mkdir %s' % self.srcdir)
+        if not os.path.exists(self.srcdir):
+            utils.system('mkdir %s' % self.srcdir)
 
 
     def run_once(self):
