@@ -22,6 +22,7 @@ chromeos_tests=['bonnie',
                 'unixbench',
                 'storage_Fio',
                 'storage_SsdDetection',
+		'system_sat',
                 ]
 
 for cros_test in chromeos_tests:
