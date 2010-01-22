@@ -359,12 +359,7 @@ class AbstractSSHHost(SiteHost):
                     raise error.AutoservRunError(e.args[0], e.args[1])
 
 
-    def ssh_ping(self, timeout=5):
-        """
-        TODO(petkov): decreased default timeout from 60 to 5 seconds
-        to ensure that wait_down works correctly on Chromium OS. Don't
-        upstream this change assuming the right fix gets implemented.
-        """
+    def ssh_ping(self, timeout=60):
         try:
             self.run("true", timeout=timeout, connect_timeout=timeout)
         except error.AutoservSSHTimeout:
