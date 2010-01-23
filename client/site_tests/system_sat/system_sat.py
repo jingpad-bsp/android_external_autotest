@@ -20,10 +20,8 @@ class system_sat(test.test):
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
 
-        os.chdir(os.path.join(self.srcdir, 'src'))
-        shutil.copyfile('../../Makefile', 'Makefile')
-        shutil.copyfile('../../stressapptest_config.h',
-                        'stressapptest_config.h')
+        os.chdir(self.srcdir)
+        utils.system('./configure --target=i686-linux-gnu')
         utils.system('make')
 
 
