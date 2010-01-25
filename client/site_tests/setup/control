@@ -13,18 +13,17 @@ from autotest_lib.client.bin import setup_job
 setup_job.initialize(job)
 
 # include all tests here.
-chromeos_tests=['bonnie',
-                'compilebench',
-                'dbench',
-                'disktest',
-                'gl_APICheck',
-                'ltp',
-                'unixbench',
-                'storage_Fio',
-                'storage_SsdDetection',
-		'system_sat',
-                ]
+chromeos_tests = [
+    'compilebench',
+    'dbench',
+    'disktest',
+    'gl_APICheck',
+    'ltp',
+    'unixbench',
+    'storage_Fio',
+    'storage_SsdDetection',
+    'system_sat',
+]
 
 for cros_test in chromeos_tests:
     setup_job.setup_test(cros_test, job)
-
