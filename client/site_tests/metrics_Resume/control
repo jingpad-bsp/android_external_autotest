@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "MetricsShutdown"
+NAME = "METRICS_RESUME"
 TIME = "SHORT"
 TEST_CATEGORY = "Logging"
 TEST_CLASS = "system"
 TEST_TYPE = "client"
 
 DOC = """
-This test collects the shutdown metrics from a system that has rebooted.
+This test measures the amount of time it takes to resume from suspend
 """
 
-job.run_test('metrics_shutdown')
+job.run_test('metrics_Resume')

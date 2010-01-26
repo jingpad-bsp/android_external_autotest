@@ -13,7 +13,7 @@ class system_BootPerf(test.test):
     def __parse_uptime_login_prompt_ready(self, results):
         data = file('/tmp/uptime-login-prompt-ready').read()
         vals = re.split(r' +', data.strip())
-        results['uptime_login_prompt_ready'] = vals[0]
+        results['seconds_login_prompt_ready'] = vals[0]
 
 
     def __parse_disk_login_prompt_ready(self, results):
