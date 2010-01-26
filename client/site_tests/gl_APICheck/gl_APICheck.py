@@ -11,11 +11,13 @@ from autotest_lib.client.common_lib import error, utils
 
 class gl_APICheck(test.test):
     version = 1
+    preserve_srcdir = True
 
     def setup(self):
-        os.chdir(self.bindir)
+        os.chdir(self.srcdir)
         utils.system('make clean')
         utils.system('make all')
+
 
     def __check_extensions(self, info, ext_entries):
         info_split = info.split()
@@ -25,6 +27,7 @@ class gl_APICheck(test.test):
                 logging.info("MISSING: %s" % extension)
                 return False
         return True
+
 
     def __check_gl_extensions_1x(self, info):
         extensions = [
@@ -37,12 +40,14 @@ class gl_APICheck(test.test):
         ]        
         return self.__check_extensions(info, extensions)
 
+
     def __check_gl_extensions_2x(self, info):
         extensions = [
             'GL_EXT_framebuffer_object',
             'GLX_EXT_texture_from_pixmap'
         ]
         return self.__check_extensions(info, extensions)
+
 
     def __check_gles_extensions(self, info):
         extensions = [
@@ -52,8 +57,8 @@ class gl_APICheck(test.test):
         ]
         return self.__check_extensions(info, extensions)
 
-    def __check_gl(self, result):
-        # OpenGL.
+
+    def __check_gl(self, result):        
         version_pattern = re.compile(r"GL_VERSION = ([0-9]+).([0-9]+).+")
         version = version_pattern.findall(result)
         if len(version) == 1:
@@ -69,21 +74,40 @@ class gl_APICheck(test.test):
                 return self.__check_gl_extensions_2x(result)
             else:
                 return False
-        # OpenGL ES.
+        # No GL version info found.
+        return False
+
+
+    def __check_gles(self, result):   
         version_pattern = re.compile(
-            r"GLES_VERSION = ([0-9]+).([0-9]+)")
+            r"GLES_VERSION = OpenGL ES.* ([0-9]+).([0-9]+)")
         version = version_pattern.findall(result)
         if len(version) == 1:
+            # GLES version has to be 2.0 or above.
             version_major = int(version[0][0])
             version_minor = int(version[0][1])
             logging.info("GLES_VERSION = %d.%d" %
                          (version_major, version_minor))
-            if version_major >= 1 and version_minor >= 3:
-                return self.__check_gles_extensions(result)
-            else:
-                return False
-        # No version info found.
+            if version_major < 2:
+                return False;
+            # EGL version has to be 1.3 or above.
+            version_pattern = re.compile(
+                r"EGL_VERSION = ([0-9]+).([0-9]+)")
+            version = version_pattern.findall(result)
+            if len(version) == 1:
+                version_major = int(version[0][0])
+                version_minor = int(version[0][1])
+                logging.info("EGL_VERSION = %d.%d" %
+                             (version_major, version_minor))
+                if version_major >= 1 and version_minor >= 3:
+                    return self.__check_gles_extensions(result)
+                else:
+                    return False
+            # No EGL version info found.
+            return False
+        # No GLES version info found.
         return False
+
 
     def __check_x_extensions(self, result):
         extensions = [
@@ -92,24 +116,42 @@ class gl_APICheck(test.test):
         ]
         return self.__check_extensions(result, extensions)
 
+
     def run_once(self):
+        test_done = False
         # Run gl_APICheck first.  If failed, run gles_APICheck next.
+
         cmd = os.path.join(self.bindir, 'gl_APICheck')
-        result = utils.system_output(cmd, retain_output = True)
+        result = utils.system_output(cmd, retain_output = True,
+                                     ignore_status = True)
         error_pattern = re.compile(r"ERROR: \[(.+)\]")
         errors = error_pattern.findall(result)
-        if len(errors) > 0:
-            cmd = os.path.join(self.bindir, 'gles_APICheck')
-            result = utils.system_output(cmd, retain_output = True)
+        run_through_pattern = re.compile(r"SUCCEED: run to the end")
+        run_through = run_through_pattern.findall(result)
+        if len(errors) == 0 and len(run_through) > 0:
+            check_result = self.__check_gl(result)
+            if check_result == False:
+                raise error.TestFail('GL API insufficient')
+            test_done = True;
+
+        if not test_done:
+            cmd = (os.path.join(self.bindir, 'gles_APICheck') +
+                   ' libGLESv2.so libEGL.so')
+            # TODO(zmo@): smarter mechanism with GLES & EGL library names.
+            result = utils.system_output(cmd, retain_output = True,
+                                         ignore_status = True)
             error_pattern = re.compile(r"ERROR: \[(.+)\]")
             errors = error_pattern.findall(result)
-            if len(errors) > 0:
-                raise error.TestFail("can't perform gl API check");
-        
-        # Check GL/GLES version/extensions check.
-        check_result = self.__check_gl(result)
-        if check_result == False:
-            raise error.TestFail('GL version/extensions insufficient')
+            run_through_pattern = re.compile(r"SUCCEED: run to the end")
+            run_through = run_through_pattern.findall(result)
+            if len(errors) == 0 and len(run_through) > 0:
+                check_result = self.__check_gles(result)
+                if check_result == False:
+                    raise error.TestFail('GLES API insufficient')
+                test_done = True;
+
+        if not test_done:
+            raise error.TestFail('No sufficient GL/GLES API detected')
 
         # Check X11 extensions.
         check_result = self.__check_x_extensions(result)

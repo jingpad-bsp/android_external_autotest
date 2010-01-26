@@ -7,7 +7,6 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 
-#include <X11/keysym.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
@@ -18,18 +17,17 @@ bool InitGraphics(Display** display,
                   GLXContext* context) {
   const int kWindowWidth = 100;
   const int kWindowHeight = 100;
-  const char kAppName[] = "GL Compliance";
 
   *display = XOpenDisplay(NULL);
   if (*display == NULL) {
     printf("ERROR: XOpenDisplay failed\n");
     return false;
   }
+
   Window root_window = DefaultRootWindow(*display);
   GLint att[] = { GLX_RGBA,
                   GLX_DEPTH_SIZE,
                   24,
-                  GLX_DOUBLEBUFFER,
                   None };
   XVisualInfo* vi = glXChooseVisual(*display, 0, att);
   if (vi == NULL) {
@@ -48,23 +46,28 @@ bool InitGraphics(Display** display,
                           CWColormap,
                           &swa);
   XMapWindow(*display, *window);
-  XSetStandardProperties(*display, *window, kAppName, kAppName,
-                         None, NULL, 0, NULL);
 
   *context = glXCreateContext(*display, vi, NULL, GL_TRUE);
-  glXMakeCurrent(*display, *window, *context);
+  if (*context == NULL) {
+    printf("ERROR: glXCreateContext failed\n");
+  } else {
+    glXMakeCurrent(*display, *window, *context);
+  }
 
   XFree(vi);
-  return true;
+  return (*context != NULL);
 }
 
-void DeInitGraphics(Display** display,
-                    Window* window,
-                    GLXContext* context) {
-  glXMakeCurrent(*display, None, NULL);
-  glXDestroyContext(*display, *context);
-  XDestroyWindow(*display, *window);
-  XCloseDisplay(*display);
+void ExitGraphics(Display* display,
+                  Window window,
+                  GLXContext context) {
+  if (display != NULL) {
+    glXMakeCurrent(display, None, NULL);
+    if (context != NULL)
+      glXDestroyContext(display, context);
+    XDestroyWindow(display, window);
+    XCloseDisplay(display);
+  }
 }
 
 bool GetGLVersion() {
@@ -111,28 +114,29 @@ bool GetXExtensions(Display* display) {
 
 int main(int argc, char* argv[]) {
   // Initialize graphics.
-  Display* display;
+  Display* display = NULL;
   Window window;
-  GLXContext context;
+  GLXContext context = NULL;
   bool rt_code = InitGraphics(&display, &window, &context);
 
   // Get OpenGL major/minor version number.
-  if (rt_code == true)
+  if (rt_code)
     rt_code = GetGLVersion();
 
   // Get OpenGL extentions.
-  if (rt_code == true)
+  if (rt_code)
     rt_code = GetGLExtensions();
 
   // Get GLX extensions.
-  if (rt_code == true)
+  if (rt_code)
     rt_code = GetGLXExtensions(display);
 
   // Get X11 extensions.
-  if (rt_code == true)
+  if (rt_code)
     rt_code = GetXExtensions(display);
 
-  DeInitGraphics(&display, &window, &context);
+  ExitGraphics(display, window, context);
+  printf("SUCCEED: run to the end\n");
   return 0;
 }
 
