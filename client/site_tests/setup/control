@@ -24,6 +24,25 @@ chromeos_tests = [
     'storage_SsdDetection',
     'system_sat',
 ]
+failed_tests = []
 
 for cros_test in chromeos_tests:
-    setup_job.setup_test(cros_test, job)
+    # Try to build all tests even though some fail
+    
+    try:
+        setup_job.setup_test(cros_test, job)
+    except CmdError, e:
+        failed_tests.append(cros_test)
+
+print ''
+print '########################## SUMMARY #####################################'
+
+# Print out tests that failed
+if (len(failed_tests) > 0):
+    print 'Finished building -- The following tests failed'
+    for failed_test in failed_tests:
+        print failed_test    
+else:
+     print 'Finished building -- All tests built successfully'
+print '######################### END SUMMARY ##################################'
+print ''
