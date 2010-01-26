@@ -35,15 +35,12 @@ class storage_SsdDetection(test.test):
         path = self.autodir + '/deps/hdparm/sbin/'
         hdparm = utils.run(path + 'hdparm -I %s' % device)
 
-        for line in hdparm.stdout:
-            match = re.search(r'Nominal Media Rotation Rate: (.+)',
-                              line.strip())
-            if match and match.group(1):
-                if match.group(1) == 'Solid State Device':
-                    break;
-                else:
-                    raise error.TestFail('The main disk is not a SSD, '
-                        'Rotation Rate: %s' % match.group(1))
+        match = re.search(r'Nominal Media Rotation Rate: (.+)$',
+                          hdparm.stdout, re.MULTILINE)
+        if match and match.group(1):
+            if match.group(1) != 'Solid State Device':
+                raise error.TestFail('The main disk is not a SSD, '
+                    'Rotation Rate: %s' % match.group(1))
         else:
             raise error.TestNAError(
                 'Rotation Rate not reported from the device, '
