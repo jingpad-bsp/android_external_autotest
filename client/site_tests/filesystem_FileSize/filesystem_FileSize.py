@@ -34,7 +34,7 @@ class filesystem_FileSize(test.test):
         Returns:
             int, size of file created.
         """
-        TEXT = 'ChromeOS is the right choice for your netbook!!!\n'
+        TEXT = 'ChromeOS knows how to make your netbook run fast!\n'
         count = size * 20000
         fh = file(fname, 'w')
         for i in range(count):
