@@ -37,7 +37,7 @@ class gl_APICheck(test.test):
             'GL_ARB_point_sprite',
             'GL_EXT_framebuffer_object',
             'GLX_EXT_texture_from_pixmap'
-        ]        
+        ]
         return self.__check_extensions(info, extensions)
 
 
@@ -58,7 +58,7 @@ class gl_APICheck(test.test):
         return self.__check_extensions(info, extensions)
 
 
-    def __check_gl(self, result):        
+    def __check_gl(self, result):
         version_pattern = re.compile(r"GL_VERSION = ([0-9]+).([0-9]+).+")
         version = version_pattern.findall(result)
         if len(version) == 1:
@@ -78,7 +78,7 @@ class gl_APICheck(test.test):
         return False
 
 
-    def __check_gles(self, result):   
+    def __check_gles(self, result):
         version_pattern = re.compile(
             r"GLES_VERSION = OpenGL ES.* ([0-9]+).([0-9]+)")
         version = version_pattern.findall(result)
@@ -117,13 +117,19 @@ class gl_APICheck(test.test):
         return self.__check_extensions(result, extensions)
 
 
+    def __run_x_cmd(self, cmd):
+        cmd = "DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority " + cmd
+        result = utils.system_output(cmd, retain_output=True,
+                                     ignore_status=True)
+        return result
+
+
     def run_once(self):
         test_done = False
-        # Run gl_APICheck first.  If failed, run gles_APICheck next.
 
+        # Run gl_APICheck first.  If failed, run gles_APICheck next.
         cmd = os.path.join(self.bindir, 'gl_APICheck')
-        result = utils.system_output(cmd, retain_output = True,
-                                     ignore_status = True)
+        result = self.__run_x_cmd(cmd)
         error_pattern = re.compile(r"ERROR: \[(.+)\]")
         errors = error_pattern.findall(result)
         run_through_pattern = re.compile(r"SUCCEED: run to the end")
@@ -138,8 +144,7 @@ class gl_APICheck(test.test):
             cmd = (os.path.join(self.bindir, 'gles_APICheck') +
                    ' libGLESv2.so libEGL.so')
             # TODO(zmo@): smarter mechanism with GLES & EGL library names.
-            result = utils.system_output(cmd, retain_output = True,
-                                         ignore_status = True)
+            result = self.__run_x_cmd(cmd)
             error_pattern = re.compile(r"ERROR: \[(.+)\]")
             errors = error_pattern.findall(result)
             run_through_pattern = re.compile(r"SUCCEED: run to the end")
