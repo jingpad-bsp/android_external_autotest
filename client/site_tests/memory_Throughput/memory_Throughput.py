@@ -11,14 +11,15 @@ from autotest_lib.client.common_lib import error, utils
 
 class memory_Throughput(test.test):
     version = 1
+    preserve_srcdir = True
 
     def setup(self):
-        os.chdir(self.bindir)
+        os.chdir(self.srcdir)
         utils.system('make clean')
         utils.system('make')
 
     def run_once(self, num_iteration = -1, test_list = ''):
-        exefile = os.path.join(self.bindir, 'memory_Throughput')
+        exefile = os.path.join(self.srcdir, 'memory_Throughput')
         cmd = '%s %d %s' % (exefile, num_iteration, test_list)
         self.results = utils.system_output(cmd, retain_output = True)
 

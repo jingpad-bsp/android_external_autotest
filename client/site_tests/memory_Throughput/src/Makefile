@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-INCLUDE_PATH = -I../../../../../chrome/files/
-LD_OPT = -L../../../../../chrome/ -lbase -lpthread -lrt
+INCLUDE = -I$(GCLIENT_ROOT)/src/third_party/chrome/files/
+LDFLAGS = -L$(GCLIENT_ROOT)/src/third_party/chrome/ -lbase -lpthread -lrt
 TARGET = memory_Throughput
 SRC = memory_Throughput.cc
 
 $(TARGET): $(SRC)
-	$(CXX) $(INCLUDE_PATH) -O3 -m32 -o $@ $^ $(LD_OPT)
+	$(CXX) $(INCLUDE) -O3 -o $@ $^ $(LDFLAGS)
 
 clean:
 	$(RM) $(TARGET)
