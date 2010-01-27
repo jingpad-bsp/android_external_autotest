@@ -22,7 +22,7 @@ chromeos_tests = [
     'unixbench',
     'storage_Fio',
     'storage_SsdDetection',
-    'system_sat',
+    'system_SAT',
 ]
 failed_tests = []
 

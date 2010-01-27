@@ -7,9 +7,9 @@ AUTHOR = 'The Chromium OS Authors'
 DOC = """
 System stress test
 """
-NAME = 'system_sat'
+NAME = 'system_SAT'
 TEST_CLASS = 'Hardware'
 TEST_CATEGORY = 'Stress'
 TEST_TYPE = 'client'
 
-job.run_test('system_sat')
+job.run_test('system_SAT')

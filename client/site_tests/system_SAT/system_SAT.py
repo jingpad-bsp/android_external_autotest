@@ -2,14 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import os
-import re
+import logging, os, re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
-class system_sat(test.test):
+class system_SAT(test.test):
     version = 1
 
     # http://stressapptest.googlecode.com/files/\
@@ -35,9 +33,7 @@ class system_sat(test.test):
         args += ' -s %d' % seconds  # seconds to run
         args += ' -m %d' % cpus  # memory copy threads
         args += ' -i %d' % cpus  # memory invert threads
-        args += ' -c %d' % cpus  # memory check only threads
         args += ' -C %d' % cpus  # CPU stress threads
-        args += ' -n 127.0.0.1 --listen'  # network thread
         args += ' -f diskthread'  # disk thread
 
         os.chdir(os.path.join(self.srcdir, 'src'))
