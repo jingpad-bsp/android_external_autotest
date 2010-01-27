@@ -19,7 +19,7 @@ chromeos_tests = [
     'disktest',
     'gl_APICheck',
     'ltp',
-    'mem_Throughput',
+    'memory_Throughput',
     'unixbench',
     'storage_Fio',
     'storage_SsdDetection',
