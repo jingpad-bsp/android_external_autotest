@@ -1,0 +1,18 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "AUTO_LOGIN"
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "system"
+TEST_TYPE = "client"
+
+DOC = """
+This is a helper test that will login a system through the new login manager
+TODO(sosa@chromium.org) This requires chromeos-autox to be installed as well
+as vt02 to be activated once.  
+"""
+
+job.run_test('system_AutoLogin')

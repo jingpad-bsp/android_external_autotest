@@ -1,0 +1,7 @@
+{  
+ "script": [
+  [  "sleep", 3000 ],
+  [  "string", "performance.test.account@gmail.com\\(Tab)" ],
+  [  "string", "perfsmurf\\(Return)" ],    
+ ],
+}
