@@ -1,0 +1,38 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "HWQualAuto"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "system"
+TEST_TYPE = "client"
+
+DOC = """
+This test suite runs fully automated hardware qualification tests.
+"""
+
+# Boot Performance
+job.run_test('metrics_Resume')
+
+# Kernel Support
+job.run_test('system_KernelVersion')
+
+# System Memory
+job.run_test('memory_TotalSize')
+job.run_test('memory_Throughput', num_iteration=5000, test_list='18 19 20 21')
+
+# Storage
+job.run_test('storage_Fio')
+job.run_test('storage_DiskSize')
+job.run_test('storage_SsdDetection')
+
+# Graphics
+job.run_test('gl_APICheck')
+
+# Extra Requirements
+job.run_test('disktest')
+job.run_test('compilebench')
+job.run_test('ltp')
+job.run_test('system_SAT', seconds=300)
