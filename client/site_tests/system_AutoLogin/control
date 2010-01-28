@@ -11,8 +11,7 @@ TEST_TYPE = "client"
 
 DOC = """
 This is a helper test that will login a system through the new login manager
-TODO(sosa@chromium.org) This requires chromeos-autox to be installed as well
-as vt02 to be activated once.  
+TODO(sosa@chromium.org) This requires vt02 to be activated once.  
 """
 
 job.run_test('system_AutoLogin')

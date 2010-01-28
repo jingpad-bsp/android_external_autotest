@@ -23,6 +23,7 @@ chromeos_tests = [
     'unixbench',
     'storage_Fio',
     'storage_SsdDetection',
+    'system_AutoLogin',
     'system_SAT',
 ]
 failed_tests = []
