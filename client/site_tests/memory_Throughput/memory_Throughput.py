@@ -40,5 +40,5 @@ class memory_Throughput(test.test):
         error_pattern = re.compile(r"ERROR: \[(.+)\]")
         errors = error_pattern.findall(self.results)
         if len(errors) > 0:
+            logging.debug(self.results)
             raise error.TestFail('malfunctioning memory detected');
-
