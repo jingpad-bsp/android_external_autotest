@@ -31,6 +31,7 @@
 #include <assert.h>
 
 #include "importgl.h"
+#include "importvbo.h"
 
 #include "app.h"
 #include "shapes.h"
@@ -110,6 +111,9 @@ typedef struct {
     NormalDataType *normalArray;
     GLint vertexComponents;
     GLsizei count;
+#ifdef USE_VBO
+    GLuint vboId;
+#endif  // USE_VBO
 } GLOBJECT;
 
 
@@ -133,9 +137,23 @@ static void freeGLObject(GLOBJECT *object)
 {
     if (object == NULL)
         return;
+    
+#ifdef USE_VBO
+    if (object->vboId != 0)
+    {
+        glDeleteBuffersARB(1, &object->vboId);
+    }
+    else
+    {
+        free(object->normalArray);
+        free(object->colorArray);
+        free(object->vertexArray);
+    }
+#else  // !USE_VBO
     free(object->normalArray);
     free(object->colorArray);
     free(object->vertexArray);
+#endif  // USE_VBO || !USE_VBO
     free(object);
 }
 
@@ -168,14 +186,82 @@ static GLOBJECT * newGLObject(long vertices, int vertexComponents,
         freeGLObject(result);
         return NULL;
     }
+#ifdef USE_VBO
+    result->vboId = 0;
+#endif  // USE_VBO
     return result;
 }
+
+
+#ifdef USE_VBO
+static void createVBO(GLOBJECT *object)
+{
+    assert(object != NULL);
+
+    if (object->vboId != 0)  // VBO already created.
+        return;
+
+    GLsizei vertexArraySize = sizeof(VertexDataType) * object->count *
+                                     object->vertexComponents;
+    GLsizei normalArraySize;
+    if (object->normalArray)
+        normalArraySize = sizeof(NormalDataType) * object->count * 3;
+    else
+        normalArraySize = 0;
+    GLsizei colorArraySize = sizeof(GLubyte) * object->count * 4;
+
+    glGenBuffersARB(1, &object->vboId);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, object->vboId);
+    glBufferDataARB(GL_ARRAY_BUFFER_ARB, 
+                    vertexArraySize + normalArraySize + colorArraySize,
+                    0, GL_STATIC_DRAW_ARB);
+    glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0,
+                       vertexArraySize, object->vertexArray);
+    if (object->normalArray)
+        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, vertexArraySize,
+                           normalArraySize, object->normalArray);
+    glBufferSubDataARB(GL_ARRAY_BUFFER_ARB,
+                       vertexArraySize + normalArraySize,
+                       colorArraySize, object->colorArray);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+
+    free(object->normalArray);
+    free(object->colorArray);
+    free(object->vertexArray);
+}
+#endif  // USE_VBO
 
 
 static void drawGLObject(GLOBJECT *object)
 {
     assert(object != NULL);
 
+#ifdef USE_VBO
+    assert(object->vboId != 0);
+
+    GLsizei vertexArraySize = sizeof(VertexDataType) * object->count *
+                                     object->vertexComponents;
+    GLsizei normalArraySize;
+    if (object->normalArray)
+        normalArraySize = sizeof(NormalDataType) * object->count * 3;
+    else
+        normalArraySize = 0;
+
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, object->vboId);
+    if (object->normalArray)
+    {
+        glNormalPointer(NORMAL_DATA_FLAG, 0,
+                        (void *)vertexArraySize);
+        glEnableClientState(GL_NORMAL_ARRAY);
+    }
+    else
+        glDisableClientState(GL_NORMAL_ARRAY);
+    glColorPointer(4, GL_UNSIGNED_BYTE, 0,
+                   (void *)(vertexArraySize + normalArraySize));
+    glVertexPointer(object->vertexComponents, VERTEX_DATA_FLAG, 0, 0);
+    glDrawArrays(GL_TRIANGLES, 0, object->count);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+#else  // !USE_VBO
     glVertexPointer(object->vertexComponents, VERTEX_DATA_FLAG,
                     0, object->vertexArray);
     glColorPointer(4, GL_UNSIGNED_BYTE, 0, object->colorArray);
@@ -192,6 +278,7 @@ static void drawGLObject(GLOBJECT *object)
     else
         glDisableClientState(GL_NORMAL_ARRAY);
     glDrawArrays(GL_TRIANGLES, 0, object->count);
+#endif  // USE_VBO || !USE_VBO
 }
 
 
@@ -384,7 +471,9 @@ static GLOBJECT * createSuperShape(const float *params)
 
     // Set number of vertices in object to the actual amount created.
     result->count = currentVertex;
-
+#ifdef USE_VBO
+    createVBO(result);
+#endif  // USE_VBO
     return result;
 }
 
@@ -439,6 +528,9 @@ static GLOBJECT * createGroundPlane()
             ++currentQuad;
         }
     }
+#ifdef USE_VBO
+    createVBO(result);
+#endif  // USE_VBO
     return result;
 }
 

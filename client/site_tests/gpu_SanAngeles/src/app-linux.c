@@ -56,6 +56,7 @@
 #include <X11/keysym.h>
 
 #include "importgl.h"
+#include "importvbo.h"
 
 #include "app.h"
 
@@ -250,7 +251,11 @@ static int initGraphics()
     glEnable(GL_DEPTH_TEST);
 
     XFree(vi);
-    return 1;
+    int rt = 1;
+#ifdef USE_VBO
+    rt = loadVBOProcs();
+#endif  // USE_VBO
+    return rt;
 }
 
 static void deinitGraphics()
