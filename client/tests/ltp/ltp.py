@@ -56,18 +56,19 @@ class ltp(test.test):
         # In case the user wants to run another test script
         if script == 'runltp':
             logfile = os.path.join(self.resultsdir, 'ltp.log')
+            outfile = os.path.join(self.resultsdir, 'ltp.out')
             failcmdfile = os.path.join(self.debugdir, 'failcmdfile')
-            args2 = '-q -l %s -C %s -d %s' % (logfile, failcmdfile, self.tmpdir)
+            excludecmdfile = os.path.join(self.bindir, 'site_excluded')
+            args2 = '-q -l %s -C %s -d %s -o %s -S %s' % (logfile, failcmdfile,
+                                                          self.tmpdir, outfile,
+                                                          excludecmdfile)
             args = args + ' ' + args2
 
         ltpbin_dir = os.path.join(self.srcdir, 'bin')
         cmd = os.path.join(ltpbin_dir, script) + ' ' + args
         result = utils.run(cmd, ignore_status=True)
 
-        # look for the first line in result.stdout containing FAIL and,
-        # if found, raise the whole line as a reason of the test failure.
-        for line in result.stdout.split():
-            if 'FAIL' in line:
-                test_name = line.strip().split(' ')[0]
-                if not test_name in ignore_tests:
-                    raise error.TestFail(line)
+        # look for if there is any failed test command.
+        failed_cmd = open(failcmdfile).read()
+        if failed_cmd:
+            raise error.TestFail(failed_cmd)
