@@ -2,9 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import re
-import os
-import logging
+import logging, os, re
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
@@ -13,21 +11,26 @@ class gpu_SanAngeles(test.test):
     version = 1
     preserve_srcdir = True
 
+
     def setup(self):
         os.chdir(self.srcdir)
         utils.system('make clean')
         utils.system('make all')
 
+
     def __try_run(self, exefile):
         cmd = os.path.join(self.srcdir, exefile)
+        cmd = "DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority " + cmd
         result = utils.run(cmd, ignore_status = True)
         if len(result.stderr) > 0:
+            logging.debug(result.stderr)
             return -1
         pattern = re.compile(r"frame_rate = ([0-9.]+)")
         report = pattern.findall(result.stdout)
         if len(report) == 0:
             return -1
-        return float(report[0])            
+        return float(report[0])
+
 
     def run_once(self):
         # We don't have a separate check if GL or GLES is installed on the
@@ -41,4 +44,4 @@ class gpu_SanAngeles(test.test):
 
         logging.info('frame_rate = %.1f' % frame_rate)
         self.write_perf_keyval(
-            {'frame_per_sec_rate_san_angeles': frame_rate})
+            {'frames_per_sec_rate_san_angeles': frame_rate})

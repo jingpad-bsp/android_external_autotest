@@ -18,6 +18,7 @@ chromeos_tests = [
     'dbench',
     'disktest',
     'gl_APICheck',
+    'gpu_SanAngeles',
     'ltp',
     'memory_Throughput',
     'unixbench',
