@@ -157,36 +157,40 @@ class storage_Fio(test.test):
         self.job.install_pkg(dep, 'dep', dep_dir)
 
         if dev == '/dev/sda':
-            metrics = {
-                'surfing': 'iops',
-                'boot': 'bw',
-                'login': 'bw',
-                'seq_read': 'bw',
-                'seq_write': 'bw',
-                '16k_read': 'iops',
-                '16k_write': 'iops',
-                '8k_read': 'iops',
-                '8k_write': 'iops',
-                '4k_read': 'iops',
-                '4k_write': 'iops',
+            requirements = {
+                'surfing': ('iops', None),
+                'boot': ('bw', None),
+                'login': ('bw', None),
+                'seq_read': ('bw', 20000000),
+                'seq_write': ('bw', 15000000),
+                '16k_read': ('iops', None),
+                '16k_write': ('iops', None),
+                '8k_read': ('iops', None),
+                '8k_write': ('iops', None),
+                '4k_read': ('iops', None),
+                '4k_write': ('iops', 10),
             }
         else:
             # TODO(waihong@): Add more test cases for external storage
-            metrics = {
-                'seq_read': 'bw',
-                'seq_write': 'bw',
-                '16k_read': 'iops',
-                '16k_write': 'iops',
-                '8k_read': 'iops',
-                '8k_write': 'iops',
-                '4k_read': 'iops',
-                '4k_write': 'iops',
+            requirements = {
+                'seq_read': ('bw', None),
+                'seq_write': ('bw', None),
+                '16k_read': ('iops', None),
+                '16k_write': ('iops', None),
+                '8k_read': ('iops', None),
+                '8k_write': ('iops', None),
+                '4k_read': ('iops', None),
+                '4k_write': ('iops', None),
             }
 
         results = {}
-        for test, metric in metrics.iteritems():
+        error_msg = ''
+        for test, (metric, min) in requirements.iteritems():
             result = self.__RunFio(test)
             results[test] = result[metric]
+            if min and results[test] < min:
+                error_msg += ('; %s(%s): %d < %d' %
+                              (test, metric, results[test], min))
 
         # Output keys relevent to the performance, larger filesize will run
         # slower, and sda4 should be slightly slower than sda3 on a rotational
@@ -196,3 +200,6 @@ class storage_Fio(test.test):
                                 'device': self.__description})
         logging.info('Device Description: %s' % self.__description)
         self.write_perf_keyval(results)
+
+        if error_msg:
+            raise error.TestFail('Requirement not met%s' % error_msg)
