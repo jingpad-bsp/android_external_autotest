@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import commands, os, utils
+import commands, os, time, utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
@@ -16,7 +16,10 @@ class metrics_Resume(test.test):
 #        utils.system('make clean')
 #        utils.system('make')
 
-    def run_once(self):
+    def run_once(self, itersleep=None):
+        if itersleep is not None:
+            time.sleep(itersleep)
+
         read_hwclock = os.path.join(self.bindir, "read_hwclock")
         (status, output) = commands.getstatusoutput(read_hwclock)
         if status != 0:
@@ -34,4 +37,3 @@ class metrics_Resume(test.test):
             raise error.TestError('Failure to suspend to ram')
         resume_time = float(output) - alarm_time
         self.write_perf_keyval({'seconds_system_resume' : resume_time})
-
