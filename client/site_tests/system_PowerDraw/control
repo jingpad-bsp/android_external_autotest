@@ -1,0 +1,25 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "system_PowerDraw"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "system"
+TEST_TYPE = "client"
+
+DOC = """
+This is a system power draw test.
+"""
+
+
+def run_sat():
+    job.run_test('system_SAT', seconds=200, tag='PowerDraw')
+
+
+def run_gpu():
+    job.run_test('gpu_SanAngeles', iterations=2, tag='PowerDraw')
+
+
+job.parallel([run_sat], [run_gpu])
