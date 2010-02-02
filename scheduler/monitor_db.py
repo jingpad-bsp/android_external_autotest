@@ -935,10 +935,10 @@ class Dispatcher(object):
                                                          host__locked=False)
         # exclude hosts with active queue entries unless the SpecialTask is for
         # that queue entry
-        queued_tasks = models.Host.objects.add_join(
+        queued_tasks = models.SpecialTask.objects.add_join(
                 queued_tasks, 'afe_host_queue_entries', 'host_id',
                 join_condition='afe_host_queue_entries.active',
-                force_left_join=True)
+                join_from_key='host_id', force_left_join=True)
         queued_tasks = queued_tasks.extra(
                 where=['(afe_host_queue_entries.id IS NULL OR '
                        'afe_host_queue_entries.id = '
@@ -2219,17 +2219,9 @@ class HostlessQueueTask(AbstractQueueTask):
         super(HostlessQueueTask, self).prolog()
 
 
-    def _final_status(self):
-        if self.queue_entries[0].aborted:
-            return models.HostQueueEntry.Status.ABORTED
-        if self.monitor.exit_code() == 0:
-            return models.HostQueueEntry.Status.COMPLETED
-        return models.HostQueueEntry.Status.FAILED
-
-
     def _finish_task(self):
         super(HostlessQueueTask, self)._finish_task()
-        self.queue_entries[0].set_status(self._final_status())
+        self.queue_entries[0].set_status(models.HostQueueEntry.Status.PARSING)
 
 
 class PostJobTask(AgentTask):

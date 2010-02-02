@@ -53,20 +53,23 @@ variants:
         kill_vm_timeout = 60
         kill_vm_timeout_on_error = 0
 
-    - unattended_install:
-        type = unattended_install
-        kill_vm_on_error = yes
-        force_create_image = yes
-        pre_command = scripts/unattended.py
-        floppy = "images/floppy.img"
-        extra_params += " -boot d"
-
-    - setup:        install unattended_install
+    - setup:        install
         type = steps
         fail_if_stuck_for = 300
         stuck_detection_history = 2
         kill_vm_on_error = yes
         keep_screendump_history = yes
+
+    - unattended_install:
+        type = unattended_install
+        # Unattended install also perform guest setup, so setup is not needed
+        no setup
+        kill_vm_on_error = yes
+        force_create_image = yes
+        pre_command = scripts/unattended.py
+        floppy = "images/floppy.img"
+        extra_params += " -boot d"
+        nic_mode = user
 
     - boot:         install setup unattended_install
         type = boot
@@ -89,7 +92,7 @@ variants:
 
     - autotest:     install setup unattended_install
         type = autotest
-        test_timeout = 720
+        test_timeout = 1800
         variants:
             - sleeptest:
                 test_name = sleeptest
@@ -273,12 +276,11 @@ variants:
 # NICs
 variants:
     - @rtl8139:
-    - virtio:       rtl8139.install rtl8139.setup
-        no install setup
-        nic_model = virtio
-    - e1000:        rtl8139.install rtl8139.setup
-        no install setup
+        nic_model = rtl8139
+    - e1000:
         nic_model = e1000
+    - virtio:
+        nic_model = virtio
 
 
 # Guests
@@ -602,6 +604,7 @@ variants:
         unattended_install:
             timeout = 7200
             finish_program = deps/finish.exe
+            cdrom_extra = windows/winutils.iso
         migrate:
             migration_test_command = ver && vol
             migration_bg_command = start ping -t localhost
@@ -890,6 +893,12 @@ linux_s3:
 
 
 variants:
+    - @qemu-kvm:
+    - qemu:
+        extra_params += " -enable-kvm"
+
+
+variants:
     - @up:
         no autotest.npb
     - smp2:
@@ -949,7 +958,27 @@ variants:
         extra_params += " -mem-path /mnt/kvm_hugepage"
 
 
+variants:
+    - @no_pci_assignable:
+        pci_assignable = no
+    - pf_assignable:
+        pci_assignable = pf
+        device_names = eth1
+    - vf_assignable:
+        pci_assignable = vf
+        # Driver (kernel module) that supports SR-IOV hardware.
+        # As of today (30-11-2009), we have 2 drivers for this type of hardware:
+        # Intel® 82576 Gigabit Ethernet Controller - igb
+        # Neterion® X3100™ - vxge
+        driver = igb
+        # Driver option to specify the maximum number of virtual functions
+        # (on vxge the option is , for example, is max_config_dev)
+        # the default below is for the igb driver
+        driver_option = "max_vfs=7"
+        # Number of devices that are going to be requested.
+        devices_requested = 7
+
+
 image_name.* ?<= images/
 cdrom.* ?<= isos/
 steps ?<= steps/
-

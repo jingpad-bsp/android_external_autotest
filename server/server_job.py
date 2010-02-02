@@ -135,7 +135,7 @@ class base_server_job(base_job.base_job):
             utils.write_keyval(self.resultdir, job_data)
 
         self._parse_job = parse_job
-        self._using_parser = (self._parse_job and len(machines) == 1)
+        self._using_parser = (self._parse_job and len(machines) <= 1)
         self.pkgmgr = packages.PackageManager(
             self.autodir, run_function_dargs={'timeout':600})
         self.num_tests_run = 0
@@ -703,6 +703,64 @@ class base_server_job(base_job.base_job):
         return warnings
 
 
+    def _unique_subdirectory(self, base_subdirectory_name):
+        """Compute a unique results subdirectory based on the given name.
+
+        Appends base_subdirectory_name with a number as necessary to find a
+        directory name that doesn't already exist.
+        """
+        subdirectory = base_subdirectory_name
+        counter = 1
+        while os.path.exists(os.path.join(self.resultdir, subdirectory)):
+            subdirectory = base_subdirectory_name + '.' + str(counter)
+            counter += 1
+        return subdirectory
+
+
+    def record_summary(self, status_code, test_name, reason='', attributes=None,
+                       distinguishing_attributes=(), child_test_ids=None):
+        """Record a summary test result.
+
+        @param status_code: status code string, see
+                common_lib.log.is_valid_status()
+        @param test_name: name of the test
+        @param reason: (optional) string providing detailed reason for test
+                outcome
+        @param attributes: (optional) dict of string keyvals to associate with
+                this result
+        @param distinguishing_attributes: (optional) list of attribute names
+                that should be used to distinguish identically-named test
+                results.  These attributes should be present in the attributes
+                parameter.  This is used to generate user-friendly subdirectory
+                names.
+        @param child_test_ids: (optional) list of test indices for test results
+                used in generating this result.
+        """
+        subdirectory_name_parts = [test_name]
+        for attribute in distinguishing_attributes:
+            assert attributes
+            assert attribute in attributes, '%s not in %s' % (attribute,
+                                                              attributes)
+            subdirectory_name_parts.append(attributes[attribute])
+        base_subdirectory_name = '.'.join(subdirectory_name_parts)
+
+        subdirectory = self._unique_subdirectory(base_subdirectory_name)
+        subdirectory_path = os.path.join(self.resultdir, subdirectory)
+        os.mkdir(subdirectory_path)
+
+        self.record(status_code, subdirectory, test_name,
+                    status=reason, optional_fields={'is_summary': True})
+
+        if attributes:
+            utils.write_keyval(subdirectory_path, attributes)
+
+        if child_test_ids:
+            ids_string = ','.join(str(test_id) for test_id in child_test_ids)
+            summary_data = {'child_test_ids': ids_string}
+            utils.write_keyval(os.path.join(subdirectory_path, 'summary_data'),
+                               summary_data)
+
+
     def disable_warnings(self, warning_type):
         self.warning_manager.disable_warnings(warning_type)
         self.record("INFO", None, None,
@@ -1042,6 +1100,8 @@ class base_server_job(base_job.base_job):
         # dump the state out to a tempfile
         fd, file_path = tempfile.mkstemp(dir=self.tmpdir)
         os.close(fd)
+
+        # write_to_file doesn't need locking, we exclusively own file_path
         self._state.write_to_file(file_path)
         return file_path
 
@@ -1061,7 +1121,7 @@ class base_server_job(base_job.base_job):
         self._state.read_from_file(state_path)
         try:
             os.remove(state_path)
-        except IOError, e:
+        except OSError, e:
             # ignore file-not-found errors
             if e.errno != errno.ENOENT:
                 raise

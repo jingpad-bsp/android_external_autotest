@@ -546,9 +546,8 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
     def _create_reverify_request(self):
         host = self.hosts[0]
-        models.SpecialTask.objects.create(host=host,
-                                          task=models.SpecialTask.Task.VERIFY,
-                                          requested_by=self.user)
+        models.SpecialTask.schedule_special_task(
+                host=host, task=models.SpecialTask.Task.VERIFY)
         return host
 
 
@@ -1015,6 +1014,12 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
         self.mock_drone_manager.finish_process(_PidfileType.JOB)
         self._run_dispatcher()
+        self._check_entry_status(entry, HqeStatus.PARSING)
+        self.mock_drone_manager.finish_process(_PidfileType.PARSE)
+        self._run_dispatcher()
+        self._check_entry_status(entry, HqeStatus.ARCHIVING)
+        self.mock_drone_manager.finish_process(_PidfileType.ARCHIVE)
+        self._run_dispatcher()
         self._check_entry_status(entry, HqeStatus.COMPLETED)
 
 
@@ -1029,8 +1034,8 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self._finish_job(job.hostqueueentry_set.all()[0])
 
         attached_files = self.mock_drone_manager.attached_files(
-                '1-my_user/host1')
-        job_keyval_path = '1-my_user/host1/keyval'
+                '1-autotest_system/host1')
+        job_keyval_path = '1-autotest_system/host1/keyval'
         self.assert_(job_keyval_path in attached_files, attached_files)
         keyval_contents = attached_files[job_keyval_path]
         keyval_dict = dict(line.strip().split('=', 1)

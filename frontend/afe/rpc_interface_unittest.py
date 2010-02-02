@@ -60,6 +60,12 @@ class RpcInterfaceTest(unittest.TestCase,
 
         hosts = rpc_interface.get_hosts(hostname='host1')
         self._check_hostnames(hosts, ['host1'])
+        host = hosts[0]
+        self.assertEquals(sorted(host['labels']), ['label1', 'myplatform'])
+        self.assertEquals(host['platform'], 'myplatform')
+        self.assertEquals(host['atomic_group'], None)
+        self.assertEquals(host['acls'], ['my_acl'])
+        self.assertEquals(host['attributes'], {})
 
 
     def test_get_hosts_multiple_labels(self):
@@ -252,9 +258,9 @@ class RpcInterfaceTest(unittest.TestCase,
 
         paths = [entry['execution_path'] for entry in entries_and_tasks]
         self.assertEquals(paths, ['hosts/host1/3-verify',
-                                  '2-my_user/host1',
+                                  '2-autotest_system/host1',
                                   'hosts/host1/2-verify',
-                                  '1-my_user/host1',
+                                  '1-autotest_system/host1',
                                   'hosts/host1/1-verify'])
 
         verify2 = entries_and_tasks[2]
@@ -303,7 +309,7 @@ class RpcInterfaceTest(unittest.TestCase,
 
         task = tasks[0]
         self.assertEquals(task['task'], models.SpecialTask.Task.VERIFY)
-        self.assertEquals(task['requested_by'], 'my_user')
+        self.assertEquals(task['requested_by'], 'autotest_system')
 
 
 

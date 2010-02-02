@@ -82,7 +82,7 @@
             <UserAccounts>
                 <AdministratorPassword>
                     <!-- <Value>UABAAHMAcwB3ADAAcgBkAEEAZABtAGkAbgBpAHMAdAByAGEAdABvAHIAUABhAHMAcwB3AG8AcgBkAA==</Value> -->
-                    <Value>123456</Value>
+                    <Value>1q2w3eP</Value>
                     <PlainText>true</PlainText>
                 </AdministratorPassword>
             </UserAccounts>
@@ -92,7 +92,7 @@
                 <Username>Administrator</Username>
                 <Password>
                     <!-- <Value>UABAAHMAcwB3ADAAcgBkAFAAYQBzAHMAdwBvAHIAZAA=</Value> -->
-                    <Value>123456</Value>
+                    <Value>1q2w3eP</Value>
                     <PlainText>true</PlainText>
                 </Password>
             </AutoLogon>
@@ -121,7 +121,7 @@
                     <Order>4</Order>
                 </SynchronousCommand>
                 <SynchronousCommand wcm:action="add">
-                    <CommandLine>%WINDIR%\System32\cmd /c netsh interface ip set address "Local Area Connection" static 10.0.2.15 255.255.255.0 10.0.2.2 1 &#38;&#38; ping 10.0.2.2 -n 20 &#38;&#38; A:\finish.exe 10.0.2.2</CommandLine>
+                    <CommandLine>%WINDIR%\System32\cmd /c netsh interface ip set address "Local Area Connection" dhcp &#38;&#38; ping 10.0.2.2 -n 20 &#38;&#38; A:\finish.exe 10.0.2.2</CommandLine>
                     <Order>5</Order>
                 </SynchronousCommand>
             </FirstLogonCommands>
