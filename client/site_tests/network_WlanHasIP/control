@@ -1,0 +1,13 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
+DOC = "Verifies that the wireless interface has an IP address."
+NAME = "Wlan_IPTest"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "General"
+TEST_TYPE = "client"
+
+job.run_test('network_WlanHasIP')
