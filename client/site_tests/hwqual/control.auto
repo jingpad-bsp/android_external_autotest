@@ -10,7 +10,7 @@ TEST_CLASS = "system"
 TEST_TYPE = "client"
 
 DOC = """
-This test suite runs fully automated hardware qualification tests.
+This test suite runs fully automated client-side hardware qualification tests.
 """
 
 # Boot Performance
@@ -27,6 +27,9 @@ job.run_test('memory_Throughput', num_iteration=5000, test_list='18 19 20 21')
 job.run_test('storage_Fio')
 job.run_test('storage_DiskSize')
 job.run_test('storage_SsdDetection')
+
+# Display
+job.run_test('video_Resolution')
 
 # Graphics
 job.run_test('gl_APICheck')
