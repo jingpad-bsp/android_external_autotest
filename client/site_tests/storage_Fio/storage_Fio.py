@@ -2,9 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import re
-import os
+import logging, os, re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -30,6 +28,7 @@ class storage_Fio(test.test):
         os.chdir(self.srcdir)
         utils.system('patch -p1 < ../Makefile.patch')
         utils.system('%s %s make' % (var_ldflags, var_cflags))
+
 
     def __find_free_root_partition(self):
         """Locate the spare root partition that we didn't boot off"""
@@ -133,6 +132,7 @@ class storage_Fio(test.test):
         os.putenv('FILENAME', self.__filename)
         os.putenv('FILESIZE', str(self.__filesize))
         fio = utils.run(vars + ' ./fio "%s"' % os.path.join(self.bindir, test))
+        logging.debug(fio.stdout)
         return self.__parse_fio(fio.stdout)
 
 
@@ -158,39 +158,38 @@ class storage_Fio(test.test):
 
         if dev == '/dev/sda':
             requirements = {
-                'surfing': ('iops', None),
-                'boot': ('bw', None),
-                'login': ('bw', None),
-                'seq_read': ('bw', 20000000),
-                'seq_write': ('bw', 15000000),
-                '16k_read': ('iops', None),
-                '16k_write': ('iops', None),
-                '8k_read': ('iops', None),
-                '8k_write': ('iops', None),
-                '4k_read': ('iops', None),
-                '4k_write': ('iops', 10),
+                'surfing': 'iops',
+                'boot': 'bw',
+                'login': 'bw',
+                'seq_read': 'bw',
+                'seq_write': 'bw',
+                '16k_read': 'iops',
+                '16k_write': 'iops',
+                '8k_read': 'iops',
+                '8k_write': 'iops',
+                '4k_read': 'iops',
+                '4k_write': 'iops',
             }
         else:
             # TODO(waihong@): Add more test cases for external storage
             requirements = {
-                'seq_read': ('bw', None),
-                'seq_write': ('bw', None),
-                '16k_read': ('iops', None),
-                '16k_write': ('iops', None),
-                '8k_read': ('iops', None),
-                '8k_write': ('iops', None),
-                '4k_read': ('iops', None),
-                '4k_write': ('iops', None),
+                'seq_read': 'bw',
+                'seq_write': 'bw',
+                '16k_read': 'iops',
+                '16k_write': 'iops',
+                '8k_read': 'iops',
+                '8k_write': 'iops',
+                '4k_read': 'iops',
+                '4k_write': 'iops',
             }
 
         results = {}
-        error_msg = ''
-        for test, (metric, min) in requirements.iteritems():
+        for test, metric in requirements.iteritems():
             result = self.__RunFio(test)
-            results[test] = result[metric]
-            if min and results[test] < min:
-                error_msg += ('; %s(%s): %d < %d' %
-                              (test, metric, results[test], min))
+            units = metric
+            if metric == 'bw':
+                units = 'bytes_per_sec'
+            results[units + '_' + test] = result[metric]
 
         # Output keys relevent to the performance, larger filesize will run
         # slower, and sda4 should be slightly slower than sda3 on a rotational
@@ -200,6 +199,3 @@ class storage_Fio(test.test):
                                 'device': self.__description})
         logging.info('Device Description: %s' % self.__description)
         self.write_perf_keyval(results)
-
-        if error_msg:
-            raise error.TestFail('Requirement not met%s' % error_msg)

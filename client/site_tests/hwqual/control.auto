@@ -24,7 +24,12 @@ job.run_test('memory_TotalSize')
 job.run_test('memory_Throughput', num_iteration=5000, test_list='18 19 20 21')
 
 # Storage
-job.run_test('storage_Fio')
+job.run_test('storage_Fio',
+             constraints=[
+                 'bytes_per_sec_seq_read >= 20 * 1024 * 1024',
+                 'bytes_per_sec_seq_write >= 15 * 1024 * 1024',
+                 'iops_4k_write >= 10',
+             ])
 job.run_test('storage_DiskSize')
 job.run_test('storage_SsdDetection')
 
