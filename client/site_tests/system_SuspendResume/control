@@ -13,14 +13,20 @@ DOC = """
 This is a system stability test across suspend/resume cycles.
 """
 
+_tag = 'SuspendResume'
+_seconds = 200
+
 
 def run_resume():
-    job.run_test('metrics_Resume', iterations=10, itersleep=10,
-                 tag='SuspendResume')
+    job.run_test('metrics_Resume', iterations=10, tag=_tag)
 
 
 def run_sat():
-    job.run_test('system_SAT', seconds=200, tag='SuspendResume')
+    job.run_test('system_SAT', seconds=_seconds, tag=_tag)
 
 
-job.parallel([run_resume], [run_sat])
+def run_gpu():
+    job.run_test('gpu_SanAngeles', iterations=2, tag=_tag)
+
+
+job.parallel([run_resume], [run_sat], [run_gpu])
