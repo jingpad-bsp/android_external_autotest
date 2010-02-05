@@ -1,0 +1,18 @@
+# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "ChromeOS Team"
+NAME = "WIFI_CAPS_TEST"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "General"
+TEST_TYPE = "client"
+
+DOC = """
+  Tests that WiFi devices have the required capabilities
+
+  The test uses the iw tool to query device capabilities.
+"""
+
+job.run_test('network_WiFiCaps')

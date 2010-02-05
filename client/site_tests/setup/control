@@ -21,6 +21,7 @@ chromeos_tests = [
     'gpu_SanAngeles',
     'ltp',
     'memory_Throughput',
+    'network_WiFiCaps',
     'unixbench',
     'storage_Fio',
     'storage_SsdDetection',
