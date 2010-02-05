@@ -22,16 +22,28 @@
  * $Revision: 1.10 $
  */
 
-// The main thing here is to use GLfloat instead of GLfixed for vertex and
-// normal data.
+// The GLES2 implementation is adapted from the javascript implementation
+// upon WebGL by kwaters@.
 
+// The OpenGL implementation uses VBO extensions instead.
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
 #include <assert.h>
 
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+#undef IMPORTGL_API
+#undef IMPORTGL_FNPTRINIT
 #include "importgl.h"
+#include "matrixop.h"
+#include "shader.h"
+#else  // SAN_ANGELES_OBSERVATION_GLES
+#undef IMPORTVBO_API
+#undef IMPORTVBO_FNPTRINIT
 #include "importvbo.h"
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
 #include "app.h"
 #include "shapes.h"
@@ -58,41 +70,6 @@ static unsigned long randomUInt()
     return sRandomSeed >> 16;
 }
 
-#ifdef SAN_ANGELES_OBSERVATION_GLES
-
-// Capped conversion from float to fixed.
-static long floatToFixed(float value)
-{
-    if (value < -32768) value = -32768;
-    if (value > 32767) value = 32767;
-    return (long)(value * 65536);
-}
-
-#define FIXED(value) floatToFixed(value)
-
-#endif  // SAN_ANGELES_OBSERVATION_GLES
-
-
-#ifdef SAN_ANGELES_OBSERVATION_GLES
-
-typedef GLfixed VertexDataType;
-#define VERTEX_DATA_FLAG GL_FIXED
-#define VERTEX_DATA_MAP(x) FIXED(x)
-typedef GLfixed NormalDataType;
-#define NORMAL_DATA_FLAG GL_FIXED
-#define NORMAL_DATA_MAP(x) FIXED(x)
-
-#else  // !SAN_ANGELES_OBSERVATION_GLES
-
-typedef GLfloat VertexDataType;
-#define VERTEX_DATA_FLAG GL_FLOAT
-#define VERTEX_DATA_MAP(x) (x)
-typedef GLfloat NormalDataType;
-#define NORMAL_DATA_FLAG GL_FLOAT
-#define NORMAL_DATA_MAP(x) (x)
-
-#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
-
 
 // Definition of one GL object in this demo.
 typedef struct {
@@ -106,14 +83,21 @@ typedef struct {
      * components per color with GL_UNSIGNED_BYTE datatype and stride 0.
      * Normal array is supposed to use GL_FIXED datatype and stride 0.
      */
-    VertexDataType *vertexArray;
+    GLfloat *vertexArray;
+    GLint vertexArraySize;
+    GLint vertexArrayOffset;
     GLubyte *colorArray;
-    NormalDataType *normalArray;
+    GLint colorArraySize;
+    GLint colorArrayOffset;
+    GLfloat *normalArray;
+    GLint normalArraySize;
+    GLint normalArrayOffset;
     GLint vertexComponents;
     GLsizei count;
-#ifdef USE_VBO
     GLuint vboId;
-#endif  // USE_VBO
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    GLuint shaderProgram;
+#endif  // SAN_ANGELES_OBSERVATION_GLES
 } GLOBJECT;
 
 
@@ -127,6 +111,9 @@ static long sNextCamTrackStartTick = 0x7fffffff;
 static GLOBJECT *sSuperShapeObjects[SUPERSHAPE_COUNT] = { NULL };
 static GLOBJECT *sGroundPlane = NULL;
 
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+static GLuint sFadeVBO = 0;
+#endif  // SAN_ANGELES_OBSERVATION_GLES
 
 typedef struct {
     float x, y, z;
@@ -137,23 +124,13 @@ static void freeGLObject(GLOBJECT *object)
 {
     if (object == NULL)
         return;
-    
-#ifdef USE_VBO
-    if (object->vboId != 0)
-    {
-        glDeleteBuffersARB(1, &object->vboId);
-    }
-    else
-    {
-        free(object->normalArray);
-        free(object->colorArray);
-        free(object->vertexArray);
-    }
-#else  // !USE_VBO
+
+    glDeleteBuffers(1, &object->vboId);
+
     free(object->normalArray);
     free(object->colorArray);
     free(object->vertexArray);
-#endif  // USE_VBO || !USE_VBO
+
     free(object);
 }
 
@@ -162,23 +139,30 @@ static GLOBJECT * newGLObject(long vertices, int vertexComponents,
                               int useNormalArray)
 {
     GLOBJECT *result;
-    result = (GLOBJECT *)malloc(sizeof(GLOBJECT));
+    result = malloc(sizeof(GLOBJECT));
     if (result == NULL)
         return NULL;
     result->count = vertices;
     result->vertexComponents = vertexComponents;
-    result->vertexArray = (VertexDataType *)
-                          malloc(vertices * vertexComponents *
-                                 sizeof(VertexDataType));
-    result->colorArray = (GLubyte *)malloc(vertices * 4 * sizeof(GLubyte));
+    result->vertexArraySize = vertices * vertexComponents * sizeof(GLfloat);
+    result->vertexArray = malloc(result->vertexArraySize);
+    result->vertexArrayOffset = 0;
+    result->colorArraySize = vertices * 4 * sizeof(GLubyte);
+    result->colorArray = malloc(result->colorArraySize);
+    result->colorArrayOffset = result->vertexArrayOffset +
+                               result->vertexArraySize;
     if (useNormalArray)
     {
-        result->normalArray = (NormalDataType *)
-                               malloc(vertices * 3 *
-                                      sizeof(NormalDataType));
+        result->normalArraySize = vertices * 3 * sizeof(GLfloat);
+        result->normalArray = malloc(result->normalArraySize);
     }
     else
+    {
+        result->normalArraySize = 0;
         result->normalArray = NULL;
+    }
+    result->normalArrayOffset = result->colorArrayOffset +
+                                result->colorArraySize;
     if (result->vertexArray == NULL ||
         result->colorArray == NULL ||
         (useNormalArray && result->normalArray == NULL))
@@ -186,14 +170,14 @@ static GLOBJECT * newGLObject(long vertices, int vertexComponents,
         freeGLObject(result);
         return NULL;
     }
-#ifdef USE_VBO
     result->vboId = 0;
-#endif  // USE_VBO
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    result->shaderProgram = 0;
+#endif  // SAN_ANGELES_OBSERVATION_GLES
     return result;
 }
 
 
-#ifdef USE_VBO
 static void createVBO(GLOBJECT *object)
 {
     assert(object != NULL);
@@ -201,84 +185,92 @@ static void createVBO(GLOBJECT *object)
     if (object->vboId != 0)  // VBO already created.
         return;
 
-    GLsizei vertexArraySize = sizeof(VertexDataType) * object->count *
-                                     object->vertexComponents;
-    GLsizei normalArraySize;
+    glGenBuffers(1, &object->vboId);
+    glBindBuffer(GL_ARRAY_BUFFER, object->vboId);
+    glBufferData(GL_ARRAY_BUFFER,
+                 object->vertexArraySize + object->normalArraySize +
+                 object->colorArraySize,
+                 0, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, object->vertexArrayOffset,
+                    object->vertexArraySize, object->vertexArray);
+    glBufferSubData(GL_ARRAY_BUFFER, object->colorArrayOffset,
+                    object->colorArraySize, object->colorArray);
     if (object->normalArray)
-        normalArraySize = sizeof(NormalDataType) * object->count * 3;
-    else
-        normalArraySize = 0;
-    GLsizei colorArraySize = sizeof(GLubyte) * object->count * 4;
-
-    glGenBuffersARB(1, &object->vboId);
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, object->vboId);
-    glBufferDataARB(GL_ARRAY_BUFFER_ARB, 
-                    vertexArraySize + normalArraySize + colorArraySize,
-                    0, GL_STATIC_DRAW_ARB);
-    glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0,
-                       vertexArraySize, object->vertexArray);
-    if (object->normalArray)
-        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, vertexArraySize,
-                           normalArraySize, object->normalArray);
-    glBufferSubDataARB(GL_ARRAY_BUFFER_ARB,
-                       vertexArraySize + normalArraySize,
-                       colorArraySize, object->colorArray);
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+        glBufferSubData(GL_ARRAY_BUFFER, object->normalArrayOffset,
+                        object->normalArraySize, object->normalArray);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     free(object->normalArray);
+    object->normalArray = NULL;
     free(object->colorArray);
+    object->colorArray = NULL;
     free(object->vertexArray);
+    object->vertexArray = NULL;
 }
-#endif  // USE_VBO
 
 
 static void drawGLObject(GLOBJECT *object)
 {
-    assert(object != NULL);
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    int loc_pos = -1;
+    int loc_colorIn = -1;
+    int loc_normal = -1;
+#endif  // SAN_ANGELES_OBSERVATION_GLES
 
-#ifdef USE_VBO
+    assert(object != NULL);
     assert(object->vboId != 0);
 
-    GLsizei vertexArraySize = sizeof(VertexDataType) * object->count *
-                                     object->vertexComponents;
-    GLsizei normalArraySize;
-    if (object->normalArray)
-        normalArraySize = sizeof(NormalDataType) * object->count * 3;
-    else
-        normalArraySize = 0;
-
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, object->vboId);
-    if (object->normalArray)
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    bindShaderProgram(object->shaderProgram);
+    glBindBuffer(GL_ARRAY_BUFFER, object->vboId);
+    if (object->shaderProgram == sShaderLit.program)
     {
-        glNormalPointer(NORMAL_DATA_FLAG, 0,
-                        (void *)vertexArraySize);
+        loc_pos = sShaderLit.pos;
+        loc_colorIn = sShaderLit.colorIn;
+        loc_normal = sShaderLit.normal;
+    }
+    else if (object->shaderProgram == sShaderFlat.program)
+    {
+        loc_pos = sShaderFlat.pos;
+        loc_colorIn = sShaderFlat.colorIn;
+    }
+    else
+    {
+        assert(0);
+    }
+    glVertexAttribPointer(loc_pos, object->vertexComponents, GL_FLOAT,
+                          GL_FALSE, 0, (void *)object->vertexArrayOffset);
+    glEnableVertexAttribArray(loc_pos);
+    glVertexAttribPointer(loc_colorIn, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0,
+                          (void *)object->colorArrayOffset);
+    glEnableVertexAttribArray(loc_colorIn);
+    if (object->normalArraySize > 0)
+    {
+        glVertexAttribPointer(loc_normal, 3, GL_FLOAT, GL_FALSE, 0,
+                              (void *)object->normalArrayOffset);
+        glEnableVertexAttribArray(loc_normal);
+    }
+    glDrawArrays(GL_TRIANGLES, 0, object->count);
+
+    if (object->normalArraySize > 0)
+        glDisableVertexAttribArray(loc_normal);
+    glDisableVertexAttribArray(loc_colorIn);
+    glDisableVertexAttribArray(loc_pos);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+    glBindBuffer(GL_ARRAY_BUFFER, object->vboId);
+    glVertexPointer(object->vertexComponents, GL_FLOAT, 0,
+                    (void *)object->vertexArrayOffset);
+    glColorPointer(4, GL_UNSIGNED_BYTE, 0, (void *)object->colorArrayOffset);
+    if (object->normalArraySize > 0)
+    {
+        glNormalPointer(GL_FLOAT, 0, (void *)object->normalArrayOffset);
         glEnableClientState(GL_NORMAL_ARRAY);
     }
     else
         glDisableClientState(GL_NORMAL_ARRAY);
-    glColorPointer(4, GL_UNSIGNED_BYTE, 0,
-                   (void *)(vertexArraySize + normalArraySize));
-    glVertexPointer(object->vertexComponents, VERTEX_DATA_FLAG, 0, 0);
     glDrawArrays(GL_TRIANGLES, 0, object->count);
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-#else  // !USE_VBO
-    glVertexPointer(object->vertexComponents, VERTEX_DATA_FLAG,
-                    0, object->vertexArray);
-    glColorPointer(4, GL_UNSIGNED_BYTE, 0, object->colorArray);
-
-    // Already done in initialization:
-    //glEnableClientState(GL_VERTEX_ARRAY);
-    //glEnableClientState(GL_COLOR_ARRAY);
-
-    if (object->normalArray)
-    {
-        glNormalPointer(NORMAL_DATA_FLAG, 0, object->normalArray);
-        glEnableClientState(GL_NORMAL_ARRAY);
-    }
-    else
-        glDisableClientState(GL_NORMAL_ARRAY);
-    glDrawArrays(GL_TRIANGLES, 0, object->count);
-#endif  // USE_VBO || !USE_VBO
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 }
 
 
@@ -403,9 +395,9 @@ static GLOBJECT * createSuperShape(const float *params)
                      i < (currentVertex + 6) * 3;
                      i += 3)
                 {
-                    result->normalArray[i] = NORMAL_DATA_MAP(n.x);
-                    result->normalArray[i + 1] = NORMAL_DATA_MAP(n.y);
-                    result->normalArray[i + 2] = NORMAL_DATA_MAP(n.z);
+                    result->normalArray[i] = n.x;
+                    result->normalArray[i + 1] = n.y;
+                    result->normalArray[i + 2] = n.z;
                 }
                 for (i = currentVertex * 4;
                      i < (currentVertex + 6) * 4;
@@ -422,47 +414,29 @@ static GLOBJECT * createSuperShape(const float *params)
                     result->colorArray[i + 2] = (GLubyte)color[2];
                     result->colorArray[i + 3] = 0;
                 }
-                result->vertexArray[currentVertex * 3] =
-                    VERTEX_DATA_MAP(pa.x);
-                result->vertexArray[currentVertex * 3 + 1] =
-                    VERTEX_DATA_MAP(pa.y);
-                result->vertexArray[currentVertex * 3 + 2] =
-                    VERTEX_DATA_MAP(pa.z);
+                result->vertexArray[currentVertex * 3] = pa.x;
+                result->vertexArray[currentVertex * 3 + 1] = pa.y;
+                result->vertexArray[currentVertex * 3 + 2] = pa.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] =
-                    VERTEX_DATA_MAP(pb.x);
-                result->vertexArray[currentVertex * 3 + 1] =
-                    VERTEX_DATA_MAP(pb.y);
-                result->vertexArray[currentVertex * 3 + 2] =
-                    VERTEX_DATA_MAP(pb.z);
+                result->vertexArray[currentVertex * 3] = pb.x;
+                result->vertexArray[currentVertex * 3 + 1] = pb.y;
+                result->vertexArray[currentVertex * 3 + 2] = pb.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] =
-                    VERTEX_DATA_MAP(pd.x);
-                result->vertexArray[currentVertex * 3 + 1] =
-                    VERTEX_DATA_MAP(pd.y);
-                result->vertexArray[currentVertex * 3 + 2] =
-                    VERTEX_DATA_MAP(pd.z);
+                result->vertexArray[currentVertex * 3] = pd.x;
+                result->vertexArray[currentVertex * 3 + 1] = pd.y;
+                result->vertexArray[currentVertex * 3 + 2] = pd.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] =
-                    VERTEX_DATA_MAP(pb.x);
-                result->vertexArray[currentVertex * 3 + 1] =
-                    VERTEX_DATA_MAP(pb.y);
-                result->vertexArray[currentVertex * 3 + 2] =
-                    VERTEX_DATA_MAP(pb.z);
+                result->vertexArray[currentVertex * 3] = pb.x;
+                result->vertexArray[currentVertex * 3 + 1] = pb.y;
+                result->vertexArray[currentVertex * 3 + 2] = pb.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] =
-                    VERTEX_DATA_MAP(pc.x);
-                result->vertexArray[currentVertex * 3 + 1] =
-                    VERTEX_DATA_MAP(pc.y);
-                result->vertexArray[currentVertex * 3 + 2] =
-                    VERTEX_DATA_MAP(pc.z);
+                result->vertexArray[currentVertex * 3] = pc.x;
+                result->vertexArray[currentVertex * 3 + 1] = pc.y;
+                result->vertexArray[currentVertex * 3 + 2] = pc.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] =
-                    VERTEX_DATA_MAP(pd.x);
-                result->vertexArray[currentVertex * 3 + 1] =
-                    VERTEX_DATA_MAP(pd.y);
-                result->vertexArray[currentVertex * 3 + 2] =
-                    VERTEX_DATA_MAP(pd.z);
+                result->vertexArray[currentVertex * 3] = pd.x;
+                result->vertexArray[currentVertex * 3 + 1] = pd.y;
+                result->vertexArray[currentVertex * 3 + 2] = pd.z;
                 ++currentVertex;
             } // r0 && r1 && r2 && r3
             ++currentQuad;
@@ -471,9 +445,10 @@ static GLOBJECT * createSuperShape(const float *params)
 
     // Set number of vertices in object to the actual amount created.
     result->count = currentVertex;
-#ifdef USE_VBO
     createVBO(result);
-#endif  // USE_VBO
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    result->shaderProgram = sShaderLit.program;
+#endif  // SAN_ANGELES_OBSERVATION_GLES
     return result;
 }
 
@@ -519,18 +494,17 @@ static GLOBJECT * createGroundPlane()
                 const int xm = x + ((0x1c >> a) & 1);
                 const int ym = y + ((0x31 >> a) & 1);
                 const float m = (float)(cos(xm * 2) * sin(ym * 4) * 0.75f);
-                result->vertexArray[currentVertex * 2] =
-                    VERTEX_DATA_MAP(xm * scale + m);
-                result->vertexArray[currentVertex * 2 + 1] =
-                    VERTEX_DATA_MAP(ym * scale + m);
+                result->vertexArray[currentVertex * 2] = xm * scale + m;
+                result->vertexArray[currentVertex * 2 + 1] = ym * scale + m;
                 ++currentVertex;
             }
             ++currentQuad;
         }
     }
-#ifdef USE_VBO
     createVBO(result);
-#endif  // USE_VBO
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    result->shaderProgram = sShaderFlat.program;
+#endif  // SAN_ANGELES_OBSERVATION_GLES
     return result;
 }
 
@@ -541,11 +515,15 @@ static void drawGroundPlane()
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+#ifndef SAN_ANGELES_OBSERVATION_GLES
     glDisable(GL_LIGHTING);
+#endif  // !SAN_ANGELES_OBSERVATION_GLES
 
     drawGLObject(sGroundPlane);
 
+#ifndef SAN_ANGELES_OBSERVATION_GLES
     glEnable(GL_LIGHTING);
+#endif  // !SAN_ANGELES_OBSERVATION_GLES
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
 }
@@ -553,22 +531,13 @@ static void drawGroundPlane()
 
 static void drawFadeQuad()
 {
-    static const VertexDataType quadVertices[] = {
-#ifdef SAN_ANGELES_OBSERVATION_GLES
-        -0x10000, -0x10000,
-         0x10000, -0x10000,
-        -0x10000,  0x10000,
-         0x10000, -0x10000,
-         0x10000,  0x10000,
-        -0x10000,  0x10000
-#else  // !SAN_ANGELES_OBSERVATION_GLES
-        -1, -1,
-         1, -1,
-        -1,  1,
-         1, -1,
-         1,  1,
-        -1,  1
-#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
+    static const GLfloat quadVertices[] = {
+        -1.f, -1.f,
+         1.f, -1.f,
+        -1.f,  1.f,
+         1.f, -1.f,
+         1.f,  1.f,
+        -1.f,  1.f
     };
 
     const int beginFade = sTick - sCurrentCamTrackStartTick;
@@ -577,12 +546,29 @@ static void drawFadeQuad()
 
     if (minFade < 1024)
     {
-        const GLfixed fadeColor = minFade << 6;
-        glColor4x(fadeColor, fadeColor, fadeColor, 0);
-
+        const GLfloat fadeColor = minFade / 1024.f;
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+        if (sFadeVBO == 0)
+        {
+            glGenBuffers(1, &sFadeVBO);
+            glBindBuffer(GL_ARRAY_BUFFER, sFadeVBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 12,
+                         quadVertices, GL_STATIC_DRAW);
+        }
+        bindShaderProgram(sShaderFade.program);
+        glUniform1f(sShaderFade.minFade, fadeColor);
+        glBindBuffer(GL_ARRAY_BUFFER, sFadeVBO);
+        glVertexAttribPointer(sShaderFade.pos, 2, GL_FLOAT, GL_FALSE,
+                              0, NULL);
+        glEnableVertexAttribArray(sShaderFade.pos);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDisableVertexAttribArray(sShaderFade.pos);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+        glColor4f(fadeColor, fadeColor, fadeColor, 0);
+
         glDisable(GL_LIGHTING);
 
         glMatrixMode(GL_MODELVIEW);
@@ -593,7 +579,7 @@ static void drawFadeQuad()
 
         glDisableClientState(GL_COLOR_ARRAY);
         glDisableClientState(GL_NORMAL_ARRAY);
-        glVertexPointer(2, VERTEX_DATA_FLAG, 0, quadVertices);
+        glVertexPointer(2, GL_FLOAT, 0, quadVertices);
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -602,6 +588,7 @@ static void drawFadeQuad()
         glMatrixMode(GL_MODELVIEW);
 
         glEnable(GL_LIGHTING);
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
     }
@@ -609,14 +596,28 @@ static void drawFadeQuad()
 
 
 // Called from the app framework.
-void appInit()
+int appInit()
 {
     int a;
+    static GLfloat light0Diffuse[] = { 1.f, 0.4f, 0, 1.f };
+    static GLfloat light1Diffuse[] = { 0.07f, 0.14f, 0.35f, 1.f };
+    static GLfloat light2Diffuse[] = { 0.07f, 0.17f, 0.14f, 1.f };
+    static GLfloat materialSpecular[] = { 1.f, 1.f, 1.f, 1.f };
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    static GLfloat lightAmbient[] = { 0.2f, 0.2f, 0.2f, 1.f };
+#endif  // SAN_ANGELES_OBSERVATION_GLES
 
-    glEnable(GL_NORMALIZE);
-    glEnable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    if (initShaderPrograms() == 0)
+    {
+        fprintf(stderr, "initShaderPrograms failed\n");
+        return 0;
+    }
+#else  // !SAN_ANGELES_OBSERVATION_GLES
     glShadeModel(GL_FLAT);
+    glEnable(GL_NORMALIZE);
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -625,7 +626,7 @@ void appInit()
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
-
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
     seedRandom(15);
 
     for (a = 0; a < SUPERSHAPE_COUNT; ++a)
@@ -635,6 +636,24 @@ void appInit()
     }
     sGroundPlane = createGroundPlane();
     assert(sGroundPlane != NULL);
+
+    // setup non-changing lighting parameters
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    bindShaderProgram(sShaderLit.program);
+    glUniform4fv(sShaderLit.ambient, 1, lightAmbient);
+    glUniform4fv(sShaderLit.light_0_diffuse, 1, light0Diffuse);
+    glUniform4fv(sShaderLit.light_1_diffuse, 1, light1Diffuse);
+    glUniform4fv(sShaderLit.light_2_diffuse, 1, light2Diffuse);
+    glUniform4fv(sShaderLit.light_0_specular, 1, materialSpecular);
+    glUniform1f(sShaderLit.shininess, 60.f);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light0Diffuse);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, light1Diffuse);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, light2Diffuse);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, materialSpecular);
+    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 60);
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
+    return 1;
 }
 
 
@@ -645,8 +664,13 @@ void appDeinit()
     for (a = 0; a < SUPERSHAPE_COUNT; ++a)
         freeGLObject(sSuperShapeObjects[a]);
     freeGLObject(sGroundPlane);
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    glDeleteBuffers(1, &sFadeVBO);
+    deInitShaderPrograms();
+#endif  // SAN_ANGELES_OBSERVATION_GLES
 }
 
+#ifndef SAN_ANGELES_OBSERVATION_GLES
 static void gluPerspective(GLfloat fovy, GLfloat aspect,
                            GLfloat zNear, GLfloat zFar)
 {
@@ -657,50 +681,59 @@ static void gluPerspective(GLfloat fovy, GLfloat aspect,
     xmin = ymin * aspect;
     xmax = ymax * aspect;
 
-    glFrustumx((GLfixed)(xmin * 65536), (GLfixed)(xmax * 65536),
-               (GLfixed)(ymin * 65536), (GLfixed)(ymax * 65536),
-               (GLfixed)(zNear * 65536), (GLfixed)(zFar * 65536));
+    glFrustum(xmin, xmax, ymin, ymax, zNear, zFar);
 }
+#endif  // !SAN_ANGELES_OBSERVATION_GLES
 
 static void prepareFrame(int width, int height)
 {
     glViewport(0, 0, width, height);
 
-    glClearColorx((GLfixed)(0.1f * 65536),
-                  (GLfixed)(0.2f * 65536),
-                  (GLfixed)(0.3f * 65536), 0x10000);
+    glClearColor(0.1f, 0.2f, 0.3f, 1.f);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    Matrix4x4_LoadIdentity(sProjection);
+    Matrix4x4_Perspective(sProjection,
+                          45.f, (float)width / height, 0.5f, 150);
+
+    Matrix4x4_LoadIdentity(sModelView);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(45, (float)width / height, 0.5f, 150);
 
     glMatrixMode(GL_MODELVIEW);
-
     glLoadIdentity();
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 }
 
 
 static void configureLightAndMaterial()
 {
-    static GLfixed light0Position[] = { -0x40000, 0x10000, 0x10000, 0 };
-    static GLfixed light0Diffuse[] = { 0x10000, 0x6666, 0, 0x10000 };
-    static GLfixed light1Position[] = { 0x10000, -0x20000, -0x10000, 0 };
-    static GLfixed light1Diffuse[] = { 0x11eb, 0x23d7, 0x5999, 0x10000 };
-    static GLfixed light2Position[] = { -0x10000, 0, -0x40000, 0 };
-    static GLfixed light2Diffuse[] = { 0x11eb, 0x2b85, 0x23d7, 0x10000 };
-    static GLfixed materialSpecular[] = { 0x10000, 0x10000, 0x10000, 0x10000 };
+    GLfloat light0Position[] = { -4.f, 1.f, 1.f, 0 };
+    GLfloat light1Position[] = { 1.f, -2.f, -1.f, 0 };
+    GLfloat light2Position[] = { -1.f, 0, -4.f, 0 };
 
-    glLightxv(GL_LIGHT0, GL_POSITION, light0Position);
-    glLightxv(GL_LIGHT0, GL_DIFFUSE, light0Diffuse);
-    glLightxv(GL_LIGHT1, GL_POSITION, light1Position);
-    glLightxv(GL_LIGHT1, GL_DIFFUSE, light1Diffuse);
-    glLightxv(GL_LIGHT2, GL_POSITION, light2Position);
-    glLightxv(GL_LIGHT2, GL_DIFFUSE, light2Diffuse);
-    glMaterialxv(GL_FRONT_AND_BACK, GL_SPECULAR, materialSpecular);
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    Matrix4x4_Transform(sModelView,
+                        light0Position, light0Position + 1, light0Position + 2);
+    Matrix4x4_Transform(sModelView,
+                        light1Position, light1Position + 1, light1Position + 2);
+    Matrix4x4_Transform(sModelView,
+                        light2Position, light2Position + 1, light2Position + 2);
 
-    glMaterialx(GL_FRONT_AND_BACK, GL_SHININESS, 60 << 16);
+    bindShaderProgram(sShaderLit.program);
+    glUniform3fv(sShaderLit.light_0_direction, 1, light0Position);
+    glUniform3fv(sShaderLit.light_1_direction, 1, light1Position);
+    glUniform3fv(sShaderLit.light_2_direction, 1, light2Position);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+    glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
+    glLightfv(GL_LIGHT1, GL_POSITION, light1Position);
+    glLightfv(GL_LIGHT2, GL_POSITION, light2Position);
+
     glEnable(GL_COLOR_MATERIAL);
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 }
 
 
@@ -711,28 +744,42 @@ static void drawModels(float zScale)
 
     seedRandom(9);
 
-    glScalex(1 << 16, 1 << 16, (GLfixed)(zScale * 65536));
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    Matrix4x4_Scale(sModelView, 1.f, 1.f, zScale);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+    glScalef(1.f, 1.f, zScale);
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
     for (y = -5; y <= 5; ++y)
     {
         for (x = -5; x <= 5; ++x)
         {
             float buildingScale;
-            GLfixed fixedScale;
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+            Matrix4x4 tmp;
+#endif  // SAN_ANGELES_OBSERVATION_GLES
 
             int curShape = randomUInt() % SUPERSHAPE_COUNT;
             buildingScale = sSuperShapeParams[curShape][SUPERSHAPE_PARAMS - 1];
-            fixedScale = (GLfixed)(buildingScale * 65536);
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+            Matrix4x4_Copy(tmp, sModelView);
+            Matrix4x4_Translate(sModelView, x * translationScale,
+                                y * translationScale, 0);
+            Matrix4x4_Rotate(sModelView, randomUInt() % 360, 0, 0, 1.f);
+            Matrix4x4_Scale(sModelView,
+                            buildingScale, buildingScale, buildingScale);
 
+            drawGLObject(sSuperShapeObjects[curShape]);
+            Matrix4x4_Copy(sModelView, tmp);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
             glPushMatrix();
-            glTranslatex((x * translationScale) * 65536,
-                         (y * translationScale) * 65536,
-                         0);
-            glRotatex((GLfixed)((randomUInt() % 360) << 16), 0, 0, 1 << 16);
-            glScalex(fixedScale, fixedScale, fixedScale);
+            glTranslatef(x * translationScale, y * translationScale, 0);
+            glRotatef(randomUInt() % 360, 0, 0, 1.f);
+            glScalef(buildingScale, buildingScale, buildingScale);
 
             drawGLObject(sSuperShapeObjects[curShape]);
             glPopMatrix();
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
         }
     }
 
@@ -741,16 +788,27 @@ static void drawModels(float zScale)
         const int shipScale100 = translationScale * 500;
         const int offs100 = x * shipScale100 + (sTick % shipScale100);
         float offs = offs100 * 0.01f;
-        GLfixed fixedOffs = (GLfixed)(offs * 65536);
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+        Matrix4x4 tmp;
+        Matrix4x4_Copy(tmp, sModelView);
+        Matrix4x4_Translate(sModelView, offs, -4.f, 2.f);
+        drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
+        Matrix4x4_Copy(sModelView, tmp);
+        Matrix4x4_Translate(sModelView, -4.f, offs, 4.f);
+        Matrix4x4_Rotate(sModelView, 90.f, 0, 0, 1.f);
+        drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
+        Matrix4x4_Copy(sModelView, tmp);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
         glPushMatrix();
-        glTranslatex(fixedOffs, -4 * 65536, 2 << 16);
+        glTranslatef(offs, -4.f, 2.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
         glPopMatrix();
         glPushMatrix();
-        glTranslatex(-4 * 65536, fixedOffs, 4 << 16);
-        glRotatex(90 << 16, 0, 0, 1 << 16);
+        glTranslatef(-4.f, offs, 4.f);
+        glRotatef(90.f, 0, 0, 1.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
         glPopMatrix();
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
     }
 }
 
@@ -761,7 +819,11 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
 	              GLfloat centerx, GLfloat centery, GLfloat centerz,
 	              GLfloat upx, GLfloat upy, GLfloat upz)
 {
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    Matrix4x4 m;
+#else  // !SAN_ANGELES_OBSERVATION_GLES
     GLfloat m[16];
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
     GLfloat x[3], y[3], z[3];
     GLfloat mag;
 
@@ -812,7 +874,8 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
         y[2] /= mag;
     }
 
-#define M(row,col)  m[col*4+row]
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+#define M(row, col) m[col*4 + row]
     M(0, 0) = x[0];
     M(0, 1) = x[1];
     M(0, 2) = x[2];
@@ -830,18 +893,35 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
     M(3, 2) = 0.0;
     M(3, 3) = 1.0;
 #undef M
-    {
-        int a;
-        GLfixed fixedM[16];
-        for (a = 0; a < 16; ++a)
-            fixedM[a] = (GLfixed)(m[a] * 65536);
-        glMultMatrixx(fixedM);
-    }
+
+    Matrix4x4_Multiply(sModelView, m, sModelView);
+
+    Matrix4x4_Translate(sModelView, -eyex, -eyey, -eyez);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
+#define M(row, col)  m[col*4 + row]
+    M(0, 0) = x[0];
+    M(0, 1) = x[1];
+    M(0, 2) = x[2];
+    M(0, 3) = 0.0;
+    M(1, 0) = y[0];
+    M(1, 1) = y[1];
+    M(1, 2) = y[2];
+    M(1, 3) = 0.0;
+    M(2, 0) = z[0];
+    M(2, 1) = z[1];
+    M(2, 2) = z[2];
+    M(2, 3) = 0.0;
+    M(3, 0) = 0.0;
+    M(3, 1) = 0.0;
+    M(3, 2) = 0.0;
+    M(3, 3) = 1.0;
+#undef M
+
+    glMultMatrixf(m);
 
     /* Translate Eye to Origin */
-    glTranslatex((GLfixed)(-eyex * 65536),
-                 (GLfixed)(-eyey * 65536),
-                 (GLfixed)(-eyez * 65536));
+    glTranslatef(-eyex, -eyey, -eyez);
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 }
 
 static void camTrack()
@@ -897,6 +977,10 @@ static void camTrack()
  */
 void appRender(long tick, int width, int height)
 {
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    Matrix4x4 tmp;
+#endif  // SAN_ANGELES_OBSERVATION_GLES
+
     if (sStartTick == 0)
         sStartTick = tick;
     if (!gAppAlive)
@@ -922,9 +1006,15 @@ void appRender(long tick, int width, int height)
     configureLightAndMaterial();
 
     // Draw the reflection by drawing models with negated Z-axis.
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    Matrix4x4_Copy(tmp, sModelView);
+    drawModels(-1);
+    Matrix4x4_Copy(sModelView, tmp);
+#else  // !SAN_ANGELES_OBSERVATION_GLES
     glPushMatrix();
     drawModels(-1);
     glPopMatrix();
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
     // Blend the ground plane to the window.
     drawGroundPlane();

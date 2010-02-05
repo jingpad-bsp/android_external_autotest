@@ -8,8 +8,6 @@
 #define IMPORTVBO_FNPTRINIT = NULL
 #include "importvbo.h"
 
-#ifdef USE_VBO
-
 #ifdef GLX_VERSION_1_4  // GLX_VERSION >= 1.4
 #define GLEXT_GetProcAddress glXGetProcAddress
 #else  // GLX_VERSION < 1.4
@@ -35,4 +33,3 @@ int loadVBOProcs()
     return 1;
 }
 
-#endif  // USE_VBO

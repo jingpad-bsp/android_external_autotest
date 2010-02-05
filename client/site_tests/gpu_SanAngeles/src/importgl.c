@@ -22,9 +22,13 @@
  * $Revision: 1.4 $
  */
 
+#ifndef DISABLE_IMPORTGL
+
 #include <stdlib.h>
 #include <dlfcn.h>
+
 static void *sGLESSO = NULL;
+static void *sEGLSO = NULL;
 
 #define IMPORTGL_NO_FNPTR_DEFS
 #define IMPORTGL_API
@@ -32,70 +36,82 @@ static void *sGLESSO = NULL;
 #include "importgl.h"
 
 
-/* Imports function pointers to selected function calls in OpenGL ES Common
- * or Common Lite profile DLL or shared object. The function pointers are
- * stored as global symbols with equivalent function name but prefixed with
- * "funcPtr_". Standard gl/egl calls are redirected to the function pointers
- * with preprocessor macros (see importgl.h).
+/* Imports function pointers to selected function calls in GLES and EGL DLL
+ * or shared object. The function pointers are stored as global symbols with
+ * equivalent function name but prefixed with "funcPtr_". Standard gl/egl
+ * calls are redirected to the function pointers with preprocessor macros
+ * (see importgl.h).
  */
-int importGLInit()
+int importGLInit(char *libGLES, char *libEGL)
 {
     int result = 1;
 
-#undef IMPORT_FUNC
+#undef IMPORT_FUNC_EGL
+#undef IMPORT_FUNC_GL
 
-    sGLESSO = dlopen("libGLES_CM.so", RTLD_NOW);
-    if (sGLESSO == NULL)
-        sGLESSO = dlopen("libGLES_CL.so", RTLD_NOW);
-    if (sGLESSO == NULL)
-        return 0;   // Cannot find OpenGL ES Common or Common Lite SO.
+    sGLESSO = dlopen(libGLES, RTLD_LAZY);
+    sEGLSO = dlopen(libEGL, RTLD_LAZY);
+    if (sGLESSO == NULL || sEGLSO == NULL)
+        return 0;   // Cannot find GLES or EGL SO.
 
-#define IMPORT_FUNC(funcName) do { \
+#define IMPORT_FUNC_EGL(funcName) do { \
+        void *procAddress = (void *)dlsym(sEGLSO, #funcName); \
+        if (procAddress == NULL) result = 0; \
+        FNPTR(funcName) = (funcType_##funcName)procAddress; } while (0)
+#define IMPORT_FUNC_GL(funcName) do { \
         void *procAddress = (void *)dlsym(sGLESSO, #funcName); \
         if (procAddress == NULL) result = 0; \
-        *((void **)&FNPTR(funcName)) = procAddress; } while (0)
+        FNPTR(funcName) = (funcType_##funcName)procAddress; } while (0)
 
-    IMPORT_FUNC(eglChooseConfig);
-    IMPORT_FUNC(eglCreateContext);
-    IMPORT_FUNC(eglCreateWindowSurface);
-    IMPORT_FUNC(eglDestroyContext);
-    IMPORT_FUNC(eglDestroySurface);
-    IMPORT_FUNC(eglGetConfigAttrib);
-    IMPORT_FUNC(eglGetConfigs);
-    IMPORT_FUNC(eglGetDisplay);
-    IMPORT_FUNC(eglGetError);
-    IMPORT_FUNC(eglInitialize);
-    IMPORT_FUNC(eglMakeCurrent);
-    IMPORT_FUNC(eglSwapBuffers);
-    IMPORT_FUNC(eglTerminate);
+    IMPORT_FUNC_EGL(eglBindAPI);
+    IMPORT_FUNC_EGL(eglChooseConfig);
+    IMPORT_FUNC_EGL(eglCreateContext);
+    IMPORT_FUNC_EGL(eglCreateWindowSurface);
+    IMPORT_FUNC_EGL(eglDestroyContext);
+    IMPORT_FUNC_EGL(eglDestroySurface);
+    IMPORT_FUNC_EGL(eglGetConfigAttrib);
+    IMPORT_FUNC_EGL(eglGetConfigs);
+    IMPORT_FUNC_EGL(eglGetDisplay);
+    IMPORT_FUNC_EGL(eglGetError);
+    IMPORT_FUNC_EGL(eglInitialize);
+    IMPORT_FUNC_EGL(eglMakeCurrent);
+    IMPORT_FUNC_EGL(eglSwapBuffers);
+    IMPORT_FUNC_EGL(eglTerminate);
 
-    IMPORT_FUNC(glBlendFunc);
-    IMPORT_FUNC(glClear);
-    IMPORT_FUNC(glClearColorx);
-    IMPORT_FUNC(glColor4x);
-    IMPORT_FUNC(glColorPointer);
-    IMPORT_FUNC(glDisable);
-    IMPORT_FUNC(glDisableClientState);
-    IMPORT_FUNC(glDrawArrays);
-    IMPORT_FUNC(glEnable);
-    IMPORT_FUNC(glEnableClientState);
-    IMPORT_FUNC(glFrustumx);
-    IMPORT_FUNC(glGetError);
-    IMPORT_FUNC(glLightxv);
-    IMPORT_FUNC(glLoadIdentity);
-    IMPORT_FUNC(glMaterialx);
-    IMPORT_FUNC(glMaterialxv);
-    IMPORT_FUNC(glMatrixMode);
-    IMPORT_FUNC(glMultMatrixx);
-    IMPORT_FUNC(glNormalPointer);
-    IMPORT_FUNC(glPopMatrix);
-    IMPORT_FUNC(glPushMatrix);
-    IMPORT_FUNC(glRotatex);
-    IMPORT_FUNC(glScalex);
-    IMPORT_FUNC(glShadeModel);
-    IMPORT_FUNC(glTranslatex);
-    IMPORT_FUNC(glVertexPointer);
-    IMPORT_FUNC(glViewport);
+    IMPORT_FUNC_GL(glAttachShader);
+    IMPORT_FUNC_GL(glBindBuffer);
+    IMPORT_FUNC_GL(glBlendFunc);
+    IMPORT_FUNC_GL(glBufferData);
+    IMPORT_FUNC_GL(glBufferSubData);
+    IMPORT_FUNC_GL(glClear);
+    IMPORT_FUNC_GL(glClearColor);
+    IMPORT_FUNC_GL(glCompileShader);
+    IMPORT_FUNC_GL(glCreateProgram);
+    IMPORT_FUNC_GL(glCreateShader);
+    IMPORT_FUNC_GL(glDeleteBuffers);
+    IMPORT_FUNC_GL(glDeleteProgram);
+    IMPORT_FUNC_GL(glDeleteShader);
+    IMPORT_FUNC_GL(glDisable);
+    IMPORT_FUNC_GL(glDisableVertexAttribArray);
+    IMPORT_FUNC_GL(glDrawArrays);
+    IMPORT_FUNC_GL(glEnable);
+    IMPORT_FUNC_GL(glEnableVertexAttribArray);
+    IMPORT_FUNC_GL(glGenBuffers);
+    IMPORT_FUNC_GL(glGetAttribLocation);
+    IMPORT_FUNC_GL(glGetError);
+    IMPORT_FUNC_GL(glGetShaderiv);
+    IMPORT_FUNC_GL(glGetShaderInfoLog);
+    IMPORT_FUNC_GL(glGetUniformLocation);
+    IMPORT_FUNC_GL(glLinkProgram);
+    IMPORT_FUNC_GL(glShaderSource);
+    IMPORT_FUNC_GL(glUniform1f);
+    IMPORT_FUNC_GL(glUniform3fv);
+    IMPORT_FUNC_GL(glUniform4fv);
+    IMPORT_FUNC_GL(glUniformMatrix3fv);
+    IMPORT_FUNC_GL(glUniformMatrix4fv);
+    IMPORT_FUNC_GL(glUseProgram);
+    IMPORT_FUNC_GL(glVertexAttribPointer);
+    IMPORT_FUNC_GL(glViewport);
 
     return result;
 }
@@ -104,5 +120,8 @@ int importGLInit()
 void importGLDeinit()
 {
     dlclose(sGLESSO);
+    dlclose(sEGLSO);
 }
+
+#endif  // !DISABLE_IMPORTGL
 

@@ -55,8 +55,16 @@
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+#undef IMPORTGL_API
+#undef IMPORTGL_FNPTRINIT
 #include "importgl.h"
+#else  // SAN_ANGELES_OBSERVATION_GLES
+#include <GL/glx.h>
+#undef IMPORTVBO_API
+#undef IMPORTVBO_FNPTRINIT
 #include "importvbo.h"
+#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
 #include "app.h"
 
@@ -70,9 +78,13 @@ static int sWindowHeight = WINDOW_DEFAULT_HEIGHT;
 static const char sAppName[] =
     "San Angeles Observation OpenGL ES version example (Linux)";
 static EGLDisplay sEglDisplay = EGL_NO_DISPLAY;
-static EGLConfig sEglConfig;
+static EGLConfig sEglConfig = 0;
 static EGLContext sEglContext = EGL_NO_CONTEXT;
 static EGLSurface sEglSurface = EGL_NO_SURFACE;
+#ifndef DISABLE_IMPORTGL
+static char *sPathLibGLES = NULL;
+static char *sPathLibEGL = NULL;
+#endif  // !DISABLE_IMPORTGL
 #else  // !SAN_ANGELES_OBSERVATION_GLES
 static const char sAppName[] =
     "San Angeles Observation OpenGL version example (Linux)";
@@ -101,94 +113,114 @@ static int initGraphics()
 {
     static const EGLint configAttribs[] =
     {
-#if (WINDOW_BPP == 16)
-        EGL_RED_SIZE,       5,
-        EGL_GREEN_SIZE,     5,
-        EGL_BLUE_SIZE,      5,
-#elif (WINDOW_BPP == 32)
-        EGL_RED_SIZE,       8,
-        EGL_GREEN_SIZE,     8,
-        EGL_BLUE_SIZE,      8,
-#else
-#error WINDOW_BPP must be 16 or 32
-#endif
-        EGL_DEPTH_SIZE,     16,
-        EGL_ALPHA_SIZE,     EGL_DONT_CARE,
-        EGL_STENCIL_SIZE,   EGL_DONT_CARE,
-        EGL_SURFACE_TYPE,   EGL_WINDOW_BIT,
+        EGL_SURFACE_TYPE,     EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE,  EGL_OPENGL_ES2_BIT,
+        EGL_BUFFER_SIZE,      16,
+        EGL_DEPTH_SIZE,       16,
+        EGL_NONE
+    };
+    static const EGLint contextAttribs[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION,  2,
         EGL_NONE
     };
     EGLBoolean success;
-    EGLint numConfigs;
+    EGLint numConfigs = 0;
     EGLint majorVersion;
     EGLint minorVersion;
 
+#ifndef DISABLE_IMPORTGL
     int importGLResult;
-    importGLResult = importGLInit();
+    importGLResult = importGLInit(sPathLibGLES, sPathLibEGL);
     if (!importGLResult)
         return 0;
+#endif  // !DISABLE_IMPORTGL
 
     sDisplay = XOpenDisplay(NULL);
+    if (sDisplay == NULL)
+    {
+        fprintf(stderr, "XOpenDisplay failed\n");
+        return 0;
+    }
+    int screen = XDefaultScreen(sDisplay);
+    Window root_window = RootWindow(sDisplay, screen);
+    int depth = DefaultDepth(sDisplay, screen);
+    XVisualInfo *vi, tmp;
+    vi = &tmp;
+    XMatchVisualInfo(sDisplay, screen, depth, TrueColor, vi);
+    if (vi == NULL)
+    {
+        fprintf(stderr, "XMatchVisualInfo failed\n");
+        return 0;
+    }
+
+    XSetWindowAttributes swa;
+    swa.colormap = XCreateColormap(sDisplay, root_window, vi->visual,
+                                   AllocNone);
+    swa.event_mask = ExposureMask | StructureNotifyMask |
+                     KeyPressMask | ButtonPressMask | ButtonReleaseMask;
+    sWindow = XCreateWindow(sDisplay, root_window,
+                            0, 0, sWindowWidth, sWindowHeight,
+                            0, vi->depth, InputOutput, vi->visual,
+                            CWBorderPixel | CWColormap | CWEventMask,
+                            &swa);
+    XMapWindow(sDisplay, sWindow);
+    XSizeHints sh;
+    sh.flags = PMinSize | PMaxSize;
+    sh.min_width = sh.max_width = sWindowWidth;
+    sh.min_height = sh.max_height = sWindowHeight;
+    XSetStandardProperties(sDisplay, sWindow, sAppName, sAppName,
+                           None, (void *)0, 0, &sh);
+    XFlush(sDisplay);
 
     sEglDisplay = eglGetDisplay(sDisplay);
     success = eglInitialize(sEglDisplay, &majorVersion, &minorVersion);
-    if (success != EGL_FALSE)
-        success = eglGetConfigs(sEglDisplay, NULL, 0, &numConfigs);
-    if (success != EGL_FALSE)
-        success = eglChooseConfig(sEglDisplay, configAttribs,
-                                  &sEglConfig, 1, &numConfigs);
-    if (success != EGL_FALSE)
-    {
-        sEglContext = eglCreateContext(sEglDisplay, sEglConfig, NULL, NULL);
-        if (sEglContext == EGL_NO_CONTEXT)
-            success = EGL_FALSE;
-    }
-    if (success != EGL_FALSE)
-    {
-        XSetWindowAttributes swa;
-        XVisualInfo *vi, tmp;
-        XSizeHints sh;
-        int n;
-        EGLint vid;
-
-        eglGetConfigAttrib(sEglDisplay, sEglConfig,
-                           EGL_NATIVE_VISUAL_ID, &vid);
-        tmp.visualid = vid;
-        vi = XGetVisualInfo(sDisplay, VisualIDMask, &tmp, &n);
-        swa.colormap = XCreateColormap(sDisplay,
-                                       RootWindow(sDisplay, vi->screen),
-                                       vi->visual, AllocNone);
-        sh.flags = PMinSize | PMaxSize;
-        sh.min_width = sh.max_width = sWindowWidth;
-        sh.min_height = sh.max_height = sWindowHeight;
-        swa.border_pixel = 0;
-        swa.event_mask = ExposureMask | StructureNotifyMask |
-                         KeyPressMask | ButtonPressMask | ButtonReleaseMask;
-        sWindow = XCreateWindow(sDisplay, RootWindow(sDisplay, vi->screen),
-                                0, 0, sWindowWidth, sWindowHeight,
-                                0, vi->depth, InputOutput, vi->visual,
-                                CWBorderPixel | CWColormap | CWEventMask,
-                                &swa);
-        XMapWindow(sDisplay, sWindow);
-        XSetStandardProperties(sDisplay, sWindow, sAppName, sAppName,
-                               None, (void *)0, 0, &sh);
-        XFree(vi);
-    }
-    if (success != EGL_FALSE)
-    {
-        sEglSurface = eglCreateWindowSurface(sEglDisplay, sEglConfig,
-                                             (NativeWindowType)sWindow, NULL);
-        if (sEglSurface == EGL_NO_SURFACE)
-            success = EGL_FALSE;
-    }
-    if (success != EGL_FALSE)
-        success = eglMakeCurrent(sEglDisplay, sEglSurface,
-                                 sEglSurface, sEglContext);
-
     if (success == EGL_FALSE)
+    {
+        fprintf(stderr, "eglInitialize failed\n");
         checkEGLErrors();
-
-    return success != EGL_FALSE;
+        return 0;
+    }
+    success = eglBindAPI(EGL_OPENGL_ES_API);
+    if (success == EGL_FALSE)
+    {
+        fprintf(stderr, "eglInitialize failed\n");
+        checkEGLErrors();
+        return 0;
+    }
+    success = eglChooseConfig(sEglDisplay, configAttribs,
+                              &sEglConfig, 1, &numConfigs);
+    if (success == EGL_FALSE || numConfigs != 1)
+    {
+        fprintf(stderr, "eglChooseConfig failed\n");
+        checkEGLErrors();
+        return 0;
+    }
+    sEglContext = eglCreateContext(sEglDisplay, sEglConfig, NULL,
+                                   contextAttribs);
+    if (sEglContext == EGL_NO_CONTEXT)
+    {
+        fprintf(stderr, "eglCreateContext failed\n");
+        checkEGLErrors();
+        return 0;
+    }
+    sEglSurface = eglCreateWindowSurface(sEglDisplay, sEglConfig,
+                                         (NativeWindowType)sWindow, NULL);
+    if (sEglSurface == EGL_NO_SURFACE)
+    {
+        fprintf(stderr, "eglCreateWindowSurface failed\n");
+        checkEGLErrors();
+        return 0;
+    }
+    success = eglMakeCurrent(sEglDisplay, sEglSurface,
+                             sEglSurface, sEglContext);
+    if (success == EGL_FALSE)
+    {
+        fprintf(stderr, "eglMakeCurrent failed\n");
+        checkEGLErrors();
+        return 0;
+    }
+    return 1;
 }
 
 static void deinitGraphics()
@@ -197,7 +229,9 @@ static void deinitGraphics()
     eglDestroyContext(sEglDisplay, sEglContext);
     eglDestroySurface(sEglDisplay, sEglSurface);
     eglTerminate(sEglDisplay);
+#ifndef DISABLE_IMPORTGL
     importGLDeinit();
+#endif  // !DISABLE_IMPORTGL
 }
 
 #else  // !SAN_ANGELES_OBSERVATION_GLES
@@ -252,9 +286,9 @@ static int initGraphics()
 
     XFree(vi);
     int rt = 1;
-#ifdef USE_VBO
+#ifndef SAN_ANGELES_OBSERVATION_GLES
     rt = loadVBOProcs();
-#endif  // USE_VBO
+#endif  // !SAN_ANGELES_OBSERVATION_GLES
     return rt;
 }
 
@@ -274,13 +308,29 @@ int main(int argc, char *argv[])
     argc = argc;
     argv = argv;
 
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+#ifndef DISABLE_IMPORTGL
+    if (argc != 3)
+    {
+        fprintf(stderr, "Usage: SanOGLES libGLESxx.so libEGLxx.so\n");
+        return EXIT_FAILURE;
+    }
+    sPathLibGLES = argv[1];
+    sPathLibEGL = argv[2];
+#endif  // !DISABLE_IMPORTGL
+#endif  // SAN_ANGELES_OBSERVATION_GLES
+
     if (!initGraphics())
     {
         fprintf(stderr, "Graphics initialization failed.\n");
         return EXIT_FAILURE;
     }
 
-    appInit();
+    if (!appInit())
+    {
+        fprintf(stderr, "Application initialization failed.\n");
+        return EXIT_FAILURE;
+    }
 
     double total_time = 0.0;
     int num_frames = 0;
