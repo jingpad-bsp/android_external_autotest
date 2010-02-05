@@ -31,8 +31,8 @@ extern "C" {
 #endif
 
 
-#define WINDOW_DEFAULT_WIDTH    640
-#define WINDOW_DEFAULT_HEIGHT   480
+#define WINDOW_DEFAULT_WIDTH    800
+#define WINDOW_DEFAULT_HEIGHT   600
 
 // #define WINDOW_BPP              16
 
