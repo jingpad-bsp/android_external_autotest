@@ -1,0 +1,20 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chromium OS Project"
+NAME = "BROWSER_URL_FETCH"
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "DesktopUI"
+TEST_TYPE = "client"
+
+DOC = """
+This test opens a new browser to the given URL and waits for the specified
+cookie to be saved.  If the cookie is never stored or the url fails to load,
+the test fails
+TODO(sosa@chromium.org) - Must find way to brin over tests from image (add
+to chromium buildbot, etc).  UrlFetchTest is from ~chromium/src/chrome/test
+"""
+
+job.run_test('browser_UrlFetch')
