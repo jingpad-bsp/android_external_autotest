@@ -94,7 +94,6 @@ typedef struct {
     GLint normalArrayOffset;
     GLint vertexComponents;
     GLsizei count;
-    GLuint vboId;
 #ifdef SAN_ANGELES_OBSERVATION_GLES
     GLuint shaderProgram;
 #endif  // SAN_ANGELES_OBSERVATION_GLES
@@ -110,10 +109,9 @@ static long sNextCamTrackStartTick = 0x7fffffff;
 
 static GLOBJECT *sSuperShapeObjects[SUPERSHAPE_COUNT] = { NULL };
 static GLOBJECT *sGroundPlane = NULL;
+static GLOBJECT *sFadeQuad = NULL;
 
-#ifdef SAN_ANGELES_OBSERVATION_GLES
-static GLuint sFadeVBO = 0;
-#endif  // SAN_ANGELES_OBSERVATION_GLES
+static GLuint sVBO = 0;
 
 typedef struct {
     float x, y, z;
@@ -125,8 +123,6 @@ static void freeGLObject(GLOBJECT *object)
     if (object == NULL)
         return;
 
-    glDeleteBuffers(1, &object->vboId);
-
     free(object->normalArray);
     free(object->colorArray);
     free(object->vertexArray);
@@ -136,7 +132,7 @@ static void freeGLObject(GLOBJECT *object)
 
 
 static GLOBJECT * newGLObject(long vertices, int vertexComponents,
-                              int useNormalArray)
+                              int useColorArray, int useNormalArray)
 {
     GLOBJECT *result;
     result = malloc(sizeof(GLOBJECT));
@@ -147,8 +143,16 @@ static GLOBJECT * newGLObject(long vertices, int vertexComponents,
     result->vertexArraySize = vertices * vertexComponents * sizeof(GLfloat);
     result->vertexArray = malloc(result->vertexArraySize);
     result->vertexArrayOffset = 0;
-    result->colorArraySize = vertices * 4 * sizeof(GLubyte);
-    result->colorArray = malloc(result->colorArraySize);
+    if (useColorArray)
+    {
+        result->colorArraySize = vertices * 4 * sizeof(GLubyte);
+        result->colorArray = malloc(result->colorArraySize);
+    }
+    else
+    {
+        result->colorArraySize = 0;
+        result->colorArray = NULL;
+    }
     result->colorArrayOffset = result->vertexArrayOffset +
                                result->vertexArraySize;
     if (useNormalArray)
@@ -164,13 +168,12 @@ static GLOBJECT * newGLObject(long vertices, int vertexComponents,
     result->normalArrayOffset = result->colorArrayOffset +
                                 result->colorArraySize;
     if (result->vertexArray == NULL ||
-        result->colorArray == NULL ||
+        (useColorArray && result->colorArray == NULL) ||
         (useNormalArray && result->normalArray == NULL))
     {
         freeGLObject(result);
         return NULL;
     }
-    result->vboId = 0;
 #ifdef SAN_ANGELES_OBSERVATION_GLES
     result->shaderProgram = 0;
 #endif  // SAN_ANGELES_OBSERVATION_GLES
@@ -178,27 +181,24 @@ static GLOBJECT * newGLObject(long vertices, int vertexComponents,
 }
 
 
-static void createVBO(GLOBJECT *object)
+static void appendObjectVBO(GLOBJECT *object, GLint *offset)
 {
     assert(object != NULL);
 
-    if (object->vboId != 0)  // VBO already created.
-        return;
+    object->vertexArrayOffset += *offset;
+    object->colorArrayOffset += *offset;
+    object->normalArrayOffset += *offset;
+    *offset += object->vertexArraySize + object->colorArraySize +
+               object->normalArraySize;
 
-    glGenBuffers(1, &object->vboId);
-    glBindBuffer(GL_ARRAY_BUFFER, object->vboId);
-    glBufferData(GL_ARRAY_BUFFER,
-                 object->vertexArraySize + object->normalArraySize +
-                 object->colorArraySize,
-                 0, GL_STATIC_DRAW);
     glBufferSubData(GL_ARRAY_BUFFER, object->vertexArrayOffset,
                     object->vertexArraySize, object->vertexArray);
-    glBufferSubData(GL_ARRAY_BUFFER, object->colorArrayOffset,
-                    object->colorArraySize, object->colorArray);
+    if (object->colorArray)
+        glBufferSubData(GL_ARRAY_BUFFER, object->colorArrayOffset,
+                        object->colorArraySize, object->colorArray);
     if (object->normalArray)
         glBufferSubData(GL_ARRAY_BUFFER, object->normalArrayOffset,
                         object->normalArraySize, object->normalArray);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     free(object->normalArray);
     object->normalArray = NULL;
@@ -206,6 +206,38 @@ static void createVBO(GLOBJECT *object)
     object->colorArray = NULL;
     free(object->vertexArray);
     object->vertexArray = NULL;
+}
+
+
+static GLuint createVBO(GLOBJECT **superShapes, int superShapeCount,
+                        GLOBJECT *groundPlane, GLOBJECT *fadeQuad)
+{
+    GLuint vbo;
+    GLint totalSize = 0;
+    int a;
+    for (a = 0; a < superShapeCount; ++a)
+    {
+        assert(superShapes[a] != NULL);
+        totalSize += superShapes[a]->vertexArraySize +
+                     superShapes[a]->colorArraySize +
+                     superShapes[a]->normalArraySize;
+    }
+    totalSize += groundPlane->vertexArraySize +
+                 groundPlane->colorArraySize +
+                 groundPlane->normalArraySize;
+    totalSize += fadeQuad->vertexArraySize +
+                 fadeQuad->colorArraySize +
+                 fadeQuad->normalArraySize;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, totalSize, 0, GL_STATIC_DRAW);
+    GLint offset = 0;
+    for (a = 0; a < superShapeCount; ++a)
+        appendObjectVBO(superShapes[a], &offset);
+    appendObjectVBO(groundPlane, &offset);
+    appendObjectVBO(fadeQuad, &offset);
+    assert(offset == totalSize);
+    return vbo;
 }
 
 
@@ -218,11 +250,9 @@ static void drawGLObject(GLOBJECT *object)
 #endif  // SAN_ANGELES_OBSERVATION_GLES
 
     assert(object != NULL);
-    assert(object->vboId != 0);
 
 #ifdef SAN_ANGELES_OBSERVATION_GLES
     bindShaderProgram(object->shaderProgram);
-    glBindBuffer(GL_ARRAY_BUFFER, object->vboId);
     if (object->shaderProgram == sShaderLit.program)
     {
         loc_pos = sShaderLit.pos;
@@ -257,7 +287,6 @@ static void drawGLObject(GLOBJECT *object)
     glDisableVertexAttribArray(loc_colorIn);
     glDisableVertexAttribArray(loc_pos);
 #else  // !SAN_ANGELES_OBSERVATION_GLES
-    glBindBuffer(GL_ARRAY_BUFFER, object->vboId);
     glVertexPointer(object->vertexComponents, GL_FLOAT, 0,
                     (void *)object->vertexArrayOffset);
     glColorPointer(4, GL_UNSIGNED_BYTE, 0, (void *)object->colorArrayOffset);
@@ -269,7 +298,6 @@ static void drawGLObject(GLOBJECT *object)
     else
         glDisableClientState(GL_NORMAL_ARRAY);
     glDrawArrays(GL_TRIANGLES, 0, object->count);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 #endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 }
 
@@ -318,7 +346,7 @@ static GLOBJECT * createSuperShape(const float *params)
     int a, longitude, latitude;
     long currentVertex, currentQuad;
 
-    result = newGLObject(vertices, 3, 1);
+    result = newGLObject(vertices, 3, 1, 1);
     if (result == NULL)
         return NULL;
 
@@ -445,7 +473,6 @@ static GLOBJECT * createSuperShape(const float *params)
 
     // Set number of vertices in object to the actual amount created.
     result->count = currentVertex;
-    createVBO(result);
 #ifdef SAN_ANGELES_OBSERVATION_GLES
     result->shaderProgram = sShaderLit.program;
 #endif  // SAN_ANGELES_OBSERVATION_GLES
@@ -464,7 +491,7 @@ static GLOBJECT * createGroundPlane()
     int x, y;
     long currentVertex, currentQuad;
 
-    result = newGLObject(vertices, 2, 0);
+    result = newGLObject(vertices, 2, 1, 0);
     if (result == NULL)
         return NULL;
 
@@ -501,7 +528,6 @@ static GLOBJECT * createGroundPlane()
             ++currentQuad;
         }
     }
-    createVBO(result);
 #ifdef SAN_ANGELES_OBSERVATION_GLES
     result->shaderProgram = sShaderFlat.program;
 #endif  // SAN_ANGELES_OBSERVATION_GLES
@@ -529,17 +555,36 @@ static void drawGroundPlane()
 }
 
 
-static void drawFadeQuad()
+static GLOBJECT * createFadeQuad()
 {
     static const GLfloat quadVertices[] = {
-        -1.f, -1.f,
-         1.f, -1.f,
-        -1.f,  1.f,
-         1.f, -1.f,
-         1.f,  1.f,
-        -1.f,  1.f
+        -1, -1,
+         1, -1,
+        -1,  1,
+         1, -1,
+         1,  1,
+        -1,  1
     };
 
+    GLOBJECT *result;
+    int i;
+
+    result = newGLObject(6, 2, 0, 0);
+    if (result == NULL)
+        return NULL;
+
+    for (i = 0; i < 12; ++i)
+        result->vertexArray[i] = quadVertices[i];
+
+#ifdef SAN_ANGELES_OBSERVATION_GLES
+    result->shaderProgram = sShaderFade.program;
+#endif  // SAN_ANGELES_OBSERVATION_GLES
+    return result;
+}
+
+
+static void drawFadeQuad()
+{
     const int beginFade = sTick - sCurrentCamTrackStartTick;
     const int endFade = sNextCamTrackStartTick - sTick;
     const int minFade = beginFade < endFade ? beginFade : endFade;
@@ -551,18 +596,10 @@ static void drawFadeQuad()
         glEnable(GL_BLEND);
         glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 #ifdef SAN_ANGELES_OBSERVATION_GLES
-        if (sFadeVBO == 0)
-        {
-            glGenBuffers(1, &sFadeVBO);
-            glBindBuffer(GL_ARRAY_BUFFER, sFadeVBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 12,
-                         quadVertices, GL_STATIC_DRAW);
-        }
         bindShaderProgram(sShaderFade.program);
         glUniform1f(sShaderFade.minFade, fadeColor);
-        glBindBuffer(GL_ARRAY_BUFFER, sFadeVBO);
-        glVertexAttribPointer(sShaderFade.pos, 2, GL_FLOAT, GL_FALSE,
-                              0, NULL);
+        glVertexAttribPointer(sShaderFade.pos, 2, GL_FLOAT, GL_FALSE, 0,
+                              (void *)sFadeQuad->vertexArrayOffset);
         glEnableVertexAttribArray(sShaderFade.pos);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDisableVertexAttribArray(sShaderFade.pos);
@@ -579,7 +616,7 @@ static void drawFadeQuad()
 
         glDisableClientState(GL_COLOR_ARRAY);
         glDisableClientState(GL_NORMAL_ARRAY);
-        glVertexPointer(2, GL_FLOAT, 0, quadVertices);
+        glVertexPointer(2, GL_FLOAT, 0, (void *)sFadeQuad->vertexArrayOffset);
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -636,6 +673,10 @@ int appInit()
     }
     sGroundPlane = createGroundPlane();
     assert(sGroundPlane != NULL);
+    sFadeQuad = createFadeQuad();
+    assert(sFadeQuad != NULL);
+    sVBO = createVBO(sSuperShapeObjects, SUPERSHAPE_COUNT,
+                     sGroundPlane, sFadeQuad);
 
     // setup non-changing lighting parameters
 #ifdef SAN_ANGELES_OBSERVATION_GLES
@@ -664,8 +705,9 @@ void appDeinit()
     for (a = 0; a < SUPERSHAPE_COUNT; ++a)
         freeGLObject(sSuperShapeObjects[a]);
     freeGLObject(sGroundPlane);
+    freeGLObject(sFadeQuad);
+    glDeleteBuffers(1, &sVBO);
 #ifdef SAN_ANGELES_OBSERVATION_GLES
-    glDeleteBuffers(1, &sFadeVBO);
     deInitShaderPrograms();
 #endif  // SAN_ANGELES_OBSERVATION_GLES
 }
