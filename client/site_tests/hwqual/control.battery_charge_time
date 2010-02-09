@@ -1,0 +1,31 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "HWQualBatteryChargeTime"
+TIME = "LONG"
+TEST_CATEGORY = "Benchmark"
+TEST_CLASS = "system"
+TEST_TYPE = "client"
+
+DOC = """
+This test measures the battery charging time and enforces constraints. Before
+running this test the battery charge should be less than 5% and the device
+should be plugged into AC. Over the course of at most 94% of 4 hours the
+battery charge should increase by at least 94% of the maximum battery charge
+by design.
+"""
+
+# In the time limit account for the delta charge constraints
+max_hours = 4
+percent_charge_delta = 94.0
+time_limit = max_hours * 60 * 60 * percent_charge_delta / 100.0
+
+job.run_test('system_PowerBatteryCharge',
+             max_run_time=time_limit, percent_charge_to_add=100,
+             constraints=[
+                 'percent_initial_charge <= 5.0',
+                 'percent_final_charge - percent_initial_charge >= %f' %
+                     percent_charge_delta,
+             ])

@@ -16,7 +16,7 @@ class system_PowerBatteryCharge(test.test):
         if not self.on_ac():
             raise error.TestNAError(
                   'This test needs to be run with the AC power online')
-        
+
 
     def run_once(self, max_run_time=180, percent_charge_to_add=1):
         """
@@ -80,4 +80,3 @@ class system_PowerBatteryCharge(test.test):
 
     def on_ac(self):
         return self.status.linepower[0].online
-
