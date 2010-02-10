@@ -41,6 +41,9 @@ job.run_test('gl_APICheck')
 job.run_test('gl_Bench')
 job.run_test('gpu_SanAngeles')
 
+# Communications
+job.run_test('network_WiFiCaps')
+
 # Extra Requirements
 job.run_test('disktest')
 job.run_test('compilebench')
