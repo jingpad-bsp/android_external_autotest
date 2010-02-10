@@ -6,13 +6,13 @@ import logging, time, utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
-class ui_ChromeKillRestart(test.test):
+class ui_KillRestart(test.test):
     version = 1
 
-    def run_once(self, binary = '/opt/google/chrome/chrome'):
+    def run_once(self, binary = 'chrome'):
         # Try to kill all running instances of the binary.
         try:
-            utils.system('pkill -KILL -f %s' % binary)
+            utils.system('pkill -KILL %s' % binary)
         except error.CmdError, e:
             logging.debug(e)
             raise error.TestFail('%s is not running before kill' % binary)
@@ -22,7 +22,7 @@ class ui_ChromeKillRestart(test.test):
 
         # Check if the binary is running again.
         try:
-            utils.system('pgrep -f %s' % binary)
+            utils.system('pgrep %s' % binary)
         except error.CmdError, e:
             logging.debug(e)
             raise error.TestFail('%s is not running after kill' % binary)

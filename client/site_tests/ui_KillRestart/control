@@ -3,14 +3,15 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "ChromeKillRestart"
+NAME = "KillRestart"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "UI"
 TEST_TYPE = "client"
 
 DOC = """
-This test kills the Chrome processes and checks if they get restarted."
+This test kills some important processes and checks if they get restarted."
 """
 
-job.run_test('ui_ChromeKillRestart')
+job.run_test('ui_KillRestart', binary='^chrome$', tag='chrome')
+job.run_test('ui_KillRestart', binary='^session_manager$', tag='session')
