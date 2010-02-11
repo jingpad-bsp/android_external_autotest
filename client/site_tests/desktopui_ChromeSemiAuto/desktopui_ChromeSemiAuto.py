@@ -4,18 +4,14 @@
 
 import logging, utils
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_httpd
+from autotest_lib.client.common_lib import error, site_httpd, site_ui, utils
 
 
 class desktopui_ChromeSemiAuto(test.test):
     version = 1
 
     def initialize(self):
-        self._binary = '/opt/google/chrome/chrome'
         self._test_url = 'http://localhost:8000/interaction.html'
-        # TODO(seano): Change to use browser session lib, vs. direct cmds.
-        self._env = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
-        self._command = ' '.join([self._env, self._binary, self._test_url])
         # TODO(seano): Use ephemeral port.
         self._testServer = site_httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
@@ -25,15 +21,17 @@ class desktopui_ChromeSemiAuto(test.test):
         self._testServer.stop()
 
 
-    def run_once(self):
+    def run_once(self, timeout=60):
         latch = self._testServer.add_wait_url('/interaction/test')
-        try:
-            utils.system('su chronos -c \'%s\'' % self._command)
-        except error.CmdError, e:
-            logging.debug(e)
-            raise error.TestFail('Login information missing')
-        while not latch.is_set():
-            latch.wait(5)
+
+        session = site_ui.ChromeSession(self._test_url)
+        logging.debug('Chrome session started.')
+        latch.wait(timeout)
+        session.close()
+
+        if not latch.is_set():
+            raise error.TestFail('Timeout.')
+
         result = self._testServer.get_form_entries()['result']
         logging.info('result = ' + result)
         if result != 'pass':
