@@ -16,13 +16,12 @@ class firmware_VbootCrypto(test.test):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.system('make clean')
-        utils.system('make all')
+        utils.system('make clean all')
 
 
     def __sha_test(self):
-        sha_test_cmd = os.path.join(self.bindir, "sha_tests")
-        return_code = utils.system(sha_test_cmd, ignore_status = True)
+        sha_test_cmd = os.path.join(self.srcdir, "tests", "sha_tests")
+        return_code = utils.system(sha_test_cmd, ignore_status=True)
         if return_code == 255:
             return False
         if return_code == 1:
@@ -30,7 +29,22 @@ class firmware_VbootCrypto(test.test):
         return True
 
 
+    def __rsa_test(self):
+        os.chdir(self.srcdir)
+        rsa_test_cmd = os.path.join(self.srcdir, "tests",
+                                    "run_rsa_tests.sh")
+        return_code = utils.system(rsa_test_cmd, ignore_status=True)
+        if return_code == 255:
+            return False
+        if return_code == 1:
+            raise error.TestError("RSA Test Error")
+        return True
+
+
     def run_once(self):
         success = self.__sha_test()
         if not success:
             raise error.TestFail("SHA Test Failed")
+        success = self.__rsa_test()
+        if not success:
+            raise error.TestFail("RSA Test Failed")
