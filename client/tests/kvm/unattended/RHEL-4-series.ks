@@ -18,16 +18,13 @@ autopart
 reboot
 
 %packages
-@ admin-tools
-@ core
 @ base
-@ base-x
-@ gnome-desktop
 @ development-libs
 @ development-tools
 
 %post --interpreter /usr/bin/python
 import socket, os
+os.system('dhclient')
 os.system('chkconfig sshd on')
 os.system('iptables -F')
 os.system('echo 0 > /selinux/enforce')

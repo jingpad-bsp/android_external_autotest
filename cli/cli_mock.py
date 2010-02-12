@@ -7,6 +7,7 @@ import unittest, os, sys, StringIO
 
 import common
 from autotest_lib.cli import atest, topic_common, rpc
+from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib import autotemp
@@ -31,6 +32,11 @@ class cli_unittest(unittest.TestCase):
         self.god = mock.mock_god(debug=CLI_UT_DEBUG)
         self.god.stub_class_method(rpc.afe_comm, 'run')
         self.god.stub_function(sys, 'exit')
+
+        def stub_authorization_headers(*args, **kwargs):
+            return {}
+        self.god.stub_with(rpc_client_lib, 'authorization_headers',
+                           stub_authorization_headers)
 
 
     def tearDown(self):

@@ -7,6 +7,8 @@ Utility classes and functions to handle Virtual Machine creation using qemu.
 
 import time, socket, os, logging, fcntl, re, commands
 import kvm_utils, kvm_subprocess
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.bin import utils
 
 
 def get_image_filename(params, root_dir):
@@ -53,20 +55,13 @@ def create_image(params, root_dir):
     size = params.get("image_size", "10G")
     qemu_img_cmd += " %s" % size
 
-    logging.debug("Running qemu-img command:\n%s" % qemu_img_cmd)
-    (status, output) = kvm_subprocess.run_fg(qemu_img_cmd, logging.debug,
-                                             "(qemu-img) ", timeout=120)
+    try:
+        utils.system(qemu_img_cmd)
+    except error.CmdError, e:
+        logging.error("Could not create image; qemu-img command failed:\n%s",
+                      str(e))
+        return None
 
-    if status is None:
-        logging.error("Timeout elapsed while waiting for qemu-img command "
-                      "to complete:\n%s" % qemu_img_cmd)
-        return None
-    elif status != 0:
-        logging.error("Could not create image; "
-                      "qemu-img command failed:\n%s" % qemu_img_cmd)
-        logging.error("Status: %s" % status)
-        logging.error("Output:" + kvm_utils.format_str_for_message(output))
-        return None
     if not os.path.exists(image_filename):
         logging.error("Image could not be created for some reason; "
                       "qemu-img command:\n%s" % qemu_img_cmd)
@@ -362,19 +357,19 @@ class VM:
             if params.get("md5sum_1m"):
                 logging.debug("Comparing expected MD5 sum with MD5 sum of "
                               "first MB of ISO file...")
-                actual_hash = kvm_utils.hash_file(iso, 1048576, method="md5")
+                actual_hash = utils.hash_file(iso, 1048576, method="md5")
                 expected_hash = params.get("md5sum_1m")
                 compare = True
             elif params.get("md5sum"):
                 logging.debug("Comparing expected MD5 sum with MD5 sum of ISO "
                               "file...")
-                actual_hash = kvm_utils.hash_file(iso, method="md5")
+                actual_hash = utils.hash_file(iso, method="md5")
                 expected_hash = params.get("md5sum")
                 compare = True
             elif params.get("sha1sum"):
                 logging.debug("Comparing expected SHA1 sum with SHA1 sum of "
                               "ISO file...")
-                actual_hash = kvm_utils.hash_file(iso, method="sha1")
+                actual_hash = utils.hash_file(iso, method="sha1")
                 expected_hash = params.get("sha1sum")
                 compare = True
             if compare:
@@ -598,8 +593,6 @@ class VM:
             # Is it already dead?
             if self.is_dead():
                 logging.debug("VM is already down")
-                if self.pci_assignable:
-                    self.pci_assignable.release_devs()
                 return
 
             logging.debug("Destroying VM with PID %d..." %
@@ -620,9 +613,6 @@ class VM:
                             return
                     finally:
                         session.close()
-                        if self.pci_assignable:
-                            self.pci_assignable.release_devs()
-
 
             # Try to destroy with a monitor command
             logging.debug("Trying to kill VM with monitor command...")
@@ -632,8 +622,6 @@ class VM:
                 # Wait for the VM to be really dead
                 if kvm_utils.wait_for(self.is_dead, 5, 0.5, 0.5):
                     logging.debug("VM is down")
-                    if self.pci_assignable:
-                        self.pci_assignable.release_devs()
                     return
 
             # If the VM isn't dead yet...
@@ -643,13 +631,13 @@ class VM:
             # Wait for the VM to be really dead
             if kvm_utils.wait_for(self.is_dead, 5, 0.5, 0.5):
                 logging.debug("VM is down")
-                if self.pci_assignable:
-                    self.pci_assignable.release_devs()
                 return
 
             logging.error("Process %s is a zombie!" % self.process.get_pid())
 
         finally:
+            if self.pci_assignable:
+                self.pci_assignable.release_devs()
             if self.process:
                 self.process.close()
             try:
@@ -922,7 +910,7 @@ class VM:
             s, mem_str = session.get_command_status_output(cmd)
             if s != 0:
                 return None
-            mem = re.findall("([0-9][0-9][0-9]+)", mem_str)
+            mem = re.findall("([0-9]+)", mem_str)
             mem_size = 0
             for m in mem:
                 mem_size += int(m)

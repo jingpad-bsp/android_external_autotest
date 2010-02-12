@@ -4,10 +4,10 @@ KVM test utility functions.
 @copyright: 2008-2009 Red Hat Inc.
 """
 
-import md5, sha, thread, subprocess, time, string, random, socket, os, signal
+import thread, subprocess, time, string, random, socket, os, signal
 import select, re, logging, commands, cPickle, pty
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, logging_config
 import kvm_subprocess
 
 
@@ -366,27 +366,6 @@ def get_git_branch(repository, branch, srcdir, commit=None, lbranch=None):
     logging.info("Commit hash for %s is %s (%s)" % (repository, h.strip(),
                                                     desc))
     return srcdir
-
-
-def unload_module(module_name):
-    """
-    Removes a module. Handles dependencies. If even then it's not possible
-    to remove one of the modules, it will trhow an error.CmdError exception.
-
-    @param module_name: Name of the module we want to remove.
-    """
-    l_raw = utils.system_output("/sbin/lsmod").splitlines()
-    lsmod = [x for x in l_raw if x.split()[0] == module_name]
-    if len(lsmod) > 0:
-        line_parts = lsmod[0].split()
-        if len(line_parts) == 4:
-            submodules = line_parts[3].split(",")
-            for submodule in submodules:
-                unload_module(submodule)
-        utils.system("/sbin/modprobe -r %s" % module_name)
-        logging.info("Module %s unloaded" % module_name)
-    else:
-        logging.info("Module %s is already unloaded" % module_name)
 
 
 def check_kvm_source_dir(source_dir):
@@ -767,48 +746,6 @@ def wait_for(func, timeout, first=0.0, step=1.0, text=None):
     return None
 
 
-def hash_file(filename, size=None, method="md5"):
-    """
-    Calculate the hash of filename.
-    If size is not None, limit to first size bytes.
-    Throw exception if something is wrong with filename.
-    Can be also implemented with bash one-liner (assuming size%1024==0):
-    dd if=filename bs=1024 count=size/1024 | sha1sum -
-
-    @param filename: Path of the file that will have its hash calculated.
-    @param method: Method used to calculate the hash. Supported methods:
-            * md5
-            * sha1
-    @returns: Hash of the file, if something goes wrong, return None.
-    """
-    chunksize = 4096
-    fsize = os.path.getsize(filename)
-
-    if not size or size > fsize:
-        size = fsize
-    f = open(filename, 'rb')
-
-    if method == "md5":
-        hash = md5.new()
-    elif method == "sha1":
-        hash = sha.new()
-    else:
-        logging.error("Unknown hash type %s, returning None" % method)
-        return None
-
-    while size > 0:
-        if chunksize > size:
-            chunksize = size
-        data = f.read(chunksize)
-        if len(data) == 0:
-            logging.debug("Nothing left to read but size=%d" % size)
-            break
-        hash.update(data)
-        size -= len(data)
-    f.close()
-    return hash.hexdigest()
-
-
 def get_hash_from_file(hash_path, dvd_basename):
     """
     Get the a hash from a given DVD image from a hash file
@@ -822,62 +759,6 @@ def get_hash_from_file(hash_path, dvd_basename):
     for line in hash_file.readlines():
         if dvd_basename in line:
             return line.split()[0]
-
-
-def unmap_url_cache(cachedir, url, expected_hash, method="md5"):
-    """
-    Downloads a file from a URL to a cache directory. If the file is already
-    at the expected position and has the expected hash, let's not download it
-    again.
-
-    @param cachedir: Directory that might hold a copy of the file we want to
-            download.
-    @param url: URL for the file we want to download.
-    @param expected_hash: Hash string that we expect the file downloaded to
-            have.
-    @param method: Method used to calculate the hash string (md5, sha1).
-    """
-    # Let's convert cachedir to a canonical path, if it's not already
-    cachedir = os.path.realpath(cachedir)
-    if not os.path.isdir(cachedir):
-        try:
-            os.makedirs(cachedir)
-        except:
-            raise ValueError('Could not create cache directory %s' % cachedir)
-    file_from_url = os.path.basename(url)
-    file_local_path = os.path.join(cachedir, file_from_url)
-
-    file_hash = None
-    failure_counter = 0
-    while not file_hash == expected_hash:
-        if os.path.isfile(file_local_path):
-            if method == "md5":
-                file_hash = hash_file(file_local_path, method="md5")
-            elif method == "sha1":
-                file_hash = hash_file(file_local_path, method="sha1")
-
-            if file_hash == expected_hash:
-                # File is already at the expected position and ready to go
-                src = file_from_url
-            else:
-                # Let's download the package again, it's corrupted...
-                logging.error("Seems that file %s is corrupted, trying to "
-                              "download it again" % file_from_url)
-                src = url
-                failure_counter += 1
-        else:
-            # File is not there, let's download it
-            src = url
-        if failure_counter > 1:
-            raise EnvironmentError("Consistently failed to download the "
-                                   "package %s. Aborting further download "
-                                   "attempts. This might mean either the "
-                                   "network connection has problems or the "
-                                   "expected hash string that was determined "
-                                   "for this file is wrong" % file_from_url)
-        file_path = utils.unmap_url(cachedir, src, cachedir)
-
-    return file_path
 
 
 def run_tests(test_list, job):
@@ -968,6 +849,16 @@ def get_vendor_from_pci_id(pci_id):
     """
     cmd = "lspci -n | awk '/%s/ {print $3}'" % pci_id
     return re.sub(":", " ", commands.getoutput(cmd))
+
+
+class KvmLoggingConfig(logging_config.LoggingConfig):
+    """
+    Used with the sole purpose of providing convenient logging setup
+    for the KVM test auxiliary programs.
+    """
+    def configure_logging(self, results_dir=None, verbose=False):
+        super(KvmLoggingConfig, self).configure_logging(use_console=True,
+                                                        verbose=verbose)
 
 
 class PciAssignable(object):
@@ -1170,7 +1061,7 @@ class PciAssignable(object):
         stub_path = os.path.join(base_dir, "drivers/pci-stub")
 
         self.pci_ids = self.get_devs(self.devices_requested)
-        logging.debug("The following pci_ids were found: %s" % self.pci_ids)
+        logging.debug("The following pci_ids were found: %s", self.pci_ids)
         requested_pci_ids = []
         self.dev_drivers = {}
 
@@ -1186,7 +1077,7 @@ class PciAssignable(object):
 
             # Judge whether the device driver has been binded to stub
             if not self.is_binded_to_stub(full_id):
-                logging.debug("Binding device %s to stub" % full_id)
+                logging.debug("Binding device %s to stub", full_id)
                 vendor_id = get_vendor_from_pci_id(pci_id)
                 stub_new_id = os.path.join(stub_path, 'new_id')
                 unbind_dev = os.path.join(drv_path, 'unbind')
@@ -1198,18 +1089,17 @@ class PciAssignable(object):
 
                 for content, file in info_write_to_files:
                     try:
-                        utils.open_write_close(content, file)
+                        utils.open_write_close(file, content)
                     except IOError:
-                        logging.debug("Failed to write %s to file %s" %
-                                      (content, file))
+                        logging.debug("Failed to write %s to file %s", content,
+                                      file)
                         continue
 
                 if not self.is_binded_to_stub(full_id):
-                    logging.error("Binding device %s to stub failed" %
-                                  pci_id)
+                    logging.error("Binding device %s to stub failed", pci_id)
                     continue
             else:
-                logging.debug("Device %s already binded to stub" % pci_id)
+                logging.debug("Device %s already binded to stub", pci_id)
             requested_pci_ids.append(pci_id)
         self.pci_ids = requested_pci_ids
         return self.pci_ids
@@ -1223,9 +1113,8 @@ class PciAssignable(object):
         try:
             for pci_id in self.dev_drivers:
                 if not self._release_dev(pci_id):
-                    logging.error("Failed to release device %s to host" %
-                                  pci_id)
+                    logging.error("Failed to release device %s to host", pci_id)
                 else:
-                    logging.info("Released device %s successfully" % pci_id)
+                    logging.info("Released device %s successfully", pci_id)
         except:
             return

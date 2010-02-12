@@ -18,16 +18,13 @@ mouse generic3ps/2
 skipx
 
 %packages --resolvedeps
-@ admin-tools
-@ core
 @ base
-@ base-x
-@ gnome-desktop
 @ development-libs
 @ development-tools
 
 %post --interpreter /usr/bin/python
 import socket, os
+os.system('dhclient')
 os.system('chkconfig sshd on')
 os.system('iptables -F')
 port = 12323

@@ -2,15 +2,15 @@
 # Copyright 2008 Google Inc. All Rights Reserved.
 #
 
-import os, getpass
+import os
 from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.frontend.afe.json_rpc import proxy
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import global_config, utils
 
 GLOBAL_CONFIG = global_config.global_config
 DEFAULT_SERVER = 'autotest'
-AFE_RPC_PATH = '/afe/server/noauth/rpc/'
-TKO_RPC_PATH = '/new_tko/server/noauth/rpc/'
+AFE_RPC_PATH = '/afe/server/rpc/'
+TKO_RPC_PATH = '/new_tko/server/rpc/'
 
 
 def get_autotest_server(web_server=None):
@@ -40,13 +40,8 @@ class rpc_comm(object):
     def _connect(self, rpc_path):
         # This does not fail even if the address is wrong.
         # We need to wait for an actual RPC to fail
-        if self.username:
-            username = self.username
-        elif 'AUTOTEST_USER' in os.environ:
-            username = os.environ['AUTOTEST_USER']
-        else:
-            username = getpass.getuser()
-        headers = {'AUTHORIZATION' : username}
+        headers = rpc_client_lib.authorization_headers(self.username,
+                                                       self.web_server)
         rpc_server = self.web_server + rpc_path
         return rpc_client_lib.get_proxy(rpc_server, headers=headers)
 
