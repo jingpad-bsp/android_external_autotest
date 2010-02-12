@@ -1,0 +1,19 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "ChromeOS Team"
+NAME = "VBOOT_CRYPTO_TEST"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "Firmware"
+TEST_TYPE = "client"
+
+DOC = """
+  Tests for correctness of crypto implementation for verified boot
+
+  The test pulls the (stand-alone) verified boot crypto implementation directly
+  from the gclient root.
+"""
+
+job.run_test('firmware_VbootCrypto')
