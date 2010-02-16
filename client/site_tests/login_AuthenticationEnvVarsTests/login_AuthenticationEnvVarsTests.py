@@ -17,7 +17,7 @@ class login_AuthenticationEnvVarsTests(test.test):
     # than doing an eval()
     auth_test_data = eval(fd.read())
     try:
-      self.RunAuthenticationTests(auth_test_data)
+      self.RunAuthenticationEnvVarsTests(auth_test_data)
     except error.TestFail, tfe:
       raise tfe
     except Exception, e:
