@@ -34,7 +34,7 @@ class log_CheckErrors(test.test):
             for key in kerrors:
                 if key in line:
                     errors += 1
-                    logging.error('%s found in %s' (line, logfile))
+                    logging.error('%s found in %s' ,line, logfile)
         f.close()
 
         return errors
