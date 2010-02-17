@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 INCLUDE = -I$(GCLIENT_ROOT)/src/third_party/chrome/files/
-LDFLAGS = -L$(GCLIENT_ROOT)/src/third_party/chrome/ -lbase -lpthread -lrt
+LDFLAGS = -L$(GCLIENT_ROOT)/src/third_party/chrome/ -lbase -lrt
 TARGET = memory_Throughput
 SRC = memory_Throughput.cc
 
