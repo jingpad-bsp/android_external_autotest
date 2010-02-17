@@ -1,0 +1,36 @@
+diff -urN v8/base.js src/base.js
+--- v8/base.js	2010-02-17 12:47:23.000000000 -0800
++++ src/base.js	2010-02-17 13:02:33.000000000 -0800
+@@ -126,12 +126,32 @@
+       var score = BenchmarkSuite.GeometricMean(BenchmarkSuite.scores);
+       var formatted = BenchmarkSuite.FormatScore(100 * score);
+       runner.NotifyScore(formatted);
++      BenchmarkSuite.PostValues(BenchmarkSuite.scores, formatted)
+     }
+   }
+   RunStep();
+ }
+ 
+ 
++// Posts the result value to the localhost on port 8000
++BenchmarkSuite.PostValues = function(numbers, value) {
++   var xhr = new XMLHttpRequest();
++   xhr.open('POST', 'http://localhost:8000/v8/scores', false);
++   xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
++   xhr.onreadystatechange = function() {
++      if (xhr.readyState != 4) { return; }
++   }
++   for (var i = 0; i < numbers.length; i++) {
++     numbers[i] = BenchmarkSuite.FormatScore(numbers[i] * 100);
++   }
++   cmd = 'score_richards=' + numbers[0] + '&score_deltablue=' + numbers[1] +
++         '&score_crypto=' + numbers[2] + '&score_raytrace=' + numbers[3] +
++         '&score_earleyboyer=' + numbers[4] + '&score_regexp='+numbers[5] +
++         '&score_splay=' + numbers[6] + '&score_total='+value;
++   xhr.send(cmd);
++}
++
++
+ // Counts the total number of registered benchmarks. Useful for
+ // showing progress as a percentage.
+ BenchmarkSuite.CountBenchmarks = function() {

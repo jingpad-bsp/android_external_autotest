@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os 
+import logging, os, shutil
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, site_httpd, site_ui
 
@@ -11,27 +11,25 @@ class desktopui_V8Bench(test.test):
     version = 1
 
     def initialize(self):
-        self._test_url = 'http://localhost:8000/src/V8.html'
-        self._testServer = site_httpd.HTTPListener(8000, docroot=self.bindir)
+        self._test_url = 'http://localhost:8000/run.html'
+        self._testServer = site_httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
 
 
-    def setup(self, tarball = 'V8.tar.bz2'):
-        # clean
-        if os.path.exists(self.srcdir):
-          utils.system('rm -rf %s' % self.srcdir)
-
+    def setup(self, tarball='v8_v5.tar.bz2'):
+        shutil.rmtree(self.srcdir, ignore_errors=True)
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
         os.chdir(self.srcdir)
+        utils.system('patch -p1 < ../v8.patch')
 
 
     def cleanup(self):
         self._testServer.stop()
 
 
-    def run_once(self, timeout = 20):
-        latch = self._testServer.add_wait_url('/V8Load/test')
+    def run_once(self, timeout=60):
+        latch = self._testServer.add_wait_url('/v8/scores')
 
         session = site_ui.ChromeSession(self._test_url)
         logging.debug('Chrome session started.')
