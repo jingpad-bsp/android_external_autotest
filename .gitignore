@@ -5,7 +5,7 @@
 #
 
 # Standard ignores
-*.[ao]
+*.[aod]
 *.la
 *.lo
 *.pyc
