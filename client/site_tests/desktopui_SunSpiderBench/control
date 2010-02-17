@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "SunSpider benchamrk"
+TIME = "SHORT"
+TEST_CATEGORY = "Benchmark"
+TEST_CLASS = "DesktopUI"
+TEST_TYPE = "client"
+
+DOC = """
+This test runs the SunSpider benchmark on Chromium OS and saves the results.
+"""
+
+job.run_test('desktopui_SunSpiderBench')
