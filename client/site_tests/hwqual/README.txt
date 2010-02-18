@@ -15,7 +15,7 @@ Test Setup
 * Setup a Linux machine to serve as the Autotest server. The Autotest
   server requires Python, Ethernet access to the DUT and basic Linux
   shell utilities. The setup has been tested on Ubuntu 9.10 available
-  for download at http://www.ubuntu.com/getubuntu/download
+  for download at http://www.ubuntu.com/getubuntu/download/.
 
 
 * Create an installation directory on the Autotest server for the
@@ -24,9 +24,9 @@ Test Setup
   current user home directory ($HOME/).
 
 
-* Contact your Google technical support contact and download the
-  Chrome OS hardware qualification package chromeos-hwqual-TAG.tar.bz2
-  for your device in $HOME/.
+* Contact your Google technical support person and download the Chrome
+  OS hardware qualification package chromeos-hwqual-TAG.tar.bz2 for
+  your device in $HOME/.
 
 
 * Install the package on the server:
@@ -80,7 +80,7 @@ Test Setup
 
 * Add the DUT root private key to ssh-agent on the Autotest server:
 
-  $ ssh-add ~HOME/chromeos-hwqual-TAG/testing_rsa
+  $ ssh-add $HOME/chromeos-hwqual-TAG/testing_rsa
 
   If ssh-agent is not running already, start it and then add the key:
 
