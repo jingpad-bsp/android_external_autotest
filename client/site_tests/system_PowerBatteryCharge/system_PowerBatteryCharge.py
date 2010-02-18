@@ -18,11 +18,13 @@ class system_PowerBatteryCharge(test.test):
                   'This test needs to be run with the AC power online')
 
 
-    def run_once(self, max_run_time=180, percent_charge_to_add=1):
+    def run_once(self, max_run_time=180, percent_charge_to_add=1,
+                 percent_initial_charge_max=None):
         """
         max_run_time: maximum time the test will run for
         percent_charge_to_add: percentage of the design capacity charge to
                   add. The target charge will be capped at the design capacity.
+        percent_initial_charge_max: maxium allowed initial charge.
         """
 
         time_to_sleep = 60
@@ -30,6 +32,13 @@ class system_PowerBatteryCharge(test.test):
 
         self.charge_full_design = self.status.battery[0].charge_full_design
         self.initial_charge = self.status.battery[0].charge_now
+        percent_initial_charge = self.initial_charge * 100 / \
+                                 self.charge_full_design
+        if percent_initial_charge_max and percent_initial_charge > \
+                                          percent_initial_charge_max:
+            raise error.TestError('Initial charge (%f) higher than max (%f)'
+                      % (percent_initial_charge, percent_initial_charge_max))
+
         current_charge = self.initial_charge
         charge_to_add = self.charge_full_design * \
                         float(percent_charge_to_add) / 100
