@@ -1,0 +1,39 @@
+diff -urN sunspider-0.9/sunspider-analyze-results.js sunspider-0.9.patched/sunspider-analyze-results.js
+--- sunspider-0.9/sunspider-analyze-results.js	2010-02-09 22:34:55.000000000 -0800
++++ sunspider-0.9.patched/sunspider-analyze-results.js	2010-02-17 15:17:13.000000000 -0800
+@@ -235,6 +235,17 @@
+     return result + formatResult(meanWidth, mean, stdErr, count);
+ }
+ 
++function postValues(value)
++{
++   var xhr = new XMLHttpRequest();
++   xhr.open("POST", "http://localhost:8000/sunspider/scores", false);
++   xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
++   xhr.onreadystatechange = function() {
++      if (xhr.readyState != 4) { return; }
++   }
++   xhr.send(value);
++}
++
+ function printOutput()
+ {
+     var labelWidth = computeLabelWidth();
+@@ -249,14 +260,17 @@
+     print("--------------------------------------------");
+     print(resultLine(labelWidth, 0, "Total", meanWidth, mean, stdErr));
+     print("--------------------------------------------");
++    var cmd = 'total=' + mean + '&';
+     for (var category in categoryMeans) {
+         print("");
+         print(resultLine(labelWidth, 2, category, meanWidth, categoryMeans[category], categoryStdErrs[category]));
+         for (var test in testMeansByCategory[category]) {
+             var shortName = test.replace(/^[^-]*-/, "");
+             print(resultLine(labelWidth, 4, shortName, meanWidth, testMeansByCategory[category][test], testStdErrsByCategory[category][test]));
++            cmd = cmd + test + '=' + testMeansByCategory[category][test]+ '&';
+         }
+     }
++    postValues(cmd);
+ }
+ 
+ initialize();
