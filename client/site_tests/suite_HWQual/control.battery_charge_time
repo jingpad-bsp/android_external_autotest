@@ -6,7 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "HWQualBatteryChargeTime"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
-TEST_CLASS = "system"
+TEST_CLASS = "suite"
 TEST_TYPE = "client"
 
 DOC = """
