@@ -17,9 +17,9 @@ class gl_Bench(test.test):
     utils.system('make')
 
 
-  def run_once(self):
+  def run_once(self, options=''):
     exefile = os.path.join(self.bindir, 'gl_Bench')
-    cmd = "X :1 & sleep 1; DISPLAY=:1 %s; kill $!" % exefile
+    cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
     self.results = utils.system_output(cmd, retain_output=True)
 
     for keyval in self.results.splitlines():
