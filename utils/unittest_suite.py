@@ -13,6 +13,9 @@ parser.add_option("--full", action="store_true", dest="full", default=False,
                   help="whether to run the shortened version of the test")
 parser.add_option("--debug", action="store_true", dest="debug", default=False,
                   help="run in debug mode")
+parser.add_option("--skip-tests", dest="skip_tests",  default=[],
+                  help="A space separated list of tests to skip")
+
 
 LONG_TESTS = set((
     'monitor_db_unittest.py',
@@ -28,7 +31,9 @@ LONG_TESTS = set((
     'logging_manager_test.py',
     'models_test.py',
     'serviceHandler_unittest.py',
+    'scheduler_models_unittest.py',
     ))
+
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -68,6 +73,9 @@ def find_and_run_tests(start, options):
     @param options: optparse options.
     """
     modules = []
+    skip_tests = set()
+    if options.skip_tests:
+        skip_tests.update(options.skip_tests.split())
 
     for dirpath, subdirs, filenames in os.walk(start):
         # Only look in and below subdirectories that are python modules.
@@ -86,6 +94,8 @@ def find_and_run_tests(start, options):
         for fname in filenames:
             if fname.endswith('_unittest.py') or fname.endswith('_test.py'):
                 if not options.full and fname in LONG_TESTS:
+                    continue
+                if fname in skip_tests:
                     continue
                 path_no_py = os.path.join(dirpath, fname).rstrip('.py')
                 assert path_no_py.startswith(ROOT)
