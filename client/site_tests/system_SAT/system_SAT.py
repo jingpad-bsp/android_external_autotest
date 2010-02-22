@@ -21,8 +21,11 @@ class system_SAT(test.test):
         utils.extract_tarball_to_dir(tarball, self.srcdir)
 
         os.chdir(self.srcdir)
-        utils.system('./configure --build=`./config.guess`'
-                     ' --host=i686-linux-gnu')
+        config_params = ''
+        if 'CBUILD' in os.environ and 'CHOST' in os.environ:
+            config_params = '--build=%s --host=%s' % (os.environ['CBUILD'],
+                                                      os.environ['CHOST'])
+        utils.system('./configure %s' % config_params)
         utils.system('make -j %d' % utils.count_cpus())
 
 
