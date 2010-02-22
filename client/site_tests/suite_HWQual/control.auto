@@ -38,7 +38,13 @@ job.run_test('video_Resolution')
 
 # Graphics
 job.run_test('gl_APICheck')
-job.run_test('gl_Bench')
+job.run_test('gl_Bench',
+             constraints=[
+                 'mtri_sec_triangle_setup >= 10',
+                 'mpixels_sec_fill_solid >= 190',
+                 'mpixels_sec_fill_tex_nearest >= 190',
+                 'mpixels_sec_fill_tex_bilinear >= 190',
+             ])
 job.run_test('gpu_SanAngeles')
 
 # Communications

@@ -12,18 +12,21 @@ class gl_Bench(test.test):
   preserve_srcdir = True
 
   def setup(self):
-    os.chdir(self.srcdir)
-    utils.system('make clean')
-    utils.system('make')
+      os.chdir(self.srcdir)
+      utils.system('make clean')
+      utils.system('make')
 
 
   def run_once(self, options=''):
-    exefile = os.path.join(self.bindir, 'gl_Bench')
-    cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
-    self.results = utils.system_output(cmd, retain_output=True)
+      exefile = os.path.join(self.bindir, 'gl_Bench')
+      cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
+      self.results = utils.system_output(cmd, retain_output=True)
 
-    for keyval in self.results.splitlines():
-      if keyval.strip().startswith('#'):
-	continue
-      key, val = keyval.split(':')
-      self.write_perf_keyval({key.strip(): val.strip()})
+      keyvals = {}
+      for keyval in self.results.splitlines():
+          if keyval.strip().startswith('#'):
+              continue
+          key, val = keyval.split(':')
+          keyvals[key.strip()] = float(val)
+
+      self.write_perf_keyval(keyvals)
