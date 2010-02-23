@@ -593,7 +593,7 @@ bool V4L2Device::EnumFormat(uint32_t* num_formats, bool show_fmt) {
       }
     }
     if (show_fmt)
-      printf("<<< Info suported format #%d: %s (%c%c%c%c) >>>\n",
+      printf("<<< Info supported format #%d: %s (%c%c%c%c) >>>\n",
              i+1, format_desc.description,
              (format_desc.pixelformat >> 0) & 0xff,
              (format_desc.pixelformat >> 8) & 0xff,
@@ -633,17 +633,17 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt, bool show_frmsize) {
     if (show_frmsize) {
       switch (frmsize_desc.type) {
         case V4L2_FRMSIZE_TYPE_DISCRETE:
-          printf("<<< Info suported discrete frame size #%d:"
-                 " for pixel foramt(%c%c%c%c): %dx%d\n >>>", i+1,
+          printf("<<< Info supported discrete frame size #%d:"
+                 " for pixel foramt(%c%c%c%c): %dx%d >>>\n", i+1,
                  (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
                  (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
                  frmsize_desc.discrete.width,
                  frmsize_desc.discrete.height);
           break;
         case V4L2_FRMSIZE_TYPE_CONTINUOUS:
-          printf("<<< Info suported discrete frame size #%d:"
+          printf("<<< Info supported discrete frame size #%d:"
                  " for pixel foramt(%c%c%c%c): "
-                 " from %dx%d to %dx%d\n >>>", i+1,
+                 " from %dx%d to %dx%d >>>\n", i+1,
                  (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
                  (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
                  frmsize_desc.stepwise.min_width,
@@ -652,9 +652,9 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt, bool show_frmsize) {
                  frmsize_desc.stepwise.max_height);
           break;
         case V4L2_FRMSIZE_TYPE_STEPWISE:
-          printf("<<< Info suported discrete frame size #%d:"
+          printf("<<< Info supported discrete frame size #%d:"
                  " for pixel foramt(%c%c%c%c): "
-                 " from %dx%d to %dx%d\n step(%d,%d) >>>", i+1,
+                 " from %dx%d to %dx%d step(%d,%d) >>>\n", i+1,
                  (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
                  (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
                  frmsize_desc.stepwise.min_width,
@@ -740,7 +740,7 @@ bool V4L2Device::ProbeCaps(v4l2_capability* cap, bool show_caps) {
       printf("<<< Info: %s support audio i/o interface.>>>\n", dev_name_);
 
     if (cap->capabilities & V4L2_CAP_READWRITE)
-      printf("<<< Info: %s support read()/write() interface.>>>\n", dev_name_);
+      printf("<<< Info: %s support read/write interface.>>>\n", dev_name_);
     if (cap->capabilities & V4L2_CAP_STREAMING)
       printf("<<< Info: %s support streaming i/o interface.>>>\n", dev_name_);
     if (cap->capabilities & V4L2_CAP_TIMEPERFRAME)
@@ -760,10 +760,6 @@ bool V4L2Device::GetParam(v4l2_streamparm* param) {
     printf("<<< Warning: VIDIOC_G_PARM not supported.>>>\n");
     return false;
   }
-
-  printf("%d, %d\n",
-         param->parm.capture.timeperframe.numerator,
-         param->parm.capture.timeperframe.denominator);
 
   return true;
 }

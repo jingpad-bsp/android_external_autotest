@@ -2,9 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-INCLUDE = -I$(GCLIENT_ROOT)/src/third_party/chrome/files/     \
-          -I$(GCLIENT_ROOT)/src/third_party/gflags/files/src  \
-          -I$(GCLIENT_ROOT)/src/third_party/gtest/files/include
+INCLUDE = -I$(GCLIENT_ROOT)/src/third_party/chrome/files/
 
 LDFLAGS = -L$(GCLIENT_ROOT)/src/third_party/chrome/ \
           -lpthread -lrt -lX11 -ldl
