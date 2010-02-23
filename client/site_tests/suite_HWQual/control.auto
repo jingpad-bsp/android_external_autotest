@@ -14,10 +14,15 @@ This test suite runs fully automated client-side hardware qualification tests.
 """
 
 # Boot Performance
+job.run_test('system_BootPerf')
 job.run_test('metrics_Resume')
 
 # Kernel Support
 job.run_test('system_KernelVersion')
+
+# CPU
+job.run_test('desktopui_V8Bench')
+job.run_test('desktopui_SunSpiderBench')
 
 # System Memory
 job.run_test('memory_TotalSize')
