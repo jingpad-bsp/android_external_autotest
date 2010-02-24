@@ -10,6 +10,8 @@ def setup(tarball, topdir):
     srcdir = os.path.join(topdir, 'src')
     utils.extract_tarball_to_dir(tarball, srcdir)
     os.chdir(srcdir)
+    # This binary is not necessary and breaks non-x86 autotest builds
+    os.remove('contrib/fix_standby')
     utils.system('make')
     utils.system('make binprefix=%s manprefix=%s install' % (topdir, topdir))
     os.chdir(topdir)
