@@ -14,4 +14,4 @@ This test tests memory throughput in both sequential access mode and random
 access mode.
 """
 
-job.run_test('memory_Throughput', num_iteration=5000, test_list='18 19 20 21')
+job.run_test('memory_Throughput', num_iteration=2500, test_list='21')

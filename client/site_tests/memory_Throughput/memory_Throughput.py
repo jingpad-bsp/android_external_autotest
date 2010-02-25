@@ -29,10 +29,12 @@ class memory_Throughput(test.test):
             r"Action = ([a-z0-9.]+), BlockSize = (\w+), " +
             r"Method = (\w+), Time = ([0-9.]+)")
         keyval_list = performance_pattern.findall(self.results)
+        keyvals = {}
         for keyval in keyval_list:
             key = ('mb_per_sec_memory_' +
                    keyval[0] + '_' + keyval[1] + '_' + keyval[2])
-            self.write_perf_keyval({key: 1000000.0 / float(keyval[3])})
+            keyvals[key] = 1000000.0 / float(keyval[3])
+        self.write_perf_keyval(keyvals)
 
         # Detect if an error has occured during the tests.
         # Do this after writing out the test results so even an error occurred,
