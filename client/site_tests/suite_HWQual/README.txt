@@ -69,13 +69,10 @@ Test Setup
   don't boot from USB.
 
 
-* Connect the DUT to the network and note its IP address <DUT_IP>. One
-  way to find the IP is to switch to VT2 by pressing Ctrl-Alt-F2,
-  login as "root", password "test0000". Run:
-
-  $ ip -f inet addr
-
-  Switch back to VT1 by pressing Ctrl-Alt-F1.
+* Connect the DUT to the network and note its IP address <DUT_IP>. The
+  IP address is displayed at the bottom of the network selection
+  menu. Unless specified explicitly, the test setup works correctly
+  through either wireless or wired network connections.
 
 
 * Add the DUT root private key to ssh-agent on the Autotest server:
@@ -133,8 +130,8 @@ Automated and Semi-Automated Test Runs
                       -c client/site_tests/hwqual/control.auto
 
 
-* (TODO: Spec the USB/SD cards.) Plug storage devices in all USB and
-  SD Card slots and run the external storage test:
+* Plug high-speed high-capacity storage devices in all USB and SD Card
+  slots and run the external storage test:
 
   $ ./server/autoserv -r results.external_devices -m <DUT_IP> \
                       -c client/site_tests/hwqual/control.external_devices
