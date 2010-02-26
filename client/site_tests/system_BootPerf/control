@@ -6,7 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "BootPerf"
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
-TEST_CLASS = "system"
+TEST_CLASS = "platform"
 TEST_TYPE = "client"
 
 DOC = """
