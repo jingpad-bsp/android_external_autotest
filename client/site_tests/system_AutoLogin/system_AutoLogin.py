@@ -26,7 +26,7 @@ class system_AutoLogin(test.test):
         environment_vars = \
             'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
 
-        autox_binary = '%s/%s' % (dep_dir, 'usr/bin/autox')
+        autox_binary = '%s/%s' % (dep_dir, 'autox')
         autox_script = os.path.join(self.bindir, 'autox_script.json')
 
         try:

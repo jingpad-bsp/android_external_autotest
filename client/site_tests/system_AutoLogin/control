@@ -10,8 +10,7 @@ TEST_CLASS = "system"
 TEST_TYPE = "client"
 
 DOC = """
-This is a helper test that will login a system through the new login manager
-TODO(sosa@chromium.org) This requires vt02 to be activated once.  
+This is a helper test that will login a system through the login manager  
 """
 
 job.run_test('system_AutoLogin')
