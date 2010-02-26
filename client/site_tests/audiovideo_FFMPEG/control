@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'The Chromium OS Authors'
+NAME = 'AUDIOVIDEO_FFMPEG'
+TIME='MEDIUM'
+TEST_CATEGORY = 'FFMPEG'
+TEST_CLASS = 'AudioVideo'
+TEST_TYPE = 'client'
+
+DOC = """
+This test exercises ffmpeg-based software video decoder.
+"""
+
+job.run_test('audiovideo_FFMPEG')
