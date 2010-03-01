@@ -7,7 +7,7 @@ MPSTAT_IX = 0
 NETPERF_IX = 1
 
 class netperf2(test.test):
-    version = 3
+    version = 4
 
     # ftp://ftp.netperf.org/netperf/netperf-2.4.4.tar.gz
     def setup(self, tarball = 'netperf-2.4.4.tar.gz'):
@@ -24,6 +24,8 @@ class netperf2(test.test):
         utils.system('./configure')
         utils.system('make')
         utils.system('sync')
+
+        self.job.setup_dep(['sysstat'])
 
 
     def initialize(self):
@@ -145,6 +147,9 @@ class netperf2(test.test):
     def client(self, server_ip, test, test_time, num_streams,
                test_specific_args, cpu_affinity):
         args = '-H %s -t %s -l %d' % (server_ip, test, test_time)
+
+        mpstat = os.path.join(self.autodir + 'deps/sysstat/mpstat')
+
         if self.wait_time:
             args += ' -s %d ' % self.wait_time
 
