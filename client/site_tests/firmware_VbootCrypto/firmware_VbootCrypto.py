@@ -41,10 +41,38 @@ class firmware_VbootCrypto(test.test):
         return True
 
 
+    def __sha_benchmark(self):
+        sha_benchmark_cmd = os.path.join(self.srcdir, "tests",
+                                         "sha_benchmark")
+        self.results = util.system_output(cmd, retain_output=True)
+
+        for keyval in self.results.splitline():
+            if keyval.strip().startswith('#'):
+                continue
+            key, val = keyval.split(':')
+            self.keyvals[key.strip()] = float(val);
+
+
+    def __rsa_benchmark(self):
+        rsa_benchmark_cmd = os.path.join(self.srcdir, "tests",
+                                         "rsa_verify_benchmark")
+        self.results = util.system_output(cmd, retain_output=True)
+
+        for keyval in self.results.splitlines():
+            if keyval.strip().startswith('#'):
+                continue
+            key, val = keyval.split(':')
+            self.keyvals[key.strip()] = float(val)
+
+
     def run_once(self):
+        self.keyvals = {}
         success = self.__sha_test()
         if not success:
             raise error.TestFail("SHA Test Failed")
         success = self.__rsa_test()
         if not success:
             raise error.TestFail("RSA Test Failed")
+        self.__sha_benchmark()
+        self.__rsa_benchmark()
+        self.write_perf_keyval(self.keyvals)
