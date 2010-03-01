@@ -44,9 +44,10 @@ class firmware_VbootCrypto(test.test):
     def __sha_benchmark(self):
         sha_benchmark_cmd = os.path.join(self.srcdir, "tests",
                                          "sha_benchmark")
-        self.results = util.system_output(cmd, retain_output=True)
+        self.results = utils.system_output(sha_benchmark_cmd,
+                                           retain_output=True)
 
-        for keyval in self.results.splitline():
+        for keyval in self.results.splitlines():
             if keyval.strip().startswith('#'):
                 continue
             key, val = keyval.split(':')
@@ -54,9 +55,10 @@ class firmware_VbootCrypto(test.test):
 
 
     def __rsa_benchmark(self):
-        rsa_benchmark_cmd = os.path.join(self.srcdir, "tests",
-                                         "rsa_verify_benchmark")
-        self.results = util.system_output(cmd, retain_output=True)
+        rsa_benchmark_cmd = "cd %s && ./rsa_verify_benchmark" % \
+                            os.path.join(self.srcdir, "tests")
+        self.results = utils.system_output(rsa_benchmark_cmd,
+                                           retain_output=True)
 
         for keyval in self.results.splitlines():
             if keyval.strip().startswith('#'):

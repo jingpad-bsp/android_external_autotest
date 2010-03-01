@@ -5,9 +5,10 @@
 VBOOT_REFERENCE_DIR = $(GCLIENT_ROOT)/src/platform/vboot_reference
 BUILD_TEST_DIR = vboot_reference
 # Test Binaries.
-TEST_BINS = tests/sha_tests tests/testkeys tests/run_rsa_tests.sh
+TEST_BINS = sha_tests testcases testkeys rsa_padding_test run_rsa_tests.sh \
+	sha_benchmark rsa_verify_benchmark
 # Utility Binaries.
-UTIL_BINS = utils/verify_data utils/signature_digest
+UTIL_BINS = verify_data signature_digest
 
 all: 
         # Copy test sources into a temporary directory for building.
@@ -18,12 +19,12 @@ all:
         # Move test binaries for use by the tests.
 	mkdir tests
 	for i in $(TEST_BINS); do \
-	  ( mv $(BUILD_TEST_DIR)/$$i tests/ ) ;\
+	  ( mv $(BUILD_TEST_DIR)/tests/$$i tests/ ) ;\
 	done
         # Move utility binaries used by the tests.
 	mkdir utils
 	for i in $(UTIL_BINS); do \
-	  ( mv $(BUILD_TEST_DIR)/$$i utils/ ) ;\
+	  ( mv $(BUILD_TEST_DIR)/utils/$$i utils/ ) ;\
 	done
         # Delete sources.
 	rm -rf $(BUILD_TEST_DIR)
