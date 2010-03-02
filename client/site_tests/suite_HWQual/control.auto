@@ -52,6 +52,9 @@ job.run_test('gl_Bench',
              ])
 job.run_test('gpu_SanAngeles')
 
+# Video
+job.run_test('audiovideo_V4L2')
+
 # Communications
 job.run_test('network_WiFiCaps')
 
