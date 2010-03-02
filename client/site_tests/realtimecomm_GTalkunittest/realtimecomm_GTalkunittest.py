@@ -10,18 +10,16 @@ from autotest_lib.client.common_lib import error
 class realtimecomm_GTalkunittest(test.test):
     version = 1
     # { test_exe : number_of_testcases }
-    # TODO(zhurunz): Fix failed testcases
     unittests = {
-         'base_unittest'         : '155',
-         'call_unittest'         : '2'  ,
-#        'flute_mediumtest'      : '3'  ,
-#        'flute_unittest'        : '146',
-         'flutetesting_unittest' : '3'  ,
-         'media_unittest'        : '181',
-         'p2p_unittest'          : '228',
-         'plugin_unittest'       : '10' ,
-         'xmllite_unittest'      : '49' ,
-         'xmpp_unittest'         : '37' ,
+        'base_unittest'         : '155',
+        'call_unittest'         : '2'  ,
+        'flute_unittest'        : '146',
+        'flutetesting_unittest' : '3'  ,
+        'media_unittest'        : '181',
+        'p2p_unittest'          : '228',
+        'plugin_unittest'       : '10' ,
+        'xmllite_unittest'      : '49' ,
+        'xmpp_unittest'         : '37' ,
     }
 
     def run_once(self):
@@ -29,7 +27,11 @@ class realtimecomm_GTalkunittest(test.test):
         utils.run('killall GoogleTalkPlugin', ignore_status=True)
  
         # Setup as appropriate
-        talk_path = os.path.join(self.bindir, 'talk')
+        talk_path = os.path.join(self.tmpdir, 'talk')
+        utils.run('rm -rf %s' % talk_path)
+        utils.run('cp -r %s %s' % \
+            (os.path.join(self.bindir, 'talk'), talk_path))
+        utils.run('chown chronos %s -R' % talk_path)
 
         # Run all unittests
         for test_exe in self.unittests:
