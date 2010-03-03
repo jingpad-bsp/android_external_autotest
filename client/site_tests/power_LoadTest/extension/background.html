@@ -48,7 +48,8 @@ function launch_task(task) {
           if (tab_id in cycle_tabs && urls.length > 1) {
             failed_loads[0] += 1;
           }
-          console.log('suc/fail: ' + successful_loads[0] + '/' + failed_loads[0]);
+          console.log('suc/fail: ' + successful_loads[0] + '/' +
+                      failed_loads[0]);
           cycle_tabs[tab_id] = task.scroll_interval;
           idx = (idx + 1) % urls.length;
           chrome.tabs.update(tab_id, {'url': urls[idx], 'selected': true})
@@ -63,6 +64,12 @@ function launch_task(task) {
 }
 
 function close_browser() {
+  var log_url = 'http://localhost:8001/status';
+  var req = new XMLHttpRequest();
+  req.open('POST', log_url, true);
+  req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  req.send("status=good&succeeded=" + successful_loads[0] + "&failed=" + failed_loads[0]);
+
   chrome.windows.getAll(null, function(windows) {
     for (var i = 0; i < windows.length; i++) {
       chrome.windows.remove(windows[i].id);
