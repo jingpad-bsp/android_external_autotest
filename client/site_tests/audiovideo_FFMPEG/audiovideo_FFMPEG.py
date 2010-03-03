@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, os, re, stat, time, urllib
+import glob, logging, os, re, stat, string, time, urllib
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
@@ -64,8 +64,8 @@ class audiovideo_FFMPEG(test.test):
         logging.info("Cpu Usage %s%%; FPS: %s" % (cpu_usage, fps))
 
         # record the performance data for future analysis.
-        self.performance_results['fps_' + file_name] = fps
-        self.performance_results['cpuusage_' + file_name] = cpu_usage
+        namekey = string.replace(string.lower(file_name), '.', '_')
+        self.performance_results['fps_' + namekey] = fps
+        self.performance_results['cpuusage_' + namekey] = cpu_usage
 
         # TODO(jiesun/fbarchard): what else need to be checked?
-

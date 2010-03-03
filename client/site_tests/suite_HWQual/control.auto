@@ -53,6 +53,10 @@ job.run_test('gl_Bench',
 job.run_test('gpu_SanAngeles')
 
 # Video
+job.run_test('audiovideo_FFMPEG',
+             constraints=['fps_artbeats_red_m720p_mov >= 40.0',
+                          'fps_trailer_720p_mov >= 40.0',
+             ])
 job.run_test('audiovideo_V4L2')
 
 # Communications
