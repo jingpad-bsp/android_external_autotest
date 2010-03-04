@@ -8,7 +8,7 @@ BUILD_TEST_DIR = vboot_reference
 TEST_BINS = sha_tests testcases testkeys rsa_padding_test run_rsa_tests.sh \
 	sha_benchmark rsa_verify_benchmark
 # Utility Binaries.
-UTIL_BINS = verify_data signature_digest
+UTIL_BINS = verify_data signature_digest_utility
 
 all: 
         # Copy test sources into a temporary directory for building.
