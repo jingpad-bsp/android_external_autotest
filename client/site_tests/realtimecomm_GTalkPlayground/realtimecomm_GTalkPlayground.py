@@ -76,9 +76,14 @@ class realtimecomm_GTalkPlayground(test.test):
         page = 'videoplayground.html'
         para = 'callType=v'
         playground_url = "%s/%s?%s" % (path, page, para)
-        session = site_ui.ChromeSession(playground_url)
-        time.sleep(60)
-        session.close()
+        # Here we somehow have to use utils.run
+        # Other approaches like utils.system and site_ui.ChromeSession
+        # http://code.google.com/p/chromium-os/issues/detail?id=1764
+        utils.run('su chronos -c \'DISPLAY=:0 \
+            XAUTHORITY=/home/chronos/.Xauthority \
+            /opt/google/chrome/chrome \
+            --no-first-run %s\' &' % playground_url)
+        time.sleep(120)
 
         # Verify log
         self.run_verification()
