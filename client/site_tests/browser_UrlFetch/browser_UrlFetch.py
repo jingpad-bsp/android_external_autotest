@@ -18,7 +18,7 @@ class browser_UrlFetch(test.test):
         try:
           # Stop chrome from restarting and kill login manager
           utils.system('touch /tmp/disable_chrome_restart')
-          utils.system('killall chrome')
+          utils.system('pkill chrome')
 
           # Copy over chrome, chrome.pak, etc needed for test
           utils.system('cp -r %s/* .' % '/opt/google/chrome')
