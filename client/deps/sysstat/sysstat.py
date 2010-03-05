@@ -16,7 +16,6 @@ def setup(tarball, topdir):
     os.chdir(srcdir)
     utils.system ('./configure --prefix=%s' % topdir)
     utils.system('make')
-    utils.system('make install')
     os.chdir(topdir)
 
 pwd = os.getcwd()

@@ -39,6 +39,10 @@ class netperf2(test.test):
         self.network = net_utils.network()
         self.network_utils = net_utils.network_utils()
 
+        dep = 'sysstat'
+        dep_dir = os.path.join(self.autodir, 'deps', dep)
+        self.job.install_pkg(dep, 'dep', dep_dir)
+
 
     def run_once(self, server_ip, client_ip, role, test = 'TCP_STREAM',
                  test_time = 15, stream_list = [1], test_specific_args = '',
@@ -148,7 +152,10 @@ class netperf2(test.test):
                test_specific_args, cpu_affinity):
         args = '-H %s -t %s -l %d' % (server_ip, test, test_time)
 
-        mpstat = os.path.join(self.autodir + 'deps/sysstat/mpstat')
+        if os.path.exists('/usr/bin/mpstat'):
+            mpstat = '/usr/bin/mpstat'
+        else:
+            mpstat = os.path.join(self.autodir + '/deps/sysstat/src/mpstat')
 
         if self.wait_time:
             args += ' -s %d ' % self.wait_time
@@ -169,7 +176,7 @@ class netperf2(test.test):
             # take a long time to start up all the streams, we'll toss out the
             # first and last sample when recording results
             interval = max(1, test_time / 5)
-            cmds.append('sleep %d && mpstat -P ALL %s 5' % (self.wait_time,
+            cmds.append('sleep %d && %s -P ALL %s 5' % (self.wait_time, mpstat,
                                                             interval))
 
             # Add the netperf commands
