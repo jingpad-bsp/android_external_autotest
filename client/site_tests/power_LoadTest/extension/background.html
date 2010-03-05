@@ -20,6 +20,7 @@ var cycle_tabs = {};
 var failed_loads = [0];
 var successful_loads = [0];
 var time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
+var preexisting_windows = [];
 
 chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
   if (sender.tab.id in cycle_tabs) {
@@ -35,10 +36,18 @@ chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
   }
 });
 
+function close_preexisting_windows() {
+  for (var i = 0; i < preexisting_windows.length; i++) {
+    chrome.windows.remove(preexisting_windows[i].id);
+  }
+  preexisting_windows.length = 0;
+}
+
 function launch_task(task) {
   if (task.type == 'window' && task.tabs) {
     var url = task.tabs[0];
     chrome.windows.create({'url': url}, function (win) {
+      close_preexisting_windows();
       for (var i = 1; i < task.tabs.length; i++) {
         chrome.tabs.create({'windowId': win.id, url: task.tabs[i]});
       }
@@ -48,6 +57,7 @@ function launch_task(task) {
     var url = task.urls[0];
     var idx = 0;
     chrome.windows.create({'url': url}, function (win) {
+      close_preexisting_windows();
       chrome.tabs.getSelected(win.id, function(tab) {
         cycle_tabs[tab.id] = task.scroll_interval;
         var cycleTask = setInterval(function(urls, tab_id) {
@@ -86,16 +96,21 @@ function send_status() {
             + failed_loads[0]);
 }
 
-var end = 0;
-for (var i = 0; i < tasks.length; i++) {
-  end = Math.max(end, (tasks[i].start+tasks[i].duration)/time_ratio)
-  setTimeout(launch_task, tasks[i].start/time_ratio, tasks[i])
-}
 
-setTimeout(send_status, end);
-// Add a 5sec delay between sending the status back and closing browser
-// so that status message can reach autotest safely
-setTimeout(close_browser, end + 5*1000);
+chrome.windows.getAll(null, function(windows) {
+  preexisting_windows = windows;
+  var end = 0;
+  for (var i = 0; i < tasks.length; i++) {
+    end = Math.max(end, (tasks[i].start + tasks[i].duration) / time_ratio);
+    setTimeout(launch_task, tasks[i].start / time_ratio, tasks[i]);
+  }
+  setTimeout(send_status, end);
+
+  // Add a 5sec delay between sending the status back and closing browser
+  // so that status message can reach autotest safely
+  setTimeout(close_browser, end + 5 * 1000);
+});
+
 
 </script>
 
