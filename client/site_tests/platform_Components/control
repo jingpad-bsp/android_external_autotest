@@ -1,0 +1,15 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+TIME='SHORT'
+AUTHOR = 'The Chromium OS Authors'
+DOC = """
+Probe for hardware components
+"""
+NAME = 'platform_Components'
+TEST_CLASS = 'platform'
+TEST_CATEGORY = 'Functional'
+TEST_TYPE = 'client'
+
+job.run_test('platform_Components')
