@@ -22,7 +22,8 @@ class ChromeSession(object):
     A class to start and close Chrome sessions.
     """
 
-    def __init__(self, args=''):
+    def __init__(self, args='', clean_state=True):
+        self._clean_state = clean_state
         self.start(args)
 
 
@@ -31,8 +32,9 @@ class ChromeSession(object):
 
 
     def start(self, args=''):
-        # Delete previous browser state if any
-        shutil.rmtree('/home/chronos/.config/chromium', ignore_errors=True)
+        if self._clean_state:
+            # Delete previous browser state if any
+            shutil.rmtree('/home/chronos/.config/chromium', ignore_errors=True)
 
         # Open a new browser window as a background job
         cmd = '/opt/google/chrome/chrome --no-first-run ' + args

@@ -11,7 +11,7 @@ TEST_TYPE = "client"
 
 DOC = """
 This test runs load test consisting of cycling though web pages, watching
-videos, listening to music etc. and measures battery power draw.
+videos etc. and measures battery power draw.
 """
 
-job.run_test('power_LoadTest', seconds=20)
+job.run_test('power_LoadTest', seconds=3600, iterations=8)
