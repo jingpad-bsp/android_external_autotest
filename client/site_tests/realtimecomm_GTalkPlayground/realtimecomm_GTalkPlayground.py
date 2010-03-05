@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, time
+import os, time, shutil, re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, site_ui
@@ -21,12 +21,14 @@ class realtimecomm_GTalkPlayground(test.test):
 
 
     def run_cleanup(self):
-        utils.run('killall chrome', ignore_status=True)
-        time.sleep(1)
-        utils.run('killall GoogleTalkPlugin', ignore_status=True)
-        time.sleep(1)
+        utils.run('pkill chrome', ignore_status=True)
+        time.sleep(10)
+        utils.run('pkill GoogleTalkPlugin', ignore_status=True)
+        time.sleep(10)
         utils.run('rm -f /tmp/tmp.log', ignore_status=True)
         utils.run('rm -rf %s' % self.playground)
+        # Delete previous browser state if any
+        shutil.rmtree('/home/chronos/.config/chromium', ignore_errors=True)
 
 
     def run_setup(self):
@@ -60,13 +62,40 @@ class realtimecomm_GTalkPlayground(test.test):
                     raise error.TestFail('Error in Video upstream!')
                 if not "Rendered framerate" in content:
                     raise error.TestFail('Error in Video downstream!')
+                # Get framerate
+                self.get_framerate(content)
             finally:
                 log.close()
         except IOError:
             raise error.TestFail('Error in reading GTalk log file!')
 
 
+    def get_framerate(self, log):
+        d = {}
+        # We get a framerate report every 10 seconds for both streams.
+        # We run for 5 mins, and should get around (5 * 60/10) * 2 = 60
+        # framerate reports for 2 streams.
+        # Ignore the first and last framerate since they are not accurate.
+        l = re.findall(r"Decoded framerate \((.*)\): (\d+\.?\d*) fps", log)
+        if len(l) < 57:
+            raise error.TestFail('Error in Video duration!')
+        for i in range(1, len(l) - 1):
+            if d.has_key(l[i][0]):
+                d[l[i][0]] = d[l[i][0]] + float(l[i][1])
+            else:
+                d[l[i][0]] = float(l[i][1])
+        if len(d) != 2:
+            raise error.TestFail('Number of video stream is NOT 2!')
+        # Get framerate for two streams.
+        fps = []
+        for k in d:
+           fps.insert(0, d[k] * 2 / (len(l) - 2))
+        self.performance_results['fps_gtalk_up'] = max(fps[0], fps[1])
+        self.performance_results['fps_gtalk_down'] = min(fps[0], fps[1])
+
+
     def run_once(self):
+        self.performance_results = {}
         self.run_cleanup()
         self.run_setup()
 
@@ -77,14 +106,26 @@ class realtimecomm_GTalkPlayground(test.test):
         para = 'callType=v'
         playground_url = "%s/%s?%s" % (path, page, para)
         # Here we somehow have to use utils.run
-        # Other approaches like utils.system and site_ui.ChromeSession
+        # Other approaches like utils.system and site_ui.ChromeSession 
+        # cause problem in video.
         # http://code.google.com/p/chromium-os/issues/detail?id=1764
-        utils.run('su chronos -c \'DISPLAY=:0 \
+        cpu_usage, stdout = utils.get_cpu_percentage(
+            utils.run,
+            'su chronos -c \'DISPLAY=:0 \
             XAUTHORITY=/home/chronos/.Xauthority \
             /opt/google/chrome/chrome \
-            --no-first-run %s\' &' % playground_url)
-        time.sleep(120)
+            --no-first-run %s\' &' % playground_url,
+            timeout=300, ignore_status=True)
+        time.sleep(330)  # Sleep a little longer than running
 
         # Verify log
-        self.run_verification()
-        self.run_cleanup()
+        try:
+            self.run_verification()
+        finally:
+            self.run_cleanup()
+
+        # Report perf
+        cpu_usage *= 100.0  # in percentage.
+        self.performance_results['cpuusage'] = cpu_usage
+        self.write_perf_keyval(self.performance_results)
+

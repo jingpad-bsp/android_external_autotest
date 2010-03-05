@@ -59,6 +59,12 @@ job.run_test('audiovideo_FFMPEG',
              ])
 job.run_test('audiovideo_V4L2')
 
+# RealTimeComm
+job.run_test('realtimecomm_GTalkPlayground',
+             constraints=['fps_gtalk_down >= 28.0',
+                          'fps_gtalk_up >= 29.0',
+             ])
+
 # Communications
 job.run_test('network_WiFiCaps')
 
