@@ -35,7 +35,7 @@ var tasks = [
     // Page cycle through popular external websites for 48 minutes
     type: 'cycle',
     start: 0,
-    duration: 48 *60 * 1000,
+    duration: 48 * 60 * 1000,
     delay: 60 * 1000, // A minute on each page
     urls: URLS,
   },

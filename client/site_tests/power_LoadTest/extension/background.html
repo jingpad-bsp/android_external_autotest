@@ -51,7 +51,7 @@ function launch_task(task) {
       for (var i = 1; i < task.tabs.length; i++) {
         chrome.tabs.create({'windowId': win.id, url: task.tabs[i]});
       }
-      setTimeout(chrome.windows.remove, task.duration/time_ratio, win.id);
+      setTimeout(chrome.windows.remove, task.duration / time_ratio, win.id);
     })
   } else if (task.type == 'cycle' && task.urls) {
     var url = task.urls[0];
@@ -73,7 +73,7 @@ function launch_task(task) {
         setTimeout(function(win_id) {
           clearInterval(cycleTask);
           chrome.windows.remove(win_id);
-        }, task.duration/time_ratio, win.id);
+        }, task.duration / time_ratio, win.id);
       });
     });
   }
