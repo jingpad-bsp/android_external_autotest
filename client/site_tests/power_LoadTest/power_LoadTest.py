@@ -49,8 +49,7 @@ class power_LoadTest(test.test):
         self._power_status = site_power_status.get_status()
 
         # verify that initial conditions are met:
-        #if self._power_status.linepower[0].online:
-        if False:
+        if self._power_status.linepower[0].online:
             raise error.TestNAError(
                 'Running on AC power. Please remove AC power cable')
 
@@ -72,10 +71,10 @@ class power_LoadTest(test.test):
 
         # fix up file perms for the power test extension so that chrome
         # can access it
-        self._ext_path = os.path.join(self.bindir, 'extension')
-        os.system('chmod -R 755 %s/*' % self._ext_path)
+        os.system('chmod -R 755 %s' % self.bindir)
 
         # write test parameters to the power extension's params.js file
+        self._ext_path = os.path.join(self.bindir, 'extension')
         self._write_ext_params()
 
         # setup a HTTP Server to listen for status updates from the power
