@@ -2,10 +2,61 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, time, shutil, re
+import os, re, shutil, time, 
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, site_ui
+
+WARMUP_TIME = 60
+SLEEP_DURATION = 240
+
+def get_pids(program_name):
+    """
+    Collect a list of pids for all the instances of a program.
+
+    @param program_name the name of the program
+    @return list of pids
+    """
+    return utils.system_output("pidof %s" % program_name).split(" ")
+
+
+def get_number_of_logical_cpu():
+    """
+    From /proc/stat/.
+
+    @return number of logic cpu
+    """
+    ret = utils.system_output("cat /proc/stat | grep ^cpu[0-9+] | wc -l")
+    return int(ret)
+
+
+def get_utime_stime(pids):
+    """
+    Snapshot the sum of utime and the sum of stime for a list of processes.
+
+    @param pids a list of pid
+    @return [sum_of_utime, sum_of_stime]
+    """
+    timelist = [0, 0]
+    for p in pids:
+        statFile = file("/proc/%s/stat" % p, "r")
+        T = statFile.readline().split(" ")[13:15]
+        statFile.close()
+        for i in range(len(timelist)):
+            timelist[i] = timelist[i] + int(T[i])
+    return timelist
+
+
+def get_cpu_usage(duration, time):
+    """
+    Calculate cpu usage based on duration and time on cpu.
+
+    @param duration
+    @param time on cpu
+    @return cpu usage
+    """
+    return float(time) / float(duration * get_number_of_logical_cpu())
+
 
 class realtimecomm_GTalkPlayground(test.test):
     version = 1
@@ -109,14 +160,27 @@ class realtimecomm_GTalkPlayground(test.test):
         # Other approaches like utils.system and site_ui.ChromeSession 
         # cause problem in video.
         # http://code.google.com/p/chromium-os/issues/detail?id=1764
-        cpu_usage, stdout = utils.get_cpu_percentage(
-            utils.run,
-            'su chronos -c \'DISPLAY=:0 \
+        utils.run('su chronos -c \'DISPLAY=:0 \
             XAUTHORITY=/home/chronos/.Xauthority \
             /opt/google/chrome/chrome \
-            --no-first-run %s\' &' % playground_url,
-            timeout=300, ignore_status=True)
-        time.sleep(330)  # Sleep a little longer than running
+            --no-first-run %s\' &' % playground_url)
+
+        # Collect ctime,stime for GoogleTalkPlugin
+        time.sleep(WARMUP_TIME)
+        gtalk_s = get_utime_stime(get_pids('GoogleTalkPlugin'))
+        chrome_s = get_utime_stime(get_pids('chrome/chrome'))
+        time.sleep(SLEEP_DURATION)
+        gtalk_e = get_utime_stime(get_pids('GoogleTalkPlugin'))
+        chrome_e = get_utime_stime(get_pids('chrome/chrome'))
+
+        self.performance_results['ctime_gtalk'] = \
+            get_cpu_usage(SLEEP_DURATION, gtalk_e[0] - gtalk_s[0])
+        self.performance_results['stime_gtalk'] = \
+            get_cpu_usage(SLEEP_DURATION, gtalk_e[1] - gtalk_s[1])
+        self.performance_results['ctime_chrome'] = \
+            get_cpu_usage(SLEEP_DURATION, chrome_e[0] - chrome_s[0])
+        self.performance_results['stime_chrome'] = \
+            get_cpu_usage(SLEEP_DURATION, chrome_e[1] - chrome_s[1])
 
         # Verify log
         try:
@@ -125,7 +189,5 @@ class realtimecomm_GTalkPlayground(test.test):
             self.run_cleanup()
 
         # Report perf
-        cpu_usage *= 100.0  # in percentage.
-        self.performance_results['cpuusage'] = cpu_usage
         self.write_perf_keyval(self.performance_results)
 
