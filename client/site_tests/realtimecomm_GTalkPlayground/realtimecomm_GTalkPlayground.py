@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, re, shutil, time, 
+import os, re, shutil, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, site_ui
