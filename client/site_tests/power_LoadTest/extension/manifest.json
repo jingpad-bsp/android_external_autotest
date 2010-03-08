@@ -2,7 +2,7 @@
   "format_version": 1,
   "id": "00023456789ABCDEF0123456789ABCDEF012CEEE",
   "version": "1.0",
-  "name": "Power Test ",
+  "name": "Power Test",
   "browser_action": {
     "default_icon": "skin/chrome_bug.png",
     "default_title": "test the web with the web"

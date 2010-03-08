@@ -6,31 +6,28 @@ request = {action: "should_scroll"}
 
 chrome.extension.sendRequest(request, function(response) {
   if (response.should_scroll) {
+    window.focus();
     lastOffset = window.pageYOffset;
-    function smoothScrollDown()
-    {
+    var start_interval = Math.max(10000, response.scroll_interval);
+    function smoothScrollDown() {
       window.scrollBy(0, response.scroll_by);
       if (window.pageYOffset != lastOffset) {
         lastOffset = window.pageYOffset;
         setTimeout(smoothScrollDown, response.scroll_interval);
-      }
-      else {
-        if (response.should_scroll_up) {
-          setTimeout(smoothScrollUp, 5000);
-        }
+      } else if (response.should_scroll_up) {
+        setTimeout(smoothScrollUp, start_interval);
       }
     }
-    function smoothScrollUp()
-    {
+    function smoothScrollUp() {
       window.scrollBy(0, -1 * response.scroll_by);
       if (window.pageYOffset != lastOffset) {
         lastOffset = window.pageYOffset;
-        if (response.scroll_loop) {
-          setTimeout(smoothScrollUp, response.scroll_interval);
-        }
+        setTimeout(smoothScrollUp, response.scroll_interval);
+      } else if (response.scroll_loop) {
+        setTimeout(smoothScrollDown, start_interval);
       }
     }
-    setTimeout(smoothScrollDown, 10000);
+    setTimeout(smoothScrollDown, start_interval);
   }
 });
 

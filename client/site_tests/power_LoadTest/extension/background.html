@@ -13,19 +13,16 @@ found in the LICENSE file.
 
 <script>
 
-// Test normally takes 60 mins. Set time_ratio to 10 to
-// speed up the test 10x. This reduces the amount of time
-// spent on each task.
 var cycle_tabs = {};
-var failed_loads = [0];
-var successful_loads = [0];
+var cycles = {};
 var time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
 var preexisting_windows = [];
-
+ 
 chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
   if (sender.tab.id in cycle_tabs) {
-    successful_loads[0]++;
-    if (request.action == "should_scroll") {
+    cycle = cycle_tabs[sender.tab.id];
+    cycle.successful_loads++;
+    if (request.action == "should_scroll" && cycle.focus) {
       sendResponse({"should_scroll": should_scroll,
                     "should_scroll_up": should_scroll_up,
                     "scroll_loop": scroll_loop,
@@ -43,6 +40,28 @@ function close_preexisting_windows() {
   preexisting_windows.length = 0;
 }
 
+function cycle_navigate(cycle) {
+  cycle_tabs[cycle.id] = cycle;
+  var url = cycle.urls[cycle.idx];
+  chrome.tabs.update(cycle.id, {'url': url, 'selected': true});
+  cycle.idx = (cycle.idx + 1) % cycle.urls.length;
+  if (cycle.timeout < cycle.delay && cycle.timeout > 0) {
+    cycle.timer = setTimeout(cycle_check_timeout, cycle.timeout, cycle);
+  } else {
+    cycle.timer = setTimeout(cycle_navigate, cycle.delay, cycle);
+  }
+}
+
+function cycle_check_timeout(cycle) {
+  if (cycle.id in cycle_tabs) {
+    cycle.failed_loads++;
+    cycle_navigate(cycle);
+  } else {
+    cycle.timer = setTimeout(cycle_navigate, cycle.delay - cycle.timeout,
+                             cycle);
+  }
+}
+
 function launch_task(task) {
   if (task.type == 'window' && task.tabs) {
     var url = task.tabs[0];
@@ -52,28 +71,29 @@ function launch_task(task) {
         chrome.tabs.create({'windowId': win.id, url: task.tabs[i]});
       }
       setTimeout(chrome.windows.remove, task.duration / time_ratio, win.id);
-    })
+    });
   } else if (task.type == 'cycle' && task.urls) {
-    var url = task.urls[0];
-    var idx = 0;
-    chrome.windows.create({'url': url}, function (win) {
+    chrome.windows.create({'url': 'about:blank'}, function (win) {
       close_preexisting_windows();
       chrome.tabs.getSelected(win.id, function(tab) {
-        cycle_tabs[tab.id] = task.scroll_interval;
-        var cycleTask = setInterval(function(urls, tab_id) {
-          if (tab_id in cycle_tabs && urls.length > 1) {
-            failed_loads[0] += 1;
-          }
-          console.log('suc/fail: ' + successful_loads[0] + '/' +
-                      failed_loads[0]);
-          cycle_tabs[tab_id] = task.scroll_interval;
-          idx = (idx + 1) % urls.length;
-          chrome.tabs.update(tab_id, {'url': urls[idx], 'selected': true})
-        }, task.delay, task.urls, tab.id);
-        setTimeout(function(win_id) {
-          clearInterval(cycleTask);
+        var cycle = {
+           'timeout': task.timeout,
+           'name': task.name,
+           'delay': task.delay,
+           'urls': task.urls,
+           'id': tab.id,
+           'idx': 0,
+           'timer': null,
+           'focus': !!task.focus,
+           'successful_loads': 0,
+           'failed_loads': 0
+        };
+        cycles[task.name] = cycle;
+        cycle_navigate(cycle);
+        setTimeout(function(cycle, win_id) {
+          clearTimeout(cycle.timer);
           chrome.windows.remove(win_id);
-        }, task.duration / time_ratio, win.id);
+        }, task.duration / time_ratio, cycle, win.id);
       });
     });
   }
@@ -88,12 +108,20 @@ function close_browser() {
 }
 
 function send_status() {
+  var post = ["status=good"];
+
+  for (var name in cycles) {
+    var cycle = cycles[name];
+    post.push(name + "_successful_loads=" + cycle.successful_loads);
+    post.push(name + "_failed_loads=" + cycle.failed_loads);
+  }
+
   var log_url = 'http://localhost:8001/status';
   var req = new XMLHttpRequest();
   req.open('POST', log_url, true);
   req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-  req.send("status=good&succeeded=" + successful_loads[0] + "&failed="
-            + failed_loads[0]);
+  req.send(post.join("&"));
+  console.log(post.join("&"));
 }
 
 
