@@ -44,7 +44,7 @@ class V4L2Device {
   virtual bool UninitDevice();
   virtual bool StartCapture();
   virtual bool StopCapture();
-  virtual bool Run(uint32_t frames);
+  virtual bool Run(uint32_t frames, uint32_t time_in_sec = 0);
 
   // Helper methods.
   bool EnumInput();
@@ -92,6 +92,7 @@ class V4L2Device {
   bool InitUserPtrIO(uint32_t buffer_size);
   bool AllocateBuffer(uint32_t buffer_count);
   bool FreeBuffer();
+  uint64_t Now();
 
   const char* dev_name_;
   IOMethod io_;

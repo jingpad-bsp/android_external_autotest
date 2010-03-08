@@ -5,6 +5,8 @@
 #include "media_v4l2_device.h"
 
 #include <assert.h>
+#include <time.h>
+
 #define CHECK(a) assert(a)
 #define MAJOR(dev) (((uint32_t)(dev)) >> 8)
 #define MINOR(dev) (((uint32_t)(dev)) & 0xff)
@@ -20,7 +22,8 @@ V4L2Device::V4L2Device(const char* dev_name,
       fd_(-1),
       v4l2_buffers_(NULL),
       num_buffers_(0),
-      min_buffers_(buffers) {
+      min_buffers_(buffers),
+      stopped_(false) {
 }
 
 bool V4L2Device::OpenDevice() {
@@ -237,8 +240,14 @@ void V4L2Device::ProcessImage(const void* p) {
   fflush(stdout);
 }
 
-bool V4L2Device::Run(uint32_t frames) {
+// Do capture for number of |frames| ( when time_in_sec == 0 )
+// or for duration of |time_in_sec|  ( when time_in_sec > 0 ).
+bool V4L2Device::Run(uint32_t frames, uint32_t time_in_sec) {
   stopped_ = false;
+  if (time_in_sec) // duration setting override the frames setting.
+    frames = 30 * time_in_sec; // Assume maximum fps is 30.
+
+  uint64_t start_in_sec = Now();
   int32_t timeout = 5;  // Used 5 seconds for initial delay.
   while (!stopped_ && frames > 0) {
     fd_set fds;
@@ -264,7 +273,13 @@ bool V4L2Device::Run(uint32_t frames) {
       return false;
     if (r)
       frames--;
+    if (time_in_sec) {
+      uint64_t end_in_sec = Now();
+      if ( end_in_sec - start_in_sec >= time_in_sec )
+        return true;
+    }
   }
+  return true;
 }
 
 bool V4L2Device::Stop() {
@@ -787,4 +802,11 @@ uint32_t V4L2Device::GetFrameRate() {
     return -1;
   return (param.parm.capture.timeperframe.denominator /
           param.parm.capture.timeperframe.numerator);
+}
+
+uint64_t V4L2Device::Now() {
+  struct timespec ts;
+  int res = clock_gettime(CLOCK_MONOTONIC, &ts);
+  CHECK(res == 0);
+  return static_cast<uint64_t>(ts.tv_sec);
 }

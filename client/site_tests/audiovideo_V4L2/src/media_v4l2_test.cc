@@ -173,11 +173,12 @@ static void PrintUsage(int argc, char** argv) {
          "--height=[NUM]          Picture height to capture\n"
          "--pixel-format=[fourcc] Picture format fourcc code\n"
          "--fps=[NUM]             Frame rate for capture\n"
-         "--display               Launch X11 window to preview\n",
+         "--display               Launch X11 window to preview\n"
+         "--time=[NUM]            Time to capture in seconds\n",
          argv[0]);
 }
 
-static const char short_options[] = "d:?mrun:f:w:h:t:x:k";
+static const char short_options[] = "d:?mrun:f:w:h:t:x:kz:";
 static const struct option
 long_options[] = {
         { "device",       required_argument, NULL, 'd' },
@@ -192,6 +193,7 @@ long_options[] = {
         { "pixel-format", required_argument, NULL, 't' },
         { "fps",          required_argument, NULL, 'x' },
         { "display",      no_argument,       NULL, 'k' },
+        { "time",         required_argument, NULL, 'z' },
         { 0, 0, 0, 0 }
 };
 
@@ -205,6 +207,7 @@ int main(int argc, char** argv) {
   uint32_t pixfmt = V4L2_PIX_FMT_YUYV;
   uint32_t fps = 0;
   bool display = false;
+  uint32_t time_to_capture = 0;
 
   for (;;) {
     int32_t index;
@@ -257,15 +260,24 @@ int main(int argc, char** argv) {
       case 'k':
         display = true;
         break;
+      case 'z':
+        time_to_capture = atoi(optarg);
+        break;
       default:
         PrintUsage(argc, argv);
         exit(EXIT_FAILURE);
     }
   }
 
-  printf("capture %dx%d %c%c%c%c picture for %d frames at %d fps\n",
-         width, height, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
-         (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, frames, fps);
+  if (time_to_capture) {
+    printf("capture %dx%d %c%c%c%c picture for %d seconds at %d fps\n",
+           width, height, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
+           (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, time_to_capture, fps);
+  } else {
+    printf("capture %dx%d %c%c%c%c picture for %d frames at %d fps\n",
+           width, height, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
+           (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, frames, fps);
+  }
 
   V4L2Device* device = NULL;
   if (display) {
@@ -285,7 +297,7 @@ int main(int argc, char** argv) {
   if (!retcode && !device->StartCapture())
     retcode = 3;
 
-  if (!retcode && !device->Run(frames))
+  if (!retcode && !device->Run(frames, time_to_capture))
     retcode = 4;
 
   if (!retcode && !device->StopCapture())
