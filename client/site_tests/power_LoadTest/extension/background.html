@@ -64,13 +64,15 @@ function cycle_check_timeout(cycle) {
 
 function launch_task(task) {
   if (task.type == 'window' && task.tabs) {
-    var url = task.tabs[0];
-    chrome.windows.create({'url': url}, function (win) {
+    chrome.windows.create({'url': 'about:blank'}, function (win) {
       close_preexisting_windows();
-      for (var i = 1; i < task.tabs.length; i++) {
-        chrome.tabs.create({'windowId': win.id, url: task.tabs[i]});
-      }
-      setTimeout(chrome.windows.remove, task.duration / time_ratio, win.id);
+      chrome.tabs.getSelected(win.id, function(tab) {
+        chrome.tabs.update(tab.id, {'url': task.tabs[0], 'selected': true});
+        for (var i = 1; i < task.tabs.length; i++) {
+          chrome.tabs.create({'windowId': win.id, url: task.tabs[i]});
+        }
+        setTimeout(chrome.windows.remove, task.duration / time_ratio, win.id);
+      });
     });
   } else if (task.type == 'cycle' && task.urls) {
     chrome.windows.create({'url': 'about:blank'}, function (win) {

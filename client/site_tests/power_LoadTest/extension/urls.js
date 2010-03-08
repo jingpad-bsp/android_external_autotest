@@ -29,7 +29,7 @@ var tasks = [
     start: 0,
     duration: 36 * 60 * 1000,
     delay: 60 * 1000, // A minute on each page
-    timeout: 5 * 1000,
+    timeout: 10 * 1000,
     focus: true,
     urls: URLS,
   },
@@ -37,10 +37,10 @@ var tasks = [
     // After 36 minutes, actively read e-mail for 12 minutes
     type: 'cycle',
     name: 'email',
-    start: 36 * 60 * 1000,
-    duration: 12 * 60 * 1000,
+    start: 36 * 60 * 1000 + 1 * 1000,
+    duration: 12 * 60 * 1000 - 1 * 1000,
     delay: 60 * 1000, // A minute on each page
-    timeout: 5 * 1000,
+    timeout: 10 * 1000,
     focus: true,
     urls: [
        'http://gmail.com',
@@ -55,7 +55,7 @@ var tasks = [
     start: 36 * 60 * 1000,
     duration: 12 * 60 * 1000,
     delay: 12 * 60 * 1000,
-    timeout: 5 * 1000,
+    timeout: 10 * 1000,
     focus: false,
     urls: [
       'http://www.bbc.co.uk/iplayer/console/worldservice/',
@@ -70,7 +70,7 @@ var tasks = [
     start: 48 * 60 * 1000,
     duration: 12 * 60 * 1000,
     delay: 60 * 1000, // A minute on each page
-    timeout: 5 * 1000,
+    timeout: 10 * 1000,
     focus: true,
     urls: [
        ViewGDoc + '0AaLGACl774zLZGRuYzlibWtfMXJzbmdoamcy',
