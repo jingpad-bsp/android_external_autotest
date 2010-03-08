@@ -7,7 +7,7 @@ __author__ = 'showard@google.com (Steve Howard)'
 
 import datetime, os, sys
 import django.http
-from autotest_lib.frontend.afe import models, model_logic
+from autotest_lib.frontend.afe import models, model_logic, model_attributes
 
 NULL_DATETIME = datetime.datetime.max
 NULL_DATE = datetime.date.max
@@ -201,7 +201,7 @@ def prepare_generate_control_file(tests, kernel, label, profilers):
              'tests together (tests %s and %s differ' % (
             test1.name, test2.name)})
 
-    is_server = (test_type == models.Test.Types.SERVER)
+    is_server = (test_type == model_attributes.TestTypes.SERVER)
     if test_objects:
         synch_count = max(test.sync_count for test in test_objects)
     else:
@@ -455,14 +455,6 @@ def create_new_job(owner, options, host_objects, metahost_objects,
     metahost_counts = _get_metahost_counts(metahost_objects)
     dependencies = options.get('dependencies', [])
     synch_count = options.get('synch_count')
-
-    # check that each metahost request has enough hosts under the label
-    for label, requested_count in metahost_counts.iteritems():
-        available_count = label.host_set.count()
-        if requested_count > available_count:
-            error = ("You have requested %d %s's, but there are only %d."
-                     % (requested_count, label.name, available_count))
-            raise model_logic.ValidationError({'meta_hosts' : error})
 
     if atomic_group:
         check_atomic_group_create_job(
