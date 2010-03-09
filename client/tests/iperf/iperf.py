@@ -7,7 +7,7 @@ MPSTAT_IX = 0
 IPERF_IX = 1
 
 class iperf(test.test):
-    version = 1
+    version = 2
 
     # http://downloads.sourceforge.net/iperf/iperf-2.0.4.tar.gz
     def setup(self, tarball = 'iperf-2.0.4.tar.gz'):
@@ -15,6 +15,8 @@ class iperf(test.test):
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
         os.chdir(self.srcdir)
+
+        self.job.setup_dep(['sysstat'])
 
         utils.system('./configure')
         utils.system('make')
@@ -37,6 +39,10 @@ class iperf(test.test):
         self.actual_times = []
         self.netif = ''
         self.network_utils = net_utils.network_utils()
+
+        dep = 'sysstat'
+        dep_dir = os.path.join(self.autodir, 'deps', dep)
+        self.job.install_pkg(dep, 'dep', dep_dir)
 
 
     def run_once(self, server_ip, client_ip, role, udp=False,
@@ -126,13 +132,18 @@ class iperf(test.test):
         if self.bidirectional:
             args += '-d '
 
+        if os.path.exists('/usr/bin/mpstat'):
+            mpstat = '/usr/bin/mpstat'
+        else:
+            mpstat = os.path.join(self.autodir + '/deps/sysstat/src/mpstat')
+
         try:
             cmds = []
             # Get 5 mpstat samples. Since tests with large number of streams
             # take a long time to start up all the streams, we'll toss out the
             # first and last sample when recording results
             interval = max(1, test_time / 5)
-            cmds.append('mpstat -P ALL %s 5' % interval)
+            cmds.append('%s -P ALL %s 5' % (mpstat, interval))
 
             # Add the iperf command
             cmd = self.client_path % (server_ip, args)
