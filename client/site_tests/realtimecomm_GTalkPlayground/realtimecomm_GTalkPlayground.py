@@ -8,7 +8,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, site_ui
 
 WARMUP_TIME = 60
-SLEEP_DURATION = 240
+SLEEP_DURATION = 260
 
 def get_pids(program_name):
     """
