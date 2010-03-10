@@ -22,11 +22,21 @@ class audiovideo_V4L2(test.test):
         utils.system("make")
 
 
-    def run_once(self):
+    def run_once(self, run_unit_tests=True, run_capture_tests=True,
+                 run_default_capture_test=False, time=0,
+                 assert_mandatory_controls=True):
+
+        self.assert_mandatory_controls = assert_mandatory_controls
         self.find_video_capture_devices()
+        time = time / len(self.v4l2_devices)
+
         for device in self.v4l2_devices:
-            self.run_v4l2_unittests(device)
-            self.run_v4l2_capture_tests(device)
+            if run_unit_tests:
+                self.run_v4l2_unittests(device)
+            if run_capture_tests:
+                self.run_v4l2_capture_tests(device)
+            if run_default_capture_test:
+                self.run_v4l2_default_capture_test(device, time)
 
 
     def find_video_capture_devices(self):
@@ -43,8 +53,10 @@ class audiovideo_V4L2(test.test):
         if not self.v4l2_devices:
             raise TestFail("No V4L2 devices found!")
 
+
     def unittest_passed(self, testname, stdout):
         return re.search(r"OK \] V4L2DeviceTest\." + testname, stdout);
+
 
     def run_v4l2_unittests(self, device):
         self.executable = os.path.join(self.bindir, "media_v4l2_unittest")
@@ -75,14 +87,15 @@ class audiovideo_V4L2(test.test):
         logging.info("Supported Controls: %s\n" % self.supported_controls)
 
         # TODO(jiesun): what is required?
-        mandetory_controls = [
+        mandatory_controls = [
             "Brightness",
             "Contrast",
             "Saturation",
             "Hue",
             "Gamma"]
-        for control in mandetory_controls:
-            if control not in self.supported_controls:
+        for control in mandatory_controls:
+            if self.assert_mandatory_controls and \
+                control not in self.supported_controls:
                 raise error.TestError(device + " does not support " + control)
 
         # 5. SetControl is mandatory.
@@ -139,8 +152,15 @@ class audiovideo_V4L2(test.test):
             return (True, stdout)
 
 
-    def run_v4l2_capture_tests(self, device):
+    def run_v4l2_default_capture_test(self, device, time):
+        options = ["--device=%s" % device ]
+        options.append("--display")
+        if time:
+            options.append("--time=%d" % time)
+        okay, stdout = self.run_v4l2_capture_test(False, options)
 
+
+    def run_v4l2_capture_tests(self, device):
         default_options = ["--device=%s" % device ]
 
         # If the device claims to support read/write i/o.
