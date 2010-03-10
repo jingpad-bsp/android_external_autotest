@@ -142,8 +142,7 @@ class filesystem_Perms(test.test):
         # Read-only directories
         ro_dirs = ['/', '/bin', '/boot', '/etc', '/lib', '/mnt',
                    '/opt', '/sbin', '/usr', '/usr/bin', '/usr/lib',
-                   '/usr/local', '/usr/local/etc', '/usr/local/lib',
-                   '/usr/local/sbin', '/usr/sbin', '/usr/share', '/var',
+                   '/usr/local', '/usr/sbin', '/usr/share', '/var',
                    '/var/lib', '/var/local']
 
         # Root directories writable by root
