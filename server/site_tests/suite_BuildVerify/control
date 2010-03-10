@@ -1,0 +1,57 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "BVT"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+This test suite runs automated tests that should all pass and that verify
+that a build has some minimal functionality.  These are meant to run quickly
+in less than 30 minutes and should maximize coverage.
+"""
+
+client = hosts.create_host(machines[0])
+client_at = autotest.Autotest(client)
+
+# Run server tests
+
+job.run_test("system_BootPerfServer", host=client)
+
+# Run parameter-less simple client tests
+
+# All client tests whose default parameters are adequate
+TESTS = [
+  'filesystem_Perms',
+  'init_DaemonsRespawnWhenKilledTestCase',
+  'login_AuthenticationTests',
+  'login_PamModuleLoadTest',
+  'memory_TotalSize',
+  'metrics_Resume',
+  'metrics_Shutdown',
+  'network_WiFiCaps',
+  'shutdown_NoOpenFilesTestCase',
+  'shutdown_UnmountCleanlyTestCase',
+  'storage_DiskSize',
+  'storage_SsdDetection',
+  'system_AccurateTime',
+  'system_AutoLogin',
+  'system_ChromeFirstRender',
+  'system_KernelVersion',
+  'system_PowerStatus',
+  'system_RootFilesystemSize',
+]
+
+for test in TESTS:
+  client_at.run_test(test)
+
+# Run jobs with specific parameters
+client_at.run_test('networking_DisableInterface', iface_name='eth0', tag='eth0')
+client_at.run_test('networking_DisableInterface', iface_name='wlan0', tag='wlan0')
+client_at.run_test('memory_Throughput', num_iteration=1, test_list='18')
+client_at.run_test('system_SAT', seconds=20)
+

@@ -17,7 +17,7 @@ class system_AccurateTime(test.test):
         return commands.getstatusoutput('initctl start ntp')[0] == 0
 
 
-    def run_once(self, max_offset):
+    def run_once(self, max_offset=2):
         # Check ntpd is currently running
         if commands.getstatusoutput('pgrep ntpd')[0] != 0:
             raise error.TestError('NTP server was not already running')
