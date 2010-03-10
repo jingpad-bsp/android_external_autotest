@@ -9,5 +9,6 @@ DOC = """
 This test checks whether a network interface can be disabled.
 """
 
-job.run_test('networking_DisableInterface', iface_name = 'eth0', tag = 'eth0')
-job.run_test('networking_DisableInterface', iface_name = 'wlan0', tag = 'wlan0')
+job.run_test('networking_DisableInterface', iface_name='wlan0', tag='wlan0')
+job.run_test('networking_DisableInterface', iface_name='eth0', tag='eth0')
+job.run_test('networking_DisableInterface', iface_name='hci0', tag='hci0')
