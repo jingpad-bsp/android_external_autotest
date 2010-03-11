@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "BROWSER_TEST"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "DesktopUI"
+TEST_TYPE = "client"
+
+DOC = """
+This is a wrapper test for Chrome ui_test 
+"""
+
+job.run_test('desktopui_UITest')
