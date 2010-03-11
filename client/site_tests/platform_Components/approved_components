@@ -3,7 +3,12 @@
 # found in the LICENSE file.
 
 {
+    'part_id_audio_codec': ['*'],
+    'part_id_bluetooth': ['*'],
     'part_id_cpu': ['*'],
+    'part_id_chipset': ['*'],
+    'part_id_touchpad': ['*'],
+    'part_id_webcam': ['*'],
 }
 
 ###  Local Variables:
