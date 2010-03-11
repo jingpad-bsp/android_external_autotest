@@ -23,7 +23,7 @@ class power_LoadTest(test.test):
 
     def setup(self):
         # TODO(snanda): Remove once power manager is in
-        shutil.copy(os.path.join(os.environ['SYSROOT'], '/usr/bin/xset'),
+        shutil.copy(os.path.join(os.environ['SYSROOT'], 'usr/bin/xset'),
                                  self.bindir)
         if not os.path.exists(self.srcdir):
             os.mkdir(self.srcdir)
