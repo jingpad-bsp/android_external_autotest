@@ -10,8 +10,45 @@ TEST_CLASS = "power"
 TEST_TYPE = "client"
 
 DOC = """
-This test runs load test consisting of cycling though web pages, watching
-videos etc. and measures battery power draw.
+This test runs a load test consisting of cycling though web pages, playing
+videos, etc. and measures battery power draw.
+
+The following manual steps need to be performed on the device under test
+before this test can be run:
+1. make sure that Ethernet cable is disconnected and WiFi is connected
+2. login to Chrome OS and open a terminal window (Ctrl-Alt-t)
+3. run the following command to launch a new browser window:
+   sudo su chronos -c "/opt/google/chrome/chrome --no-first-run"
+4. in the newly opened browser window:
+4.1. navigate to http://www.gmail.com. Logout if already logged in. Check the
+     "Stay signed in" box and log in. If the yellow "Do you want Chromium to
+     save password" bar comes up, click on "Save password"
+4.2. navigate to http://www.facebook.com. Logout if already logged in. Check
+     the "Keep me logged in" box and log in. If the yellow "Do you want
+     Chromium to save password" bar comes up, click on "Save password".
+5. close browser window
+6. disconnect power cable
+
+You are now ready to run the test.
 """
 
-job.run_test('power_LoadTest', seconds=3600, iterations=8)
+import time
+
+test_time = 3600
+iterations = 8
+
+def run_audiovideo_V4L2():
+    # enable webcam for 5% of the test time, 90% into the test
+    run_time = test_time * 0.05
+    time.sleep(test_time * 0.90)
+    job.run_test('audiovideo_V4L2', time=run_time, run_capture_tests=False,
+               run_default_capture_test=True, assert_mandatory_controls=False,
+               tag=i)
+
+
+def run_power_load_test():
+    job.run_test('power_LoadTest', seconds=test_time, tag=i)
+
+
+for i in range(iterations):
+    job.parallel([run_audiovideo_V4L2], [run_power_load_test])

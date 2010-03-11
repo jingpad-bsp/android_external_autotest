@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, time
+import logging, os, re, shutil, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, site_httpd, \
                             site_power_status, site_ui, utils
@@ -20,6 +20,14 @@ form_entries = ['status', 'succeeded', 'failed']
 
 class power_LoadTest(test.test):
     version = 1
+
+    def setup(self):
+        # TODO(snanda): Remove once power manager is in
+        shutil.copy(os.path.join(os.environ['SYSROOT'], '/usr/bin/xset'),
+                                 self.bindir)
+        if not os.path.exists(self.srcdir):
+            os.mkdir(self.srcdir)
+
 
     def initialize(self, percent_initial_charge_min=None, check_network=True,
                    seconds=3600, should_scroll='true', should_scroll_up='true',
@@ -69,6 +77,9 @@ class power_LoadTest(test.test):
         # disable screen locker
         os.system('stop screen-locker')
 
+        # disable screen blanking
+        site_ui.xcommand(os.path.join(self.bindir, 'xset') + ' -dpms')
+
         # fix up file perms for the power test extension so that chrome
         # can access it
         os.system('chmod -R 755 %s' % self.bindir)
@@ -103,28 +114,33 @@ class power_LoadTest(test.test):
     def postprocess_iteration(self):
         keyvals = {}
 
+        keyvals['a_current_now'] = self._power_status.battery[0].current_now
         keyvals['ah_charge_full'] = self._power_status.battery[0].charge_full
         keyvals['ah_charge_full_design'] = \
                              self._power_status.battery[0].charge_full_design
         keyvals['ah_charge_start'] = self._ah_charge_start
         keyvals['ah_charge_now'] = self._power_status.battery[0].charge_now
-        keyvals['a_current_now'] = self._power_status.battery[0].current_now
+        keyvals['ah_charge_used'] = keyvals['ah_charge_start'] - \
+                                    keyvals['ah_charge_now']
+        keyvals['w_energy_rate'] = self._power_status.battery[0].energy_rate
         keyvals['wh_energy_start'] = self._wh_energy_start
         keyvals['wh_energy_now'] = self._power_status.battery[0].energy
-        keyvals['w_energy_rate'] = self._power_status.battery[0].energy_rate
-        keyvals['h_remaining_time'] = \
-                             self._power_status.battery[0].remaining_time
+        keyvals['wh_energy_used'] = keyvals['wh_energy_start'] - \
+                                    keyvals['wh_energy_now']
         keyvals['v_voltage_min_design'] = \
                              self._power_status.battery[0].voltage_min_design
         keyvals['v_voltage_now'] = self._power_status.battery[0].voltage_now
 
-        for e in form_entries:
+        for e in self._form_data:
             keyvals['ext_' + e] = self._form_data[e]
 
         self.write_perf_keyval(keyvals)
 
 
     def cleanup(self):
+        # re-enable screen blanking
+        site_ui.xcommand(os.path.join(self.bindir, 'xset') + ' +dpms')
+
         # re-enable screen locker
         os.system('start screen-locker')
 
@@ -159,8 +175,7 @@ class power_LoadTest(test.test):
 
 
     def _reset_form_entries(self):
-        for e in form_entries:
-            self._form_data[e] = None
+        self._form_data = {}
 
 
     def _do_wait(self, verbose, seconds, latch, session):
