@@ -12,13 +12,15 @@ class gl_Bench(test.test):
   preserve_srcdir = True
 
   def setup(self):
-      os.chdir(self.srcdir)
-      utils.system('make clean')
-      utils.system('make')
+      self.job.setup_dep(['glbench'])
 
 
   def run_once(self, options=''):
-      exefile = os.path.join(self.bindir, 'gl_Bench')
+      dep = 'glbench'
+      dep_dir = os.path.join(self.autodir, 'deps', dep)
+      self.job.install_pkg(dep, 'dep', dep_dir)
+
+      exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
       cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
       self.results = utils.system_output(cmd, retain_output=True)
 
