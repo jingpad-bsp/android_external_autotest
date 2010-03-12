@@ -61,7 +61,8 @@ class power_LoadTest(test.test):
             raise error.TestNAError(
                 'Running on AC power. Please remove AC power cable')
 
-        if percent_initial_charge_min and self._percent_current_charge() < \
+        percent_initial_charge = self._percent_current_charge()
+        if percent_initial_charge_min and percent_initial_charge < \
                                           percent_initial_charge_min:
             raise error.TestError('Initial charge (%f) less than min (%f)'
                       % (percent_initial_charge, percent_initial_charge_min))
