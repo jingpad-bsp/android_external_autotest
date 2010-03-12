@@ -8,6 +8,7 @@
 #include "GL/gl.h"
 
 
+void SetBasePathFromArgv0(const char* argv0, const char* relative);
 void *MmapFile(const char *name, size_t *length);
 GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src);
 

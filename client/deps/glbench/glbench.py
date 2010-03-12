@@ -10,12 +10,10 @@ from autotest_lib.client.bin import utils
 version = 1
 
 def setup(topdir):
-    my_srcdir = os.path.join(topdir, 'src.orig')
     srcdir = os.path.join(topdir, 'src')
-    shutil.move(my_srcdir, srcdir)
     os.chdir(srcdir)
     utils.system('make')
     os.chdir(topdir)
 
 pwd = os.getcwd()
-utils.update_version(pwd + '/src', False, version, setup, pwd)
+utils.update_version(pwd + '/src', True, version, setup, pwd)

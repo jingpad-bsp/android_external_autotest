@@ -10,11 +10,25 @@
 
 #include "utils.h"
 
+#include "base/file_path.h"
 #include "base/logging.h"
 #include "main.h"
 
-void *MmapFile(const char *name, size_t *length) {
-  int fd = open(name, O_RDONLY);
+FilePath *g_base_path = new FilePath();
+
+// Sets the base path for MmapFile to `dirname($argv0)`/$relative.
+void SetBasePathFromArgv0(const char* argv0, const char* relative) {
+  if (g_base_path) {
+    delete g_base_path;
+  }
+  FilePath argv0_path = FilePath(argv0).DirName();
+  FilePath base_path = relative ? argv0_path.Append(relative) : argv0_path;
+  g_base_path = new FilePath(base_path);
+}
+
+void *MmapFile(const char* name, size_t* length) {
+  FilePath filename = g_base_path->Append(name);
+  int fd = open(filename.value().c_str(), O_RDONLY);
   if (fd == -1)
     return NULL;
 

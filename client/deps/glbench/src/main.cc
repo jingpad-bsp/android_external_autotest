@@ -604,6 +604,7 @@ static void ParseArgs(int argc, char *argv[]) {
 
 
 int main(int argc, char *argv[]) {
+  SetBasePathFromArgv0(argv[0], "src");
   ParseArgs(argc, argv);
   if (!Init()) {
     printf("# Failed to initialize.\n");
