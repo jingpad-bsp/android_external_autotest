@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 {
+    # key: component ID
+    # value: a list of approved component IDs ('*' indicates any)
     'part_id_audio_codec': ['*'],
     'part_id_bluetooth': ['*'],
     'part_id_cpu': ['*'],
