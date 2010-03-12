@@ -167,6 +167,18 @@ Automated and Semi-Automated Test Runs
   battery charge is more than 5%.
 
                       
+* Make sure that the battery is fully charged. Run the DUT on
+  battery. Run the battery load test by first following the manual
+  instructions specified in the control file (control.battery_load)
+  and then executing:
+
+  $ ./server/autoserv -r results.battery_load -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.battery_load
+
+  Note that the test will not check if the battery is fully charged
+  before running.
+
+                      
 * Make sure that there are no test failures. Once all tests pass,
   package the result folders:
 
