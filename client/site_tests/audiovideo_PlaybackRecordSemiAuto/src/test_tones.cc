@@ -69,11 +69,11 @@ SampleFormat ParseFormat(const char* arg) {
 bool ParseOptions(int argc, char* argv[], TestConfig* config) {
   int opt = 0;
   int optindex = -1;
-  while ((opt = getopt_long(argc, argv, "T:l:f:h:r:s:e:c:a:",
+  while ((opt = getopt_long(argc, argv, "t:l:f:h:r:s:e:c:a:",
                             long_options,
                             &optindex)) != -1) {
     switch (opt) {
-      case 'T':
+      case 't':
         config->type = ParseTestType(optarg);
         break;
 
