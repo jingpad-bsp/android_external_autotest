@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+{ "name":"CheckSGI20",
+  "steps":[             # Channel 64
+    [ "create",         { "type":"hostap" } ],
+    [ "config",         { "channel":"5320", "ht20":None, "puren":None,
+                          "shortgi":None } ],
+    [ "connect",        { "security":"none" } ],
+    [ "client_check_shortgi" ],
+    [ "server_netperf", { "test":"TCP_STREAM" } ],
+    # verify SGI stats
+    [ "destroy" ],
+  ],
+}

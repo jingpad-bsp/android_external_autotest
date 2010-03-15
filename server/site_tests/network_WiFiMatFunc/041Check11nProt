@@ -1,0 +1,15 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+{ "name":"Check11nProtection",
+  "steps":[             # Channel 64
+    [ "create",         { "type":"hostap" } ],
+    [ "config",         { "channel":"5320", "mode":"11n", "htprotmode":"rts" } ],
+    [ "connect",        { "security":"none" } ],
+    # XXX associate legacy client
+    [ "client_ping",    { "count":"10" } ],
+    # XXX verify protection used
+    [ "destroy" ],
+  ],
+}

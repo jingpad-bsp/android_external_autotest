@@ -1,0 +1,17 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+{ "name":"CheckRxFrag",
+  "steps":[             # Channel 6
+    [ "create",         { "type":"hostap" } ],
+    [ "config",         { "channel":"2437", "mode":"11g", "fragthreshold":"256" } ],
+    [ "connect",        { "security":"none" } ],
+    [ "server_ping",    { "count":"10", "size":"256" } ],
+    [ "server_ping",    { "count":"10", "size":"512" } ],
+    [ "server_ping",    { "count":"10", "size":"1024" } ],
+    [ "server_ping",    { "count":"10", "size":"1500" } ],
+    # XXX check rx frag stats
+    [ "destroy" ],
+  ],
+}

@@ -1,0 +1,53 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Sam Leffler <sleffler@google.com>"
+TIME = "LONG"
+NAME = "WiFi SecMat"
+TEST_CATEGORY = "Stress"
+TEST_CLASS = "Network"
+TEST_TYPE = "Server"
+SYNC_COUNT = 2
+DOC = """
+WiFiMatFunc is a suite of 3-machine tests to validate basic WiFi functionality.
+One client, one server, and one programmable WiFi AP/Router are required
+(either off-the-shelf with a network-accesible CLI or a Linux/BSD system
+with a WiFi card that supports HostAP functionality).
+
+Configuration information to run_test:
+
+server     - the IP address of the server (automatically filled in)
+client     - the IP address of the client (automatically filled in)
+router     - the IP address of the WiFi AP/Router and the names of the
+			 wifi and wired devices to configure
+"""
+
+from autotest_lib.server import site_wifitest
+
+import os
+
+fd = open(os.path.join(job.configdir, "wifi_testbed_config"))
+config = eval(fd.read())
+client = config['client']
+client['host'] = hosts.create_host(client['addr'])
+server = config['server']
+server['host'] = hosts.create_host(server['addr'])
+router = config['router']
+router['host'] = hosts.create_host(router['addr'])
+
+logging.info("Client %s, Server %s, AP %s" % \
+    (client['addr'], server['addr'], router['addr']))
+
+tagname = router['addr']
+
+dir = os.path.join(job.serverdir, "site_tests", "network_WiFiSecMat")
+# XXX allow test list override from command line
+tests = site_wifitest.read_tests(dir, '[0-9]*')
+#tests = site_wifitest.read_tests(dir, '018CheckWPA_CounterMeasures')
+#tests = site_wifitest.read_tests(dir, '010CheckWPA_TKIP')
+#tests = site_wifitest.read_tests(dir, '015CheckWPA_PTK_Rekey')
+
+for t in tests:
+    wt = site_wifitest.WiFiTest(t['name'], t['steps'], router, client, server)
+    wt.run()

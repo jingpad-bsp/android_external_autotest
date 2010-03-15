@@ -1,5 +1,8 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 #
-# A python dictionary that describes the wifi testbed setup.
+# A python dictionary that describes the fixed wifi testbed setup.
 #
 #  security			"none", "wpa", "rsn", "wep"
 #  psk				wpa/rsn passphrase or wep key
