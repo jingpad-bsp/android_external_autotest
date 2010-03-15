@@ -24,7 +24,7 @@ class realtimecomm_GTalkunittest(test.test):
 
     def run_once(self):
         # Stop Google Talk Plugin
-        utils.run('killall GoogleTalkPlugin', ignore_status=True)
+        utils.run('pkill GoogleTalkPlugin', ignore_status=True)
  
         # Setup as appropriate
         talk_path = '/home/chronos/talk'

@@ -17,7 +17,9 @@ def get_pids(program_name):
     @param program_name the name of the program
     @return list of pids
     """
-    return utils.system_output("pidof %s" % program_name).split(" ")
+    # pgrep is not appropriate here due to its truncation.
+    return utils.system_output("ps -ef | grep \'%s\' | grep -v grep | \
+                                awk '{print $2}'" % program_name).split("\n")
 
 
 def get_number_of_logical_cpu():
