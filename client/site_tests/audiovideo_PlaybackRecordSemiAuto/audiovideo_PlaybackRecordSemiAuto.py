@@ -279,6 +279,16 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
                  }
 
 
+    def pacmd(self, cmd):
+        """
+        Wrap a shell command within the necessary environment setup to get
+        access to the PulseAudio daemon.
+        """
+        cmd = 'su chronos -c "%s"' % cmd
+        cmd = 'PULSE_RUNTIME_PATH=/var/run/pulse ' + cmd
+        return cmd
+
+
     def setup(self):
         os.chdir(self.srcdir)
         utils.system('make clean')
@@ -963,7 +973,7 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
             self.play_tone(signal_config, 500)  # Signal playback start.
             cmd = '%s -p %s %s' % (_PACAT_PATH, record_args, tmpfile)
             logging.info('Playing back sample')
-            utils.system(cmd)
+            utils.system(self.pacmd(cmd))
 
             # TODO(ajwong): Try analyzing the sample using sox stats.
             # Example command:
@@ -1078,8 +1088,8 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
 
     def do_pacmd(self, command):
         """Helper function for invoking pacmd."""
-        cmd = 'echo %s | %s' % (command, _PACMD_PATH)
-        return utils.system_output(cmd, retain_output=True)
+        cmd = '%s %s' % (_PACMD_PATH, command)
+        return utils.system_output(self.pacmd(cmd), retain_output=True)
 
 
     def do_set_volume(self, type, index, new_volume):
@@ -1219,4 +1229,4 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
             logging.info('[tone %dHz]' % args['frequency'])
         elif args['type'] == 'scale':
             logging.info('[A# harmonic minor scale]')
-        utils.system(cmd)
+        utils.system(self.pacmd(cmd))
