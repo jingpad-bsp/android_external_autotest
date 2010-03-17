@@ -12,10 +12,10 @@ class platform_Components(test.test):
     _syslog = '/var/log/messages'
     _cids = [
         'part_id_audio_codec',
-        'part_id_bluetooth',
         'part_id_cpu',
-        'part_id_touchpad',
-        'part_id_webcam',
+        'vendor_id_bluetooth',
+        'vendor_id_touchpad',
+        'vendor_id_webcam',
     ]
 
 
@@ -40,26 +40,26 @@ class platform_Components(test.test):
         return part_id
 
 
-    def get_part_id_bluetooth(self):
+    def get_part_id_cpu(self):
+        cmd = 'grep -m 1 \'model name\' /proc/cpuinfo | sed s/.\*://'
+        part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
+    def get_vendor_id_bluetooth(self):
         cmd = ('hciconfig hci0 version | grep Manufacturer '
                '| sed s/.\*Manufacturer://')
         part_id = utils.system_output(cmd).strip()
         return part_id
 
 
-    def get_part_id_cpu(self):
-        cmd = 'grep -m 1 \'model name\' /proc/cpuinfo | sed s/.\*://' 
-        part_id = utils.system_output(cmd).strip()
-        return part_id
-
-
-    def get_part_id_touchpad(self):
-        cmd = ' grep -i Touchpad /proc/bus/input/devices | sed s/.\*=//'
+    def get_vendor_id_touchpad(self):
+        cmd = 'grep -i Touchpad /proc/bus/input/devices | sed s/.\*=//'
         part_id = utils.system_output(cmd).strip('"')
         return part_id
 
 
-    def get_part_id_webcam(self):
+    def get_vendor_id_webcam(self):
         cmd = 'grep -i -m 1 camera %s | sed s/.\*Product://' % self._syslog
         part_id = utils.system_output(cmd).strip()
         return part_id
