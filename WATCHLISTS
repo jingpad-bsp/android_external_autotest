@@ -1,0 +1,19 @@
+# See http://dev.chromium.org/developers/contributing-code/watchlists for
+# a description of this file's format.
+# Please keep these keys in alphabetical order.
+
+{
+  'WATCHLIST_DEFINITIONS': {
+    'autotest': {
+      'filepath': '^.*',
+    },
+  },
+  'WATCHLISTS': {
+    'autotest': ['ericli@chromium.org',
+                 'kmixter@chromium.org',
+                 'petkov@chromium.org',
+                 'seano@chromium.org',
+                 'sosa@chromium.org',
+                 ],
+  },
+}
