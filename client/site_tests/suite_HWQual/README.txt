@@ -79,11 +79,12 @@ Test Setup
 
   $ ssh-add $HOME/chromeos-hwqual-TAG/testing_rsa
 
-  If ssh-agent is not running already, start it and then add the key:
+  If ssh-add fails saying that it cannot connect to your authentication agent,
+  retry the command after running:
 
   $ eval `ssh-agent -s`
 
-  This allows the Autotest server to connect and login as root on the
+  These commands allow the Autotest server to connect and login as root on the
   DUT.
 
 
@@ -127,46 +128,46 @@ Automated and Semi-Automated Test Runs
 * Run the fully automated client-side tests:
 
   $ ./server/autoserv -r results.auto -m <DUT_IP> \
-                      -c client/site_tests/hwqual/control.auto
+                  -c client/site_tests/suite_HWQual/control.auto
 
 
 * Plug high-speed high-capacity storage devices in all USB and SD Card
   slots and run the external storage test:
 
   $ ./server/autoserv -r results.external_devices -m <DUT_IP> \
-                      -c client/site_tests/hwqual/control.external_devices
+                  -c client/site_tests/suite_HWQual/control.external_devices
 
 
 * Run the system suspend/resume stability test:
 
   $ ./server/autoserv -r results.suspend_resume -m <DUT_IP> \
-                      -c client/site_tests/hwqual/control.suspend_resume
+                  -c client/site_tests/suite_HWQual/control.suspend_resume
 
 
 * Run the device on AC. Plug a power draw USB dongle in each USB port.
   Run the max power draw test:
 
   $ ./server/autoserv -r results.max_power_draw.ac -m <DUT_IP> \
-                      -c client/site_tests/hwqual/control.max_power_draw
+                  -c client/site_tests/suite_HWQual/control.max_power_draw
 
 
 * Run the device on battery. Plug a power draw USB dongle in each USB
   port. Run the max power draw test:
 
   $ ./server/autoserv -r results.max_power_draw.batt -m <DUT_IP> \
-                      -c client/site_tests/hwqual/control.max_power_draw
+                  -c client/site_tests/suite_HWQual/control.max_power_draw
 
 
 * Make sure the remaining battery charge is less than 5%. Run the DUT
   on AC. Run the battery charge test:
 
   $ ./server/autoserv -r results.battery_charge_time -m <DUT_IP> \
-                      -c client/site_tests/hwqual/control.battery_charge_time
+                  -c client/site_tests/suite_HWQual/control.battery_charge_time
 
   Note that the test will check and fail quickly if the initial
   battery charge is more than 5%.
 
-                      
+
 * Make sure that the battery is fully charged. Run the DUT on
   battery. Run the battery load test by first following the manual
   instructions specified in the control file (control.battery_load)
@@ -178,8 +179,27 @@ Automated and Semi-Automated Test Runs
   Note that the test will not check if the battery is fully charged
   before running.
 
-                      
-* Make sure that there are no test failures. Once all tests pass,
+
+================================================================================
+Manual Test Runs
+================================================================================
+
+
+* Perform the manual tests specified in
+  $HOME/chromeos-hwqual-TAG/manual/testcases.csv.
+
+  Please note that some tests cannot be tested as they rely on
+  features not yet implemented.  They are being included as a preview for
+  manual tests that will be required.  Such tests will have
+  "NotImplemented" in their "LABELS" column.
+
+================================================================================
+Reporting Results
+================================================================================
+
+
+* Make sure that there are no test failures in automatic,
+  semi-automatic, or manual test categories.  Once all tests pass,
   package the result folders:
 
   $ tar cjf chromeos-hwqual-TAG-DATE.tar.bz2 results.*
@@ -188,10 +208,3 @@ Automated and Semi-Automated Test Runs
   review.
 
 
-================================================================================
-Manual and Semi-Automated Test Runs
-================================================================================
-
-
-* (TODO: Refer to the manual testing document.) Perform the manual
-  tests specified in...
