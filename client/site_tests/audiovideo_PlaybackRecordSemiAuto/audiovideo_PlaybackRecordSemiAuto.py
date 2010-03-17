@@ -633,16 +633,25 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
         used to get information from the devices dictionary.  The extracted
         values are returned in a 4-tuple.
 
-        If port_nume = -1, then port_info is None.
+        If port_nume = None, then port_info is None.
+        If device_num = None, then the first device will be returned.
 
         Returns:
             (device_num, port_num, device_info, port_info)
         """
-        device_num = int(args['device'][0])
-        port_num = int(args['port'][0])
+        device_val = args['device'][0]
+        port_val = args['port'][0]
+
+        device_num = 0  # Default to first device if none is given.
+        port_num = None
+        if device_val != 'None':
+          device_num =  int(device_val)
+        if port_val != 'None':
+          port_num =  int(device_val)
+
         device = devices['info'][device_num]
         port = None
-        if port_num >= 0:
+        if port_num is not None and port_num >= 0:
             port = device['ports'][port_num]
         return (device_num, port_num, device, port)
 
@@ -658,9 +667,9 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
         return '\n'.join(stanzas)
 
 
-    def get_test_key(self, test, device=0, port=0):
+    def get_test_key(self, test, device=None, port=None):
         """Generate a string represeting the test case."""
-        return '%s-%d-%d' % (test, device, port)
+        return '%s-%s-%s' % (test, device, port)
 
 
     def add_results(self, args):
@@ -669,8 +678,8 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
             return
 
         key = self.get_test_key(args['test'][0],
-                                int(args['device'][0]),
-                                int(args['port'][0]))
+                                args['device'][0],
+                                args['port'][0])
         self._results[key] = args['result'][0]
 
 
@@ -708,7 +717,7 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
             description = '%s on %s, port %s' % (
                     endpoint, device['name'], device['ports'][port_num])
         else:
-            description = 'endpoint on %s, only port' % (
+            description = '%s on %s, only port' % (
                     endpoint, device['name'])
         invoke_url = '%s?%s' % (endpoint, urllib.urlencode(args))
         return _TEST_CONTROL_ITEM % (description,
@@ -1089,6 +1098,7 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
     def do_pacmd(self, command):
         """Helper function for invoking pacmd."""
         cmd = '%s %s' % (_PACMD_PATH, command)
+        logging.info(cmd)
         return utils.system_output(self.pacmd(cmd), retain_output=True)
 
 
