@@ -50,8 +50,13 @@ for test in TESTS:
   client_at.run_test(test)
 
 # Run jobs with specific parameters
-client_at.run_test('networking_DisableInterface', iface_name='eth0', tag='eth0')
-client_at.run_test('networking_DisableInterface', iface_name='wlan0', tag='wlan0')
+client_at.run_test('networking_DisableInterface',
+                   iface_name='eth0', tag='eth0')
+client_at.run_test('networking_DisableInterface',
+                   iface_name='wlan0', tag='wlan0')
+# TODO(petkov): If Bluetooth is not available on the platform, this test will
+# fail. Fix this once we have a way to run platform-dependent tests.
+client_at.run_test('networking_DisableInterface',
+                   iface_name='hci0', tag='hci0')
 client_at.run_test('memory_Throughput', num_iteration=1, test_list='18')
 client_at.run_test('system_SAT', seconds=20)
-
