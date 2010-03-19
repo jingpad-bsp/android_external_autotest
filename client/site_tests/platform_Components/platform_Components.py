@@ -60,7 +60,7 @@ class platform_Components(test.test):
 
 
     def get_vendor_id_webcam(self):
-        cmd = 'grep -i -m 1 camera %s | sed s/.\*Product://' % self._syslog
+        cmd = 'cat /sys/class/video4linux/video0/name'
         part_id = utils.system_output(cmd).strip()
         return part_id
 
