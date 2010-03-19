@@ -6,7 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "realtimecomm_GTalkunittest"
 TIME = "LONG"
 TEST_CATEGORY = "GTalk"
-TEST_CLASS = "RealTimeComm"
+TEST_CLASS = "realtimecomm"
 TEST_TYPE = "client"
 
 DOC = """

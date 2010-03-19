@@ -1,0 +1,17 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'GL_API_CHECK'
+AUTHOR = 'The Chromium OS Authors'
+TIME='SHORT'
+TEST_CATEGORY = 'Performance'
+TEST_CLASS = "graphics"
+TEST_TYPE = 'client'
+
+DOC = """
+This test checks the required OpenGL/GLES version/extensions and X11
+extenstions.
+"""
+
+job.run_test('graphics_GLAPICheck')

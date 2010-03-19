@@ -2,7 +2,7 @@ NAME = "LOGIN_AUTH_TEST"
 AUTHOR = "ChromeOS Team"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
-TEST_CLASS = "General"
+TEST_CLASS = "login"
 TEST_TYPE = "client"
 
 DOC = """

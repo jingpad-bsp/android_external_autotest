@@ -6,7 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "SunSpider benchamrk"
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
-TEST_CLASS = "DesktopUI"
+TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """

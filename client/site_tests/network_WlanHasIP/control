@@ -7,7 +7,7 @@ DOC = "Verifies that the wireless interface has an IP address."
 NAME = "Wlan_IPTest"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
-TEST_CLASS = "General"
+TEST_CLASS = "network"
 TEST_TYPE = "client"
 
 job.run_test('network_WlanHasIP')

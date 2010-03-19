@@ -1,9 +1,0 @@
-AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
-DOC = "Verifies permissions on various file systems."
-NAME = "FILE_Permissions_Test"
-TIME = "SHORT"
-TEST_CATEGORY = "Functional"
-TEST_CLASS = "General"
-TEST_TYPE = "client"
-
-job.run_test('filesystem_Perms')

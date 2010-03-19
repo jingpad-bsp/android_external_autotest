@@ -6,7 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "BROWSER_TEST"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
-TEST_CLASS = "DesktopUI"
+TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """

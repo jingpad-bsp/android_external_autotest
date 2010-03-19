@@ -6,7 +6,7 @@ NAME = 'GL_BENCHMARK'
 AUTHOR = 'The Chromium OS Authors'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
-TEST_CLASS = 'Hardware'
+TEST_CLASS = "gl"
 TEST_TYPE = 'client'
 
 DOC = """

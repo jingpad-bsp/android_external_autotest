@@ -6,7 +6,7 @@ AUTHOR = "ChromeOS Team"
 NAME = "WIFI_CAPS_TEST"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
-TEST_CLASS = "General"
+TEST_CLASS = "network"
 TEST_TYPE = "client"
 
 DOC = """

@@ -7,7 +7,7 @@ DOC = "Verifies we can ping internal and external hosts."
 NAME = "PingTest"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
-TEST_CLASS = "General"
+TEST_CLASS = "network"
 TEST_TYPE = "client"
 
 job.run_test('network_Ping')

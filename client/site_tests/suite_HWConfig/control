@@ -15,28 +15,28 @@ the suite is to sanity test all hardware components in less than 5 minutes.
 """
 
 # RTC, system
-job.run_test('metrics_Resume')
+job.run_test('power_Resume')
 
 # RAM
-job.run_test('memory_TotalSize')
+job.run_test('hardware_MemoryTotalSize')
 
 # CPU
 job.run_test('power_CPUFreq')
 job.run_test('power_CPUIdle')
 
 # SSD
-job.run_test('storage_DiskSize')
-job.run_test('storage_SsdDetection')
+job.run_test('hardware_DiskSize')
+job.run_test('hardware_SsdDetection')
 
 # CPU, RAM, SSD
-job.run_test('system_SAT', seconds=20)
+job.run_test('hardware_SAT', seconds=20)
 
 # Network
-job.run_test('networking_DisableInterface',
+job.run_test('network_DisableInterface',
              iface_name='wlan0', tag='wlan0')  # WiFi
-job.run_test('networking_DisableInterface',
+job.run_test('network_DisableInterface',
              iface_name='eth0', tag='eth0')  # Ethernet
-job.run_test('networking_DisableInterface',
+job.run_test('network_DisableInterface',
              iface_name='hci0', tag='hci0')  # Bluetooth
 job.run_test('network_WiFiCaps')
 

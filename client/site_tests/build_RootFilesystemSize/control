@@ -1,0 +1,12 @@
+AUTHOR = "Chrome OS Team"
+NAME = "Root file system size"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "build"
+TEST_TYPE = "client"
+
+DOC = """
+This test returns the root image size for tracking bloat over time.
+"""
+
+job.run_test('build_RootFilesystemSize')

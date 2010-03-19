@@ -1,0 +1,32 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "power_SuspendResume"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "power"
+TEST_TYPE = "client"
+
+DOC = """
+This is a system stability test across suspend/resume cycles.
+"""
+
+_tag = 'SuspendResume'
+_seconds = 200
+
+
+def run_resume():
+    job.run_test('power_Resume', iterations=10, tag=_tag)
+
+
+def run_sat():
+    job.run_test('hardware_SAT', seconds=_seconds, tag=_tag)
+
+
+def run_gpu():
+    job.run_test('graphics_SanAngeles', iterations=2, tag=_tag)
+
+
+job.parallel([run_resume], [run_sat], [run_gpu])

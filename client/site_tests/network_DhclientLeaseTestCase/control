@@ -3,7 +3,7 @@ DOC = "Checks whether dhclient can save its lease file."
 NAME = "DHCLIENT_LEASE_TEST"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
-TEST_CLASS = "General"
+TEST_CLASS = "network"
 TEST_TYPE = "client"
 
 job.run_test('network_DhclientLeaseTestCase')

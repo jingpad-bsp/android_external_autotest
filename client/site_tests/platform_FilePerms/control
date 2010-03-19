@@ -1,0 +1,9 @@
+AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
+DOC = "Verifies permissions on various file systems."
+NAME = "FILE_Permissions_Test"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+job.run_test('platform_FilePerms')

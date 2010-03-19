@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "PowerIdle"
+TIME = "SHORT"
+TEST_CATEGORY = "Benchmark"
+TEST_CLASS = "power"
+TEST_TYPE = "client"
+
+DOC = """
+This test measures the battery power draw at idle
+"""
+
+job.run_test('power_Idle', iterations = 5)

@@ -6,7 +6,7 @@ AUTHOR = "ChromeOS Team"
 NAME = "VBOOT_CRYPTO_TEST"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
-TEST_CLASS = "Firmware"
+TEST_CLASS = "firmware"
 TEST_TYPE = "client"
 
 DOC = """

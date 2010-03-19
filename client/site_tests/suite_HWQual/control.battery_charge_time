@@ -22,7 +22,7 @@ max_hours = 4
 percent_charge_delta = 94.0
 time_limit = max_hours * 60 * 60 * percent_charge_delta / 100.0
 
-job.run_test('system_PowerBatteryCharge',
+job.run_test('power_BatteryCharge',
              max_run_time=time_limit,
              percent_charge_to_add=100,
              percent_initial_charge_max=5,

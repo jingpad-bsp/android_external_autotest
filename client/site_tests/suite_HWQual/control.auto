@@ -14,35 +14,35 @@ This test suite runs fully automated client-side hardware qualification tests.
 """
 
 # Boot Performance
-job.run_test('system_BootPerf')
-job.run_test('metrics_Resume')
+job.run_test('platform_BootPerf')
+job.run_test('power_Resume')
 
 # Kernel Support
-job.run_test('system_KernelVersion')
+job.run_test('platform_KernelVersion')
 
 # CPU
 job.run_test('desktopui_V8Bench')
 job.run_test('desktopui_SunSpiderBench')
 
 # System Memory
-job.run_test('memory_TotalSize')
-job.run_test('memory_Throughput', num_iteration=2500, test_list='21')
+job.run_test('hardware_MemoryTotalSize')
+job.run_test('hardware_MemoryThroughput', num_iteration=2500, test_list='21')
 
 # Storage
-job.run_test('storage_Fio',
+job.run_test('hardware_StorageFio',
              constraints=[
                  'bytes_per_sec_seq_read >= 20 * 1024 * 1024',
                  'bytes_per_sec_seq_write >= 15 * 1024 * 1024',
                  'iops_4k_write >= 10',
              ])
-job.run_test('storage_DiskSize')
-job.run_test('storage_SsdDetection')
+job.run_test('hardware_DiskSize')
+job.run_test('hardware_SsdDetection')
 
 # Display
-job.run_test('video_Resolution')
+job.run_test('hardware_Resolution')
 
 # Graphics
-job.run_test('gl_APICheck')
+job.run_test('graphics_GLAPICheck')
 job.run_test('gl_Bench',
              constraints=[
                  'mtri_sec_triangle_setup >= 10',
@@ -50,7 +50,7 @@ job.run_test('gl_Bench',
                  'mpixels_sec_fill_tex_nearest >= 190',
                  'mpixels_sec_fill_tex_bilinear >= 190',
              ])
-job.run_test('gpu_SanAngeles')
+job.run_test('graphics_SanAngeles')
 
 # Video
 job.run_test('audiovideo_FFMPEG',
@@ -69,11 +69,11 @@ job.run_test('realtimecomm_GTalkPlayground',
              ])
 
 # Communications
-job.run_test('networking_DisableInterface',
+job.run_test('network_DisableInterface',
              iface_name='wlan0', tag='wlan0')  # WiFi
-job.run_test('networking_DisableInterface',
+job.run_test('network_DisableInterface',
              iface_name='eth0', tag='eth0')  # Ethernet
-job.run_test('networking_DisableInterface',
+job.run_test('network_DisableInterface',
              iface_name='hci0', tag='hci0')  # Bluetooth
 job.run_test('network_WiFiCaps')
 
@@ -84,4 +84,4 @@ job.run_test('disktest')
 job.run_test('compilebench')
 job.run_test('unixbench')
 job.run_test('ltp')
-job.run_test('system_SAT', seconds=300)
+job.run_test('hardware_SAT', seconds=300)
