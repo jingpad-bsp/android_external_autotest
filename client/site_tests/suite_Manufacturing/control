@@ -14,6 +14,6 @@ This test suite runs automated client-side manufacturing tests.
 """
 
 # Qualified Component Check
-job.run_test('platform_Components',
+job.run_test('hardware_Components',
     approved_db='/usr/local/manufacturing/qualified_components')
 
