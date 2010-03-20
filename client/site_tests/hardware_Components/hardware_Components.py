@@ -69,9 +69,13 @@ class hardware_Components(test.test):
         self._system = {}
         self._failures = {}
         if approved_db is None:
-            approved_db = 'approved_components'
-        db = os.path.join(self.bindir, approved_db)
-        self._approved = eval(utils.read_file(db))
+            approved_db = os.path.join(self.bindir, 'approved_components')
+
+        if not os.path.exists(approved_db):
+            raise error.TestError('Unable to find approved_db: %s' %
+                                  approved_db)
+
+        self._approved = eval(utils.read_file(approved_db))
         logging.debug('Approved DB: %s', self._approved)
 
         for cid in self._cids:
