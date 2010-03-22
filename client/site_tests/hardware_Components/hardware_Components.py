@@ -14,6 +14,7 @@ class hardware_Components(test.test):
         'part_id_audio_codec',
         'part_id_cpu',
         'vendor_id_bluetooth',
+        'vendor_id_storage',
         'vendor_id_touchpad',
         'vendor_id_webcam',
     ]
@@ -49,6 +50,13 @@ class hardware_Components(test.test):
     def get_vendor_id_bluetooth(self):
         cmd = ('hciconfig hci0 version | grep Manufacturer '
                '| sed s/.\*Manufacturer://')
+        part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
+    def get_vendor_id_storage(self):
+        cmd = ('cd $(find /sys/devices -name sda)/../..; '
+               'cat vendor model | tr "\n" " " | sed "s/ \+/ /g"')
         part_id = utils.system_output(cmd).strip()
         return part_id
 
