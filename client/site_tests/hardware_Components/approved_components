@@ -8,9 +8,14 @@
     'part_id_audio_codec': ['*'],
     'part_id_cpu': ['*'],
     'vendor_id_bluetooth': ['*'],
+    'vendor_id_chipset': ['*'],
+    'vendor_id_ethernet': ['*'],
     'vendor_id_storage': ['*'],
     'vendor_id_touchpad': ['*'],
+    'vendor_id_usb_hosts': ['*'],
+    'vendor_id_vga': ['*'],
     'vendor_id_webcam': ['*'],
+    'vendor_id_wireless': ['*'],
 }
 
 ###  Local Variables:

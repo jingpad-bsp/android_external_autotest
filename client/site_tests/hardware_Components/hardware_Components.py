@@ -14,9 +14,14 @@ class hardware_Components(test.test):
         'part_id_audio_codec',
         'part_id_cpu',
         'vendor_id_bluetooth',
+        'vendor_id_chipset',
+        'vendor_id_ethernet',
         'vendor_id_storage',
         'vendor_id_touchpad',
+        'vendor_id_usb_hosts',
+        'vendor_id_vga',
         'vendor_id_webcam',
+        'vendor_id_wireless',
     ]
 
 
@@ -54,6 +59,20 @@ class hardware_Components(test.test):
         return part_id
 
 
+    def get_vendor_id_chipset(self):
+        cmd = ('lspci | grep -E "^00:00.0 " | head -n 1 '
+               '| sed s/.\*Host\ bridge://')
+        part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
+    def get_vendor_id_ethernet(self):
+        cmd = ('lspci | grep "Ethernet controller:" | head -n 1 '
+               '| sed s/.\*Ethernet\ controller://')
+        part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
     def get_vendor_id_storage(self):
         cmd = ('cd $(find /sys/devices -name sda)/../..; '
                'cat vendor model | tr "\n" " " | sed "s/ \+/ /g"')
@@ -67,8 +86,30 @@ class hardware_Components(test.test):
         return part_id
 
 
+    def get_vendor_id_usb_hosts(self):
+        # enumerates all USB host controllers.
+        cmd = 'lspci | grep "USB Controller:" | sed s/.\*USB\ Controller://'
+        part_ids = [l.strip() for l in utils.system_output(cmd).split('\n')]
+        part_id = ", ".join(part_ids)
+        return part_id
+
+
+    def get_vendor_id_vga(self):
+        cmd = ('lspci | grep "VGA compatible controller:" | head -n 1 '
+               '| sed s/.\*VGA\ compatible\ controller://')
+        part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
     def get_vendor_id_webcam(self):
         cmd = 'cat /sys/class/video4linux/video0/name'
+        part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
+    def get_vendor_id_wireless(self):
+        cmd = ('lspci | grep "Network controller:" | head -n 1 '
+               '| sed s/.\*Network\ controller://')
         part_id = utils.system_output(cmd).strip()
         return part_id
 
