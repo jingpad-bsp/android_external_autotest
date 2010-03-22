@@ -2,36 +2,30 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, utils
-from autotest_lib.client.bin import test
+import os, time
+from autotest_lib.client.bin import chromeos_utils, test
 from autotest_lib.client.common_lib import error
 
 class desktopui_DoLogin(test.test):
     version = 1
 
     def setup(self):
-        self.job.setup_dep(['autox'])
-        # create a empty srcdir to prevent the error that checks .version file
-        if not os.path.exists(self.srcdir):
-            os.mkdir(self.srcdir)
+        chromeos_utils.setup_autox(self)
 
     def run_once(self):
-        # Test account information embedded into json file
+        logged_in = chromeos_utils.logged_in()
 
-        dep = 'autox'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
+        # Can't test login while logged in, so logout.
+        if logged_in:
+            if not chromeos_utils.attempt_logout():
+                raise error.TestFail('Could not terminate existing session')
+            if not chromeos_utils.wait_for_login_manager():
+                raise error.TestFail("Login manager didn't come back")
 
-        # Set up environment to access login manager
-        environment_vars = \
-            'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
+        # Test account information embedded into json file.
+        if not chromeos_utils.attempt_login(self, 'autox_script.json'):
+            raise error.TestFail('Could not login')
 
-        autox_binary = '%s/%s' % (dep_dir, 'autox')
-        autox_script = os.path.join(self.bindir, 'autox_script.json')
-
-        try:
-            utils.system('%s %s %s' \
-                         % (environment_vars, autox_binary, autox_script))
-        except error.CmdError, e:
-            logging.debug(e)
-            raise error.TestFail('AutoX program failed to login for test user')
+        # If we started logged out, log back out.
+        if not logged_in:
+            chromeos_utils.attempt_logout()
