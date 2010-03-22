@@ -6,13 +6,18 @@
 #
 {
   # client/netbook running Chrome OS
-  "client"		: { "addr"	:	"172.22.71.93" },
+  "client"      : {
+    "addr"      : "172.22.71.93"
+  },
   # machine on router net for ping/netperf
-  "server"		: { "addr"	:	"172.22.68.236" },
+  "server"      : {
+#   "addr"      : "172.22.71.221",       # NB: not reachable
+    "wifi_addr" : "192.168.1.254"
+  },
   # configurable wifi/router that can reached by ssh
-  "router"		: {
-  	"addr"		: "172.22.71.173",
-	"phydev"	: "ath0" ,	# wireless device
-	"wiredev"	: "npe0"	# wired ifnet to bridge wifi traffic
+  "router"      : {
+    "addr"      : "172.22.71.78",
+    "phydev"    : "ath0" ,  # wireless device
+    "wiredev"   : "npe0"    # wired ifnet to bridge wifi traffic
   }
 }

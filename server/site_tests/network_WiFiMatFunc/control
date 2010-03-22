@@ -33,12 +33,13 @@ client = config['client']
 client['addr'] = machines[0]    # NB: take client identity from command line
 client['host'] = hosts.create_host(client['addr'])
 server = config['server']
-server['host'] = hosts.create_host(server['addr'])
+if 'addr' in server:
+    server['host'] = hosts.create_host(server['addr'])
 router = config['router']
 router['host'] = hosts.create_host(router['addr'])
 
 logging.info("Client %s, Server %s, AP %s" % \
-    (client['addr'], server['addr'], router['addr']))
+    (client['addr'], getattr(server, 'addr', 'N/A'), router['addr']))
 
 tagname = router['addr']
 

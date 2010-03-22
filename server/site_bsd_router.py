@@ -42,6 +42,13 @@ class BSDRouter(object):
             "peerkey")
         self.hostapd_conf = None
 
+        # clear any previous state; this is a hack
+        self.router.run("ifconfig wlan0 destroy >/dev/null 2>&1",
+            ignore_status=True)
+        self.router.run("ifconfig bridge0 destroy >/dev/null 2>&1",
+            ignore_status=True)
+        self.router.run("killall hostapd >/dev/null 2>&1", ignore_status=True)
+
 
     def create(self, params):
         """ Create a wifi device of the specified type """
@@ -56,8 +63,8 @@ class BSDRouter(object):
         self.bridgeif = result.stdout[:-1]
         result = self.router.run("ifconfig %s addm %s addm %s" % \
             (self.bridgeif, self.wlanif, self.wiredif))
-        logging.info("Use '%s' for %s mode vap and '%s' for bridge" % \
-            (self.wlanif, params['type'], self.bridgeif))
+        logging.info("Use '%s' for %s mode vap and '%s' for bridge",
+            self.wlanif, params['type'], self.bridgeif)
 
 
     def destroy(self, params):
@@ -160,65 +167,27 @@ class BSDRouter(object):
             self.hostapd_conf = None
 
 
-    def client_check_bintval(self, params):
-        result = self.router.run("ifconfig %s" % self.wlanif)
-        want = params[0]
-        m = re.search('bintval ([0-9]*)', result.stdout)
-        if m is None:
-            raise NameError
-        if m.group(1) != want:
-            logging.error("client_check_bintval: wanted %s got %s" % \
-                (want, m.group(1)))
-            raise AssertionError
-
-
-    def client_check_dtimperiod(self, params):
-        result = self.router.run("ifconfig %s" % self.wlanif)
-        want = params[0]
-        m = re.search('dtimperiod ([0-9]*)', result.stdout)
-        if m is None:
-            raise NameError
-        if m.group(1) != want:
-            logging.error("client_check_dtimperiod: wanted %s got %s" % \
-                (want, m.group(1)))
-            raise AssertionError
-
-
-    def client_check_rifs(self, params):
-        result = self.router.run("ifconfig %s" % self.wlanif)
-        m = re.search('[^-]rifs', result.stdout)
-        if m is None:
-            raise AssertionError
-
-
-    def client_check_shortgi(self, params):
-        result = self.router.run("ifconfig %s" % self.wlanif)
-        m = re.search('[^-]shortgi', result.stdout)
-        if m is None:
-            raise AssertionError
-
-
-    def monitor_start(self, params):
+    def router_monitor_start(self, params):
         """ Start monitoring system events """
         raise NotImplemented("monitor_start")
 
 
-    def monitor_stop(self, params):
+    def router_monitor_stop(self, params):
         """ Stop monitoring system events """
         raise NotImplemented("monitor_stop")
 
 
-    def check_client_event_mic(self, params):
+    def router_check_event_mic(self, params):
         """ Check for MIC error event """
         raise NotImplemented("check_client_event_mic")
 
 
-    def check_client_event_countermeasures(self, params):
+    def router_check_event_countermeasures(self, params):
         """ Check for WPA CounterMeasures event """
         raise NotImplemented("check_client_event_countermeasures")
 
 
-    def force_mic_error(self, params):
+    def router_force_mic_error(self, params):
         """
         Force a Michael MIC error on the next packet.  Note this requires
         a driver that uses software crypto and a kernel with the support

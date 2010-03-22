@@ -8,16 +8,13 @@ from autotest_lib.server import autotest, subcommand
 from autotest_lib.server import site_bsd_router
 #from autotest_lib.server import site_linux_router
 
-class HelperThread(threading.Thread):
-    # Class that wraps a ping command in a thread so it can run in the bg.
-    def __init__(self, client, cmd):
-        threading.Thread.__init__(self)
-        self.client = client
-        self.cmd = cmd
+class NotImplemented(Exception):
+    def __init__(self, what):
+        self.what = what
 
-    def run(self):
-        # NB: set ignore_status as we're always terminated w/ pkill
-        self.client.run(self.cmd, ignore_status=True)
+
+    def __str__(self):
+        return repr("Test method '%s' not implemented" % self.what)
 
 
 class WiFiTest(object):
@@ -37,8 +34,15 @@ class WiFiTest(object):
       connect                 connect client to AP using specified parameters
                               (ssid automatically supplied)
       disconnect              disconnect client from AP
-      client_check_config     check the client network connection to verify
-                              state is setup as expected
+      client_check_*          check the client's connection state to verify
+                              a parameter was setup as expected; e.g.
+                              client_check_bintval checks the beacon interval
+                              set on the AP was adopted by the client
+      client_monitor_start    start monitoring for wireless system events as
+                              needed (e.g, kick off a process that listens)
+      client_monitor_stop     stop monitoring for wireless system events
+      client_check_event_*    check the client's event log for an event;
+                              should always be preceded by client_monitor_start
       sleep                   pause on the autotest server for a time
       client_ping             ping the server on the client machine
       server_ping             ping the client on the server machine
@@ -63,16 +67,32 @@ class WiFiTest(object):
         self.name = name
         self.steps = steps
         self.router = router['host']
+        #
+        # The client machine must be reachable from the control machine.
+        # The address on the wifi network is retrieved after it each time
+        # it associates to the router.
+        #
         self.client = client['host']
         self.client_at = autotest.Autotest(self.client)
         self.client_wifi_ip = None       # client's IP address on wifi net
-        self.server = server['host']
-        self.server_at = autotest.Autotest(self.server)
-        # server's IP address on wifi net (XXX assume same for now)
-        self.server_wifi_ip = self.server.ip
+        #
+        # The server machine may be multi-homed or only on the wifi
+        # network.  When only on the wifi net we suppress server_*
+        # requests since we cannot initiate them from the control machine.
+        #
+        self.server = getattr(server, 'host', None)
+        if self.server is not None:
+            self.server_at = autotest.Autotest(self.server)
+            # if not specified assume the same as the control address
+            self.server_wifi_ip = getattr(server, 'wifi_addr', self.server.ip)
+        else:
+            # NB: must be set if not reachable from control
+            self.server_wifi_ip = server['wifi_addr']
 
         # NB: truncate SSID to 32 characters
         self.defssid = self.__get_defssid()[0:32]
+        # interface name on client
+        self.wlanif = "wlan0"
 
         # XXX auto-detect router type
         self.wifi = site_bsd_router.BSDRouter(self.router, router, self.defssid)
@@ -83,7 +103,7 @@ class WiFiTest(object):
 
     def setup(self):
         self.job.setup_dep(['netperf'])
-# XXX enable once built by build_autotest
+# XXX enable once iperf is built by build_autotest
 #        self.job.setup_dep(['iperf'])
         # create a empty srcdir to prevent the error that checks .version
         if not os.path.exists(self.srcdir):
@@ -101,7 +121,6 @@ class WiFiTest(object):
         # Calculate ssid based on test name; this lets us track progress
         # by watching beacon frames.
         #
-        # XXX truncate to 32 chars
         return re.sub('[^a-zA-Z0-9_]', '_', \
             "%s_%s" % (self.name, self.router.ip))
 
@@ -119,8 +138,7 @@ class WiFiTest(object):
             else:
                 params = {}
 
-            logging.info("%s: step '%s' params %s" % \
-                (self.name, method, params))
+            logging.info("%s: step '%s' params %s", self.name, method, params)
 
             func = getattr(self, method, None)
             if func is None:
@@ -129,13 +147,13 @@ class WiFiTest(object):
                 try:
                     func(params)
                 except Exception, e:
-                    logging.error("%s: Step '%s' failed: %s; abort test" % \
-                        (self.name, method, str(e)))
+                    logging.error("%s: Step '%s' failed: %s; abort test",
+                        self.name, method, str(e))
                     self.cleanup(params)
                     break
             else:
-                logging.error("%s: Step '%s' unknown; abort test" % \
-                    (self.name, method))
+                logging.error("%s: Step '%s' unknown; abort test",
+                    self.name, method)
                 self.cleanup(params)
                 break
 
@@ -234,35 +252,126 @@ sys.exit(0)'
         print "%s: %s" % (self.name, result.stdout[0:-1])
 
         # fetch IP address of wireless device
-        # XXX wlan0 hard coded
-        self.client_wifi_ip = self.__get_ipaddr(self.client, "wlan0")
-        logging.info("%s: client WiFi-IP is %s" % \
-            (self.name, self.client_wifi_ip))
+        self.client_wifi_ip = self.__get_ipaddr(self.client, self.wlanif)
+        logging.info("%s: client WiFi-IP is %s", self.name, self.client_wifi_ip)
 
 
-    def __make_disconnect_script(self, params):
+    def __get_disconnect_script(self, params):
         return '\
-import dbus, dbus.mainloop.glib, gobject, logging, sys, time\n\
+import dbus, dbus.mainloop.glib, gobject, sys, time\n\
 \n\
-interface = "' + params.get('psk', "") + '"\n\
+ssid = "' + params['ssid'] + '"\n\
+wait_timeout = ' + params.get('wait_timeout', "15") + '\n\
 \n\
 bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)\n\
 bus = dbus.SystemBus(mainloop=bus_loop)\n\
 manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),\n\
     "org.moblin.connman.Manager")\n\
 \n\
+mprops = manager.GetProperties()\n\
+for path in mprops["Services"]:\n\
+    service = dbus.Interface(bus.get_object("org.moblin.connman", path),\n\
+        "org.moblin.connman.Service")\n\
+    sprops = service.GetProperties()\n\
+    if sprops.get("Name", None) != ssid:\n\
+        continue\n\
+    wait_time = 0\n\
+    try:\n\
+        service.Disconnect()\n\
+        while wait_time < wait_timeout:\n\
+            sprops = service.GetProperties()\n\
+            state = sprops.get("State", None)\n\
+#           print>>sys.stderr, "time %3.1f state %s" % (wait_time, state)\n\
+            if state == "idle":\n\
+                break\n\
+            time.sleep(.5)\n\
+            wait_time += .5\n\
+    except:\n\
+        pass\n\
+    print "disconnect in %3.1f secs" % wait_time\n\
+    break\n\
 sys.exit(0)'
 
 
     def disconnect(self, params):
         """ Disconnect previously connected client """
+        if 'ssid' not in params:
+            params['ssid'] = self.defssid
         self.client_ping_bg_stop({})
-#        script = self.__make_disconnect_script(params)
-#        self.client.run("python<<'EOF'\n%s\nEOF\n" % script)
+        script = self.__get_disconnect_script(params)
+        result = self.client.run("python<<'EOF'\n%s\nEOF\n" % script)
+        print "%s: %s" % (self.name, result.stdout[0:-1])
+
+
+    def client_check_bintval(self, params):
+        """ Verify negotiated beacon interval """
+        result = self.router.run("ifconfig %s" % self.wlanif)
+        want = params[0]
+        m = re.search('bintval ([0-9]*)', result.stdout)
+        if m is None:
+            raise NameError
+        if m.group(1) != want:
+            logging.error("client_check_bintval: wanted %s got %s",
+                want, m.group(1))
+            raise AssertionError
+
+
+    def client_check_dtimperiod(self, params):
+        """ Verify negotiated DTIM period """
+        result = self.router.run("ifconfig %s" % self.wlanif)
+        want = params[0]
+        m = re.search('dtimperiod ([0-9]*)', result.stdout)
+        if m is None:
+            raise NameError
+        if m.group(1) != want:
+            logging.error("client_check_dtimperiod: wanted %s got %s",
+                want, m.group(1))
+            raise AssertionError
+
+
+    def client_check_rifs(self, params):
+        """ Verify negotiated RIFS setting """
+        result = self.router.run("ifconfig %s" % self.wlanif)
+        m = re.search('[^-]rifs', result.stdout)
+        if m is None:
+            raise AssertionError
+
+
+    def client_check_shortgi(self, params):
+        """ Verify negotiated Short GI setting """
+        result = self.router.run("ifconfig %s" % self.wlanif)
+        m = re.search('[^-]shortgi', result.stdout)
+        if m is None:
+            raise AssertionError
+
+
+    def client_monitor_start(self, params):
+        """ Start monitoring system events """
+        raise NotImplemented("client_monitor_start")
+
+
+    def client_monitor_stop(self, params):
+        """ Stop monitoring system events """
+        raise NotImplemented("client_monitor_stop")
+
+
+    def client_check_event_mic(self, params):
+        """ Check for MIC error event """
+        raise NotImplemented("client_check_event_mic")
+
+
+    def client_check_event_countermeasures(self, params):
+        """ Check for WPA CounterMeasures event """
+        raise NotImplemented("client_check_event_countermeasures")
 
 
     def sleep(self, params):
         time.sleep(float(params['time']))
+
+
+    def __unreachable(self, method):
+        logging.info("%s: SKIP step %s; server is unreachable",
+            self.name, method)
 
 
     def __ping_args(self, params):
@@ -309,9 +418,9 @@ sys.exit(0)'
 
 
     def __print_pingstats(self, label, stats):
-        logging.info("%s: %s%s/%s, %s%% loss, rtt %s/%s/%s" % \
-            (self.name, label, stats['xmit'], stats['recv'], stats['loss'],
-             stats['min'], stats['avg'], stats['max']))
+        logging.info("%s: %s%s/%s, %s%% loss, rtt %s/%s/%s",
+            self.name, label, stats['xmit'], stats['recv'], stats['loss'],
+             stats['min'], stats['avg'], stats['max'])
 
 
     def client_ping(self, params):
@@ -343,14 +452,38 @@ sys.exit(0)'
 
     def server_ping(self, params):
         """ Ping the client from the server """
+        if self.server is None:
+            self.__unreachable("server_ping")
+            return
         ping_ip = params.get('ping_ip', self.client_wifi_ip)
-        # XXX 30 second timeout
+        count = params.get('count', 10)
+        # set timeout for 3s / ping packet
         result = self.server.run("ping %s %s" % \
-           (self.__ping_args(params), ping_ip), timeout=30)
+            (self.__ping_args(params), ping_ip), timeout=3*int(count))
 
         self.__print_pingstats("server_ping ",
             self.__get_pingstats(result.stdout))
 
+
+    def server_ping_bg(self, params):
+        """ Ping the client from the server """
+        if self.server is None:
+            self.__unreachable("server_ping_bg")
+            return
+        ping_ip = params.get('ping_ip', self.client_wifi_ip)
+        cmd = "ping %s %s" % (self.__ping_args(params), ping_ip)
+        self.ping_thread = HelperThread(self.server, cmd)
+        self.ping_thread.start()
+
+
+    def server_ping_bg_stop(self, params):
+        if self.server is None:
+            self.__unreachable("server_ping_bg_stop")
+            return
+        if self.ping_thread is not None:
+            self.server.run("pkill ping")
+            self.ping_thread.join()
+            self.ping_thread = None
 
 
     def __run_iperf(self, client_ip, server_ip, params):
@@ -364,18 +497,23 @@ sys.exit(0)'
             template += ", test_time=%s" % params['time']
         template += ")"
 
-        server_control_file = template % (server_ip, client_ip, 'server')
-        server_command = subcommand.subcommand(self.server_at.run,
-               [server_control_file, self.server.hostname])
-
         client_control_file = template % (server_ip, client_ip, 'client')
         client_command = subcommand.subcommand(self.client_at.run,
                [client_control_file, self.client.hostname])
+        cmds = [client_command]
 
-        logging.info("%s: iperf %s => %s" % (self.name, client_ip, server_ip))
+        if self.server is None:
+            logging.info("%s: iperf %s => (%s)",
+                self.name, client_ip, server_ip)
+        else:
+            server_control_file = template % (server_ip, client_ip, 'server')
+            server_command = subcommand.subcommand(self.server_at.run,
+                   [server_control_file, self.server.hostname])
+            cmds.append(server_command)
 
-        # XXX 30 sec timeout for now
-        subcommand.parallel([server_command, client_command], timeout=30)
+            logging.info("%s: iperf %s => %s", self.name, client_ip, server_ip)
+
+        subcommand.parallel(cmds)
 
 
     def client_iperf(self, params):
@@ -385,6 +523,9 @@ sys.exit(0)'
 
     def server_iperf(self, params):
         """ Run iperf on the server against the client """
+        if self.server is None:
+            self.__unreachable("server_iperf")
+            return
         self.__run_iperf(self.server_wifi_ip, self.client_wifi_ip, params)
 
 
@@ -399,28 +540,48 @@ sys.exit(0)'
             template += ", test_time=%s" % params['time']
         template += ")"
 
-        server_control_file = template % (server_ip, client_ip, 'server')
-        server_command = subcommand.subcommand(self.server_at.run,
-               [server_control_file, self.server.hostname])
-
         client_control_file = template % (server_ip, client_ip, 'client')
         client_command = subcommand.subcommand(self.client_at.run,
                [client_control_file, self.client.hostname])
+        cmds = [client_command]
 
-        logging.info("%s: netperf %s => %s" % (self.name, client_ip, server_ip))
+        if self.server is None:
+            logging.info("%s: netperf %s => (%s)",
+                self.name, client_ip, server_ip)
+        else:
+            server_control_file = template % (server_ip, client_ip, 'server')
+            server_command = subcommand.subcommand(self.server_at.run,
+                   [server_control_file, self.server.hostname])
+            cmds.append(server_command)
 
-        # XXX 30 sec timeout for now
-        subcommand.parallel([server_command, client_command], timeout=60)
+            logging.info("%s: netperf %s => %s",
+                self.name, client_ip, server_ip)
+
+        subcommand.parallel(cmds)
 
 
     def client_netperf(self, params):
         """ Run netperf on the client against the server """
         self.__run_netperf(self.client_wifi_ip, self.server_wifi_ip, params)
 
-
     def server_netperf(self, params):
         """ Run netperf on the server against the client """
+        if self.server is None:
+            self.__unreachable("server_netperf")
+            return
         self.__run_netperf(self.server_wifi_ip, self.client_wifi_ip, params)
+
+
+class HelperThread(threading.Thread):
+    # Class that wraps a ping command in a thread so it can run in the bg.
+    def __init__(self, client, cmd):
+        threading.Thread.__init__(self)
+        self.client = client
+        self.cmd = cmd
+
+    def run(self):
+        # NB: set ignore_status as we're always terminated w/ pkill
+        self.client.run(self.cmd, ignore_status=True)
 
 
 def __byfile(a, b):
@@ -445,7 +606,7 @@ def read_tests(dir, pat):
             try:
                 test = eval(fd.read())
             except Exception, e:
-                logging.error("%s: %s" % (os.path.join(dir, file), str(e)))
+                logging.error("%s: %s", os.path.join(dir, file), str(e))
                 raise e
             test['file'] = file
             tests.append(test)
