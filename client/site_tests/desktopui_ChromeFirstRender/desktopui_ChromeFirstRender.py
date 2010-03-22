@@ -6,7 +6,7 @@ import logging, re
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
-class desktoupi_ChromeFirstRender(test.test):
+class desktopui_ChromeFirstRender(test.test):
     version = 1
 
     def __parse_uptime(self, target_file):

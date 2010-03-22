@@ -6,7 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "CHROME_FIRST_RENDER"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
-TEST_CLASS = "desktoupi"
+TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
@@ -14,4 +14,4 @@ This is a metrics test that collects the time it takes for Chrome to render its
 first page after login is successful
 """
 
-job.run_test('desktoupi_ChromeFirstRender')
+job.run_test('desktopui_ChromeFirstRender')

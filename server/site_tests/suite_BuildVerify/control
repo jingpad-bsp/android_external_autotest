@@ -40,7 +40,7 @@ TESTS = [
   'hardware_SsdDetection',
   'platform_AccurateTime',
   'desktopui_DoLogin',
-  'desktoupi_ChromeFirstRender',
+  'desktopui_ChromeFirstRender',
   'platform_KernelVersion',
   'power_Status',
   'build_RootFilesystemSize',
