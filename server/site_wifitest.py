@@ -159,79 +159,80 @@ class WiFiTest(object):
 
 
     def __get_connect_script(self, params):
-        return '\
-import dbus, dbus.mainloop.glib, gobject, logging, re, sys, time\n\
-\
-ssid = "' + params['ssid'] + '"\n\
-security = "' + params['security'] + '"\n\
-psk = "' + params.get('psk', "") + '"\n\
-assoc_timeout = ' + params.get('assoc_timeout', "15") + '\n\
-config_timeout = ' + params.get('config_timeout', "15") + '\n\
-\
-bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)\n\
-bus = dbus.SystemBus(mainloop=bus_loop)\n\
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),\n\
-    "org.moblin.connman.Manager")\n\
-\
-try:\n\
-    path = manager.GetService(({\n\
-        "Type": "wifi",\n\
-        "Mode": "managed",\n\
-        "SSID": ssid,\n\
-        "Security": security,\n\
-        "Passphrase": psk }))\n\
-    service = dbus.Interface(\n\
-        bus.get_object("org.moblin.connman", path),\n\
-        "org.moblin.connman.Service")\n\
-except Exception, e:\n\
-    print "FAIL(GetService): ssid %s exception %s" %(ssid, e)\n\
-    sys.exit(1)\n\
-\
-try:\n\
-    service.Connect()\n\
-except Exception, e:\n\
-    print "FAIL(Connect): ssid %s exception %s" %(ssid, e)\n\
-    sys.exit(2)\n\
-\
-status = ""\n\
-assoc_time = 0\n\
-# wait up to assoc_timeout seconds to associate\n\
-while assoc_time < assoc_timeout:\n\
-    properties = service.GetProperties()\n\
-    status = properties.get("State", None)\n\
-#    print>>sys.stderr, "time %3.1f state %s" % (assoc_time, status)\n\
-    if status == "failure":\n\
-        print "FAIL(assoc): ssid %s assoc %3.1f secs props %s" %(ssid, assoc_time, properties)\n\
-        sys.exit(3)\n\
-    if status == "configuration" or status == "ready":\n\
-        break\n\
-    time.sleep(.5)\n\
-    assoc_time += .5\n\
-if assoc_time >= assoc_timeout:\n\
-    print "TIMEOUT(assoc): ssid %s assoc %3.1f secs" %(ssid, assoc_time)\n\
-    sys.exit(4)\n\
-\
-# wait another config_timeout seconds to get an ip address\n\
-config_time = 0\n\
-if status != "ready":\n\
-    while config_time < config_timeout:\n\
-        properties = service.GetProperties()\n\
-        status = properties.get("State", None)\n\
-#        print>>sys.stderr, "time %3.1f state %s" % (config_time, status)\n\
-        if status == "failure":\n\
-            print "FAIL(config): ssid %s assoc %3.1f config %3.1f secs" \\\n\
-                %(ssid, assoc_time, config_time)\n\
-            sys.exit(5)\n\
-        if status == "ready":\n\
-            break\n\
-        time.sleep(.5)\n\
-        config_time += .5\n\
-    if config_time >= config_timeout:\n\
-        print "TIMEOUT(config): ssid %s assoc %3.1f config %3.1f secs"\\\n\
-            %(ssid, assoc_time, config_time)\n\
-        sys.exit(6)\n\
-print "assoc %3.1f secs config %3.1f secs" % (assoc_time, config_time)\n\
-sys.exit(0)'
+        return '''
+import dbus, dbus.mainloop.glib, gobject, logging, re, sys, time
+
+ssid = "''' + params['ssid'] + '''"
+security = "''' + params['security'] + '''"
+psk = "''' + params.get('psk', "") + '''"
+assoc_timeout = ''' + params.get('assoc_timeout', "15") + '''
+config_timeout = ''' + params.get('config_timeout', "15") + '''
+
+bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+bus = dbus.SystemBus(mainloop=bus_loop)
+manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
+    "org.moblin.connman.Manager")
+
+try:
+    path = manager.GetService(({
+        "Type": "wifi",
+        "Mode": "managed",
+        "SSID": ssid,
+        "Security": security,
+        "Passphrase": psk }))
+    service = dbus.Interface(
+        bus.get_object("org.moblin.connman", path),
+        "org.moblin.connman.Service")
+except Exception, e:
+    print "FAIL(GetService): ssid %s exception %s" %(ssid, e)
+    sys.exit(1)
+
+try:
+    service.Connect()
+except Exception, e:
+    print "FAIL(Connect): ssid %s exception %s" %(ssid, e)
+    sys.exit(2)
+
+status = ""
+assoc_time = 0
+# wait up to assoc_timeout seconds to associate
+while assoc_time < assoc_timeout:
+    properties = service.GetProperties()
+    status = properties.get("State", None)
+#    print>>sys.stderr, "time %3.1f state %s" % (assoc_time, status)
+    if status == "failure":
+        print "FAIL(assoc): ssid %s assoc %3.1f secs props %s" \\
+	    %(ssid, assoc_time, properties)
+        sys.exit(3)
+    if status == "configuration" or status == "ready":
+        break
+    time.sleep(.5)
+    assoc_time += .5
+if assoc_time >= assoc_timeout:
+    print "TIMEOUT(assoc): ssid %s assoc %3.1f secs" %(ssid, assoc_time)
+    sys.exit(4)
+
+# wait another config_timeout seconds to get an ip address
+config_time = 0
+if status != "ready":
+    while config_time < config_timeout:
+        properties = service.GetProperties()
+        status = properties.get("State", None)
+#        print>>sys.stderr, "time %3.1f state %s" % (config_time, status)
+        if status == "failure":
+            print "FAIL(config): ssid %s assoc %3.1f config %3.1f secs" \\
+                %(ssid, assoc_time, config_time)
+            sys.exit(5)
+        if status == "ready":
+            break
+        time.sleep(.5)
+        config_time += .5
+    if config_time >= config_timeout:
+        print "TIMEOUT(config): ssid %s assoc %3.1f config %3.1f secs" \\
+            %(ssid, assoc_time, config_time)
+        sys.exit(6)
+print "assoc %3.1f secs config %3.1f secs" % (assoc_time, config_time)
+sys.exit(0)'''
 
 
     def __get_ipaddr(self, host, ifnet):
@@ -257,40 +258,40 @@ sys.exit(0)'
 
 
     def __get_disconnect_script(self, params):
-        return '\
-import dbus, dbus.mainloop.glib, gobject, sys, time\n\
-\n\
-ssid = "' + params['ssid'] + '"\n\
-wait_timeout = ' + params.get('wait_timeout', "15") + '\n\
-\n\
-bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)\n\
-bus = dbus.SystemBus(mainloop=bus_loop)\n\
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),\n\
-    "org.moblin.connman.Manager")\n\
-\n\
-mprops = manager.GetProperties()\n\
-for path in mprops["Services"]:\n\
-    service = dbus.Interface(bus.get_object("org.moblin.connman", path),\n\
-        "org.moblin.connman.Service")\n\
-    sprops = service.GetProperties()\n\
-    if sprops.get("Name", None) != ssid:\n\
-        continue\n\
-    wait_time = 0\n\
-    try:\n\
-        service.Disconnect()\n\
-        while wait_time < wait_timeout:\n\
-            sprops = service.GetProperties()\n\
-            state = sprops.get("State", None)\n\
-#           print>>sys.stderr, "time %3.1f state %s" % (wait_time, state)\n\
-            if state == "idle":\n\
-                break\n\
-            time.sleep(.5)\n\
-            wait_time += .5\n\
-    except:\n\
-        pass\n\
-    print "disconnect in %3.1f secs" % wait_time\n\
-    break\n\
-sys.exit(0)'
+        return '''
+import dbus, dbus.mainloop.glib, gobject, sys, time
+
+ssid = "''' + params['ssid'] + '''"
+wait_timeout = ''' + params.get('wait_timeout', "15") + '''
+
+bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+bus = dbus.SystemBus(mainloop=bus_loop)
+manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
+    "org.moblin.connman.Manager")
+
+mprops = manager.GetProperties()
+for path in mprops["Services"]:
+    service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+        "org.moblin.connman.Service")
+    sprops = service.GetProperties()
+    if sprops.get("Name", None) != ssid:
+        continue
+    wait_time = 0
+    try:
+        service.Disconnect()
+        while wait_time < wait_timeout:
+            sprops = service.GetProperties()
+            state = sprops.get("State", None)
+#           print>>sys.stderr, "time %3.1f state %s" % (wait_time, state)
+            if state == "idle":
+                break
+            time.sleep(.5)
+            wait_time += .5
+    except:
+        pass
+    print "disconnect in %3.1f secs" % wait_time
+    break
+sys.exit(0)'''
 
 
     def disconnect(self, params):
