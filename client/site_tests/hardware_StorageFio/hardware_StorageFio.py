@@ -79,8 +79,9 @@ class hardware_StorageFio(test.test):
         findsys = utils.run('find /sys/devices -name %s' % device)
         path = findsys.stdout.rstrip()
 
-        vendor = file(path.replace('block/%s' % device, 'vendor')).read()
-        model = file(path.replace('block/%s' % device, 'model')).read()
+        vendor = file(path.replace('block/%s' % device,
+                                   'vendor')).read().strip()
+        model = file(path.replace('block/%s' % device, 'model')).read().strip()
         self.__description = vendor + ' ' + model
 
 
