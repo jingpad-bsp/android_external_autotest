@@ -1,0 +1,13 @@
+NAME = 'Check BMA150 Accelerometer'
+AUTHOR = 'Chromium OS Authors'
+TIME = 'SHORT'
+TEST_CLASS = 'Hardware'
+TEST_CATEGORY = 'Functional'
+TEST_TYPE = 'Client'
+DOC = """
+bma150 is a user space program that tests the interface provided
+by the bma150 kernel module for controlling the Bosch BMA150
+digital, triaxial accelerometer.
+"""
+
+job.run_test('hardware_bma150')
