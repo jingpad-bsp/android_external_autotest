@@ -13,10 +13,10 @@ class hardware_Components(test.test):
     _cids = [
         'part_id_audio_codec',
         'part_id_cpu',
+        'part_id_storage',
         'vendor_id_bluetooth',
         'vendor_id_chipset',
         'vendor_id_ethernet',
-        'vendor_id_storage',
         'vendor_id_touchpad',
         'vendor_id_usb_hosts',
         'vendor_id_vga',
@@ -52,6 +52,13 @@ class hardware_Components(test.test):
         return part_id
 
 
+    def get_part_id_storage(self):
+        cmd = ('cd $(find /sys/devices -name sda)/../..; '
+               'cat vendor model | tr "\n" " " | sed "s/ \+/ /g"')
+        part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
     def get_vendor_id_bluetooth(self):
         cmd = ('hciconfig hci0 version | grep Manufacturer '
                '| sed s/.\*Manufacturer://')
@@ -69,13 +76,6 @@ class hardware_Components(test.test):
     def get_vendor_id_ethernet(self):
         cmd = ('lspci | grep "Ethernet controller:" | head -n 1 '
                '| sed s/.\*Ethernet\ controller://')
-        part_id = utils.system_output(cmd).strip()
-        return part_id
-
-
-    def get_vendor_id_storage(self):
-        cmd = ('cd $(find /sys/devices -name sda)/../..; '
-               'cat vendor model | tr "\n" " " | sed "s/ \+/ /g"')
         part_id = utils.system_output(cmd).strip()
         return part_id
 
