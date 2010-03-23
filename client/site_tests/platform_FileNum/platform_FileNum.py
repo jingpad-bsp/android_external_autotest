@@ -12,6 +12,7 @@ number of files into one directory, in this case will create 100,000 files.
 __author__ = 'kdlucas@chromium.org (Kelly Lucas)'
 
 import commands
+import logging
 import os
 import sys
 import shutil
@@ -43,13 +44,13 @@ class platform_FileNum(test.test):
             try:
                 os.makedirs(f_dir1)
             except IOError, e:
-                error.TestWarn('Error making directory %s\n%s' % (f_dir1, e))
+                logging.warn('Error making directory %s\n%s' % (f_dir1, e))
                 raise error.TestFail(e)
         if not os.path.exists(f_dir2):
             try:
                 os.makedirs(f_dir2)
             except IOError, e:
-                error.TestWarn('Error making directory %s\n%s' % (f_dir2, e))
+                logging.warn('Error making directory %s\n%s' % (f_dir2, e))
                 raise error.TestFail(e)
 
         for i in range(fqty):
@@ -61,20 +62,20 @@ class platform_FileNum(test.test):
                 fh.write(TEXT)
                 fh.close()
             except IOError, e:
-                error.TestWarn('Error creating file %s\n%s' % (file1, e))
+                logging.warn('Error creating file %s\n%s' % (file1, e))
                 raise error.TestFail(e)
             try:
                 shutil.copyfile(file1, file2)
             except IOError, e:
-                error.TestWarn('Error copying file %s\n%s' % (file1, e))
+                logging.warn('Error copying file %s\n%s' % (file1, e))
                 raise error.TestFail(e)
 
         total_created = len(os.listdir(f_dir1))
         total_copied = len(os.listdir(f_dir2))
         if total_created != (fqty) or total_copied != (fqty):
-            error.TestWarn('Number of files requested: %s' % fqty)
-            error.TestWarn('Number of files created: %s' % total_created)
-            error.TestWarn('Number of files copied: %s' % total_copied)
+            logging.warn('Number of files requested: %s' % fqty)
+            logging.warn('Number of files created: %s' % total_created)
+            logging.warn('Number of files copied: %s' % total_copied)
             raise error.TestFail('Number of files is not correct!')
 
         shutil.rmtree(f_dir1)

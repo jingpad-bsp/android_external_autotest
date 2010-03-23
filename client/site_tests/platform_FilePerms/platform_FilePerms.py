@@ -6,6 +6,7 @@
 
 __author__ = 'kdlucas@chromium.org (Kelly Lucas)'
 
+import logging
 import os
 import stat
 
@@ -161,20 +162,20 @@ class platform_FilePerms(test.test):
         # Ensure root can write into root dirs with rw access.
         for dir in root_rw_dirs:
             if not self.try_write(dir):
-                error.Warning('Root cannot write in %s' % dir)
+                logging.warn('Root cannot write in %s' % dir)
                 errors += 1
 
         # Check permissions on root owned directories.
         for dir in root_dirs:
             fperms = self.get_perm(dir)
             if fperms != root_dirs[dir]:
-                error.Warning('%s has %s permissions' % (dir, fperms))
+                logging.warn('%s has %s permissions' % (dir, fperms))
                 errors += 1
 
         if self.get_rw_mount_status(rootfs):
-            error.Warning('Root filesystem is not mounted read only!')
+            logging.warn('Root filesystem is not mounted read only!')
             errors += 1
 
-        # If self.error is not zero, there were errors.
+        # If errors is not zero, there were errors.
         if errors > 0:
-            error.TestFail('There were %d file permissions errors' % self.error)
+            raise error.TestFail('Found %d permission errors' % errors)
