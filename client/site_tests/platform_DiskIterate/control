@@ -1,0 +1,13 @@
+AUTHOR = "Chrome OS Team"
+NAME = "Disk Iteration"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "Platform"
+TEST_TYPE = "client"
+
+DOC = """
+This test checks whether the DeviceKit-disks daemon can be reached and if at
+least one disk can be found.
+"""
+
+job.run_test('platform_DiskIterate')
