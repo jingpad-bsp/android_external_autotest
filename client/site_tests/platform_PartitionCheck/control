@@ -1,0 +1,9 @@
+AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
+DOC = "Verifies partitions are sized correctly."
+NAME = "Platform_Partition_Check"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+job.run_test('platform_PartitionCheck')
