@@ -1,7 +1,0 @@
-{  
- "script": [
-  [  "sleep", 3000 ],
-  [  "string", "chronos@gmail.com\\(Tab)" ],
-  [  "string", "whodat\\(Return)" ],    
- ],
-}

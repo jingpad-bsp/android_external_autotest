@@ -4,7 +4,7 @@
 
 import logging, os, utils, time
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, site_ui
 
 def setup_autox(test):
     test.job.setup_dep(['autox'])
@@ -22,16 +22,11 @@ def attempt_login(test, script_file, timeout = 10):
     dep_dir = os.path.join(test.autodir, 'deps', dep)
     test.job.install_pkg(dep, 'dep', dep_dir)
 
-    # Set up environment to access login manager
-    environment_vars = \
-        'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
-
     autox_binary = '%s/%s' % (dep_dir, 'autox')
-    autox_script = os.path.join(test.bindir, script_file)
+    autox_script = os.path.join(test.job.configdir, script_file)
 
     try:
-        utils.system('%s %s %s' \
-                     % (environment_vars, autox_binary, autox_script))
+        utils.system(site_ui.xcommand('%s %s' % (autox_binary, autox_script)))
     except error.CmdError, e:
         logging.debug(e)
         raise error.TestFail('AutoX program failed to login for test user')
