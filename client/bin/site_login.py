@@ -3,8 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, utils, time
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import chromeos_constants, test
 from autotest_lib.client.common_lib import error, site_ui
+
 
 def setup_autox(test):
     test.job.setup_dep(['autox'])
@@ -15,7 +16,7 @@ def setup_autox(test):
 def logged_in():
     # this file is created when the session_manager emits start-user-session
     # and removed when the session_manager emits stop-user-session
-    return os.path.exists("/var/run/state/logged-in")
+    return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)
 
 def attempt_login(test, script_file, timeout = 10):
     dep = 'autox'
@@ -42,7 +43,7 @@ def attempt_login(test, script_file, timeout = 10):
 
 def attempt_logout(timeout = 10):
     # Gracefully exiting chrome causes the user's session to end.
-    utils.system('pkill -TERM ^chrome$')
+    utils.system('pkill -TERM ^%s$' % chromeos_constants.BROWSER)
     start_time = time.time()
     while time.time() - start_time < timeout:
         if not logged_in():
@@ -58,7 +59,7 @@ def wait_for_login_manager(timeout = 10):
     # if pgrep returns non-zero, I just want to wait and try again.
     start_time = time.time()
     while time.time() - start_time < timeout:
-        if os.system('pgrep ^chrome$'):
+        if os.system('pgrep ^%s$' % chromeos_constants.BROWSER):
             break;
         time.sleep(1)
     else:
