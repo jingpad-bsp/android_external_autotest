@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import logging, os, pprint
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
@@ -114,9 +114,18 @@ class hardware_Components(test.test):
         return part_id
 
 
+    def pformat(self, obj):
+        return "\n" + self._pp.pformat(obj) + "\n"
+
+
+    def initialize(self):
+        self._pp = pprint.PrettyPrinter()
+
+
     def run_once(self, approved_db=None):
         self._system = {}
         self._failures = {}
+
         if approved_db is None:
             approved_db = os.path.join(self.bindir, 'approved_components')
 
@@ -125,15 +134,15 @@ class hardware_Components(test.test):
                                   approved_db)
 
         self._approved = eval(utils.read_file(approved_db))
-        logging.debug('Approved DB: %s', self._approved)
+        logging.debug('Approved DB: %s', self.pformat(self._approved))
 
         for cid in self._cids:
             self.check_component(cid, getattr(self, 'get_' + cid)())
 
-        logging.debug('System: %s', self._system)
+        logging.debug('System: %s', self.pformat(self._system))
 
         outdb = os.path.join(self.resultsdir, 'system_components')
-        utils.open_write_close(outdb, str(self._system))
+        utils.open_write_close(outdb, self.pformat(self._system))
 
         if self._failures:
-            raise error.TestFail(self._failures)
+            raise error.TestFail(self.pformat(self._failures))
