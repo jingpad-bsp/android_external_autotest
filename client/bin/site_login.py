@@ -17,7 +17,7 @@ def logged_in():
     # and removed when the session_manager emits stop-user-session
     return os.path.exists("/var/run/state/logged-in")
 
-def attempt_login(test, timeout = 10, script_file = 'autox_script.json'):
+def attempt_login(test, script_file, timeout = 10):
     dep = 'autox'
     dep_dir = os.path.join(test.autodir, 'deps', dep)
     test.job.install_pkg(dep, 'dep', dep_dir)
@@ -69,3 +69,8 @@ def wait_for_login_manager(timeout = 10):
     else:
         return False
     return True
+
+def nuke_login_manager():
+    pid = int(utils.system_output('pgrep -o ^session_manager$'))
+    utils.nuke_pid(pid)
+    wait_for_login_manager()

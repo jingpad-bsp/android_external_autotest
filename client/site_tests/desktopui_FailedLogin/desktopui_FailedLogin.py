@@ -6,7 +6,7 @@ import os, time
 from autotest_lib.client.bin import site_login, test
 from autotest_lib.client.common_lib import error
 
-class desktopui_DoLogin(test.test):
+class desktopui_FailedLogin(test.test):
     version = 1
 
     def setup(self):
@@ -23,9 +23,9 @@ class desktopui_DoLogin(test.test):
                 raise error.TestFail("Login manager didn't come back")
 
         # Test account information embedded into json file.
-        if not site_login.attempt_login(self, script):
-            raise error.TestFail('Could not login')
+        # TODO(cmasone): find better way to determine login has failed.
+        if site_login.attempt_login(self, script):
+            raise error.TestFail('Should not have logged in')
 
-        # If we started logged out, log back out.
-        if not logged_in:
-            site_login.attempt_logout()
+        # Re-set to a good state
+        site_login.nuke_login_manager()

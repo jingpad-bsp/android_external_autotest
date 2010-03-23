@@ -3,15 +3,15 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "AUTO_LOGIN"
+NAME = "FAILED_AUTO_LOGIN"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
-This is a helper test that will login a system through the login manager  
+This tests that we fail on a login attempt with bad credentials  
 """
 
-job.run_test('desktopui_DoLogin', script='autox_script.json', tag='remote')
-job.run_test('desktopui_DoLogin', script='backdoor_creds.json', tag='local')
+job.run_test('desktopui_FailedLogin', script='bad_creds.json')
+
