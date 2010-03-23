@@ -1,7 +1,7 @@
 import os, sys, time, signal, socket, re, fnmatch, logging, threading
 import paramiko
 
-from autotest_lib.client.common_lib import utils, error
+from autotest_lib.client.common_lib import utils, error, global_config
 from autotest_lib.server import subcommand
 from autotest_lib.server.hosts import abstract_ssh
 
@@ -56,17 +56,18 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
         """
         raw_identity_files = ["~/.ssh/id_dsa", "~/.ssh/id_rsa"]
         for config_path in ("/etc/ssh/ssh_config", "~/.ssh/config"):
+            config_path = os.path.expanduser(config_path)
             if not os.path.exists(config_path):
                 continue
             host_pattern = "*"
-            config_lines = open(os.path.expanduser(config_path)).readlines()
+            config_lines = open(config_path).readlines()
             for line in config_lines:
                 key, value = ParamikoHost._parse_config_line(line)
                 if key == "Host":
                     host_pattern = value
                 elif (key == "IdentityFile"
                       and fnmatch.fnmatch(hostname, host_pattern)):
-                    raw_identity_files.append(host_pattern)
+                    raw_identity_files.append(value)
 
         # drop any files that use percent-escapes; we don't support them
         identity_files = []
@@ -87,9 +88,12 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
                 user_keys[path] = key
 
         # load up all the ssh agent keys
-        ssh_agent = paramiko.Agent()
-        for i, key in enumerate(ssh_agent.get_keys()):
-            user_keys['agent-key-%d' % i] = key
+        use_sshagent = global_config.global_config.get_config_value(
+            'AUTOSERV', 'use_sshagent_with_paramiko', type=bool)
+        if use_sshagent:
+            ssh_agent = paramiko.Agent()
+            for i, key in enumerate(ssh_agent.get_keys()):
+                user_keys['agent-key-%d' % i] = key
 
         return user_keys
 

@@ -22,7 +22,7 @@ def dump_env(obj, filename):
     file.close()
 
 
-def load_env(filename, default=None):
+def load_env(filename, default={}):
     """
     Load KVM test environment from an environment file.
 
@@ -30,11 +30,13 @@ def load_env(filename, default=None):
     """
     try:
         file = open(filename, "r")
+        obj = cPickle.load(file)
+        file.close()
+        return obj
+    # Almost any exception can be raised during unpickling, so let's catch
+    # them all
     except:
         return default
-    obj = cPickle.load(file)
-    file.close()
-    return obj
 
 
 def get_sub_dict(dict, name):
@@ -176,6 +178,61 @@ def get_mac_ip_pair_from_dict(dict):
                     ip_base and offset_ip(ip_base, index))
         index -= size
     return (None, None)
+
+
+def get_sub_pool(dict, piece, num_pieces):
+    """
+    Split a MAC-IP pool and return a single requested piece.
+
+    For example, get_sub_pool(dict, 0, 3) will split the pool in 3 pieces and
+    return a dict representing the first piece.
+
+    @param dict: A dict that contains pool parameters.
+    @param piece: The index of the requested piece.  Should range from 0 to
+        num_pieces - 1.
+    @param num_pieces: The total number of pieces.
+    @return: A copy of dict, modified to describe the requested sub-pool.
+    """
+    range_dicts = [get_sub_dict(dict, name) for name in
+                   get_sub_dict_names(dict, "address_ranges")]
+    if not range_dicts:
+        return dict
+    ranges = [[d.get("address_range_base_mac"),
+               d.get("address_range_base_ip"),
+               int(d.get("address_range_size", 1))] for d in range_dicts]
+    total_size = sum(r[2] for r in ranges)
+    base = total_size * piece / num_pieces
+    size = total_size * (piece + 1) / num_pieces - base
+
+    # Find base of current sub-pool
+    for i in range(len(ranges)):
+        r = ranges[i]
+        if base < r[2]:
+            r[0] = r[0] and offset_mac(r[0], base)
+            r[1] = r[1] and offset_ip(r[1], base)
+            r[2] -= base
+            break
+        base -= r[2]
+
+    # Collect ranges up to end of current sub-pool
+    new_ranges = []
+    for i in range(i, len(ranges)):
+        r = ranges[i]
+        new_ranges.append(r)
+        if size <= r[2]:
+            r[2] = size
+            break
+        size -= r[2]
+
+    # Write new dict
+    new_dict = dict.copy()
+    new_dict["address_ranges"] = " ".join("r%d" % i for i in
+                                          range(len(new_ranges)))
+    for i in range(len(new_ranges)):
+        new_dict["address_range_base_mac_r%d" % i] = new_ranges[i][0]
+        new_dict["address_range_base_ip_r%d" % i] = new_ranges[i][1]
+        new_dict["address_range_size_r%d" % i] = new_ranges[i][2]
+    return new_dict
 
 
 def verify_ip_address_ownership(ip, macs, timeout=10.0):
@@ -635,7 +692,7 @@ def is_port_free(port):
 
 def find_free_port(start_port, end_port):
     """
-    Return a free port in the range [start_port, end_port).
+    Return a host free port in the range [start_port, end_port].
 
     @param start_port: First port that will be checked.
     @param end_port: Port immediately after the last one that will be checked.
@@ -648,7 +705,7 @@ def find_free_port(start_port, end_port):
 
 def find_free_ports(start_port, end_port, count):
     """
-    Return count free ports in the range [start_port, end_port).
+    Return count of host free ports in the range [start_port, end_port].
 
     @count: Initial number of ports known to be free in the range.
     @param start_port: First port that will be checked.
@@ -788,8 +845,8 @@ def run_tests(test_list, job):
     @return: True, if all tests ran passed, False if any of them failed.
     """
     status_dict = {}
-
     failed = False
+
     for dict in test_list:
         if dict.get("skip") == "yes":
             continue
@@ -806,12 +863,12 @@ def run_tests(test_list, job):
             test_tag = dict.get("shortname")
             # Setting up kvm_stat profiling during test execution.
             # We don't need kvm_stat profiling on the build tests.
-            if "build" in test_tag:
+            if dict.get("run_kvm_stat") == "yes":
+                profile = True
+            else:
                 # None because it's the default value on the base_test class
                 # and the value None is specifically checked there.
                 profile = None
-            else:
-                profile = True
 
             if profile:
                 job.profilers.add('kvm_stat')
@@ -1012,17 +1069,22 @@ class PciAssignable(object):
         """
         Get VFs count number according to lspci.
         """
+        # FIXME: Need to think out a method of identify which
+        # 'virtual function' belongs to which physical card considering
+        # that if the host has more than one 82576 card. PCI_ID?
         cmd = "lspci | grep 'Virtual Function' | wc -l"
-        # For each VF we'll see 2 prints of 'Virtual Function', so let's
-        # divide the result per 2
-        return int(commands.getoutput(cmd)) / 2
+        return int(commands.getoutput(cmd))
 
 
     def check_vfs_count(self):
         """
         Check VFs count number according to the parameter driver_options.
         """
-        return (self.get_vfs_count == self.devices_requested)
+        # Network card 82576 has two network interfaces and each can be
+        # virtualized up to 7 virtual functions, therefore we multiply
+        # two for the value of driver_option 'max_vfs'.
+        expected_count = int((re.findall("(\d)", self.driver_option)[0])) * 2
+        return (self.get_vfs_count == expected_count)
 
 
     def is_binded_to_stub(self, full_id):
@@ -1054,14 +1116,16 @@ class PciAssignable(object):
         elif not self.check_vfs_count():
             os.system("modprobe -r %s" % self.driver)
             re_probe = True
+        else:
+            return True
 
         # Re-probe driver with proper number of VFs
         if re_probe:
             cmd = "modprobe %s %s" % (self.driver, self.driver_option)
+            logging.info("Loading the driver '%s' with option '%s'" %
+                                   (self.driver, self.driver_option))
             s, o = commands.getstatusoutput(cmd)
             if s:
-                return False
-            if not self.check_vfs_count():
                 return False
             return True
 

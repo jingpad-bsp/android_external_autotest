@@ -66,7 +66,8 @@ class base_server_job(base_job.base_job):
     def __init__(self, control, args, resultdir, label, user, machines,
                  client=False, parse_job='',
                  ssh_user='root', ssh_port=22, ssh_pass='',
-                 group_name='', tag=''):
+                 group_name='', tag='',
+                 control_filename=SERVER_CONTROL_FILENAME):
         """
         Create a server side job object.
 
@@ -84,6 +85,8 @@ class base_server_job(base_job.base_job):
         @param group_name: If supplied, this will be written out as
                 host_group_name in the keyvals file for the parser.
         @param tag: The job execution tag from the scheduler.  [optional]
+        @param control_filename: The filename where the server control file
+                should be written in the results directory.
         """
         super(base_server_job, self).__init__(resultdir=resultdir)
 
@@ -114,6 +117,7 @@ class base_server_job(base_job.base_job):
         self.hosts = set()
         self.drop_caches = False
         self.drop_caches_between_iterations = False
+        self._control_filename = control_filename
 
         self.logging = logging_manager.get_logging_manager(
                 manage_stdout_and_stderr=True, redirect_fds=True)
@@ -375,6 +379,7 @@ class base_server_job(base_job.base_job):
             control_file_dir=None, only_collect_crashinfo=False):
         # for a normal job, make sure the uncollected logs file exists
         # for a crashinfo-only run it should already exist, bail out otherwise
+        created_uncollected_logs = False
         if self.resultdir and not os.path.exists(self._uncollected_log_file):
             if only_collect_crashinfo:
                 # if this is a crashinfo-only run, and there were no existing
@@ -386,6 +391,7 @@ class base_server_job(base_job.base_job):
                 log_file = open(self._uncollected_log_file, "w")
                 pickle.dump([], log_file)
                 log_file.close()
+                created_uncollected_logs = True
 
         # use a copy so changes don't affect the original dictionary
         namespace = namespace.copy()
@@ -433,7 +439,7 @@ class base_server_job(base_job.base_job):
                         suffix='temp_control_file_dir')
                     control_file_dir = temp_control_file_dir
                 server_control_file = os.path.join(control_file_dir,
-                                                   SERVER_CONTROL_FILENAME)
+                                                   self._control_filename)
                 client_control_file = os.path.join(control_file_dir,
                                                    CLIENT_CONTROL_FILENAME)
                 if self._client:
@@ -472,7 +478,7 @@ class base_server_job(base_job.base_job):
                     self._execute_code(CRASHINFO_CONTROL_FILE, namespace)
                 else:
                     self._execute_code(CRASHDUMPS_CONTROL_FILE, namespace)
-            if self._uncollected_log_file:
+            if self._uncollected_log_file and created_uncollected_logs:
                 os.remove(self._uncollected_log_file)
             self.disable_external_logging()
             if cleanup and machines:
