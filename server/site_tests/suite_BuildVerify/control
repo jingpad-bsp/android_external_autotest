@@ -38,13 +38,16 @@ TESTS = [
   'platform_UnmountCleanlyAtShutdown',
   'hardware_DiskSize',
   'hardware_SsdDetection',
-  'platform_AccurateTime',
-  'desktopui_DoLogin',
+  'platform_AccurateTime',  
   'desktopui_ChromeFirstRender',
   'platform_KernelVersion',
   'power_Status',
   'build_RootFilesystemSize',
 ]
+
+# Run login tests, local first, then remote login
+job.run_test('desktopui_DoLogin', script='backdoor_creds.json', tag='local')
+job.run_test('desktopui_DoLogin', script='autox_script.json', tag='remote')
 
 for test in TESTS:
   client_at.run_test(test)
