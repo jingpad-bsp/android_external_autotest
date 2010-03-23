@@ -1,0 +1,22 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "CHECK_CRYPTOHOME"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "login"
+TEST_TYPE = "client"
+
+DOC = """
+This test checks that, after logging in successfully, a cryptohome was mounted.
+"""
+
+job.run_test('login_CryptohomeMounted', tag='success')
+
+# TODO(cmasone): enable this when we start testing newer versions of the OS.
+# job.run_test('login_CryptohomeMounted',
+#              script='backdoor_creds.json',
+#              is_control=True,
+#              tag='control')

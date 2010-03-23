@@ -7,7 +7,9 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 def is_mounted(device = '/dev/mapper/cryptohome',
-               expected_mountpt = '/home/chronos/user'):
-    mount_line = utils.system_output('/bin/mount | grep %s' % device)
-    mountpt = (mount_line.split())[2]
-    return expected_mountpt == mountpt
+               expected_mountpt = '/home/chronos/user',
+               allow_fail = False):
+    mount_line = utils.system_output('/bin/mount | grep %s' % expected_mountpt,
+                                     ignore_status = allow_fail)
+    dev = (mount_line.split())[0]
+    return device == dev
