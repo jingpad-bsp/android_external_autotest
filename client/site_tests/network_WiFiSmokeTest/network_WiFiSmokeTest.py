@@ -26,58 +26,72 @@ class network_WiFiSmokeTest(test.test):
             "org.moblin.connman.Manager")
 
         try:
-            #
-            # NB: this is asynchronous; on return there should be
-            # a service but we must wait for the connection to complete
-            #
-            path = manager.ConnectService(({
+            path = manager.GetService(({
                 "Type": "wifi",
                 "Mode": "managed",
                 "SSID": ssid,
                 "Security": security,
-                "Passphrase": psk }));
+                "Passphrase": psk }))
             service = dbus.Interface(
                 bus.get_object("org.moblin.connman", path),
-                "org.moblin.connman.Service") 
+                "org.moblin.connman.Service")
         except Exception, e:
-            logging.info('FAIL(connect): ssid %s exception %s' %(ssid, e))
-            return 0
+            logging.info('FAIL(GetService): ssid %s exception %s', ssid, e)
+            return 1
+
+        try:
+            service.Connect()
+        except Exception, e:
+            logging.info("FAIL(Connect): ssid %s exception %s", ssid, e)
+            return 2
 
         status = ""
         assoc_time = 0
         # wait up to assoc_timeout seconds to associate
-        while (status != "configuration" and status != "ready" and
-               status != "failure" and assoc_time < assoc_timeout):
+        while assoc_time < assoc_timeout:
             properties = service.GetProperties()
             status = properties.get("State", None)
+            if status == "failure":
+                logging.info("FAIL(assoc): ssid %s assoc %3.1f secs props %s",
+                    ssid, assoc_time, properties)
+                return 3
+            if status == "configuration" or status == "ready":
+                break
             time.sleep(.5)
             assoc_time += .5
-        if status == "failure" or assoc_time >= assoc_timeout:
-            logging.info('FAIL(assoc): ssid %s assoc %3.1f secs status %s'
-                %(ssid, assoc_time, status))
-            return 0
+        if assoc_time >= assoc_timeout:
+            logging.info("TIMEOUT(assoc): ssid %s assoc %3.1f secs", ssid,
+	        assoc_time)
+            return 4
+
         self.write_perf_keyval({"secs_assoc_time_" +
             self.sanitize(ssid): assoc_time})
 
         # wait another config_timeout seconds to get an ip address
         config_time = 0
-        while (status != "ready" and status != "failure" and
-               config_time < config_timeout):
-            properties = service.GetProperties()
-            status = properties.get("State", None)
-            time.sleep(.5)
-            config_time += .5
         if status != "ready":
-            logging.info('FAIL(config): ssid %s assoc %3.1f secs '
-                'config %3.1f secs status %s'
-                %(ssid, assoc_time, config_time, status))
-            return 0
+            while config_time < config_timeout:
+                properties = service.GetProperties()
+                status = properties.get("State", None)
+                if status == "failure":
+                    logging.info("FAIL(config): ssid %s assoc %3.1f config "
+		        "%3.1f secs", ssid, assoc_time, config_time)
+                    return 5
+                if status == "ready":
+                    break
+                time.sleep(.5)
+                config_time += .5
+            if config_time >= config_timeout:
+                logging.info("TIMEOUT(config): ssid %s assoc %3.1f config "
+		    "%3.1f secs", ssid, assoc_time, config_time)
+                return 6
+
         self.write_perf_keyval({"secs_config_time_" +
             self.sanitize(ssid): config_time})
 
         logging.info('SUCCESS: ssid %s assoc %3.1f secs config %3.1f secs'
             ' status %s' %(ssid, assoc_time, config_time, status))
-        return 1
+        return 0
 
 
     def run_once(self, wifi_router_list):
@@ -92,8 +106,8 @@ class network_WiFiSmokeTest(test.test):
             psk = properties.get("psk", "")
             assoc_timeout = properties.get("assoc_timeout", 15)
             config_timeout = properties.get("config_timeout", 15)
-            if not self.ConnectToNetwork(ssid, security, psk, assoc_timeout,
-                config_timeout):
+            if self.ConnectToNetwork(ssid, security, psk, assoc_timeout,
+                config_timeout) != 0:
                 continue
             # ping server if configured
             ping_args = properties.get("ping_args", None)
