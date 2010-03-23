@@ -5,8 +5,22 @@
 VBOOT_REFERENCE_DIR = $(GCLIENT_ROOT)/src/platform/vboot_reference
 BUILD_TEST_DIR = vboot_reference
 # Test Binaries.
-TEST_BINS = sha_tests testcases testkeys rsa_padding_test run_rsa_tests.sh \
-	sha_benchmark rsa_verify_benchmark
+TEST_BINS = \
+	common.sh \
+	firmware_image_tests \
+	firmware_verify_benchmark \
+	gen_test_cases.sh \
+	kernel_image_tests \
+	kernel_verify_benchmark \
+	rsa_padding_test \
+	rsa_verify_benchmark \
+	run_image_verification_tests.sh \
+	run_rsa_tests.sh \
+	sha_benchmark \
+	sha_tests \
+	testcases \
+	testkeys
+
 # Utility Binaries.
 UTIL_BINS = verify_data signature_digest_utility
 
