@@ -1,0 +1,20 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "CHROME_PROFILE_SANITARY"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "login"
+TEST_TYPE = "client"
+
+DOC = """
+This test checks that, after logging in successfully and crashing Chrome, the
+browser is still using the correct profile (the one on encrypted storage).
+
+http://code.google.com/p/chromium-os/issues/detail?id=1967
+"""
+
+job.run_test('login_ChromeProfileSanitary')
+

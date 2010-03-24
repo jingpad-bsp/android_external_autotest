@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, utils, time
+import logging, os, utils, signal, time
 from autotest_lib.client.bin import chromeos_constants, test
 from autotest_lib.client.common_lib import error, site_ui
 
@@ -53,7 +53,7 @@ def attempt_logout(timeout = 10):
         return False
     return True
 
-def wait_for_login_manager(timeout = 10):
+def wait_for_browser(timeout = 10):
     # Wait until the login manager is back up before trying to use it.
     # I don't use utils.system here because I don't want to fail
     # if pgrep returns non-zero, I just want to wait and try again.
@@ -67,6 +67,12 @@ def wait_for_login_manager(timeout = 10):
     return True
 
 def nuke_login_manager():
-    pid = int(utils.system_output('pgrep -o ^session_manager$'))
-    utils.nuke_pid(pid)
-    wait_for_login_manager()
+    nuke_process_by_name('session_manager')
+    wait_for_browser()
+
+def nuke_process_by_name(name, with_prejudice=False):
+    pid = int(utils.system_output('pgrep -o ^%s$' % name))
+    if with_prejudice:
+        utils.nuke_pid(pid, [signal.SIGKILL])
+    else:
+        utils.nuke_pid(pid)
