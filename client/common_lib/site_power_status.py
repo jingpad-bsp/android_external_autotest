@@ -235,3 +235,63 @@ class CPUFreqStats(object):
         for freq in stats_new:
             diff_stats[freq] = stats_new[freq] -  stats_old[freq]
         return diff_stats
+
+
+class USBSuspendStats(object):
+    # TODO (snanda): handle hot (un)plugging of USB devices
+    # TODO (snanda): handle duration counters wraparound
+
+    def __init__(self):
+        usb_stats_path = '/sys/bus/usb/devices/*/power'
+        self._file_paths = glob.glob(usb_stats_path)
+        if not self._file_paths:
+            logging.debug('USB stats path not found')
+
+        self._active, self._connected = self._read_stats()
+
+
+    def refresh(self, incremental=True):
+        """
+        This method returns the percentage time spent in active state for
+        all USB devices in the system.
+
+        @incremental: If False, stats returned are from when the system
+                      was booted up. Otherwise, stats are since the last time
+                      stats were refreshed.
+        """
+
+        active, connected = self._read_stats()
+        if incremental:
+            percent_active = (active - self._active) * 100.0 / \
+                             (connected - self._connected)
+        else:
+            percent_active = active * 100.0 / connected
+
+        self._active = active
+        self._connected = connected
+
+        return percent_active
+
+
+    def _read_stats(self):
+        total_active = 0
+        total_connected = 0
+
+        for path in self._file_paths:
+            active_duration_path = os.path.join(path, 'active_duration')
+            connected_duration_path = os.path.join(path, 'connected_duration')
+
+            if not os.path.exists(active_duration_path) or \
+               not os.path.exists(connected_duration_path):
+                logging.debug('duration paths do not exist for: %s', path)
+                continue
+
+            active = int(utils.read_file(active_duration_path))
+            connected = int(utils.read_file(connected_duration_path))
+            logging.debug('device %s active for %.2f%%',
+                          path, active * 100.0 / connected)
+
+            total_active += active
+            total_connected += connected
+
+        return total_active, total_connected
