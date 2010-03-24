@@ -14,7 +14,7 @@ def setup(tarball, topdir):
             tarball)
     utils.extract_tarball_to_dir(tarball, 'src')
     os.chdir(srcdir)
-    utils.system ('./configure --prefix=%s' % topdir)
+    utils.configure('--prefix=%s' % topdir)
     utils.system('make')
     os.chdir(topdir)
 
