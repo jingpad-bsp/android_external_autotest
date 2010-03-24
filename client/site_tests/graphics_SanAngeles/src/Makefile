@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-OPTIONS = -m32 -O3 -Wall
+OPTIONS = -O3 -Wall
 GLES = -D SAN_ANGELES_OBSERVATION_GLES
 NO_IMPORTGL = -D DISABLE_IMPORTGL
 HIGH_RES = -D SUPERSHAPE_HIGH_RES
