@@ -1,0 +1,17 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "The Chromium OS Authors"
+NAME = "Check process privileges"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+DOC = """
+This test checks process privileges - whether processes are running as root/
+super-user, and/or whether they are running as the specified user.
+"""
+
+job.run_test('platform_ProcessPrivileges', tag='X', process='X')
