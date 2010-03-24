@@ -23,6 +23,7 @@ job.run_test('platform_KernelVersion')
 # CPU
 job.run_test('desktopui_V8Bench')
 job.run_test('desktopui_SunSpiderBench')
+job.run_test('platform_AesThroughput')
 
 # System Memory
 job.run_test('hardware_MemoryTotalSize')

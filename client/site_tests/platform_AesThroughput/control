@@ -1,0 +1,17 @@
+# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = "AES_THROUGHPUT"
+AUTHOR = "The Chromium OS Authors"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Performance"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+DOC = """
+  This tests the AES(-options) throughput using openssl as a baseline
+  for processor performance.  It ignores any hw acceleration or specifics
+  around actual crypto use. (Those should be in other tests.)
+"""
+job.run_test('platform_AesThroughput')
