@@ -18,41 +18,58 @@ in less than 30 minutes and should maximize coverage.
 client = hosts.create_host(machines[0])
 client_at = autotest.Autotest(client)
 
+
+
+#
 # Run server tests
+#
 
 job.run_test("platform_BootPerfServer", host=client)
 
-# Run parameter-less simple client tests
+
+
+#
+# Run client tests that do not require specific parameters
+#
 
 # All client tests whose default parameters are adequate
 TESTS = [
-  'platform_FilePerms',
-  'platform_DaemonsRespawn',
+  'build_RootFilesystemSize',
+  'desktopui_ChromeFirstRender',
+  'hardware_DiskSize',
+  'hardware_MemoryTotalSize',
+  'hardware_SsdDetection',
   'login_AuthenticationTests',
   'login_PamModuleLoadTest',
-  'hardware_MemoryTotalSize',
-  'power_Resume',
-  'platform_Shutdown',
   'network_WiFiCaps',
-  'platform_NoOpenFilesAtShutdown',
-  'platform_UnmountCleanlyAtShutdown',
-  'hardware_DiskSize',
-  'hardware_SsdDetection',
-  'platform_AccurateTime',  
-  'desktopui_ChromeFirstRender',
+  'platform_AccurateTime',
+  'platform_DaemonsRespawn',
+  'platform_FilePerms',
   'platform_KernelVersion',
+  'platform_NoOpenFilesAtShutdown',
+  'platform_Shutdown',
+  'platform_UnmountCleanlyAtShutdown',
+  'power_Resume',
   'power_Status',
-  'build_RootFilesystemSize',
 ]
+
+for test in TESTS:
+  client_at.run_test(test)
+
+
+
+#
+# Run client tests with specific parameters
+#
 
 # Run login tests, local first, then remote login
 job.run_test('desktopui_DoLogin', script='backdoor_creds.json', tag='local')
 job.run_test('desktopui_DoLogin', script='autox_script.json', tag='remote')
 
-for test in TESTS:
-  client_at.run_test(test)
+client_at.run_test('hardware_MemoryThroughput', num_iteration=1, test_list='18')
 
-# Run jobs with specific parameters
+client_at.run_test('hardware_SAT', seconds=20)
+
 client_at.run_test('network_DisableInterface',
                    iface_name='eth0', tag='eth0')
 client_at.run_test('network_DisableInterface',
@@ -61,5 +78,4 @@ client_at.run_test('network_DisableInterface',
 # fail. Fix this once we have a way to run platform-dependent tests.
 client_at.run_test('network_DisableInterface',
                    iface_name='hci0', tag='hci0')
-client_at.run_test('hardware_MemoryThroughput', num_iteration=1, test_list='18')
-client_at.run_test('hardware_SAT', seconds=20)
+
