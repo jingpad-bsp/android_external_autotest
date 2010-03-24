@@ -11,8 +11,8 @@ class hardware_SAT(test.test):
     version = 1
 
     # http://stressapptest.googlecode.com/files/\
-    #   stressapptest-1.0.1_autoconf.tar.gz
-    def setup(self, tarball='stressapptest-1.0.1_autoconf.tar.gz'):
+    #   stressapptest-1.0.2_autoconf.tar.gz
+    def setup(self, tarball='stressapptest-1.0.2_autoconf.tar.gz'):
         # clean
         if os.path.exists(self.srcdir):
             utils.system('rm -rf %s' % self.srcdir)
@@ -20,12 +20,22 @@ class hardware_SAT(test.test):
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
 
+        self.job.setup_dep(['libaio'])
+        ldflags = '-L' + self.autodir + '/deps/libaio/lib'
+        cflags = '-I' + self.autodir + '/deps/libaio/include'
+        # Add paths to libaio files.
+        var_flags = 'LDFLAGS="' + ldflags + '"'
+        var_flags += ' CXXFLAGS="' + cflags + '"'
+        var_flags += ' CFLAGS="' + cflags + '"'
+        var_flags += ' LIBS="-static -laio"'
+
         os.chdir(self.srcdir)
         config_params = ''
         if 'CBUILD' in os.environ and 'CHOST' in os.environ:
             config_params = '--build=%s --host=%s' % (os.environ['CBUILD'],
                                                       os.environ['CHOST'])
-        utils.system('./configure %s' % config_params)
+        # ./configure stores relevant path and environment variables.
+        utils.system('%s ./configure %s' % (var_flags, config_params))
         utils.system('make -j %d' % utils.count_cpus())
 
 
