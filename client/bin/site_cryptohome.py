@@ -11,5 +11,5 @@ def is_mounted(device = chromeos_constants.CRYPTOHOME_DEVICE,
                allow_fail = False):
     mount_line = utils.system_output('/bin/mount | grep %s' % expected_mountpt,
                                      ignore_status = allow_fail)
-    dev = (mount_line.split())[0]
-    return device == dev
+    mount_parts = mount_line.split()
+    return len(mount_parts) > 0 and device == mount_parts[0]
