@@ -13,10 +13,12 @@ def setup_autox(test):
     if not os.path.exists(test.srcdir):
         os.mkdir(test.srcdir)
 
+
 def logged_in():
     # this file is created when the session_manager emits start-user-session
     # and removed when the session_manager emits stop-user-session
     return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)
+
 
 def attempt_login(test, script_file, timeout = 10):
     dep = 'autox'
@@ -41,6 +43,7 @@ def attempt_login(test, script_file, timeout = 10):
         return False
     return True
 
+
 def attempt_logout(timeout = 10):
     # Gracefully exiting chrome causes the user's session to end.
     utils.system('pkill -TERM ^%s$' % chromeos_constants.BROWSER)
@@ -52,6 +55,7 @@ def attempt_logout(timeout = 10):
     else:
         return False
     return True
+
 
 def wait_for_browser(timeout = 10):
     # Wait until the login manager is back up before trying to use it.
@@ -65,6 +69,24 @@ def wait_for_browser(timeout = 10):
     else:
         return False
     return True
+
+
+def wait_for_screensaver(timeout = 10, raise_error = True):
+    # Wait until the screensaver starts
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        if 0 == os.system(site_ui.xcommand('xscreensaver-command -version')):
+            break
+        time.sleep(1)
+    else:
+        if raise_error:
+            raise error.TestFail('Unable to communicate with ' +
+                                 'xscreensaver after %i seconds' %
+                                 time.time() - start_time)
+        return False
+
+    return True
+
 
 def nuke_login_manager():
     nuke_process_by_name('session_manager')

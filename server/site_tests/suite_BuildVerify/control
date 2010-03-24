@@ -35,6 +35,7 @@ job.run_test("platform_BootPerfServer", host=client)
 # All client tests whose default parameters are adequate
 TESTS = [
   'build_RootFilesystemSize',
+  'desktopui_ScreenSaverUnlock',
   'desktopui_ChromeFirstRender',
   'hardware_DiskSize',
   'hardware_MemoryTotalSize',

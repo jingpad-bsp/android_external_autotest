@@ -17,6 +17,33 @@ def xcommand(cmd):
     return 'DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority ' + cmd
 
 
+def xcommand_as(cmd, user='chronos'):
+    """
+    Same as xcommand, except wrapped in a su to the desired user.
+    """
+    return xcommand('su %s -c \'%s\'' % (user, cmd))
+
+
+def xsystem(cmd, timeout=None, ignore_status=False):
+    """
+    Run the command cmd, using utils.system, after adding the necessary
+    setup to connect to the X server.
+    """
+
+    return utils.system(xcommand(cmd), timeout=timeout,
+                        ignore_status=ignore_status)
+
+
+def xsystem_as(cmd, user='chronos', timeout=None, ignore_status=False):
+    """
+    Run the command cmd as the given user, using utils.system, after adding
+    the necessary setup to connect to the X server.
+    """
+
+    return utils.system(xcommand_as(cmd, user=user), timeout=timeout,
+                        ignore_status=ignore_status)
+
+
 class ChromeSession(object):
     """
     A class to start and close Chrome sessions.
