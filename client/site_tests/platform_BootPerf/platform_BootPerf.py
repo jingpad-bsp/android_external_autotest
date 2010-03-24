@@ -14,6 +14,18 @@ class platform_BootPerf(test.test):
     version = 1
 
 
+    def __parse_uptime_pre_startup(self, results):
+        data = file('/tmp/uptime-pre-startup').read()
+        vals = re.split(r' +', data.strip())
+        results['seconds_kernel_to_startup'] = float(vals[0])
+
+
+    def __parse_uptime_post_startup(self, results):
+        data = file('/tmp/uptime-post-startup').read()
+        vals = re.split(r' +', data.strip())
+        results['seconds_kernel_to_startup_done'] = float(vals[0])
+
+
     def __parse_uptime_login_prompt_ready(self, results):
         data = file('/tmp/uptime-login-prompt-ready').read()
         vals = re.split(r' +', data.strip())
@@ -57,6 +69,8 @@ class platform_BootPerf(test.test):
     def run_once(self):
         # Parse key metric files and generate key/value pairs
         results = {}
+        self.__parse_uptime_pre_startup(results)
+        self.__parse_uptime_post_startup(results)
         self.__parse_uptime_login_prompt_ready(results)
         self.__parse_disk_login_prompt_ready(results)
         self.__parse_syslog_for_firmware_time(results)
@@ -66,5 +80,6 @@ class platform_BootPerf(test.test):
             results['seconds_power_on_to_login'] = (
                 results['seconds_firmware_boot'] +
                 results['seconds_kernel_to_login'])
+
 
         self.write_perf_keyval(results)
