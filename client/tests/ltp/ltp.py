@@ -41,7 +41,7 @@ class ltp(test.test):
 
         utils.system('cp ../scan.c pan/')   # saves having lex installed
         utils.system('make autotools')
-        utils.system('./configure --prefix=%s' % ltpbin_dir)
+        utils.configure('--prefix=%s' % ltpbin_dir)
         utils.system('make -j %d all' % utils.count_cpus())
         utils.system('yes n | make SKIP_IDCHECK=1 install')
 

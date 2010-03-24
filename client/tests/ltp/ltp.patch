@@ -10,3 +10,14 @@ diff -urN ltp-full-20091231_vanilla/runtest/syscalls ltp-full-20091231/runtest/s
  
  wait02 wait02
  
+--- ltp-full-20091231_vanilla/testcases/kernel/syscalls/epoll/epoll-ltp.c	2010-03-22 17:25:18.000000000 -0700
++++ ltp-full-20091231/testcases/kernel/syscalls/epoll/epoll-ltp.c	2010-03-22 17:27:06.000000000 -0700
+@@ -450,7 +450,7 @@
+ 			ev_ptr = &event;
+ 			break;
+ 		case 1:	/* Pass unaligned struct */
+-			unaligned_event_ptr->data.u64 = 0;
++			memset(&unaligned_event_ptr->data.u64, 0, sizeof(unaligned_event_ptr->data.u64));
+ 			ev_ptr = unaligned_event_ptr;
+ 			break;
+ 		case 2:
