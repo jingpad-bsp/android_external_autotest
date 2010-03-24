@@ -2,25 +2,6 @@ import glob, logging, os, re
 from autotest_lib.client.common_lib import error, utils
 
 
-battery_fields = {
-    'charge_full':          ['charge_full', float],
-    'charge_full_design':   ['charge_full_design', float],
-    'charge_now':           ['charge_now', float],
-    'current_now':          ['current_now', float],
-    'voltage_min_design':   ['voltage_min_design', float],
-    'voltage_now':          ['voltage_now', float],
-    'energy':               ['', ''],
-    'energy_full':          ['', ''],
-    'energy_full_design':   ['', ''],
-    'energy_rate':          ['', ''],
-    'remaining_time':       ['', '']
-    }
-
-linepower_fields = {
-    'is_online':             ['online', int]
-    }
-
-
 class DevStat(object):
     """
     Device power status. This class implements generic status initialization
@@ -78,8 +59,23 @@ class BatteryStat(DevStat):
     float voltage_now:        Voltage now [V]
     """
 
+    battery_fields = {
+        'charge_full':          ['charge_full', float],
+        'charge_full_design':   ['charge_full_design', float],
+        'charge_now':           ['charge_now', float],
+        'current_now':          ['current_now', float],
+        'voltage_min_design':   ['voltage_min_design', float],
+        'voltage_now':          ['voltage_now', float],
+        'energy':               ['', ''],
+        'energy_full':          ['', ''],
+        'energy_full_design':   ['', ''],
+        'energy_rate':          ['', ''],
+        'remaining_time':       ['', '']
+        }
+
+
     def __init__(self, path=None):
-        super(BatteryStat, self).__init__(battery_fields, path)
+        super(BatteryStat, self).__init__(self.battery_fields, path)
         self.update()
 
 
@@ -112,8 +108,13 @@ class LineStat(DevStat):
     bool online:              Line power online
     """
 
+    linepower_fields = {
+        'is_online':             ['online', int]
+        }
+
+
     def __init__(self, path=None):
-        super(LineStat, self).__init__(linepower_fields, path)
+        super(LineStat, self).__init__(self.linepower_fields, path)
         self.update()
 
 
@@ -163,3 +164,74 @@ def get_status():
     status = SysStat()
     status.refresh()
     return status
+
+
+class CPUFreqStats(object):
+    """
+    CPU Frequency statistics
+
+    """
+
+    def __init__(self):
+        cpufreq_stats_path = '/sys/devices/system/cpu/cpu*/cpufreq/stats/' + \
+                             'time_in_state'
+        self._file_paths = glob.glob(cpufreq_stats_path)
+        if not self._file_paths:
+            logging.debug('time_in_state file not found')
+
+        self._stats = self._read_stats()
+
+
+    def refresh(self, incremental=True):
+        """
+        This method returns the percentage time spent in each of the CPU
+        frequency levels.
+
+        @incremental: If False, stats returned are from when the system
+                      was booted up. Otherwise, stats are since the last time
+                      stats were refreshed.
+        """
+        stats = self._read_stats()
+        diff_stats = stats
+        if incremental:
+            diff_stats = self._do_diff(stats, self._stats)
+        percent_stats = self._to_percent(diff_stats)
+        self._stats = stats
+        return percent_stats
+
+
+    def _read_stats(self):
+        stats = {}
+        for path in self._file_paths:
+            data = utils.read_file(path)
+            for line in data.splitlines():
+                list = line.split()
+                freq = int(list[0])
+                time = int(list[1])
+                if freq in stats:
+                    stats[freq] += time
+                else:
+                    stats[freq] = time
+        return stats
+
+
+    def _get_total_time(self, stats):
+        total_time = 0
+        for freq in stats:
+            total_time += stats[freq]
+        return total_time
+
+
+    def _to_percent(self, stats):
+        percent_stats = {}
+        total_time = self._get_total_time(stats)
+        for freq in stats:
+            percent_stats[freq] = stats[freq] * 100.0 / total_time
+        return percent_stats
+
+
+    def _do_diff(self, stats_new, stats_old):
+        diff_stats = {}
+        for freq in stats_new:
+            diff_stats[freq] = stats_new[freq] -  stats_old[freq]
+        return diff_stats
