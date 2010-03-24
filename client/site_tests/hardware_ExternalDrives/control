@@ -7,7 +7,7 @@ DOC = """
 External storage test suite.
 
 Tests external storage (USB flash drive / card reader with SD-card inserted)
-performance using servel benchmark tools.
+performance using several benchmark tools.
 """
 NAME = 'STORAGE_BENCHMARK'
 TEST_CLASS = "hardware"
@@ -18,7 +18,7 @@ VERSION = '1'
 import os, re
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, site_ui
 
 
 def find_root_dev():
@@ -32,16 +32,31 @@ def find_root_dev():
 def find_all_storage_dev():
     lssys = utils.run('ls -d /sys/block/sd*')
     devices = lssys.stdout.rsplit('\n')
-    new_devices = [os.path.basename(d.rstrip()) for d in devices]
+    new_devices = [os.path.basename(d.rstrip()) for d in devices if d]
     return new_devices
 
 
-# Find all block devices in the system. We want to test all external devices.
-devices = find_all_storage_dev()
-devices.remove(find_root_dev())
+num_retry = 3
+dialog = site_ui.Dialog(question=("Please insert a USB flash drive and "
+    "a SD-card. Then press the RETRY button."), choices=['RETRY'])
 
-# For each device, run the whole test suite.
-for device in devices:
-    devpath = '/dev/' + device
-    if os.path.exists(devpath):
-        job.run_test('hardware_StorageFio', dev=devpath, tag=device)
+
+while num_retry:
+    # Find all block devices in the system.
+    devices = find_all_storage_dev()
+    devices.remove(find_root_dev())
+
+    if len(devices) >= 2:
+        # For each device, run the whole test suite.
+        for device in devices:
+            devpath = '/dev/' + device
+            if os.path.exists(devpath):
+                job.run_test('hardware_StorageFio', dev=devpath, tag=device)
+        break
+    else:
+        result = dialog.get_result()
+        num_retry -= 1;
+
+else:
+    raise error.TestError('Unable to find a USB flash drive and a SD-card')
+
