@@ -1,0 +1,13 @@
+NAME = 'tsl2563_Light_Sensor'
+AUTHOR = 'Chromium OS Authors'
+TIME = 'SHORT'
+TEST_CLASS = 'Hardware'
+TEST_CATEGORY = 'Functional'
+TEST_TYPE = 'Client'
+DOC = """
+tsl2563tst is a user space program that tests the interface provided
+by the tsl2563 kernel module for controlling the Taos TSL2560/1/2/3
+light-to-digital converters (ie, light sensor chips).
+"""
+
+job.run_test('hardware_tsl2563')
