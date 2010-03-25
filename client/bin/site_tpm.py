@@ -10,6 +10,13 @@ TPM_TSS_VERSION = "1.2"
 TPM_OWNER_SECRET = "owner123"
 TPM_SRK_SECRET = "srk123"
 
+def build_trousers_tests(configdir, srcdir, category):
+        if os.path.exists(srcdir) == False:
+            os.makedirs(srcdir, mode=0755)
+        os.chdir(srcdir)
+        os.putenv('TPM_CATEGORY', category)
+        utils.system('make -f %s/site_tpm.makefile clean all' % configdir)
+
 def run_trousers_tests(bindir):
         # Special return codes from trousers tests.
         TEST_RETURN_SUCCESS = 0

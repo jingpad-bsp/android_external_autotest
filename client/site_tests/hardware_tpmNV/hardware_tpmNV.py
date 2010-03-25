@@ -14,8 +14,7 @@ class hardware_tpmNV(test.test):
     preserve_srcdir = True
 
     def setup(self):
-        os.chdir(self.srcdir)
-        utils.system('make clean all')
+        site_tpm.build_trousers_tests(self.job.configdir, self.srcdir, 'nv')
 
     def run_once(self):
         site_tpm.run_trousers_tests(self.bindir)
