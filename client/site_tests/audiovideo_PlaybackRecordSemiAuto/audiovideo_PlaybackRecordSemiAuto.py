@@ -647,7 +647,7 @@ class audiovideo_PlaybackRecordSemiAuto(test.test):
         if device_val != 'None':
           device_num =  int(device_val)
         if port_val != 'None':
-          port_num =  int(device_val)
+          port_num =  int(port_val)
 
         device = devices['info'][device_num]
         port = None
