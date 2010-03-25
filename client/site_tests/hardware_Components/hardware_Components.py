@@ -89,10 +89,13 @@ class hardware_Components(test.test):
 
 
     def get_part_id_wireless(self):
-        cmd = ('lspci | grep "Network controller:" | head -n 1 '
-               '| sed s/.\*Network\ controller://')
-        part_id = utils.system_output(cmd).strip()
-        return part_id
+        """
+          Returns a comma delimited string where the first section
+          is the vendor id and the second section is the device id.
+        """
+        part_id = utils.read_file("/sys/class/net/wlan0/device/device")
+        vendor_id = utils.read_file("/sys/class/net/wlan0/device/vendor")
+        return "%s:%s" % (vendor_id, part_id)
 
 
     def get_vendor_id_bluetooth(self):
