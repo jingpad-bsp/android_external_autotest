@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, re, shutil, time
+import os, re, shutil, sys, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, site_ui
@@ -10,82 +10,31 @@ from autotest_lib.client.common_lib import error, site_ui
 WARMUP_TIME = 60
 SLEEP_DURATION = 260
 
-def get_pids(program_name):
-    """
-    Collect a list of pids for all the instances of a program.
-
-    @param program_name the name of the program
-    @return list of pids
-    """
-    # pgrep is not appropriate here due to its truncation.
-    return utils.system_output("ps -ef | grep \'%s\' | grep -v grep | \
-                                awk '{print $2}'" % program_name).split("\n")
-
-
-def get_number_of_logical_cpu():
-    """
-    From /proc/stat/.
-
-    @return number of logic cpu
-    """
-    ret = utils.system_output("cat /proc/stat | grep ^cpu[0-9+] | wc -l")
-    return int(ret)
-
-
-def get_utime_stime(pids):
-    """
-    Snapshot the sum of utime and the sum of stime for a list of processes.
-
-    @param pids a list of pid
-    @return [sum_of_utime, sum_of_stime]
-    """
-    timelist = [0, 0]
-    for p in pids:
-        statFile = file("/proc/%s/stat" % p, "r")
-        T = statFile.readline().split(" ")[13:15]
-        statFile.close()
-        for i in range(len(timelist)):
-            timelist[i] = timelist[i] + int(T[i])
-    return timelist
-
-
-def get_cpu_usage(duration, time):
-    """
-    Calculate cpu usage based on duration and time on cpu.
-
-    @param duration
-    @param time on cpu
-    @return cpu usage
-    """
-    return float(time) / float(duration * get_number_of_logical_cpu())
-
-
 class realtimecomm_GTalkPlayground(test.test):
     version = 1
     playground = '/home/chronos/playground'
+    dep = 'realtimecomm_playground'
 
-    # The tarball is created from GTalk Playground.
-    # https://sites.google.com/a/google.com/wavelet/Home/video-playground
-    def setup(self, tarball='GTalkPlayground.tar.gz'):
-        if os.path.exists(self.playground):
-            utils.system('rm -rf %s' % self.playground)
-        tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
-        utils.extract_tarball_to_dir(tarball, self.srcdir)
+    def setup(self):
+        self.job.setup_dep(['realtimecomm_playground'])
 
-
-    def run_cleanup(self):
+    def run_cleanup(self, testdone=False):
         utils.run('pkill chrome', ignore_status=True)
         time.sleep(10)
         utils.run('pkill GoogleTalkPlugin', ignore_status=True)
         time.sleep(10)
         utils.run('rm -f /tmp/tmp.log', ignore_status=True)
-        utils.run('rm -rf %s' % self.playground)
+        if testdone:
+            utils.run('rm -rf %s' % self.playground)
         # Delete previous browser state if any
         shutil.rmtree('/home/chronos/.config/chromium', ignore_errors=True)
+        shutil.rmtree('/home/chronos/.config/google-chrome', ignore_errors=True)
 
 
     def run_setup(self):
-        utils.run('cp -r %s %s' % (self.srcdir, self.playground))
+        if os.path.exists(self.playground):
+            shutil.rmtree(self.playground)
+        shutil.copytree(os.path.join(self.dep_dir, 'src'), self.playground)
         utils.run('chown chronos %s -R' % self.playground)
         src_opt = os.path.join(self.bindir, 'options')
         des_path= '/home/chronos/.Google/'
@@ -129,7 +78,7 @@ class realtimecomm_GTalkPlayground(test.test):
         # We run for 5 mins, and should get around (5 * 60/10) * 2 = 60
         # framerate reports for 2 streams.
         # Ignore the first and last framerate since they are not accurate.
-        l = re.findall(r"Decoded framerate \((.*)\): (\d+\.?\d*) fps", log)
+        l = re.findall(r"Rendered framerate \((.*)\): (\d+\.?\d*) fps", log)
         if len(l) < 57:
             raise error.TestFail('Error in Video duration!')
         for i in range(1, len(l) - 1):
@@ -145,9 +94,16 @@ class realtimecomm_GTalkPlayground(test.test):
            fps.insert(0, d[k] * 2 / (len(l) - 2))
         self.performance_results['fps_gtalk_up'] = max(fps[0], fps[1])
         self.performance_results['fps_gtalk_down'] = min(fps[0], fps[1])
+        # Very low framerate means something wrong. Video hang or crash.
+        if (min(fps[0], fps[1]) < 5.0):
+            raise error.TestFail('Error in Video framerate.')
 
 
     def run_once(self):
+        self.dep_dir = os.path.join(self.autodir, 'deps', self.dep)
+        sys.path.append(self.dep_dir)
+        import pgutil
+
         self.performance_results = {}
         self.run_cleanup()
         self.run_setup()
@@ -169,26 +125,26 @@ class realtimecomm_GTalkPlayground(test.test):
 
         # Collect ctime,stime for GoogleTalkPlugin
         time.sleep(WARMUP_TIME)
-        gtalk_s = get_utime_stime(get_pids('GoogleTalkPlugin'))
-        chrome_s = get_utime_stime(get_pids('chrome/chrome'))
+        gtalk_s = pgutil.get_utime_stime(pgutil.get_pids('GoogleTalkPlugin'))
+        chrome_s = pgutil.get_utime_stime(pgutil.get_pids('chrome/chrome'))
         time.sleep(SLEEP_DURATION)
-        gtalk_e = get_utime_stime(get_pids('GoogleTalkPlugin'))
-        chrome_e = get_utime_stime(get_pids('chrome/chrome'))
+        gtalk_e = pgutil.get_utime_stime(pgutil.get_pids('GoogleTalkPlugin'))
+        chrome_e = pgutil.get_utime_stime(pgutil.get_pids('chrome/chrome'))
 
         self.performance_results['ctime_gtalk'] = \
-            get_cpu_usage(SLEEP_DURATION, gtalk_e[0] - gtalk_s[0])
+            pgutil.get_cpu_usage(SLEEP_DURATION, gtalk_e[0] - gtalk_s[0])
         self.performance_results['stime_gtalk'] = \
-            get_cpu_usage(SLEEP_DURATION, gtalk_e[1] - gtalk_s[1])
+            pgutil.get_cpu_usage(SLEEP_DURATION, gtalk_e[1] - gtalk_s[1])
         self.performance_results['ctime_chrome'] = \
-            get_cpu_usage(SLEEP_DURATION, chrome_e[0] - chrome_s[0])
+            pgutil.get_cpu_usage(SLEEP_DURATION, chrome_e[0] - chrome_s[0])
         self.performance_results['stime_chrome'] = \
-            get_cpu_usage(SLEEP_DURATION, chrome_e[1] - chrome_s[1])
+            pgutil.get_cpu_usage(SLEEP_DURATION, chrome_e[1] - chrome_s[1])
 
         # Verify log
         try:
             self.run_verification()
         finally:
-            self.run_cleanup()
+            self.run_cleanup(True)
 
         # Report perf
         self.write_perf_keyval(self.performance_results)
