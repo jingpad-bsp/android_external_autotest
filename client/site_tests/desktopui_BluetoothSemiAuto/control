@@ -1,0 +1,19 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "BluetoothSemiAuto"
+TIME = "SHORT"
+TEST_CATEGORY = "DesktopUI"
+TEST_CLASS = "desktopui"
+TEST_TYPE = "client"
+
+DOC = """
+This is a Chrome-based semi-automated test that checks the basic functionality
+of the Bluetooth adapter and software stack. Before running the test, switch
+all Bluetooth devices (mouse, keyboard, headset) into pairing mode, or follow
+the instructions displayed on the Device under Test.
+"""
+
+job.run_test('desktopui_BluetoothSemiAuto')
