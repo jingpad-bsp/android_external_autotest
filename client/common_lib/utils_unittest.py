@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-import os, unittest, StringIO, socket, urllib2, shutil, subprocess
+import os, shutil, signal, socket, StringIO, subprocess, sys, time, unittest
+import urllib2
 
 import common
 from autotest_lib.client.common_lib import utils, autotemp
@@ -636,6 +637,7 @@ class test_run(unittest.TestCase):
         self.god = mock.mock_god()
         self.god.stub_function(utils.logging, 'warn')
         self.god.stub_function(utils.logging, 'debug')
+        self.god.stub_function(utils.logging, 'error')
 
 
     def tearDown(self):
@@ -672,8 +674,8 @@ class test_run(unittest.TestCase):
 
 
     def test_timeout(self):
-        # we expect a logging.warn() message, don't care about the contents
-        utils.logging.warn.expect_any_call()
+        # we expect a logging.error() message, don't care about the contents
+        utils.logging.error.expect_any_call()
         try:
             utils.run('echo -n output && sleep 10', timeout=1, verbose=False)
         except utils.error.CmdError, err:
@@ -708,6 +710,60 @@ class test_run(unittest.TestCase):
     def test_safe_args_given_string(self):
         cmd = 'echo "hello \\"world" "again"'
         self.assertRaises(TypeError, utils.run, 'echo', args='hello')
+
+
+
+class test_bgjob(unittest.TestCase):
+    """
+    Test the BgJob class.
+    """
+
+    def setUp(self):
+        self.god = mock.mock_god()
+        self.god.stub_function(utils.logging, 'error')
+
+
+    def test_process_alive_at_shutdown(self):
+        # Must be large enough that creating and killing three jobs
+        # calls never take longer than sleep_time
+        sleep_time = 30
+        command = "/bin/sleep %d" % sleep_time
+
+        start = time.time()
+        sleeper = utils.BgJob(command, expect_alive=True)
+        utils.join_bg_jobs([sleeper], timeout=0)
+        self.assertEqual(-signal.SIGTERM, sleeper.result.exit_status)
+
+
+        utils.logging.error.expect_any_call()
+        sleeper = utils.BgJob(command, expect_alive=False)
+        self.assertRaises(utils.error.CmdError,
+                          utils.join_bg_jobs, [sleeper], timeout=0)
+
+        self.assertEqual(-signal.SIGTERM, sleeper.result.exit_status)
+
+        sleeper = utils.BgJob(command, expect_alive=None)
+        utils.join_bg_jobs([sleeper], timeout=0)
+        self.assertEqual(-signal.SIGTERM, sleeper.result.exit_status)
+
+        delta_t = time.time() - start
+        self.assert_(delta_t < sleep_time)
+
+
+    def test_process_dead_at_shutdown(self):
+        exiter = utils.BgJob("exit 3", expect_alive=True)
+        utils.logging.error.expect_any_call()
+        self.assertRaises(utils.error.CmdError,
+                          utils.join_bg_jobs, [exiter], timeout=1)
+
+        exiter = utils.BgJob("exit 3", expect_alive=False)
+        utils.join_bg_jobs([exiter], timeout=1)
+        self.assertEqual(3, exiter.result.exit_status)
+
+
+        exiter = utils.BgJob("exit 3", expect_alive=None)
+        utils.join_bg_jobs([exiter], timeout=1)
+        self.assertEqual(3, exiter.result.exit_status)
 
 
 if __name__ == "__main__":
