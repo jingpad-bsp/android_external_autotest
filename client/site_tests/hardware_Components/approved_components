@@ -14,6 +14,7 @@
     'part_id_vga': ['*'],
     'part_id_wireless': ['*'],
     'vendor_id_bluetooth': ['*'],
+    'vendor_id_cardreader': ['*'],
     'vendor_id_touchpad': ['*'],
     'vendor_id_webcam': ['*'],
 }
