@@ -8,6 +8,7 @@ BUILD_TEST_DIR = vboot_reference
 TEST_BINS = \
 	common.sh \
 	firmware_image_tests \
+	firmware_rollback_tests \
 	firmware_verify_benchmark \
 	gen_test_cases.sh \
 	kernel_image_tests \

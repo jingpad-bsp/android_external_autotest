@@ -16,4 +16,7 @@ DOC = """
   from the gclient root.
 """
 
-job.run_test('firmware_VbootCrypto')
+job.run_test('firmware_VbootCrypto', test_type='crypto', tag='crypto')
+job.run_test('firmware_VbootCrypto', test_type='verification', tag='image')
+job.run_test('firmware_VbootCrypto', test_type='benchmark', tag='benchmark')
+job.run_test('firmware_VbootCrypto', test_type='rollback', tag='rollback')

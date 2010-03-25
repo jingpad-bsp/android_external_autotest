@@ -4,7 +4,7 @@
 
 import os
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import re, test, utils
 from autotest_lib.client.common_lib import error
 
 class firmware_VbootCrypto(test.test):
@@ -91,9 +91,9 @@ class firmware_VbootCrypto(test.test):
 
     def __verify_image_benchmark(self):
         firmware_benchmark_cmd = "cd %s && ./firmware_verify_benchmark" % \
-                                 os.path.join(self.srcdir, "tests");
+                                 os.path.join(self.srcdir, "tests")
         kernel_benchmark_cmd = "cd %s && ./kernel_verify_benchmark" % \
-                                 os.path.join(self.srcdir, "tests");
+                                 os.path.join(self.srcdir, "tests")
         self.results = utils.system_output(firmware_benchmark_cmd,
                                            retain_output=True)
         self.__output_result_keyvals(self.results)
@@ -102,19 +102,38 @@ class firmware_VbootCrypto(test.test):
         self.__output_result_keyvals(self.results)
 
 
-    def run_once(self):
-        self.keyvals = {}
+    def __firmware_rollback_tests(self):
+        firmware_rollback_test_cmd = "cd %s && ./firmware_rollback_tests" % \
+                                     os.path.join(self.srcdir, "tests")
+        return_code = utils.system(firmware_rollback_test_cmd,
+                                   ignore_status=True)
+        if return_code == 255:
+            return False
+        if return_code == 1:
+            raise error.TestError("Firmware Rollback Test Error")
+        return True
+
+
+    def run_once(self, test_type='crypto'):
         self.__generate_test_cases()
-        success = self.__sha_test()
-        if not success:
-            raise error.TestFail("SHA Test Failed")
-        success = self.__rsa_test()
-        if not success:
-            raise error.TestFail("RSA Test Failed")
-        success = self.__image_verification_test()
-        if not success:
-            raise error.TestFail("Image Verification Test Failed")
-        self.__sha_benchmark()
-        self.__rsa_benchmark()
-        self.__verify_image_benchmark()
-        self.write_perf_keyval(self.keyvals)
+        if test_type == 'crypto':
+            success = self.__sha_test()
+            if not success:
+                raise error.TestFail("SHA Test Failed")
+            success = self.__rsa_test()
+            if not success:
+                raise error.TestFail("RSA Test Failed")
+        if test_type == 'verification':
+            success = self.__image_verification_test()
+            if not success:
+                raise error.TestFail("Image Verification Test Failed")
+        if test_type == 'benchmark':
+            self.keyvals = {}
+            self.__sha_benchmark()
+            self.__rsa_benchmark()
+            self.__verify_image_benchmark()
+            self.write_perf_keyval(self.keyvals)
+        if test_type == 'rollback':
+            success = self.__firmware_rollback_tests()
+            if not success:
+                raise error.TestFail("Firmware Rollback Test Failed")
