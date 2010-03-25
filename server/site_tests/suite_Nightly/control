@@ -27,6 +27,8 @@ client_at = autotest.Autotest(client)
 # All client tests whose default parameters are adequate
 TESTS = [
   'gl_Bench',
+  'realtimecomm_GTalkAudioBench',
+  'realtimecomm_GTalkunittest',
 ]
 
 for test in TESTS:
