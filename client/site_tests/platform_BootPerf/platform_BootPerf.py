@@ -4,8 +4,6 @@
 
 import logging
 import re
-import subprocess
-import time
 import utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -14,22 +12,10 @@ class platform_BootPerf(test.test):
     version = 1
 
 
-    def __parse_uptime_pre_startup(self, results):
-        data = file('/tmp/uptime-pre-startup').read()
+    def __parse_uptime(self, filename):
+        data = file(filename).read()
         vals = re.split(r' +', data.strip())
-        results['seconds_kernel_to_startup'] = float(vals[0])
-
-
-    def __parse_uptime_post_startup(self, results):
-        data = file('/tmp/uptime-post-startup').read()
-        vals = re.split(r' +', data.strip())
-        results['seconds_kernel_to_startup_done'] = float(vals[0])
-
-
-    def __parse_uptime_login_prompt_ready(self, results):
-        data = file('/tmp/uptime-login-prompt-ready').read()
-        vals = re.split(r' +', data.strip())
-        results['seconds_kernel_to_login'] = float(vals[0])
+        return float(vals[0])
 
 
     def __parse_disk_login_prompt_ready(self, results):
@@ -69,9 +55,16 @@ class platform_BootPerf(test.test):
     def run_once(self):
         # Parse key metric files and generate key/value pairs
         results = {}
-        self.__parse_uptime_pre_startup(results)
-        self.__parse_uptime_post_startup(results)
-        self.__parse_uptime_login_prompt_ready(results)
+
+        uptime_files = [
+            ('seconds_kernel_to_startup', '/tmp/uptime-pre-startup'),
+            ('seconds_kernel_to_startup_done', '/tmp/uptime-post-startup'),
+            ('seconds_kernel_to_x_started', '/tmp/uptime-x-started'),
+            ('seconds_kernel_to_login', '/tmp/uptime-login-prompt-ready')]
+
+        for resultname, filename in uptime_files:
+            results[resultname] = self.__parse_uptime(filename)
+
         self.__parse_disk_login_prompt_ready(results)
         self.__parse_syslog_for_firmware_time(results)
 
@@ -80,6 +73,5 @@ class platform_BootPerf(test.test):
             results['seconds_power_on_to_login'] = (
                 results['seconds_firmware_boot'] +
                 results['seconds_kernel_to_login'])
-
 
         self.write_perf_keyval(results)
