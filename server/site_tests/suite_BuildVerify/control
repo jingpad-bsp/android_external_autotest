@@ -45,6 +45,7 @@ TESTS = [
   'network_WiFiCaps',
   'platform_AccurateTime',
   'platform_DaemonsRespawn',
+  'platform_DiskIterate',
   'platform_FilePerms',
   'platform_KernelVersion',
   'platform_NoOpenFilesAtShutdown',
