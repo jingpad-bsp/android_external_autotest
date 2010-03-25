@@ -20,7 +20,7 @@ def logged_in():
     return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)
 
 
-def attempt_login(test, script_file, timeout = 10):
+def attempt_login(test, script_file, timeout=10):
     dep = 'autox'
     dep_dir = os.path.join(test.autodir, 'deps', dep)
     test.job.install_pkg(dep, 'dep', dep_dir)
@@ -44,9 +44,9 @@ def attempt_login(test, script_file, timeout = 10):
     return True
 
 
-def attempt_logout(timeout = 10):
+def attempt_logout(timeout=10):
     # Gracefully exiting chrome causes the user's session to end.
-    utils.system('pkill -TERM ^%s$' % chromeos_constants.BROWSER)
+    utils.system('pkill -TERM -o ^%s$' % chromeos_constants.BROWSER)
     start_time = time.time()
     while time.time() - start_time < timeout:
         if not logged_in():
@@ -57,7 +57,7 @@ def attempt_logout(timeout = 10):
     return True
 
 
-def wait_for_browser(timeout = 10):
+def wait_for_browser(timeout=10):
     # Wait until the login manager is back up before trying to use it.
     # I don't use utils.system here because I don't want to fail
     # if pgrep returns non-zero, I just want to wait and try again.
@@ -71,7 +71,7 @@ def wait_for_browser(timeout = 10):
     return True
 
 
-def wait_for_screensaver(timeout = 10, raise_error = True):
+def wait_for_screensaver(timeout=10, raise_error=True):
     # Wait until the screensaver starts
     start_time = time.time()
     while time.time() - start_time < timeout:

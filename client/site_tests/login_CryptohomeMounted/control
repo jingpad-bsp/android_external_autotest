@@ -15,8 +15,7 @@ This test checks that, after logging in successfully, a cryptohome was mounted.
 
 job.run_test('login_CryptohomeMounted', tag='success')
 
-# TODO(cmasone): enable this when we start testing newer versions of the OS.
-# job.run_test('login_CryptohomeMounted',
-#              script='backdoor_creds.json',
-#              is_control=True,
-#              tag='control')
+job.run_test('login_CryptohomeMounted',
+             script='backdoor_creds.json',
+             is_control=True,
+             tag='control')
