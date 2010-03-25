@@ -14,10 +14,10 @@ class iperf(test.test):
         self.job.require_gcc()
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
-        os.chdir(self.srcdir)
 
         self.job.setup_dep(['sysstat'])
 
+        os.chdir(self.srcdir)
         utils.system('./configure')
         utils.system('make')
         utils.system('sync')
