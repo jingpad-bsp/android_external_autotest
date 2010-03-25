@@ -1,4 +1,5 @@
-import glob, logging, os, re
+import glob, logging, os, re, time
+from autotest_lib.client.bin import utils as bin_utils
 from autotest_lib.client.common_lib import error, utils
 
 
@@ -234,6 +235,91 @@ class CPUFreqStats(object):
         diff_stats = {}
         for freq in stats_new:
             diff_stats[freq] = stats_new[freq] -  stats_old[freq]
+        return diff_stats
+
+
+class CPUIdleStats(object):
+    """
+    CPU Idle statistics
+    """
+    # TODO (snanda): Handle changes in number of c-states due to events such
+    # as ac <-> battery transitions.
+    # TODO (snanda): Handle non-S0 states. Time spent in suspend states is
+    # currently not factored out.
+
+    def __init__(self):
+        self._num_cpus = bin_utils.count_cpus()
+        self._time = time.time()
+        self._stats = self._read_stats()
+
+
+    def refresh(self):
+        """
+        This method returns the percentage time spent in each of the CPU
+        idle states. The stats returned are from whichever is the later of:
+        a) time this class was instantiated, or
+        b) time when refresh was last called
+        """
+        time_now = time.time()
+        stats = self._read_stats()
+
+        diff_stats = self._do_diff(stats, self._stats)
+        diff_time = time_now - self._time
+
+        percent_stats = self._to_percent(diff_stats, diff_time)
+
+        self._time = time_now
+        self._stats = stats
+        return percent_stats
+
+
+    def _read_stats(self):
+        cpuidle_stats = {}
+        cpuidle_path = '/sys/devices/system/cpu/cpu*/cpuidle'
+        cpus = glob.glob(cpuidle_path)
+
+        for cpu in cpus:
+            state_path = os.path.join(cpu, 'state*')
+            states = glob.glob(state_path)
+
+            for state in states:
+                latency = int(utils.read_file(os.path.join(state, 'latency')))
+                if not latency:
+                    # C0 state. Skip it since the stats aren't right for it.
+                    continue
+
+                name = utils.read_file(os.path.join(state, 'name')).rstrip('\n')
+                time = int(utils.read_file(os.path.join(state, 'time')))
+                if name in cpuidle_stats:
+                    cpuidle_stats[name] += time
+                else:
+                    cpuidle_stats[name] = time
+
+        return cpuidle_stats
+
+
+    def _to_percent(self, stats, test_time):
+        # convert time from sec to us.
+        test_time *= 1000 * 1000
+        # scale time by the number of CPUs in the system
+        test_time *= self._num_cpus
+
+        percent_stats = {}
+        non_c0_time = 0
+        for state in stats:
+            percent_stats[state] = stats[state] * 100.0 / test_time
+            non_c0_time += stats[state]
+
+        c0_time = test_time - non_c0_time
+        percent_stats['C0'] = c0_time * 100.0 / test_time
+
+        return percent_stats
+
+
+    def _do_diff(self, stats_new, stats_old):
+        diff_stats = {}
+        for state in stats_new:
+            diff_stats[state] = stats_new[state] -  stats_old[state]
         return diff_stats
 
 
