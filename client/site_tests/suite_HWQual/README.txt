@@ -144,6 +144,14 @@ Automated and Semi-Automated Test Runs
                   -c client/site_tests/suite_HWQual/control.suspend_resume
 
 
+* If the DUT has a Bluetooth adapter, run the Bluetooth semi-automated
+  tests by following the instructions specified in the control file
+  (control.bluetooth) and then executing:
+
+  $ ./server/autoserv -r results.bluetooth -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.bluetooth
+
+
 * Run the device on AC. Plug a power draw USB dongle in each USB port.
   Run the max power draw test:
 
