@@ -78,6 +78,9 @@ job.run_test('network_DisableInterface',
              iface_name='hci0', tag='hci0')  # Bluetooth
 job.run_test('network_WiFiCaps')
 
+# Firmware Verified Boot Crypto Performance.
+job.run_test('firmware_VbootCrypto')
+
 # Extra Requirements
 job.run_test('power_CPUFreq')
 job.run_test('power_CPUIdle')
