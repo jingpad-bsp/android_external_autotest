@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time, utils
+import logging, os, time
 from autotest_lib.client.bin import site_login, test
-from autotest_lib.client.common_lib import error, site_ui
+from autotest_lib.client.common_lib import error, site_ui, utils
 
 def wait_for_ibus_daemon_or_die(timeout=10):
     # Wait until ibus-daemon starts. ibus-daemon starts after a user
@@ -27,6 +27,28 @@ class desktopui_IBusTest(test.test):
         self.job.setup_dep(['ibusclient'])
 
 
+    def run_ibusclient(self, options):
+        cmd = site_ui.xcommand_as('%s %s' % (self.exefile, options), 'chronos')
+        return utils.system_output(cmd, retain_output=True)
+
+
+    def test_reachable(self):
+        out = self.run_ibusclient('check_reachable')
+        if not 'YES' in out:
+            raise error.TestFail('ibus-daemon is not reachable')
+
+
+    def test_supported_engines(self):
+        out = self.run_ibusclient('list_engines')
+        engine_names = out.splitlines()
+        # We expect these engines to exist.
+        expected_engine_names = ['chewing', 'hangul', 'pinyin', 'm17n:ar:kbd']
+        for expected_engine_name in expected_engine_names:
+            if not expected_engine_name in engine_names:
+                raise error.TestFail('Engine not found: ' +
+                                     expected_engine_name)
+
+
     def run_once(self):
         logged_in = site_login.logged_in()
         if not logged_in:
@@ -38,9 +60,10 @@ class desktopui_IBusTest(test.test):
             dep_dir = os.path.join(self.autodir, 'deps', dep)
             self.job.install_pkg(dep, 'dep', dep_dir)
 
-            exefile = os.path.join(self.autodir, 'deps/ibusclient/ibusclient')
-            cmd = site_ui.xcommand_as(exefile, 'chronos')
-            utils.system_output(cmd, retain_output=True)
+            self.exefile = os.path.join(self.autodir,
+                                        'deps/ibusclient/ibusclient')
+            self.test_reachable()
+            self.test_supported_engines()
         finally:
             # If we started logged out, log back out.
             if not logged_in:
