@@ -1,0 +1,20 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'HARDWARE_VIDEO_OUT'
+AUTHOR = 'The Chromium OS Authors'
+TIME='SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = "hardware"
+TEST_TYPE = 'client'
+
+DOC = """
+This test detects whether the device has HDMI/VGA out.  If so and a device is
+connected will check whether it can mirror the laptop screen on it.
+"""
+#TODO(sosa@chromium.org) - Verify that set resolution is correct
+#TODO() - HDMI audio
+
+job.run_test('hardware_VideoOut')
+

@@ -44,6 +44,7 @@ TESTS = [
   'hardware_DiskSize',
   'hardware_MemoryTotalSize',
   'hardware_SsdDetection',
+  'hardware_VideoOut'
   'login_AuthenticationTests',
   'login_PamModuleLoadTest',
   'network_WiFiCaps',

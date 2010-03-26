@@ -63,6 +63,7 @@ job.run_test('audiovideo_FFMPEG',
                           'fps_trailer_720p_mov >= 40.0',
              ])
 job.run_test('audiovideo_V4L2')
+job.run_test('hardware_VideoOut')
 
 # RealTimeComm
 job.run_test('realtimecomm_GTalkPlayground',
