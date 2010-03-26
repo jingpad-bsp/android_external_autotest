@@ -14,4 +14,12 @@ This test checks process privileges - whether processes are running as root/
 super-user, and/or whether they are running as the specified user.
 """
 
-job.run_test('platform_ProcessPrivileges', tag='X', process='X')
+test_name = 'platform_ProcessPrivileges'
+for process_name in ['X', 'chrome']:
+    job.run_test(test_name, tag=process_name, process=process_name)
+
+# Check if IBus (I18N input method) daemons are started when a user logs in.
+for process_name in ['ibus-daemon', 'ibus-x11', 'ibus-gconf',
+                     'candidate_window']:
+     job.run_test(test_name, tag=process_name, process=process_name,
+                  user='chronos', do_login=True)
