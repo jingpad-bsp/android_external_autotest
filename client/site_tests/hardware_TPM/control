@@ -14,9 +14,14 @@ DOC = """
 """
 
 test_suites = [
-    'data',       # ~16 tests: Data binding and sealing functionality
-    'delegation', # ~01 tests: Key delegation
-    'nv',         # ~33 tests: NVRAM storage and use
+    'cmk',        #   ~6 tests: Certified Migratable Key functionality
+    'context',    #  ~85 tests: Context objects
+    'data',       #  ~16 tests: Data binding and sealing functionality
+    'delegation', #   ~1 tests: Key delegation
+    'hash',       #  ~20 tests: Cryptographic hash functionality
+    'key',        #  ~24 tests: Key objects
+    'nv',         #  ~33 tests: NVRAM storage and use
+    'tpm',        # ~171 tests: Various types of low-level TPM functionality
 ]
 for suite in test_suites:
     job.run_test('hardware_TPM', suite=suite, tag=suite)
