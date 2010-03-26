@@ -12,6 +12,7 @@ class hardware_Components(test.test):
     _syslog = '/var/log/messages'
     _cids = [
         'part_id_audio_codec',
+        'part_id_bios',
         'part_id_chipset',
         'part_id_cpu',
         'part_id_ethernet',
@@ -44,6 +45,21 @@ class hardware_Components(test.test):
     def get_part_id_audio_codec(self):
         cmd = 'grep -R Codec: /proc/asound/* | head -n 1 | sed s/.\*Codec://'
         part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
+    def get_part_id_bios(self):
+        cmd = ('dmidecode | grep -A 2 "BIOS Information" | tail -2 '
+               '| sed "s/.*: //" | tr "\n" " "')
+        part_id = utils.system_output(cmd).strip()
+
+        cmd = ('dmidecode | grep "\(BIOS\|Firmware\) Revision" | sed "s/\t//" '
+               '| sed "s/Revision/Rev/"')
+        rev_num = ', '.join(utils.system_output(cmd).split('\n'))
+
+        if rev_num:
+            part_id = part_id + ' (' + rev_num + ')'
+
         return part_id
 
 

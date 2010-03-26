@@ -6,6 +6,7 @@
     # key: component ID
     # value: a list of approved component IDs ('*' indicates any)
     'part_id_audio_codec': ['*'],
+    'part_id_bios': ['*'],
     'part_id_chipset': ['*'],
     'part_id_cpu': ['*'],
     'part_id_ethernet': ['*'],
