@@ -49,6 +49,26 @@ class desktopui_IBusTest(test.test):
                                      expected_engine_name)
 
 
+    def test_config(self, type_name):
+        out = self.run_ibusclient('set_config %s' % type_name)
+        if not 'OK' in out:
+            raise error.TestFail('Failed to set %s value to '
+                                 'the ibus config service' % type_name)
+        out = self.run_ibusclient('get_config %s' % type_name)
+        if not 'OK' in out:
+            raise error.TestFail('Failed to get %s value from '
+                                 'the ibus config service' % type_name)
+        out = self.run_ibusclient('unset_config')
+        if not 'OK' in out:
+            raise error.TestFail('Failed to unset %s value from '
+                                 'the ibus config service' % type_name)
+        out = self.run_ibusclient('get_config %s' % type_name)
+        # the value no longer exists.
+        if 'OK' in out:
+            raise error.TestFail('Failed to unset %s value from '
+                                 'the ibus config service' % type_name)
+
+
     def run_once(self):
         logged_in = site_login.logged_in()
         if not logged_in:
@@ -64,6 +84,8 @@ class desktopui_IBusTest(test.test):
                                         'deps/ibusclient/ibusclient')
             self.test_reachable()
             self.test_supported_engines()
+            for type_name in ['boolean', 'int', 'double', 'string']:
+                self.test_config(type_name)
         finally:
             # If we started logged out, log back out.
             if not logged_in:
