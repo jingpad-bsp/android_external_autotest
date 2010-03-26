@@ -26,10 +26,16 @@ client_at = autotest.Autotest(client)
 
 # All client tests whose default parameters are adequate
 TESTS = [
+  'compilebench',
+  'dbench',
+  'disktest',
   'gl_Bench',
+  'hardware_StorageFio',
+  'ltp',
   'power_Idle'
   'realtimecomm_GTalkAudioBench',
   'realtimecomm_GTalkunittest',
+  'unixbench',
 ]
 
 for test in TESTS:
