@@ -10,13 +10,16 @@ TEST_CLASS = "firmware"
 TEST_TYPE = "client"
 
 DOC = """
-  Tests for correctness of crypto implementation for verified boot
-
-  The test pulls the (stand-alone) verified boot crypto implementation directly
-  from the gclient root.
+  Tests for correctness of Firmware Verified Boot Reference Implementation
+  and its components, and benchmarks for crypto and verification performance.
 """
 
-job.run_test('firmware_VbootCrypto', test_type='crypto', tag='crypto')
-job.run_test('firmware_VbootCrypto', test_type='verification', tag='image')
-job.run_test('firmware_VbootCrypto', test_type='benchmark', tag='benchmark')
-job.run_test('firmware_VbootCrypto', test_type='rollback', tag='rollback')
+test_suites = [
+    'crypto',  # RSA Signature Verification and SHA* Correctness.
+    'verification',  # Firmware and Kernel Image Verification.
+    'benchmarks',  # Crypto and Image Verification benchmarks.
+    'rollback',  # Firmware/Kernel Rollback Prevention.
+    'splicing',  # Image Splicing Attack.
+]
+for suite in test_suites:
+  job.run_test('firmware_VbootCrypto', suite=suite, tag=suite)

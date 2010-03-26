@@ -102,8 +102,10 @@ class firmware_VbootCrypto(test.test):
         self.__output_result_keyvals(self.results)
 
 
-    def __firmware_rollback_tests(self):
+    def __rollback_tests(self):
         firmware_rollback_test_cmd = "cd %s && ./firmware_rollback_tests" % \
+                                     os.path.join(self.srcdir, "tests")
+        kernel_rollback_test_cmd = "cd %s && ./kernel_rollback_tests" % \
                                      os.path.join(self.srcdir, "tests")
         return_code = utils.system(firmware_rollback_test_cmd,
                                    ignore_status=True)
@@ -111,29 +113,71 @@ class firmware_VbootCrypto(test.test):
             return False
         if return_code == 1:
             raise error.TestError("Firmware Rollback Test Error")
+
+        return_code = utils.system(kernel_rollback_test_cmd,
+                                   ignore_status=True)
+        if return_code == 255:
+            return False
+        if return_code == 1:
+            raise error.TestError("KernelRollback Test Error")
         return True
 
 
-    def run_once(self, test_type='crypto'):
+    def __splicing_tests(self):
+        firmware_splicing_test_cmd = "cd %s && ./firmware_splicing_tests" % \
+                                     os.path.join(self.srcdir, "tests")
+        kernel_splicing_test_cmd = "cd %s && ./kernel_splicing_tests" % \
+                                     os.path.join(self.srcdir, "tests")
+        return_code = utils.system(firmware_splicing_test_cmd,
+                                   ignore_status=True)
+        if return_code == 255:
+            return False
+        if return_code == 1:
+            raise error.TestError("Firmware Splicing Test Error")
+
+        return_code = utils.system(kernel_splicing_test_cmd,
+                                   ignore_status=True)
+        if return_code == 255:
+            return False
+        if return_code == 1:
+            raise error.TestError("Kernel Splicing Test Error")
+        return True
+
+
+    def run_crypto(self):
+        success = self.__sha_test()
+        if not success:
+            raise error.TestFail("SHA Test Failed")
+        success = self.__rsa_test()
+        if not success:
+            raise error.TestFail("RSA Test Failed")
+
+    def run_verification(self):
+        success = self.__image_verification_test()
+        if not success:
+            raise error.TestFail("Image Verification Test Failed")
+
+
+    def run_benchmarks(self):
+        self.keyvals = {}
+        self.__sha_benchmark()
+        self.__rsa_benchmark()
+        self.__verify_image_benchmark()
+        self.write_perf_keyval(self.keyvals)
+
+
+    def run_rollback(self):
+        success = self.__rollback_tests()
+        if not success:
+            raise error.TestFail("Rollback Tests Failed")
+
+
+    def run_splicing(self):
+        success = self.__splicing_tests()
+        if not success:
+            raise error.TestFail("Splicing Tests Failed")
+
+
+    def run_once(self, suite='crypto'):
         self.__generate_test_cases()
-        if test_type == 'crypto':
-            success = self.__sha_test()
-            if not success:
-                raise error.TestFail("SHA Test Failed")
-            success = self.__rsa_test()
-            if not success:
-                raise error.TestFail("RSA Test Failed")
-        if test_type == 'verification':
-            success = self.__image_verification_test()
-            if not success:
-                raise error.TestFail("Image Verification Test Failed")
-        if test_type == 'benchmark':
-            self.keyvals = {}
-            self.__sha_benchmark()
-            self.__rsa_benchmark()
-            self.__verify_image_benchmark()
-            self.write_perf_keyval(self.keyvals)
-        if test_type == 'rollback':
-            success = self.__firmware_rollback_tests()
-            if not success:
-                raise error.TestFail("Firmware Rollback Test Failed")
+        getattr(self, 'run_' + suite)()

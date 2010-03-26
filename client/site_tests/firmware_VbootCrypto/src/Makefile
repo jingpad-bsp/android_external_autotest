@@ -9,9 +9,12 @@ TEST_BINS = \
 	common.sh \
 	firmware_image_tests \
 	firmware_rollback_tests \
+	firmware_splicing_tests \
 	firmware_verify_benchmark \
 	gen_test_cases.sh \
 	kernel_image_tests \
+	kernel_rollback_tests \
+	kernel_splicing_tests \
 	kernel_verify_benchmark \
 	rsa_padding_test \
 	rsa_verify_benchmark \
