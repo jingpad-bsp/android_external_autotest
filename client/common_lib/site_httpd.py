@@ -11,9 +11,11 @@
    http://localhost:nnnn/?status="Browser started!"
 """
 
-import cgi, logging, os, posixpath, SimpleHTTPServer, sys, threading
+import cgi, logging, os, posixpath, SimpleHTTPServer, socket, sys, threading
 import urllib, urlparse
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from OpenSSL import SSL
+from SocketServer import BaseServer
 
 
 class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -117,6 +119,9 @@ class HTTPListener(object):
     # avoid exceptions when page content is served through handlers only.
     def __init__(self, port=0, docroot='/_', wait_urls={}, url_handlers={}):
         self._server = HTTPServer(('', port), FormHandler)
+        self.config_server(self._server, docroot, wait_urls, url_handlers)
+
+    def config_server(self, server, docroot, wait_urls, url_handlers):
         # Stuff some convenient data fields into the server object.
         self._server.docroot = docroot
         self._server._wait_urls = wait_urls
@@ -154,3 +159,42 @@ class HTTPListener(object):
 
     def stop(self):
         self._server.shutdown()
+
+
+class SecureHTTPServer(HTTPServer):
+    def __init__(self, server_address, HandlerClass, cert_path, key_path):
+        BaseServer.__init__(self, server_address, HandlerClass)
+        ctx = SSL.Context(SSL.SSLv23_METHOD)
+
+        ctx.use_privatekey_file(key_path)
+        ctx.use_certificate_file(cert_path)
+        self.socket = SSL.Connection(ctx, socket.socket(self.address_family,
+                                                        self.socket_type))
+        self.server_bind()
+        self.server_activate()
+
+
+class SecureHTTPRequestHandler(FormHandler):
+    def setup(self):
+        self.connection = self.request
+        self.rfile = socket._fileobject(self.request, "rb", self.rbufsize)
+        self.wfile = socket._fileobject(self.request, "wb", self.wbufsize)
+
+
+class SecureHTTPListener(HTTPListener):
+    def __init__(self,
+                 cert_path='/etc/login_trust_root.pem',
+                 key_path='/etc/mock_server.key',
+                 port=0,
+                 docroot='/_',
+                 wait_urls={},
+                 url_handlers={}):
+        self._server = SecureHTTPServer(('', port),
+                                        SecureHTTPRequestHandler,
+                                        cert_path,
+                                        key_path)
+        self.config_server(self._server, docroot, wait_urls, url_handlers)
+
+
+    def getsockname(self):
+        return self._server.socket.getsockname()

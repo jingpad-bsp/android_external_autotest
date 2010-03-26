@@ -6,8 +6,25 @@
 
 """HTTPlistener unittest."""
 
-import logging, sys, threading, urllib
-from site_httpd import HTTPListener
+import logging, os, sys, threading, urllib
+from site_httpd import HTTPListener, SecureHTTPListener
+
+GET_TEST_PATH = '/get_test'
+
+def run_get_test(test_server, url):
+    err = 1
+    get_done = test_server.add_wait_url(GET_TEST_PATH)
+    get_resp = ''
+    try:
+        get_resp = urllib.urlopen(url).read()
+    except IOError, e:
+        pass
+    if not (get_done.is_set() and get_resp):
+        print 'FAILED'
+    else:
+        print 'PASSED'
+        err = 0
+    return err
 
 
 def test():
@@ -23,6 +40,8 @@ def test():
     t = threading.Thread(target=_Spam).start()
     params = urllib.urlencode({'test': 'passed'})
     err = 1
+
+    # TODO(seano): This test doesn't seem to pass.
     post_resp = ''
     try:
         post_resp = urllib.urlopen('http://localhost:8000/post_test',
@@ -35,18 +54,22 @@ def test():
     else:
         print 'PASSED'
         err = 0
-    get_done = test_server.add_wait_url("/get_test")
-    get_resp = ''
-    try:
-      # A simple 404 is enough proof for GET.
-      get_resp = urllib.urlopen('http://localhost:8000/get_test').read()
-    except IOError, e:
-      pass
-    if not (get_done.is_set() and get_resp):
-      print 'FAILED'
-    else:
-      print 'PASSED'
-      err = 0
+
+
+    err = run_get_test(test_server, 'http://localhost:8000' + GET_TEST_PATH)
+    test_server.stop()
+    if err != 0:
+        return err
+
+    creds_path = (os.path.dirname(os.path.realpath( __file__)) +
+                  '/site_httpd_unittest_server')
+    ssl_port=50000
+    test_server = SecureHTTPListener(port=ssl_port,
+                                     cert_path=(creds_path+'.pem'),
+                                     key_path=(creds_path+'.key'))
+    test_server.run()
+    err = run_get_test(test_server,
+                       'https://localhost:%d%s' % (ssl_port, GET_TEST_PATH))
     test_server.stop()
     return err
 
