@@ -26,7 +26,6 @@ class hardware_Components(test.test):
         'vendor_id_webcam',
     ]
 
-
     def check_component(self, comp_key, comp_id):
         self._system[comp_key] = [ comp_id ]
 
@@ -115,6 +114,28 @@ class hardware_Components(test.test):
         return "%s:%s" % (vendor_id, part_id)
 
 
+    def check_approved_3G(self):
+        """
+          Returns false iff there are no matching vendor_id:product_id pairs
+          on the USB.
+        """
+        cmd = 'sudo /usr/sbin/lsusb -d %s'
+        if not self._approved.has_key('part_id_3G'):
+            raise error.TestFail('part_id_3G missing from database')
+
+        approved_devices = self._approved['part_id_3G']
+        if '*' in approved_devices:
+            return 
+
+        for device in approved_devices:
+            try:
+                utils.system(cmd % device)
+                self._system['part_id_3G'] = [ device ]
+                return 
+            except:
+                pass
+        self._failures['part_id_3G'] = [ 'No suitable devices found' ]
+
     def get_vendor_id_bluetooth(self):
         cmd = ('hciconfig hci0 version | grep Manufacturer '
                '| sed s/.\*Manufacturer://')
@@ -181,6 +202,7 @@ class hardware_Components(test.test):
         for cid in self._cids:
             self.check_component(cid, getattr(self, 'get_' + cid)())
 
+        self.check_approved_3G()
         logging.debug('System: %s', self.pformat(self._system))
 
         outdb = os.path.join(self.resultsdir, 'system_components')
