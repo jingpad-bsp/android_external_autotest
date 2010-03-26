@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "ChromeOS Team"
+NAME = "FIRMWARE_ROM_SIZE"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "firmware"
+TEST_TYPE = "client"
+
+DOC = """
+This test checks if the system firmware size >= 2MB.
+"""
+
+job.run_test('firmware_RomSize')

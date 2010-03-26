@@ -14,6 +14,9 @@ This test suite runs automated hardware configuration checks. The purpose of
 the suite is to sanity test all hardware components in less than 5 minutes.
 """
 
+# Firmware
+job.run_test('firmware_RomSize')
+
 # RTC, system
 job.run_test('power_Resume')
 
