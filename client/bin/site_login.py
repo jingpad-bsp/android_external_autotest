@@ -63,7 +63,8 @@ def wait_for_browser(timeout=10):
     # if pgrep returns non-zero, I just want to wait and try again.
     start_time = time.time()
     while time.time() - start_time < timeout:
-        if os.system('pgrep ^%s$' % chromeos_constants.BROWSER):
+        # 0 is returned on success.
+        if os.system('pgrep ^%s$' % chromeos_constants.BROWSER) == 0:
             break;
         time.sleep(1)
     else:
