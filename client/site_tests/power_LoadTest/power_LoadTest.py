@@ -94,9 +94,18 @@ class power_LoadTest(test.test):
         self._testServer = site_httpd.HTTPListener(8001, docroot=self.bindir)
         self._testServer.run()
 
+        # initialize various interesting power related stats
+        self._usb_stats = site_power_status.USBSuspendStats()
+        self._cpufreq_stats = site_power_status.CPUFreqStats()
+        self._cpuidle_stats = site_power_status.CPUIdleStats()
+
 
     def run_once(self):
         self._reset_form_entries()
+
+        self._usb_stats.refresh()
+        self._cpufreq_stats.refresh()
+        self._cpuidle_stats.refresh()
 
         self._power_status.refresh()
         self._ah_charge_start = self._power_status.battery[0].charge_now
@@ -115,6 +124,23 @@ class power_LoadTest(test.test):
     def postprocess_iteration(self):
         keyvals = {}
 
+        # refresh power related statistics
+        usb_stats = self._usb_stats.refresh()
+        cpufreq_stats = self._cpufreq_stats.refresh()
+        cpuidle_stats = self._cpuidle_stats.refresh()
+
+        # record percent time USB devices were not in suspended state
+        keyvals['percent_usb_active'] = usb_stats
+
+        # record percent time spent in each CPU C-state
+        for state in cpuidle_stats:
+            keyvals['percent_cpuidle_%s_time' % state] = cpuidle_stats[state]
+
+        # record percent time spent at each CPU frequency
+        for freq in cpufreq_stats:
+            keyvals['percent_cpufreq_%s_time' % freq] = cpufreq_stats[freq]
+
+        # record battery stats
         keyvals['a_current_now'] = self._power_status.battery[0].current_now
         keyvals['ah_charge_full'] = self._power_status.battery[0].charge_full
         keyvals['ah_charge_full_design'] = \
@@ -132,6 +158,7 @@ class power_LoadTest(test.test):
                              self._power_status.battery[0].voltage_min_design
         keyvals['v_voltage_now'] = self._power_status.battery[0].voltage_now
 
+        # record chrome power extension stats
         for e in self._form_data:
             keyvals['ext_' + e] = self._form_data[e]
 
