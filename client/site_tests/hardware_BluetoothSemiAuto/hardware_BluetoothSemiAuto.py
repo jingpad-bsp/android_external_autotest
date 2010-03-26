@@ -100,7 +100,7 @@ class hardware_BluetoothSemiAuto(test.test):
         logging.debug('Connected to input:%s.', addr)
 
 
-    def run_once(self, timeout=60):
+    def run_once(self):
         question_prepend = ''
         while True:
             question = question_prepend + _QUESTION_START
