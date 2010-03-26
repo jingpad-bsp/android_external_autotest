@@ -91,6 +91,7 @@ def wait_for_screensaver(timeout=10, raise_error=True):
 def nuke_login_manager():
     nuke_process_by_name('session_manager')
     wait_for_browser()
+    
 
 def nuke_process_by_name(name, with_prejudice=False):
     pid = int(utils.system_output('pgrep -o ^%s$' % name))
