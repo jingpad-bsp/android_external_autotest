@@ -13,7 +13,7 @@ TEST_TYPE = "client"
 MAX_STARTUP_TIME = 10.0
 MAX_SHUTDOWN_TIME = 2.0
 
-DOC = """
+doc = """
 This test collects the boot performance metrics from the last system reboot.
 
 Definitions of the results:
@@ -52,7 +52,8 @@ sectors_read_kernel_to_login:
 
 Currently, the test fails if it takes longer than %2.2f seconds
 to start up, or longer than %2.2f seconds to shut down.
-""" % (MAX_STARTUP_TIME, MAX_SHUTDOWN_TIME)
+"""
+DOC = doc % (MAX_STARTUP_TIME, MAX_SHUTDOWN_TIME)
 
 job.run_test('platform_BootPerf',
              max_startup_time = MAX_STARTUP_TIME,
