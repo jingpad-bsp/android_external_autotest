@@ -1,0 +1,22 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = "TPM_TESTS"
+AUTHOR = "The Chromium OS Authors"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "Hardware"
+TEST_TYPE = "Client"
+
+DOC = """
+    Tests various functionality of the TPM (Trusted Platform Module)
+"""
+
+test_suites = [
+    'data',       # ~16 tests: Data binding and sealing functionality
+    'delegation', # ~01 tests: Key delegation
+    'nv',         # ~33 tests: NVRAM storage and use
+]
+for suite in test_suites:
+    job.run_test('hardware_TPM', suite=suite, tag=suite)

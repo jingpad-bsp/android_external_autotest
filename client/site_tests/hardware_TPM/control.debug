@@ -1,0 +1,27 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = "TPM_TESTS"
+AUTHOR = "The Chromium OS Authors"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "Hardware"
+TEST_TYPE = "Server"
+
+DOC = """
+
+Runs a single suite from the TPM tests. For debugging purposes only.
+
+Example:
+
+TEST_TPM_SUITE="delegation" run_remote_tests.sh --board x86-generic --nocleanup --remote <ip> hardware_TPM/control.debug
+
+"""
+
+# Maybe we only want to run a single TPM test suite?
+if os.environ.has_key('TEST_TPM_SUITE'):
+    suite = os.environ.get('TEST_TPM_SUITE')
+    client = hosts.create_host(machines[0])
+    client_at = autotest.Autotest(client)
+    client_at.run_test('hardware_TPM', suite=suite, tag=suite)

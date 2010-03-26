@@ -6,15 +6,13 @@ import os
 
 from autotest_lib.client.bin import site_tpm, test, utils
 
-class hardware_tpmNV(test.test):
-    """
-    Tests for correctness of tpm nvram support.
-    """
+class hardware_TPM(test.test):
     version = 1
     preserve_srcdir = True
 
     def setup(self):
-        site_tpm.build_trousers_tests(self.job.configdir, self.srcdir, 'nv')
+        os.chdir(self.srcdir)
+        utils.system('make clean all')
 
-    def run_once(self):
-        site_tpm.run_trousers_tests(self.bindir)
+    def run_once(self, suite):
+        site_tpm.run_trousers_tests('%s/src/tests/%s' % (self.bindir, suite))
