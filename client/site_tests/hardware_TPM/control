@@ -14,14 +14,18 @@ DOC = """
 """
 
 test_suites = [
-    'cmk',        #   ~6 tests: Certified Migratable Key functionality
-    'context',    #  ~85 tests: Context objects
-    'data',       #  ~16 tests: Data binding and sealing functionality
-    'delegation', #   ~1 tests: Key delegation
-    'hash',       #  ~20 tests: Cryptographic hash functionality
-    'key',        #  ~24 tests: Key objects
-    'nv',         #  ~33 tests: NVRAM storage and use
-    'tpm',        # ~171 tests: Various types of low-level TPM functionality
+    'cmk',           #   ~6 tests: Certified Migratable Key functionality
+    'context',       #  ~85 tests: Context objects
+    'data',          #  ~16 tests: Data binding and sealing functionality
+    'delegation',    #   ~1 tests: Key delegation
+    'hash',          #  ~20 tests: Cryptographic hash functionality
+    'key',           #  ~24 tests: Key objects
+    'nv',            #  ~33 tests: NVRAM storage and use
+    'pcrcomposite',  #  ~25 tests: PCR composites
+    'policy',        #  ~13 tests: Policy objects
+    'tpm',           # ~171 tests: Various types of low-level TPM functionality
+    'transport',     # ~157 tests: Tests associated with transport sessions
+    'tspi',          #  ~66 tests: TCG Service Provider Interface
 ]
 for suite in test_suites:
     job.run_test('hardware_TPM', suite=suite, tag=suite)
