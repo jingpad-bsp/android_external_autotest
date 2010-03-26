@@ -38,6 +38,7 @@ TESTS = [
   'desktopui_ChromeFirstRender',
   'desktopui_IBusTest',
   'desktopui_ScreenSaverUnlock',
+  'desktopui_WindowManagerFocusNewWindows',
   'hardware_DiskSize',
   'hardware_MemoryTotalSize',
   'hardware_SsdDetection',

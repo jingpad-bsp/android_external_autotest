@@ -89,6 +89,16 @@ def wait_for_screensaver(timeout=10, raise_error=True):
     return True
 
 
+def wait_for_window_manager(timeout=20):
+    """Wait until the window manager is running."""
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        if os.system('pgrep ^%s$' % chromeos_constants.WINDOW_MANAGER) == 0:
+            return True
+        time.sleep(0.1)
+    return False
+
+
 def nuke_login_manager():
     nuke_process_by_name('session_manager')
     wait_for_browser()

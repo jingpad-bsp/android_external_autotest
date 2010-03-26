@@ -13,6 +13,8 @@ CRYPTOHOME_MOUNT_PT = USER_DATA_DIR+'/user'
 
 BROWSER = 'chrome'
 
+WINDOW_MANAGER = 'chromeos-wm'
+
 LOGGED_IN_MAGIC_FILE = '/var/run/state/logged-in'
 
 DISABLE_BROWSER_RESTART_MAGIC_FILE = '/tmp/disable_chrome_restart'

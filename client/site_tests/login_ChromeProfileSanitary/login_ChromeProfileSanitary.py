@@ -56,7 +56,7 @@ class login_ChromeProfileSanitary(test.test):
         if not logged_in:
             # Test account information embedded into json file.
             if not site_login.attempt_login(self, script):
-                raise error.TestERROR('Could not login')
+                raise error.TestError('Could not login')
 
         # Get Default/Cookies mtime.
         cookies_info = os.stat(chromeos_constants.LOGIN_PROFILE + '/Cookies')
