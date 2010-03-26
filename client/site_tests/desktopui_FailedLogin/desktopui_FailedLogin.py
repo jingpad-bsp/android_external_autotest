@@ -19,7 +19,7 @@ class desktopui_FailedLogin(test.test):
         if logged_in:
             if not site_login.attempt_logout():
                 raise error.TestFail('Could not terminate existing session')
-            if not site_login.wait_for_login_manager():
+            if not site_login.wait_for_browser():
                 raise error.TestFail("Login manager didn't come back")
 
         # Test account information embedded into json file.
