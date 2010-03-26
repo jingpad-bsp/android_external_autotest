@@ -1,0 +1,22 @@
+NAME = "Platform_MemCheck"
+AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+DOC = """
+Verifies that memory levels look sane.
+
+The resources being verified are:
+
+Total Memory
+Free Memory
+Swap Memory Cached
+Swap Total
+Virtual Memory Total
+
+We are assuming that we should have at least 1/2 of total memory free, that swap
+is turned off, and that virtual memory should be at least 102400 kb.
+"""
+
+job.run_test('platform_MemCheck')
