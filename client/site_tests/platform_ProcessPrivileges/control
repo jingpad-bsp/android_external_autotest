@@ -15,11 +15,17 @@ super-user, and/or whether they are running as the specified user.
 """
 
 test_name = 'platform_ProcessPrivileges'
-for process_name in ['X', 'chrome']:
-    job.run_test(test_name, tag=process_name, process=process_name)
+process_tests = [
+  {'process': 'candidate_window', 'user': 'chronos', 'do_login': True},
+  {'process': 'chrome'},
+  {'process': 'ibus-daemon', 'user': 'chronos', 'do_login': True},
+  {'process': 'ibus-gconf', 'user': 'chronos', 'do_login': True},
+  {'process': 'ibus-x11', 'user': 'chronos', 'do_login': True},
+  # TODO(yusukes): Change 'run_as_root' to False once super-user privileges for
+  # X are dropped.
+  {'process': 'X', 'run_as_root': True},
+]
 
-# Check if IBus (I18N input method) daemons are started when a user logs in.
-for process_name in ['ibus-daemon', 'ibus-x11', 'ibus-gconf',
-                     'candidate_window']:
-     job.run_test(test_name, tag=process_name, process=process_name,
-                  user='chronos', do_login=True)
+for process_test in process_tests:
+  job.run_test(test_name, tag=process_test['process'], **process_test)
+
