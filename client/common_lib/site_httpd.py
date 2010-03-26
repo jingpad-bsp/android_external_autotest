@@ -83,6 +83,7 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             head, word = os.path.split(word)
             if word in (os.curdir, os.pardir): continue
             path = os.path.join(path, word)
+        logging.debug('Translated path: %s', path)
         return path
 
 
@@ -112,7 +113,9 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
 class HTTPListener(object):
-    def __init__(self, port=0, docroot=None, wait_urls={}, url_handlers={}):
+    # Point default docroot to a non-existent directory (instead of None) to
+    # avoid exceptions when page content is served through handlers only.
+    def __init__(self, port=0, docroot='/_', wait_urls={}, url_handlers={}):
         self._server = HTTPServer(('', port), FormHandler)
         # Stuff some convenient data fields into the server object.
         self._server.docroot = docroot
