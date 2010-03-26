@@ -89,7 +89,7 @@ job.run_test('network_DisableInterface',
 job.run_test('network_WiFiCaps')
 
 # Firmware Verified Boot Crypto Performance.
-job.run_test('firmware_VbootCrypto')
+job.run_test('firmware_VbootCrypto', suite='benchmarks', tag='benchmarks')
 
 # Extra Requirements
 job.run_test('power_CPUFreq')

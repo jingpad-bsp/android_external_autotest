@@ -152,6 +152,7 @@ class firmware_VbootCrypto(test.test):
         if not success:
             raise error.TestFail("RSA Test Failed")
 
+
     def run_verification(self):
         success = self.__image_verification_test()
         if not success:
