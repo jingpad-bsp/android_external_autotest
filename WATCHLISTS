@@ -10,10 +10,9 @@
   },
   'WATCHLISTS': {
     'autotest': ['ericli@chromium.org',
-                 'kmixter@chromium.org',
-                 'petkov@chromium.org',
+                 'petkov+cc@chromium.org',
                  'seano@chromium.org',
-                 'sosa@chromium.org',
+                 'sosa+cc@chromium.org',
                  ],
   },
 }
