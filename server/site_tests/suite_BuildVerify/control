@@ -94,3 +94,19 @@ client_at.run_test('network_DisableInterface',
 client_at.run_test('network_DisableInterface',
                    iface_name='hci0', tag='hci0')
 
+# Run process tests
+test_name = 'platform_ProcessPrivileges'
+process_tests = [
+  {'process': 'candidate_window', 'user': 'chronos', 'do_login': True},
+  {'process': 'chrome'},
+  {'process': 'ibus-daemon', 'user': 'chronos', 'do_login': True},
+  {'process': 'ibus-gconf', 'user': 'chronos', 'do_login': True},
+  {'process': 'ibus-x11', 'user': 'chronos', 'do_login': True},
+  # TODO(yusukes): Change 'run_as_root' to False once super-user privileges for
+  # X are dropped.
+  {'process': 'X', 'run_as_root': True},
+]
+
+for process_test in process_tests:
+  client_at.run_test(test_name, tag=process_test['process'], **process_test)
+
