@@ -40,6 +40,7 @@ TESTS = [
   'desktopui_ScreenSaverUnlock',
   'desktopui_WindowManagerFocusNewWindows',
   'desktopui_WindowManagerHotkeys',
+  'hardware_Backlight',
   'hardware_DiskSize',
   'hardware_MemoryTotalSize',
   'hardware_SsdDetection',

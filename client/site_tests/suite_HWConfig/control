@@ -27,6 +27,9 @@ job.run_test('hardware_MemoryTotalSize')
 job.run_test('power_CPUFreq')
 job.run_test('power_CPUIdle')
 
+# Display
+job.run_test('hardware_Backlight')
+
 # SSD
 job.run_test('hardware_DiskSize')
 job.run_test('hardware_SsdDetection')
