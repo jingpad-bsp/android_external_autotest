@@ -43,7 +43,7 @@ class Agent(dbus.service.Object):
         logging.debug('Agent: Cancel')
 
 
-class desktopui_BluetoothSemiAuto(test.test):
+class hardware_BluetoothSemiAuto(test.test):
     version = 1
 
 
