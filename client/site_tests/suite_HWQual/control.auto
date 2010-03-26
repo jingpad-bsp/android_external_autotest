@@ -70,6 +70,12 @@ job.run_test('realtimecomm_GTalkPlayground',
                  'fps_gtalk_up >= 29.0',
                  'ctime_gtalk + stime_gtalk < 65',
                  'ctime_chrome + stime_chrome < 20',
+                 'ctime_pulse + stime_pulse < 5',
+             ])
+job.run_test('realtimecomm_GTalkAudioPlayground',
+             constraints=[
+                 'ctime_gtalk + stime_gtalk < 20',
+                 'ctime_pulse + stime_pulse < 5',
              ])
 
 # Communications

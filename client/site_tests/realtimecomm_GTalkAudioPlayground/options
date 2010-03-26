@@ -1,0 +1,4 @@
+loglevel=LS_INFO
+logfile=/tmp/tmp.log
+
+

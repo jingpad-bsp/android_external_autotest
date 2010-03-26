@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os, shutil, time
 from autotest_lib.client.bin import test, utils
 
 def get_pids(program_name):
@@ -51,4 +52,45 @@ def get_cpu_usage(duration, time):
     @return cpu usage
     """
     return float(time) / float(duration * get_number_of_logical_cpu())
+
+
+def setup_playground(src, dst, optionfile):
+    """
+    Setup playground files.
+
+    @param src path
+    @param dst path
+    @param optionfile
+    """
+    shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree(src, dst)
+    utils.run('chown chronos %s -R' % dst)
+
+    dst_path= '/home/chronos/.Google/'
+    opt_path= os.path.join(dst_path, 'Google Talk Plugin')
+    dst_opt = os.path.join(opt_path, 'options')
+    utils.run('mkdir -p \'%s\'' % opt_path)
+    utils.run('cp -f %s \'%s\'' % (optionfile, dst_opt))
+    utils.run('chown chronos \'%s\' -R' % dst_path)
+    utils.run('chmod o+r+w \'%s\'' % dst_opt)
+
+
+def cleanup_playground(playground, testdone=False):
+    """
+    Cleanup playground files.
+
+    @param playground path
+    @param testdone
+    """
+    utils.run('pkill chrome', ignore_status=True)
+    time.sleep(10)
+    utils.run('pkill GoogleTalkPlugin', ignore_status=True)
+    time.sleep(10)
+    utils.run('rm -f /tmp/tmp.log', ignore_status=True)
+    if testdone:
+        shutil.rmtree(playground)
+
+    # Delete previous browser state if any
+    shutil.rmtree('/home/chronos/.config/chromium', ignore_errors=True)
+    shutil.rmtree('/home/chronos/.config/google-chrome', ignore_errors=True)
 
