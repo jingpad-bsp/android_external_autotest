@@ -1,0 +1,20 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "LogVolume"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "logging"
+TEST_TYPE = "client"
+
+DOC = """
+Test which files/directories are being written to the stateful partition
+and the rate of how fast it grows.
+"""
+
+job.run_test('logging_LogVolume',
+	     constraints=[
+	         'percent_stateful_used <= 50',
+		 'percent_unused_patterns <= 70'])

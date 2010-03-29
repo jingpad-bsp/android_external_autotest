@@ -4,7 +4,7 @@
 
 from autotest_lib.client.bin import site_login, test as bin_test
 from autotest_lib.client.common_lib import error
-  
+
 
 class UITest(bin_test.test):
     """
@@ -14,14 +14,14 @@ class UITest(bin_test.test):
     file running the test
     """
     version = 1
-    
-    
+
+
     def setup(self):
         site_login.setup_autox(self)
-        
-          
+
+
     def initialize(self, script='autox_script.json'):
-        # Clean up past state and assume logged out before logging in.              
+        # Clean up past state and assume logged out before logging in.
         if site_login.logged_in():
             if not site_login.attempt_logout(timeout=10):
                 raise error.TestFail('Could not logout from previous session')
@@ -30,12 +30,12 @@ class UITest(bin_test.test):
 
         # Test account information embedded into json file.
         if not site_login.attempt_login(self, script):
-            raise error.TestFail('Login failed at the beginning of new session')        
+            raise error.TestFail('Login failed at the beginning of new session')
 
-          
+
     """
     Logs out when object is deleted
-    """  
+    """
     def cleanup(self):
         if not site_login.attempt_logout():
             raise error.TestFail('Could not logout at end of session')

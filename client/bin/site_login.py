@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, utils, signal, time
-from autotest_lib.client.bin import chromeos_constants, test
+from autotest_lib.client.bin import chromeos_constants, site_cryptohome, test
 from autotest_lib.client.common_lib import error, site_ui
 
 
@@ -72,6 +72,17 @@ def wait_for_browser(timeout=10):
     return True
 
 
+def wait_for_cryptohome(timeout=10):
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        if site_cryptohome.is_mounted():
+            break;
+        time.sleep(1)
+    else:
+        return False
+    return True
+
+
 def wait_for_screensaver(timeout=10, raise_error=True):
     # Wait until the screensaver starts
     start_time = time.time()
@@ -102,7 +113,7 @@ def wait_for_window_manager(timeout=20):
 def nuke_login_manager():
     nuke_process_by_name('session_manager')
     wait_for_browser()
-    
+
 
 def nuke_process_by_name(name, with_prejudice=False):
     pid = int(utils.system_output('pgrep -o ^%s$' % name))

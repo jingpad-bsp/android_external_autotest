@@ -90,6 +90,14 @@ client_at.run_test('hardware_SAT', seconds=20)
 
 client_at.run_test('login_CryptohomeMounted', tag='success')
 
+# Check volume of logging, and expect less than 50% of this machine's
+# stateful partition is used.  Also make sure there's not a serious
+# problem with the patterns being too permissive by assuming most were
+# required.
+client_at.run_test('logging_LogVolume',
+                  constraints=['percent_stateful_used <= 50',
+                               'percent_unused_patterns <= 70'])
+
 client_at.run_test('network_DisableInterface',
                    iface_name='eth0', tag='eth0')
 client_at.run_test('network_DisableInterface',
