@@ -32,7 +32,7 @@ TESTS = [
   'gl_Bench',
   'hardware_StorageFio',
   'ltp',
-  'power_Idle'
+  'power_Idle',
   'realtimecomm_GTalkAudioBench',
   'realtimecomm_GTalkunittest',
   'unixbench',
