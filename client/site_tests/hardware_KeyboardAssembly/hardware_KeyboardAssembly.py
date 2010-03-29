@@ -6,7 +6,7 @@ import logging, os, re, utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
-class factory_Keyboard(test.test):
+class hardware_KeyboardAssembly(test.test):
     version = 1
     preserve_srcdir = True
 
