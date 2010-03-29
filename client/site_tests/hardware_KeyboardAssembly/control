@@ -1,0 +1,10 @@
+AUTHOR = "Chrome OS Team"
+NAME = "Factory Keyboard Test"
+TIME = "SHORT"
+TEST_CATEGORY = "Factory"
+TEST_CLASS = "hardware"
+TEST_TYPE = "client"
+
+DOC = """This test checks whether all keyboard keys function properly."""
+
+job.run_test('hardware_KeyboardAssembly')
