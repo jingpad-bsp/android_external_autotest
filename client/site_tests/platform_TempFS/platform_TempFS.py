@@ -35,7 +35,7 @@ class platform_TempFS(test.test):
                     errors += 1
             else:
                 logging.error('%s does not exist!' % dir)
-                error += 1
+                errors += 1
 
         if errors:
             raise error.TestFail('There were %d temp directory errors' % errors)
