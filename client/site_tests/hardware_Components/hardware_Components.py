@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, pprint
+import logging, os, pprint, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, site_ui
 
@@ -15,7 +15,9 @@ class hardware_Components(test.test):
         'part_id_bios',
         'part_id_chipset',
         'part_id_cpu',
+        'part_id_embedded_controller',
         'part_id_ethernet',
+        'part_id_flash_chip',
         'part_id_storage',
         'part_id_usb_hosts',
         'part_id_vga',
@@ -75,10 +77,35 @@ class hardware_Components(test.test):
         return part_id
 
 
+    def get_part_id_embedded_controller(self):
+        # example output:
+        #  Found Nuvoton WPCE775x (id=0x05, rev=0x02) at 0x2e
+        parts = []
+        for line in utils.system_output('superiotool').split('\n'):
+          match = re.search(r'Found (.*) at', line)
+          if match:
+            parts.append(match.group(1))
+        part_id = ", ".join(parts)
+        return part_id
+
+
     def get_part_id_ethernet(self):
         cmd = ('lspci | grep "Ethernet controller:" | head -n 1 '
                '| sed s/.\*Ethernet\ controller://')
         part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
+    def get_part_id_flash_chip(self):
+        # example output:
+        #  Found chip "Winbond W25x16" (2048 KB, FWH) at physical address 0xfe
+        parts = []
+        lines = utils.system_output('flashrom', ignore_status=True).split('\n')
+        for line in lines:
+          match = re.search(r'Found chip "(.*)" .* at physical address ', line)
+          if match:
+            parts.append(match.group(1))
+        part_id = ", ".join(parts)
         return part_id
 
 
