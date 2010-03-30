@@ -32,6 +32,8 @@ TESTS = [
   'gl_Bench',
   'hardware_StorageFio',
   'ltp',
+  'platform_FileNum',
+  'platform_FileSize',
   'power_Idle',
   'realtimecomm_GTalkAudioBench',
   'realtimecomm_GTalkunittest',
