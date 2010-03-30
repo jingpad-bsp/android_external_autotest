@@ -81,7 +81,8 @@ class hardware_Components(test.test):
         # example output:
         #  Found Nuvoton WPCE775x (id=0x05, rev=0x02) at 0x2e
         parts = []
-        for line in utils.system_output('superiotool').split('\n'):
+        res = utils.system_output('superiotool', ignore_status=True).split('\n')
+        for line in res:
           match = re.search(r'Found (.*) at', line)
           if match:
             parts.append(match.group(1))
