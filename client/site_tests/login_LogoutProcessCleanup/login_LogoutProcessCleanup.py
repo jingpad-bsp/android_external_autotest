@@ -9,30 +9,38 @@ from autotest_lib.client.common_lib import error
 class login_LogoutProcessCleanup(test.test):
     version = 1
 
-    def get_session_manager_pid(self):
+    def __get_session_manager_pid(self):
+        """Get the PID of the session manager."""
+
         return utils.system_output('pgrep "^session_manager$"',
             ignore_status = True)
 
 
-    # Returns a list of all PIDs owned by chronos
-    def get_chronos_pids(self):
+    def __get_chronos_pids(self):
+        """Get a list of all PIDs that are owned by chronos."""
+
         return utils.system_output('pgrep -U chronos',
             ignore_status = True).splitlines()
 
 
-    def get_stat_fields(self, pid):
+    def __get_stat_fields(self, pid):
+        """Get a list of strings for the fields in /proc/pid/stat."""
+
         stat_file = open('/proc/%s/stat' % pid)
         return stat_file.read().split(' ')
 
 
-    def get_parent_pid(self, pid):
-        return self.get_stat_fields(pid)[3]
+    def __get_parent_pid(self, pid):
+        """Get the parent PID of the given process."""
+
+        return self.__get_stat_fields(pid)[3]
 
 
-    def is_process_dead(self, pid):
+    def __is_process_dead(self, pid):
+        """Check whether or not a process is dead.  Zombies are dead."""
+
         try:
-            # consider zombies dead
-            if self.get_stat_fields(pid)[2] == 'Z':
+            if self.__get_stat_fields(pid)[2] == 'Z':
                 return True
         except IOError:
             # if the proc entry is gone, it's dead
@@ -40,29 +48,31 @@ class login_LogoutProcessCleanup(test.test):
         return False
 
 
-    # Tests if the process pid has the process ancestor_pid as an ancestor
-    # anywhere in the process tree
-    def process_has_ancestor(self, pid, ancestor_pid):
+    def __process_has_ancestor(self, pid, ancestor_pid):
+        """Tests if the process pid has the ancestor ancestor_pid anywhere in
+           the process tree."""
+
         ppid = pid
         while not (ppid == ancestor_pid or ppid == "0"):
             # This could fail if the process is killed while we are
             # looking up the parent.  In that case, treat it as if it
             # did not have the ancestor.
             try:
-                ppid = self.get_parent_pid(ppid)
+                ppid = self.__get_parent_pid(ppid)
             except IOError:
                 return False
         return ppid == ancestor_pid
 
 
-    # Checks for processes owned by chronos, but ignores all processes
-    # that have the session manager as a parent.
-    def has_chronos_processes(self, session_manager):
-        pids = self.get_chronos_pids()
+    def __has_chronos_processes(self, session_manager):
+        """Checks if the system is running any processes owned by chronos that
+           were not started by the session manager."""
+
+        pids = self.__get_chronos_pids()
         for p in pids:
-            if self.is_process_dead(p):
+            if self.__is_process_dead(p):
                 continue
-            if not self.process_has_ancestor(p, session_manager):
+            if not self.__process_has_ancestor(p, session_manager):
                 logging.info('found pid (%s) owned by chronos and not '
                     'started by the session manager' % p)
                 return True
@@ -84,11 +94,11 @@ class login_LogoutProcessCleanup(test.test):
         # Start a process as chronos.  This should get killed when logging out.
         bg_job = utils.BgJob('su chronos -c "sleep 3600"')
 
-        session_manager = self.get_session_manager_pid()
+        session_manager = self.__get_session_manager_pid()
         if session_manager == "":
             raise error.TestError('Could not find session manager pid')
 
-        if not self.has_chronos_processes(session_manager):
+        if not self.__has_chronos_processes(session_manager):
             raise error.TestFail('Expected to find processes owned by chronos '
                 'that were not started by the session manager while logged in.')
 
@@ -101,9 +111,9 @@ class login_LogoutProcessCleanup(test.test):
         old_session_manager = session_manager
         while session_manager == "" or session_manager == old_session_manager:
             time.sleep(0.1)
-            session_manager = self.get_session_manager_pid()
+            session_manager = self.__get_session_manager_pid()
 
-        if self.has_chronos_processes(session_manager):
+        if self.__has_chronos_processes(session_manager):
             # Make sure the test job we started is dead.
             if bg_job.sp.returncode == None:
                 bg_job.sp.kill()
