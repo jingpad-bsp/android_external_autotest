@@ -49,6 +49,16 @@ class desktopui_IBusTest(site_ui_test.UITest):
 
 
     def test_config(self, type_name):
+        wrong_type_name = 'string'
+        if type_name == 'string':
+            wrong_type_name = 'int'
+        # First, write a dummy value which is not |type_name| type to make sure
+        # the second set_config overwrites this |wrong_type_name| value.
+        out = self.run_ibusclient('set_config %s' % wrong_type_name)
+        if not 'OK' in out:
+            raise error.TestFail('Failed to set %s value to '
+                                 'the ibus config service' % wrong_type_name)
+        # Then overwrite a value of |type_name| type.
         out = self.run_ibusclient('set_config %s' % type_name)
         if not 'OK' in out:
             raise error.TestFail('Failed to set %s value to '
@@ -78,5 +88,6 @@ class desktopui_IBusTest(site_ui_test.UITest):
                                     'deps/ibusclient/ibusclient')
         self.test_reachable()
         self.test_supported_engines()
-        for type_name in ['boolean', 'int', 'double', 'string']:
+        for type_name in ['boolean', 'int', 'double', 'string', 'boolean_list',
+                          'int_list', 'double_list', 'string_list']:
             self.test_config(type_name)
