@@ -87,6 +87,8 @@ class login_ChromeProfileSanitary(test.test):
         # Check mtime of Default/Cookies.  If changed, KABLOOEY.
         self.__wait_for_login_profile()
         cookies_info = os.stat(chromeos_constants.LOGIN_PROFILE + '/Cookies')
+        # TODO: Note that this currently (20100329) fails and will continue to
+        # do so until http://crosbug.com/1967 is fixed.
         if cookies_mtime != cookies_info[stat.ST_MTIME]:
             raise error.TestFail('Cookies in Default profile changed!')
 
