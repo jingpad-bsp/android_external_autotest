@@ -14,7 +14,7 @@ class platform_ProcessPrivileges(test.test):
 
 
     def run_once(self, process='X', user=None, run_as_root=False,
-                 do_login=False):
+                 do_login=False, any=False):
         """Check if the process is running as the specified user / root.
 
         Args:
@@ -22,6 +22,7 @@ class platform_ProcessPrivileges(test.test):
             user: User process must run as; ignored if None.
             run_as_root: Is process allowed to run as root?
             do_login: login before getting process information?
+            any: Test succeeds if any of processes satisfy the conditions.
         """
         logged_in = site_login.logged_in()
 
@@ -46,10 +47,17 @@ class platform_ProcessPrivileges(test.test):
             for psline in pslines:
                 ps = psline.split()
 
+                # Assume process meets conditions until proven otherwise
+                user_satisfied = True
+                run_as_root_satisfied = True
+
                 # Fail if not running as the specified user
                 if user is not None:
                     for uid in ps[1:5]:
                         if uid != user:
+                            if any:
+                                user_satisfied = False
+                                break
                             raise error.TestFail(
                                 'Process %s running as %s; expected %s' %
                                 (process, uid, user))
@@ -62,8 +70,20 @@ class platform_ProcessPrivileges(test.test):
                     #        'Process %s running with super-user flag' %
                     #        process)
                     if 'root' in ps:
+                        if any:
+                            run_as_root_satisfied = False
+                            continue
                         raise error.TestFail(
                             'Process %s running as root' % process)
+
+                # Check if conditions are met for "any" mode.
+                if any and user_satisfied and run_as_root_satisfied:
+                    break
+            else:
+                if any:
+                    raise error.TestFail(
+                        'Conditions are not met for any process %s' % process)
+
         finally:
             # If we started logged out, log back out.
             if do_login and not logged_in:

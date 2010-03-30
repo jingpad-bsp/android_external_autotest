@@ -18,6 +18,11 @@ test_name = 'platform_ProcessPrivileges'
 process_tests = [
   {'process': 'candidate_window', 'user': 'chronos', 'do_login': True},
   {'process': 'chrome'},
+  {'process': 'dbus-daemon', 'user': 'chronos', 'do_login': True, 'any': True},
+  # TODO(mazda): Change the user value to 'messagebus'.
+  # 201 is a uid of messagebus. ps command displays 201 as the user name for
+  # some reasons (bug of the ps command?).
+  {'process': 'dbus-daemon', 'user': '201', 'any': True},
   {'process': 'ibus-daemon', 'user': 'chronos', 'do_login': True},
   {'process': 'ibus-gconf', 'user': 'chronos', 'do_login': True},
   {'process': 'ibus-x11', 'user': 'chronos', 'do_login': True},
@@ -26,6 +31,6 @@ process_tests = [
   {'process': 'X', 'run_as_root': True},
 ]
 
-for process_test in process_tests:
-  job.run_test(test_name, tag=process_test['process'], **process_test)
-
+for i, process_test in enumerate(process_tests):
+  job.run_test(test_name, tag="%s_%d" % (process_test['process'], i),
+               **process_test)
