@@ -20,8 +20,7 @@ class logging_LogVolume(site_ui_test.UITest):
 
 
     def run_once(self):
-        if not site_login.wait_for_cryptohome():
-            raise error.TestFail('Could not wait for crytohome')
+        site_login.wait_for_cryptohome()
 
         self._perf = {}
         self.log_stateful_used()

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, time
-from autotest_lib.client.bin import site_login, test
+from autotest_lib.client.bin import site_ui_test, test
 from autotest_lib.client.common_lib import error, site_ui, utils
 
 def wait_for_ibus_daemon_or_die(timeout=10):
@@ -18,12 +18,11 @@ def wait_for_ibus_daemon_or_die(timeout=10):
     raise error.TestFail('ibus-daemon is not running')
 
 
-class desktopui_IBusTest(test.test):
+class desktopui_IBusTest(site_ui_test.UITest):
     version = 1
     preserve_srcdir = True
 
     def setup(self):
-        self.job.setup_dep(['autox'])
         self.job.setup_dep(['ibusclient'])
 
 
@@ -70,23 +69,14 @@ class desktopui_IBusTest(test.test):
 
 
     def run_once(self):
-        logged_in = site_login.logged_in()
-        if not logged_in:
-            if not site_login.attempt_login(self, 'autox_script.json'):
-                raise error.TestFail('Could not login')
-        try:
-            wait_for_ibus_daemon_or_die()
-            dep = 'ibusclient'
-            dep_dir = os.path.join(self.autodir, 'deps', dep)
-            self.job.install_pkg(dep, 'dep', dep_dir)
+        wait_for_ibus_daemon_or_die()
+        dep = 'ibusclient'
+        dep_dir = os.path.join(self.autodir, 'deps', dep)
+        self.job.install_pkg(dep, 'dep', dep_dir)
 
-            self.exefile = os.path.join(self.autodir,
-                                        'deps/ibusclient/ibusclient')
-            self.test_reachable()
-            self.test_supported_engines()
-            for type_name in ['boolean', 'int', 'double', 'string']:
-                self.test_config(type_name)
-        finally:
-            # If we started logged out, log back out.
-            if not logged_in:
-                site_login.attempt_logout()
+        self.exefile = os.path.join(self.autodir,
+                                    'deps/ibusclient/ibusclient')
+        self.test_reachable()
+        self.test_supported_engines()
+        for type_name in ['boolean', 'int', 'double', 'string']:
+            self.test_config(type_name)

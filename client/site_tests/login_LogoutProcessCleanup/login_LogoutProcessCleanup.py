@@ -79,8 +79,7 @@ class login_LogoutProcessCleanup(test.test):
 
         # Require that we start the test logged in
         if not logged_in:
-            if not site_login.attempt_login(self, script):
-                raise error.TestError('Could not login')
+            site_login.attempt_login(self, script)
 
         # Start a process as chronos.  This should get killed when logging out.
         bg_job = utils.BgJob('su chronos -c "sleep 3600"')
@@ -93,8 +92,7 @@ class login_LogoutProcessCleanup(test.test):
             raise error.TestFail('Expected to find processes owned by chronos '
                 'that were not started by the session manager while logged in.')
 
-        if not site_login.attempt_logout():
-            raise error.TestError('Could not logout')
+        site_login.attempt_logout()
 
         logging.info('Logged out, searching for processes that should be dead')
 
@@ -115,5 +113,4 @@ class login_LogoutProcessCleanup(test.test):
 
         # Reset the logged in state to how we started
         if logged_in:
-            if not site_login.attempt_login(self, script):
-                raise error.TestError('Could not login')
+            site_login.attempt_login(self, script)

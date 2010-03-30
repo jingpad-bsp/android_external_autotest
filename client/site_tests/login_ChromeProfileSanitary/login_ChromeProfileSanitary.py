@@ -55,14 +55,14 @@ class login_ChromeProfileSanitary(test.test):
 
         if not logged_in:
             # Test account information embedded into json file.
-            if not site_login.attempt_login(self, script):
-                raise error.TestError('Could not login')
+            site_login.attempt_login(self, script)
 
         # Get Default/Cookies mtime.
         cookies_info = os.stat(chromeos_constants.LOGIN_PROFILE + '/Cookies')
         cookies_mtime = cookies_info[stat.ST_MTIME]
 
         # "crash" chrome.
+        site_login.wait_for_initial_chrome_window()
         site_login.nuke_process_by_name(chromeos_constants.BROWSER,
                                         with_prejudice = True)
         site_login.wait_for_browser()
@@ -79,9 +79,7 @@ class login_ChromeProfileSanitary(test.test):
 
         # Ensure chrome writes state to disk.
         site_login.attempt_logout()
-        site_login.wait_for_browser()
-        if not site_login.attempt_login(self, script):
-            raise error.TestError('Could not log back in')
+        site_login.attempt_login(self, script)
 
         if not latch.is_set():
             raise error.TestError('Never received callback from browser.')

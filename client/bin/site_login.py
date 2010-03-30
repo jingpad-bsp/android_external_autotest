@@ -3,8 +3,14 @@
 # found in the LICENSE file.
 
 import logging, os, utils, signal, time
-from autotest_lib.client.bin import chromeos_constants, site_cryptohome, test
+from autotest_lib.client.bin import chromeos_constants, site_cryptohome
+from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib import error, site_ui
+
+
+class TimeoutError(error.TestError):
+  """Error returned if we time out while waiting on a condition."""
+  pass
 
 
 def setup_autox(test):
@@ -20,7 +26,18 @@ def logged_in():
     return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)
 
 
+# TODO: Update this to use the Python-based autox instead.
 def attempt_login(test, script_file, timeout=10):
+    """Attempt to log in.
+
+    Args:
+        script: str filename of autox JSON script
+        timeout: float number of seconds to wait
+
+    Raises:
+        error.TestFail: autox program exited with failure
+        TimeoutError: login didn't complete before timeout
+    """
     dep = 'autox'
     dep_dir = os.path.join(test.autodir, 'deps', dep)
     test.job.install_pkg(dep, 'dep', dep_dir)
@@ -28,86 +45,114 @@ def attempt_login(test, script_file, timeout=10):
     autox_binary = '%s/%s' % (dep_dir, 'autox')
     autox_script = os.path.join(test.job.configdir, script_file)
 
+    # TODO: Use something more robust that checks whether the login window is
+    # mapped.
+    wait_for_browser()
     try:
         utils.system(site_ui.xcommand('%s %s' % (autox_binary, autox_script)))
     except error.CmdError, e:
         logging.debug(e)
         raise error.TestFail('AutoX program failed to login for test user')
 
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        if logged_in():
-            break
-        time.sleep(1)
-    else:
-        return False
-    return True
+    site_utils.poll_for_condition(
+        lambda: logged_in(),
+        TimeoutError('Timed out while waiting to be logged in'),
+        timeout=timeout)
 
 
 def attempt_logout(timeout=10):
+    """Attempt to log out by killing Chrome.
+
+    Args:
+        timeout: float number of seconds to wait
+
+    Raises:
+        TimeoutError: logout didn't complete before timeout
+    """
     # Gracefully exiting chrome causes the user's session to end.
+    wait_for_initial_chrome_window()
     utils.system('pkill -TERM -o ^%s$' % chromeos_constants.BROWSER)
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        if not logged_in():
-            break
-        time.sleep(1)
-    else:
-        return False
-    return True
+    site_utils.poll_for_condition(
+        lambda: not logged_in(),
+        TimeoutError('Timed out while waiting for logout'),
+        timeout=timeout)
 
 
 def wait_for_browser(timeout=10):
-    # Wait until the login manager is back up before trying to use it.
-    # I don't use utils.system here because I don't want to fail
-    # if pgrep returns non-zero, I just want to wait and try again.
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        # 0 is returned on success.
-        if os.system('pgrep ^%s$' % chromeos_constants.BROWSER) == 0:
-            break;
-        time.sleep(1)
-    else:
-        return False
-    return True
+    """Wait until a Chrome process is running.
+
+    Args:
+        timeout: float number of seconds to wait
+
+    Raises:
+        TimeoutError: Chrome didn't start before timeout
+    """
+    site_utils.poll_for_condition(
+        lambda: os.system('pgrep ^%s$' % chromeos_constants.BROWSER) == 0,
+        TimeoutError('Timed out waiting for Chrome to start'),
+        timeout=timeout)
 
 
 def wait_for_cryptohome(timeout=10):
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        if site_cryptohome.is_mounted():
-            break;
-        time.sleep(1)
-    else:
-        return False
-    return True
+    """Wait until cryptohome is mounted.
+
+    Args:
+        timeout: float number of seconds to wait
+
+    Raises:
+        TimeoutError: cryptohome wasn't mounted before timeout
+    """
+    site_utils.poll_for_condition(
+        lambda: site_cryptohome.is_mounted(),
+        TimeoutError('Timed out waiting for cryptohome to be mounted'),
+        timeout=timeout)
 
 
-def wait_for_screensaver(timeout=10, raise_error=True):
-    # Wait until the screensaver starts
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        if 0 == os.system(site_ui.xcommand('xscreensaver-command -version')):
-            break
-        time.sleep(1)
-    else:
-        if raise_error:
-            raise error.TestFail('Unable to communicate with ' +
-                                 'xscreensaver after %i seconds' %
-                                 time.time() - start_time)
-        return False
+def wait_for_screensaver(timeout=10):
+    """Wait until xscreensaver is responding.
 
-    return True
+    Args:
+        timeout: float number of seconds to wait
+
+    Raises:
+        TimeoutError: xscreensaver didn't respond before timeout
+    """
+    site_utils.poll_for_condition(
+        lambda: os.system(
+            site_ui.xcommand('xscreensaver-command -version')) == 0,
+        TimeoutError('Timed out waiting for xscreensaver to respond'),
+        timeout=timeout)
 
 
 def wait_for_window_manager(timeout=20):
-    """Wait until the window manager is running."""
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        if os.system('pgrep ^%s$' % chromeos_constants.WINDOW_MANAGER) == 0:
-            return True
-        time.sleep(0.1)
-    return False
+    """Wait until the window manager is running.
+
+    Args:
+        timeout: float number of seconds to wait
+
+    Raises:
+        TimeoutError: window manager didn't start before timeout
+    """
+    site_utils.poll_for_condition(
+        lambda: not os.system('pgrep ^%s$' % chromeos_constants.WINDOW_MANAGER),
+        TimeoutError('Timed out waiting for window manager to start'),
+        timeout=timeout)
+
+
+def wait_for_initial_chrome_window(timeout=20):
+    """Wait until the initial Chrome window is mapped.
+
+    Args:
+      timeout: float number of seconds to wait
+
+    Raises:
+        TimeoutError: Chrome window wasn't mapped before timeout
+    """
+    site_utils.poll_for_condition(
+        lambda: os.access(
+            chromeos_constants.CHROME_WINDOW_MAPPED_MAGIC_FILE, os.F_OK),
+        TimeoutError('Timed out waiting for initial Chrome window'),
+        timeout=timeout)
 
 
 def nuke_login_manager():

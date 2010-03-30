@@ -23,19 +23,12 @@ class UITest(bin_test.test):
     def initialize(self, script='autox_script.json'):
         # Clean up past state and assume logged out before logging in.
         if site_login.logged_in():
-            if not site_login.attempt_logout(timeout=10):
-                raise error.TestFail('Could not logout from previous session')
-            if not site_login.wait_for_browser():
-                raise error.TestFail("Login manager did not restart")
+            site_login.attempt_logout()
 
         # Test account information embedded into json file.
-        if not site_login.attempt_login(self, script):
-            raise error.TestFail('Login failed at the beginning of new session')
+        site_login.attempt_login(self, script)
+        site_login.wait_for_initial_chrome_window()
 
-
-    """
-    Logs out when object is deleted
-    """
     def cleanup(self):
-        if not site_login.attempt_logout():
-            raise error.TestFail('Could not logout at end of session')
+        """Logs out when object is deleted"""
+        site_login.attempt_logout()

@@ -27,8 +27,7 @@ class platform_ProcessPrivileges(test.test):
 
         if do_login and not logged_in:
             # Test account information embedded into json file.
-            if not site_login.attempt_login(self, 'autox_script.json'):
-                raise error.TestFail('Could not login')
+            site_login.attempt_login(self, 'autox_script.json')
             # Wait for processes for user-session are started.
             time.sleep(10)
 

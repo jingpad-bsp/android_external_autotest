@@ -18,14 +18,12 @@ class login_CryptohomeUnmounted(test.test):
         # Require that the cryptohome is mounted before testing that
         # logging out will unmount it.  This requires logging in.
         if not logged_in:
-            if not site_login.attempt_login(self, script):
-                raise error.TestError('Could not login')
+            site_login.attempt_login(self, script)
 
         if not site_cryptohome.is_mounted(allow_fail = is_control):
             raise error.TestFail('Expected cryptohome to be mounted')
 
-        if not site_login.attempt_logout():
-            raise error.TestError('Could not logout')
+        site_login.attempt_logout()
 
         # allow the command to fail, so we can handle the error here
         if site_cryptohome.is_mounted(allow_fail = True):
@@ -33,5 +31,4 @@ class login_CryptohomeUnmounted(test.test):
 
         # If we started logged in, reset the state.
         if logged_in:
-            if not site_login.attempt_login(self, script):
-                raise error.TestError('Could not login')
+            site_login.attempt_login(self, script)

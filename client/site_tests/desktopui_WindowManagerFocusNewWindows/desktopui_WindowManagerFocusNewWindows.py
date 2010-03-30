@@ -3,14 +3,11 @@
 # found in the LICENSE file.
 
 import os, time
-from autotest_lib.client.bin import site_login, test
+from autotest_lib.client.bin import site_ui_test, test
 from autotest_lib.client.common_lib import error
 
-class desktopui_WindowManagerFocusNewWindows(test.test):
+class desktopui_WindowManagerFocusNewWindows(site_ui_test.UITest):
     version = 1
-
-    def setup(self):
-        site_login.setup_autox(self)
 
     def __check_active_window(self, id, info):
         """Check that a particular window is active.
@@ -48,18 +45,6 @@ class desktopui_WindowManagerFocusNewWindows(test.test):
 
     def run_once(self):
         import autox
-
-        # TODO: This should be abstracted out.
-        if not site_login.logged_in():
-            if not site_login.attempt_login(self, 'autox_script.json'):
-                raise error.TestError('Could not log in')
-            if not site_login.wait_for_window_manager():
-                raise error.TestError('Window manager didn\'t start')
-            # TODO: This is awful.  We need someone (Chrome, the WM, etc.) to
-            # announce when login is "done" -- that is, the initial Chrome
-            # window isn't going to pop onscreen in the middle of the test.
-            # For now, we just sleep a really long time.
-            time.sleep(20)
 
         # TODO: Set these in a single, standard place for all tests.
         os.environ['DISPLAY'] = ':0'

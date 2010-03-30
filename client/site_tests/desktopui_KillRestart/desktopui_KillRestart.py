@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time, utils
-from autotest_lib.client.bin import test
+import logging, os, time, utils
+from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib import error
 
 class desktopui_KillRestart(test.test):
@@ -17,12 +17,8 @@ class desktopui_KillRestart(test.test):
             logging.debug(e)
             raise error.TestFail('%s is not running before kill' % binary)
 
-        # Give the system a chance to restart the binary.
-        time.sleep(3)
-
-        # Check if the binary is running again.
-        try:
-            utils.system('pgrep %s' % binary)
-        except error.CmdError, e:
-            logging.debug(e)
-            raise error.TestFail('%s is not running after kill' % binary)
+        # Check if the binary is running again (using os.system(), since it
+        # doesn't raise an exception if the command fails).
+        site_utils.poll_for_condition(
+            lambda: os.system('pgrep %s' % binary) == 0,
+            error.TestFail('%s is not running after kill' % binary))

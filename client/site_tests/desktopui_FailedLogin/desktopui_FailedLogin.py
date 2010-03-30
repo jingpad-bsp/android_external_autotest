@@ -13,18 +13,17 @@ class desktopui_FailedLogin(test.test):
         site_login.setup_autox(self)
 
     def run_once(self, script):
-        logged_in = site_login.logged_in()
-
         # Can't test login while logged in, so logout.
-        if logged_in:
-            if not site_login.attempt_logout():
-                raise error.TestFail('Could not terminate existing session')
-            if not site_login.wait_for_browser():
-                raise error.TestFail("Login manager didn't come back")
+        if site_login.logged_in():
+            site_login.attempt_logout()
 
         # Test account information embedded into json file.
         # TODO(cmasone): find better way to determine login has failed.
-        if site_login.attempt_login(self, script):
+        try:
+            site_login.attempt_login(self, script)
+        except site_login.TimeoutError:
+            pass
+        else:
             raise error.TestFail('Should not have logged in')
 
         # Re-set to a good state
