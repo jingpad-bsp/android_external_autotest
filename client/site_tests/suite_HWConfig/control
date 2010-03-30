@@ -15,7 +15,8 @@ the suite is to sanity test all hardware components in less than 5 minutes.
 """
 
 # Firmware
-job.run_test('firmware_RomSize')
+job.run_test('firmware_RomSize',
+             constraints=['kb_system_rom_size >= 2048'])
 
 # RTC, system
 job.run_test('power_Resume')
@@ -31,7 +32,8 @@ job.run_test('power_CPUIdle')
 job.run_test('hardware_Backlight')
 
 # SSD
-job.run_test('hardware_DiskSize')
+job.run_test('hardware_DiskSize',
+             constraints=['gb_main_disk_size >= 8'])
 job.run_test('hardware_SsdDetection')
 
 # CPU, RAM, SSD

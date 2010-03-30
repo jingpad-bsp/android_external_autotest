@@ -26,9 +26,9 @@ job.run_test('desktopui_SunSpiderBench')
 job.run_test('platform_AesThroughput')
 
 # Firmware
-job.run_test('firmware_RomSize')
+job.run_test('firmware_RomSize',
+             constraints=['kb_system_rom_size >= 2048'])
 job.run_test('firmware_VbootCrypto', suite='benchmarks', tag='benchmarks')
-
 
 # System Memory
 job.run_test('hardware_MemoryTotalSize')
@@ -41,7 +41,8 @@ job.run_test('hardware_StorageFio',
                  'bytes_per_sec_seq_write >= 15 * 1024 * 1024',
                  'iops_4k_write >= 10',
              ])
-job.run_test('hardware_DiskSize')
+job.run_test('hardware_DiskSize',
+             constraints=['gb_main_disk_size >= 8'])
 job.run_test('hardware_SsdDetection')
 
 # Display

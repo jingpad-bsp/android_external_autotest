@@ -12,6 +12,3 @@ class firmware_RomSize(test.test):
         cmd = 'dmidecode | grep "ROM Size" | sed "s/.*: \([0-9]\+\) kB/\\1/"'
         size = int(utils.system_output(cmd).strip())
         self.write_perf_keyval({"kb_system_rom_size": size})
-
-        if size < 2048:
-            raise error.TestFail("System firmware size < 2MB");

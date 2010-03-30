@@ -35,6 +35,3 @@ class hardware_DiskSize(test.test):
         gb = blocks * 1024.0 / 1000.0 / 1000.0 / 1000.0
         self.write_perf_keyval({"gb_main_disk_size": gb})
         logging.info("DiskSize: %.3f GB" % gb)
-
-        if gb < 8.0:
-            raise error.TestFail("Main disk size < 8G");
