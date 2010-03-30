@@ -113,7 +113,7 @@ process_tests = [
   {'process': 'candidate_window', 'user': 'chronos', 'do_login': True},
   {'process': 'chrome'},
   {'process': 'ibus-daemon', 'user': 'chronos', 'do_login': True},
-  {'process': 'ibus-gconf', 'user': 'chronos', 'do_login': True},
+  {'process': 'ibus-memconf', 'user': 'chronos', 'do_login': True},
   {'process': 'ibus-x11', 'user': 'chronos', 'do_login': True},
   # TODO(yusukes): Change 'run_as_root' to False once super-user privileges for
   # X are dropped.

@@ -24,7 +24,7 @@ process_tests = [
   # some reasons (bug of the ps command?).
   {'process': 'dbus-daemon', 'user': '201', 'any': True},
   {'process': 'ibus-daemon', 'user': 'chronos', 'do_login': True},
-  {'process': 'ibus-gconf', 'user': 'chronos', 'do_login': True},
+  {'process': 'ibus-memconf', 'user': 'chronos', 'do_login': True},
   {'process': 'ibus-x11', 'user': 'chronos', 'do_login': True},
   # TODO(yusukes): Change 'run_as_root' to False once super-user privileges for
   # X are dropped.
