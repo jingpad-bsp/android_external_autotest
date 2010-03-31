@@ -44,7 +44,7 @@ all:
         # Move utility binaries used by the tests.
 	mkdir utils
 	for i in $(UTIL_BINS); do \
-	  ( mv $(BUILD_TEST_DIR)/utils/$$i utils/ ) ;\
+	  ( mv $(BUILD_TEST_DIR)/utility/$$i utils/ ) ;\
 	done
         # Delete sources.
 	rm -rf $(BUILD_TEST_DIR)
