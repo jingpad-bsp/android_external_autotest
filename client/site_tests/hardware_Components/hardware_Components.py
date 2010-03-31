@@ -179,16 +179,23 @@ class hardware_Components(test.test):
         else:
             num_retry = 0
 
+        part_id = ''
         while True:
-            cmd = 'lsusb | grep -i "card reader" | sed "s/.*ID ....:.... //"'
-            part_id = utils.system_output(cmd).strip()
-            if part_id or not num_retry:
+            cmd = 'lsusb -v'
+            output = utils.system_output(cmd)
+            match = re.search(
+                r'  idVendor +0x.... (.*?)\n(?:  .*\n)*?  .*?CARD READER',
+                output, re.IGNORECASE)
+
+            if match:
+                part_id = match.group(1)
+                break
+            if not num_retry:
+                part_id = 'N/A'
                 break
             result = dialog.get_result()
             num_retry -= 1
 
-        if not part_id:
-            part_id = 'N/A'
         return part_id
 
 
