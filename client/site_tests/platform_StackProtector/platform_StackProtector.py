@@ -21,7 +21,7 @@ class platform_StackProtector(test.test):
         utils.extract_tarball_to_dir(tarball, self.srcdir)
 
         os.chdir(self.srcdir)
-        utils.configure()
+        utils.configure(extra="-disable-werror")
         utils.system("make")
 
 
