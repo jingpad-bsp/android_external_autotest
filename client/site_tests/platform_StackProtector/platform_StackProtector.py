@@ -8,7 +8,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 class platform_StackProtector(test.test):
-    version = 1
+    version = 2
 
     # http://build.chromium.org/mirror/chromiumos/mirror/distfiles/
     # binutils-2.19.1.tar.bz2
@@ -21,7 +21,8 @@ class platform_StackProtector(test.test):
         utils.extract_tarball_to_dir(tarball, self.srcdir)
 
         os.chdir(self.srcdir)
-        utils.configure(extra="-disable-werror")
+        utils.system("patch -p1 < ../binutils-2.19-arm.patch");
+        utils.configure()
         utils.system("make")
 
 
