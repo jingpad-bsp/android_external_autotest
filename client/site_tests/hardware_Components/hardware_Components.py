@@ -9,7 +9,6 @@ from autotest_lib.client.common_lib import error, site_ui
 
 class hardware_Components(test.test):
     version = 1
-    _syslog = '/var/log/messages'
     _cids = [
         'part_id_audio_codec',
         'part_id_bios',
@@ -91,10 +90,13 @@ class hardware_Components(test.test):
 
 
     def get_part_id_ethernet(self):
-        cmd = ('lspci | grep "Ethernet controller:" | head -n 1 '
-               '| sed s/.\*Ethernet\ controller://')
-        part_id = utils.system_output(cmd).strip()
-        return part_id
+        """
+          Returns a colon delimited string where the first section
+          is the vendor id and the second section is the device id.
+        """
+        part_id = utils.read_one_line("/sys/class/net/eth0/device/device")
+        vendor_id = utils.read_one_line("/sys/class/net/eth0/device/vendor")
+        return "%s:%s" % (vendor_id, part_id)
 
 
     def get_part_id_flash_chip(self):
@@ -134,11 +136,11 @@ class hardware_Components(test.test):
 
     def get_part_id_wireless(self):
         """
-          Returns a comma delimited string where the first section
+          Returns a colon delimited string where the first section
           is the vendor id and the second section is the device id.
         """
-        part_id = utils.read_file("/sys/class/net/wlan0/device/device")
-        vendor_id = utils.read_file("/sys/class/net/wlan0/device/vendor")
+        part_id = utils.read_one_line("/sys/class/net/wlan0/device/device")
+        vendor_id = utils.read_one_line("/sys/class/net/wlan0/device/vendor")
         return "%s:%s" % (vendor_id, part_id)
 
 
@@ -153,13 +155,13 @@ class hardware_Components(test.test):
 
         approved_devices = self._approved['part_id_3G']
         if '*' in approved_devices:
-            return 
+            return
 
         for device in approved_devices:
             try:
                 utils.system(cmd % device)
                 self._system['part_id_3G'] = [ device ]
-                return 
+                return
             except:
                 pass
         self._failures['part_id_3G'] = [ 'No suitable devices found' ]
