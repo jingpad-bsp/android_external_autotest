@@ -30,12 +30,8 @@ class hardware_SAT(test.test):
         var_flags += ' LIBS="-static -laio"'
 
         os.chdir(self.srcdir)
-        config_params = ''
-        if 'CBUILD' in os.environ and 'CHOST' in os.environ:
-            config_params = '--build=%s --host=%s' % (os.environ['CBUILD'],
-                                                      os.environ['CHOST'])
         # ./configure stores relevant path and environment variables.
-        utils.system('%s ./configure %s' % (var_flags, config_params))
+        utils.configure(configure=var_flags + ' ./configure')
         utils.system('make -j %d' % utils.count_cpus())
 
 
