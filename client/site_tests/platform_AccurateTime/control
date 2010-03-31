@@ -10,4 +10,5 @@ This test tests whether the system time is set within allowable drift from
 the configured NTP server's time.
 """
 
-job.run_test('platform_AccurateTime')
+job.run_test('platform_AccurateTime',
+             constraints=['seconds_offset < 60'])

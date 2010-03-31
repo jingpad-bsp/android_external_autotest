@@ -35,7 +35,9 @@ class platform_BootPerf(test.test):
         results['sectors_read_kernel_to_login'] = float(vals[2])
 
 
-    def __parse_syslog_for_firmware_time(self, results):
+    # Find both firmware time (on x86 only) and reboot/shutdown time
+    # if the last boot was a reboot.
+    def __parse_syslog(self, results, last_boot_was_reboot):
         file_handle = None
         logfile = '/var/log/messages'
         try:
@@ -45,43 +47,48 @@ class platform_BootPerf(test.test):
         mhz = 0
         ticks = 0
         startups_found = 0
-        last_reboot = None
-        firmware_time = None
+        last_shutdown_time = None
+        kernel_start_time = None
         seconds_firmware_boot = 0
-        datetime_re = r'^(\d{4})-(\d{2})-(\d{2})[A-Z]' + \
+        datetime_re = r'(\d{4})-(\d{2})-(\d{2})[A-Z]' + \
                       r'(\d{2}):(\d{2}):(\d{2})\.(\d{6})'
-        last_reboot_re = re.compile(datetime_re + \
-                                    r'.*klog main process.*killed by TERM')
-        startup_re = re.compile(r'000\] Linux version \d')
+        last_shutdown_re = re.compile(
+            datetime_re + r'.*(klog|tty2) main process.*killed by TERM')
+        startup_re = re.compile(datetime_re + r'.*000\] Linux version \d')
         mhz_re = re.compile(r'Detected (\d+\.\d+) MHz processor.')
-        initial_tsc_re = re.compile(datetime_re + r'.*Initial TSC value: (\d+)')
+        initial_tsc_re = re.compile('Initial TSC value: (\d+)')
         for line in file_handle.readlines():
-            if startup_re.search(line) is not None:
+            match = startup_re.match(line)
+            if match is not None:
                 mhz = 0
                 ticks = 0
-                firmware_time = None
+                datetime_args = tuple([int(x) for x in match.groups()[:7]])
+                kernel_start_time = datetime.datetime(*datetime_args)
                 startups_found += 1
-            match = last_reboot_re.search(line)
+            match = last_shutdown_re.match(line)
             if match is not None:
                 datetime_args = tuple([int(x) for x in match.groups()[:7]])
-                last_reboot = datetime.datetime(*datetime_args)
+                last_shutdown_time = datetime.datetime(*datetime_args)
             match = mhz_re.search(line)
             if match is not None:
                 mhz = float(match.group(1))
             match = initial_tsc_re.search(line)
             if match is not None:
-                datetime_args = tuple([int(x) for x in match.groups()[:7]])
-                firmware_time = datetime.datetime(*datetime_args)
-                ticks = int(match.group(8))
+                ticks = int(match.group(1))
                 logging.info('Found initial TSC: %d' % ticks)
         file_handle.close()
         if mhz > 0 and startups_found > 0 and ticks > 0:
             seconds_firmware_boot = float(ticks) / mhz / 1000000
             results['seconds_firmware_boot'] = seconds_firmware_boot
-        if last_reboot != None and firmware_time != None:
-            delta = firmware_time - last_reboot
-            # Hopefully it won't take days... :) But just so we can
-            # see if this test is producing nonsense, we include it.
+        if (last_shutdown_time != None and last_boot_was_reboot and
+            kernel_start_time != None):
+            logging.info('Kernel start time: %s, last shutdown time: %s' %
+                         (kernel_start_time, last_shutdown_time))
+            delta = kernel_start_time - last_shutdown_time
+            # There is no guarantee that we will have gotten a shutdown
+            # log message/time.  It's possible to not get any kill messages
+            # logged to syslog before rsyslogd itself is killed.  If
+            # that occurs, this reboot time will be completely wrong.
             reboot_time = (float(delta.days) * 86400.0 +
                            float(delta.seconds) +
                            float(delta.microseconds) /
@@ -93,7 +100,7 @@ class platform_BootPerf(test.test):
         results['mhz_primary_cpu'] = mhz
 
 
-    def run_once(self, max_startup_time=6.0, max_shutdown_time=1.0):
+    def run_once(self, last_boot_was_reboot=False):
         # Parse key metric files and generate key/value pairs
         results = {}
 
@@ -106,7 +113,7 @@ class platform_BootPerf(test.test):
             results[resultname] = self.__parse_uptime(filename)
 
         self.__parse_disk_login_prompt_ready(results)
-        self.__parse_syslog_for_firmware_time(results)
+        self.__parse_syslog(results, last_boot_was_reboot)
 
         if ('seconds_firmware_boot' in results and
             'seconds_kernel_to_login' in results):
@@ -115,47 +122,3 @@ class platform_BootPerf(test.test):
                 results['seconds_kernel_to_login']
 
         self.write_perf_keyval(results)
-
-        # Fail the test if it's unable to determine what it's trying
-        # to determine, but log all the things we were unable to
-        # determine before failing.
-        errors = 0
-        if 'seconds_firmware_boot' not in results:
-            errors += 1
-            logging.error('Unable to determine firmware boot time.')
-        if 'seconds_power_on_to_login' not in results:
-            errors += 1
-            logging.error('Unable to determine power on to login time.')
-        if 'seconds_shutdown_time' not in results:
-            errors += 1
-            logging.error('Unable to determine shutdown time.')
-
-        if errors > 0:
-            raise error.TestFail('Unable to determine boot performance.')
-
-        # Check to see if we met our test criteria, and log them all
-        # before failing the test.
-        errors = 0
-        if ('seconds_power_on_to_login' in results and
-            results['seconds_power_on_to_login'] > max_startup_time):
-            errors += 1
-            logging.error('Startup time was %2.2fs, '
-                          'exceeding %2.2fs criterion by '
-                          '%2.2f seconds' %
-                          (results['seconds_power_on_to_login'],
-                           max_startup_time,
-                           results['seconds_power_on_to_login'] -
-                           max_startup_time))
-
-        if ('seconds_shutdown_time' in results and
-            results['seconds_shutdown_time'] > max_shutdown_time):
-            errors += 1
-            logging.error('Shutdown time was %2.2fs, exceeding %2.2fs '
-                          'criterion by %2.2f seconds' %
-                          (results['seconds_shutdown_time'],
-                           max_shutdown_time,
-                           results['seconds_shutdown_time'] -
-                           max_shutdown_time))
-
-        if errors > 0:
-            raise error.TestFail('Boot performance didn\'t meet criteria')

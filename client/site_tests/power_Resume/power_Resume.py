@@ -28,7 +28,7 @@ class power_Resume(test.test):
 
 
     def __get_end_suspend_time(self):
-        return self.__get_last_msg_time('CPU[0-9] is down')
+        return self.__get_last_msg_time('CPU [0-9] is now offline')
 
 
     def __is_iface_up(self, name):

@@ -17,7 +17,7 @@ class platform_AccurateTime(test.test):
         return commands.getstatusoutput('initctl start ntp')[0] == 0
 
 
-    def run_once(self, max_offset=2):
+    def run_once(self):
         # Check ntpd is currently running
         if commands.getstatusoutput('pgrep ntpd')[0] != 0:
             raise error.TestError('NTP server was not already running')
@@ -32,10 +32,7 @@ class platform_AccurateTime(test.test):
             server_offset = self.__get_offset(output)
             logging.info("server time offset: %f" % server_offset)
 
-            if (abs(server_offset) > max_offset):
-                raise error.TestError(
-                    'abs NTP server time offset was %fs > max offset %ds' %
-                    (abs(server_offset), max_offset))
+            self.write_perf_keyval({'seconds_offset': abs(server_offset)})
         except error.TestError, e:
             # In case of error, restart server and pass up original error.
             self.__restart_ntp_server()

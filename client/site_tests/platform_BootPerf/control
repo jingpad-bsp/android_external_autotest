@@ -55,6 +55,4 @@ to start up, or longer than %2.2f seconds to shut down.
 """
 DOC = doc % (MAX_STARTUP_TIME, MAX_SHUTDOWN_TIME)
 
-job.run_test('platform_BootPerf',
-             max_startup_time = MAX_STARTUP_TIME,
-             max_shutdown_time = MAX_SHUTDOWN_TIME)
+job.run_test('platform_BootPerf')

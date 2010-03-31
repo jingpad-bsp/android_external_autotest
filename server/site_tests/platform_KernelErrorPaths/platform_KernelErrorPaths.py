@@ -98,4 +98,7 @@ class platform_KernelErrorPaths(test.test):
         # self.test_irq_lockup()
         # self.test_no_irq_lockup()
         self.test_null_dereference()
-        self.test_panic()
+        # TODO(mbligh): crosbug.com/2269 - panic currently halts the
+        # DUT instead of rebooting it.  Commenting out until
+        # fixed.
+        #self.test_panic()

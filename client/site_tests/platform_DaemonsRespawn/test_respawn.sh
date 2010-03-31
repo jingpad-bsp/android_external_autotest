@@ -6,6 +6,9 @@
 OLD_PID=0
 PID=0
 
+# Time to wait for upstart to restart a daemon in seconds
+RESTART_TIMEOUT=5
+
 # Verifies that the given job is running and returns the pid.
 get_job_pid() {
   local upstart_job=$1
@@ -61,9 +64,16 @@ for job in $UPSTART_JOBS_TO_TEST ; do
 
   OLD_PID=$PID
   kill -KILL $PID
-  sleep 1
 
-  get_job_pid "$JOB" "$DAEMON"
+  for x in $(seq ${RESTART_TIMEOUT}); do
+    sleep 1
+
+    get_job_pid "$JOB" "$DAEMON"
+    if [ $PID -gt 0 ] ; then
+      break
+    fi
+  done
+
   if [ $PID -le 0 ] ; then
     echo "Error: Job '$JOB' was not respawned properly."
     exit 255

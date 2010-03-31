@@ -14,7 +14,10 @@ This test suite runs fully automated client-side hardware qualification tests.
 """
 
 # Boot Performance
-job.run_test('platform_BootPerf')
+job.run_test('platform_BootPerf',
+             constraints=['seconds_firmware_boot <= 1.0',
+                          'seconds_power_on_to_login <= 5.0'])
+
 job.run_test('power_Resume')
 
 # Kernel Support

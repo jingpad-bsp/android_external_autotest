@@ -23,8 +23,23 @@ client_at = autotest.Autotest(client)
 # Run server tests
 #
 
+# Test the boot performance.  Add a generous constraint (at least for
+# x86 platforms) on the boot time.  We just look at the time from
+# kernel start to login prompt and require it to be under 18s.  As of
+# 3/30/2010 the time is 13.5s on a slow HDD platform.  Note that this
+# may still fail if this is run on on a platform machine before
+# /home/chronos is populated (that seems to add another 23s). But as
+# BuildVerify tests are run after the boot after reimaging, the
+# home directory should already be populated.  Once we are running
+# these tests only on qualified systems we can lower the constraints
+# to be in-line with suite_HWQual.  Once we are running our own firmware
+# and we have firmware timing support on ARM we can also add the
+# constraint on firmware boot time.
 
-job.run_test("platform_BootPerfServer", host=client)
+job.run_test("platform_BootPerfServer",
+             host=client,
+             constraints=['seconds_kernel_to_login <= 18'])
+
 job.run_test("platform_KernelErrorPaths", host=client)
 
 
@@ -43,27 +58,30 @@ TESTS = [
   'hardware_Backlight',
   'hardware_DiskSize',
   'hardware_MemoryTotalSize',
-  'hardware_SsdDetection',
+  # TODO(kmixter): Determine how to only run some tests on some
+  # platforms.  Until then pick a conservative set of BVTs.
+  #'hardware_SsdDetection',
   'hardware_VideoOut',
+  'logging_LogVolume',
   'login_AuthenticationTests',
   'login_PamModuleLoadTest',
-  'network_Ping',
-  'network_WiFiCaps',
-  'platform_AccurateTime',
+  # crosbug.com/2314: network_Ping is disabled until fixed
+  #'network_Ping',
+  # Requires 802.11n
+  #'network_WiFiCaps',
+  'platform_CleanShutdown',
   'platform_DaemonsRespawn',
   'platform_DiskIterate',
   'platform_FilePerms',
   'platform_KernelVersion',
   'platform_MemCheck',
   'platform_NetParms',
-  'platform_NoOpenFilesAtShutdown',
   'platform_OSLimits',
   'platform_PartitionCheck',
   'platform_Shutdown',
   'platform_TempFS',
   'platform_UnmountCleanlyAtShutdown',
   'power_Resume',
-  'power_Status',
 ]
 
 for test in TESTS:
@@ -112,6 +130,10 @@ client_at.run_test('network_DisableInterface',
 # fail. Fix this once we have a way to run platform-dependent tests.
 client_at.run_test('network_DisableInterface',
                    iface_name='hci0', tag='hci0')
+
+# Expect time is accurate within 1 minute from the NTP server.
+client_at.run_test('platform_AccurateTime',
+                   constraints=['seconds_offset < 60'])
 
 # Run process tests
 test_name = 'platform_ProcessPrivileges'

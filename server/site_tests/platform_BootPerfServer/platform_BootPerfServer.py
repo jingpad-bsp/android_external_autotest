@@ -7,8 +7,10 @@ import os
 import shutil
 from autotest_lib.server import test, autotest
 
+
 class platform_BootPerfServer(test.test):
     version = 1
+
 
     def run_once(self, host=None):
         self.client = host
@@ -20,7 +22,7 @@ class platform_BootPerfServer(test.test):
 
         # Collect the performance metrics by running a client side test
         client_at = autotest.Autotest(self.client)
-        client_at.run_test(self.client_test)
+        client_at.run_test(self.client_test, last_boot_was_reboot=True)
 
 
     def postprocess(self):
