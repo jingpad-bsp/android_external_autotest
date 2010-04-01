@@ -97,9 +97,9 @@ class hardware_Components(test.test):
           Returns a colon delimited string where the first section
           is the vendor id and the second section is the device id.
         """
-        part_id = utils.read_one_line("/sys/class/net/eth0/device/device")
-        vendor_id = utils.read_one_line("/sys/class/net/eth0/device/vendor")
-        return "%s:%s" % (vendor_id, part_id)
+        part_id = utils.read_one_line('/sys/class/net/eth0/device/device')
+        vendor_id = utils.read_one_line('/sys/class/net/eth0/device/vendor')
+        return "%s:%s" % (vendor_id.replace('0x',''), part_id.replace('0x',''))
 
 
     def get_part_id_flash_chip(self):
@@ -142,9 +142,9 @@ class hardware_Components(test.test):
           Returns a colon delimited string where the first section
           is the vendor id and the second section is the device id.
         """
-        part_id = utils.read_one_line("/sys/class/net/wlan0/device/device")
-        vendor_id = utils.read_one_line("/sys/class/net/wlan0/device/vendor")
-        return "%s:%s" % (vendor_id, part_id)
+        part_id = utils.read_one_line('/sys/class/net/wlan0/device/device')
+        vendor_id = utils.read_one_line('/sys/class/net/wlan0/device/vendor')
+        return "%s:%s" % (vendor_id.replace('0x',''), part_id.replace('0x',''))
 
 
     def check_approved_usb_part_id(self, cid):
