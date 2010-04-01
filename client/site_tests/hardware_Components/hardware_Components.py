@@ -21,10 +21,13 @@ class hardware_Components(test.test):
         'part_id_usb_hosts',
         'part_id_vga',
         'part_id_wireless',
-        'vendor_id_bluetooth',
         'vendor_id_cardreader',
         'vendor_id_touchpad',
-        'vendor_id_webcam',
+    ]
+    _usb_cids = [
+        'part_id_bluetooth',
+        'part_id_webcam',
+        'part_id_3g',
     ]
 
     def check_component(self, comp_key, comp_id):
@@ -144,33 +147,27 @@ class hardware_Components(test.test):
         return "%s:%s" % (vendor_id, part_id)
 
 
-    def check_approved_3G(self):
+    def check_approved_usb_part_id(self, cid):
         """
-          Returns false iff there are no matching vendor_id:product_id pairs
-          on the USB.
+        Check if there are matching vendor_id:product_id pairs on the USB.
         """
         cmd = 'sudo /usr/sbin/lsusb -d %s'
-        if not self._approved.has_key('part_id_3G'):
-            raise error.TestFail('part_id_3G missing from database')
+        if not self._approved.has_key(cid):
+            raise error.TestFail('%s missing from database' % cid)
 
-        approved_devices = self._approved['part_id_3G']
+        approved_devices = self._approved[cid]
         if '*' in approved_devices:
+            self._system[cid] = [ '*' ]
             return
 
         for device in approved_devices:
             try:
                 utils.system(cmd % device)
-                self._system['part_id_3G'] = [ device ]
+                self._system[cid] = [ device ]
                 return
             except:
                 pass
-        self._failures['part_id_3G'] = [ 'No suitable devices found' ]
-
-    def get_vendor_id_bluetooth(self):
-        cmd = ('hciconfig hci0 version | grep Manufacturer '
-               '| sed s/.\*Manufacturer://')
-        part_id = utils.system_output(cmd).strip()
-        return part_id
+        self._failures[cid] = [ 'No match' ]
 
 
     def get_vendor_id_cardreader(self):
@@ -239,7 +236,9 @@ class hardware_Components(test.test):
         for cid in self._cids:
             self.check_component(cid, getattr(self, 'get_' + cid)())
 
-        self.check_approved_3G()
+        for cid in self._usb_cids:
+            self.check_approved_usb_part_id(cid)
+
         logging.debug('System: %s', self.pformat(self._system))
 
         outdb = os.path.join(self.resultsdir, 'system_components')

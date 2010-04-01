@@ -6,6 +6,7 @@
     # key: component ID
     # value: a list of approved component IDs ('*' indicates any)
     'part_id_audio_codec': ['*'],
+    'part_id_bluetooth': ['*'],
     'part_id_bios': ['*'],
     'part_id_chipset': ['*'],
     'part_id_cpu': ['*'],
@@ -15,12 +16,11 @@
     'part_id_storage': ['*'],
     'part_id_usb_hosts': ['*'],
     'part_id_vga': ['*'],
+    'part_id_webcam': ['*'],
     'part_id_wireless': ['*'],
-    'part_id_3G': ['*'],
-    'vendor_id_bluetooth': ['*'],
+    'part_id_3g': ['*'],
     'vendor_id_cardreader': ['*'],
     'vendor_id_touchpad': ['*'],
-    'vendor_id_webcam': ['*'],
 }
 
 ###  Local Variables:
