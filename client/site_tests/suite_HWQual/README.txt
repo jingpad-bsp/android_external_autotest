@@ -152,6 +152,23 @@ Automated and Semi-Automated Test Runs
                   -c client/site_tests/suite_HWQual/control.bluetooth
 
 
+* If the DUT has video out ports, run the Video Out semi-automated
+  test by following the instructions specified in the control file
+  (control.video_out) and then executing:
+
+  $ ./server/autoserv -r results.${PORT}_video_out -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.video_out
+                  
+  Where PORT is the name of each video port you are testing.  For example, if 
+  the DUT has one HDMI and one VGA out port, run:  
+  
+  $ ./server/autoserv -r results.hdmi1_video_out -m <DUT_IP> \
+                -c client/site_tests/suite_HWQual/control.video_out
+    
+  $ ./server/autoserv -r results.vga1_video_out -m <DUT_IP> \
+                -c client/site_tests/suite_HWQual/control.video_out                    
+
+
 * Run the device on AC. Plug a power draw USB dongle in each USB port.
   Run the max power draw test:
 
