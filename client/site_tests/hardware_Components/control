@@ -5,7 +5,11 @@
 TIME='SHORT'
 AUTHOR = 'The Chromium OS Authors'
 DOC = """
-Probe for hardware components
+Identify or probe for hardware components and match them against the approved
+components database. Some components are identified first and then matched,
+while some are probed based on the approved components database contents.
+Note: to identify the card reader device, an SD card must be inserted into the
+reader before running the test.
 """
 NAME = 'hardware_Components'
 TEST_CLASS = "hardware"

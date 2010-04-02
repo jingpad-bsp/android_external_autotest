@@ -4,7 +4,7 @@
 
 import logging, os, pprint, re
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error, site_ui
+from autotest_lib.client.common_lib import error
 
 
 class hardware_Components(test.test):
@@ -21,11 +21,11 @@ class hardware_Components(test.test):
         'part_id_usb_hosts',
         'part_id_vga',
         'part_id_wireless',
-        'vendor_id_cardreader',
         'vendor_id_touchpad',
     ]
     _usb_cids = [
         'part_id_bluetooth',
+        'part_id_cardreader',
         'part_id_webcam',
         'part_id_3g',
     ]
@@ -170,34 +170,6 @@ class hardware_Components(test.test):
         self._failures[cid] = [ 'No match' ]
 
 
-    def get_vendor_id_cardreader(self):
-        dialog = site_ui.Dialog(question="Please insert a SD-card.",
-                                choices=["OK"])
-        if self._semiauto:
-            num_retry = 3
-        else:
-            num_retry = 0
-
-        part_id = ''
-        while True:
-            cmd = 'lsusb -v'
-            output = utils.system_output(cmd)
-            match = re.search(
-                r'  idVendor +0x.... (.*?)\n(?:  .*\n)*?  .*?CARD READER',
-                output, re.IGNORECASE)
-
-            if match:
-                part_id = match.group(1)
-                break
-            if not num_retry:
-                part_id = 'N/A'
-                break
-            result = dialog.get_result()
-            num_retry -= 1
-
-        return part_id
-
-
     def get_vendor_id_touchpad(self):
         cmd = 'grep -i Touchpad /proc/bus/input/devices | sed s/.\*=//'
         part_id = utils.system_output(cmd).strip('"')
@@ -218,8 +190,7 @@ class hardware_Components(test.test):
         self._pp = pprint.PrettyPrinter()
 
 
-    def run_once(self, approved_db=None, semiauto=False):
-        self._semiauto = semiauto
+    def run_once(self, approved_db=None):
         self._system = {}
         self._failures = {}
 
