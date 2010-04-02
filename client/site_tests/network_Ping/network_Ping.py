@@ -23,20 +23,22 @@ class network_Ping(test.test):
         Returns:
             string, dotted ip address of gateway.
         """
-        cmd = 'ip route'
+        gateway = 'UGH'
+        cmd = 'netstat -nr'
+        address = None
         output = utils.system_output('%s' % cmd)
 
-        linesout = output.split('\n')
+        linesout = output.splitlines()
         for line in linesout:
-            if 'default' in line:
+            if gateway in line:
                 s = line.split()
-                ipaddress = s[2]
+                address = s[1]
+                break
 
-        if ipaddress:
-            return ipaddress
-        else:
+        if not address:
             logging.error('Error determining default gateway!')
-            return None
+
+        return address
 
 
     def ping_remote(self, rhost):
