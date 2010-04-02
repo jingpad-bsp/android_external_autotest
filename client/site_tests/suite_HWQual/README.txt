@@ -138,6 +138,14 @@ Automated and Semi-Automated Test Runs
                   -c client/site_tests/suite_HWQual/control.external_devices
 
 
+* Run the approved components test by first following the manual
+  instructions specified in the control file (control.components) and
+  then executing:
+
+  $ ./server/autoserv -r results.components -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.components
+
+
 * Run the system suspend/resume stability test:
 
   $ ./server/autoserv -r results.suspend_resume -m <DUT_IP> \
@@ -156,17 +164,17 @@ Automated and Semi-Automated Test Runs
   test by following the instructions specified in the control file
   (control.video_out) and then executing:
 
-  $ ./server/autoserv -r results.${PORT}_video_out -m <DUT_IP> \
+  $ ./server/autoserv -r results.video_out.${PORT} -m <DUT_IP> \
                   -c client/site_tests/suite_HWQual/control.video_out
                   
-  Where PORT is the name of each video port you are testing.  For example, if 
-  the DUT has one HDMI and one VGA out port, run:  
+  Where PORT is the name of each video port you are testing.  For
+  example, if the DUT has one HDMI and one VGA out port, run:
   
-  $ ./server/autoserv -r results.hdmi1_video_out -m <DUT_IP> \
+  $ ./server/autoserv -r results.video_out.hdmi1 -m <DUT_IP> \
                 -c client/site_tests/suite_HWQual/control.video_out
     
-  $ ./server/autoserv -r results.vga1_video_out -m <DUT_IP> \
-                -c client/site_tests/suite_HWQual/control.video_out                    
+  $ ./server/autoserv -r results.video_out.vga1 -m <DUT_IP> \
+                -c client/site_tests/suite_HWQual/control.video_out
 
 
 * Run the device on AC. Plug a power draw USB dongle in each USB port.

@@ -98,7 +98,6 @@ job.run_test('network_WiFiCaps')
 # Extra Requirements
 job.run_test('compilebench')
 job.run_test('disktest')
-job.run_test('hardware_Components')
 job.run_test('hardware_SAT', seconds=600)
 job.run_test('ltp')
 job.run_test('power_CPUFreq')
