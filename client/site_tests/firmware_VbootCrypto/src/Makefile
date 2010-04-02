@@ -37,17 +37,17 @@ all:
         # Always build from scratch.
 	$(MAKE) -C $(BUILD_TEST_DIR) clean all
         # Move test binaries for use by the tests.
-	mkdir tests
+	mkdir -p tests
 	for i in $(TEST_BINS); do \
 	  ( mv $(BUILD_TEST_DIR)/tests/$$i tests/ ) ;\
 	done
         # Move utility binaries used by the tests.
-	mkdir utils
+	mkdir -p utility
 	for i in $(UTIL_BINS); do \
-	  ( mv $(BUILD_TEST_DIR)/utility/$$i utils/ ) ;\
+	  ( mv $(BUILD_TEST_DIR)/utility/$$i utility/ ) ;\
 	done
         # Delete sources.
 	rm -rf $(BUILD_TEST_DIR)
 
 clean:
-	rm -rf utils/ tests/
+	rm -rf utility/ tests/
