@@ -80,7 +80,6 @@ TESTS = [
   'platform_PartitionCheck',
   'platform_Shutdown',
   'platform_TempFS',
-  'platform_UnmountCleanlyAtShutdown',
   'power_Resume',
 ]
 

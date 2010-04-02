@@ -13,7 +13,7 @@ Test Setup
 
 
 * Setup a Linux machine to serve as the Autotest server. The Autotest
-  server requires Python, Ethernet access to the DUT and basic Linux
+  server requires Python, Wireless access to the DUT and basic Linux
   shell utilities. The setup has been tested on Ubuntu 9.10 available
   for download at http://www.ubuntu.com/getubuntu/download/.
 
