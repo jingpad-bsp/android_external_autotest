@@ -1,6 +1,60 @@
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 http://www.avatarmovie.com/videos/trailer_720p.mov
 http://movies.apple.com/movies/us/hd_gallery/gl1800/720p/artbeats_red_m720p.mov
-#1857709.mov
+
+#bear - 1280x720 82 frames, 29.97 fps, 2.79 sec. 48000 Hz audio. Original MVI_0822.MOV
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_mpeg4.avi
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear.m4a
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear.mp3
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_hp.mp4
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_bp.mp4
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_mp.mp4
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear.ogg
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear.ogv
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear.wav
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_wma1.wma
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_wma2.wma
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_wmapro.wma
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_vc1.wmv
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_wmv7.wmv
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_wmv8.wmv
+http://build.chromium.org/buildbot/partners/hwqual-files/bear/bear_wmv9.wmv
+
+#buck - 848x480 14300 frames, 24.00 fps, 9 min 56.52 sec. 48000 Hz audio. Original BigBuckBunny[DivX_Plus_HD].mkv
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_mpeg4.avi
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck.m4a
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck.mp3
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_bp.mp4
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_hp.mp4
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_mp.mp4
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck.ogg
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck.ogv
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck.wav
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_wma1.wma
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_wmapro.wma
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_wma2.wma
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_wmv9.wmv
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_vc1.wmv
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_wmv8.wmv
+http://build.chromium.org/buildbot/partners/hwqual-files/buck/buck_wmv7.wmv
+
+#tulip - 1280x720 500 frames, 29.97 fps, 16.66 sec. 48000 Hz audio. Original _on2HDs.avi + tulip2.wav
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_mpeg4.avi
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip.m4a
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip.mp3
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_hp.mp4
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_bp.mp4
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_mp.mp4
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip.ogg
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip.ogv
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip.wav
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_wma1.wma
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_wma2.wma
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_wmapro.wma
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_vc1.wmv
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_wmv7.wmv
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_wmv8.wmv
+http://build.chromium.org/buildbot/partners/hwqual-files/tulip/tulip_wmv9.wmv
