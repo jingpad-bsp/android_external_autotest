@@ -118,8 +118,9 @@ class KeyboardTest:
     rgba_press_and_release = (  0, 0.5, 0, 0.6)
     rgba_press_only =        (0.6, 0.6, 0, 0.6)
 
-    def __init__(self, kbd_image):
+    def __init__(self, kbd_image, exit_on_error=False):
         self._kbd_image = kbd_image
+        self._exit_on_error = exit_on_error
         self._pressed_keys = set()
         self._successful_keys = set()
         self._deadline = None
@@ -173,6 +174,8 @@ class KeyboardTest:
                 self._success = False
                 mk = ['0x%x' % k for k in self.missing_keys()]
                 print 'missing_keys = %s' % ', '.join(mk)
+                if self._exit_on_error:
+                    sys.exit(1)
             elif self._success:
                 sys.exit(0)
         window.queue_draw()
@@ -382,7 +385,10 @@ def main():
         drawing_area.connect('button_release_event', kt.button_release_event)
         drawing_area.connect('button_press_event', kt.button_press_event)
     else:
-        kt = KeyboardTest(kbd_image)
+        exit_on_error = False
+        if '--exit-on-error' in sys.argv:
+            exit_on_error = True
+        kt = KeyboardTest(kbd_image, exit_on_error=exit_on_error)
         screen = window.get_screen()
         screen_size = (screen.get_width(), screen.get_height())
         window.set_default_size(*screen_size)

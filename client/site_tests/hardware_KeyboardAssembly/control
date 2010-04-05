@@ -5,6 +5,18 @@ TEST_CATEGORY = "Factory"
 TEST_CLASS = "hardware"
 TEST_TYPE = "client"
 
-DOC = """This test checks whether all keyboard keys function properly."""
+DOC = """
+This test checks whether all keyboard keys function properly.  This
+test will display a keyboard image and keys will be highlighted as
+they are pressed and released. Once all keys have been used, a brief
+'PASS' message will be displayed and the test will terminate.  After
+the first key is hit, a countdown will begin.  If not all keys are
+used in time, the test will fail with an 'ERROR' message that is
+displayed forever (unless the 'hwqual' argument is passed in).
+"""
 
-job.run_test('hardware_KeyboardAssembly')
+restart_ui = False
+if 'hwqual' in args:
+    restart_ui = True
+
+job.run_test('hardware_KeyboardAssembly', restart_ui=restart_ui)

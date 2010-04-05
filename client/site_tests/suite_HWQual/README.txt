@@ -152,6 +152,14 @@ Automated and Semi-Automated Test Runs
                   -c client/site_tests/suite_HWQual/control.suspend_resume
 
 
+* Run the keyboard semi-automated test by first reading the
+  instructions specified in the control file (control.keyboard) and
+  then executing:
+
+  $ ./server/autoserv -r results.keyboard -m <DUT_IP> -a hwqual \
+                  -c client/site_tests/suite_HWQual/control.keyboard
+
+
 * If the DUT has a Bluetooth adapter, run the Bluetooth semi-automated
   tests by following the instructions specified in the control file
   (control.bluetooth) and then executing:

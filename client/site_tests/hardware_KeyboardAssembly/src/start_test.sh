@@ -32,4 +32,4 @@ export XAUTHORITY=${XAUTH_FILE}
 # xset r off
 # xmodmap -e "clear Lock"
 
-exec /usr/bin/python KeyboardTest.py
+exec /usr/bin/python KeyboardTest.py $*
