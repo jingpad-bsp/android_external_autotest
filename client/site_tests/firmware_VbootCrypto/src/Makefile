@@ -6,8 +6,6 @@ VBOOT_REFERENCE_DIR = $(GCLIENT_ROOT)/src/platform/vboot_reference
 BUILD_TEST_DIR = vboot_reference
 # Test Binaries.
 TEST_BINS = \
-	big_firmware_tests \
-	big_kernel_tests \
 	common.sh \
 	firmware_image_tests \
 	firmware_rollback_tests \
