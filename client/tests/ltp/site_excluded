@@ -1,270 +1,270 @@
-BindMounts      $LTPROOT/testscripts/test_fs_bind.sh
-access02 access02
-access04 access04
-access05 access05
-chmod03 chmod03
-chmod04 chmod04
-chown04 chown04
-chown04_16 chown04_16
-chroot01 chroot01
-chroot02 chroot02
-clone06 clone06
-creat01 creat01
-creat06 creat06
-execve03 execve03
-fchmod03 fchmod03
-fchmod04 fchmod04
-fchmod06 fchmod06
-fchown03 fchown03
-fchown03_16 fchown03_16
-fchown04 fchown04
-fchown04_16 fchown04_16
-fstat02 fstat02
-fstat02_64 fstat02_64
-fstat04 fstat04
-fstat04_64 fstat04_64
-fstat05 fstat05
-fstat05_64 fstat05_64
-ioctl03      ioctl03
-inotify02 inotify02
-lchown02 prep_create_link; lchown02
-lchown02_16 prep_create_link; lchown02_16
-linkat01 linkat01
-lstat02 lstat02
-lstat02_64 lstat02_64
-lstat03 lstat03
-lstat03_64 lstat03_64
-mkdir05 mkdir05
-mknod07 mknod07
-msgctl04 msgctl04
-msgget04 msgget04
-msgrcv02 msgrcv02
-msgsnd02 msgsnd02
-nanosleep02 nanosleep02
-nftw01 nftw01
-nftw6401 nftw6401
-open08 open08
-readlink01 readlink01
-readlink03 readlink03
-rt_sigprocmask01 rt_sigprocmask01
-semctl02 semctl02
-semget02 semget02
-semop02 semop02
-shmat02 shmat02
-shmctl02 shmctl02
-shmget04 shmget04
-stat01 stat01
-stat01_64 stat01_64
-stat02 stat02
-stat02_64 stat02_64
-stat03 stat03
-stat03_64 stat03_64
-symlink03 symlink03
-syslog01 syslog01
-syslog02 syslog02
-syslog03 syslog03
-syslog07 syslog07
-syslog08 syslog08
-syslog09 syslog09
-syslog10 syslog10
-truncate03 truncate03
-truncate03_64 truncate03_64
-truncate04 truncate04
-truncate04_64 truncate04_64
-utime02 utime02
-utime05 utime05
-utimensat01 utimensat_tests.sh
-ftest03 ftest03
-ftest07 ftest07
-access02 access02
-access04 access04
-access05 access05
-chmod03 chmod03
-chmod04 chmod04
-chown04 chown04
-chown04_16 chown04_16
-chroot01 chroot01
-chroot02 chroot02
-clone06 clone06
-creat01 creat01
-creat06 creat06
-execve03 execve03
-fchmod03 fchmod03
-fchmod04 fchmod04
-fchmod06 fchmod06
-fchown03 fchown03
-fchown03_16 fchown03_16
-fchown04 fchown04
-fchown04_16 fchown04_16
-fstat02 fstat02
-fstat02_64 fstat02_64
-fstat04 fstat04
-fstat04_64 fstat04_64
-fstat05 fstat05
-fstat05_64 fstat05_64
-ioctl03      ioctl03
-inotify02 inotify02
-lchown02 prep_create_link; lchown02
-lchown02_16 prep_create_link; lchown02_16
-linkat01 linkat01
-lstat02 lstat02
-lstat02_64 lstat02_64
-lstat03 lstat03
-lstat03_64 lstat03_64
-mkdir05 mkdir05
-mknod07 mknod07
-msgctl04 msgctl04
-msgget04 msgget04
-msgrcv02 msgrcv02
-msgsnd02 msgsnd02
-nanosleep02 nanosleep02
-nftw01 nftw01
-nftw6401 nftw6401
-open08 open08
-readlink01 readlink01
-readlink03 readlink03
-rt_sigprocmask01 rt_sigprocmask01
-semctl02 semctl02
-semget02 semget02
-semop02 semop02
-shmat02 shmat02
-shmctl02 shmctl02
-shmget04 shmget04
-stat01 stat01
-stat01_64 stat01_64
-stat02 stat02
-stat02_64 stat02_64
-stat03 stat03
-stat03_64 stat03_64
-symlink03 symlink03
-syslog01 syslog01
-syslog02 syslog02
-syslog03 syslog03
-syslog07 syslog07
-syslog08 syslog08
-syslog09 syslog09
-syslog10 syslog10
-truncate03 truncate03
-truncate03_64 truncate03_64
-truncate04 truncate04
-truncate04_64 truncate04_64
-utime02 utime02
-utime05 utime05
-utimensat01 utimensat_tests.sh
-ftest03 ftest03
-ftest07 ftest07
-access02 access02
-access04 access04
-access05 access05
-chmod03 chmod03
-chmod04 chmod04
-chown04 chown04
-chown04_16 chown04_16
-chroot01 chroot01
-chroot02 chroot02
-clone06 clone06
-creat01 creat01
-creat06 creat06
-execve03 execve03
-fchmod03 fchmod03
-fchmod04 fchmod04
-fchmod06 fchmod06
-fchown03 fchown03
-fchown03_16 fchown03_16
-fchown04 fchown04
-fchown04_16 fchown04_16
-fstat02 fstat02
-fstat02_64 fstat02_64
-fstat04 fstat04
-fstat04_64 fstat04_64
-fstat05 fstat05
-fstat05_64 fstat05_64
-ioctl03      ioctl03
-inotify02 inotify02
-lchown02 prep_create_link; lchown02
-lchown02_16 prep_create_link; lchown02_16
-linkat01 linkat01
-lstat02 lstat02
-lstat02_64 lstat02_64
-lstat03 lstat03
-lstat03_64 lstat03_64
-mkdir05 mkdir05
-mknod07 mknod07
-msgctl04 msgctl04
-msgget04 msgget04
-msgrcv02 msgrcv02
-msgsnd02 msgsnd02
-nanosleep02 nanosleep02
-nftw01 nftw01
-nftw6401 nftw6401
-open08 open08
-readlink01 readlink01
-readlink03 readlink03
-rt_sigprocmask01 rt_sigprocmask01
-semctl02 semctl02
-semget02 semget02
-semop02 semop02
-shmat02 shmat02
-shmctl02 shmctl02
-shmget04 shmget04
-stat01 stat01
-stat01_64 stat01_64
-stat02 stat02
-stat02_64 stat02_64
-stat03 stat03
-stat03_64 stat03_64
-symlink03 symlink03
-syslog01 syslog01
-syslog02 syslog02
-syslog03 syslog03
-syslog07 syslog07
-syslog08 syslog08
-syslog09 syslog09
-syslog10 syslog10
-truncate03 truncate03
-truncate03_64 truncate03_64
-truncate04 truncate04
-truncate04_64 truncate04_64
-utime02 utime02
-utime05 utime05
-utimensat01 utimensat_tests.sh
-ftest03 ftest03
-ftest07 ftest07
-mtest06_2 mmap2 -x 0.002 -a -p
-memcg_function 	memcg_function_test.sh
-Cap_bounds run_capbounds.sh
-su01 export TCbin=$LTPROOT/testcases/bin;su01
-cron02 cron02
-cron_deny01 cron_deny01
-cron_allow01 cron_allow01
-cron_dirs_checks01 cron_dirs_checks01
-at_deny01 at_deny01
-at_allow01 at_allow01
-acl_test01 export TCbin=$LTPROOT/testcases/bin;acl_test01
-Numa-testcases numa01.sh
-hugemmap04 hugemmap04 -H/tmp
-hugeshmat01 hugeshmat01 -i 5
-hugeshmat02 hugeshmat02 -i 5
-hugeshmat03 hugeshmat03 -i 5
-hugeshmctl01 hugeshmctl01 -i 5 -c 3
-hugeshmctl02 hugeshmctl02 -i 5 -c 3
-hugeshmctl03 hugeshmctl03 -i 5 -c 3
-hugeshmdt01 hugeshmdt01 -I 5 -c10
-hugeshmget01 hugeshmget01 -c 10 -i 10
-hugeshmget02 hugeshmget02 -c 10 -i 10
-hugeshmget03 hugeshmget03 -c 10 -i 10
-hugeshmget05 hugeshmget05 -c 10 -i 10
-ar export TCdat=$LTPROOT/testcases/bin; ar01
-ld export TCdat=$LTPROOT/testcases/bin; ld01
-ldd export TCdat=$LTPROOT/testcases/bin; ldd01
-nm export TCdat=$LTPROOT/testcases/bin; nm01 
-objdump export TCsrc=$LTPROOT/testcases/bin; objdump01
-file export TCdat=$LTPROOT/testcases/bin; file_test.sh
-cron export TCdat=$LTPROOT/testcases/bin; cron_tests.sh
-logrotate export TCdat=$LTPROOT/testcases/bin; logrotate_tests.sh
-mail export TCdat=$LTPROOT/testcases/bin; mail_tests.sh
-unzip01 unzip_tests.sh $LTPROOT/testcases/data/tst_unzip_file.zip
-cgroup 	cgroup_regression_test.sh
-memcg_regression        memcg_regression_test.sh
-memcg_stress            memcg_stress_test.sh
-controllers     test_controllers.sh
+BindMounts
+access02
+access04
+access05
+chmod03
+chmod04
+chown04
+chown04_16
+chroot01
+chroot02
+clone06
+creat01
+creat06
+execve03
+fchmod03
+fchmod04
+fchmod06
+fchown03
+fchown03_16
+fchown04
+fchown04_16
+fstat02
+fstat02_64
+fstat04
+fstat04_64
+fstat05
+fstat05_64
+ioctl03
+inotify02
+lchown02
+lchown02_16
+linkat01
+lstat02
+lstat02_64
+lstat03
+lstat03_64
+mkdir05
+mknod07
+msgctl04
+msgget04
+msgrcv02
+msgsnd02
+nanosleep02
+nftw01
+nftw6401
+open08
+readlink01
+readlink03
+rt_sigprocmask01
+semctl02
+semget02
+semop02
+shmat02
+shmctl02
+shmget04
+stat01
+stat01_64
+stat02
+stat02_64
+stat03
+stat03_64
+symlink03
+syslog01
+syslog02
+syslog03
+syslog07
+syslog08
+syslog09
+syslog10
+truncate03
+truncate03_64
+truncate04
+truncate04_64
+utime02
+utime05
+utimensat01
+ftest03
+ftest07
+access02
+access04
+access05
+chmod03
+chmod04
+chown04
+chown04_16
+chroot01
+chroot02
+clone06
+creat01
+creat06
+execve03
+fchmod03
+fchmod04
+fchmod06
+fchown03
+fchown03_16
+fchown04
+fchown04_16
+fstat02
+fstat02_64
+fstat04
+fstat04_64
+fstat05
+fstat05_64
+ioctl03
+inotify02
+lchown02
+lchown02_16
+linkat01
+lstat02
+lstat02_64
+lstat03
+lstat03_64
+mkdir05
+mknod07
+msgctl04
+msgget04
+msgrcv02
+msgsnd02
+nanosleep02
+nftw01
+nftw6401
+open08
+readlink01
+readlink03
+rt_sigprocmask01
+semctl02
+semget02
+semop02
+shmat02
+shmctl02
+shmget04
+stat01
+stat01_64
+stat02
+stat02_64
+stat03
+stat03_64
+symlink03
+syslog01
+syslog02
+syslog03
+syslog07
+syslog08
+syslog09
+syslog10
+truncate03
+truncate03_64
+truncate04
+truncate04_64
+utime02
+utime05
+utimensat01
+ftest03
+ftest07
+access02
+access04
+access05
+chmod03
+chmod04
+chown04
+chown04_16
+chroot01
+chroot02
+clone06
+creat01
+creat06
+execve03
+fchmod03
+fchmod04
+fchmod06
+fchown03
+fchown03_16
+fchown04
+fchown04_16
+fstat02
+fstat02_64
+fstat04
+fstat04_64
+fstat05
+fstat05_64
+ioctl03
+inotify02
+lchown02
+lchown02_16
+linkat01
+lstat02
+lstat02_64
+lstat03
+lstat03_64
+mkdir05
+mknod07
+msgctl04
+msgget04
+msgrcv02
+msgsnd02
+nanosleep02
+nftw01
+nftw6401
+open08
+readlink01
+readlink03
+rt_sigprocmask01
+semctl02
+semget02
+semop02
+shmat02
+shmctl02
+shmget04
+stat01
+stat01_64
+stat02
+stat02_64
+stat03
+stat03_64
+symlink03
+syslog01
+syslog02
+syslog03
+syslog07
+syslog08
+syslog09
+syslog10
+truncate03
+truncate03_64
+truncate04
+truncate04_64
+utime02
+utime05
+utimensat01
+ftest03
+ftest07
+mtest06_2
+memcg_function
+Cap_bounds
+su01
+cron02
+cron_deny01
+cron_allow01
+cron_dirs_checks01
+at_deny01
+at_allow01
+acl_test01
+Numa-testcases
+hugemmap04
+hugeshmat01
+hugeshmat02
+hugeshmat03
+hugeshmctl01
+hugeshmctl02
+hugeshmctl03
+hugeshmdt01
+hugeshmget01
+hugeshmget02
+hugeshmget03
+hugeshmget05
+ar
+ld
+ldd
+nm
+objdump
+file
+cron
+logrotate
+mail
+unzip01
+cgroup
+memcg_regression
+memcg_stress
+controllers
