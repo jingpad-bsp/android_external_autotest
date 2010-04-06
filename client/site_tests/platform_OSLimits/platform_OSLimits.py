@@ -60,7 +60,8 @@ class platform_OSLimits(test.test):
 
         ref_min = {'file_max': 100424,
                    'max_open': 1024,
-                   'max_procs': 8125,
+                   'max_procs': 8000,
+                   'max_threads': 16000,
                    'msg_max': 10,
                    'msgsize': 8192,
                    'msg_queue': 256,
@@ -79,6 +80,7 @@ class platform_OSLimits(test.test):
                    'leases': '/proc/sys/fs/leases-enable',
                    'max_open': '/proc/self/limits',
                    'max_procs': '/proc/self/limits',
+                   'max_threads': '/proc/sys/kernel/threads-max',
                    'msg_max': '/proc/sys/fs/mqueue/msg_max',
                    'msgsize': '/proc/sys/fs/mqueue/msgsize_max',
                    'msg_queue': '/proc/sys/fs/mqueue/queues_max',
