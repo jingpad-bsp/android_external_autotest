@@ -101,15 +101,6 @@ class WiFiTest(object):
         self.ping_thread = None
 
 
-    def setup(self):
-        self.job.setup_dep(['netperf'])
-# XXX enable once iperf is built by build_autotest
-#        self.job.setup_dep(['iperf'])
-        # create a empty srcdir to prevent the error that checks .version
-        if not os.path.exists(self.srcdir):
-            os.mkdir(self.srcdir)
-
-
     def cleanup(self, params):
         """ Cleanup state: disconnect client and destroy ap """
         self.disconnect({})
@@ -202,7 +193,7 @@ while assoc_time < assoc_timeout:
 #    print>>sys.stderr, "time %3.1f state %s" % (assoc_time, status)
     if status == "failure":
         print "FAIL(assoc): ssid %s assoc %3.1f secs props %s" \\
-	    %(ssid, assoc_time, properties)
+        %(ssid, assoc_time, properties)
         sys.exit(3)
     if status == "configuration" or status == "ready":
         break
@@ -489,13 +480,25 @@ sys.exit(0)'''
 
     def __run_iperf(self, client_ip, server_ip, params):
         template = ''.join(["job.run_test('iperf', \
-            server_ip='%s', client_ip='%s', role='%s'%s"])
+            server_ip='%s', client_ip='%s', role='%s'"])
         if 'udp' in params:
             template += ", udp=True"
         if 'bidir' in params:
             template += ", bidirectional=True"
         if 'time' in params:
             template += ", test_time=%s" % params['time']
+
+        # add a tag to distinguish runs when multiple tests are run
+        if 'tag' in params:
+            tag = params['tag']
+        elif 'udp' in params:
+            tag = "udp"
+        else:
+            tag = "tcp"
+        if 'bidir' in params:
+            tag += "_bidir"
+        template += ", tag='%s'" % tag
+
         template += ")"
 
         client_control_file = template % (server_ip, client_ip, 'client')
@@ -531,14 +534,25 @@ sys.exit(0)'''
 
 
     def __run_netperf(self, client_ip, server_ip, params):
-        template = ''.join(["job.run_test('netperf2', \
-            server_ip='%s', client_ip='%s', role='%s'"])
+        template = "job.run_test('"
+        if self.server is None:
+            template += "network_netperf2"
+        else:
+            template += "netperf2"
+        template += "', server_ip='%s', client_ip='%s', role='%s'"
         if 'test' in params:
             template += ", test='%s'" % params['test']
         if 'bidir' in params:
             template += ", bidi=True"
         if 'time' in params:
             template += ", test_time=%s" % params['time']
+
+        # add a tag to distinguish runs when multiple tests are run
+        if 'tag' in params:
+            template += ", tag='%s'" % params['tag']
+        elif 'test' in params:
+            template += ", tag='%s'" % params['test']
+
         template += ")"
 
         client_control_file = template % (server_ip, client_ip, 'client')
