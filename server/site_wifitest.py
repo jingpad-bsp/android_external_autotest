@@ -6,7 +6,7 @@ import common, fnmatch, logging, os, re, string, threading, time
 
 from autotest_lib.server import autotest, subcommand
 from autotest_lib.server import site_bsd_router
-#from autotest_lib.server import site_linux_router
+from autotest_lib.server import site_linux_router
 
 class NotImplemented(Exception):
     def __init__(self, what):
@@ -94,8 +94,14 @@ class WiFiTest(object):
         # interface name on client
         self.wlanif = "wlan0"
 
-        # XXX auto-detect router type
-        self.wifi = site_bsd_router.BSDRouter(self.router, router, self.defssid)
+        # auto-detect router type
+        router_uname = self.router.run('uname').stdout
+        if re.search('Linux', router_uname):
+            self.wifi = site_linux_router.LinuxRouter(self.router, router, self.defssid)
+        elif re.search('BSD', router_uname):
+            self.wifi = site_bsd_router.BSDRouter(self.router, router, self.defssid)
+        else:
+            raise Exception('Unsupported router')
 
         # potential bg thread for ping untilstop
         self.ping_thread = None
