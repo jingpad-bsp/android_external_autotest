@@ -66,7 +66,7 @@ class platform_PartitionCheck(test.test):
         refsize = 1073741824
 
         device = 'sda'
-        partitions = ['sda3', 'sda4']
+        partitions = ['sda3', 'sda5']
 
         block_size = self.get_block_size(device)
 
