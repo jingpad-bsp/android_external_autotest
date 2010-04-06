@@ -18,7 +18,8 @@ job.run_test('platform_BootPerf',
              constraints=['seconds_firmware_boot <= 1.0',
                           'seconds_power_on_to_login <= 5.0'])
 
-job.run_test('power_Resume')
+job.run_test('power_Resume',
+             constraints=['seconds_system_resume <= 1.0'])
 
 # Kernel Support
 job.run_test('platform_KernelVersion')
@@ -103,3 +104,7 @@ job.run_test('ltp')
 job.run_test('power_CPUFreq')
 job.run_test('power_CPUIdle')
 job.run_test('unixbench')
+
+###  Local Variables:
+###  mode: python
+###  End:
