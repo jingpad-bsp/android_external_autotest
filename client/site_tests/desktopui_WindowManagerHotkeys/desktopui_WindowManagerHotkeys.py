@@ -10,12 +10,7 @@ class desktopui_WindowManagerHotkeys(site_ui_test.UITest):
     version = 1
 
     def run_once(self):
-        import autox
-
-        # TODO: Set these in a single, standard place for all tests.
-        os.environ['DISPLAY'] = ':0'
-        os.environ['XAUTHORITY'] = '/home/chronos/.Xauthority'
-        ax = autox.AutoX()
+        ax = self.get_autox()
 
         # Start a terminal and wait for it to get the focus.
         # TODO: This is a bit of a hack.  To watch for the terminal getting

@@ -2,22 +2,75 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, utils, signal, time
+import logging, os, utils, signal, subprocess, time
 from autotest_lib.client.bin import chromeos_constants, site_cryptohome
 from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib import error, site_ui
 
 
 class TimeoutError(error.TestError):
-  """Error returned if we time out while waiting on a condition."""
-  pass
+    """Error raised when we time out while waiting on a condition."""
+    pass
 
 
-def setup_autox(test):
-    test.job.setup_dep(['autox'])
-    # create a empty srcdir to prevent the error that checks .version file
-    if not os.path.exists(test.srcdir):
-        os.mkdir(test.srcdir)
+class UnexpectedCondition(error.TestError):
+    """Error raised when an expected precondition is not met."""
+    pass
+
+
+def __get_session_manager_pid():
+    """Determine the pid of the session manager.
+
+    Returns:
+        An integer indicating the current session manager pid, or None if
+        it is not running.
+    """
+
+    p = subprocess.Popen(["pgrep", "^%s$" % chromeos_constants.SESSION_MANAGER],
+                         stdout=subprocess.PIPE)
+    ary = p.communicate()[0].split()
+    return int(ary[0]) if ary else None
+
+
+def __session_manager_restarted(oldpid):
+    """Detect if the session manager has restarted.
+
+    Args:
+        oldpid: Integer indicating the last known pid of the session_manager.
+
+    Returns:
+        True if the session manager is running under a pid other than
+        'oldpid', X is running, and there is a window displayed.
+    """
+    import autox
+
+    newpid = __get_session_manager_pid()
+    if newpid and newpid != oldpid:
+        try:
+            ax = site_ui.get_autox()
+        except autox.Xlib.error.DisplayConnectionError:
+            return False
+
+        # When the session manager starts up there is a moment where we can
+        # make a connection with autox, but there is no window displayed.  If
+        # we start sending keystrokes at this point they get lost.  If we wait
+        # for this window to show up, things go much smoother.
+        wid = ax.get_top_window_id_at_point(0, 0)
+        if not wid:
+            return False
+
+        # The login manager displays its widgetry in a second window centered
+        # on the screen.  Waiting for this window to show up is also helpful.
+        # TODO: perhaps the login manager should emit some more trustworthy
+        # signal when it's ready to accept credentials.
+        x, y = ax.get_screen_size()
+        wid2 = ax.get_top_window_id_at_point(x / 2, y / 2)
+        if wid == wid2:
+            return False
+
+        return True
+
+    return False
 
 
 def logged_in():
@@ -26,8 +79,7 @@ def logged_in():
     return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)
 
 
-# TODO: Update this to use the Python-based autox instead.
-def attempt_login(test, script_file, timeout=10):
+def attempt_login(username, password, timeout=20):
     """Attempt to log in.
 
     Args:
@@ -35,32 +87,38 @@ def attempt_login(test, script_file, timeout=10):
         timeout: float number of seconds to wait
 
     Raises:
-        error.TestFail: autox program exited with failure
         TimeoutError: login didn't complete before timeout
+        UnexpectedCondition: login manager is not running, or user is already
+            logged in.
     """
-    dep = 'autox'
-    dep_dir = os.path.join(test.autodir, 'deps', dep)
-    test.job.install_pkg(dep, 'dep', dep_dir)
+    logging.info("Attempting to login using autox.py and (%s, %s)" %
+                 (username, password))
 
-    autox_binary = '%s/%s' % (dep_dir, 'autox')
-    autox_script = os.path.join(test.job.configdir, script_file)
+    if not __get_session_manager_pid():
+        raise UnexpectedCondition("Session manager is not running")
 
-    # TODO: Use something more robust that checks whether the login window is
-    # mapped.
-    wait_for_browser()
-    try:
-        utils.system(site_ui.xcommand('%s %s' % (autox_binary, autox_script)))
-    except error.CmdError, e:
-        logging.debug(e)
-        raise error.TestFail('AutoX program failed to login for test user')
+    if logged_in():
+        raise UnexpectedCondition("Already logged in")
+
+    ax = site_ui.get_autox()
+    # navigate to login screen
+    ax.send_hotkey("Ctrl+Alt+L")
+    # focus username
+    ax.send_hotkey("Alt+U")
+    ax.send_text(username)
+    # TODO(rginda): remove Tab after http://codereview.chromium.org/1390003
+    ax.send_hotkey("Tab")
+    # focus password
+    ax.send_hotkey("Alt+P")
+    ax.send_text(password)
+    ax.send_hotkey("Return")
 
     site_utils.poll_for_condition(
-        lambda: logged_in(),
-        TimeoutError('Timed out while waiting to be logged in'),
+        logged_in, TimeoutError('Timed out waiting for login'),
         timeout=timeout)
 
 
-def attempt_logout(timeout=10):
+def attempt_logout(timeout=20):
     """Attempt to log out by killing Chrome.
 
     Args:
@@ -68,14 +126,20 @@ def attempt_logout(timeout=10):
 
     Raises:
         TimeoutError: logout didn't complete before timeout
+        UnexpectedCondition: user is not logged in
     """
-    # Gracefully exiting chrome causes the user's session to end.
-    wait_for_initial_chrome_window()
-    utils.system('pkill -TERM -o ^%s$' % chromeos_constants.BROWSER)
+    if not logged_in():
+        raise UnexpectedCondition('Already logged out')
+
+    oldpid = __get_session_manager_pid()
+
+    # Gracefully exiting the session manager causes the user's session to end.
+    utils.system('pkill -TERM -o ^%s$' %  chromeos_constants.SESSION_MANAGER)
+
     site_utils.poll_for_condition(
-        lambda: not logged_in(),
-        TimeoutError('Timed out while waiting for logout'),
-        timeout=timeout)
+        lambda: __session_manager_restarted(oldpid),
+        TimeoutError('Timed out waiting for logout'),
+        timeout)
 
 
 def wait_for_browser(timeout=10):
@@ -118,8 +182,8 @@ def wait_for_screensaver(timeout=10):
         TimeoutError: xscreensaver didn't respond before timeout
     """
     site_utils.poll_for_condition(
-        lambda: os.system(
-            site_ui.xcommand('xscreensaver-command -version')) == 0,
+        lambda: site_ui.xsystem('xscreensaver-command -version',
+                                ignore_status=True) == 0,
         TimeoutError('Timed out waiting for xscreensaver to respond'),
         timeout=timeout)
 

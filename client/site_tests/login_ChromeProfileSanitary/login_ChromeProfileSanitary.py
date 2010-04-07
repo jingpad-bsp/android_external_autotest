@@ -4,7 +4,7 @@
 
 import logging, os, stat, time, utils
 from autotest_lib.client.bin import chromeos_constants, site_cryptohome
-from autotest_lib.client.bin import site_login, test
+from autotest_lib.client.bin import site_login, site_ui_test
 from autotest_lib.client.common_lib import error, site_httpd, site_ui
 
 def respond_with_cookies(handler, url_args):
@@ -19,10 +19,10 @@ def respond_with_cookies(handler, url_args):
     handler.wfile.write('%s:\n' % url_args)
 
 
-class login_ChromeProfileSanitary(test.test):
+class login_ChromeProfileSanitary(site_ui_test.UITest):
     version = 1
 
-    def __wait_for_login_profile(self, timeout = 10):
+    def __wait_for_login_profile(self, timeout=10):
         start_time = time.time()
         while time.time() - start_time < timeout:
             if os.path.exists(chromeos_constants.LOGIN_PROFILE + '/Cookies'):
@@ -32,7 +32,7 @@ class login_ChromeProfileSanitary(test.test):
             raise error.TestError('Login Profile took too long to populate')
 
 
-    def initialize(self):
+    def initialize(self, creds='$default'):
         spec = 'http://localhost:8000'
         path = '/set_cookie'
         self._wait_path = '/test_over'
@@ -41,22 +41,15 @@ class login_ChromeProfileSanitary(test.test):
         self._testServer.add_url_handler('/set_cookie', respond_with_cookies)
         self._testServer.run()
 
-
-    def setup(self):
-        site_login.setup_autox(self)
+        site_ui_test.UITest.initialize(self, creds)
 
 
     def cleanup(self):
         self._testServer.stop()
+        site_ui_test.UITest.cleanup(self)
 
 
-    def run_once(self, script = 'autox_script.json', timeout = 10):
-        logged_in = site_login.logged_in()
-
-        if not logged_in:
-            # Test account information embedded into json file.
-            site_login.attempt_login(self, script)
-
+    def run_once(self, timeout = 10):
         # Get Default/Cookies mtime.
         cookies_info = os.stat(chromeos_constants.LOGIN_PROFILE + '/Cookies')
         cookies_mtime = cookies_info[stat.ST_MTIME]
@@ -78,8 +71,8 @@ class login_ChromeProfileSanitary(test.test):
         latch.wait(timeout)
 
         # Ensure chrome writes state to disk.
-        site_login.attempt_logout()
-        site_login.attempt_login(self, script)
+        self.logout()
+        self.login()
 
         if not latch.is_set():
             raise error.TestError('Never received callback from browser.')
@@ -91,7 +84,3 @@ class login_ChromeProfileSanitary(test.test):
         # do so until http://crosbug.com/1967 is fixed.
         if cookies_mtime != cookies_info[stat.ST_MTIME]:
             raise error.TestFail('Cookies in Default profile changed!')
-
-        # If we started logged out, log back out.
-        if not logged_in:
-            site_login.attempt_logout()

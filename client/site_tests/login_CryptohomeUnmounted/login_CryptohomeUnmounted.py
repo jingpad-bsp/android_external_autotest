@@ -3,32 +3,18 @@
 # found in the LICENSE file.
 
 import os, time
-from autotest_lib.client.bin import site_cryptohome, site_login, test
+from autotest_lib.client.bin import site_cryptohome, site_ui_test
 from autotest_lib.client.common_lib import error
 
-class login_CryptohomeUnmounted(test.test):
+class login_CryptohomeUnmounted(site_ui_test.UITest):
     version = 1
 
-    def setup(self):
-        site_login.setup_autox(self)
-
-    def run_once(self, script = 'autox_script.json', is_control = False):
-        logged_in = site_login.logged_in()
-
-        # Require that the cryptohome is mounted before testing that
-        # logging out will unmount it.  This requires logging in.
-        if not logged_in:
-            site_login.attempt_login(self, script)
-
+    def run_once(self, is_control=False):
         if not site_cryptohome.is_mounted(allow_fail = is_control):
             raise error.TestFail('Expected cryptohome to be mounted')
 
-        site_login.attempt_logout()
+        self.logout()
 
         # allow the command to fail, so we can handle the error here
         if site_cryptohome.is_mounted(allow_fail = True):
             raise error.TestFail('Expected cryptohome NOT to be mounted')
-
-        # If we started logged in, reset the state.
-        if logged_in:
-            site_login.attempt_login(self, script)

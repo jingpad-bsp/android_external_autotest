@@ -2,32 +2,31 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time, utils
-from autotest_lib.client.bin import site_login, site_ui_test, test
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.bin import chromeos_constants
+import time
+from autotest_lib.client.bin import site_ui_test, site_utils
+
 
 class desktopui_ScreenSaverUnlock(site_ui_test.UITest):
     version = 1
 
-    def system_as(self, cmd, user='chronos'):
-        utils.system('su %s -c \'%s\'' % (user, cmd))
 
     def run_once(self):
-        site_login.wait_for_screensaver()
-        self.system_as('DISPLAY=:0.0 xscreensaver-command -lock')
+        self.wait_for_screensaver()
+        self.xsystem('xscreensaver-command -lock')
 
-        # some sleep to let the screen lock
-        # TODO: Sleeping is unreliable and slow.  Do something better to
-        # wait for the screen to be locked.
-        time.sleep(5)
-        self.system_as('DISPLAY=:0.0 xscreensaver-command -time | ' +
-                       'grep -q locked')
+        site_utils.poll_for_condition(
+            lambda: self.is_screensaver_locked(),
+            desc='screensaver lock')
 
-        time.sleep(10)
-        site_login.attempt_login(self, 'autox_unlock.json')
+        ax = self.get_autox()
+        ax.send_hotkey('Return')
+        # wait for the screensaver to wakeup and present the login dialog
+        # TODO: a less brittle way to do this would be nice
+        time.sleep(2)
+        ax.send_text(self.password)
+        ax.send_hotkey('Return')
 
         # wait for screen to unlock
-        time.sleep(5)
-        self.system_as('DISPLAY=:0.0 xscreensaver-command -time | ' +
-                       'grep -q non-blanked')
+        site_utils.poll_for_condition(
+            lambda: self.is_screensaver_unlocked(),
+            desc='screensaver unlock')

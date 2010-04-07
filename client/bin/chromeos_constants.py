@@ -12,7 +12,7 @@ CRYPTOHOME_DEVICE = '/dev/mapper/cryptohome'
 CRYPTOHOME_MOUNT_PT = USER_DATA_DIR+'/user'
 
 BROWSER = 'chrome'
-
+SESSION_MANAGER = 'session_manager'
 WINDOW_MANAGER = 'chromeos-wm'
 
 LOGGED_IN_MAGIC_FILE = '/var/run/state/logged-in'
@@ -21,3 +21,8 @@ CHROME_WINDOW_MAPPED_MAGIC_FILE = \
     '/var/run/state/windowmanager/initial-chrome-window-mapped'
 
 DISABLE_BROWSER_RESTART_MAGIC_FILE = '/tmp/disable_chrome_restart'
+
+CREDENTIALS = {
+    '$default': ['performance.test.account@gmail.com', 'perfsmurf'],
+    '$backdoor': ['chronos@gmail.com', 'chronos'],
+}

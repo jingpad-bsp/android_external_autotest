@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 import logging, os, time, utils
-from autotest_lib.client.bin import site_login, test
+from autotest_lib.client.bin import site_ui_test
 from autotest_lib.client.common_lib import error
 
-class login_LogoutProcessCleanup(test.test):
+class login_LogoutProcessCleanup(site_ui_test.UITest):
     version = 1
 
     def __get_session_manager_pid(self):
@@ -79,18 +79,7 @@ class login_LogoutProcessCleanup(test.test):
         return False
 
 
-    def setup(self):
-        site_login.setup_autox(self)
-
-
-    def run_once(self, script='autox_script.json', is_control=False,
-            timeout=10):
-        logged_in = site_login.logged_in()
-
-        # Require that we start the test logged in
-        if not logged_in:
-            site_login.attempt_login(self, script)
-
+    def run_once(self, is_control=False, timeout=10):
         # Start a process as chronos.  This should get killed when logging out.
         bg_job = utils.BgJob('su chronos -c "sleep 3600"')
 
@@ -102,7 +91,7 @@ class login_LogoutProcessCleanup(test.test):
             raise error.TestFail('Expected to find processes owned by chronos '
                 'that were not started by the session manager while logged in.')
 
-        site_login.attempt_logout()
+        self.logout()
 
         logging.info('Logged out, searching for processes that should be dead')
 
@@ -120,7 +109,3 @@ class login_LogoutProcessCleanup(test.test):
             raise error.TestFail('Expected NOT to find processes owned by '
                 'chronos that were not started by the session manager '
                 'while logged out.')
-
-        # Reset the logged in state to how we started
-        if logged_in:
-            site_login.attempt_login(self, script)

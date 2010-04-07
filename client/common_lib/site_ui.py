@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, shutil
+import logging, os, shutil
 from autotest_lib.client.common_lib import site_httpd, utils
 
 
@@ -42,6 +42,16 @@ def xsystem_as(cmd, user='chronos', timeout=None, ignore_status=False):
 
     return utils.system(xcommand_as(cmd, user=user), timeout=timeout,
                         ignore_status=ignore_status)
+
+
+def get_autox():
+    """Return a new autox instance."""
+    # we're running as root, but need to connect to chronos' X session
+    os.environ.setdefault('XAUTHORITY', '/home/chronos/.Xauthority')
+    os.environ.setdefault('DISPLAY', ':0.0')
+
+    import autox
+    return autox.AutoX()
 
 
 class ChromeSession(object):

@@ -7,7 +7,7 @@ from autotest_lib.client.bin import site_ui_test
 
 class desktopui_DoLogin(site_ui_test.UITest):
     version = 1
-    
 
-    def run_once(self):        
-        time.sleep(10) # Local login is so fast, it needs to be slowed down.        
+
+    def run_once(self):
+        time.sleep(10) # Local login is so fast, it needs to be slowed down.

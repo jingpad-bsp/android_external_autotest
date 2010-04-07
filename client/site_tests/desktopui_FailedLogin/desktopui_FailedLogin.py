@@ -3,28 +3,19 @@
 # found in the LICENSE file.
 
 import os, time
-from autotest_lib.client.bin import site_login, test
+from autotest_lib.client.bin import site_ui_test, site_login
 from autotest_lib.client.common_lib import error
 
-class desktopui_FailedLogin(test.test):
+class desktopui_FailedLogin(site_ui_test.UITest):
     version = 1
 
-    def setup(self):
-        site_login.setup_autox(self)
+    auto_login = False
 
-    def run_once(self, script):
-        # Can't test login while logged in, so logout.
-        if site_login.logged_in():
-            site_login.attempt_logout()
-
-        # Test account information embedded into json file.
+    def run_once(self):
         # TODO(cmasone): find better way to determine login has failed.
         try:
-            site_login.attempt_login(self, script)
+            self.login('bogus@bogus.gmail.com', 'bogus')
         except site_login.TimeoutError:
             pass
         else:
             raise error.TestFail('Should not have logged in')
-
-        # Re-set to a good state
-        site_login.nuke_login_manager()

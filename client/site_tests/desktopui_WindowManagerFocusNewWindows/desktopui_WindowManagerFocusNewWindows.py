@@ -44,12 +44,7 @@ class desktopui_WindowManagerFocusNewWindows(site_ui_test.UITest):
                 'Timed out on condition: %s' % exception.__str__())
 
     def run_once(self):
-        import autox
-
-        # TODO: Set these in a single, standard place for all tests.
-        os.environ['DISPLAY'] = ':0'
-        os.environ['XAUTHORITY'] = '/home/chronos/.Xauthority'
-        self.autox = autox.AutoX()
+        self.autox = self.get_autox()
 
         # Create a window and check that we switch to it.
         win = self.autox.create_and_map_window(
