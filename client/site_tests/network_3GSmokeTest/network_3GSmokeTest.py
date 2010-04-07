@@ -8,8 +8,14 @@ from autotest_lib.client.common_lib import error
 import logging, os, re, string, sys, time
 import dbus, dbus.mainloop.glib, gobject
 
-sys.path.append("/usr/local/lib/connman/test")
-import mm
+#TODO:  This is just temp solution in order to pass buildbot autotest build.
+# seems like we need to change the file permission to 755 in order to import
+# it inside the emerge sandbox. But I will leave the proper fix of file
+# permission to the owner.
+import_path = os.environ.get("SYSROOT", "") + "/usr/local/lib/connman/test"
+sys.path.append(import_path)
+#import mm
+
 
 class network_3GSmokeTest(test.test):
     version = 1
@@ -133,6 +139,7 @@ class network_3GSmokeTest(test.test):
 
     def ResetAllModems(self):
         """Disable/Enable cycle all modems to ensure valid starting state."""
+        import mm
         manager = mm.ModemManager()
 
         for path in manager.manager.EnumerateDevices():
@@ -154,6 +161,7 @@ class network_3GSmokeTest(test.test):
         Returns: dictionary of information for each modem path
         """
         results = {}
+        import mm
         manager = mm.ModemManager()
 
         for path in manager.manager.EnumerateDevices():
