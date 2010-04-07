@@ -66,8 +66,8 @@ job.run_test('graphics_SanAngeles')
 
 # Video
 job.run_test('audiovideo_FFMPEG',
-             constraints=['fps_artbeats_red_m720p_mov >= 40.0',
-                          'fps_trailer_720p_mov >= 40.0',
+             constraints=['fps_video_min >= 40.0',
+                          'tpf_audio_max <= 4.0', # [ms/frame]
              ])
 job.run_test('audiovideo_V4L2')
 job.run_test('hardware_VideoOut')

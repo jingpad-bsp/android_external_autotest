@@ -26,6 +26,9 @@ class audiovideo_FFMPEG(test.test):
         # fetch all the test cases from file.
         testcases = os.path.join(self.bindir, "testcases")
         self.performance_results = {}
+        self.min_fps_video = 100
+        self.max_tpf_audio = 0
+
         for line in open(testcases, "rt"):
             # skip comment line and blank line
             line = line.rstrip()
@@ -34,6 +37,8 @@ class audiovideo_FFMPEG(test.test):
             # run each test cases
             testcase = line.split()
             self.run_testcase(testcase)
+        self.performance_results['fps_video_min'] = self.min_fps_video
+        self.performance_results['tpf_audio_max'] = self.max_tpf_audio
         self.write_perf_keyval(self.performance_results)
 
 
@@ -78,12 +83,14 @@ class audiovideo_FFMPEG(test.test):
         if fps_pattern:
             fps = float(fps_pattern.group(1))
             logging.info("CPU Usage %s%%; FPS: %s" % (cpu_usage, fps))
+            self.min_fps_video = min(self.min_fps_video, fps);
             # record the performance data for future analysis.
             namekey = file_name.lower().replace('.', '_')
             self.performance_results['fps_' + namekey] = fps
             self.performance_results['cpuusage_' + namekey] = cpu_usage
         elif tpf_pattern:
             tpf = float(tpf_pattern.group(1))
+            self.max_tpf_audio = max(self.max_tpf_audio, tpf);
             logging.info("CPU Usage %s%%; TimePerFrame: %s" % (cpu_usage, tpf))
             # record the performance data for future analysis.
             namekey = file_name.lower().replace('.', '_')
