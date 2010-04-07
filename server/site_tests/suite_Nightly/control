@@ -29,6 +29,7 @@ TESTS = [
   'compilebench',
   'dbench',
   'disktest',
+  'firmware_VbootCrypto',
   'gl_Bench',
   'hardware_StorageFio',
   'ltp',

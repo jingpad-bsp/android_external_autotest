@@ -61,8 +61,6 @@ TESTS = [
   # TODO(kmixter): Determine how to only run some tests on some
   # platforms.  Until then pick a conservative set of BVTs.
   #'hardware_SsdDetection',
-  'hardware_VideoOut',
-  'logging_LogVolume',
   'login_AuthenticationTests',
   'login_PamModuleLoadTest',
   # crosbug.com/2314: network_Ping is disabled until fixed
@@ -118,8 +116,8 @@ client_at.run_test('login_CryptohomeMounted', tag='success')
 # problem with the patterns being too permissive by assuming most were
 # required.
 client_at.run_test('logging_LogVolume',
-                  constraints=['percent_stateful_used <= 50',
-                               'percent_unused_patterns <= 70'])
+                   constraints=['percent_stateful_used <= 50',
+                                'percent_unused_patterns <= 70'])
 
 client_at.run_test('network_DisableInterface',
                    iface_name='eth0', tag='eth0')
