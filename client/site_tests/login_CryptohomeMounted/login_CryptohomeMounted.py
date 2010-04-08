@@ -10,8 +10,9 @@ from autotest_lib.client.common_lib import error
 class login_CryptohomeMounted(test.test):
     version = 1
 
-    def setup(self):
-        site_login.setup_autox(self)
+    # TODO: figure the right fix for missing setup_autox
+    # def setup(self):
+    #     site_login.setup_autox(self)
 
     def run_once(self, script='autox_script.json', is_control=False):
         # Make sure that we're logged out initially -- this test is run
