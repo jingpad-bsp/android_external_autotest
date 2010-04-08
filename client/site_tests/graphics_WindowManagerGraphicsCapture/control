@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'GRAPHICS_WINDOW_MANAGER_GRAPHICS_CAPTURE'
+AUTHOR = 'The Chromium OS Authors'
+TIME='MEDIUM'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = "graphics"
+TEST_TYPE = 'client'
+
+DOC = """
+This test verifies the window manager can capture graphics from applications.
+"""
+
+job.run_test('graphics_WindowManagerGraphicsCapture')
