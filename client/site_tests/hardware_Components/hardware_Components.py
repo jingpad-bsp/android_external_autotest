@@ -12,16 +12,18 @@ class hardware_Components(test.test):
     _cids = [
         'part_id_audio_codec',
         'part_id_bios',
-        'part_id_chipset',
         'part_id_cpu',
         'part_id_embedded_controller',
         'part_id_ethernet',
         'part_id_flash_chip',
         'part_id_storage',
-        'part_id_usb_hosts',
-        'part_id_vga',
         'part_id_wireless',
         'vendor_id_touchpad',
+    ]
+    _pci_cids = [
+        'part_id_chipset',
+        'part_id_usb_hosts',
+        'part_id_vga',
     ]
     _usb_cids = [
         'part_id_bluetooth',
@@ -29,6 +31,7 @@ class hardware_Components(test.test):
         'part_id_webcam',
         'part_id_3g',
     ]
+
 
     def check_component(self, comp_key, comp_id):
         self._system[comp_key] = [ comp_id ]
@@ -63,13 +66,6 @@ class hardware_Components(test.test):
         if rev_num:
             part_id = part_id + ' (' + rev_num + ')'
 
-        return part_id
-
-
-    def get_part_id_chipset(self):
-        cmd = ('lspci | grep -E "^00:00.0 " | head -n 1 '
-               '| sed s/.\*Host\ bridge://')
-        part_id = utils.system_output(cmd).strip()
         return part_id
 
 
@@ -122,21 +118,6 @@ class hardware_Components(test.test):
         return part_id
 
 
-    def get_part_id_usb_hosts(self):
-        # Enumerates all USB host controllers
-        cmd = 'lspci | grep "USB Controller:" | sed s/.\*USB\ Controller://'
-        part_ids = [l.strip() for l in utils.system_output(cmd).split('\n')]
-        part_id = ", ".join(part_ids)
-        return part_id
-
-
-    def get_part_id_vga(self):
-        cmd = ('lspci | grep "VGA compatible controller:" | head -n 1 '
-               '| sed s/.\*VGA\ compatible\ controller://')
-        part_id = utils.system_output(cmd).strip()
-        return part_id
-
-
     def get_part_id_wireless(self):
         """
           Returns a colon delimited string where the first section
@@ -147,11 +128,12 @@ class hardware_Components(test.test):
         return "%s:%s" % (vendor_id.replace('0x',''), part_id.replace('0x',''))
 
 
-    def check_approved_usb_part_id(self, cid):
+    def check_approved_part_id_existence(self, cid, type):
         """
-        Check if there are matching vendor_id:product_id pairs on the USB.
+        Check if there are matching vendor_id:product_id pairs on the PCI or
+        USB. Parameter type should be either 'pci' or 'usb'.
         """
-        cmd = 'sudo /usr/sbin/lsusb -d %s'
+        cmd = 'sudo /usr/sbin/ls' + type + ' -d %s'
         if not self._approved.has_key(cid):
             raise error.TestFail('%s missing from database' % cid)
 
@@ -207,8 +189,11 @@ class hardware_Components(test.test):
         for cid in self._cids:
             self.check_component(cid, getattr(self, 'get_' + cid)())
 
+        for cid in self._pci_cids:
+            self.check_approved_part_id_existence(cid, type='pci')
+
         for cid in self._usb_cids:
-            self.check_approved_usb_part_id(cid)
+            self.check_approved_part_id_existence(cid, type='usb')
 
         logging.debug('System: %s', self.pformat(self._system))
 
