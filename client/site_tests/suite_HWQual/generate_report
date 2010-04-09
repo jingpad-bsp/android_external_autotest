@@ -1,0 +1,160 @@
+#!/usr/bin/python
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+
+"""
+This script parses the contents of one or more autoserv results folders and
+generates test reports.
+"""
+
+
+import glob
+import optparse
+import os
+import re
+import sys
+
+
+class Color(object):
+  """
+  This class conditionally wraps text in ANSI color escape sequences.
+  """
+  BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
+  BOLD = -1
+  COLOR_START = '\033[1;%dm'
+  BOLD_START = '\033[1m'
+  RESET = '\033[0m'
+
+  def __init__(self, enabled=True):
+    self._enabled = enabled
+
+  def Color(self, color, text):
+    if not self._enabled:
+      return text
+    if color == self.BOLD:
+      start = self.BOLD_START
+    else:
+      start = self.COLOR_START % (color + 30)
+    return start + text + self.RESET
+
+
+def die(message):
+  print Color().Color(Color.RED, '\nERROR: ' + message)
+  sys.exit(1)
+
+
+class ReportGenerator(object):
+  """
+  This class collects the data from one or more autoserv results directories
+  and generates test reports.
+  """
+
+  def __init__(self, options, args):
+    self._options = options
+    self._args = args
+    self._color = Color(options.color)
+
+  def CollectResult(self, testdir):
+    """
+    If testdir contains a 'status.log' or 'status' file, assume it's a test
+    result directory and add the results data to the self._results dictionary.
+    """
+    status_file = os.path.join(testdir, 'status.log')
+    if not os.path.isfile(status_file):
+      status_file = os.path.join(testdir, 'status')
+      if not os.path.isfile(status_file):
+        return
+
+    status = open(status_file, 'r').read()
+    result = 'FAIL'
+    if (re.search(r'GOOD.+completed successfully', status) and
+        not re.search(r'ABORT|ERROR|FAIL|TEST_NA', status)):
+      result = 'PASS'
+
+    if testdir.startswith(self._options.strip):
+      testdir = testdir.replace(self._options.strip, '', 1)
+
+    self._results[testdir] = result
+
+  def CollectResults(self):
+    """
+    Initialize a dictionary (self._results) with test folders as keys and
+    result data (PASS, FAIL) as values.
+    """
+    self._results = {}
+    for resdir in self._args:
+      if not os.path.isdir(resdir):
+        die('\'%s\' does not exist' % resdir)
+
+      # Check the top level result directory, in case the control file or
+      # autoserv have signalled failures. Then check subdirectories.
+      self.CollectResult(resdir)
+      for testdir in glob.iglob(os.path.join(resdir, '*')):
+        self.CollectResult(testdir)
+
+    if not self._results:
+      die('no test directories found')
+
+  def GenerateReportText(self):
+    """
+    Print a result table to stdout. Each row of the table contains the test
+    result directory and the test result (PASS, FAIL).
+    """
+    tests = self._results.keys()
+    tests.sort()
+
+    # Align the test results by formatting the test directory entry based on
+    # the longest test directory string.
+    width = len(max(tests, key=len)) + 1
+    line = ''.ljust(width + 5, '-')
+
+    tests_pass = 0
+    print line
+    for test in tests:
+      test_entry = test.ljust(width)
+      res_entry = self._results[test]
+      if res_entry == 'PASS':
+        color = Color.GREEN
+        tests_pass += 1
+      else:
+        color = Color.RED
+      res_entry = self._color.Color(color, res_entry)
+      print test_entry + res_entry
+    print line
+
+    pass_str = '%d/%d' % (tests_pass, len(tests))
+    print 'Total PASS: ' + self._color.Color(Color.BOLD, pass_str)
+
+  def Run(self):
+    self.CollectResults()
+    self.GenerateReportText()
+
+
+def main():
+  usage = 'Usage: %prog [options] result-directories...'
+  parser = optparse.OptionParser(usage=usage)
+  parser.add_option('--color', dest='color', action='store_true',
+                    default=True,
+                    help='Use color for text reports [default]')
+  parser.add_option('--no-color', dest='color', action='store_false',
+                    help='Don\'t use color for text reports')
+  parser.add_option('--strip', dest='strip', type='string', action='store',
+                    default='results.',
+                    help='Strip a prefix from test directory names'
+                         ' [default: \'%default\']')
+  parser.add_option('--no-strip', dest='strip', const='', action='store_const',
+                    help='Don\'t strip a prefix from test directory names')
+  (options, args) = parser.parse_args()
+
+  if not args:
+    parser.print_help()
+    die('no result directories provided')
+
+  generator = ReportGenerator(options, args)
+  generator.Run()
+
+
+if __name__ == '__main__':
+  main()
