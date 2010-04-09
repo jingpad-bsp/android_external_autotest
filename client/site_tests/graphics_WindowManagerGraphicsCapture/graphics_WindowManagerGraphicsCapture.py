@@ -12,20 +12,20 @@ class graphics_WindowManagerGraphicsCapture(test.test):
     version = 1
 
     def setup(self):
-        site_login.setup_autox(self)
+#        site_login.setup_autox(self)
         self.job.setup_dep(['glbench'])
 
     def run_once(self, script = 'autox_script.json', is_control = False):
-        logged_in = site_login.logged_in()
-        logging.info('was logged in already: %s' % logged_in)
+#        logged_in = site_login.logged_in()
+#        logging.info('was logged in already: %s' % logged_in)
 
-        if not logged_in:
-            # Test account information embedded into json file.
-            if not site_login.attempt_login(self, script):
-                raise error.TestFail('Could not login')
-
-        # Wait until login complete and window manager is up
-        time.sleep(10)
+#        if not logged_in:
+#            # Test account information embedded into json file.
+#            if not site_login.attempt_login(self, script):
+#                raise error.TestFail('Could not login')
+#
+#        # Wait until login complete and window manager is up
+#        time.sleep(10)
 
         #
         # Run glbench
@@ -45,6 +45,6 @@ class graphics_WindowManagerGraphicsCapture(test.test):
         logging.info("command launched: %s" % cmd)
         self.results = utils.system_output(cmd, retain_output=True)
   
-        # If we started logged out, log back out.
-        if not logged_in:
-            site_login.attempt_logout()
+#        # If we started logged out, log back out.
+#        if not logged_in:
+#            site_login.attempt_logout()

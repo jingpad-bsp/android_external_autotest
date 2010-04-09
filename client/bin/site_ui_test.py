@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import utils
 from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.bin import site_login, test as bin_test
 from autotest_lib.client.common_lib import error, site_ui
@@ -32,6 +33,7 @@ class UITest(bin_test.test):
     username = None
     password = None
 
+    ca_cert_nickname = 'FakeCA'
 
     def __is_screensaver(self, status):
         """Returns True if xscreensaver reports a matching status.
@@ -100,6 +102,13 @@ class UITest(bin_test.test):
         if site_login.logged_in():
             site_login.attempt_logout()
 
+        utils.system(
+            'su chronos -c "nsscertutil -A -n %s -t \"%s\" -a -i %s -d %s"' %
+            (self.ca_cert_nickname,
+             'C,C,C',
+             chromeos_constants.LOGIN_TRUST_ROOTS,
+             chromeos_constants.CHROME_CERT_DB))
+
         (self.username, self.password) = self.__resolve_creds(creds)
 
         if self.auto_login:
@@ -165,3 +174,7 @@ class UITest(bin_test.test):
         """
         if site_login.logged_in():
             self.logout()
+
+        utils.system('su chronos -c "nsscertutil -D -n %s -d %s"' %
+                     (self.ca_cert_nickname,
+                      chromeos_constants.CHROME_CERT_DB))
