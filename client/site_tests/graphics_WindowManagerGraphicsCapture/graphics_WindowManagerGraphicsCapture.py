@@ -5,31 +5,16 @@
 import logging, os, re
 
 import os, time
-from autotest_lib.client.bin import site_login, test
+from autotest_lib.client.bin import site_login, site_ui_test
 from autotest_lib.client.common_lib import error, utils
 
-class graphics_WindowManagerGraphicsCapture(test.test):
+class graphics_WindowManagerGraphicsCapture(site_ui_test.UITest):
     version = 1
 
     def setup(self):
-#        site_login.setup_autox(self)
         self.job.setup_dep(['glbench'])
 
     def run_once(self, script = 'autox_script.json', is_control = False):
-#        logged_in = site_login.logged_in()
-#        logging.info('was logged in already: %s' % logged_in)
-
-#        if not logged_in:
-#            # Test account information embedded into json file.
-#            if not site_login.attempt_login(self, script):
-#                raise error.TestFail('Could not login')
-#
-#        # Wait until login complete and window manager is up
-#        time.sleep(10)
-
-        #
-        # Run glbench
-        #
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
@@ -44,7 +29,3 @@ class graphics_WindowManagerGraphicsCapture(test.test):
         cmd = "%s %s" % (exefile, options)
         logging.info("command launched: %s" % cmd)
         self.results = utils.system_output(cmd, retain_output=True)
-  
-#        # If we started logged out, log back out.
-#        if not logged_in:
-#            site_login.attempt_logout()
