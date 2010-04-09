@@ -284,11 +284,10 @@ class platform_FilePerms(test.test):
         # Read-only directories
         ro_dirs = ['/', '/bin', '/boot', '/etc', '/lib', '/mnt',
                    '/opt', '/sbin', '/usr', '/usr/bin', '/usr/lib',
-                   '/usr/local', '/usr/sbin', '/usr/share', '/var',
-                   '/var/lib', '/var/local']
+                   '/usr/local', '/usr/sbin', '/usr/share']
 
         # Root directories writable by root
-        root_rw_dirs = ['/var/cache', '/var/log']
+        root_rw_dirs = ['/var', '/var/lib', '/var/cache', '/var/log']
 
         # Ensure you cannot write files in read only directories.
         for dir in ro_dirs:
