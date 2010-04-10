@@ -2,12 +2,44 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, random, time
-from autotest_lib.client.bin import site_ui_test, site_utils, test
+import os, random, re, time
+from autotest_lib.client.bin import site_ui_test, site_utils, test, utils
 from autotest_lib.client.common_lib import error
 
 class desktopui_WindowManagerHotkeys(site_ui_test.UITest):
     version = 1
+
+    def __get_channel_volume(self, output, channel_name):
+        """Find a channel's volume within the amixer command's output.
+
+        Helper method used by __get_mixer_volume().
+
+        Args:
+            output: str output from "amixer get Master"
+            channel_name: str name of channel, e.g. "Front Left"
+
+        Returns:
+            Channel volume as an int (0 is returned for muted channels).
+        """
+        regexp = '%s: Playback \d+ \[(\d+)%%\] \[(on|off)\]' % channel_name
+        match = re.search(regexp, output)
+        if not match:
+            raise error.TestError(
+                'Unable to get volume for channel "%s"' % channel_name)
+        if match.group(2) == 'off':
+            return 0
+        return int(match.group(1))
+
+    def __get_mixer_volume(self):
+        """Get the current mixer volume.
+
+        Returns:
+            A two-element tuple consisting of the int volume of the left and
+                right channels.
+        """
+        output = utils.system_output('/usr/bin/amixer get Master')
+        return (self.__get_channel_volume(output, 'Front Left'),
+                self.__get_channel_volume(output, 'Front Right'))
 
     def run_once(self):
         ax = self.get_autox()
@@ -50,3 +82,27 @@ class desktopui_WindowManagerHotkeys(site_ui_test.UITest):
             error.TestFail(
                 'Waiting for screenshot at %s' % screenshot_filename))
         os.remove(screenshot_filename)
+
+        # Make sure that the mixer is unmuted and at 50% before we test the
+        # audio key bindings.
+        utils.system('/usr/bin/amixer sset Master unmute 50%')
+
+        ax.send_hotkey('XF86AudioRaiseVolume')
+        site_utils.poll_for_condition(
+            lambda: self.__get_mixer_volume() == (55, 55),
+            error.TestFail('Waiting for volume to be increased'))
+
+        ax.send_hotkey('XF86AudioLowerVolume')
+        site_utils.poll_for_condition(
+            lambda: self.__get_mixer_volume() == (50, 50),
+            error.TestFail('Waiting for volume to be decreased'))
+
+        ax.send_hotkey('XF86AudioMute')
+        site_utils.poll_for_condition(
+            lambda: self.__get_mixer_volume() == (0, 0),
+            error.TestFail('Waiting for volume to be muted'))
+
+        ax.send_hotkey('XF86AudioRaiseVolume')
+        site_utils.poll_for_condition(
+            lambda: self.__get_mixer_volume() == (55, 55),
+            error.TestFail('Waiting for volume to be increased'))
