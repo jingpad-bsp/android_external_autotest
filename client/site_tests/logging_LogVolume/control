@@ -15,6 +15,8 @@ and the rate of how fast it grows.
 """
 
 job.run_test('logging_LogVolume',
-	     constraints=[
-	         'percent_stateful_used <= 50',
-		 'percent_unused_patterns <= 70'])
+             constraints=[
+                 'bytes_unexpected <= 100000',
+                 'files_unexpected <= 50',
+                 'percent_stateful_used <= 50',
+                 'percent_unused_patterns <= 70'])

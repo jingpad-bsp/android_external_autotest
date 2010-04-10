@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, subprocess, utils
+import logging, os, re, stat, subprocess, utils
 from autotest_lib.client.bin import site_login, site_ui_test, test
 from autotest_lib.client.common_lib import error
 
@@ -19,7 +19,7 @@ class logging_LogVolume(site_ui_test.UITest):
         self._perf['percent_stateful_used'] = int(matches.group(1))
 
 
-    def run_once(self):
+    def run_once(self, top_patterns=50):
         site_login.wait_for_cryptohome()
 
         self._perf = {}
@@ -34,18 +34,28 @@ class logging_LogVolume(site_ui_test.UITest):
             if pattern in patterns:
                 logging.error('Duplicate pattern in file: %s' % pattern)
             patterns[pattern] = {
+                'bytes': 0,
+                'count': 0,
                 'regexp': re.compile(pattern + '$'),
-                'count': 0
                 }
 
+        mount_point = '/mnt/stateful_partition'
         find_handle = subprocess.Popen(['find',
-                                        '/mnt/stateful_partition'],
+                                        mount_point],
                                        stdout=subprocess.PIPE)
         stateful_files = 0
-        # Count number of files that were found but were not whitelisted.
+        # Count number of files that were found but not whitelisted.
         unexpected_files = 0
+        # Count total size of files that were found but not whitelisted.
+        unexpected_bytes = 0
         for filename in find_handle.stdout.readlines():
-            filename = filename.strip()[len('/mnt/stateful_partition'):]
+            filename = filename.strip()
+            try:
+                bytes = os.stat(filename)[stat.ST_SIZE]
+            except OSError, e:
+                bytes = 0
+
+            filename = filename[len(mount_point):]
             if filename == '':
                 continue
             stateful_files += 1
@@ -54,10 +64,13 @@ class logging_LogVolume(site_ui_test.UITest):
                 regexp = patterns[pattern]['regexp']
                 if regexp.match(filename):
                     match = True
+                    patterns[pattern]['bytes'] += bytes
                     patterns[pattern]['count'] += 1
                     break
             if not match:
-                logging.error('Unexpected file %s' % filename)
+                logging.warning('Unexpected file %s (%d bytes)' %
+                               (filename, bytes))
+                unexpected_bytes += bytes
                 unexpected_files += 1
 
         unmatched_patterns = 0
@@ -66,13 +79,24 @@ class logging_LogVolume(site_ui_test.UITest):
                 logging.warn('No files matched: %s' % pattern)
                 unmatched_patterns += 1
 
-        self._perf['percent_unused_patterns'] = \
-            int(100 * unmatched_patterns / len(patterns))
+        if top_patterns:
+            largest_size = [(patterns[pattern_]['bytes'], pattern_)
+                            for pattern_ in patterns]
+            largest_size.sort()
+            largest_size.reverse()
+            logging.info('Largest %d patterns:', top_patterns)
+            for (bytes, pattern) in largest_size:
+                top_patterns -= 1
+                logging.info('%s (%d bytes)' % (pattern, bytes))
+                if top_patterns <= 0:
+                    break
+
+        self._perf['bytes_unexpected'] = unexpected_bytes
+        self._perf['files_unexpected'] = unexpected_files
 
         self._perf['files_in_stateful_partition'] = stateful_files
 
-        self.write_perf_keyval(self._perf)
+        self._perf['percent_unused_patterns'] = \
+            int(100 * unmatched_patterns / len(patterns))
 
-        if unexpected_files > 0:
-            raise error.TestError('There were %d unexpected files' %
-                                  unexpected_files)
+        self.write_perf_keyval(self._perf)

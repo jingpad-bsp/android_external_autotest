@@ -116,7 +116,9 @@ client_at.run_test('login_CryptohomeMounted', tag='success')
 # problem with the patterns being too permissive by assuming most were
 # required.
 client_at.run_test('logging_LogVolume',
-                   constraints=['percent_stateful_used <= 50',
+                   constraints=['bytes_unexpected <= 100000',
+                                'files_unexpected <= 50',
+                                'percent_stateful_used <= 50',
                                 'percent_unused_patterns <= 70'])
 
 client_at.run_test('network_DisableInterface',

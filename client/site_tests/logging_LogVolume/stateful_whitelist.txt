@@ -139,12 +139,12 @@
 /home/chronos/user/\.fontconfig/.*
 /home/chronos/user/\.pki
 /home/chronos/user/\.pki/nssdb
-/home/chronos/user/\.pki/nssdb/cert9.db
-/home/chronos/user/\.pki/nssdb/key4.db
+/home/chronos/user/\.pki/nssdb/.+.db
 /home/chronos/user/\.pki/nssdb/pkcs11.txt
 /home/chronos/user/log
 # These are dated files which need to be cleaned up
 /home/chronos/user/log/chromeos-wm\.\d{8}-\d{6}
+/home/chronos/user/log/chromeos-wm\.LATEST
 /home/chronos/Safe Browsing Bloom
 /home/chronos/Safe Browsing Bloom-journal
 /home/chronos/Safe Browsing Bloom Filter 2
@@ -166,6 +166,16 @@
 
 /var/cache/google_offline_login_cache.txt
 /var/cache/machine-id
+/var/empty
+/var/lib
+/var/lib/bluetooth
+/var/lib/bluetooth/..:..:..:..:..:..
+/var/lib/bluetooth/..:..:..:..:..:../config
+/var/lib/dbus
+/var/lib/dbus/machine-id
+/var/lib/xkb
+/var/lib/xkb/server-.*\.xkm
+/var/lock
 /var/log
 /var/log/ConsoleKit
 /var/log/ConsoleKit/history
@@ -204,3 +214,6 @@
 # opposed to those in cryptohome while logged in.
 /var/log/window_manager
 /var/log/window_manager/chromeos-wm\.\d{8}-\d{6}
+/var/log/window_manager/chromeos-wm\.LATEST
+/var/run
+/var/tmp
