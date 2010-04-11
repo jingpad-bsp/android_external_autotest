@@ -33,15 +33,13 @@ class hardware_StorageFio(test.test):
     def __find_free_root_partition(self):
         """Locate the spare root partition that we didn't boot off"""
 
-        spare_root = {
-            '/dev/sda3': '/dev/sda4',
-            '/dev/sda4': '/dev/sda3',
+        spare_root_map = {
+            '3': '5',
+            '5': '3',
         }
-        cmdline = file('/proc/cmdline').read()
-        match = re.search(r'root=([^ ]+)', cmdline)
-        if not match or match.group(1) not in spare_root:
-            raise error.TestError('Unable to find a free root partition')
-        self.__filename = spare_root[match.group(1)]
+        rootdev = utils.system_output('rootdev')
+        spare_root = rootdev[:-1] + spare_root_map[rootdev[-1]]
+        self.__filename = spare_root
 
 
     def __get_file_size(self):
@@ -58,7 +56,7 @@ class hardware_StorageFio(test.test):
                 self.__filesize = 1024 * blocks
                 break
         else:
-            if device[:-1] == 'sda':
+            if device[:-1] in ['sda', 'mmcblk0p', 'mmcblk1p']:
                 raise error.TestError(
                     'Unable to determine free partitions size')
             else:
@@ -137,11 +135,15 @@ class hardware_StorageFio(test.test):
         return self.__parse_fio(fio.stdout)
 
 
-    def initialize(self, dev='/dev/sda'):
-        if dev == '/dev/sda':
+    def initialize(self, dev=''):
+        if dev in ['', '/dev/sda', '/dev/mmcblk0', '/dev/mmcblk1']:
             self.__find_free_root_partition()
         else:
-            self.__filename = dev + '1'
+            # Use the first partition of the external drive
+            if dev[5:7] == 'sd':
+                self.__filename = dev + '1'
+            else:
+                self.__filename = dev + 'p1'
         self.__get_file_size()
         self.__get_device_description()
 
@@ -149,7 +151,7 @@ class hardware_StorageFio(test.test):
         self.__filesize = min(self.__filesize, 1024 * 1024 * 1024)
 
 
-    def run_once(self, dev='/dev/sda'):
+    def run_once(self, dev=''):
         # TODO(ericli): need to find a general solution to install dep packages
         # when tests are pre-compiled, so setup() is not called from client any
         # more.
@@ -157,7 +159,7 @@ class hardware_StorageFio(test.test):
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
 
-        if dev == '/dev/sda':
+        if dev in ['', '/dev/sda', '/dev/mmcblk0', '/dev/mmcblk1']:
             requirements = {
                 'surfing': 'iops',
                 'boot': 'bw',
@@ -193,7 +195,7 @@ class hardware_StorageFio(test.test):
             results[units + '_' + test] = result[metric]
 
         # Output keys relevent to the performance, larger filesize will run
-        # slower, and sda4 should be slightly slower than sda3 on a rotational
+        # slower, and sda5 should be slightly slower than sda3 on a rotational
         # disk
         self.write_test_keyval({'filesize': self.__filesize,
                                 'filename': self.__filename,

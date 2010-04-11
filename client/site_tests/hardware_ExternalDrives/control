@@ -22,11 +22,8 @@ from autotest_lib.client.common_lib import error, site_ui
 
 
 def find_root_dev():
-    cmdline = file('/proc/cmdline').read()
-    match = re.search(r'root=([^ ]+)', cmdline)
-    if not match:
-        raise error.TestError('Unable to find the root partition')
-    return os.path.basename(match.group(1)[:-1])
+    rootdev = utils.system_output('rootdev')
+    return os.path.basename(rootdev[:-1])
 
 
 def find_all_storage_dev():
