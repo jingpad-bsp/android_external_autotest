@@ -19,7 +19,7 @@ class Plan(dbmodels.Model, model_logic.ModelExtensions):
 
     Optional:
         label_override: A label to apply to each Autotest job.
-        support: The global support object to apply to this plan
+        support: The global support script to apply to this plan
     """
     name = dbmodels.CharField(max_length=255, unique=True)
     label_override = dbmodels.CharField(max_length=255, null=True, blank=True)
@@ -127,7 +127,7 @@ class ControlFile(model_logic.ModelWithHash,
 
 
 class TestConfig(ModelWithPlan, model_logic.ModelExtensions):
-    """A planned test
+    """A configuration for a planned test
 
     Required:
         alias: The name to give this test within the plan. Unique with plan id
@@ -138,12 +138,15 @@ class TestConfig(ModelWithPlan, model_logic.ModelExtensions):
         estimated_runtime: Time in hours that the test is expected to run. Will
                            be automatically generated (on the frontend) for
                            tests in Autotest.
+        skipped_hosts: Hosts that are going to skip this test.
     """
     alias = dbmodels.CharField(max_length=255)
     control_file = dbmodels.ForeignKey(ControlFile)
     is_server = dbmodels.BooleanField(default=True)
     execution_order = dbmodels.IntegerField(blank=True)
     estimated_runtime = dbmodels.IntegerField()
+    skipped_hosts = dbmodels.ManyToManyField(
+            afe_models.Host, db_table='planner_test_configs_skipped_hosts')
 
     class Meta:
         db_table = 'planner_test_configs'
@@ -164,6 +167,7 @@ class Job(ModelWithPlan, model_logic.ModelExtensions):
     """
     test_config = dbmodels.ForeignKey(TestConfig)
     afe_job = dbmodels.ForeignKey(afe_models.Job)
+    requires_rerun = dbmodels.BooleanField(default=False)
 
     class Meta:
         db_table = 'planner_test_jobs'
@@ -219,6 +223,7 @@ class TestRun(ModelWithPlan, model_logic.ModelExtensions):
     finalized = dbmodels.BooleanField(default=False)
     seen = dbmodels.BooleanField(default=False)
     triaged = dbmodels.BooleanField(default=False)
+    invalidated = dbmodels.BooleanField(default=False)
 
     bugs = dbmodels.ManyToManyField(Bug, null=True,
                                     db_table='planner_test_run_bugs')

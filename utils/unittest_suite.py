@@ -29,6 +29,8 @@ REQUIRES_DJANGO = set((
         'metahost_scheduler_unittest.py',
         'site_metahost_scheduler_unittest.py',
         'rpc_utils_unittest.py',
+        'site_rpc_utils_unittest.py'
+        'execution_engine_unittest.py',
         ))
 
 REQUIRES_MYSQLDB = set((
@@ -45,6 +47,10 @@ REQUIRES_SIMPLEJSON = set((
         'serviceHandler_unittest.py',
         ))
 
+REQUIRES_AUTH = set ((
+    'trigger_unittest.py',
+    ))
+
 LONG_RUNTIME = set((
     'barrier_unittest.py',
     'logging_manager_test.py',
@@ -54,6 +60,7 @@ LONG_TESTS = (REQUIRES_DJANGO |
               REQUIRES_MYSQLDB |
               REQUIRES_GWT |
               REQUIRES_SIMPLEJSON |
+              REQUIRES_AUTH |
               LONG_RUNTIME)
 
 

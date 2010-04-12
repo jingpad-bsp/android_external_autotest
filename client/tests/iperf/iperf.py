@@ -18,7 +18,7 @@ class iperf(test.test):
         self.job.setup_dep(['sysstat'])
 
         os.chdir(self.srcdir)
-        utils.system('./configure')
+        utils.configure()
         utils.system('make')
         utils.system('sync')
 
