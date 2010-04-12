@@ -18,12 +18,12 @@ class site_autoserv_parser(base_autoserv_parser):
     def setup_options(self):
         base_autoserv_parser.setup_options(self)
         self.parser.add_option("--image", action="store", type="string",
+                               default="",
                                dest="image",
-                               help="Full path of an osimage to install.")   
+                               help="Full path of an osimage to install.")
 
 
     def parse_args(self):
         base_autoserv_parser.parse_args(self)
         if self.options.image:
             self.options.install_before = True
-
