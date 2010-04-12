@@ -4,6 +4,19 @@
 
 import logging, re
 
+def isBSDRouter(router):
+    router_uname = router.run('uname').stdout
+    return re.search('BSD', router_uname)
+
+def find_ifnet(host, pattern):
+    list = host.run("ifconfig -l").stdout
+    for ifnet in list.split():
+        status = host.run("ifconfig %s" % ifnet).stdout
+        m = re.search(pattern, status)
+        if m:
+            return ifnet
+    return None
+
 class NotImplemented(Exception):
     def __init__(self, what):
         self.what = what
@@ -26,10 +39,20 @@ class BSDRouter(object):
 
     def __init__(self, host, params, defssid):
         self.router = host
-        # TODO(sleffler) default to 1st available wireless nic
-        self.phydev = params['phydev']
-        # TODO(sleffler) default to 1st available wired nic
-        self.wiredif = params['wiredev']
+        # default to 1st available wireless nic
+        if "phydev" not in params:
+            self.phydev = find_ifnet(host, ".*media:.IEEE.802.11.*")
+            if self.phydev is None:
+                raise Exception("No wireless NIC found")
+        else:
+            self.phydev = params['phydev']
+        # default to 1st available wired nic
+        if "wiredev" not in params:
+            self.wiredif = find_ifnet(host, ".*media:.Ethernet.*")
+            if self.wiredif is None:
+                raise Exception("No wired NIC found")
+        else:
+            self.wiredif = params['wiredev']
         self.defssid = defssid;
         self.wlanif = None
         self.bridgeif = None
@@ -48,7 +71,6 @@ class BSDRouter(object):
         self.router.run("ifconfig bridge0 destroy >/dev/null 2>&1",
             ignore_status=True)
         self.router.run("killall hostapd >/dev/null 2>&1", ignore_status=True)
-
 
     def create(self, params):
         """ Create a wifi device of the specified type """

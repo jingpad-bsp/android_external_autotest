@@ -4,7 +4,7 @@
 
 import common, fnmatch, logging, os, re, string, threading, time
 
-from autotest_lib.server import autotest, subcommand
+from autotest_lib.server import autotest, hosts, subcommand
 from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_linux_router
 
@@ -63,45 +63,60 @@ class WiFiTest(object):
     wpa_supplicant directly.
     """
 
-    def __init__(self, name, steps, router, client, server):
+    def __init__(self, name, steps, config):
         self.name = name
         self.steps = steps
-        self.router = router['host']
+
+        router = config['router']
+        self.router = hosts.create_host(router['addr'])
+        # NB: truncate SSID to 32 characters
+        self.defssid = self.__get_defssid(router['addr'])[0:32]
+
+        if 'type' not in router:
+            # auto-detect router type
+            if site_linux_router.isLinuxRouter(self.router):
+                router['type'] = 'linux'
+            if site_bsd_router.isBSDRouter(self.router):
+                router['type'] = 'bsd'
+            else:
+                raise Exception('Unable to autodetect router type')
+        if router['type'] == 'linux':
+            self.wifi = site_linux_router.LinuxRouter(self.router, router,
+                self.defssid)
+        elif router['type'] == 'bsd':
+            self.wifi = site_bsd_router.BSDRouter(self.router, router,
+                self.defssid)
+        else:
+            raise Exception('Unsupported router')
+
         #
         # The client machine must be reachable from the control machine.
-        # The address on the wifi network is retrieved after it each time
-        # it associates to the router.
+        # The address on the wifi network is retrieved each time it
+        # associates to the router.
         #
-        self.client = client['host']
+        client = config['client']
+        self.client = hosts.create_host(client['addr'])
         self.client_at = autotest.Autotest(self.client)
         self.client_wifi_ip = None       # client's IP address on wifi net
+        # interface name on client
+        self.client_wlanif = client.get('wlandev', "wlan0")
+
         #
         # The server machine may be multi-homed or only on the wifi
         # network.  When only on the wifi net we suppress server_*
         # requests since we cannot initiate them from the control machine.
         #
-        self.server = getattr(server, 'host', None)
-        if self.server is not None:
+        server = config['server']
+        # NB: server may not be reachable on the control network
+        if 'addr' in server:
+            self.server = hosts.create_host(server['addr'])
             self.server_at = autotest.Autotest(self.server)
             # if not specified assume the same as the control address
             self.server_wifi_ip = getattr(server, 'wifi_addr', self.server.ip)
         else:
-            # NB: must be set if not reachable from control
+            self.server = None;
+            # NB: wifi address must be set if not reachable from control
             self.server_wifi_ip = server['wifi_addr']
-
-        # NB: truncate SSID to 32 characters
-        self.defssid = self.__get_defssid()[0:32]
-        # interface name on client
-        self.wlanif = "wlan0"
-
-        # auto-detect router type
-        router_uname = self.router.run('uname').stdout
-        if re.search('Linux', router_uname):
-            self.wifi = site_linux_router.LinuxRouter(self.router, router, self.defssid)
-        elif re.search('BSD', router_uname):
-            self.wifi = site_bsd_router.BSDRouter(self.router, router, self.defssid)
-        else:
-            raise Exception('Unsupported router')
 
         # potential bg thread for ping untilstop
         self.ping_thread = None
@@ -113,13 +128,12 @@ class WiFiTest(object):
         self.wifi.destroy({})
 
 
-    def __get_defssid(self):
+    def __get_defssid(self, ipaddr):
         #
         # Calculate ssid based on test name; this lets us track progress
         # by watching beacon frames.
         #
-        return re.sub('[^a-zA-Z0-9_]', '_', \
-            "%s_%s" % (self.name, self.router.ip))
+        return re.sub('[^a-zA-Z0-9_]', '_', "%s_%s" % (self.name, ipaddr))
 
 
     def run(self):
@@ -250,7 +264,7 @@ sys.exit(0)'''
         print "%s: %s" % (self.name, result.stdout[0:-1])
 
         # fetch IP address of wireless device
-        self.client_wifi_ip = self.__get_ipaddr(self.client, self.wlanif)
+        self.client_wifi_ip = self.__get_ipaddr(self.client, self.client_wlanif)
         logging.info("%s: client WiFi-IP is %s", self.name, self.client_wifi_ip)
 
 
@@ -303,7 +317,7 @@ sys.exit(0)'''
 
     def client_check_bintval(self, params):
         """ Verify negotiated beacon interval """
-        result = self.router.run("ifconfig %s" % self.wlanif)
+        result = self.router.run("ifconfig %s" % self.client_wlanif)
         want = params[0]
         m = re.search('bintval ([0-9]*)', result.stdout)
         if m is None:
@@ -316,7 +330,7 @@ sys.exit(0)'''
 
     def client_check_dtimperiod(self, params):
         """ Verify negotiated DTIM period """
-        result = self.router.run("ifconfig %s" % self.wlanif)
+        result = self.router.run("ifconfig %s" % self.client_wlanif)
         want = params[0]
         m = re.search('dtimperiod ([0-9]*)', result.stdout)
         if m is None:
@@ -329,7 +343,7 @@ sys.exit(0)'''
 
     def client_check_rifs(self, params):
         """ Verify negotiated RIFS setting """
-        result = self.router.run("ifconfig %s" % self.wlanif)
+        result = self.router.run("ifconfig %s" % self.client_wlanif)
         m = re.search('[^-]rifs', result.stdout)
         if m is None:
             raise AssertionError
@@ -337,7 +351,7 @@ sys.exit(0)'''
 
     def client_check_shortgi(self, params):
         """ Verify negotiated Short GI setting """
-        result = self.router.run("ifconfig %s" % self.wlanif)
+        result = self.router.run("ifconfig %s" % self.client_wlanif)
         m = re.search('[^-]shortgi', result.stdout)
         if m is None:
             raise AssertionError
@@ -634,3 +648,29 @@ def read_tests(dir, pat):
     # use filenames to sort
     return sorted(tests, cmp=__byfile)
 
+
+def read_wifi_testbed_config(file, client_addr=None, server_addr=None,
+        router_addr=None):
+    # read configuration file
+    fd = open(file)
+    config = eval(fd.read())
+
+    # client must be reachable on the control network
+    client = config['client']
+    if client_addr is not None:
+        client['addr'] = client_addr;
+
+    # router must be reachable on the control network
+    router = config['router']
+    if router_addr is not None:
+        server['router'] = router_addr;
+
+    server = config['server']
+    if server_addr is not None:
+        server['addr'] = server_addr;
+    # TODO(sleffler) check for wifi_addr when no control address
+
+    # tag jobs w/ the router's address on the control network
+    config['tagname'] = router['addr']
+
+    return config

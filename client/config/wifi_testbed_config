@@ -17,7 +17,7 @@
   # configurable wifi/router that can reached by ssh
   "router"      : {
     "addr"      : "172.22.71.78",
-    "phydev"    : "ath0" ,  # wireless device
-    "wiredev"   : "npe0"    # wired ifnet to bridge wifi traffic
+#    "phydev"    : "ath0" ,  # wireless device
+#    "wiredev"   : "npe0"    # wired ifnet to bridge wifi traffic
   }
 }

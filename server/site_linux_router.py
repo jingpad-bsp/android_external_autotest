@@ -2,6 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import re
+
+def isLinuxRouter(router):
+    router_uname = router.run('uname').stdout
+    return re.search('Linux', router_uname)
+
 class LinuxRouter(object):
     """
     Linux/mac80211-style WiFi Router support for WiFiTest class.
