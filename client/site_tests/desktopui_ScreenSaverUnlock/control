@@ -13,4 +13,6 @@ DOC = """
 This test checks if the screen saver can be unlocked
 """
 
-job.run_test('desktopui_ScreenSaverUnlock')
+job.run_test('desktopui_ScreenSaverUnlock', tag='success', is_control='False')
+
+job.run_test('desktopui_ScreenSaverUnlock', tag='control', is_control='True')
