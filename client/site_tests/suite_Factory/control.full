@@ -1,0 +1,59 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Factory"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "client"
+
+DOC = """
+This test suite runs automated client-side manufacturing tests.
+"""
+
+
+# Hack to work around autotest's obsession with GRUB.
+def do_nothing(tag):
+   pass
+job.bootloader.set_default = do_nothing
+job.bootloader.boot_once = do_nothing
+
+
+# This is where we start.
+def step_init():
+  step_functional_test()
+
+
+# We can report failure on crash, by leaving
+# 'step_crashed' in the next reboot slot.
+def step_crashed():
+  job.run_test('factory_Fail')
+
+
+# Do quick functionality and config tests.
+def step_functional_test():
+  # Qualified Component Check
+  job.run_test('hardware_Components',
+      approved_db='/usr/local/manufacturing/qualified_components')
+
+  # Firmware write protect, developer mode.
+  job.run_test('hardware_GPIOSwitches')
+
+  step_runin()
+
+
+# Do longer runin tests.
+def step_runin():
+  job.run_test('hardware_SAT')
+
+  # Reboot here for no particular reason.
+  job.next_step([step_manual])
+  job.reboot()
+
+
+# Do touch tests.
+def step_manual():
+  job.run_test('hardware_KeyboardAssembly')
+

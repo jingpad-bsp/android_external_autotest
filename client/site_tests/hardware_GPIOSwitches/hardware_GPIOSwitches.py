@@ -71,7 +71,8 @@ class hardware_GPIOSwitches(test.test):
     def pinetrail_gpio_read(self):
         path = self.autodir + '/deps/iotools/'
         # Generate symlinks for iotools.
-        utils.system(path + 'iotools --make-links')
+        if not os.path.exists(path + 'pci_read32'):
+          utils.system(path + 'iotools --make-links')
 
         # Tigerpoint LPC Interface.
         tp_device = (0, 31, 0)
