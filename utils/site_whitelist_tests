@@ -8,6 +8,9 @@
 /usr/local/autotest/client/tests/unixbench/control
 /usr/local/autotest/client/tests/sleeptest/control
 /usr/local/autotest/server/tests/iperf/control.srv
+/usr/local/autotest/server/tests/iperf/control.stress.srv
 /usr/local/autotest/server/tests/netperf2/control.srv
+/usr/local/autotest/server/tests/netperf2/control.stress.srv
 /usr/local/autotest/server/tests/netpipe/control.srv
+/usr/local/autotest/server/tests/netpipe/control.stress.srv
 /usr/local/autotest/server/tests/sleeptest/control
