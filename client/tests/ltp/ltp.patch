@@ -1,6 +1,6 @@
 diff -urN ltp-full-20091231_vanilla/runtest/syscalls ltp-full-20091231/runtest/syscalls
---- ltp-full-20091231_vanilla/runtest/syscalls	2010-01-05 17:16:06.000000000 -0800
-+++ ltp-full-20091231/runtest/syscalls	2010-01-05 17:30:32.000000000 -0800
+--- ltp-full-20091231_vanilla/runtest/syscalls	2010-01-05 03:17:20.000000000 -0800
++++ ltp-full-20091231/runtest/syscalls	2010-04-07 11:43:48.000000000 -0700
 @@ -1245,7 +1245,7 @@
  vhangup02 vhangup02
  
@@ -10,8 +10,9 @@ diff -urN ltp-full-20091231_vanilla/runtest/syscalls ltp-full-20091231/runtest/s
  
  wait02 wait02
  
---- ltp-full-20091231_vanilla/testcases/kernel/syscalls/epoll/epoll-ltp.c	2010-03-22 17:25:18.000000000 -0700
-+++ ltp-full-20091231/testcases/kernel/syscalls/epoll/epoll-ltp.c	2010-03-22 17:27:06.000000000 -0700
+diff -urN ltp-full-20091231_vanilla/testcases/kernel/syscalls/epoll/epoll-ltp.c ltp-full-20091231/testcases/kernel/syscalls/epoll/epoll-ltp.c
+--- ltp-full-20091231_vanilla/testcases/kernel/syscalls/epoll/epoll-ltp.c	2009-09-09 10:48:09.000000000 -0700
++++ ltp-full-20091231/testcases/kernel/syscalls/epoll/epoll-ltp.c	2010-04-07 11:43:48.000000000 -0700
 @@ -450,7 +450,7 @@
  			ev_ptr = &event;
  			break;
@@ -21,6 +22,40 @@ diff -urN ltp-full-20091231_vanilla/runtest/syscalls ltp-full-20091231/runtest/s
  			ev_ptr = unaligned_event_ptr;
  			break;
  		case 2:
+diff -urN ltp-full-20091231_vanilla/testcases/kernel/timers/include/common_timers.h ltp-full-20091231/testcases/kernel/timers/include/common_timers.h
+--- ltp-full-20091231_vanilla/testcases/kernel/timers/include/common_timers.h	2009-12-06 12:53:44.000000000 -0800
++++ ltp-full-20091231/testcases/kernel/timers/include/common_timers.h	2010-04-07 11:52:11.000000000 -0700
+@@ -28,6 +28,9 @@
+ #ifndef CLOCK_MONOTONIC_RAW
+ #define CLOCK_MONOTONIC_RAW 4
+ #endif
++#ifndef MAX_CLOCKS
++#define MAX_CLOCKS 16
++#endif
+ clock_t clock_list[] = {
+ 	CLOCK_REALTIME,
+ 	CLOCK_MONOTONIC,
+@@ -35,7 +38,7 @@
+ 	CLOCK_THREAD_CPUTIME_ID,
+ 	CLOCK_MONOTONIC_RAW,
+ };
+-#define MAX_CLOCKS (sizeof(clock_list) / sizeof(*clock_list))
++#define MAX_CLOCKLIST_CLOCKS (sizeof(clock_list) / sizeof(*clock_list))
+ 
+ const char *get_clock_str(const int clock_id)
+ {
+diff -urN ltp-full-20091231_vanilla/testcases/kernel/timers/timer_create/timer_create02.c ltp-full-20091231/testcases/kernel/timers/timer_create/timer_create02.c
+--- ltp-full-20091231_vanilla/testcases/kernel/timers/timer_create/timer_create02.c	2009-12-06 12:53:44.000000000 -0800
++++ ltp-full-20091231/testcases/kernel/timers/timer_create/timer_create02.c	2010-04-07 11:51:31.000000000 -0700
+@@ -113,7 +113,7 @@
+ 
+ 			setup_test(i);
+ 
+-			for (j = 0; j < MAX_CLOCKS; ++j) {
++			for (j = 0; j < MAX_CLOCKLIST_CLOCKS; ++j) {
+ 
+ 				if (strstr(get_clock_str(clock_list[j]),
+ 						"CPUTIME_ID")) {
 diff -urN ltp-full-20091231_vanilla/testcases/kernel/syscalls/linkat/linkat01.c ltp-full-20091231/testcases/kernel/syscalls/linkat/linkat01.c
 --- ltp-full-20091231_vanilla/testcases/kernel/syscalls/linkat/linkat01.c	2009-11-26 23:43:12.000000000 -0800
 +++ ltp-full-20091231/testcases/kernel/syscalls/linkat/linkat01.c	2010-04-12 16:28:59.000000000 -0700
