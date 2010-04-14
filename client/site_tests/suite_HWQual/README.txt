@@ -102,22 +102,26 @@ Automated and Semi-Automated Test Runs
 * Unless otherwise noted, all tests can be performed on an AC-powered DUT.
 
 
-* The autotest tests generate progress and performance data in a
-  <results> folder specified through the '-r' autoserv option. After a
-  test run is complete, look for failures:
-
-  $ egrep '(FAIL|BAD|ERROR)' <results>/*/status
-
-  Full performance data is stored in keyval files:
-
-  $ cat <results>/*/results/keyval
-
-  Debug information is stored in <results>/*/debug/.
-
-
-* Go to the Autotest server folder:
+* Go to the Autotest server directory:
 
   $ cd $HOME/chromeos-hwqual-TAG/autotest/
+
+
+* Autotest logs progress and performance data in results.* directories
+  specified through the '-r' autoserv option (see below). A quick way
+  to review the test results is to use the 'generate_test_report'
+  script installed under $HOME/chromeos-hwqual-TAG/:
+
+  $ ../generate_test_report results.*
+
+  This will display a table with test status and perfomance data for
+  all result directories.
+
+  Alternatively, you can setup the Autotest's web server and database
+  components and use them to view test results and maintain history.
+
+  If deeper investigation into a failure is required, you can review
+  the debug information stored in results.*/*/debug/.
 
 
 * Before running the tests, cleanup previous test results:
@@ -241,7 +245,7 @@ Reporting Results
 
 * Make sure that there are no test failures in automatic,
   semi-automatic, or manual test categories.  Once all tests pass,
-  package the result folders:
+  package the result directories:
 
   $ tar cjf chromeos-hwqual-TAG-DATE.tar.bz2 results.*
 
