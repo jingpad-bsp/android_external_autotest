@@ -34,6 +34,7 @@ class ChromiumOSHost(base_classes.Host):
 
     def machine_install(self, update_url=None, biosflash=None):
         image = parser.options.image
+        version_string = None
         if image:
             #TODO(seano): set version, deal with blank version elsewhere
             logging.info('Install %s to host: %s' % (image, self.hostname))
@@ -44,10 +45,11 @@ class ChromiumOSHost(base_classes.Host):
         if not update_url:
             # Assume we're running the mock autoupdate server on the
             # autotest host.
-            update_url = 'http://%s:8080/update/' % socket.gethostname()
+            update_url = 'http://%s:8080/update' % socket.gethostname()
         # The mock autoupdater in devserver has been modified to
         # accept an additional url under /update/VERSION
-        update_url = urljoin(update_url, version_string)
+        if version_string:
+            update_url = urljoin(update_url, 'update/%s' % version_string)
 
         # Prepare to host a update image.
         # Check that a devserver is available on our preferred URL.
@@ -59,20 +61,14 @@ class ChromiumOSHost(base_classes.Host):
 
         # TODO(seano): remove reconfig_cmd, change autoupdate_cmd to use
         # memento_updater's flags
-        reconfig_cmd = ('sudo mount -o remount,rw /;'
-                        'echo "CHROMEOS_AUSERVER=%s" >> %s; ' %
-                        (update_url, UPDATER_CONFIG))
-
-        autoupdate_cmd = [reconfig_cmd, UPDATER_BIN, '-f']
-        if version_string:
-            autoupdate_cmd += ['-v', version_string]
+        autoupdate_cmd = [UPDATER_BIN, '--omaha_url=%s' % update_url,
+                          '--force_update']
         try:
             cmd = ' '.join(autoupdate_cmd)
             logging.info(cmd)
             self.run(cmd)
         except error.AutoservRunError, e:
             raise ChromiumOSError('OS Updater failed on %s', self.hostname)
-
         # Now, check that the installer completed as expected.
         try:
             cmd = ''
@@ -80,7 +76,6 @@ class ChromiumOSHost(base_classes.Host):
         except error.AutoservRunError, e:
             raise ChromiumOSError('Failed to install OS image to host %s',
                                   self.hostname)
-
         # Updater has returned. reboot.
         self.reboot(timeout=30, wait=True)
         # TODO(seano): verify that image version is in fact installed,
