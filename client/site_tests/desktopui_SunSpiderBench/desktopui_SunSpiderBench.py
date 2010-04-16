@@ -3,17 +3,18 @@
 # found in the LICENSE file.
 
 import logging, os, shutil
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import site_ui_test, utils
 from autotest_lib.client.common_lib import error, site_httpd, site_ui
 
 
-class desktopui_SunSpiderBench(test.test):
+class desktopui_SunSpiderBench(site_ui_test.UITest):
     version = 1
 
-    def initialize(self):
+    def initialize(self, creds = '$default'):
         self._test_url = 'http://localhost:8000/sunspider-driver.html'
         self._testServer = site_httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
+        site_ui_test.UITest.initialize(self, creds)
 
 
     def setup(self, tarball = 'sunspider-0.9.tar.bz2'):
@@ -26,6 +27,7 @@ class desktopui_SunSpiderBench(test.test):
 
     def cleanup(self):
         self._testServer.stop()
+        site_ui_test.UITest.cleanup(self)
 
 
     def run_once(self, timeout=180):

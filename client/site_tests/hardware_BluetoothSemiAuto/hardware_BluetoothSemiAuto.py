@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import dbus, dbus.mainloop.glib, dbus.service, gobject, logging, re
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import site_ui_test
 from autotest_lib.client.common_lib import error, site_ui, utils
 
 
@@ -43,8 +43,15 @@ class Agent(dbus.service.Object):
         logging.debug('Agent: Cancel')
 
 
-class hardware_BluetoothSemiAuto(test.test):
+class hardware_BluetoothSemiAuto(site_ui_test.UITest):
     version = 1
+
+    def initialize(self, creds = '$default'):
+        site_ui_test.UITest.initialize(self, creds)
+
+
+    def cleanup(self):
+        site_ui_test.UITest.cleanup(self)
 
 
     def handle_reply(self, device):
