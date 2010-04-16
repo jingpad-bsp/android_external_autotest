@@ -29,7 +29,4 @@ export DISPLAY=:0.0
 export PATH=/bin:/usr/bin:/usr/local/bin:/usr/bin/X11
 export XAUTHORITY=${XAUTH_FILE}
 
-# xset r off
-# xmodmap -e "clear Lock"
-
 exec /usr/bin/python KeyboardTest.py $*

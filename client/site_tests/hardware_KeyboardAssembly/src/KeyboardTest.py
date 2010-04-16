@@ -21,6 +21,7 @@ import gobject
 import gtk
 import sys
 import time
+import os
 
 class KeyboardTest:
 
@@ -368,6 +369,12 @@ def main():
     window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     window.set_name ('Keyboard Test')
     window.connect('destroy', lambda w: gtk.main_quit())
+
+    xset_status = os.system('xset r off')
+    xmm_status = os.system('xmodmap -e "clear Lock"')
+    if xset_status or xmm_status:
+        print >> sys.stderr, 'ERROR: disabling key repeat or caps lock failed'
+        sys.exit(1)
 
     bg_color = gtk.gdk.color_parse('midnight blue')
     window.modify_bg(gtk.STATE_NORMAL, bg_color)
