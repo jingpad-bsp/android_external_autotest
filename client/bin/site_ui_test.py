@@ -102,13 +102,6 @@ class UITest(bin_test.test):
         if site_login.logged_in():
             site_login.attempt_logout()
 
-        utils.system(
-            'su chronos -c "nsscertutil -A -n %s -t \"%s\" -a -i %s -d %s"' %
-            (self.ca_cert_nickname,
-             'C,C,C',
-             chromeos_constants.LOGIN_TRUST_ROOTS,
-             chromeos_constants.CHROME_CERT_DB))
-
         (self.username, self.password) = self.__resolve_creds(creds)
 
         if self.auto_login:
@@ -174,7 +167,3 @@ class UITest(bin_test.test):
         """
         if site_login.logged_in():
             self.logout()
-
-        utils.system('su chronos -c "nsscertutil -D -n %s -d %s"' %
-                     (self.ca_cert_nickname,
-                      chromeos_constants.CHROME_CERT_DB))

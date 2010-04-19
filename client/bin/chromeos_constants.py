@@ -12,7 +12,6 @@ CRYPTOHOME_DEVICE = '/dev/mapper/cryptohome'
 CRYPTOHOME_MOUNT_PT = USER_DATA_DIR+'/user'
 
 LOGIN_TRUST_ROOTS = '/etc/login_trust_root.pem'
-CHROME_CERT_DB = CRYPTOHOME_MOUNT_PT + '/.pki/nssdb'
 
 BROWSER = 'chrome'
 SESSION_MANAGER = 'session_manager'
