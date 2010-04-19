@@ -54,11 +54,13 @@ class login_ChromeProfileSanitary(site_ui_test.UITest):
         cookies_info = os.stat(chromeos_constants.LOGIN_PROFILE + '/Cookies')
         cookies_mtime = cookies_info[stat.ST_MTIME]
 
-        # "crash" chrome.
+        # Wait for chrome to show, then "crash" it.
         site_login.wait_for_initial_chrome_window()
         site_login.nuke_process_by_name(chromeos_constants.BROWSER,
                                         with_prejudice = True)
+        site_login.refresh_window_manager()
         site_login.wait_for_browser()
+        site_login.wait_for_initial_chrome_window()
 
         # Navigate to site that leaves cookies.
         latch = self._testServer.add_wait_url(self._wait_path)
@@ -69,13 +71,11 @@ class login_ChromeProfileSanitary(site_ui_test.UITest):
                                         clean_state=False)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
-
-        # Ensure chrome writes state to disk.
-        self.logout()
-        self.login()
-
         if not latch.is_set():
             raise error.TestError('Never received callback from browser.')
+
+        # Ensure chrome writes state to disk.
+        self.login()  # will logout automatically
 
         # Check mtime of Default/Cookies.  If changed, KABLOOEY.
         self.__wait_for_login_profile()

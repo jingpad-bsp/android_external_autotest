@@ -225,8 +225,23 @@ def nuke_login_manager():
 
 
 def nuke_process_by_name(name, with_prejudice=False):
-    pid = int(utils.system_output('pgrep -o ^%s$' % name))
+    pid = int(utils.system_output('pgrep -o ^%s$' % name).split()[0])
     if with_prejudice:
         utils.nuke_pid(pid, [signal.SIGKILL])
     else:
         utils.nuke_pid(pid)
+
+
+def refresh_window_manager(timeout=20):
+    """Clear state that tracks what WM has done, kill it, and wait until
+    the window manager is running.
+
+    Args:
+        timeout: float number of seconds to wait
+
+    Raises:
+        TimeoutError: window manager didn't start before timeout
+    """
+    os.unlink(chromeos_constants.CHROME_WINDOW_MAPPED_MAGIC_FILE)
+    utils.system('initctl restart windowmanager')
+    wait_for_window_manager()
