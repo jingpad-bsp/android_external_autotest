@@ -28,3 +28,7 @@ CREDENTIALS = {
     '$default': ['performance.test.account@gmail.com', 'perfsmurf'],
     '$backdoor': ['chronos@gmail.com', 'chronos'],
 }
+
+CLIENT_LOGIN_URL = '/accounts/ClientLogin'
+ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
+TOKEN_AUTH_URL = '/accounts/TokenAuth'

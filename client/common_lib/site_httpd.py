@@ -159,17 +159,18 @@ class HTTPListener(object):
 
     def stop(self):
         self._server.shutdown()
+        self._server_thread.join()
 
 
 class SecureHTTPServer(HTTPServer):
     def __init__(self, server_address, HandlerClass, cert_path, key_path):
-        BaseServer.__init__(self, server_address, HandlerClass)
         ctx = SSL.Context(SSL.SSLv23_METHOD)
 
         ctx.use_privatekey_file(key_path)
         ctx.use_certificate_file(cert_path)
         self.socket = SSL.Connection(ctx, socket.socket(self.address_family,
                                                         self.socket_type))
+        BaseServer.__init__(self, server_address, HandlerClass)
         self.server_bind()
         self.server_activate()
 
@@ -198,3 +199,8 @@ class SecureHTTPListener(HTTPListener):
 
     def getsockname(self):
         return self._server.socket.getsockname()
+
+
+    def stop(self):
+        HTTPListener.stop(self)
+        self._server.socket.close()
