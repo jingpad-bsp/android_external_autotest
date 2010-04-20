@@ -25,7 +25,7 @@ class realtimecomm_GTalkAudioBench(test.test):
 #       'CN',
     ]
     # TODO(zhurunz): Support ARM once available.
-    gips_path = '/home/chronos/gips'
+    gips_path = '/home/autotest/gips'
     gips = os.path.join(gips_path, 'audiotesttool.i686')
 
     def run_once(self):
@@ -60,4 +60,3 @@ class realtimecomm_GTalkAudioBench(test.test):
         cpu_usage, stdout = utils.get_cpu_percentage(
             utils.system_output, cmd, retain_output=True)
         self.performance_results['utime_gtalk_%s_dec' % codec] = cpu_usage
-

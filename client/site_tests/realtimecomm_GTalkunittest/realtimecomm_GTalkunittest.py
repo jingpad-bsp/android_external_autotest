@@ -25,9 +25,9 @@ class realtimecomm_GTalkunittest(test.test):
     def run_once(self):
         # Stop Google Talk Plugin
         utils.run('pkill GoogleTalkPlugin', ignore_status=True)
- 
+
         # Setup as appropriate
-        talk_path = '/home/chronos/talk'
+        talk_path = '/home/autotest/talk'
         shutil.rmtree(talk_path, ignore_errors=True)
         shutil.copytree(os.path.join(self.bindir, 'talk'), talk_path)
         utils.run('chown chronos %s -R' % talk_path)
@@ -38,7 +38,7 @@ class realtimecomm_GTalkunittest(test.test):
         for test_exe in self.unittests:
             # TODO(zhurunz): Support ARM once available.
             x86_talk_path = os.path.join(talk_path, 'i686')
-            # The unittest has to be run in 'talk' folder 
+            # The unittest has to be run in 'talk' folder
             test_cmd = "cd %s && su chronos -c \'./%s\'" % \
                 (x86_talk_path, test_exe)
             self.__run_one_test(test_cmd, self.unittests[test_exe])
@@ -56,4 +56,3 @@ class realtimecomm_GTalkunittest(test.test):
         if not expected in result.stdout:
             raise error.TestFail(result.stdout)
         logging.info("%s passed." % test_cmd)
-

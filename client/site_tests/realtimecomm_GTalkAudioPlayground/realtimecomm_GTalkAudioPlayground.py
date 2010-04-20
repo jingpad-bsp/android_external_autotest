@@ -12,7 +12,7 @@ SLEEP_DURATION = 90
 
 class realtimecomm_GTalkAudioPlayground(test.test):
     version = 1
-    playground = '/home/chronos/playground'
+    playground = '/home/autotest/playground'
     dep = 'realtimecomm_playground'
 
     def setup(self):
@@ -77,4 +77,3 @@ class realtimecomm_GTalkAudioPlayground(test.test):
 
         # Report perf
         self.write_perf_keyval(self.performance_results)
-
