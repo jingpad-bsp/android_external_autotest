@@ -1,0 +1,55 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Nightly"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+This test suite runs automated power tests that should all pass and that
+require the power to be disconnected.
+"""
+
+client = hosts.create_host(machines[0])
+client_at = autotest.Autotest(client)
+
+# Run server tests
+
+# (none)
+
+# Run power tests that don't take a long time
+TESTS = [
+  'power_Backlight',
+  'power_CPUFreq',
+  'power_CPUIdle',
+  'power_Draw',
+  'power_Idle',
+  'power_Resume',
+  'power_StatsCPUFreq',
+  'power_StatsCPUIdle',
+  'power_StatsUSB'
+]
+
+from autotest_lib.server import site_remote_power
+from autotest_lib.client.common_lib import error
+
+remote_power = site_remote_power.RemotePower(machines[0])
+if remote_power:
+    remote_power.set_power_off()
+else:
+    raise error.TestNAError("No power switch configured")
+
+try:
+    for test in TESTS:
+        client_at.run_test(test)
+finally:
+    remote_power.set_power_on()
+
+
+# Run jobs with specific parameters
+
+# (none)
