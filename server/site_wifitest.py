@@ -66,8 +66,8 @@ class WiFiTest(object):
     def __init__(self, name, steps, config):
         self.name = name
         self.steps = steps
-
         router = config['router']
+
         self.router = hosts.create_host(router['addr'])
         # NB: truncate SSID to 32 characters
         self.defssid = self.__get_defssid(router['addr'])[0:32]
@@ -76,7 +76,7 @@ class WiFiTest(object):
             # auto-detect router type
             if site_linux_router.isLinuxRouter(self.router):
                 router['type'] = 'linux'
-            if site_bsd_router.isBSDRouter(self.router):
+            elif site_bsd_router.isBSDRouter(self.router):
                 router['type'] = 'bsd'
             else:
                 raise Exception('Unable to autodetect router type')
@@ -170,13 +170,15 @@ class WiFiTest(object):
 
 
     def __get_connect_script(self, params):
+        # Something is off in our current setup so we'll set the assoc_timeout
+        # to 60. When all is fixed, it should go back to 15.
         return '''
 import dbus, dbus.mainloop.glib, gobject, logging, re, sys, time
 
 ssid = "''' + params['ssid'] + '''"
 security = "''' + params['security'] + '''"
 psk = "''' + params.get('psk', "") + '''"
-assoc_timeout = ''' + params.get('assoc_timeout', "15") + '''
+assoc_timeout = ''' + params.get('assoc_timeout', "60") + '''
 config_timeout = ''' + params.get('config_timeout', "15") + '''
 
 bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -439,9 +441,9 @@ sys.exit(0)'''
         """ Ping the server from the client """
         ping_ip = params.get('ping_ip', self.server_wifi_ip)
         count = params.get('count', 10)
-        # set timeout for 3s / ping packet
+        # set timeout for 5s / ping packet
         result = self.client.run("ping %s %s" % \
-            (self.__ping_args(params), ping_ip), timeout=3*int(count))
+            (self.__ping_args(params), ping_ip), timeout=5*int(count))
 
         self.__print_pingstats("client_ping ",
             self.__get_pingstats(result.stdout))
@@ -469,9 +471,9 @@ sys.exit(0)'''
             return
         ping_ip = params.get('ping_ip', self.client_wifi_ip)
         count = params.get('count', 10)
-        # set timeout for 3s / ping packet
+        # set timeout for 5s / ping packet
         result = self.server.run("ping %s %s" % \
-            (self.__ping_args(params), ping_ip), timeout=3*int(count))
+            (self.__ping_args(params), ping_ip), timeout=5*int(count))
 
         self.__print_pingstats("server_ping ",
             self.__get_pingstats(result.stdout))

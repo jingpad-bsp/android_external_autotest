@@ -21,18 +21,26 @@ class LinuxRouter(object):
 
 
     def __init__(self, host, params, defssid):
+        # Command locations.
         self.cmd_iw = "/usr/sbin/iw"
         self.cmd_ip = "/usr/sbin/ip"
         self.cmd_brctl = "/usr/sbin/brctl"
         self.cmd_hostapd = "/usr/sbin/hostapd"
 
+        # Router host.
         self.router = host
-        # default to 1st available wireless nic
+
+        # Network interfaces.
+        self.bridgeif = params.get('bridgeif', "br-lan")
+        self.wiredif = params.get('wiredif', "eth1")
+        self.wlanif = "wlan0"
+
+        # Default to 1st available wireless phy.
         if "phydev" not in params:
             output = self.router.run("%s list" % self.cmd_iw).stdout
-            wifitest = re.compile("Wiphy (.*)")
+            test = re.compile("Wiphy (.*)")
             for line in output.splitlines():
-                m = wifitest.match(line)
+                m = test.match(line)
                 if m:
                     self.phydev = m.group(1)
                     break
@@ -41,12 +49,42 @@ class LinuxRouter(object):
         else:
             self.phydev = params['phydev']
 
-        self.hostapd_conf = "/tmp/%s.conf" % self.phydev
-        self.hostapd_driver = "nl80211"
-        self.phytype = None
-        self.bridgeif = params.get("bridgeif", "br-lan")
-        self.wlanif = "wlan0"
-        self.defssid = defssid;
+
+        # hostapd configuration persists throughout the test, subsequent
+        # 'config' commands only modify it.
+        self.hostapd = {
+            'configured': False,
+            'file': "/tmp/%s.conf" % self.phydev,
+            'driver': "nl80211",
+            'conf': {
+                'ssid': defssid,
+                'interface': self.wlanif,
+                'bridge': self.bridgeif
+            }
+        }
+
+        # Kill hostapd if already running.
+        self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
+
+        # Remove all bridges.
+        output = self.router.run("%s show" % self.cmd_brctl).stdout
+        test = re.compile("^(\S+).*")
+        for line in output.splitlines()[1:]:
+            m = test.match(line)
+            if m:
+                device = m.group(1)
+                self.router.run("%s link set %s down" % (self.cmd_ip, device))
+                self.router.run("%s delbr %s" % (self.cmd_brctl, device))
+
+        # Remove all wifi devices.
+        output = self.router.run("%s dev" % self.cmd_iw).stdout
+        test = re.compile("[\s]*Interface (.*)")
+        for line in output.splitlines():
+            m = test.match(line)
+            if m:
+                device = m.group(1)
+                self.router.run("%s link set %s down" % (self.cmd_ip, device))
+                self.router.run("%s dev %s del" % (self.cmd_iw, device))
 
 
     def create(self, params):
@@ -59,7 +97,7 @@ class LinuxRouter(object):
         # map from bsd types to iw types
         if params['type'] == "ap" or params['type'] == "hostap":
             self.apmode = True
-        self.phytype = {
+        phytype = {
             "sta"       : "managed",
             "monitor"   : "monitor",
             "adhoc"     : "adhoc",
@@ -71,117 +109,157 @@ class LinuxRouter(object):
         }[params['type']]
         phydev = params.get('phydev', self.phydev)
         self.router.run("%s phy %s interface add %s type %s" %
-            (self.cmd_iw, phydev, self.wlanif, self.phytype))
+            (self.cmd_iw, phydev, self.wlanif, phytype))
+
 
 
     def destroy(self, params):
         """ Destroy a previously created device """
-        self.router.run("%s dev %s del" % (self.cmd_iw, self.wlanif))
+        # For linux, this is the same as deconfig.
+        self.deconfig(params)
+
 
 
     def config(self, params):
         """ Configure the AP per test requirements """
 
+        if self.hostapd['configured']:
+            self.deconfig({})
+
         if self.apmode:
-            # construct the hostapd.conf file and start hostapd
-            hostapd_args = ["interface=%s" % self.wlanif]
-            hostapd_args.append("bridge=%s" % self.bridgeif)
-            hostapd_args.append("driver=%s" %
-                params.get("hostapd_driver", self.hostapd_driver))
-            if 'ssid' not in params:
-                params['ssid'] = self.defssid
-            wmm = 0
-            htcaps = None
+            # Construct the hostapd.conf file and start hostapd.
+            conf = self.hostapd['conf']
+            htcaps = set()
+
+            conf['driver'] = params.get('hostapd_driver', self.hostapd['driver'])
+
             for k, v in params.iteritems():
                 if k == 'ssid':
-                    hostapd_args.append("ssid=%s" % v)
+                    conf['ssid'] = v
                 elif k == 'channel':
                     freq = int(v)
-                    if freq >= 2412 and freq <= 2472:
-                        chan = 1 + (freq - 2412) / 5
-                    elif freq == 2484:
-                        chan = 14
-                    elif freq >= 4915 and freq <= 4980:
-                        chan = 183 + (freq - 4915) / 5
-                    elif freq >= 5035 and freq <= 5825:
-                        chan = 7 + (freq - 5025) / 5
+
+                    # 2.4GHz
+                    if freq < 2500:
+                        if conf['hw_mode'] == 'a':
+                            conf['hw_mode'] = 'b'
+                       
+                        # Freq = 5 * chan + 2407
+                        if freq >= 2412 and freq <= 2472:
+                            conf['channel'] = (freq - 2407) / 5
+                        # Channel 14 is an exception
+                        elif freq == 2484:
+                            conf['channel'] = 14
+                    # 5GHz
                     else:
-                        chan = -1
-                    hostapd_args.append("channel=%s" % chan)
+                        conf['hw_mode'] = 'a'
+                        # Freq = 5 * chan + 4000
+                        if freq >= 4915 and freq <= 4980:
+                            conf['channel'] = 183 + (freq - 4915) / 5
+                        # Freq = 5 * chan + 5000
+                        elif freq >= 5035 and freq <= 5825:
+                            conf['channel'] = (freq - 5000) / 5
+
                 elif k == 'country':
-                    hostapd_args.append("country_code=%s" % v)
+                    conf['country_code'] = v
                 elif k == 'dotd':
-                    hostapd_args.append("ieee80211d=1")
+                    conf['ieee80211d'] = 1
                 elif k == '-dotd':
-                    hostapd_args.append("ieee80211d=0")
+                    conf['ieee80211d'] = 0
                 elif k == 'mode':
                     if v == '11a':
-                        hostapd_args.append("hw_mode=a")
+                        conf['hw_mode'] = 'a'
                     elif v == '11g':
-                        hostapd_args.append("hw_mode=g")
+                        conf['hw_mode'] = 'g'
                     elif v == '11b':
-                        hostapd_args.append("hw_mode=b")
+                        conf['hw_mode'] = 'b'
                     elif v == '11n':
-                        hostapd_args.append("ieee80211n=1")
+                        conf['ieee80211n'] = 1
                 elif k == 'bintval':
-                    hostapd_args.append("beacon_int=%s" % v)
+                    conf['beacon_int'] = v
                 elif k == 'dtimperiod':
-                    hostapd_args.append("dtim_period=%s" % v)
+                    conf['dtim_period'] = v
                 elif k == 'rtsthreshold':
-                    hostapd_args.append("rts_threshold=%s" % v)
+                    conf['rts_threshold'] = v
                 elif k == 'fragthreshold':
-                    hostapd_args.append("fragm_threshold=%s" % v)
+                    conf['fragm_threshold'] = v
                 elif k == 'shortpreamble':
-                    hostapd_args.append("preamble=1")
+                    conf['preamble'] = 1
                 elif k == 'authmode':
-                    if v == 'open':
-                        hostapd_args.append("auth_algs=1")
-                    elif v == 'shared':
-                        hostapd_args.append("auth_algs=2")
+                    if v == "open":
+                        conf['auth_algs'] = 1
+                    elif v == "shared":
+                        conf['auth_algs'] = 2
                 elif k == 'hidessid':
-                    hostapd_args.append("ignore_broadcast_ssid=1")
+                    conf['ignore_broadcast_ssid'] = 1
                 elif k == 'wme':
-                    wmm = 1;
+                    conf['wmm_enabled'] = 1
                 elif k == '-wme':
-                    wmm = 0;
+                    conf['wmm_enabled'] = 0
                 elif k == 'deftxkey':
-                    hostapd_args.append("wep_default_key=%s" % v)
+                    conf['wep_default_key'] = v
                 elif k == 'ht20':
-                    htcaps.append("")
-                    wmm = 1;
+                    conf['wmm_enabled'] = 1
                 elif k == 'ht40':
-                    htcaps.append("[HT40-][HT40+]")
-                    wmm = 1
-# XXX no support                elif k == 'rifs':
+                    htcaps.add('[HT40-]')
+                    htcaps.add('[HT40+]')
+                    conf['wmm_enabled'] = 1
                 elif k == 'shortgi':
-                    htcaps.append("[SHORT-GI-20][SHORT-GI-40]")
+                    htcaps.add('[SHORT-GI-20]')
+                    htcaps.add('[SHORT-GI-40]')
+                elif k == 'pureg' or k == 'puren' or k == 'wepmode' or k == 'rifs':
+                    # no support
+                    pass
                 else:
-                    hostapd_args.append("%s=%s" % (k, v))
+                    conf[k] = v
 
-            if htcaps is not None:
-                hostapd_args.append("ieee80211n=1")
-                hostapd_args.append("ht_capab=%s" % htcaps)
-            hostapd_args.append("wmm_enabled=%d" % wmm)
+            # Aggregate ht_capab.
+            if htcaps:
+                conf['ieee80211n'] = 1
+                conf['ht_capab'] = ''.join(htcaps)
 
+            # Generate hostapd.conf.
             self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
-                (self.hostapd_conf, "\n".join(hostapd_args)))
+                (self.hostapd['file'], '\n'.join(
+                "%s=%s" % kv for kv in conf.iteritems())))
+
+            # Run hostapd.
             self.router.run("%s -B %s" %
-                (self.cmd_hostapd, self.hostapd_conf))
+                (self.cmd_hostapd, self.hostapd['file']))
+
+            # Set up the bridge.
+            self.router.run("%s setfd %s %d" %
+                (self.cmd_brctl, self.bridgeif, 0))
+            self.router.run("%s addif %s %s" %
+                (self.cmd_brctl, self.bridgeif, self.wiredif))
+            self.router.run("%s link set %s up" %
+                (self.cmd_ip, self.wiredif))
+            self.router.run("%s link set %s up" %
+                (self.cmd_ip, self.bridgeif))
 
 #        else:
 #            # use iw to manually configure interface
 
+        self.hostapd['configured'] = True
 
 
     def deconfig(self, params):
-        """ De-configure the AP (typically marks wlanif down) """
+        """ De-configure the AP (will also bring wlan and the bridge down) """
 
-        self.router.run("%s link set %s down" % (self.cmd_ip, self.wlanif))
-        if self.hostapd_conf is not None:
-            self.router.run("pkill hostapd >/dev/null 2>&1")
-            self.router.run("rm -f %s" % self.hostapd_conf)
-            self.hostapd_conf = None
+        if not self.hostapd['configured']:
+            return
 
+        # Taking down hostapd takes wlan0 and mon.wlan0 down.
+        self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
+#        self.router.run("rm -f %s" % self.hostapd['file'])
+
+        # Tear down the bridge.
+        self.router.run("%s link set %s down" % (self.cmd_ip, self.bridgeif),
+            ignore_status=True)
+        self.router.run("%s delbr %s" % (self.cmd_brctl, self.bridgeif),
+            ignore_status=True)
+
+        self.hostapd['configured'] = False
 
     def client_check_config(self, params):
         """
