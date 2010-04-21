@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, random, re, time
+import os, random, re, shutil, time
 from autotest_lib.client.bin import site_ui_test, site_utils, test, utils
 from autotest_lib.client.common_lib import error
 
@@ -73,15 +73,15 @@ class desktopui_WindowManagerHotkeys(site_ui_test.UITest):
         os.remove(temp_filename)
 
         # Press the Print Screen key and check that a screenshot is written.
-        screenshot_filename = '/home/chronos/user/screenshot.png'
-        if os.access(screenshot_filename, os.F_OK):
-            os.remove(screenshot_filename)
+        screenshot_dir = '/home/chronos/user/Downloads/Screenshots'
+        shutil.rmtree(screenshot_dir, ignore_errors=True)
         ax.send_hotkey('Print')
         site_utils.poll_for_condition(
-            lambda: os.access(screenshot_filename, os.F_OK),
+            lambda: os.access(screenshot_dir, os.F_OK) and \
+                    os.listdir(screenshot_dir),
             error.TestFail(
-                'Waiting for screenshot at %s' % screenshot_filename))
-        os.remove(screenshot_filename)
+                'Waiting for screenshot in %s' % screenshot_dir))
+        shutil.rmtree(screenshot_dir, ignore_errors=True)
 
         # Make sure that the mixer is unmuted and at 50% before we test the
         # audio key bindings.
