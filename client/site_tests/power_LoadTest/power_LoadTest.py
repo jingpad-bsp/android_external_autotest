@@ -79,7 +79,7 @@ class power_LoadTest(test.test):
         os.system('stop screen-locker')
 
         # disable screen blanking
-        site_ui.xcommand(os.path.join(self.bindir, 'xset') + ' -dpms')
+        site_ui.xsystem(os.path.join(self.bindir, 'xset') + ' -dpms')
 
         # fix up file perms for the power test extension so that chrome
         # can access it
@@ -167,7 +167,7 @@ class power_LoadTest(test.test):
 
     def cleanup(self):
         # re-enable screen blanking
-        site_ui.xcommand(os.path.join(self.bindir, 'xset') + ' +dpms')
+        site_ui.xsystem(os.path.join(self.bindir, 'xset') + ' +dpms')
 
         # re-enable screen locker
         os.system('start screen-locker')
