@@ -19,7 +19,8 @@ class power_BatteryCharge(test.test):
 
 
     def run_once(self, max_run_time=180, percent_charge_to_add=1,
-                 percent_initial_charge_max=None):
+                 percent_initial_charge_max=None,
+                 percent_target_charge=None):
         """
         max_run_time: maximum time the test will run for
         percent_charge_to_add: percentage of the design capacity charge to
@@ -40,9 +41,13 @@ class power_BatteryCharge(test.test):
                       % (percent_initial_charge, percent_initial_charge_max))
 
         current_charge = self.initial_charge
-        charge_to_add = self.charge_full_design * \
-                        float(percent_charge_to_add) / 100
-        target_charge = current_charge + charge_to_add
+        if percent_target_charge is None:
+            charge_to_add = self.charge_full_design * \
+                            float(percent_charge_to_add) / 100
+            target_charge = current_charge + charge_to_add
+        else:
+            target_charge = self.charge_full_design * \
+                            float(percent_target_charge) / 100
 
         # trim target_charge if it exceeds designed capacity
         if target_charge > self.charge_full_design:
