@@ -197,8 +197,10 @@
 /var/log/messages.autotest_start
 # The whole metrics tree probably should be removed
 /var/log/metrics
+/var/log/metrics/autotest-events
 /var/log/metrics/disk_shutdown_start
 /var/log/metrics/disk_shutdown_stop
+/var/log/metrics/uma-events
 /var/log/metrics/uptime_shutdown_stop
 /var/log/metrics/uptime_shutdown_start
 /var/log/secure
