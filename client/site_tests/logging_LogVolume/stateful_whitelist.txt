@@ -12,6 +12,14 @@
 
 # Don't forget to escape dots in filenames.
 
+# Allow any portage .keep_sys-apps_sandbox-0 style files.
+/.*/.keep_[^/]+-\d
+
+# dev_image is only for development mode, we are only concerned with
+# space used for non-dev devices.
+/dev_image
+/dev_image/.*
+
 /etc
 /etc/omaha_id
 /etc/ssh
@@ -127,9 +135,9 @@
 /home/chronos/Downloads/.*
 /home/chronos/Local State
 
-# TODO(kmixter): Fix realtimecomm_GTalkPlayground to not install here
-/home/chronos/playground
-/home/chronos/playground/.*
+# All user images are stored pngs with the user email address in
+# the name.
+/home/chronos/.*@.*\.\*_image
 
 /home/chronos/user
 /home/chronos/user/\.config
@@ -160,37 +168,53 @@
 /var/cache
 /var/cache/connman
 /var/cache/connman/default.profile
+/var/cache/revdep-rebuild
+/var/cache/ldconfig
+/var/cache/ldconfig/.*
+
+# /var/cache/edb is metadata created on the device when emerging and
+# is only populated on developer machines.
+/var/cache/edb
+/var/cache/edb/.*
 
 # TODO(kmixter): Track down if these are cleaned up.
 /var/cache/server-[0-9A-Z]+.xkm
 
 /var/cache/google_offline_login_cache.txt
 /var/cache/machine-id
+
+# /var/db/pkg is used for emerging on the device and is only populated
+# on developer machines.
+/var/db
+/var/db/pkg
+/var/db/pkg/.*
+
 /var/empty
+# Be completely lenient on application state in /var/lib as it will
+# grow as rootfs base packages are added and expected to be small.
 /var/lib
-/var/lib/bluetooth
-/var/lib/bluetooth/..:..:..:..:..:..
-/var/lib/bluetooth/..:..:..:..:..:../config
-/var/lib/dbus
-/var/lib/dbus/machine-id
-/var/lib/xkb
-/var/lib/xkb/server-.*\.xkm
+/var/lib/.*
 /var/lock
 /var/log
 /var/log/ConsoleKit
 /var/log/ConsoleKit/history
 /var/log/Xorg.0.log
 /var/log/Xorg.0.log.old
-# Likely a test is creating Xorg.1.log
 /var/log/Xorg.1.log
+/var/log/Xorg.1.log.old
 /var/log/boot.log
+/var/log/build
 /var/log/cron
 /var/log/cryptohome.log
 /var/log/cryptohome.stderr.log
 /var/log/cryptohome.stdout.log
 /var/log/cryptohomed.log
+# Created by emerge
+/var/log/emerge.log
 /var/log/faillog
 /var/log/hostap.log
+# This is created by laptop-mode/power syslogging
+/var/log/laptopmode.log
 /var/log/lastlog
 /var/log/messages
 # This is an autotest artifact
@@ -203,6 +227,9 @@
 /var/log/metrics/uma-events
 /var/log/metrics/uptime_shutdown_stop
 /var/log/metrics/uptime_shutdown_start
+/var/log/portage
+/var/log/portage/.*
+/var/log/sandbox
 /var/log/secure
 /var/log/session_manager
 # Existence of this indicates a graceful shutdown failure
@@ -217,5 +244,14 @@
 /var/log/window_manager
 /var/log/window_manager/chromeos-wm\.\d{8}-\d{6}
 /var/log/window_manager/chromeos-wm\.LATEST
+/var/mail
+# /var/run is entirely on tmpfs, so ignore it.
 /var/run
+/var/run/.*
+/var/spool
+/var/spool/mail
+/var/spool/cron
+/var/spool/cron/crontabs
+/var/spool/cron/lastrun
+/var/spool/cron/lastrun/cron.(daily|hourly|monthly|weekly)
 /var/tmp

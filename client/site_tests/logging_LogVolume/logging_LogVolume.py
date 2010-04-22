@@ -73,11 +73,15 @@ class logging_LogVolume(site_ui_test.UITest):
                 unexpected_bytes += bytes
                 unexpected_files += 1
 
-        unmatched_patterns = 0
+        unmatched_patterns = []
         for pattern in patterns:
             if patterns[pattern]['count'] == 0:
-                logging.warn('No files matched: %s' % pattern)
-                unmatched_patterns += 1
+                unmatched_patterns.append(pattern)
+
+        unmatched_patterns.sort()
+        for pattern in unmatched_patterns:
+            logging.warn('No files matched: %s' % pattern)
+
 
         if top_patterns:
             largest_size = [(patterns[pattern_]['bytes'], pattern_)
@@ -97,6 +101,6 @@ class logging_LogVolume(site_ui_test.UITest):
         self._perf['files_in_stateful_partition'] = stateful_files
 
         self._perf['percent_unused_patterns'] = \
-            int(100 * unmatched_patterns / len(patterns))
+            int(100 * len(unmatched_patterns) / len(patterns))
 
         self.write_perf_keyval(self._perf)
