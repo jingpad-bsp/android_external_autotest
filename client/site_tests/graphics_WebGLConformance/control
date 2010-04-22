@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "WebGL Conformance Tests"
+TIME = "MEDIAN"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "graphics"
+TEST_TYPE = "client"
+
+DOC = """
+This test runs the WebGL conformance tests.
+"""
+
+job.run_test('graphics_WebGLConformance')

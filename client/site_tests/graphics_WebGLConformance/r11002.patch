@@ -1,0 +1,48 @@
+--- WebGL/webgl-conformance-tests.html	2010-04-21 11:03:56.000000000 -0700
++++ src/webgl-conformance-tests.html	2010-04-21 15:18:24.000000000 -0700
+@@ -193,6 +193,25 @@
+       this.currentPage = null;
+     }
+   };
++
++  Reporter.prototype.postFinalResults = function() {
++    var xhr = new XMLHttpRequest();
++    xhr.open('POST', 'http://localhost:8000/WebGL/results', false);
++    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
++    xhr.onreadystatechange = function() {
++      if (xhr.readyState != 4) { return; }
++    }
++    var totalPages = 0;
++    var totalSuccessfulPages = 0;
++    for (var url in this.pagesByURL) {
++      ++totalPages;
++      var page = this.pagesByURL[url];
++      if (page.totalTests == page.totalSuccessful)
++        ++totalSuccessfulPages;
++    }
++    cmd = "total=" + totalPages + "&pass=" + totalSuccessfulPages;
++    xhr.send(cmd);
++  }
+ 
+   Reporter.prototype.displayFinalResults = function() {
+     var totalTests = 0;
+@@ -210,7 +229,8 @@
+     }
+     var msg = ' (' + totalSuccessful + ' of ' +
+               totalTests + ' passed' + timeout + ')';
+-    this.fullResultsNode.textContent = msg;
++    this.fullResultsNode.textContent = msg;
++    this.postFinalResults();
+   };
+ 
+   Reporter.prototype.reportFunc = function(type, msg, success) {
+@@ -253,7 +273,8 @@
+     button.disabled = true;
+     var elem = document.getElementById("nowebgl");
+     elem.style.display = "";
+-  }
++  }
++  testHarness.runTests();
+ }
+ </script>
+ </head>
