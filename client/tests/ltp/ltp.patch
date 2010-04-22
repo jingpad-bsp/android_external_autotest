@@ -22,6 +22,29 @@ diff -urN ltp-full-20091231_vanilla/testcases/kernel/syscalls/epoll/epoll-ltp.c 
  			ev_ptr = unaligned_event_ptr;
  			break;
  		case 2:
+diff -urN ltp-full-20091231_vanilla/testcases/kernel/syscalls/linkat/linkat01.c ltp-full-20091231/testcases/kernel/syscalls/linkat/linkat01.c
+--- ltp-full-20091231_vanilla/testcases/kernel/syscalls/linkat/linkat01.c	2009-11-26 23:43:12.000000000 -0800
++++ ltp-full-20091231/testcases/kernel/syscalls/linkat/linkat01.c	2010-04-12 16:28:59.000000000 -0700
+@@ -158,7 +158,7 @@
+ 	{ &cwd_fd, "/proc/cpuinfo", &newdirfd, TEST_FILE1, 0,
+ 	  0, 0, EXDEV },
+ 	/* 21. directory link */
+-	{ &cwd_fd, "/tmp", &newdirfd, TEST_FILE1, 0,
++	{ &olddirfd, ".", &newdirfd, TEST_FILE1, 0,
+ 	  0, 0, EPERM },
+ 	/* 22. invalid flag */
+ 	{ &olddirfd, TEST_FILE1, &newdirfd, TEST_FILE1, 1,
+diff -urN ltp-full-20091231_vanilla/testcases/kernel/syscalls/nanosleep/nanosleep02.c ltp-full-20091231/testcases/kernel/syscalls/nanosleep/nanosleep02.c
+--- ltp-full-20091231_vanilla/testcases/kernel/syscalls/nanosleep/nanosleep02.c	2009-12-22 09:35:13.000000000 -0800
++++ ltp-full-20091231/testcases/kernel/syscalls/nanosleep/nanosleep02.c	2010-04-21 13:02:37.000000000 -0700
+@@ -273,6 +273,7 @@
+ 				 (intmax_t)timereq.tv_sec, timereq.tv_nsec);
+ 			exit(1);
+ 		}
++		exit(0); /* Success! */
+ 	} else {
+ 		tst_resm(TPASS, "call succeeded");
+ 		exit(0);
 diff -urN ltp-full-20091231_vanilla/testcases/kernel/timers/include/common_timers.h ltp-full-20091231/testcases/kernel/timers/include/common_timers.h
 --- ltp-full-20091231_vanilla/testcases/kernel/timers/include/common_timers.h	2009-12-06 12:53:44.000000000 -0800
 +++ ltp-full-20091231/testcases/kernel/timers/include/common_timers.h	2010-04-07 11:52:11.000000000 -0700
@@ -56,15 +79,3 @@ diff -urN ltp-full-20091231_vanilla/testcases/kernel/timers/timer_create/timer_c
  
  				if (strstr(get_clock_str(clock_list[j]),
  						"CPUTIME_ID")) {
-diff -urN ltp-full-20091231_vanilla/testcases/kernel/syscalls/linkat/linkat01.c ltp-full-20091231/testcases/kernel/syscalls/linkat/linkat01.c
---- ltp-full-20091231_vanilla/testcases/kernel/syscalls/linkat/linkat01.c	2009-11-26 23:43:12.000000000 -0800
-+++ ltp-full-20091231/testcases/kernel/syscalls/linkat/linkat01.c	2010-04-12 16:28:59.000000000 -0700
-@@ -158,7 +158,7 @@
- 	{ &cwd_fd, "/proc/cpuinfo", &newdirfd, TEST_FILE1, 0,
- 	  0, 0, EXDEV },
- 	/* 21. directory link */
--	{ &cwd_fd, "/tmp", &newdirfd, TEST_FILE1, 0,
-+	{ &olddirfd, ".", &newdirfd, TEST_FILE1, 0,
- 	  0, 0, EPERM },
- 	/* 22. invalid flag */
- 	{ &olddirfd, TEST_FILE1, &newdirfd, TEST_FILE1, 1,
