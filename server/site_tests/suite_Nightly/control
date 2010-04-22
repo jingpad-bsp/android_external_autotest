@@ -35,7 +35,6 @@ TESTS = [
   'ltp',
   'platform_FileNum',
   'platform_FileSize',
-  'power_Idle',
   'realtimecomm_GTalkAudioBench',
   'realtimecomm_GTalkunittest',
   'unixbench',
