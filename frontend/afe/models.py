@@ -198,7 +198,7 @@ class Host(model_logic.ModelWithInvalid, dbmodels.Model,
     dirty: true if the host has been used without being rebooted
     """
     Status = enum.Enum('Verifying', 'Running', 'Ready', 'Repairing',
-                       'Repair Failed', 'Dead', 'Cleaning', 'Pending',
+                       'Repair Failed', 'Cleaning', 'Pending',
                        string_values=True)
     Protection = host_protections.Protection
 
@@ -724,7 +724,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
         job.dependency_labels = options['dependencies']
 
-        if options['keyvals'] is not None:
+        if options.get('keyvals'):
             for key, value in options['keyvals'].iteritems():
                 JobKeyval.objects.create(job=job, key=key, value=value)
 

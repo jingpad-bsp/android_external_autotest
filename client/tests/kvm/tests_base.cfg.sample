@@ -110,50 +110,36 @@ variants:
         test_timeout = 1800
         variants:
             - sleeptest:
-                test_name = sleeptest
                 test_timeout = 120
                 test_control_file = sleeptest.control
             - dbench:
-                test_name = dbench
                 test_control_file = dbench.control
             - bonnie:
-                test_name = bonnie
                 test_control_file = bonnie.control
             - ebizzy:
-                test_name = ebizzy
                 test_control_file = ebizzy.control
             - stress:
-                test_name = stress
                 test_control_file = stress.control
             - disktest:
-                test_name = disktest
                 test_control_file = disktest.control
             - ctcs2:
-                test_name = cerberus
                 # If you think this is too lengthy, please change the cerberus
                 # control file and set this timeout appropriately.
                 test_timeout = 3900
                 test_control_file = cerberus.control
             - npb:
-                test_name = npb
                 test_control_file = npb.control
             - hackbench:
-                test_name = hackbench
                 test_control_file = hackbench.control
             - cpu_hotplug:
-                test_name = cpu_hotplug
                 test_control_file = cpu_hotplug.control
             - monotonic_time:
-                test_name = monotonic_time
                 test_control_file = monotonic_time.control
             - tsc:
-                test_name = tsc
                 test_control_file = tsc.control
             - scrashme:
-                test_name = scrashme
                 test_control_file = scrashme.control
             - hwclock:
-                test_name = hwclock
                 test_control_file = hwclock.control
 
     - linux_s3:     install setup unattended_install
@@ -184,6 +170,11 @@ variants:
                 reboot_iterations = 1
                 drift_threshold = 10
                 drift_threshold_single = 3
+
+    - balloon_check:  install setup unattended_install
+        type = balloon_check
+        extra_params += "-balloon virtio"
+        iterations = 5
 
     - stress_boot:  install setup unattended_install
         type = stress_boot
@@ -305,6 +296,48 @@ variants:
             - ksm_parallel:
                 ksm_mode = "parallel"
 
+    - qemu_img:
+        type = qemu_img
+        vms = ''
+        profilers = ''
+        take_regular_screendumps = no
+        variants:
+            - check:
+                subcommand = check
+                image_name_dd = dd_created_image
+                force_create_image_dd = no
+                remove_image_dd = yes
+                create_image_cmd = "dd if=/dev/zero of=%s bs=1G count=1"
+                # Test the convertion from 'dd_image_name' to specified format
+                supported_image_formats = qcow2 raw
+            - create:
+                subcommand = create
+                images += " large"
+                force_create_image_large = yes
+                image_size_large = 1G
+                image_name_large = create_large_image
+                remove_image_large = yes
+            - convert:
+                subcommand = convert
+                variants:
+                    - to_qcow2:
+                        dest_image_format = qcow2
+                        compressed = no
+                        encrypted = no
+                    - to_raw:
+                        dest_image_format = raw
+            - snapshot:
+                subcommand = snapshot
+            - commit:
+                subcommand = commit
+            - info:
+                subcommand = info
+            - rebase:
+                subcommand = rebase
+                rebase_mode = unsafe
+                image_name_snapshot1 = sn1
+                image_name_snapshot2 = sn2
+
     # system_powerdown, system_reset and shutdown *must* be the last ones
     # defined (in this order), since the effect of such tests can leave
     # the VM on a bad state.
@@ -353,6 +386,7 @@ variants:
         file_transfer_client = scp
         file_transfer_port = 22
         mem_chk_cmd = dmidecode -t 17 | awk -F: '/Size/ {print $2}'
+        mem_chk_cur_cmd = grep MemTotal /proc/meminfo
         cpu_chk_cmd = grep -c processor /proc/cpuinfo
         timedrift:
             extra_params += " -no-kvm-pit-reinjection"
@@ -705,6 +739,29 @@ variants:
                             tftp = images/rhel54-64/tftpboot
                             floppy = images/rhel54-64/floppy.img
 
+                    - 5.5.i386:
+                        no setup
+                        image_name = rhel5-32
+                        cdrom = linux/RHEL-5.5-i386-DVD.iso
+                        md5sum = 148858b157f275d9153797efddfc83c3
+                        md5sum_1m = 2502cc7ddb9d0684fe08c4a83d247902
+                        unattended_install:
+                            unattended_file = unattended/RHEL-5-series.ks
+                            tftp = images/rhel55-32/tftpboot
+                            floppy = images/rhel55-32/floppy.img
+
+                    - 5.5.x86_64:
+                        no setup
+                        image_name = rhel5-64
+                        cdrom = linux/RHEL-5.5-x86_64-DVD.iso
+                        md5sum = f3119f883257ef9041234feda2f1cad0
+                        md5sum_1m = a744084a03f6a08627f71527fc107a1e
+                        unattended_install:
+                            unattended_file = unattended/RHEL-5-series.ks
+                            tftp = images/rhel55-64/tftpboot
+                            floppy = images/rhel55-64/floppy.img
+
+
     # Windows section
     - @Windows:
         no autotest linux_s3 vlan_tag
@@ -726,6 +783,7 @@ variants:
 
         cpu_chk_cmd = echo %NUMBER_OF_PROCESSORS%
         mem_chk_cmd = wmic memphysical
+        mem_chk_cur_cmd = wmic memphysical
 
         unattended_install:
             timeout = 7200
@@ -1128,7 +1186,7 @@ variants:
         image_boot=yes
 
 
-virtio|virtio_blk|e1000:
+virtio|virtio_blk|e1000|balloon_check:
     only Fedora.11 Fedora.12 Win2008 WinVista Win7 openSUSE-11 Ubuntu-8.10-server
 
 
