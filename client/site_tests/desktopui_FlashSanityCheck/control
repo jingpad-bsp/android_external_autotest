@@ -1,0 +1,13 @@
+AUTHOR = "Chromium OS Team"
+NAME = "desktopui_FlashSanityCheck"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "desktopui"
+TEST_TYPE = "client"
+
+DOC = """
+This test simply checks if flash segfaults from Chromium browser inside Chromium
+OS.
+"""
+
+job.run_test("desktopui_FlashSanityCheck")
