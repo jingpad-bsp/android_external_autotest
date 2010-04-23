@@ -8,7 +8,7 @@
     [ "config",         { "channel":"5320", "ht":None, "puren":None,
                           "rifs":None } ],
     [ "connect",        { "security":"none" } ],
-    [ "client_check_rifs" ],
+    [ "client_check_rifs", [ "true" ] ],
     [ "server_netperf", { "test":"TCP_STREAM" } ],
     # verify RIFS stats
     [ "destroy" ],

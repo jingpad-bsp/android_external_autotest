@@ -6,9 +6,11 @@
   "steps":[             # Channel 6
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2437", "mode":"11g", "dtimperiod":"5" } ],
+    [ "client_powersave_on" ],
     [ "connect",        { "security":"none" } ],
     [ "client_check_dtimperiod", [ "5" ] ],
     [ "client_ping",    { "count":"10" } ],
+    [ "client_powersave_off" ],
     [ "destroy" ],
   ],
 }

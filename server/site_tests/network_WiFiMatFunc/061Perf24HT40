@@ -6,6 +6,7 @@
   "steps":[             # Channel 6
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2437", "ht40":None, "puren":None } ],
+    [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
     [ "client_netperf", { "test":"UDP_STREAM" } ],
     [ "server_netperf", { "test":"UDP_STREAM" } ],

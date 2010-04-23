@@ -7,6 +7,7 @@
     [ "create",         { "type":"hostap" } ],
 
     [ "config",         { "channel":"5320", "ht40":None, "puren":None } ],
+    [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
     [ "client_netperf", { "test":"UDP_STREAM" } ],
     [ "server_netperf", { "test":"UDP_STREAM" } ],

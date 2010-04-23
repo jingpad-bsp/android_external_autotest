@@ -8,7 +8,7 @@
     [ "config",         { "channel":"5320", "ht20":None, "puren":None,
                           "shortgi":None } ],
     [ "connect",        { "security":"none" } ],
-    [ "client_check_shortgi" ],
+    [ "client_check_shortgi20", [ "true" ] ],
     [ "server_netperf", { "test":"TCP_STREAM" } ],
     # verify SGI stats
     [ "destroy" ],
