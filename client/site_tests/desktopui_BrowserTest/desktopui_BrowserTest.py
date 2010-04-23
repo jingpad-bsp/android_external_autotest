@@ -25,7 +25,7 @@ class desktopui_BrowserTest(test.test):
         test_binary_dir = '%s/test_src/out/Release' % dep_dir
         
         try:
-            setup_cmd = '%s/%s' % (test_binary_dir,
+            setup_cmd = '%s/%s' % (dep_dir,
                                   'setup_test_links.sh')
             utils.system(setup_cmd)
         
