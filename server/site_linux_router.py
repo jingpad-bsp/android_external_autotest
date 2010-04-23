@@ -45,7 +45,7 @@ class LinuxRouter(object):
                     self.phydev = m.group(1)
                     break
             else:
-                raise Exception("No Wireless NIC detected on the device")
+                raise error.TestFail("No Wireless NIC detected on the device")
         else:
             self.phydev = params['phydev']
 
@@ -131,7 +131,8 @@ class LinuxRouter(object):
             conf = self.hostapd['conf']
             htcaps = set()
 
-            conf['driver'] = params.get('hostapd_driver', self.hostapd['driver'])
+            conf['driver'] = params.get('hostapd_driver',
+                self.hostapd['driver'])
 
             for k, v in params.iteritems():
                 if k == 'ssid':
@@ -207,7 +208,8 @@ class LinuxRouter(object):
                 elif k == 'shortgi':
                     htcaps.add('[SHORT-GI-20]')
                     htcaps.add('[SHORT-GI-40]')
-                elif k == 'pureg' or k == 'puren' or k == 'wepmode' or k == 'rifs':
+                elif k == 'pureg' or k == 'puren' or k == 'wepmode' \
+                        or k == 'rifs' or k == 'protmode':
                     # no support
                     pass
                 else:

@@ -37,12 +37,9 @@ router = config['router']
 logging.info("Client %s, Server %s, AP %s" % \
     (machines[0], server.get('addr', 'N/A'), router['addr']))
 
-tagname = config['tagname']
-
 dir = os.path.join(job.serverdir, "site_tests", "network_WiFiMatFunc")
-# TODO(sleffler) allow test list override from command line
-tests = site_wifitest.read_tests(dir, '[0-9]*')
 
-for t in tests:
-    wt = site_wifitest.WiFiTest(t['name'], t['steps'], config)
-    wt.run()
+# TODO(sleffler) allow test list override from command line
+for t in site_wifitest.read_tests(dir, '[0-9]*'):
+   job.run_test("network_WiFiMatFunc", testcase=t, config=config, tag=t['file'])
+

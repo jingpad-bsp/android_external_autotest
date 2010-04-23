@@ -66,8 +66,8 @@ class WiFiTest(object):
     def __init__(self, name, steps, config):
         self.name = name
         self.steps = steps
-        router = config['router']
 
+        router = config['router']
         self.router = hosts.create_host(router['addr'])
         # NB: truncate SSID to 32 characters
         self.defssid = self.__get_defssid(router['addr'])[0:32]
@@ -79,7 +79,7 @@ class WiFiTest(object):
             elif site_bsd_router.isBSDRouter(self.router):
                 router['type'] = 'bsd'
             else:
-                raise Exception('Unable to autodetect router type')
+                 raise error.TestFail('Unable to autodetect router type')
         if router['type'] == 'linux':
             self.wifi = site_linux_router.LinuxRouter(self.router, router,
                 self.defssid)
@@ -87,7 +87,7 @@ class WiFiTest(object):
             self.wifi = site_bsd_router.BSDRouter(self.router, router,
                 self.defssid)
         else:
-            raise Exception('Unsupported router')
+            raise error.TestFail('Unsupported router')
 
         #
         # The client machine must be reachable from the control machine.
@@ -161,6 +161,7 @@ class WiFiTest(object):
                     logging.error("%s: Step '%s' failed: %s; abort test",
                         self.name, method, str(e))
                     self.cleanup(params)
+                    raise e
                     break
             else:
                 logging.error("%s: Step '%s' unknown; abort test",
@@ -253,7 +254,7 @@ sys.exit(0)'''
         result = host.run("ifconfig %s" % ifnet)
         m = re.search('inet addr:([^ ]*)', result.stdout)
         if m is None:
-            raise Except, "No inet address found"
+             raise error.TestFail("No inet address found")
         return m.group(1)
 
 
