@@ -4,7 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "WebGL Conformance Tests"
-TIME = "MEDIAN"
+TIME = "medium"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
