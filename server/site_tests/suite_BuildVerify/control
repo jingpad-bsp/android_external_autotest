@@ -51,6 +51,7 @@ job.run_test("platform_KernelErrorPaths", host=client)
 TESTS = [
   'build_RootFilesystemSize',
   'desktopui_ChromeFirstRender',
+  'desktopui_FlashSanityCheck',
   'desktopui_IBusTest',
   'desktopui_ScreenSaverUnlock',
   'desktopui_WindowManagerFocusNewWindows',
