@@ -33,5 +33,5 @@ class platform_CleanShutdown(test.test):
         self._log_remove_if_exists('/var/log/shutdown_force_kill_processes',
                                    'force killed processes')
         if self._errors:
-            raise error.TestError(
+            raise error.TestFail(
                 'Last shutdown problems: %s' % ' and '.join(self._errors))
