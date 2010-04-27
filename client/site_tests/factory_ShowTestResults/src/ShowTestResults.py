@@ -92,7 +92,7 @@ class ShowTestResults:
 
     def key_press_event(self, widget, event):
         # Exit when space bar pressed
-        if event.kayval == gtk.keysyms.space:
+        if event.keyval == gtk.keysyms.space:
             sys.exit(0)
         return True
 
