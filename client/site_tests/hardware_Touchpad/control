@@ -1,0 +1,22 @@
+AUTHOR = "Chrome OS Team"
+NAME = "Factory Touchpad Test"
+TIME = "SHORT"
+TEST_CATEGORY = "Factory"
+TEST_CLASS = "hardware"
+TEST_TYPE = "client"
+
+DOC = """
+This test checks whether all touchpad functions work properly.  This
+test will display a touchpad image and features will be highlighted in some
+way as they are used. Once all features have been used, a brief 'PASS'
+message will be displayed and the test will terminate.  After the first
+feature is used, a countdown will begin.  If not all features are
+used in time, the test will fail with an 'ERROR' message that is
+displayed forever (unless the 'hwqual' argument is passed in).
+"""
+
+restart_ui = False
+if 'hwqual' in args:
+    restart_ui = True
+
+job.run_test('hardware_Touchpad', restart_ui=restart_ui)

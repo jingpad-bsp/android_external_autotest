@@ -164,6 +164,14 @@ Automated and Semi-Automated Test Runs
                   -c client/site_tests/suite_HWQual/control.keyboard
 
 
+* Run the touchpad semi-automated test by first reading the
+  instructions specified in the control file (control.touchpad) and
+  then executing:
+
+  $ ./server/autoserv -r results.touchpad -m <DUT_IP> -a hwqual \
+                  -c client/site_tests/suite_HWQual/control.touchpad
+
+
 * If the DUT has a Bluetooth adapter, run the Bluetooth semi-automated
   tests by following the instructions specified in the control file
   (control.bluetooth) and then executing:
