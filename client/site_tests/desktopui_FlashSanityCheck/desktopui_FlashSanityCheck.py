@@ -13,7 +13,7 @@ class desktopui_FlashSanityCheck(test.test):
 
 
     def run_once(self, time_to_wait=25):
-        if get_arch() != 'i386':
+        if utils.get_arch() != 'i386':
             raise error.TestNAError('Only supported on x86')
 
         # take a snapshot from /var/log/messages.
