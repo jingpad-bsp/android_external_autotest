@@ -31,8 +31,8 @@ class LinuxRouter(object):
         self.router = host
 
         # Network interfaces.
-        self.bridgeif = params.get('bridgeif', "br-lan")
-        self.wiredif = params.get('wiredif', "eth1")
+        self.bridgeif = params.get('bridgedev', "br-lan")
+        self.wiredif = params.get('wiredev', "eth1")
         self.wlanif = "wlan0"
 
         # Default to 1st available wireless phy.
@@ -142,7 +142,8 @@ class LinuxRouter(object):
 
                     # 2.4GHz
                     if freq < 2500:
-                        if conf['hw_mode'] == 'a':
+                        # Make sure hw_mode is set
+                        if conf.get('hw_mode') == 'a':
                             conf['hw_mode'] = 'b'
                        
                         # Freq = 5 * chan + 2407
@@ -153,6 +154,7 @@ class LinuxRouter(object):
                             conf['channel'] = 14
                     # 5GHz
                     else:
+                        # Make sure hw_mode is set
                         conf['hw_mode'] = 'a'
                         # Freq = 5 * chan + 4000
                         if freq >= 4915 and freq <= 4980:
@@ -186,6 +188,8 @@ class LinuxRouter(object):
                     conf['fragm_threshold'] = v
                 elif k == 'shortpreamble':
                     conf['preamble'] = 1
+                elif k == 'protmode':
+                    pass        # TODO(sleffler) need hostapd support
                 elif k == 'authmode':
                     if v == "open":
                         conf['auth_algs'] = 1
@@ -200,6 +204,7 @@ class LinuxRouter(object):
                 elif k == 'deftxkey':
                     conf['wep_default_key'] = v
                 elif k == 'ht20':
+                    htcaps.add('')  # NB: ensure 802.11n setup below
                     conf['wmm_enabled'] = 1
                 elif k == 'ht40':
                     htcaps.add('[HT40-]')
@@ -208,10 +213,18 @@ class LinuxRouter(object):
                 elif k == 'shortgi':
                     htcaps.add('[SHORT-GI-20]')
                     htcaps.add('[SHORT-GI-40]')
-                elif k == 'pureg' or k == 'puren' or k == 'wepmode' \
-                        or k == 'rifs' or k == 'protmode':
-                    # no support
-                    pass
+                elif k == 'pureg':
+                    pass        # TODO(sleffler) need hostapd support
+                elif k == 'puren':
+                    pass        # TODO(sleffler) need hostapd support
+                elif k == 'ht':
+                    htcaps.add('')  # NB: ensure 802.11n setup below
+                elif k == 'htprotmode':
+                    pass        # TODO(sleffler) need hostapd support
+                elif k == 'rifs':
+                    pass        # TODO(sleffler) need hostapd support
+                elif k == 'wepmode':
+                    pass        # NB: meaningless for hostapd; ignore
                 else:
                     conf[k] = v
 
@@ -262,10 +275,3 @@ class LinuxRouter(object):
             ignore_status=True)
 
         self.hostapd['configured'] = False
-
-    def client_check_config(self, params):
-        """
-        Check network configuration on client to verify parameters
-        have been negotiated during the connection to the router.
-        """
-        # XXX fill in

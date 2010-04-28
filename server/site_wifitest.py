@@ -264,7 +264,7 @@ sys.exit(0)'''
             params['ssid'] = self.defssid
         script = self.__get_connect_script(params)
         result = self.client.run("python<<'EOF'\n%s\nEOF\n" % script)
-        print "%s: %s" % (self.name, result.stdout[0:-1])
+        print "%s: %s" % (self.name, result.stdout.rstrip())
 
         # fetch IP address of wireless device
         self.client_wifi_ip = self.__get_ipaddr(self.client, self.client_wlanif)
@@ -319,7 +319,7 @@ sys.exit(0)'''
         self.client_ping_bg_stop({})
         script = self.__get_disconnect_script(params)
         result = self.client.run("python<<'EOF'\n%s\nEOF\n" % script)
-        print "%s: %s" % (self.name, result.stdout[0:-1])
+        print "%s: %s" % (self.name, result.stdout.rstrip())
 
 
     def client_powersave_on(self, params):
@@ -334,47 +334,48 @@ sys.exit(0)'''
 
     def __client_check(self, param, want):
         """ Verify negotiated station mode parameter """
-        result = self.router.run("cat %s/%s" %
-            (self.client_debugfs_path, param_))
-        if result != want:
+        result = self.client.run("cat '%s/%s'" %
+            (self.client_debugfs_path, param))
+        got = result.stdout.rstrip()       # NB: chop \n
+        if got != want: 
             logging.error("client_check_%s: wanted %s got %s",
-                param, want, result)
+                param, want, got)
             raise AssertionError
 
 
     def client_check_bintval(self, params):
         """ Verify negotiated beacon interval """
-        _self._client_check("beacon_int", params[0])
+        self.__client_check("beacon_int", params[0])
 
 
     def client_check_dtimperiod(self, params):
         """ Verify negotiated DTIM period """
-        _self._client_check("dtim_period", params[0])
+        self.__client_check("dtim_period", params[0])
 
 
     def client_check_rifs(self, params):
         """ Verify negotiated RIFS setting """
-        _self._client_check("rifs", params[0])
+        self.__client_check("rifs", params[0])
 
 
     def client_check_shortgi20(self, params):
         """ Verify negotiated Short GI setting """
-        _self._client_check("sgi20", params[0])
+        self.__client_check("sgi20", params[0])
 
 
     def client_check_shortgi40(self, params):
         """ Verify negotiated Short GI setting """
-        _self._client_check("sgi40", params[0])
+        self.__client_check("sgi40", params[0])
 
 
     def client_check_shortslot(self, params):
         """ Verify negotiated Short Slot setting """
-        _self._client_check("short_slot", params[0])
+        self.__client_check("short_slot", params[0])
 
 
     def client_check_protection(self, params):
         """ Verify negotiated CTS protection setting """
-        _self._client_check("cts_prot", params[0])
+        self.__client_check("cts_prot", params[0])
 
 
     def client_monitor_start(self, params):
