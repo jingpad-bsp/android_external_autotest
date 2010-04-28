@@ -86,6 +86,8 @@ class LinuxRouter(object):
                 self.router.run("%s link set %s down" % (self.cmd_ip, device))
                 self.router.run("%s dev %s del" % (self.cmd_iw, device))
 
+        # Place us in the US by default
+        self.router.run("%s reg set US" % self.cmd_iw)
 
     def create(self, params):
         """ Create a wifi device of the specified type """
@@ -158,7 +160,7 @@ class LinuxRouter(object):
                         conf['hw_mode'] = 'a'
                         # Freq = 5 * chan + 4000
                         if freq >= 4915 and freq <= 4980:
-                            conf['channel'] = 183 + (freq - 4915) / 5
+                            conf['channel'] = (freq - 4000) / 5
                         # Freq = 5 * chan + 5000
                         elif freq >= 5035 and freq <= 5825:
                             conf['channel'] = (freq - 5000) / 5
@@ -188,8 +190,6 @@ class LinuxRouter(object):
                     conf['fragm_threshold'] = v
                 elif k == 'shortpreamble':
                     conf['preamble'] = 1
-                elif k == 'protmode':
-                    pass        # TODO(sleffler) need hostapd support
                 elif k == 'authmode':
                     if v == "open":
                         conf['auth_algs'] = 1
@@ -217,6 +217,8 @@ class LinuxRouter(object):
                     pass        # TODO(sleffler) need hostapd support
                 elif k == 'puren':
                     pass        # TODO(sleffler) need hostapd support
+                elif k == 'protmode':
+                    pass        # TODO(sleffler) need hostapd support
                 elif k == 'ht':
                     htcaps.add('')  # NB: ensure 802.11n setup below
                 elif k == 'htprotmode':
@@ -225,6 +227,8 @@ class LinuxRouter(object):
                     pass        # TODO(sleffler) need hostapd support
                 elif k == 'wepmode':
                     pass        # NB: meaningless for hostapd; ignore
+                elif k == '-ampdu':
+                    pass        # TODO(sleffler) need hostapd support
                 else:
                     conf[k] = v
 

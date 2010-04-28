@@ -337,10 +337,9 @@ sys.exit(0)'''
         result = self.client.run("cat '%s/%s'" %
             (self.client_debugfs_path, param))
         got = result.stdout.rstrip()       # NB: chop \n
-        if got != want: 
-            logging.error("client_check_%s: wanted %s got %s",
+        if got != want:
+            raise error.TestFail("client_check_%s: wanted %s got %s",
                 param, want, got)
-            raise AssertionError
 
 
     def client_check_bintval(self, params):
@@ -648,7 +647,7 @@ def __byfile(a, b):
     else:
         return 0
 
-def read_tests(dir, pat):
+def read_tests(dir, *args):
     """
     Collect WiFi test tuples from files.  File names are used to
     sort the test objects so the convention is to name them NNN<test>
@@ -657,7 +656,7 @@ def read_tests(dir, pat):
     """
     tests = []
     for file in os.listdir(dir):
-        if fnmatch.fnmatch(file, pat):
+        if any(fnmatch.fnmatch(file, pat) for pat in args):
             fd = open(os.path.join(dir, file));
             try:
                 test = eval(fd.read())
