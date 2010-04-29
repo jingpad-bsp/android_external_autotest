@@ -179,7 +179,7 @@ class network_3GSmokeTest(test.test):
                     info['imsi'] = gsm_card.GetImsi()
 
                     gsm_network = manager.GsmNetwork(path)
-                    info['ri'] = gsm_card.GetRegistrationInfo()
+                    info['ri'] = gsm_network.GetRegistrationInfo()
 
                 else:
                     print 'Unknown modem type %s' % modem_type
