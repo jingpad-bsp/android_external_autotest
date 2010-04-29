@@ -143,26 +143,25 @@ class LinuxRouter(object):
                     freq = int(v)
 
                     # 2.4GHz
-                    if freq < 2500:
+                    if freq <= 2484:
                         # Make sure hw_mode is set
                         if conf.get('hw_mode') == 'a':
                             conf['hw_mode'] = 'b'
                        
-                        # Freq = 5 * chan + 2407
-                        if freq >= 2412 and freq <= 2472:
-                            conf['channel'] = (freq - 2407) / 5
-                        # Channel 14 is an exception
-                        elif freq == 2484:
+                        # Freq = 5 * chan + 2407, except channel 14
+                        if freq == 2484:
                             conf['channel'] = 14
+                        else:
+                            conf['channel'] = (freq - 2407) / 5
                     # 5GHz
                     else:
                         # Make sure hw_mode is set
                         conf['hw_mode'] = 'a'
                         # Freq = 5 * chan + 4000
-                        if freq >= 4915 and freq <= 4980:
+                        if freq < 5000:
                             conf['channel'] = (freq - 4000) / 5
                         # Freq = 5 * chan + 5000
-                        elif freq >= 5035 and freq <= 5825:
+                        else:
                             conf['channel'] = (freq - 5000) / 5
 
                 elif k == 'country':
