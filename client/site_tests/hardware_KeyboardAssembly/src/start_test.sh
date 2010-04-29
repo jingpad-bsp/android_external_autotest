@@ -29,4 +29,9 @@ export DISPLAY=:0.0
 export PATH=/bin:/usr/bin:/usr/local/bin:/usr/bin/X11
 export XAUTHORITY=${XAUTH_FILE}
 
-exec /usr/bin/python KeyboardTest.py $*
+/usr/bin/python KeyboardTest.py $*
+STATUS=$?
+
+/usr/bin/pkill X
+exit $STATUS
+
