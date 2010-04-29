@@ -59,7 +59,8 @@ class LinuxRouter(object):
             'conf': {
                 'ssid': defssid,
                 'interface': self.wlanif,
-                'bridge': self.bridgeif
+                'bridge': self.bridgeif,
+                'hw_mode': 'g'
             }
         }
 
@@ -146,7 +147,7 @@ class LinuxRouter(object):
                     if freq <= 2484:
                         # Make sure hw_mode is set
                         if conf.get('hw_mode') == 'a':
-                            conf['hw_mode'] = 'b'
+                            conf['hw_mode'] = 'g'
                        
                         # Freq = 5 * chan + 2407, except channel 14
                         if freq == 2484:
