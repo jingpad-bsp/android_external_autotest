@@ -46,7 +46,10 @@ def step_functional_test():
 
 # Do longer runin tests.
 def step_runin():
+  # Drop caches before hardware_SAT.
+  job.drop_caches_between_iterations = True
   job.run_test('hardware_SAT')
+  job.drop_caches_between_iterations = False
 
   # Reboot here for no particular reason.
   job.next_step([step_manual])
