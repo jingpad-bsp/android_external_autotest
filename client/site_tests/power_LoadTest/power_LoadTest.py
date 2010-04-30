@@ -16,7 +16,6 @@ params_dict = {
     'scroll_by_pixels': '_scroll_by_pixels',
 }
 
-form_entries = ['status', 'succeeded', 'failed']
 
 class power_LoadTest(test.test):
     version = 1
@@ -30,13 +29,15 @@ class power_LoadTest(test.test):
 
 
     def initialize(self, percent_initial_charge_min=None, check_network=True,
-                   seconds=3600, should_scroll='true', should_scroll_up='true',
-                   scroll_loop='false', scroll_interval_ms='10000',
-                   scroll_by_pixels='600', verbose=True):
+                   loop_time=3600, loop_count=1, should_scroll='true',
+                   should_scroll_up='true', scroll_loop='false',
+                   scroll_interval_ms='10000', scroll_by_pixels='600',
+                   verbose=True, low_battery_threshold=3):
         """
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
-        seconds: length of time to run test for
+        loop_count: number of times to loop the test for
+        loop_time: length of time to run the test for in each loop
         should_scroll: should the extension scroll pages
         should_scroll_up: should scroll in up direction
         scroll_loop: continue scrolling indefinitely
@@ -44,15 +45,17 @@ class power_LoadTest(test.test):
         scroll_by_pixels: number of pixels to scroll each time
         """
 
-        self._seconds = seconds
-        self._mseconds = seconds * 1000
+        self._loop_time = loop_time
+        self._loop_count = loop_count
+        self._mseconds = self._loop_time * 1000
         self._verbose = verbose
+        self._low_battery_threshold = low_battery_threshold
         self._should_scroll = should_scroll
         self._should_scroll_up = should_scroll_up
         self._scroll_loop = scroll_loop
         self._scroll_interval_ms = scroll_interval_ms
         self._scroll_by_pixels = scroll_by_pixels
-        self._form_data = {}
+        self._tmp_keyvals = {}
 
         self._power_status = site_power_status.get_status()
 
@@ -101,24 +104,37 @@ class power_LoadTest(test.test):
 
 
     def run_once(self):
-        self._reset_form_entries()
-
         self._usb_stats.refresh()
         self._cpufreq_stats.refresh()
         self._cpuidle_stats.refresh()
-
         self._power_status.refresh()
+
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
 
-        # the power test extension will report its status here
-        latch = self._testServer.add_wait_url('/status')
+        t0 = time.time()
 
-        # launch chrome with power test extension
-        args = '--load-extension=%s' % self._ext_path
-        session = site_ui.ChromeSession(args, clean_state=False)
+        for i in range(self._loop_count):
+            # the power test extension will report its status here
+            latch = self._testServer.add_wait_url('/status')
 
-        self._do_wait(self._verbose, self._seconds, latch, session)
+            # launch chrome with power test extension
+            args = '--load-extension=%s' % self._ext_path
+            session = site_ui.ChromeSession(args, clean_state=False)
+
+            low_battery = self._do_wait(self._verbose, self._loop_time,
+                                        latch, session)
+            session.close()
+
+            if self._verbose:
+                logging.debug('loop %d completed' % i)
+
+            if low_battery:
+                logging.info('Exiting due to low battery')
+                break
+
+        t1 = time.time()
+        self._tmp_keyvals['minutes_battery_life'] = (t1 - t0) / 60
 
 
     def postprocess_iteration(self):
@@ -149,7 +165,6 @@ class power_LoadTest(test.test):
         keyvals['ah_charge_now'] = self._power_status.battery[0].charge_now
         keyvals['ah_charge_used'] = keyvals['ah_charge_start'] - \
                                     keyvals['ah_charge_now']
-        keyvals['w_energy_rate'] = self._power_status.battery[0].energy_rate
         keyvals['wh_energy_start'] = self._wh_energy_start
         keyvals['wh_energy_now'] = self._power_status.battery[0].energy
         keyvals['wh_energy_used'] = keyvals['wh_energy_start'] - \
@@ -158,9 +173,12 @@ class power_LoadTest(test.test):
                              self._power_status.battery[0].voltage_min_design
         keyvals['v_voltage_now'] = self._power_status.battery[0].voltage_now
 
-        # record chrome power extension stats
-        for e in self._form_data:
-            keyvals['ext_' + e] = self._form_data[e]
+        keyvals.update(self._tmp_keyvals)
+
+        keyvals['a_current_rate'] = keyvals['ah_charge_used'] * 60 / \
+                                    keyvals['minutes_battery_life']
+        keyvals['w_energy_rate'] = keyvals['wh_energy_used'] * 60 / \
+                                   keyvals['minutes_battery_life']
 
         self.write_perf_keyval(keyvals)
 
@@ -202,36 +220,43 @@ class power_LoadTest(test.test):
         logging.debug(data)
 
 
-    def _reset_form_entries(self):
-        self._form_data = {}
-
-
     def _do_wait(self, verbose, seconds, latch, session):
         latched = False
-        total_time = seconds + 120
+        low_battery = False
+        total_time = seconds + 60
         elapsed_time = 0
-
-        wait_time = total_time
-        if verbose:
-            wait_time = 60
+        wait_time = 60
 
         while elapsed_time < total_time:
             time.sleep(wait_time)
             elapsed_time += wait_time
 
             self._power_status.refresh()
-            logging.debug('ah_charge_now %f' \
-                % self._power_status.battery[0].charge_now)
-            logging.debug('w_energy_rate %f' \
-                % self._power_status.battery[0].energy_rate)
+            if verbose:
+                logging.debug('ah_charge_now %f' \
+                    % self._power_status.battery[0].charge_now)
+                logging.debug('w_energy_rate %f' \
+                    % self._power_status.battery[0].energy_rate)
 
-            if latch.is_set():
-                latched = True
-                self._form_data = self._testServer.get_form_entries()
-                logging.debug(self._form_data)
+            low_battery = (self._percent_current_charge() <
+                           self._low_battery_threshold)
+
+            latched = latch.is_set()
+
+            if latched or low_battery:
                 break
 
-        if not latched:
+        if latched:
+            # record chrome power extension stats
+            form_data = self._testServer.get_form_entries()
+            logging.debug(form_data)
+            for e in form_data:
+                key = 'ext_' + e
+                if key in self._tmp_keyvals:
+                    self._tmp_keyvals[key] += form_data[e]
+                else:
+                    self._tmp_keyvals[key] = form_data[e]
+        else:
             logging.debug("Didn't get status back from power extension")
 
-        session.close()
+        return low_battery

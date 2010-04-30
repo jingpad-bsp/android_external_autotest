@@ -21,6 +21,39 @@ client_at = autotest.Autotest(client)
 
 # (none)
 
+
+from autotest_lib.server import site_remote_power
+from autotest_lib.client.common_lib import error
+
+
+remote_power = site_remote_power.RemotePower(machines[0])
+if remote_power:
+    remote_power.set_power_on()
+else:
+    raise error.TestNAError("No power switch configured")
+
+
+# Run the 60/20/10/10 load test
+# Charge the battery to at least 99% in preparation for the load
+# test. Charging the battery from empty to full can take up to 4 hours.
+client_at.run_test('power_BatteryCharge', percent_target_charge=99,
+                   max_run_time=60*60*5)
+
+# Turn off power and run power_LoadTest. The power_LoadTest can take
+# up to 9 hours to run to completion
+# TODO (snanda):
+# 1. Make the test run over wifi instead of ethernet
+# 2. Make the test login automatically to facebook and gmail
+# 3. Add audiovideo_V4L2 webcam test
+remote_power.set_power_off()
+
+try:
+    client_at.run_test('power_LoadTest', loop_count=9, loop_time=3600,
+                       check_network=False)
+finally:
+    remote_power.set_power_on()
+
+
 # Run power tests that don't take a long time
 TESTS = [
   'power_Backlight',
@@ -33,15 +66,6 @@ TESTS = [
   'power_StatsCPUIdle',
   'power_StatsUSB'
 ]
-
-from autotest_lib.server import site_remote_power
-from autotest_lib.client.common_lib import error
-
-remote_power = site_remote_power.RemotePower(machines[0])
-if remote_power:
-    remote_power.set_power_on()
-else:
-    raise error.TestNAError("No power switch configured")
 
 # Charge battery to at least 50% first
 client_at.run_test('power_BatteryCharge', percent_target_charge=50,
