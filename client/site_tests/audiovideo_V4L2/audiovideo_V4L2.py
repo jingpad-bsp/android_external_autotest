@@ -51,7 +51,7 @@ class audiovideo_V4L2(test.test):
                 self.v4l2_devices.append(device)
         logging.info("Detected devices: %s\n" % self.v4l2_devices)
         if not self.v4l2_devices:
-            raise TestFail("No V4L2 devices found!")
+            raise error.TestFail("No V4L2 devices found!")
 
 
     def unittest_passed(self, testname, stdout):
