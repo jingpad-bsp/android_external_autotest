@@ -5,7 +5,7 @@
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
-import logging, os, re, string, sys, time
+import logging, os, re, string, sys, time, urllib2
 import dbus, dbus.mainloop.glib, gobject
 
 import_path = os.environ.get("SYSROOT", "") + "/usr/local/lib/connman/test"
@@ -97,6 +97,35 @@ class network_3GSmokeTest(test.test):
         logging.info('SUCCESS: config %3.1f secs state %s',
                      config_time, state)
         return 0
+
+
+    def FetchUrl(self, url_pattern=
+                 'http://testing-chargen.appspot.com/download?size=%d',
+                 size=10,
+                 label=None):
+        """Fetch the URL, wirte a dictionary of performance data."""
+
+        if not label:
+            raise error.TestError('no label supplied')
+
+        url = url_pattern % size
+        start_time = time.time()
+        result = urllib2.urlopen(url)
+        bytes_received = len(result.read())
+        fetch_time = time.time() - start_time
+        if not fetch_time:
+            raise error.TestError('Fetch took 0 time')
+
+        if bytes_received != size:
+            raise error.TestError('asked for %d bytes, got %d' %
+                                  (size, bytes_received))
+
+        self.write_perf_keyval(
+            {'seconds_%s_fetch_time' % label: fetch_time,
+             'bytes_%s_bytes_received' % label: bytes_received,
+             'bits_second_%s_speed' % label: 8 * bytes_received / fetch_time}
+            )
+
 
     def DisconnectFrom3GNetwork(self, disconnect_timeout):
         """Attempts to disconnect to a 3G network using FlimFlam."""
@@ -194,27 +223,28 @@ class network_3GSmokeTest(test.test):
 
         return results
 
-    def run_once(self):
+    def run_once(self, connect_count):
+        bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+        self.bus = dbus.SystemBus(mainloop=bus_loop)
 
         # Get to a good starting state
         self.ResetAllModems()
+        self.DisconnectFrom3GNetwork(disconnect_timeout=60)
 
         # Get information about all the modems
         modem_info = self.GetModemInfo()
         logging.info("Info: %s" % ', '.join(modem_info))
 
-        bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-        self.bus = dbus.SystemBus(mainloop=bus_loop)
+        for ii in xrange(connect_count):
+            if self.ConnectTo3GNetwork(config_timeout=120) != 0:
+                raise error.TestFail("Failed to connect")
 
-        if self.ConnectTo3GNetwork(config_timeout=60) != 0:
-            raise error.TestFail("Failed to connect")
+            self.FetchUrl(label='3G', size=1<<20)
 
-        # TODO(jglasgow): Add code to validate connection
+            if self.DisconnectFrom3GNetwork(disconnect_timeout=60) != 0:
+                raise error.TestFail("Failed to disconnect")
 
-        if self.DisconnectFrom3GNetwork(disconnect_timeout=60) != 0:
-            raise error.TestFail("Failed to disconnect")
-
-        # Verify that we can still get information for all the modems
-        logging.info("Info: %s" % ', '.join(modem_info))
-        if len(self.GetModemInfo()) != len(modem_info):
-            raise error.TestFail("Failed to leave modem in working state")
+            # Verify that we can still get information for all the modems
+            logging.info("Info: %s" % ', '.join(modem_info))
+            if len(self.GetModemInfo()) != len(modem_info):
+                raise error.TestFail("Failed to leave modem in working state")
