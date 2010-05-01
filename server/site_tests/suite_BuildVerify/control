@@ -15,7 +15,11 @@ that a build has some minimal functionality.  These are meant to run quickly
 in less than 30 minutes and should maximize coverage.
 """
 
+from autotest_lib.server import site_host_attributes
+
 client = hosts.create_host(machines[0])
+client_attributes = site_host_attributes.HostAttributes(machines[0])
+			 
 client_at = autotest.Autotest(client)
 
 
@@ -36,15 +40,24 @@ client_at = autotest.Autotest(client)
 # and we have firmware timing support on ARM we can also add the
 # constraint on firmware boot time.
 
+bootperf_constraints = []
+if client_attributes.has_ssd:
+   bootperf_constraints.append('seconds_kernel_to_login <= 8')
+else:
+   bootperf_constraints.append('seconds_kernel_to_login <= 18')
+
+if client_attributes.has_chromeos_firmware:
+   bootperf_constraints.append('seconds_firmware_boot <= 1.3')
+
 job.run_test("platform_BootPerfServer",
              host=client,
-             constraints=['seconds_kernel_to_login <= 18'])
+             constraints=bootperf_constraints)
 
 job.run_test("platform_KernelErrorPaths", host=client)
 
 
 #
-# Run client tests that do not require specific parameters
+# Run client tests that do not require specific parameters or platforms
 #
 
 # All client tests whose default parameters are adequate
@@ -59,15 +72,9 @@ TESTS = [
   'hardware_Backlight',
   'hardware_DiskSize',
   'hardware_MemoryTotalSize',
-  # TODO(kmixter): Determine how to only run some tests on some
-  # platforms.  Until then pick a conservative set of BVTs.
-  #'hardware_SsdDetection',
   'login_AuthenticationTests',
   'login_PamModuleLoadTest',
-  # crosbug.com/2314: network_Ping is disabled until fixed
-  #'network_Ping',
-  # Requires 802.11n
-  #'network_WiFiCaps',
+  'network_Ping',
   'platform_CleanShutdown',
   'platform_DaemonsRespawn',
   'platform_DiskIterate',
@@ -79,7 +86,6 @@ TESTS = [
   'platform_PartitionCheck',
   'platform_Shutdown',
   'platform_TempFS',
-  'power_Resume',
 ]
 
 for test in TESTS:
@@ -87,7 +93,8 @@ for test in TESTS:
 
 
 #
-# Run client tests with specific parameters
+# Run client tests with specific parameters or requiring specific
+# platforms
 #
 
 
@@ -110,6 +117,9 @@ client_at.run_test('hardware_MemoryThroughput', num_iteration=1, test_list='18')
 
 client_at.run_test('hardware_SAT', seconds=20)
 
+if client_attributes.has_ssd:
+   client_at.run_test('hardware_SsdDetection')
+
 client_at.run_test('login_CryptohomeMounted', tag='success')
 
 # Check volume of logging, and expect less than 50% of this machine's
@@ -131,9 +141,15 @@ client_at.run_test('network_DisableInterface',
 client_at.run_test('network_DisableInterface',
                    iface_name='hci0', tag='hci0')
 
+if client_attributes.has_80211n:
+  client_at.run_test('network_WiFiCaps')
+
 # Expect time is accurate within 1 minute from the NTP server.
 client_at.run_test('platform_AccurateTime',
                    constraints=['seconds_offset < 60'])
+
+if not client_attributes.has_resume_bug:
+   client_at.run_test('power_Resume')
 
 # Run process tests
 test_name = 'platform_ProcessPrivileges'

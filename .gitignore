@@ -15,3 +15,6 @@
 # Anything created as a result of running a test
 results.*/
 tmp/
+
+# This file is meant only for local testing
+private_host_attributes_config.py
