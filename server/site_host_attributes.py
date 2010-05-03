@@ -79,7 +79,8 @@ class HostAttributes(object):
             self._add_attributes(private_host_attributes[host])
         if has_models:
             host_obj = models.Host.valid_objects.get(hostname=host)
-            self._add_attributes(host_obj.labels.all())
+            self._add_attributes([label.name for label in
+                                  host_obj.labels.all()])
         for key, value in self.__dict__.items():
             logging.info('Host attribute: %s => %s', key, value)
 
@@ -88,13 +89,13 @@ class HostAttributes(object):
         for attribute in attributes:
             splitnames = attribute.split(',')
             value = ','.join(splitnames[1:])
+            if len(splitnames) == 1:
+                continue
             if value == 'True':
                 value = True
             elif value == 'False':
                 value = False
             elif splitnames[1] == 'string':
-                value = ','.join(splitnames[2:])
-            else:
-                log.info('Non-attribute string "%s" is ignored' % attribute)
+                logging.info('Non-attribute string "%s" is ignored' % attribute)
                 continue
             setattr(self, splitnames[0], value)
