@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil, time
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import site_ui_test
 from autotest_lib.client.common_lib import error, site_httpd, \
                             site_power_status, site_ui, utils
 
@@ -17,7 +17,7 @@ params_dict = {
 }
 
 
-class power_LoadTest(test.test):
+class power_LoadTest(site_ui_test.UITest):
     version = 1
 
     def setup(self):
@@ -28,11 +28,12 @@ class power_LoadTest(test.test):
             os.mkdir(self.srcdir)
 
 
-    def initialize(self, percent_initial_charge_min=None, check_network=True,
-                   loop_time=3600, loop_count=1, should_scroll='true',
-                   should_scroll_up='true', scroll_loop='false',
-                   scroll_interval_ms='10000', scroll_by_pixels='600',
-                   verbose=True, low_battery_threshold=3):
+    def run_once(self, percent_initial_charge_min=None,
+                 check_network=True, loop_time=3600, loop_count=1,
+                 should_scroll='true', should_scroll_up='true',
+                 scroll_loop='false', scroll_interval_ms='10000',
+                 scroll_by_pixels='600', low_battery_threshold=3,
+                 verbose=True):
         """
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
@@ -78,6 +79,15 @@ class power_LoadTest(test.test):
         # - set brightness level
         # - turn off suspend on idle (not implemented yet in Chrome OS)
 
+        # record the current and max backlight levels
+        cmd = 'backlight-tool --get_max_brightness'
+        self._tmp_keyvals['level_backlight_max'] = int(
+                                             utils.system_output(cmd).rstrip())
+
+        cmd = 'backlight-tool --get_brightness'
+        self._tmp_keyvals['level_backlight_current'] = int(
+                                             utils.system_output(cmd).rstrip())
+
         # disable screen locker
         os.system('stop screen-locker')
 
@@ -103,7 +113,6 @@ class power_LoadTest(test.test):
         self._cpuidle_stats = site_power_status.CPUIdleStats()
 
 
-    def run_once(self):
         self._usb_stats.refresh()
         self._cpufreq_stats.refresh()
         self._cpuidle_stats.refresh()
