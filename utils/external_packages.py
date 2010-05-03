@@ -106,7 +106,7 @@ class ExternalPackage(object):
         try:
             module = __import__(self.module_name)
         except ImportError, e:
-            logging.info('Could not import %s.', self.module_name)
+            logging.info("%s isn't present. Will install.", self.module_name)
             return True
         self.installed_version = self._get_installed_version_from_module(module)
         logging.info('imported %s version %s.', self.module_name,
@@ -679,10 +679,10 @@ class Httplib2Package(ExternalPackage):
 class GwtPackage(ExternalPackage):
     """Fetch and extract a local copy of GWT used to build the frontend."""
 
-    version = '1.7.0'
-    local_filename = 'gwt-linux-%s.tar.bz2' % version
+    version = '2.0.3'
+    local_filename = 'gwt-%s.zip' % version
     urls = ('http://google-web-toolkit.googlecode.com/files/' + local_filename,)
-    hex_sum = 'accb39506e1fa719ba166cf54451c91dafd9d456'
+    hex_sum = '1dabd25a02b9299f6fa84c51c97210a3373a663e'
     name = 'gwt'
     about_filename = 'about.txt'
     module_name = None  # Not a Python module.
@@ -709,14 +709,43 @@ class GwtPackage(ExternalPackage):
         return match.group(1) != self.version
 
 
-    def build_and_install(self, install_dir):
+    def _build_and_install(self, install_dir):
         os.chdir(install_dir)
         self._extract_compressed_package()
-        extracted_dir = self.local_filename[:-len('.tar.bz2')]
+        extracted_dir = self.local_filename[:-len('.zip')]
         target_dir = os.path.join(install_dir, self.name)
         if os.path.exists(target_dir):
             shutil.rmtree(target_dir)
         os.rename(extracted_dir, target_dir)
+        return True
+
+
+# This requires GWT to already be installed, so it must be declared after
+# GwtPackage
+class GwtIncubatorPackage(ExternalPackage):
+    version = '20100204-r1747'
+    local_filename = 'gwt-incubator-%s.jar' % version
+    symlink_name = 'gwt-incubator.jar'
+    urls = ('http://google-web-toolkit-incubator.googlecode.com/files/'
+            + local_filename,)
+    hex_sum = '0c9495634f0627d0b4de0d78a50a3aefebf67f8c'
+    module_name = None  # Not a Python module
+
+
+    def is_needed(self, install_dir):
+        gwt_dir = os.path.join(install_dir, GwtPackage.name)
+        return not os.path.exists(os.path.join(gwt_dir, self.local_filename))
+
+
+    def _build_and_install(self, install_dir):
+        dest = os.path.join(install_dir, GwtPackage.name, self.local_filename)
+        shutil.copyfile(self.verified_package, dest)
+
+        symlink_path = os.path.join(
+                install_dir, GwtPackage.name, self.symlink_name)
+        if os.path.exists(symlink_path):
+            os.remove(symlink_path)
+        os.symlink(dest, symlink_path)
         return True
 
 

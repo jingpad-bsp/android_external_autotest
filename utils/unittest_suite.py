@@ -31,6 +31,7 @@ REQUIRES_DJANGO = set((
         'rpc_utils_unittest.py',
         'site_rpc_utils_unittest.py',
         'execution_engine_unittest.py',
+        'service_proxy_lib_test.py',
         ))
 
 REQUIRES_MYSQLDB = set((
@@ -55,7 +56,7 @@ REQUIRES_HTTPLIB2 = set((
         ))
 
 LONG_RUNTIME = set((
-    'barrier_unittest.py',
+    'base_barrier_unittest.py',
     'logging_manager_test.py',
     ))
 

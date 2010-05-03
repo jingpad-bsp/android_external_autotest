@@ -712,7 +712,6 @@ class test_run(unittest.TestCase):
         self.assertRaises(TypeError, utils.run, 'echo', args='hello')
 
 
-
 class test_bgjob(unittest.TestCase):
     """
     Test the BgJob class.
@@ -764,6 +763,19 @@ class test_bgjob(unittest.TestCase):
         exiter = utils.BgJob("exit 3", expect_alive=None)
         utils.join_bg_jobs([exiter], timeout=1)
         self.assertEqual(3, exiter.result.exit_status)
+
+
+class test_compare_versions(unittest.TestCase):
+    def test_less_than(self):
+        self.assertEqual(utils.compare_versions('1.2.3', '1.7.5'), -1)
+
+
+    def test_equal(self):
+        self.assertEqual(utils.compare_versions('1.2.3', '1.2.3'), 0)
+
+
+    def test_greater_than(self):
+        self.assertEqual(utils.compare_versions('1.3.3', '1.2.3'), 1)
 
 
 if __name__ == "__main__":

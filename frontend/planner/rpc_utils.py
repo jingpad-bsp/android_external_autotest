@@ -3,6 +3,7 @@ import os
 from autotest_lib.frontend.afe import models as afe_models, model_logic
 from autotest_lib.frontend.planner import models, model_attributes
 from autotest_lib.frontend.planner import failure_actions
+from autotest_lib.frontend.tko import models as tko_models
 from autotest_lib.client.common_lib import global_config, utils, global_config
 
 
@@ -38,9 +39,11 @@ def start_plan(plan, label):
     """
     timeout = global_config.global_config.get_config_value(
             'PLANNER', 'execution_engine_timeout')
-    control = _get_execution_engine_control(server=SERVER,
-                                            plan_id=plan.id,
-                                            label_name=label.name)
+    control = _get_execution_engine_control(
+            server=SERVER,
+            plan_id=plan.id,
+            label_name=label.name,
+            owner=afe_models.User.current_user().login)
     options = {'name': plan.name + '_execution_engine',
                'priority': afe_models.Job.Priority.MEDIUM,
                'control_file': control,
@@ -57,13 +60,14 @@ def start_plan(plan, label):
     job.queue(hosts=())
 
 
-def _get_execution_engine_control(server, plan_id, label_name):
+def _get_execution_engine_control(server, plan_id, label_name, owner):
     """
     Gets the control file to run the execution engine
     """
     control = lazy_load(os.path.join(os.path.dirname(__file__),
                                      'execution_engine_control.srv'))
-    return control % dict(server=server, plan_id=plan_id, label_name=label_name)
+    return control % dict(server=server, plan_id=plan_id,
+                          label_name=label_name, owner=owner)
 
 
 def lazy_load(path):
@@ -166,11 +170,58 @@ def add_test_run(plan, planner_job, tko_test, hostname, status):
     test_run.save()
 
 
+def process_failure(failure_id, host_action, test_action, labels, keyvals,
+                    bugs, reason, invalidate):
+    if keyvals is None:
+        keyvals = {}
+
+    failure = models.TestRun.objects.get(id=failure_id)
+
+    _process_host_action(failure.host, host_action)
+    _process_test_action(failure.test_job, test_action)
+
+    # Add the test labels
+    for label in labels:
+        tko_test_label, _ = (
+                tko_models.TestLabel.objects.get_or_create(name=label))
+        failure.tko_test.testlabel_set.add(tko_test_label)
+
+    # Set the job keyvals
+    for key, value in keyvals.iteritems():
+        keyval, created = tko_models.JobKeyval.objects.get_or_create(
+                job=failure.tko_test.job, key=key)
+        if not created:
+            tko_models.JobKeyval.objects.create(job=failure.tko_test.job,
+                                                key='original_' + key,
+                                                value=keyval.value)
+        keyval.value = value
+        keyval.save()
+
+    # Add the bugs
+    for bug_id in bugs:
+        bug, _ = models.Bug.objects.get_or_create(external_uid=bug_id)
+        failure.bugs.add(bug)
+
+    # Set the failure reason
+    if reason is not None:
+        tko_models.TestAttribute.objects.create(test=failure.tko_test,
+                                                attribute='original_reason',
+                                                value=failure.tko_test.reason)
+        failure.tko_test.reason = reason
+        failure.tko_test.save()
+
+    # Set 'invalidated', 'seen', and 'triaged'
+    failure.invalidated = invalidate
+    failure.seen = True
+    failure.triaged = True
+    failure.save()
+
+
 def _site_process_host_action_dummy(host, action):
     return False
 
 
-def process_host_action(host, action):
+def _process_host_action(host, action):
     """
     Takes the specified action on the host
     """
@@ -196,7 +247,7 @@ def process_host_action(host, action):
         host.save()
 
 
-def process_test_action(planner_job, action):
+def _process_test_action(planner_job, action):
     """
     Takes the specified action for this planner job
     """

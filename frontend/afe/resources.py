@@ -109,7 +109,9 @@ class Label(EntryWithInvalid):
 
     def update(self, input_dict):
         # TODO update atomic group
-        raise NotImplementedError
+        if 'is_platform' in input_dict:
+            self.instance.platform = input_dict['is_platform']
+            self.instance.save()
 
 
 class LabelCollection(resource_lib.Collection):
@@ -352,6 +354,11 @@ class Test(resource_lib.InstanceEntry):
 
 
     @classmethod
+    def add_query_selectors(cls, query_processor):
+        query_processor.add_field_selector('name')
+
+
+    @classmethod
     def from_uri_args(cls, request, test_name, **kwargs):
         return cls(request, models.Test.objects.get(name=test_name))
 
@@ -374,6 +381,7 @@ class Test(resource_lib.InstanceEntry):
                     model_attributes.TestTypes.get_string(
                         self.instance.test_type),
                     'control_file_path': self.instance.path,
+                    'sync_count': self.instance.sync_count,
                     'dependencies':
                     TestDependencyCollection(fixed_entry=self).link(),
                     })
@@ -599,6 +607,8 @@ class Job(resource_lib.InstanceEntry):
                 query_lib.Selector('status',
                                    doc='One of queued, active or complete'),
                 Job._StatusConstraint())
+        query_processor.add_keyval_selector('has_keyval', models.JobKeyval,
+                                            'key', 'value')
 
 
     @classmethod
@@ -608,6 +618,12 @@ class Job(resource_lib.InstanceEntry):
 
     def _uri_args(self):
         return {'job_id': self.instance.id}
+
+
+    @classmethod
+    def _do_prepare_for_full_representation(cls, instances):
+        models.Job.objects.populate_relationships(instances, models.JobKeyval,
+                                                  'keyvals')
 
 
     def short_representation(self):
@@ -627,18 +643,26 @@ class Job(resource_lib.InstanceEntry):
         rep = super(Job, self).full_representation()
         queue_entries = QueueEntryCollection(self._request)
         queue_entries.set_query_parameters(job=self.instance.id)
+        drone_set = self.instance.drone_set and self.instance.drone_set.name
         rep.update({'email_list': self.instance.email_list,
                     'parse_failed_repair':
                         bool(self.instance.parse_failed_repair),
+                    'drone_set': drone_set,
                     'execution_info':
                         ExecutionInfo.execution_info_from_job(self.instance),
                     'queue_entries': queue_entries.link(),
+                    'keyvals': dict((keyval.key, keyval.value)
+                                    for keyval in self.instance.keyvals)
                     })
         return rep
 
 
     @classmethod
     def create_instance(cls, input_dict, containing_collection):
+        owner = input_dict.get('owner')
+        if not owner:
+            owner = models.User.current_user().login
+
         cls._check_for_required_fields(input_dict, ('name', 'execution_info',
                                                     'queue_entries'))
         execution_info = input_dict['execution_info']
@@ -664,6 +688,7 @@ class Job(resource_lib.InstanceEntry):
                 reboot_before=execution_info.get('cleanup_before_job'),
                 reboot_after=execution_info.get('cleanup_after_job'),
                 parse_failed_repair=input_dict.get('parse_failed_repair', None),
+                drone_set=input_dict.get('drone_set', None),
                 keyvals=input_dict.get('keyvals', None))
 
         host_objects, metahost_label_objects, atomic_group = [], [], None
@@ -686,7 +711,7 @@ class Job(resource_lib.InstanceEntry):
                     atomic_group = atomic_group_entry.instance
 
         job_id = rpc_utils.create_new_job(
-                owner=models.User.current_user().login,
+                owner=owner,
                 options=options,
                 host_objects=host_objects,
                 metahost_objects=metahost_label_objects,

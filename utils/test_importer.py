@@ -170,12 +170,15 @@ def update_profilers_in_db(profilers, description='NA',
     @param add_noncompliant: attempt adding test with invalid control files.
     """
     for profiler in profilers:
-        name = os.path.basename(profiler).rstrip(".py")
+        name = os.path.basename(profiler)
+        if name.endswith('.py'):
+            name = name[:-3]
         if not profilers[profiler]:
             if add_noncompliant:
                 doc = description
             else:
                 logging.info("Skipping %s, missing docstring", profiler)
+                continue
         else:
             doc = profilers[profiler]
 
@@ -325,7 +328,7 @@ def get_tests_from_fs(parent_dir, control_pattern, add_noncompliant=False):
     @param control_pattern: name format of control file.
     @param add_noncompliant: ignore control file parse errors.
 
-    @return: dictionary of the form: tests[file_path] = parsed_object
+    @return dictionary of the form: tests[file_path] = parsed_object
     """
     tests = {}
     profilers = False
@@ -345,11 +348,12 @@ def get_tests_from_fs(parent_dir, control_pattern, add_noncompliant=False):
                     except control_data.ControlVariableException, e:
                         logging.info("Skipping %s\n%s", file, e)
                         pass
+                    except Exception, e:
+                        logging.error("Bad %s\n%s", file, e)
                 else:
                     found_test = control_data.parse_control(file)
                     tests[file] = found_test
             else:
-                script = file.rstrip(".py")
                 tests[file] = compiler.parseFile(file).doc
     return tests
 
@@ -363,7 +367,7 @@ def recursive_walk(path, wildcard):
     @param path: base directory to start search.
     @param wildcard: name format to match.
 
-    @return: A list of files that match wildcard
+    @return A list of files that match wildcard
     """
     files = []
     directories = [ path ]
@@ -405,7 +409,7 @@ def _create_whitelist_set(whitelist_path):
 
     @param whitelist_path: full path to the whitelist file.
 
-    @return: set with files listed one/line - newlines included.
+    @return set with files listed one/line - newlines included.
     """
     f = open(whitelist_path, 'r')
     whitelist_set = set([line.strip() for line in f])

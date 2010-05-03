@@ -20,6 +20,9 @@ class DummyAgentTask(object):
     num_processes = 1
     owner_username = 'my_user'
 
+    def get_drone_hostnames_allowed(self):
+        return None
+
 
 class DummyAgent(object):
     started = False
@@ -730,7 +733,8 @@ class DispatcherThrottlingTest(BaseSchedulerTest):
         scheduler_config.config.max_processes_started_per_cycle = (
             self._MAX_STARTED)
 
-        def fake_max_runnable_processes(fake_self, username):
+        def fake_max_runnable_processes(fake_self, username,
+                                        drone_hostnames_allowed):
             running = sum(agent.task.num_processes
                           for agent in self._agents
                           if agent.started and not agent.is_done())
@@ -1356,6 +1360,159 @@ class TopLevelFunctionsTest(unittest.TestCase):
         command_line = set(monitor_db._autoserv_command_line(
                 machines, extra_args=[], queue_entry=FakeHQE, verbose=False))
         self.assertEqual(expected_command_line, command_line)
+
+
+class AgentTaskTest(unittest.TestCase,
+                    frontend_test_utils.FrontendTestMixin):
+    def setUp(self):
+        self._frontend_common_setup()
+
+
+    def tearDown(self):
+        self._frontend_common_teardown()
+
+
+    def _setup_drones(self):
+        self.god.stub_function(models.DroneSet, 'drone_sets_enabled')
+        models.DroneSet.drone_sets_enabled.expect_call().and_return(True)
+
+        drones = []
+        for x in xrange(4):
+            drones.append(models.Drone.objects.create(hostname=str(x)))
+
+        drone_set_1 = models.DroneSet.objects.create(name='1')
+        drone_set_1.drones.add(*drones[0:2])
+        drone_set_2 = models.DroneSet.objects.create(name='2')
+        drone_set_2.drones.add(*drones[2:4])
+        drone_set_3 = models.DroneSet.objects.create(name='3')
+
+        job_1 = self._create_job_simple([self.hosts[0].id],
+                                        drone_set=drone_set_1)
+        job_2 = self._create_job_simple([self.hosts[0].id],
+                                        drone_set=drone_set_2)
+        job_3 = self._create_job_simple([self.hosts[0].id],
+                                        drone_set=drone_set_3)
+
+        job_4 = self._create_job_simple([self.hosts[0].id])
+        job_4.drone_set = None
+        job_4.save()
+
+        hqe_1 = job_1.hostqueueentry_set.all()[0]
+        hqe_2 = job_2.hostqueueentry_set.all()[0]
+        hqe_3 = job_3.hostqueueentry_set.all()[0]
+        hqe_4 = job_4.hostqueueentry_set.all()[0]
+
+        return (hqe_1, hqe_2, hqe_3, hqe_4), monitor_db.AgentTask()
+
+
+    def test_get_drone_hostnames_allowed_no_drones_in_set(self):
+        hqes, task = self._setup_drones()
+        task.queue_entry_ids = (hqes[2].id,)
+        self.assertEqual(set(), task.get_drone_hostnames_allowed())
+        self.god.check_playback()
+
+
+    def test_get_drone_hostnames_allowed_no_drone_set(self):
+        hqes, task = self._setup_drones()
+        hqe = hqes[3]
+        task.queue_entry_ids = (hqe.id,)
+
+        result = object()
+
+        self.god.stub_function(task, '_user_or_global_default_drone_set')
+        task._user_or_global_default_drone_set.expect_call(
+                hqe.job, hqe.job.user()).and_return(result)
+
+        self.assertEqual(result, task.get_drone_hostnames_allowed())
+        self.god.check_playback()
+
+
+    def test_get_drone_hostnames_allowed_success(self):
+        hqes, task = self._setup_drones()
+        task.queue_entry_ids = (hqes[0].id,)
+        self.assertEqual(set(('0','1')), task.get_drone_hostnames_allowed())
+        self.god.check_playback()
+
+
+    def test_get_drone_hostnames_allowed_multiple_jobs(self):
+        hqes, task = self._setup_drones()
+        task.queue_entry_ids = (hqes[0].id, hqes[1].id)
+        self.assertRaises(AssertionError,
+                          task.get_drone_hostnames_allowed)
+        self.god.check_playback()
+
+
+    def test_get_drone_hostnames_allowed_no_hqe(self):
+        class MockSpecialTask(object):
+            requested_by = object()
+
+        class MockSpecialAgentTask(monitor_db.SpecialAgentTask):
+            task = MockSpecialTask()
+            queue_entry_ids = []
+            def __init__(self, *args, **kwargs):
+                pass
+
+        task = MockSpecialAgentTask()
+        self.god.stub_function(models.DroneSet, 'drone_sets_enabled')
+        self.god.stub_function(task, '_user_or_global_default_drone_set')
+
+        result = object()
+        models.DroneSet.drone_sets_enabled.expect_call().and_return(True)
+        task._user_or_global_default_drone_set.expect_call(
+                task.task, MockSpecialTask.requested_by).and_return(result)
+
+        self.assertEqual(result, task.get_drone_hostnames_allowed())
+        self.god.check_playback()
+
+
+    def _setup_test_user_or_global_default_drone_set(self):
+        result = object()
+        class MockDroneSet(object):
+            def get_drone_hostnames(self):
+                return result
+
+        self.god.stub_function(models.DroneSet, 'get_default')
+        models.DroneSet.get_default.expect_call().and_return(MockDroneSet())
+        return result
+
+
+    def test_user_or_global_default_drone_set(self):
+        expected = object()
+        class MockDroneSet(object):
+            def get_drone_hostnames(self):
+                return expected
+        class MockUser(object):
+            drone_set = MockDroneSet()
+
+        self._setup_test_user_or_global_default_drone_set()
+
+        actual = monitor_db.AgentTask()._user_or_global_default_drone_set(
+                None, MockUser())
+
+        self.assertEqual(expected, actual)
+        self.god.check_playback()
+
+
+    def test_user_or_global_default_drone_set_no_user(self):
+        expected = self._setup_test_user_or_global_default_drone_set()
+        actual = monitor_db.AgentTask()._user_or_global_default_drone_set(
+                None, None)
+
+        self.assertEqual(expected, actual)
+        self.god.check_playback()
+
+
+    def test_user_or_global_default_drone_set_no_user_drone_set(self):
+        class MockUser(object):
+            drone_set = None
+            login = None
+
+        expected = self._setup_test_user_or_global_default_drone_set()
+        actual = monitor_db.AgentTask()._user_or_global_default_drone_set(
+                None, MockUser())
+
+        self.assertEqual(expected, actual)
+        self.god.check_playback()
 
 
 if __name__ == '__main__':
