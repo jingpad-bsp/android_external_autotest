@@ -3,14 +3,18 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_power_status
+from autotest_lib.client.bin import site_ui_test
+from autotest_lib.client.common_lib import error, site_power_status, utils
 
 
-class power_Idle(test.test):
+class power_Idle(site_ui_test.UITest):
     version = 1
 
-    def initialize(self):
+    def warmup(self, warmup_time=60):
+        time.sleep(warmup_time)
+
+
+    def run_once(self, idle_time=120):
         self.status = site_power_status.get_status()
 
         # initialize various interesting power related stats
@@ -19,11 +23,6 @@ class power_Idle(test.test):
         self._cpuidle_stats = site_power_status.CPUIdleStats()
 
 
-    def warmup(self, warmup_time=60):
-        time.sleep(warmup_time)
-
-
-    def run_once(self, idle_time=120):
         time.sleep(idle_time)
         self.status.refresh()
 
@@ -46,6 +45,15 @@ class power_Idle(test.test):
         # record percent time spent at each CPU frequency
         for freq in cpufreq_stats:
             keyvals['percent_cpufreq_%s_time' % freq] = cpufreq_stats[freq]
+
+        # record the current and max backlight levels
+        cmd = 'backlight-tool --get_max_brightness'
+        keyvals['level_backlight_max'] = int(
+                                         utils.system_output(cmd).rstrip())
+
+        cmd = 'backlight-tool --get_brightness'
+        keyvals['level_backlight_current'] = int(
+                                             utils.system_output(cmd).rstrip())
 
         # record battery stats if not on AC
         if self.status.linepower[0].online:
