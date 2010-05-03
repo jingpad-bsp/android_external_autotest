@@ -27,8 +27,14 @@ from autotest_lib.server import site_wifitest
 
 import os
 
+# convert autoserv args to something usable
+opts = dict([[k, v] for (k, e, v) in [x.partition('=') for x in args]])
+
+config_file = opts.get('config_file', 'wifi_testbed_config')
+test_pat = opts.get('test_pat', '[0-9]*')
+
 config = site_wifitest.read_wifi_testbed_config(
-    os.path.join(job.configdir, "wifi_testbed_config"),
+    os.path.join(job.configdir, config_file),
     client_addr = machines[0])    # NB: take client identity from command line
 
 server = config['server']
@@ -39,7 +45,5 @@ logging.info("Client %s, Server %s, AP %s" % \
 
 dir = os.path.join(job.serverdir, "site_tests", "network_WiFiMatFunc")
 
-# TODO(sleffler) allow test list override from command line
-for t in site_wifitest.read_tests(dir, '[0-9]*'):
+for t in site_wifitest.read_tests(dir, test_pat):
    job.run_test("network_WiFiMatFunc", testcase=t, config=config, tag=t['file'])
-
