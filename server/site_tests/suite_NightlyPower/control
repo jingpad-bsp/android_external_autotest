@@ -4,7 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "Nightly"
-TIME = "SHORT"
+TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
@@ -14,7 +14,10 @@ This test suite runs automated power tests that should all pass and that
 require the power to be disconnected.
 """
 
+from autotest_lib.server import site_host_attributes
+
 client = hosts.create_host(machines[0])
+client_attributes = site_host_attributes.HostAttributes(machines[0])
 client_at = autotest.Autotest(client)
 
 # Run server tests
@@ -31,7 +34,6 @@ if remote_power:
     remote_power.set_power_on()
 else:
     raise error.TestNAError("No power switch configured")
-
 
 # Run the 60/20/10/10 load test
 # Charge the battery to at least 99% in preparation for the load
@@ -61,7 +63,6 @@ TESTS = [
   'power_CPUIdle',
   'power_Draw',
   'power_Idle',
-  'power_Resume',
   'power_StatsCPUFreq',
   'power_StatsCPUIdle',
   'power_StatsUSB'
@@ -76,6 +77,10 @@ remote_power.set_power_off()
 try:
     for test in TESTS:
         client_at.run_test(test)
+
+    if not client_attributes.has_resume_bug:
+        client_at.run_test('power_Resume')
+
 finally:
     remote_power.set_power_on()
 
