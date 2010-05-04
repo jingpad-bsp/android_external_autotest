@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'MiniJail_CmdLine_Check'
+AUTHOR = 'The Chromium OS Authors'
+TIME='SHORT'
+TEST_CATEGORY = 'Security'
+TEST_CLASS = 'platform'
+TEST_TYPE = 'client'
+
+DOC = """
+This test checks that MiniJail passes the command line properly.
+"""
+
+job.run_test('platform_MiniJailCmdLine')
