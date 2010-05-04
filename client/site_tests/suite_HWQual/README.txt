@@ -44,16 +44,14 @@ Test Setup
   - Plug a USB storage device into the Autotest server. Note that all
     data on your USB stick will be destroyed.
 
-  - Unmount any mounts on the USB device:
-
-    $ sudo umount /dev/sdx
-
-    where /dev/sdx is your USB device.
+  - Unmount any mounts on the USB device.
 
   - Copy the USB image to a USB storage device by executing:
 
     $ sudo dd if=$HOME/chromeos-hwqual-TAG/chromeos-hwqual-usb.img \
-              of=/dev/sdx
+              of=/dev/sdX
+
+    where /dev/sdX is your USB device.
 
   - Plug the USB device into the DUT and boot from it.
 
