@@ -7,9 +7,6 @@
     'autotest': {
       'filepath': '^.*',
     },
-    'client_libraries': {
-      'filepath': '^client/(bin|common_lib)/',
-    },
     'window_manager_tests': {
       'filepath': '^client/site_tests/desktopui_WindowManager',
     },
@@ -20,7 +17,6 @@
                  'seano@chromium.org',
                  'sosa+cc@chromium.org',
                  ],
-    'client_libraries': ['derat@chromium.org'],
     'window_manager_tests': ['derat@chromium.org'],
   },
 }
