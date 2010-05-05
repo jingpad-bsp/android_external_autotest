@@ -15,14 +15,8 @@ with the BuildVerify suite, verify that all major features in the build are
 fully functional.  These are meant to run nightly in less than 8 hours.
 """
 
-client = hosts.create_host(machines[0])
-client_at = autotest.Autotest(client)
 
 # Run server tests
-
-# (none)
-
-# Run parameter-less simple client tests
 
 # All client tests whose default parameters are adequate
 TESTS = [
@@ -40,9 +34,17 @@ TESTS = [
   'unixbench',
 ]
 
-for test in TESTS:
-  client_at.run_test(test)
+def run_client_test(machine):
+  client = hosts.create_host(machine)
+  client_at = autotest.Autotest(client)
+  # Run parameter-less simple client tests
+  for test in TESTS:
+    client_at.run_test(test)
+  # Run jobs with specific parameters
 
-# Run jobs with specific parameters
+job.parallel_on_machines(run_client_test, machines)
 
-# (none)
+if len(machines) > 1:
+  job.run_control('server/tests/iperf/control.stress.srv')
+  job.run_control('server/tests/netperf2/control.stress.srv')
+  job.run_control('server/tests/netpipe/control.stress.srv')
