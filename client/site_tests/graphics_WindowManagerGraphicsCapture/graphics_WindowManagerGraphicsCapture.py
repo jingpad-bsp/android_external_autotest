@@ -18,14 +18,42 @@ class graphics_WindowManagerGraphicsCapture(site_ui_test.UITest):
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
-  
+    
+        screenshot1_reference = os.path.join(self.bindir,
+                                            "screenshot1_reference")
+        screenshot1_generated = os.path.join(self.resultsdir,
+                                            "screenshot1_generated")
+        screenshot1_resized = os.path.join(self.resultsdir,
+                                            "screenshot1_generated_resized")
+        screenshot2_reference = os.path.join(self.bindir,
+                                            "screenshot2_reference")
+        screenshot2_generated = os.path.join(self.resultsdir,
+                                            "screenshot2_generated")
+        screenshot2_resized = os.path.join(self.resultsdir,
+                                            "screenshot2_generated_resized")
+
         exefile = os.path.join(self.autodir, 'deps/glbench/windowmanagertest')
-        
         # Enable running in window manager
         exefile = ('chvt 1 && DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority ' 
                    + exefile)
 
-        options = "--seconds_to_run 10"
-        cmd = "%s %s" % (exefile, options)
-        logging.info("command launched: %s" % cmd)
-        self.results = utils.system_output(cmd, retain_output=True)
+        # Delay before screenshot: 1 second has caused failures 
+        options = ' --screenshot1_sec 2'
+        options += ' --screenshot2_sec 1'
+        options += ' --cooldown_sec 1'
+        options += ' --screenshot1_cmd "screenshot %s"' % screenshot1_generated
+        options += ' --screenshot2_cmd "screenshot %s"' % screenshot2_generated
+
+        utils.system(exefile + " " + options)
+
+        utils.system("convert -resize '100x100!' %s %s" %
+                     (screenshot1_generated, screenshot1_resized))
+        utils.system("convert -resize '100x100!' %s %s" %
+                     (screenshot2_generated, screenshot2_resized))
+        os.remove(screenshot1_generated)
+        os.remove(screenshot2_generated)
+
+        utils.system("perceptualdiff -verbose %s %s"
+                     % (screenshot1_reference, screenshot1_resized))
+        utils.system("perceptualdiff -verbose %s %s"
+                     % (screenshot2_reference, screenshot2_resized))
