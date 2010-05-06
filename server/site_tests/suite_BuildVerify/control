@@ -19,7 +19,7 @@ from autotest_lib.server import site_host_attributes
 
 client = hosts.create_host(machines[0])
 client_attributes = site_host_attributes.HostAttributes(machines[0])
-			 
+
 client_at = autotest.Autotest(client)
 
 
@@ -72,6 +72,8 @@ TESTS = [
   'hardware_Backlight',
   'hardware_DiskSize',
   'hardware_MemoryTotalSize',
+  'logging_KernelCrash',
+  'logging_UserCrash',
   'login_AuthenticationTests',
   'login_PamModuleLoadTest',
   'network_Ping',
