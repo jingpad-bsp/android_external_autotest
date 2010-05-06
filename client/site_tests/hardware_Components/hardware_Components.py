@@ -172,13 +172,11 @@ class hardware_Components(test.test):
         self._pp = pprint.PrettyPrinter()
 
 
-    def run_once(self, approved_db=None):
+    def run_once(self, approved_db='approved_components'):
         self._system = {}
         self._failures = {}
 
-        if approved_db is None:
-            approved_db = os.path.join(self.bindir, 'approved_components')
-
+        approved_db = os.path.join(self.bindir, approved_db)
         if not os.path.exists(approved_db):
             raise error.TestError('Unable to find approved_db: %s' %
                                   approved_db)
