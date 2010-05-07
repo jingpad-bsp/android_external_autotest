@@ -91,7 +91,12 @@ class power_LoadTest(site_ui_test.UITest):
         # disable screen locker
         os.system('stop screen-locker')
 
-        # disable screen blanking
+        # disable screen blanking. Stopping screen-locker isn't
+        # synchronous :(. Add a sleep for now, till powerd comes around
+        # and fixes all this for us.
+        time.sleep(5)
+        site_ui.xsystem(os.path.join(self.bindir, 'xset') + ' s off')
+        site_ui.xsystem(os.path.join(self.bindir, 'xset') + ' dpms 0 0 0')
         site_ui.xsystem(os.path.join(self.bindir, 'xset') + ' -dpms')
 
         # fix up file perms for the power test extension so that chrome
@@ -137,6 +142,7 @@ class power_LoadTest(site_ui_test.UITest):
 
             if self._verbose:
                 logging.debug('loop %d completed' % i)
+                logging.debug(utils.system_output('xset q'))
 
             if low_battery:
                 logging.info('Exiting due to low battery')
@@ -193,10 +199,7 @@ class power_LoadTest(site_ui_test.UITest):
 
 
     def cleanup(self):
-        # re-enable screen blanking
-        site_ui.xsystem(os.path.join(self.bindir, 'xset') + ' +dpms')
-
-        # re-enable screen locker
+        # re-enable screen locker. This also re-enables dpms.
         os.system('start screen-locker')
 
 
