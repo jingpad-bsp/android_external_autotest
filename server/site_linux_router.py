@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import re
+import logging, re
 
 def isLinuxRouter(router):
     router_uname = router.run('uname').stdout
@@ -33,32 +33,34 @@ class LinuxRouter(object):
         # Network interfaces.
         self.bridgeif = params.get('bridgedev', "br-lan")
         self.wiredif = params.get('wiredev', "eth1")
-        self.wlanif = "wlan0"
+        self.wlanif2 = "wlan2"
+        self.wlanif5 = "wlan5"
 
         # Default to 1st available wireless phy.
-        if "phydev" not in params:
+        if "phydev2" not in params:
             output = self.router.run("%s list" % self.cmd_iw).stdout
             test = re.compile("Wiphy (.*)")
             for line in output.splitlines():
                 m = test.match(line)
                 if m:
-                    self.phydev = m.group(1)
+                    self.phydev2 = m.group(1)
+                    self.phydev5 = self.phydev2
                     break
             else:
                 raise error.TestFail("No Wireless NIC detected on the device")
         else:
-            self.phydev = params['phydev']
+            self.phydev2 = params['phydev2']
+            self.phydev5 = params.get('phydev5', self.phydev2)
 
 
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
         self.hostapd = {
             'configured': False,
-            'file': "/tmp/%s.conf" % self.phydev,
+            'file': "/tmp/hostapd-test.conf",
             'driver': "nl80211",
             'conf': {
                 'ssid': defssid,
-                'interface': self.wlanif,
                 'bridge': self.bridgeif,
                 'hw_mode': 'g'
             }
@@ -110,10 +112,11 @@ class LinuxRouter(object):
             "mesh"      : "mesh",
             "wds"       : "wds",
         }[params['type']]
-        phydev = params.get('phydev', self.phydev)
-        self.router.run("%s phy %s interface add %s type %s" %
-            (self.cmd_iw, phydev, self.wlanif, phytype))
 
+        self.router.run("%s phy %s interface add %s type %s" %
+            (self.cmd_iw, self.phydev2, self.wlanif2, phytype))
+        self.router.run("%s phy %s interface add %s type %s" %
+            (self.cmd_iw, self.phydev5, self.wlanif5, phytype))
 
 
     def destroy(self, params):
@@ -237,16 +240,25 @@ class LinuxRouter(object):
                 conf['ieee80211n'] = 1
                 conf['ht_capab'] = ''.join(htcaps)
 
+            # Figure out the correct interface.
+            if conf.get('hw_mode', 'b') == 'a':
+                conf['interface'] = self.wlanif5
+            else:
+                conf['interface'] = self.wlanif2
+
             # Generate hostapd.conf.
             self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
                 (self.hostapd['file'], '\n'.join(
                 "%s=%s" % kv for kv in conf.iteritems())))
 
             # Run hostapd.
+            logging.info("Starting hostapd...")
             self.router.run("%s -B %s" %
                 (self.cmd_hostapd, self.hostapd['file']))
 
+
             # Set up the bridge.
+            logging.info("Setting up the bridge...")
             self.router.run("%s setfd %s %d" %
                 (self.cmd_brctl, self.bridgeif, 0))
             self.router.run("%s addif %s %s" %
@@ -255,6 +267,8 @@ class LinuxRouter(object):
                 (self.cmd_ip, self.wiredif))
             self.router.run("%s link set %s up" %
                 (self.cmd_ip, self.bridgeif))
+
+            logging.info("AP configured.")
 
 #        else:
 #            # use iw to manually configure interface
