@@ -1,0 +1,24 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "KernelCrash"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "logging"
+TEST_TYPE = "client"
+
+DOC = """
+See the server-side logging_KernelCrashServer for how to run this file.  It
+should not be run standalone.
+"""
+
+# This file only exists to provide the dashboard with metadata about the
+# client-side test in this directory.  Ideally we would only have a
+# server control file to assure the user only uses this in the right
+# context.
+
+logging.warning('You should use the server side control file.  This client '
+                'test requires the machine to be recently rebooted.')
+job.run_test('logging_KernelCrash')
