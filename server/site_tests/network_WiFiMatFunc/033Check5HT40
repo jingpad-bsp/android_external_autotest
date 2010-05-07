@@ -5,7 +5,7 @@
 { "name":"Check5HT40",
   "steps":[             # Channel 64
     [ "create",         { "type":"hostap" } ],
-    [ "config",         { "channel":"5320", "ht40":None, "puren":None } ],
+    [ "config",         { "channel":"5300", "ht40":None, "puren":None } ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "destroy" ],
