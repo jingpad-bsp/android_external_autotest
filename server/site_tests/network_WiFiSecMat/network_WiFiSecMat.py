@@ -30,8 +30,8 @@ class network_WiFiSecMat(test.test):
     try:
       wt = site_wifitest.WiFiTest(testcase['name'], testcase['steps'], config)
       wt.run()
-    except error.TestFail, tfe:
-      raise tfe
+    except error.TestFail:
+      raise
     except Exception, e:
       raise error.TestFail(e)
 
