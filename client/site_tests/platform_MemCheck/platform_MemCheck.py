@@ -21,8 +21,10 @@ class platform_MemCheck(test.test):
 
     def run_once(self):
         errors = 0
-
-        memref = 1024892
+        # The total memory will shrink if the system bios grabs more of the
+        # reserved memory. We derived the value below by giving a small
+        # cushion to allow for more system BIOS usage of ram.
+        memref = 1017600
         less_refs = ['MemTotal', 'MemFree', 'VmallocTotal']
         equal_refs = ['SwapCached', 'SwapTotal']
 

@@ -58,10 +58,17 @@ class platform_OSLimits(test.test):
     def run_once(self):
         errors = 0
 
+        # Max procs and max threads is dependent on total available memory.
+        # Consequently, the figures are derived from what value we expect the
+        # maximum available memory figure to be. The value we are using give us
+        # about a small cushion to allow for system BIOS to reserve more space.
+        # max_threads = MemTotal/64
+        # max_procs = MemTotal/128
+
         ref_min = {'file_max': 100424,
                    'max_open': 1024,
-                   'max_procs': 8000,
-                   'max_threads': 16000,
+                   'max_procs': 7950,
+                   'max_threads': 15900,
                    'msg_max': 10,
                    'msgsize': 8192,
                    'msg_queue': 256,
