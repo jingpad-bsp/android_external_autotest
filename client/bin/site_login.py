@@ -7,6 +7,8 @@ from autotest_lib.client.bin import chromeos_constants, site_cryptohome
 from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib import error, site_ui
 
+_DEFAULT_TIMEOUT = 30
+
 
 class TimeoutError(error.TestError):
     """Error raised when we time out while waiting on a condition."""
@@ -79,7 +81,7 @@ def logged_in():
     return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)
 
 
-def attempt_login(username, password, timeout=20):
+def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     """Attempt to log in.
 
     Args:
@@ -118,7 +120,7 @@ def attempt_login(username, password, timeout=20):
         timeout=timeout)
 
 
-def attempt_logout(timeout=20):
+def attempt_logout(timeout=_DEFAULT_TIMEOUT):
     """Attempt to log out by killing Chrome.
 
     Args:
@@ -134,7 +136,7 @@ def attempt_logout(timeout=20):
     oldpid = __get_session_manager_pid()
 
     # Gracefully exiting the session manager causes the user's session to end.
-    utils.system('pkill -TERM -o ^%s$' %  chromeos_constants.SESSION_MANAGER)
+    utils.system('pkill -TERM -o ^%s$' % chromeos_constants.SESSION_MANAGER)
 
     site_utils.poll_for_condition(
         lambda: __session_manager_restarted(oldpid),
@@ -142,7 +144,7 @@ def attempt_logout(timeout=20):
         timeout)
 
 
-def wait_for_browser(timeout=10):
+def wait_for_browser(timeout=_DEFAULT_TIMEOUT):
     """Wait until a Chrome process is running.
 
     Args:
@@ -157,7 +159,7 @@ def wait_for_browser(timeout=10):
         timeout=timeout)
 
 
-def wait_for_cryptohome(timeout=10):
+def wait_for_cryptohome(timeout=_DEFAULT_TIMEOUT):
     """Wait until cryptohome is mounted.
 
     Args:
@@ -172,7 +174,7 @@ def wait_for_cryptohome(timeout=10):
         timeout=timeout)
 
 
-def wait_for_screensaver(timeout=10):
+def wait_for_screensaver(timeout=_DEFAULT_TIMEOUT):
     """Wait until xscreensaver is responding.
 
     Args:
@@ -188,7 +190,7 @@ def wait_for_screensaver(timeout=10):
         timeout=timeout)
 
 
-def wait_for_window_manager(timeout=20):
+def wait_for_window_manager(timeout=_DEFAULT_TIMEOUT):
     """Wait until the window manager is running.
 
     Args:
@@ -203,7 +205,7 @@ def wait_for_window_manager(timeout=20):
         timeout=timeout)
 
 
-def wait_for_initial_chrome_window(timeout=20):
+def wait_for_initial_chrome_window(timeout=_DEFAULT_TIMEOUT):
     """Wait until the initial Chrome window is mapped.
 
     Args:
@@ -232,7 +234,7 @@ def nuke_process_by_name(name, with_prejudice=False):
         utils.nuke_pid(pid)
 
 
-def refresh_window_manager(timeout=20):
+def refresh_window_manager(timeout=_DEFAULT_TIMEOUT):
     """Clear state that tracks what WM has done, kill it, and wait until
     the window manager is running.
 
