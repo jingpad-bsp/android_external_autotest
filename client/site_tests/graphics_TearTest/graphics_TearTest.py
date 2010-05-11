@@ -61,14 +61,18 @@ class graphics_TearTest(site_ui_test.UITest):
             for test in tests:
                 cmd = test['cmd']
                 logging.info("command launched: %s" % cmd)
-                utils.system(site_ui.xcommand(cmd))
+                ret = utils.system(site_ui.xcommand(cmd), ignore_status=True)
 
-                test['result'] = html_button('Pass') + html_button('Fail')
-                dialog = site_ui.Dialog(question=TEMPLATE.format(header, tests),
-                                        choices=[])
-                # Store user's response if the testcase passed or failed.
-                result = dialog.get_result()
-                test['result'] = result if result else 'Timeout'
+                if ret == 0:
+                    test['result'] = html_button('Pass') + html_button('Fail')
+                    dialog = site_ui.Dialog(
+                        question=TEMPLATE.format(header, tests), choices=[])
+                    # Store user's response if the testcase passed or failed.
+                    result = dialog.get_result()
+                    test['result'] = result if result else 'Timeout'
+                else:
+                    # If test return nonzero status, mark it as failed.
+                    test['result'] = 'Fail'
 
             # Test passed if all testcases passed.
             passed = all(test['result'] == 'Pass' for test in tests)
