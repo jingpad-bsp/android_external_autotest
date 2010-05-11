@@ -1,0 +1,24 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'GRAPHICS_TEAR_TEST'
+AUTHOR = 'The Chromium OS Authors'
+TIME='MEDIUM'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = "graphics"
+TEST_TYPE = 'client'
+
+DOC = """
+This is a semi-automated test that displays vertical lines scrolling
+horizontally and asks user if tearing was observed.  Three variants are
+available:
+  * using uniform update.  This tests that glSwapInterval function performs as
+    expected.
+  * using full texture update.  This tests that CPU-GPU interaction is properly
+    synchronized in the driver.
+  * using pixmap to texture extension.  This tests that pixmap to texture
+    extension is properly synchronized.
+"""
+
+job.run_test('graphics_TearTest')
