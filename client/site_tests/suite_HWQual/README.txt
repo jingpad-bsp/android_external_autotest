@@ -244,18 +244,19 @@ Manual Test Runs
   manual tests that will be required.  Such tests will have
   "NotImplemented" in their "LABELS" column.
 
+
 ================================================================================
 Reporting Results
 ================================================================================
 
 
 * Make sure that there are no test failures in automatic,
-  semi-automatic, or manual test categories.  Once all tests pass,
-  package the result directories:
+  semi-automatic, or manual test categories.
+
+* Once all tests pass or if you need technical assistance with the
+  hardware qualification results, package the result directories:
 
   $ tar cjf chromeos-hwqual-TAG-DATE.tar.bz2 results.*
 
-  Send the tarball to your Google technical support contact for
-  review.
-
-
+  Send the tarball to your Google technical support contact for review
+  or analysis.
