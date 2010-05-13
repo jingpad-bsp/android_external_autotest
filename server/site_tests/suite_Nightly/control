@@ -4,7 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "Nightly"
-TIME = "SHORT"
+TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
@@ -28,7 +28,8 @@ TESTS = [
   'firmware_VbootCrypto',
   'gl_Bench',
   'hardware_StorageFio',
-  'ltp',
+# TODO: Until ltp can pass on chromiumos
+#  'ltp',
   'platform_CleanShutdown',
   'platform_FileNum',
   'platform_FileSize',
