@@ -14,11 +14,11 @@ class graphics_WindowManagerGraphicsCapture(site_ui_test.UITest):
     def setup(self):
         self.job.setup_dep(['glbench'])
 
-    def run_once(self, script = 'autox_script.json', is_control = False):
+    def run_once(self):
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
-    
+
         screenshot1_reference = os.path.join(self.bindir,
                                             "screenshot1_reference")
         screenshot1_generated = os.path.join(self.resultsdir,

@@ -85,7 +85,8 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     """Attempt to log in.
 
     Args:
-        script: str filename of autox JSON script
+        username: str username for login
+        password: str password for login
         timeout: float number of seconds to wait
 
     Raises:
