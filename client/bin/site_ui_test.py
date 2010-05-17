@@ -75,7 +75,7 @@ class UITest(bin_test.test):
         return site_ui.xsystem(cmd, timeout, ignore_status)
 
 
-    def wait_for_screensaver(self, timeout=10):
+    def wait_for_screensaver(self, timeout=site_login._DEFAULT_TIMEOUT):
         """Convenience wrapper around site_login.wait_for_screensaver, to save
         you an import.
         """
@@ -138,7 +138,7 @@ class UITest(bin_test.test):
         """
 
         if site_login.logged_in():
-            site_login.attempt_logout(timeout=10)
+            site_login.attempt_logout(timeout=site_login._DEFAULT_TIMEOUT)
 
         site_login.attempt_login(username or self.username,
                                  password or self.password)
