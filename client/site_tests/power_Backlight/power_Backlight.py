@@ -12,8 +12,9 @@ class power_Backlight(test.test):
 
 
     def run_once(self, delay=60, seconds=10, tries=20):
-        # disable screen locker
+        # disable screen locker and powerd
         os.system('stop screen-locker')
+        os.system('stop powerd')
 
         # disable screen blanking. Stopping screen-locker isn't
         # synchronous :(. Add a sleep for now, till powerd comes around
@@ -56,6 +57,7 @@ class power_Backlight(test.test):
 
 
     def cleanup(self):
-        # Re-enable screen locker. This also re-enables dpms.
-        utils.system('start screen-locker')
+        # Re-enable screen locker and powerd. This also re-enables dpms.
+        os.system('start powerd')
+        os.system('start screen-locker')
 

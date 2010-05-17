@@ -88,8 +88,9 @@ class power_LoadTest(site_ui_test.UITest):
         self._tmp_keyvals['level_backlight_current'] = int(
                                              utils.system_output(cmd).rstrip())
 
-        # disable screen locker
+        # disable screen locker and powerd
         os.system('stop screen-locker')
+        os.system('stop powerd')
 
         # disable screen blanking. Stopping screen-locker isn't
         # synchronous :(. Add a sleep for now, till powerd comes around
@@ -199,7 +200,8 @@ class power_LoadTest(site_ui_test.UITest):
 
 
     def cleanup(self):
-        # re-enable screen locker. This also re-enables dpms.
+        # re-enable screen locker and powerd. This also re-enables dpms.
+        os.system('start powerd')
         os.system('start screen-locker')
 
 
