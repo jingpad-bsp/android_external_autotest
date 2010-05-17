@@ -7,12 +7,11 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, site_power_status, site_ui, \
                                            utils
 
-
 class power_Backlight(test.test):
     version = 1
 
 
-    def run_once(self, seconds=120):
+    def run_once(self, delay=60, seconds=10, tries=20):
         # disable screen locker and screen blanking
         # TODO(davidjames): Power manager should support this feature directly
         os.system('stop screen-locker')
@@ -33,10 +32,15 @@ class power_Backlight(test.test):
                   int(0.75*max_brightness), max_brightness]
         for i in levels:
             utils.system('backlight-tool --set_brightness %d' % i)
-            time.sleep(seconds)
-            status.refresh()
-            keyvals['w_bl_%d_rate' % i] = status.battery[0].energy_rate
-            rates.append(status.battery[0].energy_rate)
+            time.sleep(delay)
+            this_rate = []
+            for j in range(tries):
+                time.sleep(seconds)
+                status.refresh()
+                this_rate.append(status.battery[0].energy_rate)
+            rate = min(this_rate)
+            keyvals['w_bl_%d_rate' % i] = rate
+            rates.append(rate)
         self.write_perf_keyval(keyvals)
         for i in range(1, len(levels)):
             if rates[i] <= rates[i-1]:
