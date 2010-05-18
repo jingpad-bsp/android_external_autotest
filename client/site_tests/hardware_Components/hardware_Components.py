@@ -31,6 +31,7 @@ class hardware_Components(test.test):
         'part_id_webcam',
         'part_id_3g',
     ]
+    _not_present = 'Not Present'
 
 
     def check_component(self, comp_key, comp_id):
@@ -93,6 +94,10 @@ class hardware_Components(test.test):
           Returns a colon delimited string where the first section
           is the vendor id and the second section is the device id.
         """
+        # Ethernet is optional so mark it as not present. A human
+        # operator needs to decide if this is acceptable or not.
+        if not os.path.exists('/sys/class/net/eth0'):
+            return self._not_present
         part_id = utils.read_one_line('/sys/class/net/eth0/device/device')
         vendor_id = utils.read_one_line('/sys/class/net/eth0/device/vendor')
         return "%s:%s" % (vendor_id.replace('0x',''), part_id.replace('0x',''))
