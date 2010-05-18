@@ -106,6 +106,9 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     ax = site_ui.get_autox()
     # navigate to login screen
     ax.send_hotkey("Ctrl+Alt+L")
+    # escape out of any login screen menus (e.g., the network selection menu)
+    ax.send_hotkey("Escape")
+    time.sleep(0.5)
     # focus username
     ax.send_hotkey("Alt+U")
     ax.send_text(username)
