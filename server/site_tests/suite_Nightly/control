@@ -27,6 +27,7 @@ TESTS = [
   'disktest',
   'firmware_VbootCrypto',
   'gl_Bench',
+  'graphics_WindowManagerGraphicsCapture', # TODO: promote to BVT if stable.
   'hardware_StorageFio',
 # TODO: Until ltp can pass on chromiumos
 #  'ltp',
