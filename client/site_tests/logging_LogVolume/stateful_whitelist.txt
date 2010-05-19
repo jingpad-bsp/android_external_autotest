@@ -149,6 +149,9 @@
 /home/chronos/user/\.pki/nssdb
 /home/chronos/user/\.pki/nssdb/.+.db
 /home/chronos/user/\.pki/nssdb/pkcs11.txt
+# Crash dumps involving processes run as "chronos" user
+/home/chronos/user/crash
+/home/chronos/user/crash/.*\.dmp
 /home/chronos/user/log
 # These are dated files which need to be cleaned up
 /home/chronos/user/log/chromeos-wm\.\d{8}-\d{6}
@@ -251,6 +254,9 @@
 /var/run/.*
 /var/spool
 /var/spool/mail
+# Crash dumps involving processes run as other than "chronos" user
+/var/spool/crash
+/var/spool/crash/.*\.dmp
 /var/spool/cron
 /var/spool/cron/crontabs
 /var/spool/cron/lastrun
