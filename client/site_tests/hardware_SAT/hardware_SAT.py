@@ -56,7 +56,7 @@ class hardware_SAT(test.test):
         args += ' -m %d' % cpus  # memory copy threads.
         # SSE copy and checksum increases the rate at which the CPUs
         # can drive memory, as well as stressing the CPU.
-        args += ' -W' % cpus  # Use SSE optimizatin in memory threads.
+        args += ' -W'  # Use SSE optimizatin in memory threads.
         # File IO threads allow stressful transactions over the
         # south bridge and SATA, as well as potentially finding SSD
         # or disk cache problems. Two threads ensure multiple
