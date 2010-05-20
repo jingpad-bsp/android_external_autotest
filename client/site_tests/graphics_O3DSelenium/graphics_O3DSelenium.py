@@ -10,6 +10,21 @@ from autotest_lib.client.common_lib import error, site_ui, utils
 class graphics_O3DSelenium(site_ui_test.UITest):
     version = 1
 
+    flaky_test_list = ["TestSampleanimated_sceneLarge",
+                       "TestSamplebillboardsMedium",
+                       "TestSamplegenerate_textureSmall",
+                       "TestSampleinstance_overrideMedium",
+                       "TestSampleold_school_shadowsMedium",
+                       "TestSampleshadow_mapMedium",
+                       "TestSamplesimpleviewer_simpleviewerLarge",
+                       "TestSampletrends_trendsLarge",
+                       "TestSampleGoogleIO_2009_step14exLarge",
+                       "TestSampleShader_Test",
+                       "TestSampleMultipleClientsLarge",
+                       "TestUnitTesttexture_set_testMedium",
+                       "TestUnitTestinit_status_testSmall",
+                       "TestStressCullingZSort"]
+
 
     def setup(self):
         if not os.path.exists(self.srcdir):
@@ -36,23 +51,35 @@ class graphics_O3DSelenium(site_ui_test.UITest):
         cmd = site_ui.xcommand(cmd)
         result = utils.run(cmd, ignore_status = True)
 
-        logging.debug(result.stdout)
         # Find out total tests.
-        report = re.findall(r"([0-9]+) tests run.", result.stdout) 
+        report = re.findall(r"([0-9]+) tests run.", result.stdout)
         if not report:
             return error.TestFail('Output missing: total test number unknown!')
         total = int(report[-1])
-        # Find out errors.
+        # Find out failures.
         report = re.findall(r"([0-9]+) errors.", result.stdout)
         if not report:
             return error.TestFail('Output missing: error number unknown!')
-        errors = int(report[-1])
-        # Find out failures.
+        failures = int(report[-1])
         report = re.findall(r"([0-9]+) failures.", result.stdout)
         if not report:
             return error.TestFail('Output missing: failure number unknown!')
-        failures = int(report[-1])
+        failures += int(report[-1])
+        logging.info('RESULTS: %d out of %d tests failed!', failures, total)
 
-        if errors + failures > 0:
-            raise error.TestFail('Results: %d out of %d tests failed!' %
-                                 (errors + failures, total))
+        # If all failed cases belong to flaky_test_list, we still pass the test.
+        report = re.findall(r"SELENIUMRESULT ([a-zA-Z_0-9]+) "
+                            r"\([a-zA-Z_0-9]+\.[a-zA-Z_0-9]+\) "
+                            r"<\*googlechrome> \[[0-9.s]+\]: FAIL",
+                            result.stdout)
+        ignored_failures = 0
+        error_message = "Unexpected failure cases:"
+        for report_item in report:
+            if report_item in self.flaky_test_list:
+                ignored_failures += 1
+                logging.info("FAILURE (ignored): %s" % report_item)
+            else:
+                error_message += " " + report_item
+
+        if failures > ignored_failures:
+            raise error.TestFail(error_message)
