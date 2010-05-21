@@ -17,7 +17,7 @@ _DAILY_RATE_LIMIT = 8
 _MIN_UNIQUE_TIMES = 4
 _MOCK_CRASH_SENDING = '/tmp/mock-crash-sending'
 _PAUSE_FILE = '/tmp/pause-crash-sending'
-_SECONDS_SEND_SPREAD = 3600
+_SECONDS_SEND_SPREAD = 600
 _SYSTEM_CRASH_DIR = '/var/spool/crash'
 _USER_CRASH_DIR = '/home/chronos/user/crash'
 
@@ -154,6 +154,7 @@ class logging_UserCrash(test.test):
         self._log_reader.set_start_by_current()
         utils.system(_CRASH_SENDER_PATH, ignore_status=True)
         output = self._log_reader.get_logs()
+        logging.debug('Crash sender message output:\n' + output)
 
         if os.path.exists(minidump):
             minidump_exists = True
@@ -384,7 +385,7 @@ class logging_UserCrash(test.test):
             raise error.TestFail('Did not show recursion line on stack')
 
         # Should identify main line
-        if not '16  crasher!main [crasher.cc : 22 ' in stack:
+        if not '16  crasher!main [crasher.cc : 21 ' in stack:
             raise error.TestFail('Did not show main on stack')
 
 

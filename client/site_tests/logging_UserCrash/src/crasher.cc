@@ -8,7 +8,6 @@
 
 #include "base/file_path.h"
 #include "base/logging.h"
-#include "crash/crash_dumper.h"
 
 int recbomb(int n);
 void PrepareBelow(int argc, char *argv[]);
@@ -25,7 +24,6 @@ int main(int argc, char *argv[]) {
 // Prepare for doing the crash, but do it below main so that main's
 // line numbers remain stable.
 void PrepareBelow(int argc, char *argv[]) {
-  CrashDumper::Enable();
   fprintf(stderr, "pid=%lld\n", static_cast<long long>(getpid()));
   fflush(stderr);
   if (argc == 2 && strcmp(argv[1], "--nocrash") == 0) {

@@ -3,10 +3,7 @@
 # found in the LICENSE file.
 
 INCLUDE =
-# libcrash_dumper relies upon libbase.a (for logging) which relies
-# upon libpthread.a and librt.a; all of which are static libraries and
-# thus need to be explicitly specified here during executable link.
-LDFLAGS = -lcrash_dumper -lbase -lpthread -lrt
+LDFLAGS = -lcrash
 BIN = crasher
 SRC = crasher.cc
 OBJS = crasher.o bomb.o
