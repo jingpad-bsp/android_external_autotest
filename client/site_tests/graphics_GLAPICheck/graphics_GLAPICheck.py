@@ -2,16 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import os
-import re
+import logging, os, re
+from autotest_lib.client.bin import site_login, site_ui_test
+from autotest_lib.client.common_lib import error, site_ui, utils
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, utils
-
-class graphics_GLAPICheck(test.test):
+class graphics_GLAPICheck(site_ui_test.UITest):
     version = 1
     preserve_srcdir = True
+    error_message = ""
+
 
     def setup(self):
         os.chdir(self.srcdir)
@@ -21,12 +20,13 @@ class graphics_GLAPICheck(test.test):
 
     def __check_extensions(self, info, ext_entries):
         info_split = info.split()
+        comply = True
         for extension in ext_entries:
             match = extension in info_split
             if not match:
-                logging.info("MISSING: %s" % extension)
-                return False
-        return True
+                self.error_message += " " + extension
+                comply = False
+        return comply
 
 
     def __check_gl_extensions_1x(self, info):
@@ -59,53 +59,57 @@ class graphics_GLAPICheck(test.test):
 
 
     def __check_gl(self, result):
-        version_pattern = re.compile(r"GL_VERSION = ([0-9]+).([0-9]+).+")
-        version = version_pattern.findall(result)
-        if len(version) == 1:
+        version = re.findall(r"GL_VERSION = ([0-9]+).([0-9]+).+", result)
+        if version:
             version_major = int(version[0][0])
             version_minor = int(version[0][1])
-            logging.info("GL_VERSION = %d.%d" %
-                         (version_major, version_minor))
+            version_info = (" GL_VERSION = %d.%d" %
+                            (version_major, version_minor))
             if version_major == 1:
                 if version_minor < 4:
+                    self.error_message = version_info
                     return False
                 return self.__check_gl_extensions_1x(result)
             elif version_major >= 2:
                 return self.__check_gl_extensions_2x(result)
             else:
+                self.error_message = version_info
                 return False
         # No GL version info found.
+        self.error_message = " missing GL version info"
         return False
 
 
     def __check_gles(self, result):
-        version_pattern = re.compile(
-            r"GLES_VERSION = OpenGL ES.* ([0-9]+).([0-9]+)")
-        version = version_pattern.findall(result)
-        if len(version) == 1:
+        version = re.findall(r"GLES_VERSION = OpenGL ES.* ([0-9]+).([0-9]+)",
+                             result)
+        if version:
             # GLES version has to be 2.0 or above.
             version_major = int(version[0][0])
             version_minor = int(version[0][1])
-            logging.info("GLES_VERSION = %d.%d" %
-                         (version_major, version_minor))
+            version_info = (" GLES_VERSION = %d.%d" %
+                            (version_major, version_minor))
             if version_major < 2:
+                self.error_message = version_info
                 return False;
             # EGL version has to be 1.3 or above.
-            version_pattern = re.compile(
-                r"EGL_VERSION = ([0-9]+).([0-9]+)")
-            version = version_pattern.findall(result)
-            if len(version) == 1:
+            version = re.findall(r"EGL_VERSION = ([0-9]+).([0-9]+)", result)
+            if version:
                 version_major = int(version[0][0])
                 version_minor = int(version[0][1])
-                logging.info("EGL_VERSION = %d.%d" %
-                             (version_major, version_minor))
-                if version_major >= 1 and version_minor >= 3:
+                version_info = ("EGL_VERSION = %d.%d" %
+                                (version_major, version_minor))
+                if (version_major == 1 and version_minor >= 3 or
+                    version_major > 1):
                     return self.__check_gles_extensions(result)
                 else:
+                    self.error_message = version_info
                     return False
             # No EGL version info found.
+            self.error_message = " missing EGL version info"
             return False
         # No GLES version info found.
+        self.error_message = " missing GLES version info"
         return False
 
 
@@ -118,7 +122,7 @@ class graphics_GLAPICheck(test.test):
 
 
     def __run_x_cmd(self, cmd):
-        cmd = "DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority " + cmd
+        cmd = site_ui.xcommand(cmd)
         result = utils.system_output(cmd, retain_output=True,
                                      ignore_status=True)
         return result
@@ -126,39 +130,46 @@ class graphics_GLAPICheck(test.test):
 
     def run_once(self):
         test_done = False
+        cmd_gl = os.path.join(self.bindir, 'gl_APICheck')
+        cmd_gles = os.path.join(self.bindir, 'gles_APICheck')
+        exist_gl = os.path.isfile(cmd_gl)
+        exist_gles = os.path.isfile(cmd_gles)
+        if not exist_gl and not exist_gles:
+            raise error.TestFail('Found neither gl_APICheck nor gles_APICheck. '
+                                 'Test setup error.')
 
-        # Run graphics_GLAPICheck first.  If failed, run gles_APICheck next.
-        cmd = os.path.join(self.bindir, 'graphics_GLAPICheck')
-        result = self.__run_x_cmd(cmd)
-        error_pattern = re.compile(r"ERROR: \[(.+)\]")
-        errors = error_pattern.findall(result)
-        run_through_pattern = re.compile(r"SUCCEED: run to the end")
-        run_through = run_through_pattern.findall(result)
-        if len(errors) == 0 and len(run_through) > 0:
-            check_result = self.__check_gl(result)
-            if check_result == False:
-                raise error.TestFail('GL API insufficient')
-            test_done = True;
+        # Run gl_APICheck first.  If failed, run gles_APICheck next.
+        if exist_gl:
+            self.error_message = ""
+            result = self.__run_x_cmd(cmd_gl)
+            errors = re.findall(r"ERROR: ", result)
+            run_through = re.findall(r"SUCCEED: run to the end", result)
+            if not errors and run_through:
+                check_result = self.__check_gl(result)
+                if not check_result:
+                    raise error.TestFail('GL API insufficient:' +
+                                         self.error_message)
+                test_done = True;
 
-        if not test_done:
-            cmd = (os.path.join(self.bindir, 'gles_APICheck') +
-                   ' libGLESv2.so libEGL.so')
+        if not test_done and exist_gles:
+            self.error_message = ""
             # TODO(zmo@): smarter mechanism with GLES & EGL library names.
-            result = self.__run_x_cmd(cmd)
-            error_pattern = re.compile(r"ERROR: \[(.+)\]")
-            errors = error_pattern.findall(result)
-            run_through_pattern = re.compile(r"SUCCEED: run to the end")
-            run_through = run_through_pattern.findall(result)
-            if len(errors) == 0 and len(run_through) > 0:
+            result = self.__run_x_cmd(cmd_gles + ' libGLESv2.so libEGL.so')
+            errors = re.findall(r"ERROR: ", result)
+            run_through = re.findall(r"SUCCEED: run to the end", result)
+            if not errors and run_through:
                 check_result = self.__check_gles(result)
-                if check_result == False:
-                    raise error.TestFail('GLES API insufficient')
+                if not check_result:
+                    raise error.TestFail('GLES API insufficient:' +
+                                         self.error_message)
                 test_done = True;
 
         if not test_done:
-            raise error.TestFail('No sufficient GL/GLES API detected')
+            raise error.TestFail('Detect neither GL nor GLES')
 
         # Check X11 extensions.
+        self.error_message = ""
         check_result = self.__check_x_extensions(result)
-        if check_result == False:
-            raise error.TestFail('X extensions insufficient')
+        if not check_result:
+            raise error.TestFail('X extensions insufficient:' +
+                                 self.error_message)
