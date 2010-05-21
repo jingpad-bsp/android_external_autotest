@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "BROWSER_TEST"
+NAME = "desktopui_UITest"
+PURPOSE = "Verify Chrome executes and renders basic pages."
+CRITERIA = "This test will fail if running Chrome returns a command error."
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"

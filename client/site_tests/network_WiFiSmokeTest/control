@@ -3,7 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "WIFI_SMOKE_TEST"
+NAME = "network_WiFiSmokeTest"
+PURPOSE = "Verify we can connect to available routers."
+CRITERIA = """
+Fail if any of the following conditions occur:
+  - times out attempting to connect to a router
+  - gets an exception attempting to connect to a router
+  - fails to connect to a router in the router list
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

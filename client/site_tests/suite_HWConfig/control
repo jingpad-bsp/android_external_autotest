@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "HWConfig"
+PURPOSE = "Execute automated hardware configuration checks."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"

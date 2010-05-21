@@ -4,7 +4,9 @@
 
 AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
 DOC = "Verifies that the wireless interface has an IP address."
-NAME = "Wlan_IPTest"
+PURPOSE = "Ensure the Wlan device obtains an IP address."
+CRITERIA = "Fails if wlan0 does not have an assigned IP address."
+NAME = "network_WlanHasIP"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

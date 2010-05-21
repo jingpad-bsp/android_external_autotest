@@ -9,8 +9,10 @@ External storage test suite.
 Tests external storage (USB flash drive / card reader with SD-card inserted)
 performance using several benchmark tools.
 """
-NAME = 'STORAGE_BENCHMARK'
-TEST_CLASS = "hardware"
+NAME = 'hardware_ExternalDrives'
+PURPOSE = 'Benchmark external storage devices.'
+CRITERIA = 'This test is a benchmark.'
+TEST_CLASS = 'hardware'
 TEST_CATEGORY = 'Performance'
 TEST_TYPE = 'client'
 VERSION = '1'

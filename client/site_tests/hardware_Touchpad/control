@@ -1,5 +1,7 @@
 AUTHOR = "Chrome OS Team"
-NAME = "Factory Touchpad Test"
+NAME = "hardware_Touchpad"
+PURPOSE = "Verify all touchpad functions."
+CRITERIA = "Test will fail if not all features are used in the alloted time."
 TIME = "SHORT"
 TEST_CATEGORY = "Factory"
 TEST_CLASS = "hardware"

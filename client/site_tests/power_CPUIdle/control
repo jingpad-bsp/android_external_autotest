@@ -3,14 +3,17 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "CPUIdle"
+NAME = "power_CPUIdle"
+PURPOSE = "Ensure the processor drops into idle state when it is idle."
+CRITERIA = "Fails if the cpu did not have any idle cycles during this test."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
 
 DOC = """
-This test checks that the processor drops into idle state when its idle
+This test will read values from /sys/devices/system/cpu/cpu*/cpuidle to 
+determine idle cycles.
 """
 
 job.run_test('power_CPUIdle')

@@ -2,8 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'GRAPHICS_TEAR_TEST'
+NAME = 'graphics_TearTest'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify Chrome does not tear with veritcal synchronization.'
+CRITERIA = """
+This test will fail if there is tearing in the two vertical lines that are 
+scrolling horizontally.
+"""
 TIME='MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "graphics"
@@ -11,7 +16,7 @@ TEST_TYPE = 'client'
 
 DOC = """
 This is a semi-automated test that displays vertical lines scrolling
-horizontally and asks user if tearing was observed.  Three variants are
+horizontally and asks the user if tearing was observed.  Three variants are
 available:
   * using uniform update.  This tests that glSwapInterval function performs as
     expected.

@@ -4,6 +4,11 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "BluetoothSemiAuto"
+PURPOSE = "Verify the basic functionality of the Bluetooth adapter."
+CRITERIA = """
+If no Bluetooth devices are found, or the user does not input an answer to the
+dialog box this test will fail.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "Hardware"

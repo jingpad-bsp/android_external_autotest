@@ -1,5 +1,9 @@
-NAME = 'tsl2563_Light_Sensor'
+NAME = 'hardware_tsl2563'
 AUTHOR = 'Chromium OS Authors'
+PURPOSE = 'Verify the TSL 2560 Light Sensor Device is supported.'
+CRITERIA = """
+Fails if TSL2560 kernel module is not loaded, or the i2c adapter is not found.
+"""
 TIME = 'SHORT'
 TEST_CLASS = 'Hardware'
 TEST_CATEGORY = 'Functional'

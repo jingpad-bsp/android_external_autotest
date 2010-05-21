@@ -1,5 +1,10 @@
 AUTHOR = "Chrome OS Team"
-NAME = "Root file system size"
+NAME = "build_RootFilesystemSize"
+PURPOSE = "Report the production size of the rootfs."
+CRITERIA = """
+This test is a benchmark. However, this test will fail if the size of the rootfs
+cannot be obtained.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "build"

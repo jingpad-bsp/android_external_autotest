@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "TPMFirmware"
+NAME = "hardware_TPMFirmware"
+PURPOSE = "Verify that system firmware is compatible with TPM device."
+CRITERIA = "This will run a suite of server-side TPM tests."
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functionality"
 TEST_CLASS = "hardware"

@@ -1,5 +1,9 @@
 AUTHOR = "Chrome OS Team"
-NAME = "Disk Iteration"
+NAME = "platform_DiskIterate"
+PURPOSE = "Verify DeviceKit-disks daemon is running an 1 disk is present."
+CRITERIA = """
+This test will fail if DeviceKit-disks does not find at least 1 disk.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "Platform"

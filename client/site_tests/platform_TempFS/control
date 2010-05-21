@@ -4,7 +4,17 @@
 
 AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
 DOC = "Verifies temp filesystems have enough available space."
-NAME = "TempFS_Test"
+NAME = "platform_TempFS"
+PURPOSE = "Verify Temp file systems are set up correctly."
+CRITERIA = """
+Fail if the following file systems are less than our threshhold size:
+  - /dev
+  - /tmp
+  - /dev/shm
+  - /var/tmp
+  - /var/run
+  - /var/lock
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

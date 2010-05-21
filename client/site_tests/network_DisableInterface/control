@@ -1,12 +1,15 @@
 AUTHOR = "Chrome OS Team"
-NAME = "Disable Network Interface"
+NAME = "network_DisableInterface"
+PURPOSE = "Verify a network interface can be disabled."
+CRITERIA = "Fails if the interface can not be disabled/reenabled."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
 
 DOC = """
-This test checks whether a network interface can be disabled.
+This test depends on the ifconfig utility to both disable and reenable a
+network interface.
 """
 
 job.run_test('network_DisableInterface', iface_name='wlan0', tag='wlan0')

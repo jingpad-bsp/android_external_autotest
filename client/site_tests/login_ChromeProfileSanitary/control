@@ -3,7 +3,13 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "CHROME_PROFILE_SANITARY"
+NAME = "login_ChromeProfileSanitary"
+PURPOSE = "Verify Chrome uses correct profile when it restarts."
+CRITERIA = """
+Fails if any of the following conditions occur:
+  - the login profile takes too long to populate
+  - Chrome uses a different profile after it restarts
+"""
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

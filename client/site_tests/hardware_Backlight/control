@@ -4,14 +4,18 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "hardware_Backlight"
+PURPOSE = 'Verify that the backlight can be adjusted in software.'
+CRITERIA = """
+If backlight-tool fails to adjust the backlight brightness this test will fail.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "hardware"
 TEST_TYPE = "client"
 
 DOC = """
-This test verifies that the backlight can be adjusted in software using
-the /sys/class/backlight interface
+This test will utilize the /sys/class/backlight interface to adjust the
+strength of the backlight.
 """
 
 job.run_test("hardware_Backlight")

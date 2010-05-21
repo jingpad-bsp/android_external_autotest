@@ -2,8 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'GRAPHICS_WINDOW_MANAGER_GRAPHICS_CAPTURE'
+NAME = 'graphics_WindowManagerGraphicsCapture'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify the window manager can capture graphics from applications.'
+CRITERIA = """
+This test fails if application screen shots cannot capture the screen output.
+"""
 TIME='MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "graphics"

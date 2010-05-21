@@ -4,6 +4,10 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "power_SuspendResume"
+PURPOSE = "Verify system is stable between suspend and resume states."
+CRITERIA = """
+Fail if any of the test iterations fails.
+"""
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"

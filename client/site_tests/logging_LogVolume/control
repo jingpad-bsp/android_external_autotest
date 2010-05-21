@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "LogVolume"
+NAME = "logging_LogVolume"
+PURPOSE = "Record file and directory usage of the stateful partition."
+CRITERIA = "This test is a benchmark, although constraints can be specified."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"

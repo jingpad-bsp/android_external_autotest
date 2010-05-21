@@ -3,15 +3,32 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "VBOOT_CRYPTO_TEST"
+NAME = "firmware_VbootCrypto"
+PURPOSE = """
+Verifies Firmware Verified Boot Reference Implementation, it's components, and
+crypto performance.
+"""
+CRITERIA = """
+This test is a benchmark.
+
+Errors in any of the following tests will cause a failure:
+  - _sha_test()
+  - _rsa_test()
+  - _image_verification_test()
+  - _rollbackA_tests()
+  - _splicing_tests()
+"""
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
 TEST_TYPE = "client"
 
 DOC = """
-  Tests for correctness of Firmware Verified Boot Reference Implementation
-  and its components, and benchmarks for crypto and verification performance.
+This test implements various RSA and SHA by creating and verifying various
+keys and hashes. It will generate public key signatures using sha1, sha256,
+and sha512 algorithms with key lengths of 1024, 2048, 4096, and 8192. RSA
+padding tests will then be run to verify them. Tests are also run to verify
+the firmware and kernel is correct.
 """
 
 test_suites = [

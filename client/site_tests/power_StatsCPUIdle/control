@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "Power: CPU Idle Statistics"
+NAME = "power_StatsCPUIdle"
+PURPOSE = "Measure time spent at each CPU idle level when system is idle."
+CRITERIA = "This test is a benchmark."
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "power"

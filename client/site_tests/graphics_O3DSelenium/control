@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "O3D Selenium Tests"
+NAME = "graphics_O3DSelenium"
+PURPOSE = 'Execute the O3D Selenium tests.'
+CRITERIA = 'All suite tests must pass.'
 TIME = "medium"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"

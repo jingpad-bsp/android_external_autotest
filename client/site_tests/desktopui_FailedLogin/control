@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "FAILED_AUTO_LOGIN"
+NAME = "desktopui_FailedLogin"
+PURPOSE = "Verify login will fail with invalid credentials."
+CRITERIA = "Test will fail if login is successful."
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"

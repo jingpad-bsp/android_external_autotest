@@ -3,7 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "IBusTest"
+NAME = "desktopui_IBusTest"
+PURPOSE = "Verify IBus is functioning properly."
+CRITERIA = """
+This test will fail under any of the following conditions:
+  - The IBus daemon is not running
+  - A supported engine is not found
+  - The configuration cannot be updated
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"

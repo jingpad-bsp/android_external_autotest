@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "KillRestart"
+NAME = "desktopui_KillRestart"
+PURPOSE = "Verify Chrome is automatically restarted if it dies."
+CRITERIA = "This test will fail if Chrome is not restarted after it is killed."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"

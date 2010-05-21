@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "CHECK_CRYPTOHOME"
+NAME = "login_CryptohomeMounted"
+PURPOSE = "Verify the cryptohome is mounted after login."
+CRITERIA = "This test will fail if cryptohome is not mounted after login."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

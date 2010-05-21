@@ -1,5 +1,11 @@
 AUTHOR = "ChromeOS Team"
-NAME = "WIFI_AUTH_TEST"
+NAME = "network_WifiAuthenticationTests"
+PURPOSE = "Verify connection to routers that require authentication credentials"
+CRITERIA = """
+Fails if any of the following conditions occur:
+  - Fails to connect to a router
+  - is not granted the correct IP address
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

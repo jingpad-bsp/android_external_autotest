@@ -3,14 +3,16 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "AUTO_LOGIN"
+NAME = "desktopui_DoLogin"
+PURPOSE = "Login through the Chrome login manager."
+CRITERIA = "This test will succeed as long as a test account is able to login."
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
-This is a helper test that will login a system through the login manager  
+This is a helper test that will login a system through the login manager.
 """
 
 job.run_test('desktopui_DoLogin', tag='remote')

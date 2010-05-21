@@ -2,8 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'MiniJail_VfsNamespace_Check'
+NAME = 'platform_MiniJailVfsNamespace'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify MiniJail is able to put a process in its own vfs namespace.'
+CRITERiA = """
+Fails if process from within the minijail vfs namespace can be seen from
+outside of the minijail.
+"""
 TIME='SHORT'
 TEST_CATEGORY = 'Security'
 TEST_CLASS = 'platform'

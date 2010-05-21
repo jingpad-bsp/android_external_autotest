@@ -4,6 +4,11 @@
 
 TIME='SHORT'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = "Ensure system components are in the approved components database."
+CRITERIA = """
+If system components don't match those from the approved component database this
+test will fail.
+"""
 DOC = """
 Identify or probe for hardware components and match them against the approved
 components database. Some components are identified first and then matched,

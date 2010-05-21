@@ -3,14 +3,20 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "CHECK_CRYPTOHOME"
+NAME = "login_CryptohomeUnmounted"
+PURPOSE = "Verify cryptohome is not mounted when logged out."
+CRITERIA = """
+This test will fail if any of the following conditions occur:
+  - cryptohome is not mounterd after login
+  - cryptohome is mounted after log out
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
 
 DOC = """
-This test checks that, after logging in successfully, a cryptohome was mounted.
+This test checks that cryptohome is mounted and unmounted when appropriate.
 """
 
 job.run_test('login_CryptohomeUnmounted', tag='success')

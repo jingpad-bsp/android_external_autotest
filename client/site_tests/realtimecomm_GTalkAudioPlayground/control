@@ -4,13 +4,16 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "realtimecomm_GTalkPlayground"
+PURPOSE = "Verify that Google Talk Plugin Audio works with Chrome."
+CRITERIA = "Fails if there is an error sending or receiving audio."
 TIME = "MEDIUM"
 TEST_CATEGORY = "GTalk"
 TEST_CLASS = "realtimecomm"
 TEST_TYPE = "client"
 
 DOC = """
-This tests Google Talk Plugin Audio
+This test depends upon pulse audio and the Chrome browser, and will record
+cpu usage during the test.
 """
 
 job.run_test('realtimecomm_GTalkAudioPlayground')

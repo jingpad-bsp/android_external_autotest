@@ -1,5 +1,7 @@
-NAME = "LOGIN_AUTH_TEST"
+NAME = "login_AuthenticationTests"
 AUTHOR = "ChromeOS Team"
+PURPOSE = "Verify Google authenticatication using valid username and password."
+CRITERIA = "This test will fail if authentication fails."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

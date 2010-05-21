@@ -3,7 +3,11 @@
 # found in the LICENSE file.
 
 AUTHOR = "Daniel Erat <derat@chromium.org>"
-NAME = "window manager focus new windows"
+NAME = "desktopui_WindowManagerFocusNewWindows"
+PURPOSE = "Verify that new windows are in focus."
+CRITERIA = "
+Fail if the active window is not in focus, or if the test times out.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"

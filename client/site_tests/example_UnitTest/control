@@ -2,8 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'example_unit_test'
+NAME = 'example_UnitTest'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'This is a one line purpose of the test.'
+CRITERIA = """
+Any pass/fail criteria goes in this section.
+"""
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "example"

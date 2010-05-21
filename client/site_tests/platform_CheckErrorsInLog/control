@@ -4,7 +4,15 @@
 
 AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
 DOC = "Checks system logs for error messages."
-NAME = "LogCheckErrors"
+NAME = "platform_CheckErrorsInLog"
+PURPOSE = "Ensure there are no major errors in system logs."
+CRITERIA = """
+Fails if any of the following occurs:
+  - Finds the keywords fatal, oops, panic, or segfault in:
+    - kern.log
+    - syslog
+    - dmesg
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

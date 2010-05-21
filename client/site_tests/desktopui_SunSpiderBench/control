@@ -3,14 +3,25 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "SunSpider benchamrk"
+NAME = "desktopui_SunSpiderBench"
+PURPOSE = "Measure the performance of Chrome's JavaScript."
+CRITERIA = "This test is a benchmark."
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
-This test runs the SunSpider benchmark on Chromium OS and saves the results.
+This test includes:
+  - generating a tagcloud from JSON input
+  - measuring a 3D raytracer
+  - cryptography tests
+  - code decompression
+  - a few microbenchmarks
+
+Multiple tests are run to attempt to filter out noise and compute a confidence
+level. Additionally a comparison mode will evaluate if you have enough data
+to determine if differences are statistically significant.
 """
 
 job.run_test('desktopui_SunSpiderBench')

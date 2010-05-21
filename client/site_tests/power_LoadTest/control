@@ -4,6 +4,8 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "power_LoadTest"
+PURPOSE = "Measure power draw when system is under load."
+CRITERIA = "This test is a benchmark."
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "power"
@@ -11,23 +13,25 @@ TEST_TYPE = "client"
 
 DOC = """
 This test runs a load test consisting of cycling though web pages, playing
-videos, etc. and measures battery power draw.
+videos, etc. and measures battery power draw. The duration of this test is
+determined by the seconds variable.
+
 
 The following manual steps need to be performed on the device under test
 before this test can be run:
-1. make sure that Ethernet cable is disconnected and WiFi is connected
-2. login to Chrome OS and open a terminal window (Ctrl-Alt-t)
-3. run the following command to launch a new browser window:
-   sudo su chronos -c "/opt/google/chrome/chrome --no-first-run"
-4. in the newly opened browser window:
-4.1. navigate to http://www.gmail.com. Logout if already logged in. Check the
-     "Stay signed in" box and log in. If the yellow "Do you want Chromium to
-     save password" bar comes up, click on "Save password"
-4.2. navigate to http://www.facebook.com. Logout if already logged in. Check
-     the "Keep me logged in" box and log in. If the yellow "Do you want
-     Chromium to save password" bar comes up, click on "Save password".
-5. close browser window
-6. disconnect power cable
+  - make sure that Ethernet cable is disconnected and WiFi is connected
+  - login to Chrome OS and open a terminal window (Ctrl-Alt-t)
+  - run the following command to launch a new browser window:
+    $ sudo su chronos -c "/opt/google/chrome/chrome --no-first-run"
+  - in the newly opened browser window:
+  - navigate to http://www.gmail.com. Logout if already logged in. Check the
+    "Stay signed in" box and log in. If the yellow "Do you want Chromium to
+    save password" bar comes up, click on "Save password"
+  - navigate to http://www.facebook.com. Logout if already logged in. Check
+    the "Keep me logged in" box and log in. If the yellow "Do you want
+    Chromium to save password" bar comes up, click on "Save password".
+  - close browser window
+  - disconnect power cable
 
 You are now ready to run the test.
 """

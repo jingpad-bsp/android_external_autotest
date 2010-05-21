@@ -2,15 +2,46 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'GL_BENCHMARK'
+NAME = 'gl_Bench'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Benchmark the graphics library performance.'
+CRITERIA = """
+Various performance metrics must be met or exceeded or the test will fail. See
+constraints for triangle setup, solid fill, tex nearest fill, and bilinear tex
+fill.
+"""
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
 TEST_TYPE = 'client'
 
 DOC = """
-This test tests graphics library performance.
+This benchmark executes glbench, a graphics benchmark designed to time how long
+various graphic intensive activities take, which includes measuring:
+  - fill rate
+    - blended
+    - opaque
+  -Z reject rate
+  -triangle rate
+    - no cull
+    - half cull (half triangles backface culled)
+    - full cull (mix of back face and degenerates)
+  - blend rate
+  - texture fetch
+    - nearest
+    - bilinear
+    - trilinear
+  - compute
+    - vertex shader
+    - pixel shader
+    - *fragement shader to test ddx and ddy
+  - attribute fetch
+  - color depth stencil test
+  - *state change
+  - *texture upload
+  - *read back
+
+* Not yet implemented.
 """
 
 job.run_test('gl_Bench')

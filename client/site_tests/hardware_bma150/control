@@ -1,5 +1,7 @@
-NAME = 'Check BMA150 Accelerometer'
+NAME = 'hardware_bam150'
 AUTHOR = 'Chromium OS Authors'
+PURPOSE = 'Verify the Bosch BMA150 interface is supported.'
+CRITERIA = 'Fails if the bam150 kernel module is not loaded.'
 TIME = 'SHORT'
 TEST_CLASS = 'Hardware'
 TEST_CATEGORY = 'Functional'

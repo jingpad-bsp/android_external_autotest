@@ -3,14 +3,23 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "PowerBatteryCharge"
+NAME = "power_BatteryCharge"
+PURPOSE = "Measure the time required to charge the battery."
+CRITERIA = "This test is a benchmark."
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
 
 DOC = """
-This test measures the battery charging time
+This test enforces the following contraints:
+ - Initial battery charge < 5%
+ - Device should be plugged in to an AC outlet
+ - In 4 hours, the battery charge should increase by at least 94% of maximum
+
+This test depends on site_power_status.py, which is included in
+client/common_lib/ in AutoTest. site_power_status.py has many status
+initialization and parsing routines for battery status.
 """
 
 job.run_test('power_BatteryCharge')

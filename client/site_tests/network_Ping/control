@@ -4,7 +4,9 @@
 
 AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
 DOC = "Verifies we can ping internal and external hosts."
-NAME = "PingTest"
+NAME = "network_Ping"
+PURPOSE = "Verify networked hosts respond to ping."
+CRITERIA = "Fails if www.google.com or default gateway fail to respond to ping."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

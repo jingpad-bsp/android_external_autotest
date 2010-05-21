@@ -4,6 +4,8 @@
 
 NAME = 'SHOW_TEST_RESULTS'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Display the results of all tests.'
+CRITERIA = 'None. This test is a stub.'
 TIME='SHORT'
 TEST_CATEGORY = 'Stub'
 TEST_CLASS = "factory"

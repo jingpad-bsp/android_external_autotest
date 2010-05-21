@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'MiniJail_ReadOnlyFS_Check'
+NAME = 'platform_MiniJailReadOnlyFS'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify MiniJail sets /proc to read only mode.'
+CRITERIA = 'Fails if /proc is not read only.'
 TIME='SHORT'
 TEST_CATEGORY = 'Security'
 TEST_CLASS = 'platform'

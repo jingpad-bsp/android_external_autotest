@@ -3,7 +3,11 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chromium OS Project"
-NAME = "BROWSER_URL_FETCH"
+NAME = "desktopui_UrlFetch"
+PURPOSE = "Verify URL loads and cookies are stored in Chrome."
+CRITERIA = """
+This test will fail if the URL fails to load or the cookie is not saved.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
@@ -11,9 +15,8 @@ TEST_TYPE = "client"
 
 DOC = """
 This test opens a new browser to the given URL and waits for the specified
-cookie to be saved.  If the cookie is never stored or the url fails to load,
-the test fails
-TODO(sosa@chromium.org) - Must find way to brin over tests from image (add
+cookie to be saved.
+TODO(sosa@chromium.org) - Must find way to bring over tests from image (add
 to chromium buildbot, etc).  UrlFetchTest is from ~chromium/src/chrome/test
 """
 

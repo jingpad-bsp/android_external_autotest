@@ -2,8 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'MiniJail_UidGid_Check'
+NAME = 'platform_MiniJailUidGid'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify MiniJail can set UID and GID.'
+CRITERIA = """
+Fails if bindir is not owned by root and the world cannot read/execute.
+"""
 TIME='SHORT'
 TEST_CATEGORY = 'Security'
 TEST_CLASS = 'platform'

@@ -3,7 +3,11 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chromium OS Team"
-NAME = "SpeechSynthesisSemiAuto"
+NAME = "desktopui_SpeechSynthesisSemiAuto"
+PURPOSE = "Verify that text strings are synthesized correctly."
+CRITERIA = """
+This test fails if the text string is not heard correctly by a tester.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"

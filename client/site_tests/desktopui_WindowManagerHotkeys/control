@@ -3,7 +3,11 @@
 # found in the LICENSE file.
 
 AUTHOR = "Daniel Erat <derat@chromium.org>"
-NAME = "window manager hotkeys"
+NAME = "desktopui_WindowManagerHotkeys"
+PURPOSE = "Verify that the window manager hot keys are correct."
+CRITERIA = """
+Fails if the hot keys do not adjust the proper component.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"

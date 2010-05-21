@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "Power: USB suspend statistics"
+NAME = "power_StatsUSB"
+PURPOSE = "Measure time USB devices spend in active state."
+CRITERIA = "This test is a benchmark."
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "power"

@@ -3,7 +3,11 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "GPS"
+NAME = "hardware_GPS"
+PURPOSE = "Verify basic functionality of a GPS device."
+CRITERIA = """
+Fail if GPS device is not found or if expected settings are missing.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "hardware"

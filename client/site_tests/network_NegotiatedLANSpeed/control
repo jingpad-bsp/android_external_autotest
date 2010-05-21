@@ -1,5 +1,7 @@
 AUTHOR = "Chrome OS Team"
-NAME = "Negotiated LAN Speed"
+NAME = "network_NegotiatedLANSpeed"
+PURPOSE = "Ensure wired network interface is running at least 1Gbps."
+CRITERIA = "Fails if wired network speed is less than 1Gbps."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "Network"

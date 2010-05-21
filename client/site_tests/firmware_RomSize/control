@@ -3,14 +3,16 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "FIRMWARE_ROM_SIZE"
+NAME = "firmware_RomSize"
+PURPOSE = "Ensure the firmware size is large enough."
+CRITERIA = "Firmware size must be >= 2MB."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
 TEST_TYPE = "client"
 
 DOC = """
-This test checks if the system firmware size >= 2MB.
+This test relies on dmidecode to find the ROM Size.
 """
 
 job.run_test('firmware_RomSize')

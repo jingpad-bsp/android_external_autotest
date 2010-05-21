@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "CHROME_FIRST_RENDER"
+NAME = "desktopui_ChromeFirstRender"
+PURPOSE = "Measures time to render first tab in Chrome after login."
+CRITERIA = "This test is a benchmark. It will fail if login fails."
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"

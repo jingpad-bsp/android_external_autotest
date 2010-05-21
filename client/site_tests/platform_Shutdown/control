@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "METRICS_SHUTDOWN"
+NAME = "platform_Shutdown"
+PURPOSE = "Collect shutdown metrics."
+CRITERIA = "This test is a benchmark."
 TIME = "SHORT"
 TEST_CATEGORY = "Logging"
 TEST_CLASS = "platform"

@@ -1,6 +1,11 @@
 AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
 DOC = "Verifies permissions on various file systems."
-NAME = "FILE_Permissions_Test"
+NAME = "platform_FilePerms"
+PURPOSE = "Verify permissions are correct on system files and directories."
+CRITERIA = """
+This test will fail if it finds unexpected permissions on system files or
+directories.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

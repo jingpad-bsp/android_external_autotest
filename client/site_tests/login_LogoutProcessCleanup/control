@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "CHECK_CHRONOSPROCESSESTERMINATED"
+NAME = "login_LogoutProcessCleanup"
+PURPOSE = "Verify all chronos owned processes are destroyed at log out."
+CRITERIA = "Fails if a process started by chronos is running after logout."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

@@ -3,7 +3,11 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "KernelCrash"
+NAME = "logging_KernelCrash"
+PURPOSE = "Verify that kernel space crashes are handled correctly."
+CRITERIA = """
+Fails if kernel crashes are not logged when they should be, or if an
+unexpected kernel crash is logged."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"

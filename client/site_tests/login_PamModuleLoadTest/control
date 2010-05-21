@@ -3,7 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "PAM_GOOGLE_LOADER_TEST"
+NAME = "login_PamMOduleLoadTest"
+PURPOSE = "Verifies pam_google.so can be dynamically loaded."
+CRITERIA = """
+Fails under any of the following conditions:
+  - pam_loader_ia32 cannot be opened
+  - pam_sm_authenticate is not found
+  - pam_loader returns an error
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

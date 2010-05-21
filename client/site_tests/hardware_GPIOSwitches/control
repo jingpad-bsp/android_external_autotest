@@ -2,8 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'GPIO_SWITCHES'
+NAME = 'hardware_GPIOSwitches'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify that mode and button switches are set correctly.'
+CRITERIA = """
+Fail if the settings for a particular board are not set correctly.
+"""
 TIME='SHORT'
 TEST_CATEGORY = 'factory'
 TEST_CLASS = 'hardware'

@@ -1,5 +1,7 @@
-NAME = "Netperf2 (Client)"
+NAME = "network_netperf2"
 AUTHOR = "Martin Bligh <mbligh@google.com>"
+PURPOSE = "Benchmark network statistics."
+CRITERIA = "This test is a benchmark."
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "network"

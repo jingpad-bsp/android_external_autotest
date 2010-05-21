@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "Power: CPU Frequency Statistics"
+NAME = "power_StatsCPUFreq"
+PURPOSE = "Measure time spent at each CPU Frequency when system is idle."
+CRITERIA = "This test is a benchmark."
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "power"

@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'USB_PLUG_IN'
+NAME = 'hardware_UsbPlugIn'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify USB device is properly detected.'
+CRITERIA = 'FailNs if device is not detected after it is plugged in.'
 TIME='SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "hardware"

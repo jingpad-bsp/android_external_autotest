@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'MiniJail_PID_Namespace'
+NAME = 'platform_MiniJailPidNamespace'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify minijail sets the PID namespace correctly.'
+CRITERIA = 'Fails if minijail does not set PID namespace.' 
 TIME='SHORT'
 TEST_CATEGORY = 'Security'
 TEST_CLASS = "platform"

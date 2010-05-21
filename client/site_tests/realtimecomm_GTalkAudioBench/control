@@ -4,6 +4,8 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "realtimecomm_GTalkAudioBench"
+PURPOSE = "Measure Google Talk Plugin audio codec."
+CRITERIA = "This test is a benchmark."
 TIME = "LONG"
 TEST_CATEGORY = "GTalk"
 TEST_CLASS = "realtimecomm"

@@ -1,13 +1,17 @@
 AUTHOR = "Chrome OS Team"
-NAME = "Factory Keyboard Test"
+NAME = "hardware_KeyboardAssembly"
+PURPOSE = "Verify that keyboard keys function properly."
+CRITERIA = """
+This test will fail if keys fail to respond when they are pressed and released.
+This test will also fail if all keys have not been used within 50 seconds.
+"""
 TIME = "SHORT"
 TEST_CATEGORY = "Factory"
 TEST_CLASS = "hardware"
 TEST_TYPE = "client"
 
 DOC = """
-This test checks whether all keyboard keys function properly.  This
-test will display a keyboard image and keys will be highlighted as
+This test will display a keyboard image and keys will be highlighted as
 they are pressed and released. Once all keys have been used, a brief
 'PASS' message will be displayed and the test will terminate.  After
 the first key is hit, a countdown will begin.  If not all keys are

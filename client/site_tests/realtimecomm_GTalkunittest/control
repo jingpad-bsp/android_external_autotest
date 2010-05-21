@@ -4,6 +4,10 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "realtimecomm_GTalkunittest"
+PURPOSE = "Execute Google Talk Plugin unit tests."
+CRITERIA = """
+Fail if any of the unit tests fail.
+"""
 TIME = "LONG"
 TEST_CATEGORY = "GTalk"
 TEST_CLASS = "realtimecomm"

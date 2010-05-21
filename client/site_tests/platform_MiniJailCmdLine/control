@@ -2,8 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'MiniJail_CmdLine_Check'
+NAME = 'platform_MiniJailCmdLine'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify that MiniJail command line args are passed correctly.'
+CRITERIA = """
+Fails if passed arguments do not match the args of MiniJail command line.
+"""
 TIME='SHORT'
 TEST_CATEGORY = 'Security'
 TEST_CLASS = 'platform'

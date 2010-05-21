@@ -2,8 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'MiniJail_RemoveCapabilities_Check'
+NAME = 'platform_MiniJailRootCapabilities'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify that MiniJail --use-capabilities works properly.'
+CRITERIA = """
+Fails if minijail --use-capabilities option returns non successfully.
+"""
 TIME='SHORT'
 TEST_CATEGORY = 'Security'
 TEST_CLASS = 'platform'

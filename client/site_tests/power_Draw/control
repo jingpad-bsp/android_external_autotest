@@ -4,13 +4,18 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "power_Draw"
+PURPOSE = "Measure how much power is drawn over a given amount of time."
+CRITERIA = "This test is a benchmark."
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
 
 DOC = """
-This is a system power draw test.
+This test will run for 200 seconds.
+
+This test depends upon site_power_status.py from AutoTest to provide battery
+state updates. This test requires that AC power is off.
 """
 
 from autotest_lib.client.common_lib import site_power_status

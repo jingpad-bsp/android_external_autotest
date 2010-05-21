@@ -1,4 +1,16 @@
 NAME = "platform_NetParms"
+PURPOSE = "Verify that some of the core network settings are correct."
+CRITERIA = """
+Fail if we find unexpected values for the following:
+  - message_burst
+  - message_cost
+  - netdev_max_backlog
+  - optmen_max
+  - rmem_default
+  - rmem_max
+  - wmen_default
+  - wmem_max
+"""
 AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -11,50 +23,53 @@ The parameters being verified are:
 
 Core Settings
 =============
-message_burst - Limits the warning mesages writtent to kernel log. It enforces
-                the limit to make denail-of-service attacks impossible.
-message_cost - Limits the number of network warning messages to one every
-               message_cost seconds.
-netdev_max_backlog - The maximum number of packets queued on the input side
-                     when the interface receives packets faster than the
-                     kernel can process them.
-optmem_max - Maximum ancillary buffer size allowed per socket.
-rmem_default - The default setting of the socket receive buffer in bytes.
-rmem_max - The maximum receive socket buffer size in bytes.
-wmem_default - The default setting of the socket send buffer in bytes.
-wmem_max - The maximum send socket buffer size in bytes.
+  - message_burst: Limits the warning mesages writtent to kernel log.
+    It enforces the limit to make denial-of-service attacks impossible.
+  - message_cost: Limits the number of network warning messages to one every
+    message_cost seconds.
+  - netdev_max_backlog: The maximum number of packets queued on the input side
+    when the interface receives packets faster than the kernel can process them.
+  - optmem_max: Maximum ancillary buffer size allowed per socket.
+  - rmem_default: The default setting of the socket receive buffer in bytes.
+  - rmem_max: The maximum receive socket buffer size in bytes.
+  - wmem_default: The default setting of the socket send buffer in bytes.
+  - wmem_max: The maximum send socket buffer size in bytes.
 
 IPV4 Settings
 =============
-icmp_echo_ignore_all - ignore ICMP echo requests. 0 = off, 1 = on.
-icmp_echo_ignore_broadcasts - ignore ICMP echo and timestamp requests to 
-                              broadcast and multicast addresses. 0 = off, 1 = on
-icmp_ratelimit - Limit the maximum rates for sending ICMP packets whose type
-                 matches icmp_ratemask. 0 = disable limiting, otherwise = 
-                 maximum rate in jiffies.
-icmp_ratemask - Mask made of ICMPtypes for which rates are being lmited.
-ip_default_ttl - Time-to-live for IPv4 interfaces. The max number of hops a
-                 packet may travel.
-ip_forward - Forward packets between interfaces if enabled. 1 = enabled,
-             0 = disabled.
-tcp_fin_timeout - Time to hold a socket in state FIN_WAIT-2, if it was closed
-                  on our side.
-tcp_keepalive_probes - How many keepalive proves TCP sends out.
-tcp_keepalive_time - How often TCP sends out keepalive messages.
-tcp_retries1 - How many times to retry before deciding that something is wrong
-               and it is necessary to report this suspicion to network layer.
-tcp_retries2 - How many times to retry before killing alive TCP connection.
-tcp_syn_retries - Number of times initial SYNs for an active TCP connection
-                  attempt will be retransmitted. Should not be higher than 255.
-tcp_tw_recycle - Enable fast recycling of sockets in TIME-WAIT status.
-                 0 = disabled.
-tcp_tw_reuse - Allow to reuse TIME-WAIT sockets for new connections when it is
-               safe from protocol viewpoint.
+  - icmp_echo_ignore_all: ignore ICMP echo requests. 0 = off, 1 = on.
+  - icmp_echo_ignore_broadcasts: ignore ICMP echo and timestamp requests to 
+    broadcast and multicast addresses.
+      - 0 = off
+      - 1 = on
+  - icmp_ratelimit: Limit the maximum rates for sending ICMP packets whose type
+    matches icmp_ratemask.
+      - 0 = disable limiting
+      - otherwise = max rate in jiffies
+  - icmp_ratemask: Mask made of ICMPtypes for which rates are being lmited.
+  - ip_default_ttl: Time-to-live for IPv4 interfaces. The max number of hops a
+    packet may travel.
+  - ip_forward: Forward packets between interfaces if enabled.
+    - 1 = enabled,
+    - 0 = disabled.
+  - tcp_fin_timeout: Time to hold a socket in state FIN_WAIT-2, if it was closed
+    on our side.
+  - tcp_keepalive_probes: How many keepalive proves TCP sends out.
+  - tcp_keepalive_time: How often TCP sends out keepalive messages.
+  - tcp_retries1: How many times to retry before signaling something is wrong
+    and it is necessary to report this suspicion to network layer.
+  - tcp_retries2: How many times to retry before killing alive TCP connection.
+  - tcp_syn_retries: Number of times initial SYNs for an active TCP connection
+    attempt will be retransmitted. Should not be higher than 255.
+  - tcp_tw_recycle: Enable fast recycling of sockets in TIME-WAIT status.
+    - 0 = disabled.
+  - tcp_tw_reuse: Allow reuse TIME-WAIT sockets for new connections when it is
+    safe from protocol viewpoint.
 
 Unix Settings
 =============
-max_dgram_qlen - Limits how many datagrams can be queued on a unix domain
-                 socket's (SOCK_DGRAM) receive buffer.
+  - max_dgram_qlen: Limits how many datagrams can be queued on a unix domain
+    socket's (SOCK_DGRAM) receive buffer.
 """
 
 job.run_test('platform_NetParms')

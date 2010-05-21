@@ -4,6 +4,8 @@
 
 NAME = "TPM_TESTS"
 AUTHOR = "The Chromium OS Authors"
+PURPOSE = "Verify functionalit of system Trusted Platform Module."
+CRITERIA = "This test is comprised of the Trousers Test Suite."
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "Hardware"

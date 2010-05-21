@@ -3,14 +3,17 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "KernelVersion"
+NAME = "platform_KernelVersion"
+PURPOSE = "Ensure the running kernel is supported."
+CRITERIA = "Fails if the running kernel version is older than kernel_version."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
 
 DOC = """
-This test checks for a supported kernel version."
+This test uses a function to compare kernels, and will rasie a test error if
+the running kernel version is older than the variable kernel_version.
 """
 
 job.run_test('platform_KernelVersion')

@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "CHROME_SEMI_AUTO"
+NAME = "desktopui_ChromeSemiAuto"
+PURPOSE = "Tests user interaction with Chrome."
+CRITERIA = "This test will fail if no user action occurs before it times out."
 TIME = "SHORT"
 TEST_CATEGORY = "DesktopUI"
 TEST_CLASS = "desktopui"

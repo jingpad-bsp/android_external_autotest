@@ -1,4 +1,21 @@
-NAME = "Platform_OSLimits"
+NAME = "platform_OSLimits"
+PURPOSE = "Verify some kernel settings."
+CRITERIA = """
+Fail if we find unexpected values for:
+  - file-max
+  - leases
+  - max-open
+  - max_procs
+  - msg_max
+  - msgsize
+  - msg_queue
+  - ngroups_max
+  - nr_open
+  - pid_max
+  - panic
+  - suid_dumpable
+  - sysrq
+"""
 AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -9,26 +26,28 @@ Verifies various system level limits.
 
 The resources being verified are:
 
-file-max: maximum number of file handles that the kernel will allocate. The
-          default value is usually about 10% of RAM in kilobytes.
-leases: 0: no leases on files allowed.
-        1: leases are allowed to be established on a file.
-max-open: the maximum number of file descriptors a process can open.
-max_procs: the maximum number of processes that can be created for the real
-           user id of the calling process.
-msg_max: maximum number of messages in a queue.
-msgsize: maximum size of a message.
-msg_queue: the number of message queues that can be created.
-ngroups_max: the number a groups a user may belong to.
-nr_open: the maximum number of file handles a process can allocate. file-max
-         cannot exceed this value.
-pid_max: the maximum value of a pid before it wraps.
-panic: defines the number of seconds the kernel postpones rebooting when the
-       system experiences a kernel panic. 0 disables automatic rebooting.
-suid_dumpable: 0: core dump not produced for a process which has changed cred.
-               1: all processes core dump when possible.
-               2: binary which is not normally dumped is dumped ro by root.
-sysrq: Activates the System Request Key if the value is anything other than 0.
+  - file-max: maximum number of file handles that the kernel will allocate. The
+    default value is usually about 10% of RAM in kilobytes.
+  - leases:
+    - 0: no leases on files allowed.
+    - 1: leases are allowed to be established on a file.
+  - max-open: the maximum number of file descriptors a process can open.
+  - max_procs: the maximum number of processes that can be created for the real
+    user id of the calling process.
+  - msg_max: maximum number of messages in a queue.
+  - msgsize: maximum size of a message.
+  - msg_queue: the number of message queues that can be created.
+  - ngroups_max: the number a groups a user may belong to.
+  - nr_open: the maximum number of file handles a process can allocate. file-max
+    cannot exceed this value.
+  - pid_max: the maximum value of a pid before it wraps.
+  - panic: defines the number of seconds the kernel postpones rebooting when the
+    system experiences a kernel panic. 0 disables automatic rebooting.
+  - suid_dumpable:
+    - 0: core dump not produced for a process with changed cred.
+    - 1: all processes core dump when possible.
+    - 2: binary which is not normally dumped is dumped ro by root.
+  - sysrq: Activates the System Request Key if value is anything other than 0.
 """
 
 job.run_test('platform_OSLimits')

@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'MiniJail_Ptrace_Check'
+NAME = 'platform_MiniJailPtraceDisabled'
 AUTHOR = 'The Chromium OS Authors'
+PURPOSE = 'Verify MiniJail can disable ptrace.'
+CRITERIA = 'Fails if ptrace is not disabled by MiniJail.'
 TIME='SHORT'
 TEST_CATEGORY = 'Security'
 TEST_CLASS = 'platform'
