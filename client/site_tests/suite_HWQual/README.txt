@@ -206,6 +206,12 @@ Automated and Semi-Automated Test Runs
                 -c client/site_tests/suite_HWQual/control.video_out
 
 
+- Run the graphics tearing test:
+
+  $ ./server/autoserv -r results.teartest -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.teartest
+
+
 - Run the device on AC. Plug a power draw USB dongle in each USB port.
   Run the max power draw test:
 
