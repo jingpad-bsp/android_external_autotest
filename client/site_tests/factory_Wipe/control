@@ -1,0 +1,17 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'FACTORY_WIPE'
+AUTHOR = 'The Chromium OS Authors'
+TIME='SHORT'
+TEST_CATEGORY = 'Stub'
+TEST_CLASS = 'factory'
+TEST_TYPE = 'client'
+
+DOC = """
+This test switches the bootable partition to the release partition, 
+and tags the factory partition to be wiped.
+"""
+
+job.run_test('factory_Wipe')
