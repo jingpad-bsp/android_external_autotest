@@ -137,9 +137,10 @@ class graphics_GLAPICheck(site_ui_test.UITest):
         if not exist_gl and not exist_gles:
             raise error.TestFail('Found neither gl_APICheck nor gles_APICheck. '
                                  'Test setup error.')
-
-        # Run gl_APICheck first.  If failed, run gles_APICheck next.
-        if exist_gl:
+        elif exist_gl and exist_gles:
+            raise error.TestFail('Found both gl_APICheck and gles_APICheck. '
+                                 'Test setup error.')
+        elif exist_gl:
             self.error_message = ""
             result = self.__run_x_cmd(cmd_gl)
             errors = re.findall(r"ERROR: ", result)
@@ -149,9 +150,9 @@ class graphics_GLAPICheck(site_ui_test.UITest):
                 if not check_result:
                     raise error.TestFail('GL API insufficient:' +
                                          self.error_message)
-                test_done = True;
-
-        if not test_done and exist_gles:
+            else:
+                raise error.TestFail('gl_APICheck error: ' + result)
+        else:
             self.error_message = ""
             # TODO(zmo@): smarter mechanism with GLES & EGL library names.
             result = self.__run_x_cmd(cmd_gles + ' libGLESv2.so libEGL.so')
@@ -162,10 +163,8 @@ class graphics_GLAPICheck(site_ui_test.UITest):
                 if not check_result:
                     raise error.TestFail('GLES API insufficient:' +
                                          self.error_message)
-                test_done = True;
-
-        if not test_done:
-            raise error.TestFail('Detect neither GL nor GLES')
+            else:
+                raise error.TestFail('gles_APICheck error: ' + result)
 
         # Check X11 extensions.
         self.error_message = ""

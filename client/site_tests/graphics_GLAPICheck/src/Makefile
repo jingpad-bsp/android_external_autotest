@@ -2,22 +2,27 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-LDFLAGS_GL = -lX11 -lm -lGL
-SRCS_GL = gl_APICheck.cc
 TARGET_GL = ../gl_APICheck
-
-LDFLAGS_ES = -lX11 -lm -ldl
-SRCS_ES = gles_APICheck.cc
 TARGET_ES = ../gles_APICheck
-INCLUDE_ES = -I$(GCLIENT_ROOT)/src/third_party/khronos/files/include
 
-all: $(TARGET_GL) $(TARGET_ES)
+ifeq ($(GRAPHICS_BACKEND), OPENGLES)
+    LDFLAGS = -lX11 -lm -ldl
+    SRCS = gles_APICheck.cc
+    TARGET = $(TARGET_ES)
+    INCLUDE = -I$(GCLIENT_ROOT)/src/third_party/khronos/files/include
+else ifeq ($(GRAPHICS_BACKEND), OPENGL)
+    LDFLAGS = -lX11 -lm -lGL
+    SRCS = gl_APICheck.cc
+    TARGET = $(TARGET_GL)
+    INCLUDE =
+else
+    $(error GRAPHICS_BACKEND has to be either OPENGL or OPENGLES)
+endif
 
-$(TARGET_GL): $(SRCS_GL)
-	$(CXX) -O3 -o $@ $^ -Wall $(LDFLAGS_GL)
+all: $(TARGET)
 
-$(TARGET_ES): $(SRCS_ES)
-	$(CXX) -O3 -o $@ $^ $(INCLUDE_ES) -Wall $(LDFLAGS_ES)
+$(TARGET): $(SRCS)
+	$(CXX) -O3 -o $@ $^ $(INCLUDE) -Wall $(LDFLAGS)
 
 clean:
 	$(RM) $(TARGET_GL)
