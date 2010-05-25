@@ -4,10 +4,10 @@
 
 import logging, os, re
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.bin import site_login, site_ui_test
+from autotest_lib.client.common_lib import error, site_ui, utils
 
-class graphics_SanAngeles(test.test):
+class graphics_SanAngeles(site_ui_test.UITest):
     version = 1
     preserve_srcdir = True
 
@@ -18,30 +18,28 @@ class graphics_SanAngeles(test.test):
         utils.system('make all')
 
 
-    def __try_run(self, exefile):
-        cmd = os.path.join(self.srcdir, exefile)
-        cmd = "DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority " + cmd
-        result = utils.run(cmd, ignore_status = True)
-        if len(result.stderr) > 0:
-            logging.debug(result.stderr)
-            return -1
-        pattern = re.compile(r"frame_rate = ([0-9.]+)")
-        report = pattern.findall(result.stdout)
-        if len(report) == 0:
-            return -1
-        return float(report[0])
-
-
     def run_once(self):
-        # We don't have a separate check if GL or GLES is installed on the
-        # system --- just hope that one of the runs will succeed.
-        frame_rate = self.__try_run('SanOGLES')
-        if frame_rate <= 0:
-            frame_rate = self.__try_run('SanOGL')
+        cmd_gl = os.path.join(self.srcdir, 'SanOGL')
+        cmd_gles = os.path.join(self.srcdir, 'SanOGLES')
+        cmd_gles_s = os.path.join(self.srcdir, 'SanOGLES_S')
+        if os.path.isfile(cmd_gl):
+            cmd = cmd_gl
+        elif os.path.isfile(cmd_gles):
+            cmd = cmd_gles
+        elif os.path.isfile(cmd_gles_s):
+            cmd = cmd_gles_s
+        else:
+            raise error.TestFail('Fail to locate SanAngles Observation exe.'
+                                 'Test setup error.') 
 
-        if frame_rate <= 0:
-            raise error.TestFail('fail to complete San Angeles Observation')
+        cmd = site_ui.xcommand(cmd)
+        result = utils.run(cmd, ignore_status = True)
 
+        report = re.findall(r"frame_rate = ([0-9.]+)", result.stdout)
+        if len(result.stderr) > 0 or not report:
+            raise error.TestFail('Fail to complete San Angeles Observation' +
+                                 result.stderr)
+        frame_rate = float(report[0])
         logging.info('frame_rate = %.1f' % frame_rate)
         self.write_perf_keyval(
             {'frames_per_sec_rate_san_angeles': frame_rate})
