@@ -11,12 +11,14 @@ class platform_AccurateTime(test.test):
 
 
     def __get_offset(self, string):
-        offset = re.search(r'(-?[\d+\.]+)s', string)
-        if offset is None:
-            # If string is empty, check the sys logs dumped later.
-            raise error.TestError('Unable to find offset in %s' % string)
-        return float(offset.group(1))
-
+	if (string.find('No time correction needed') > -1) :
+            return float(0.0)
+        else :
+            offset = re.search(r'Setting (-?[\d+\.]+) seconds', string)
+            if offset is None:
+                # If string is empty, check the sys logs dumped later.
+                raise error.TestError('Unable to find offset in %s' % string)
+            return float(offset.group(1))
 
     def run_once(self):
         reader = site_log_reader.LogReader()
@@ -28,8 +30,8 @@ class platform_AccurateTime(test.test):
         utils.system('initctl stop ntp')
         try:
             # Now grab the current time and get its offset
-            output = utils.system_output('ntpd -g -u ntp:ntp -q',
-                                         retain_output=True)
+            cmd = '/usr/sbin/htpdate -u ntp:ntp -s -t -w www.google.com';
+            output = utils.system_output(cmd,retain_output=True)
             server_offset = self.__get_offset(output)
             logging.info("server time offset: %f" % server_offset)
 

@@ -49,7 +49,7 @@ get_job_pid() {
 
 # The set of jobs (and corresponding daemon names) to test.
 # TODO: Test more jobs that have the respawn stanza
-UPSTART_JOBS_TO_TEST="ntp:ntpd udev:udevd"
+UPSTART_JOBS_TO_TEST="htpdate:htpdate udev:udevd"
 
 for job in $UPSTART_JOBS_TO_TEST ; do
 
