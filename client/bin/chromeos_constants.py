@@ -9,6 +9,7 @@ USER_DATA_DIR = '/home/chronos'
 LOGIN_PROFILE = USER_DATA_DIR+'/Default'
 
 CRYPTOHOME_DEVICE = '/dev/mapper/cryptohome'
+CRYPTOHOME_INCOGNITO = 'incognito'
 CRYPTOHOME_MOUNT_PT = USER_DATA_DIR+'/user'
 
 LOGIN_TRUST_ROOTS = '/etc/login_trust_root.pem'

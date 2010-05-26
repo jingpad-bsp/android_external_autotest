@@ -19,10 +19,9 @@ DOC = """
 This test checks that cryptohome is mounted and unmounted when appropriate.
 """
 
-job.run_test('login_CryptohomeUnmounted', tag='success')
+job.run_test('login_CryptohomeUnmounted')
 
-# TODO(cmasone): enable this when we start testing newer versions of the OS.
-# job.run_test('login_CryptohomeUnmounted',
-#              script='backdoor_creds.json',
-#              is_control=True,
-#              tag='control')
+job.run_test('login_CryptohomeUnmounted',
+             is_incognito=True,
+             creds='$backdoor',
+             tag='incognito')

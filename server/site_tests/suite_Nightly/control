@@ -35,6 +35,9 @@ TESTS = [
   'platform_CleanShutdown',
   'platform_FileNum',
   'platform_FileSize',
+  'login_CryptohomeMounted',
+  'login_CryptohomeMountedIncognito',
+  'login_CryptohomeUnmounted',
   'realtimecomm_GTalkAudioBench',
   'realtimecomm_GTalkunittest',
   'unixbench',
@@ -46,7 +49,12 @@ def run_client_test(machine):
   # Run parameter-less simple client tests
   for test in TESTS:
     client_at.run_test(test)
+
   # Run jobs with specific parameters
+  client_at.run_test('login_CryptohomeUnmounted',
+                     is_incognito=True,
+                     creds='$backdoor',
+                     tag='incognito')
 
 job.parallel_on_machines(run_client_test, machines)
 

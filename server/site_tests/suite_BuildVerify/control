@@ -119,8 +119,6 @@ client_at.run_test('hardware_SAT', seconds=20)
 if client_attributes.has_ssd:
    client_at.run_test('hardware_SsdDetection')
 
-client_at.run_test('login_CryptohomeMounted', tag='success')
-
 # Check volume of logging, and expect less than 50% of this machine's
 # stateful partition is used.  Also make sure there's not a serious
 # problem with the patterns being too permissive by assuming most were
