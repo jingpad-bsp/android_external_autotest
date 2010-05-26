@@ -17,7 +17,7 @@ def __get_mount_parts(expected_mountpt = chromeos_constants.CRYPTOHOME_MOUNT_PT,
 def is_mounted(device = chromeos_constants.CRYPTOHOME_DEVICE,
                expected_mountpt = chromeos_constants.CRYPTOHOME_MOUNT_PT,
                allow_fail = False):
-    mount_parts = _get_mount_parts(device, allow_fail)
+    mount_parts = __get_mount_parts(device, allow_fail)
     return len(mount_parts) > 0 and device == mount_parts[0]
 
 
