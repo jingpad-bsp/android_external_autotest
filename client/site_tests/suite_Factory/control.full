@@ -57,8 +57,6 @@ def step_runin():
 
 # Do touch tests.
 def step_manual():
-  job.run_test('hardware_KeyboardAssembly')
-
   # More manual tests to be added here.
 
   job.run_test('factory_ShowTestResults')

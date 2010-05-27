@@ -1,0 +1,192 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Factory"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "client"
+
+DOC = """
+This suite executed all of the factory tests, and incorporates an
+X-windows GTK-based UI to highlight testing results and to allow
+factory operators to switch between tests, and to re-run tests, all
+on-demand via keyboard shortcuts.
+
+The UI is implemented as a seperate process (see _FACTORY_UI_PATH),
+which means that interprocess communication is needed between this
+control, the UI, and the tests (which are forked children of this
+control process).  """
+
+
+import subprocess
+import sys
+import time
+
+
+_FACTORY_LOG_PATH = '/var/log/factory.log'
+_RESULT_FILE_PATH = '/var/run/factory_test_result'
+
+
+def XXX_log(s):
+    print >> sys.stderr, '--- XXX : ' + s
+
+
+# Hack to work around autotest's obsession with GRUB.
+job.bootloader.set_default = lambda x: None
+job.bootloader.boot_once = lambda x: None
+
+
+class factory_ui:
+    '''Support communication with the factory_ui process.  To simplify
+    surrounding code, this communication is an exchange of well formed
+    python expressions.  Basically send wraps its arguments in a call
+    to repr() and recv calls eval() to re-generate the python data.'''
+
+    def __init__(self, factory_ui_path):
+        self._proc = subprocess.Popen(factory_ui_path,
+                                      stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE)
+
+    def __del__(self):
+        XXX_log('factory_ui __del__')
+        self._proc.terminate()
+        time.sleep(1)
+        if self._proc.poll() is None:
+            self._proc.kill()
+
+    def send(self, x):
+        print >> self._proc.stdin, repr(x)
+        self._proc.stdin.flush()
+
+    def recv(self):
+        return eval(self._proc.stdout.readline().rstrip())
+
+
+# This is the definition of the test_data class, which holds
+# factory-specific information on the tests to be run.  Specifically,
+# the order of items in the list reflect the order they are to be run
+# on the line.  The label and trigger fields contain the description
+# strings to be shown in the test control list of the UI.  The trigger
+# field specifies the keyboard shortcut to allow on-demain
+# out-of-order test activation.  The dargs field allows test specific
+# extra arguments.  Note: this datastructure is defined as a string
+# and exec()ed to allow it to be defined once here, but to be also
+# used by the factory_ui process.
+
+test_data_class_def = '''
+class test_data:
+
+    def __init__(self, label_en='', label_zw='', formal_name='',
+                 trigger=None, dargs={}):
+        self.__dict__.update(vars())
+
+    def __repr__(self):
+        d = ['%s=%s' % (l,repr(v))
+             for l,v in self.__dict__.items()
+             if l != 'self']
+        c = ('%s' % self.__class__).rpartition('.')[2]
+        return '%s(%s)' % (c, ','.join(d))
+'''
+exec(test_data_class_def)
+
+
+test_list = [
+    test_data(
+        label_en='dummy A',
+        formal_name='factory_Dummy',
+        trigger='a',
+        dargs={'msg':'Hello World'}),
+    test_data(
+        label_en='dummy B',
+        formal_name='factory_Dummy',
+        trigger='b',
+        dargs={'msg':'Hello Factory'}),
+    test_data(
+        label_en='dummy C',
+        formal_name='factory_Dummy',
+        trigger='c',
+        dargs={'msg':'Hello Mom...'}),
+    test_data(
+        label_en='keyboard',
+        label_zw='鍵盤',
+        formal_name='factory_Keyboard',
+        trigger='k',
+        dargs={'layout':'en_us'}),
+    test_data(
+        label_en='trackpad',
+        label_zw='觸控板',
+        formal_name='hardware_Touchpad',
+        trigger='t'),
+]
+
+
+test_map = dict((test.label_en, test) for test in test_list)
+
+
+trigger_set = set(test.trigger for test in test_list)
+
+
+def step_init():
+    job.next_step([step_run_ui])
+    step_run_ui()
+
+
+def step_run_ui():
+    '''Launch the factory UI, which will then make decisions on which
+    tests to run in which order.  This is to support user driven
+    out-of-order test execution based on keyboard shortcuts.
+
+    For each test, a trigger (possibly None) is communicated to the
+    UI, which then replies with the test name and a count number that
+    becomes the autotest tag to allow repeated test execution while
+    preserving logs.
+
+    When the tests themselves run, they are expected to look for
+    (using the factory_test library) keyboard events that match test
+    switching triggers.  When a trigger happens, it should be written
+    to the _RESULT_FILE_PATH, which will be read after the test
+    completed and the result comminicated onwards to the UI.'''
+
+    status_file_path = job.autodir + '/results/default/status'
+    factory_ui_path = job.autodir + '/factory_ui'
+
+    ui = factory_ui(factory_ui_path)
+
+    ui.send(test_data_class_def)
+    ui.send(test_list)
+    ui.send(status_file_path)
+    ui.send(_FACTORY_LOG_PATH)
+
+    test_widget_size = ui.recv()
+    XXX_log('received test_widget_size = %s' % repr(test_widget_size))
+
+    # Send initial 'None' trigger.
+    ui.send(None)
+
+    while True:
+        next_test_name, count = ui.recv()
+
+        XXX_log('next_test_name = %s , count = %s' % (next_test_name, count))
+        if next_test_name is None:
+            XXX_log('factory testing completed')
+            break
+
+        test = test_map[next_test_name]
+        dargs = test.dargs
+        dargs.update({
+            'tag': str(count),
+            'test_widget_size': test_widget_size,
+            'trigger_set': trigger_set,
+            'result_file_path': _RESULT_FILE_PATH})
+
+        with open(_RESULT_FILE_PATH, 'w') as file:
+            file.write('None\n')
+        job.run_test(test.formal_name, **dargs)
+        with open(_RESULT_FILE_PATH, 'r') as file:
+            result = eval(file.readline())
+        ui.send(result)
