@@ -17,7 +17,7 @@ _DAILY_RATE_LIMIT = 8
 _MIN_UNIQUE_TIMES = 4
 _MOCK_CRASH_SENDING = '/tmp/mock-crash-sending'
 _PAUSE_FILE = '/tmp/pause-crash-sending'
-_SECONDS_SEND_SPREAD = 600
+_SECONDS_SEND_SPREAD = 3600
 _SYSTEM_CRASH_DIR = '/var/spool/crash'
 _USER_CRASH_DIR = '/home/chronos/user/crash'
 
