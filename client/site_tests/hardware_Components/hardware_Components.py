@@ -96,11 +96,14 @@ class hardware_Components(test.test):
         """
         # Ethernet is optional so mark it as not present. A human
         # operator needs to decide if this is acceptable or not.
-        if not os.path.exists('/sys/class/net/eth0'):
-            return self._not_present
-        part_id = utils.read_one_line('/sys/class/net/eth0/device/device')
-        vendor_id = utils.read_one_line('/sys/class/net/eth0/device/vendor')
-        return "%s:%s" % (vendor_id.replace('0x',''), part_id.replace('0x',''))
+        vendor_file = '/sys/class/net/eth0/device/vendor'
+        part_file = '/sys/class/net/eth0/device/device'
+        if os.path.exists(part_file) and os.path.exists(vendor_file):
+          vendor_id = utils.read_one_line(vendor_file).replace('0x', '')
+          part_id = utils.read_one_line(part_file).replace('0x', '')
+          return "%s:%s" % (vendor_id, part_id)
+        else:
+          return self._not_present
 
 
     def get_part_id_flash_chip(self):
@@ -149,9 +152,11 @@ class hardware_Components(test.test):
 
         for device in approved_devices:
             try:
-                utils.system(cmd % device)
-                self._system[cid] = [ device ]
-                return
+                output = utils.system_output(cmd % device)
+                # If it shows something, means found.
+                if output:
+                  self._system[cid] = [ device ]
+                  return
             except:
                 pass
         self._failures[cid] = [ 'No match' ]
