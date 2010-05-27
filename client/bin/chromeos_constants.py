@@ -12,7 +12,7 @@ LOGIN_PROFILE = USER_DATA_DIR+'/Default'
 # static--it includes a system-specific hash of the username whose vault is
 # mounted.  seano points out that this is no longer a constant, and we may want
 # to change the way tests dependent on this value work.
-CRYPTOHOME_DEVICE_REGEX = '^/home/.shadow/.*/vault$'
+CRYPTOHOME_DEVICE_REGEX = r'^/home/\.shadow/.*/vault$'
 CRYPTOHOME_INCOGNITO = 'incognito'
 CRYPTOHOME_MOUNT_PT = USER_DATA_DIR+'/user'
 
