@@ -41,7 +41,8 @@
 /home/\.shadow/[a-z0-9]+
 /home/\.shadow/[a-z0-9]+/master\.0\.salt
 /home/\.shadow/[a-z0-9]+/master\.0
-/home/\.shadow/[a-z0-9]+/image
+/home/\.shadow/[a-z0-9]+/vault
+/home/\.shadow/[a-z0-9]+/vault/.*
 
 # Autotest is running right now, so allow anything in there.
 /home/autotest
