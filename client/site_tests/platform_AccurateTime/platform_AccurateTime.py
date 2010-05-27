@@ -23,19 +23,19 @@ class platform_AccurateTime(test.test):
     def run_once(self):
         reader = site_log_reader.LogReader()
         reader.set_start_by_current()
-        # Check ntpd is currently running
-        if utils.system('pgrep ntpd', ignore_status=True) != 0:
-            raise error.TestError('NTP server was not already running')
-        # Stop it since we cannot force ntp requests unless its not running
-        utils.system('initctl stop ntp')
+        # Check if htpdate is currently running
+        if utils.system('pgrep htpdate', ignore_status=True) != 0:
+            raise error.TestError('htpdate server was not already running')
+        # Stop it since we cannot start another instance of htpdate
+        utils.system('initctl stop htpdate')
         try:
             # Now grab the current time and get its offset
-            cmd = '/usr/sbin/htpdate -u ntp:ntp -s -t -w www.google.com';
+            cmd = '/usr/sbin/htpdate -u ntp:ntp -s -t -w www.google.com'
             output = utils.system_output(cmd,retain_output=True)
             server_offset = self.__get_offset(output)
             logging.info("server time offset: %f" % server_offset)
 
             self.write_perf_keyval({'seconds_offset': abs(server_offset)})
         finally:
-            utils.system('initctl start ntp')
+            utils.system('initctl start htpdate')
             logging.debug('sys logs emitted: %s' % reader.get_logs())
