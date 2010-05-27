@@ -70,8 +70,11 @@ class ChromeSession(object):
 
     def start(self, args='', suid=True):
         if self._clean_state:
-            # Delete previous browser state if any
-            shutil.rmtree('/home/chronos/.config/chromium', ignore_errors=True)
+          for user in ('user/', ''):
+            for config_dir in ('google-chrome', 'chromium'):
+              # Delete previous browser state, if any.
+              shutil.rmtree('/home/chronos/%s.config/%s' % (user, config_dir),
+                            ignore_errors=True)
 
         # Open a new browser window as a background job
         cmd = '/opt/google/chrome/chrome --no-first-run ' + args
