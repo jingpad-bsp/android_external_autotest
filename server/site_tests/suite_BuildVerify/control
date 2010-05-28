@@ -131,10 +131,10 @@ client_at.run_test('network_DisableInterface',
                    iface_name='eth0', tag='eth0')
 client_at.run_test('network_DisableInterface',
                    iface_name='wlan0', tag='wlan0')
-# TODO(petkov): If Bluetooth is not available on the platform, this test will
-# fail. Fix this once we have a way to run platform-dependent tests.
-client_at.run_test('network_DisableInterface',
-                   iface_name='hci0', tag='hci0')
+
+if client_attributes.has_bluetooth:
+  client_at.run_test('network_DisableInterface',
+                     iface_name='hci0', tag='hci0')
 
 if client_attributes.has_80211n:
   client_at.run_test('network_WiFiCaps')

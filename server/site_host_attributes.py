@@ -59,6 +59,7 @@ except ImportError, e:
 
 _DEFAULT_ATTRIBUTES = [
     'has_80211n,True',
+    'has_bluetooth,True',
     'has_chromeos_firmware,False',
     'has_resume_bug,False',
     'has_ssd,True',
