@@ -7,7 +7,7 @@ from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.bin import site_cryptohome, site_ui_test
 from autotest_lib.client.common_lib import error
 
-class login_CryptohomeMountedIncognito(site_ui_test.UITest):
+class login_CryptohomeIncognitoMounted(site_ui_test.UITest):
     version = 1
 
     def run_once(self):

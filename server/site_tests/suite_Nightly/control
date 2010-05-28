@@ -36,7 +36,7 @@ TESTS = [
   'platform_FileNum',
   'platform_FileSize',
   'login_CryptohomeMounted',
-  'login_CryptohomeMountedIncognito',
+  'login_CryptohomeIncognitoMounted',
   'login_CryptohomeUnmounted',
   'realtimecomm_GTalkAudioBench',
   'realtimecomm_GTalkunittest',
