@@ -72,7 +72,6 @@ TESTS = [
   'hardware_MemoryTotalSize',
   'logging_KernelCrash',
   'logging_UserCrash',
-  'login_PamModuleLoadTest',
   'network_Ping',
   'platform_DaemonsRespawn',
   'platform_DiskIterate',
