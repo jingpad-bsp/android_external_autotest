@@ -167,7 +167,7 @@ class SecureHTTPServer(HTTPServer):
         ctx = SSL.Context(SSL.SSLv23_METHOD)
 
         ctx.use_privatekey_file(key_path)
-        ctx.use_certificate_file(cert_path)
+        ctx.use_certificate_chain_file(cert_path)
         self.socket = SSL.Connection(ctx, socket.socket(self.address_family,
                                                         self.socket_type))
         BaseServer.__init__(self, server_address, HandlerClass)

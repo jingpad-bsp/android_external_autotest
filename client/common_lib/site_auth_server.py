@@ -18,8 +18,8 @@ class GoogleAuthServer(object):
 
 
     def __init__(self,
-                 cert_path='/etc/login_trust_root.pem',
-                 key_path='/etc/mock_server.key',
+                 cert_path='/etc/fake_root_ca/mock_server.pem',
+                 key_path='/etc/fake_root_ca/mock_server.key',
                  port=443,
                  cl_responder=None,
                  it_responder=None,

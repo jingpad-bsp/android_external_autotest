@@ -96,14 +96,13 @@ for test in TESTS:
 
 
 # Run login tests, local first, then remote login
-client_at.run_test('desktopui_DoLogin',
-                   script='backdoor_creds.json',
-                   tag='local')
-client_at.run_test('desktopui_DoLogin',
-                   script='autox_script.json',
-                   tag='remote')
+client_at.run_test('login_Backdoor', creds='$backdoor')
 
-client_at.run_test('desktopui_FailedLogin', script='bad_creds.json')
+client_at.run_test('login_LoginSuccess')
+
+client_at.run_test('login_BadAuthentication')
+
+client_at.run_test('login_RemoteLogin')
 
 client_at.run_test('desktopui_KillRestart',
                    binary='^session_manager$',

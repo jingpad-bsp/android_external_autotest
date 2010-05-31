@@ -3,17 +3,16 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "desktopui_FailedLogin"
-PURPOSE = "Verify login will fail with invalid credentials."
-CRITERIA = "Test will fail if login is successful."
+NAME = "BAD_CREDS_LOGIN"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
-TEST_CLASS = "desktopui"
+TEST_CLASS = "login"
 TEST_TYPE = "client"
 
 DOC = """
 This tests that we fail on a login attempt with bad credentials  
 """
 
-job.run_test('desktopui_FailedLogin', script='bad_creds.json')
+job.run_test('login_BadAuthentication', creds='$default')
+
 
