@@ -28,7 +28,10 @@ class power_Resume(test.test):
 
 
     def __get_end_suspend_time(self):
-        return self.__get_last_msg_time('CPU [0-9] is now offline')
+        return self.__get_last_msg_time('Back to C!')
+
+    def __get_end_resume_time(self):
+        return self.__get_last_msg_time('Finishing wakeup.')
 
 
     def __is_iface_up(self, name):
@@ -67,14 +70,36 @@ class power_Resume(test.test):
         utils.suspend_to_ram()
 
         # Calculate the suspend/resume times
-        resume_time = utils.get_hwclock_seconds() - alarm_time
-        suspend_time = \
-            self.__get_end_suspend_time() - self.__get_start_suspend_time()
+        total_resume_time = utils.get_hwclock_seconds() - alarm_time
+
+        # Get suspend and resume times from /var/log/messages
+        start_suspend_time = self.__get_start_suspend_time()
+        end_suspend_time = self.__get_end_suspend_time()
+        end_resume_time = self.__get_end_resume_time()
+
+        # The order in which processes are un-frozen is indeterminate
+        # and therfore this test may get resumed before the system has gotten
+        # a chance to write the end resume message. Sleep for a short time
+        # to take care of this race.
+        count = 0
+        while end_resume_time < start_suspend_time and count < 5:
+            count += 1
+            time.sleep(1)
+            end_resume_time = self.__get_end_resume_time()
+
+        if count == 5:
+            raise error.TestError('Failed to find end resume time')
+
+        suspend_time = end_suspend_time - start_suspend_time
+        kernel_resume_time = end_resume_time - end_suspend_time
+        firmware_resume_time = total_resume_time - kernel_resume_time
 
         # Prepare the results
         results = {}
         results['seconds_system_suspend'] = suspend_time
-        results['seconds_system_resume'] = resume_time
+        results['seconds_system_resume'] = total_resume_time
+        results['seconds_system_resume_firmware'] = firmware_resume_time
+        results['seconds_system_resume_kernel'] = kernel_resume_time
         self.write_perf_keyval(results)
 
         # Finally, sanity check critical system components
