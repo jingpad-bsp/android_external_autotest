@@ -67,6 +67,7 @@ TESTS = [
   'desktopui_FlashSanityCheck',
   'desktopui_IBusTest',
   'desktopui_ScreenSaverUnlock',
+  'graphics_WindowManagerGraphicsCapture',
   'hardware_Backlight',
   'hardware_DiskSize',
   'hardware_MemoryTotalSize',
