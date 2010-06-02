@@ -1,0 +1,24 @@
+AUTHOR = "Chrome OS Team"
+NAME = "Factory Developer & Recovery Test"
+TIME = "SHORT"
+TEST_CATEGORY = "Factory"
+TEST_CLASS = "hardware"
+TEST_TYPE = "client"
+
+
+DOC = """
+This test checks whether recovery button and developer switch function 
+properly.  Test will display an D-housing image identifying where
+recovery button and developer switch are located.  It will highlight 
+when recovery has been pressed and released.  It will highlight when 
+developer switch has been switched & unswitched.  If successful, a brief
+'PASS' message will be displayed and the test will terminate.  If not,
+the test will fail with an 'ERROR' message that is displayed forever
+(unless the 'hwqual' argument is passed in).
+"""
+
+restart_ui = False
+if 'hwqual' in args:
+    restart_ui = True
+
+job.run_test('hardware_DeveloperRecovery', restart_ui=restart_ui)
