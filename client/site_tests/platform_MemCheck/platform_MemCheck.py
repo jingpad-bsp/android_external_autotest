@@ -23,8 +23,10 @@ class platform_MemCheck(test.test):
         errors = 0
         # The total memory will shrink if the system bios grabs more of the
         # reserved memory. We derived the value below by giving a small
-        # cushion to allow for more system BIOS usage of ram.
-        memref = 1017600
+        # cushion to allow for more system BIOS usage of ram. The memref value
+        # is driven by the supported netbook model with the least amount of
+        # total memory.
+        memref = 986392
         less_refs = ['MemTotal', 'MemFree', 'VmallocTotal']
         equal_refs = ['SwapCached', 'SwapTotal']
 

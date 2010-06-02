@@ -59,16 +59,16 @@ class platform_OSLimits(test.test):
         errors = 0
 
         # Max procs and max threads is dependent on total available memory.
-        # Consequently, the figures are derived from what value we expect the
-        # maximum available memory figure to be. The value we are using give us
-        # about a small cushion to allow for system BIOS to reserve more space.
-        # max_threads = MemTotal/64
-        # max_procs = MemTotal/128
+        # Consequently, the figures are derived from the total memory available.
+        # The formula we are using will be very close to the values the kernel
+        # provides for file_max, max_procs, and max_threads.
 
-        ref_min = {'file_max': 100424,
+        MemTotal = utils.read_from_meminfo('MemTotal')
+
+        ref_min = {'file_max': int(MemTotal/10.15),
                    'max_open': 1024,
-                   'max_procs': 7950,
-                   'max_threads': 15900,
+                   'max_procs': int(MemTotal/128.1),
+                   'max_threads': int(MemTotal/64.1),
                    'msg_max': 10,
                    'msgsize': 8192,
                    'msg_queue': 256,
