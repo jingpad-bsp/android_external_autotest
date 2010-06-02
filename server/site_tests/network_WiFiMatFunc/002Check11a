@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 { "name":"Check11a",
-  "steps":[             # Channel 64
+  "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
 
-    [ "config",         { "channel":"5320", "mode":"11a" } ],    # XXX freq
+    [ "config",         { "channel":"5240", "mode":"11a" } ],    # XXX freq
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
 

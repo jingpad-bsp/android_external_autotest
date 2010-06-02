@@ -1,0 +1,24 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# A python dictionary that describes the wifi testbed setup.
+#
+{
+  # client/netbook running Chrome OS
+  "client"      : {
+    "addr"      : "172.22.18.36"
+  },
+  # machine on router net for ping/netperf
+  "server"      : {
+#   "addr"      : "172.22.18.66",       # NB: not reachable
+    "wifi_addr" : "192.168.2.254"
+  },
+  # configurable wifi/router that can reached by ssh
+  "router"      : {
+    "addr"      : "172.22.18.102",
+    "phydev2"	: "phy0",
+    "phydev5"	: "phy1",
+    "wiredev"	: "eth0",
+  }
+}

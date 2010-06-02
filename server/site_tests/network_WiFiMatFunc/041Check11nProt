@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 { "name":"Check11nProtection",
-  "steps":[             # Channel 64
+  "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
-    [ "config",         { "channel":"5320", "mode":"11n", "htprotmode":"rts" } ],
+    [ "config",         { "channel":"5240", "mode":"11n", "htprotmode":"rts" } ],
     [ "connect",        { "security":"none" } ],
     # XXX associate legacy client
     [ "client_ping",    { "count":"10" } ],

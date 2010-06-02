@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 { "name":"CheckRxAmsdu",
-  "steps":[             # Channel 64
+  "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
     # XXX no guarantee that turning off ampdu will generate amsdu
-    [ "config",         { "channel":"5320", "ht":None, "puren":None,
+    [ "config",         { "channel":"5240", "ht":None, "puren":None,
                           "-ampdu":None } ],
     [ "connect",        { "security":"none" } ],
     [ "server_netperf", { "test":"TCP_STREAM" } ],

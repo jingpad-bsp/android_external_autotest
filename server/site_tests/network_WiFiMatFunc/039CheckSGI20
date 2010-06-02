@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 { "name":"CheckSGI20",
-  "steps":[             # Channel 64
+  "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
-    [ "config",         { "channel":"5320", "ht20":None, "puren":None,
+    [ "config",         { "channel":"5240", "ht20":None, "puren":None,
                           "shortgi":None } ],
     [ "connect",        { "security":"none" } ],
     [ "client_check_shortgi20", [ "true" ] ],

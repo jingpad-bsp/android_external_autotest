@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 { "name":"CheckRxAmpdu",
-  "steps":[             # Channel 64
+  "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
-    [ "config",         { "channel":"5320", "ht":None, "puren":None } ],
+    [ "config",         { "channel":"5240", "ht":None, "puren":None } ],
     [ "connect",        { "security":"none" } ],
     [ "server_netperf", { "test":"TCP_STREAM" } ],
     [ "destroy" ],

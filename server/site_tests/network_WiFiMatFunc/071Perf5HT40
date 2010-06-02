@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 { "name":"Perf5HT40",
-  "steps":[             # Channel 64
+  "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
 
-    [ "config",         { "channel":"5300", "ht40":None, "puren":None } ],
+    [ "config",         { "channel":"5240", "ht40":None, "puren":None } ],
     [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
     [ "client_netperf", { "test":"UDP_STREAM" } ],
