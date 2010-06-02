@@ -49,7 +49,7 @@ for the compiler module, as that has been deprecated.
 """
 
 __author__ = 'kdlucas@google.com (Kelly Lucas)'
-__version__ = '0.8.0'
+__version__ = '0.9.0'
 
 import compiler
 import fileinput
@@ -110,13 +110,17 @@ class DocCreator(object):
         """
 
         self.runpath = os.path.abspath('.')
-        src = os.path.join(self.runpath, '../../../../../')
-        srcdir = os.path.abspath(src)
+        autotest_root = os.path.join(self.runpath, '../../')
 
         parser = optparse.OptionParser(description=desc,
                                        prog='CreateDocs',
                                        version=__version__,
                                        usage='%prog')
+        parser.add_option('--autotest_dir',
+                          help='path to autotest root directory'
+                               ' [default: %default]',
+                          default=autotest_root,
+                          dest='autotest_dir')
         parser.add_option('--debug',
                           help='Debug level [default: %default]',
                           default='debug',
@@ -151,11 +155,6 @@ class DocCreator(object):
                                '[default: %default]',
                           default='README.txt',
                           dest='readme')
-        parser.add_option('--src',
-                          help='path to chromiumos source root'
-                               ' [default: %default]',
-                          default=srcdir,
-                          dest='src_chromeos')
         #TODO(kdlucas): add an all option that will parse all suites.
         parser.add_option('--suite',
                           help='Directory name of suite [default: %default]',
@@ -177,6 +176,7 @@ class DocCreator(object):
 
 
         # Make parameters a little shorter by making the following assignments.
+        self.autotest_root = self.options.autotest_dir
         self.debug = self.options.debug
         self.docversion = self.options.docversion
         self.doxyconf = self.options.doxyconf
@@ -186,23 +186,18 @@ class DocCreator(object):
         self.logfile = self.options.logfile
         self.readme = self.options.readme
         self.src_tests = self.options.src_tests
-        self.src = self.options.src_chromeos
         self.suite = self.options.suite
 
-        autotest_path = 'third_party/autotest/files'
-        sitetests = 'client/site_tests'
-        tests = 'client/tests'
         self.testcase = {}
 
-        self.site_dir = os.path.join(self.src, autotest_path, sitetests)
-        self.test_dir = os.path.join(self.src, autotest_path, tests)
+        self.site_dir = os.path.join(self.autotest_root, 'client', 'site_tests')
+        self.test_dir = os.path.join(self.autotest_root, 'client', 'tests')
         self.suite_dir = os.path.join(self.site_dir, self.suite)
 
         self.logger = self.SetLogger('docCreator')
         self.logger.debug('Executing with debug level: %s', self.debug)
         self.logger.debug('Writing to logfile: %s', self.logfile)
         self.logger.debug('New test directory: %s', self.src_tests)
-        self.logger.debug('Chrome OS src directory: %s', self.src)
         self.logger.debug('Test suite: %s', self.suite)
 
         self.suitename = {'suite_Factory': 'Factory Testing',
@@ -250,11 +245,12 @@ class DocCreator(object):
         suite_search = os.path.join(self.suite_dir, 'control.*')
         for suitefile in glob.glob(suite_search):
             self.logger.debug('Scanning %s for tests', suitefile)
-            try:
-                suite = compiler.parseFile(suitefile)
-            except SyntaxError, e:
-                self.logger.error('Error parsing: %s\n%s', (suitefile, e))
-                raise SystemExit
+            if os.path.isfile(suitefile):
+                try:
+                    suite = compiler.parseFile(suitefile)
+                except SyntaxError, e:
+                    self.logger.error('Error parsing: %s\n%s', (suitefile, e))
+                    raise SystemExit
 
             # Walk through each node found in the control file, which in our
             # case will be a call to a test. compiler.walk() will walk through
