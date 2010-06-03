@@ -106,6 +106,9 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             environ={'REQUEST_METHOD': 'GET'})
         split_url = urlparse.urlsplit(self.path)
         path = split_url[2]
+        # Strip off query parameters to ensure that the url path
+        # matches any registered events.
+        self.path = path
         args = urlparse.parse_qs(split_url[3])
         if path in self.server._url_handlers:
             self.server._url_handlers[path](self, args)
