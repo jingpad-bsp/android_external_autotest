@@ -7,7 +7,7 @@
 {
   # client/netbook running Chrome OS
   "client"      : {
-    "addr"      : "172.22.18.xxx"	# unassigned
+    "addr"      : "172.22.18.38"	# unassigned
   },
   # machine on router net for ping/netperf
   "server"      : {
