@@ -10,19 +10,19 @@ import dbus, subprocess, time
 
 class network_ConnmanIncludeExcludeMultiple(test.test):
     version = 1
-    connman_path = 'org.moblin.connman'
+    connman_path = 'org.chromium.flimflam'
 
 
     def get_interfaces(self):
         bus = dbus.SystemBus()
         connman = bus.get_object(self.connman_path, '/')
         connman_props = connman.GetProperties(
-            dbus_interface='org.moblin.connman.Manager')
+            dbus_interface='org.chromium.flimflam.Manager')
         interfaces = []
         for device in connman_props['Devices']:
             device_obj = bus.get_object(self.connman_path, device)
             device_props = device_obj.GetProperties(
-                dbus_interface='org.moblin.connman.Device')
+                dbus_interface='org.chromium.flimflam.Device')
             interfaces.append(str(device_props['Interface']))
         return interfaces
 

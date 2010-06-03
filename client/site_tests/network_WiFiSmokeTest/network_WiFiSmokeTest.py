@@ -22,8 +22,8 @@ class network_WiFiSmokeTest(test.test):
 
         bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         bus = dbus.SystemBus(mainloop=bus_loop)
-        manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-            "org.moblin.connman.Manager")
+        manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
+            "org.chromium.flimflam.Manager")
 
         try:
             path = manager.GetService(({
@@ -33,8 +33,8 @@ class network_WiFiSmokeTest(test.test):
                 "Security": security,
                 "Passphrase": psk }))
             service = dbus.Interface(
-                bus.get_object("org.moblin.connman", path),
-                "org.moblin.connman.Service")
+                bus.get_object("org.chromium.flimflam", path),
+                "org.chromium.flimflam.Service")
         except Exception, e:
             logging.info('FAIL(GetService): ssid %s exception %s', ssid, e)
             return 1

@@ -5,13 +5,13 @@ wait_timeout = sys.argv[2]
 
 bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus(mainloop=bus_loop)
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-    "org.moblin.connman.Manager")
+manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
+    "org.chromium.flimflam.Manager")
 
 mprops = manager.GetProperties()
 for path in mprops["Services"]:
-    service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-        "org.moblin.connman.Service")
+    service = dbus.Interface(bus.get_object("org.chromium.flimflam", path),
+        "org.chromium.flimflam.Service")
     sprops = service.GetProperties()
     if sprops.get("Name", None) != ssid:
         continue

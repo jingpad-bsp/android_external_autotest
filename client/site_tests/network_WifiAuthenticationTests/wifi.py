@@ -28,19 +28,19 @@ def CurrentNetwork():
   """
   bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
   bus = dbus.SystemBus(mainloop=bus_loop)
-  manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-      "org.moblin.connman.Manager")
+  manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
+      "org.chromium.flimflam.Manager")
 
   properties = manager.GetProperties()
   for path in properties["Devices"]:
-    device = dbus.Interface(bus.get_object("org.moblin.connman", path),
-              "org.moblin.connman.Device")
+    device = dbus.Interface(bus.get_object("org.chromium.flimflam", path),
+              "org.chromium.flimflam.Device")
     properties = device.GetProperties()
     if properties["Type"] not in ["wifi"]:
       continue
     for path in properties["Networks"]:
-      network = dbus.Interface(bus.get_object("org.moblin.connman", path),
-          "org.moblin.connman.Network")
+      network = dbus.Interface(bus.get_object("org.chromium.flimflam", path),
+          "org.chromium.flimflam.Network")
       properties = network.GetProperties()
       if properties["Connected"] == True and "WiFi.SSID" in properties:
         ssid = convert_ssid(properties["WiFi.SSID"])
@@ -55,7 +55,7 @@ def AddNetwork(ssid, passphrase="", encryption="none"):
   bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
   bus = dbus.SystemBus(mainloop=bus_loop)
   manager = dbus.Interface(
-      bus.get_object("org.moblin.connman", "/"), "org.moblin.connman.Manager")
+      bus.get_object("org.chromium.flimflam", "/"), "org.chromium.flimflam.Manager")
 
   if passphrase == "":
     security = "none"
@@ -68,7 +68,7 @@ def AddNetwork(ssid, passphrase="", encryption="none"):
           "Security": security,
           "Passphrase": passphrase }));
   service = dbus.Interface(
-      bus.get_object("org.moblin.connman", path), "org.moblin.connman.Service") 
+      bus.get_object("org.chromium.flimflam", path), "org.chromium.flimflam.Service") 
 
   status = ""
   wait_count = 0
@@ -101,20 +101,20 @@ def Scan():
   """
   bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
   bus = dbus.SystemBus(mainloop=bus_loop)
-  manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-      "org.moblin.connman.Manager")
+  manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
+      "org.chromium.flimflam.Manager")
 
   networks = {}
   properties = manager.GetProperties()
   for path in properties["Devices"]:
-    device = dbus.Interface(bus.get_object("org.moblin.connman", path),
-              "org.moblin.connman.Device")
+    device = dbus.Interface(bus.get_object("org.chromium.flimflam", path),
+              "org.chromium.flimflam.Device")
     properties = device.GetProperties()
     if properties["Type"] not in ["wifi"]:
       continue
     for path in properties["Networks"]:
-      network = dbus.Interface(bus.get_object("org.moblin.connman", path),
-          "org.moblin.connman.Network")
+      network = dbus.Interface(bus.get_object("org.chromium.flimflam", path),
+          "org.chromium.flimflam.Network")
       properties = network.GetProperties()
       # Skip hidden networks.
       if properties.has_key("WiFi.SSID") != True:
@@ -135,8 +135,8 @@ def IsOnline():
   """
   bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
   bus = dbus.SystemBus(mainloop=bus_loop)
-  manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-      "org.moblin.connman.Manager")
+  manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
+      "org.chromium.flimflam.Manager")
   properties = manager.GetProperties()
   return (properties["State"] == "online")
 

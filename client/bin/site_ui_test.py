@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error, site_ui
 from autotest_lib.client.common_lib import site_auth_server, site_dns_server
 
 # Workaround so flimflam.py doesn't need to be installed in the chroot.
-import_path = os.environ.get("SYSROOT", "") + "/usr/local/lib/connman/test"
+import_path = os.environ.get("SYSROOT", "") + "/usr/local/lib/flimflam/test"
 sys.path.append(import_path)
 import flimflam
 
@@ -103,14 +103,14 @@ class UITest(bin_test.test):
             self._flim.manager.EnableTechnology("wifi")
         except dbus.exceptions.DBusException, error:
             if (error._dbus_error_name !=
-                "org.moblin.connman.Error.AlreadyDisabled"):
+                "org.chromium.flimflam.Error.AlreadyDisabled"):
                 raise error
         try:
             self._flim.manager.DisableTechnology("ethernet")
             self._flim.manager.EnableTechnology("ethernet")
         except dbus.exceptions.DBusException, error:
             if (error._dbus_error_name !=
-                "org.moblin.connman.Error.AlreadyDisabled"):
+                "org.chromium.flimflam.Error.AlreadyDisabled"):
                 raise error
 
 

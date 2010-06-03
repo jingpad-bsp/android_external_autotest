@@ -8,8 +8,8 @@ config_timeout = sys.argv[5]
 
 bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus(mainloop=bus_loop)
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-    "org.moblin.connman.Manager")
+manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
+    "org.chromium.flimflam.Manager")
 
 try:
     path = manager.GetService(({
@@ -19,8 +19,8 @@ try:
         "Security": security,
         "Passphrase": psk }))
     service = dbus.Interface(
-        bus.get_object("org.moblin.connman", path),
-        "org.moblin.connman.Service")
+        bus.get_object("org.chromium.flimflam", path),
+        "org.chromium.flimflam.Service")
 except Exception, e:
     print "FAIL(GetService): ssid %s exception %s" %(ssid, e)
     sys.exit(1)
@@ -69,6 +69,7 @@ if status != "ready":
         print "TIMEOUT(config): ssid %s assoc %3.1f config %3.1f secs" \
             %(ssid, assoc_time, config_time)
         sys.exit(6)
-print "OK %3.1f %3.1f (assoc and config times in sec)" % (assoc_time, config_time)
+print "OK %3.1f %3.1f (assoc and config times in sec)" \
+    %(assoc_time, config_time)
 sys.exit(0)
 

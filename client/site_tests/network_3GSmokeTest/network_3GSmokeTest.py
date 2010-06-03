@@ -19,15 +19,16 @@ class network_3GSmokeTest(test.test):
     def FindCellularService(self):
         """Find the dbus cellular service object"""
 
-        manager = dbus.Interface(self.bus.get_object("org.moblin.connman", "/"),
-            "org.moblin.connman.Manager")
+        manager = dbus.Interface(
+            self.bus.get_object("org.chromium.flimflam", "/"),
+            "org.chromium.flimflam.Manager")
 
         properties = manager.GetProperties()
 
         for path in properties["Services"]:
-            service = dbus.Interface(self.bus.get_object("org.moblin.connman",
-                                                         path),
-                                     "org.moblin.connman.Service")
+            service = dbus.Interface(
+                self.bus.get_object("org.chromium.flimflam", path),
+                "org.chromium.flimflam.Service")
             service_properties = service.GetProperties()
 
             try:
@@ -137,7 +138,7 @@ class network_3GSmokeTest(test.test):
         try:
             service.Disconnect()
         except dbus.exceptions.DBusException, e:
-            if e.get_dbus_name() != 'org.moblin.connman.Error.InProgress':
+            if e.get_dbus_name() != 'org.chromium.flimflam.Error.InProgress':
                 logging.error("FAIL(Disconnect): exception %s", e)
                 return
 
