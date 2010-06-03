@@ -14,7 +14,13 @@ class firmware_VbootCrypto(test.test):
     version = 1
     preserve_srcdir = True
 
-    def setup(self):
+    # TODO(gauravsh): Disable this autotest until we have a way
+    # of running these in a 64-bit environment (since for x86, this
+    # code is run in 64-bit mode.
+    #
+    # This issue is tracked as Issue 3792 on the Chromium OS Bug Tracker.
+    # http://code.google.com/p/chromium-os/issues/detail?id=3792
+    def setup_Disabled(self):
         os.chdir(self.srcdir)
         utils.system('make clean all')
 

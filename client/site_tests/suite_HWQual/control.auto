@@ -32,7 +32,12 @@ job.run_test('platform_AesThroughput')
 # Firmware
 job.run_test('firmware_RomSize',
              constraints=['kb_system_rom_size >= 2048'])
-job.run_test('firmware_VbootCrypto', suite='benchmarks', tag='benchmarks')
+# TODO(gauravsh): firmware_VbootCrypto is disabled until there is a way of
+# running the auto test in 64-bit mode.
+#
+# This is tracked at http://crosbug.com/3792
+#
+# job.run_test('firmware_VbootCrypto', suite='benchmarks', tag='benchmarks')
 
 # System Memory
 job.run_test('hardware_MemoryTotalSize')
