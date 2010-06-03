@@ -230,12 +230,16 @@ class UITest(bin_test.test):
         Raises:
             Exceptions raised by site_login.attempt_login
         """
-
         if site_login.logged_in():
             site_login.attempt_logout(timeout=site_login._DEFAULT_TIMEOUT)
 
         site_login.attempt_login(username or self.username,
                                  password or self.password)
+
+        # Wait for the login process to complete.
+        self._authServer.wait_for_client_login()
+        self._authServer.wait_for_issue_token()
+        self._authServer.wait_for_test_over()
 
 
     def logout(self):

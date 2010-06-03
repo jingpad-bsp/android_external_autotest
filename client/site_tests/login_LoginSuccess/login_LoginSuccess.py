@@ -10,4 +10,4 @@ class login_LoginSuccess(site_ui_test.UITest):
 
 
     def run_once(self):
-        time.sleep(5) # Local login is so fast, it needs to be slowed down.
+        time.sleep(5)  # Local login is so fast, it needs to be slowed down.
