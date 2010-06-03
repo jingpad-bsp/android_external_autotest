@@ -77,10 +77,7 @@ def run_client_test(machine):
 
   finally:
     remote_power.set_power_on()
-    
-  # Run parameter-less simple client tests
-  for test in TESTS:
-    client_at.run_test(test)
+
   # Run jobs with specific parameters
 
 
