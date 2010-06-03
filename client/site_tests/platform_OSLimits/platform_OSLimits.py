@@ -58,17 +58,19 @@ class platform_OSLimits(test.test):
     def run_once(self):
         errors = 0
 
-        # Max procs and max threads is dependent on total available memory.
-        # Consequently, the figures are derived from the total memory available.
-        # The formula we are using will be very close to the values the kernel
-        # provides for file_max, max_procs, and max_threads.
+        # Max procs, max threads, and file max are dependent upon total memory.
+        # The kernel uses a formula similar to:
+        #   MemTotal-kb / 128 = max procs
+        #   MemTotal-kb / 64 = max threads
+        #   MemTotal-kb / 10 = file_max
+        # But note that MemTotal changes at the end of initialization.
+        # The values used below for these settings should give sufficient head
+        # room for usage and kernel allocation.
 
-        MemTotal = utils.read_from_meminfo('MemTotal')
-
-        ref_min = {'file_max': int(MemTotal/10.15),
+        ref_min = {'file_max': 50000,
                    'max_open': 1024,
-                   'max_procs': int(MemTotal/128.1),
-                   'max_threads': int(MemTotal/64.1),
+                   'max_procs': 5000,
+                   'max_threads': 10000,
                    'msg_max': 10,
                    'msgsize': 8192,
                    'msg_queue': 256,

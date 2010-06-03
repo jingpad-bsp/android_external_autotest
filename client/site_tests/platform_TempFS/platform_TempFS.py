@@ -21,20 +21,21 @@ class platform_TempFS(test.test):
     def run_once(self):
         errors = 0
         # The minimum available space we expect on temp filesystems.
-        # Since we are using the default, it should be at least 1/2 of total
-        # memory. We will also allow for 8mb of files in this fs.
-        allowance = 8388608
-        threshhold = (utils.read_from_meminfo('MemTotal')/2) - allowance
+        # TempFS allows 1/2 of Total Memory for each temp fs. Our threshold
+        # allows for 50% usage of space allocated before this test is run.
+
+        threshold = utils.memtotal()/4
         tempdirs = ['/dev', '/tmp', '/dev/shm', '/var/tmp', '/var/run',
                     '/var/lock']
 
         for dir in tempdirs:
             if os.path.isdir(dir):
-                avail = utils.freespace(dir)
-                if avail < threshhold:
+                # utils.freespace is in bytes, so convert to kb.
+                avail = utils.freespace(dir)/1024
+                if avail < threshold:
                     logging.error('Not enough available space on %s', dir)
                     logging.error('%d bytes is minimum, found %d bytes',
-                                  (threshhold, avail))
+                                  (threshold, avail))
                     errors += 1
             else:
                 logging.error('%s does not exist!' % dir)
