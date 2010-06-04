@@ -73,11 +73,10 @@
 /home/chronos/\.config
 /home/chronos/\.config/chromium
 /home/chronos/\.config/chromium/Default
-/home/chronos/\.config/chromium/Default/Thumbnails
-/home/chronos/\.config/chromium/Default/Web Data
 /home/chronos/\.config/chromium/Default/Archived History
 /home/chronos/\.config/chromium/Default/Archived History-journal
 /home/chronos/\.config/chromium/Default/Bookmarks
+/home/chronos/\.config/chromium/Default/Cache
 /home/chronos/\.config/chromium/Default/Cookies
 /home/chronos/\.config/chromium/Default/Current Tabs
 /home/chronos/\.config/chromium/Default/Current Session
@@ -88,8 +87,10 @@
 /home/chronos/\.config/chromium/Default/Local Storage
 /home/chronos/\.config/chromium/Default/Local Storage/.*
 /home/chronos/\.config/chromium/Default/Preferences
+/home/chronos/\.config/chromium/Default/Thumbnails
 /home/chronos/\.config/chromium/Default/Thumbnails-journal
 /home/chronos/\.config/chromium/Default/Visited Links
+/home/chronos/\.config/chromium/Default/Web Data
 /home/chronos/\.config/chromium/Default/Web Data-journal
 /home/chronos/\.config/chromium/SingletonLock
 /home/chronos/\.config/chromium/SingletonSocket
