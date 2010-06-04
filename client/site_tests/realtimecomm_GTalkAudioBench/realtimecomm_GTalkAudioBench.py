@@ -47,7 +47,6 @@ class realtimecomm_GTalkAudioBench(test.test):
         para = "--codec=%s encode source.wav output.rtp" % codec
         cmd = "cd %s && su chronos -c '%s %s'" % \
             (self.gips_path, self.gips, para)
-        utils.run(cmd)
         cpu_usage, stdout = utils.get_cpu_percentage(
             utils.system_output, cmd, retain_output=True)
         self.performance_results['utime_gtalk_%s_enc' % codec] = cpu_usage
@@ -56,7 +55,6 @@ class realtimecomm_GTalkAudioBench(test.test):
         para = "--codec=%s decode output.rtp output.wav" % codec
         cmd = "cd %s && su chronos -c '%s %s'" % \
             (self.gips_path, self.gips, para)
-        utils.run(cmd)
         cpu_usage, stdout = utils.get_cpu_percentage(
             utils.system_output, cmd, retain_output=True)
         self.performance_results['utime_gtalk_%s_dec' % codec] = cpu_usage
