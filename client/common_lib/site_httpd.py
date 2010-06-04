@@ -167,7 +167,7 @@ class HTTPListener(object):
 
 class SecureHTTPServer(HTTPServer):
     def __init__(self, server_address, HandlerClass, cert_path, key_path):
-        ctx = SSL.Context(SSL.SSLv23_METHOD)
+        ctx = SSL.Context(SSL.TLSv1_METHOD)
 
         ctx.use_privatekey_file(key_path)
         ctx.use_certificate_chain_file(cert_path)

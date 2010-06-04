@@ -20,7 +20,8 @@ class GoogleAuthServer(object):
     def __init__(self,
                  cert_path='/etc/fake_root_ca/mock_server.pem',
                  key_path='/etc/fake_root_ca/mock_server.key',
-                 port=443,
+                 ssl_port=443,
+                 port=80,
                  cl_responder=None,
                  it_responder=None,
                  ta_responder=None):
@@ -29,7 +30,7 @@ class GoogleAuthServer(object):
         self._token_auth = chromeos_constants.TOKEN_AUTH_URL
         self._test_over = '/webhp'
 
-        self._testServer = site_httpd.SecureHTTPListener(port=port,
+        self._testServer = site_httpd.SecureHTTPListener(port=ssl_port,
                                                          cert_path=cert_path,
                                                          key_path=key_path,
                                                          docroot=None)
@@ -46,19 +47,26 @@ class GoogleAuthServer(object):
         self._testServer.add_url_handler(self._client_login, cl_responder)
         self._testServer.add_url_handler(self._issue_token, it_responder)
         self._testServer.add_url_handler(self._token_auth, ta_responder)
-        self._testServer.add_url_handler(self._test_over,
-                                         self.__test_over_responder)
+
         self._client_latch = self._testServer.add_wait_url(self._client_login)
         self._issue_latch = self._testServer.add_wait_url(self._issue_token)
-        self._over_latch = self._testServer.add_wait_url(self._test_over)
+
+
+        self._testHttpServer = site_httpd.HTTPListener(port=port,
+                                                       docroot=None)
+        self._testHttpServer.add_url_handler(self._test_over,
+                                         self.__test_over_responder)
+        self._over_latch = self._testHttpServer.add_wait_url(self._test_over)
 
 
     def run(self):
         self._testServer.run()
+        self._testHttpServer.run()
 
 
     def stop(self):
         self._testServer.stop()
+        self._testHttpServer.stop()
 
 
     def wait_for_client_login(self, timeout=10):

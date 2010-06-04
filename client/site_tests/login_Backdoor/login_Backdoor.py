@@ -24,5 +24,10 @@ class login_Backdoor(site_ui_test.UITest):
         self.use_local_dns()
 
 
+    def ensure_login_complete(self):
+        """With the backoor, we won't do anything beyond ClientLogin."""
+        self._authServer.wait_for_client_login()
+
+
     def run_once(self):
         self._authServer.wait_for_client_login()

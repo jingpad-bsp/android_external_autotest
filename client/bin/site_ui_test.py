@@ -212,6 +212,14 @@ class UITest(bin_test.test):
         return creds.split(':')
 
 
+    def ensure_login_complete(self):
+        """Wait for the login process to complete.  If you want a different
+        termination condition, override this method.
+        """
+        self._authServer.wait_for_client_login()
+        self._authServer.wait_for_issue_token()
+        self._authServer.wait_for_test_over()
+
     def login(self, username=None, password=None):
         """Log in with a set of credentials.
 
@@ -235,11 +243,8 @@ class UITest(bin_test.test):
 
         site_login.attempt_login(username or self.username,
                                  password or self.password)
+        self.ensure_login_complete()
 
-        # Wait for the login process to complete.
-        self._authServer.wait_for_client_login()
-        self._authServer.wait_for_issue_token()
-        self._authServer.wait_for_test_over()
 
 
     def logout(self):
