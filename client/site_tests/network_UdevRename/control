@@ -1,0 +1,24 @@
+TIME="SHORT"
+AUTHOR = "The Chromium OS Authors"
+DOC = """
+Tests that eth0 / wlan0 network interfaces do not get renamed when
+either udev gets restarted or a device driver gets reloaded (proxy
+for device unplug-replug).
+"""
+
+NAME = 'network_UdevRename'
+PURPOSE = 'Verify that networkd devices do not get incremented by udev'
+CRITERIA = """
+Fails if udev process is not running or cannot be restarted.
+Fails if the list of network devices (as seen in /sys/class/net) changes
+after restsart of udev
+Fails if chosen network device driver (for a device named wlan* or eth*
+that does not have an IP address) does not successfully come back after
+an rmmod with "modprobe".
+Fails if the list of network devices changes after modprobe.
+"""
+TEST_CLASS = "network"
+TEST_CATEGORY = 'Functional'
+TEST_TYPE = 'client'
+
+job.run_test('network_UdevRename')
