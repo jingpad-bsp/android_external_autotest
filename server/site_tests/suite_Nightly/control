@@ -26,10 +26,12 @@ TESTS = [
   'desktopui_WindowManagerHotkeys',
   'disktest',
   'firmware_VbootCrypto',
+  'fsx',
   'gl_Bench',
   'graphics_GLAPICheck',
   'graphics_O3DSelenium',
   'graphics_SanAngeles',
+  'hackbench',
   'hardware_StorageFio',
 # TODO: Until ltp can pass on chromiumos
 #  'ltp',

@@ -35,6 +35,10 @@ class fsx(test.test):
 
 
     def run_once(self, dir=None, repeat=100000):
+        dep = 'libaio'
+        dep_dir = os.path.join(self.autodir, 'deps', dep)
+        self.job.install_pkg(dep, 'dep', dep_dir)
+
         args = '-N %s' % repeat
         if not dir:
             dir = self.tmpdir
