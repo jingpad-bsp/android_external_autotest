@@ -31,6 +31,8 @@ import time
 _FACTORY_LOG_PATH = '/var/log/factory.log'
 _RESULT_FILE_PATH = '/var/run/factory_test_result'
 
+_REBOOT_SEQ_ITERATIONS = 2
+
 
 def XXX_log(s):
     print >> sys.stderr, '--- XXX : ' + s
@@ -39,32 +41,6 @@ def XXX_log(s):
 # Hack to work around autotest's obsession with GRUB.
 job.bootloader.set_default = lambda x: None
 job.bootloader.boot_once = lambda x: None
-
-
-class factory_ui:
-    '''Support communication with the factory_ui process.  To simplify
-    surrounding code, this communication is an exchange of well formed
-    python expressions.  Basically send wraps its arguments in a call
-    to repr() and recv calls eval() to re-generate the python data.'''
-
-    def __init__(self, factory_ui_path):
-        self._proc = subprocess.Popen(factory_ui_path,
-                                      stdin=subprocess.PIPE,
-                                      stdout=subprocess.PIPE)
-
-    def __del__(self):
-        XXX_log('factory_ui __del__')
-        self._proc.terminate()
-        time.sleep(1)
-        if self._proc.poll() is None:
-            self._proc.kill()
-
-    def send(self, x):
-        print >> self._proc.stdin, repr(x)
-        self._proc.stdin.flush()
-
-    def recv(self):
-        return eval(self._proc.stdout.readline().rstrip())
 
 
 # This is the definition of the test_data class, which holds
@@ -81,8 +57,8 @@ class factory_ui:
 test_data_class_def = '''
 class test_data:
 
-    def __init__(self, label_en='', label_zw='', formal_name='',
-                 trigger=None, dargs={}):
+    def __init__(self, label_en='', label_zw='', formal_name=None,
+                 tag_prefix=None, trigger=None, automated_seq=[], dargs={}):
         self.__dict__.update(vars())
 
     def __repr__(self):
@@ -97,20 +73,33 @@ exec(test_data_class_def)
 
 test_list = [
     test_data(
-        label_en='dummy A',
+        label_en='start',
         formal_name='factory_Dummy',
         trigger='a',
-        dargs={'msg':'Hello World'}),
+        dargs={'quit_key':ord(' '),
+               'msg':'Hit SPACE to start testing...\n按 "空白鍵" 開始測試...'}),
     test_data(
-        label_en='dummy B',
-        formal_name='factory_Dummy',
-        trigger='b',
-        dargs={'msg':'Hello Factory'}),
+        label_en='run-in',
+        formal_name='step_runin',
+        automated_seq=[
+            test_data(
+                label_en='component validation',
+                formal_name='hardware_Components'),
+            test_data(
+                label_en='gpio switch check',
+                formal_name='hardware_GPIOSwitches'),
+            test_data(
+                label_en='system stress',
+                formal_name='hardware_SAT'),
+            test_data(
+                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
+                formal_name='factory_RebootStub')],
+        trigger='r'),
     test_data(
-        label_en='dummy C',
+        label_en='camera',
         formal_name='factory_Dummy',
         trigger='c',
-        dargs={'msg':'Hello Mom...'}),
+        dargs={'msg':'camera test, one day...'}),
     test_data(
         label_en='keyboard',
         label_zw='鍵盤',
@@ -124,19 +113,88 @@ test_list = [
         trigger='t'),
 ]
 
+for test in test_list:
+    test.tag_prefix = test.trigger
+    for subtest in test.automated_seq:
+        subtest.tag_prefix = test.formal_name
 
-test_map = dict((test.label_en, test) for test in test_list)
+def test_map_index(formal_name, tag_prefix):
+    return formal_name + '.' + tag_prefix
 
+test_map = dict((test_map_index(test.formal_name, test.tag_prefix), test)
+                for test in test_list)
 
 trigger_set = set(test.trigger for test in test_list)
 
 
+class factory_ui:
+    '''Support communication with the factory_ui process.  To simplify
+    surrounding code, this communication is an exchange of well formed
+    python expressions.  Basically send wraps its arguments in a call
+    to repr() and recv calls eval() to re-generate the python data.'''
+
+    def __init__(self, factory_ui_path):
+        self._proc = subprocess.Popen(factory_ui_path,
+                                      stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE)
+
+    def __del__(self):
+        XXX_log('control deleting factory_ui subprocess')
+        self._proc.terminate()
+        time.sleep(1)
+        if self._proc.poll() is None:
+            self._proc.kill()
+
+    def send(self, x=None):
+        print >> self._proc.stdin, repr(x)
+        self._proc.stdin.flush()
+
+    def send_cmd_next_test(self):
+        self.send(('next_test', None))
+
+    def send_cmd_switch_to(self, trigger):
+        self.send(('switch_to', trigger))
+
+    def recv(self):
+        return eval(self._proc.stdout.readline().rstrip())
+
+    def recv_target_test_update(self):
+        update = self.recv()
+        XXX_log('control recv target test %s' % repr(update))
+        formal_name, tag_prefix, count = update
+        test = test_map.get(test_map_index(formal_name, tag_prefix), None)
+        if test is not None:
+            test.count = count
+        return test
+
+
+def step_reboot_seq(i, tag):
+    if i < _REBOOT_SEQ_ITERATIONS:
+        job.next_step([step_reboot_seq, i + 1, tag])
+        XXX_log('rebooting (iteration %d)' % i)
+        time.sleep(5)
+        job.reboot()
+    else:
+        job.run_test('factory_RebootStub', tag=tag)
+        step_init()
+
+
+def step_runin(ui, tag):
+    job.run_test('hardware_Components',
+                 approved_db='qualified_components',
+                 tag=tag)
+    ui.send()
+    job.run_test('hardware_GPIOSwitches', tag=tag)
+    ui.send()
+    job.drop_caches_between_iterations = True
+    job.run_test('hardware_SAT', tag=tag)
+    job.drop_caches_between_iterations = False
+    ui.send()
+    step_reboot_seq(0, tag)
+
+
 def step_init():
-    job.next_step([step_run_ui])
-    step_run_ui()
 
-
-def step_run_ui():
     '''Launch the factory UI, which will then make decisions on which
     tests to run in which order.  This is to support user driven
     out-of-order test execution based on keyboard shortcuts.
@@ -165,28 +223,32 @@ def step_run_ui():
     test_widget_size = ui.recv()
     XXX_log('received test_widget_size = %s' % repr(test_widget_size))
 
-    # Send initial 'None' trigger.
-    ui.send(None)
+    ui.send_cmd_next_test()
+    test = ui.recv_target_test_update()
 
-    while True:
-        next_test_name, count = ui.recv()
+    while test is not None:
+        if test.automated_seq:
+            tag = '%s_%s' % (test.formal_name, test.count)
+            exec('%s(ui, "%s")' % (test.formal_name, tag))
+            result = None
+        else:
+            dargs = test.dargs
+            dargs.update({
+                'tag': '%s_%s' % (test.tag_prefix, test.count),
+                'test_widget_size': test_widget_size,
+                'trigger_set': trigger_set,
+                'result_file_path': _RESULT_FILE_PATH})
+            with open(_RESULT_FILE_PATH, 'w') as file:
+                file.write('None\n')
+            job.run_test(test.formal_name, **dargs)
+            with open(_RESULT_FILE_PATH, 'r') as file:
+                result = eval(file.readline())
 
-        XXX_log('next_test_name = %s , count = %s' % (next_test_name, count))
-        if next_test_name is None:
-            XXX_log('factory testing completed')
-            break
+        if result is not None:
+            ui.send_cmd_switch_to(result)
+        else:
+            ui.send_cmd_next_test()
 
-        test = test_map[next_test_name]
-        dargs = test.dargs
-        dargs.update({
-            'tag': str(count),
-            'test_widget_size': test_widget_size,
-            'trigger_set': trigger_set,
-            'result_file_path': _RESULT_FILE_PATH})
+        test = ui.recv_target_test_update()
 
-        with open(_RESULT_FILE_PATH, 'w') as file:
-            file.write('None\n')
-        job.run_test(test.formal_name, **dargs)
-        with open(_RESULT_FILE_PATH, 'r') as file:
-            result = eval(file.readline())
-        ui.send(result)
+    XXX_log('factory testing completed')

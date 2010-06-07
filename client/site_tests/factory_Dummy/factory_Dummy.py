@@ -28,8 +28,8 @@ class factory_Dummy(test.test):
         char = event.keyval in range(32,127) and chr(event.keyval) or None
         factory_test.XXX_log('key_release_callback %s(%s)' %
                              (event.keyval, char))
-        if event.keyval == gtk.keysyms.Q:
-            factory_test.XXX_log('factory_Dummy completed on Q')
+        if event.keyval == self.quit_key:
+            factory_test.XXX_log('factory_Dummy exiting...')
             gtk.main_quit()
         factory_test.test_switch_on_trigger(event)
         return True
@@ -39,16 +39,17 @@ class factory_Dummy(test.test):
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
     def run_once(self, test_widget_size=None, trigger_set=None,
-                 result_file_path=None, msg='factory_Dummy'):
+                 result_file_path=None, quit_key=ord('Q'), msg='factory_Dummy'):
 
         factory_test.XXX_log('factory_Dummy')
+
+        self.quit_key = quit_key
 
         factory_test.init(trigger_set=trigger_set,
                           result_file_path=result_file_path)
 
         label = gtk.Label(msg)
         label.modify_font(pango.FontDescription('courier new condensed 20'))
-        label.set_size_request(400, 70)
         label.set_alignment(0.5, 0.5)
         label.modify_fg(gtk.STATE_NORMAL, gtk.gdk.color_parse('light green'))
 
