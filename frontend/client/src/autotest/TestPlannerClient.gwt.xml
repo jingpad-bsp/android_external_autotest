@@ -4,6 +4,7 @@
   <inherits name='com.google.gwt.http.HTTP'/>
   
   <inherits name='com.google.gwt.gen2.Gen2'/>
+  <inherits name="com.google.gwt.resources.Resources" />
 
   <source path="planner"/>
   <source path="common"/>
@@ -14,4 +15,5 @@
   <stylesheet src='scrolltable.css'/>
   <stylesheet src='afeclient.css'/>
   <stylesheet src='tkoclient.css'/>
+  <stylesheet src='testplannerclient.css'/>
 </module>

@@ -9,6 +9,7 @@ class PlannerTestMixin(frontend_test_utils.FrontendTestMixin):
     _PLAN_NAME = 'plan'
     GOOD_STATUS_WORD = 'GOOD'
     RUNNING_STATUS_WORD = 'RUNNING'
+    FAIL_STATUS_WORD = 'FAIL'
 
     def _planner_common_setup(self):
         self._frontend_common_setup()
@@ -59,8 +60,7 @@ class PlannerTestMixin(frontend_test_utils.FrontendTestMixin):
                 plan=self._plan, alias='config', control_file=self._control,
                 execution_order=1, estimated_runtime=1)
         self._afe_job = self._create_job(hosts=(1,))
-        self._planner_host = models.Host.objects.create(plan=self._plan,
-                                                        host=self.hosts[0])
+        self._planner_host = self._plan.host_set.get(host=self.hosts[0])
         self._planner_job = models.Job.objects.create(
                 plan=self._plan, test_config=self._test_config,
                 afe_job=self._afe_job)
@@ -74,3 +74,5 @@ class PlannerTestMixin(frontend_test_utils.FrontendTestMixin):
                 word=self.RUNNING_STATUS_WORD)
         self._good_status = tko_models.Status.objects.create(
                 word=self.GOOD_STATUS_WORD)
+        self._fail_status = tko_models.Status.objects.create(
+                word=self.FAIL_STATUS_WORD)

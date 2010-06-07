@@ -47,6 +47,7 @@ nic_mode = user
 #nic_mode = tap
 nic_script = scripts/qemu-ifup
 address_index = 0
+run_tcpdump = yes
 
 # Misc
 profilers = kvm_stat
@@ -151,6 +152,8 @@ variants:
                 test_control_file = scrashme.control
             - hwclock:
                 test_control_file = hwclock.control
+            - rtc:
+                test_control_file = rtc.control
 
     - linux_s3:     install setup unattended_install
         type = linux_s3
@@ -214,6 +217,11 @@ variants:
                 dst_rsc_dir = "C:\"
                 autoit_entry = "C:\autoit\stub\stub.au3"
 
+    - iozone_windows: unattended_install
+        type = iozone_windows
+        iozone_cmd = "D:\IOzone\iozone.exe -a"
+        iozone_timeout = 3600
+
     - guest_s4:     install setup unattended_install
         type = guest_s4
         check_s4_support_cmd = grep -q disk /sys/power/state
@@ -222,6 +230,7 @@ variants:
         set_s4_cmd = echo disk > /sys/power/state
         kill_test_s4_cmd = pkill tcpdump
         services_up_timeout = 30
+        relogin_timeout = 240
 
     - nic_hotplug:  install setup unattended_install
         type = pci_hotplug
@@ -285,6 +294,8 @@ variants:
         catch_uuid_cmd = dmidecode | awk -F: '/UUID/ {print $2}'
 
     - ksm_overcommit:
+        pre_command = "[ -e /dev/ksm ] && true || modprobe ksm && ksmctl start 5000 50"
+        pre_command_critical = yes
         # Don't preprocess any vms as we need to change its params
         vms = ''
         image_snapshot = yes
@@ -297,14 +308,16 @@ variants:
         ksm_overcommit_ratio = 3
         # Max paralel runs machine
         ksm_parallel_ratio = 4
-        # Host memory reserve
-        ksm_host_reserve = 512
-        ksm_guest_reserve = 1024
+        # Host memory reserve (default - best fit for used mem)
+        # ksm_host_reserve = 512
+        # ksm_guest_reserve = 1024
         variants:
             - ksm_serial:
                 ksm_mode = "serial"
             - ksm_parallel:
                 ksm_mode = "parallel"
+    - iofuzz:
+        type = iofuzz
 
     # This unit test module is for older branches of KVM that use the
     # kvmctl test harness (such as the code shipped with RHEL 5.x)
@@ -337,6 +350,12 @@ variants:
                 case = stringio
             - vmexit:
                 case = vmexit
+
+    - ioquit:
+        type = ioquit
+        background_cmd = "for i in 1 2 3 4; do (nohup dd if=/dev/urandom of=/tmp/file bs=102400 count=10000000 &) done"
+        check_cmd = ps -a |grep dd |wc -l
+        login_timeout = 360
 
     - qemu_img:
         type = qemu_img
@@ -417,7 +436,7 @@ variants:
 variants:
     # Linux section
     - @Linux:
-        no autoit
+        no autoit iozone_windows
         shutdown_command = shutdown -h now
         reboot_command = shutdown -r now
         status_test_command = echo $?
@@ -566,6 +585,27 @@ variants:
                             tftp = images/f12-64/tftpboot
                             floppy = images/f12-64/floppy.img
 
+                    - 13.32:
+                        image_name = f13-32
+                        cdrom = linux/Fedora-13-i386-DVD.iso
+                        md5sum = 212fec517c2629b4b5eaf3662ac13136
+                        md5sum_1m = 4e1578a6ed5a6e7cd03b8fb074030746
+                        unattended_install:
+                            unattended_file = unattended/Fedora-13.ks
+                            tftp = images/f13-32/tftpboot
+                            floppy = images/f13-32/floppy.img
+
+                    - 13.64:
+                        image_name = f13-64
+                        cdrom = linux/Fedora-13-x86_64-DVD.iso
+                        md5sum = 6fbae6379cf27f36e1f2c7827ba7dc35
+                        md5sum_1m = 68821b9de4d3b5975d6634334e7f47a6
+                        unattended_install:
+                            unattended_file = unattended/Fedora-13.ks
+                            tftp = images/f13-64/tftpboot
+                            floppy = images/f13-64/floppy.img
+
+
             - DSL-4.2.5:
                 no setup dbench bonnie linux_s3
                 image_name = dsl-4.2.5
@@ -672,12 +712,23 @@ variants:
                 unattended_install:
                     pxe_image = "linux"
                     pxe_initrd = "initrd"
-                    extra_params += " -bootp /pxelinux.0 -boot n"
+                    extra_params += " -bootp /pxelinux.0 -boot cn"
                     kernel_args = "autoyast=floppy"
                     post_install_delay = 10
 
                 variants:
-                    - 11.64:
+                    - 11.0.32:
+                        image_name = sles11-32
+                        cdrom=linux/SLES-11-DVD-i586-GM-DVD1.iso
+                        md5sum = 4958d4dde2575666355c8a1c5858bab0
+                        md5sum_1m = 1f19d4eff5bcead2a3e5b8b4212b6796
+                        unattended_install:
+                            unattended_file = unattended/SLES-11.xml
+                            tftp = "images/sles11-32/tftpboot"
+                            floppy = "images/sles11-32floppy.img"
+                            pxe_dir = "boot/i386/loader"
+
+                    - 11.0.64:
                         image_name = sles11-64
                         cdrom=linux/SLES-11-DVD-x86_64-GM-DVD1.iso
                         md5sum = 50a2bd45cd12c3808c3ee48208e2586b
@@ -736,7 +787,7 @@ variants:
 
                 variants:
                     - 3.9.i386:
-                        no setup autotest linux_s3
+                        no setup autotest linux_s3 guest_s4 shutdown
                         image_name = rhel3-32
                         mem_chk_cmd = dmidecode | awk -F: '/Maximum Capacity/ {print $2}'
                         cdrom = linux/RHEL-3.9-i386-DVD.iso
@@ -750,7 +801,7 @@ variants:
                             floppy = images/rhel39-32/floppy.img
 
                     - 3.9.x86_64:
-                        no setup autotest linux_s3
+                        no setup autotest linux_s3 guest_s4 shutdown
                         image_name = rhel3-64
                         mem_chk_cmd = dmidecode | awk -F: '/Maximum Capacity/ {print $2}'
                         cdrom = linux/RHEL-3.9-x86_64-DVD.iso
@@ -1307,7 +1358,7 @@ variants:
 
 
 virtio|virtio_blk|e1000|balloon_check:
-    only Fedora.11 Fedora.12 Win2008 WinVista Win7 OpenSUSE.11 Ubuntu-8.10-server
+    only Fedora.11 Fedora.12 Win2008 WinVista Win7 OpenSUSE.11 SLES.11 Ubuntu-8.10-server
 
 
 variants:
@@ -1336,6 +1387,12 @@ variants:
     - hugepages:
         pre_command += " scripts/hugepage.py /mnt/kvm_hugepage;"
         extra_params += " -mem-path /mnt/kvm_hugepage"
+
+
+ioquit:
+    post_command_noncritical = no
+    only qcow2
+    only Linux
 
 
 variants:

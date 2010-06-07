@@ -7,8 +7,8 @@ from autotest_lib.frontend import setup_test_environment
 from autotest_lib.frontend.planner import planner_test_utils, model_attributes
 from autotest_lib.frontend.planner import rpc_interface, models, rpc_utils
 from autotest_lib.frontend.planner import failure_actions
-from autotest_lib.frontend.afe import model_logic
-from autotest_lib.frontend.afe import models as afe_models
+from autotest_lib.frontend.afe import model_logic, models as afe_models
+from autotest_lib.frontend.afe import rpc_interface as afe_rpc_interface
 from autotest_lib.frontend.tko import models as tko_models
 
 
@@ -161,6 +161,169 @@ class RpcInterfaceTest(unittest.TestCase,
                          [{'status': model_attributes.TestRunStatus.PASSED,
                            'tko_test_idx': tko_test.test_idx,
                            'hostname': self._hostname}])
+        self.god.check_playback()
+
+
+    def test_get_machine_view_data(self):
+        self._setup_active_plan()
+
+        host1_expected = {'machine': 'host1',
+                          'status': 'Running',
+                          'tests_run': [],
+                          'bug_ids': []}
+        host2_expected = {'machine': 'host2',
+                          'status': 'Running',
+                          'tests_run': [],
+                          'bug_ids': []}
+
+        expected = (host1_expected, host2_expected)
+        actual = rpc_interface.get_machine_view_data(plan_id=self._plan.id)
+        self.assertEqual(sorted(actual), sorted(expected))
+
+        # active TKO test
+        tko_test = tko_models.Test.objects.create(job=self._tko_job,
+                                                  test='test',
+                                                  machine=self._tko_machine,
+                                                  kernel=self._tko_kernel,
+                                                  status=self._running_status)
+        testrun = models.TestRun.objects.create(plan=self._plan,
+                                                test_job=self._planner_job,
+                                                host=self._planner_host,
+                                                tko_test=tko_test,
+                                                finalized=True)
+
+        host1_expected['tests_run'] = [{'test_name': 'test',
+                                        'status': self._running_status.word}]
+        actual = rpc_interface.get_machine_view_data(plan_id=self._plan.id)
+        self.assertEqual(sorted(actual), sorted(expected))
+
+        # TKO test complete, passed, with bug filed
+        tko_test.status = self._good_status
+        tko_test.save()
+        bug = models.Bug.objects.create(external_uid='bug')
+        testrun.bugs.add(bug)
+
+        host1_expected['tests_run'] = [{'test_name': 'test',
+                                        'status': self._good_status.word}]
+        host1_expected['bug_ids'] = ['bug']
+        actual = rpc_interface.get_machine_view_data(plan_id=self._plan.id)
+        self.assertEqual(sorted(actual), sorted(expected))
+
+
+    def test_generate_test_config(self):
+        control = {'control_file': object(),
+                   'is_server': object()}
+        test = 'test'
+        alias = 'test alias'
+        estimated_runtime = object()
+
+        self.god.stub_function(afe_rpc_interface, 'generate_control_file')
+        afe_rpc_interface.generate_control_file.expect_call(
+                tests=[test]).and_return(control)
+
+        result = rpc_interface.generate_test_config(
+                alias=alias, afe_test_name=test,
+                estimated_runtime=estimated_runtime)
+
+        self.assertEqual(result['alias'], 'test_alias')
+        self.assertEqual(result['control_file'], control['control_file'])
+        self.assertEqual(result['is_server'], control['is_server'])
+        self.assertEqual(result['estimated_runtime'], estimated_runtime)
+        self.god.check_playback()
+
+
+    def _test_get_overview_data_helper(self, stage):
+        self._setup_active_plan()
+        self.god.stub_function(rpc_utils, 'compute_test_config_status')
+        rpc_utils.compute_test_config_status.expect_call(
+                self._plan.host_set.get(host=self.hosts[0])).and_return(None)
+        rpc_utils.compute_test_config_status.expect_call(
+                self._plan.host_set.get(host=self.hosts[1])).and_return(None)
+
+        data = {'test_configs': [{'complete': 0, 'estimated_runtime': 1}],
+                'bugs': [],
+                'machines': [{'hostname': self.hosts[0].hostname,
+                              'status': 'Running',
+                              'passed': None},
+                             {'hostname': self.hosts[1].hostname,
+                              'status': 'Running',
+                              'passed': None}]}
+        if stage < 1:
+            return {self._plan.name: data}
+
+        tko_test = self._tko_job.test_set.create(kernel=self._tko_kernel,
+                                                 machine=self._tko_machine,
+                                                 status=self._fail_status)
+        test_run = self._plan.testrun_set.create(test_job=self._planner_job,
+                                                 tko_test=tko_test,
+                                                 host=self._planner_host)
+        self._afe_job.hostqueueentry_set.update(complete=True)
+        self._planner_host.complete = True
+        self._planner_host.save()
+        test_run.bugs.create(external_uid='bug')
+        data['bugs'] = ['bug']
+        data['test_configs'][0]['complete'] = 1
+        data['machines'][0]['status'] = 'Finished'
+        return {self._plan.name: data}
+
+
+    def test_get_overview_data_no_progress(self):
+        self.assertEqual(self._test_get_overview_data_helper(0),
+                         rpc_interface.get_overview_data([self._plan.id]))
+        self.god.check_playback()
+
+
+    def test_get_overview_data_one_finished_with_bug(self):
+        self.assertEqual(self._test_get_overview_data_helper(1),
+                         rpc_interface.get_overview_data([self._plan.id]))
+        self.god.check_playback()
+
+
+    def _test_get_test_view_data_helper(self, stage):
+        self._setup_active_plan()
+        self.god.stub_function(rpc_utils, 'compute_test_config_status')
+        hosts = self._plan.host_set.filter(host__in=self.hosts[0:2])
+        rpc_utils.compute_test_config_status.expect_call(
+                hosts[0], self._test_config).and_return(None)
+
+        data = {'total_machines': 2,
+                'machine_status': {'host1': None,
+                                   'host2': None},
+                'total_runs': 1,
+                'total_passes': 0,
+                'bugs': []}
+        if stage < 1:
+            rpc_utils.compute_test_config_status.expect_call(
+                    hosts[1], self._test_config).and_return(None)
+            return {self._test_config.alias: data}
+
+        fail_status = rpc_utils.ComputeTestConfigStatusResult.FAIL
+        rpc_utils.compute_test_config_status.expect_call(
+                hosts[1], self._test_config).and_return(fail_status)
+        tko_test = self._tko_job.test_set.create(kernel=self._tko_kernel,
+                                                 machine=self._tko_machine,
+                                                 status=self._fail_status)
+        test_run = self._plan.testrun_set.create(test_job=self._planner_job,
+                                                 tko_test=tko_test,
+                                                 host=self._planner_host)
+        self._afe_job.hostqueueentry_set.update(complete=True)
+
+        test_run.bugs.create(external_uid='bug')
+
+        data['machine_status']['host2'] = fail_status
+        data['bugs'] = ['bug']
+        return {self._test_config.alias: data}
+
+
+    def test_get_test_view_data_no_progress(self):
+        self.assertEqual(self._test_get_test_view_data_helper(0),
+                         rpc_interface.get_test_view_data(self._plan.id))
+        self.god.check_playback()
+
+
+    def test_get_test_view_data_one_failed_with_bug(self):
+        self.assertEqual(self._test_get_test_view_data_helper(1),
+                         rpc_interface.get_test_view_data(self._plan.id))
         self.god.check_playback()
 
 

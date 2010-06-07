@@ -2,9 +2,8 @@ package autotest.planner.triage;
 
 import autotest.common.ui.ExtendedListBox;
 import autotest.common.ui.SimplifiedList;
-import autotest.planner.resources.PlannerImageBundle;
+import autotest.planner.resources.PlannerClientBundle;
 
-import com.google.gwt.core.client.GWT;
 import com.google.gwt.event.dom.client.HasClickHandlers;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.CheckBox;
@@ -23,8 +22,7 @@ import com.google.gwt.user.client.ui.Widget;
 
 public class TriagePopupDisplay extends PopupPanel implements TriagePopup.Display {
     private Panel container = new VerticalPanel();
-    private Image closeX =
-            ((PlannerImageBundle) GWT.create(PlannerImageBundle.class)).close().createImage();
+    private Image closeX = new Image(PlannerClientBundle.INSTANCE.close().getURL());
     private TextBox labels = new TextBox();
     private TextArea keyvals = new TextArea();
     private TextBox bugs = new TextBox();
@@ -33,16 +31,17 @@ public class TriagePopupDisplay extends PopupPanel implements TriagePopup.Displa
     private ExtendedListBox testAction = new ExtendedListBox();
     private CheckBox invalidate = new CheckBox("Invalidate Test");
     private Button apply = new Button("Apply");
-    
+
     public TriagePopupDisplay() {
         super(false, true);
-        
+        super.setGlassEnabled(true);
+
         HorizontalPanel topPanel = new HorizontalPanel();
         topPanel.setWidth("100%");
         topPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
         topPanel.add(closeX);
         container.add(topPanel);
-        
+
         FlexTable bottomTable = new FlexTable();
         addRow(bottomTable, "Labels", labels);
         addRow(bottomTable, "Keyvals", keyvals);
@@ -52,12 +51,12 @@ public class TriagePopupDisplay extends PopupPanel implements TriagePopup.Displa
         addRow(bottomTable, "Test", testAction);
         addRow(bottomTable, null, invalidate);
         container.add(bottomTable);
-        
+
         container.add(apply);
-        
+
         setWidget(container);
     }
-    
+
     private void addRow(FlexTable table, String label, Widget field) {
         int row = table.getRowCount();
         if (label != null) {

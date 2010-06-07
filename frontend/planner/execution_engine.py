@@ -70,7 +70,9 @@ class ExecutionEngine(object):
         """
         while True:
             hosts = self._planner_rpc.run('get_hosts', plan_id=self._plan_id)
-            control = self._planner_rpc.run('get_atomic_group_control_file')
+            control = (self._planner_rpc.run('get_atomic_group_control_file') %
+                       dict(server=self._server, label_name=self._label_name,
+                            plan_id=self._plan_id))
 
             info = self._afe_rest.execution_info.get().execution_info
             info['control_file'] = control
@@ -82,15 +84,10 @@ class ExecutionEngine(object):
             entries = self._afe_rest.queue_entries_request.get(
                     hosts=hosts).queue_entries
 
-            keyvals = {'server': self._server,
-                       'label_name': self._label_name,
-                       'plan_id': self._plan_id}
-
             job_req = {'name' : name,
                        'owner': self._owner,
                        'execution_info' : info,
-                       'queue_entries' : entries,
-                       'keyvals' : keyvals}
+                       'queue_entries' : entries}
 
             try:
                 self._afe_rest.jobs.post(job_req)
@@ -202,15 +199,20 @@ class ExecutionEngine(object):
 
     def _run_job(self, hostname, test_config_id, cleanup_before_job,
                  cleanup_after_job, run_verify):
-        test_config = self._planner_rpc.run('get_test_config',
-                                            id=test_config_id)
+        if run_verify is None:
+            run_verify = True
+
+        test_config = self._planner_rpc.run('get_wrapped_test_config',
+                                            id=test_config_id,
+                                            hostname=hostname,
+                                            run_verify=run_verify)
 
         info = self._afe_rest.execution_info.get().execution_info
-        info['control_file'] = test_config['control_file']['contents']
-        info['is_server'] = test_config['is_server']
+        info['control_file'] = test_config['wrapped_control_file']
+        info['is_server'] = True
         info['cleanup_before_job'] = cleanup_before_job
         info['cleanup_after_job'] = cleanup_after_job
-        info['run_verify'] = run_verify
+        info['run_verify'] = False
 
         atomic_group_class = self._afe_rest.labels.get(
                 name=self._label_name).members[0].get().atomic_group_class.href

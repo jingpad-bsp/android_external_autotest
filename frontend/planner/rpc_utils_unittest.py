@@ -269,5 +269,117 @@ class RpcUtilsTest(unittest.TestCase,
         self.assertTrue(planner_job.requires_rerun)
 
 
+    def test_set_additional_parameters(self):
+        hostname_regex = 'host[0-9]'
+        param_type = model_attributes.AdditionalParameterType.VERIFY
+        param_values = {'key1': 'value1',
+                        'key2': []}
+
+        additional_parameters = {'hostname_regex': hostname_regex,
+                                 'param_type': param_type,
+                                 'param_values': param_values}
+
+        rpc_utils.set_additional_parameters(self._plan, [additional_parameters])
+
+        additional_parameters_query = (
+                models.AdditionalParameter.objects.filter(plan=self._plan))
+        self.assertEqual(additional_parameters_query.count(), 1)
+
+        additional_parameter = additional_parameters_query[0]
+        self.assertEqual(additional_parameter.hostname_regex, hostname_regex)
+        self.assertEqual(additional_parameter.param_type, param_type)
+        self.assertEqual(additional_parameter.application_order, 0)
+
+        values_query = additional_parameter.additionalparametervalue_set.all()
+        self.assertEqual(values_query.count(), 2)
+
+        value_query1 = values_query.filter(key='key1')
+        value_query2 = values_query.filter(key='key2')
+        self.assertEqual(value_query1.count(), 1)
+        self.assertEqual(value_query2.count(), 1)
+
+        self.assertEqual(value_query1[0].value, repr('value1'))
+        self.assertEqual(value_query2[0].value, repr([]))
+
+
+    def test_get_wrap_arguments(self):
+        hostname_regex = '.*'
+        param_type = model_attributes.AdditionalParameterType.VERIFY
+
+        additional_param = models.AdditionalParameter.objects.create(
+                plan=self._plan, hostname_regex=hostname_regex,
+                param_type=param_type, application_order=0)
+        models.AdditionalParameterValue.objects.create(
+                additional_parameter=additional_param,
+                key='key1', value=repr('value1'))
+        models.AdditionalParameterValue.objects.create(
+                additional_parameter=additional_param,
+                key='key2', value=repr([]))
+
+        actual = rpc_utils.get_wrap_arguments(self._plan, 'host', param_type)
+        expected = {'key1': repr('value1'),
+                    'key2': repr([])}
+
+        self.assertEqual(actual, expected)
+
+
+    def test_compute_test_config_status_scheduled(self):
+        self._setup_active_plan()
+        self._planner_job.delete()
+
+        self.assertEqual(
+                rpc_utils.compute_test_config_status(self._planner_host),
+                rpc_utils.ComputeTestConfigStatusResult.SCHEDULED)
+
+
+    def test_compute_test_config_status_running(self):
+        self._setup_active_plan()
+        self.god.stub_function(models.Job, 'active')
+        models.Job.active.expect_call().and_return(True)
+
+        self.assertEqual(
+                rpc_utils.compute_test_config_status(self._planner_host),
+                rpc_utils.ComputeTestConfigStatusResult.RUNNING)
+        self.god.check_playback()
+
+
+    def test_compute_test_config_status_good(self):
+        self._setup_active_plan()
+        tko_test = self._tko_job.test_set.create(kernel=self._tko_kernel,
+                                                 status=self._good_status,
+                                                 machine=self._tko_machine)
+        self._plan.testrun_set.create(test_job=self._planner_job,
+                                      tko_test=tko_test,
+                                      host=self._planner_host)
+        self._planner_host.complete = True
+        self._planner_host.save()
+        self.god.stub_function(models.Job, 'active')
+        models.Job.active.expect_call().and_return(False)
+
+        self.assertEqual(
+                rpc_utils.compute_test_config_status(self._planner_host),
+                rpc_utils.ComputeTestConfigStatusResult.PASS)
+        self.god.check_playback()
+
+
+    def test_compute_test_config_status_bad(self):
+        self._setup_active_plan()
+        tko_test = self._tko_job.test_set.create(kernel=self._tko_kernel,
+                                                 status=self._fail_status,
+                                                 machine=self._tko_machine)
+        self._plan.testrun_set.create(test_job=self._planner_job,
+                                      tko_test=tko_test,
+                                      host=self._planner_host)
+        self._planner_host.complete = True
+        self._planner_host.save()
+        self.god.stub_function(models.Job, 'active')
+        models.Job.active.expect_call().and_return(False)
+
+        self.assertEqual(
+                rpc_utils.compute_test_config_status(self._planner_host),
+                rpc_utils.ComputeTestConfigStatusResult.FAIL)
+        self.god.check_playback()
+
+
 if __name__ == '__main__':
     unittest.main()
