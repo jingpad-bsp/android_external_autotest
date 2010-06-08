@@ -76,7 +76,6 @@
 /home/chronos/\.config/chromium/Default/Archived History
 /home/chronos/\.config/chromium/Default/Archived History-journal
 /home/chronos/\.config/chromium/Default/Bookmarks
-/home/chronos/\.config/chromium/Default/Cache
 /home/chronos/\.config/chromium/Default/Cookies
 /home/chronos/\.config/chromium/Default/Current Tabs
 /home/chronos/\.config/chromium/Default/Current Session
@@ -133,6 +132,8 @@
 /home/chronos/\.pulse
 /home/chronos/\.pulse/.*
 /home/chronos/Default
+/home/chronos/Default/Cache
+/home/chronos/Default/Cache/.*
 /home/chronos/Downloads
 /home/chronos/Downloads/.*
 /home/chronos/Local State
