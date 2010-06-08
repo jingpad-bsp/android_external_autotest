@@ -3,7 +3,8 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.client.bin import site_ui_test
+from autotest_lib.client.bin import site_login, site_ui_test
+from autotest_lib.client.common_lib import error
 
 class login_RemoteLogin(site_ui_test.UITest):
     version = 1
@@ -13,8 +14,13 @@ class login_RemoteLogin(site_ui_test.UITest):
         pass
 
 
+    def ensure_login_complete(self):
+        if not site_login.logged_in():
+            raise error.TestFail("Did not log in.")
+
+
     def run_once(self):
-        time.sleep(5) # Local login is so fast, it needs to be slowed down.
+        pass
 
 
     def stop_authserver(self):
