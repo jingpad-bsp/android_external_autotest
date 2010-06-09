@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, os, shutil, socket, sys, time, utils
+import dbus, os, shutil, socket, sys, time
 from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.bin import site_login, site_utils, test as bin_test
 from autotest_lib.client.common_lib import error, site_ui
@@ -198,7 +198,6 @@ class UITest(bin_test.test):
             site_login.attempt_logout()
 
         (self.username, self.password) = self.__resolve_creds(creds)
-
         if self.auto_login:
             self.login(self.username, self.password)
 
@@ -214,12 +213,11 @@ class UITest(bin_test.test):
 
 
     def ensure_login_complete(self):
-        """Wait for the login process to complete.  If you want a different
+        """Wait for authentication to complete.  If you want a different
         termination condition, override this method.
         """
         self._authServer.wait_for_client_login()
-        self._authServer.wait_for_issue_token()
-        self._authServer.wait_for_test_over()
+
 
     def login(self, username=None, password=None):
         """Log in with a set of credentials.
