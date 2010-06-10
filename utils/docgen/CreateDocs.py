@@ -200,7 +200,8 @@ class DocCreator(object):
         self.logger.debug('New test directory: %s', self.src_tests)
         self.logger.debug('Test suite: %s', self.suite)
 
-        self.suitename = {'suite_Factory': 'Factory Testing',
+        self.suitename = {
+                          'suite_Factory': 'Factory Testing',
                           'suite_HWConfig': 'Hardware Configuration',
                           'suite_HWQual': 'Hardware Qualification',
                          }
@@ -424,7 +425,7 @@ class DocCreator(object):
             return
 
         for line in lines:
-            if class_def in line:
+            if class_def in line and docstring:
                 f.write(docstring)
                 f.write('\n')
             f.write(line)
