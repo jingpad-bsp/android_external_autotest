@@ -55,6 +55,7 @@ class LinuxRouter(object):
 
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
+        self.defssid = defssid
         self.hostapd = {
             'configured': False,
             'file': "/tmp/hostapd-test.conf",
@@ -143,6 +144,8 @@ class LinuxRouter(object):
             for k, v in params.iteritems():
                 if k == 'ssid':
                     conf['ssid'] = v
+                elif k == 'ssid_suffix':
+                    conf['ssid'] = self.defssid + v
                 elif k == 'channel':
                     freq = int(v)
 
@@ -293,3 +296,7 @@ class LinuxRouter(object):
             ignore_status=True)
 
         self.hostapd['configured'] = False
+
+
+    def get_ssid(self):
+        return self.hostapd['conf']['ssid']

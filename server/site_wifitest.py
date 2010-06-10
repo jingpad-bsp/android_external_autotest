@@ -196,7 +196,7 @@ class WiFiTest(object):
 
         result = self.client.run('python "%s" "%s" "%s" "%s" "%d" "%d"' %
             (script_client_file,
-            params.get('ssid', self.defssid),
+            params.get('ssid', self.wifi.get_ssid()),
             params.get('security', ''),
             params.get('psk', ''),
             params.get('assoc_timeout', self.deftimeout),

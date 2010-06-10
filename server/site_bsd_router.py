@@ -54,6 +54,7 @@ class BSDRouter(object):
         else:
             self.wiredif = params['wiredev']
         self.defssid = defssid;
+        self.ssid = defssid
         self.wlanif = None
         self.bridgeif = None
 
@@ -134,7 +135,8 @@ class BSDRouter(object):
         """
 
         if 'ssid' not in params:
-            params['ssid'] = self.defssid
+            params['ssid'] = self.defssid + params.get('ssid_suffix', '')
+        self.ssid = params['ssid']
 
         args = ""
         hostapd_args = ""
@@ -216,3 +218,6 @@ class BSDRouter(object):
         to fire oneshot MIC errors (first appeared in FreeBSD 8.1).
         """
         raise NotImplemented("force_mic_error")
+
+    def get_ssid(self):
+        return self.ssid
