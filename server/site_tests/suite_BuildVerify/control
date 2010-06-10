@@ -105,8 +105,6 @@ client_at.run_test('login_LoginSuccess')
 
 client_at.run_test('login_BadAuthentication')
 
-client_at.run_test('login_RemoteLogin')
-
 client_at.run_test('desktopui_KillRestart',
                    binary='^session_manager$',
                    tag='session')

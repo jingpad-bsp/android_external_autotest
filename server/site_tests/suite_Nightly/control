@@ -41,6 +41,7 @@ TESTS = [
   'login_CryptohomeMounted',
   'login_CryptohomeIncognitoMounted',
   'login_CryptohomeUnmounted',
+  'login_RemoteLogin',
   'realtimecomm_GTalkAudioBench',
   'realtimecomm_GTalkunittest',
   'unixbench',
