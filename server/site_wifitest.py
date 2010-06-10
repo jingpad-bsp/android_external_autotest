@@ -73,6 +73,9 @@ class WiFiTest(object):
         # NB: truncate SSID to 32 characters
         self.defssid = self.__get_defssid(router['addr'])[0:32]
 
+        defaults = config.get('defaults', {})
+        self.deftimeout = defaults.get('timeout', 30)
+        self.defpingcount = defaults.get('pingcount', 10)
         if 'type' not in router:
             # auto-detect router type
             if site_linux_router.isLinuxRouter(self.router):
@@ -196,8 +199,8 @@ class WiFiTest(object):
             params.get('ssid', self.defssid),
             params.get('security', ''),
             params.get('psk', ''),
-            params.get('assoc_timeout', 15),
-            params.get('config_timeout', 15))).stdout.rstrip()
+            params.get('assoc_timeout', self.deftimeout),
+            params.get('config_timeout', self.deftimeout))).stdout.rstrip()
 
         result_times = re.match("OK ([0-9\.])* ([0-9\.])* .*", result)
 
@@ -231,7 +234,7 @@ class WiFiTest(object):
         result = self.client.run('python "%s" "%s" "%d"' %
             (script_client_file,
             params.get('ssid', self.defssid),
-            params.get('wait_timeout', 15))).stdout.rstrip()
+            params.get('wait_timeout', self.deftimeout))).stdout.rstrip()
 
         print "%s: %s" % (self.name, result)
 
@@ -372,7 +375,7 @@ class WiFiTest(object):
     def client_ping(self, params):
         """ Ping the server from the client """
         ping_ip = params.get('ping_ip', self.server_wifi_ip)
-        count = params.get('count', 10)
+        count = params.get('count', self.defpingcount)
         # set timeout for 3s / ping packet
         result = self.client.run("ping %s %s" % \
             (self.__ping_args(params), ping_ip), timeout=3*int(count))
@@ -402,7 +405,7 @@ class WiFiTest(object):
             self.__unreachable("server_ping")
             return
         ping_ip = params.get('ping_ip', self.client_wifi_ip)
-        count = params.get('count', 10)
+        count = params.get('count', self.defpingcount)
         # set timeout for 3s / ping packet
         result = self.server.run("ping %s %s" % \
             (self.__ping_args(params), ping_ip), timeout=3*int(count))
