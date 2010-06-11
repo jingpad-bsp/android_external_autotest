@@ -2,16 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, os, shutil, socket, sys, time
+import dbus, logging, os, shutil, socket, sys, time
 from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.bin import site_login, site_utils, test as bin_test
 from autotest_lib.client.common_lib import error, site_ui
 from autotest_lib.client.common_lib import site_auth_server, site_dns_server
 
 # Workaround so flimflam.py doesn't need to be installed in the chroot.
-sys.path.append(os.environ.get("SYSROOT", "") + "/usr/lib/flimflam/test")
+sys.path.append(os.environ.get('SYSROOT', '') + '/usr/lib/flimflam/test')
 # NB: /usr/local is temporary for compatibility
-sys.path.append(os.environ.get("SYSROOT", "") + "/usr/local/lib/flimflam/test")
+sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
 import flimflam
 
 
@@ -91,8 +91,7 @@ class UITest(bin_test.test):
         try:
             return (socket.gethostbyname(hostname) == ip) == expected
         except socket.gaierror, error:
-            print error
-            pass
+            logging.error(error)
 
 
     def __force_config_change(self):
@@ -100,18 +99,28 @@ class UITest(bin_test.test):
         TODO(cmasone): take this out once ipconfig changes are realtime.
         """
         try:
-            self._flim.manager.DisableTechnology("wifi")
-            self._flim.manager.EnableTechnology("wifi")
+            self._flim.manager.DisableTechnology('wifi')
         except dbus.exceptions.DBusException, error:
             if (error._dbus_error_name !=
-                "org.chromium.flimflam.Error.AlreadyDisabled"):
+                'org.chromium.flimflam.Error.AlreadyDisabled'):
                 raise error
         try:
-            self._flim.manager.DisableTechnology("ethernet")
-            self._flim.manager.EnableTechnology("ethernet")
+            self._flim.manager.EnableTechnology('wifi')
         except dbus.exceptions.DBusException, error:
             if (error._dbus_error_name !=
-                "org.chromium.flimflam.Error.AlreadyDisabled"):
+                'org.chromium.flimflam.Error.AlreadyEnabled'):
+                raise error
+        try:
+            self._flim.manager.DisableTechnology('ethernet')
+        except dbus.exceptions.DBusException, error:
+            if (error._dbus_error_name !=
+                'org.chromium.flimflam.Error.AlreadyDisabled'):
+                raise error
+        try:
+            self._flim.manager.EnableTechnology('ethernet')
+        except dbus.exceptions.DBusException, error:
+            if (error._dbus_error_name !=
+                'org.chromium.flimflam.Error.AlreadyEnabled'):
                 raise error
 
 
@@ -122,15 +131,16 @@ class UITest(bin_test.test):
         self._dnsServer.run()
 
         self._flim = flimflam.FlimFlam(dbus.SystemBus())
-        for device in self._flim.GetObjectList("Device"):
+        for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
-            for path in properties["IPConfigs"]:
-                ipconfig = self._flim.GetObjectInterface("IPConfig", path)
-                ipconfig.SetProperty("NameServers", "127.0.0.1")
+            for path in properties['IPConfigs']:
+                ipconfig = self._flim.GetObjectInterface('IPConfig', path)
+                ipconfig.SetProperty('NameServers', '127.0.0.1')
                 ipconfig_properties = ipconfig.GetProperties()
-                print "[ %s ]" % (ipconfig.object_path)
+                logging.info('[ %s ]' % (ipconfig.object_path))
                 for key in ipconfig_properties.keys():
-                    print "        %s = %s" % (key, ipconfig_properties[key])
+                    logging.info('        %s = %s' %
+                                 (key, ipconfig_properties[key]))
         self.__force_config_change()
         site_utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
@@ -142,11 +152,11 @@ class UITest(bin_test.test):
         """Clear the custom DNS setting for all devices and force them to use
         DHCP to pull the network's real settings again.
         """
-        for device in self._flim.GetObjectList("Device"):
+        for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
-            for path in properties["IPConfigs"]:
-                ipconfig = self._flim.GetObjectInterface("IPConfig", path)
-                ipconfig.ClearProperty("NameServers")
+            for path in properties['IPConfigs']:
+                ipconfig = self._flim.GetObjectInterface('IPConfig', path)
+                ipconfig.ClearProperty('NameServers')
         self.__force_config_change()
         site_utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com',
