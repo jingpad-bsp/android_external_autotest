@@ -11,7 +11,7 @@ bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus(mainloop=bus_loop)
 manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
     "org.chromium.flimflam.Manager")
-
+connect_quirks = {}
 
 def DbusSetup():
     try:
@@ -46,9 +46,11 @@ def ResetService(init_state):
         return
     if init_state == 'ready':
         # flimflam is already connected.  Disconnect.
+        connect_quirks['already_connected'] = 1
         service.Disconnect()
     else:
         # Workaround to force flimflam out of error state and back to 'idle'
+        connect_quirks['clear_error'] = 1
         service.ClearProperty('Error')
 
     while wait_time < reset_timeout:
@@ -65,8 +67,15 @@ def ResetService(init_state):
 def TryConnect(assoc_time):
     init_assoc_time = assoc_time
     try:
-        init_state = service.GetProperties().get("State", None)
+        init_props = service.GetProperties()
+        init_state = init_props.get("State", None)
+        if init_state == "configuration" or init_state == "ready":
+            if assoc_time > 0:
+                # We connected in the time between the last failure and now
+                print>>sys.stderr, "Associated while we weren't looking!"
+                return (init_props, None)
     except dbus.exceptions.DBusException, e:
+        connect_quirks['lost_dbus'] = 1
         print>>sys.stderr, "We just lost the service handle!"
         return (None, 'DBUSFAIL')
 
@@ -76,6 +85,12 @@ def TryConnect(assoc_time):
 
     try:
         service.Connect()
+    except org.chromium.flimflam.Error.InProgress, e:
+        # We can hope that a ResetService in the next call will solve this
+        connect_quirks['in_progress'] = 1
+        print>>sys.stderr, "Previous connect is still in progress!"
+        time.sleep(.5)
+        return (None, 'FAIL')
     except Exception, e:
         print "FAIL(Connect): ssid %s exception %s" %(ssid, e)
         sys.exit(2)
@@ -88,6 +103,7 @@ def TryConnect(assoc_time):
         #    print>>sys.stderr, "time %3.1f state %s" % (assoc_time, status)
         if status == "failure":
             if assoc_time == init_assoc_time:
+                connect_quirks['fast_fail'] = 1
                 print>>sys.stderr, "failure on first try!  Sleep 5 seconds"
                 time.sleep(5)
             return (properties, 'FAIL')
@@ -143,10 +159,13 @@ for attempt in range(5):
 
 assoc_time = time.time() - assoc_start
 
+if attempt > 0:
+    connect_quirks['multiple_attempts'] = 1
+
 if failure_type is not None:
     print "%s(assoc): ssid %s assoc %3.1f secs props %s" \
         %(failure_type, ssid, assoc_time, ParseProps(properties))
-    DumpLogs()
+    DumpLogs(logs)
     sys.exit(3)
 
 # wait another config_timeout seconds to get an ip address
@@ -172,10 +191,10 @@ if status != "ready":
     if config_time >= config_timeout:
         print "TIMEOUT(config): ssid %s assoc %3.1f config %3.1f secs" \
             %(ssid, assoc_time, config_time)
-        DumpLogs()
+        DumpLogs(logs)
         sys.exit(6)
 
-print "OK %3.1f %3.1f (assoc and config times in sec)" \
-    %(assoc_time, config_time)
+print "OK %3.1f %3.1f %s (assoc and config times in sec, quirks)" \
+    %(assoc_time, config_time, str(connect_quirks.keys()))
 sys.exit(0)
 
