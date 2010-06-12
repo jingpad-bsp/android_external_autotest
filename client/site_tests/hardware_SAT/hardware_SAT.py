@@ -10,6 +10,13 @@ from autotest_lib.client.common_lib import error
 class hardware_SAT(test.test):
     version = 1
 
+    def target_is_x86(self):
+        result = utils.system_output('${CC} -dumpmachine', retain_output=True,
+                                     ignore_status=True)
+        x86_pattern = re.compile(r"^i.86.*")
+        return x86_pattern.match(result)
+
+
     # http://code.google.com/p/stressapptest/ 
     def setup(self, tarball='stressapptest-1.0.3_autoconf.tar.gz'):
         # clean
@@ -24,8 +31,15 @@ class hardware_SAT(test.test):
         cflags = '-I' + self.autodir + '/deps/libaio/include'
         # Add paths to libaio files.
         var_flags = 'LDFLAGS="' + ldflags + '"'
-        var_flags += ' CXXFLAGS="' + cflags + '"'
-        var_flags += ' CFLAGS="' + cflags + '"'
+        # TODO(fes): Remove this if there is a better way to detect that we are
+        # in a hardened build (or if this later properly picks up the -nopie
+        # flag from portage)
+        if os.path.exists('/etc/hardened') and self.target_is_x86():
+            var_flags += ' CXXFLAGS="-nopie ' + cflags + '"'
+            var_flags += ' CFLAGS="-nopie ' + cflags + '"'
+        else:
+            var_flags += ' CXXFLAGS="' + cflags + '"'
+            var_flags += ' CFLAGS="' + cflags + '"'
         var_flags += ' LIBS="-static -laio"'
 
         os.chdir(self.srcdir)
