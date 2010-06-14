@@ -33,9 +33,12 @@ def DbusSetup():
 
 def ParseProps(props):
     proplist = []
-    for p in props:
-        proplist.append("'%s': '%s'" % (str(p), str(props[p])))
-    return '{ %s }' % ', '.join(proplist)
+    if props is not None:
+        for p in props:
+            proplist.append("'%s': '%s'" % (str(p), str(props[p])))
+        return '{ %s }' % ', '.join(proplist)
+    else:
+        return 'None'
 
 
 def ResetService(init_state):
@@ -85,12 +88,16 @@ def TryConnect(assoc_time):
 
     try:
         service.Connect()
-    except org.chromium.flimflam.Error.InProgress, e:
-        # We can hope that a ResetService in the next call will solve this
-        connect_quirks['in_progress'] = 1
-        print>>sys.stderr, "Previous connect is still in progress!"
-        time.sleep(.5)
-        return (None, 'FAIL')
+    except dbus.exceptions.DBusException, e:
+        if e.get_dbus_name() ==  'org.chromium.flimflam.Error.InProgress':
+            # We can hope that a ResetService in the next call will solve this
+            connect_quirks['in_progress'] = 1
+            print>>sys.stderr, "Previous connect is still in progress!"
+            time.sleep(5)
+            return (None, 'FAIL')
+        # What is this exception?
+        print "FAIL(Connect): ssid %s DBus exception %s" %(ssid, e)
+        sys.exit(2)
     except Exception, e:
         print "FAIL(Connect): ssid %s exception %s" %(ssid, e)
         sys.exit(2)
