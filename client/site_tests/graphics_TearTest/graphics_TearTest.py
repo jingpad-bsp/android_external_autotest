@@ -42,7 +42,7 @@ class graphics_TearTest(site_ui_test.UITest):
                      desc='Uniform updates', result=''),
                 dict(cmd=exefile+' --tests teximage2d',
                      desc='glTexImage2D updates', result=''),
-                dict(cmd=exefile+' --tests pixmap',
+                dict(cmd=exefile+' --tests pixmap_to_texture',
                      desc='Pixmap to texture', result=''),
             ]
 
