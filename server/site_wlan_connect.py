@@ -143,7 +143,7 @@ def OpenLogs(*logfiles):
 def DumpLogs(logs):
     for log in logs:
         print>>sys.stderr, "Content of %s during our run:" % log['name']
-        print>>sys.stderr, "\n  )))  ".join(log['file'].readlines())
+        print>>sys.stderr, "  )))  ".join(log['file'].readlines())
 
     print>>sys.stderr, "iw dev wlan0 scan output: %s" % \
         subprocess.Popen(["iw", "dev", "wlan0", "scan"],
