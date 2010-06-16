@@ -95,6 +95,12 @@ def TryConnect(assoc_time):
             print>>sys.stderr, "Previous connect is still in progress!"
             time.sleep(5)
             return (None, 'FAIL')
+        if e.get_dbus_name() ==  'org.freedesktop.DBus.Error.UnknownMethod':
+            # We can hope that a ResetService in the next call will solve this
+            connect_quirks['lost_dbus_connect'] = 1
+            print>>sys.stderr, "Lost the service handle during Connect()!"
+            time.sleep(0.5)
+            return (None, 'FAIL')
         # What is this exception?
         print "FAIL(Connect): ssid %s DBus exception %s" %(ssid, e)
         sys.exit(2)
