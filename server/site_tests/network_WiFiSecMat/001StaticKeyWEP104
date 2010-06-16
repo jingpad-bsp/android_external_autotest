@@ -21,6 +21,7 @@
     [ "connect",        { "security":"wep",
                           "psk":"0:0123456789abcdef0123456789" } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
     [ "deconfig" ],
 
     # key index 1, 104-bit WEP
@@ -28,6 +29,7 @@
     [ "connect",        { "security":"wep",
                            "psk":"1:89abcdef0123456789abcdef01" } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
     [ "deconfig" ],
 
     # key index 2, 104-bit WEP
@@ -35,13 +37,15 @@
     [ "connect",        { "security":"wep",
                           "psk":"2:fedcba9876543210fedcba9876" } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
     [ "deconfig" ],
 
     # key index 3, 104-bit WEP
     [ "config",         { "deftxkey":"3" } ],
     [ "connect",        { "security":"wep",
-                          "psk":"3:109fedcba9876544321fedcba98" } ],
+                          "psk":"3:109fedcba987654321fedcba98" } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
 
     [ "destroy" ],
   ],
