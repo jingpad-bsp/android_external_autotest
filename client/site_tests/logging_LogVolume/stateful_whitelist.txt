@@ -217,12 +217,12 @@
 /var/log/cryptohomed.log
 # Created by emerge
 /var/log/emerge.log
-/var/log/faillog
+/var/log/faillog(|\.\d+)
 /var/log/hostap.log
 # This is created by laptop-mode/power syslogging
 /var/log/laptopmode.log
 /var/log/lastlog
-/var/log/messages
+/var/log/messages(|\.\d+)
 # This is an autotest artifact
 /var/log/messages.autotest_start
 # The whole metrics tree probably should be removed
@@ -236,7 +236,7 @@
 /var/log/portage
 /var/log/portage/.*
 /var/log/sandbox
-/var/log/secure
+/var/log/secure(|\.\d+)
 /var/log/session_manager
 # Existence of this indicates a graceful shutdown failure
 /var/log/shutdown_force_kill_processes
