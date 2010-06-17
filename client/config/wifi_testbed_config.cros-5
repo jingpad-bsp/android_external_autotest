@@ -7,7 +7,7 @@
 {
   # client/netbook running Chrome OS
   "client"      : {
-    "addr"      : "172.22.18.37"
+    "addr"      : "172.22.18.53"        # rfnb-cros-5
   },
   # machine on router net for ping/netperf
   "server"      : {
