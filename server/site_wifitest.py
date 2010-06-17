@@ -76,6 +76,7 @@ class WiFiTest(object):
         defaults = config.get('defaults', {})
         self.deftimeout = defaults.get('timeout', 30)
         self.defpingcount = defaults.get('pingcount', 10)
+        self.defwaittime = str(defaults.get('netperf_wait_time', 3))
         if 'type' not in router:
             # auto-detect router type
             if site_linux_router.isLinuxRouter(self.router):
@@ -503,6 +504,7 @@ class WiFiTest(object):
             template += ", bidi=True"
         if 'time' in params:
             template += ", test_time=%s" % params['time']
+        template += ", wait_time=%s" % params.get('wait_time', self.defwaittime)
 
         # add a tag to distinguish runs when multiple tests are run
         if 'tag' in params:
