@@ -40,8 +40,7 @@ class logging_LogVolume(site_ui_test.UITest):
                 }
 
         mount_point = '/mnt/stateful_partition'
-        find_handle = subprocess.Popen(['find',
-                                        mount_point],
+        find_handle = subprocess.Popen(['find', mount_point],
                                        stdout=subprocess.PIPE)
         stateful_files = 0
         # Count number of files that were found but not whitelisted.
@@ -51,7 +50,7 @@ class logging_LogVolume(site_ui_test.UITest):
         for filename in find_handle.stdout.readlines():
             filename = filename.strip()
             try:
-                bytes = os.stat(filename)[stat.ST_SIZE]
+                bytes = os.lstat(filename)[stat.ST_SIZE]
             except OSError, e:
                 bytes = 0
 

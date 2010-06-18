@@ -19,7 +19,6 @@
 # space used for non-dev devices.
 /dev_image
 /dev_image/.*
-
 /etc
 /etc/omaha_id
 /etc/ssh
@@ -28,7 +27,6 @@
 /etc/ssh/ssh_host_rsa_key.pub
 /etc/ssh/ssh_host_rsa_key
 /etc/localtime
-
 /home
 /home/\.shadow
 /home/\.shadow/skel
@@ -43,11 +41,9 @@
 /home/\.shadow/[a-z0-9]+/master\.0
 /home/\.shadow/[a-z0-9]+/vault
 /home/\.shadow/[a-z0-9]+/vault/.*
-
 # Autotest is running right now, so allow anything in there.
 /home/autotest
 /home/autotest/.*
-
 /home/chronos
 /home/chronos/\.Google
 /home/chronos/\.Google/Google Talk Plugin
@@ -57,7 +53,6 @@
 /home/chronos/\.adobe/Flash_Player
 /home/chronos/\.adobe/Flash_Player/AssetCache
 /home/chronos/\.adobe/Flash_Player/AssetCache/.*
-
 # bash history should only exist for development users
 /home/chronos/\.bash_history
 /home/chronos/\.bluetooth
@@ -111,8 +106,6 @@
 /home/chronos/\.gconf/desktop/ibus/general/%gconf.xml
 /home/chronos/\.gconfd
 /home/chronos/\.gconfd/saved_state
-
-# These scare me a little:
 /home/chronos/\.macromedia
 /home/chronos/\.macromedia/Flash_Player
 /home/chronos/\.macromedia/Flash_Player/macromedia.com
@@ -122,7 +115,6 @@
 /home/chronos/\.macromedia/Flash_Player/macromedia.com/support/flashplayer/sys/.*
 /home/chronos/\.macromedia/Flash_Player/#SharedObjects
 /home/chronos/\.macromedia/Flash_Player/#SharedObjects/.*
-
 /home/chronos/\.pki
 /home/chronos/\.pki/nssdb
 /home/chronos/\.pki/nssdb/cert9.db
@@ -137,11 +129,18 @@
 /home/chronos/Downloads
 /home/chronos/Downloads/.*
 /home/chronos/Local State
-
+/home/chronos/Safe Browsing Bloom
+/home/chronos/Safe Browsing Bloom-journal
+/home/chronos/Safe Browsing Bloom Filter 2
+/home/chronos/SingletonLock
+/home/chronos/SingletonSocket
+# Chrome logs when not logged in, and before being moved to
+# to /var/log/chrome_old_logs.  Cleaned but not by system-wide
+# cleanup script.
+/home/chronos/chrome_log_\d{8}+-\d{6}
 # All user images are stored pngs with the user email address in
 # the name.
 /home/chronos/.*@.*\.\*_image
-
 /home/chronos/user
 /home/chronos/user/\.config
 /home/chronos/user/\.config/chromium
@@ -152,24 +151,16 @@
 /home/chronos/user/\.pki/nssdb
 /home/chronos/user/\.pki/nssdb/.+.db
 /home/chronos/user/\.pki/nssdb/pkcs11.txt
-# Crash dumps involving processes run as "chronos" user
+# Crash dumps involving processes run as "chronos" user.
 /home/chronos/user/crash
 /home/chronos/user/crash/.*\.dmp
 /home/chronos/user/log
-# These are dated files which need to be cleaned up
+# Window manager file when logged in - cleaned.
 /home/chronos/user/log/chromeos-wm\.\d{8}-\d{6}
 /home/chronos/user/log/chromeos-wm\.LATEST
-/home/chronos/Safe Browsing Bloom
-/home/chronos/Safe Browsing Bloom-journal
-/home/chronos/Safe Browsing Bloom Filter 2
-/home/chronos/SingletonLock
-/home/chronos/SingletonSocket
-
 /lost\+found
-
 # Everything under /usr/local is expected to be part of developer tools.
 /usr/local/.*
-
 /var
 /var/cache
 /var/cache/connman
@@ -177,24 +168,19 @@
 /var/cache/revdep-rebuild
 /var/cache/ldconfig
 /var/cache/ldconfig/.*
-
 # /var/cache/edb is metadata created on the device when emerging and
 # is only populated on developer machines.
 /var/cache/edb
 /var/cache/edb/.*
-
 # TODO(kmixter): Track down if these are cleaned up.
 /var/cache/server-[0-9A-Z]+.xkm
-
 /var/cache/google_offline_login_cache.txt
 /var/cache/machine-id
-
 # /var/db/pkg is used for emerging on the device and is only populated
 # on developer machines.
 /var/db
 /var/db/pkg
 /var/db/pkg/.*
-
 /var/empty
 # Be completely lenient on application state in /var/lib as it will
 # grow as rootfs base packages are added and expected to be small.
@@ -210,22 +196,25 @@
 /var/log/Xorg.1.log.old
 /var/log/boot.log
 /var/log/build
+# Chrome logs when log logged in - cleaned.
+/var/log/chrome_old_logs(|/.*)
 /var/log/cron
 /var/log/cryptohome.log
 /var/log/cryptohome.stderr.log
 /var/log/cryptohome.stdout.log
 /var/log/cryptohomed.log
-# Created by emerge
+# Created by emerge.
 /var/log/emerge.log
 /var/log/faillog(|\.\d+)
 /var/log/hostap.log
-# This is created by laptop-mode/power syslogging
+# This is created by laptop-mode/power syslogging.
 /var/log/laptopmode.log
 /var/log/lastlog
+# libcros logs - cleaned.
+/var/log/libcros_log_\d{8}-\d{6}
 /var/log/messages(|\.\d+)
-# This is an autotest artifact
+# This is an autotest artifact.
 /var/log/messages.autotest_start
-# The whole metrics tree probably should be removed
 /var/log/metrics
 /var/log/metrics/autotest-events
 /var/log/metrics/disk_shutdown_start
@@ -235,19 +224,21 @@
 /var/log/metrics/uptime_shutdown_start
 /var/log/portage
 /var/log/portage/.*
+# Power manage logs - cleaned.
+/var/log/power_manager(|/.*)
 /var/log/sandbox
 /var/log/secure(|\.\d+)
 /var/log/session_manager
-# Existence of this indicates a graceful shutdown failure
+# Existence of this indicates a graceful shutdown failure.
 /var/log/shutdown_force_kill_processes
-# Existence of this indicates cryptohome umount failure
+# Existence of this indicates cryptohome umount failure.
 /var/log/shutdown_cryptohome_umount_failure
-# Existence of this indicates /mnt/stateful umount failure
+# Existence of this indicates /mnt/stateful umount failure.
 /var/log/shutdown_stateful_umount_failure
 /var/log/softwareupdate.log
 /var/log/update_engine.log
 # These log files are generated by window manager during login process as
-# opposed to those in cryptohome while logged in.
+# opposed to those in cryptohome while logged in.  Cleaned.
 /var/log/window_manager
 /var/log/window_manager/chromeos-wm\.\d{8}-\d{6}
 /var/log/window_manager/chromeos-wm\.LATEST
@@ -257,7 +248,7 @@
 /var/run/.*
 /var/spool
 /var/spool/mail
-# Crash dumps involving processes run as other than "chronos" user
+# Crash dumps involving processes run as other than "chronos" user.
 /var/spool/crash
 /var/spool/crash/.*\.dmp
 /var/spool/cron
