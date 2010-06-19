@@ -60,7 +60,7 @@ class ChromiumOSHost(base_classes.Host):
         statefuldev_cmd = ' '.join([STATEFULDEV_UPDATER, update_url])
         logging.info(statefuldev_cmd)
         try:
-            self.run(statefuldev_cmd, timeout=300)
+            self.run(statefuldev_cmd, timeout=1200)
         except error.AutoservRunError, e:
             raise ChromiumOSError('stateful_update failed on %s',
                                   self.hostname)
@@ -73,7 +73,7 @@ class ChromiumOSHost(base_classes.Host):
         logging.info(autoupdate_cmd)
         try:
            self.run('rm -f /tmp/mememto_complete') # Ignore previous updates.
-           self.run(autoupdate_cmd, timeout=600)
+           self.run(autoupdate_cmd, timeout=1200)
         except error.AutoservRunError, e:
             raise ChromiumOSError('OS Updater failed on %s', self.hostname)
 
