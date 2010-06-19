@@ -136,7 +136,7 @@ class hardware_StorageFio(test.test):
         return self.__parse_fio(fio.stdout)
 
 
-    def initialize(self, dev=''):
+    def initialize(self, dev='', filesize=1024*1024*1024):
         if dev in ['', '/dev/sda', '/dev/mmcblk0', '/dev/mmcblk1']:
             self.__find_free_root_partition()
         else:
@@ -148,8 +148,8 @@ class hardware_StorageFio(test.test):
         self.__get_file_size()
         self.__get_device_description()
 
-        # Restrict test to using 1GiB
-        self.__filesize = min(self.__filesize, 1024 * 1024 * 1024)
+        # Restrict test to use a given file size, default 1GiB
+        self.__filesize = min(self.__filesize, filesize)
 
 
     def run_once(self, dev=''):
