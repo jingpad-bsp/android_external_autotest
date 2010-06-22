@@ -113,6 +113,11 @@ test_list = [
         formal_name='factory_Touchpad',
         trigger='t'),
     test_data(
+        label_en='devrec',
+        formal_name='factory_DeveloperRecovery',
+        trigger='d',
+        dargs={'layout':'devrec'}),
+    test_data(
         label_en='run-in',
         formal_name='step_runin',
         automated_seq=[
