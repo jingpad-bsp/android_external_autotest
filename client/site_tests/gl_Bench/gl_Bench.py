@@ -2,10 +2,25 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
+import re
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import error, site_ui, utils
+
+def md5_file(filename):
+  return utils.system_output('md5sum ' + filename).split()[0]
+
+
+def get_board_id():
+  glxinfo_output = utils.system_output(site_ui.xcommand('glxinfo'))
+  match = re.search('OpenGL vendor string: (.*)', glxinfo_output)
+  vendor = match.group(1) if match else 'unknown vendor'
+  match = re.search('OpenGL renderer string: (.*)', glxinfo_output)
+  renderer = match.group(1) if match else 'unknown renderer'
+  return (vendor + ' / ' + renderer).strip()
+
 
 class gl_Bench(test.test):
   version = 1
@@ -20,6 +35,21 @@ class gl_Bench(test.test):
       dep_dir = os.path.join(self.autodir, 'deps', dep)
       self.job.install_pkg(dep, 'dep', dep_dir)
 
+      checksum_table = {}
+      checksums_filename = os.path.join(self.autodir,
+                                        'deps/glbench/src/checksums')
+      checksums = eval(utils.read_file(checksums_filename))
+
+      board_id = get_board_id()
+      logging.info("Running on:", board_id)
+      checksum_table = checksums.get(board_id, {})
+
+      if checksum_table:
+        options += ' -save'
+        out_dir = os.path.join(self.autodir, 'deps/glbench/src/out')
+      else:
+        error.TestFail("No checksums found for this board.")
+
       exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
       cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
       self.results = utils.system_output(cmd, retain_output=True)
@@ -29,6 +59,16 @@ class gl_Bench(test.test):
           if keyval.strip().startswith('#'):
               continue
           key, val = keyval.split(':')
-          keyvals[key.strip()] = float(val)
+          testname = key.strip()
+
+          if testname in checksum_table:
+            if checksum_table[testname] == md5_file(
+                os.path.join(out_dir, testname)):
+              keyvals[testname] = float(val)
+            else:
+              keyvals[testname] = float('nan')
+          else:
+            logging.info('No checksum found for test', testname)
+            keyvals[testname] = float(val)
 
       self.write_perf_keyval(keyvals)
