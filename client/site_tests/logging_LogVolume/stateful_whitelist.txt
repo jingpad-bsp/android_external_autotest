@@ -137,7 +137,7 @@
 # Chrome logs when not logged in, and before being moved to
 # to /var/log/chrome_old_logs.  Cleaned but not by system-wide
 # cleanup script.
-/home/chronos/chrome_log_\d{8}+-\d{6}
+/home/chronos/chrome_log_\d{8}-\d{6}
 # All user images are stored pngs with the user email address in
 # the name.
 /home/chronos/.*@.*\.\*_image

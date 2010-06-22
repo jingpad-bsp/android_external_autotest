@@ -33,11 +33,16 @@ class logging_LogVolume(site_ui_test.UITest):
                 continue
             if pattern in patterns:
                 logging.error('Duplicate pattern in file: %s' % pattern)
-            patterns[pattern] = {
-                'bytes': 0,
-                'count': 0,
-                'regexp': re.compile(pattern + '$'),
-                }
+            full_pattern = pattern + '$'
+            try:
+                patterns[pattern] = {
+                    'bytes': 0,
+                    'count': 0,
+                    'regexp': re.compile(full_pattern),
+                    }
+            except re.error, e:
+                raise error.TestError('Bad regular expression: "%s" Error: %s' %
+                                      (full_pattern, e))
 
         mount_point = '/mnt/stateful_partition'
         find_handle = subprocess.Popen(['find', mount_point],
