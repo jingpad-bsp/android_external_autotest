@@ -41,20 +41,21 @@ class gl_Bench(test.test):
       checksums = eval(utils.read_file(checksums_filename))
 
       board_id = get_board_id()
-      logging.info("Running on:", board_id)
+      logging.info("Running on: %s", board_id)
       checksum_table = checksums.get(board_id, {})
 
       if checksum_table:
         options += ' -save'
         out_dir = os.path.join(self.autodir, 'deps/glbench/src/out')
       else:
-        error.TestFail("No checksums found for this board.")
+        raise error.TestFail("No checksums found for this board: %s" % board_id)
 
       exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
       cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
       self.results = utils.system_output(cmd, retain_output=True)
 
       keyvals = {}
+      failed_tests = []
       for keyval in self.results.splitlines():
           if keyval.strip().startswith('#'):
               continue
@@ -67,8 +68,12 @@ class gl_Bench(test.test):
               keyvals[testname] = float(val)
             else:
               keyvals[testname] = float('nan')
+              failed_tests.append(testname)
           else:
-            logging.info('No checksum found for test', testname)
+            logging.info('No checksum found for test %s', testname)
             keyvals[testname] = float(val)
 
       self.write_perf_keyval(keyvals)
+      if failed_tests:
+        raise error.TestFail("Incorrect checksums for %s" %
+                             ', '.join(failed_tests))
