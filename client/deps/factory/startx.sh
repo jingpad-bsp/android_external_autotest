@@ -5,18 +5,18 @@
 # found in the LICENSE file.
 
 XAUTH=/usr/bin/xauth
+XAUTH_FILE="/var/run/factory_ui.auth"
 SERVER_READY=
-
-export XAUTH_FILE="/var/run/factory_test.auth"
+DISPLAY=":0"
 
 user1_handler () {
-  echo "X server ready..."
+  echo "X server ready..." 1>&2
   SERVER_READY=y
 }
 
 trap user1_handler USR1
 MCOOKIE=$(head -c 8 /dev/urandom | openssl md5)
-${XAUTH} -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
+${XAUTH} -q -f ${XAUTH_FILE} add ${DISPLAY} . ${MCOOKIE}
 
 /sbin/xstart.sh ${XAUTH_FILE} &
 
@@ -24,13 +24,8 @@ while [ -z ${SERVER_READY} ]; do
   sleep .1
 done
 
-export SHELL=/bin/bash
-export DISPLAY=:0.0
-export PATH=/bin:/usr/bin:/usr/local/bin:/usr/bin/X11
-export XAUTHORITY=${XAUTH_FILE}
+/sbin/initctl emit factory-ui-started
+cat /proc/uptime > /tmp/uptime-x-started
 
-/usr/bin/python TouchpadTest.py $*
-STATUS=$?
-
-/usr/bin/pkill X
-exit $STATUS
+echo "DISPLAY=${DISPLAY}; export DISPLAY"
+echo "XAUTHORITY=${XAUTH_FILE}; export XAUTHORITY"

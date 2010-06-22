@@ -35,7 +35,7 @@ _REBOOT_SEQ_ITERATIONS = 2
 
 
 def XXX_log(s):
-    print >> sys.stderr, '--- XXX : ' + s
+    print >> sys.stderr, 'FACTORY: ' + s
 
 
 # Hack to work around autotest's obsession with GRUB.
@@ -79,22 +79,23 @@ test_list = [
         dargs={'quit_key':ord(' '),
                'msg':'Hit SPACE to start testing...\n按 "空白鍵" 開始測試...'}),
     test_data(
-        label_en='run-in',
-        formal_name='step_runin',
-        automated_seq=[
-            test_data(
-                label_en='component validation',
-                formal_name='hardware_Components'),
-            test_data(
-                label_en='gpio switch check',
-                formal_name='hardware_GPIOSwitches'),
-            test_data(
-                label_en='system stress',
-                formal_name='hardware_SAT'),
-            test_data(
-                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
-                formal_name='factory_RebootStub')],
-        trigger='r'),
+        label_en='sync',
+        formal_name='factory_ScriptWrapper',
+        trigger='s',
+        dargs={'cmdline':'/usr/local/autotest/exscr'}),
+    test_data(
+        label_en='leds',
+        formal_name='factory_Dummy',
+        trigger='l',
+        dargs={'msg':'LEDs test, one day...'}),
+   test_data(
+        label_en='usb',
+        formal_name='factory_ExternalStorage',
+        trigger='u'),
+   test_data(
+        label_en='display',
+        formal_name='factory_Display',
+        trigger='m'),
     test_data(
         label_en='camera',
         formal_name='factory_Dummy',
@@ -107,10 +108,33 @@ test_list = [
         trigger='k',
         dargs={'layout':'en_us'}),
     test_data(
-        label_en='trackpad',
+        label_en='touchpad',
         label_zw='觸控板',
-        formal_name='hardware_Touchpad',
+        formal_name='factory_Synaptics',
         trigger='t'),
+    test_data(
+        label_en='run-in',
+        formal_name='step_runin',
+        automated_seq=[
+            test_data(
+                label_en='component validation',
+                formal_name='hardware_Components',
+                dargs={'approved_db':'qualified_components'}),
+            test_data(
+                label_en='gpio switch check',
+                formal_name='hardware_GPIOSwitches'),
+            test_data(
+                label_en='system stress',
+                formal_name='hardware_SAT'),
+            test_data(
+                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
+                formal_name='factory_RebootStub')],
+        trigger='r'),
+    test_data(
+        label_en='end',
+        formal_name='factory_Dummy',
+        trigger='e',
+        dargs={'msg':'end of testing...\n(chinese)...'}),
 ]
 
 for test in test_list:
@@ -163,14 +187,12 @@ class factory_ui:
         XXX_log('control recv target test %s' % repr(update))
         formal_name, tag_prefix, count = update
         test = test_map.get(test_map_index(formal_name, tag_prefix), None)
-        if test is not None:
-            test.count = count
-        return test
+        return (test, count)
 
 
 def step_reboot_seq(i, tag):
     if i < _REBOOT_SEQ_ITERATIONS:
-        job.next_step([step_reboot_seq, i + 1, tag])
+        job.next_step_prepend([step_reboot_seq, i + 1, tag])
         XXX_log('rebooting (iteration %d)' % i)
         time.sleep(5)
         job.reboot()
@@ -183,13 +205,10 @@ def step_runin(ui, tag):
     job.run_test('hardware_Components',
                  approved_db='qualified_components',
                  tag=tag)
-    ui.send()
     job.run_test('hardware_GPIOSwitches', tag=tag)
-    ui.send()
     job.drop_caches_between_iterations = True
     job.run_test('hardware_SAT', tag=tag)
     job.drop_caches_between_iterations = False
-    ui.send()
     step_reboot_seq(0, tag)
 
 
@@ -210,8 +229,10 @@ def step_init():
     to the _RESULT_FILE_PATH, which will be read after the test
     completed and the result comminicated onwards to the UI.'''
 
+    job.next_step([step_init])
+
     status_file_path = job.autodir + '/results/default/status'
-    factory_ui_path = job.autodir + '/factory_ui'
+    factory_ui_path = job.autodir + '/deps/factory/ui'
 
     ui = factory_ui(factory_ui_path)
 
@@ -224,17 +245,19 @@ def step_init():
     XXX_log('received test_widget_size = %s' % repr(test_widget_size))
 
     ui.send_cmd_next_test()
-    test = ui.recv_target_test_update()
+    test, test_count = ui.recv_target_test_update()
 
     while test is not None:
         if test.automated_seq:
-            tag = '%s_%s' % (test.formal_name, test.count)
+            tag = '%s_%s' % (test.formal_name, test_count)
             exec('%s(ui, "%s")' % (test.formal_name, tag))
             result = None
         else:
             dargs = test.dargs
             dargs.update({
-                'tag': '%s_%s' % (test.tag_prefix, test.count),
+                'tag': '%s_%s' % (test.tag_prefix, test_count),
+                'test_tag_prefix': test.tag_prefix,
+                'test_count': test_count,
                 'test_widget_size': test_widget_size,
                 'trigger_set': trigger_set,
                 'result_file_path': _RESULT_FILE_PATH})
@@ -249,6 +272,6 @@ def step_init():
         else:
             ui.send_cmd_next_test()
 
-        test = ui.recv_target_test_update()
+        test, test_count = ui.recv_target_test_update()
 
     XXX_log('factory testing completed')

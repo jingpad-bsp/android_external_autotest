@@ -20,7 +20,7 @@ import sys
 
 
 def XXX_log(s):
-    print >> sys.stderr, '--- XXX : ' + s
+    print >> sys.stderr, 'FACTORY: ' + s
 
 
 _BLACK = gtk.gdk.color_parse('black')
@@ -50,9 +50,11 @@ def test_switch_on_trigger(event):
 
 
 def run_test_widget(test_widget=None, test_widget_size=None,
-                    window_registration_callback=None):
+                    invisible_cursor=True,
+                    window_registration_callback=None,
+                    cleanup_callback=None):
+
     window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-    window.connect('destroy', lambda _: gtk.main_quit())
     window.modify_bg(gtk.STATE_NORMAL, _BLACK)
     window.set_size_request(*test_widget_size)
 
@@ -65,11 +67,11 @@ def run_test_widget(test_widget=None, test_widget_size=None,
     gtk.gdk.pointer_grab(window.window, confine_to=window.window)
     gtk.gdk.keyboard_grab(window.window)
 
-    # create and use an invisible cursor
-    pixmap = gtk.gdk.Pixmap(None, 1, 1, 1)
-    color = gtk.gdk.Color()
-    cursor = gtk.gdk.Cursor(pixmap, pixmap, color, color, 0, 0)
-    window.window.set_cursor(cursor)
+    if invisible_cursor:
+        pixmap = gtk.gdk.Pixmap(None, 1, 1, 1)
+        color = gtk.gdk.Color()
+        cursor = gtk.gdk.Cursor(pixmap, pixmap, color, color, 0, 0)
+        window.window.set_cursor(cursor)
 
     if window_registration_callback is not None:
         window_registration_callback(window)
@@ -77,6 +79,9 @@ def run_test_widget(test_widget=None, test_widget_size=None,
     XXX_log('factory_test running gtk.main')
     gtk.main()
     XXX_log('factory_test quit gtk.main')
+
+    if cleanup_callback is not None:
+        cleanup_callback()
 
     gtk.gdk.pointer_ungrab()
     gtk.gdk.keyboard_ungrab()

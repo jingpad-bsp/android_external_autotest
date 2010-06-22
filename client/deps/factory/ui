@@ -1,0 +1,450 @@
+#!/usr/bin/python
+#
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+
+# DESCRIPTION :
+#
+# This UI is intended to be used by the factory autotest suite to
+# provide factory operators feedback on test status and control over
+# execution order.
+#
+# In short, the UI is composed of a 'console' panel on the bottom of
+# the screen which displays the autotest log, and there is also a
+# 'test list' panel on the right hand side of the screen.  The
+# majority of the screen is dedicated to tests, which are executed in
+# seperate processes, but instructed to display their own UIs in this
+# dedicated area whenever possible.  Tests in the test list are
+# executed in order by default, but can be activated on demand via
+# associated keyboard shortcuts (triggers).  As tests are run, their
+# status is color-indicated to the operator -- greyed out means
+# untested, yellow means active, green passed and red failed.
+
+
+import gobject
+import gtk
+import os
+import pango
+import subprocess
+import sys
+import time
+
+
+def XXX_log(s):
+    print >> sys.stderr, 'FACTORY: ' + s
+
+_ACTIVE = 'ACTIVE'
+_PASSED = 'PASS'
+_FAILED = 'FAIL'
+_UNTESTED = 'UNTESTED'
+
+_STATUS_CODE_MAP = {
+    'START': _ACTIVE,
+    'GOOD': _PASSED,
+    'FAIL': _FAILED,
+    'ERROR': _FAILED}
+
+_LABEL_COLORS = {
+    _ACTIVE: gtk.gdk.color_parse('light goldenrod'),
+    _PASSED: gtk.gdk.color_parse('pale green'),
+    _FAILED: gtk.gdk.color_parse('tomato'),
+    _UNTESTED: gtk.gdk.color_parse('dark slate grey')}
+
+_LABEL_EN_SIZE = (160, 35)
+_LABEL_EN_FONT = pango.FontDescription('courier new extra-condensed 16')
+_LABEL_ZW_SIZE = (70, 35)
+_LABEL_ZW_FONT = pango.FontDescription('normal 12')
+_LABEL_T_SIZE = (30, 35)
+_LABEL_T_FONT = pango.FontDescription('courier new italic ultra-condensed 10')
+_LABEL_UNTESTED_FG = gtk.gdk.color_parse('grey40')
+_LABEL_TROUGH_COLOR = gtk.gdk.color_parse('grey20')
+_LABEL_STATUS_SIZE = (140, 30)
+_LABEL_STATUS_FONT = pango.FontDescription(
+    'courier new bold extra-condensed 16')
+_SEP_COLOR = gtk.gdk.color_parse('grey50')
+_BLACK = gtk.gdk.color_parse('black')
+_LIGHT_GREEN = gtk.gdk.color_parse('light green')
+_OTHER_LABEL_FONT = pango.FontDescription('courier new condensed 20')
+
+class console_proc:
+    '''Display a progress log.  Implemented by launching an borderless
+    xterm at a strategic location, and running tail against the log.'''
+
+    def __init__(self, allocation, log_file_path):
+        xterm_coords = '135x14+%d+%d' % (allocation.x, allocation.y)
+        XXX_log('xterm_coords = %s' % xterm_coords)
+        xterm_cmd = (('aterm --geometry %s -bw 0 -e bash -c ' %
+                      xterm_coords).split() +
+                     ['tail -f %s | grep FACTORY' % log_file_path])
+        XXX_log('xterm_cmd = %s' % xterm_cmd)
+        self._proc = subprocess.Popen(xterm_cmd)
+
+    def __del__(self):
+        XXX_log('console_proc __del__')
+        self._proc.kill()
+
+
+# Routines to communicate with the autotest control file, using python
+# expressions.  The stdin_callback assures notification for any new
+# messages.
+
+def stdin_callback(s, c):
+    XXX_log('stdin_callback, quitting gtk main')
+    gtk.main_quit()
+    return True
+
+def control_recv():
+    return eval(sys.stdin.readline().rstrip())
+
+def control_send(x):
+    print repr(x)
+    sys.stdout.flush()
+
+def control_send_target_test_update(test, count):
+    XXX_log('ui send_target_test_update %s.%s_%s' %
+            (test.formal_name, test.tag_prefix, count))
+    control_send((test.formal_name, test.tag_prefix, count))
+
+
+# Capture keyboard events here for debugging -- under normal
+# circumstances, all keyboard events should be captured by executing
+# tests, and hence this should not be called.
+
+def handle_key_release_event(_, event):
+    XXX_log('base ui key event (%s)' % event.keyval)
+    return True
+
+
+class TestLabelBox(gtk.EventBox):
+
+    def __init__(self, test):
+        gtk.EventBox.__init__(self)
+        self.modify_bg(gtk.STATE_NORMAL, _LABEL_COLORS[_UNTESTED])
+        label_en = gtk.Label(test.label_en)
+        label_en.set_size_request(*_LABEL_EN_SIZE)
+        label_en.modify_font(_LABEL_EN_FONT)
+        label_en.set_alignment(0.5, 0.5)
+        label_en.modify_fg(gtk.STATE_NORMAL, _LABEL_UNTESTED_FG)
+        label_zw = gtk.Label(test.label_zw)
+        label_zw.set_size_request(*_LABEL_ZW_SIZE)
+        label_zw.modify_font(_LABEL_ZW_FONT)
+        label_zw.set_alignment(0.5, 0.5)
+        label_zw.modify_fg(gtk.STATE_NORMAL, _LABEL_UNTESTED_FG)
+        label_t = gtk.Label('C-' + test.trigger)
+        label_t.set_size_request(*_LABEL_T_SIZE)
+        label_t.modify_font(_LABEL_T_FONT)
+        label_t.set_alignment(0.5, 0.5)
+        label_t.modify_fg(gtk.STATE_NORMAL, _BLACK)
+        hbox = gtk.HBox()
+        hbox.pack_start(label_en, False, False)
+        hbox.pack_start(label_zw, False, False)
+        hbox.pack_start(label_t, False, False)
+        self.add(hbox)
+        self.label_list = [label_en, label_zw]
+
+    def update(self, status):
+        if status == _UNTESTED:
+            return
+        self.modify_fg(gtk.STATE_NORMAL, _BLACK)
+        for label in self.label_list:
+            label.modify_fg(gtk.STATE_NORMAL, _BLACK)
+        self.modify_bg(gtk.STATE_NORMAL, _LABEL_COLORS[status])
+        self.queue_draw()
+
+
+class SubTestLabelBox(gtk.EventBox):
+
+    def __init__(self, test):
+        gtk.EventBox.__init__(self)
+        self.modify_bg(gtk.STATE_NORMAL, _BLACK)
+        label_status = gtk.Label(_UNTESTED)
+        label_status.set_size_request(*_LABEL_STATUS_SIZE)
+        label_status.set_alignment(0, 0.5)
+        label_status.modify_font(_LABEL_STATUS_FONT)
+        label_status.modify_fg(gtk.STATE_NORMAL, _LABEL_UNTESTED_FG)
+        label_en = gtk.Label(test.label_en)
+        label_en.set_alignment(1, 0.5)
+        label_en.modify_font(_LABEL_EN_FONT)
+        label_en.modify_fg(gtk.STATE_NORMAL, _LIGHT_GREEN)
+        label_zw = gtk.Label(test.label_zw)
+        label_zw.set_alignment(1, 0.5)
+        label_zw.modify_font(_LABEL_ZW_FONT)
+        label_zw.modify_fg(gtk.STATE_NORMAL, _LIGHT_GREEN)
+        label_sep = gtk.Label(' : ')
+        label_sep.set_alignment(0.5, 0.5)
+        label_sep.modify_font(_LABEL_EN_FONT)
+        label_sep.modify_fg(gtk.STATE_NORMAL, _LIGHT_GREEN)
+        hbox = gtk.HBox()
+        hbox.pack_end(label_status, False, False)
+        hbox.pack_end(label_sep, False, False)
+        hbox.pack_end(label_zw, False, False)
+        hbox.pack_end(label_en, False, False)
+        self.add(hbox)
+        self.label_status = label_status
+
+    def update(self, status):
+        if status == _UNTESTED:
+            return
+        self.label_status.set_text(status)
+        self.label_status.modify_fg(gtk.STATE_NORMAL, _LABEL_COLORS[status])
+        self.queue_draw()
+
+
+class StatusMap():
+
+    def __init__(self, status_file_path, test_list):
+        self._test_queue = [t for t in reversed(test_list)]
+        self._as_test_set = set(t for t in test_list if t.automated_seq)
+        self._status_dict = {}
+        for test in test_list:
+            test_index = self.index(test.formal_name, test.tag_prefix)
+            self._status_dict[test_index] = (test, _UNTESTED, 0, None)
+            for subtest in test.automated_seq:
+                st_index = self.index(subtest.formal_name, subtest.tag_prefix)
+                self._status_dict[st_index] = (subtest, _UNTESTED, 0, None)
+        self._status_file_path = status_file_path
+        self._status_file_pos = 0
+        self.read_new_data()
+        gobject.timeout_add(200, self.read_new_data)
+
+    def index(self, formal_name, tag_prefix):
+        return '%s.%s' % (formal_name, tag_prefix)
+
+    def next_untested(self):
+        remaining = [t for t in self._test_queue
+                     if self.lookup_status(t) == _UNTESTED]
+        XXX_log('remaining untested = [%s]' %
+                ', '.join([self.index(t.formal_name, t.tag_prefix)
+                           for t in remaining]))
+        if not remaining: return None
+        return remaining.pop()
+
+    def read_new_data(self):
+        with open(self._status_file_path) as file:
+            file.seek(self._status_file_pos)
+            for line in file:
+                cols = line.lstrip().split('\t') + ['']
+                code = cols[0]
+                test_id = cols[1]
+                if code not in _STATUS_CODE_MAP or test_id == '----':
+                    continue
+                status = _STATUS_CODE_MAP[code]
+                XXX_log('reading code = %s, test_id = %s' % (code, test_id))
+                formal_name, _, tag = test_id.rpartition('.')
+                tag_prefix, _, count = tag.rpartition('_')
+                self.update(formal_name, tag_prefix, status, int(count))
+            self._status_file_pos = file.tell()
+        map(self.update_as_test, self._as_test_set)
+        return True
+
+    def update(self, formal_name, tag_prefix, status, count):
+        test_index = self.index(formal_name, tag_prefix)
+        if test_index not in self._status_dict:
+            XXX_log('ignoring status update (%s) for test %s' %
+                    (status, test_index))
+            return
+        test, old_status, old_count, label = self._status_dict[test_index]
+        if count < old_count:
+            XXX_log('ERROR: count regression for %s (%d-%d)' %
+                    (test_index, old_count, count))
+        if status != old_status:
+            XXX_log('status change for %s : %s/%s -> %s/%s' %
+                    (test_index, old_status, old_count, status, count))
+            if label is not None:
+                label.update(status)
+        self._status_dict[test_index] = (test, status, count, label)
+
+    def update_as_test(self, test):
+        st_status_set = set(map(self.lookup_status, test.automated_seq))
+        max_count = max(map(self.lookup_count, test.automated_seq))
+        if len(st_status_set) == 1:
+            status = st_status_set.pop()
+        elif _ACTIVE in st_status_set:
+            status = _ACTIVE
+        else:
+            status = _FAILED
+        self.update(test.formal_name, test.tag_prefix, status, max_count)
+
+    def set_label(self, test, label):
+        test_index = self.index(test.formal_name, test.tag_prefix)
+        test, status, count, _ = self._status_dict[test_index]
+        label.update(status)
+        self._status_dict[test_index] = test, status, count, label
+
+    def lookup_status(self, test):
+        test_index = self.index(test.formal_name, test.tag_prefix)
+        return self._status_dict[test_index][1]
+
+    def lookup_count(self, test):
+        test_index = self.index(test.formal_name, test.tag_prefix)
+        return self._status_dict[test_index][2]
+
+    def lookup_label(self, test):
+        test_index = self.index(test.formal_name, test.tag_prefix)
+        return self._status_dict[test_index][3]
+
+
+def make_hsep(width=1):
+    frame = gtk.EventBox()
+    frame.set_size_request(-1, width)
+    frame.modify_bg(gtk.STATE_NORMAL, _SEP_COLOR)
+    return frame
+
+
+def make_vsep(width=1):
+    frame = gtk.EventBox()
+    frame.set_size_request(width, -1)
+    frame.modify_bg(gtk.STATE_NORMAL, _SEP_COLOR)
+    return frame
+
+
+def make_notest_label():
+    label = gtk.Label('no active test')
+    label.modify_font(_OTHER_LABEL_FONT)
+    label.set_alignment(0.5, 0.5)
+    label.modify_fg(gtk.STATE_NORMAL, _LIGHT_GREEN)
+    box = gtk.EventBox()
+    box.modify_bg(gtk.STATE_NORMAL, _BLACK)
+    box.add(label)
+    return box
+
+
+def make_automated_seq_widget(as_test, status_map):
+    vbox = gtk.VBox()
+    vbox.set_spacing(0)
+    map(lambda st: vbox.pack_start(status_map.lookup_label(st), False, False),
+        as_test.automated_seq)
+    return vbox
+
+
+def main():
+    window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+    window.connect('destroy', lambda _: gtk.main_quit())
+    window.modify_bg(gtk.STATE_NORMAL, _BLACK)
+
+    screen = window.get_screen()
+    screen_size = (screen.get_width(), screen.get_height())
+    window.set_size_request(*screen_size)
+
+    label_trough = gtk.VBox()
+    label_trough.set_spacing(0)
+
+    rhs_box = gtk.EventBox()
+    rhs_box.modify_bg(gtk.STATE_NORMAL, _LABEL_TROUGH_COLOR)
+    rhs_box.add(label_trough)
+
+    console_box = gtk.EventBox()
+    console_box.set_size_request(-1, 180)
+    console_box.modify_bg(gtk.STATE_NORMAL, _BLACK)
+
+    notest_label = make_notest_label()
+
+    test_widget_box = gtk.Alignment(xalign=0.5, yalign=0.5)
+    test_widget_box.set_size_request(-1, -1)
+    test_widget_box.add(notest_label)
+
+    lhs_box = gtk.VBox()
+    lhs_box.pack_end(console_box, False, False)
+    lhs_box.pack_start(test_widget_box)
+    lhs_box.pack_start(make_hsep(3), False, False)
+
+    base_box = gtk.HBox()
+    base_box.pack_end(rhs_box, False, False)
+    base_box.pack_end(make_vsep(3), False, False)
+    base_box.pack_start(lhs_box)
+
+    window.connect('key-release-event', handle_key_release_event)
+    window.add_events(gtk.gdk.KEY_RELEASE_MASK)
+
+    # On startup, get general configuration data from the autotest
+    # control program, specifically the list of tests to run (in
+    # order) and some filenames.
+    XXX_log('pulling control info')
+    test_list = control_recv()
+    status_file_path = control_recv()
+    log_file_path = control_recv()
+
+    status_map = StatusMap(status_file_path, test_list)
+
+    for test in test_list:
+        tlb = TestLabelBox(test)
+        status_map.set_label(test, tlb)
+        label_trough.pack_start(tlb, False, False)
+        label_trough.pack_start(make_hsep(), False, False)
+        for subtest in test.automated_seq:
+            stlb = SubTestLabelBox(subtest)
+            status_map.set_label(subtest, stlb)
+
+    window.add(base_box)
+    window.show_all()
+
+    test_widget_allocation = test_widget_box.get_allocation()
+    test_widget_size = (test_widget_allocation.width,
+                        test_widget_allocation.height)
+    XXX_log('test_widget_size = %s' % repr(test_widget_size))
+    control_send(test_widget_size)
+
+    trigger_dict = dict((test.trigger, test) for test in test_list)
+
+    gobject.io_add_watch(sys.stdin, gobject.IO_IN, stdin_callback)
+
+    console = console_proc(console_box.get_allocation(), log_file_path)
+
+    XXX_log('finished ui setup')
+
+    # Test selection is driven either by triggers or by the
+    # remaining_tests_queue.  If a trigger was seen, explicitly run
+    # the corresponding test.  Otherwise choose the next test from the
+    # queue.  Tests are removed from the queue as they are run,
+    # regarless of the outcome.  Tests that are interrupted by trigger
+    # are treated as having failed.
+    #
+    # Iterations in the main loop here are driven by data availability
+    # on stdin, which is used to communicate with the autotest control
+    # program.  On each step through the loop, a trigger is received
+    # (possibly None) to indicate how the next test should be selected.
+
+    while True:
+        command, arg = control_recv()
+        XXX_log('ui received command %s(%s)' % (command, arg))
+        if command == 'switch_to':
+            next_test = trigger_dict.get(arg, None)
+        elif command == 'next_test':
+            next_test = status_map.next_untested()
+        else:
+            XXX_log('ui command unknown, exiting...')
+            break
+        control_send_target_test_update(
+            next_test, status_map.lookup_count(next_test) + 1)
+        if next_test.automated_seq:
+            XXX_log('ui starting automated_seq')
+            test_widget_box.remove(notest_label)
+            as_widget = make_automated_seq_widget(next_test, status_map)
+            test_widget_box.add(as_widget)
+            window.show_all()
+            gtk.main()
+            command = control_recv()
+            XXX_log('ui automated_seq cmd (%s)' % command)
+            test_widget_box.remove(as_widget)
+            test_widget_box.add(notest_label)
+            window.show_all()
+            XXX_log('ui exiting automated_seq')
+        else:
+            gtk.main()
+
+    # Tell the control process we are done.
+    control_send((None, 0))
+
+    XXX_log('exiting ui')
+
+if __name__ == '__main__':
+
+    # In global scope, get the test_data class description from the
+    # control program -- this allows a convenient single point of
+    # definition for this class.
+    test_data_class_def = control_recv()
+    exec(test_data_class_def)
+
+    main()
