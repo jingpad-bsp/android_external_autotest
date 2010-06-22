@@ -24,14 +24,14 @@ class platform_BootPerfServer(test.test):
         client_at = autotest.Autotest(self.client)
         client_at.run_test(self.client_test, last_boot_was_reboot=True)
 
-
-    def postprocess(self):
-        logging.info('BootPerfServer: postprocess %s' % self.client.hostname)
-
         # Promote the client test keyval as our own
         src = os.path.join(self.outputdir, self.client_test, "results/keyval")
         dst = os.path.join(self.resultsdir, "keyval")
         if os.path.exists(src):
-            shutil.copy(src, dst)
+            client_results = open(src, "r")
+            server_results = open(dst, "a")
+            shutil.copyfileobj(client_results, server_results)
+            server_results.close()
+            client_results.close()
         else:
             logging.warn('Unable to locate %s' % src)

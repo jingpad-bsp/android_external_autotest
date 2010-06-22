@@ -16,9 +16,7 @@ fully functional.  These are meant to run nightly in less than 8 hours.
 """
 
 
-# Run server tests
-
-# All client tests whose parameters
+# List of client tests with parameters
 TESTS = [
   ('compilebench', {}),
   ('dbench', {}),
@@ -62,13 +60,12 @@ for test_with_argv in TESTS:
   index += 1
 
 
-def run_client_test(machine):
+def run_assigned_tests(machine):
   client = hosts.create_host(machine)
   client_at = autotest.Autotest(client)
   test_list = test_dict[machine]
   for test, argv in test_list:
     client_at.run_test(test, **argv)
+  job.run_test("platform_BootPerfServer", host=client, iterations=4)
 
-
-job.parallel_on_machines(run_client_test, machines)
-
+job.parallel_on_machines(run_assigned_tests, machines)
