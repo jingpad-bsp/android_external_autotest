@@ -10,11 +10,17 @@ from autotest_lib.client.bin import utils
 
 version = 1
 
-def target_is_x86():
-  result = utils.system_output('${CC} -dumpmachine', retain_output=True,
-                               ignore_status=True)
-  x86_pattern = re.compile(r"^i.86.*")
-  return x86_pattern.match(result)
+def target_is_x86_pie():
+    result = utils.system_output('${CC} -dumpmachine', retain_output=True,
+                                 ignore_status=True)
+    x86_pattern = re.compile(r"^i.86.*")
+    if not x86_pattern.match(result):
+        return False
+    result = utils.system_output('${CC} -dumpspecs', retain_output=True,
+                                 ignore_status=True)
+    if result.find('!nopie:') == -1:
+        return False
+    return True
 
 
 def setup(tarball, topdir):
@@ -23,10 +29,7 @@ def setup(tarball, topdir):
     # 'Add' arm support.
     os.chdir(srcdir)
     utils.system('patch -p0 < ../iotools.arm.patch')
-    # TODO(fes): Remove this if there is a better way to detect that we are
-    # in a hardened build (or if this later properly picks up the
-    # -nopie flag from portage)
-    if os.path.exists('/etc/hardened') and target_is_x86():
+    if target_is_x86_pie():
         utils.system('patch -p0 < ../iotools.nopie.patch')
 
     utils.system('CROSS_COMPILE=${CTARGET_default}- make')
