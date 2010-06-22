@@ -110,7 +110,7 @@ test_list = [
     test_data(
         label_en='touchpad',
         label_zw='觸控板',
-        formal_name='factory_Synaptics',
+        formal_name='factory_Touchpad',
         trigger='t'),
     test_data(
         label_en='run-in',
