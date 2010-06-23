@@ -11,7 +11,7 @@ class power_Resume(test.test):
     preserve_srcdir = True
 
 
-    def __get_last_msg_time(self, msg):
+    def _get_last_msg_time(self, msg):
         data = commands.getoutput(
             "grep '%s' /var/log/messages | tail -n 1" % msg)
         match = re.search(r' \[\s*([0-9.]+)\] ', data)
@@ -23,20 +23,21 @@ class power_Resume(test.test):
         return msg_time
 
 
-    def __get_start_suspend_time(self):
-        return self.__get_last_msg_time('Freezing user space')
+    def _get_start_suspend_time(self):
+        return self._get_last_msg_time('Freezing user space')
 
 
-    def __get_end_suspend_time(self):
-        return self.__get_last_msg_time('Back to C!')
+    def _get_end_suspend_time(self):
+        return self._get_last_msg_time('Back to C!')
 
-    def __get_end_resume_time(self):
-        return self.__get_last_msg_time('Finishing wakeup.')
+    def _get_end_resume_time(self):
+        return self._get_last_msg_time('Finishing wakeup.')
 
 
-    def __is_iface_up(self, name):
+    def _is_iface_up(self, name):
         try:
-            out = utils.system_output('/sbin/ifconfig %s' % name)
+            out = utils.system_output('/sbin/ifconfig %s' % name,
+                                       retain_output=True)
         except error.CmdError, e:
             logging.info(e)
             raise error.TestError('interface %s not found' % name)
@@ -45,11 +46,11 @@ class power_Resume(test.test):
         return match
 
 
-    def __sanity_check_system(self):
+    def _sanity_check_system(self):
         time.sleep(3)
 
         iface = 'wlan0'
-        if not self.__is_iface_up(iface):
+        if not self._is_iface_up(iface):
             raise error.TestFail('%s failed to come up' % iface)
 
 
@@ -73,9 +74,9 @@ class power_Resume(test.test):
         total_resume_time = utils.get_hwclock_seconds() - alarm_time
 
         # Get suspend and resume times from /var/log/messages
-        start_suspend_time = self.__get_start_suspend_time()
-        end_suspend_time = self.__get_end_suspend_time()
-        end_resume_time = self.__get_end_resume_time()
+        start_suspend_time = self._get_start_suspend_time()
+        end_suspend_time = self._get_end_suspend_time()
+        end_resume_time = self._get_end_resume_time()
 
         # The order in which processes are un-frozen is indeterminate
         # and therfore this test may get resumed before the system has gotten
@@ -85,7 +86,7 @@ class power_Resume(test.test):
         while end_resume_time < start_suspend_time and count < 5:
             count += 1
             time.sleep(1)
-            end_resume_time = self.__get_end_resume_time()
+            end_resume_time = self._get_end_resume_time()
 
         if count == 5:
             raise error.TestError('Failed to find end resume time')
@@ -103,4 +104,4 @@ class power_Resume(test.test):
         self.write_perf_keyval(results)
 
         # Finally, sanity check critical system components
-        self.__sanity_check_system()
+        self._sanity_check_system()
