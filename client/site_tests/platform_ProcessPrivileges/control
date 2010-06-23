@@ -28,7 +28,6 @@ process_tests = [
   {'process': 'dbus-daemon', 'user': '201'},
   {'process': 'ibus-daemon', 'user': 'chronos', 'do_login': True},
   {'process': 'ibus-memconf', 'user': 'chronos', 'do_login': True},
-  {'process': 'ibus-x11', 'user': 'chronos', 'do_login': True},
   # TODO(yusukes): Change 'run_as_root' to False once super-user privileges for
   # X are dropped.
   {'process': 'X', 'run_as_root': True},
