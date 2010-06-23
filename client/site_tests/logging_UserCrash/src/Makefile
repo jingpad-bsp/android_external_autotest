@@ -8,7 +8,7 @@ BIN = crasher
 SRC = crasher.cc
 OBJS = crasher.o bomb.o
 # Enable debugging to get symbols in stack traces.
-CXXFLAGS += -ggdb
+CXXFLAGS += -gstabs
 
 all: $(BIN).gz
 
