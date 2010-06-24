@@ -22,7 +22,7 @@ def get_board_id():
   return (vendor + ' / ' + renderer).strip()
 
 
-class gl_Bench(test.test):
+class graphics_GLBench(test.test):
   version = 1
   preserve_srcdir = True
 

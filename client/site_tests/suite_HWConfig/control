@@ -50,4 +50,4 @@ job.run_test('network_DisableInterface',
 job.run_test('network_WiFiCaps')
 
 # GPU
-job.run_test('gl_Bench')
+job.run_test('graphics_GLBench')

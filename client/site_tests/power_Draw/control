@@ -34,7 +34,7 @@ def run_sat():
 
 
 def run_gpu():
-    job.run_test('gl_Bench',
+    job.run_test('graphics_GLBench',
                  options='-tests fill:triangle -duration %d' % seconds,
                  tag=tag)
 

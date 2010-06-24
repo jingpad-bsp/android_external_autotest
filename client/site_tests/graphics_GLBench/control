@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'gl_Bench'
+NAME = 'graphics_GLBench'
 AUTHOR = 'The Chromium OS Authors'
 PURPOSE = 'Benchmark the graphics library performance.'
 CRITERIA = """
@@ -38,10 +38,10 @@ various graphic intensive activities take, which includes measuring:
   - attribute fetch
   - color depth stencil test
   - *state change
-  - *texture upload
-  - *read back
+  - texture upload
+  - read back
 
 * Not yet implemented.
 """
 
-job.run_test('gl_Bench')
+job.run_test('graphics_GLBench')
