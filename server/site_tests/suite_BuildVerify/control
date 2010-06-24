@@ -66,7 +66,6 @@ TESTS = [
   'desktopui_ChromeFirstRender',
   'desktopui_FlashSanityCheck',
   'desktopui_IBusTest',
-  'desktopui_ScreenSaverUnlock',
   'desktopui_SunSpiderBench',
   'desktopui_V8Bench',
   'graphics_WindowManagerGraphicsCapture',
