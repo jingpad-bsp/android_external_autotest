@@ -40,7 +40,7 @@ Usage:
 """
 
 __author__ = 'kdlucas@gmail.com (Kelly Lucas)'
-__version__ = '0.9'
+__version__ = '1.0'
 
 import logging, optparse, os, paramiko, Queue, subprocess, sys, threading
 import common
@@ -52,6 +52,7 @@ from autotest_lib.frontend.afe import models as afe_models
 
 # The following objects are variables are shared between classes.
 tb = {}  # Holds autotest host's status and monitor data.
+TIMEOUT = 10  # Timeout value (in seconds) for ops involving remote hosts.
 
 
 def SetLogger(namespace, logfile, loglevel):
@@ -88,14 +89,19 @@ def SetLogger(namespace, logfile, loglevel):
 
 
 class SSH(threading.Thread):
-    """Class used to ssh to remote hosts and collect data.
+    """Class used to ssh to remote hosts and collect data."""
 
-    Args:
-        rhostst_queue: a Queue object.
-        logger: a logger object.
-    """
-    def __init__(self, rhost_queue, logger):
-        self.queue = rhost_queue
+
+    def __init__(self, host_q, update_q, logger):
+        """Init SSH Class and set some initial attributes.
+
+        Args:
+            host_q: Queue() object of AutoTest hosts to check health.
+            update_q: Queue() object of AutoTest hosts after it's checked.
+            logger: initialized logger object.
+        """
+        self.host_q = host_q
+        self.update_q = update_q
         threading.Thread.__init__(self)
         self.privkey = '/home/autotest/.ssh/id_rsa'
         self.logger = logger
@@ -103,42 +109,48 @@ class SSH(threading.Thread):
 
     def run(self):
         while True:
-            rhost = self.queue.get()
-            if rhost is None:
+            host = self.host_q.get()
+            if host is None:
                 break # reached end of queue
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             try:
-                client.connect(rhost, username='root',
-                               key_filename=self.privkey, timeout=10)
-                tb[rhost]['status'] = True
+                client.connect(host.hostname, username='root',
+                               key_filename=self.privkey, timeout=TIMEOUT)
+                tb[host.hostname]['status'] = True
                 client.close()
             except Exception, e:
-                self.logger.error('Host %s: %s', rhost, e)
-                tb[rhost]['status'] = False
+                self.logger.error('Host %s: %s', host.hostname, e)
+                tb[host.hostname]['status'] = False
 
-            self.queue.task_done()
+            self.host_q.task_done()
+            # Now that we have an updated status, add host object to update
+            # queue, which will send updates to AutoTest.
+            self.update_q.put(host)
 
 
 class Monitor(object):
     """Main class used to manage the monitoring of remote hosts.
 
-    This calls is used to determine the current status of hosts in the AutoTest
+    This class is used to determine the current status of hosts in the AutoTest
     testbed. AutoTest will be queried to populate self.rhosts. It will populate
-    a Queue and start a threaded operation, and ssh into each host to determine
-    if it is in a 'Ready' state, and will then update AutoTest.
+    a Queue and start a threaded operation using SSH class, to access each host
+    in the AutoTest testbed to determine their status, and then update AutoTest.
 
-    Args:
-        logfile: string, name of logfile.
-        debug_level: string, sets the log debug level.
     """
 
     def __init__(self, logfile, debug_level):
+        """Init Monitor object with necessary attributes.
+
+        Args:
+            logfile: string, name of logfile.
+            debug_level: string, sets the log debug level.
+        """
         self.logger = SetLogger('SystemMonitor', logfile, debug_level)
-        self.rhosts =  []  # List of remote hosts to monitor.
         self.thread_num = 10  # Number of parallel operations.
-        self.queue = Queue.Queue()
-        self.afe_hosts = []
+        self.host_q = Queue.Queue()  # Queue for checking hosts.
+        self.update_q = Queue.Queue()  # Queue for updating AutoTest.
+        self.afe_hosts = []  # List of AutoTest host objects.
         self.GetHosts()
 
 
@@ -149,20 +161,22 @@ class Monitor(object):
         self.afe_hosts = afe_models.Host.objects.extra(
             where=['status in ("Ready", "Repair Failed")'])
 
-        for h in self.afe_hosts:
-            self.rhosts.append(h.hostname)
-            tb[h.hostname] = {}
+        for host in self.afe_hosts:
+            tb[host.hostname] = {}
 
 
-    def _UpdateAutoTest(self):
-        """Update the Status of hosts on the AutoTest Server."""
+    def _UpdateAutoTest(self, host):
+        """Update the Status of hosts on the AutoTest Server.
 
-        for h in self.afe_hosts:
-            if not tb[h.hostname]['status']:
-                h.status = 'Repair Failed'
-            else:
-                h.status = 'Ready'
-            h.save()
+        Args:
+            host: AutoTest host object.
+        """
+
+        if not tb[host.hostname]['status']:
+            host.status = 'Repair Failed'
+        else:
+            host.status = 'Ready'
+        host.save()
 
 
     def UpdateStatus(self):
@@ -170,38 +184,29 @@ class Monitor(object):
 
         # Create new threads of class SSH.
         for i in range(self.thread_num):
-            t = SSH(self.queue, self.logger)
+            t = SSH(self.host_q, self.update_q, self.logger)
             t.setDaemon(True)
             t.start()
 
         # Fill the request queue with hostnames.
-        for rhost in self.rhosts:
-            self.logger.debug('Putting %s in queue', rhost)
-            self.queue.put(rhost)
+        for host in self.afe_hosts:
+            self.logger.debug('Putting %s in queue', host.hostname)
+            self.host_q.put(host)
 
-        self.queue.join()
+        # queue.get() will block until it gets an item.
+        host = self.update_q.get()
+        while host:
+            self.logger.debug('Updating %s on AutoTest', host)
+            self._UpdateAutoTest(host)
+            try:
+                # queue.get() will block until timeout is reached.
+                host = self.update_q.get(block=True, timeout=TIMEOUT)
+            except Queue.Empty:
+                break
 
-        for rhost in self.rhosts:
-            self.logger.info('%s status is %s', rhost, tb[rhost]['status'])
-
-        self._UpdateAutoTest()
-
-
-    # GetStatus is a helper function used to check one host when debugging.
-    # Useful when monitor is loaded as a module in an interactive session.
-    def GetStatus(self, rhost):
-        """Get and update status of a given rhost.
-
-        Args:
-            rhost: string, hostname or IPaddress of monitored host.
-        """
-
-        t = SSH(self.queue, self.logger)
-        t.setDaemon(True)
-        t.start()
-        self.queue.put(rhost)
-        self.queue.join()
-        self.logger.info('%s status is %s', rhost, tb[rhost]['status'])
+        for host in self.afe_hosts:
+            self.logger.info('%s status is %s', host.hostname,
+                             tb[host.hostname]['status'])
 
 
 def ParseArgs():
