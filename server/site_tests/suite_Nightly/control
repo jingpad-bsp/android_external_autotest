@@ -66,6 +66,6 @@ def run_assigned_tests(machine):
   test_list = test_dict[machine]
   for test, argv in test_list:
     client_at.run_test(test, **argv)
-  job.run_test("platform_BootPerfServer", host=client, iterations=4)
+  job.run_test("platform_BootPerfServer", host=client, iterations=50)
 
 job.parallel_on_machines(run_assigned_tests, machines)
