@@ -13,15 +13,6 @@ def md5_file(filename):
   return utils.system_output('md5sum ' + filename).split()[0]
 
 
-def get_board_id():
-  glxinfo_output = utils.system_output(site_ui.xcommand('glxinfo'))
-  match = re.search('OpenGL vendor string: (.*)', glxinfo_output)
-  vendor = match.group(1) if match else 'unknown vendor'
-  match = re.search('OpenGL renderer string: (.*)', glxinfo_output)
-  renderer = match.group(1) if match else 'unknown renderer'
-  return (vendor + ' / ' + renderer).strip()
-
-
 class graphics_GLBench(test.test):
   version = 1
   preserve_srcdir = True
@@ -40,7 +31,9 @@ class graphics_GLBench(test.test):
                                         'deps/glbench/src/checksums')
       checksums = eval(utils.read_file(checksums_filename))
 
-      board_id = get_board_id()
+      exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
+      board_id = utils.system_output(site_ui.xcommand(exefile +
+          ' -get_board_id')).strip()
       logging.info("Running on: %s", board_id)
       checksum_table = checksums.get(board_id, {})
 
@@ -50,7 +43,6 @@ class graphics_GLBench(test.test):
       else:
         raise error.TestFail("No checksums found for this board: %s" % board_id)
 
-      exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
       cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
       self.results = utils.system_output(cmd, retain_output=True)
 
