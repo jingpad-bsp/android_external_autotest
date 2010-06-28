@@ -64,10 +64,10 @@ Test Setup
 
   - Plug the USB device into the DUT and boot from it.
 
-  - Install Chrome OS on the DUT: switch to VT2 by pressing
-    Ctrl-Alt-F2, login as "chronos", password "test0000", and run
+  - Log in to Chrome OS.  Start the Chrome OS shell by pressing Ctrl-Alt-T.
+    Install Chrome OS on the DUT:
 
-    $ /usr/sbin/chromeos-install
+    crosh> install
 
 
 - Cold boot the DUT -- turn the DUT off and then back on. This ensures
@@ -100,41 +100,15 @@ Test Setup
 
   $ ssh root@<DUT_IP> true; echo $?
 
-
 ================================================================================
 Automated and Semi-Automated Test Runs
 ================================================================================
 
-
 - Unless otherwise noted, all tests can be performed on an AC-powered DUT.
 
-
-- Go to the Autotest server directory:
+- Go to the Autotest server directory and clean up previous test results.
 
   $ cd $HOME/chromeos-hwqual-TAG/autotest/
-
-
-- Autotest logs progress and performance data in results.* directories
-  specified through the '-r' autoserv option (see below). A quick way
-  to review the test results is to use the 'generate_test_report'
-  script installed under $HOME/chromeos-hwqual-TAG/:
-
-  $ ../generate_test_report results.*
-
-- This will display a table with test status and perfomance data for
-  all result directories.
-
-- Alternatively, you can setup the Autotest's web server and database
-  components and use them to view test results and maintain history.
-
-- If deeper investigation into a failure is required, you can review
-  the debug information stored in results:
-
-  $ */*/debug/.
-
-
-- Before running the tests, cleanup previous test results:
-
   $ rm -rf results.*
 
 
@@ -148,7 +122,7 @@ Automated and Semi-Automated Test Runs
   slots and run the external storage test:
 
   $ ./server/autoserv -r results.external_devices -m <DUT_IP> \
-                  -c client/site_tests/suite_HWQual/control.external_devices
+                  -c client/site_tests/suite_HWQual/control.external_drives
 
 
 - Run the approved components test by first following the manual
@@ -163,22 +137,6 @@ Automated and Semi-Automated Test Runs
 
   $ ./server/autoserv -r results.suspend_resume -m <DUT_IP> \
                   -c client/site_tests/suite_HWQual/control.suspend_resume
-
-
-- Run the keyboard semi-automated test by first reading the
-  instructions specified in the control file (control.keyboard) and
-  then executing:
-
-  $ ./server/autoserv -r results.keyboard -m <DUT_IP> -a hwqual \
-                  -c client/site_tests/suite_HWQual/control.keyboard
-
-
-- Run the touchpad semi-automated test by first reading the
-  instructions specified in the control file (control.touchpad) and
-  then executing:
-
-  $ ./server/autoserv -r results.touchpad -m <DUT_IP> -a hwqual \
-                  -c client/site_tests/suite_HWQual/control.touchpad
 
 
 - If the DUT has a Bluetooth adapter, run the Bluetooth semi-automated
@@ -247,11 +205,28 @@ Automated and Semi-Automated Test Runs
 - Note that the test will not check if the battery is fully charged
   before running.
 
+================================================================================
+Reviewing Automated and Semi-Automated Test Results
+================================================================================
+
+- Autotest logs progress and performance data in results.* directories
+  specified through the '-r' autoserv option. The easy way to see a summary
+  of your test results is to use the 'generate_test_report'
+  script installed under $HOME/chromeos-hwqual-TAG/:
+
+  $ ../generate_test_report results.*
+
+  This will display a table with test status and perfomance data for
+  all result directories.
+
+- If deeper investigation into a failure is required, you can review
+  the debug information stored in results:
+
+  $ ls */*/debug/.
 
 ================================================================================
 Manual Test Runs
 ================================================================================
-
 
 - Perform the manual tests specified in
   $HOME/chromeos-hwqual-TAG/manual/testcases.csv.
@@ -261,19 +236,25 @@ Manual Test Runs
   manual tests that will be required.  Such tests will have
   "NotImplemented" in their "LABELS" column.
 
+- Update this spreadsheet with a column of pass/fail results with any notes
+  which may be useful.
 
 ================================================================================
 Reporting Results
 ================================================================================
 
+- Upon completing automatic, semi-automatic, and manual test runs, you should
+  report your results to a Google technical support contact to verify the
+  tests were run correctly and to help diagnose failures.  Verify you have
+  updated your manual test spreadsheet as described above and copy it into
+  your autotest output directory:
 
-- Make sure that there are no test failures in automatic,
-  semi-automatic, or manual test categories.
+  $ cd $HOME/chromeos-hwqual-TAG/autotest/
+  $ cp ../manual/testcases.csv .
 
-- Once all tests pass or if you need technical assistance with the
-  hardware qualification results, package the result directories:
+- Package all results into a tar file:
 
-  $ tar cjf chromeos-hwqual-TAG-DATE.tar.bz2 results.*
+  $ tar cjf chromeos-hwqual-results-TAG-DATE.tar.bz2 results.* testcases.csv
 
-- Send the tarball to your Google technical support contact for review
-  or analysis.
+- Send the resulting chromeos-hwqual-results file to your technical support
+  contact.
