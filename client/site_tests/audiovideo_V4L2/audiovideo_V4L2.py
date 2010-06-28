@@ -24,7 +24,7 @@ class audiovideo_V4L2(test.test):
 
     def run_once(self, run_unit_tests=True, run_capture_tests=True,
                  run_default_capture_test=False, time=0,
-                 assert_mandatory_controls=True):
+                 assert_mandatory_controls=False):
 
         self.assert_mandatory_controls = assert_mandatory_controls
         self.find_video_capture_devices()
