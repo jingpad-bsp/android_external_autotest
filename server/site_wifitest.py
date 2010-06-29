@@ -126,6 +126,12 @@ class WiFiTest(object):
         # potential bg thread for ping untilstop
         self.ping_thread = None
 
+        # potential bg thread for client network monitoring
+        self.client_netdump_thread = None
+        self.client_cmd_netdump = client.get('cmd_netdump', 'tshark')
+        self.client_cmd_ifconfig = client.get('cmd_ifconfig', 'ifconfig')
+        self.client_cmd_iw = client.get('cmd_iw', 'iw')
+
 
     def cleanup(self, params):
         """ Cleanup state: disconnect client and destroy ap """
@@ -174,10 +180,12 @@ class WiFiTest(object):
                 self.cleanup(params)
                 break
 
+        # Other cleanup steps might be optional, but this is mandatory
+        self.client_netdump_stop({})
 
     def __get_ipaddr(self, host, ifnet):
         # XXX gotta be a better way to do this
-        result = host.run("ifconfig %s" % ifnet)
+        result = host.run("%s %s" % (self.client_cmd_ifconfig, ifnet))
         m = re.search('inet addr:([^ ]*)', result.stdout)
         if m is None:
              raise error.TestFail("No inet address found")
@@ -544,6 +552,43 @@ class WiFiTest(object):
             self.__unreachable("server_netperf")
             return
         self.__run_netperf(self.server_wifi_ip, self.client_wifi_ip, params)
+
+
+    def __create_netdump_dev(self, devname='mon0'):
+        self.client.run("%s dev %s del || /bin/true" % (self.client_cmd_iw,
+                                                        devname))
+        self.client.run("%s dev %s interface add %s type monitor" % 
+                        (self.client_cmd_iw, self.client_wlanif, devname))
+        self.client.run("%s %s up" % (self.client_cmd_ifconfig, devname))
+        return devname
+
+
+    def __destroy_netdump_dev(self, devname='mon0'):
+        self.client.run("%s dev %s del" % (self.client_cmd_iw, devname))
+
+
+    def client_netdump_start(self, params):
+        """ Ping the server from the client """
+        self.client.run("pkill %s || /bin/true" % self.client_cmd_netdump)
+        devname = self.__create_netdump_dev()
+        self.client_netdump_dir = self.client.get_tmp_dir()
+        self.client_netdump_file = os.path.join(self.client_netdump_dir,
+                                                "client_netdump.cap")
+        cmd = "%s -i %s -w %s" % (self.client_cmd_netdump, devname,
+                                  self.client_netdump_file)
+        logging.info(cmd)
+        self.client_netdump_thread = HelperThread(self.client, cmd)
+        self.client_netdump_thread.start()
+
+
+    def client_netdump_stop(self, params):
+        if self.client_netdump_thread is not None:
+            self.__destroy_netdump_dev()
+            self.client.run("pkill %s" % self.client_cmd_netdump)
+            self.client.get_file(self.client_netdump_file, '.')
+            self.client.delete_tmp_dir(self.client_netdump_dir)
+            self.client_netdump_thread.join()
+            self.client_netdump_thread = None
 
 
 class HelperThread(threading.Thread):
