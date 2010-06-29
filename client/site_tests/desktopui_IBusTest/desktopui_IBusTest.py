@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import logging, os, re, string, time
 from autotest_lib.client.bin import site_ui_test, test
 from autotest_lib.client.common_lib import error, site_ui, utils
 
@@ -75,6 +75,151 @@ class desktopui_IBusTest(site_ui_test.UITest):
         # actually removed. See also http://crosbug.com/2801/.
 
 
+    def test_check_unused_ibus_values(self):
+        engine_list = ['hangul', 'pinyin', 'mozc', 'chewing']
+        expected_unread = set([# TODO: Uncomment these when mozc loads config
+                               # values from ibus.
+                               'engine/Mozchistory_learning_level',
+                               'engine/Mozcincognito_mode',
+                               'engine/Mozcnumpad_character_form',
+                               'engine/Mozcpreedit_method',
+                               'engine/Mozcpunctuation_method',
+                               'engine/Mozcsession_keymap',
+                               'engine/Mozcshift_key_mode_switch',
+                               'engine/Mozcspace_character_form',
+                               'engine/Mozcsuggestions_size',
+                               'engine/Mozcsymbol_method',
+                               'engine/Mozcuse_auto_ime_turn_off',
+                               'engine/Mozcuse_dictionary_suggest',
+                               'engine/Mozcuse_history_suggest',
+                               'engine/Mozcuse_number_conversion',
+                               'engine/Mozcuse_single_kanji_conversion',
+                               'engine/Mozcuse_symbol_conversion',
+                               'engine/Mozcuse_date_conversion',
+
+                               # These preferences are actually read, but
+                               # ibus-daemon reads them before chrome connects,
+                               # so they show up as a false failure.
+                               'general/hotkeynext_engine_in_menu',
+                               'general/hotkeyprevious_engine',
+                               'generalglobal_engine',
+                               'generalglobal_previous_engine'])
+
+        expected_unwritten = set(['engine/ChewingsyncCapsLockLocal',
+                                  'engine/ChewingnumpadAlwaysNumber',
+                                  'engine/ChewinginputStyle',
+                                  'engine/HangulHanjaKeys',
+                                  'engine/PinyinCorrectPinyin_GN_NG',
+                                  'engine/PinyinCorrectPinyin_IOU_IU',
+                                  'engine/PinyinCorrectPinyin_MG_NG',
+                                  'engine/PinyinCorrectPinyin_UEN_UN',
+                                  'engine/PinyinCorrectPinyin_UE_VE',
+                                  'engine/PinyinCorrectPinyin_VE_UE',
+                                  'engine/PinyinCorrectPinyin_V_U',
+                                  'engine/PinyinDoublePinyinShowRaw',
+                                  'engine/PinyinFuzzyPinyin_ANG_AN',
+                                  'engine/PinyinFuzzyPinyin_AN_ANG',
+                                  'engine/PinyinFuzzyPinyin_CH_C',
+                                  'engine/PinyinFuzzyPinyin_C_CH',
+                                  'engine/PinyinFuzzyPinyin_ENG_EN',
+                                  'engine/PinyinFuzzyPinyin_EN_ENG',
+                                  'engine/PinyinFuzzyPinyin_F_H',
+                                  'engine/PinyinFuzzyPinyin_G_K',
+                                  'engine/PinyinFuzzyPinyin_H_F',
+                                  'engine/PinyinFuzzyPinyin_IANG_IAN',
+                                  'engine/PinyinFuzzyPinyin_IAN_IANG',
+                                  'engine/PinyinFuzzyPinyin_ING_IN',
+                                  'engine/PinyinFuzzyPinyin_IN_ING',
+                                  'engine/PinyinFuzzyPinyin_K_G',
+                                  'engine/PinyinFuzzyPinyin_L_N',
+                                  'engine/PinyinFuzzyPinyin_L_R',
+                                  'engine/PinyinFuzzyPinyin_N_L',
+                                  'engine/PinyinFuzzyPinyin_R_L',
+                                  'engine/PinyinFuzzyPinyin_SH_S',
+                                  'engine/PinyinFuzzyPinyin_S_SH',
+                                  'engine/PinyinFuzzyPinyin_UANG_UAN',
+                                  'engine/PinyinFuzzyPinyin_UAN_UANG',
+                                  'engine/PinyinFuzzyPinyin_ZH_Z',
+                                  'engine/PinyinFuzzyPinyin_Z_ZH',
+                                  'engine/PinyinCorrectPinyin_UEI_UI',
+                                  'engine/PinyinIncompletePinyin',
+                                  'engine/PinyinLookupTableOrientation',
+                                  'engine/PinyinSpecialPhrases',
+
+                                  # These preferences are actually read, but
+                                  # ibus-daemon reads them before chrome
+                                  # connects,  so they show up as a false
+                                  # failure.
+                                  'general/hotkeynext_engine_in_menu',
+                                  'general/hotkeyprevious_engine',
+                                  'generalglobal_engine',
+
+                                  # We don't set these prefernces.
+                                  'general/hotkeynext_engine',
+                                  'general/hotkeyprev_engine',
+                                  'general/hotkeytrigger',
+                                  'generalembed_preedit_text',
+                                  'generalenable_by_default',
+                                  'generalpreload_engines',
+                                  'generaluse_global_engine',
+                                  'generaluse_system_keyboard_layout'])
+
+        self.preload_engines(engine_list)
+
+        # Send a ctrl+l to enter a text field.
+        ax = self.get_autox()
+        ax.send_hotkey('Ctrl-l')
+
+        for engine_name in engine_list:
+            self.activate_engine(engine_name)
+
+        out = self.run_ibusclient('get_unused')
+        match = re.match(r"Unread:(.*)Unwritten:(.*)", out, re.DOTALL)
+        if not match:
+            raise error.TestFail('Could not read unused values from ibus')
+
+        actual_unread = set(re.split('\n', match.group(1).strip()))
+        actual_unwritten = set(re.split('\n', match.group(2).strip()))
+
+        new_unread = actual_unread.difference(expected_unread)
+        now_read = expected_unread.difference(actual_unread)
+        new_unwritten = actual_unwritten.difference(expected_unwritten)
+        now_written = expected_unwritten.difference(actual_unwritten)
+
+        if new_unread or now_read or new_unwritten or now_written:
+            message = ['iBus config has changed:']
+            if new_unread:
+                message.append('New unread values:')
+                for key in new_unread:
+                    message.append(key)
+            if now_read:
+                message.append('No longer unread values:')
+                for key in now_read:
+                    message.append(key)
+            if new_unwritten:
+                message.append('New unwritten values:')
+                for key in new_unwritten:
+                    message.append(key)
+            if now_written:
+                message.append('No longer unwritten values:')
+                for key in now_written:
+                    message.append(key)
+            raise error.TestFail(string.join(message, '\n'))
+
+
+    def preload_engines(self, engine_list):
+        engine_names = string.join(engine_list, " ")
+        out = self.run_ibusclient('preload_engines %s' % engine_names)
+        if not 'OK' in out:
+            raise error.TestFail('Failed to preload engines: %s' % engine_names)
+
+
+    def activate_engine(self, engine_name):
+        out = self.run_ibusclient('activate_engine %s' % engine_name)
+        if not 'OK' in out:
+            raise error.TestFail('Failed to activate engine: %s' % engine_name)
+
+
     def run_once(self):
         wait_for_ibus_daemon_or_die()
         dep = 'ibusclient'
@@ -88,3 +233,5 @@ class desktopui_IBusTest(site_ui_test.UITest):
         for type_name in ['boolean', 'int', 'double', 'string', 'boolean_list',
                           'int_list', 'double_list', 'string_list']:
             self.test_config(type_name)
+
+        self.test_check_unused_ibus_values()

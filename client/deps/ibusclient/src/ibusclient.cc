@@ -27,6 +27,9 @@ const gchar* kDummyValueStringArray[kArraySize] = {
   "DUMMY_VALUE 1", "DUMMY_VALUE 2", "DUMMY_VALUE 3",
 };
 
+const char kGeneralSectionName[] = "general";
+const char kPreloadEnginesConfigName[] = "preload_engines";
+
 // Converts |list_type_string| into its element type (e.g. "int_list" to "int").
 std::string GetElementType(const std::string& list_type_string) {
   const std::string suffix = "_list";
@@ -104,7 +107,7 @@ void SetConfigAndPrintResult(
     }
 
     g_value_take_boxed(&gvalue, array);
-  }  
+  }
 
   if (ibus_config_set_value(
           ibus_config, kDummySection, kDummyConfigName, &gvalue)) {
@@ -130,7 +133,7 @@ void GetConfigAndPrintResult(
     printf("FAIL (type mismatch)\n");
     return;
   }
-  
+
   if (gtype== G_TYPE_BOOLEAN) {
     if (g_value_get_boolean(&gvalue) != kDummyValueBoolean) {
       printf("FAIL (value mismatch)\n");
@@ -200,6 +203,105 @@ void GetConfigAndPrintResult(
   printf("OK\n");
 }
 
+// Prints out the array held in gvalue.  It is assumed that the array contains
+// G_TYPE_STRING values.
+// On success, returns true
+// On failure, prints out "FAIL (error message)" and returns false
+bool PrintArray(GValue* gvalue) {
+  GValueArray* array =
+      reinterpret_cast<GValueArray*>(g_value_get_boxed(gvalue));
+  for (guint i = 0; array && (i < array->n_values); ++i) {
+    const GType element_type = G_VALUE_TYPE(&(array->values[i]));
+    if (element_type != G_TYPE_STRING) {
+      printf("FAIL (Array element type is not STRING)\n");
+      return false;
+    }
+    const char* value = g_value_get_string(&(array->values[i]));
+    if (!value) {
+      printf("FAIL (Array element type is NULL)\n");
+      return false;
+    }
+    printf("%s\n", value);
+  }
+  return true;
+}
+
+// Print out the list of unused config variables from ibus.
+// On failure, prints out "FAIL (error message)" instead.
+void PrintUnused(IBusConfig* ibus_config) {
+  GValue unread = {0};
+  GValue unwritten = {0};
+  if (!ibus_config_get_unused(ibus_config, &unread, &unwritten)) {
+    printf("FAIL (get_unused failed)\n");
+    return;
+  }
+
+  if (G_VALUE_TYPE(&unread) != G_TYPE_VALUE_ARRAY) {
+    printf("FAIL (unread is not an array)\n");
+    return;
+  }
+
+  if (G_VALUE_TYPE(&unwritten) != G_TYPE_VALUE_ARRAY) {
+    printf("FAIL (unwritten is not an array)\n");
+    return;
+  }
+
+  printf("Unread:\n");
+  if (!PrintArray(&unread)) {
+    g_value_unset(&unread);
+    g_value_unset(&unwritten);
+    return;
+  }
+
+  printf("Unwritten:\n");
+  if (!PrintArray(&unwritten)) {
+    g_value_unset(&unread);
+    g_value_unset(&unwritten);
+    return;
+  }
+
+  g_value_unset(&unread);
+  g_value_unset(&unwritten);
+  return;
+}
+
+// Set the preload engines to those named in the array |engines| of size
+// |num_engines| and prints the result.
+//
+// Note that this only fails if it can't set the config value; it does not check
+// that the names of the engines are valid.
+void PreloadEnginesAndPrintResult(IBusConfig* ibus_config, int num_engines,
+                                  char** engines) {
+  GValue gvalue = {0};
+  g_value_init(&gvalue, G_TYPE_VALUE_ARRAY);
+  GValueArray* array = g_value_array_new(num_engines);
+  for (int i = 0; i < num_engines; ++i) {
+    GValue array_element = {0};
+    g_value_init(&array_element, G_TYPE_STRING);
+    g_value_set_string(&array_element, engines[i]);
+    g_value_array_append(array, &array_element);
+  }
+  g_value_take_boxed(&gvalue, array);
+
+  if (ibus_config_set_value(ibus_config, kGeneralSectionName,
+                            kPreloadEnginesConfigName, &gvalue)) {
+    printf("OK\n");
+  } else {
+    printf("FAIL\n");
+  }
+
+  g_value_unset(&gvalue);
+}
+
+// Sets |engine_name| as the active IME engine.
+void ActivateEngineAndPrintResult(IBusBus* ibus, const char* engine_name) {
+  if (!ibus_bus_set_global_engine(ibus, engine_name)) {
+    printf("FAIL (could not start engine)\n");
+  } else {
+    printf("OK\n");
+  }
+}
+
 // Prints the names of the given engines. Takes the ownership of |engines|.
 void PrintEngineNames(GList* engines) {
   for (GList* cursor = engines; cursor; cursor = g_list_next(cursor)) {
@@ -226,6 +328,9 @@ void PrintUsage(const char* argv0) {
          "                     Get a dummy value from ibus config service\n");
   // TODO(yusukes): Add config_key parameter to unset_config.
   printf("unset_config         Unset a dummy value from ibus config service\n");
+  printf("get_unused           List all keys that never were used.\n");
+  printf("preload_engines      Preload the listed engines.\n");
+  printf("activate_engine      Activate the specified engine.\n");
 }
 
 }  // namespace
@@ -275,6 +380,23 @@ int main(int argc, char **argv) {
     GetConfigAndPrintResult(ibus_config, argv[2]);
   } else if (command == "unset_config") {
     UnsetConfigAndPrintResult(ibus_config);
+  } else if (command == "get_unused") {
+    PrintUnused(ibus_config);
+  } else if (command == "preload_engines") {
+    if (argc < 3) {
+      PrintUsage(argv[0]);
+      return 1;
+    }
+    PreloadEnginesAndPrintResult(ibus_config, argc-2, &(argv[2]));
+  } else if (command == "activate_engine") {
+    if (argc != 3) {
+      PrintUsage(argv[0]);
+      return 1;
+    }
+    ActivateEngineAndPrintResult(ibus, argv[2]);
+  } else {
+    PrintUsage(argv[0]);
+    return 1;
   }
 
   return 0;
