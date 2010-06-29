@@ -104,6 +104,8 @@ client_at.run_test('login_LoginSuccess')
 
 client_at.run_test('login_BadAuthentication')
 
+client_at.run_test('login_RemoteLogin')
+
 client_at.run_test('desktopui_KillRestart',
                    binary='^session_manager$',
                    tag='session')
@@ -150,9 +152,12 @@ test_name = 'platform_ProcessPrivileges'
 process_tests = [
   {'process': 'candidate_window', 'user': 'chronos', 'do_login': True},
   {'process': 'chrome'},
+  # TODO(mazda): Change the user value to 'messagebus'.
+  # 201 is a uid of messagebus. ps command displays 201 as the user name for
+  # some reasons (bug of the ps command?).
+  {'process': 'dbus-daemon', 'user': '201'},
   {'process': 'ibus-daemon', 'user': 'chronos', 'do_login': True},
   {'process': 'ibus-memconf', 'user': 'chronos', 'do_login': True},
-  {'process': 'ibus-x11', 'user': 'chronos', 'do_login': True},
   # TODO(yusukes): Change 'run_as_root' to False once super-user privileges for
   # X are dropped.
   {'process': 'X', 'run_as_root': True},

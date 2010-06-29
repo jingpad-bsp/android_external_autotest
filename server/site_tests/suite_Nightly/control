@@ -42,7 +42,6 @@ TESTS = [
   ('login_CryptohomeUnmounted', {'creds': '$backdoor',
                                  'is_incognito': True,
                                  'tag': 'incognito'}),
-  ('login_RemoteLogin', {}),
   ('realtimecomm_GTalkAudioBench', {}),
   ('realtimecomm_GTalkunittest', {}),
   ('unixbench', {}),
