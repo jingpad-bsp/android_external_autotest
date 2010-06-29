@@ -1,5 +1,6 @@
 import httplib
 import logging
+import re
 import socket
 import urlparse
 
@@ -13,7 +14,7 @@ UPDATER_BIN='/opt/google/memento_updater/memento_updater.sh'
 UPDATER_CONFIG='/etc/lsb-release'
 
 
-class ChromiumOSError(error.AutotestError):
+class ChromiumOSError(error.InstallError):
     """Generic error for ChromiumOS-specific exceptions."""
     pass
 
@@ -85,11 +86,14 @@ class ChromiumOSHost(base_classes.Host):
         #except error.AutoservRunError, e:
         #    raise ChromiumOSError('Updater failed on host %s', self.hostname)
         # Updater has returned. reboot.
-        self.reboot(timeout=30, wait=True)
-        # TODO(seano): verify that image version is in fact running,
-        # after reboot.
-        # if self.get_build_id() != expected_version:
-        #     raise ChromiumOSError('Updater faild on host %s', self.hostname)
+        self.reboot(timeout=60, wait=True)
+
+        expected_version = update_url.split('/')[-1]
+        booted_version = self.get_build_id()
+        if booted_version != expected_version:
+            logging.info('Expected Chromium OS version: %s' % expected_version)
+            logging.info('Actual Chromium OS version: %s' % booted_version)
+            raise ChromiumOSError('Updater failed on host %s' % self.hostname)
 
 
     def get_build_id(self):
@@ -99,20 +103,19 @@ class ChromiumOSHost(base_classes.Host):
         version = self.run('grep CHROMEOS_RELEASE_DESCRIPTION'
                                   ' /etc/lsb-release').stdout
         build_re = (r'CHROMEOS_RELEASE_DESCRIPTION='
-                    '(\d+\.\d+\.\d+\.\d+) \(\w+ \w+ (\w+)(.*)\)')
-        version_match = version_string.match(build_re, version)
+                     '(\d+\.\d+\.\d+\.\d+) \(\w+ \w+ (\w+)(.*)\)')
+        version_match = re.match(build_re, version)
         if not version_match:
-            # If we don't find a recognizeable build version, just fail.
             raise ChromiumOSError('build ID not found on %s. ', self.hostname)
         version, build_id, builder = version_match.groups()
         # Continuous builds have an extra "builder number" on the end.
         # Report it if this looks like one.
         build_match = re.match(r'.*: (\d+)', builder)
         if build_match:
-            builder_num = '-%s' % build_match.group(1)
+            builder_num = '-b%s' % build_match.group(1)
         else:
             builder_num = ''
-        return '%s-%s%s' % (version, build_id, builder_num)
+        return '%s-r%s%s' % (version, build_id, builder_num)
 
 
     def reset(self):
