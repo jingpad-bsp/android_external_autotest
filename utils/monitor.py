@@ -91,19 +91,20 @@ def SetLogger(namespace, logfile, loglevel):
 class SSH(threading.Thread):
     """Class used to ssh to remote hosts and collect data."""
 
-
-    def __init__(self, host_q, update_q, logger):
+    def __init__(self, host_q, update_q, logger, src_location):
         """Init SSH Class and set some initial attributes.
 
         Args:
             host_q: Queue() object of AutoTest hosts to check health.
             update_q: Queue() object of AutoTest hosts after it's checked.
             logger: initialized logger object.
+            src_location: pathname of chrome os source code.
         """
         self.host_q = host_q
         self.update_q = update_q
         threading.Thread.__init__(self)
-        self.privkey = '/home/autotest/.ssh/id_rsa'
+        cros_keys = 'scripts/mod_for_test_scripts/ssh_keys'
+        self.privkey = os.path.join(src_location, cros_keys, 'testing_rsa')
         self.logger = logger
 
 
@@ -136,10 +137,9 @@ class Monitor(object):
     testbed. AutoTest will be queried to populate self.rhosts. It will populate
     a Queue and start a threaded operation using SSH class, to access each host
     in the AutoTest testbed to determine their status, and then update AutoTest.
-
     """
 
-    def __init__(self, logfile, debug_level):
+    def __init__(self, logfile, debug_level, source):
         """Init Monitor object with necessary attributes.
 
         Args:
@@ -147,6 +147,7 @@ class Monitor(object):
             debug_level: string, sets the log debug level.
         """
         self.logger = SetLogger('SystemMonitor', logfile, debug_level)
+        self.src = source
         self.thread_num = 10  # Number of parallel operations.
         self.host_q = Queue.Queue()  # Queue for checking hosts.
         self.update_q = Queue.Queue()  # Queue for updating AutoTest.
@@ -184,7 +185,7 @@ class Monitor(object):
 
         # Create new threads of class SSH.
         for i in range(self.thread_num):
-            t = SSH(self.host_q, self.update_q, self.logger)
+            t = SSH(self.host_q, self.update_q, self.logger, self.src)
             t.setDaemon(True)
             t.start()
 
@@ -209,8 +210,34 @@ class Monitor(object):
                              tb[host.hostname]['status'])
 
 
+    def CheckStatus(self, hostname):
+        """Check the status of one host.
+
+        Args:
+            hostname: hostname or ip address of host to check.
+        This method is primarily used for debugging purposes.
+        """
+        t = SSH(self.host_q, self.update_q, self.logger, self.src)
+        t.setDaemon(True)
+        t.start()
+
+        for host in self.afe_hosts:
+            if host.hostname == hostname:
+                self.host_q.put(host)
+                break
+
+        host = self.update_q.get()
+        self._UpdateAutoTest(host)
+        self.logger.info('%s status is %s', host.hostname,
+                         tb[host.hostname]['status'])
+
+
 def ParseArgs():
     """Parse all command line options."""
+    # Assume Chrome OS source is located on /usr/local/google.
+    homedir = os.environ['HOME']
+    cros_src = '/usr/local/google' + homedir + '/chromeos/chromeos/src'
+
     parser = optparse.OptionParser(version= __version__)
     parser.add_option('--debug',
                       help='Set the debug level [default: %default]',
@@ -223,13 +250,17 @@ def ParseArgs():
                       help='name of logfile [default: %default]',
                       default='monitor.log',
                       dest='logfile')
+    parser.add_option('--gclient',
+                      help='pathname of Chrome OS source [default: %default]',
+                      default=cros_src,
+                      dest='gclient')
 
     return parser.parse_args()
 
 
 def main(argv):
     options, args = ParseArgs()
-    sysmon = Monitor(options.logfile, options.debug)
+    sysmon = Monitor(options.logfile, options.debug, options.gclient)
     sysmon.UpdateStatus()
 
 
