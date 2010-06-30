@@ -62,7 +62,7 @@ class power_LoadTest(site_ui_test.UITest):
 
         # verify that initial conditions are met:
         if self._power_status.linepower[0].online:
-            raise error.TestNAError(
+            raise error.TestError(
                 'Running on AC power. Please remove AC power cable')
 
         percent_initial_charge = self._percent_current_charge()
@@ -72,7 +72,7 @@ class power_LoadTest(site_ui_test.UITest):
                       % (percent_initial_charge, percent_initial_charge_min))
 
         if check_network and self._is_network_iface_running('eth0'):
-            raise error.TestNAError(
+            raise error.TestError(
                 'Ethernet interface is active. Please remove Ethernet cable')
 
         # TODO (snanda):
