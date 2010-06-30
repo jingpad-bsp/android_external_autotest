@@ -453,6 +453,7 @@ class DocCreator(object):
         # Define some characters we expect to delineate sections in the README.
         sec_char = '=========='
         command_prompt = '$ '
+        crosh_prompt = 'crosh>'
         command_cont = '\\'
 
         command = False
@@ -494,7 +495,7 @@ class DocCreator(object):
                 # comment is used to denote when we should start recording text
                 # from the README file. Some of the initial text is not needed.
                 if comment:
-                    if command_prompt in line:
+                    if command_prompt in line or crosh_prompt in line:
                         line = line.rstrip()
                         if line[-1] == command_cont:
                             fw.write(vstart + line[:-1])
