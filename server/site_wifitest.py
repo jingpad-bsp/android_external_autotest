@@ -137,6 +137,7 @@ class WiFiTest(object):
         """ Cleanup state: disconnect client and destroy ap """
         self.disconnect({})
         self.wifi.destroy({})
+        self.client_netdump_stop({})
 
 
     def __get_defssid(self, ipaddr):
