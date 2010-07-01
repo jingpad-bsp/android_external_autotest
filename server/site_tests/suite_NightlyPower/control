@@ -27,7 +27,8 @@ TESTS = [
   'power_Idle',
   'power_StatsCPUFreq',
   'power_StatsCPUIdle',
-  'power_StatsUSB'
+  'power_StatsUSB',
+  'power_x86Settings'
 ]
 
 
@@ -41,6 +42,9 @@ def run_client_test(machine):
     remote_power.set_power_on()
   else:
     raise error.TestNAError("No power switch configured")
+
+  # Run power_x86Settings test with AC power connected
+  client_at.run_test('power_x86Settings', tag='AC_ONLINE')
 
   # Run the 60/20/10/10 load test
   # Charge the battery to at least 99% in preparation for the load

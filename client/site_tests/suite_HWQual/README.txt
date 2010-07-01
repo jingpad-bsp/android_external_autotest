@@ -170,40 +170,43 @@ Automated and Semi-Automated Test Runs
                   -c client/site_tests/suite_HWQual/control.teartest
 
 
-- Run the device on AC. Plug a power draw USB dongle in each USB port.
+- Run the DUT on AC. Plug a power draw USB dongle in each USB port.
   Run the max power draw test:
 
   $ ./server/autoserv -r results.max_power_draw.ac -m <DUT_IP> \
                   -c client/site_tests/suite_HWQual/control.max_power_draw
 
-
-- Run the device on battery. Plug a power draw USB dongle in each USB
+- Run the DUT on battery. Plug a power draw USB dongle in each USB
   port. Run the max power draw test:
 
   $ ./server/autoserv -r results.max_power_draw.batt -m <DUT_IP> \
                   -c client/site_tests/suite_HWQual/control.max_power_draw
 
+- Run the DUT on AC. Run the power settings test:
 
-- Make sure the remaining battery charge is less than 5%. Run the DUT
-  on AC. Run the battery charge test:
+  $ ./server/autoserv -r results.power_x86_setting.ac -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.power_x86_settings
+
+- Run the DUT on battery. Run the power settings test:
+
+  $ ./server/autoserv -r results.power_x86_setting.batt -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.power_x86_settings
+
+- Make sure the remaining battery charge is less than 5%. Note that the test
+  will check and fail quickly if the initial battery charge is more than 5%.
+  Run the DUT on AC. Run the battery charge test:
 
   $ ./server/autoserv -r results.battery_charge_time -m <DUT_IP> \
                   -c client/site_tests/suite_HWQual/control.battery_charge_time
 
-- Note that the test will check and fail quickly if the initial
-  battery charge is more than 5%.
-
-
-- Make sure that the battery is fully charged. Run the DUT on
+- Make sure that the battery is fully charged. Note that the test will not
+  check if the battery is fully charged before running. Run the DUT on
   battery. Run the battery load test by first following the manual
   instructions specified in the control file (control.battery_load)
   and then executing:
 
   $ ./server/autoserv -r results.battery_load -m <DUT_IP> \
                   -c client/site_tests/suite_HWQual/control.battery_load
-
-- Note that the test will not check if the battery is fully charged
-  before running.
 
 ================================================================================
 Reviewing Automated and Semi-Automated Test Results
