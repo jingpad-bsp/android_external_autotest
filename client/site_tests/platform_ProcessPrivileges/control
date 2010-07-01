@@ -18,21 +18,4 @@ This test checks process privileges - whether processes are running as root/
 super-user, and/or whether they are running as the specified user.
 """
 
-test_name = 'platform_ProcessPrivileges'
-process_tests = [
-  {'process': 'candidate_window', 'user': 'chronos', 'do_login': True},
-  {'process': 'chrome'},
-  # TODO(mazda): Change the user value to 'messagebus'.
-  # 201 is a uid of messagebus. ps command displays 201 as the user name for
-  # some reasons (bug of the ps command?).
-  {'process': 'dbus-daemon', 'user': '201'},
-  {'process': 'ibus-daemon', 'user': 'chronos', 'do_login': True},
-  {'process': 'ibus-memconf', 'user': 'chronos', 'do_login': True},
-  # TODO(yusukes): Change 'run_as_root' to False once super-user privileges for
-  # X are dropped.
-  {'process': 'X', 'run_as_root': True},
-]
-
-for i, process_test in enumerate(process_tests):
-  job.run_test(test_name, tag="%s_%d" % (process_test['process'], i),
-               **process_test)
+job.run_test('platform_ProcessPrivileges')
