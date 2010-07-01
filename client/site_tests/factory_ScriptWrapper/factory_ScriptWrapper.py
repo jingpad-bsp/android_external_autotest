@@ -9,53 +9,48 @@
 # stdout of the script displayed in a the testing widget via gtk
 # label.  Keyboard input will be passed to the script via its stdin.
 
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import factory_test
+
 import gobject
 import gtk
 import pango
 import sys
 import subprocess
 
-from gtk import gdk
-
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_test
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import pexpect
-
-
-_MAX_LABEL_CHARS=256
-
 
 class Script:
 
     def __init__(self, cmdline, label):
-        self._cmdline = cmdline
+        self._cmdline
         self._label = label
-        self._ibuf = ''
-        self._proc = pexpect.spawn(cmdline)
-        gobject.io_add_watch(self._proc.fileno(), gobject.IO_IN, self.recv)
+        self._proc = subprocess.Popen(cmdline.split(),
+                                      stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE)
+        gobject.io_add_watch(self._proc.stdout, gobject.IO_IN, self.recv)
 
     def recv(self, src, cond):
-        msg = self._proc.read_nonblocking(_MAX_LABEL_CHARS)
-        factory.log('recv script msg %s' % repr(msg))
+        msg = self._proc.stdout.read()
         self._label.set_text(msg)
         self._label.queue_draw()
-        if not self._proc.isalive():
-            self._proc.close()
+        returncode = self._proc.poll()
+        if returncode is not None:
             gtk.main_quit()
-            if self._proc.exitstatus is not 0:
-                error.TestFail('%s script return code was %d' %
-                               (self._cmdline, self._proc.exitstatus))
+            if returncode is not 0:
+                error.TestFail('%s script returned %d' %
+                               (self._cmdline, returncode))
         return True
 
-    def send(self, char):
-        if char != '\n':
-            self._ibuf += char
+    def send(self, msg):
+        print >> self._proc.stdin, msg
+        self._proc.stdin.flush()
+
+    def quit(self):
+        if self._proc.poll() is None:
             return
-        factory.log('sending script %s' % repr(self._ibuf))
-        self._proc.sendline(self._ibuf)
-        self._ibuf = ''
+        factory_test.XXX('killing Script')
+        self._proc.kill()
 
 
 class factory_ScriptWrapper(test.test):
@@ -63,8 +58,9 @@ class factory_ScriptWrapper(test.test):
 
     def key_release_callback(self, widget, event):
         char = event.keyval in range(32,127) and chr(event.keyval) or None
-        char = event.keyval == gdk.keyval_from_name('Return') and '\n' or char
-        if not self._ft_state.exit_on_trigger(event) and char is not None:
+        factory_test.XXX_log('key_release_callback %s(%s)' %
+                             (event.keyval, char))
+        if not factory_test.test_switch_on_trigger(event):
             self._script.send(char)
         return True
 
@@ -72,17 +68,13 @@ class factory_ScriptWrapper(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-    def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
-                 result_file_path=None,
-                 cmdline=None):
+    def run_once(self, test_widget_size=None, trigger_set=None,
+                 result_file_path=None, cmdline=None):
 
-        factory.log('%s run_once' % self.__class__)
+        factory_test.XXX_log('factory_ScriptWrapper')
 
-        self._ft_state = factory_test.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        factory_test.init(trigger_set=trigger_set,
+                          result_file_path=result_file_path)
 
         label = gtk.Label('')
         label.modify_font(pango.FontDescription('courier new condensed 16'))
@@ -95,9 +87,10 @@ class factory_ScriptWrapper(test.test):
 
         self._script = Script(cmdline, label)
 
-        self._ft_state.run_test_widget(
+        factory_test.run_test_widget(
             test_widget=test_widget,
             test_widget_size=test_widget_size,
-            window_registration_callback=self.register_callbacks)
+            window_registration_callback=self.register_callbacks,
+            cleanup_callback=self._script.quit)
 
-        factory.log('%s run_once finished' % self.__class__)
+        factory_test.XXX_log('exiting factory_ScriptWrapper')

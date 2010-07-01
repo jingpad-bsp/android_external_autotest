@@ -25,21 +25,32 @@
 
 import gobject
 import gtk
-import imp
 import os
 import pango
 import subprocess
 import sys
 import time
 
-import common
-import factory
-import factory_test as ft
 
-from factory import TestData
+def XXX_log(s):
+    print >> sys.stderr, 'FACTORY: ' + s
 
+_ACTIVE = 'ACTIVE'
+_PASSED = 'PASS'
+_FAILED = 'FAIL'
+_UNTESTED = 'UNTESTED'
 
-_SEP_COLOR = gtk.gdk.color_parse('grey50')
+_STATUS_CODE_MAP = {
+    'START': _ACTIVE,
+    'GOOD': _PASSED,
+    'FAIL': _FAILED,
+    'ERROR': _FAILED}
+
+_LABEL_COLORS = {
+    _ACTIVE: gtk.gdk.color_parse('light goldenrod'),
+    _PASSED: gtk.gdk.color_parse('pale green'),
+    _FAILED: gtk.gdk.color_parse('tomato'),
+    _UNTESTED: gtk.gdk.color_parse('dark slate grey')}
 
 _LABEL_EN_SIZE = (160, 35)
 _LABEL_EN_FONT = pango.FontDescription('courier new extra-condensed 16')
@@ -52,24 +63,26 @@ _LABEL_TROUGH_COLOR = gtk.gdk.color_parse('grey20')
 _LABEL_STATUS_SIZE = (140, 30)
 _LABEL_STATUS_FONT = pango.FontDescription(
     'courier new bold extra-condensed 16')
+_SEP_COLOR = gtk.gdk.color_parse('grey50')
+_BLACK = gtk.gdk.color_parse('black')
+_LIGHT_GREEN = gtk.gdk.color_parse('light green')
 _OTHER_LABEL_FONT = pango.FontDescription('courier new condensed 20')
 
-
-class Console:
+class console_proc:
     '''Display a progress log.  Implemented by launching an borderless
     xterm at a strategic location, and running tail against the log.'''
 
-    def __init__(self, allocation):
+    def __init__(self, allocation, log_file_path):
         xterm_coords = '135x14+%d+%d' % (allocation.x, allocation.y)
-        factory.log('xterm_coords = %s' % xterm_coords)
+        XXX_log('xterm_coords = %s' % xterm_coords)
         xterm_cmd = (('aterm --geometry %s -bw 0 -e bash -c ' %
                       xterm_coords).split() +
-                     ['tail -f %s | grep FACTORY' % factory.LOG_PATH])
-        factory.log('xterm_cmd = %s' % xterm_cmd)
+                     ['tail -f %s | grep FACTORY' % log_file_path])
+        XXX_log('xterm_cmd = %s' % xterm_cmd)
         self._proc = subprocess.Popen(xterm_cmd)
 
     def __del__(self):
-        factory.log('console_proc __del__')
+        XXX_log('console_proc __del__')
         self._proc.kill()
 
 
@@ -78,7 +91,7 @@ class Console:
 # messages.
 
 def stdin_callback(s, c):
-    factory.log('stdin_callback, quitting gtk main')
+    XXX_log('stdin_callback, quitting gtk main')
     gtk.main_quit()
     return True
 
@@ -90,7 +103,7 @@ def control_send(x):
     sys.stdout.flush()
 
 def control_send_target_test_update(test, count):
-    factory.log('ui send_target_test_update %s.%s_%s' %
+    XXX_log('ui send_target_test_update %s.%s_%s' %
             (test.formal_name, test.tag_prefix, count))
     control_send((test.formal_name, test.tag_prefix, count))
 
@@ -100,7 +113,7 @@ def control_send_target_test_update(test, count):
 # tests, and hence this should not be called.
 
 def handle_key_release_event(_, event):
-    factory.log('base ui key event (%s)' % event.keyval)
+    XXX_log('base ui key event (%s)' % event.keyval)
     return True
 
 
@@ -108,7 +121,7 @@ class TestLabelBox(gtk.EventBox):
 
     def __init__(self, test):
         gtk.EventBox.__init__(self)
-        self.modify_bg(gtk.STATE_NORMAL, ft.LABEL_COLORS[ft.UNTESTED])
+        self.modify_bg(gtk.STATE_NORMAL, _LABEL_COLORS[_UNTESTED])
         label_en = gtk.Label(test.label_en)
         label_en.set_size_request(*_LABEL_EN_SIZE)
         label_en.modify_font(_LABEL_EN_FONT)
@@ -123,7 +136,7 @@ class TestLabelBox(gtk.EventBox):
         label_t.set_size_request(*_LABEL_T_SIZE)
         label_t.modify_font(_LABEL_T_FONT)
         label_t.set_alignment(0.5, 0.5)
-        label_t.modify_fg(gtk.STATE_NORMAL, ft.BLACK)
+        label_t.modify_fg(gtk.STATE_NORMAL, _BLACK)
         hbox = gtk.HBox()
         hbox.pack_start(label_en, False, False)
         hbox.pack_start(label_zw, False, False)
@@ -132,12 +145,12 @@ class TestLabelBox(gtk.EventBox):
         self.label_list = [label_en, label_zw]
 
     def update(self, status):
-        if status == ft.UNTESTED:
+        if status == _UNTESTED:
             return
-        self.modify_fg(gtk.STATE_NORMAL, ft.BLACK)
+        self.modify_fg(gtk.STATE_NORMAL, _BLACK)
         for label in self.label_list:
-            label.modify_fg(gtk.STATE_NORMAL, ft.BLACK)
-        self.modify_bg(gtk.STATE_NORMAL, ft.LABEL_COLORS[status])
+            label.modify_fg(gtk.STATE_NORMAL, _BLACK)
+        self.modify_bg(gtk.STATE_NORMAL, _LABEL_COLORS[status])
         self.queue_draw()
 
 
@@ -145,8 +158,8 @@ class SubTestLabelBox(gtk.EventBox):
 
     def __init__(self, test):
         gtk.EventBox.__init__(self)
-        self.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
-        label_status = gtk.Label(ft.UNTESTED)
+        self.modify_bg(gtk.STATE_NORMAL, _BLACK)
+        label_status = gtk.Label(_UNTESTED)
         label_status.set_size_request(*_LABEL_STATUS_SIZE)
         label_status.set_alignment(0, 0.5)
         label_status.modify_font(_LABEL_STATUS_FONT)
@@ -154,15 +167,15 @@ class SubTestLabelBox(gtk.EventBox):
         label_en = gtk.Label(test.label_en)
         label_en.set_alignment(1, 0.5)
         label_en.modify_font(_LABEL_EN_FONT)
-        label_en.modify_fg(gtk.STATE_NORMAL, ft.LIGHT_GREEN)
+        label_en.modify_fg(gtk.STATE_NORMAL, _LIGHT_GREEN)
         label_zw = gtk.Label(test.label_zw)
         label_zw.set_alignment(1, 0.5)
         label_zw.modify_font(_LABEL_ZW_FONT)
-        label_zw.modify_fg(gtk.STATE_NORMAL, ft.LIGHT_GREEN)
+        label_zw.modify_fg(gtk.STATE_NORMAL, _LIGHT_GREEN)
         label_sep = gtk.Label(' : ')
         label_sep.set_alignment(0.5, 0.5)
         label_sep.modify_font(_LABEL_EN_FONT)
-        label_sep.modify_fg(gtk.STATE_NORMAL, ft.LIGHT_GREEN)
+        label_sep.modify_fg(gtk.STATE_NORMAL, _LIGHT_GREEN)
         hbox = gtk.HBox()
         hbox.pack_end(label_status, False, False)
         hbox.pack_end(label_sep, False, False)
@@ -172,10 +185,10 @@ class SubTestLabelBox(gtk.EventBox):
         self.label_status = label_status
 
     def update(self, status):
-        if status == ft.UNTESTED:
+        if status == _UNTESTED:
             return
         self.label_status.set_text(status)
-        self.label_status.modify_fg(gtk.STATE_NORMAL, ft.LABEL_COLORS[status])
+        self.label_status.modify_fg(gtk.STATE_NORMAL, _LABEL_COLORS[status])
         self.queue_draw()
 
 
@@ -187,10 +200,10 @@ class StatusMap():
         self._status_dict = {}
         for test in test_list:
             test_index = self.index(test.formal_name, test.tag_prefix)
-            self._status_dict[test_index] = (test, ft.UNTESTED, 0, None)
+            self._status_dict[test_index] = (test, _UNTESTED, 0, None)
             for subtest in test.automated_seq:
                 st_index = self.index(subtest.formal_name, subtest.tag_prefix)
-                self._status_dict[st_index] = (subtest, ft.UNTESTED, 0, None)
+                self._status_dict[st_index] = (subtest, _UNTESTED, 0, None)
         self._status_file_path = status_file_path
         self._status_file_pos = 0
         self.read_new_data()
@@ -201,8 +214,8 @@ class StatusMap():
 
     def next_untested(self):
         remaining = [t for t in self._test_queue
-                     if self.lookup_status(t) == ft.UNTESTED]
-        factory.log('remaining untested = [%s]' %
+                     if self.lookup_status(t) == _UNTESTED]
+        XXX_log('remaining untested = [%s]' %
                 ', '.join([self.index(t.formal_name, t.tag_prefix)
                            for t in remaining]))
         if not remaining: return None
@@ -215,10 +228,10 @@ class StatusMap():
                 cols = line.lstrip().split('\t') + ['']
                 code = cols[0]
                 test_id = cols[1]
-                if code not in ft.STATUS_CODE_MAP or test_id == '----':
+                if code not in _STATUS_CODE_MAP or test_id == '----':
                     continue
-                status = ft.STATUS_CODE_MAP[code]
-                factory.log('reading code = %s, test_id = %s' % (code, test_id))
+                status = _STATUS_CODE_MAP[code]
+                XXX_log('reading code = %s, test_id = %s' % (code, test_id))
                 formal_name, _, tag = test_id.rpartition('.')
                 tag_prefix, _, count = tag.rpartition('_')
                 self.update(formal_name, tag_prefix, status, int(count))
@@ -229,15 +242,15 @@ class StatusMap():
     def update(self, formal_name, tag_prefix, status, count):
         test_index = self.index(formal_name, tag_prefix)
         if test_index not in self._status_dict:
-            factory.log('ignoring status update (%s) for test %s' %
+            XXX_log('ignoring status update (%s) for test %s' %
                     (status, test_index))
             return
         test, old_status, old_count, label = self._status_dict[test_index]
         if count < old_count:
-            factory.log('ERROR: count regression for %s (%d-%d)' %
+            XXX_log('ERROR: count regression for %s (%d-%d)' %
                     (test_index, old_count, count))
         if status != old_status:
-            factory.log('status change for %s : %s/%s -> %s/%s' %
+            XXX_log('status change for %s : %s/%s -> %s/%s' %
                     (test_index, old_status, old_count, status, count))
             if label is not None:
                 label.update(status)
@@ -248,8 +261,10 @@ class StatusMap():
         max_count = max(map(self.lookup_count, test.automated_seq))
         if len(st_status_set) == 1:
             status = st_status_set.pop()
+        elif _ACTIVE in st_status_set:
+            status = _ACTIVE
         else:
-            status = ft.ACTIVE in st_status_set and ft.ACTIVE or ft.FAILED
+            status = _FAILED
         self.update(test.formal_name, test.tag_prefix, status, max_count)
 
     def set_label(self, test, label):
@@ -289,9 +304,9 @@ def make_notest_label():
     label = gtk.Label('no active test')
     label.modify_font(_OTHER_LABEL_FONT)
     label.set_alignment(0.5, 0.5)
-    label.modify_fg(gtk.STATE_NORMAL, ft.LIGHT_GREEN)
+    label.modify_fg(gtk.STATE_NORMAL, _LIGHT_GREEN)
     box = gtk.EventBox()
-    box.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
+    box.modify_bg(gtk.STATE_NORMAL, _BLACK)
     box.add(label)
     return box
 
@@ -307,7 +322,7 @@ def make_automated_seq_widget(as_test, status_map):
 def main():
     window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     window.connect('destroy', lambda _: gtk.main_quit())
-    window.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
+    window.modify_bg(gtk.STATE_NORMAL, _BLACK)
 
     screen = window.get_screen()
     screen_size = (screen.get_width(), screen.get_height())
@@ -322,7 +337,7 @@ def main():
 
     console_box = gtk.EventBox()
     console_box.set_size_request(-1, 180)
-    console_box.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
+    console_box.modify_bg(gtk.STATE_NORMAL, _BLACK)
 
     notest_label = make_notest_label()
 
@@ -346,9 +361,10 @@ def main():
     # On startup, get general configuration data from the autotest
     # control program, specifically the list of tests to run (in
     # order) and some filenames.
-    factory.log('pulling control info')
+    XXX_log('pulling control info')
     test_list = control_recv()
     status_file_path = control_recv()
+    log_file_path = control_recv()
 
     status_map = StatusMap(status_file_path, test_list)
 
@@ -367,16 +383,16 @@ def main():
     test_widget_allocation = test_widget_box.get_allocation()
     test_widget_size = (test_widget_allocation.width,
                         test_widget_allocation.height)
-    factory.log('test_widget_size = %s' % repr(test_widget_size))
+    XXX_log('test_widget_size = %s' % repr(test_widget_size))
     control_send(test_widget_size)
 
     trigger_dict = dict((test.trigger, test) for test in test_list)
 
     gobject.io_add_watch(sys.stdin, gobject.IO_IN, stdin_callback)
 
-    console = Console(console_box.get_allocation())
+    console = console_proc(console_box.get_allocation(), log_file_path)
 
-    factory.log('finished ui setup')
+    XXX_log('finished ui setup')
 
     # Test selection is driven either by triggers or by the
     # remaining_tests_queue.  If a trigger was seen, explicitly run
@@ -392,36 +408,43 @@ def main():
 
     while True:
         command, arg = control_recv()
-        factory.log('ui received command %s(%s)' % (command, arg))
+        XXX_log('ui received command %s(%s)' % (command, arg))
         if command == 'switch_to':
             next_test = trigger_dict.get(arg, None)
         elif command == 'next_test':
             next_test = status_map.next_untested()
         else:
-            factory.log('ui command unknown, exiting...')
+            XXX_log('ui command unknown, exiting...')
             break
         control_send_target_test_update(
             next_test, status_map.lookup_count(next_test) + 1)
         if next_test.automated_seq:
-            factory.log('ui starting automated_seq')
+            XXX_log('ui starting automated_seq')
             test_widget_box.remove(notest_label)
             as_widget = make_automated_seq_widget(next_test, status_map)
             test_widget_box.add(as_widget)
             window.show_all()
             gtk.main()
             command = control_recv()
-            factory.log('ui automated_seq cmd (%s)' % command)
+            XXX_log('ui automated_seq cmd (%s)' % command)
             test_widget_box.remove(as_widget)
             test_widget_box.add(notest_label)
             window.show_all()
-            factory.log('ui exiting automated_seq')
+            XXX_log('ui exiting automated_seq')
         else:
             gtk.main()
 
     # Tell the control process we are done.
     control_send((None, 0))
 
-    factory.log('exiting ui')
+    XXX_log('exiting ui')
 
 if __name__ == '__main__':
+
+    # In global scope, get the test_data class description from the
+    # control program -- this allows a convenient single point of
+    # definition for this class.
+    test_data_class_def = control_recv()
+    exec(test_data_class_def)
+
     main()

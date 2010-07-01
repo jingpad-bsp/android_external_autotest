@@ -12,17 +12,36 @@
 # events for test-switching triggers.  This test can be terminated by
 # typing SHIFT-Q.
 
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import factory_test
 
 import gtk
 import pango
 import os
 import sys
 
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_test as ft
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
 
+def XXX_log(s):
+    print >> sys.stderr, 'FACTORY: ' + s
+
+
+_BLACK = gtk.gdk.Color()
+_RED =   gtk.gdk.Color(0xFFFF, 0, 0)
+_GREEN = gtk.gdk.Color(0, 0xFFFF, 0)
+_BLUE =  gtk.gdk.Color(0, 0, 0xFFFF)
+_WHITE = gtk.gdk.Color(0xFFFF, 0xFFFF, 0xFFFF)
+
+_ACTIVE = 'ACTIVE'
+_PASSED = 'PASS'
+_FAILED = 'FAIL'
+_UNTESTED = 'UNTESTED'
+
+_LABEL_COLORS = {
+    _ACTIVE: gtk.gdk.color_parse('light goldenrod'),
+    _PASSED: gtk.gdk.color_parse('pale green'),
+    _FAILED: gtk.gdk.color_parse('tomato'),
+    _UNTESTED: gtk.gdk.color_parse('dark slate grey')}
 
 _LABEL_STATUS_SIZE = (140, 30)
 _LABEL_STATUS_FONT = pango.FontDescription('courier new condensed 16')
@@ -44,7 +63,7 @@ def pattern_cb_grid(widget, event, color=None):
     dr = widget.window
     xmax, ymax = dr.get_size()
     gc = gtk.gdk.GC(dr)
-    gc.set_rgb_fg_color(ft.BLACK)
+    gc.set_rgb_fg_color(_BLACK)
     dr.draw_rectangle(gc, True, 0, 0, xmax, ymax)
     gc.set_rgb_fg_color(color)
     gc.set_line_attributes(1,
@@ -59,11 +78,11 @@ def pattern_cb_grid(widget, event, color=None):
 
 
 _PATTERN_LIST = [
-    ('solid red', lambda *x: pattern_cb_solid(*x, **{'color':ft.RED})),
-    ('solid green', lambda *x: pattern_cb_solid(*x, **{'color':ft.GREEN})),
-    ('solid blue', lambda *x: pattern_cb_solid(*x, **{'color':ft.BLUE})),
-    ('solid white', lambda *x: pattern_cb_solid(*x, **{'color':ft.WHITE})),
-    ('grid', lambda *x: pattern_cb_grid(*x, **{'color':ft.GREEN}))]
+    ('solid red', lambda *x: pattern_cb_solid(*x, **{'color':_RED})),
+    ('solid green', lambda *x: pattern_cb_solid(*x, **{'color':_GREEN})),
+    ('solid blue', lambda *x: pattern_cb_solid(*x, **{'color':_BLUE})),
+    ('solid white', lambda *x: pattern_cb_solid(*x, **{'color':_WHITE})),
+    ('grid', lambda *x: pattern_cb_grid(*x, **{'color':_GREEN}))]
 
 
 class factory_Display(test.test):
@@ -86,7 +105,7 @@ class factory_Display(test.test):
             return
         self._current_pattern = self._pattern_queue.pop()
         name, cb_fn = self._current_pattern
-        self._status_map[name] = ft.ACTIVE
+        self._status_map[name] = _ACTIVE
         self._current_pattern_shown = False
 
     def key_press_callback(self, widget, event):
@@ -102,27 +121,28 @@ class factory_Display(test.test):
             self._fs_window = None
             self._current_pattern_shown = True
         elif event.keyval == gtk.keysyms.Tab and self._current_pattern_shown:
-            self._status_map[pattern_name] = ft.FAILED
+            self._status_map[pattern_name] = _FAILED
             self.goto_next_pattern()
         elif event.keyval == gtk.keysyms.Return and self._current_pattern_shown:
-            self._status_map[pattern_name] = ft.PASSED
+            self._status_map[pattern_name] = _PASSED
             self.goto_next_pattern()
         elif event.keyval == ord('Q'):
+            factory_test.XXX_log('factory_Display exiting...')
             gtk.main_quit()
         else:
-            self._ft_state.exit_on_trigger(event)
+            factory_test.test_switch_on_trigger(event)
         self._test_widget.queue_draw()
         return True
 
     def label_status_expose(self, widget, event, name=None):
         status = self._status_map[name]
         widget.set_text(status)
-        widget.modify_fg(gtk.STATE_NORMAL, ft.LABEL_COLORS[status])
+        widget.modify_fg(gtk.STATE_NORMAL, _LABEL_COLORS[status])
 
     def make_pattern_label_box(self, name):
         eb = gtk.EventBox()
-        eb.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
-        label_status = gtk.Label(ft.UNTESTED)
+        eb.modify_bg(gtk.STATE_NORMAL, _BLACK)
+        label_status = gtk.Label(_UNTESTED)
         label_status.set_size_request(*_LABEL_STATUS_SIZE)
         label_status.set_alignment(0, 0.5)
         label_status.modify_font(_LABEL_STATUS_FONT)
@@ -150,23 +170,21 @@ class factory_Display(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-    def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
+    def run_once(self, test_widget_size=None, trigger_set=None,
                  result_file_path=None):
 
-        factory.log('%s run_once' % self.__class__)
+        factory_test.XXX_log('factory_Display')
 
         xset_status = os.system('xset r off')
-        if xset_status:
-            raise TestFail('ERROR: disabling key repeat')
+        xmm_status = os.system('xmodmap -e "clear Lock"')
+        if xset_status or xmm_status:
+            raise TestFail('ERROR: disabling key repeat or caps lock')
 
-        self._ft_state = ft.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        factory_test.init(trigger_set=trigger_set,
+                          result_file_path=result_file_path)
 
         self._pattern_queue = [x for x in reversed(_PATTERN_LIST)]
-        self._status_map = dict((n, ft.UNTESTED) for n, f in _PATTERN_LIST)
+        self._status_map = dict((n, _UNTESTED) for n, f in _PATTERN_LIST)
 
         prompt_label = gtk.Label('hold SPACE to display pattern,\n'
                                  'TAB to fail and RETURN to pass\n')
@@ -183,7 +201,7 @@ class factory_Display(test.test):
             vbox.pack_start(label_box, False, False)
 
         test_widget = gtk.EventBox()
-        test_widget.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
+        test_widget.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse('black'))
         test_widget.add(vbox)
         self._test_widget = test_widget
 
@@ -191,15 +209,15 @@ class factory_Display(test.test):
 
         self._fs_window = None
 
-        self._ft_state.run_test_widget(
+        factory_test.run_test_widget(
             test_widget=test_widget,
             test_widget_size=test_widget_size,
             window_registration_callback=self.register_callbacks)
 
         failed_set = set(name for name, status in self._status_map.items()
-                         if status is not ft.PASSED)
+                         if status is not _PASSED)
         if failed_set:
             raise error.TestFail('some patterns failed (%s)' %
                                  ', '.join(failed_set))
 
-        factory.log('%s run_once finished' % self.__class__)
+        factory_test.XXX_log('exiting factory_Display')

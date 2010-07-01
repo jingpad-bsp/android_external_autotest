@@ -3,6 +3,10 @@
 # found in the LICENSE file.
 
 
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import factory_test
+
 import cairo
 import gobject
 import gtk
@@ -11,11 +15,6 @@ import time
 import os
 import sys
 import subprocess
-
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_test
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
 
 
 _SYNCLIENT_SETTINGS_CMDLINE = '/usr/bin/synclient -l'
@@ -39,10 +38,9 @@ _SP_WIDTH = 19
 
 class TouchpadTest:
 
-    def __init__(self, tp_image, drawing_area, ft_state):
+    def __init__(self, tp_image, drawing_area):
         self._tp_image = tp_image
         self._drawing_area = drawing_area
-        self._ft_state = ft_state
         self._motion_grid = {}
         for x in range(_X_SEGMENTS):
             for y in range(_Y_SEGMENTS):
@@ -71,10 +69,10 @@ class TouchpadTest:
         assert(y_seg in self._scroll_array)
         if left and not self._l_click:
             self._l_click = True
-            factory.log('ok left click')
+            factory_test.XXX_log('ok left click')
         elif right and not self._r_click:
             self._r_click = True
-            factory.log('ok right click')
+            factory_test.XXX_log('ok right click')
         elif fingers == 1 and not self._motion_grid[index]:
             self._motion_grid[index] = True
         elif fingers == 2 and not self._scroll_array[y_seg]:
@@ -120,19 +118,19 @@ class TouchpadTest:
         return True
 
     def key_press_event(self, widget, event):
-        self._ft_state.exit_on_trigger(event)
+        factory_test.test_switch_on_trigger(event)
         return True
 
     def button_press_event(self, widget, event):
-        factory.log('button_press_event %d,%d' % (event.x, event.y))
+        factory_test.XXX_log('button_press_event %d,%d' % (event.x, event.y))
         return True
 
     def button_release_event(self, widget, event):
-        factory.log('button_release_event %d,%d' % (event.x, event.y))
+        factory_test.XXX_log('button_release_event %d,%d' % (event.x, event.y))
         return True
 
     def motion_event(self, widget, event):
-        factory.log('motion_event %d,%d' % (event.x, event.y))
+        factory_test.XXX_log('motion_event %d,%d' % (event.x, event.y))
         return True
 
     def register_callbacks(self, window):
@@ -164,7 +162,7 @@ class SynClient:
     def recv(self, src, cond):
         data = self._proc.stdout.readline().split()
         if len(data) != 17:
-            factory.log('unknown data : %d, %s' % (len(data), data))
+            factory_test.XXX_log('unknown data : %d, %s' % (len(data), data))
             return True
         if data[0] == 'time':
             return True
@@ -177,25 +175,22 @@ class SynClient:
         return True
 
     def quit(self):
-        factory.log('killing SynClient ...')
+        factory_test.XXX_log('killing SynClient ...')
         self._proc.kill()
-        factory.log('dead')
+        factory_test.XXX_log('dead')
 
 
 class factory_Touchpad(test.test):
     version = 1
     preserve_srcdir = True
 
-    def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
+    def run_once(self, test_widget_size=None, trigger_set=None,
                  result_file_path=None):
 
-        factory.log('%s run_once' % self.__class__)
+        factory_test.XXX_log('factory_Touchpad')
 
-        ft_state = factory_test.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        factory_test.init(trigger_set=trigger_set,
+                          result_file_path=result_file_path)
 
         os.chdir(self.srcdir)
         tp_image = cairo.ImageSurface.create_from_png('touchpad.png')
@@ -203,7 +198,7 @@ class factory_Touchpad(test.test):
 
         drawing_area = gtk.DrawingArea()
 
-        test = TouchpadTest(tp_image, drawing_area, ft_state)
+        test = TouchpadTest(tp_image, drawing_area)
 
         drawing_area.set_size_request(*image_size)
         drawing_area.connect('expose_event', test.expose_event)
@@ -217,10 +212,10 @@ class factory_Touchpad(test.test):
 
         synclient = SynClient(test)
 
-        ft_state.run_test_widget(
+        factory_test.run_test_widget(
             test_widget=drawing_area,
             test_widget_size=test_widget_size,
             window_registration_callback=test.register_callbacks,
             cleanup_callback=synclient.quit)
 
-        factory.log('%s run_once finished' % self.__class__)
+        factory_test.XXX_log('exiting factory_Touchpad')
