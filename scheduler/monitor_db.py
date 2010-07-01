@@ -1130,12 +1130,16 @@ class Dispatcher(object):
 
 
     def _find_aborting(self):
+        jobs_to_stop = set()
         for entry in scheduler_models.HostQueueEntry.fetch(
                 where='aborted and not complete'):
             logging.info('Aborting %s', entry)
             for agent in self.get_agents_for_entry(entry):
                 agent.abort()
             entry.abort(self)
+            jobs_to_stop.add(entry.job)
+        for job in jobs_to_stop:
+            job.stop_if_necessary()
 
 
     def _can_start_agent(self, agent, num_started_this_cycle,
@@ -1754,18 +1758,19 @@ class AgentTask(object):
 
     def _check_queue_entry_statuses(self, queue_entries, allowed_hqe_statuses,
                                     allowed_host_statuses=None):
+        class_name = self.__class__.__name__
         for entry in queue_entries:
             if entry.status not in allowed_hqe_statuses:
-                raise SchedulerError('Queue task attempting to start '
+                raise SchedulerError('%s attempting to start '
                                      'entry with invalid status %s: %s'
-                                     % (entry.status, entry))
+                                     % (class_name, entry.status, entry))
             invalid_host_status = (
                     allowed_host_statuses is not None
                     and entry.host.status not in allowed_host_statuses)
             if invalid_host_status:
-                raise SchedulerError('Queue task attempting to start on queue '
+                raise SchedulerError('%s attempting to start on queue '
                                      'entry with invalid host status %s: %s'
-                                     % (entry.host.status, entry))
+                                     % (class_name, entry.host.status, entry))
 
 
 class TaskWithJobKeyvals(object):
@@ -2254,6 +2259,7 @@ class QueueTask(AbstractQueueTask):
 
         for queue_entry in self.queue_entries:
             queue_entry.set_status(models.HostQueueEntry.Status.GATHERING)
+            queue_entry.host.set_status(models.Host.Status.RUNNING)
 
 
 class HostlessQueueTask(AbstractQueueTask):
@@ -2314,10 +2320,12 @@ class PostJobTask(AgentTask):
             if was_aborted is None: # first queue entry
                 was_aborted = bool(queue_entry.aborted)
             elif was_aborted != bool(queue_entry.aborted): # subsequent entries
+                entries = ['%s (aborted: %s)' % (entry, entry.aborted)
+                           for entry in self.queue_entries]
                 email_manager.manager.enqueue_notify_email(
-                    'Inconsistent abort state',
-                    'Queue entries have inconsistent abort state: ' +
-                    ', '.join('%s (%s)' % (queue_entry, queue_entry.aborted)))
+                        'Inconsistent abort state',
+                        'Queue entries have inconsistent abort state:\n' +
+                        '\n'.join(entries))
                 # don't crash here, just assume true
                 return True
         return was_aborted

@@ -667,6 +667,19 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self._finish_parsing_and_cleanup(queue_entry)
 
 
+    def test_job_abort_queued_synchronous(self):
+        self._initialize_test()
+        job = self._create_job(hosts=[1,2])
+        job.synch_count = 2
+        job.save()
+
+        job.hostqueueentry_set.update(aborted=True)
+        self._run_dispatcher()
+        for host_queue_entry in job.hostqueueentry_set.all():
+            self.assertEqual(host_queue_entry.status,
+                             HqeStatus.ABORTED)
+
+
     def test_no_pidfile_leaking(self):
         self._initialize_test()
         self.test_simple_job()
@@ -963,6 +976,13 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
         job.hostqueueentry_set.update(aborted=True)
         self._run_dispatcher()
+        self._check_statuses(queue_entry, HqeStatus.GATHERING,
+                             HostStatus.RUNNING)
+
+        self.mock_drone_manager.process_capacity = 5
+        self._run_dispatcher()
+        self._check_statuses(queue_entry, HqeStatus.ABORTED,
+                             HostStatus.CLEANING)
 
 
     def test_simple_atomic_group_job(self):

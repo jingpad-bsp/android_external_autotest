@@ -5,8 +5,8 @@ Utility classes and functions to handle Virtual Machine creation using qemu.
 @copyright: 2008-2009 Red Hat Inc.
 """
 
-import time, socket, os, logging, fcntl, re, commands
-import kvm_utils, kvm_subprocess
+import time, socket, os, logging, fcntl, re, commands, glob
+import kvm_utils, kvm_subprocess, kvm_monitor
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
 
@@ -106,24 +106,24 @@ class VM:
         @param address_cache: A dict that maps MAC addresses to IP addresses
         """
         self.process = None
+        self.serial_console = None
         self.redirs = {}
         self.vnc_port = 5900
         self.uuid = None
+        self.monitors = []
+        self.pci_assignable = None
 
         self.name = name
         self.params = params
         self.root_dir = root_dir
         self.address_cache = address_cache
-        self.pci_assignable = None
+        self.netdev_id = []
 
-        # Find available monitor filename
+        # Find a unique identifier for this VM
         while True:
-            # The monitor filename should be unique
             self.instance = (time.strftime("%Y%m%d-%H%M%S-") +
                              kvm_utils.generate_random_string(4))
-            self.monitor_file_name = os.path.join("/tmp",
-                                                  "monitor-" + self.instance)
-            if not os.path.exists(self.monitor_file_name):
+            if not glob.glob("/tmp/*%s" % self.instance):
                 break
 
 
@@ -199,8 +199,14 @@ class VM:
         def add_name(help, name):
             return " -name '%s'" % name
 
-        def add_unix_socket_monitor(help, filename):
-            return " -monitor unix:%s,server,nowait" % filename
+        def add_human_monitor(help, filename):
+            return " -monitor unix:'%s',server,nowait" % filename
+
+        def add_qmp_monitor(help, filename):
+            return " -qmp unix:'%s',server,nowait" % filename
+
+        def add_serial(help, filename):
+            return " -serial unix:'%s',server,nowait" % filename
 
         def add_mem(help, mem):
             return " -m %s" % mem
@@ -210,42 +216,47 @@ class VM:
 
         def add_cdrom(help, filename, index=2):
             if has_option(help, "drive"):
-                return " -drive file=%s,index=%d,media=cdrom" % (filename,
-                                                                 index)
+                return " -drive file='%s',index=%d,media=cdrom" % (filename,
+                                                                   index)
             else:
-                return " -cdrom %s" % filename
+                return " -cdrom '%s'" % filename
 
         def add_drive(help, filename, format=None, cache=None, werror=None,
                       serial=None, snapshot=False, boot=False):
-            cmd = " -drive file=%s" % filename
+            cmd = " -drive file='%s'" % filename
             if format: cmd += ",if=%s" % format
             if cache: cmd += ",cache=%s" % cache
             if werror: cmd += ",werror=%s" % werror
-            if serial: cmd += ",serial=%s" % serial
+            if serial: cmd += ",serial='%s'" % serial
             if snapshot: cmd += ",snapshot=on"
             if boot: cmd += ",boot=on"
             return cmd
 
-        def add_nic(help, vlan, model=None, mac=None):
+        def add_nic(help, vlan, model=None, mac=None, netdev_id=None):
             cmd = " -net nic,vlan=%d" % vlan
+            if has_option(help, "netdev"):
+                cmd +=",netdev=%s" % netdev_id
             if model: cmd += ",model=%s" % model
-            if mac: cmd += ",macaddr=%s" % mac
+            if mac: cmd += ",macaddr='%s'" % mac
             return cmd
 
         def add_net(help, vlan, mode, ifname=None, script=None,
-                    downscript=None):
-            cmd = " -net %s,vlan=%d" % (mode, vlan)
+                    downscript=None, netdev_id=None):
+            if has_option(help, "netdev"):
+                cmd = " -netdev %s,id=%s" % (mode, netdev_id)
+            else:
+                cmd = " -net %s,vlan=%d" % (mode, vlan)
             if mode == "tap":
-                if ifname: cmd += ",ifname=%s" % ifname
-                if script: cmd += ",script=%s" % script
-                cmd += ",downscript=%s" % (downscript or "no")
+                if ifname: cmd += ",ifname='%s'" % ifname
+                if script: cmd += ",script='%s'" % script
+                cmd += ",downscript='%s'" % (downscript or "no")
             return cmd
 
         def add_floppy(help, filename):
-            return " -fda %s" % filename
+            return " -fda '%s'" % filename
 
         def add_tftp(help, filename):
-            return " -tftp %s" % filename
+            return " -tftp '%s'" % filename
 
         def add_tcp_redir(help, host_port, guest_port):
             return " -redir tcp:%s::%s" % (host_port, guest_port)
@@ -263,10 +274,29 @@ class VM:
             return " -nographic"
 
         def add_uuid(help, uuid):
-            return " -uuid %s" % uuid
+            return " -uuid '%s'" % uuid
 
         def add_pcidevice(help, host):
-            return " -pcidevice host=%s" % host
+            return " -pcidevice host='%s'" % host
+
+        def add_kernel(help, filename):
+            return " -kernel '%s'" % filename
+
+        def add_initrd(help, filename):
+            return " -initrd '%s'" % filename
+
+        def add_kernel_cmdline(help, cmdline):
+            return " -append %s" % cmdline
+
+        def add_testdev(help, filename):
+            return (" -chardev file,id=testlog,path=%s"
+                    " -device testdev,chardev=testlog" % filename)
+
+        def add_no_hpet(help):
+            if has_option(help, "no-hpet"):
+                return " -no-hpet"
+            else:
+                return ""
 
         # End of command line option wrappers
 
@@ -290,8 +320,17 @@ class VM:
         qemu_cmd += qemu_binary
         # Add the VM's name
         qemu_cmd += add_name(help, name)
-        # Add the monitor socket parameter
-        qemu_cmd += add_unix_socket_monitor(help, self.monitor_file_name)
+        # Add monitors
+        for monitor_name in kvm_utils.get_sub_dict_names(params, "monitors"):
+            monitor_params = kvm_utils.get_sub_dict(params, monitor_name)
+            monitor_filename = self.get_monitor_filename(monitor_name)
+            if monitor_params.get("monitor_type") == "qmp":
+                qemu_cmd += add_qmp_monitor(help, monitor_filename)
+            else:
+                qemu_cmd += add_human_monitor(help, monitor_filename)
+
+        # Add serial console redirection
+        qemu_cmd += add_serial(help, self.get_serial_console_filename())
 
         for image_name in kvm_utils.get_sub_dict_names(params, "images"):
             image_params = kvm_utils.get_sub_dict(params, image_name)
@@ -313,7 +352,8 @@ class VM:
             mac = None
             if "address_index" in nic_params:
                 mac = kvm_utils.get_mac_ip_pair_from_dict(nic_params)[0]
-            qemu_cmd += add_nic(help, vlan, nic_params.get("nic_model"), mac)
+            qemu_cmd += add_nic(help, vlan, nic_params.get("nic_model"), mac,
+                                self.netdev_id[vlan])
             # Handle the '-net tap' or '-net user' part
             script = nic_params.get("nic_script")
             downscript = nic_params.get("nic_downscript")
@@ -323,7 +363,7 @@ class VM:
                 downscript = kvm_utils.get_path(root_dir, downscript)
             qemu_cmd += add_net(help, vlan, nic_params.get("nic_mode", "user"),
                                 nic_params.get("nic_ifname"),
-                                script, downscript)
+                                script, downscript, self.netdev_id[vlan])
             # Proceed to next NIC
             vlan += 1
 
@@ -333,7 +373,7 @@ class VM:
 
         smp = params.get("smp")
         if smp:
-            qemu_cmd += " -smp %s" % smp
+            qemu_cmd += add_smp(help, smp)
 
         iso = params.get("cdrom")
         if iso:
@@ -356,9 +396,23 @@ class VM:
             qemu_cmd += add_floppy(help, floppy)
 
         tftp = params.get("tftp")
-        if tftp:
+        if tftp and nic_params.get("nic_mode") == "user":
             tftp = kvm_utils.get_path(root_dir, tftp)
             qemu_cmd += add_tftp(help, tftp)
+
+        kernel = params.get("kernel")
+        if kernel:
+            kernel = kvm_utils.get_path(root_dir, kernel)
+            qemu_cmd += add_kernel(help, kernel)
+
+        kernel_cmdline = params.get("kernel_cmdline")
+        if kernel_cmdline:
+            qemu_cmd += add_kernel_cmdline(help, kernel_cmdline)
+
+        initrd = params.get("initrd")
+        if initrd:
+            initrd = kvm_utils.get_path(root_dir, initrd)
+            qemu_cmd += add_initrd(help, initrd)
 
         for redir_name in kvm_utils.get_sub_dict_names(params, "redirs"):
             redir_params = kvm_utils.get_sub_dict(params, redir_name)
@@ -378,6 +432,12 @@ class VM:
         elif params.get("uuid"):
             qemu_cmd += add_uuid(help, params.get("uuid"))
 
+        if params.get("testdev") == "yes":
+            qemu_cmd += add_testdev(help, self.get_testlog_filename())
+
+        if params.get("disable_hpet") == "yes":
+            qemu_cmd += add_no_hpet(help)
+
         # If the PCI assignment step went OK, add each one of the PCI assigned
         # devices to the qemu command line.
         if self.pci_assignable:
@@ -392,7 +452,7 @@ class VM:
 
 
     def create(self, name=None, params=None, root_dir=None,
-               for_migration=False, timeout=5.0):
+               for_migration=False, timeout=5.0, extra_params=None):
         """
         Start the VM by running a qemu command.
         All parameters are optional. The following applies to all parameters
@@ -405,6 +465,8 @@ class VM:
         @param root_dir: Base directory for relative filenames
         @param for_migration: If True, start the VM with the -incoming
         option
+        @param extra_params: extra params for qemu command.e.g -incoming option
+        Please use this parameter instead of for_migration.
         """
         self.destroy()
 
@@ -466,6 +528,9 @@ class VM:
                 guest_port = int(redir_params.get("guest_port"))
                 self.redirs[guest_port] = host_ports[i]
 
+            for nic in kvm_utils.get_sub_dict_names(params, "nics"):
+                self.netdev_id.append(kvm_utils.generate_random_id())
+
             # Find available VNC port, if needed
             if params.get("display") == "vnc":
                 self.vnc_port = kvm_utils.find_free_port(5900, 6100)
@@ -476,64 +541,69 @@ class VM:
                 self.uuid = f.read().strip()
                 f.close()
 
-            if not params.get("pci_assignable") == "no":
-                pa_type = params.get("pci_assignable")
+            # Assign a PCI assignable device
+            self.pci_assignable = None
+            pa_type = params.get("pci_assignable")
+            if pa_type in ["vf", "pf", "mixed"]:
                 pa_devices_requested = params.get("devices_requested")
 
                 # Virtual Functions (VF) assignable devices
                 if pa_type == "vf":
-                    pa_driver = params.get("driver")
-                    pa_driver_option = params.get("driver_option")
-                    self.pci_assignable = kvm_utils.PciAssignable(type=pa_type,
-                                        driver=pa_driver,
-                                        driver_option=pa_driver_option,
-                                        devices_requested=pa_devices_requested)
+                    self.pci_assignable = kvm_utils.PciAssignable(
+                        type=pa_type,
+                        driver=params.get("driver"),
+                        driver_option=params.get("driver_option"),
+                        devices_requested=pa_devices_requested)
                 # Physical NIC (PF) assignable devices
                 elif pa_type == "pf":
-                    pa_device_names = params.get("device_names")
-                    self.pci_assignable = kvm_utils.PciAssignable(type=pa_type,
-                                         names=pa_device_names,
-                                         devices_requested=pa_devices_requested)
+                    self.pci_assignable = kvm_utils.PciAssignable(
+                        type=pa_type,
+                        names=params.get("device_names"),
+                        devices_requested=pa_devices_requested)
                 # Working with both VF and PF
                 elif pa_type == "mixed":
-                    pa_device_names = params.get("device_names")
-                    pa_driver = params.get("driver")
-                    pa_driver_option = params.get("driver_option")
-                    self.pci_assignable = kvm_utils.PciAssignable(type=pa_type,
-                                        driver=pa_driver,
-                                        driver_option=pa_driver_option,
-                                        names=pa_device_names,
-                                        devices_requested=pa_devices_requested)
+                    self.pci_assignable = kvm_utils.PciAssignable(
+                        type=pa_type,
+                        driver=params.get("driver"),
+                        driver_option=params.get("driver_option"),
+                        names=params.get("device_names"),
+                        devices_requested=pa_devices_requested)
 
                 self.pa_pci_ids = self.pci_assignable.request_devs()
 
                 if self.pa_pci_ids:
-                    logging.debug("Successfuly assigned devices: %s" %
+                    logging.debug("Successfuly assigned devices: %s",
                                   self.pa_pci_ids)
                 else:
                     logging.error("No PCI assignable devices were assigned "
                                   "and 'pci_assignable' is defined to %s "
-                                  "on your config file. Aborting VM creation." %
+                                  "on your config file. Aborting VM creation.",
                                   pa_type)
                     return False
 
-            else:
-                self.pci_assignable = None
+            elif pa_type and pa_type != "no":
+                logging.warn("Unsupported pci_assignable type: %s", pa_type)
 
             # Make qemu command
             qemu_command = self.make_qemu_command()
 
-            # Is this VM supposed to accept incoming migrations?
-            if for_migration:
-                # Find available migration port
-                self.migration_port = kvm_utils.find_free_port(5200, 6000)
-                # Add -incoming option to the qemu command
-                qemu_command += " -incoming tcp:0:%d" % self.migration_port
+            # Enable migration support for VM by adding extra_params.
+            if extra_params is not None:
+                if " -incoming tcp:0:%d" == extra_params:
+                    self.migration_port = kvm_utils.find_free_port(5200, 6000)
+                    qemu_command += extra_params % self.migration_port
+                elif " -incoming unix:%s" == extra_params:
+                    self.migration_file = os.path.join("/tmp/", "unix-" +
+                                          time.strftime("%Y%m%d-%H%M%S"))
+                    qemu_command += extra_params % self.migration_file
+                else:
+                    qemu_command += extra_params
 
             logging.debug("Running qemu command:\n%s", qemu_command)
             self.process = kvm_subprocess.run_bg(qemu_command, None,
                                                  logging.debug, "(qemu) ")
 
+            # Make sure the process was started successfully
             if not self.process.is_alive():
                 logging.error("VM could not be created; "
                               "qemu command failed:\n%s" % qemu_command)
@@ -543,11 +613,38 @@ class VM:
                 self.destroy()
                 return False
 
-            if not kvm_utils.wait_for(self.is_alive, timeout, 0, 1):
-                logging.error("VM is not alive for some reason; "
-                              "qemu command:\n%s" % qemu_command)
-                self.destroy()
-                return False
+            # Establish monitor connections
+            self.monitors = []
+            for monitor_name in kvm_utils.get_sub_dict_names(params,
+                                                             "monitors"):
+                monitor_params = kvm_utils.get_sub_dict(params, monitor_name)
+                # Wait for monitor connection to succeed
+                end_time = time.time() + timeout
+                while time.time() < end_time:
+                    try:
+                        if monitor_params.get("monitor_type") == "qmp":
+                            # Add a QMP monitor
+                            monitor = kvm_monitor.QMPMonitor(
+                                monitor_name,
+                                self.get_monitor_filename(monitor_name))
+                        else:
+                            # Add a "human" monitor
+                            monitor = kvm_monitor.HumanMonitor(
+                                monitor_name,
+                                self.get_monitor_filename(monitor_name))
+                    except kvm_monitor.MonitorError, e:
+                        logging.warn(e)
+                    else:
+                        if monitor.is_responsive():
+                            break
+                    time.sleep(1)
+                else:
+                    logging.error("Could not connect to monitor '%s'" %
+                                  monitor_name)
+                    self.destroy()
+                    return False
+                # Add this monitor to the list
+                self.monitors += [monitor]
 
             # Get the output so far, to see if we have any problems with
             # hugepage setup.
@@ -561,96 +658,21 @@ class VM:
                 self.destroy()
                 return False
 
-            logging.debug("VM appears to be alive with PID %d",
-                          self.process.get_pid())
+            logging.debug("VM appears to be alive with PID %s", self.get_pid())
+
+            # Establish a session with the serial console -- requires a version
+            # of netcat that supports -U
+            self.serial_console = kvm_subprocess.kvm_shell_session(
+                "nc -U %s" % self.get_serial_console_filename(),
+                auto_close=False,
+                output_func=kvm_utils.log_line,
+                output_params=("serial-%s.log" % name,))
+
             return True
 
         finally:
             fcntl.lockf(lockfile, fcntl.LOCK_UN)
             lockfile.close()
-
-
-    def send_monitor_cmd(self, command, block=True, timeout=20.0, verbose=True):
-        """
-        Send command to the QEMU monitor.
-
-        Connect to the VM's monitor socket and wait for the (qemu) prompt.
-        If block is True, read output from the socket until the (qemu) prompt
-        is found again, or until timeout expires.
-
-        Return a tuple containing an integer indicating success or failure,
-        and the data read so far. The integer is 0 on success and 1 on failure.
-        A failure is any of the following cases: connection to the socket
-        failed, or the first (qemu) prompt could not be found, or block is
-        True and the second prompt could not be found.
-
-        @param command: Command that will be sent to the monitor
-        @param block: Whether the output from the socket will be read until
-                the timeout expires
-        @param timeout: Timeout (seconds) before giving up on reading from
-                socket
-        """
-        def read_up_to_qemu_prompt(s, timeout):
-            """
-            Read data from socket s until the (qemu) prompt is found.
-
-            If the prompt is found before timeout expires, return a tuple
-            containing True and the data read. Otherwise return a tuple
-            containing False and the data read so far.
-
-            @param s: Socket object
-            @param timeout: Time (seconds) before giving up trying to get the
-                    qemu prompt.
-            """
-            o = ""
-            end_time = time.time() + timeout
-            while time.time() < end_time:
-                try:
-                    o += s.recv(1024)
-                    if o.splitlines()[-1].split()[-1] == "(qemu)":
-                        return (True, o)
-                except:
-                    time.sleep(0.01)
-            return (False, o)
-
-        # In certain conditions printing this debug output might be too much
-        # Just print it if verbose is enabled (True by default)
-        if verbose:
-            logging.debug("Sending monitor command: %s" % command)
-        # Connect to monitor
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.setblocking(False)
-            s.connect(self.monitor_file_name)
-        except:
-            logging.debug("Could not connect to monitor socket")
-            return (1, "")
-
-        # Send the command and get the resulting output
-        try:
-            status, data = read_up_to_qemu_prompt(s, timeout)
-            if not status:
-                logging.debug("Could not find (qemu) prompt; output so far:" +
-                              kvm_utils.format_str_for_message(data))
-                return (1, "")
-            # Send command
-            s.sendall(command + "\n")
-            # Receive command output
-            data = ""
-            if block:
-                status, data = read_up_to_qemu_prompt(s, timeout)
-                data = "\n".join(data.splitlines()[1:])
-                if not status:
-                    logging.debug("Could not find (qemu) prompt after command; "
-                                  "output so far:" +
-                                  kvm_utils.format_str_for_message(data))
-                    return (1, data)
-            return (0, data)
-
-        # Clean up before exiting
-        finally:
-            s.shutdown(socket.SHUT_RDWR)
-            s.close()
 
 
     def destroy(self, gracefully=True):
@@ -671,8 +693,7 @@ class VM:
                 logging.debug("VM is already down")
                 return
 
-            logging.debug("Destroying VM with PID %d..." %
-                          self.process.get_pid())
+            logging.debug("Destroying VM with PID %s...", self.get_pid())
 
             if gracefully and self.params.get("shutdown_command"):
                 # Try to destroy with shell command
@@ -690,15 +711,18 @@ class VM:
                     finally:
                         session.close()
 
-            # Try to destroy with a monitor command
-            logging.debug("Trying to kill VM with monitor command...")
-            status, output = self.send_monitor_cmd("quit", block=False)
-            # Was the command sent successfully?
-            if status == 0:
-                # Wait for the VM to be really dead
-                if kvm_utils.wait_for(self.is_dead, 5, 0.5, 0.5):
-                    logging.debug("VM is down")
-                    return
+            if self.monitor:
+                # Try to destroy with a monitor command
+                logging.debug("Trying to kill VM with monitor command...")
+                try:
+                    self.monitor.quit()
+                except kvm_monitor.MonitorError, e:
+                    logging.warn(e)
+                else:
+                    # Wait for the VM to be really dead
+                    if kvm_utils.wait_for(self.is_dead, 5, 0.5, 0.5):
+                        logging.debug("VM is down")
+                        return
 
             # If the VM isn't dead yet...
             logging.debug("Cannot quit normally; sending a kill to close the "
@@ -712,28 +736,46 @@ class VM:
             logging.error("Process %s is a zombie!" % self.process.get_pid())
 
         finally:
+            self.monitors = []
             if self.pci_assignable:
                 self.pci_assignable.release_devs()
             if self.process:
                 self.process.close()
-            try:
-                os.unlink(self.monitor_file_name)
-            except OSError:
-                pass
+            if self.serial_console:
+                self.serial_console.close()
+            for f in ([self.get_testlog_filename(),
+                       self.get_serial_console_filename()] +
+                      self.get_monitor_filenames()):
+                try:
+                    os.unlink(f)
+                except OSError:
+                    pass
+
+
+    @property
+    def monitor(self):
+        """
+        Return the main monitor object, selected by the parameter main_monitor.
+        If main_monitor isn't defined, return the first monitor.
+        If no monitors exist, or if main_monitor refers to a nonexistent
+        monitor, return None.
+        """
+        for m in self.monitors:
+            if m.name == self.params.get("main_monitor"):
+                return m
+        if self.monitors and not self.params.get("main_monitor"):
+            return self.monitors[0]
 
 
     def is_alive(self):
         """
-        Return True if the VM's monitor is responsive.
+        Return True if the VM is alive and its monitor is responsive.
         """
         # Check if the process is running
         if self.is_dead():
             return False
         # Try sending a monitor command
-        (status, output) = self.send_monitor_cmd("help")
-        if status:
-            return False
-        return True
+        return bool(self.monitor) and self.monitor.is_responsive()
 
 
     def is_dead(self):
@@ -757,6 +799,36 @@ class VM:
         upon VM.create().
         """
         return self.params
+
+
+    def get_monitor_filename(self, monitor_name):
+        """
+        Return the filename corresponding to a given monitor name.
+        """
+        return "/tmp/monitor-%s-%s" % (monitor_name, self.instance)
+
+
+    def get_monitor_filenames(self):
+        """
+        Return a list of all monitor filenames (as specified in the VM's
+        params).
+        """
+        return [self.get_monitor_filename(m) for m in
+                kvm_utils.get_sub_dict_names(self.params, "monitors")]
+
+
+    def get_serial_console_filename(self):
+        """
+        Return the serial console filename.
+        """
+        return "/tmp/serial-%s" % self.instance
+
+
+    def get_testlog_filename(self):
+        """
+        Return the testlog filename.
+        """
+        return "/tmp/testlog-%s" % self.instance
 
 
     def get_address(self, index=0):
@@ -819,7 +891,25 @@ class VM:
 
     def get_pid(self):
         """
-        Return the VM's PID.
+        Return the VM's PID.  If the VM is dead return None.
+
+        @note: This works under the assumption that self.process.get_pid()
+        returns the PID of the parent shell process.
+        """
+        try:
+            children = commands.getoutput("ps --ppid=%d -o pid=" %
+                                          self.process.get_pid()).split()
+            return int(children[0])
+        except (TypeError, IndexError, ValueError):
+            return None
+
+
+    def get_shell_pid(self):
+        """
+        Return the PID of the parent shell process.
+
+        @note: This works under the assumption that self.process.get_pid()
+        returns the PID of the parent shell process.
         """
         return self.process.get_pid()
 
@@ -834,11 +924,10 @@ class VM:
             logging.error("Could not get shared memory info from dead VM.")
             return None
 
-        cmd = "cat /proc/%d/statm" % self.params.get('pid_' + self.name)
-        shm = int(os.popen(cmd).readline().split()[2])
+        filename = "/proc/%d/statm" % self.get_pid()
+        shm = int(open(filename).read().split()[2])
         # statm stores informations in pages, translate it to MB
-        shm = shm * 4 / 1024
-        return shm
+        return shm * 4.0 / 1024
 
 
     def remote_login(self, nic_index=0, timeout=10):
@@ -859,20 +948,16 @@ class VM:
         client = self.params.get("shell_client")
         address = self.get_address(nic_index)
         port = self.get_port(int(self.params.get("shell_port")))
+        log_filename = ("session-%s-%s.log" %
+                        (self.name, kvm_utils.generate_random_string(4)))
 
         if not address or not port:
             logging.debug("IP address or port unavailable")
             return None
 
-        if client == "ssh":
-            session = kvm_utils.ssh(address, port, username, password,
-                                    prompt, linesep, timeout)
-        elif client == "telnet":
-            session = kvm_utils.telnet(address, port, username, password,
-                                       prompt, linesep, timeout)
-        elif client == "nc":
-            session = kvm_utils.netcat(address, port, username, password,
-                                       prompt, linesep, timeout)
+        session = kvm_utils.remote_login(client, address, port, username,
+                                         password, prompt, linesep,
+                                         log_filename, timeout)
 
         if session:
             session.set_status_test_command(self.params.get("status_test_"
@@ -895,6 +980,8 @@ class VM:
         client = self.params.get("file_transfer_client")
         address = self.get_address(nic_index)
         port = self.get_port(int(self.params.get("file_transfer_port")))
+        log_filename = ("scp-%s-%s.log" %
+                        (self.name, kvm_utils.generate_random_string(4)))
 
         if not address or not port:
             logging.debug("IP address or port unavailable")
@@ -902,7 +989,8 @@ class VM:
 
         if client == "scp":
             return kvm_utils.scp_to_remote(address, port, username, password,
-                                           local_path, remote_path, timeout)
+                                           local_path, remote_path,
+                                           log_filename, timeout)
 
 
     def copy_files_from(self, remote_path, local_path, nic_index=0, timeout=600):
@@ -920,6 +1008,8 @@ class VM:
         client = self.params.get("file_transfer_client")
         address = self.get_address(nic_index)
         port = self.get_port(int(self.params.get("file_transfer_port")))
+        log_filename = ("scp-%s-%s.log" %
+                        (self.name, kvm_utils.generate_random_string(4)))
 
         if not address or not port:
             logging.debug("IP address or port unavailable")
@@ -927,7 +1017,37 @@ class VM:
 
         if client == "scp":
             return kvm_utils.scp_from_remote(address, port, username, password,
-                                             remote_path, local_path, timeout)
+                                             remote_path, local_path,
+                                             log_filename, timeout)
+
+
+    def serial_login(self, timeout=10):
+        """
+        Log into the guest via the serial console.
+        If timeout expires while waiting for output from the guest (e.g. a
+        password prompt or a shell prompt) -- fail.
+
+        @param timeout: Time (seconds) before giving up logging into the guest.
+        @return: kvm_spawn object on success and None on failure.
+        """
+        username = self.params.get("username", "")
+        password = self.params.get("password", "")
+        prompt = self.params.get("shell_prompt", "[\#\$]")
+        linesep = eval("'%s'" % self.params.get("shell_linesep", r"\n"))
+        status_test_command = self.params.get("status_test_command", "")
+
+        if self.serial_console:
+            self.serial_console.set_linesep(linesep)
+            self.serial_console.set_status_test_command(status_test_command)
+        else:
+            return None
+
+        # Make sure we get a login prompt
+        self.serial_console.sendline()
+
+        if kvm_utils._remote_login(self.serial_console, username, password,
+                                   prompt, timeout):
+            return self.serial_console
 
 
     def send_key(self, keystr):
@@ -939,12 +1059,12 @@ class VM:
         # For compatibility with versions of QEMU that do not recognize all
         # key names: replace keyname with the hex value from the dict, which
         # QEMU will definitely accept
-        dict = { "comma": "0x33",
-                 "dot": "0x34",
-                 "slash": "0x35" }
-        for key in dict.keys():
-            keystr = keystr.replace(key, dict[key])
-        self.send_monitor_cmd("sendkey %s 1" % keystr)
+        dict = {"comma": "0x33",
+                "dot":   "0x34",
+                "slash": "0x35"}
+        for key, value in dict.items():
+            keystr = keystr.replace(key, value)
+        self.monitor.sendkey(keystr)
         time.sleep(0.2)
 
 

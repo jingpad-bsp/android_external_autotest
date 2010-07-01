@@ -17,7 +17,6 @@ def run_unattended_install(test, params, env):
     vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
 
     port = vm.get_port(int(params.get("guest_port_unattended_install")))
-    addr = ('localhost', port)
     if params.get("post_install_delay"):
         post_install_delay = int(params.get("post_install_delay"))
     else:
@@ -30,18 +29,22 @@ def run_unattended_install(test, params, env):
     start_time = time.time()
     time_elapsed = 0
     while time_elapsed < install_timeout:
+        if not vm.is_alive():
+            raise error.TestError("Guest died before end of OS install")
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            client.connect(addr)
-            msg = client.recv(1024)
-            if msg == 'done':
-                if post_install_delay:
-                    logging.debug("Post install delay specified, "
-                                  "waiting %ss...", post_install_delay)
-                    time.sleep(post_install_delay)
-                break
-        except socket.error:
-            pass
+        addr = vm.get_address()
+        if addr is not None:
+            try:
+                client.connect((addr, port))
+                msg = client.recv(1024)
+                if msg == 'done':
+                    if post_install_delay:
+                        logging.debug("Post install delay specified, "
+                                      "waiting %ss...", post_install_delay)
+                        time.sleep(post_install_delay)
+                    break
+            except socket.error:
+                pass
         time.sleep(1)
         client.close()
         end_time = time.time()

@@ -53,7 +53,8 @@ def run_timedrift(test, params, env):
             commands.getoutput("taskset -p %s %s" % (mask, tid))
 
     vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm)
+    timeout = int(params.get("login_timeout", 360))
+    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
 
     # Collect test parameters:
     # Command to run to get the current time
@@ -80,7 +81,7 @@ def run_timedrift(test, params, env):
 
     try:
         # Set the VM's CPU affinity
-        prev_affinity = set_cpu_affinity(vm.get_pid(), cpu_mask)
+        prev_affinity = set_cpu_affinity(vm.get_shell_pid(), cpu_mask)
 
         try:
             # Open shell sessions with the guest
@@ -89,6 +90,11 @@ def run_timedrift(test, params, env):
                 load_session = vm.remote_login()
                 if not load_session:
                     raise error.TestFail("Could not log into guest")
+                # Set output func to None to stop it from being called so we
+                # can change the callback function and the parameters it takes
+                # with no problems
+                load_session.set_output_func(None)
+                load_session.set_output_params(())
                 load_session.set_output_prefix("(guest load %d) " % i)
                 load_session.set_output_func(logging.debug)
                 guest_load_sessions.append(load_session)

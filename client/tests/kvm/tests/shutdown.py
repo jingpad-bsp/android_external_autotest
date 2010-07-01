@@ -16,7 +16,8 @@ def run_shutdown(test, params, env):
     @param env: Dictionary with test environment
     """
     vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm)
+    timeout = int(params.get("login_timeout", 360))
+    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
 
     try:
         if params.get("shutdown_method") == "shell":
@@ -28,7 +29,7 @@ def run_shutdown(test, params, env):
             # Sleep for a while -- give the guest a chance to finish booting
             time.sleep(float(params.get("sleep_before_powerdown", 10)))
             # Send a system_powerdown monitor command
-            vm.send_monitor_cmd("system_powerdown")
+            vm.monitor.cmd("system_powerdown")
             logging.info("system_powerdown monitor command sent; waiting for "
                          "guest to go down...")
 

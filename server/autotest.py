@@ -3,7 +3,7 @@
 import re, os, sys, traceback, subprocess, time, pickle, glob, tempfile
 import logging, getpass
 from autotest_lib.server import installable_object, prebuild, utils
-from autotest_lib.client.common_lib import log, error, autotemp
+from autotest_lib.client.common_lib import base_job, log, error, autotemp
 from autotest_lib.client.common_lib import global_config, packages
 from autotest_lib.client.common_lib import utils as client_utils
 
@@ -20,7 +20,7 @@ get_value = global_config.global_config.get_config_value
 autoserv_prebuild = get_value('AUTOSERV', 'enable_server_prebuild',
                               type=bool, default=False)
 
-    
+
 class AutodirNotFoundError(Exception):
     """No Autotest installation could be found."""
 
@@ -117,12 +117,10 @@ class BaseAutotest(installable_object.InstallableObject):
                 ', '.join(client_autodir_paths))
 
 
-    @log.record
     def install(self, host=None, autodir=None):
         self._install(host=host, autodir=autodir)
 
 
-    @log.record
     def install_full_client(self, host=None, autodir=None):
         self._install(host=host, autodir=autodir, use_autoserv=False,
                       use_packaging=False)
@@ -735,6 +733,7 @@ class _Run(object):
             local_results = collector.server_results_dir
             self.host.job.add_client_log(hostname, remote_results,
                                          local_results)
+            job_record_context = self.host.job.get_record_context()
 
         section = 0
         start_time = time.time()
@@ -770,7 +769,7 @@ class _Run(object):
                 # give the client machine a chance to recover from a crash
                 self.host.wait_up(CRASH_RECOVERY_TIME)
                 msg = ("Aborting - unexpected final status message from "
-                       "client: %s\n") % last
+                       "client on %s: %s\n") % (self.host.hostname, last)
                 raise error.AutotestRunError(msg)
         finally:
             logger.close()
@@ -783,6 +782,7 @@ class _Run(object):
                 self.host.job.postprocess_client_state(state_path)
                 self.host.job.remove_client_log(hostname, remote_results,
                                                 local_results)
+                job_record_context.restore()
 
         # should only get here if we timed out
         assert timeout
@@ -842,9 +842,6 @@ class client_logger(object):
     """Partial file object to write to both stdout and
     the status log file.  We only implement those methods
     utils.run() actually calls.
-
-    Note that this class is fairly closely coupled with server_job, as it
-    uses special job._ methods to actually carry out the loggging.
     """
     status_parser = re.compile(r"^AUTOTEST_STATUS:([^:]*):(.*)$")
     test_complete_parser = re.compile(r"^AUTOTEST_TEST_COMPLETE:(.*)$")
@@ -859,16 +856,7 @@ class client_logger(object):
         self.log_collector = log_collector(host, tag, server_results_dir)
         self.leftover = ""
         self.last_line = ""
-        self.newest_timestamp = float("-inf")
         self.logs = {}
-        self.server_warnings = []
-
-
-    def _update_timestamp(self, line):
-        match = self.extract_timestamp.search(line)
-        if match:
-            self.newest_timestamp = max(self.newest_timestamp,
-                                        int(match.group(1)))
 
 
     def _process_log_dict(self, log_dict):
@@ -892,10 +880,10 @@ class client_logger(object):
         ordering is desired that one can be reconstructed from the
         status log by looking at timestamp lines."""
         log_list = self._process_log_dict(self.logs)
-        for line in log_list:
-            self.job._record_prerendered(line + '\n')
+        for entry in log_list:
+            self.job.record_entry(entry, log_in_subdir=False)
         if log_list:
-            self.last_line = log_list[-1]
+            self.last_line = log_list[-1].render()
 
 
     def _process_quoted_line(self, tag, line):
@@ -904,10 +892,12 @@ class client_logger(object):
         building up in self.logs, and then the newest line. If the
         tag is not blank, then push the line into the logs for handling
         later."""
-        logging.info(line)
+        entry = base_job.status_log_entry.parse(line)
+        if entry is None:
+            return  # the line contains no status lines
         if tag == "":
             self._process_logs()
-            self.job._record_prerendered(line + '\n')
+            self.job.record_entry(entry, log_in_subdir=False)
             self.last_line = line
         else:
             tag_parts = [int(x) for x in tag.split(".")]
@@ -915,7 +905,7 @@ class client_logger(object):
             for part in tag_parts:
                 log_dict = log_dict.setdefault(part, {})
             log_list = log_dict.setdefault("logs", [])
-            log_list.append(line)
+            log_list.append(entry)
 
 
     def _process_info_line(self, line):
@@ -1012,50 +1002,15 @@ class client_logger(object):
                 return
 
 
-    def _format_warnings(self, last_line, warnings):
-        # use the indentation of whatever the last log line was
-        indent = self.extract_indent.match(last_line).group(1)
-        # if the last line starts a new group, add an extra indent
-        if last_line.lstrip('\t').startswith("START\t"):
-            indent += '\t'
-        return [self.job._render_record("WARN", None, None, msg,
-                                        timestamp, indent).rstrip('\n')
-                for timestamp, msg in warnings]
-
-
-    def _process_warnings(self, last_line, log_dict, warnings):
-        if log_dict.keys() in ([], ["logs"]):
-            # there are no sub-jobs, just append the warnings here
-            warnings = self._format_warnings(last_line, warnings)
-            log_list = log_dict.setdefault("logs", [])
-            log_list += warnings
-            for warning in warnings:
-                sys.stdout.write(warning + '\n')
-        else:
-            # there are sub-jobs, so put the warnings in there
-            log_list = log_dict.get("logs", [])
-            if log_list:
-                last_line = log_list[-1]
-            for key in sorted(log_dict.iterkeys()):
-                if key != "logs":
-                    self._process_warnings(last_line,
-                                           log_dict[key],
-                                           warnings)
-
-
     def log_warning(self, msg, warning_type):
         """Injects a WARN message into the current status logging stream."""
         timestamp = int(time.time())
         if self.job.warning_manager.is_valid(timestamp, warning_type):
-            self.server_warnings.append((timestamp, msg))
+            self.job.record('WARN', None, None, {}, msg)
 
 
     def write(self, data):
-        # first check for any new console warnings
-        self.server_warnings = self.job._read_warnings() + self.server_warnings
-        warnings = self.server_warnings
-        warnings.sort()  # sort into timestamp order
-        # now start processing the existng buffer and the new data
+        # now start processing the existing buffer and the new data
         data = self.leftover + data
         lines = data.split('\n')
         processed_lines = 0
@@ -1063,13 +1018,6 @@ class client_logger(object):
             # process all the buffered data except the last line
             # ignore the last line since we may not have all of it yet
             for line in lines[:-1]:
-                self._update_timestamp(line)
-                # output any warnings between now and the next status line
-                old_warnings = [(timestamp, msg) for timestamp, msg in warnings
-                                if timestamp < self.newest_timestamp]
-                self._process_warnings(self.last_line, self.logs, old_warnings)
-                del warnings[:len(old_warnings)]
-                # now process the line itself
                 self._process_line(line)
                 processed_lines += 1
         finally:
@@ -1085,7 +1033,6 @@ class client_logger(object):
         if self.leftover:
             self._process_line(self.leftover)
             self.leftover = ""
-        self._process_warnings(self.last_line, self.logs, self.server_warnings)
         self._process_logs()
         self.flush()
 

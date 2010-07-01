@@ -20,7 +20,12 @@ def run_migration(test, params, env):
     @param env: Dictionary with the test environment.
     """
     vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm)
+    timeout = int(params.get("login_timeout", 360))
+    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+
+    mig_timeout = float(params.get("mig_timeout", "3600"))
+    mig_protocol = params.get("migration_protocol", "tcp")
+    mig_cancel = bool(params.get("mig_cancel"))
 
     # Get the output of migration_test_command
     test_command = params.get("migration_test_command")
@@ -33,7 +38,7 @@ def run_migration(test, params, env):
 
     # Start another session with the guest and make sure the background
     # process is running
-    session2 = kvm_test_utils.wait_for_login(vm)
+    session2 = kvm_test_utils.wait_for_login(vm, timeout=timeout)
 
     try:
         check_command = params.get("migration_bg_check_command", "")
@@ -43,7 +48,8 @@ def run_migration(test, params, env):
         session2.close()
 
         # Migrate the VM
-        dest_vm = kvm_test_utils.migrate(vm, env)
+        dest_vm = kvm_test_utils.migrate(vm, env,mig_timeout, mig_protocol,
+                                         mig_cancel)
 
         # Log into the guest again
         logging.info("Logging into guest after migration...")

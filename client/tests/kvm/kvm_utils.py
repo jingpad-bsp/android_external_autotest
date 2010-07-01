@@ -4,8 +4,7 @@ KVM test utility functions.
 @copyright: 2008-2009 Red Hat Inc.
 """
 
-import thread, subprocess, time, string, random, socket, os, signal
-import select, re, logging, commands, cPickle, pty
+import time, string, random, socket, os, signal, re, logging, commands, cPickle
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, logging_config
 import kvm_subprocess
@@ -35,7 +34,8 @@ def load_env(filename, default={}):
         return obj
     # Almost any exception can be raised during unpickling, so let's catch
     # them all
-    except:
+    except Exception, e:
+        logging.warn(e)
         return default
 
 
@@ -394,7 +394,7 @@ def get_git_branch(repository, branch, srcdir, commit=None, lbranch=None):
 
     @param repository: Git repository URL
     """
-    logging.info("Fetching git [REP '%s' BRANCH '%s' TAG '%s'] -> %s",
+    logging.info("Fetching git [REP '%s' BRANCH '%s' COMMIT '%s'] -> %s",
                  repository, branch, commit, srcdir)
     if not os.path.exists(srcdir):
         os.makedirs(srcdir)
@@ -451,158 +451,210 @@ def check_kvm_source_dir(source_dir):
 # The following are functions used for SSH, SCP and Telnet communication with
 # guests.
 
-def remote_login(command, password, prompt, linesep="\n", timeout=10):
+def _remote_login(session, username, password, prompt, timeout=10):
     """
-    Log into a remote host (guest) using SSH or Telnet. Run the given command
-    using kvm_spawn and provide answers to the questions asked. If timeout
-    expires while waiting for output from the child (e.g. a password prompt
-    or a shell prompt) -- fail.
+    Log into a remote host (guest) using SSH or Telnet.  Wait for questions
+    and provide answers.  If timeout expires while waiting for output from the
+    child (e.g. a password prompt or a shell prompt) -- fail.
 
     @brief: Log into a remote host (guest) using SSH or Telnet.
 
-    @param command: The command to execute (e.g. "ssh root@localhost")
+    @param session: A kvm_expect or kvm_shell_session instance to operate on
+    @param username: The username to send in reply to a login prompt
     @param password: The password to send in reply to a password prompt
     @param prompt: The shell prompt that indicates a successful login
-    @param linesep: The line separator to send instead of "\\n"
-            (sometimes "\\r\\n" is required)
     @param timeout: The maximal time duration (in seconds) to wait for each
             step of the login procedure (i.e. the "Are you sure" prompt, the
             password prompt, the shell prompt, etc)
 
-    @return Return the kvm_spawn object on success and None on failure.
+    @return: True on success and False otherwise.
     """
-    sub = kvm_subprocess.kvm_shell_session(command,
-                                           linesep=linesep,
-                                           prompt=prompt)
-
     password_prompt_count = 0
-
-    logging.debug("Trying to login with command '%s'" % command)
+    login_prompt_count = 0
 
     while True:
-        (match, text) = sub.read_until_last_line_matches(
-                [r"[Aa]re you sure", r"[Pp]assword:\s*$", r"^\s*[Ll]ogin:\s*$",
+        (match, text) = session.read_until_last_line_matches(
+                [r"[Aa]re you sure", r"[Pp]assword:\s*$", r"[Ll]ogin:\s*$",
                  r"[Cc]onnection.*closed", r"[Cc]onnection.*refused",
                  r"[Pp]lease wait", prompt],
                  timeout=timeout, internal_timeout=0.5)
         if match == 0:  # "Are you sure you want to continue connecting"
             logging.debug("Got 'Are you sure...'; sending 'yes'")
-            sub.sendline("yes")
+            session.sendline("yes")
             continue
         elif match == 1:  # "password:"
             if password_prompt_count == 0:
                 logging.debug("Got password prompt; sending '%s'" % password)
-                sub.sendline(password)
+                session.sendline(password)
                 password_prompt_count += 1
                 continue
             else:
                 logging.debug("Got password prompt again")
-                sub.close()
-                return None
+                return False
         elif match == 2:  # "login:"
-            logging.debug("Got unexpected login prompt")
-            sub.close()
-            return None
+            if login_prompt_count == 0:
+                logging.debug("Got username prompt; sending '%s'" % username)
+                session.sendline(username)
+                login_prompt_count += 1
+                continue
+            else:
+                logging.debug("Got username prompt again")
+                return False
         elif match == 3:  # "Connection closed"
             logging.debug("Got 'Connection closed'")
-            sub.close()
-            return None
+            return False
         elif match == 4:  # "Connection refused"
             logging.debug("Got 'Connection refused'")
-            sub.close()
-            return None
+            return False
         elif match == 5:  # "Please wait"
             logging.debug("Got 'Please wait'")
             timeout = 30
             continue
         elif match == 6:  # prompt
             logging.debug("Got shell prompt -- logged in")
-            return sub
+            return session
         else:  # match == None
             logging.debug("Timeout elapsed or process terminated")
-            sub.close()
-            return None
+            return False
 
 
-def remote_scp(command, password, timeout=600, login_timeout=10):
+def _remote_scp(session, password, transfer_timeout=600, login_timeout=10):
     """
-    Run the given command using kvm_spawn and provide answers to the questions
-    asked. If timeout expires while waiting for the transfer to complete ,
-    fail. If login_timeout expires while waiting for output from the child
-    (e.g. a password prompt), fail.
+    Transfer file(s) to a remote host (guest) using SCP.  Wait for questions
+    and provide answers.  If login_timeout expires while waiting for output
+    from the child (e.g. a password prompt), fail.  If transfer_timeout expires
+    while waiting for the transfer to complete, fail.
+
+    @brief: Transfer files using SCP, given a command line.
+
+    @param session: A kvm_expect or kvm_shell_session instance to operate on
+    @param password: The password to send in reply to a password prompt.
+    @param transfer_timeout: The time duration (in seconds) to wait for the
+            transfer to complete.
+    @param login_timeout: The maximal time duration (in seconds) to wait for
+            each step of the login procedure (i.e. the "Are you sure" prompt or
+            the password prompt)
+
+    @return: True if the transfer succeeds and False on failure.
+    """
+    password_prompt_count = 0
+    timeout = login_timeout
+
+    while True:
+        (match, text) = session.read_until_last_line_matches(
+                [r"[Aa]re you sure", r"[Pp]assword:\s*$", r"lost connection"],
+                timeout=timeout, internal_timeout=0.5)
+        if match == 0:  # "Are you sure you want to continue connecting"
+            logging.debug("Got 'Are you sure...'; sending 'yes'")
+            session.sendline("yes")
+            continue
+        elif match == 1:  # "password:"
+            if password_prompt_count == 0:
+                logging.debug("Got password prompt; sending '%s'" % password)
+                session.sendline(password)
+                password_prompt_count += 1
+                timeout = transfer_timeout
+                continue
+            else:
+                logging.debug("Got password prompt again")
+                return False
+        elif match == 2:  # "lost connection"
+            logging.debug("Got 'lost connection'")
+            return False
+        else:  # match == None
+            if session.is_alive():
+                logging.debug("Timeout expired")
+                return False
+            else:
+                status = session.get_status()
+                logging.debug("SCP process terminated with status %s", status)
+                return status == 0
+
+
+def remote_login(client, host, port, username, password, prompt, linesep="\n",
+                 log_filename=None, timeout=10):
+    """
+    Log into a remote host (guest) using SSH/Telnet/Netcat.
+
+    @param client: The client to use ('ssh', 'telnet' or 'nc')
+    @param host: Hostname or IP address
+    @param port: Port to connect to
+    @param username: Username (if required)
+    @param password: Password (if required)
+    @param prompt: Shell prompt (regular expression)
+    @param linesep: The line separator to use when sending lines
+            (e.g. '\\n' or '\\r\\n')
+    @param log_filename: If specified, log all output to this file
+    @param timeout: The maximal time duration (in seconds) to wait for
+            each step of the login procedure (i.e. the "Are you sure" prompt
+            or the password prompt)
+
+    @return: kvm_shell_session object on success and None on failure.
+    """
+    if client == "ssh":
+        cmd = ("ssh -o UserKnownHostsFile=/dev/null "
+               "-o PreferredAuthentications=password -p %s %s@%s" %
+               (port, username, host))
+    elif client == "telnet":
+        cmd = "telnet -l %s %s %s" % (username, host, port)
+    elif client == "nc":
+        cmd = "nc %s %s" % (host, port)
+    else:
+        logging.error("Unknown remote shell client: %s" % client)
+        return
+
+    logging.debug("Trying to login with command '%s'" % cmd)
+    session = kvm_subprocess.kvm_shell_session(cmd, linesep=linesep,
+                                               prompt=prompt)
+    if _remote_login(session, username, password, prompt, timeout):
+        if log_filename:
+            session.set_output_func(log_line)
+            session.set_output_params((log_filename,))
+        return session
+    else:
+        session.close()
+
+
+def remote_scp(command, password, log_filename=None, transfer_timeout=600,
+               login_timeout=10):
+    """
+    Transfer file(s) to a remote host (guest) using SCP.
 
     @brief: Transfer files using SCP, given a command line.
 
     @param command: The command to execute
         (e.g. "scp -r foobar root@localhost:/tmp/").
     @param password: The password to send in reply to a password prompt.
-    @param timeout: The time duration (in seconds) to wait for the transfer
-        to complete.
+    @param log_filename: If specified, log all output to this file
+    @param transfer_timeout: The time duration (in seconds) to wait for the
+            transfer to complete.
     @param login_timeout: The maximal time duration (in seconds) to wait for
-        each step of the login procedure (i.e. the "Are you sure" prompt or the
-        password prompt)
+            each step of the login procedure (i.e. the "Are you sure" prompt
+            or the password prompt)
 
     @return: True if the transfer succeeds and False on failure.
     """
-    sub = kvm_subprocess.kvm_expect(command)
+    logging.debug("Trying to SCP with command '%s', timeout %ss",
+                  command, transfer_timeout)
 
-    password_prompt_count = 0
-    _timeout = login_timeout
-    end_time = time.time() + timeout
-    logging.debug("Trying to SCP with command '%s', timeout %ss", command,
-                  timeout)
+    if log_filename:
+        output_func = log_line
+        output_params = (log_filename,)
+    else:
+        output_func = None
+        output_params = ()
 
-    while True:
-        if end_time <= time.time():
-            logging.debug("SCP transfer timed out")
-            sub.close()
-            return False
-        (match, text) = sub.read_until_last_line_matches(
-                [r"[Aa]re you sure", r"[Pp]assword:\s*$", r"lost connection",
-                 r"Exit status", r"stalled"],
-                timeout=_timeout, internal_timeout=0.5)
-        if match == 0:  # "Are you sure you want to continue connecting"
-            logging.debug("Got 'Are you sure...'; sending 'yes'")
-            sub.sendline("yes")
-            continue
-        elif match == 1:  # "password:"
-            if password_prompt_count == 0:
-                logging.debug("Got password prompt; sending '%s'" % password)
-                sub.sendline(password)
-                password_prompt_count += 1
-                _timeout = timeout
-                continue
-            else:
-                logging.debug("Got password prompt again")
-                sub.close()
-                return False
-        elif match == 2:  # "lost connection"
-            logging.debug("Got 'lost connection'")
-            sub.close()
-            return False
-        elif match == 3: # "Exit status"
-            sub.close()
-            if "Exit status 0" in text:
-                logging.debug("SCP command completed successfully")
-                return True
-            else:
-                logging.debug("SCP command fail with exit status %s" % text)
-                return False
-        elif match == 4: # "stalled"
-            logging.debug("SCP connection is stalled")
-            continue
-
-        else:  # match == None
-            if sub.is_alive():
-                continue
-            logging.debug("SCP process terminated")
-            status = sub.get_status()
-            sub.close()
-            return status == 0
+    session = kvm_subprocess.kvm_expect(command,
+                                        output_func=output_func,
+                                        output_params=output_params)
+    try:
+        return _remote_scp(session, password, transfer_timeout, login_timeout)
+    finally:
+        session.close()
 
 
 def scp_to_remote(host, port, username, password, local_path, remote_path,
-                  timeout=600):
+                  log_filename=None, timeout=600):
     """
     Copy files to a remote host (guest).
 
@@ -611,19 +663,20 @@ def scp_to_remote(host, port, username, password, local_path, remote_path,
     @param password: Password (if required)
     @param local_path: Path on the local machine where we are copying from
     @param remote_path: Path on the remote machine where we are copying to
-    @param timeout: Time in seconds that we will wait before giving up to
-            copy the files.
+    @param log_filename: If specified, log all output to this file
+    @param timeout: The time duration (in seconds) to wait for the transfer
+            to complete.
 
     @return: True on success and False on failure.
     """
     command = ("scp -v -o UserKnownHostsFile=/dev/null "
                "-o PreferredAuthentications=password -r -P %s %s %s@%s:%s" %
                (port, local_path, username, host, remote_path))
-    return remote_scp(command, password, timeout)
+    return remote_scp(command, password, log_filename, timeout)
 
 
 def scp_from_remote(host, port, username, password, remote_path, local_path,
-                    timeout=600):
+                    log_filename=None, timeout=600):
     """
     Copy files from a remote host (guest).
 
@@ -632,68 +685,16 @@ def scp_from_remote(host, port, username, password, remote_path, local_path,
     @param password: Password (if required)
     @param local_path: Path on the local machine where we are copying from
     @param remote_path: Path on the remote machine where we are copying to
-    @param timeout: Time in seconds that we will wait before giving up to copy
-            the files.
+    @param log_filename: If specified, log all output to this file
+    @param timeout: The time duration (in seconds) to wait for the transfer
+            to complete.
 
     @return: True on success and False on failure.
     """
     command = ("scp -v -o UserKnownHostsFile=/dev/null "
                "-o PreferredAuthentications=password -r -P %s %s@%s:%s %s" %
                (port, username, host, remote_path, local_path))
-    return remote_scp(command, password, timeout)
-
-
-def ssh(host, port, username, password, prompt, linesep="\n", timeout=10):
-    """
-    Log into a remote host (guest) using SSH.
-
-    @param host: Hostname or IP address
-    @param username: Username (if required)
-    @param password: Password (if required)
-    @param prompt: Shell prompt (regular expression)
-    @timeout: Time in seconds that we will wait before giving up on logging
-            into the host.
-
-    @return: kvm_spawn object on success and None on failure.
-    """
-    command = ("ssh -o UserKnownHostsFile=/dev/null "
-               "-o PreferredAuthentications=password -p %s %s@%s" %
-               (port, username, host))
-    return remote_login(command, password, prompt, linesep, timeout)
-
-
-def telnet(host, port, username, password, prompt, linesep="\n", timeout=10):
-    """
-    Log into a remote host (guest) using Telnet.
-
-    @param host: Hostname or IP address
-    @param username: Username (if required)
-    @param password: Password (if required)
-    @param prompt: Shell prompt (regular expression)
-    @timeout: Time in seconds that we will wait before giving up on logging
-            into the host.
-
-    @return: kvm_spawn object on success and None on failure.
-    """
-    command = "telnet -l %s %s %s" % (username, host, port)
-    return remote_login(command, password, prompt, linesep, timeout)
-
-
-def netcat(host, port, username, password, prompt, linesep="\n", timeout=10):
-    """
-    Log into a remote host (guest) using Netcat.
-
-    @param host: Hostname or IP address
-    @param username: Username (if required)
-    @param password: Password (if required)
-    @param prompt: Shell prompt (regular expression)
-    @timeout: Time in seconds that we will wait before giving up on logging
-            into the host.
-
-    @return: kvm_spawn object on success and None on failure.
-    """
-    command = "nc %s %s" % (host, port)
-    return remote_login(command, password, prompt, linesep, timeout)
+    return remote_scp(command, password, log_filename, timeout)
 
 
 # The following are utility functions related to ports.
@@ -746,6 +747,43 @@ def find_free_ports(start_port, end_port, count):
     return ports
 
 
+# An easy way to log lines to files when the logging system can't be used
+
+_open_log_files = {}
+_log_file_dir = "/tmp"
+
+
+def log_line(filename, line):
+    """
+    Write a line to a file.  '\n' is appended to the line.
+
+    @param filename: Path of file to write to, either absolute or relative to
+            the dir set by set_log_file_dir().
+    @param line: Line to write.
+    """
+    global _open_log_files, _log_file_dir
+    if filename not in _open_log_files:
+        path = get_path(_log_file_dir, filename)
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError:
+            pass
+        _open_log_files[filename] = open(path, "w")
+    timestr = time.strftime("%Y-%m-%d %H:%M:%S")
+    _open_log_files[filename].write("%s: %s\n" % (timestr, line))
+    _open_log_files[filename].flush()
+
+
+def set_log_file_dir(dir):
+    """
+    Set the base directory for log files created by log_line().
+
+    @param dir: Directory for log files.
+    """
+    global _log_file_dir
+    _log_file_dir = dir
+
+
 # The following are miscellaneous utility functions.
 
 def get_path(base_path, user_path):
@@ -776,6 +814,12 @@ def generate_random_string(length):
         str += r.choice(chars)
         length -= 1
     return str
+
+def generate_random_id():
+    """
+    Return a random string suitable for use as a qemu id.
+    """
+    return "id" + generate_random_string(6)
 
 
 def generate_tmp_file_name(file, ext=None, dir='/tmp/'):

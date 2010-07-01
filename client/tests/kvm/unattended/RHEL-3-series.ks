@@ -1,5 +1,5 @@
 install
-cdrom
+KVM_TEST_MEDIUM
 text
 reboot
 lang en_US.UTF-8
@@ -10,7 +10,7 @@ rootpw 123456
 firewall --enabled --ssh
 timezone America/New_York
 firstboot --disable
-bootloader --location=mbr
+bootloader --location=mbr --append="console=ttyS0,115200 console=tty0"
 clearpart --all --initlabel
 autopart
 reboot

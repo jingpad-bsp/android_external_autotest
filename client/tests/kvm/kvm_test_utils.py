@@ -80,14 +80,26 @@ def reboot(vm, session, method="shell", sleep_before_reset=10, nic_index=0,
     if method == "shell":
         # Send a reboot command to the guest's shell
         session.sendline(vm.get_params().get("reboot_command"))
-        logging.info("Reboot command sent. Waiting for guest to go down")
+        logging.info("Reboot command sent. Waiting for guest to go down...")
     elif method == "system_reset":
         # Sleep for a while before sending the command
         time.sleep(sleep_before_reset)
+        # Clear the event list of all QMP monitors
+        monitors = [m for m in vm.monitors if m.protocol == "qmp"]
+        for m in monitors:
+            m.clear_events()
         # Send a system_reset monitor command
-        vm.send_monitor_cmd("system_reset")
+        vm.monitor.cmd("system_reset")
         logging.info("Monitor command system_reset sent. Waiting for guest to "
-                     "go down")
+                     "go down...")
+        # Look for RESET QMP events
+        time.sleep(1)
+        for m in monitors:
+            if not m.get_event("RESET"):
+                raise error.TestFail("RESET QMP event not received after "
+                                     "system_reset (monitor '%s')" % m.name)
+            else:
+                logging.info("RESET QMP event received")
     else:
         logging.error("Unknown reboot method: %s", method)
 
@@ -108,55 +120,95 @@ def reboot(vm, session, method="shell", sleep_before_reset=10, nic_index=0,
     return session
 
 
-def migrate(vm, env=None):
+def migrate(vm, env=None, mig_timeout=3600, mig_protocol="tcp",
+            mig_cancel=False):
     """
     Migrate a VM locally and re-register it in the environment.
 
     @param vm: The VM to migrate.
     @param env: The environment dictionary.  If omitted, the migrated VM will
             not be registered.
+    @param mig_timeout: timeout value for migration.
+    @param mig_protocol: migration protocol
+    @param mig_cancel: Test migrate_cancel or not when protocol is tcp.
     @return: The post-migration VM.
     """
-    # Helper functions
     def mig_finished():
-        s, o = vm.send_monitor_cmd("info migrate")
-        return s == 0 and not "Migration status: active" in o
+        o = vm.monitor.info("migrate")
+        if isinstance(o, str):
+            return "status: active" not in o
+        else:
+            return o.get("status") != "active"
 
     def mig_succeeded():
-        s, o = vm.send_monitor_cmd("info migrate")
-        return s == 0 and "Migration status: completed" in o
+        o = vm.monitor.info("migrate")
+        if isinstance(o, str):
+            return "status: completed" in o
+        else:
+            return o.get("status") == "completed"
 
     def mig_failed():
-        s, o = vm.send_monitor_cmd("info migrate")
-        return s == 0 and "Migration status: failed" in o
+        o = vm.monitor.info("migrate")
+        if isinstance(o, str):
+            return "status: failed" in o
+        else:
+            return o.get("status") == "failed"
 
-    # See if migration is supported
-    s, o = vm.send_monitor_cmd("help info")
-    if not "info migrate" in o:
-        raise error.TestError("Migration is not supported")
+    def mig_cancelled():
+        o = vm.monitor.info("migrate")
+        if isinstance(o, str):
+            return "Migration status: cancelled" in o
+        else:
+            return o.get("status") == "cancelled"
+
+    def wait_for_migration():
+        if not kvm_utils.wait_for(mig_finished, mig_timeout, 2, 2,
+                                  "Waiting for migration to finish..."):
+            raise error.TestFail("Timeout expired while waiting for migration "
+                                 "to finish")
+
+
+    migration_file = os.path.join("/tmp/",
+                                  mig_protocol + time.strftime("%Y%m%d-%H%M%S"))
+    if mig_protocol == "tcp":
+        mig_extra_params = " -incoming tcp:0:%d"
+    elif mig_protocol == "unix":
+        mig_extra_params = " -incoming unix:%s"
+    elif mig_protocol == "exec":
+        # Exec is a little different from other migrate methods - first we
+        # ask the monitor the migration, then the vm state is dumped to a
+        # compressed file, then we start the dest vm with -incoming pointing
+        # to it
+        mig_extra_params = " -incoming \"exec: gzip -c -d %s\"" % migration_file
+        uri = "\"exec:gzip -c > %s\"" % migration_file
+        vm.monitor.cmd("stop")
+        o = vm.monitor.migrate(uri)
+        wait_for_migration()
 
     # Clone the source VM and ask the clone to wait for incoming migration
     dest_vm = vm.clone()
-    if not dest_vm.create(for_migration=True):
+    if not dest_vm.create(extra_params=mig_extra_params):
         raise error.TestError("Could not create dest VM")
 
     try:
-        # Define the migration command
-        cmd = "migrate -d tcp:localhost:%d" % dest_vm.migration_port
-        logging.debug("Migrating with command: %s" % cmd)
+        if mig_protocol == "tcp":
+            uri = "tcp:localhost:%d" % dest_vm.migration_port
+        elif mig_protocol == "unix":
+            uri = "unix:%s" % dest_vm.migration_file
 
-        # Migrate
-        s, o = vm.send_monitor_cmd(cmd)
-        if s:
-            logging.error("Migration command failed (command: %r, output: %r)"
-                          % (cmd, o))
-            raise error.TestFail("Migration command failed")
+        if mig_protocol != "exec":
+            o = vm.monitor.migrate(uri)
 
-        # Wait for migration to finish
-        if not kvm_utils.wait_for(mig_finished, 90, 2, 2,
-                                  "Waiting for migration to finish..."):
-            raise error.TestFail("Timeout elapsed while waiting for migration "
-                                 "to finish")
+            if mig_protocol == "tcp" and mig_cancel:
+                time.sleep(2)
+                o = vm.monitor.cmd("migrate_cancel")
+                if not kvm_utils.wait_for(mig_cancelled, 60, 2, 2,
+                                          "Waiting for migration cancel"):
+                    raise error.TestFail("Fail to cancel migration")
+                dest_vm.destroy(gracefully=False)
+                return vm
+
+            wait_for_migration()
 
         # Report migration status
         if mig_succeeded():
@@ -165,6 +217,15 @@ def migrate(vm, env=None):
             raise error.TestFail("Migration failed")
         else:
             raise error.TestFail("Migration ended with unknown status")
+
+        o = dest_vm.monitor.info("status")
+        if "paused" in o:
+            logging.debug("Destination VM is paused, resuming it...")
+            dest_vm.monitor.cmd("cont")
+
+        if os.path.exists(migration_file):
+            logging.debug("Removing migration file %s", migration_file)
+            os.remove(migration_file)
 
         # Kill the source VM
         vm.destroy(gracefully=False)
@@ -203,7 +264,17 @@ def get_time(session, time_command, time_filter_re, time_format):
     (match, s) = session.read_up_to_prompt()
     if not match:
         raise error.TestError("Could not get guest time")
-    s = re.findall(time_filter_re, s)[0]
+
+    try:
+        s = re.findall(time_filter_re, s)[0]
+    except IndexError:
+        logging.debug("The time string from guest is:\n%s" % s)
+        raise error.TestError("The time string from guest is unexpected.")
+    except Exception, e:
+        logging.debug("(time_filter_re, time_string): (%s, %s)" %
+                       (time_filter_re, s))
+        raise e
+
     guest_time = time.mktime(time.strptime(s, time_format))
     return (host_time, guest_time)
 

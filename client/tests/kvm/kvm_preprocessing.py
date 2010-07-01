@@ -1,7 +1,7 @@
 import sys, os, time, commands, re, logging, signal, glob, threading, shutil
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-import kvm_vm, kvm_utils, kvm_subprocess, ppm_utils
+import kvm_vm, kvm_utils, kvm_subprocess, kvm_monitor, ppm_utils
 try:
     import PIL.Image
 except ImportError:
@@ -79,11 +79,20 @@ def preprocess_vm(test, params, env, name):
                           "restarting it...")
             start_vm = True
 
-    if start_vm and not vm.create(name, params, test.bindir, for_migration):
-        raise error.TestError("Could not start VM")
+    if start_vm:
+        # Start the VM (or restart it if it's already up)
+        if not vm.create(name, params, test.bindir, for_migration):
+            raise error.TestError("Could not start VM")
+    else:
+        # Don't start the VM, just update its params
+        vm.params = params
 
     scrdump_filename = os.path.join(test.debugdir, "pre_%s.ppm" % name)
-    vm.send_monitor_cmd("screendump %s" % scrdump_filename)
+    try:
+        if vm.monitor:
+            vm.monitor.screendump(scrdump_filename)
+    except kvm_monitor.MonitorError, e:
+        logging.warn(e)
 
 
 def postprocess_image(test, params):
@@ -117,7 +126,11 @@ def postprocess_vm(test, params, env, name):
         return
 
     scrdump_filename = os.path.join(test.debugdir, "post_%s.ppm" % name)
-    vm.send_monitor_cmd("screendump %s" % scrdump_filename)
+    try:
+        if vm.monitor:
+            vm.monitor.screendump(scrdump_filename)
+    except kvm_monitor.MonitorError, e:
+        logging.warn(e)
 
     if params.get("kill_vm") == "yes":
         kill_vm_timeout = float(params.get("kill_vm_timeout", 0))
@@ -149,12 +162,10 @@ def process_command(test, params, env, command, command_timeout,
     try:
         utils.system("cd %s; %s" % (test.bindir, command))
     except error.CmdError, e:
-        logging.warn("Custom processing command '%s' failed, output is: %s",
-                     command, str(e))
-        if not command_noncritical:
-            raise error.TestError("Custom processing command failed: %s" %
-                                  str(e))
-
+        if command_noncritical:
+            logging.warn(e)
+        else:
+            raise
 
 def process(test, params, env, image_func, vm_func):
     """
@@ -285,6 +296,8 @@ def postprocess(test, params, env):
         logging.debug("Terminating screendump thread...")
         _screendump_thread_termination_event.set()
         _screendump_thread.join(10)
+        _screendump_thread = None
+        _screendump_thread_termination_event = None
 
     # Warn about corrupt PPM files
     for f in glob.glob(os.path.join(test.debugdir, "*.ppm")):
@@ -347,19 +360,6 @@ def postprocess(test, params, env):
                         int(params.get("post_command_timeout", "600")),
                         params.get("post_command_noncritical") == "yes")
 
-    # Abort on error?
-    if params.get("abort") == "yes":
-        exc_string = str(sys.exc_info()[1])
-        logging.info("Aborting job (%s)", exc_string)
-        for vm in kvm_utils.env_get_all_vms(env):
-            if not vm.is_dead():
-                logging.info("VM '%s' is alive.", vm.name)
-                logging.info("The monitor unix socket of '%s' is: %s",
-                             vm.name, vm.monitor_file_name)
-                logging.info("The command line used to start '%s' was:\n%s",
-                             vm.name, vm.make_qemu_command())
-        raise error.JobError("Abort requested (%s)" % exc_string)
-
 
 def postprocess_on_error(test, params, env):
     """
@@ -401,22 +401,18 @@ def _take_screendumps(test, params, env):
                                  kvm_utils.generate_random_string(6))
     delay = float(params.get("screendump_delay", 5))
     quality = int(params.get("screendump_quality", 30))
-    if params.get("screendump_verbose") == 'yes':
-        screendump_verbose = True
-    else:
-        screendump_verbose = False
 
     cache = {}
 
     while True:
         for vm in kvm_utils.env_get_all_vms(env):
-            if vm.is_dead():
+            if not vm.is_alive():
                 continue
-            if screendump_verbose:
-                vm.send_monitor_cmd("screendump %s" % temp_filename)
-            else:
-                vm.send_monitor_cmd("screendump %s" % temp_filename,
-                                    verbose=False)
+            try:
+                vm.monitor.screendump(temp_filename)
+            except kvm_monitor.MonitorError, e:
+                logging.warn(e)
+                continue
             if not os.path.exists(temp_filename):
                 logging.warn("VM '%s' failed to produce a screendump", vm.name)
                 continue

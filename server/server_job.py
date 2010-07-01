@@ -48,6 +48,82 @@ get_site_job_data = utils.import_site_function(__file__,
     _get_site_job_data_dummy)
 
 
+class status_indenter(base_job.status_indenter):
+    """Provide a simple integer-backed status indenter."""
+    def __init__(self):
+        self._indent = 0
+
+
+    @property
+    def indent(self):
+        return self._indent
+
+
+    def increment(self):
+        self._indent += 1
+
+
+    def decrement(self):
+        self._indent -= 1
+
+
+    def get_context(self):
+        """Returns a context object for use by job.get_record_context."""
+        class context(object):
+            def __init__(self, indenter, indent):
+                self._indenter = indenter
+                self._indent = indent
+            def restore(self):
+                self._indenter._indent = self._indent
+        return context(self, self._indent)
+
+
+class server_job_record_hook(object):
+    """The job.record hook for server job. Used to inject WARN messages from
+    the console or vlm whenever new logs are written, and to echo any logs
+    to INFO level logging. Implemented as a class so that it can use state to
+    block recursive calls, so that the hook can call job.record itself to
+    log WARN messages.
+
+    Depends on job._read_warnings and job._logger.
+    """
+    def __init__(self, job):
+        self._job = job
+        self._being_called = False
+
+
+    def __call__(self, entry):
+        """A wrapper around the 'real' record hook, the _hook method, which
+        prevents recursion. This isn't making any effort to be threadsafe,
+        the intent is to outright block infinite recursion via a
+        job.record->_hook->job.record->_hook->job.record... chain."""
+        if self._being_called:
+            return
+        self._being_called = True
+        try:
+            self._hook(self._job, entry)
+        finally:
+            self._being_called = False
+
+
+    @staticmethod
+    def _hook(job, entry):
+        """The core hook, which can safely call job.record."""
+        entries = []
+        # poll all our warning loggers for new warnings
+        for timestamp, msg in job._read_warnings():
+            warning_entry = base_job.status_log_entry(
+                'WARN', None, None, msg, {}, timestamp=timestamp)
+            entries.append(warning_entry)
+            job.record_entry(warning_entry)
+        # echo rendered versions of all the status logs to info
+        entries.append(entry)
+        for entry in entries:
+            rendered_entry = job._logger.render_entry(entry)
+            logging.info(rendered_entry)
+            job._parse_status(rendered_entry)
+
+
 class base_server_job(base_job.base_job):
     """The server-side concrete implementation of base_job.
 
@@ -107,7 +183,6 @@ class base_server_job(base_job.base_job):
         self.args = args
         self.machines = machines
         self._client = client
-        self._record_prefix = ''
         self.warning_loggers = set()
         self.warning_manager = warning_manager()
         self._ssh_user = ssh_user
@@ -152,6 +227,12 @@ class base_server_job(base_job.base_job):
         self.bootloader = None
         self.harness = None
 
+        # set up the status logger
+        self._indenter = status_indenter()
+        self._logger = base_job.status_logger(
+            self, self._indenter, 'status.log', 'status.log',
+            record_hook=server_job_record_hook(self))
+
 
     @classmethod
     def _find_base_directories(cls):
@@ -175,6 +256,11 @@ class base_server_job(base_job.base_job):
             return os.path.normpath(resultdir)
         else:
             return None
+
+
+    def _get_status_logger(self):
+        """Return a reference to the status logger."""
+        return self._logger
 
 
     @staticmethod
@@ -528,14 +614,9 @@ class base_server_job(base_job.base_job):
         Underlying method for running something inside of a group.
         """
         result, exc_info = None, None
-        old_record_prefix = self._record_prefix
         try:
             self.record('START', subdir, name)
-            self._record_prefix += '\t'
-            try:
-                result = function(*args, **dargs)
-            finally:
-                self._record_prefix = old_record_prefix
+            result = function(*args, **dargs)
         except error.TestBaseException, e:
             self.record("END %s" % e.exit_status, subdir, name)
             exc_info = sys.exc_info()
@@ -579,20 +660,15 @@ class base_server_job(base_job.base_job):
         get_kernel_func: a function that returns a string
         representing the kernel version.
         """
-
-        old_record_prefix = self._record_prefix
         try:
             self.record('START', None, 'reboot')
-            self._record_prefix += '\t'
             reboot_func()
         except Exception, e:
-            self._record_prefix = old_record_prefix
             err_msg = str(e) + '\n' + traceback.format_exc()
             self.record('END FAIL', None, 'reboot', err_msg)
             raise
         else:
             kernel = get_kernel_func()
-            self._record_prefix = old_record_prefix
             self.record('END GOOD', None, 'reboot',
                         optional_fields={"kernel": kernel})
 
@@ -620,55 +696,6 @@ class base_server_job(base_job.base_job):
             self.sysinfo.test_loggables.add(loggable)
         else:
             self.sysinfo.boot_loggables.add(loggable)
-
-
-    def record(self, status_code, subdir, operation, status='',
-               optional_fields=None):
-        """
-        Record job-level status
-
-        The intent is to make this file both machine parseable and
-        human readable. That involves a little more complexity, but
-        really isn't all that bad ;-)
-
-        Format is <status code>\t<subdir>\t<operation>\t<status>
-
-        status code: see common_lib.log.is_valid_status()
-                     for valid status definition
-
-        subdir: MUST be a relevant subdirectory in the results,
-        or None, which will be represented as '----'
-
-        operation: description of what you ran (e.g. "dbench", or
-                                        "mkfs -t foobar /dev/sda9")
-
-        status: error message or "completed sucessfully"
-
-        ------------------------------------------------------------
-
-        Initial tabs indicate indent levels for grouping, and is
-        governed by self._record_prefix
-
-        multiline messages have secondary lines prefaced by a double
-        space ('  ')
-
-        Executing this method will trigger the logging of all new
-        warnings to date from the various console loggers.
-        """
-        # poll all our warning loggers for new warnings
-        warnings = self._read_warnings()
-        old_record_prefix = self._record_prefix
-        try:
-            if status_code.startswith("END "):
-                self._record_prefix += "\t"
-            for timestamp, msg in warnings:
-                self._record("WARN", None, None, msg, timestamp)
-        finally:
-            self._record_prefix = old_record_prefix
-
-        # write out the actual status log line
-        self._record(status_code, subdir, operation, status,
-                      optional_fields=optional_fields)
 
 
     def _read_warnings(self):
@@ -722,6 +749,20 @@ class base_server_job(base_job.base_job):
             subdirectory = base_subdirectory_name + '.' + str(counter)
             counter += 1
         return subdirectory
+
+
+    def get_record_context(self):
+        """Returns an object representing the current job.record context.
+
+        The object returned is an opaque object with a 0-arg restore method
+        which can be called to restore the job.record context (i.e. indentation)
+        to the current level. The intention is that it should be used when
+        something external which generate job.record calls (e.g. an autotest
+        client) can fail catastrophically and the server job record state
+        needs to be reset to its original "known good" state.
+
+        @return: A context object with a 0-arg restore() method."""
+        return self._indenter.get_context()
 
 
     def record_summary(self, status_code, test_name, reason='', attributes=None,
@@ -860,74 +901,6 @@ class base_server_job(base_job.base_job):
             return []
 
 
-    def _render_record(self, status_code, subdir, operation, status='',
-                       epoch_time=None, record_prefix=None,
-                       optional_fields=None):
-        """
-        Internal Function to generate a record to be written into a
-        status log. For use by server_job.* classes only.
-        """
-        if subdir:
-            if re.match(r'[\n\t]', subdir):
-                raise ValueError('Invalid character in subdir string')
-            substr = subdir
-        else:
-            substr = '----'
-
-        if not log.is_valid_status(status_code):
-            raise ValueError('Invalid status code supplied: %s' % status_code)
-        if not operation:
-            operation = '----'
-        if re.match(r'[\n\t]', operation):
-            raise ValueError('Invalid character in operation string')
-        operation = operation.rstrip()
-        status = status.rstrip()
-        status = re.sub(r"\t", "  ", status)
-        # Ensure any continuation lines are marked so we can
-        # detect them in the status file to ensure it is parsable.
-        status = re.sub(r"\n", "\n" + self._record_prefix + "  ", status)
-
-        if not optional_fields:
-            optional_fields = {}
-
-        # Generate timestamps for inclusion in the logs
-        if epoch_time is None:
-            epoch_time = int(time.time())
-        local_time = time.localtime(epoch_time)
-        optional_fields["timestamp"] = str(epoch_time)
-        optional_fields["localtime"] = time.strftime("%b %d %H:%M:%S",
-                                                     local_time)
-
-        fields = [status_code, substr, operation]
-        fields += ["%s=%s" % x for x in optional_fields.iteritems()]
-        fields.append(status)
-
-        if record_prefix is None:
-            record_prefix = self._record_prefix
-
-        msg = '\t'.join(str(x) for x in fields)
-        return record_prefix + msg + '\n'
-
-
-    def _record_prerendered(self, msg):
-        """
-        Record a pre-rendered msg into the status logs. The only
-        change this makes to the message is to add on the local
-        indentation. Should not be called outside of server_job.*
-        classes. Unlike _record, this does not write the message
-        to standard output.
-        """
-        lines = []
-        status_file = self.get_status_log_path()
-        status_log = open(status_file, 'a')
-        for line in msg.splitlines():
-            line = self._record_prefix + line + '\n'
-            lines.append(line)
-            status_log.write(line)
-        status_log.close()
-        self.__parse_status(lines)
-
-
     def _fill_server_control_namespace(self, namespace, protect=True):
         """
         Prepare a namespace to be used when executing server control files.
@@ -1045,31 +1018,10 @@ class base_server_job(base_job.base_job):
         execfile(code_file, namespace, namespace)
 
 
-    def _record(self, status_code, subdir, operation, status='',
-                 epoch_time=None, optional_fields=None):
-        """
-        Actual function for recording a single line into the status
-        logs. Should never be called directly, only by job.record as
-        this would bypass the console monitor logging.
-        """
-
-        msg = self._render_record(status_code, subdir, operation, status,
-                                  epoch_time, optional_fields=optional_fields)
-
-        status_file = self.get_status_log_path()
-        sys.stdout.write(msg)
-        if status_file:
-            open(status_file, "a").write(msg)
-        if subdir:
-            sub_status_file = self.get_status_log_path(subdir)
-            open(sub_status_file, "a").write(msg)
-        self.__parse_status(msg.splitlines())
-
-
-    def __parse_status(self, new_lines):
+    def _parse_status(self, new_line):
         if not self._using_parser:
             return
-        new_tests = self.parser.process_lines(new_lines)
+        new_tests = self.parser.process_lines([new_line])
         for test in new_tests:
             self.__insert_test(test)
 

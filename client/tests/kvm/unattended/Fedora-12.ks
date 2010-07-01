@@ -1,5 +1,5 @@
 install
-cdrom
+KVM_TEST_MEDIUM
 text
 reboot
 lang en_US
@@ -10,7 +10,7 @@ firewall --enabled --ssh
 selinux --enforcing
 timezone --utc America/New_York
 firstboot --disable
-bootloader --location=mbr
+bootloader --location=mbr --append="console=ttyS0,115200 console=tty0"
 zerombr
 
 clearpart --all --initlabel

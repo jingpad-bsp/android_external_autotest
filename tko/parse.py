@@ -157,8 +157,32 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
 
     # write the job into the database
     db.insert_job(jobname, job)
+
+    # Serializing job into a binary file
+    try:
+        from autotest_lib.tko import tko_pb2
+        from autotest_lib.tko import job_serializer
+
+        serializer = job_serializer.JobSerializer()
+        binary_file_name = os.path.join(path, "job.serialize")
+        serializer.serialize_to_binary(job, jobname, binary_file_name)
+
+        if reparse:
+            site_export_file = "autotest_lib.tko.site_export"
+            site_export = utils.import_site_function(__file__,
+                                                     site_export_file,
+                                                     "site_export",
+                                                     _site_export_dummy)
+            site_export(binary_file_name)
+
+    except ImportError:
+        tko_utils.dprint("DEBUG: tko_pb2.py doesn't exist. Create by "
+                         "compiling tko/tko.proto.")
+
     db.commit()
 
+def _site_export_dummy(binary_file_name):
+    pass
 
 def _get_job_subdirs(path):
     """

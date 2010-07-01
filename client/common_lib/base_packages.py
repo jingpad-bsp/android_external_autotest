@@ -74,6 +74,8 @@ def check_write(repo):
 
 
 def trim_custom_directories(repo, older_than_days=40):
+    if not repo:
+        return
     older_than_days = global_config.global_config.get_config_value('PACKAGES',
                                                       'custom_max_age',
                                                       type=int)
@@ -266,6 +268,8 @@ class BasePackageManager(object):
         ensure we have at least XX amount of free space
         Make sure we can write to the repo
         '''
+        if not repo.startswith('/') and not repo.startswith('ssh:'):
+            return
         try:
             check_diskspace(repo)
             check_write(repo)
@@ -280,11 +284,21 @@ class BasePackageManager(object):
         '''
         from autotest_lib.server import subcommand
         if not custom_repos:
-            custom_repos = global_config.global_config.get_config_value('PACKAGES',
-                                               'custom_upload_location').split(',')
-            custom_download = global_config.global_config.get_config_value(
-                'PACKAGES', 'custom_download_location')
-            custom_repos += [custom_download]
+            # Not all package types necessairly require or allow custom repos
+            try:
+                custom_repos = global_config.global_config.get_config_value(
+                    'PACKAGES', 'custom_upload_location').split(',')
+            except global_config.ConfigError:
+                custom_repos = []
+            try:
+                custom_download = global_config.global_config.get_config_value(
+                    'PACKAGES', 'custom_download_location')
+                custom_repos += [custom_download]
+            except global_config.ConfigError:
+                pass
+
+            if not custom_repos:
+                return
 
         results = subcommand.parallel_simple(trim_custom_directories,
                                              custom_repos, log=False, )
@@ -399,7 +413,6 @@ class BasePackageManager(object):
         else:
             raise error.PackageFetchError("No repository urls specified")
 
-        error_msgs = {}
         # install the package from the package repos, try the repos in
         # reverse order, assuming that the 'newest' repos are most desirable
         for fetcher in reversed(repositories):
@@ -414,19 +427,20 @@ class BasePackageManager(object):
                 return
             except (error.PackageFetchError, error.AutoservRunError):
                 # The package could not be found in this repo, continue looking
-                logging.error('%s could not be fetched from %s', pkg_name,
+                logging.debug('%s could not be fetched from %s', pkg_name,
                               fetcher.url)
 
+        repo_url_list = [repo.url for repo in repositories]
+        message = ('%s could not be fetched from any of the repos %s' %
+                   (pkg_name, repo_url_list))
+        logging.error(message)
         # if we got here then that means the package is not found
         # in any of the repositories.
-        repo_url_list = [repo.url for repo in repositories]
-        raise error.PackageFetchError("%s could not be fetched from any of"
-                                      " the repos %s : %s " % (pkg_name,
-                                                               repo_url_list,
-                                                               error_msgs))
+        raise error.PackageFetchError(message)
 
 
-    def upload_pkg(self, pkg_path, upload_path=None, update_checksum=False):
+    def upload_pkg(self, pkg_path, upload_path=None, update_checksum=False,
+                   timeout=300):
         from autotest_lib.server import subcommand
         if upload_path:
             upload_path_list = [upload_path]
@@ -448,7 +462,7 @@ class BasePackageManager(object):
                                                   (pkg_path, path,
                                                    update_checksum)))
 
-        results = subcommand.parallel(commands, 300, return_results=True)
+        results = subcommand.parallel(commands, timeout, return_results=True)
         for result in results:
             if result:
                 print str(result)
