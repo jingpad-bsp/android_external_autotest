@@ -7,6 +7,7 @@ from signal import SIGSEGV
 from autotest_lib.client.bin import site_log_reader, site_utils, test
 from autotest_lib.client.common_lib import error, utils
 
+_CONSENT_FILE = '/home/chronos/Consent To Send Stats'
 _CRASH_REPORTER_PATH = '/sbin/crash_reporter'
 _CRASH_SENDER_PATH = '/sbin/crash_sender'
 _CRASH_SENDER_CRON_PATH = '/etc/cron.hourly/crash_sender.hourly'
@@ -64,9 +65,33 @@ class logging_UserCrash(test.test):
                 data = ''
             else:
                 data = '1'
+            logging.info('Setting sending mock')
             utils.open_write_close(_MOCK_CRASH_SENDING, data)
         else:
             utils.system('rm -f ' + _MOCK_CRASH_SENDING)
+
+
+    def _set_consent(self, has_consent):
+        if has_consent:
+            utils.open_write_close(_CONSENT_FILE, 'test-consent')
+            logging.info('Created ' + _CONSENT_FILE)
+        else:
+            utils.system('rm -f "%s"' % (_CONSENT_FILE))
+
+
+    def _get_pushed_consent_file_path(self):
+        return os.path.join(self.bindir, 'pushed_consent')
+
+
+    def _push_consent(self):
+        if os.path.exists(_CONSENT_FILE):
+            os.rename(_CONSENT_FILE, self._get_pushed_consent_file_path())
+
+
+    def _pop_consent(self):
+        self._set_consent(False)
+        if os.path.exists(self._get_pushed_consent_file_path()):
+            os.rename(self._get_pushed_consent_file_path(), _CONSENT_FILE)
 
 
     def _get_crash_spool_dir(self, username):
@@ -91,8 +116,13 @@ class logging_UserCrash(test.test):
         test.test.cleanup(self)
 
 
-    def _prepare_sender_one_crash(self, send_success, username, minidump):
+    def _prepare_sender_one_crash(self,
+                                  send_success,
+                                  reports_enabled,
+                                  username,
+                                  minidump):
         self._set_sending_mock(mock_enabled=True, send_success=send_success)
+        self._set_consent(reports_enabled)
         if minidump is None:
             minidump = os.path.join(_SYSTEM_CRASH_DIR, 'fake.dmp')
             if not os.path.exists(_SYSTEM_CRASH_DIR):
@@ -131,12 +161,16 @@ class logging_UserCrash(test.test):
                 'output': output}
 
 
-    def _call_sender_one_crash(self, send_success=True, username='root',
+    def _call_sender_one_crash(self,
+                               send_success=True,
+                               reports_enabled=True,
+                               username='root',
                                minidump=None):
         """Call the crash sender script to mock upload one crash.
 
         Args:
           send_success: Mock a successful send if true
+          reports_enabled: Has the user consented to sending crash reports.
           username: user to emulate a crash from
           minidump: minidump to use for crash, if None we create one.
 
@@ -149,10 +183,20 @@ class logging_UserCrash(test.test):
               24 hours.
         """
         minidump = self._prepare_sender_one_crash(send_success,
+                                                  reports_enabled,
                                                   username,
                                                   minidump)
         self._log_reader.set_start_by_current()
         utils.system(_CRASH_SENDER_PATH, ignore_status=True)
+        # Wait for up to 2s to see the Done message flushed the crash
+        # sender, otherwise me might get only part of the output.
+        site_utils.poll_for_condition(
+            lambda: ': Done' in self._log_reader.get_logs(),
+            timeout=2,
+            exception=error.TestError(
+              'Timeout waiting for log to settle: ' +
+              self._log_reader.get_logs()))
+
         output = self._log_reader.get_logs()
         logging.debug('Crash sender message output:\n' + output)
 
@@ -232,6 +276,16 @@ class logging_UserCrash(test.test):
             raise error.TestFail('Sender did not pause')
 
 
+    def _test_sender_reports_disabled(self):
+        """Test that when reporting is disabled, we don't send."""
+        self._set_sending(True)
+        result = self._call_sender_one_crash(reports_enabled=False)
+        if (result['minidump_exists'] or
+            not 'Uploading is disabled' in result['output'] or
+            result['send_attempt']):
+            raise error.TestFail('Sender did not handle reports disabled')
+
+
     def _test_sender_rate_limiting(self):
         """Test the sender properly rate limits and sends with delay."""
         self._set_sending(True)
@@ -309,6 +363,7 @@ class logging_UserCrash(test.test):
         the job eventually runs the sender."""
         self._set_sending(True)
         minidump = self._prepare_sender_one_crash(send_success=True,
+                                                  reports_enabled=True,
                                                   username='root',
                                                   minidump=None)
         if not os.path.exists(minidump):
@@ -376,12 +431,12 @@ class logging_UserCrash(test.test):
             raise error.TestFail('Did not identify crash address 0x16')
 
         # Should identify crash at *(char*)0x16 assignment line
-        if not ' 0  crasher!recbomb [bomb.cc : 9 ' in stack:
+        if not ' 0  crasher!recbomb(int) [bomb.cc : 9 ' in stack:
             raise error.TestFail('Did not show crash line on stack')
 
         # Should identify recursion line which is on the stack
         # for 15 levels
-        if not '15  crasher!recbomb [bomb.cc : 12 ' in stack:
+        if not '15  crasher!recbomb(int) [bomb.cc : 12 ' in stack:
             raise error.TestFail('Did not show recursion line on stack')
 
         # Should identify main line
@@ -505,6 +560,7 @@ class logging_UserCrash(test.test):
             'reporter_shutdown',
             'sender_simple',
             'sender_pausing',
+            'sender_reports_disabled',
             'sender_rate_limiting',
             'sender_single_instance',
             'sender_send_fails',
@@ -513,6 +569,8 @@ class logging_UserCrash(test.test):
             'chronos_crasher',
             'root_crasher',
             ]
+
+        self._push_consent()
 
         # Sanity check test_names is complete
         for attr in dir(self):
@@ -529,5 +587,8 @@ class logging_UserCrash(test.test):
             self._clear_spooled_crashes()
             self._set_sending(False)
             getattr(self, '_test_' + test_name)()
+
+    def cleanup(self):
             self._set_sending(True)
             self._set_sending_mock(mock_enabled=False)
+            self._pop_consent()

@@ -12,6 +12,7 @@ Fails if any of the following conditions occur:
   - forced crash does not occur
   - forced segv message is not found
   - core pattern is not recognized as as 'core'
+  - crash is sent without user consent
 """
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

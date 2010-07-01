@@ -7,8 +7,6 @@ LDFLAGS = -lcrash
 BIN = crasher
 SRC = crasher.cc
 OBJS = crasher.o bomb.o
-# Enable debugging to get symbols in stack traces.
-CXXFLAGS += -gstabs
 
 all: $(BIN).gz
 
@@ -19,5 +17,8 @@ $(BIN).gz: $(BIN)
 $(BIN): $(OBJS)
 	$(CXX) $(INCLUDE) -o $@ $^ $(LDFLAGS)
 
+.cc.o:
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 clean:
-	$(RM) $(BIN) $(BIN).gz
+	$(RM) *.o $(BIN) $(BIN).gz
