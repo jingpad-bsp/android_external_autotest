@@ -19,7 +19,7 @@ class realtimecomm_GTalkAudioBench(test.test):
         'iLBC',
         'G722',
         'GSM',
-        'speex',
+#       'speex',
 #       'red',
 #       'telephone-event',
 #       'CN',
