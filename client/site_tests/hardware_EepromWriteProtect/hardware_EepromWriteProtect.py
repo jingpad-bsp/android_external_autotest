@@ -14,7 +14,6 @@ class hardware_EepromWriteProtect(test.test):
     Autotest for EEPROM Write Protection status
     """
     version = 1
-    pre_post_exec_dir = '/usr/share/flashrom'
     verbose = True
 
     def setup(self):
@@ -23,6 +22,9 @@ class hardware_EepromWriteProtect(test.test):
         #              we will enable following dependency.
         # self.job.setup_dep(['flashrom_utils'])
         self.flashrom = flashrom_util.flashrom_util(verbose=self.verbose)
+        self.script_folder = os.path.join(*os.path.split(__file__)[:-1])
+        self.pre_post_exec_dir = os.path.join(self.script_folder,
+                                              "arch_" + utils.get_arch())
 
     def check_write_protection(self, layout_map, write_list, expected):
         '''
