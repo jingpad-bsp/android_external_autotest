@@ -39,16 +39,28 @@ class platform_StackProtector(test.test):
         Check all current/future partitions unless known harmless (e.g. proc).
         Skip files < 512 bytes due to objdump false positive and test speed.
         """
+        libc_glob = "/lib/libc-[0-9]*"
         os.chdir(self.srcdir)
         cmd = ("find '%s' -wholename /proc -prune -o "
                " -wholename /dev -prune -o "
                " -wholename /sys -prune -o "
                " -wholename /home/autotest -prune -o "
+               " -wholename /usr/local/autotest -prune -o "
                " -wholename /mnt/stateful_partition -prune -o "
+               # A couple of files known to be a false positive:
+               " -wholename '/home/chronos/Safe Browsing Bloom*' -prune -o "
+               # libc needs to be checked differently, skip here:
+               " -wholename '%s' -prune -o "
                " -type f -size +511 -exec "
                "sh -c 'binutils/objdump -CR {} 2>&1 | "
                "egrep -q \"(stack_chk|Invalid|not recognized)\" || echo {}' ';'"
                )
-        badfiles = utils.system_output(cmd % rootdir)
-        if badfiles:
-            raise error.TestFail("Missing -fstack-protector:\n" + badfiles)
+        badfiles = utils.system_output(cmd % (rootdir, libc_glob))
+
+        # special case check for libc, needs different objdump flags
+        cmd = "binutils/objdump -D %s | egrep -q stack_chk || echo %s"
+        libc_stack_chk = utils.system_output(cmd % (libc_glob, libc_glob))
+
+        if badfiles or libc_stack_chk:
+            raise error.TestFail("Missing -fstack-protector:\n"
+                                 + badfiles + libc_stack_chk)
