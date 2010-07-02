@@ -10,9 +10,6 @@
 # The observer then decides if the captured image looks good or defective,
 # pressing enter key to let it pass or tab key to fail.
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import factory_test
 
 import gtk
 from gtk import gdk
@@ -20,12 +17,19 @@ import glib
 import pango
 import numpy
 
+from autotest_lib.client.bin import factory
+from autotest_lib.client.bin import factory_ui_lib as ful
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
+
 import v4l2
+
 
 DEVICE_NAME = "/dev/video0"
 PREFERRED_WIDTH = 320
 PREFERRED_HEIGHT = 240
 PREFERRED_BUFFER_COUNT = 4
+
 
 class factory_Camera(test.test):
     version = 1
@@ -61,14 +65,15 @@ class factory_Camera(test.test):
         self.img.queue_draw()
 
     def key_release_callback(self, widget, event):
-        factory_test.XXX_log('key_release_callback %s(%s)' %
-                             (event.keyval, gdk.keyval_name(event.keyval)))
+        factory.log('key_release_callback %s(%s)' %
+                    (event.keyval, gdk.keyval_name(event.keyval)))
         if event.keyval == self.key_good:
             self.fail = False
             gtk.main_quit()
         if event.keyval == self.key_bad:
             gtk.main_quit()
-        return factory_test.test_switch_on_trigger(event)
+        self.ft_state.exit_on_trigger(event)
+        return
 
     def register_callbacks(self, w):
         w.connect('key-release-event', self.key_release_callback)
@@ -77,12 +82,13 @@ class factory_Camera(test.test):
     def run_once(self, test_widget_size=None, trigger_set=None,
                  result_file_path=None):
 
+        factory.log('%s run_once' % self.__class__)
+
         self.fail = True
 
-        factory_test.XXX_log('factory_Camera')
-
-        factory_test.init(trigger_set=trigger_set,
-                          result_file_path=result_file_path)
+        self.ft_state = ful.State(
+            trigger_set=trigger_set,
+            result_file_path=result_file_path)
 
         label = gtk.Label(
             "Press %s key if the image looks good\nPress %s otherwise"
@@ -126,7 +132,7 @@ class factory_Camera(test.test):
         dev.capture_mmap_prepare(PREFERRED_BUFFER_COUNT, 2)
         dev.capture_mmap_start()
 
-        factory_test.run_test_widget(
+        self.ft_state.run_test_widget(
             test_widget=test_widget,
             test_widget_size=test_widget_size,
             window_registration_callback=self.register_callbacks)
@@ -137,4 +143,4 @@ class factory_Camera(test.test):
         if self.fail:
             raise error.TestFail('camera test failed by user indication')
 
-        factory_test.XXX_log('exiting factory_Camera')
+        factory.log('%s run_once finished' % self.__class__)

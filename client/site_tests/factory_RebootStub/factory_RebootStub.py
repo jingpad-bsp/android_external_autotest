@@ -5,20 +5,17 @@
 
 # DESCRIPTION :
 #
-# This is an example factory test that does not really do anything --
-# it displays a message in the center of the testing area, as
-# communicated by arguments to run_once().  This test makes use of the
-# factory_test library to display its UI, and to monitor keyboard
-# events for test-switching triggers.  This test can be terminated by
-# typing SHIFT-Q.
+# This is a stub factory test, run once reboot tests are completed, to
+# allow the autotest logs to record success status, and thereby for
+# the UI to display that status.
+
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import factory_test
+from autotest_lib.client.bin import factory
 
 
 class factory_RebootStub(test.test):
     version = 1
 
     def run_once(self):
-        factory_test.XXX_log('factory_RebootStub')
+        factory.log('%s run_once' % self.__class__)

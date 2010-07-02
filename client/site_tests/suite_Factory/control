@@ -23,19 +23,20 @@ control, the UI, and the tests (which are forked children of this
 control process).  """
 
 
+import imp
 import subprocess
 import sys
 import time
 
+imp.load_source('common', job.autodir + '/bin/common.py')
+from autotest_lib.client.bin import factory
 
-_FACTORY_LOG_PATH = '/var/log/factory.log'
-_RESULT_FILE_PATH = '/var/run/factory_test_result'
+
+_STATUS_FILE_PATH = job.autodir + '/results/default/status'
+_FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
+
 
 _REBOOT_SEQ_ITERATIONS = 2
-
-
-def XXX_log(s):
-    print >> sys.stderr, 'FACTORY: ' + s
 
 
 # Hack to work around autotest's obsession with GRUB.
@@ -43,102 +44,122 @@ job.bootloader.set_default = lambda x: None
 job.bootloader.boot_once = lambda x: None
 
 
-# This is the definition of the test_data class, which holds
-# factory-specific information on the tests to be run.  Specifically,
-# the order of items in the list reflect the order they are to be run
-# on the line.  The label and trigger fields contain the description
-# strings to be shown in the test control list of the UI.  The trigger
-# field specifies the keyboard shortcut to allow on-demain
-# out-of-order test activation.  The dargs field allows test specific
-# extra arguments.  Note: this datastructure is defined as a string
-# and exec()ed to allow it to be defined once here, but to be also
-# used by the factory_ui process.
-
-test_data_class_def = '''
-class test_data:
-
-    def __init__(self, label_en='', label_zw='', formal_name=None,
-                 tag_prefix=None, trigger=None, automated_seq=[], dargs={}):
-        self.__dict__.update(vars())
-
-    def __repr__(self):
-        d = ['%s=%s' % (l,repr(v))
-             for l,v in self.__dict__.items()
-             if l != 'self']
-        c = ('%s' % self.__class__).rpartition('.')[2]
-        return '%s(%s)' % (c, ','.join(d))
-'''
-exec(test_data_class_def)
-
-
 test_list = [
-    test_data(
+    factory.TestData(
         label_en='start',
+        label_zw='開始',
         formal_name='factory_Dummy',
-        trigger='a',
+        trigger='e',
         dargs={'quit_key':ord(' '),
                'msg':'Hit SPACE to start testing...\n按 "空白鍵" 開始測試...'}),
-    test_data(
+    factory.TestData(
         label_en='sync',
+        label_zw='同步',
         formal_name='factory_ScriptWrapper',
         trigger='s',
-        dargs={'cmdline':'/usr/local/autotest/exscr'}),
-    test_data(
-        label_en='leds',
-        formal_name='factory_Dummy',
-        trigger='l',
-        dargs={'msg':'LEDs test, one day...'}),
-   test_data(
-        label_en='usb',
-        formal_name='factory_ExternalStorage',
-        trigger='u'),
-   test_data(
-        label_en='display',
-        formal_name='factory_Display',
-        trigger='m'),
-    test_data(
-        label_en='camera',
-        formal_name='factory_Camera',
-        trigger='c'),
-    test_data(
+        dargs={'cmdline': job.autodir +
+               '/site_tests/factory_ScriptWrapper/dummy.sh'}),
+    factory.TestData(
+        label_en='run-in',
+        label_zw='燒機測試',
+        formal_name='step_runin',
+        automated_seq=[
+            factory.TestData(
+                label_en='component validation',
+                label_zw='元件驗證',
+                formal_name='hardware_Components',
+                dargs={'approved_db':'qualified_components'}),
+            factory.TestData(
+                label_en='gpio switch check',
+                label_zw='檢查 gpio 開關',
+                formal_name='hardware_GPIOSwitches'),
+            factory.TestData(
+                label_en='system stress',
+                label_zw='壓力測試',
+                formal_name='hardware_SAT'),
+            factory.TestData(
+                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
+                label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
+                formal_name='factory_RebootStub')],
+        trigger='r'),
+    factory.TestData(
         label_en='keyboard',
         label_zw='鍵盤',
         formal_name='factory_Keyboard',
         trigger='k',
         dargs={'layout':'en_us'}),
-    test_data(
+    factory.TestData(
         label_en='touchpad',
         label_zw='觸控板',
         formal_name='factory_Touchpad',
         trigger='t'),
-    test_data(
-        label_en='devrec',
-        formal_name='factory_DeveloperRecovery',
-        trigger='d',
-        dargs={'layout':'devrec'}),
-    test_data(
-        label_en='run-in',
-        formal_name='step_runin',
-        automated_seq=[
-            test_data(
-                label_en='component validation',
-                formal_name='hardware_Components',
-                dargs={'approved_db':'qualified_components'}),
-            test_data(
-                label_en='gpio switch check',
-                formal_name='hardware_GPIOSwitches'),
-            test_data(
-                label_en='system stress',
-                formal_name='hardware_SAT'),
-            test_data(
-                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
-                formal_name='factory_RebootStub')],
-        trigger='r'),
-    test_data(
-        label_en='end',
+    factory.TestData(
+        label_en='leds',
+        label_zw='機身側燈',
         formal_name='factory_Dummy',
-        trigger='e',
-        dargs={'msg':'end of testing...\n(chinese)...'}),
+        trigger='l',
+        dargs={'msg':'LEDs test, one day...'}),
+    factory.TestData(
+        label_en='display',
+        label_zw='顯示',
+        formal_name='factory_Display',
+        trigger='m'),
+    factory.TestData(
+        label_en='camera',
+        label_zw='相機',
+        formal_name='factory_Camera',
+        trigger='c'),
+    factory.TestData(
+        label_en='audio',
+        label_zw='聲音',
+        formal_name='factory_Dummy',
+        trigger='a',
+        dargs={'msg':'audio test, one day...'}),
+    factory.TestData(
+        label_en='usb',
+        formal_name='factory_ExternalStorage',
+        trigger='u'),
+    factory.TestData(
+        label_en='sd',
+        formal_name='factory_ExternalStorage',
+        trigger='d'),
+    factory.TestData(
+        label_en='bluetooth',
+        label_zw='藍牙',
+        formal_name='factory_Dummy',
+        trigger='o',
+        dargs={'msg':'bluetooth test, one day...'}),
+    factory.TestData(
+        label_en='3g',
+        label_zw='第三代',
+        formal_name='factory_Dummy',
+        trigger='g',
+        dargs={'msg':'3g test, one day...'}),
+    factory.TestData(
+        label_en='wifi',
+        label_zw='無線上網',
+        formal_name='factory_Dummy',
+        trigger='w',
+        dargs={'msg':'wifi test, one day...'}),
+    factory.TestData(
+        label_en='devrec',
+        label_zw='特殊模式',
+        formal_name='factory_DeveloperRecovery',
+        trigger='b',
+        dargs={'layout':'devrec'}),
+    factory.TestData(
+        label_en='final check',
+        label_zw='最後檢查',
+        formal_name='factory_Dummy',
+        trigger='f',
+        dargs={'msg':'google required checks...'}),
+    factory.TestData(
+        label_en='wipe',
+        label_zw='擦拭',
+        formal_name='factory_Dummy',
+        trigger='x',
+        dargs={'msg':('hit TAB+RETURN to finish testing and wipe test image!' +
+                      '...\n(chinese)...')}),
 ]
 
 for test in test_list:
@@ -146,58 +167,14 @@ for test in test_list:
     for subtest in test.automated_seq:
         subtest.tag_prefix = test.formal_name
 
-def test_map_index(formal_name, tag_prefix):
-    return formal_name + '.' + tag_prefix
-
-test_map = dict((test_map_index(test.formal_name, test.tag_prefix), test)
-                for test in test_list)
-
-trigger_set = set(test.trigger for test in test_list)
-
-
-class factory_ui:
-    '''Support communication with the factory_ui process.  To simplify
-    surrounding code, this communication is an exchange of well formed
-    python expressions.  Basically send wraps its arguments in a call
-    to repr() and recv calls eval() to re-generate the python data.'''
-
-    def __init__(self, factory_ui_path):
-        self._proc = subprocess.Popen(factory_ui_path,
-                                      stdin=subprocess.PIPE,
-                                      stdout=subprocess.PIPE)
-
-    def __del__(self):
-        XXX_log('control deleting factory_ui subprocess')
-        self._proc.terminate()
-        time.sleep(1)
-        if self._proc.poll() is None:
-            self._proc.kill()
-
-    def send(self, x=None):
-        print >> self._proc.stdin, repr(x)
-        self._proc.stdin.flush()
-
-    def send_cmd_next_test(self):
-        self.send(('next_test', None))
-
-    def send_cmd_switch_to(self, trigger):
-        self.send(('switch_to', trigger))
-
-    def recv(self):
-        return eval(self._proc.stdout.readline().rstrip())
-
-    def recv_target_test_update(self):
-        update = self.recv()
-        XXX_log('control recv target test %s' % repr(update))
-        formal_name, tag_prefix, count = update
-        test = test_map.get(test_map_index(formal_name, tag_prefix), None)
-        return (test, count)
+test_map = factory.make_test_map(test_list)
+trigger_set = factory.make_trigger_set(test_list)
 
 
 def step_reboot_seq(i, tag):
     if i < _REBOOT_SEQ_ITERATIONS:
         job.next_step_prepend([step_reboot_seq, i + 1, tag])
-        XXX_log('rebooting (iteration %d)' % i)
+        factory.log('rebooting (iteration %d)' % i)
         time.sleep(5)
         job.reboot()
     else:
@@ -230,26 +207,21 @@ def step_init():
     When the tests themselves run, they are expected to look for
     (using the factory_test library) keyboard events that match test
     switching triggers.  When a trigger happens, it should be written
-    to the _RESULT_FILE_PATH, which will be read after the test
+    to the factory.RESULT_FILE_PATH, which will be read after the test
     completed and the result comminicated onwards to the UI.'''
 
     job.next_step([step_init])
 
-    status_file_path = job.autodir + '/results/default/status'
-    factory_ui_path = job.autodir + '/deps/factory/ui'
+    ui = factory.UiClient(_FACTORY_UI_PATH)
 
-    ui = factory_ui(factory_ui_path)
-
-    ui.send(test_data_class_def)
     ui.send(test_list)
-    ui.send(status_file_path)
-    ui.send(_FACTORY_LOG_PATH)
+    ui.send(_STATUS_FILE_PATH)
 
     test_widget_size = ui.recv()
-    XXX_log('received test_widget_size = %s' % repr(test_widget_size))
+    factory.log('received test_widget_size = %s' % repr(test_widget_size))
 
     ui.send_cmd_next_test()
-    test, test_count = ui.recv_target_test_update()
+    test, test_count = ui.recv_target_test_update(test_map)
 
     while test is not None:
         if test.automated_seq:
@@ -264,11 +236,11 @@ def step_init():
                 'test_count': test_count,
                 'test_widget_size': test_widget_size,
                 'trigger_set': trigger_set,
-                'result_file_path': _RESULT_FILE_PATH})
-            with open(_RESULT_FILE_PATH, 'w') as file:
+                'result_file_path': factory.RESULT_FILE_PATH})
+            with open(factory.RESULT_FILE_PATH, 'w') as file:
                 file.write('None\n')
             job.run_test(test.formal_name, **dargs)
-            with open(_RESULT_FILE_PATH, 'r') as file:
+            with open(factory.RESULT_FILE_PATH, 'r') as file:
                 result = eval(file.readline())
 
         if result is not None:
@@ -276,6 +248,6 @@ def step_init():
         else:
             ui.send_cmd_next_test()
 
-        test, test_count = ui.recv_target_test_update()
+        test, test_count = ui.recv_target_test_update(test_map)
 
-    XXX_log('factory testing completed')
+    factory.log('factory testing completed')
