@@ -98,9 +98,8 @@ test_list = [
         trigger='m'),
     test_data(
         label_en='camera',
-        formal_name='factory_Dummy',
-        trigger='c',
-        dargs={'msg':'camera test, one day...'}),
+        formal_name='factory_Camera',
+        trigger='c'),
     test_data(
         label_en='keyboard',
         label_zw='鍵盤',
