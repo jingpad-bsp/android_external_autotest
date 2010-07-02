@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil, time
-from autotest_lib.client.bin import site_ui_test
+from autotest_lib.client.bin import site_ui_test, site_login
 from autotest_lib.client.common_lib import error, site_httpd, \
                             site_power_status, site_ui, utils
 
@@ -18,22 +18,23 @@ params_dict = {
 
 
 class power_LoadTest(site_ui_test.UITest):
-    version = 1
+    version = 2
 
-    def setup(self):
-        # TODO(snanda): Remove once power manager is in
-        shutil.copy(os.path.join(os.environ['SYSROOT'], 'usr/bin/xset'),
-                                 self.bindir)
-        if not os.path.exists(self.srcdir):
-            os.mkdir(self.srcdir)
+    def ensure_login_complete(self):
+        """
+        Override site_ui_test.UITest's ensure_login_complete.
+        Do not use auth server and local dns for our test. We need to be
+        able to reach the web.
+        """
+        pass
 
-
-    def run_once(self, percent_initial_charge_min=None,
+    def initialize(self, creds='$default', percent_initial_charge_min=None,
                  check_network=True, loop_time=3600, loop_count=1,
                  should_scroll='true', should_scroll_up='true',
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', low_battery_threshold=3,
                  verbose=True):
+
         """
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
@@ -45,7 +46,6 @@ class power_LoadTest(site_ui_test.UITest):
         scroll_interval_ms: how often to scoll
         scroll_by_pixels: number of pixels to scroll each time
         """
-
         self._loop_time = loop_time
         self._loop_count = loop_count
         self._mseconds = self._loop_time * 1000
@@ -57,7 +57,6 @@ class power_LoadTest(site_ui_test.UITest):
         self._scroll_interval_ms = scroll_interval_ms
         self._scroll_by_pixels = scroll_by_pixels
         self._tmp_keyvals = {}
-
         self._power_status = site_power_status.get_status()
 
         # verify that initial conditions are met:
@@ -92,21 +91,26 @@ class power_LoadTest(site_ui_test.UITest):
         os.system('stop screen-locker')
         os.system('stop powerd')
 
-        # disable screen blanking. Stopping screen-locker isn't
-        # synchronous :(. Add a sleep for now, till powerd comes around
-        # and fixes all this for us.
-        time.sleep(5)
-        site_ui.xsystem(os.path.join(self.bindir, 'xset') + ' s off')
-        site_ui.xsystem(os.path.join(self.bindir, 'xset') + ' dpms 0 0 0')
-        site_ui.xsystem(os.path.join(self.bindir, 'xset') + ' -dpms')
-
         # fix up file perms for the power test extension so that chrome
         # can access it
         os.system('chmod -R 755 %s' % self.bindir)
 
+
+        # TODO (bleung) :
+        # The new external extension packed crx means we can't pass params by
+        # modifying params.js
+        # Possible solution :
+        # - modify extension to not start until we poke it from the browser.
+        #       then pass through URL.
+
         # write test parameters to the power extension's params.js file
-        self._ext_path = os.path.join(self.bindir, 'extension')
-        self._write_ext_params()
+        # self._ext_path = os.path.join(self.bindir, 'extension')
+        # self._write_ext_params()
+
+        # copy external_extensions.json to known location
+        self._json_path = os.path.join(self.bindir, '..')
+        shutil.copy(os.path.join(self.bindir, 'external_extensions.json'),
+                                 self._json_path)
 
         # setup a HTTP Server to listen for status updates from the power
         # test extension
@@ -127,19 +131,24 @@ class power_LoadTest(site_ui_test.UITest):
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
 
+        # from site_ui_test.UITest.initialize, sans authserver & local dns.
+        (self.username, self.password) = self._UITest__resolve_creds(creds)
+
+    def run_once(self):
+
         t0 = time.time()
 
         for i in range(self._loop_count):
             # the power test extension will report its status here
             latch = self._testServer.add_wait_url('/status')
 
-            # launch chrome with power test extension
-            args = '--load-extension=%s' % self._ext_path
-            session = site_ui.ChromeSession(args, clean_state=False)
+            if site_login.logged_in():
+                site_login.attempt_logout()
+            # the act of logging in will launch chrome with external extension.
+            self.login(self.username, self.password)
 
             low_battery = self._do_wait(self._verbose, self._loop_time,
-                                        latch, session)
-            session.close()
+                                        latch)
 
             if self._verbose:
                 logging.debug('loop %d completed' % i)
@@ -200,10 +209,14 @@ class power_LoadTest(site_ui_test.UITest):
 
 
     def cleanup(self):
+        # remove json file after test to stop external extension launch.
+        os.system('rm -f %s' %
+                os.path.join(self._json_path, 'external_extensions.json'))
         # re-enable screen locker and powerd. This also re-enables dpms.
         os.system('start powerd')
         os.system('start screen-locker')
-
+        if site_login.logged_in():
+            site_login.attempt_logout()
 
     def _is_network_iface_running(self, name):
         try:
@@ -234,7 +247,7 @@ class power_LoadTest(site_ui_test.UITest):
         logging.debug(data)
 
 
-    def _do_wait(self, verbose, seconds, latch, session):
+    def _do_wait(self, verbose, seconds, latch):
         latched = False
         low_battery = False
         total_time = seconds + 60

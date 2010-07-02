@@ -20,21 +20,16 @@ determined by the seconds variable.
 The following manual steps need to be performed on the device under test
 before this test can be run:
   - make sure that Ethernet cable is disconnected and WiFi is connected
-  - login to Chrome OS and open a terminal window (Ctrl-Alt-t)
-  - run the following command to launch a new browser window:
-    $ sudo su chronos -c "/opt/google/chrome/chrome --no-first-run"
-  - in the newly opened browser window:
-  - navigate to http://www.gmail.com. Logout if already logged in. Check the
-    "Stay signed in" box and log in. If the yellow "Do you want Chromium to
-    save password" bar comes up, click on "Save password"
-  - navigate to http://www.facebook.com. Logout if already logged in. Check
-    the "Keep me logged in" box and log in. If the yellow "Do you want
-    Chromium to save password" bar comes up, click on "Save password".
-  - close browser window
   - disconnect power cable
 
 You are now ready to run the test.
 """
+
+# TODO (bleung): Find a way to do automatic Facebook and Gmail login in
+# perf test account.
+# TODO (bleung): Seconds variable is used here, but is not in power_LoadTest
+# because of the change to packed external extension. Change ext to take arg.
+
 
 import time
 
