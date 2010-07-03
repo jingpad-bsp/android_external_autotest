@@ -58,6 +58,7 @@ class power_LoadTest(site_ui_test.UITest):
         self._scroll_by_pixels = scroll_by_pixels
         self._tmp_keyvals = {}
         self._power_status = site_power_status.get_status()
+        self._json_path = None
 
         # verify that initial conditions are met:
         if self._power_status.linepower[0].online:
@@ -210,8 +211,10 @@ class power_LoadTest(site_ui_test.UITest):
 
     def cleanup(self):
         # remove json file after test to stop external extension launch.
-        os.system('rm -f %s' %
-                os.path.join(self._json_path, 'external_extensions.json'))
+        if self._json_path:
+            jsonfile = os.path.join(self._json_path, 'external_extensions.json')
+            if os.path.exists(jsonfile):
+                os.system('rm -f %s' % jsonfile)
         # re-enable screen locker and powerd. This also re-enables dpms.
         os.system('start powerd')
         os.system('start screen-locker')
