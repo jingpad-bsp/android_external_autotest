@@ -108,7 +108,6 @@ class desktopui_IBusTest(site_ui_test.UITest):
         expected_unwritten = set(['engine/ChewingsyncCapsLockLocal',
                                   'engine/ChewingnumpadAlwaysNumber',
                                   'engine/ChewinginputStyle',
-                                  'engine/HangulHanjaKeys',
                                   'engine/PinyinCorrectPinyin_GN_NG',
                                   'engine/PinyinCorrectPinyin_IOU_IU',
                                   'engine/PinyinCorrectPinyin_MG_NG',
