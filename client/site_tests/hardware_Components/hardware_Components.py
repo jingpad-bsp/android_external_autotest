@@ -16,6 +16,7 @@ class hardware_Components(test.test):
         'part_id_embedded_controller',
         'part_id_ethernet',
         'part_id_flash_chip',
+        'part_id_hwqual',
         'part_id_storage',
         'part_id_wireless',
         'vendor_id_touchpad',
@@ -116,6 +117,12 @@ class hardware_Components(test.test):
           if match:
             parts.append(match.group(1))
         part_id = ", ".join(parts)
+        return part_id
+
+
+    def get_part_id_hwqual(self):
+        cmd = 'cat /sys/devices/platform/chromeos_acpi/HWID'
+        part_id = utils.system_output(cmd).strip()
         return part_id
 
 
