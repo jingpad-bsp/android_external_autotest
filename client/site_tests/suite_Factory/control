@@ -65,10 +65,13 @@ test_list = [
         formal_name='step_runin',
         automated_seq=[
             factory.TestData(
+                label_en='graphics',
+                label_zw='',
+                formal_name='graphics_GLBench'),
+            factory.TestData(
                 label_en='component validation',
                 label_zw='元件驗證',
-                formal_name='hardware_Components',
-                dargs={'approved_db':'qualified_components'}),
+                formal_name='hardware_Components'),
             factory.TestData(
                 label_en='gpio switch check',
                 label_zw='檢查 gpio 開關',
@@ -118,11 +121,13 @@ test_list = [
     factory.TestData(
         label_en='usb',
         formal_name='factory_ExternalStorage',
-        trigger='u'),
+        trigger='u',
+        dargs={'media':'USB'}),
     factory.TestData(
         label_en='sd',
         formal_name='factory_ExternalStorage',
-        trigger='d'),
+        trigger='d',
+        dargs={'media':'SD'}),
     factory.TestData(
         label_en='bluetooth',
         label_zw='藍牙',
@@ -148,7 +153,7 @@ test_list = [
         trigger='b',
         dargs={'layout':'devrec'}),
     factory.TestData(
-        label_en='final check',
+        label_en='fw wp',
         label_zw='最後檢查',
         formal_name='factory_Dummy',
         trigger='f',
@@ -183,6 +188,7 @@ def step_reboot_seq(i, tag):
 
 
 def step_runin(ui, tag):
+    job.run_test('graphics_GLBench', tag=tag)
     job.run_test('hardware_Components',
                  approved_db='qualified_components',
                  tag=tag)

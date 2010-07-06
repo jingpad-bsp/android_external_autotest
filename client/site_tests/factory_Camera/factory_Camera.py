@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -25,10 +27,18 @@ from autotest_lib.client.common_lib import error
 import v4l2
 
 
-DEVICE_NAME = "/dev/video0"
+DEVICE_NAME = '/dev/video0'
 PREFERRED_WIDTH = 320
 PREFERRED_HEIGHT = 240
 PREFERRED_BUFFER_COUNT = 4
+
+KEY_GOOD = gdk.keyval_from_name('Return')
+KEY_BAD = gdk.keyval_from_name('Tab')
+
+LABEL_FONT = pango.FontDescription('courier new condensed 16')
+
+MESSAGE_STR = ('hit TAB to fail and RETURN to pass\n' +
+               '錯誤請按 TAB，成功請按 RETURN\n')
 
 
 class factory_Camera(test.test):
@@ -38,13 +48,13 @@ class factory_Camera(test.test):
 
     @staticmethod
     def get_best_frame_size(dev, pixel_format, width, height):
-        """Given the preferred frame size, find a reasonable frame size the
+        '''Given the preferred frame size, find a reasonable frame size the
         capture device is capable of.
 
         currently it returns the smallest frame size that is equal or bigger
         than the preferred size in both axis. this does not conform to
         chrome browser's behavior, but is easier for testing purpose.
-        """
+        '''
         sizes = [(w, h) for w, h in dev.enum_framesizes(pixel_format)
                  if type(w) is int or type(w) is long]
         if not sizes:
@@ -90,11 +100,8 @@ class factory_Camera(test.test):
             trigger_set=trigger_set,
             result_file_path=result_file_path)
 
-        label = gtk.Label(
-            "Press %s key if the image looks good\nPress %s otherwise"
-            % (gdk.keyval_name(self.key_good),gdk.keyval_name(self.key_bad)))
-
-        label.modify_font(pango.FontDescription('courier new condensed 12'))
+        label = gtk.Label(MESSAGE_STR)
+        label.modify_font(LABEL_FONT)
         label.modify_fg(gtk.STATE_NORMAL, gdk.color_parse('light green'))
 
         test_widget = gtk.VBox()
@@ -106,10 +113,10 @@ class factory_Camera(test.test):
 
         dev = v4l2.Device(DEVICE_NAME)
         if not dev.cap.capabilities & v4l2.V4L2_CAP_VIDEO_CAPTURE:
-            raise ValueError("%s doesn't support video capture interface"
+            raise ValueError('%s does not support video capture interface'
                              % (DEVICE_NAME, ))
         if not dev.cap.capabilities & v4l2.V4L2_CAP_STREAMING:
-            raise ValueError("%s doesn't support streaming I/O"
+            raise ValueError('%s does not support streaming I/O'
                              % (DEVICE_NAME, ))
         glib.io_add_watch(dev.fd, glib.IO_IN,
             lambda *x:dev.capture_mmap_shot(self.render) or True,

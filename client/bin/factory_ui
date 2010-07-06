@@ -42,8 +42,8 @@ from factory import TestData
 _SEP_COLOR = gtk.gdk.color_parse('grey50')
 
 _LABEL_EN_SIZE = (160, 35)
-_LABEL_EN_FONT = pango.FontDescription('courier new extra-condensed 16')
 _LABEL_ZW_SIZE = (70, 35)
+_LABEL_EN_FONT = pango.FontDescription('courier new extra-condensed 16')
 _LABEL_ZW_FONT = pango.FontDescription('normal 12')
 _LABEL_T_SIZE = (30, 35)
 _LABEL_T_FONT = pango.FontDescription('courier new italic ultra-condensed 10')
@@ -53,6 +53,9 @@ _LABEL_STATUS_SIZE = (140, 30)
 _LABEL_STATUS_FONT = pango.FontDescription(
     'courier new bold extra-condensed 16')
 _OTHER_LABEL_FONT = pango.FontDescription('courier new condensed 20')
+
+_ST_LABEL_EN_SIZE = (250, 35)
+_ST_LABEL_ZW_SIZE = (150, 35)
 
 
 class Console:
@@ -108,7 +111,7 @@ class TestLabelBox(gtk.EventBox):
 
     def __init__(self, test):
         gtk.EventBox.__init__(self)
-        self.modify_bg(gtk.STATE_NORMAL, ft.LABEL_COLORS[ft.UNTESTED])
+        self.modify_bg(gtk.STATE_NORMAL, ful.LABEL_COLORS[ful.UNTESTED])
         label_en = gtk.Label(test.label_en)
         label_en.set_size_request(*_LABEL_EN_SIZE)
         label_en.modify_font(_LABEL_EN_FONT)
@@ -123,7 +126,7 @@ class TestLabelBox(gtk.EventBox):
         label_t.set_size_request(*_LABEL_T_SIZE)
         label_t.modify_font(_LABEL_T_FONT)
         label_t.set_alignment(0.5, 0.5)
-        label_t.modify_fg(gtk.STATE_NORMAL, ft.BLACK)
+        label_t.modify_fg(gtk.STATE_NORMAL, ful.BLACK)
         hbox = gtk.HBox()
         hbox.pack_start(label_en, False, False)
         hbox.pack_start(label_zw, False, False)
@@ -132,12 +135,12 @@ class TestLabelBox(gtk.EventBox):
         self.label_list = [label_en, label_zw]
 
     def update(self, status):
-        if status == ft.UNTESTED:
+        if status == ful.UNTESTED:
             return
-        self.modify_fg(gtk.STATE_NORMAL, ft.BLACK)
+        self.modify_fg(gtk.STATE_NORMAL, ful.BLACK)
         for label in self.label_list:
-            label.modify_fg(gtk.STATE_NORMAL, ft.BLACK)
-        self.modify_bg(gtk.STATE_NORMAL, ft.LABEL_COLORS[status])
+            label.modify_fg(gtk.STATE_NORMAL, ful.BLACK)
+        self.modify_bg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
         self.queue_draw()
 
 
@@ -145,24 +148,26 @@ class SubTestLabelBox(gtk.EventBox):
 
     def __init__(self, test):
         gtk.EventBox.__init__(self)
-        self.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
-        label_status = gtk.Label(ft.UNTESTED)
+        self.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
+        label_status = gtk.Label(ful.UNTESTED)
         label_status.set_size_request(*_LABEL_STATUS_SIZE)
         label_status.set_alignment(0, 0.5)
         label_status.modify_font(_LABEL_STATUS_FONT)
         label_status.modify_fg(gtk.STATE_NORMAL, _LABEL_UNTESTED_FG)
-        label_en = gtk.Label(test.label_en)
-        label_en.set_alignment(1, 0.5)
-        label_en.modify_font(_LABEL_EN_FONT)
-        label_en.modify_fg(gtk.STATE_NORMAL, ft.LIGHT_GREEN)
-        label_zw = gtk.Label(test.label_zw)
-        label_zw.set_alignment(1, 0.5)
-        label_zw.modify_font(_LABEL_ZW_FONT)
-        label_zw.modify_fg(gtk.STATE_NORMAL, ft.LIGHT_GREEN)
         label_sep = gtk.Label(' : ')
         label_sep.set_alignment(0.5, 0.5)
         label_sep.modify_font(_LABEL_EN_FONT)
-        label_sep.modify_fg(gtk.STATE_NORMAL, ft.LIGHT_GREEN)
+        label_sep.modify_fg(gtk.STATE_NORMAL, ful.LIGHT_GREEN)
+        label_en = gtk.Label(test.label_en)
+        label_en.set_size_request(*_ST_LABEL_EN_SIZE)
+        label_en.set_alignment(0.5, 0.5)
+        label_en.modify_font(_LABEL_EN_FONT)
+        label_en.modify_fg(gtk.STATE_NORMAL, ful.LIGHT_GREEN)
+        label_zw = gtk.Label(test.label_zw)
+        label_zw.set_size_request(*_ST_LABEL_ZW_SIZE)
+        label_zw.set_alignment(0.5, 0.5)
+        label_zw.modify_font(_LABEL_ZW_FONT)
+        label_zw.modify_fg(gtk.STATE_NORMAL, ful.LIGHT_GREEN)
         hbox = gtk.HBox()
         hbox.pack_end(label_status, False, False)
         hbox.pack_end(label_sep, False, False)
@@ -172,10 +177,10 @@ class SubTestLabelBox(gtk.EventBox):
         self.label_status = label_status
 
     def update(self, status):
-        if status == ft.UNTESTED:
+        if status == ful.UNTESTED:
             return
         self.label_status.set_text(status)
-        self.label_status.modify_fg(gtk.STATE_NORMAL, ft.LABEL_COLORS[status])
+        self.label_status.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
         self.queue_draw()
 
 
@@ -187,10 +192,10 @@ class StatusMap():
         self._status_dict = {}
         for test in test_list:
             test_index = self.index(test.formal_name, test.tag_prefix)
-            self._status_dict[test_index] = (test, ft.UNTESTED, 0, None)
+            self._status_dict[test_index] = (test, ful.UNTESTED, 0, None)
             for subtest in test.automated_seq:
                 st_index = self.index(subtest.formal_name, subtest.tag_prefix)
-                self._status_dict[st_index] = (subtest, ft.UNTESTED, 0, None)
+                self._status_dict[st_index] = (subtest, ful.UNTESTED, 0, None)
         self._status_file_path = status_file_path
         self._status_file_pos = 0
         self.read_new_data()
@@ -201,7 +206,7 @@ class StatusMap():
 
     def next_untested(self):
         remaining = [t for t in self._test_queue
-                     if self.lookup_status(t) == ft.UNTESTED]
+                     if self.lookup_status(t) == ful.UNTESTED]
         factory.log('remaining untested = [%s]' %
                 ', '.join([self.index(t.formal_name, t.tag_prefix)
                            for t in remaining]))
@@ -215,9 +220,9 @@ class StatusMap():
                 cols = line.lstrip().split('\t') + ['']
                 code = cols[0]
                 test_id = cols[1]
-                if code not in ft.STATUS_CODE_MAP or test_id == '----':
+                if code not in ful.STATUS_CODE_MAP or test_id == '----':
                     continue
-                status = ft.STATUS_CODE_MAP[code]
+                status = ful.STATUS_CODE_MAP[code]
                 factory.log('reading code = %s, test_id = %s' % (code, test_id))
                 formal_name, _, tag = test_id.rpartition('.')
                 tag_prefix, _, count = tag.rpartition('_')
@@ -249,7 +254,7 @@ class StatusMap():
         if len(st_status_set) == 1:
             status = st_status_set.pop()
         else:
-            status = ft.ACTIVE in st_status_set and ft.ACTIVE or ft.FAILED
+            status = ful.ACTIVE in st_status_set and ful.ACTIVE or ful.FAILED
         self.update(test.formal_name, test.tag_prefix, status, max_count)
 
     def set_label(self, test, label):
@@ -289,9 +294,9 @@ def make_notest_label():
     label = gtk.Label('no active test')
     label.modify_font(_OTHER_LABEL_FONT)
     label.set_alignment(0.5, 0.5)
-    label.modify_fg(gtk.STATE_NORMAL, ft.LIGHT_GREEN)
+    label.modify_fg(gtk.STATE_NORMAL, ful.LIGHT_GREEN)
     box = gtk.EventBox()
-    box.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
+    box.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
     box.add(label)
     return box
 
@@ -307,7 +312,7 @@ def make_automated_seq_widget(as_test, status_map):
 def main():
     window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     window.connect('destroy', lambda _: gtk.main_quit())
-    window.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
+    window.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
 
     screen = window.get_screen()
     screen_size = (screen.get_width(), screen.get_height())
@@ -322,7 +327,7 @@ def main():
 
     console_box = gtk.EventBox()
     console_box.set_size_request(-1, 180)
-    console_box.modify_bg(gtk.STATE_NORMAL, ft.BLACK)
+    console_box.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
 
     notest_label = make_notest_label()
 

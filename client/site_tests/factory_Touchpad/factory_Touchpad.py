@@ -12,6 +12,8 @@ import os
 import sys
 import subprocess
 
+from cmath import pi
+
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
@@ -22,19 +24,29 @@ _SYNCLIENT_SETTINGS_CMDLINE = '/usr/bin/synclient -l'
 _SYNCLIENT_CMDLINE = '/usr/bin/synclient -m 50'
 
 _RGBA_GREEN_OVERLAY = (0, 0.5, 0, 0.6)
+_RGBA_YELLOW_OVERLAY = (0.5, 0.5, 0, 0.6)
 
 _X_SEGMENTS = 5
 _Y_SEGMENTS = 4
 
-_X_TP_OFFSET = 10
-_Y_TP_OFFSET = 10
-_TP_WIDTH = 397
-_TP_HEIGHT = 213
+_X_TP_OFFSET = 12
+_Y_TP_OFFSET = 12
+_TP_WIDTH = 396
+_TP_HEIGHT = 212
 _TP_SECTOR_WIDTH = (_TP_WIDTH / _X_SEGMENTS) - 1
 _TP_SECTOR_HEIGHT = (_TP_HEIGHT / _Y_SEGMENTS) - 1
 
-_X_SP_OFFSET = 432
-_SP_WIDTH = 19
+_X_SP_OFFSET = 428
+_SP_WIDTH = 15
+
+_F_RADIUS = 21
+
+_X_OF_OFFSET = 486 + _F_RADIUS + 2
+_Y_OF_OFFSET = 54 + _F_RADIUS + 2
+
+_X_TFL_OFFSET = 459 + _F_RADIUS + 2
+_X_TFR_OFFSET = 513 + _F_RADIUS + 2
+_Y_TF_OFFSET = 117 + _F_RADIUS + 2
 
 
 class TouchpadTest:
@@ -52,6 +64,8 @@ class TouchpadTest:
             self._scroll_array[y] = False
         self._l_click = False
         self._r_click = False
+        self._of_z_rad = 0
+        self._tf_z_rad = 0
 
     def timer_event(self, window):
         if not self._deadline:
@@ -66,27 +80,49 @@ class TouchpadTest:
     def device_event(self, x, y, z, fingers, left, right):
         x_seg = int(round(x / (1.0 / float(_X_SEGMENTS - 1))))
         y_seg = int(round(y / (1.0 / float(_Y_SEGMENTS - 1))))
+        z_rad = int(round(z / (1.0 / float(_F_RADIUS - 1))))
+
         index = '%d,%d' % (x_seg, y_seg)
+
         assert(index in self._motion_grid)
         assert(y_seg in self._scroll_array)
+
+        new_stuff = False
+
         if left and not self._l_click:
             self._l_click = True
+            self._of_z_rad = _F_RADIUS
             factory.log('ok left click')
+            new_stuff = True
         elif right and not self._r_click:
             self._r_click = True
+            self._tf_z_rad = _F_RADIUS
             factory.log('ok right click')
-        elif fingers == 1 and not self._motion_grid[index]:
+            new_stuff = True
+
+        if fingers == 1 and not self._motion_grid[index]:
             self._motion_grid[index] = True
+            new_stuff = True
         elif fingers == 2 and not self._scroll_array[y_seg]:
             self._scroll_array[y_seg] = True
-        else:
-            return
-        self._drawing_area.queue_draw()
+            new_stuff = True
+
+        if fingers == 1 and not self._l_click and z_rad != self._of_z_rad:
+            self._of_z_rad = z_rad
+            new_stuff = True
+        elif fingers == 2 and not self._r_click and z_rad != self._tf_z_rad:
+            self._tf_z_rad = z_rad
+            new_stuff = True
+
+        if new_stuff:
+            self._drawing_area.queue_draw()
+
         missing_motion_sectors = set(i for i, v in self._motion_grid.items()
                                      if v is False)
         missing_scroll_segments = set(i for i, v in self._scroll_array.items()
                                       if v is False)
-        if (self._l_click and self._r_click
+        # XXX add self._r_click here when that is supported...
+        if (self._l_click
             and not missing_motion_sectors
             and not missing_scroll_segments):
             gtk.main_quit()
@@ -97,6 +133,8 @@ class TouchpadTest:
         context.set_source_surface(self._tp_image, 0, 0)
         context.paint()
 
+        context.set_source_rgba(*_RGBA_GREEN_OVERLAY)
+
         for index in self._motion_grid:
             if not self._motion_grid[index]:
                 continue
@@ -105,7 +143,6 @@ class TouchpadTest:
             y = _Y_TP_OFFSET + (ind_y * (_TP_SECTOR_HEIGHT + 1))
             coords = (x, y, _TP_SECTOR_WIDTH, _TP_SECTOR_HEIGHT)
             context.rectangle(*coords)
-            context.set_source_rgba(*_RGBA_GREEN_OVERLAY)
             context.fill()
 
         for y_seg in self._scroll_array:
@@ -114,8 +151,21 @@ class TouchpadTest:
             y = _Y_TP_OFFSET + (y_seg * (_TP_SECTOR_HEIGHT + 1))
             coords = (_X_SP_OFFSET, y, _SP_WIDTH, _TP_SECTOR_HEIGHT)
             context.rectangle(*coords)
-            context.set_source_rgba(*_RGBA_GREEN_OVERLAY)
             context.fill()
+
+        if not self._l_click:
+            context.set_source_rgba(*_RGBA_YELLOW_OVERLAY)
+
+        context.arc(_X_OF_OFFSET, _Y_OF_OFFSET, self._of_z_rad, 0.0, 2.0 * pi)
+        context.fill()
+
+        if self._l_click and not self._r_click:
+            context.set_source_rgba(*_RGBA_YELLOW_OVERLAY)
+
+        context.arc(_X_TFL_OFFSET, _Y_TF_OFFSET, self._tf_z_rad, 0.0, 2.0 * pi)
+        context.fill()
+        context.arc(_X_TFR_OFFSET, _Y_TF_OFFSET, self._tf_z_rad, 0.0, 2.0 * pi)
+        context.fill()
 
         return True
 
@@ -157,6 +207,8 @@ class SynClient:
         self._xmax = float(settings['RightEdge'])
         self._ymin = float(settings['TopEdge'])
         self._ymax = float(settings['BottomEdge'])
+        self._zmin = float(settings['FingerLow'])
+        self._zmax = float(settings['FingerHigh'])
         self._proc = subprocess.Popen(_SYNCLIENT_CMDLINE.split(),
                                       stdout=subprocess.PIPE)
         gobject.io_add_watch(self._proc.stdout, gobject.IO_IN, self.recv)
@@ -168,12 +220,14 @@ class SynClient:
             return True
         if data[0] == 'time':
             return True
-        data_x, data_y, z, f, w, l, r = data[1:8]
+        data_x, data_y, data_z, f, w, l, r = data[1:8]
         x = sorted([self._xmin, float(data_x), self._xmax])[1]
         x = (x - self._xmin) / (self._xmax - self._xmin)
         y = sorted([self._ymin, float(data_y), self._ymax])[1]
         y = (y - self._ymin) / (self._ymax - self._ymin)
-        self._test.device_event(x, y, int(z), int(f), int(l), int(r))
+        z = sorted([self._zmin, float(data_z), self._zmax])[1]
+        z = (z - self._zmin) / (self._zmax - self._zmin)
+        self._test.device_event(x, y, z, int(f), int(l), int(r))
         return True
 
     def quit(self):

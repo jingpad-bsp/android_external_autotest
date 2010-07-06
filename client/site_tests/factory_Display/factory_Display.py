@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -20,11 +22,14 @@ from autotest_lib.client.common_lib import error
 
 
 _LABEL_STATUS_SIZE = (140, 30)
-_LABEL_STATUS_FONT = pango.FontDescription('courier new condensed 16')
-_LABEL_FONT = pango.FontDescription('courier new condensed 20')
+_LABEL_FONT = pango.FontDescription('courier new condensed 16')
 _LABEL_FG = gtk.gdk.color_parse('light green')
 _LABEL_UNTESTED_FG = gtk.gdk.color_parse('grey40')
 
+_MESSAGE_STR = ('hold SPACE to display pattern,\n' +
+                'hit TAB to fail and RETURN to pass\n' +
+                '壓住空白鍵以顯示檢查用的圖樣,\n' +
+                '錯誤請按 TAB，成功請按 RETURN\n')
 
 def pattern_cb_solid(widget, event, color=None):
     dr = widget.window
@@ -120,13 +125,13 @@ class factory_Display(test.test):
         label_status = gtk.Label(ful.UNTESTED)
         label_status.set_size_request(*_LABEL_STATUS_SIZE)
         label_status.set_alignment(0, 0.5)
-        label_status.modify_font(_LABEL_STATUS_FONT)
+        label_status.modify_font(_LABEL_FONT)
         label_status.modify_fg(gtk.STATE_NORMAL, _LABEL_UNTESTED_FG)
         expose_cb = lambda *x: self.label_status_expose(*x, **{'name':name})
         label_status.connect('expose_event', expose_cb)
         label_en = gtk.Label(name)
         label_en.set_alignment(1, 0.5)
-        label_en.modify_font(_LABEL_STATUS_FONT)
+        label_en.modify_font(_LABEL_FONT)
         label_en.modify_fg(gtk.STATE_NORMAL, _LABEL_FG)
         label_sep = gtk.Label(' : ')
         label_sep.set_alignment(0.5, 0.5)
@@ -163,8 +168,7 @@ class factory_Display(test.test):
         self._pattern_queue = [x for x in reversed(_PATTERN_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n, f in _PATTERN_LIST)
 
-        prompt_label = gtk.Label('hold SPACE to display pattern,\n'
-                                 'TAB to fail and RETURN to pass\n')
+        prompt_label = gtk.Label(_MESSAGE_STR)
         prompt_label.modify_font(_LABEL_FONT)
         prompt_label.set_alignment(0.5, 0.5)
         prompt_label.modify_fg(gtk.STATE_NORMAL, _LABEL_FG)

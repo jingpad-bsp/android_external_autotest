@@ -11,12 +11,27 @@ import sys
 import time
 import os
 
+
+_OUTPUT_HEADER = \
+'''
+# AUTOMATICALLY GENERATED -- This data structure is printed out by
+# BindingsSetup during execution, and modifications can be pasted from
+# there back to here.
+'''
+
+
 class BindingsSetup:
     """Facilitate generation of the binding map for the actual
-    KeyboardTest.  UI -- select key region to be highlighted with the
-    mouse, hit corresponding key, double click to active tweak mode,
-    fine tune highlighted region with the arrow keys (hold shift for
-    neg effect), double click to confirm and output current bindings
+    KeyboardTest -- it takes the name of a png keyboard image file and
+    optionally a corresponding bindings file as its first and second
+    command line arguments, respectively.  On each assignment of a new
+    binding, it will output the contents for a new bindings file to
+    stdout (a bit verbose, but simple).
+
+    UI -- select key region to be highlighted with the mouse, hit
+    corresponding key, double click to active tweak mode, fine tune
+    highlighted region with the arrow keys (hold shift for neg
+    effect), double click to confirm and output current bindings
     datastructure, repeat."""
 
     # Allow tweak mode adjustment of coords using the arrow keys.
@@ -26,13 +41,13 @@ class BindingsSetup:
         0xff53 : [0, 0, 1, 0],
         0xff54 : [0, 0, 0, 1]}
 
-    def __init__(self, kbd_image):
+    def __init__(self, kbd_image, bindings):
         self._kbd_image = kbd_image
         self._press_xy = None
         self._last_coords = None
         self._last_key = None
         self._tweak_mode = False
-        self._bindings = KeyboardTest.bindings
+        self._bindings = bindings
 
     def fmt_coords(self, coords):
         return '%3d,%-3d %2dx%-2d' % coords
@@ -57,8 +72,8 @@ class BindingsSetup:
         self._bindings[kc] = self._last_coords
         binding_list = [self.fmt_binding(b) for b in
                         sorted(self._bindings.items())]
-        print ('    bindings = {\n%s\n    }' %
-               ',\n'.join('        %s' % b for b in binding_list))
+        print _OUTPUT_HEADER
+        print ('\n{\n%s\n}' % ',\n'.join('    %s' % b for b in binding_list))
 
     def expose_event(self, widget, event):
         context = widget.window.cairo_create()
@@ -107,7 +122,7 @@ class BindingsSetup:
     def key_press_event(self, widget, event):
         key = (event.keyval, event.hardware_keycode)
         if self._tweak_mode:
-            delta = KeyboardTestSetup.tweak_keys.get(event.keyval)
+            delta = BindingsSetup.tweak_keys.get(event.keyval)
             if delta:
                 if 'GDK_SHIFT_MASK' in event.state.value_names:
                     # Reverse the effect if SHIFT is being held down.
@@ -123,27 +138,26 @@ class BindingsSetup:
 
 def main():
     window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-    window.set_name ('Keyboard Test')
     window.connect('destroy', lambda w: gtk.main_quit())
-
-    xset_status = os.system('xset r off')
-    xmm_status = os.system('xmodmap -e "clear Lock"')
-    if xset_status or xmm_status:
-        print >> sys.stderr, 'ERROR: disabling key repeat or caps lock failed'
-        sys.exit(1)
 
     window.set_default_size(981, 450)
 
     bg_color = gtk.gdk.color_parse('midnight blue')
     window.modify_bg(gtk.STATE_NORMAL, bg_color)
 
-    kbd_image = cairo.ImageSurface.create_from_png('kbd.png')
+    kbd_image = cairo.ImageSurface.create_from_png(sys.argv[1])
     kbd_image_size = (kbd_image.get_width(), kbd_image.get_height())
+
+    bindings = {}
+    if len(sys.argv) == 2 and os.path.exists(sys.argv[2]):
+        f = open('sys.argv[2]' % layout, 'r')
+        bindings = eval(f.read())
+        f.close()
 
     drawing_area = gtk.DrawingArea()
     drawing_area.set_size_request(*kbd_image_size)
 
-    kt = KeyboardTestSetup(kbd_image)
+    kt = BindingsSetup(kbd_image, bindings)
     window.connect('key-press-event', kt.key_press_event)
     drawing_area.connect('button_release_event', kt.button_release_event)
     drawing_area.connect('button_press_event', kt.button_press_event)
@@ -164,8 +178,6 @@ def main():
     window.show()
 
     gtk.main()
-
-    return (kt.success != True)
 
 if __name__ == '__main__':
     main()
