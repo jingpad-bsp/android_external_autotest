@@ -43,19 +43,23 @@ class flashrom_util(object):
     To perform a read, you need to:
      1. Prepare a flashrom_util object
         ex: flashrom = flashrom_util.flashrom_util()
-     2. Perform read operation
+     2. Decide target (BIOS/EC)
+        ex: flashrom.select_bios_flashrom()
+     3. Perform read operation
         ex: image = flashrom.read_whole()
 
     To perform a (partial) write, you need to:
-     1. Create or load a layout map (see explain of layout below)
+     1. Select target (BIOS/EC)
+        ex: flashrom.select_ec_flashrom()
+     2. Create or load a layout map (see explain of layout below)
         ex: layout_map = { 'all': (0, rom_size - 1) }
         ex: layout_map = { 'ro': (0, 0xFFF), 'rw': (0x1000, rom_size-1) }
-     2. Prepare a full base image
+     3. Prepare a full base image
         ex: image = flashrom.read_whole()
         ex: image = chr(0xFF) * rom_size
-     3. (optional) Modify data in base image
+     4. (optional) Modify data in base image
         ex: new_image = flashrom.put_section(image, layout_map, 'all', mydata)
-     4. Perform write operation
+     5. Perform write operation
         ex: flashrom.write_partial(new_image, layout_map, ('all',))
 
      P.S: you can also create the new_image in your own way, for example:
@@ -72,20 +76,45 @@ class flashrom_util(object):
         tmp_prefix: prefix of file names
         verbose:    print debug and helpful messages
         keep_temp_files: boolean flag to control cleaning of temporary files
+        target_maps:maps of what commands should be invoked to switch target
     """
+
+    # target selector command map syntax:
+    # "arch" : { "target" : exec_script, ... }, ... }
+    default_target_maps = {
+        "i386": {
+            # The magic numbers here are register indexes and values that apply
+            # to all current known i386 based ChromeOS devices.
+            # Detail information is defined in section #"10.1.50 GCS-General
+            # Control and Status Register" of document "Intel NM10 Express
+            # Chipsets".
+            "bios": 'mmio_write32 0xfed1f410 ' +
+                    '`mmio_read32 0xfed1f410 |head -c 6`0460',
+            "ec": 'mmio_write32 0xfed1f410 ' +
+                    '`mmio_read32 0xfed1f410 |head -c 6`0c60',
+        },
+    }
 
     def __init__(self,
                  tool_path='/usr/sbin/flashrom',
                  tmp_root='/tmp',
                  tmp_prefix='fr_',
                  verbose=False,
-                 keep_temp_files=False):
+                 keep_temp_files=False,
+                 target_maps=None):
         """ constructor of flashrom_util. help(flashrom_util) for more info """
         self.tool_path = tool_path
         self.tmp_root = tmp_root
         self.tmp_prefix = tmp_prefix
         self.verbose = verbose
         self.keep_temp_files = keep_temp_files
+        self.target_map = {}
+
+        # determine bbs map
+        if not target_maps:
+            target_maps = self.default_target_maps
+        if utils.get_arch() in target_maps:
+            self.target_map = target_maps[utils.get_arch()]
 
     def get_temp_filename(self, prefix):
         ''' (internal) Returns name of a temporary file in self.tmp_root '''
@@ -187,6 +216,28 @@ class flashrom_util(object):
         self.remove_temp_file(tmpfn)
         self.remove_temp_file(layout_fn)
         return result
+
+    def select_target(self, target):
+        '''
+        Selects (usually by setting BBS register) a target defined in target_map
+        and then directs all further firmware access to certain region.
+        '''
+        if not target in self.target_map:
+            return True
+        if self.verbose:
+            print 'flashrom.select_target("%s"): %s' % (target,
+                                                        self.target_map[target])
+        if utils.system(self.target_map[target], ignore_status=True) == 0:
+            return True
+        return False
+
+    def select_bios_flashrom(self):
+        ''' Directs all further accesses to BIOS flash ROM. '''
+        return self.select_bbs('bios')
+
+    def select_ec_flashrom(self):
+        ''' Directs all further accesses to Embedded Controller flash ROM. '''
+        return self.select_bbs('ec')
 
 
 if __name__ == "__main__":

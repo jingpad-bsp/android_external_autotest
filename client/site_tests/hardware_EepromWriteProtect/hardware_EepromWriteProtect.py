@@ -23,8 +23,6 @@ class hardware_EepromWriteProtect(test.test):
         # self.job.setup_dep(['flashrom_utils'])
         self.flashrom = flashrom_util.flashrom_util(verbose=self.verbose)
         self.script_folder = os.path.join(*os.path.split(__file__)[:-1])
-        self.pre_post_exec_dir = os.path.join(self.script_folder,
-                                              "arch_" + utils.get_arch())
 
     def check_write_protection(self, layout_map, write_list, expected):
         '''
@@ -104,19 +102,6 @@ class hardware_EepromWriteProtect(test.test):
                     'EEPROM content is %s. %s' %
                     (tool_msg, expected_tool_msg, changed_msg, suggest))
 
-    def exec_pre_post(self, conf, exec_type):
-        """ Executes a pre/post execution command """
-        if not exec_type in conf:
-            return True
-        # invoke pre/post-execution script
-        exec_fn = os.path.join(self.pre_post_exec_dir, conf[exec_type])
-        if not os.path.exists(exec_fn):
-            raise error.TestError('INTERNAL ERROR: '
-                    'missing %s script for %s: %s. ' %
-                    (exec_type, conf['name'], exec_fn))
-        utils.system(exec_fn)
-        return True
-
     def build_layout_map(self, layout_desc, flashrom_size):
         """
         Parses a layout description string and build corresponding map.
@@ -161,20 +146,22 @@ class hardware_EepromWriteProtect(test.test):
             { # BIOS
                 'name': 'BIOS',
                 'layout': 'rw,ro',
-                'pre_exec': 'select_bios_flashrom.sh',
-                'post_exec': 'select_bios_flashrom.sh',
+                'target': 'bios',
             }, { # embedded controller
                 'name': 'EC', # embedded controller
                 'layout': 'ro,rw',
-                'pre_exec': 'select_ec_flashrom.sh',
-                'post_exec':'select_bios_flashrom.sh',
+                'target': 'ec',
             }, )
+
+        # always restore system flashrom selection to this one
+        system_default_selection = 'bios'
 
         # print os.getcwd()
         for conf in eeprom_sets:
-            # pre-exection (for initialization like flash rom selection)
-            self.exec_pre_post(conf, 'pre_exec')
-
+            # select target
+            if not self.flashrom.select_target(conf['target']):
+                raise error.TestError('ERROR: cannot select target %s' %
+                        conf['name'])
             # build layout
             flashrom_size = self.flashrom.get_size()
             (layout_map, ro_list, rw_list) = self.build_layout_map(
@@ -187,8 +174,13 @@ class hardware_EepromWriteProtect(test.test):
             if self.verbose:
                 print ' - RW testing %s: %s' % (conf['name'], ','.join(rw_list))
             self.check_write_protection(layout_map, rw_list, True)
-            # post-execution (for clean-up)
-            self.exec_pre_post(conf, 'post_exec')
+            # restore default selection.
+            if not self.flashrom.select_target(system_default_selection):
+                raise error.TestError('ERROR: cannot restore target.')
+
+        utils.system(exec_fn)
+        return True
+
 
 
 if __name__ == "__main__":
