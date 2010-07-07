@@ -135,13 +135,24 @@ class SysStat(object):
     """
 
     def __init__(self):
+        power_supply_path = '/sys/class/power_supply/*'
         self.battery = None
         self.linepower = None
-        battery_path = glob.glob('/sys/class/power_supply/BAT*')
-        linepower_path = glob.glob('/sys/class/power_supply/AC*')
+        battery_path = None
+        linepower_path = None
+        power_supplies = glob.glob(power_supply_path)
+        for path in power_supplies:
+            type_path = os.path.join(path,'type')
+            if not os.path.exists(type_path):
+                continue
+            type = utils.read_one_line(type_path)
+            if type == 'Battery':
+                battery_path = path
+            elif type == 'Mains':
+                linepower_path = path
         if battery_path and linepower_path:
-            self.battery_path = battery_path[0]
-            self.linepower_path = linepower_path[0]
+            self.battery_path = battery_path
+            self.linepower_path = linepower_path
         else:
             raise error.TestError('Battery or Linepower path not found')
 
