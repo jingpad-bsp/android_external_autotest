@@ -11,10 +11,9 @@
    http://localhost:nnnn/?status="Browser started!"
 """
 
-import cgi, logging, os, posixpath, SimpleHTTPServer, socket, sys, threading
-import urllib, urlparse
+import cgi, logging, os, posixpath, SimpleHTTPServer, socket
+import socket, ssl, sys, threading, urllib, urlparse
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-from OpenSSL import SSL
 from SocketServer import BaseServer
 
 
@@ -167,12 +166,12 @@ class HTTPListener(object):
 
 class SecureHTTPServer(HTTPServer):
     def __init__(self, server_address, HandlerClass, cert_path, key_path):
-        ctx = SSL.Context(SSL.TLSv1_METHOD)
-
-        ctx.use_privatekey_file(key_path)
-        ctx.use_certificate_chain_file(cert_path)
-        self.socket = SSL.Connection(ctx, socket.socket(self.address_family,
-                                                        self.socket_type))
+        _socket = socket.socket(self.address_family, self.socket_type)
+        self.socket = ssl.wrap_socket(_socket,
+                                      server_side=True,
+                                      ssl_version=ssl.PROTOCOL_TLSv1,
+                                      certfile=cert_path,
+                                      keyfile=key_path)
         BaseServer.__init__(self, server_address, HandlerClass)
         self.server_bind()
         self.server_activate()
