@@ -153,7 +153,6 @@ class power_LoadTest(site_ui_test.UITest):
 
             if self._verbose:
                 logging.debug('loop %d completed' % i)
-                logging.debug(utils.system_output('xset q'))
 
             if low_battery:
                 logging.info('Exiting due to low battery')
