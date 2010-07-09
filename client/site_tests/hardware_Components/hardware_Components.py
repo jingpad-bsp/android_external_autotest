@@ -32,6 +32,9 @@ class hardware_Components(test.test):
         'part_id_webcam',
         'part_id_3g',
     ]
+    _check_existence_cids = [
+        'part_id_chrontel',
+    ]
     _not_present = 'Not Present'
 
 
@@ -145,10 +148,9 @@ class hardware_Components(test.test):
 
     def check_approved_part_id_existence(self, cid, type):
         """
-        Check if there are matching vendor_id:product_id pairs on the PCI or
-        USB. Parameter type should be either 'pci' or 'usb'.
+        Check if there are matching devices on the system.
+        Parameter type should be one of 'pci', 'usb', or 'others'.
         """
-        cmd = 'sudo /usr/sbin/ls' + type + ' -d %s'
         if not self._approved.has_key(cid):
             raise error.TestFail('%s missing from database' % cid)
 
@@ -158,15 +160,40 @@ class hardware_Components(test.test):
             return
 
         for device in approved_devices:
-            try:
-                output = utils.system_output(cmd % device)
-                # If it shows something, means found.
-                if output:
-                  self._system[cid] = [ device ]
-                  return
-            except:
-                pass
+            present = False
+            if type in ['pci', 'usb']:
+                try:
+                    cmd = '/usr/sbin/ls' + type + ' -d %s'
+                    output = utils.system_output(cmd % device)
+                    # If it shows something, means found.
+                    if output:
+                        present = True
+                except:
+                    pass
+            elif type == 'others':
+                present = getattr(self, 'check_existence_' + cid)(device)
+
+            if present:
+                self._system[cid] = [ device ]
+                return
+
         self._failures[cid] = [ 'No match' ]
+
+
+    def check_existence_part_id_chrontel(self, part_id):
+        if part_id == 'ch7036':
+            grep_cmd = 'grep i2c_dev /proc/modules'
+            i2c_loaded = (utils.system(grep_cmd, ignore_status=True) == 0)
+            if not i2c_loaded:
+                utils.system('modprobe i2c_dev')
+
+            probe_cmd = 'ch7036_monitor -p'
+            present = (utils.system(probe_cmd, ignore_status=True) == 0)
+
+            if not i2c_loaded:
+                utils.system('modprobe -r i2c_dev')
+            return present
+        return False
 
 
     def get_vendor_id_touchpad(self):
@@ -209,6 +236,9 @@ class hardware_Components(test.test):
 
         for cid in self._usb_cids:
             self.check_approved_part_id_existence(cid, type='usb')
+
+        for cid in self._check_existence_cids:
+            self.check_approved_part_id_existence(cid, type='others')
 
         logging.debug('System: %s', self.pformat(self._system))
 

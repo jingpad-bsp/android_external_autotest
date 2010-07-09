@@ -10,6 +10,7 @@
     'part_id_bios': ['*'],
     'part_id_cardreader': ['*'],
     'part_id_chipset': ['*'],
+    'part_id_chrontel': ['*'],
     'part_id_cpu': ['*'],
     'part_id_embedded_controller': ['*'],
     'part_id_ethernet': ['*'],
