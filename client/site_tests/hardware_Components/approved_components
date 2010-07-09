@@ -5,6 +5,7 @@
 {
     # key: component ID
     # value: a list of approved component IDs ('*' indicates any)
+    'hash_ro_firmware': ['*'],
     'part_id_audio_codec': ['*'],
     'part_id_bluetooth': ['*'],
     'part_id_bios': ['*'],

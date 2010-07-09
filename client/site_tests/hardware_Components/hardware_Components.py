@@ -2,14 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, pprint, re
+import hashlib, logging, os, pprint, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import flashrom_util
 
 
 class hardware_Components(test.test):
     version = 1
     _cids = [
+        'hash_ro_firmware',
         'part_id_audio_codec',
         'part_id_bios',
         'part_id_cpu',
@@ -206,6 +208,29 @@ class hardware_Components(test.test):
         cmd = 'cat /sys/class/video4linux/video0/name'
         part_id = utils.system_output(cmd).strip()
         return part_id
+
+
+    def get_hash_ro_firmware(self):
+        # hash_ro_list: RO section to be hashed
+        hash_ro_list = ['FV_BSTUB', 'FV_GBB', 'FVDEV']
+        flashrom = flashrom_util.flashrom_util()
+        if not flashrom.select_bios_flashrom():
+            raise error.TestError('Cannot select BIOS flashrom')
+        base_img = flashrom.read_whole()
+        flashrom_size = len(base_img)
+        layout = flashrom.detect_chromeos_bios_layout(flashrom_size)
+        if not layout:
+            raise error.TestError('Cannot detect ChromeOS flashrom laout')
+        hash_src = ''
+        for section in hash_ro_list:
+            src = flashrom.get_section(base_img, layout, section)
+            if not src:
+                raise error.TestError('Cannot get section [%s] from flashrom' %
+                                      section)
+            hash_src = hash_src + src
+        if not hash_src:
+            raise error.TestError('Invalid hash source from flashrom.')
+        return hashlib.sha256(hash_src).hexdigest()
 
 
     def pformat(self, obj):
