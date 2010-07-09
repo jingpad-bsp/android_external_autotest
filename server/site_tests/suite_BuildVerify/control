@@ -85,6 +85,7 @@ TESTS = [
   'platform_PartitionCheck',
   'platform_ProcessPrivileges',
   'platform_Shutdown',
+  'platform_StackProtector',
   'platform_TempFS',
 ]
 
