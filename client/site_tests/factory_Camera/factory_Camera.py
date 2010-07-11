@@ -44,10 +44,11 @@ KEY_BAD = gdk.keyval_from_name('Tab')
 
 LABEL_FONT = pango.FontDescription('courier new condensed 16')
 
-MESSAGE_STR = ('hit TAB to fail and RETURN to pass\n' +
-               '錯誤請按 TAB，成功請按 RETURN\n')
-MESSAGE_STR2 = ('hit TAB if the LED is off and RETURN if the LED is on\n' +
-                '請檢查攝像頭 LED 指示燈, 沒亮請按 TAB, 燈亮請按 RETURN\n')
+MESSAGE_STR = ('hit TAB to fail and ENTER to pass\n' +
+               '錯誤請按 TAB，成功請按 ENTER\n')
+MESSAGE_STR2 = ('hit TAB if the LED is off and ENTER if the LED is on\n' +
+                '請檢查攝像頭 LED 指示燈, 沒亮請按 TAB, 燈亮請按 ENTER\n')
+
 
 class factory_Camera(test.test):
     version = 1

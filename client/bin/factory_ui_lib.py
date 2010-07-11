@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -16,7 +18,9 @@
 from autotest_lib.client.bin import factory
 from autotest_lib.client.common_lib import error
 
+import cairo
 import gtk
+import pango
 import sys
 
 
@@ -27,6 +31,9 @@ BLUE =  gtk.gdk.Color(0, 0, 0xFFFF)
 WHITE = gtk.gdk.Color(0xFFFF, 0xFFFF, 0xFFFF)
 
 LIGHT_GREEN = gtk.gdk.color_parse('light green')
+
+RGBA_GREEN_OVERLAY = (0, 0.5, 0, 0.6)
+RGBA_YELLOW_OVERLAY = (0.6, 0.6, 0, 0.6)
 
 ACTIVE = 'ACTIVE'
 PASSED = 'PASS'
@@ -44,6 +51,34 @@ LABEL_COLORS = {
     PASSED: gtk.gdk.color_parse('pale green'),
     FAILED: gtk.gdk.color_parse('tomato'),
     UNTESTED: gtk.gdk.color_parse('dark slate grey')}
+
+LABEL_FONT = pango.FontDescription('courier new condensed 16')
+
+FAIL_TIMEOUT = 30
+
+
+def make_label(message, font=LABEL_FONT, fg=LIGHT_GREEN,
+               size=None, alignment=None):
+    l = gtk.Label(message)
+    l.modify_font(font)
+    l.modify_fg(gtk.STATE_NORMAL, fg)
+    if size:
+        l.set_size_request(*size)
+    if alignment:
+        l.set_alignment(*alignment)
+    return l
+
+
+def make_countdown_widget():
+    title = make_label('time remaining / 剩餘時間: ', alignment=(1, 0.5))
+    countdown = make_label('%d' % FAIL_TIMEOUT, alignment=(0, 0.5))
+    hbox = gtk.HBox()
+    hbox.pack_start(title)
+    hbox.pack_start(countdown)
+    eb = gtk.EventBox()
+    eb.modify_bg(gtk.STATE_NORMAL, BLACK)
+    eb.add(hbox)
+    return eb, countdown
 
 
 class State:

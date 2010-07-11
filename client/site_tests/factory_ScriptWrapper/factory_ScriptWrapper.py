@@ -71,7 +71,7 @@ class factory_ScriptWrapper(test.test):
 
     def register_callbacks(self, window):
         window.connect('key-release-event', self.key_release_callback)
-        window.add_events(gtk.gdk.KEY_RELEASE_MASK)
+        window.add_events(gdk.KEY_RELEASE_MASK)
 
     def run_once(self,
                  test_widget_size=None,
@@ -85,13 +85,10 @@ class factory_ScriptWrapper(test.test):
             trigger_set=trigger_set,
             result_file_path=result_file_path)
 
-        label = gtk.Label('')
-        label.modify_font(pango.FontDescription('courier new condensed 16'))
-        label.set_alignment(0.5, 0.5)
-        label.modify_fg(gtk.STATE_NORMAL, gtk.gdk.color_parse('light green'))
+        label = ful.make_label('', alignment=(0.5, 0.5))
 
         test_widget = gtk.EventBox()
-        test_widget.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse('black'))
+        test_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
         test_widget.add(label)
 
         self._script = Script(cmdline, pexpect, label)

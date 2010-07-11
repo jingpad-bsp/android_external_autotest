@@ -16,25 +16,16 @@ import cairo
 import gobject
 import gtk
 import logging
-import pango
 import time
 import os
 import sys
+
+from gtk import gdk
 
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-
-
-# How long keyboard_test allows in seconds from the first keypress
-# until defaulting to the failure condition.
-_TIMEOUT = 50
-_PASS_TIMEOUT = 0.4
-
-# Highlight color and alpha to indicate activated keys.
-_RGBA_PRESS_AND_RELEASE = (  0, 0.5, 0, 0.6)
-_RGBA_PRESS_ONLY =        (0.6, 0.6, 0, 0.6)
 
 
 class KeyboardTest:
@@ -44,33 +35,25 @@ class KeyboardTest:
         self._bindings = bindings
         self._ft_state = ft_state
         self._pressed_keys = set()
-        self._successful_keys = set()
         self._deadline = None
-        self._success = False
+        self.successful_keys = set()
 
-    def show_countdown(self, widget, context):
-        countdown = self._deadline - int(time.time())
-        width, height = widget.get_size_request()
-        text = '%3d' % countdown
-        context.save()
-        context.translate(width - 60, height)
-        context.set_source_rgb(0.5, 0.5, 0.5)
-        context.select_font_face(
-            'Courier New', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-        context.set_font_size(20)
-        x_bearing, y_bearing = context.text_extents('000')[:2]
-        context.move_to(x_bearing, y_bearing)
-        context.show_text(text)
-        context.restore()
+    def calc_missing_string(self):
+        missing_keys = sorted(gdk.keyval_name(k) for k in
+                              set(self._bindings) - self.successful_keys)
+        if not missing_keys:
+            return ''
+        return 'missing_keys = [%s]' % ', '.join(missing_keys)
 
-    def timer_event(self, window):
-        if not self._deadline:
-            # Ignore timer events with no countdown in progress.
+    def timer_event(self, countdown_label):
+        if not self._deadline:   # Ignore timer with no countdown in progress.
             return True
-        if self._deadline <= time.time():
+        time_remaining = max(0, self._deadline - time.time())
+        if time_remaining == 0:
             factory.log('deadline reached')
             gtk.main_quit()
-        window.queue_draw()
+        countdown_label.set_text('%d' % time_remaining)
+        countdown_label.queue_draw()
         return True
 
     def expose_event(self, widget, event):
@@ -80,18 +63,16 @@ class KeyboardTest:
         context.set_source_surface(self._kbd_image, 0, 0)
         context.paint()
 
-        for key in self._successful_keys:
+        for key in self.successful_keys:
             coords = self._bindings[key]
             context.rectangle(*coords)
-            context.set_source_rgba(*_RGBA_PRESS_AND_RELEASE)
+            context.set_source_rgba(*ful.RGBA_GREEN_OVERLAY)
             context.fill()
         for key in self._pressed_keys:
             coords = self._bindings[key]
             context.rectangle(*coords)
-            context.set_source_rgba(*_RGBA_PRESS_ONLY)
+            context.set_source_rgba(*ful.RGBA_YELLOW_OVERLAY)
             context.fill()
-        if self._deadline:
-            self.show_countdown(widget, context)
 
         return True
 
@@ -103,7 +84,7 @@ class KeyboardTest:
             # Alt-q for early exit.
             gtk.main_quit()
             return True
-        if event.keyval in self._successful_keys:
+        if event.keyval in self.successful_keys:
             # Ignore keys already found to work successfully.
             return True
         if event.state != 0:
@@ -120,7 +101,7 @@ class KeyboardTest:
 
         # The first keypress starts test countdown.
         if self._deadline is None:
-            self._deadline = int(time.time()) + _TIMEOUT
+            self._deadline = int(time.time()) + ful.FAIL_TIMEOUT
 
         return True
 
@@ -129,17 +110,17 @@ class KeyboardTest:
             # Ignore releases for keys not previously accepted as pressed.
             return False
         self._pressed_keys.remove(event.keyval)
-        self._successful_keys.add(event.keyval)
-        if not (set(self._bindings) - self._successful_keys):
-            self._success = True
-            self._deadline = int(time.time()) + _PASS_TIMEOUT
+        self.successful_keys.add(event.keyval)
         widget.queue_draw()
+        if not self.calc_missing_string():
+            factory.log('completed successfully')
+            gtk.main_quit()
         return True
 
     def register_callbacks(self, window):
         window.connect('key-press-event', self.key_press_event)
         window.connect('key-release-event', self.key_release_event)
-        window.add_events(gtk.gdk.KEY_PRESS_MASK | gtk.gdk.KEY_RELEASE_MASK)
+        window.add_events(gdk.KEY_PRESS_MASK | gdk.KEY_RELEASE_MASK)
 
 
 class factory_Keyboard(test.test):
@@ -158,14 +139,13 @@ class factory_Keyboard(test.test):
         xset_status = os.system('xset r off')
         xmm_status = os.system('xmodmap -e "clear Lock"')
         if xset_status or xmm_status:
-            raise TestFail('ERROR: disabling key repeat or caps lock')
+            raise error.TestFail('failed to disable key repeat or caps lock')
 
         ft_state = ful.State(
             trigger_set=trigger_set,
             result_file_path=result_file_path)
 
         os.chdir(self.srcdir)
-
         kbd_image = cairo.ImageSurface.create_from_png('%s.png' % layout)
         image_size = (kbd_image.get_width(), kbd_image.get_height())
 
@@ -177,12 +157,23 @@ class factory_Keyboard(test.test):
         drawing_area = gtk.DrawingArea()
         drawing_area.set_size_request(*image_size)
         drawing_area.connect('expose_event', test.expose_event)
-        drawing_area.add_events(gtk.gdk.EXPOSURE_MASK)
-        gobject.timeout_add(1000, test.timer_event, drawing_area)
+        drawing_area.add_events(gdk.EXPOSURE_MASK)
+
+        countdown_widget, countdown_label = ful.make_countdown_widget()
+        gobject.timeout_add(1000, test.timer_event, countdown_label)
+
+        test_widget = gtk.VBox()
+        test_widget.set_spacing(20)
+        test_widget.pack_start(drawing_area, False, False)
+        test_widget.pack_start(countdown_widget, False, False)
 
         ft_state.run_test_widget(
-            test_widget=drawing_area,
+            test_widget=test_widget,
             test_widget_size=test_widget_size,
             window_registration_callback=test.register_callbacks)
+
+        missing = test.calc_missing_string()
+        if missing:
+            raise error.TestFail(missing)
 
         factory.log('%s run_once finished' % self.__class__)

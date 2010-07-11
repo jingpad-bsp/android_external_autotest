@@ -65,10 +65,6 @@ test_list = [
         formal_name='step_runin',
         automated_seq=[
             factory.TestData(
-                label_en='graphics',
-                label_zw='',
-                formal_name='graphics_GLBench'),
-            factory.TestData(
                 label_en='component validation',
                 label_zw='元件驗證',
                 formal_name='hardware_Components'),
@@ -80,6 +76,10 @@ test_list = [
                 label_en='system stress',
                 label_zw='壓力測試',
                 formal_name='hardware_SAT'),
+            factory.TestData(
+                label_en='graphics',
+                label_zw='圖型',
+                formal_name='graphics_GLBench'),
             factory.TestData(
                 label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
                 label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
@@ -119,6 +119,12 @@ test_list = [
         trigger='a',
         dargs={'msg':'audio test, one day...'}),
     factory.TestData(
+        label_en='hdmi',
+        label_zw='',
+        formal_name='factory_Dummy',
+        trigger='h',
+        dargs={'msg':'hdmi test, one day...'}),
+    factory.TestData(
         label_en='usb',
         formal_name='factory_ExternalStorage',
         trigger='u',
@@ -153,18 +159,19 @@ test_list = [
         trigger='b',
         dargs={'layout':'devrec'}),
     factory.TestData(
-        label_en='fw wp',
-        label_zw='最後檢查',
-        formal_name='factory_Dummy',
-        trigger='f',
-        dargs={'msg':'google required checks...'}),
-    factory.TestData(
         label_en='wipe',
-        label_zw='擦拭',
+        label_zw='清除',
         formal_name='factory_Dummy',
         trigger='x',
-        dargs={'msg':('hit TAB+RETURN to finish testing and wipe test image!' +
+        dargs={'msg':('hit TAB+RETURN to write protect FW ' +
+                      'and wipe test image!' +
                       '...\n(chinese)...')}),
+    factory.TestData(
+        label_en='review',
+        label_zw='報告',
+        formal_name='factory_Dummy',
+        trigger='z',
+        dargs={'msg':'review test results...'}),
 ]
 
 for test in test_list:
@@ -188,7 +195,6 @@ def step_reboot_seq(i, tag):
 
 
 def step_runin(ui, tag):
-    job.run_test('graphics_GLBench', tag=tag)
     job.run_test('hardware_Components',
                  approved_db='qualified_components',
                  tag=tag)
@@ -196,6 +202,7 @@ def step_runin(ui, tag):
     job.drop_caches_between_iterations = True
     job.run_test('hardware_SAT', tag=tag)
     job.drop_caches_between_iterations = False
+    job.run_test('graphics_GLBench', tag=tag)
     step_reboot_seq(0, tag)
 
 

@@ -3,16 +3,21 @@
 # found in the LICENSE file.
 
 
+# DESCRIPTION :
+#
+# Intended for use during manufacturing to validate that the touchpad
+# is functioning properly.
+
 import cairo
 import gobject
 import gtk
-import pango
 import time
 import os
 import sys
 import subprocess
 
 from cmath import pi
+from gtk import gdk
 
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
@@ -22,9 +27,6 @@ from autotest_lib.client.common_lib import error
 
 _SYNCLIENT_SETTINGS_CMDLINE = '/usr/bin/synclient -l'
 _SYNCLIENT_CMDLINE = '/usr/bin/synclient -m 50'
-
-_RGBA_GREEN_OVERLAY = (0, 0.5, 0, 0.6)
-_RGBA_YELLOW_OVERLAY = (0.5, 0.5, 0, 0.6)
 
 _X_SEGMENTS = 5
 _Y_SEGMENTS = 4
@@ -66,15 +68,34 @@ class TouchpadTest:
         self._r_click = False
         self._of_z_rad = 0
         self._tf_z_rad = 0
+        self._deadline = None
 
-    def timer_event(self, window):
-        if not self._deadline:
-            # Ignore timer events with no countdown in progress.
+    def calc_missing_string(self):
+        missing = []
+        missing_motion_sectors = sorted(
+            i for i, v in self._motion_grid.items() if v is False)
+        if missing_motion_sectors:
+            missing.append('missing_motion_sectors = [%s]' %
+                           ', '.join(missing_motion_sectors))
+        missing_scroll_segments = sorted(
+            str(i) for i, v in self._scroll_array.items() if v is False)
+        if missing_scroll_segments:
+            missing.append('missing_scroll_segments = [%s]' %
+                           ', '.join(missing_scroll_segments))
+        if not self._l_click:
+            missing.append('missing left click')
+        # XXX add self._r_click here when that is supported...
+        return ', '.join(missing)
+
+    def timer_event(self, countdown_label):
+        if not self._deadline:  # Ignore timer with no countdown in progress.
             return True
-        if self._deadline <= time.time():
-            XXX_log('deadline reached')
+        time_remaining = max(0, self._deadline - time.time())
+        if time_remaining == 0:
+            factory.log('deadline reached')
             gtk.main_quit()
-        window.queue_draw()
+        countdown_label.set_text('%d' % time_remaining)
+        countdown_label.queue_draw()
         return True
 
     def device_event(self, x, y, z, fingers, left, right):
@@ -116,24 +137,21 @@ class TouchpadTest:
 
         if new_stuff:
             self._drawing_area.queue_draw()
+            if self._deadline is None:
+                self._deadline = int(time.time()) + ful.FAIL_TIMEOUT
 
-        missing_motion_sectors = set(i for i, v in self._motion_grid.items()
-                                     if v is False)
-        missing_scroll_segments = set(i for i, v in self._scroll_array.items()
-                                      if v is False)
-        # XXX add self._r_click here when that is supported...
-        if (self._l_click
-            and not missing_motion_sectors
-            and not missing_scroll_segments):
+        if not self.calc_missing_string():
+            factory.log('completed successfully')
             gtk.main_quit()
 
     def expose_event(self, widget, event):
         context = widget.window.cairo_create()
 
+        # Show touchpad image as the background.
         context.set_source_surface(self._tp_image, 0, 0)
         context.paint()
 
-        context.set_source_rgba(*_RGBA_GREEN_OVERLAY)
+        context.set_source_rgba(*ful.RGBA_GREEN_OVERLAY)
 
         for index in self._motion_grid:
             if not self._motion_grid[index]:
@@ -154,13 +172,13 @@ class TouchpadTest:
             context.fill()
 
         if not self._l_click:
-            context.set_source_rgba(*_RGBA_YELLOW_OVERLAY)
+            context.set_source_rgba(*ful.RGBA_YELLOW_OVERLAY)
 
         context.arc(_X_OF_OFFSET, _Y_OF_OFFSET, self._of_z_rad, 0.0, 2.0 * pi)
         context.fill()
 
         if self._l_click and not self._r_click:
-            context.set_source_rgba(*_RGBA_YELLOW_OVERLAY)
+            context.set_source_rgba(*ful.RGBA_YELLOW_OVERLAY)
 
         context.arc(_X_TFL_OFFSET, _Y_TF_OFFSET, self._tf_z_rad, 0.0, 2.0 * pi)
         context.fill()
@@ -187,7 +205,7 @@ class TouchpadTest:
 
     def register_callbacks(self, window):
         window.connect('key-press-event', self.key_press_event)
-        window.add_events(gtk.gdk.KEY_PRESS_MASK)
+        window.add_events(gdk.KEY_PRESS_MASK)
 
 
 class SynClient:
@@ -264,17 +282,29 @@ class factory_Touchpad(test.test):
         drawing_area.connect('button-press-event', test.button_press_event)
         drawing_area.connect('button-release-event', test.button_release_event)
         drawing_area.connect('motion-notify-event', test.motion_event)
-        drawing_area.add_events(gtk.gdk.EXPOSURE_MASK |
-                                gtk.gdk.BUTTON_PRESS_MASK |
-                                gtk.gdk.BUTTON_RELEASE_MASK |
-                                gtk.gdk.POINTER_MOTION_MASK)
+        drawing_area.add_events(gdk.EXPOSURE_MASK |
+                                gdk.BUTTON_PRESS_MASK |
+                                gdk.BUTTON_RELEASE_MASK |
+                                gdk.POINTER_MOTION_MASK)
+
+        countdown_widget, countdown_label = ful.make_countdown_widget()
+        gobject.timeout_add(1000, test.timer_event, countdown_label)
+
+        test_widget = gtk.VBox()
+        test_widget.set_spacing(20)
+        test_widget.pack_start(drawing_area, False, False)
+        test_widget.pack_start(countdown_widget, False, False)
 
         synclient = SynClient(test)
 
         ft_state.run_test_widget(
-            test_widget=drawing_area,
+            test_widget=test_widget,
             test_widget_size=test_widget_size,
             window_registration_callback=test.register_callbacks,
             cleanup_callback=synclient.quit)
+
+        missing = test.calc_missing_string()
+        if missing:
+            raise error.TestFail(missing)
 
         factory.log('%s run_once finished' % self.__class__)

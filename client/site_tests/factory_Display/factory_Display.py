@@ -15,21 +15,22 @@ import pango
 import os
 import sys
 
+from gtk import gdk
+
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 
-_LABEL_STATUS_SIZE = (140, 30)
-_LABEL_FONT = pango.FontDescription('courier new condensed 16')
-_LABEL_FG = gtk.gdk.color_parse('light green')
+_LABEL_SIZE = (180, 30)
 _LABEL_UNTESTED_FG = gtk.gdk.color_parse('grey40')
 
 _MESSAGE_STR = ('hold SPACE to display pattern,\n' +
-                'hit TAB to fail and RETURN to pass\n' +
+                'hit TAB to fail and ENTER to pass\n' +
                 '壓住空白鍵以顯示檢查用的圖樣,\n' +
-                '錯誤請按 TAB，成功請按 RETURN\n')
+                '錯誤請按 TAB，成功請按 ENTER\n')
+
 
 def pattern_cb_solid(widget, event, color=None):
     dr = widget.window
@@ -120,35 +121,31 @@ class factory_Display(test.test):
         widget.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
 
     def make_pattern_label_box(self, name):
-        eb = gtk.EventBox()
-        eb.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        label_status = gtk.Label(ful.UNTESTED)
-        label_status.set_size_request(*_LABEL_STATUS_SIZE)
-        label_status.set_alignment(0, 0.5)
-        label_status.modify_font(_LABEL_FONT)
-        label_status.modify_fg(gtk.STATE_NORMAL, _LABEL_UNTESTED_FG)
+
+        label_status = ful.make_label(
+            ful.UNTESTED, size=_LABEL_SIZE,
+            alignment=(0, 0.5), fg=_LABEL_UNTESTED_FG)
         expose_cb = lambda *x: self.label_status_expose(*x, **{'name':name})
         label_status.connect('expose_event', expose_cb)
-        label_en = gtk.Label(name)
-        label_en.set_alignment(1, 0.5)
-        label_en.modify_font(_LABEL_FONT)
-        label_en.modify_fg(gtk.STATE_NORMAL, _LABEL_FG)
-        label_sep = gtk.Label(' : ')
-        label_sep.set_alignment(0.5, 0.5)
-        label_sep.modify_font(_LABEL_FONT)
-        label_sep.modify_fg(gtk.STATE_NORMAL, _LABEL_FG)
+
+        label_en = ful.make_label(name, size=_LABEL_SIZE, alignment=(1, 0.5))
+        label_sep = ful.make_label(' : ', alignment=(0.5, 0.5))
+
         hbox = gtk.HBox()
         hbox.pack_end(label_status, False, False)
         hbox.pack_end(label_sep, False, False)
         hbox.pack_end(label_en, False, False)
+
+        eb = gtk.EventBox()
+        eb.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
         eb.add(hbox)
         return eb
 
     def register_callbacks(self, window):
         window.connect('key-press-event', self.key_press_callback)
-        window.add_events(gtk.gdk.KEY_PRESS_MASK)
+        window.add_events(gdk.KEY_PRESS_MASK)
         window.connect('key-release-event', self.key_release_callback)
-        window.add_events(gtk.gdk.KEY_RELEASE_MASK)
+        window.add_events(gdk.KEY_RELEASE_MASK)
 
     def run_once(self,
                  test_widget_size=None,
@@ -159,7 +156,7 @@ class factory_Display(test.test):
 
         xset_status = os.system('xset r off')
         if xset_status:
-            raise TestFail('ERROR: disabling key repeat')
+            raise error.TestFail('failed to disable key repeat')
 
         self._ft_state = ful.State(
             trigger_set=trigger_set,
@@ -168,11 +165,7 @@ class factory_Display(test.test):
         self._pattern_queue = [x for x in reversed(_PATTERN_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n, f in _PATTERN_LIST)
 
-        prompt_label = gtk.Label(_MESSAGE_STR)
-        prompt_label.modify_font(_LABEL_FONT)
-        prompt_label.set_alignment(0.5, 0.5)
-        prompt_label.modify_fg(gtk.STATE_NORMAL, _LABEL_FG)
-        self._prompt_label = prompt_label
+        self._prompt_label = ful.make_label(_MESSAGE_STR, alignment=(0.5, 0.5))
 
         vbox = gtk.VBox()
         vbox.pack_start(prompt_label, False, False)
