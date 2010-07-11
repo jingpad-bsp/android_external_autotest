@@ -56,6 +56,10 @@ LABEL_FONT = pango.FontDescription('courier new condensed 16')
 
 FAIL_TIMEOUT = 30
 
+USER_PASS_FAIL_SELECT_STR = (
+    'hit TAB to fail and ENTER to pass\n' +
+    '錯誤請按 TAB，成功請按 ENTER')
+
 
 def make_label(message, font=LABEL_FONT, fg=LIGHT_GREEN,
                size=None, alignment=None):

@@ -99,9 +99,10 @@ test_list = [
     factory.TestData(
         label_en='leds',
         label_zw='機身側燈',
-        formal_name='factory_Dummy',
+        formal_name='factory_Leds',
         trigger='l',
-        dargs={'msg':'LEDs test, one day...'}),
+        dargs={'led_ctl_path':
+               '/usr/local/autotest/site_tests/factory_Leds/src/ec_ctl'}),
     factory.TestData(
         label_en='display',
         label_zw='顯示',
