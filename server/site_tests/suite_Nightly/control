@@ -45,6 +45,15 @@ TESTS = [
   ('realtimecomm_GTalkAudioBench', {}),
   ('realtimecomm_GTalkunittest', {}),
   ('unixbench', {}),
+  # tests that have been promoted to running in Nightly and may find their way
+  # into BVT or other suite
+  ('desktopui_UrlFetch', {}),
+  ('network_UdevRename', {}),
+  ('desktopui_SpeechSynthesisSemiAuto', {}),
+  ('platform_MiniJailVfsNamespace', {}),
+  ('platform_MiniJailPidNamespace', {}),
+  ('platform_MiniJailCmdLine', {}),
+  ('platform_MiniJailRootCapabilities', {}),
 ]
 
 # A dict which holds {machine: [(test, argv), (test, argv), ...]}
