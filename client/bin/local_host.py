@@ -68,8 +68,8 @@ class LocalHost(hosts.Host):
         try:
             httplib.HTTPConnection(auserver_host).connect()
         except socket.error:
-            raise ChromiumOSError('Update server at %s not available' %
-                                  auserver_host)
+            raise error.InstallError('Update server at %s not available' %
+                                     auserver_host)
 
         logging.info('Installing from %s to: %s' % (update_url, self.hostname))
 
@@ -81,8 +81,8 @@ class LocalHost(hosts.Host):
         try:
             self.run(statefuldev_cmd, timeout=1200)
         except error.AutoservRunError, e:
-            raise ChromiumOSError('stateful_update failed on %s',
-                                  self.hostname)
+            raise error.InstallError('stateful_update failed on %s',
+                                     self.hostname)
 
         # Run autoupdate command. This tells the autoupdate process on
         # the host to look for an update at a specific URL and version
@@ -94,7 +94,7 @@ class LocalHost(hosts.Host):
            self.run('rm -f /tmp/mememto_complete') # Ignore previous updates.
            self.run(autoupdate_cmd, timeout=1200)
         except error.AutoservRunError, e:
-            raise ChromiumOSError('OS Updater failed on %s', self.hostname)
+            raise error.InstallError('OS Updater failed on %s', self.hostname)
 
         # Check that the installer completed as expected.
         # TODO(seano) verify installer completed in logs.
