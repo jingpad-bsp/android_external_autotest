@@ -80,7 +80,7 @@ class factory_ExternalStorage(test.test):
                 gtk.main_iteration()
                 test._result = self.job.run_test('hardware_StorageFio',
                                                  dev=devpath,
-                                                 filesize=1024*1024,
+                                                 quicktest=True,
                                                  tag=test_tag)
                 self._prompt.set_text(_REMOVE_FMT_STR(self._media))
                 self._state = _STATE_WAIT_REMOVE
@@ -89,9 +89,9 @@ class factory_ExternalStorage(test.test):
         else:
             diff = self._devices - find_all_storage_dev()
             if diff:
-                if diff != set(self._target_device):
-                    raise error.TestFail('too many devs removed (%s vs %s)' %
-                                         (diff, self._target_device))
+                if diff != set([self._target_device]):
+                    self._error = ('too many devs removed (%s vs %s)' %
+                                   (diff, self._target_device))
                 gtk.main_quit()
         return True
 
@@ -104,6 +104,8 @@ class factory_ExternalStorage(test.test):
                  media=None):
 
         factory.log('%s run_once' % self.__class__)
+
+        self._error = None
 
         os.chdir(self.srcdir)
 
@@ -161,5 +163,8 @@ class factory_ExternalStorage(test.test):
             test_widget=test_widget,
             test_widget_size=test_widget_size,
             window_registration_callback=self.register_callbacks)
+
+        if self._error:
+            raise error.TestFail(self._error)
 
         factory.log('%s run_once finished' % self.__class__)

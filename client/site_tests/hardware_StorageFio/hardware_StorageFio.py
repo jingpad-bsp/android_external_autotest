@@ -152,7 +152,7 @@ class hardware_StorageFio(test.test):
         self.__filesize = min(self.__filesize, filesize)
 
 
-    def run_once(self, dev=''):
+    def run_once(self, dev='', quicktest=False):
         # TODO(ericli): need to find a general solution to install dep packages
         # when tests are pre-compiled, so setup() is not called from client any
         # more.
@@ -160,7 +160,11 @@ class hardware_StorageFio(test.test):
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
 
-        if dev in ['', '/dev/sda', '/dev/mmcblk0', '/dev/mmcblk1']:
+        if quicktest:
+            requirements = {
+                'quick_write': 'bw',
+            }
+        elif dev in ['', '/dev/sda', '/dev/mmcblk0', '/dev/mmcblk1']:
             requirements = {
                 'surfing': 'iops',
                 'boot': 'bw',
