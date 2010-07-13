@@ -4,32 +4,30 @@
 
 
 import os, subprocess, time
+from autotest_lib.client.bin import site_login, site_ui_test
 from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error, site_ui
 
 
-class security_RendererSandbox(test.test):
+class security_RendererSandbox(site_ui_test.UITest):
     version = 1
     render_pid = -1
 
     def run_once(self, time_to_wait=20):
-        # open browser to google.com.
-        session = site_ui.ChromeSession('http://www.google.com')
+        # open a browser window
+        site_login.wait_for_initial_chrome_window()
 
-        try:
-            # wait till the page is loaded and poll for the renderer pid
-            # if renderer pid is found, it is stored in self.render_pid
-            site_utils.poll_for_condition(
-                self._get_renderer_pid,
-                error.TestFail('Timed out waiting to obtain pid of renderer'),
-                time_to_wait)
+        # wait till the page is loaded and poll for the renderer pid
+        # if renderer pid is found, it is stored in self.render_pid
+        site_utils.poll_for_condition(
+            self._get_renderer_pid,
+            error.TestFail('Timed out waiting to obtain pid of renderer'),
+            time_to_wait)
 
-            #check if renderer is sandboxed
-            cwd_contents = os.listdir('/proc/%s/cwd' % self.render_pid)
-            if len(cwd_contents) > 0:
-                raise error.TestFail('Contents present in the CWD directory')
-        finally:
-            session.close()
+        #check if renderer is sandboxed
+        cwd_contents = os.listdir('/proc/%s/cwd' % self.render_pid)
+        if len(cwd_contents) > 0:
+            raise error.TestFail('Contents present in the CWD directory')
 
 
     # queries pgrep for the pid of the renderer. since this function is passed
