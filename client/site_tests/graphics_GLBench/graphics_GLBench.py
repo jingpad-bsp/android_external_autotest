@@ -7,10 +7,13 @@ import os
 import re
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_ui, utils
+from autotest_lib.client.common_lib import error, utils
 
 def md5_file(filename):
-  return utils.system_output('md5sum ' + filename).split()[0]
+    try:
+        return utils.system_output('md5sum ' + filename).split()[0]
+    except error.CmdError:
+        return None
 
 
 class graphics_GLBench(test.test):
@@ -32,23 +35,26 @@ class graphics_GLBench(test.test):
       checksums = eval(utils.read_file(checksums_filename))
 
       exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
-      board_id = utils.system_output(site_ui.xcommand(exefile +
-          ' -get_board_id')).strip()
-      logging.info("Running on: %s", board_id)
-      checksum_table = checksums.get(board_id, {})
 
-      if checksum_table:
-        options += ' -save'
-        out_dir = os.path.join(self.autodir, 'deps/glbench/src/out')
-      else:
-        raise error.TestFail("No checksums found for this board: %s" % board_id)
+      options += ' -save'
+      out_dir = os.path.join(self.autodir, 'deps/glbench/src/out')
 
       cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
-      self.results = utils.system_output(cmd, retain_output=True)
+      results = utils.system_output(cmd, retain_output=True).splitlines()
+
+      if results[0].startswith('# board_id: '):
+          board_id = results[0].split('board_id:', 1)[1].strip()
+          del results[0]
+          logging.info("Running on: %s", board_id)
+          checksum_table = checksums.get(board_id, {})
+      else:
+          logging.info('Could not find board id.')
+          checksum_table = {}
 
       keyvals = {}
       failed_tests = []
-      for keyval in self.results.splitlines():
+      missing_checksum_tests = []
+      for keyval in results:
           if keyval.strip().startswith('#'):
               continue
           key, val = keyval.split(':')
@@ -64,8 +70,15 @@ class graphics_GLBench(test.test):
           else:
             logging.info('No checksum found for test %s', testname)
             keyvals[testname] = float(val)
+            missing_checksum_tests.append(testname)
 
       self.write_perf_keyval(keyvals)
-      if failed_tests:
-        raise error.TestFail("Incorrect checksums for %s" %
-                             ', '.join(failed_tests))
+      if failed_tests or missing_checksum_tests:
+          messages = []
+          if failed_tests:
+              messages.append("Incorrect checksums for: %s" %
+                              ', '.join(failed_tests))
+          if missing_checksum_tests:
+              messages.append("Missing checksums for: %s" %
+                              ', '.join(missing_checksum_tests))
+          raise error.TestFail('; '.join(messages))
