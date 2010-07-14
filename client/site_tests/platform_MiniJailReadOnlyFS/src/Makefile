@@ -5,7 +5,7 @@
 SRCS = platform_MiniJailReadOnlyFS.cc
 TARGET = ../platform_MiniJailReadOnlyFS
 
-LDFLAGS = -L$(GCLIENT_ROOT)/src/third_party/chrome -lbase -lrt
+LDFLAGS = -lbase -lrt
 
 all: $(TARGET)
 

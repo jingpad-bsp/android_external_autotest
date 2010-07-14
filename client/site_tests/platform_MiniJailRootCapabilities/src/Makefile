@@ -5,7 +5,7 @@
 SRCS = platform_MiniJailRootCapabilities.cc
 TARGET = ../platform_MiniJailRootCapabilities
 
-LDFLAGS = -L$(GCLIENT_ROOT)/src/third_party/chrome/ -lcap -lbase -lpthread -lrt
+LDFLAGS = -lcap -lbase -lpthread -lrt
 
 all: $(TARGET)
 

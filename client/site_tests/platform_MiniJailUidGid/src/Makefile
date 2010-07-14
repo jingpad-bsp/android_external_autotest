@@ -5,7 +5,7 @@
 SRCS = platform_MiniJailUidGid.cc
 TARGET = ../platform_MiniJailUidGid
 
-LDFLAGS = -L$(GCLIENT_ROOT)/src/third_party/chrome/ -lbase -lpthread -lrt
+LDFLAGS = -lbase -lpthread -lrt
 
 all: $(TARGET)
 

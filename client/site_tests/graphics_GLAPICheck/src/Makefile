@@ -9,12 +9,10 @@ ifeq ($(GRAPHICS_BACKEND), OPENGLES)
     LDFLAGS = -lX11 -lm -ldl
     SRCS = gles_APICheck.cc
     TARGET = $(TARGET_ES)
-    INCLUDE = -I$(GCLIENT_ROOT)/src/third_party/khronos/files/include
 else ifeq ($(GRAPHICS_BACKEND), OPENGL)
     LDFLAGS = -lX11 -lm -lGL
     SRCS = gl_APICheck.cc
     TARGET = $(TARGET_GL)
-    INCLUDE =
 else
     $(error GRAPHICS_BACKEND has to be either OPENGL or OPENGLES)
 endif
@@ -22,7 +20,7 @@ endif
 all: $(TARGET)
 
 $(TARGET): $(SRCS)
-	$(CXX) -O3 -o $@ $^ $(INCLUDE) -Wall $(LDFLAGS)
+	$(CXX) -O3 -o $@ $^ -Wall $(LDFLAGS)
 
 clean:
 	$(RM) $(TARGET_GL)

@@ -14,7 +14,6 @@ TARGET_ES_S = SanOGLES_S
 ifeq ($(GRAPHICS_BACKEND), OPENGL)
     LDFLAGS = -lX11 -lm -lGL
     SRCS = demo.c app-linux.c importvbo.c
-    INCLUDE =
     TARGET = $(TARGET_GL)
 else ifeq ($(GRAPHICS_BACKEND), OPENGLES)
     FLAGS += -D SAN_ANGELES_OBSERVATION_GLES
@@ -27,7 +26,6 @@ else ifeq ($(GRAPHICS_BACKEND), OPENGLES)
         TARGET = $(TARGET_ES)
     endif
     SRCS = demo.c app-linux.c importgl.c matrixop.c shader.c
-    INCLUDE = -I$(GCLIENT_ROOT)/src/third_party/khronos/files/include
 else
     $(error GRAPHICS_BACKEND has to be either OPENGL or OPENGLES)
 endif
@@ -35,7 +33,7 @@ endif
 all: $(TARGET)
 
 $(TARGET): $(SRCS)
-	$(CC) $(FLAGS) -o $@ $^ $(INCLUDE) $(LDFLAGS) $(OPTIONS)
+	$(CC) $(FLAGS) -o $@ $^ $(LDFLAGS) $(OPTIONS)
 
 clean:
 	$(RM) $(TARGET_GL)

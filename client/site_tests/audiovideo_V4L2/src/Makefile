@@ -2,13 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-INCLUDE = -I$(GCLIENT_ROOT)/src/third_party/chrome/files/
+LDFLAGS = -lbase -lpthread -lrt -lX11 -ldl
 
-LDFLAGS = -L$(GCLIENT_ROOT)/src/third_party/chrome/ \
-          -lpthread -lrt -lX11 -ldl
-
-LDFLAGS_UNITTEST = -L$(GCLIENT_ROOT)/src/third_party/chrome/ \
-                   -lbase -lpthread -lrt -lgtest -lgflags -static
+LDFLAGS_UNITTEST = -lbase -lpthread -lrt -lgtest -lgflags -static
 
 SRC = media_v4l2_device.cc  \
       media_v4l2_test.cc
@@ -23,11 +19,11 @@ TARGET_UNITTEST = ../media_v4l2_unittest
 all: $(TARGET) $(TARGET_UNITTEST)
 
 $(TARGET): $(SRC)
-	$(CXX) $(INCLUDE) -O3 -o $@ $^ $(LDFLAGS) 
+	$(CXX) -O3 -o $@ $^ $(LDFLAGS) 
 
 $(TARGET_UNITTEST): $(SRC_UNITTEST)
-	$(CXX) $(INCLUDE) -O3 -o $@ $^ $(LDFLAGS_UNITTEST)
-	
+	$(CXX) -O3 -o $@ $^ $(LDFLAGS_UNITTEST)
+
 
 clean:
 	$(RM) $(TARGET)
