@@ -17,23 +17,19 @@ class hardware_GPIOSwitches(test.test):
         self.sku_table = {
             # SKU: gpio_read, recovery GPIO, developer mode,
             # firmware writeprotect
-            'atom-proto': {'gpio_read': self.pinetrail_gpio_read,
-                           'recovery': 6, 'developer': 7, 'fwwp': 10},
-        }
+            'atom-proto': {'gpio_read': self.acpi_gpio_read}
+            }
 
-
-    def setup(self):
-        self.job.setup_dep(['iotools'])
-        # create a empty srcdir to prevent the error that checks .version file
-        if not os.path.exists(self.srcdir):
-          os.mkdir(self.srcdir)
-
+    def initialize(self, gpio_root='/home/gpio'):
+        # setup gpio's for reading.  Must re-create after each POR
+        if os.path.exists(gpio_root):
+            utils.system("rm -rf %s" % gpio_root)
+        utils.system("mkdir %s" % (gpio_root))
+        utils.system("/usr/sbin/gpio_setup")
+        self._gpio_root=gpio_root
 
     def run_once(self):
         self.init_sku_table()
-        dep = 'iotools'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
 
         # TODO(nsanders): Detect actual system type here by HWQual ID (?)
         # and redirect to the correct check.
@@ -49,51 +45,17 @@ class hardware_GPIOSwitches(test.test):
         if systemsku in self.sku_table:
           table = self.sku_table[systemsku]
           self.gpio_read = table['gpio_read']
-          self.recovery_gpio = table['recovery']
-          self.developer_gpio = table['developer']
-          self.fwwp_gpio = table['fwwp']
         else:
           raise error.TestError('System settings not defined for board %s' %
                                 systemsku)
 
-        recovery, developer, fwwp = self.gpio_read()
 
         keyvals = {}
-        keyvals['level_recovery'] = recovery
-        keyvals['level_developer'] = developer
-        keyvals['level_firmware_writeprotect'] = fwwp
+        keyvals['level_recovery'] = self.gpio_read('recovery_button')
+        keyvals['level_developer'] = self.gpio_read('developer_switch')
+        keyvals['level_firmware_writeprotect'] = self.gpio_read('write_protect')
 
         self.write_perf_keyval(keyvals)
 
-
-    # Returns (recovery, developer, fwwp).
-    # Throws exception on error.
-    def pinetrail_gpio_read(self):
-        path = self.autodir + '/deps/iotools/'
-        # Generate symlinks for iotools.
-        if not os.path.exists(path + 'pci_read32'):
-          utils.system(path + 'iotools --make-links')
-
-        # Tigerpoint LPC Interface.
-        tp_device = (0, 31, 0)
-        # TP io port location of GPIO registers.
-        tp_GPIOBASE = 0x48
-        # IO offset to check GPIO levels.
-        tp_GP_LVL_off = 0xc
-
-        tp_gpio_iobase_str = utils.system_output(path +
-            'pci_read32 %s %s %s %s' % (
-            tp_device[0], tp_device[1], tp_device[2], tp_GPIOBASE))
-        # Bottom bit of GPIOBASE is a flag indicating io space.
-        tp_gpio_iobase = long(tp_gpio_iobase_str, 16) & ~1
-
-        tp_gpio_mask_str = utils.system_output(path +
-            'io_read32 %s' % (
-            tp_gpio_iobase + tp_GP_LVL_off))
-
-        tp_gpio_mask = long(tp_gpio_mask_str, 16)
-        recovery = (tp_gpio_mask >> self.recovery_gpio) & 1
-        developer = (tp_gpio_mask >> self.developer_gpio) & 1
-        fwwp = (tp_gpio_mask >> self.fwwp_gpio) & 1
-
-        return recovery, developer, fwwp
+    def acpi_gpio_read(self, name):
+        return int(utils.system_output("cat %s/%s" % (self._gpio_root, name)))
