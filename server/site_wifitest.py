@@ -648,7 +648,7 @@ def read_wifi_testbed_config(file, client_addr=None, server_addr=None,
     # router must be reachable on the control network
     router = config['router']
     if router_addr is not None:
-        server['router'] = router_addr;
+        router['addr'] = router_addr;
 
     server = config['server']
     if server_addr is not None:

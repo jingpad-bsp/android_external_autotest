@@ -32,10 +32,14 @@ opts = dict([[k, v] for (k, e, v) in [x.partition('=') for x in args]])
 
 config_file = opts.get('config_file', 'wifi_testbed_config')
 test_pat = opts.get('test_pat', '[0-9]*')
+router_addr = opts.get('router_addr', None)
+server_addr = opts.get('server_addr', None)
 
 config = site_wifitest.read_wifi_testbed_config(
     os.path.join(job.configdir, config_file),
-    client_addr = machines[0])    # NB: take client identity from command line
+    client_addr = machines[0],    # NB: take client identity from command line
+    router_addr = router_addr,
+    server_addr = server_addr)
 
 server = config['server']
 router = config['router']
