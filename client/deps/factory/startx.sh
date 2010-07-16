@@ -18,7 +18,10 @@ trap user1_handler USR1
 MCOOKIE=$(head -c 8 /dev/urandom | openssl md5)
 ${XAUTH} -q -f ${XAUTH_FILE} add ${DISPLAY} . ${MCOOKIE}
 
-/sbin/xstart.sh ${XAUTH_FILE} &
+/bin/sh -c "\
+trap '' USR1 TTOU TTIN
+exec /usr/bin/X11/X -nolisten tcp vt01 -auth ${XAUTH_FILE} \
+-s 0 -p 0 -dpms 2> /dev/null" &
 
 while [ -z ${SERVER_READY} ]; do
   sleep .1
@@ -27,5 +30,5 @@ done
 /sbin/initctl emit factory-ui-started
 cat /proc/uptime > /tmp/uptime-x-started
 
-echo "DISPLAY=${DISPLAY}; export DISPLAY"
-echo "XAUTHORITY=${XAUTH_FILE}; export XAUTHORITY"
+echo "export DISPLAY=${DISPLAY}"
+echo "export XAUTHORITY=${XAUTH_FILE}"
