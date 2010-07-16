@@ -260,14 +260,11 @@ class factory_Touchpad(test.test):
 
     def run_once(self,
                  test_widget_size=None,
-                 trigger_set=None,
-                 result_file_path=None):
+                 trigger_set=None):
 
         factory.log('%s run_once' % self.__class__)
 
-        ft_state = ful.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        ft_state = ful.State(trigger_set)
 
         os.chdir(self.srcdir)
         tp_image = cairo.ImageSurface.create_from_png('touchpad.png')

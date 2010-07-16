@@ -12,7 +12,7 @@
 # triggers, grabbing control of the keyboard and mouse, and making the
 # mouse cursor disappear.  It also manages communication of any found
 # keyboard triggers to the control process, via writing data to
-# _result_file_path.
+# factory.RESULT_FILE_PATH.
 
 
 from autotest_lib.client.bin import factory
@@ -87,9 +87,8 @@ def make_countdown_widget():
 
 class State:
 
-    def __init__(self, trigger_set=set(), result_file_path=None):
+    def __init__(self, trigger_set=set()):
         self._got_trigger = None
-        self._result_file_path = result_file_path
         self._trigger_set = [ord(x) for x in trigger_set]
 
     def exit_on_trigger(self, event):
@@ -143,7 +142,100 @@ class State:
 
         if self._got_trigger is None:
             return
-        with open(self._result_file_path, 'w') as file:
+        with open(factory.RESULT_FILE_PATH, 'w') as file:
             file.write('%s\n' % repr(self._got_trigger))
         raise error.TestFail('explicit test switch triggered (%s)' %
                              self._got_trigger)
+
+
+class StatusMap():
+
+    def __init__(self, status_file_path, test_list):
+        self._test_queue = [t for t in reversed(test_list)]
+        self._as_test_set = set(t for t in test_list if t.automated_seq)
+        self._status_dict = {}
+        for test in test_list:
+            test_index = self.index(test.formal_name, test.tag_prefix)
+            self._status_dict[test_index] = (test, UNTESTED, 0, None)
+            for subtest in test.automated_seq:
+                st_index = self.index(subtest.formal_name, subtest.tag_prefix)
+                self._status_dict[st_index] = (subtest, UNTESTED, 0, None)
+        self._status_file_path = status_file_path
+        self._status_file_pos = 0
+        self.read_new_data()
+
+    def index(self, formal_name, tag_prefix):
+        return '%s.%s' % (formal_name, tag_prefix)
+
+    def filter(self, status):
+        return [t for t in self._test_queue if self.lookup_status(t) == status]
+
+    def next_untested(self):
+        remaining = self.filter(UNTESTED)
+        factory.log('remaining untested = [%s]' %
+                ', '.join([self.index(t.formal_name, t.tag_prefix)
+                           for t in remaining]))
+        if not remaining: return None
+        return remaining.pop()
+
+    def read_new_data(self):
+        with open(self._status_file_path) as file:
+            file.seek(self._status_file_pos)
+            for line in file:
+                cols = line.lstrip().split('\t') + ['']
+                code = cols[0]
+                test_id = cols[1]
+                if code not in STATUS_CODE_MAP or test_id == '----':
+                    continue
+                status = STATUS_CODE_MAP[code]
+                factory.log('reading code = %s, test_id = %s' % (code, test_id))
+                formal_name, _, tag = test_id.rpartition('.')
+                tag_prefix, _, count = tag.rpartition('_')
+                self.update(formal_name, tag_prefix, status, int(count))
+            self._status_file_pos = file.tell()
+        map(self.update_as_test, self._as_test_set)
+        return True
+
+    def update(self, formal_name, tag_prefix, status, count):
+        test_index = self.index(formal_name, tag_prefix)
+        if test_index not in self._status_dict:
+            factory.log('ignoring status update (%s) for test %s' %
+                    (status, test_index))
+            return
+        test, old_status, old_count, label = self._status_dict[test_index]
+        if count < old_count:
+            factory.log('ERROR: count regression for %s (%d-%d)' %
+                    (test_index, old_count, count))
+        if status != old_status:
+            factory.log('status change for %s : %s/%s -> %s/%s' %
+                    (test_index, old_status, old_count, status, count))
+            if label is not None:
+                label.update(status)
+        self._status_dict[test_index] = (test, status, count, label)
+
+    def update_as_test(self, test):
+        st_status_set = set(map(self.lookup_status, test.automated_seq))
+        max_count = max(map(self.lookup_count, test.automated_seq))
+        if len(st_status_set) == 1:
+            status = st_status_set.pop()
+        else:
+            status = ACTIVE in st_status_set and ACTIVE or FAILED
+        self.update(test.formal_name, test.tag_prefix, status, max_count)
+
+    def set_label(self, test, label):
+        test_index = self.index(test.formal_name, test.tag_prefix)
+        test, status, count, _ = self._status_dict[test_index]
+        label.update(status)
+        self._status_dict[test_index] = test, status, count, label
+
+    def lookup_status(self, test):
+        test_index = self.index(test.formal_name, test.tag_prefix)
+        return self._status_dict[test_index][1]
+
+    def lookup_count(self, test):
+        test_index = self.index(test.formal_name, test.tag_prefix)
+        return self._status_dict[test_index][2]
+
+    def lookup_label(self, test):
+        test_index = self.index(test.formal_name, test.tag_prefix)
+        return self._status_dict[test_index][3]

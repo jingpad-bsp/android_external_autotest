@@ -20,10 +20,11 @@
 # The test passes only if the answer for all rounds are correct.
 
 import gtk
-from gtk import gdk
 import glib
 import pango
 import numpy
+
+from gtk import gdk
 from random import randrange
 
 from autotest_lib.client.bin import factory
@@ -113,8 +114,7 @@ class factory_Camera(test.test):
         w.connect('key-release-event', self.key_release_callback)
         w.add_events(gdk.KEY_RELEASE_MASK)
 
-    def run_once(self, test_widget_size=None, trigger_set=None,
-                 result_file_path=None, led_rounds=5):
+    def run_once(self, test_widget_size=None, trigger_set=None, led_rounds=5):
         '''Run the camera test
 
         Parameter
@@ -137,9 +137,7 @@ class factory_Camera(test.test):
             self.ledstats = randrange(2 ** led_rounds - 2) + 1
         self.stage = 0
 
-        self.ft_state = ful.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        self.ft_state = ful.State(trigger_set)
 
         self.label = label = gtk.Label(MESSAGE_STR)
         label.modify_font(LABEL_FONT)

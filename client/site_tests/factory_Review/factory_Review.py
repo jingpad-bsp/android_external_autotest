@@ -25,14 +25,12 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 
-class factory_Dummy(test.test):
+class factory_Review(test.test):
     version = 1
 
     def key_release_callback(self, widget, event):
         char = event.keyval in range(32,127) and chr(event.keyval) or None
         factory.log('key_release %s(%s)' % (event.keyval, char))
-        if event.keyval == self._quit_key:
-            gtk.main_quit()
         self._ft_state.exit_on_trigger(event)
         return True
 
@@ -43,16 +41,21 @@ class factory_Dummy(test.test):
     def run_once(self,
                  test_widget_size=None,
                  trigger_set=None,
-                 quit_key=ord('Q'),
-                 msg='factory_Dummy'):
+                 status_file_path=None,
+                 test_list=None):
 
         factory.log('%s run_once' % self.__class__)
 
-        self._quit_key = quit_key
-
         self._ft_state = ful.State(trigger_set)
 
-        label = ful.make_label(msg)
+        status_map = ful.StatusMap(status_file_path, test_list)
+        untested = status_map.filter(ful.UNTESTED)
+        passed = status_map.filter(ful.PASSED)
+        failed = status_map.filter(ful.FAILED)
+
+        label = ful.make_label('UNTESTED=%d\n' % len(untested) +
+                               'PASSED=%d\n' % len(passed) +
+                               'FAILED=%d\n' % len(failed))
 
         test_widget = gtk.EventBox()
         test_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)

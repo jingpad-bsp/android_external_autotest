@@ -130,20 +130,11 @@ class factory_Keyboard(test.test):
     def run_once(self,
                  test_widget_size=None,
                  trigger_set=None,
-                 result_file_path=None,
                  layout=None):
 
         factory.log('%s run_once' % self.__class__)
 
-        # XXX Why can this not be run from the UI code?
-        xset_status = os.system('xset r off')
-        xmm_status = os.system('xmodmap -e "clear Lock"')
-        if xset_status or xmm_status:
-            raise error.TestFail('failed to disable key repeat or caps lock')
-
-        ft_state = ful.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        ft_state = ful.State(trigger_set)
 
         os.chdir(self.srcdir)
         kbd_image = cairo.ImageSurface.create_from_png('%s.png' % layout)

@@ -57,6 +57,7 @@ _OTHER_LABEL_FONT = pango.FontDescription('courier new condensed 20')
 _ST_LABEL_EN_SIZE = (250, 35)
 _ST_LABEL_ZW_SIZE = (150, 35)
 
+_STATUS_REFRESH_MS = 200
 
 class Console:
     '''Display a progress log.  Implemented by launching an borderless
@@ -184,98 +185,6 @@ class SubTestLabelBox(gtk.EventBox):
         self.queue_draw()
 
 
-class StatusMap():
-
-    def __init__(self, status_file_path, test_list):
-        self._test_queue = [t for t in reversed(test_list)]
-        self._as_test_set = set(t for t in test_list if t.automated_seq)
-        self._status_dict = {}
-        for test in test_list:
-            test_index = self.index(test.formal_name, test.tag_prefix)
-            self._status_dict[test_index] = (test, ful.UNTESTED, 0, None)
-            for subtest in test.automated_seq:
-                st_index = self.index(subtest.formal_name, subtest.tag_prefix)
-                self._status_dict[st_index] = (subtest, ful.UNTESTED, 0, None)
-        self._status_file_path = status_file_path
-        self._status_file_pos = 0
-        self.read_new_data()
-        gobject.timeout_add(200, self.read_new_data)
-
-    def index(self, formal_name, tag_prefix):
-        return '%s.%s' % (formal_name, tag_prefix)
-
-    def next_untested(self):
-        remaining = [t for t in self._test_queue
-                     if self.lookup_status(t) == ful.UNTESTED]
-        factory.log('remaining untested = [%s]' %
-                ', '.join([self.index(t.formal_name, t.tag_prefix)
-                           for t in remaining]))
-        if not remaining: return None
-        return remaining.pop()
-
-    def read_new_data(self):
-        with open(self._status_file_path) as file:
-            file.seek(self._status_file_pos)
-            for line in file:
-                cols = line.lstrip().split('\t') + ['']
-                code = cols[0]
-                test_id = cols[1]
-                if code not in ful.STATUS_CODE_MAP or test_id == '----':
-                    continue
-                status = ful.STATUS_CODE_MAP[code]
-                factory.log('reading code = %s, test_id = %s' % (code, test_id))
-                formal_name, _, tag = test_id.rpartition('.')
-                tag_prefix, _, count = tag.rpartition('_')
-                self.update(formal_name, tag_prefix, status, int(count))
-            self._status_file_pos = file.tell()
-        map(self.update_as_test, self._as_test_set)
-        return True
-
-    def update(self, formal_name, tag_prefix, status, count):
-        test_index = self.index(formal_name, tag_prefix)
-        if test_index not in self._status_dict:
-            factory.log('ignoring status update (%s) for test %s' %
-                    (status, test_index))
-            return
-        test, old_status, old_count, label = self._status_dict[test_index]
-        if count < old_count:
-            factory.log('ERROR: count regression for %s (%d-%d)' %
-                    (test_index, old_count, count))
-        if status != old_status:
-            factory.log('status change for %s : %s/%s -> %s/%s' %
-                    (test_index, old_status, old_count, status, count))
-            if label is not None:
-                label.update(status)
-        self._status_dict[test_index] = (test, status, count, label)
-
-    def update_as_test(self, test):
-        st_status_set = set(map(self.lookup_status, test.automated_seq))
-        max_count = max(map(self.lookup_count, test.automated_seq))
-        if len(st_status_set) == 1:
-            status = st_status_set.pop()
-        else:
-            status = ful.ACTIVE in st_status_set and ful.ACTIVE or ful.FAILED
-        self.update(test.formal_name, test.tag_prefix, status, max_count)
-
-    def set_label(self, test, label):
-        test_index = self.index(test.formal_name, test.tag_prefix)
-        test, status, count, _ = self._status_dict[test_index]
-        label.update(status)
-        self._status_dict[test_index] = test, status, count, label
-
-    def lookup_status(self, test):
-        test_index = self.index(test.formal_name, test.tag_prefix)
-        return self._status_dict[test_index][1]
-
-    def lookup_count(self, test):
-        test_index = self.index(test.formal_name, test.tag_prefix)
-        return self._status_dict[test_index][2]
-
-    def lookup_label(self, test):
-        test_index = self.index(test.formal_name, test.tag_prefix)
-        return self._status_dict[test_index][3]
-
-
 def make_hsep(width=1):
     frame = gtk.EventBox()
     frame.set_size_request(-1, width)
@@ -355,7 +264,8 @@ def main():
     test_list = control_recv()
     status_file_path = control_recv()
 
-    status_map = StatusMap(status_file_path, test_list)
+    status_map = ful.StatusMap(status_file_path, test_list)
+    gobject.timeout_add(_STATUS_REFRESH_MS, status_map.read_new_data)
 
     for test in test_list:
         tlb = TestLabelBox(test)

@@ -149,18 +149,11 @@ class factory_Display(test.test):
 
     def run_once(self,
                  test_widget_size=None,
-                 trigger_set=None,
-                 result_file_path=None):
+                 trigger_set=None):
 
         factory.log('%s run_once' % self.__class__)
 
-        xset_status = os.system('xset r off')
-        if xset_status:
-            raise error.TestFail('failed to disable key repeat')
-
-        self._ft_state = ful.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        self._ft_state = ful.State(trigger_set)
 
         self._pattern_queue = [x for x in reversed(_PATTERN_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n, f in _PATTERN_LIST)
@@ -168,7 +161,7 @@ class factory_Display(test.test):
         self._prompt_label = ful.make_label(_MESSAGE_STR, alignment=(0.5, 0.5))
 
         vbox = gtk.VBox()
-        vbox.pack_start(prompt_label, False, False)
+        vbox.pack_start(self._prompt_label, False, False)
 
         for name, cb_fun in _PATTERN_LIST:
             label_box = self.make_pattern_label_box(name)

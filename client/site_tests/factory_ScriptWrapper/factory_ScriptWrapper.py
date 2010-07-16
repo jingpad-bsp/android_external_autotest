@@ -76,14 +76,11 @@ class factory_ScriptWrapper(test.test):
     def run_once(self,
                  test_widget_size=None,
                  trigger_set=None,
-                 result_file_path=None,
                  cmdline=None):
 
         factory.log('%s run_once' % self.__class__)
 
-        self._ft_state = ful.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        self._ft_state = ful.State(trigger_set)
 
         label = ful.make_label('', alignment=(0.5, 0.5))
 

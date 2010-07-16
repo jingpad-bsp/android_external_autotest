@@ -98,7 +98,6 @@ class factory_ExternalStorage(test.test):
     def run_once(self,
                  test_widget_size=None,
                  trigger_set=None,
-                 result_file_path=None,
                  test_tag_prefix=None,
                  test_count=None,
                  media=None):
@@ -129,9 +128,7 @@ class factory_ExternalStorage(test.test):
         test_tag = '%s_%s' % (test_tag_prefix, test_count)
         factory.log('test_tag = %s' % test_tag)
 
-        self._ft_state = ful.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        self._ft_state = ful.State(trigger_set)
 
         label = gtk.Label('')
         label.modify_font(pango.FontDescription('courier new condensed 20'))

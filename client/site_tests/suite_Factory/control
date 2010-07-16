@@ -44,6 +44,11 @@ job.bootloader.set_default = lambda x: None
 job.bootloader.boot_once = lambda x: None
 
 
+# TEST ORDERING: Tests in the test_list will be run in the order
+# below, unless the operator interrupts the flow via keyboard
+# shortcut.  To cause immediate execution of the run-in tests, for
+# example, reorder runin to occur as the first test in the test_list.
+
 test_list = [
     factory.TestData(
         label_en='start',
@@ -67,7 +72,8 @@ test_list = [
             factory.TestData(
                 label_en='component validation',
                 label_zw='元件驗證',
-                formal_name='hardware_Components'),
+                formal_name='hardware_Components',
+                dargs={'approved_db':'qualified_components'}),
             factory.TestData(
                 label_en='gpio switch check',
                 label_zw='檢查 gpio 開關',
@@ -75,7 +81,8 @@ test_list = [
             factory.TestData(
                 label_en='system stress',
                 label_zw='壓力測試',
-                formal_name='hardware_SAT'),
+                formal_name='hardware_SAT',
+                dargs={'seconds': 60}),
             factory.TestData(
                 label_en='graphics',
                 label_zw='圖型',
@@ -137,13 +144,13 @@ test_list = [
         dargs={'media':'SD'}),
     factory.TestData(
         label_en='bluetooth',
-        label_zw='藍牙',
+        label_zw='藍芽',
         formal_name='factory_Dummy',
         trigger='o',
         dargs={'msg':'bluetooth test, one day...'}),
     factory.TestData(
         label_en='3g',
-        label_zw='第三代',
+        label_zw='3G上網',
         formal_name='factory_Dummy',
         trigger='g',
         dargs={'msg':'3g test, one day...'}),
@@ -170,9 +177,8 @@ test_list = [
     factory.TestData(
         label_en='review',
         label_zw='報告',
-        formal_name='factory_Dummy',
-        trigger='z',
-        dargs={'msg':'review test results...'}),
+        formal_name='factory_Review',
+        trigger='z'),
 ]
 
 for test in test_list:
@@ -184,27 +190,29 @@ test_map = factory.make_test_map(test_list)
 trigger_set = factory.make_trigger_set(test_list)
 
 
-def step_reboot_seq(i, tag):
+def make_run_subtest(dargs_map):
+    return lambda n: job.run_test(n, **dargs_map[n])
+
+
+def step_reboot_seq(i, run_subtest):
     if i < _REBOOT_SEQ_ITERATIONS:
         job.next_step_prepend([step_reboot_seq, i + 1, tag])
         factory.log('rebooting (iteration %d)' % i)
         time.sleep(5)
         job.reboot()
     else:
-        job.run_test('factory_RebootStub', tag=tag)
+        run_subtest('factory_RebootStub')
         step_init()
 
 
-def step_runin(ui, tag):
-    job.run_test('hardware_Components',
-                 approved_db='qualified_components',
-                 tag=tag)
-    job.run_test('hardware_GPIOSwitches', tag=tag)
+def step_runin(ui, run_subtest):
+    run_subtest('hardware_Components')
+    run_subtest('hardware_GPIOSwitches')
     job.drop_caches_between_iterations = True
-    job.run_test('hardware_SAT', tag=tag)
+    run_subtest('hardware_SAT')
     job.drop_caches_between_iterations = False
-    job.run_test('graphics_GLBench', tag=tag)
-    step_reboot_seq(0, tag)
+    run_subtest('graphics_GLBench')
+    step_reboot_seq(0, dargs_map)
 
 
 def step_init():
@@ -240,7 +248,17 @@ def step_init():
     while test is not None:
         if test.automated_seq:
             tag = '%s_%s' % (test.formal_name, test_count)
-            exec('%s(ui, "%s")' % (test.formal_name, tag))
+            dargs_map = dict((st.formal_name, st.dargs)
+                             for st in test.automated_seq)
+            for i in dargs_map:
+                dargs_map[i].update(tag=tag)
+            # Why run_subtest needs to be defined in this way is still
+            # somewhat mysterious -- basically it does not work any
+            # other way, python is maybe doing some lazy evaluation of
+            # dargs?  If someone understands this and can write a
+            # better comment here, please do.
+            run_subtest = make_run_subtest(dargs_map)
+            exec('%s(ui, run_subtest)' % (test.formal_name))
             result = None
         else:
             dargs = test.dargs
@@ -250,7 +268,8 @@ def step_init():
                 'test_count': test_count,
                 'test_widget_size': test_widget_size,
                 'trigger_set': trigger_set,
-                'result_file_path': factory.RESULT_FILE_PATH})
+                'status_file_path' : _STATUS_FILE_PATH,
+                'test_list': test_list})
             with open(factory.RESULT_FILE_PATH, 'w') as file:
                 file.write('None\n')
             job.run_test(test.formal_name, **dargs)

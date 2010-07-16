@@ -152,14 +152,11 @@ class factory_Leds(test.test):
     def run_once(self,
                  test_widget_size=None,
                  trigger_set=None,
-                 result_file_path=None,
                  led_ctl_path=None):
 
         factory.log('%s run_once' % self.__class__)
 
-        self._ft_state = ful.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        self._ft_state = ful.State(trigger_set)
 
         self._led_ctl_path = led_ctl_path
 

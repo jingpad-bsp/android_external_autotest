@@ -280,7 +280,8 @@ class DevRecGpio:
 
     def acpi_gpio_read(self, name):
         if name not in self.table:
-            raise error.TestError('Unable to locate definition for gpio %s' % name)
+            raise error.TestError('Unable to locate definition for gpio %s' %
+                                  name)
 
         return int(utils.system_output("cat %s/%s" % (self._gpio_root, name)))
 
@@ -325,15 +326,11 @@ class factory_DeveloperRecovery(test.test):
     def run_once(self,
                  test_widget_size=None,
                  trigger_set=None,
-                 result_file_path=None,
-                 layout=None,
-                 ):
+                 layout=None):
 
         factory.log('%s run_once' % self.__class__)
 
-        self._ft_state = ful.State(
-            trigger_set=trigger_set,
-            result_file_path=result_file_path)
+        self._ft_state = ful.State(trigger_set)
 
         os.chdir(self.srcdir)
         dr_image = cairo.ImageSurface.create_from_png('%s.png' % layout)
