@@ -15,11 +15,17 @@ with the BuildVerify suite, verify that all major features in the build are
 fully functional.  These are meant to run nightly in less than 8 hours.
 """
 
+from autotest_lib.server import site_host_attributes
 
 # List of client tests with parameters
 TESTS = [
   ('compilebench', {}),
   ('dbench', {}),
+  ('desktopui_IBusTest', {}),
+  ('desktopui_SpeechSynthesisSemiAuto', {}),
+  ('desktopui_SunSpiderBench', {}),
+  ('desktopui_UrlFetch', {}),
+  ('desktopui_V8Bench', {}),
   ('desktopui_WindowManagerFocusNewWindows', {}),
   ('desktopui_WindowManagerHotkeys', {}),
   ('disktest', {}),
@@ -29,31 +35,48 @@ TESTS = [
   ('graphics_GLBench', {}),
   ('graphics_O3DSelenium', {}),
   ('graphics_SanAngeles', {}),
+  ('graphics_WindowManagerGraphicsCapture', {}),
   ('hackbench', {}),
+  ('hardware_Backlight', {}),
+  ('hardware_DiskSize', {}),
+  ('hardware_MemoryThroughput', {'num_iteration': 1,
+                                 'test_list': '18'}),
+  ('hardware_MemoryTotalSize', {}),
+  ('hardware_SAT', {'seconds': 20}),
   ('hardware_StorageFio', {}),
-# TODO: Until ltp can pass on chromiumos
-#  ('ltp', {}),
-  ('platform_CleanShutdown', {}),
-  ('platform_FileNum', {}),
-  ('platform_FileSize', {}),
-  ('login_CryptohomeMounted', {}),
-  ('login_CryptohomeIncognitoMounted', {}),
+  ('logging_KernelCrash', {}),
+  ('logging_UserCrash', {}),
+  ('login_BadAuthentication', {}),
   ('login_CryptohomeUnmounted', {}),
   ('login_CryptohomeUnmounted', {'creds': '$backdoor',
                                  'is_incognito': True,
                                  'tag': 'incognito'}),
+  ('logging_LogVolume', {'constraints': ['bytes_unexpected <= 100000',
+                                         'files_unexpected <= 50',
+                                         'percent_stateful_used <= 50',
+                                         'percent_unused_patterns <= 70']}),
+# TODO: Until ltp can pass on chromiumos
+#  ('ltp', {}),
+  ('network_UdevRename', {}),
+  ('platform_AccurateTime', {'constraints': ['seconds_offset < 60']}),
+  ('platform_DaemonsRespawn', {}),
+  ('platform_DiskIterate', {}),
+  ('platform_FileNum', {}),
+  ('platform_FileSize', {}),
+  ('platform_KernelVersion', {}),
+  ('platform_MemCheck', {}),
+  ('platform_MiniJailCmdLine', {}),
+  ('platform_MiniJailPidNamespace', {}),
+  ('platform_MiniJailRootCapabilities', {}),
+  ('platform_MiniJailVfsNamespace', {}),
+  ('platform_NetParms', {}),
+  ('platform_OSLimits', {}),
+  ('platform_ProcessPrivileges', {}),
+  ('platform_StackProtector', {}),
+  ('platform_TempFS', {}),
   ('realtimecomm_GTalkAudioBench', {}),
   ('realtimecomm_GTalkunittest', {}),
   ('unixbench', {}),
-  # tests that have been promoted to running in Nightly and may find their way
-  # into BVT or other suite
-  ('desktopui_UrlFetch', {}),
-  ('network_UdevRename', {}),
-  ('desktopui_SpeechSynthesisSemiAuto', {}),
-  ('platform_MiniJailVfsNamespace', {}),
-  ('platform_MiniJailPidNamespace', {}),
-  ('platform_MiniJailCmdLine', {}),
-  ('platform_MiniJailRootCapabilities', {}),
 ]
 
 # A dict which holds {machine: [(test, argv), (test, argv), ...]}
@@ -74,9 +97,24 @@ def run_assigned_tests(machine):
   test_list = test_dict[machine]
   for test, argv in test_list:
     client_at.run_test(test, **argv)
+
+  client_attributes = site_host_attributes.HostAttributes(machine)
+  if client_attributes.has_ssd:
+    client_at.run_test('hardware_SsdDetection')
+  if client_attributes.has_bluetooth:
+    client_at.run_test('network_DisableInterface',
+                       iface_name='hci0', tag='hci0')
+  if client_attributes.has_80211n:
+    client_at.run_test('network_WiFiCaps')
+  if not client_attributes.has_resume_bug:
+     client_at.run_test('power_Resume')
+
   job.run_test("platform_BootPerfServer", host=client, iterations=50)
+  job.run_test("platform_KernelErrorPaths", host=client)
+
 
 job.parallel_on_machines(run_assigned_tests, machines)
+
 
 # Run server-side suites
 job.run_control('server/site_tests/suite_SecurityFunctional/control')

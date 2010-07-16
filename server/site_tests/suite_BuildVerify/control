@@ -17,134 +17,62 @@ in less than 30 minutes and should maximize coverage.
 
 from autotest_lib.server import site_host_attributes
 
-client = hosts.create_host(machines[0])
-client_attributes = site_host_attributes.HostAttributes(machines[0])
-
-client_at = autotest.Autotest(client)
-
-
-#
-# Run server tests
-#
-
-# Test the boot performance.  Add a generous constraint (at least for
-# x86 platforms) on the boot time.  We just look at the time from
-# kernel start to login prompt and require it to be under 18s.  As of
-# 3/30/2010 the time is 13.5s on a slow HDD platform.  Note that this
-# may still fail if this is run on on a platform machine before
-# /home/chronos is populated (that seems to add another 23s). But as
-# BuildVerify tests are run after the boot after reimaging, the
-# home directory should already be populated.  Once we are running
-# these tests only on qualified systems we can lower the constraints
-# to be in-line with suite_HWQual.  Once we are running our own firmware
-# and we have firmware timing support on ARM we can also add the
-# constraint on firmware boot time.
-
-bootperf_constraints = []
-if client_attributes.has_ssd:
-   bootperf_constraints.append('seconds_kernel_to_login <= 8')
-else:
-   bootperf_constraints.append('seconds_kernel_to_login <= 18')
-
-if client_attributes.has_chromeos_firmware:
-   bootperf_constraints.append('seconds_firmware_boot <= 1.3')
-
-job.run_test("platform_BootPerfServer",
-             host=client,
-             constraints=bootperf_constraints)
-
-job.run_test("platform_KernelErrorPaths", host=client)
-
-
-#
-# Run client tests that do not require specific parameters or platforms
-#
-
-# All client tests whose default parameters are adequate
 TESTS = [
-  'build_RootFilesystemSize',
-  'desktopui_ChromeFirstRender',
-  'desktopui_FlashSanityCheck',
-  'desktopui_IBusTest',
-  'desktopui_SunSpiderBench',
-  'desktopui_V8Bench',
-  'graphics_WindowManagerGraphicsCapture',
-  'hardware_Backlight',
-  'hardware_DiskSize',
-  'hardware_MemoryTotalSize',
-  'logging_KernelCrash',
-  'logging_UserCrash',
-  'network_Ping',
-  'platform_DaemonsRespawn',
-  'platform_DiskIterate',
-  'platform_FilePerms',
-  'platform_KernelVersion',
-  'platform_MemCheck',
-  'platform_NetParms',
-  'platform_OSLimits',
-  'platform_PartitionCheck',
-  'platform_ProcessPrivileges',
-  'platform_Shutdown',
-  'platform_StackProtector',
-  'platform_TempFS',
+  ('build_RootFilesystemSize', {}),
+  ('desktopui_ChromeFirstRender', {}),
+  ('desktopui_FlashSanityCheck', {}),
+  ('desktopui_KillRestart', {'binary': '^chrome$',
+                             'tag': 'chrome'}),
+  ('desktopui_KillRestart', {'binary': '^session_manager$',
+                             'tag': 'session'}),
+  ('graphics_WindowManagerGraphicsCapture', {}),
+  ('login_Backdoor', {'creds': '$backdoor'}),
+  ('login_CryptohomeIncognitoMounted', {}),
+  ('login_CryptohomeMounted', {}),
+  ('login_LoginSuccess', {}),
+  ('login_RemoteLogin', {}),
+  ('network_DisableInterface', {'iface_name': 'wlan0',
+                                'tag': 'wlan0'}),
+  ('network_Ping', {}),
+  ('platform_CleanShutdown', {}),
+  ('platform_FilePerms', {})
+  ('platform_OSLimits', {}),
+  ('platform_PartitionCheck', {}),
+  ('platform_Shutdown', {}),
 ]
 
-for test in TESTS:
-  client_at.run_test(test)
+
+def run_tests(machine):
+  client = hosts.create_host(machine)
+
+  # Test the boot performance.  Add a generous constraint (at least for
+  # x86 platforms) on the boot time.  We just look at the time from
+  # kernel start to login prompt and require it to be under 18s.  As of
+  # 3/30/2010 the time is 13.5s on a slow HDD platform.  Note that this
+  # may still fail if this is run on on a platform machine before
+  # /home/chronos is populated (that seems to add another 23s). But as
+  # BuildVerify tests are run after the boot after reimaging, the
+  # home directory should already be populated.  Once we are running
+  # these tests only on qualified systems we can lower the constraints
+  # to be in-line with suite_HWQual.  Once we are running our own firmware
+  # and we have firmware timing support on ARM we can also add the
+  # constraint on firmware boot time.
+  client_attributes = site_host_attributes.HostAttributes(machine)
+
+  bootperf_constraints = []
+  if client_attributes.has_ssd:
+     bootperf_constraints.append('seconds_kernel_to_login <= 8')
+  else:
+     bootperf_constraints.append('seconds_kernel_to_login <= 18')
+  if client_attributes.has_chromeos_firmware:
+     bootperf_constraints.append('seconds_firmware_boot <= 1.3')
+  job.run_test('platform_BootPerfServer',
+               host=client,
+               constraints=bootperf_constraints)
+
+  client_at = autotest.Autotest(client)
+  for test, argv in TESTS:
+    client_at.run_test(test, **argv)
 
 
-#
-# Run client tests with specific parameters or requiring specific
-# platforms
-#
-
-
-# Run login tests, local first, then remote login
-client_at.run_test('login_Backdoor', creds='$backdoor')
-
-client_at.run_test('login_LoginSuccess')
-
-client_at.run_test('login_BadAuthentication')
-
-client_at.run_test('login_RemoteLogin')
-
-client_at.run_test('desktopui_KillRestart',
-                   binary='^session_manager$',
-                   tag='session')
-client_at.run_test('desktopui_KillRestart', binary='^chrome$', tag='chrome')
-
-client_at.run_test('hardware_MemoryThroughput', num_iteration=1, test_list='18')
-
-client_at.run_test('hardware_SAT', seconds=20)
-
-if client_attributes.has_ssd:
-   client_at.run_test('hardware_SsdDetection')
-
-# Check volume of logging, and expect less than 50% of this machine's
-# stateful partition is used.  Also make sure there's not a serious
-# problem with the patterns being too permissive by assuming most were
-# required.
-client_at.run_test('logging_LogVolume',
-                   constraints=['bytes_unexpected <= 100000',
-                                'files_unexpected <= 50',
-                                'percent_stateful_used <= 50',
-                                'percent_unused_patterns <= 70'])
-
-client_at.run_test('network_DisableInterface',
-                   iface_name='eth0', tag='eth0')
-client_at.run_test('network_DisableInterface',
-                   iface_name='wlan0', tag='wlan0')
-
-if client_attributes.has_bluetooth:
-  client_at.run_test('network_DisableInterface',
-                     iface_name='hci0', tag='hci0')
-
-if client_attributes.has_80211n:
-  client_at.run_test('network_WiFiCaps')
-
-# Expect time is accurate within 1 minute from the NTP server.
-client_at.run_test('platform_AccurateTime',
-                   constraints=['seconds_offset < 60'])
-
-if not client_attributes.has_resume_bug:
-   client_at.run_test('power_Resume')
+job.parallel_on_machines(run_tests, machines)
