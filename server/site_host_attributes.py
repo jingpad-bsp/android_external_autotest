@@ -96,7 +96,9 @@ class HostAttributes(object):
                 value = True
             elif value == 'False':
                 value = False
-            elif splitnames[1] == 'string':
+            elif splitnames[1] == 'string' and len(splitnames) > 2:
+                value = ','.join(splitnames[2:])
+            else:
                 logging.info('Non-attribute string "%s" is ignored' % attribute)
                 continue
             setattr(self, splitnames[0], value)
