@@ -29,6 +29,7 @@ TESTS = [
   ('login_Backdoor', {'creds': '$backdoor'}),
   ('login_CryptohomeIncognitoMounted', {}),
   ('login_CryptohomeMounted', {}),
+  ('login_BadAuthentication', {}),
   ('login_LoginSuccess', {}),
   ('login_RemoteLogin', {}),
   ('network_DisableInterface', {'iface_name': 'wlan0',

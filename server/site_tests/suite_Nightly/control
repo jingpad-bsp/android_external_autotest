@@ -46,7 +46,6 @@ TESTS = [
   ('hardware_StorageFio', {}),
   ('logging_KernelCrash', {}),
   ('logging_UserCrash', {}),
-  ('login_BadAuthentication', {}),
   ('login_CryptohomeUnmounted', {}),
   ('login_CryptohomeUnmounted', {'creds': '$backdoor',
                                  'is_incognito': True,
