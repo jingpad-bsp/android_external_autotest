@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-{ "name":"CheckSGI40", 
+{ "name":"CheckSGI40",
+  "skip_test":"Needs a kernel enhancement",
   "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"5240", "ht40":None, "puren":None,
