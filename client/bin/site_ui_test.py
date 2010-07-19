@@ -40,6 +40,10 @@ class UITest(bin_test.test):
     username = None
     password = None
 
+    def __init__(self, job, bindir, outputdir):
+        self._dns = {}  # for saving/restoring dns entries
+        bin_test.test.__init__(self, job, bindir, outputdir)
+
     def __is_screensaver(self, status):
         """Returns True if xscreensaver reports a matching status.
 
@@ -94,36 +98,6 @@ class UITest(bin_test.test):
             logging.error(error)
 
 
-    def __force_config_change(self):
-        """Force devices to pick up ipconfig changes
-        TODO(cmasone): take this out once ipconfig changes are realtime.
-        """
-        try:
-            self._flim.manager.DisableTechnology('wifi')
-        except dbus.exceptions.DBusException, error:
-            if (error._dbus_error_name !=
-                'org.chromium.flimflam.Error.AlreadyDisabled'):
-                raise error
-        try:
-            self._flim.manager.EnableTechnology('wifi')
-        except dbus.exceptions.DBusException, error:
-            if (error._dbus_error_name !=
-                'org.chromium.flimflam.Error.AlreadyEnabled'):
-                raise error
-        try:
-            self._flim.manager.DisableTechnology('ethernet')
-        except dbus.exceptions.DBusException, error:
-            if (error._dbus_error_name !=
-                'org.chromium.flimflam.Error.AlreadyDisabled'):
-                raise error
-        try:
-            self._flim.manager.EnableTechnology('ethernet')
-        except dbus.exceptions.DBusException, error:
-            if (error._dbus_error_name !=
-                'org.chromium.flimflam.Error.AlreadyEnabled'):
-                raise error
-
-
     def use_local_dns(self, dns_port=53):
         """Set all devices to use our in-process mock DNS server.
         """
@@ -135,13 +109,12 @@ class UITest(bin_test.test):
             properties = device.GetProperties()
             for path in properties['IPConfigs']:
                 ipconfig = self._flim.GetObjectInterface('IPConfig', path)
+
+                servers = ipconfig.GetProperties().get('NameServers', None)
+                if servers != None:
+                  self._dns[path] = ','.join(servers)
                 ipconfig.SetProperty('NameServers', '127.0.0.1')
-                ipconfig_properties = ipconfig.GetProperties()
-                logging.info('[ %s ]' % (ipconfig.object_path))
-                for key in ipconfig_properties.keys():
-                    logging.info('        %s = %s' %
-                                 (key, ipconfig_properties[key]))
-        self.__force_config_change()
+
         site_utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
             site_login.TimeoutError('Timed out waiting for DNS changes.'),
@@ -156,8 +129,8 @@ class UITest(bin_test.test):
             properties = device.GetProperties()
             for path in properties['IPConfigs']:
                 ipconfig = self._flim.GetObjectInterface('IPConfig', path)
-                ipconfig.ClearProperty('NameServers')
-        self.__force_config_change()
+                ipconfig.SetProperty('NameServers', self._dns[path])
+
         site_utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com',
                                            '127.0.0.1',
