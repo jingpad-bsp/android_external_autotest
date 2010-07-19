@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 { "name":"Perf24HT20",
+  "expect_failure":"Temporarily busted due to openwrt problem",
   "steps":[             # Channel 1, 6, 11
     [ "create",         { "type":"hostap" } ],
 
