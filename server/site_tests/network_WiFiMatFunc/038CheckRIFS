@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 { "name":"CheckRIFS",
+  "skip_test":"Needs a kernel enhancement + RIFS is optional",
   "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"5240", "ht":None, "puren":None,
