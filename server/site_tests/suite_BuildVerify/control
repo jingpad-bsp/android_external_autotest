@@ -35,7 +35,7 @@ TESTS = [
                                 'tag': 'wlan0'}),
   ('network_Ping', {}),
   ('platform_CleanShutdown', {}),
-  ('platform_FilePerms', {})
+  ('platform_FilePerms', {}),
   ('platform_OSLimits', {}),
   ('platform_PartitionCheck', {}),
   ('platform_Shutdown', {}),
