@@ -184,6 +184,11 @@ class WiFiTest(object):
         # Other cleanup steps might be optional, but this is mandatory
         self.client_netdump_stop({})
 
+
+    def write_keyvals(self, job):
+        job.write_perf_keyval(self.keyvals)
+
+
     def __get_ipaddr(self, host, ifnet):
         # XXX gotta be a better way to do this
         result = host.run("%s %s" % (self.client_cmd_ifconfig, ifnet))
@@ -212,10 +217,13 @@ class WiFiTest(object):
             params.get('assoc_timeout', self.deftimeout),
             params.get('config_timeout', self.deftimeout))).stdout.rstrip()
 
-        result_times = re.match("OK ([0-9\.])* ([0-9\.])* .*", result)
+        result_times = re.match("OK ([0-9\.]*) ([0-9\.]*) .*", result)
 
         self.keyvals['connect_config_s'] = result_times.group(1)
         self.keyvals['connect_assoc_s'] = result_times.group(2)
+        for k in ('multiple_attempts', 'clear_error', 'fast_fail'):
+            if re.search(k, result) is not None:
+                self.keyvals[k] = 'true'
 
         print "%s: %s" % (self.name, result)
 
@@ -390,8 +398,10 @@ class WiFiTest(object):
         result = self.client.run("ping %s %s" % \
             (self.__ping_args(params), ping_ip), timeout=3*int(count))
 
-        self.__print_pingstats("client_ping ",
-            self.__get_pingstats(result.stdout))
+        stats = self.__get_pingstats(result.stdout)
+        for k,v in stats.iteritems():
+            self.keyvals['client_ping_' + k] = v
+        self.__print_pingstats("client_ping ", stats)
 
 
     def client_ping_bg(self, params):
@@ -420,8 +430,10 @@ class WiFiTest(object):
         result = self.server.run("ping %s %s" % \
             (self.__ping_args(params), ping_ip), timeout=3*int(count))
 
-        self.__print_pingstats("server_ping ",
-            self.__get_pingstats(result.stdout))
+        stats = self.__get_pingstats(result.stdout)
+        for k,v in stats.iteritems():
+            self.keyvals['server_ping_' + k] = v
+        self.__print_pingstats("server_ping ", stats)
 
 
     def server_ping_bg(self, params):
@@ -558,7 +570,7 @@ class WiFiTest(object):
     def __create_netdump_dev(self, devname='mon0'):
         self.client.run("%s dev %s del || /bin/true" % (self.client_cmd_iw,
                                                         devname))
-        self.client.run("%s dev %s interface add %s type monitor" % 
+        self.client.run("%s dev %s interface add %s type monitor" %
                         (self.client_cmd_iw, self.client_wlanif, devname))
         self.client.run("%s %s up" % (self.client_cmd_ifconfig, devname))
         return devname
