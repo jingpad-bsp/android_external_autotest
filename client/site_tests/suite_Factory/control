@@ -196,7 +196,7 @@ def make_run_subtest(dargs_map):
 
 def step_reboot_seq(i, run_subtest):
     if i < _REBOOT_SEQ_ITERATIONS:
-        job.next_step_prepend([step_reboot_seq, i + 1, tag])
+        job.next_step_prepend([step_reboot_seq, i + 1, run_subtest])
         factory.log('rebooting (iteration %d)' % i)
         time.sleep(5)
         job.reboot()
