@@ -14,6 +14,7 @@
     'part_id_chipset': ['*'],
     'part_id_chrontel': ['*'],
     'part_id_cpu': ['*'],
+    'part_id_display_panel': ['*'],
     'part_id_embedded_controller': ['*'],
     'part_id_ethernet': ['*'],
     'part_id_flash_chip': ['*'],

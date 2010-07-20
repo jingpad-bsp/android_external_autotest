@@ -15,6 +15,7 @@ class hardware_Components(test.test):
         'part_id_audio_codec',
         'part_id_bios',
         'part_id_cpu',
+        'part_id_display_panel',
         'part_id_embedded_controller',
         'part_id_ethernet',
         'part_id_flash_chip',
@@ -78,6 +79,13 @@ class hardware_Components(test.test):
 
     def get_part_id_cpu(self):
         cmd = 'grep -m 1 \'model name\' /proc/cpuinfo | sed s/.\*://'
+        part_id = utils.system_output(cmd).strip()
+        return part_id
+
+
+    def get_part_id_display_panel(self):
+        cmd = ('get-edid | parse-edid | grep ModelName | '
+               'sed \'s/^.*ModelName "\(.*\)"$/\\1/\'')
         part_id = utils.system_output(cmd).strip()
         return part_id
 
