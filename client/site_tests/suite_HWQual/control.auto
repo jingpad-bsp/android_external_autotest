@@ -79,13 +79,13 @@ job.run_test('audiovideo_V4L2')
 # RealTimeComm
 job.run_test('realtimecomm_GTalkPlayground',
              constraints=[
-                 'fps_gtalk_down >= 22.0',
-                 'fps_gtalk_up >= 24.0',
+                 'fps_gtalk_down >= 28.0',
+                 'fps_gtalk_up >= 29.5',
              ])
 job.run_test('realtimecomm_GTalkAudioPlayground',
              constraints=[
-                 'ctime_gtalk + stime_gtalk < 40',
-                 'ctime_pulse + stime_pulse < 25',
+                 'ctime_gtalk + stime_gtalk < 30',
+                 'ctime_pulse + stime_pulse < 20',
              ])
 
 # Communications
