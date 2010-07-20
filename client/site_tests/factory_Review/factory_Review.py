@@ -29,8 +29,6 @@ class factory_Review(test.test):
     version = 1
 
     def key_release_callback(self, widget, event):
-        char = event.keyval in range(32,127) and chr(event.keyval) or None
-        factory.log('key_release %s(%s)' % (event.keyval, char))
         self._ft_state.exit_on_trigger(event)
         return True
 
@@ -53,13 +51,23 @@ class factory_Review(test.test):
         passed = status_map.filter(ful.PASSED)
         failed = status_map.filter(ful.FAILED)
 
-        label = ful.make_label('UNTESTED=%d\n' % len(untested) +
-                               'PASSED=%d\n' % len(passed) +
-                               'FAILED=%d\n' % len(failed))
+        top_label = ful.make_label('UNTESTED=%d\t' % len(untested) +
+                               'PASSED=%d\t' % len(passed) +
+                               'FAILED=%d' % len(failed))
+
+        failed_msgs_map = [(t, status_map.lookup_error(t)) for t in failed]
+        failure_report_list = ['%s : %s' % (t.label_en, e)
+                               for t, e in failed_msgs_map]
+        failure_report = ful.make_label('\n'.join(failure_report_list))
+
+        vbox = gtk.VBox()
+        vbox.set_spacing(20)
+        vbox.pack_start(top_label, False, False)
+        vbox.pack_start(failure_report, False, False)
 
         test_widget = gtk.EventBox()
         test_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        test_widget.add(label)
+        test_widget.add(vbox)
 
         self._ft_state.run_test_widget(
             test_widget=test_widget,

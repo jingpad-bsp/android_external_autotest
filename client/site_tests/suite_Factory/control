@@ -212,7 +212,7 @@ def step_runin(ui, run_subtest):
     run_subtest('hardware_SAT')
     job.drop_caches_between_iterations = False
     run_subtest('graphics_GLBench')
-    step_reboot_seq(0, dargs_map)
+    step_reboot_seq(0, run_subtest)
 
 
 def step_init():
