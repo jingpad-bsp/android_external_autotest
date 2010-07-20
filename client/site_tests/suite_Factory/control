@@ -190,29 +190,29 @@ test_map = factory.make_test_map(test_list)
 trigger_set = factory.make_trigger_set(test_list)
 
 
-def make_run_subtest(dargs_map):
-    return lambda n: job.run_test(n, **dargs_map[n])
+def run_subtest(name, dargs_map):
+    job.run_test(name, **dargs_map[name])
 
 
-def step_reboot_seq(i, run_subtest):
+def step_reboot_seq(dargs_map, i=0):
     if i < _REBOOT_SEQ_ITERATIONS:
-        job.next_step_prepend([step_reboot_seq, i + 1, run_subtest])
+        job.next_step_prepend([step_reboot_seq, dargs_map, i + 1])
         factory.log('rebooting (iteration %d)' % i)
         time.sleep(5)
         job.reboot()
     else:
-        run_subtest('factory_RebootStub')
+        run_subtest('factory_RebootStub', dargs_map)
         step_init()
 
 
-def step_runin(ui, run_subtest):
-    run_subtest('hardware_Components')
-    run_subtest('hardware_GPIOSwitches')
+def step_runin(ui, dargs_map):
+    run_subtest('hardware_Components', dargs_map)
+    run_subtest('hardware_GPIOSwitches', dargs_map)
     job.drop_caches_between_iterations = True
-    run_subtest('hardware_SAT')
+    run_subtest('hardware_SAT', dargs_map)
     job.drop_caches_between_iterations = False
-    run_subtest('graphics_GLBench')
-    step_reboot_seq(0, run_subtest)
+    run_subtest('graphics_GLBench', dargs_map)
+    step_reboot_seq(dargs_map)
 
 
 def step_init():
@@ -252,13 +252,7 @@ def step_init():
                              for st in test.automated_seq)
             for i in dargs_map:
                 dargs_map[i].update(tag=tag)
-            # Why run_subtest needs to be defined in this way is still
-            # somewhat mysterious -- basically it does not work any
-            # other way, python is maybe doing some lazy evaluation of
-            # dargs?  If someone understands this and can write a
-            # better comment here, please do.
-            run_subtest = make_run_subtest(dargs_map)
-            exec('%s(ui, run_subtest)' % (test.formal_name))
+            exec('%s(ui, dargs_map)' % (test.formal_name))
             result = None
         else:
             dargs = test.dargs
