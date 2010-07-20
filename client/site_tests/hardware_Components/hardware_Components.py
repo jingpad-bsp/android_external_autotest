@@ -183,6 +183,9 @@ class hardware_Components(test.test):
 
 
     def check_existence_part_id_chrontel(self, part_id):
+        if part_id == self._not_present:
+            return True
+
         if part_id == 'ch7036':
             grep_cmd = 'grep i2c_dev /proc/modules'
             i2c_loaded = (utils.system(grep_cmd, ignore_status=True) == 0)
@@ -195,6 +198,7 @@ class hardware_Components(test.test):
             if not i2c_loaded:
                 utils.system('modprobe -r i2c_dev')
             return present
+
         return False
 
 
@@ -242,33 +246,40 @@ class hardware_Components(test.test):
 
 
     def run_once(self, approved_db='approved_components'):
-        self._system = {}
-        self._failures = {}
+        all_failures = ''
+        for db in approved_db.split():
+            self._system = {}
+            self._failures = {}
 
-        approved_db = os.path.join(self.bindir, approved_db)
-        if not os.path.exists(approved_db):
-            raise error.TestError('Unable to find approved_db: %s' %
-                                  approved_db)
+            db = os.path.join(self.bindir, db)
+            if not os.path.exists(db):
+                raise error.TestError('Unable to find approved db: %s' % db)
 
-        self._approved = eval(utils.read_file(approved_db))
-        logging.debug('Approved DB: %s', self.pformat(self._approved))
+            self._approved = eval(utils.read_file(db))
+            logging.debug('Approved DB: %s', self.pformat(self._approved))
 
-        for cid in self._cids:
-            self.check_component(cid, getattr(self, 'get_' + cid)())
+            for cid in self._cids:
+                self.check_component(cid, getattr(self, 'get_' + cid)())
 
-        for cid in self._pci_cids:
-            self.check_approved_part_id_existence(cid, type='pci')
+            for cid in self._pci_cids:
+                self.check_approved_part_id_existence(cid, type='pci')
 
-        for cid in self._usb_cids:
-            self.check_approved_part_id_existence(cid, type='usb')
+            for cid in self._usb_cids:
+                self.check_approved_part_id_existence(cid, type='usb')
 
-        for cid in self._check_existence_cids:
-            self.check_approved_part_id_existence(cid, type='others')
+            for cid in self._check_existence_cids:
+                self.check_approved_part_id_existence(cid, type='others')
 
-        logging.debug('System: %s', self.pformat(self._system))
+            logging.debug('System: %s', self.pformat(self._system))
 
-        outdb = os.path.join(self.resultsdir, 'system_components')
-        utils.open_write_close(outdb, self.pformat(self._system))
+            outdb = os.path.join(self.resultsdir, 'system_components')
+            utils.open_write_close(outdb, self.pformat(self._system))
 
-        if self._failures:
-            raise error.TestFail(self.pformat(self._failures))
+            if self._failures:
+                all_failures += 'Approved DB: %s' % db
+                all_failures += self.pformat(self._failures)
+            else:
+                # Exit if one of DBs is matched.
+                return
+
+        raise error.TestFail(all_failures)
