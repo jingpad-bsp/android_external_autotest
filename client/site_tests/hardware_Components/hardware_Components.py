@@ -96,9 +96,9 @@ class hardware_Components(test.test):
         parts = []
         res = utils.system_output('superiotool', ignore_status=True).split('\n')
         for line in res:
-          match = re.search(r'Found (.*) at', line)
-          if match:
-            parts.append(match.group(1))
+            match = re.search(r'Found (.*) at', line)
+            if match:
+                parts.append(match.group(1))
         part_id = ", ".join(parts)
         return part_id
 
@@ -113,11 +113,11 @@ class hardware_Components(test.test):
         vendor_file = '/sys/class/net/eth0/device/vendor'
         part_file = '/sys/class/net/eth0/device/device'
         if os.path.exists(part_file) and os.path.exists(vendor_file):
-          vendor_id = utils.read_one_line(vendor_file).replace('0x', '')
-          part_id = utils.read_one_line(part_file).replace('0x', '')
-          return "%s:%s" % (vendor_id, part_id)
+            vendor_id = utils.read_one_line(vendor_file).replace('0x', '')
+            part_id = utils.read_one_line(part_file).replace('0x', '')
+            return "%s:%s" % (vendor_id, part_id)
         else:
-          return self._not_present
+            return self._not_present
 
 
     def get_part_id_flash_chip(self):
@@ -126,17 +126,21 @@ class hardware_Components(test.test):
         parts = []
         lines = utils.system_output('flashrom', ignore_status=True).split('\n')
         for line in lines:
-          match = re.search(r'Found chip "(.*)" .* at physical address ', line)
-          if match:
-            parts.append(match.group(1))
+            match = re.search(r'Found chip "(.*)" .* at physical address ',
+                              line)
+            if match:
+                parts.append(match.group(1))
         part_id = ", ".join(parts)
         return part_id
 
 
     def get_part_id_hwqual(self):
-        cmd = 'cat /sys/devices/platform/chromeos_acpi/HWID'
-        part_id = utils.system_output(cmd).strip()
-        return part_id
+        hwid_file = '/sys/devices/platform/chromeos_acpi/HWID'
+        if os.path.exists(hwid_file):
+            part_id = utils.read_one_line(hwid_file)
+            return part_id
+        else:
+            return self._not_present
 
 
     def get_part_id_storage(self):
