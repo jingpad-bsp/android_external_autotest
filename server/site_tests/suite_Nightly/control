@@ -59,6 +59,7 @@ TESTS = [
 #  ('ltp', {}),
   ('network_UdevRename', {}),
   ('platform_AccurateTime', {'constraints': ['seconds_offset < 60']}),
+  ('platform_CleanShutdown', {}),
   ('platform_DaemonsRespawn', {}),
   ('platform_DiskIterate', {}),
   ('platform_FileNum', {}),
