@@ -25,6 +25,7 @@
     'part_id_webcam': ['*'],
     'part_id_wireless': ['*'],
     'vendor_id_touchpad': ['*'],
+    'ver_rw_firmware': ['*'],
 }
 
 ###  Local Variables:

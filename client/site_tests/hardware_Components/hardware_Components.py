@@ -6,6 +6,7 @@ import hashlib, logging, os, pprint, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
+from autotest_lib.client.common_lib import site_vblock
 
 
 class hardware_Components(test.test):
@@ -23,6 +24,7 @@ class hardware_Components(test.test):
         'part_id_storage',
         'part_id_wireless',
         'vendor_id_touchpad',
+        'ver_rw_firmware',
     ]
     _pci_cids = [
         'part_id_chipset',
@@ -227,6 +229,10 @@ class hardware_Components(test.test):
 
 
     def get_hash_ro_firmware(self):
+        """
+        Returns a hash of Read Only firmware parts,
+        to confirm we have proper keys / boot code / recovery image installed.
+        """
         # hash_ro_list: RO section to be hashed
         hash_ro_list = ['FV_BSTUB', 'FV_GBB', 'FVDEV']
         flashrom = flashrom_util.flashrom_util()
@@ -247,6 +253,35 @@ class hardware_Components(test.test):
         if not hash_src:
             raise error.TestError('Invalid hash source from flashrom.')
         return hashlib.sha256(hash_src).hexdigest()
+
+
+    def get_ver_rw_firmware(self):
+        """
+        Returns the version of Read-Write (writable) firmware from VBOOT
+        section. If A/B has different version, that means this system
+        needs a reboot + firmwar update so return value is a "error report"
+        in the form "A=x, B=y".
+        """
+        versions = [None, None]
+        section_names = ['VBOOTA', 'VBOOTB']
+        flashrom = flashrom_util.flashrom_util()
+        if not flashrom.select_bios_flashrom():
+            raise error.TestError('Cannot select BIOS flashrom')
+        base_img = flashrom.read_whole()
+        flashrom_size = len(base_img)
+        layout = flashrom.detect_chromeos_bios_layout(flashrom_size)
+        if not layout:
+            raise error.TestError('Cannot detect ChromeOS flashrom laout')
+        for index, name in enumerate(section_names):
+            data = flashrom.get_section(base_img, layout, name)
+            block = site_vblock.unpack_verification_block(data)
+            ver = block['VbFirmwarePreambleHeader']['firmware_version']
+            versions[index] = ver
+        # we embed error reports in return value.
+        assert len(versions) == 2
+        if versions[0] != versions[1]:
+            return 'A=%d, B=%d' % (versions[0], versions[1])
+        return '%d' % (versions[0])
 
 
     def pformat(self, obj):
