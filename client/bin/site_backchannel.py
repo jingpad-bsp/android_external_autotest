@@ -50,3 +50,5 @@ def setup(interface='eth0', create_ssh_routes=True, additional_routes=[]):
       # Remove backchannel file flag so system reverts to normal on reboot.
       if os.path.isfile(BACKCHANNEL_FILE):
         os.remove(BACKCHANNEL_FILE)
+
+    return True
