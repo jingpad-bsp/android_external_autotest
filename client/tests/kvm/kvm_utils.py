@@ -21,17 +21,23 @@ def dump_env(obj, filename):
     file.close()
 
 
-def load_env(filename, default={}):
+def load_env(filename, version):
     """
-    Load KVM test environment from an environment file.
+    Load KVM test environment from an env file.
+    If the version recorded in the file is lower than version, return an empty
+    env.  If some other error occurs during unpickling, return an empty env.
 
-    @param filename: Path to a file where the environment was dumped to.
+    @param filename: Path to an env file.
     """
+    default = {"version": version}
     try:
         file = open(filename, "r")
-        obj = cPickle.load(file)
+        env = cPickle.load(file)
         file.close()
-        return obj
+        if env.get("version", 0) < version:
+            logging.warn("Incompatible env file found. Not using it.")
+            return default
+        return env
     # Almost any exception can be raised during unpickling, so let's catch
     # them all
     except Exception, e:
@@ -250,19 +256,20 @@ def verify_ip_address_ownership(ip, macs, timeout=10.0):
     regex = re.compile(r"\b%s\b.*\b(%s)\b" % (ip, mac_regex), re.IGNORECASE)
 
     # Check the ARP cache
-    o = commands.getoutput("/sbin/arp -n")
+    o = commands.getoutput("%s -n" % find_command("arp"))
     if regex.search(o):
         return True
 
     # Get the name of the bridge device for arping
-    o = commands.getoutput("/sbin/ip route get %s" % ip)
+    o = commands.getoutput("%s route get %s" % (find_command("ip"), ip))
     dev = re.findall("dev\s+\S+", o, re.IGNORECASE)
     if not dev:
         return False
     dev = dev[0].split()[-1]
 
     # Send an ARP request
-    o = commands.getoutput("/sbin/arping -f -c 3 -I %s %s" % (dev, ip))
+    o = commands.getoutput("%s -f -c 3 -I %s %s" %
+                           (find_command("arping"), dev, ip))
     return bool(regex.search(o))
 
 
@@ -321,6 +328,15 @@ def env_unregister_vm(env, name):
 
 
 # Utility functions for dealing with external processes
+
+def find_command(cmd):
+    for dir in ["/usr/local/sbin", "/usr/local/bin",
+                "/usr/sbin", "/usr/bin", "/sbin", "/bin"]:
+        file = os.path.join(dir, cmd)
+        if os.path.exists(file):
+            return file
+    raise ValueError('Missing command: %s' % cmd)
+
 
 def pid_exists(pid):
     """

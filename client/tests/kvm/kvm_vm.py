@@ -6,7 +6,7 @@ Utility classes and functions to handle Virtual Machine creation using qemu.
 """
 
 import time, socket, os, logging, fcntl, re, commands, glob
-import kvm_utils, kvm_subprocess, kvm_monitor
+import kvm_utils, kvm_subprocess, kvm_monitor, rss_file_transfer
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
 
@@ -214,16 +214,18 @@ class VM:
         def add_smp(help, smp):
             return " -smp %s" % smp
 
-        def add_cdrom(help, filename, index=2):
+        def add_cdrom(help, filename, index=None):
             if has_option(help, "drive"):
-                return " -drive file='%s',index=%d,media=cdrom" % (filename,
-                                                                   index)
+                cmd = " -drive file='%s',media=cdrom" % filename
+                if index is not None: cmd += ",index=%s" % index
+                return cmd
             else:
                 return " -cdrom '%s'" % filename
 
-        def add_drive(help, filename, format=None, cache=None, werror=None,
-                      serial=None, snapshot=False, boot=False):
+        def add_drive(help, filename, index=None, format=None, cache=None,
+                      werror=None, serial=None, snapshot=False, boot=False):
             cmd = " -drive file='%s'" % filename
+            if index is not None: cmd += ",index=%s" % index
             if format: cmd += ",if=%s" % format
             if cache: cmd += ",cache=%s" % cache
             if werror: cmd += ",werror=%s" % werror
@@ -241,7 +243,8 @@ class VM:
             return cmd
 
         def add_net(help, vlan, mode, ifname=None, script=None,
-                    downscript=None, netdev_id=None):
+                    downscript=None, tftp=None, bootfile=None, hostfwd=[],
+                    netdev_id=None):
             if has_option(help, "netdev"):
                 cmd = " -netdev %s,id=%s" % (mode, netdev_id)
             else:
@@ -250,16 +253,39 @@ class VM:
                 if ifname: cmd += ",ifname='%s'" % ifname
                 if script: cmd += ",script='%s'" % script
                 cmd += ",downscript='%s'" % (downscript or "no")
+            elif mode == "user":
+                if tftp and "[,tftp=" in help:
+                    cmd += ",tftp='%s'" % tftp
+                if bootfile and "[,bootfile=" in help:
+                    cmd += ",bootfile='%s'" % bootfile
+                if "[,hostfwd=" in help:
+                    for host_port, guest_port in hostfwd:
+                        cmd += ",hostfwd=tcp::%s-:%s" % (host_port, guest_port)
             return cmd
 
         def add_floppy(help, filename):
             return " -fda '%s'" % filename
 
         def add_tftp(help, filename):
-            return " -tftp '%s'" % filename
+            # If the new syntax is supported, don't add -tftp
+            if "[,tftp=" in help:
+                return ""
+            else:
+                return " -tftp '%s'" % filename
+
+        def add_bootp(help, filename):
+            # If the new syntax is supported, don't add -bootp
+            if "[,bootfile=" in help:
+                return ""
+            else:
+                return " -bootp '%s'" % filename
 
         def add_tcp_redir(help, host_port, guest_port):
-            return " -redir tcp:%s::%s" % (host_port, guest_port)
+            # If the new syntax is supported, don't add -redir
+            if "[,hostfwd=" in help:
+                return ""
+            else:
+                return " -redir tcp:%s::%s" % (host_port, guest_port)
 
         def add_vnc(help, vnc_port):
             return " -vnc :%d" % (vnc_port - 5900)
@@ -338,12 +364,20 @@ class VM:
                 continue
             qemu_cmd += add_drive(help,
                                   get_image_filename(image_params, root_dir),
+                                  image_params.get("drive_index"),
                                   image_params.get("drive_format"),
                                   image_params.get("drive_cache"),
                                   image_params.get("drive_werror"),
                                   image_params.get("drive_serial"),
                                   image_params.get("image_snapshot") == "yes",
                                   image_params.get("image_boot") == "yes")
+
+        redirs = []
+        for redir_name in kvm_utils.get_sub_dict_names(params, "redirs"):
+            redir_params = kvm_utils.get_sub_dict(params, redir_name)
+            guest_port = int(redir_params.get("guest_port"))
+            host_port = self.redirs.get(guest_port)
+            redirs += [(host_port, guest_port)]
 
         vlan = 0
         for nic_name in kvm_utils.get_sub_dict_names(params, "nics"):
@@ -357,13 +391,18 @@ class VM:
             # Handle the '-net tap' or '-net user' part
             script = nic_params.get("nic_script")
             downscript = nic_params.get("nic_downscript")
+            tftp = nic_params.get("tftp")
             if script:
                 script = kvm_utils.get_path(root_dir, script)
             if downscript:
                 downscript = kvm_utils.get_path(root_dir, downscript)
+            if tftp:
+                tftp = kvm_utils.get_path(root_dir, tftp)
             qemu_cmd += add_net(help, vlan, nic_params.get("nic_mode", "user"),
                                 nic_params.get("nic_ifname"),
-                                script, downscript, self.netdev_id[vlan])
+                                script, downscript, tftp,
+                                nic_params.get("bootp"), redirs,
+                                self.netdev_id[vlan])
             # Proceed to next NIC
             vlan += 1
 
@@ -375,18 +414,13 @@ class VM:
         if smp:
             qemu_cmd += add_smp(help, smp)
 
-        iso = params.get("cdrom")
-        if iso:
-            iso = kvm_utils.get_path(root_dir, iso)
-            qemu_cmd += add_cdrom(help, iso)
-
-        # Even though this is not a really scalable approach,
-        # it doesn't seem like we are going to need more than
-        # 2 CDs active on the same VM.
-        iso_extra = params.get("cdrom_extra")
-        if iso_extra:
-            iso_extra = kvm_utils.get_path(root_dir, iso_extra)
-            qemu_cmd += add_cdrom(help, iso_extra, 3)
+        cdroms = kvm_utils.get_sub_dict_names(params, "cdroms")
+        for cdrom in cdroms:
+            cdrom_params = kvm_utils.get_sub_dict(params, cdrom)
+            iso = cdrom_params.get("cdrom")
+            if iso:
+                qemu_cmd += add_cdrom(help, kvm_utils.get_path(root_dir, iso),
+                                      cdrom_params.get("drive_index"))
 
         # We may want to add {floppy_otps} parameter for -fda
         # {fat:floppy:}/path/. However vvfat is not usually recommended.
@@ -396,9 +430,13 @@ class VM:
             qemu_cmd += add_floppy(help, floppy)
 
         tftp = params.get("tftp")
-        if tftp and nic_params.get("nic_mode") == "user":
+        if tftp:
             tftp = kvm_utils.get_path(root_dir, tftp)
             qemu_cmd += add_tftp(help, tftp)
+
+        bootp = params.get("bootp")
+        if bootp:
+            qemu_cmd += add_bootp(help, bootp)
 
         kernel = params.get("kernel")
         if kernel:
@@ -414,10 +452,7 @@ class VM:
             initrd = kvm_utils.get_path(root_dir, initrd)
             qemu_cmd += add_initrd(help, initrd)
 
-        for redir_name in kvm_utils.get_sub_dict_names(params, "redirs"):
-            redir_params = kvm_utils.get_sub_dict(params, redir_name)
-            guest_port = int(redir_params.get("guest_port"))
-            host_port = self.redirs.get(guest_port)
+        for host_port, guest_port in redirs:
             qemu_cmd += add_tcp_redir(help, host_port, guest_port)
 
         if params.get("display") == "vnc":
@@ -647,8 +682,16 @@ class VM:
                 self.monitors += [monitor]
 
             # Get the output so far, to see if we have any problems with
-            # hugepage setup.
+            # KVM modules or with hugepage setup.
             output = self.process.get_output()
+
+            if re.search("Could not initialize KVM", output, re.IGNORECASE):
+                logging.error("Could not initialize KVM; "
+                              "qemu command:\n%s" % qemu_command)
+                logging.error("Output:" + kvm_utils.format_str_for_message(
+                              self.process.get_output()))
+                self.destroy()
+                return False
 
             if "alloc_mem_area" in output:
                 logging.error("Could not allocate hugepage memory; "
@@ -783,14 +826,6 @@ class VM:
         Return True if the qemu process is dead.
         """
         return not self.process or not self.process.is_alive()
-
-
-    def kill_tail_thread(self):
-        """
-        Stop the tailing thread which reports the output of qemu.
-        """
-        if self.process:
-            self.process.kill_tail_thread()
 
 
     def get_params(self):
@@ -980,17 +1015,22 @@ class VM:
         client = self.params.get("file_transfer_client")
         address = self.get_address(nic_index)
         port = self.get_port(int(self.params.get("file_transfer_port")))
-        log_filename = ("scp-%s-%s.log" %
-                        (self.name, kvm_utils.generate_random_string(4)))
 
         if not address or not port:
             logging.debug("IP address or port unavailable")
             return None
 
         if client == "scp":
+            log_filename = ("scp-%s-%s.log" %
+                            (self.name, kvm_utils.generate_random_string(4)))
             return kvm_utils.scp_to_remote(address, port, username, password,
                                            local_path, remote_path,
                                            log_filename, timeout)
+        elif client == "rss":
+            c = rss_file_transfer.FileUploadClient(address, port)
+            c.upload(local_path, remote_path, timeout)
+            c.close()
+            return True
 
 
     def copy_files_from(self, remote_path, local_path, nic_index=0, timeout=600):
@@ -1008,17 +1048,22 @@ class VM:
         client = self.params.get("file_transfer_client")
         address = self.get_address(nic_index)
         port = self.get_port(int(self.params.get("file_transfer_port")))
-        log_filename = ("scp-%s-%s.log" %
-                        (self.name, kvm_utils.generate_random_string(4)))
 
         if not address or not port:
             logging.debug("IP address or port unavailable")
             return None
 
         if client == "scp":
+            log_filename = ("scp-%s-%s.log" %
+                            (self.name, kvm_utils.generate_random_string(4)))
             return kvm_utils.scp_from_remote(address, port, username, password,
                                              remote_path, local_path,
                                              log_filename, timeout)
+        elif client == "rss":
+            c = rss_file_transfer.FileDownloadClient(address, port)
+            c.download(remote_path, local_path, timeout)
+            c.close()
+            return True
 
 
     def serial_login(self, timeout=10):
