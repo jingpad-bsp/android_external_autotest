@@ -35,6 +35,7 @@ class hardware_SsdDetection(test.test):
         path = self.autodir + '/deps/hdparm/sbin/'
         hdparm = utils.run(path + 'hdparm -I %s' % device)
 
+        # Check if device is a SSD
         match = re.search(r'Nominal Media Rotation Rate: (.+)$',
                           hdparm.stdout, re.MULTILINE)
         if match and match.group(1):
@@ -42,6 +43,21 @@ class hardware_SsdDetection(test.test):
                 raise error.TestFail('The main disk is not a SSD, '
                     'Rotation Rate: %s' % match.group(1))
         else:
-            raise error.TestNAError(
+            raise error.TestFail(
                 'Rotation Rate not reported from the device, '
                 'unable to ensure it is a SSD')
+        
+
+        # Check if SSD is > 8GB in size
+        match = re.search("device size with M = 1000\*1000: (.+) MBytes",
+                          hdparm.stdout, re.MULTILINE)
+        
+        if match and match.group(1):
+            size = int(match.group(1))
+            self.write_perf_keyval({"mb_ssd_device_size" : size})
+        else: 
+            raise error.TestFail(
+                'Device size info missing from the device')
+
+            
+
