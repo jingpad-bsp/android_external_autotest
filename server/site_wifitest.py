@@ -7,6 +7,7 @@ import common, fnmatch, logging, os, re, string, threading, time
 from autotest_lib.server import autotest, hosts, subcommand
 from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_linux_router
+from autotest_lib.server import site_host_attributes
 
 class NotImplemented(Exception):
     def __init__(self, what):
@@ -652,6 +653,9 @@ def read_wifi_testbed_config(file, client_addr=None, server_addr=None,
     fd = open(file)
     config = eval(fd.read())
 
+    # Read in attributes from host config database
+    client_attributes = site_host_attributes.HostAttributes(client_addr)
+
     # client must be reachable on the control network
     client = config['client']
     if client_addr is not None:
@@ -659,10 +663,14 @@ def read_wifi_testbed_config(file, client_addr=None, server_addr=None,
 
     # router must be reachable on the control network
     router = config['router']
+    if router_addr is None and hasattr(client_attributes, 'router_addr'):
+        router_addr = client_attributes.router_addr
     if router_addr is not None:
         router['addr'] = router_addr;
 
     server = config['server']
+    if server_addr is None and hasattr(client_attributes, 'server_addr'):
+        server_addr = client_attributes.server_addr
     if server_addr is not None:
         server['addr'] = server_addr;
     # TODO(sleffler) check for wifi_addr when no control address

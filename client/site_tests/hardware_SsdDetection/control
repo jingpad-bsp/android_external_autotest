@@ -16,4 +16,5 @@ This test uses hdparm to determine if the rotation rate properties match that of
 a solid state device.
 """
 
-job.run_test('hardware_SsdDetection')
+job.run_test('hardware_SsdDetection',
+              constraints=['mb_ssd_device_size >= 8000'])
