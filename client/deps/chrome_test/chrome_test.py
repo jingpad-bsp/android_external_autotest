@@ -11,8 +11,7 @@ version = 1
 
 def setup(top_dir):
     if 'CHROME_ORIGIN' not in os.environ.keys() or \
-       (os.environ['CHROME_ORIGIN'] != 'LOCAL_SOURCE' and
-        os.environ['CHROME_ORIGIN'] != 'SERVER_SOURCE'):
+       os.environ['CHROME_ORIGIN'] != 'LOCAL_SOURCE':
         logging.info('Skipping Chrome test resource setup for non-local builds')
         return
 
