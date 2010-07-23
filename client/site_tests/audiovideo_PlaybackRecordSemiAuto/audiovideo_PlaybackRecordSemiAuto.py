@@ -164,7 +164,7 @@ At maximum hardware input amplificaiton, for each channel of the device:
 <ol>
 <li>A short 1000Hz tone will be played to signal the start of recording.
 <li>A 500Hz tone will be played to signal the start of playback.
-<li>A 1.5 second sample will be recorded.
+<li>A 2 second sample will be recorded.
 </ol>
 
 <p>
@@ -944,15 +944,19 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
 
         self.do_signal_test_end()
 
-
-    def record_playback_sample(self, device, channel, duration=1.5):
+    # There is a lag between invocation of the recording process
+    # and when it actually starts recording. A 4sec "duration" makes a
+    # good default because it generates about 2sec worth of recording 
+    # when playing back the recording. 
+    def record_playback_sample(self, device, channel, duration=4):
         """Records a sample from the default input device and plays it back.
 
         Args:
             device: device info dictionary gotten from
                     enumerate_record devices()
             channel: Which channel to record from. "None" to specify all.
-            duration: How long to record in seconds.
+            duration: How long to record in seconds. 
+                      (Duration > 3sec to be discernable)
         """
         # Record a sample.
         try:
@@ -962,20 +966,23 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
                 record_args = ('--channels 1 --channel-map %s' %
                         device['channel_map'][channel])
             cmd = '%s -r %s %s' % (_PACAT_PATH, record_args, tmpfile)
-            logging.info('running %s' % cmd)
+            logging.info('running %s' % self.pacmd(cmd))
 
             signal_config = self.default_tone_config()
             signal_config['tone_length_sec'] = 0.3
             self.play_tone(signal_config, 1000)  # Signal record start.
             logging.info('Record now (%fs)' % duration)
-            job = utils.BgJob(cmd)
+            job = utils.BgJob(self.pacmd(cmd))
             time.sleep(duration)
+            # Recording job runs in background forever until nuked.
+            # Hence checking for error status is not useful,
+            # because it will always error out.
             utils.nuke_subprocess(job.sp)
 
             # Job should be dead already, so join with a very short timeout.
             utils.join_bg_jobs([job], timeout=1)
             result = job.result
-            if result.stdout or result.stderr:
+            if result.stdout:  # Don't check for stderr because job was nuked.
                 raise error.CmdError(
                     cmd, result,
                     'stdout: %s\nstderr: %s' % (result.stdout, result.stderr))

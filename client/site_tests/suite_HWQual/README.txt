@@ -161,6 +161,15 @@ Automated and Semi-Automated Test Runs
   $ ./server/autoserv -r results.teartest -m <DUT_IP> \
                   -c client/site_tests/suite_HWQual/control.teartest
 
+- Run audio test, with built-in speakers and microphone
+
+  $ ./server/autoserv -r results.audio -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.audio
+
+- Plug-in headphone and microphone, run audio test again
+
+  $ ./server/autoserv -r results.audio_ext -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.audio
 
 - Run the DUT on AC. Plug a power draw USB dongle in each USB port.
   Run the max power draw test:
