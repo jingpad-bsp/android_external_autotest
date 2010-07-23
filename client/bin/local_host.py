@@ -73,6 +73,9 @@ class LocalHost(hosts.Host):
 
         logging.info('Installing from %s to: %s' % (update_url, self.hostname))
 
+        self.run('echo "CHROMEOS_DEVSERVER=http://chromeosbuild_server" >> '
+                 '/mnt/stateful_partition/etc/lsb-release')
+
         # First, attempt dev & test tools update (which don't live on
         # the rootfs). This must succeed so that the newly installed
         # host is testable after we run the autoupdater.
