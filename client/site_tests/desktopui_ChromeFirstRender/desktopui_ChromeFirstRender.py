@@ -19,7 +19,7 @@ class desktopui_ChromeFirstRender(site_ui_test.UITest):
     def run_once(self):
         try:
             time.sleep(10)  # Wait for chrome to render.
-            start_time = self.__parse_uptime('/tmp/uptime-login-successful')
+            start_time = self.__parse_uptime('/tmp/uptime-login-success')
             end_time = self.__parse_uptime('/tmp/uptime-chrome-first-render')
             self.write_perf_keyval(
                 { 'seconds_chrome_first_tab': end_time - start_time })

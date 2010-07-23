@@ -32,8 +32,7 @@ class GoogleAuthServer(object):
 
         self._testServer = site_httpd.SecureHTTPListener(port=ssl_port,
                                                          cert_path=cert_path,
-                                                         key_path=key_path,
-                                                         docroot=None)
+                                                         key_path=key_path)
         sa = self._testServer.getsockname()
         logging.info('Serving HTTPS on %s, port %s' % (sa[0], sa[1]))
 
@@ -52,10 +51,9 @@ class GoogleAuthServer(object):
         self._issue_latch = self._testServer.add_wait_url(self._issue_token)
 
 
-        self._testHttpServer = site_httpd.HTTPListener(port=port,
-                                                       docroot=None)
+        self._testHttpServer = site_httpd.HTTPListener(port=port)
         self._testHttpServer.add_url_handler(self._test_over,
-                                         self.__test_over_responder)
+                                             self.__test_over_responder)
         self._over_latch = self._testHttpServer.add_wait_url(self._test_over)
 
 
