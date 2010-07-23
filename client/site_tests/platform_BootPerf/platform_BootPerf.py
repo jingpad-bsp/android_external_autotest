@@ -10,7 +10,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 class platform_BootPerf(test.test):
-    version = 1
+    version = 2
 
 
     def __parse_uptime(self, filename):
@@ -24,22 +24,21 @@ class platform_BootPerf(test.test):
         return float(vals[0])
 
 
-    def __parse_disk_login_prompt_ready(self, results):
-        filename = '/tmp/disk-login-prompt-ready'
+    def __parse_diskstat(self, filename):
         vals = []
         try:
             data = file(filename).read()
             vals = re.split(r' +', data.strip())
         except IOError:
             raise error.TestFail('Test is unable to read "%s"' % filename)
-        results['sectors_read_kernel_to_login'] = float(vals[2])
+        return float(vals[2])
 
 
     def __parse_firmware_boot_time(self, results):
         data = None
         try:
             # If the firmware boot time is not available, the file
-            # will not exists.
+            # will not exist.
             data = utils.read_one_line('/tmp/firmware-boot-time')
         except IOError:
             return
@@ -106,13 +105,25 @@ class platform_BootPerf(test.test):
         uptime_files = [
             ('seconds_kernel_to_startup', '/tmp/uptime-pre-startup'),
             ('seconds_kernel_to_startup_done', '/tmp/uptime-post-startup'),
+            ('seconds_kernel_to_x_started', '/tmp/uptime-x-started'),
+            ('seconds_kernel_to_chrome_exec', '/tmp/uptime-chrome-exec'),
+            ('seconds_kernel_to_chrome_main', '/tmp/uptime-chrome-main'),
             ('seconds_kernel_to_login', '/tmp/uptime-login-prompt-ready')]
 
         for resultname, filename in uptime_files:
             results[resultname] = self.__parse_uptime(filename)
 
+        diskstat_files = [
+            ('sectors_read_kernel_to_startup', '/tmp/disk-pre-startup'),
+            ('sectors_read_kernel_to_startup_done', '/tmp/disk-post-startup'),
+            ('sectors_read_kernel_to_chrome_exec', '/tmp/disk-chrome-exec'),
+            ('sectors_read_kernel_to_chrome_main', '/tmp/disk-chrome-main'),
+            ('sectors_read_kernel_to_login', '/tmp/disk-login-prompt-ready')]
+
+        for resultname, filename in diskstat_files:
+            results[resultname] = self.__parse_diskstat(filename)
+
         self.__parse_firmware_boot_time(results)
-        self.__parse_disk_login_prompt_ready(results)
         self.__parse_syslog(results, last_boot_was_reboot)
 
         if ('seconds_firmware_boot' in results and
