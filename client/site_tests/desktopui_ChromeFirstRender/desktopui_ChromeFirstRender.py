@@ -2,13 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re, time
-from autotest_lib.client.bin import site_ui_test
+import logging, os, re, time
+from autotest_lib.client.bin import site_login, site_ui_test, site_utils
 from autotest_lib.client.common_lib import error
 
 class desktopui_ChromeFirstRender(site_ui_test.UITest):
     version = 1
 
+
+    _LOGIN_SUCCESS_FILE = '/tmp/uptime-login-success'
+    _FIRST_RENDER_FILE = '/tmp/uptime-chrome-first-render'
 
     def __parse_uptime(self, target_file):
         data = file(target_file).read()
@@ -18,9 +21,15 @@ class desktopui_ChromeFirstRender(site_ui_test.UITest):
 
     def run_once(self):
         try:
-            time.sleep(10)  # Wait for chrome to render.
-            start_time = self.__parse_uptime('/tmp/uptime-login-success')
-            end_time = self.__parse_uptime('/tmp/uptime-chrome-first-render')
+            site_utils.poll_for_condition(
+                lambda: os.access(self._LOGIN_SUCCESS_FILE, os.F_OK),
+                site_login.TimeoutError('Timed out waiting for initial login'))
+            site_utils.poll_for_condition(
+                lambda: os.access(self._FIRST_RENDER_FILE, os.F_OK),
+                site_login.TimeoutError('Timed out waiting for initial render'))
+
+            start_time = self.__parse_uptime(self._LOGIN_SUCCESS_FILE)
+            end_time = self.__parse_uptime(self._FIRST_RENDER_FILE)
             self.write_perf_keyval(
                 { 'seconds_chrome_first_tab': end_time - start_time })
         except IOError, e:

@@ -29,6 +29,8 @@ CHROME_WINDOW_MAPPED_MAGIC_FILE = \
 
 DISABLE_BROWSER_RESTART_MAGIC_FILE = '/tmp/disable_chrome_restart'
 
+LOGIN_PROMPT_READY_MAGIC_FILE = '/tmp/uptime-login-prompt-ready'
+
 CREDENTIALS = {
     '$default': ['performance.test.account@gmail.com', 'perfsmurf'],
     '$backdoor': ['chronos@gmail.com', 'chronos'],

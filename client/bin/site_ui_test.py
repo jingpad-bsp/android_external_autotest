@@ -119,6 +119,7 @@ class UITest(bin_test.test):
             lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
             site_login.TimeoutError('Timed out waiting for DNS changes.'),
             10)
+        site_login.refresh_login_screen()
 
 
     def revert_dns(self):

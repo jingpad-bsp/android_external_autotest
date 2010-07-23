@@ -28,7 +28,7 @@ TESTS = [
   ('graphics_WindowManagerGraphicsCapture', {}),
   ('login_Backdoor', {'creds': '$backdoor'}),
   ('login_BadAuthentication', {}),
-  ('login_CryptohomeIncognitoMounted', {}),
+  ('login_CryptohomeIncognitoMounted', {'creds': '$backdoor'}),
   ('login_CryptohomeMounted', {}),
   ('login_LoginSuccess', {}),
   ('login_RemoteLogin', {}),

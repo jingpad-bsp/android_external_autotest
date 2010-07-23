@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, utils, signal, subprocess, time
+import errno, logging, os, utils, signal, subprocess, time
 from autotest_lib.client.bin import chromeos_constants, site_cryptohome
 from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib import error, site_ui
@@ -178,6 +178,22 @@ def wait_for_cryptohome(timeout=_DEFAULT_TIMEOUT):
         timeout=timeout)
 
 
+def wait_for_login_prompt(timeout=_DEFAULT_TIMEOUT):
+    """Wait the login prompt is on screen and ready
+
+    Args:
+        timeout: float number of seconds to wait
+
+    Raises:
+        TimeoutError: Login prompt didn't get up before timeout
+    """
+    site_utils.poll_for_condition(
+        lambda: os.access(
+            chromeos_constants.LOGIN_PROMPT_READY_MAGIC_FILE, os.F_OK),
+        TimeoutError('Timed out waiting for login prompt'),
+        timeout=timeout)
+
+
 def wait_for_screensaver(timeout=_DEFAULT_TIMEOUT):
     """Wait until xscreensaver is responding.
 
@@ -251,3 +267,25 @@ def refresh_window_manager(timeout=_DEFAULT_TIMEOUT):
     os.unlink(chromeos_constants.CHROME_WINDOW_MAPPED_MAGIC_FILE)
     utils.system('initctl restart window-manager')
     wait_for_window_manager()
+
+
+def refresh_login_screen(timeout=_DEFAULT_TIMEOUT):
+    """Clear any runtime state that chrome has built up at the login screen.
+
+    Args:
+        timeout: float number of seconds to wait
+
+    Raises:
+        UnexpectedCondition: called while already logged in
+        TimeoutError: chrome didn't start before timeout
+    """
+    if logged_in():
+        raise UnexpectedCondition('Already logged in')
+    try:
+      os.unlink(chromeos_constants.LOGIN_PROMPT_READY_MAGIC_FILE)
+    except OSError, e:
+      if e.errno != errno.ENOENT:
+        raise e
+    nuke_process_by_name(chromeos_constants.BROWSER, with_prejudice=True)
+    wait_for_browser()
+    wait_for_login_prompt()
