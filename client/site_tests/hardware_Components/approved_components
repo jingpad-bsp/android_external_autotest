@@ -7,6 +7,7 @@
     # value: a list of approved component IDs ('*' indicates any)
     'hash_ro_firmware': ['*'],
     'part_id_3g': ['*'],
+    'part_id_gps': ['*'],
     'part_id_audio_codec': ['*'],
     'part_id_bios': ['*'],
     'part_id_bluetooth': ['*'],

@@ -36,6 +36,7 @@ class hardware_Components(test.test):
         'part_id_cardreader',
         'part_id_webcam',
         'part_id_3g',
+        'part_id_gps',
     ]
     _check_existence_cids = [
         'part_id_chrontel',
