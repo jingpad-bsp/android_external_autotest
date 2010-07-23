@@ -2,10 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, shutil, time
-from autotest_lib.client.bin import site_ui_test, site_login
+import logging, os, shutil, sys, time
+from autotest_lib.client.bin import site_backchannel, site_ui_test, site_login
 from autotest_lib.client.common_lib import error, site_httpd, \
                             site_power_status, site_ui, utils
+
+# Workaround so flimflam.py doesn't need to be installed in the chroot.
+sys.path.append(os.environ.get('SYSROOT', '') + '/usr/lib/flimflam/test')
+# NB: /usr/local is temporary for compatibility
+sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
+import flimflam
+
 
 params_dict = {
     'test_time_ms': '_mseconds',
@@ -33,7 +40,8 @@ class power_LoadTest(site_ui_test.UITest):
                  should_scroll='true', should_scroll_up='true',
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', low_battery_threshold=3,
-                 verbose=True):
+                 verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
+                 wifi_pw=''):
 
         """
         percent_initial_charge_min: min battery charge at start of test
@@ -71,7 +79,26 @@ class power_LoadTest(site_ui_test.UITest):
             raise error.TestError('Initial charge (%f) less than min (%f)'
                       % (percent_initial_charge, percent_initial_charge_min))
 
-        if check_network and self._is_network_iface_running('eth0'):
+        # If force wifi enabled, convert eth0 to backchannel and connect to the
+        # specified WiFi AP.
+        if force_wifi:
+            # If backchannel is already running, don't run it again.
+            if not site_backchannel.setup():
+                raise error.TestError('Could not setup Backchannel network.')
+
+            # Note: FlimFlam is flaky after Backchannel setup sometimes. It may
+            # take several tries for WiFi to connect. More experimentation with
+            # the retry settings here may be necessary if this becomes a source
+            # of test flakiness in the future.
+            if not flimflam.FlimFlam().ConnectService(retry=True,
+                                                      service_type='wifi',
+                                                      ssid=wifi_ap,
+                                                      security=wifi_sec,
+                                                      passphrase=wifi_pw,
+                                                      mode='managed')[0]:
+                raise error.TestError('Could not connect to WiFi network.')
+
+        if check_network and site_backchannel.is_network_iface_running('eth0'):
             raise error.TestError(
                 'Ethernet interface is active. Please remove Ethernet cable')
 
@@ -219,16 +246,6 @@ class power_LoadTest(site_ui_test.UITest):
         os.system('start screen-locker')
         if site_login.logged_in():
             site_login.attempt_logout()
-
-    def _is_network_iface_running(self, name):
-        try:
-            out = utils.system_output('ifconfig %s' % name)
-        except error.CmdError, e:
-            logging.info(e)
-            return False
-
-        match = re.search('RUNNING', out, re.S)
-        return match
 
 
     def _percent_current_charge(self):
