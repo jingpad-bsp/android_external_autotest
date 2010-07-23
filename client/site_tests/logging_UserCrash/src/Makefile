@@ -2,23 +2,25 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-INCLUDE =
-LDFLAGS = -lcrash
-BIN = crasher
+BINS = crasher_breakpad crasher_nobreakpad
 SRC = crasher.cc
 OBJS = crasher.o bomb.o
+TGZ = crasher.tgz
 
-all: $(BIN).gz
+all: $(TGZ)
 
 # gzip so that portage does not strip.
-$(BIN).gz: $(BIN)
-	gzip $^
+$(TGZ): $(BINS)
+	tar czf $(TGZ) $^
 
-$(BIN): $(OBJS)
-	$(CXX) $(INCLUDE) -o $@ $^ $(LDFLAGS)
+crasher_breakpad: $(OBJS)
+	$(CXX) -o $@ $^ -lcrash
+
+crasher_nobreakpad: $(OBJS)
+	$(CXX) -o $@ $^
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o $(BIN) $(BIN).gz
+	$(RM) *.o $(BIN) $(TGZ)

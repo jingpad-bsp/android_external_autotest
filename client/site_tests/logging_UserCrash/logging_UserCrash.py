@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, subprocess
+import grp, logging, os, pwd, re, stat, subprocess
 from signal import SIGSEGV
 from autotest_lib.client.bin import site_log_reader, site_utils, test
 from autotest_lib.client.common_lib import error, utils
@@ -15,6 +15,7 @@ _CRASH_SENDER_RATE_DIR = '/var/lib/crash_sender'
 _CRASH_SENDER_RUN_PATH = '/var/run/crash_sender.pid'
 _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
 _DAILY_RATE_LIMIT = 8
+_LEAVE_CORE_PATH = '/etc/leave_core'
 _MIN_UNIQUE_TIMES = 4
 _MOCK_CRASH_SENDING = '/tmp/mock-crash-sending'
 _PAUSE_FILE = '/tmp/pause-crash-sending'
@@ -94,7 +95,7 @@ class logging_UserCrash(test.test):
             os.rename(self._get_pushed_consent_file_path(), _CONSENT_FILE)
 
 
-    def _get_crash_spool_dir(self, username):
+    def _get_crash_dir(self, username):
         if username == 'chronos':
             return _USER_CRASH_DIR
         else:
@@ -116,6 +117,14 @@ class logging_UserCrash(test.test):
         test.test.cleanup(self)
 
 
+    def _create_fake_crash_dir_entry(self, name):
+        entry = os.path.join(_SYSTEM_CRASH_DIR, name)
+        if not os.path.exists(_SYSTEM_CRASH_DIR):
+            os.makedirs(_SYSTEM_CRASH_DIR)
+        utils.system('touch ' + entry)
+        return entry
+
+
     def _prepare_sender_one_crash(self,
                                   send_success,
                                   reports_enabled,
@@ -124,10 +133,7 @@ class logging_UserCrash(test.test):
         self._set_sending_mock(mock_enabled=True, send_success=send_success)
         self._set_consent(reports_enabled)
         if minidump is None:
-            minidump = os.path.join(_SYSTEM_CRASH_DIR, 'fake.dmp')
-            if not os.path.exists(_SYSTEM_CRASH_DIR):
-                os.makedirs(_SYSTEM_CRASH_DIR)
-            utils.system('touch ' + minidump)
+            minidump = self._create_fake_crash_dir_entry('fake.dmp')
         return minidump
 
 
@@ -187,18 +193,24 @@ class logging_UserCrash(test.test):
                                                   username,
                                                   minidump)
         self._log_reader.set_start_by_current()
-        utils.system(_CRASH_SENDER_PATH, ignore_status=True)
-        # Wait for up to 2s to see the Done message flushed the crash
-        # sender, otherwise me might get only part of the output.
+        script_output = utils.system_output(
+            '/bin/sh -c "%s" 2>&1' % _CRASH_SENDER_PATH,
+            ignore_status=True)
+        # Wait for up to 2s for no crash_sender to be running,
+        # otherwise me might get only part of the output.
         site_utils.poll_for_condition(
-            lambda: ': Done' in self._log_reader.get_logs(),
+            lambda: utils.system('pgrep crash_sender',
+                                 ignore_status=True) != 0,
             timeout=2,
             exception=error.TestError(
-              'Timeout waiting for log to settle: ' +
+              'Timeout waiting for crash_sender to finish: ' +
               self._log_reader.get_logs()))
 
         output = self._log_reader.get_logs()
         logging.debug('Crash sender message output:\n' + output)
+        if script_output != '':
+            raise error.TestFail(
+                'Unexpected crash_sender stdout/stderr: ' + script_output)
 
         if os.path.exists(minidump):
             minidump_exists = True
@@ -226,7 +238,7 @@ class logging_UserCrash(test.test):
     def _test_reporter_startup(self):
         """Test that the core_pattern is set up by crash reporter."""
         output = utils.read_file(_CORE_PATTERN).rstrip()
-        expected_core_pattern = ('|%s --signal=%%s --pid=%%p --exec=%%e' %
+        expected_core_pattern = ('|%s --signal=%%s --pid=%%p' %
                                  _CRASH_REPORTER_PATH)
         if output != expected_core_pattern:
             raise error.TestFail('core pattern should have been %s, not %s' %
@@ -354,6 +366,22 @@ class logging_UserCrash(test.test):
                                  'sending')
 
 
+    def _test_sender_leaves_core_files(self):
+        """Test that a core file is left in the send directory.
+
+        Core files will only persist for developer/testing images.  We
+        should never remove such a file."""
+        self._set_sending(True)
+        # Call prepare function to make sure the directory exists.
+        core_name = 'something.ending.with.core'
+        core_path = self._create_fake_crash_dir_entry(core_name)
+        result = self._call_sender_one_crash()
+        if not 'Ignoring core file.' in result['output']:
+            raise error.TestFail('Expected ignoring core file message')
+        if not os.path.exists(core_path):
+            raise error.TestFail('Core file was removed')
+
+
     def _test_cron_runs(self):
         """Test sender runs successfully as part of the hourly cron job.
 
@@ -385,11 +413,12 @@ class logging_UserCrash(test.test):
 
         crasher is only gzipped to subvert Portage stripping.
         """
-        self._crasher_path = os.path.join(self.srcdir, 'crasher')
-        utils.system('zcat %s > %s' %
-                     (os.path.join(self.srcdir, 'crasher.gz'),
-                      self._crasher_path))
-        utils.system('chmod 755 %s' % self._crasher_path)
+        self._crasher_path = {
+            True: os.path.join(self.srcdir, 'crasher_breakpad'),
+            False: os.path.join(self.srcdir, 'crasher_nobreakpad')
+            }
+        utils.system('cd %s; tar xzf crasher.tgz' %
+                     self.srcdir)
 
 
     def _populate_symbols(self):
@@ -400,55 +429,69 @@ class logging_UserCrash(test.test):
           <symbol-root>/<module_name>/<file_id>/<module_name>.sym
         """
         # Dump the symbols from the crasher
-        utils.system('/usr/bin/dump_syms %s > crasher.sym' % self._crasher_path)
         self._symbol_dir = os.path.join(self.srcdir, 'symbols')
         utils.system('rm -rf %s' % self._symbol_dir)
         os.mkdir(self._symbol_dir)
-        symbols = utils.read_file('crasher.sym')
-        # First line should be:
-        # MODULE Linux x86 7BC3323FBDBA2002601FA5BA3186D6540 crasher
-        #  or
-        # MODULE Linux arm C2FE4895B203D87DD4D9227D5209F7890 crasher
-        first_line = symbols.split('\n')[0]
-        tokens = first_line.split()
-        if tokens[0] != 'MODULE' or tokens[1] != 'Linux':
-            raise error.TestError('Unexpected symbols format: %s', first_line)
-        file_id = tokens[3]
-        target_dir = os.path.join(self._symbol_dir, 'crasher', file_id)
-        os.makedirs(target_dir)
-        os.rename('crasher.sym', '%s/crasher.sym' % target_dir)
+
+        for with_breakpad in [True, False]:
+            basename = os.path.basename(self._crasher_path[with_breakpad])
+            utils.system('/usr/bin/dump_syms %s > %s.sym' %
+                         (self._crasher_path[with_breakpad],
+                          basename))
+            sym_name = '%s.sym' % basename
+            symbols = utils.read_file(sym_name)
+            # First line should be like:
+            # MODULE Linux x86 7BC3323FBDBA2002601FA5BA3186D6540 crasher_XXX
+            #  or
+            # MODULE Linux arm C2FE4895B203D87DD4D9227D5209F7890 crasher_XXX
+            first_line = symbols.split('\n')[0]
+            tokens = first_line.split()
+            if tokens[0] != 'MODULE' or tokens[1] != 'Linux':
+                raise error.TestError('Unexpected symbols format: %s',
+                                      first_line)
+            file_id = tokens[3]
+            target_dir = os.path.join(self._symbol_dir, basename, file_id)
+            os.makedirs(target_dir)
+            os.rename(sym_name, os.path.join(target_dir, sym_name))
 
 
-    def _verify_stack(self, stack):
+    def _verify_stack(self, stack, basename, from_crash_reporter):
         logging.debug('Crash stackwalk was: %s' % stack)
 
         # Should identify cause as SIGSEGV at address 0x16
         match = re.search(r'Crash reason:\s+(.*)', stack)
+        expected_address = '0x16'
+        if from_crash_reporter:
+            # We cannot yet determine the crash address when coming
+            # through core files via crash_reporter.
+            expected_address = '0x0'
         if not match or match.group(1) != 'SIGSEGV':
             raise error.TestFail('Did not identify SIGSEGV cause')
         match = re.search(r'Crash address:\s+(.*)', stack)
-        if not match or match.group(1) != '0x16':
-            raise error.TestFail('Did not identify crash address 0x16')
+        if not match or match.group(1) != expected_address:
+            raise error.TestFail('Did not identify crash address %s' %
+                                 expected_address)
 
         # Should identify crash at *(char*)0x16 assignment line
-        if not ' 0  crasher!recbomb(int) [bomb.cc : 9 ' in stack:
+        if not (' 0  %s!recbomb(int) [bomb.cc : 9 ' % basename) in stack:
             raise error.TestFail('Did not show crash line on stack')
 
         # Should identify recursion line which is on the stack
         # for 15 levels
-        if not '15  crasher!recbomb(int) [bomb.cc : 12 ' in stack:
+        if not ('15  %s!recbomb(int) [bomb.cc : 12 ' % basename) in stack:
             raise error.TestFail('Did not show recursion line on stack')
 
         # Should identify main line
-        if not '16  crasher!main [crasher.cc : 21 ' in stack:
+        if not ('16  %s!main [crasher.cc : 21 ' % basename) in stack:
             raise error.TestFail('Did not show main on stack')
 
 
-    def _run_crasher_process(self, username, extra_args=[]):
+    def _run_crasher_process(self, username, with_breakpad, cause_crash=True):
         """Runs the crasher process.
 
         Args:
           username: runs as given user
+          with_breakpad: run crasher that has breakpad (-lcrash) linked in
           extra_args: additional parameters to pass to crasher process
 
         Returns:
@@ -468,13 +511,16 @@ class logging_UserCrash(test.test):
             crasher_command = []
             expected_result = -SIGSEGV
 
-        crasher_command.append(self._crasher_path)
-        crasher_command.extend(extra_args)
+        crasher_command.append(self._crasher_path[with_breakpad])
+        basename = os.path.basename(self._crasher_path[with_breakpad])
+        if not cause_crash:
+            crasher_command.append('--nocrash')
         crasher = subprocess.Popen(crasher_command,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
         output = crasher.communicate()[1]
-        logging.debug('Output from %s: %s' % (crasher_command, output))
+        logging.debug('Output from %s: %s' %
+                      (self._crasher_path[with_breakpad], output))
 
         # Grab the pid from the process output.  We can't just use
         # crasher.pid unfortunately because that may be the PID of su.
@@ -485,7 +531,17 @@ class logging_UserCrash(test.test):
         pid = int(match.group(1))
 
         expected_message = ('Received crash notification for '
-                            'crasher[%d] sig 11' % pid)
+                            '%s[%d] sig 11' % (basename, pid))
+
+        # Wait until no crash_reporter is running.
+        site_utils.poll_for_condition(
+            lambda: utils.system('pgrep crash_reporter',
+                                 ignore_status=True) != 0,
+            timeout=10,
+            exception=error.TestError(
+              'Timeout waiting for crash_reporter to finish: ' +
+              self._log_reader.get_logs()))
+
         crash_reporter_caught = self._log_reader.can_find(expected_message)
 
         result = {'crashed': crasher.returncode == expected_result,
@@ -496,10 +552,57 @@ class logging_UserCrash(test.test):
         return result
 
 
-    def _check_crashing_process(self, username):
+    def _check_crash_directory_permissions(self, crash_dir):
+        stat_info = os.stat(crash_dir)
+        user = pwd.getpwuid(stat_info.st_uid)[0]
+        group = grp.getgrgid(stat_info.st_gid)[0]
+        mode = stat.S_IMODE(stat_info.st_mode)
+
+        if crash_dir == '/var/spool/crash':
+            expected_user = 'root'
+            expected_group = 'root'
+            expected_mode = 01755
+        else:
+            expected_user = 'chronos'
+            expected_group = 'chronos'
+            expected_mode = 0755
+
+        if user != expected_user or group != expected_group:
+            raise error.TestFail(
+                'Expected %s.%s ownership of %s (actual %s.%s)' %
+                (expected_user, expected_group, crash_dir, user, group))
+        if mode != expected_mode:
+            raise error.TestFail(
+                'Expected %s to have mode %o (actual %o)' %
+                (crash_dir, expected_mode, mode))
+
+
+    def _check_minidump_stackwalk(self, minidump_path, basename,
+                                  from_crash_reporter):
+        # Now stackwalk the minidump
+        stack = utils.system_output('/usr/bin/minidump_stackwalk %s %s' %
+                                    (minidump_path, self._symbol_dir))
+        self._verify_stack(stack, basename, from_crash_reporter)
+
+
+    def _check_generated_minidump_sending(self, minidump_path,
+                                          username, crasher_basename):
+        # Now check that the sending works
+        self._set_sending(True)
+        result = self._call_sender_one_crash(
+            username=username,
+            minidump=os.path.basename(minidump_path))
+        if (not result['send_attempt'] or not result['send_success'] or
+            result['minidump_exists']):
+            raise error.TestFail('Minidump not sent properly')
+        if not crasher_basename in result['output']:
+            raise error.TestFail('Log did not contain crashing executable name')
+
+
+    def _check_crashing_process(self, username, with_breakpad):
         self._log_reader.set_start_by_current()
 
-        result = self._run_crasher_process(username)
+        result = self._run_crasher_process(username, with_breakpad)
 
         if not result['crashed']:
             raise error.TestFail('crasher did not do its job of crashing: %d' %
@@ -508,51 +611,155 @@ class logging_UserCrash(test.test):
         if not result['crash_reporter_caught']:
             logging.debug('Messages that should have included segv: %s' %
                           self._log_reader.get_logs())
-            raise error.TestFail('Did not find segv message: %s' %
-                                 expected_message)
+            raise error.TestFail('Did not find segv message')
 
-        minidump_dir = self._get_crash_spool_dir(username)
-        minidumps = os.listdir(minidump_dir)
-        if len(minidumps) > 1:
-            raise error.TestFail('Too many minidumps written')
+        crash_dir = self._get_crash_dir(username)
+        crash_contents = os.listdir(crash_dir)
+        basename = os.path.basename(self._crasher_path[with_breakpad])
 
-        # Now stackwalk the minidump
-        minidump_path = os.path.join(minidump_dir, minidumps[0])
-        stack = utils.system_output('/usr/bin/minidump_stackwalk %s %s' %
-                                    (minidump_path, self._symbol_dir))
-        self._verify_stack(stack)
+        breakpad_minidump = None
+        crash_reporter_minidump = None
 
-        # Now check that the sending works
-        self._set_sending(True)
-        result = self._call_sender_one_crash(username=username,
-                                             minidump=minidumps[0])
-        if (not result['send_attempt'] or not result['send_success'] or
-            result['minidump_exists']):
-            raise error.TestFail('Minidump not sent properly')
-        if not self._crasher_path in result['output']:
-            raise error.TestFail('Log did not contain crashing executable name')
+        self._check_crash_directory_permissions(crash_dir)
 
+        logging.debug('Contents in %s: %s' % (crash_dir, crash_contents))
+
+        for filename in crash_contents:
+            if filename.endswith('.core'):
+                # Ignore core files.  We'll test them later.
+                pass
+            elif filename.startswith(basename):
+                # This appears to be a minidump created by the crash reporter.
+                if not crash_reporter_minidump is None:
+                    raise error.TestFail('Crash reporter wrote multiple '
+                                         'minidumps')
+                crash_reporter_minidump = os.path.join(crash_dir, filename)
+            else:
+                # This appears to be a breakpad created minidump.
+                if not breakpad_minidump is None:
+                    raise error.TestFail('Breakpad wrote multimpe minidumps')
+                breakpad_minidump = os.path.join(crash_dir, filename)
+
+        if with_breakpad and not breakpad_minidump:
+            raise error.TestFail('%s did not generate breakpad minidump' %
+                                 basename)
+
+        if not with_breakpad and breakpad_minidump:
+            raise error.TestFail('%s did generate breakpad minidump' % basename)
+
+        if not crash_reporter_minidump:
+            raise error.TestFail('crash reporter did not generate minidump')
+
+        if not self._log_reader.can_find('Stored minidump to ' +
+                                         crash_reporter_minidump):
+            raise error.TestFail('crash reporter did not announce minidump')
+
+        # By default test sending the crash_reporter minidump unless there
+        # is a breakpad minidump, and then we test sending it instead.
+        send_minidump = crash_reporter_minidump
+
+        if crash_reporter_minidump:
+            self._check_minidump_stackwalk(crash_reporter_minidump,
+                                           basename,
+                                           from_crash_reporter=True)
+
+        if breakpad_minidump:
+            self._check_minidump_stackwalk(breakpad_minidump,
+                                           basename,
+                                           from_crash_reporter=False)
+            send_minidump = breakpad_minidump
+            os.unlink(crash_reporter_minidump)
+
+        self._check_generated_minidump_sending(send_minidump,
+                                               username,
+                                               basename)
 
     def _test_no_crash(self):
         """Test a program linked against libcrash_dumper can exit normally."""
         self._log_reader.set_start_by_current()
         result = self._run_crasher_process(username='root',
-                                           extra_args=['--nocrash'])
+                                           with_breakpad=True,
+                                           cause_crash=False)
         if (result['crashed'] or
             result['crash_reporter_caught'] or
             result['returncode'] != 0):
             raise error.TestFail('Normal exit of program with dumper failed')
 
 
-    def _test_chronos_crasher(self):
+    def _test_chronos_breakpad_crasher(self):
         """Test a user space crash when running as chronos is handled."""
-        self._check_crashing_process('chronos')
+        self._check_crashing_process('chronos', True)
 
 
-    def _test_root_crasher(self):
+    def _test_chronos_nobreakpad_crasher(self):
+        """Test a user space crash when running as chronos is handled."""
+        self._check_crashing_process('chronos', False)
+
+
+    def _test_root_breakpad_crasher(self):
         """Test a user space crash when running as root is handled."""
-        self._check_crashing_process('root')
+        self._check_crashing_process('root', True)
 
+
+    def _test_root_nobreakpad_crasher(self):
+        """Test a user space crash when running as root is handled."""
+        self._check_crashing_process('root', False)
+
+
+    def _check_core_file_persisting(self, expect_persist):
+        self._log_reader.set_start_by_current()
+
+        result = self._run_crasher_process('root', with_breakpad=False)
+
+        if not result['crashed']:
+            raise error.TestFail('crasher did not crash')
+
+        crash_contents = os.listdir(self._get_crash_dir('root'))
+
+        logging.debug('Contents of crash directory: %s', crash_contents)
+        logging.debug('Log messages: %s' % self._log_reader.get_logs())
+
+        if expect_persist:
+            if not self._log_reader.can_find('Leaving core file at'):
+                raise error.TestFail('Missing log message')
+            expected_core_files = 1
+        else:
+            if self._log_reader.can_find('Leaving core file at'):
+                raise error.TestFail('Unexpected log message')
+            expected_core_files = 0
+
+        dmp_files = 0
+        core_files = 0
+        for filename in crash_contents:
+            if filename.endswith('.dmp'):
+                dmp_files += 1
+            if filename.endswith('.core'):
+                core_files += 1
+
+        if dmp_files != 1:
+            raise error.TestFail('Should have been exactly 1 dmp file')
+        if core_files != expected_core_files:
+            raise error.TestFail('Should have been exactly %d core files' %
+                                 expected_core_files)
+
+
+    def _test_core_file_persists_in_debug(self):
+        """Test that a core file persists for development/test builds."""
+        os.system('mount -norw,remount /')
+        utils.open_write_close(_LEAVE_CORE_PATH, '')
+        self._check_core_file_persisting(True)
+
+
+    def _test_core_file_removed_in_production(self):
+        """Test that core files do not stick around for production builds."""
+        os.system('mount -norw,remount /')
+        if os.path.exists(_LEAVE_CORE_PATH):
+            os.remove(_LEAVE_CORE_PATH)
+        self._check_core_file_persisting(False)
+
+
+    # TODO(kmixter): Test crashing a process as ntp or some other
+    # non-root, non-chronos user.
 
     def run_once(self):
         test_names = [
@@ -564,10 +771,15 @@ class logging_UserCrash(test.test):
             'sender_rate_limiting',
             'sender_single_instance',
             'sender_send_fails',
+            'sender_leaves_core_files',
             'cron_runs',
             'no_crash',
-            'chronos_crasher',
-            'root_crasher',
+            'chronos_breakpad_crasher',
+            'chronos_nobreakpad_crasher',
+            'root_breakpad_crasher',
+            'root_nobreakpad_crasher',
+            'core_file_removed_in_production',
+            'core_file_persists_in_debug',
             ]
 
         self._push_consent()
@@ -587,6 +799,7 @@ class logging_UserCrash(test.test):
             self._clear_spooled_crashes()
             self._set_sending(False)
             getattr(self, '_test_' + test_name)()
+
 
     def cleanup(self):
             self._set_sending(True)
