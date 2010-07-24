@@ -7,7 +7,7 @@ import os
 from autotest_lib.client.bin import test, utils
 
 class factory_Wipe(test.test):
-    version = 1
+    version = 2
 
     def run_once(self):
       # Stub test to switch to boot from the release image,
@@ -16,6 +16,8 @@ class factory_Wipe(test.test):
 
       # Tag the current image to be wiped.
       utils.run('touch /mnt/stateful_partition/factory_install_reset')
+      # Copy the wipe splash image to state partition.
+      utils.run('cp -f wipe_splash.png /mnt/stateful_partition/')
       # Switch to the release image.
       utils.run('./switch_partitions.sh')
       # Time for reboot.
