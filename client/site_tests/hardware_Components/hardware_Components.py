@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import hashlib, logging, os, pprint, re
+import glob, hashlib, logging, os, pprint, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
@@ -45,6 +45,9 @@ class hardware_Components(test.test):
 
 
     def check_component(self, comp_key, comp_id):
+        if comp_key in self._ignored:
+            return
+
         self._system[comp_key] = [ comp_id ]
 
         if not self._approved.has_key(comp_key):
@@ -168,6 +171,9 @@ class hardware_Components(test.test):
         Check if there are matching devices on the system.
         Parameter type should be one of 'pci', 'usb', or 'others'.
         """
+        if cid in self._ignored:
+            return
+
         if not self._approved.has_key(cid):
             raise error.TestFail('%s missing from database' % cid)
 
@@ -293,13 +299,16 @@ class hardware_Components(test.test):
         self._pp = pprint.PrettyPrinter()
 
 
-    def run_once(self, approved_db='approved_components'):
+    def run_once(self, approved_dbs='approved_components', ignored_cids=[]):
+        self._ignored = ignored_cids
         all_failures = ''
-        for db in approved_db.split():
+        os.chdir(self.bindir)
+
+        # approved_dbs supports shell-like filename expansion.
+        for db in glob.iglob(approved_dbs):
             self._system = {}
             self._failures = {}
 
-            db = os.path.join(self.bindir, db)
             if not os.path.exists(db):
                 raise error.TestError('Unable to find approved db: %s' % db)
 
@@ -327,7 +336,9 @@ class hardware_Components(test.test):
                 all_failures += 'Approved DB: %s' % db
                 all_failures += self.pformat(self._failures)
             else:
-                # Exit if one of DBs is matched.
+                # If one of DBs is matched, record the hwqual_id and exit.
+                self.write_test_keyval(
+                    {'hwqual_id': self._approved['part_id_hwqual'][0]})
                 return
 
         raise error.TestFail(all_failures)

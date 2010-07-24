@@ -73,7 +73,7 @@ test_list = [
                 label_en='component validation',
                 label_zw='元件驗證',
                 formal_name='hardware_Components',
-                dargs={'approved_db':'qualified_components'}),
+                dargs={'approved_dbs':'qualified_components'}),
             factory.TestData(
                 label_en='gpio switch check',
                 label_zw='檢查 gpio 開關',
