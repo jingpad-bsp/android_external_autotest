@@ -111,7 +111,6 @@ def run_assigned_tests(machine):
   if not client_attributes.has_resume_bug:
      client_at.run_test('power_Resume')
 
-  job.run_test("platform_BootPerfServer", host=client, iterations=50)
   job.run_test("platform_KernelErrorPaths", host=client)
 
 
