@@ -73,6 +73,7 @@ TESTS = [
   ('platform_NetParms', {}),
   ('platform_OSLimits', {}),
   ('platform_ProcessPrivileges', {}),
+  ('platform_Rootdev', {}),
   ('platform_StackProtector', {}),
   ('platform_TempFS', {}),
   ('realtimecomm_GTalkAudioBench', {}),
