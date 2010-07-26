@@ -262,7 +262,11 @@ class UITest(bin_test.test):
     def cleanup(self):
         """Overridden from test.cleanup() to log out when the test is complete.
         """
+        shutil.copy(chromeos_constants.USER_DATA_DIR+'/chrome_log',
+                    self.resultsdir+'/chrome_prelogin_log')
         if site_login.logged_in():
+            shutil.copy(chromeos_constants.USER_DATA_DIR+'/user/chrome_log',
+                        self.resultsdir+'/chrome_postlogin_log')
             self.logout()
 
         self.stop_authserver()

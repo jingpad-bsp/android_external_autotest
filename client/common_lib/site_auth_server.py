@@ -95,6 +95,12 @@ class GoogleAuthServer(object):
 
     def __issue_token_responder(self, handler, url_args):
         logging.info(url_args)
+        if url_args['service'].value != chromeos_constants.LOGIN_SERVICE:
+            handler.send_response(httplib.FORBIDDEN)
+            handler.end_headers()
+            handler.wfile.write(chromeos_constants.LOGIN_ERROR)
+            return
+
         if not (self.sid == url_args['SID'].value and
                 self.lsid == url_args['LSID'].value):
             raise error.TestError('IssueAuthToken called with incorrect args')

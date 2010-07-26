@@ -39,3 +39,6 @@ CREDENTIALS = {
 CLIENT_LOGIN_URL = '/accounts/ClientLogin'
 ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 TOKEN_AUTH_URL = '/accounts/TokenAuth'
+
+LOGIN_SERVICE = 'gaia'
+LOGIN_ERROR = 'Error=BadAuthentication'
