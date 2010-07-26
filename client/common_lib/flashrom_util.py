@@ -23,8 +23,10 @@ For more information, see help(flashrom_util.flashrom_util).
 """
 
 import os
+import re
 import sys
 import tempfile
+import types
 
 
 # simple layout description language compiler
@@ -162,15 +164,17 @@ class flashrom_util(object):
         tmp_root:   a folder name for mkstemp (for temp of layout and images)
         verbose:    print debug and helpful messages
         keep_temp_files: boolean flag to control cleaning of temporary files
-        target_maps:maps of what commands should be invoked to switch target
+        target_map: map of what commands should be invoked to switch targets.
+                    if you don't need any commands, use empty dict {}.
+                    if you want default detection, use None (default param).
     """
 
-    # target selector command map syntax:
-    # "arch" : { "target" : exec_script, ... }, ... }
-    default_target_maps = {
-        "i386": {
+    # default target selection commands, by machine architecture
+    # syntax: { 'arch_regex': exec_script, ... }
+    default_arch_target_map = {
+        '^x86|^i\d86': {
             # The magic numbers here are register indexes and values that apply
-            # to all current known i386 based ChromeOS devices.
+            # to all current known x86 based ChromeOS devices.
             # Detail information is defined in section #"10.1.50 GCS-General
             # Control and Status Register" of document "Intel NM10 Express
             # Chipsets".
@@ -210,20 +214,20 @@ class flashrom_util(object):
                  tmp_root=None,
                  verbose=False,
                  keep_temp_files=False,
-                 target_maps=None):
+                 target_map=None):
         """ constructor of flashrom_util. help(flashrom_util) for more info """
         self.tool_path = tool_path
         self.cmd_prefix = cmd_prefix
         self.tmp_root = tmp_root
         self.verbose = verbose
         self.keep_temp_files = keep_temp_files
-        self.target_map = {}
-
-        # determine bbs map
-        if not target_maps:
-            target_maps = self.default_target_maps
-        if utils.get_arch() in target_maps:
-            self.target_map = target_maps[utils.get_arch()]
+        self.target_map = target_map
+        # detect bbs map if target_map is None.
+        # NOTE when target_map == {}, that means "do not execute commands",
+        # different to default value.
+        if isinstance(target_map, types.NoneType):
+            # generate default target map
+            self.target_map = self.detect_target_map()
 
     def get_temp_filename(self, prefix):
         ''' (internal) Returns name of a temporary file in self.tmp_root '''
@@ -257,7 +261,8 @@ class flashrom_util(object):
         '''
         pos = layout_map[section_name]
         if pos[0] >= pos[1] or pos[1] >= len(base_image):
-            raise TestError('INTERNAL ERROR: invalid layout map.')
+            raise TestError('INTERNAL ERROR: invalid layout map: %s.' %
+                            section_name)
         return base_image[pos[0] : pos[1] + 1]
 
     def put_section(self, base_image, layout_map, section_name, data):
@@ -280,6 +285,17 @@ class flashrom_util(object):
         # method: read whole and then get length.
         image = self.read_whole()
         return len(image)
+
+    def detect_target_map(self):
+        """
+        Detects the target selection map.
+        Use machine architecture in current implementation.
+        """
+        arch = utils.get_arch()
+        for regex, target_map in self.default_arch_target_map.items():
+            if re.match(regex, arch):
+                return target_map
+        raise TestError('INTERNAL ERROR: unknown architecture, need target_map')
 
     def detect_layout(self, layout_desciption, size=None):
         """
@@ -362,6 +378,26 @@ class flashrom_util(object):
         self.remove_temp_file(layout_fn)
         return result
 
+    def enable_write_protect(self, layout_map, section):
+        '''
+        Enables the "write protection" for specified section on flashrom.
+
+        WARNING: YOU CANNOT CHANGE FLASHROM CONTENT AFTER THIS CALL.
+        '''
+        if section not in layout_map:
+            raise TestError('INTERNAL ERROR: unknown section.')
+        # syntax: flashrom --wp-range offset size
+        #         flashrom --wp-enable
+        addr = layout_map[section]
+        cmd = '%s"%s" --wp-range 0x%06X 0x%06X && "%s" --wp-enable' % (
+                self.cmd_prefix, self.tool_path,
+                addr[0], addr[1] - addr[0] + 1,
+                self.tool_path)
+        if self.verbose:
+            print 'flashrom.enable_write_protect(): ', cmd
+        # failure for non-zero
+        return utils.system(cmd, ignore_status=True) == 0
+
     def select_target(self, target):
         '''
         Selects (usually by setting BBS register) a target defined in target_map
@@ -372,10 +408,9 @@ class flashrom_util(object):
         if self.verbose:
             print 'flashrom.select_target("%s"): %s' % (target,
                                                         self.target_map[target])
-        if utils.system(self.cmd_prefix + self.target_map[target],
-                        ignore_status=True) == 0:
-            return True
-        return False
+        # failure for non-zero
+        return utils.system(self.cmd_prefix + self.target_map[target],
+                            ignore_status=True) == 0
 
     def select_bios_flashrom(self):
         ''' Directs all further accesses to BIOS flash ROM. '''
@@ -420,7 +455,6 @@ try:
     from autotest_lib.client.common_lib.error import TestError
 except ImportError:
     # print 'using mocks'
-    import re
     utils = mock_utils()
     TestError = mock_TestError
 

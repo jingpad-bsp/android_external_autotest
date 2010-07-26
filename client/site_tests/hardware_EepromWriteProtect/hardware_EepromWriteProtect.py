@@ -12,19 +12,21 @@ from autotest_lib.client.common_lib import flashrom_util
 class hardware_EepromWriteProtect(test.test):
     """
     Autotest for EEPROM Write Protection status
+
+    WARNING: DO NOT INTERRUPT THIS TEST OTHERWISE YOUR FLASHROM MAY BE CORRUPTED
+
+    NOTE: This test only verifies write-protection status.
+    If you want to enable write protection, run factory_EnableWriteProtect.
     """
     version = 1
     verbose = True
 
     def setup(self):
         """ autotest setup procedure """
-        # TODO(hungte) if the flashrom layout/script becomes a new ebuild,
-        #              we will enable following dependency.
-        # self.job.setup_dep(['flashrom_utils'])
         self.flashrom = flashrom_util.flashrom_util(verbose=self.verbose)
-        self.script_folder = os.path.join(*os.path.split(__file__)[:-1])
 
-    def check_write_protection(self, layout_map, write_list, expected):
+    def check_write_protection(self, layout_map, write_list, expected,
+                               original_image):
         '''
         The complete procedure to check write protection status.
         '''
@@ -38,12 +40,8 @@ class hardware_EepromWriteProtect(test.test):
         #  6. restore flashrom by re-writing original image from (1) if required
         #     (by comparing image in (4) and (1))
 
-        flashrom = self.flashrom  # for quick access
-        original_image = flashrom.read_whole()
-        if not original_image:
-            raise error.TestError('Cannot read valid flash rom data.')
-
         # build a different image to write.
+        flashrom = self.flashrom  # for quick access
         write_image = original_image
         for section in write_list:
             data = flashrom.get_section(original_image, layout_map, section)
@@ -155,6 +153,8 @@ class hardware_EepromWriteProtect(test.test):
 
         # always restore system flashrom selection to this one
         system_default_selection = 'bios'
+        print '\n\n!!!!! WARNING: DO NOT INTERRUPT THIS TEST      !!!!!'
+        print '\n\n!!!!! OTHERWISE YOUR FLASHROM MAY BE CORRUPTED !!!!!\n\n'
 
         # print os.getcwd()
         for conf in eeprom_sets:
@@ -163,24 +163,24 @@ class hardware_EepromWriteProtect(test.test):
                 raise error.TestError('ERROR: cannot select target %s' %
                         conf['name'])
             # build layout
-            flashrom_size = self.flashrom.get_size()
+            original = self.flashrom.read_whole()
+            if not original:
+                raise error.TestError('Cannot read valid flash rom data.')
+            flashrom_size = len(original)
             (layout_map, ro_list, rw_list) = self.build_layout_map(
                     conf['layout'], flashrom_size)
             # ro test
             if self.verbose:
                 print ' - RO testing %s: %s' % (conf['name'], ','.join(ro_list))
-            self.check_write_protection(layout_map, ro_list, False)
+            self.check_write_protection(layout_map, ro_list, False, original)
             # rw test
             if self.verbose:
                 print ' - RW testing %s: %s' % (conf['name'], ','.join(rw_list))
-            self.check_write_protection(layout_map, rw_list, True)
-            # restore default selection.
-            if not self.flashrom.select_target(system_default_selection):
-                raise error.TestError('ERROR: cannot restore target.')
+            self.check_write_protection(layout_map, rw_list, True, original)
 
-        utils.system(exec_fn)
-        return True
-
+        # restore default selection.
+        if not self.flashrom.select_target(system_default_selection):
+            raise error.TestError('ERROR: cannot restore target.')
 
 
 if __name__ == "__main__":
