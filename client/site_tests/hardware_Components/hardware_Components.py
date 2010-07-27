@@ -24,7 +24,7 @@ class hardware_Components(test.test):
         'part_id_storage',
         'part_id_wireless',
         'vendor_id_touchpad',
-        'ver_rw_firmware',
+        'version_rw_firmware',
     ]
     _pci_cids = [
         'part_id_chipset',
@@ -262,7 +262,7 @@ class hardware_Components(test.test):
         return hashlib.sha256(hash_src).hexdigest()
 
 
-    def get_ver_rw_firmware(self):
+    def get_version_rw_firmware(self):
         """
         Returns the version of Read-Write (writable) firmware from VBOOT
         section. If A/B has different version, that means this system

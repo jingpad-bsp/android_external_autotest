@@ -7,7 +7,6 @@
     # value: a list of approved component IDs ('*' indicates any)
     'hash_ro_firmware': ['*'],
     'part_id_3g': ['*'],
-    'part_id_gps': ['*'],
     'part_id_audio_codec': ['*'],
     'part_id_bios': ['*'],
     'part_id_bluetooth': ['*'],
@@ -19,6 +18,7 @@
     'part_id_embedded_controller': ['*'],
     'part_id_ethernet': ['*'],
     'part_id_flash_chip': ['*'],
+    'part_id_gps': ['*'],
     'part_id_hwqual': ['*'],
     'part_id_storage': ['*'],
     'part_id_usb_hosts': ['*'],
@@ -26,7 +26,7 @@
     'part_id_webcam': ['*'],
     'part_id_wireless': ['*'],
     'vendor_id_touchpad': ['*'],
-    'ver_rw_firmware': ['*'],
+    'version_rw_firmware': ['*'],
 }
 
 ###  Local Variables:
