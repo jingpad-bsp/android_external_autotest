@@ -277,6 +277,8 @@ def main():
     window.add(base_box)
     window.show_all()
 
+    ful.hide_cursor(window.window)
+
     test_widget_allocation = test_widget_box.get_allocation()
     test_widget_size = (test_widget_allocation.width,
                         test_widget_allocation.height)

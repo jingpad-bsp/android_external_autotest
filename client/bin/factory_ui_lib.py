@@ -85,6 +85,13 @@ def make_countdown_widget():
     return eb, countdown
 
 
+def hide_cursor(gdk_window):
+    pixmap = gtk.gdk.Pixmap(None, 1, 1, 1)
+    color = gtk.gdk.Color()
+    cursor = gtk.gdk.Cursor(pixmap, pixmap, color, color, 0, 0)
+    gdk_window.set_cursor(cursor)
+
+
 class State:
 
     def __init__(self, trigger_set=set()):
@@ -122,10 +129,7 @@ class State:
         gtk.gdk.keyboard_grab(window.window)
 
         if invisible_cursor:
-            pixmap = gtk.gdk.Pixmap(None, 1, 1, 1)
-            color = gtk.gdk.Color()
-            cursor = gtk.gdk.Cursor(pixmap, pixmap, color, color, 0, 0)
-            window.window.set_cursor(cursor)
+            hide_cursor(window.window)
 
         if window_registration_callback is not None:
             window_registration_callback(window)
