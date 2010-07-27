@@ -22,7 +22,7 @@ def run_assigned_tests(machine):
   client = hosts.create_host(machine)
 
   job.run_test(
-      "platform_BootPerfServer", host=client, tag='boot', iterations=50)
+      "platform_BootPerfServer", host=client, iterations=50)
 
 
 job.parallel_on_machines(run_assigned_tests, machines)
