@@ -176,8 +176,8 @@ class StatusMap():
     def next_untested(self):
         remaining = self.filter(UNTESTED)
         factory.log('remaining untested = [%s]' %
-                ', '.join([self.index(t.formal_name, t.tag_prefix)
-                           for t in remaining]))
+                    ', '.join([self.index(t.formal_name, t.tag_prefix)
+                               for t in remaining]))
         if not remaining: return None
         return remaining.pop()
 
@@ -205,15 +205,17 @@ class StatusMap():
         test_index = self.index(formal_name, tag_prefix)
         if test_index not in self._status_map:
             factory.log('ignoring status update (%s) for test %s' %
-                    (status, test_index))
+                        (status, test_index))
             return
         test, old_status, old_count, label, _ = self._status_map[test_index]
         if count < old_count:
             factory.log('ERROR: count regression for %s (%d-%d)' %
-                    (test_index, old_count, count))
+                        (test_index, old_count, count))
+        if test.repeat_forever and status in [PASSED, FAILED]:
+            status = UNTESTED
         if status != old_status:
             factory.log('status change for %s : %s/%s -> %s/%s' %
-                    (test_index, old_status, old_count, status, count))
+                        (test_index, old_status, old_count, status, count))
             if label is not None:
                 label.update(status)
         self._status_map[test_index] = (test, status, count, label, error)

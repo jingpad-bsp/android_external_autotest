@@ -31,7 +31,8 @@ class TestData:
     The dargs field allows test specific extra arguments.'''
 
     def __init__(self, label_en='', label_zw='', formal_name=None,
-                 tag_prefix=None, trigger=None, automated_seq=[], dargs={}):
+                 tag_prefix=None, trigger=None, automated_seq=[], dargs={},
+                 repeat_forever=False):
         self.__dict__.update(vars())
 
     def __repr__(self):

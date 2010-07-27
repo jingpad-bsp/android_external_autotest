@@ -136,11 +136,9 @@ class TestLabelBox(gtk.EventBox):
         self.label_list = [label_en, label_zw]
 
     def update(self, status):
-        if status == ful.UNTESTED:
-            return
-        self.modify_fg(gtk.STATE_NORMAL, ful.BLACK)
+        label_fg = status == ful.UNTESTED and _LABEL_UNTESTED_FG or ful.BLACK
         for label in self.label_list:
-            label.modify_fg(gtk.STATE_NORMAL, ful.BLACK)
+            label.modify_fg(gtk.STATE_NORMAL, label_fg)
         self.modify_bg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
         self.queue_draw()
 

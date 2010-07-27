@@ -178,6 +178,7 @@ test_list = [
         label_en='review',
         label_zw='報告',
         formal_name='factory_Review',
+        repeat_forever=True,
         trigger='z'),
 ]
 
