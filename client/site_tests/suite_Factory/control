@@ -30,9 +30,11 @@ import time
 
 imp.load_source('common', job.autodir + '/bin/common.py')
 from autotest_lib.client.bin import factory
+from autotest_lib.client.bin import utils
 
 
-_STATUS_FILE_PATH = job.autodir + '/results/default/status'
+_RESULTS_PATH = job.autodir + '/results/default'
+_STATUS_FILE_PATH = _RESULTS_PATH + '/status'
 _FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
 
 
@@ -69,11 +71,18 @@ test_list = [
         label_zw='燒機測試',
         formal_name='step_runin',
         automated_seq=[
+            # Match HWQual ID by running hardware_Components with ignored cids.
             factory.TestData(
-                label_en='component validation',
-                label_zw='元件驗證',
+                label_en='hwqual id matching',
+                label_zw='型號匹配',
                 formal_name='hardware_Components',
-                dargs={'approved_dbs':'qualified_components'}),
+                dargs={'approved_dbs':'qualified_components*',
+                       'ignored_cids':[
+                           'hash_ro_firmware',
+                           'part_id_bios',
+                           'part_id_hwqual',
+                           'version_rw_firmware',
+                       ]}),
             factory.TestData(
                 label_en='gpio switch check',
                 label_zw='檢查 gpio 開關',
@@ -167,6 +176,17 @@ test_list = [
         trigger='b',
         dargs={'layout':'devrec'}),
     factory.TestData(
+        label_en='final',
+        label_zw='最後測試',
+        formal_name='step_final',
+        automated_seq=[
+            factory.TestData(
+                label_en='component validation',
+                label_zw='元件驗證',
+                formal_name='hardware_Components',
+                dargs={'approved_dbs':'qualified_components*'})],
+        trigger='f'),
+    factory.TestData(
         label_en='wipe',
         label_zw='清除',
         formal_name='factory_Dummy',
@@ -190,6 +210,7 @@ for test in test_list:
 test_map = factory.make_test_map(test_list)
 trigger_set = factory.make_trigger_set(test_list)
 
+hwqual = None
 
 def run_subtest(name, dargs_map):
     job.run_test(name, **dargs_map[name])
@@ -208,6 +229,17 @@ def step_reboot_seq(dargs_map, i=0):
 
 def step_runin(ui, dargs_map):
     run_subtest('hardware_Components', dargs_map)
+    # Find the HWQual ID by getting the result of above hardware component test.
+    # TODO: Move this functionality to StatusMap.
+    cmd = ('find %s -name keyval | xargs grep -h ^hwqual_id= | '
+           'sed s/hwqual_id=// | head -1' %
+           (_RESULTS_PATH + '/hardware_Components.step_runin_*'))
+    hwqual = utils.system_output(cmd).strip()
+    if hwqual:
+        factory.log('HWQual ID = %s' % hwqual)
+    else:
+        factory.log('fail to get the HWQual ID')
+
     run_subtest('hardware_GPIOSwitches', dargs_map)
     job.drop_caches_between_iterations = True
     run_subtest('hardware_SAT', dargs_map)
@@ -216,8 +248,11 @@ def step_runin(ui, dargs_map):
     step_reboot_seq(dargs_map)
 
 
-def step_init():
+def step_final(ui, dargs_map):
+    run_subtest('hardware_Components', dargs_map)
 
+
+def step_init():
     '''Launch the factory UI, which will then make decisions on which
     tests to run in which order.  This is to support user driven
     out-of-order test execution based on keyboard shortcuts.
