@@ -45,12 +45,12 @@ class network_WiFiMatFunc(test.test):
         wt.write_keyvals(self)
     except error.TestFail:
       if 'expect_failure' in testcase:
-        expect_failure(name, testcase['expect_failure'])
+        self.expect_failure(name, testcase['expect_failure'])
       else:
         raise
     except Exception, e:
       if 'expect_failure' in testcase:
-        expect_failure(name, testcase['expect_failure'])
+        self.expect_failure(name, testcase['expect_failure'])
       else:
         raise error.TestFail(e)
 
