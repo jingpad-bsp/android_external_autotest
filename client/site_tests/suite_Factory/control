@@ -189,11 +189,19 @@ test_list = [
     factory.TestData(
         label_en='wipe',
         label_zw='清除',
-        formal_name='factory_Dummy',
+        formal_name='factory_Wipe',
         trigger='x',
-        dargs={'msg':('hit TAB+RETURN to write protect FW ' +
-                      'and wipe test image!' +
-                      '...\n(chinese)...')}),
+        # -------- customize these parameter if you need. --------
+        # check_developer_switch: True to verify developer switch button state
+        # secure_wipe: True for secure (slow) wipe, False for fast.
+        # write_protect: True to enable and check flash write protect
+        dargs={'check_developer_switch':True,
+               'secure_wipe':True,
+               'write_protect':False,
+               'msg':('hit TAB+ENTER to write protect FW and '
+                      'wipe test image!...\n'
+                      '請按下 TAB+ENTER 啟用寫入保護以及清除'
+                      '測試程式資料!...')}),
     factory.TestData(
         label_en='review',
         label_zw='報告',

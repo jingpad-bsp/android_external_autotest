@@ -9,6 +9,17 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
 
 
+GPIO_ROOT = '/home/gpio'
+
+
+def init_gpio(gpio_root=GPIO_ROOT):
+    """ initializes GPIO in GPIO_ROOT """
+    if os.path.exists(gpio_root):
+        utils.system("rm -rf '%s'" % gpio_root)
+    utils.system("mkdir '%s'" % (gpio_root))
+    utils.system("/usr/sbin/gpio_setup")
+
+
 class hardware_EepromWriteProtect(test.test):
     """
     Autotest for EEPROM Write Protection status
@@ -24,6 +35,13 @@ class hardware_EepromWriteProtect(test.test):
     def setup(self):
         """ autotest setup procedure """
         self.flashrom = flashrom_util.flashrom_util(verbose=self.verbose)
+
+    def check_gpio_write_protection(self):
+        init_gpio()
+        status = open(os.path.join(GPIO_ROOT, 'write_protect')).read()
+        status_val = int(status)
+        if status_val != 1:
+            raise error.TestFail('GPIO Write Protection is not enabled')
 
     def check_write_protection(self, layout_map, write_list, expected,
                                original_image):
@@ -134,6 +152,10 @@ class hardware_EepromWriteProtect(test.test):
 
     def run_once(self):
         """ core testing procedure """
+
+        # quick check write protection by GPIO
+        self.check_gpio_write_protection()
+
         # the EEPROM should be programmed as:
         #     (BIOS)  LSB [ RW | RO ] MSB
         #     (EC)    LSB [ RO | RW ] MSB
