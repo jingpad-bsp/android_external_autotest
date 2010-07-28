@@ -3,9 +3,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-""" This module provides convenience routines to access Flash ROM (EEPROM)
-
-flashrom_util is based on utility 'flashrom'.
+"""
+This module provides convenience routines to access Flash ROM (EEPROM).
+ - flashrom_util is a low level wrapper of flashrom(8) program.
+ - FlashromUtility is a high level object which provides more advanced
+   features like journaling-alike (log-based) changing.
 
 Original tool syntax:
     (read ) flashrom -r <file>
@@ -18,17 +20,82 @@ The layout_fn is in format of
 
 Currently the tool supports multiple partial write but not partial read.
 
-In the flashrom_util, we provide read and partial write abilities.
-For more information, see help(flashrom_util.flashrom_util).
+For more information, see help(flashrom_util.flashrom_util) and
+help(flashrom_util.FlashromUtility).
 """
 
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import types
 
 
+# Constant Values -----------------------------------------------------------
+
+# The location of flashrom(8)' tool binary
+DEFAULT_FLASHROM_TOOL_PATH = '/usr/sbin/flashrom'
+
+# The default target names for BIOS and Embedded Controller (EC)
+DEFAULT_TARGET_NAME_BIOS= 'bios'
+DEFAULT_TARGET_NAME_EC = 'ec'
+
+# The default description of ChromeOS firmware layout
+# Check help(compile_layout) for the syntax.
+# NOTE: "FVMAIN" is not typo, although it seems like lack of 'A' as postfix.
+DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS = {
+    "bios": """
+            FV_LOG          = 0x20000,
+            NV_COMMON_STORE = 0x10000,
+            VBOOTA          = 0x02000,
+            FVMAIN          = 0xB0000,
+            VBOOTB          = 0x02000,
+            FVMAINB         = 0xB0000,
+            NVSTORAGE       = 0x10000,
+            FV_RW_RESERVED  = *,
+            |
+            FV_RO_RESERVED  = *,
+            FVDEV           = 0xB0000,
+            FV_GBB          = 0x20000,
+            FV_BSTUB        = 0x40000,
+            """,
+    "ec": """
+            EC_RO
+            |
+            EC_RW
+          """,
+}
+
+# Default "skip" sections when verifying section data.
+# This is required because some flashrom chip may create timestamps (or checksum
+# values) when (or immediately after) we change flashrom content.
+# The syntax is a comma-separated list of string tuples (separated by ':'):
+# PARTNAME:OFFSET:SIZE
+# If there's no need to skip anything, provide an empty list [].
+DEFAULT_CHROMEOS_FIRMWARE_SKIP_VERIFY_LIST = {
+    "bios": [],
+    "ec": "EC_RO:0x48:4",
+}
+
+# Default target selection commands, by machine architecture
+# Syntax: { 'arch_regex': exec_script, ... }
+DEFAULT_ARCH_TARGET_MAP = {
+    '^x86|^i\d86': {
+        # The magic numbers here are register indexes and values that apply
+        # to all current known x86 based ChromeOS devices.
+        # Detail information is defined in section #"10.1.50 GCS-General
+        # Control and Status Register" of document "Intel NM10 Express
+        # Chipsets".
+        "bios": 'iotools mmio_write32 0xfed1f410 ' +
+                '`iotools mmio_read32 0xfed1f410 |head -c 6`0460',
+        "ec":   'iotools mmio_write32 0xfed1f410 ' +
+                '`iotools mmio_read32 0xfed1f410 |head -c 6`0c60',
+    },
+}
+
+
+# ---------------------------------------------------------------------------
 # simple layout description language compiler
 def compile_layout(desc, size):
     """ compile_layout(desc, size) -> layout
@@ -113,6 +180,18 @@ def compile_layout(desc, size):
     return layout
 
 
+def csv_to_list(csv, delimiter=','):
+    """
+    (Utility) Converts a comma-separated-value (or list) to a list.
+
+    To use symbols other that comma, customize with delimiter.
+    """
+    if isinstance(csv, types.StringTypes):
+        return [i.strip() for i in csv.split(delimiter)]
+    return csv
+
+
+# ---------------------------------------------------------------------------
 # flashrom utility wrapper
 class flashrom_util(object):
     """ a wrapper for "flashrom" utility.
@@ -169,47 +248,11 @@ class flashrom_util(object):
                     if you want default detection, use None (default param).
     """
 
-    # default target selection commands, by machine architecture
-    # syntax: { 'arch_regex': exec_script, ... }
-    default_arch_target_map = {
-        '^x86|^i\d86': {
-            # The magic numbers here are register indexes and values that apply
-            # to all current known x86 based ChromeOS devices.
-            # Detail information is defined in section #"10.1.50 GCS-General
-            # Control and Status Register" of document "Intel NM10 Express
-            # Chipsets".
-            "bios": 'iotools mmio_write32 0xfed1f410 ' +
-                    '`iotools mmio_read32 0xfed1f410 |head -c 6`0460',
-            "ec":   'iotools mmio_write32 0xfed1f410 ' +
-                    '`iotools mmio_read32 0xfed1f410 |head -c 6`0c60',
-        },
-    }
-
-    default_chromeos_layout_desc = {
-        "bios": """
-                FV_LOG          = 0x20000,
-                NV_COMMON_STORE = 0x10000,
-                VBOOTA          = 0x02000,
-                FVMAIN          = 0xB0000,
-                VBOOTB          = 0x02000,
-                FVMAINB         = 0xB0000,
-                NVSTORAGE       = 0x10000,
-                FV_RW_RESERVED  = *,
-                |
-                FV_RO_RESERVED  = *,
-                FVDEV           = 0xB0000,
-                FV_GBB          = 0x20000,
-                FV_BSTUB        = 0x40000,
-                """,
-        "ec": """
-                EC_RO
-                |
-                EC_RW
-              """,
-    }
+    TARGET_BIOS = DEFAULT_TARGET_NAME_BIOS
+    TARGET_EC = DEFAULT_TARGET_NAME_EC
 
     def __init__(self,
-                 tool_path='/usr/sbin/flashrom',
+                 tool_path=DEFAULT_FLASHROM_TOOL_PATH,
                  cmd_prefix='',
                  tmp_root=None,
                  verbose=False,
@@ -229,20 +272,20 @@ class flashrom_util(object):
             # generate default target map
             self.target_map = self.detect_target_map()
 
-    def get_temp_filename(self, prefix):
+    def _get_temp_filename(self, prefix):
         ''' (internal) Returns name of a temporary file in self.tmp_root '''
         (fd, name) = tempfile.mkstemp(prefix=prefix, dir=self.tmp_root)
         os.close(fd)
         return name
 
-    def remove_temp_file(self, filename):
+    def _remove_temp_file(self, filename):
         """ (internal) Removes a temp file if self.keep_temp_files is false. """
         if self.keep_temp_files:
             return
         if os.path.exists(filename):
             os.remove(filename)
 
-    def create_layout_file(self, layout_map):
+    def _create_layout_file(self, layout_map):
         '''
         (internal) Creates a layout file based on layout_map.
         Returns the file name containing layout information.
@@ -250,7 +293,7 @@ class flashrom_util(object):
         layout_text = ['0x%08lX:0x%08lX %s' % (v[0], v[1], k)
             for k, v in layout_map.items()]
         layout_text.sort()  # XXX unstable if range exceeds 2^32
-        tmpfn = self.get_temp_filename('lay')
+        tmpfn = self._get_temp_filename('lay')
         open(tmpfn, 'wb').write('\n'.join(layout_text) + '\n')
         return tmpfn
 
@@ -259,6 +302,7 @@ class flashrom_util(object):
         Retrieves a section of data based on section_name in layout_map.
         Raises error if unknown section or invalid layout_map.
         '''
+        assert section_name in layout_map, "Invalid section: " + section_name
         pos = layout_map[section_name]
         if pos[0] >= pos[1] or pos[1] >= len(base_image):
             raise TestError('INTERNAL ERROR: invalid layout map: %s.' %
@@ -271,6 +315,7 @@ class flashrom_util(object):
         Raises error if unknown section or invalid layout_map.
         Returns the full updated image data.
         '''
+        assert section_name in layout_map, "Invalid section: " + section_name
         pos = layout_map[section_name]
         if pos[0] >= pos[1] or pos[1] >= len(base_image):
             raise TestError('INTERNAL ERROR: invalid layout map.')
@@ -292,7 +337,7 @@ class flashrom_util(object):
         Use machine architecture in current implementation.
         """
         arch = utils.get_arch()
-        for regex, target_map in self.default_arch_target_map.items():
+        for regex, target_map in DEFAULT_ARCH_TARGET_MAP.items():
             if re.match(regex, arch):
                 return target_map
         raise TestError('INTERNAL ERROR: unknown architecture, need target_map')
@@ -320,25 +365,25 @@ class flashrom_util(object):
 
         Returns the layout map (empty if any error).
         """
-        if target not in self.default_chromeos_layout_desc:
-            raise TestError('INTERNAL ERROR: unknown layout target: %s' % test)
-        chromeos_target = self.default_chromeos_layout_desc[target]
+        assert target in DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS, \
+                'unknown layout target: ' + test
+        chromeos_target = DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS[target]
         return self.detect_layout(chromeos_target, size)
 
     def detect_chromeos_bios_layout(self, size=None):
         """ Detects standard ChromeOS BIOS layout """
-        return self.detect_chromeos_layout('bios', size)
+        return self.detect_chromeos_layout(self.TARGET_BIOS, size)
 
     def detect_chromeos_ec_layout(self, size=None):
         """ Detects standard ChromeOS Embedded Controller layout """
-        return self.detect_chromeos_layout('ec', size)
+        return self.detect_chromeos_layout(self.TARGET_EC, size)
 
     def read_whole(self):
         '''
         Reads whole flash ROM data.
         Returns the data read from flash ROM, or empty string for other error.
         '''
-        tmpfn = self.get_temp_filename('rd_')
+        tmpfn = self._get_temp_filename('rd_')
         cmd = '%s"%s" -r "%s"' % (self.cmd_prefix, self.tool_path, tmpfn)
         if self.verbose:
             print 'flashrom_util.read_whole(): ', cmd
@@ -351,32 +396,63 @@ class flashrom_util(object):
                 result = ''
 
         # clean temporary resources
-        self.remove_temp_file(tmpfn)
+        self._remove_temp_file(tmpfn)
         return result
 
-    def write_partial(self, base_image, layout_map, write_list):
+    def _write_flashrom(self, base_image, layout_map, write_list):
         '''
-        Writes data in sections of write_list to flash ROM.
+        (internal) Writes data in sections of write_list to flash ROM.
+        If layout_map and write_list are both empty, write whole image.
         Returns True on success, otherwise False.
         '''
-        tmpfn = self.get_temp_filename('wr_')
-        open(tmpfn, 'wb').write(base_image)
-        layout_fn = self.create_layout_file(layout_map)
+        cmd_layout = ''
+        cmd_list = ''
+        layout_fn = ''
 
-        cmd = '%s"%s" -l "%s" -i %s -w "%s"' % (
+        if write_list:
+            assert layout_map, "Partial writing to flash requires layout"
+            assert set(write_list).issubset(layout_map.keys())
+            layout_fn = self._create_layout_file(layout_map)
+            cmd_layout = '-l "%s" ' % (layout_fn)
+            cmd_list = '-i %s ' % ' -i '.join(write_list)
+        else:
+            assert not layout_map, "Writing whole flash does not allow layout"
+
+        tmpfn = self._get_temp_filename('wr_')
+        open(tmpfn, 'wb').write(base_image)
+
+        cmd = '%s"%s" %s%s -w "%s"' % (
                 self.cmd_prefix, self.tool_path,
-                layout_fn, ' -i '.join(write_list), tmpfn)
+                cmd_layout, cmd_list, tmpfn)
+
         if self.verbose:
-            print 'flashrom.write_partial(): ', cmd
+            print 'flashrom._write_flashrom(): ', cmd
         result = False
 
         if utils.system(cmd, ignore_status=True) == 0:  # failure for non-zero
             result = True
 
         # clean temporary resources
-        self.remove_temp_file(tmpfn)
-        self.remove_temp_file(layout_fn)
+        self._remove_temp_file(tmpfn)
+        if layout_fn:
+            self._remove_temp_file(layout_fn)
         return result
+
+    def write_whole(self, base_image):
+        '''
+        Writes whole image to flashrom.
+        Returns True on success, otherwise False.
+        '''
+        assert base_image, "You must provide full image."
+        return self._write_flashrom(base_image, [], [])
+
+    def write_partial(self, base_image, layout_map, write_list):
+        '''
+        Writes data in sections of write_list to flash ROM.
+        Returns True on success, otherwise False.
+        '''
+        assert write_list, "You need to provide something to write."
+        return self._write_flashrom(base_image, layout_map, write_list)
 
     def enable_write_protect(self, layout_map, section):
         '''
@@ -403,7 +479,8 @@ class flashrom_util(object):
         Selects (usually by setting BBS register) a target defined in target_map
         and then directs all further firmware access to certain region.
         '''
-        if target not in self.target_map:
+        assert target in self.target_map, "Unknown target: " + target
+        if not self.target_map[target]:
             return True
         if self.verbose:
             print 'flashrom.select_target("%s"): %s' % (target,
@@ -414,11 +491,250 @@ class flashrom_util(object):
 
     def select_bios_flashrom(self):
         ''' Directs all further accesses to BIOS flash ROM. '''
-        return self.select_target('bios')
+        return self.select_target(self.TARGET_BIOS)
 
     def select_ec_flashrom(self):
         ''' Directs all further accesses to Embedded Controller flash ROM. '''
-        return self.select_target('ec')
+        return self.select_target(self.TARGET_EC)
+
+
+# ---------------------------------------------------------------------------
+# Advanced flashrom utiliity
+class FlashromUtility(object):
+    """
+    A high level (easier to use and more advanced) utility class to access
+    flashrom. FlashromUtility supports general read and journaling-alike (log
+    based) style write functionality.
+
+    To use it, first initialize, read/update section data, and finally commit.
+    Example:
+        flashrom = FlashromUtility()
+        flashrom.initialize(flashrom.TARGET_BIOS)
+
+        # quick access to section data
+        data = flashrom.read_section('FVMAIN')
+        flashrom.write_section('FVMAIN', data)
+
+        # compare section data
+        if flashrom.verify_sections('A,B', 'C,D', image1, image2):
+            print "same contents!"
+
+        # copy between sections
+        flashrom.image_copy(list_A, list_B, image);  # copy A in image to B
+
+        # check if really need to perform writing to flashrom
+        if flashrom.need_commit():
+            print "need to rewrite the flash..."
+
+        # perform real write operation
+        flashrom.commit()
+
+    Attributes
+        flashrom:       instance of flashrom_util
+        current_image:  cached image data of current flashrom
+        layout:         the Chrome OS firmware layout for flashrom to use
+        whole_flash_layout: a special layout to contain whole flashrom space
+        skip_verify:    a description of what data must be skipped when
+                        doing compare / verification
+        change_history: a list of every change we should apply when committing.
+                        each item is (changed_list, image_data).
+        is_verbose:     controls the output of verbose messages.
+    """
+
+    TARGET_BIOS = DEFAULT_TARGET_NAME_BIOS
+    TARGET_EC = DEFAULT_TARGET_NAME_EC
+
+    def __init__(self, flashrom_util_instance=None, is_verbose=False):
+        """
+        Initializes internal variables and states.
+
+        Arguments:
+            flashrom_util_instance: An instance of existing flashrom_util.  If
+                                    not provided, FirmwareUpdater will create
+                                    one with all default values.
+            is_verbose:             Flag to control outputting verbose messages.
+        """
+        self.flashrom = flashrom_util_instance
+        if not self.flashrom:
+            self.flashrom = flashrom_util(verbose=is_verbose)
+        self.current_image = None
+        self.layout = None
+        self.whole_flash_layout = None
+        self.skip_verify = None
+        self.change_history = []
+        self.is_verbose = is_verbose
+        self.is_debug = False
+
+    def initialize(self, target, layout_desc=None, skip_verify=None):
+        """ Starts flashrom initialization with given target. """
+        flashrom = self.flashrom
+        if not flashrom.select_target(target):
+            raise TestError("Cannot Select Target. Abort.")
+        if self.is_verbose:
+            print " - reading current content"
+        self.current_image = flashrom.read_whole()
+        if not self.current_image:
+            raise TestError("Cannot read flashrom image. Abort.")
+        flashrom_size = len(self.current_image)
+        if layout_desc:
+            layout = flashrom.detect_layout(layout_desc, flashrom_size)
+        else:
+            layout = flashrom.detect_chromeos_layout(target, flashrom_size)
+        self.layout = layout
+        self.whole_flash_layout = flashrom.detect_layout('all', flashrom_size)
+        if not skip_verify:
+            skip_verify = DEFAULT_CHROMEOS_FIRMWARE_SKIP_VERIFY_LIST[target]
+        self.skip_verify = skip_verify
+        self.change_history = []  # reset list
+
+    def get_current_image(self):
+        """ Returns current flashrom image (physically, not changed) """
+        return self.current_image
+
+    def get_latest_changed_image(self):
+        """ Returns the latest changed result image (not written yet) """
+        if not self.change_history:
+            return self.get_current_image()
+        # the [1] refers to the latter element of (changed_list, image_data)
+        return self.change_history[-1][1]
+
+    def need_commit(self):
+        """ Returns if we have uncommitted changes """
+        if self.change_history:
+            return True
+        return False
+
+    def image_copy(self, from_list, to_list, from_image=None):
+        """
+        Copies sections (in from_list) of data from from_image to the sections
+        (in to_list) in latest changed image.
+
+        If from_image is not assigned, use latest changed image as source.
+
+        from_list and to_list can be real list or comma-separated-value.
+        """
+        # simplify arguments and local variables
+        if not from_image:
+            from_image = self.get_latest_changed_image()
+        to_image = self.get_latest_changed_image()
+        from_list = csv_to_list(from_list)
+        to_list = csv_to_list(to_list)
+        changed_list = []
+        changed_image = to_image
+        flashrom = self.flashrom
+        layout = self.layout
+
+        for f, t in zip(from_list, to_list):
+            if self.verify_sections(f, t, from_image, to_image):
+                continue
+            from_data = flashrom.get_section(from_image, layout, f)
+            to_data = flashrom.get_section(to_image, layout, t)
+            assert len(from_data) == len(to_data)
+            changed_image = flashrom.put_section(changed_image, layout, t,
+                                                from_data)
+            assert changed_image != to_image
+            changed_list.append(t)
+
+        # add to history if anything has been changed.
+        if changed_list:
+            self.change_history.append((changed_list, changed_image))
+            assert changed_image != to_image
+
+    def read_section(self, section, from_image=None):
+        """ Returns data of the section in image.
+
+        If from_image is omitted, read from get_latest_changed_image();
+        otherwise read directly from from_image.
+        """
+        if not from_image:
+            from_image = self.get_latest_changed_image()
+        return self.flashrom.get_section(from_image, self.layout, section)
+
+    def write_section(self, section, data):
+        """ Change the section data of latest changed image. """
+        new_image = self.get_latest_changed_image()
+        new_image = self.flashrom.put_section(new_image, self.layout, section, \
+                                              data)
+        return self.image_copy(section, section, new_image)
+
+    def verify_sections(self, from_list, to_list, from_image, to_image):
+        """
+        Compares if sections in from_list and to_list are the same, skipping
+        by self.skip_verify description.
+
+        If from_list and to_list are both empty list ([]), compare whole image
+        """
+        # simplify arguments and local variables
+        from_list = csv_to_list(from_list)
+        to_list = csv_to_list(to_list)
+        flashrom = self.flashrom
+        layout = self.layout
+
+        # decode skip_verify with layout, and then modify images
+        for verify_tuple in csv_to_list(self.skip_verify):
+            (name, offset, size) = verify_tuple.split(':')
+            name = name.strip()
+            offset = int(offset.strip(), 0)
+            size = int(size.strip(), 0)
+            assert name in layout, "(verify_sec) Unknown section name: " + name
+            if self.is_debug:
+                print " ** skipping range: %s +%d [%d]" % (name, offset, size)
+            # XXX we use the layout's internal structure here...
+            offset = layout[name][0] + offset
+            from_image = from_image[:offset] + (chr(0)*size) + \
+                         from_image[(offset + size):]
+            to_image = to_image[:offset] + (chr(0) * size) + \
+                       to_image[(offset + size):]
+
+        # compare sections in image
+        if not (from_list or to_list):
+            return from_image == to_image
+        for (f, t) in zip(from_list, to_list):
+            data_f = flashrom.get_section(from_image, layout, f)
+            data_t = flashrom.get_section(to_image, layout, t)
+            if data_f != data_t:
+                return False
+        return True
+
+    def verify_whole_image(self, image1, image2):
+        """ Compares if image1 and image2 are the same, except the
+        skip_verify region.
+        """
+        return self.verify_sections([], [], image1, image2)
+
+    def _perform_write_flash(self, changed_list, layout, new_image):
+        """ (INTERNAL) Performs a real write to flashrom. """
+        flashrom = self.flashrom
+        if self.is_verbose:
+            print " - writing firmware sections:", ','.join(changed_list)
+        if not flashrom.write_partial(new_image, layout, changed_list):
+            raise TestError("Cannot re-write firmware. Abort.")
+        if self.is_verbose:
+            print " - verifying firmware data"
+        verify_image = flashrom.read_whole()
+        self.current_image = verify_image
+        if not self.verify_whole_image(verify_image, new_image):
+            raise TestError("Tool return success but actual data is incorrect.")
+
+    def commit(self):
+        """ Commits all change data into real flashrom """
+        # TODO(hungte) if _perform_write_flash failed, we should try to revert
+        # system back to initial status.
+        # revert_image =self.get_current_image()
+        for change_list, change_image in self.change_history:
+            self._perform_write_flash(change_list, self.layout, change_image)
+        # all committed, clear log history
+        self.change_history = []
+
+    def commit_whole_flashrom_image(self, image):
+        """ Updates (and commits directly) whole new flashrom image """
+        whole_layout = self.whole_flash_layout
+        assert len(whole_layout) == 1
+        self._perform_write_flash(whole_layout.keys(), whole_layout, image)
+
+    def revert(self):
+        """ Revert all changed data which were not committed yet. """
+        self.change_history = []
 
 
 # ---------------------------------------------------------------------------
@@ -442,10 +758,18 @@ class mock_utils(object):
         return arch
 
     def system(self, cmd, ignore_status=False):
-        ret = os.system(cmd)
-        if (not ignore_status) and ret != 0:
-            raise TestError("failed to execute: " % cmd)
-        return ret
+        p = subprocess.Popen(cmd, shell=True,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        p.wait()
+        if p.returncode:
+            err_msg = p.stderr.read()
+            print p.stdout.read()
+            print err_msg
+            if not ignore_status:
+                raise TestError("failed to execute: %s\nError messages: %s" % (
+                    cmd, err_msg()))
+        return p.returncode
 
 
 # import autotest or mock utilities
