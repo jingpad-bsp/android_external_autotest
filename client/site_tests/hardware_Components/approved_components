@@ -8,7 +8,6 @@
     'hash_ro_firmware': ['*'],
     'part_id_3g': ['*'],
     'part_id_audio_codec': ['*'],
-    'part_id_bios': ['*'],
     'part_id_bluetooth': ['*'],
     'part_id_cardreader': ['*'],
     'part_id_chipset': ['*'],
@@ -25,6 +24,7 @@
     'part_id_vga': ['*'],
     'part_id_webcam': ['*'],
     'part_id_wireless': ['*'],
+    'vendor_id_bios': ['*'],
     'vendor_id_touchpad': ['*'],
     'version_rw_firmware': ['*'],
 }
