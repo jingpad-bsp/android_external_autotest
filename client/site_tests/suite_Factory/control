@@ -132,9 +132,9 @@ test_list = [
     factory.TestData(
         label_en='audio',
         label_zw='聲音',
-        formal_name='factory_Dummy',
+        formal_name='factory_Audio',
         trigger='a',
-        dargs={'msg':'audio test, one day...'}),
+        dargs={'sample':'deps/factory/fhorn.wav'}),
     factory.TestData(
         label_en='hdmi',
         label_zw='',
