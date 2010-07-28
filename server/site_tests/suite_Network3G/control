@@ -1,0 +1,40 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Network3G"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+This test suite runs automated 3G tests that should all pass.
+"""
+
+from autotest_lib.server import site_host_attributes
+from autotest_lib.client.common_lib import error
+
+
+# List of tests to be run.
+TESTS = [
+  'network_3GModem',
+  'network_3GSmokeTest'
+]
+
+
+def run_client_test(machine):
+  client = hosts.create_host(machine)
+  client_attributes = site_host_attributes.HostAttributes(machine)
+  client_at = autotest.Autotest(client)
+
+  if not client_attributes.has_3g:
+    raise error.TestNAError(
+      "Machine does not have a 3G module or is not labeled as having one.")
+
+  for test in TESTS:
+      client_at.run_test(test)
+
+
+job.parallel_on_machines(run_client_test, machines)
