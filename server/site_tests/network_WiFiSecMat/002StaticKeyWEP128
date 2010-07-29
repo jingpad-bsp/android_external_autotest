@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 { "name":"CheckStaticKey_WEP128",
+  "skip_test":"Linux does not support 128-bit WEP keys",
   "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "mode":"11g",
@@ -12,7 +13,7 @@
                           "wep_key0":  "0123456789abcdef0123456789abcdef",
                           "wep_key1":  "89abcdef0123456789abcdef01234567",
                           "wep_key2":  "fedcba9876543210fedcba9876543210",
-                          "wep_key3":  "109fedcba987654321fedcba98765432" 
+                          "wep_key3":  "109fedcba987654321fedcba98765432"
                         }
     ],
 
