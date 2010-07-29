@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 { "name":"CheckSharedKey_WEP104",
+  "skip_test":"Temporarily disable; nl80211 does not handle auto-select between open+shared key auth",
   "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "mode":"11g",
