@@ -2,112 +2,68 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import site_backchannel, test, utils
 from autotest_lib.client.common_lib import error
 
-import logging, os, re, string, sys, time, urllib2
+import logging, os, re, socket, string, sys, time, urllib2
 import dbus, dbus.mainloop.glib, gobject
 
-import_path = os.environ.get("SYSROOT", "") + "/usr/local/lib/connman/test"
+# Workaround so flimflam.py can remain part of flimflam scripts
+import_path = os.environ.get('SYSROOT', '') + '/usr/lib/flimflam/test'
 sys.path.append(import_path)
-import mm
+import flimflam, routing, mm
+
+
+SERVER = 'testing-chargen.appspot.com'
+BASE_URL = 'http://' + SERVER + '/'
+
 
 class network_3GSmokeTest(test.test):
     version = 1
 
-    # TODO(jglasgow): temporary until we have a connman python library
     def FindCellularService(self):
-        """Find the dbus cellular service object"""
+        """Find the first dbus cellular service object."""
 
-        manager = dbus.Interface(
-            self.bus.get_object("org.chromium.flimflam", "/"),
-            "org.chromium.flimflam.Manager")
-
-        properties = manager.GetProperties()
-
-        for path in properties["Services"]:
-            service = dbus.Interface(
-                self.bus.get_object("org.chromium.flimflam", path),
-                "org.chromium.flimflam.Service")
-            service_properties = service.GetProperties()
-
-            try:
-                if service_properties["Type"] == 'cellular':
-                    return service
-            except KeyError:
-                continue
-
-        return None
-
-    def WaitForServiceState(self, service, expected_state, timeout):
-        """Wait until the service enters the expected_state or times out.
-
-        This will return the state and the amount of time it took to
-        get there.  If the state is 'failure' we return immediately
-        without waiting for the timeout
-        """
-
-        start_time = time.time()
-        timeout = start_time + timeout
-        while time.time() < timeout:
-            properties = service.GetProperties()
-            state = properties.get("State", None)
-
-            if state == "failure":
-                break
-
-            if state == expected_state:
-                break
-            time.sleep(.5)
-
-        config_time = time.time() - start_time
-
-        return (state, config_time)
-
+        service = self.flim.FindElementByPropertySubstring('Service',
+                                                           'Type',
+                                                           'cellular')
+        if not service:
+            raise error.TestFail('Could not find cellular service.')
+        return service
 
     def ConnectTo3GNetwork(self, config_timeout):
-        """Attempts to connect to a 3G network using FlimFlam."""
+        """Attempts to connect to a 3G network using FlimFlam.
 
+        Args:
+        config_timeout:  Timeout (in seconds) before giving up on connect
+
+        Raises:
+        error.TestFail if connection fails
+        """
+        logging.info('ConnectTo3GNetwork')
         service = self.FindCellularService()
-        if not service:
-            logging.error("FAIL(FindCellularService): no cell service found")
-            return 1
 
-        try:
-            service.Connect()
-        except Exception, e:
-            logging.error("FAIL(Connect): exception %s", e)
-            return 2
-
-        # wait config_timeout seconds to get an ip address
-        state, config_time = self.WaitForServiceState(service,
-                                                      "ready",
-                                                      config_timeout)
-
-        if config_time > config_timeout:
-            logging.error("TIMEOUT(config): %3.1f secs", config_time)
-            return 3
-
-        if state != "ready":
-            logging.error("INVALID_STATE(config): %s after %3.1f secs",
-                          state, config_time)
-            return 4
-
-        self.write_perf_keyval({"secs_config_time": config_time})
-
-        logging.info('SUCCESS: config %3.1f secs state %s',
-                     config_time, state)
-        return 0
-
+        success, status = self.flim.ConnectService(
+            service=service,
+            config_timeout=config_timeout)
+        if not success:
+            raise error.TestFail('Could not connect: %s.' % status)
 
     def FetchUrl(self, url_pattern=
-                 'http://testing-chargen.appspot.com/download?size=%d',
+                 BASE_URL + 'download?size=%d',
                  size=10,
                  label=None):
-        """Fetch the URL, wirte a dictionary of performance data."""
+        """Fetch the URL, write a dictionary of performance data.
+
+        Args:
+          url_pattern:  URL to download with %d to be filled in with # of
+              bytes to download.
+          size:  Number of bytes to download.
+          label:  Label to add to performance keyval keys.
+        """
 
         if not label:
-            raise error.TestError('no label supplied')
+            raise error.TestError('FetchUrl: no label supplied.')
 
         url = url_pattern % size
         start_time = time.time()
@@ -115,10 +71,10 @@ class network_3GSmokeTest(test.test):
         bytes_received = len(result.read())
         fetch_time = time.time() - start_time
         if not fetch_time:
-            raise error.TestError('Fetch took 0 time')
+            raise error.TestError('FetchUrl took 0 time.')
 
         if bytes_received != size:
-            raise error.TestError('asked for %d bytes, got %d' %
+            raise error.TestError('FetchUrl:  for %d bytes, got %d.' %
                                   (size, bytes_received))
 
         self.write_perf_keyval(
@@ -127,51 +83,29 @@ class network_3GSmokeTest(test.test):
              'bits_second_%s_speed' % label: 8 * bytes_received / fetch_time}
             )
 
-
     def DisconnectFrom3GNetwork(self, disconnect_timeout):
-        """Attempts to disconnect to a 3G network using FlimFlam."""
+        """Attempts to disconnect to a 3G network using FlimFlam.
+
+        Args:
+          disconnect_timeout: Wait this long for disconnect to take
+              effect.  Raise if we time out.
+        """
+        logging.info('DisconnectFrom3GNetwork')
         service = self.FindCellularService()
-        if not service:
-            logging.error("FAIL(FindCellularService): no cell service found")
-            return
 
-        try:
-            service.Disconnect()
-        except dbus.exceptions.DBusException, e:
-            if e.get_dbus_name() != 'org.chromium.flimflam.Error.InProgress':
-                logging.error("FAIL(Disconnect): exception %s", e)
-                return
-
-        # wait timeout seconds for disconnect to succeed
-        state, disconnect_time = self.WaitForServiceState(service,
-                                                           "idle",
-                                                           disconnect_timeout)
-
-        if disconnect_time >= disconnect_timeout:
-            logging.error("TIMEOUT(config): %3.1f secs", disconnect_time)
-            return
-
-        if state != "idle":
-            logging.error("INVALID_STATE(disconnect): %s after %3.1f secs",
-                          state, config_time)
-            return
-
-        self.write_perf_keyval({"secs_disconnect_time": disconnect_time})
-
-        logging.info('SUCCESS: config %3.1f secs state %s' %
-                     (disconnect_time, state))
-        return 0
+        success, status = self.flim.DisconnectService(
+            service=service,
+            wait_timeout=disconnect_timeout)
+        if not success:
+            raise error.TestFail('Could not disconnect: %s.' % status)
 
     def ResetAllModems(self):
         """Disable/Enable cycle all modems to ensure valid starting state."""
         manager = mm.ModemManager()
-
         for path in manager.manager.EnumerateDevices():
-
             modem = manager.Modem(path)
             modem.Enable(False)
             modem.Enable(True)
-
 
     def GetModemInfo(self):
         """Find all modems attached and return an dictionary of information.
@@ -182,7 +116,7 @@ class network_3GSmokeTest(test.test):
         collect as many things as we can to ensure that the modem is
         responding correctly.
 
-        Returns: dictionary of information for each modem path
+        Returns: dictionary of information for each modem path.
         """
         results = {}
         manager = mm.ModemManager()
@@ -198,7 +132,6 @@ class network_3GSmokeTest(test.test):
                 if modem_type == mm.ModemManager.CDMA_MODEM:
                     cdma_modem = manager.CdmaModem(path)
 
-
                     info['esn'] = cdma_modem.GetEsn()
                     info['rs'] = cdma_modem.GetRegistrationState()
                     info['ss'] = cdma_modem.GetServingSystem()
@@ -210,23 +143,56 @@ class network_3GSmokeTest(test.test):
 
                     gsm_network = manager.GsmNetwork(path)
                     info['ri'] = gsm_network.GetRegistrationInfo()
-
                 else:
                     print 'Unknown modem type %s' % modem_type
                     continue
 
             except dbus.exceptions.DBusException, e:
-                logging.info("Info: %s", info)
-                logging.error("MODEM_DBUS_FAILURE: %s: %s", path, e)
+                logging.info('Info: %s.', info)
+                logging.error('MODEM_DBUS_FAILURE: %s: %s.', path, e)
                 continue
 
             results[path] = info
-
         return results
 
-    def run_once(self, connect_count):
+    def CheckInterfaceForDestination(self, host, service):
+        """Checks that routes for hosts go through the device for service.
+
+        The concern here is that our network setup may have gone wrong
+        and our test connections may go over some other network than
+        the one we're trying to test.  So we take all the IP addresses
+        for the supplied host and make sure they go through the
+        network device attached to the supplied Flimflam service.
+
+        Args:
+          host:  Destination host
+          service: Flimflam service object that should be used for
+            connections to host
+        """
+        # addrinfo records: (family, type, proto, canonname, (addr, port))
+        server_addresses = [record[4][0] for
+                            record in socket.getaddrinfo(SERVER, 80)]
+
+        device = self.flim.GetObjectInterface('Device',
+                                              service.GetProperties()['Device'])
+        expected = device.GetProperties()['Interface']
+        logging.info('Device for %s: %s', service.object_path, expected)
+
+        routes = routing.NetworkRoutes()
+        for address in server_addresses:
+          interface = routes.getRouteFor(address).interface
+          logging.info('interface for %s: %s', address, interface)
+          if interface!= expected:
+            raise error.TestFail('Target server %s uses interface %s'
+                                 '(%s expected).' %
+                                 (address, interface, expected))
+
+    def run_once_internal(self, connect_count):
         bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus(mainloop=bus_loop)
+
+        if not site_backchannel.setup():
+            raise error.TestError('Could not setup Backchannel network.')
 
         # Get to a good starting state
         self.ResetAllModems()
@@ -234,18 +200,29 @@ class network_3GSmokeTest(test.test):
 
         # Get information about all the modems
         modem_info = self.GetModemInfo()
-        logging.info("Info: %s" % ', '.join(modem_info))
+        logging.info('Info: %s' % ', '.join(modem_info))
 
         for ii in xrange(connect_count):
-            if self.ConnectTo3GNetwork(config_timeout=120) != 0:
-                raise error.TestFail("Failed to connect")
+            self.ConnectTo3GNetwork(config_timeout=120)
 
-            self.FetchUrl(label='3G', size=1<<20)
+            self.CheckInterfaceForDestination(SERVER,
+                                              self.FindCellularService())
 
-            if self.DisconnectFrom3GNetwork(disconnect_timeout=60) != 0:
-                raise error.TestFail("Failed to disconnect")
+            self.FetchUrl(label='3G', size=1<<16)
+
+            self.DisconnectFrom3GNetwork(disconnect_timeout=60)
 
             # Verify that we can still get information for all the modems
-            logging.info("Info: %s" % ', '.join(modem_info))
+            logging.info('Info: %s' % ', '.join(modem_info))
             if len(self.GetModemInfo()) != len(modem_info):
-                raise error.TestFail("Failed to leave modem in working state")
+                raise error.TestFail('Test shutdown: '
+                                     'failed to leave modem in working state.')
+
+    def run_once(self, connect_count):
+        self.flim = flimflam.FlimFlam()
+        self.device_manager = flimflam.DeviceManager(self.flim)
+        try:
+            self.device_manager.ShutdownAllExcept('cellular')
+            self.run_once_internal(connect_count)
+        finally:
+            self.device_manager.RestoreDevices()
