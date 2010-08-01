@@ -129,8 +129,9 @@ class UITest(bin_test.test):
         for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
             for path in properties['IPConfigs']:
-                ipconfig = self._flim.GetObjectInterface('IPConfig', path)
-                ipconfig.SetProperty('NameServers', self._dns[path])
+                if path in self._dns:
+                    ipconfig = self._flim.GetObjectInterface('IPConfig', path)
+                    ipconfig.SetProperty('NameServers', self._dns[path])
 
         site_utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com',
