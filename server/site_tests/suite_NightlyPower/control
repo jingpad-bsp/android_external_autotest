@@ -61,8 +61,15 @@ def run_client_test(machine):
   remote_power.set_power_off()
 
   try:
-    client_at.run_test('power_LoadTest', loop_count=9, loop_time=3600,
-                       check_network=False)
+    if client_attributes.wifi:
+      wifi_ap, wifi_sec, wifi_pw = client_attributes.wifi.split(',')
+
+      client_at.run_test('power_LoadTest', loop_count=9, loop_time=3600,
+                         force_wifi=True, wifi_ap=wifi_ap, wifi_sec=wifi_sec,
+                         wifi_pw=wifi_pw)
+    else:
+      client_at.run_test('power_LoadTest', loop_count=9, loop_time=3600,
+                         check_network=False)
   finally:
     remote_power.set_power_on()
 
