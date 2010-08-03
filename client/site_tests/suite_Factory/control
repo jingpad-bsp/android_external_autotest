@@ -177,6 +177,12 @@ test_list = [
         trigger='b',
         dargs={'layout':'devrec'}),
     factory.TestData(
+        label_en='light sensor',
+        label_zw='光传感器',
+        formal_name='factory_LightSensor',
+        dargs={'lux_max':1000, 'lux_min':1},
+        trigger='i'),
+    factory.TestData(
         label_en='final',
         label_zw='最後測試',
         formal_name='step_final',
