@@ -171,6 +171,18 @@ Automated and Semi-Automated Test Runs
   $ ./server/autoserv -r results.audio_ext -m <DUT_IP> \
                   -c client/site_tests/suite_HWQual/control.audio
 
+- Run the DUT on AC. Probe the AC driver:
+
+  $ ./server/autoserv -r result.probe_ac -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.probe_ac
+
+- Run the DUT on battery. Probe the battery driver:
+  (If you just unplugged AC, please wait for a second before running
+   the test for kernel updating power status.)
+
+  $ ./server/autoserv -r result.probe_bat -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.probe_bat
+
 - Run the DUT on AC. Plug a power draw USB dongle in each USB port.
   Run the max power draw test:
 
