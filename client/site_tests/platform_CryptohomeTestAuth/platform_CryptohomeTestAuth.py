@@ -25,9 +25,7 @@ class platform_CryptohomeTestAuth(test.test):
         # Get the hash for the test user account
         cmd = ('/usr/sbin/cryptohome --action=obfuscate_user --user='
                + test_user)
-        result = self.__run_cmd(cmd).strip()
-        values = result.rsplit(' ', 1)
-        user_hash = values[1]
+        user_hash = self.__run_cmd(cmd).strip()
 
         # Remove the test user account
         cmd = ('/usr/sbin/cryptohome --action=remove --force --user='
@@ -46,14 +44,14 @@ class platform_CryptohomeTestAuth(test.test):
           raise error.TestFail('Cryptohome could not create the test user.')
         # Ensure that the user directory is mounted
         cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() == '0'):
+        if (self.__run_cmd(cmd).strip() == 'false'):
           raise error.TestFail('Cryptohome created the user but did not mount.')
 
         # Test credentials when the user's directory is mounted
         cmd = ('/usr/sbin/cryptohome --action=test_auth --user=' + test_user
                + ' --password=' + test_password)
         result = self.__run_cmd(cmd)
-        if (result.find("Call completed") < 0):
+        if (result.find("Authentication succeeded") < 0):
           self.__run_cmd('/usr/sbin/cryptohome --action=unmount')
           raise error.TestFail('Test authentication of valid credentials for'
                                + ' the logged in user failed.')
@@ -63,7 +61,7 @@ class platform_CryptohomeTestAuth(test.test):
         cmd = ('/usr/sbin/cryptohome --action=test_auth --user=' + test_user
                + ' --password=' + incorrect_password)
         result = self.__run_cmd(cmd)
-        if (result.find("Call completed") >= 0):
+        if (result.find("Authentication succeeded") >= 0):
           self.__run_cmd('/usr/sbin/cryptohome --action=unmount')
           raise error.TestFail('Test authentication of invalid credentials for'
                                + ' the logged in user failed.')
@@ -73,14 +71,14 @@ class platform_CryptohomeTestAuth(test.test):
         self.__run_cmd(cmd)
         # Ensure that the user directory is not mounted
         cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() != '0'):
+        if (self.__run_cmd(cmd).strip() != 'false'):
           raise error.TestFail('Cryptohome did not unmount the user.')
 
         # Test credentials when the user's directory is not mounted
         cmd = ('/usr/sbin/cryptohome --action=test_auth --user=' + test_user
                + ' --password=' + test_password)
         result = self.__run_cmd(cmd)
-        if (result.find("Call completed") < 0):
+        if (result.find("Authentication succeeded") < 0):
           raise error.TestFail('Test authentication of valid credentials for'
                                + ' an offline user failed.')
 
@@ -89,7 +87,7 @@ class platform_CryptohomeTestAuth(test.test):
         cmd = ('/usr/sbin/cryptohome --action=test_auth --user=' + test_user
                + ' --password=' + incorrect_password)
         result = self.__run_cmd(cmd)
-        if (result.find("Call completed") >= 0):
+        if (result.find("Authentication succeeded") >= 0):
           raise error.TestFail('Test authentication of invalid credentials for'
                                + ' an offline user failed.')
 

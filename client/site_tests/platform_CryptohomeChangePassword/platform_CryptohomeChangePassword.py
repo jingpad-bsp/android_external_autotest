@@ -25,9 +25,7 @@ class platform_CryptohomeChangePassword(test.test):
         # Get the hash for the test user account
         cmd = ('/usr/sbin/cryptohome --action=obfuscate_user --user='
                + test_user)
-        result = self.__run_cmd(cmd).strip()
-        values = result.rsplit(' ', 1)
-        user_hash = values[1]
+        user_hash = self.__run_cmd(cmd).strip()
 
         # Remove the test user account
         cmd = ('/usr/sbin/cryptohome --action=remove --force --user='
@@ -46,7 +44,7 @@ class platform_CryptohomeChangePassword(test.test):
           raise error.TestFail('Cryptohome could not create the test user.')
         # Ensure that the user directory is mounted
         cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() == '0'):
+        if (self.__run_cmd(cmd).strip() == 'false'):
           raise error.TestFail('Cryptohome created the user but did not mount.')
 
         # Unmount the directory
@@ -54,7 +52,7 @@ class platform_CryptohomeChangePassword(test.test):
         self.__run_cmd(cmd)
         # Ensure that the user directory is not mounted
         cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() != '0'):
+        if (self.__run_cmd(cmd).strip() != 'false'):
           raise error.TestFail('Cryptohome did not unmount the user.')
 
         # Try to migrate the password
@@ -70,7 +68,7 @@ class platform_CryptohomeChangePassword(test.test):
         self.__run_cmd(cmd)
         # Ensure that the user directory is mounted
         cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() == '0'):
+        if (self.__run_cmd(cmd).strip() == 'false'):
           raise error.TestFail('Cryptohome did not mount with the new'
                                + ' password.')
 
@@ -79,7 +77,7 @@ class platform_CryptohomeChangePassword(test.test):
         self.__run_cmd(cmd)
         # Ensure that the user directory is not mounted
         cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() == '1'):
+        if (self.__run_cmd(cmd).strip() == 'true'):
           raise error.TestFail('Cryptohome did not unmount the user.')
 
         # Ensure the old password doesn't work
@@ -88,7 +86,7 @@ class platform_CryptohomeChangePassword(test.test):
         self.__run_cmd(cmd)
         # Ensure that the user directory is not mounted
         cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() != '0'):
+        if (self.__run_cmd(cmd).strip() != 'false'):
           raise error.TestFail('Cryptohome mounted with the old password.')
 
         # Remove the test user account
