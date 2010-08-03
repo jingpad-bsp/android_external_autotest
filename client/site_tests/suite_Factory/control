@@ -125,6 +125,13 @@ test_list = [
         formal_name='factory_Display',
         trigger='m'),
     factory.TestData(
+        label_en='ExtDisplay',
+        label_zw='外接顯示',
+        formal_name='factory_ExtDisplay',
+        trigger='n',
+        dargs={'has_audio':True,
+               'sample':'deps/factory/fhorn.wav'}),
+    factory.TestData(
         label_en='camera',
         label_zw='相機',
         formal_name='factory_Camera',
@@ -135,12 +142,6 @@ test_list = [
         formal_name='factory_Audio',
         trigger='a',
         dargs={'sample':'deps/factory/fhorn.wav'}),
-    factory.TestData(
-        label_en='hdmi',
-        label_zw='',
-        formal_name='factory_Dummy',
-        trigger='h',
-        dargs={'msg':'hdmi test, one day...'}),
     factory.TestData(
         label_en='usb',
         formal_name='factory_ExternalStorage',
