@@ -55,13 +55,14 @@ class ChromiumOSHost(base_classes.Host):
 
         logging.info('Installing from %s to: %s' % (update_url, self.hostname))
 
-        self.run('echo "CHROMEOS_DEVSERVER=http://chromeosbuild_server" >> '
+        self.run('echo "CHROMEOS_DEVSERVER=http://chromeosbuild_server" > '
                  '/mnt/stateful_partition/etc/lsb-release')
 
         # First, attempt dev & test tools update (which don't live on
         # the rootfs). This must succeed so that the newly installed
         # host is testable after we run the autoupdater.
-        statefuldev_cmd = ' '.join([STATEFULDEV_UPDATER, update_url])
+        stateful_update_url = update_url.replace('update', 'static/archive')
+        statefuldev_cmd = ' '.join([STATEFULDEV_UPDATER, stateful_update_url])
         logging.info(statefuldev_cmd)
         try:
             self.run(statefuldev_cmd, timeout=1200)
