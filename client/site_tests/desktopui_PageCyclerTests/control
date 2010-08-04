@@ -25,14 +25,4 @@ At the end of the test, a message is printed with the median latency.
 
 """
 
-from optparse import OptionParser
-
-parser=OptionParser()
-parser.add_option('-i', '--page-cycler-iterations', dest='iters')
-
-(options, args) = parser.parse_args(args)
-
-logging.debug('inside control. printing options.iters')
-logging.debug(options.iters)
-
-job.run_test('desktopui_PageCyclerTests', iters=options.iters, args=args)
+job.run_test('desktopui_PageCyclerTests')

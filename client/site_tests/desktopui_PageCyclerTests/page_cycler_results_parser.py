@@ -1,4 +1,7 @@
-import functools, logging, math, re, subprocess as sub, sys
+import subprocess as sub
+import re
+import sys
+import math, functools
 
 class SiteTimes(object):
     def __init__(self):
@@ -33,13 +36,6 @@ def percentile(N, percent, key=lambda x:x):
 def mean(numbers):
     assert(len(numbers) != 0), 'list should not be empty!'
     return sum(numbers)/len(numbers)
-
-def power_mean(numbers, r=1):
-    assert(len(numbers) != 0), 'list should not be empty!'
-    if r == 0:
-        return exp(sum([log(i) for i in numbers])/len(numbers))
-    else:
-        return (sum([i**r for i in numbers])/len(numbers))**(1/r)
 
 class PageCyclerResultsParser:
     def parse_file(self, outfile = 'out.txt'):
@@ -103,23 +99,11 @@ class PageCyclerResultsParser:
 
         totalTime = 0
         for ii, st in enumerate(stList):
-            logging.debug('Before sorting:')
-            logging.debug(st.times)
             sortedTimes=sorted(st.times)
-            # drop upper 20% of the times so they don't skew the mean.
-            numToDrop=int(len(sortedTimes)*0.2)
-            logging.debug('Before dropping:')
-            logging.debug('Numtodrop: '+ str(numToDrop));
-            logging.debug(sortedTimes)
-            if numToDrop != 0:
-              sortedTimes=sortedTimes[:-numToDrop]
-            logging.debug('After dropping:')
-            logging.debug(sortedTimes)
+            # drop highest time in the sortedTimes
+            sortedTimes.pop()
             # TODO: Perhaps this should be a weighted mean?
-            meanTime=power_mean(sortedTimes, -1)
-            logging.debug('Mean time is: (harmonic mean):')
-            logging.debug(meanTime)
-            totalTime += meanTime
+            totalTime += mean(sortedTimes)
 
         return totalTime/len(stList)
 
