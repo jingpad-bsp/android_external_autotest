@@ -61,7 +61,7 @@ def run_client_test(machine):
   remote_power.set_power_off()
 
   try:
-    if client_attributes.wifi:
+    if client_attributes.hasattr(wifi):
       wifi_ap, wifi_sec, wifi_pw = client_attributes.wifi.split(',')
 
       client_at.run_test('power_LoadTest', loop_count=9, loop_time=3600,

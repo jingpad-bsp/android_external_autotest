@@ -63,6 +63,7 @@ _DEFAULT_ATTRIBUTES = [
     'has_chromeos_firmware,False',
     'has_resume_bug,False',
     'has_ssd,True',
+    'has_3g,False',
     ]
 
 
