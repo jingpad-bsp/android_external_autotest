@@ -19,7 +19,7 @@ from autotest_lib.client.common_lib import error
 
 # List of tests to be run.
 TESTS = [
-  'network_3GModem',
+  'network_3GModemPresent',
   'network_3GSmokeTest'
 ]
 
