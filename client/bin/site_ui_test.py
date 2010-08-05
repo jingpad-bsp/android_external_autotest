@@ -137,7 +137,7 @@ class UITest(bin_test.test):
             lambda: self.__attempt_resolve('www.google.com',
                                            '127.0.0.1',
                                            expected=False),
-            site_login.TimeoutError('Timed out waiting for DNS changes.'),
+            site_login.TimeoutError('Timed out waiting to revert DNS.'),
             10)
 
 
@@ -263,11 +263,18 @@ class UITest(bin_test.test):
     def cleanup(self):
         """Overridden from test.cleanup() to log out when the test is complete.
         """
-        shutil.copy(chromeos_constants.USER_DATA_DIR+'/chrome_log',
-                    self.resultsdir+'/chrome_prelogin_log')
+        try:
+            shutil.copy(chromeos_constants.USER_DATA_DIR+'/chrome_log',
+                        self.resultsdir+'/chrome_prelogin_log')
+        except IOError, error:
+            logging.error(error)
+
         if site_login.logged_in():
-            shutil.copy(chromeos_constants.USER_DATA_DIR+'/user/chrome_log',
-                        self.resultsdir+'/chrome_postlogin_log')
+            try:
+                shutil.copy(chromeos_constants.USER_DATA_DIR+'/user/chrome_log',
+                            self.resultsdir+'/chrome_postlogin_log')
+            except IOError, error:
+                logging.error(error)
             self.logout()
 
         self.stop_authserver()
