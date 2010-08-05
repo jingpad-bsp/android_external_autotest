@@ -11,6 +11,7 @@ from autotest_lib.client.common_lib import error
 
 
 GPIO_ROOT = '/home/gpio'
+GOOGLE_REQUIRED_TESTS = [ 'hardware_Components', 'hardware_DeveloperRecovery' ]
 
 
 def init_gpio(gpio_root=GPIO_ROOT):
@@ -76,9 +77,9 @@ class factory_Wipe(test.test):
             raise error.TestFail('Flashrom write protection test failed.')
 
     def run_once(self,
-                 check_developer_switch,
                  secure_wipe,
-                 write_protect,
+                 write_protect=True,
+                 check_developer_switch=True,
                  status_file_path=None,
                  test_list=None):
         # first, check if all previous tests are passed.
@@ -86,6 +87,13 @@ class factory_Wipe(test.test):
         failed = status_map.filter(ful.FAILED)
         if failed:
             raise error.TestFail('Some tests were failed. Cannot start wipe.')
+
+        # check if all Google Required Tests are passed
+        passed = [t.formal_name for t in status_map.filter(ful.PASSED)]
+        if not set(GOOGLE_REQUIRED_TESTS).issubset(passed):
+            missing = list(set(GOOGLE_REQUIRED_TESTS).difference(passed))
+            raise error.TestFail('You need to execute following Google Required'
+                                 ' Tests: %s' % (','.join(missing)))
 
         # apply each final tests
         self.check_developer_switch(check_developer_switch)

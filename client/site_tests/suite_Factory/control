@@ -33,6 +33,15 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import utils
 
 
+# -- CUSTOMIZATION --------------------------------------------------
+# You can tune these settings to fit your factory process.
+
+# change this to False if you want and allow fast wipe (insecure)
+DO_FACTORY_SECURE_WIPE = True
+
+# -- END OF CUSTOMIZATION ------------------------------------------
+
+
 _RESULTS_PATH = job.autodir + '/results/default'
 _STATUS_FILE_PATH = _RESULTS_PATH + '/status'
 _FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
@@ -170,12 +179,18 @@ test_list = [
         formal_name='factory_Dummy',
         trigger='w',
         dargs={'msg':'wifi test, one day...'}),
+
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
     factory.TestData(
         label_en='devrec',
         label_zw='特殊模式',
         formal_name='factory_DeveloperRecovery',
         trigger='b',
         dargs={'layout':'devrec'}),
+
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
     factory.TestData(
         label_en='light sensor',
         label_zw='光传感器',
@@ -187,28 +202,38 @@ test_list = [
         label_zw='最後測試',
         formal_name='step_final',
         automated_seq=[
+            # THIS IS A GOOGLE REQUIRED TEST.
+            # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
             factory.TestData(
                 label_en='component validation',
                 label_zw='元件驗證',
                 formal_name='hardware_Components',
                 dargs={'approved_dbs':'qualified_components*'})],
         trigger='f'),
+
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION DEVICES.
     factory.TestData(
         label_en='wipe',
         label_zw='清除',
         formal_name='factory_Wipe',
         trigger='x',
-        # -------- customize these parameter if you need. --------
-        # check_developer_switch: True to verify developer switch button state
-        # secure_wipe: True for secure (slow) wipe, False for fast.
-        # write_protect: True to enable and check flash write protect
-        dargs={'check_developer_switch':True,
-               'secure_wipe':True,
+        dargs={'secure_wipe':DO_FACTORY_SECURE_WIPE,
                'write_protect':False,
                'msg':('hit TAB+ENTER to write protect FW and '
                       'wipe test image!...\n'
                       '請按下 TAB+ENTER 啟用寫入保護以及清除'
                       '測試程式資料!...')}),
+        # NOTE: factory_Wipe.dargs support following variables for temporary
+        #       testing. You can add these settings to help internal test, but
+        #       THESE ARE GOOGLE REQUIRED TESTS SO YOU SHOULD NOT DISABLE THEM
+        #       IN PRODUCTION RELEASES.
+        #       - check_developer_switch: check for developer button switch
+        #       - write_protect: enable and check flash ROM write protection
+        # TODO(hungte) Although the 'write_protect' should be a Google required
+        #       test, we decide to disable it until first official release of
+        #       Chrome OS. Please remove that line for the real release.
+
     factory.TestData(
         label_en='review',
         label_zw='報告',
