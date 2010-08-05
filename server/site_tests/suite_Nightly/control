@@ -71,7 +71,6 @@ TESTS = [
   ('platform_MiniJailRootCapabilities', {}),
   ('platform_MiniJailVfsNamespace', {}),
   ('platform_NetParms', {}),
-  ('platform_OSLimits', {}),
   ('platform_ProcessPrivileges', {}),
   ('platform_Rootdev', {}),
   ('platform_StackProtector', {}),
