@@ -2,13 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import flashrom_util
 
 class firmware_RomSize(test.test):
-    version = 1
+    version = 2
 
     def run_once(self):
-        cmd = 'dmidecode | grep "ROM Size" | sed "s/.*: \([0-9]\+\) kB/\\1/"'
-        size = int(utils.system_output(cmd).strip())
-        self.write_perf_keyval({"kb_system_rom_size": size})
+        flashrom = flashrom_util.flashrom_util()
+
+        flashrom.select_bios_flashrom()
+        bios_size = flashrom.get_size() / 1024
+
+        flashrom.select_ec_flashrom()
+        ec_size = flashrom.get_size() / 1024
+
+        self.write_perf_keyval({"kb_system_rom_size": bios_size,
+                                "kb_ec_rom_size": ec_size})
