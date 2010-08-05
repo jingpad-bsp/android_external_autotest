@@ -53,6 +53,29 @@ class power_Resume(test.test):
         if not self._is_iface_up(iface):
             raise error.TestFail('%s failed to come up' % iface)
 
+    def _get_hwclock_seconds(self):
+        """
+        Read the hwclock resume time saved off by powerd_resume
+        """
+        count = 0
+        while count < 5:
+            hwclock_output = utils.read_file('/tmp/hwclock-on-resume')
+            logging.debug('hwclock_output: ' + hwclock_output)
+            match = re.search(
+                    r'= ([0-9]+) seconds since .+ (-?[0-9.]+) seconds$',
+                    hwclock_output, re.DOTALL)
+            if match:
+                seconds = int(match.group(1)) + float(match.group(2))
+                logging.debug('hwclock seconds = %f' % seconds)
+                return seconds
+
+            # /tmp/hwclock-on-resume file doesn't contain valid data. Retry
+            count += 1
+            time.sleep(1)
+
+        raise ValueError('Unable to read the hardware clock -- ' +
+                         hwclock_output)
+
 
     def run_once(self):
         # Some idle time before initiating suspend-to-ram
@@ -64,14 +87,11 @@ class power_Resume(test.test):
 
         # Set the alarm
         alarm_time = int(utils.get_hwclock_seconds()) + time_to_sleep
-        logging.debug('alarm_time = %d' % alarm_time)
+        logging.debug('alarm_time = %d', alarm_time)
         utils.set_wake_alarm(alarm_time)
 
         # Suspend the system to RAM
         utils.suspend_to_ram()
-
-        # Calculate the suspend/resume times
-        total_resume_time = utils.get_hwclock_seconds() - alarm_time
 
         # Get suspend and resume times from /var/log/messages
         start_suspend_time = self._get_start_suspend_time()
@@ -91,6 +111,8 @@ class power_Resume(test.test):
         if count == 5:
             raise error.TestError('Failed to find end resume time')
 
+        # Calculate the suspend/resume times
+        total_resume_time = self._get_hwclock_seconds() - alarm_time
         suspend_time = end_suspend_time - start_suspend_time
         kernel_resume_time = end_resume_time - end_suspend_time
         firmware_resume_time = total_resume_time - kernel_resume_time

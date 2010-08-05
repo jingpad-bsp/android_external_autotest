@@ -787,7 +787,10 @@ def suspend_to_ram():
     """
     Suspend the system to RAM (S3)
     """
-    set_power_state('mem')
+    if os.path.exists('/usr/bin/powerd_suspend'):
+        utils.system('/usr/bin/powerd_suspend')
+    else:
+        set_power_state('mem')
 
 
 def suspend_to_disk():
