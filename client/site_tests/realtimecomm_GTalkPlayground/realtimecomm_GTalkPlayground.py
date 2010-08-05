@@ -81,14 +81,22 @@ class realtimecomm_GTalkPlayground(test.test):
         page = 'videoplayground.html'
         para = 'callType=v'
         playground_url = "%s/%s?%s" % (path, page, para)
-        # Here we somehow have to use utils.run
-        # Other approaches like utils.system and site_ui.ChromeSession 
-        # cause problem in video.
-        # http://code.google.com/p/chromium-os/issues/detail?id=1764
-        utils.run('su chronos -c \'DISPLAY=:0 \
-            XAUTHORITY=/home/chronos/.Xauthority \
-            /opt/google/chrome/chrome \
-            --no-first-run %s\' &' % playground_url)
+
+        # This approach no longer works .... :(
+        # utils.run('su chronos -c \'DISPLAY=:0 \
+        #     XAUTHORITY=/home/chronos/.Xauthority \
+        #     /opt/google/chrome/chrome \
+        #     --no-first-run %s\' &' % playground_url)
+
+        # This seems to be broken also.
+        # Using site_ui.ChromeSession(local_page) doesn't work for local folder.
+        # However it works fine if login manually and open the page.
+        # So, might be a bug in autotest.
+        # session =  site_ui.ChromeSession(playground_url)
+
+        # As a workaround, for now, have to use the remote server.
+        # TODO(zhurunz) Find a better way to do that.
+        session = site_ui.ChromeSession('http://www.corp.google.com/~zhurunz/no_crawl/VideoPlayground/buzz/javascript/media/examples/videoplayground.html?callType=v')
 
         # Collect ctime,stime for GoogleTalkPlugin
         time.sleep(WARMUP_TIME)
@@ -121,3 +129,5 @@ class realtimecomm_GTalkPlayground(test.test):
 
         # Report perf
         self.write_perf_keyval(self.performance_results)
+
+        session.close()
