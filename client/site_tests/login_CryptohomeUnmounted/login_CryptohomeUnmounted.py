@@ -10,15 +10,10 @@ from autotest_lib.client.common_lib import error
 class login_CryptohomeUnmounted(site_ui_test.UITest):
     version = 1
 
-    def run_once(self, is_incognito=False):
-        if is_incognito:
-            if not site_cryptohome.is_mounted_on_tmpfs(
-                device = chromeos_constants.CRYPTOHOME_INCOGNITO,
-                allow_fail=False):
-                raise error.TestFail('Expected cryptohome to be mounted')
-        else:
-            if not site_cryptohome.is_mounted(allow_fail=False):
-                raise error.TestFail('Expected cryptohome to be mounted')
+
+    def run_once(self):
+        if not site_cryptohome.is_mounted(allow_fail=False):
+            raise error.TestFail('Expected cryptohome to be mounted')
 
         self.logout()
 

@@ -20,8 +20,3 @@ This test checks that cryptohome is mounted and unmounted when appropriate.
 """
 
 job.run_test('login_CryptohomeUnmounted')
-
-job.run_test('login_CryptohomeUnmounted',
-             is_incognito=True,
-             creds='$backdoor',
-             tag='incognito')
