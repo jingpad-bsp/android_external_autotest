@@ -1,15 +1,21 @@
-NAME = 'hardware_tsl2563'
-AUTHOR = 'Chromium OS Authors'
-PURPOSE = 'Verify the TSL 2560 Light Sensor Device is supported.'
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "hardware_tsl2563"
+PURPOSE = "Verify the TSL 2561 Light Sensor Device is supported."
 CRITERIA = """
-Fails if TSL2560 kernel module is not loaded, or the i2c adapter is not found.
+Fails if the tsl2563 kernel module is not loaded, or its sys files
+are not exported.
 """
-TIME = 'SHORT'
-TEST_CLASS = 'Hardware'
-TEST_CATEGORY = 'Functional'
-TEST_TYPE = 'Client'
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "hardware"
+TEST_TYPE = "client"
+
 DOC = """
-tsl2563tst is a user space program that tests the interface provided
+This tests the interface provided
 by the tsl2563 kernel module for controlling the Taos TSL2560/1/2/3
 light-to-digital converters (ie, light sensor chips).
 """

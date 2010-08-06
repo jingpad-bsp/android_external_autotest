@@ -2,28 +2,30 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
-
+import logging, os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+
 
 class hardware_tsl2563(test.test):
     """
     Test the TSL2560/1/2/3 Light Sensor device.
     Failure to find the device likely indicates the kernel module is not loaded.
-    Or it could mean an i2c_adapter was not found for it.  To spoof one:
-        echo tsl2563 0x29 > /sys/class/i2c-adapter/i2c-0/new_device
-    This will also automatically load the module.
+    Or it could mean the I2C probe for the device failed because of an incorrect
+    I2C address or bus specification.
+    The upscript /etc/init/powerd.conf should properly load the driver so that
+    we can find its files in /sys/class/iio/device0/.
     """
     version = 1
 
-    preserve_srcdir = True
-
-    def setup(self):
-        os.chdir(self.srcdir)
-        utils.system('make')
-
-
     def run_once(self):
-        tsl_test_cmd = os.path.join(self.srcdir, "tsl2563tst")
-        utils.system(tsl_test_cmd)
+        try:
+            lux_out = utils.read_one_line('/sys/class/iio/device0/lux')
+        except:
+            raise error.TestFail('The tsl2563 driver is not '
+                                 'exporting its lux file')
+        lux = int(lux_out)
+        if lux < 0:
+            raise error.TestFail('Invalid tsl2563 lux string (%s)' % lux_out)
+        logging.debug("tsl2563 lux value is %d", lux)
+
