@@ -122,9 +122,9 @@ class network_3GSmokeTest(test.test):
         manager = mm.ModemManager()
 
         for path in manager.manager.EnumerateDevices():
-
             modem = manager.Modem(path)
             props = manager.Properties(path)
+            info = {}
 
             try:
                 info = dict(info=modem.GetInfo())
@@ -187,7 +187,7 @@ class network_3GSmokeTest(test.test):
                                  '(%s expected).' %
                                  (address, interface, expected))
 
-    def run_once_internal(self, connect_count):
+    def run_once_internal(self, connect_count, sleep_kludge):
         bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus(mainloop=bus_loop)
 
@@ -204,12 +204,10 @@ class network_3GSmokeTest(test.test):
 
         for ii in xrange(connect_count):
             self.ConnectTo3GNetwork(config_timeout=120)
-
             self.CheckInterfaceForDestination(SERVER,
                                               self.FindCellularService())
 
             self.FetchUrl(label='3G', size=1<<16)
-
             self.DisconnectFrom3GNetwork(disconnect_timeout=60)
 
             # Verify that we can still get information for all the modems
@@ -218,11 +216,15 @@ class network_3GSmokeTest(test.test):
                 raise error.TestFail('Test shutdown: '
                                      'failed to leave modem in working state.')
 
-    def run_once(self, connect_count):
+            if sleep_kludge:
+              logging.info('Sleeping for %.1f seconds', sleep_kludge)
+              time.sleep(sleep_kludge)
+
+    def run_once(self, connect_count=30, sleep_kludge=5):
         self.flim = flimflam.FlimFlam()
         self.device_manager = flimflam.DeviceManager(self.flim)
         try:
             self.device_manager.ShutdownAllExcept('cellular')
-            self.run_once_internal(connect_count)
+            self.run_once_internal(connect_count, sleep_kludge)
         finally:
             self.device_manager.RestoreDevices()
