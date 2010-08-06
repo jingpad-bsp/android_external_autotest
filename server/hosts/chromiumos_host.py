@@ -81,8 +81,7 @@ class ChromiumOSHost(base_classes.Host):
         # First, attempt dev & test tools update (which don't live on
         # the rootfs). This must succeed so that the newly installed
         # host is testable after we run the autoupdater.
-        statefuldev_url = urlparse.urljoin(update_url,
-            '/static/archive/%s' % update_version)
+        statefuldev_url = update_url.replace('update', 'static/archive')
         statefuldev_cmd = ' '.join([STATEFULDEV_UPDATER, statefuldev_url,
                                     '2>&1'])
         logging.info(statefuldev_cmd)
