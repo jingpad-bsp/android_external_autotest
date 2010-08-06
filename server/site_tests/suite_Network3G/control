@@ -18,11 +18,14 @@ from autotest_lib.client.common_lib import error
 
 
 # List of tests to be run.
-TESTS = [
+CLIENT_TESTS = [
   'network_3GModemPresent',
   'network_3GSmokeTest'
 ]
 
+SERVER_TESTS = [
+  'network_3GLoadFirmware',
+]
 
 def run_client_test(machine):
   client = hosts.create_host(machine)
@@ -33,8 +36,13 @@ def run_client_test(machine):
     raise error.TestNAError(
       "Machine does not have a 3G module or is not labeled as having one.")
 
-  for test in TESTS:
+  for test in CLIENT_TESTS:
       client_at.run_test(test)
 
+def run_server_test(machine):
+  host = hosts.create_host(machine)
+  for test in SERVER_TESTS:
+    job.run_test(test, host=host)
 
 job.parallel_on_machines(run_client_test, machines)
+parallel_simple(run_server_test, machines)
