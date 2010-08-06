@@ -15,6 +15,8 @@ class GoogleAuthServer(object):
     sid = '1234'
     lsid = '5678'
     token = 'aaaa'
+    __issue_auth_token_miss_count = 0
+    __token_auth_miss_count = 0
 
 
     def __init__(self,
@@ -76,13 +78,24 @@ class GoogleAuthServer(object):
     def wait_for_issue_token(self, timeout=10):
         self._issue_latch.wait(timeout)
         if not self._issue_latch.is_set():
-            raise error.TestError('Never hit IssueAuthToken endpoint.')
+            self.__issue_auth_token_miss_count += 1
+            logging.error('Never hit IssueAuthToken endpoint.')
 
 
     def wait_for_test_over(self, timeout=10):
         self._over_latch.wait(timeout)
         if not self._over_latch.is_set():
-            raise error.TestError('Never redirected to /webhp.')
+            self.__token_auth_miss_count += 1
+            logging.error('Never redirected to /webhp.')
+
+
+    def get_endpoint_misses(self):
+        results = {}
+        if (self.__issue_auth_token_miss_count > 0):
+            results['issue_auth_token_miss', self.__issue_auth_token_miss_count]
+        if (self.__token_auth_miss_count > 0):
+            results['token_auth_miss', self.__token_auth_miss_count]
+        return results
 
 
     def __client_login_responder(self, handler, url_args):

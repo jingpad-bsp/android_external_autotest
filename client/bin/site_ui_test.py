@@ -230,7 +230,6 @@ class UITest(bin_test.test):
         self.ensure_login_complete()
 
 
-
     def logout(self):
         """Log out.
 
@@ -278,3 +277,10 @@ class UITest(bin_test.test):
             self.logout()
 
         self.stop_authserver()
+
+
+    def get_auth_endpoint_misses(self):
+        if hasattr(self, '_authServer'):
+            return self._authServer.get_endpoint_misses()
+        else:
+            return {}

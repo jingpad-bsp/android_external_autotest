@@ -9,12 +9,10 @@ class login_LoginSuccess(site_ui_test.UITest):
     version = 1
 
 
-    def ensure_login_complete(self):
-        """Wait for login to complete, including cookie fetching."""
-        self._authServer.wait_for_client_login()
-        self._authServer.wait_for_issue_token()
-        self._authServer.wait_for_test_over()
-
-
     def run_once(self):
-        time.sleep(5)  # Local login is so fast, it needs to be slowed down.
+        pass
+
+
+    def cleanup(self):
+        super(login_LoginSuccess, self).cleanup()
+        self.write_perf_keyval(self.get_auth_endpoint_misses())
