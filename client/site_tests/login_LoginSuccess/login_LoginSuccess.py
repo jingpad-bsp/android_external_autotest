@@ -9,6 +9,13 @@ class login_LoginSuccess(site_ui_test.UITest):
     version = 1
 
 
+    def ensure_login_complete(self):
+        """Wait for login to complete, including cookie fetching."""
+        self._authServer.wait_for_client_login()
+        self._authServer.wait_for_issue_token()
+        self._authServer.wait_for_test_over()
+
+
     def run_once(self):
         pass
 

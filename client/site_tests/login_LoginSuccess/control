@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "desktopui_DoLogin"
+NAME = "login_LoginSuccess"
 PURPOSE = "Login through the Chrome login manager."
 CRITERIA = "This test will succeed as long as a test account is able to login."
 TIME = "SHORT"
