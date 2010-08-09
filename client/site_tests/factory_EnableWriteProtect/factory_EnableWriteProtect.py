@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -49,29 +51,41 @@ class factory_EnableWriteProtect(test.test):
         for conf in eeprom_sets:
             # select target
             if not self.flashrom.select_target(conf['target']):
-                raise error.TestError('ERROR: cannot select target %s' %
-                        conf['name'])
+                raise error.TestError(
+                        'ERROR: cannot select target %s\n' \
+                        '錯誤: 無法選取快閃記憶體目標 %s' %
+                        (conf['name'], conf['name']))
 
             # build layout
             original = self.flashrom.read_whole()
             if not original:
-                raise error.TestError('Cannot read valid flash rom data.')
+                raise error.TestError(
+                        'Cannot read valid flash rom data.\n' \
+                        '無法讀取快閃記憶體資料')
             flashrom_size = len(original)
             layout = self.flashrom.detect_layout(conf['layout'], flashrom_size)
             if not layout:
-                raise error.TestError('Cannot detect flash rom layout.')
+                raise error.TestError(
+                        'Cannot detect flash rom layout.\n' \
+                        '無法偵測快閃記憶體配置結構')
 
             # enable write protection
             if self.verbose:
                 print ' - Enable Write Protection for %s' % conf['name']
             if layout.keys().count('ro') != 1:
-                raise error.TestError("INTERNAL ERROR: Must be 1 RO section")
+                raise error.TestError(
+                        "INTERNAL ERROR: Must be 1 RO section\n" \
+                        "內部錯誤: 須要單一個唯讀區段")
             if not self.flashrom.enable_write_protect(layout, 'ro'):
-                raise error.TestError('ERROR: cannot enable write protection.')
+                raise error.TestError(
+                        'ERROR: cannot enable write protection.\n' \
+                        '錯誤: 無法啟用寫入保護')
 
         # restore default selection.
         if not self.flashrom.select_target(system_default_selection):
-            raise error.TestError('ERROR: cannot restore target.')
+            raise error.TestError(
+                    'ERROR: cannot restore target.\n' \
+                    '錯誤: 無法還原快閃記憶體目標')
         print " - Complete."
 
 

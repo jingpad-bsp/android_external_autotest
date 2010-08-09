@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -43,7 +45,8 @@ class KeyboardTest:
                               set(self._bindings) - self.successful_keys)
         if not missing_keys:
             return ''
-        return 'missing_keys = [%s]' % ', '.join(missing_keys)
+        return 'Missing following keys\n' \
+               '沒有偵測到下列按鍵，鍵盤可能故障，請檢修: %s' % ', '.join(missing_keys)
 
     def timer_event(self, countdown_label):
         if not self._deadline:   # Ignore timer with no countdown in progress.

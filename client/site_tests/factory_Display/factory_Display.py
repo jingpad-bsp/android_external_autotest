@@ -184,7 +184,8 @@ class factory_Display(test.test):
         failed_set = set(name for name, status in self._status_map.items()
                          if status is not ful.PASSED)
         if failed_set:
-            raise error.TestFail('some patterns failed (%s)' %
+            raise error.TestFail('some patterns failed\n' \
+                                 '以下圖樣測試未通過: %s' %
                                  ', '.join(failed_set))
 
         factory.log('%s run_once finished' % self.__class__)

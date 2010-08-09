@@ -30,7 +30,13 @@ _STATE_WAIT_REMOVE = 2
 _INSERT_FMT_STR = lambda t: 'insert %s drive...\n插入%s存儲...' % (t, t)
 _REMOVE_FMT_STR = lambda t: 'remove %s drive...\n提取%s存儲...' % (t, t)
 _TESTING_FMT_STR = lambda t:'testing %s...\n%s 檢查當中...' % (t, t)
-
+_ERR_TOO_MANY_REMOVE_FMT_STR = \
+        lambda target_dev, removed_dev: \
+            'Too many device removed (%s). Please only remove %s.\n' \
+            '有太多外部儲存裝置被移除 (%s)，請只移除 %s 即可\n' % \
+                    (removed_dev, target_dev, removed_dev, target_dev)
+_ERR_DEV_NOT_REMOVE_FMT_STR = \
+        lambda t: 'Please remove %s.\n請移除 %s\n' % (t, t)
 
 def find_root_dev():
     rootdev = utils.system_output('rootdev')
@@ -88,10 +94,13 @@ class factory_ExternalStorage(test.test):
                 self._pictogram.queue_draw()
         else:
             diff = self._devices - find_all_storage_dev()
+            if len(diff) > 1:
+                self._error += _ERR_TOO_MANY_REMOVE_FMT_STR(
+                        self._target_device, diff)
+            if diff and self._target_device not in diff:
+                self._error += _ERR_DEV_NOT_REMOVE_FMT_STR(
+                        self._target_device)
             if diff:
-                if diff != set([self._target_device]):
-                    self._error = ('too many devs removed (%s vs %s)' %
-                                   (diff, self._target_device))
                 gtk.main_quit()
         return True
 
@@ -104,7 +113,7 @@ class factory_ExternalStorage(test.test):
 
         factory.log('%s run_once' % self.__class__)
 
-        self._error = None
+        self._error = ''
 
         os.chdir(self.srcdir)
 

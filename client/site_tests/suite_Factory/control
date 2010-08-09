@@ -147,8 +147,8 @@ test_list = [
         trigger='c'),
     factory.TestData(
         label_en='audio',
-        label_zw='聲音',
-        formal_name='factory_Audio',
+        label_zw='音源裝置',
+        formal_name='factory_Dummy',
         trigger='a',
         dargs={'sample':'deps/factory/fhorn.wav'}),
     factory.TestData(
@@ -190,7 +190,7 @@ test_list = [
     # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
     factory.TestData(
         label_en='devrec',
-        label_zw='特殊模式',
+        label_zw='還原模式',
         formal_name='factory_DeveloperRecovery',
         trigger='b',
         dargs={'layout':'devrec'}),

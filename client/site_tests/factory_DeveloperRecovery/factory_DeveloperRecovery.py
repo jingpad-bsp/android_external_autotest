@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -264,7 +266,9 @@ class DevRecGpio:
                          'grep -qe "N4[0-9][0-9]"'):
             systemsku = 'atom-proto'
         else:
-            systemsku = 'unknown'
+            raise error.TestNAError(
+                    'Unknown system to test program\n'
+                    '測試程式未知的硬體系統')
 
         # Look up hardware configuration.
         if systemsku in self.sku_table:
@@ -272,16 +276,19 @@ class DevRecGpio:
             self.table = table['gpios']
             self.gpio_read = table['gpio_read']
         else:
-            raise error.TestError('System settings not defined for board %s' %
-                                  systemsku)
+            raise error.TestNAError(
+                    'Test missing corresponding hardware for %s'
+                    '測試程式沒有與 %s 相對應的硬體組態' %
+                    (systemsku, systemsku))
         self._gpio_list = self.table.keys()
         self._gpio_list.reverse()
         self.num_gpios = len(self._gpio_list)
 
     def acpi_gpio_read(self, name):
         if name not in self.table:
-            raise error.TestError('Unable to locate definition for gpio %s' %
-                                  name)
+            raise error.TestNAError(
+                    'Unable to locate definition for gpio %s\n'
+                    '測試程式找不到 gpio %s' % (name, name))
 
         return int(utils.system_output("cat %s/%s" % (self._gpio_root, name)))
 

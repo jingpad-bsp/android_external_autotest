@@ -1,4 +1,4 @@
- # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 #
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -188,8 +188,10 @@ class factory_Camera(test.test):
         dev.capture_mmap_finish()
 
         if self.fail:
-            raise error.TestFail('camera test failed by user indication')
+            raise error.TestFail('Camera test failed by user indication\n' \
+                                 '品管人員懷疑攝影鏡頭故障，請檢修')
         if self.ledfail:
-            raise error.TestFail('camera led test failed')
+            raise error.TestFail('Camera LED test failed\n' \
+                                 '攝影鏡頭 LED 測試不通過，請檢修')
 
         factory.log('%s run_once finished' % self.__class__)

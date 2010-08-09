@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -75,17 +77,20 @@ class TouchpadTest:
         missing_motion_sectors = sorted(
             i for i, v in self._motion_grid.items() if v is False)
         if missing_motion_sectors:
-            missing.append('missing_motion_sectors = [%s]' %
+            missing.append('Missing following motion sectors\n' \
+                           '未偵測到下列位置的觸控移動訊號 [%s]' %
                            ', '.join(missing_motion_sectors))
         missing_scroll_segments = sorted(
             str(i) for i, v in self._scroll_array.items() if v is False)
         if missing_scroll_segments:
-            missing.append('missing_scroll_segments = [%s]' %
+            missing.append('Missing following scroll segments\n'
+                           '未偵測到下列位置的觸控捲動訊號 [%s]' %
                            ', '.join(missing_scroll_segments))
         if not self._l_click:
-            missing.append('missing left click')
+            missing.append('Missing left click\n' \
+                           '沒有偵測到左鍵被按下，請檢修')
         # XXX add self._r_click here when that is supported...
-        return ', '.join(missing)
+        return '\n'.join(missing)
 
     def timer_event(self, countdown_label):
         if not self._deadline:  # Ignore timer with no countdown in progress.
