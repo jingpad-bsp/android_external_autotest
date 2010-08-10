@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import errno, logging, os, utils, signal, subprocess, time
+import errno, logging, os, re, utils, signal, subprocess, time
 from autotest_lib.client.bin import chromeos_constants, site_cryptohome
 from autotest_lib.client.bin import site_utils, test
-from autotest_lib.client.common_lib import error, site_ui
+from autotest_lib.client.common_lib import error, log_watcher, site_ui
 
 _DEFAULT_TIMEOUT = 30
 
@@ -81,6 +81,20 @@ def logged_in():
     return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)
 
 
+def chrome_crashed(watcher):
+    """Runs through the log watched by |watcher| to see if a crash was
+    reported for chrome.
+
+    Returns True if so, False if not.
+    """
+    line = watcher.ReadLine()
+    while line:
+        if re.search('Received crash notification for chrome', line):
+            return True
+        line = watcher.ReadLine()
+    return False
+
+
 def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     """Attempt to log in.
 
@@ -103,6 +117,10 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     if logged_in():
         raise UnexpectedCondition("Already logged in")
 
+    # Mark /var/log/messages now; we'll run through all subsequent log messages
+    # if we couldn't log in to see if the browser crashed.
+    watcher = log_watcher.LogWatcher(filename='/var/log/messages')
+
     ax = site_ui.get_autox()
     # navigate to login screen
     ax.send_hotkey("Ctrl+Alt+L")
@@ -119,9 +137,17 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     ax.send_text(password)
     ax.send_hotkey("Return")
 
-    site_utils.poll_for_condition(
-        logged_in, TimeoutError('Timed out waiting for login'),
-        timeout=timeout)
+    try:
+        site_utils.poll_for_condition(
+            logged_in,
+            TimeoutError('Timed out waiting for login'),
+            timeout=timeout)
+    except TimeoutError, error:
+        # We could fail faster if necessary, but it'd be more complicated.
+        if chrome_crashed(watcher):
+            raise UnexpectedCondition('Chrome crashed during login')
+        else:
+            raise error
 
 
 def attempt_logout(timeout=_DEFAULT_TIMEOUT):

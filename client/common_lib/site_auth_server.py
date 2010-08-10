@@ -92,9 +92,9 @@ class GoogleAuthServer(object):
     def get_endpoint_misses(self):
         results = {}
         if (self.__issue_auth_token_miss_count > 0):
-            results['issue_auth_token_miss', self.__issue_auth_token_miss_count]
+            results['issue_auth_token_miss'] = self.__issue_auth_token_miss_count
         if (self.__token_auth_miss_count > 0):
-            results['token_auth_miss', self.__token_auth_miss_count]
+            results['token_auth_miss'] = self.__token_auth_miss_count
         return results
 
 
