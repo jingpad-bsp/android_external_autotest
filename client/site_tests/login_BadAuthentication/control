@@ -3,16 +3,22 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "BAD_CREDS_LOGIN"
+NAME = "login_BadAuthentication"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
 
 DOC = """
-This tests that we fail on a login attempt with bad credentials  
+This tests that we fail on a login attempt that gets back an error from the
+server.
 """
 
-job.run_test('login_BadAuthentication', creds='$default')
-
-
+job.run_test('login_BadAuthentication', tag='badauth')
+job.run_test('login_BadAuthentication', tag='not_verified', error_string="NotVerified")
+job.run_test('login_BadAuthentication', tag='no_terms', error_string="TermsNotAgreed")
+job.run_test('login_BadAuthentication', tag='account_deleted', error_string="AccountDeleted")
+job.run_test('login_BadAuthentication', tag='account_disabled', error_string="AccountDisabled")
+job.run_test('login_BadAuthentication', tag='service_disabled', error_string="ServiceDisabled")
+job.run_test('login_BadAuthentication', tag='service_unavailable', error_string="ServiceUnavailable")
+job.run_test('login_BadAuthentication', tag='unknown_error', error_string="Unknown")
