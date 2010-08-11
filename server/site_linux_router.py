@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging, re
+from autotest_lib.client.common_lib import error
 
 def isLinuxRouter(router):
     router_uname = router.run('uname').stdout
@@ -32,20 +33,38 @@ class LinuxRouter(object):
 
         # Network interfaces.
         self.bridgeif = params.get('bridgedev', "br-lan")
-        self.wiredif = params.get('wiredev', "eth1")
+        self.wiredif = params.get('wiredev', "eth0")
         self.wlanif2 = "wlan2"
         self.wlanif5 = "wlan5"
 
-        # Default to 1st available wireless phy.
+        # Parse the output of 'iw phy' and find a device for each frequency
         if "phydev2" not in params:
             output = self.router.run("%s list" % self.cmd_iw).stdout
-            test = re.compile("Wiphy (.*)")
+            re_wiphy = re.compile("Wiphy (.*)")
+            re_mhz = re.compile("(\d+) MHz")
+            in_phy = False
+            self.phydev2 = None
+            self.phydev5 = None
             for line in output.splitlines():
-                m = test.match(line)
-                if m:
-                    self.phydev2 = m.group(1)
-                    self.phydev5 = self.phydev2
-                    break
+                match_wiphy = re_wiphy.match(line)
+                if match_wiphy:
+                    in_phy = True
+                    widevname = match_wiphy.group(1)
+                elif in_phy:
+                    if line[0] == '\t':
+                        match_mhz = re_mhz.search(line)
+                        if match_mhz:
+                            mhz = int(match_mhz.group(1))
+                            if self.phydev2 is None and \
+                                    mhz in range(2402,2472,5):
+                                self.phydev2 = widevname
+                            elif self.phydev5 is None and \
+                                    mhz in range(5100,6000,20):
+                                self.phydev5 = widevname
+                            if None not in (self.phydev2, self.phydev5):
+                                break
+                    else:
+                        in_phy = False
             else:
                 raise error.TestFail("No Wireless NIC detected on the device")
         else:
