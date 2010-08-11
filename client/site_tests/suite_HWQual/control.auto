@@ -57,6 +57,7 @@ job.run_test('hardware_SsdDetection')
 
 # Display
 job.run_test('hardware_Backlight')
+job.run_test('hardware_tsl2563')
 job.run_test('hardware_Resolution')
 
 # Graphics
