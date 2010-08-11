@@ -171,6 +171,13 @@ Automated and Semi-Automated Test Runs
   $ ./server/autoserv -r results.audio_ext -m <DUT_IP> \
                   -c client/site_tests/suite_HWQual/control.audio
 
+- Run the Keyboard test : 
+  (Wait several seconds after running the test. Then strike the "Search" key,
+   e.g. the key above Left Shift and below Tab)
+
+  $ ./server/autoserv -r result.keyboard -m <DUT_IP> \
+                  -c client/site_tests/suite_HWQual/control.keyboard
+
 - Run the DUT on AC. Probe the AC driver:
 
   $ ./server/autoserv -r result.probe_ac -m <DUT_IP> \
