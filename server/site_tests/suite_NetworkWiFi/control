@@ -35,8 +35,8 @@ def run_server_tests(machine):
   client_attributes = site_host_attributes.HostAttributes(machine)
 
   test_pat = '[0-9]*'
-  router_addr = client_attributes.router_addr
-  server_addr = client_attributes.server_addr
+  router_addr = str(client_attributes.router_addr)
+  server_addr = str(client_attributes.server_addr)
 
   config = site_wifitest.read_wifi_testbed_config(
       os.path.join(job.configdir, 'wifi_testbed_config'),
