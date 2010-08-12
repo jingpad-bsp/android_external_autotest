@@ -4,6 +4,7 @@
 
 import logging, re
 from autotest_lib.client.common_lib import error
+from autotest_lib.server import site_eap_tls
 
 def isLinuxRouter(router):
     router_uname = router.run('uname').stdout
@@ -254,6 +255,8 @@ class LinuxRouter(object):
                     pass        # NB: meaningless for hostapd; ignore
                 elif k == '-ampdu':
                     pass        # TODO(sleffler) need hostapd support
+                elif k == 'eap-tls':
+                    conf.update(site_eap_tls.router_config(self.router, v))
                 else:
                     conf[k] = v
 

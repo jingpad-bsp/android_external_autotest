@@ -1,0 +1,16 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+{ "name":"Check1x_AES",
+  "steps":[             # Channel [any]
+    [ "create",         { "type":"hostap" } ],
+    [ "config",         { "channel":"2412", "mode":"11g",
+                          "wpa":"1", "wpa_key_mgmt":"WPA-EAP",
+                          "wpa_pairwise":"CCMP", "ieee8021x":"1",
+                          "eap-tls":"cert1" } ],
+    [ "connect",        { "security":"802_1x", "eap-tls":"cert1" } ],
+    [ "client_ping",    { "count":"10" } ],
+    [ "destroy" ],
+  ],
+}

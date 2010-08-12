@@ -8,6 +8,7 @@ from autotest_lib.server import autotest, hosts, subcommand
 from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_host_attributes
+from autotest_lib.server import site_eap_tls
 
 class NotImplemented(Exception):
     def __init__(self, what):
@@ -209,6 +210,10 @@ class WiFiTest(object):
             os.path.dirname(os.path.realpath(__file__)) + '/' + script_name,
             script_client_file,
             delete_dest=True)
+
+        if 'eap-tls' in params:
+            params.update(site_eap_tls.client_config(self.client,
+                                                     params['eap-tls']))
 
         result = self.client.run('python "%s" "%s" "%s" "%s" "%d" "%d"' %
             (script_client_file,

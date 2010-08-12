@@ -13,14 +13,22 @@ manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
     "org.chromium.flimflam.Manager")
 connect_quirks = {}
 
+connection_settings = {
+   "Type": "wifi",
+   "Mode": "managed",
+   "SSID": ssid,
+   "Security": security
+}
+
+if security == '802_1x':
+    (connection_settings["Identity"],
+     connection_settings["CertPath"]) = psk.split(':')
+else:
+   connection_settings["Passphrase"] = psk
+
 def DbusSetup():
     try:
-        path = manager.GetService(({
-                    "Type": "wifi",
-                    "Mode": "managed",
-                    "SSID": ssid,
-                    "Security": security,
-                    "Passphrase": psk }))
+        path = manager.GetService((connection_settings))
         service = dbus.Interface(
             bus.get_object("org.chromium.flimflam", path),
             "org.chromium.flimflam.Service")
