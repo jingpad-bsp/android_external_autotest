@@ -1,0 +1,149 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import httplib
+import logging
+import re
+import socket
+import urlparse
+
+from autotest_lib.client.bin import site_utils
+from autotest_lib.client.common_lib import error
+
+
+STATEFULDEV_UPDATER = '/usr/local/bin/stateful_update'
+UPDATER_BIN = '/usr/bin/update_engine_client'
+UPDATER_IDLE = 'UPDATE_STATUS_IDLE'
+UPDATER_NEED_REBOOT = 'UPDATED_NEED_REBOOT'
+
+
+class ChromiumOSError(error.InstallError):
+    """Generic error for ChromiumOS-specific exceptions."""
+    pass
+
+
+def url_to_version(update_url):
+    # The ChromiumOS updater respects the last element in the path as
+    # the requested version. Parse it out.
+    return urlparse.urlparse(update_url).path.split('/')[-1]
+
+
+class ChromiumOSUpdater():
+    def __init__(self, host=None, update_url=None):
+        self.host = host
+        self.update_url = update_url
+        self.update_version = url_to_version(update_url)
+
+    def check_update_status(self):
+        update_status_cmd = ' '.join([UPDATER_BIN, '-status', '2>&1',
+                                      '| grep CURRENT_OP'])
+        update_status = self._run(update_status_cmd)
+        return update_status.stdout.strip().split('=')[-1]
+
+    def _run(self, cmd, *args, **kwargs):
+        return self.host.run(cmd, *args, **kwargs)
+
+    def run_update(self):
+        # TODO(seano): Retrieve update_engine.log from target host.
+        if not self.update_url:
+            return False
+
+        # Check that devserver is accepting connections (from autoserv's host)
+        # If we can't talk to it, the machine host probably can't either.
+        auserver_host = urlparse.urlparse(self.update_url)[1]
+        try:
+            httplib.HTTPConnection(auserver_host).connect()
+        except socket.error:
+            raise ChromiumOSError('Update server at %s not available' %
+                                  auserver_host)
+
+        logging.info('Installing from %s to: %s' % (self.update_url,
+                                                    self.host.hostname))
+        # If we find the system an updated-but-not-rebooted state,
+        # that's probably bad and we shouldn't trust that the previous
+        # update left the machine in a good state. Reset update_engine's
+        # state & ensure that update_engine is idle.
+        if self.check_update_status() != UPDATER_IDLE:
+            self._run('initctl stop update-engine')
+            self._run('rm -f /tmp/update_engine_autoupdate_completed')
+            self._run('initctl start update-engine')
+        # May need to wait if service becomes slow to restart.
+        if self.check_update_status() != UPDATER_IDLE:
+            raise ChromiumOSError('%s is not in an installable state' %
+                                  self.host.hostname)
+
+        # First, attempt dev & test tools update (which don't live on
+        # the rootfs). This must succeed so that the newly installed
+        # host is testable after we run the autoupdater.
+        statefuldev_url = self.update_url.replace('update', 'static/archive')
+
+        statefuldev_cmd = ' '.join([STATEFULDEV_UPDATER, statefuldev_url,
+                                    '2>&1'])
+        logging.info(statefuldev_cmd)
+        try:
+            self._run(statefuldev_cmd, timeout=1200)
+        except error.AutoservRunError, e:
+            raise ChromiumOSError('stateful_update failed on %s' %
+                                  self.host.hostname)
+
+        # Run autoupdate command. This tells the autoupdate process on
+        # the host to look for an update at a specific URL and version
+        # string.
+        autoupdate_cmd = ' '.join([UPDATER_BIN,
+                                   '--omaha_url=%s' % self.update_url,
+                                   '--app_version ForcedUpdate'])
+        logging.info(autoupdate_cmd)
+        try:
+            self._run(autoupdate_cmd, timeout=60)
+        except error.AutoservRunError, e:
+            raise ChromiumOSError('unable to run updater on %s' %
+                                  self.host.hostname)
+
+        # Check that the installer completed as expected.
+        def update_successful():
+            status = self.check_update_status()
+            if status == UPDATER_IDLE:
+                raise ChromiumOSError('update-engine error on %s' %
+                                      self.host.hostname)
+            else:
+                return 'UPDATED_NEED_REBOOT' in status
+
+        site_utils.poll_for_condition(update_successful,
+                                      ChromiumOSError('Updater failed'),
+                                      900, 10)
+        return True
+
+
+    def check_version(self):
+        booted_version = self.get_build_id()
+        if booted_version != self.update_version:
+            logging.error('Expected Chromium OS version: %s.'
+                          'Found Chromium OS %s',
+                          (self.update_version, booted_version))
+            raise ChromiumOSError('Updater failed on host %s' %
+                                  self.host.hostname)
+        else:
+            return True
+
+    def get_build_id(self):
+        """Turns the CHROMEOS_RELEASE_DESCRIPTION into a string that
+        matches the build ID."""
+        # TODO(seano): handle dev build naming schemes.
+        version = self._run('grep CHROMEOS_RELEASE_DESCRIPTION'
+                            ' /etc/lsb-release').stdout
+        build_re = (r'CHROMEOS_RELEASE_DESCRIPTION='
+                    '(\d+\.\d+\.\d+\.\d+) \(\w+ \w+ (\w+)(.*)\)')
+        version_match = re.match(build_re, version)
+        if not version_match:
+            raise ChromiumOSError('Unable to get build ID from %s. Found "%s"',
+                                  self.host.hostname, version)
+        version, build_id, builder = version_match.groups()
+        # Continuous builds have an extra "builder number" on the end.
+        # Report it if this looks like one.
+        build_match = re.match(r'.*: (\d+)', builder)
+        if build_match:
+            builder_num = '-b%s' % build_match.group(1)
+        else:
+            builder_num = ''
+        return '%s-r%s%s' % (version, build_id, builder_num)
