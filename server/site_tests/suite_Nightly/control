@@ -62,7 +62,7 @@ TESTS = [
   ('login_BadAuthentication', {'tag' : 'unknown',
   			       'error_string' : 'Unknown'}),
   ('login_CryptohomeUnmounted', {}),
-  ('login_CryptohomeIncognitoUnmounted', {}),
+  ('login_CryptohomeIncognitoUnmounted', {'creds': '$backdoor'}),
   ('logging_LogVolume', {'constraints': ['bytes_unexpected <= 100000',
                                          'files_unexpected <= 50',
                                          'percent_stateful_used <= 50',

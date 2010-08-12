@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-
 from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.bin import site_cryptohome, site_ui_test
 from autotest_lib.client.common_lib import error

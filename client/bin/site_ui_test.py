@@ -265,14 +265,14 @@ class UITest(bin_test.test):
         try:
             shutil.copy(chromeos_constants.USER_DATA_DIR+'/chrome_log',
                         self.resultsdir+'/chrome_prelogin_log')
-        except OSError, error:
+        except (IOError, OSError) as error:
             logging.error(error)
 
         if site_login.logged_in():
             try:
                 shutil.copy(chromeos_constants.USER_DATA_DIR+'/user/chrome_log',
                             self.resultsdir+'/chrome_postlogin_log')
-            except OSError, error:
+            except (IOError, OSError) as error:
                 logging.error(error)
             self.logout()
 
