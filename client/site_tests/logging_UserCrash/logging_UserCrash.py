@@ -4,27 +4,14 @@
 
 import grp, logging, os, pwd, re, stat, subprocess
 from signal import SIGSEGV
-from autotest_lib.client.bin import site_log_reader, site_utils, test
+from autotest_lib.client.bin import site_crash_test, site_utils, test
 from autotest_lib.client.common_lib import error, utils
 
-_CONSENT_FILE = '/home/chronos/Consent To Send Stats'
-_CRASH_REPORTER_PATH = '/sbin/crash_reporter'
-_CRASH_SENDER_PATH = '/sbin/crash_sender'
-_CRASH_SENDER_CRON_PATH = '/etc/cron.hourly/crash_sender.hourly'
-_CRASH_SENDER_RATE_DIR = '/var/lib/crash_sender'
-_CRASH_SENDER_RUN_PATH = '/var/run/crash_sender.pid'
 _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
-_DAILY_RATE_LIMIT = 8
 _LEAVE_CORE_PATH = '/etc/leave_core'
-_MIN_UNIQUE_TIMES = 4
-_MOCK_CRASH_SENDING = '/tmp/mock-crash-sending'
-_PAUSE_FILE = '/tmp/pause-crash-sending'
-_SECONDS_SEND_SPREAD = 3600
-_SYSTEM_CRASH_DIR = '/var/spool/crash'
-_USER_CRASH_DIR = '/home/chronos/user/crash'
 
 
-class logging_UserCrash(test.test):
+class logging_UserCrash(site_crash_test.CrashTest):
     version = 1
 
 
@@ -33,213 +20,11 @@ class logging_UserCrash(test.test):
         utils.system('make clean all')
 
 
-    def _set_sending(self, is_enabled):
-        if is_enabled:
-            if os.path.exists(_PAUSE_FILE):
-                os.remove(_PAUSE_FILE)
-        else:
-            utils.system('touch ' + _PAUSE_FILE)
-
-
-    def _reset_rate_limiting(self):
-        utils.system('rm -rf ' + _CRASH_SENDER_RATE_DIR)
-
-
-    def _clear_spooled_crashes(self):
-        utils.system('rm -rf ' + _SYSTEM_CRASH_DIR)
-        utils.system('rm -rf ' + _USER_CRASH_DIR)
-
-
-    def _kill_running_sender(self):
-        if not os.path.exists(_CRASH_SENDER_RUN_PATH):
-            return
-        running_pid = int(utils.read_file(_CRASH_SENDER_RUN_PATH))
-        logging.warning('Detected running crash sender (%d), killing' %
-                        running_pid)
-        utils.system('kill -9 %d' % running_pid)
-        os.remove(_CRASH_SENDER_RUN_PATH)
-
-
-    def _set_sending_mock(self, mock_enabled, send_success=True):
-        if mock_enabled:
-            if send_success:
-                data = ''
-            else:
-                data = '1'
-            logging.info('Setting sending mock')
-            utils.open_write_close(_MOCK_CRASH_SENDING, data)
-        else:
-            utils.system('rm -f ' + _MOCK_CRASH_SENDING)
-
-
-    def _set_consent(self, has_consent):
-        if has_consent:
-            utils.open_write_close(_CONSENT_FILE, 'test-consent')
-            logging.info('Created ' + _CONSENT_FILE)
-        else:
-            utils.system('rm -f "%s"' % (_CONSENT_FILE))
-
-
-    def _get_pushed_consent_file_path(self):
-        return os.path.join(self.bindir, 'pushed_consent')
-
-
-    def _push_consent(self):
-        if os.path.exists(_CONSENT_FILE):
-            os.rename(_CONSENT_FILE, self._get_pushed_consent_file_path())
-
-
-    def _pop_consent(self):
-        self._set_consent(False)
-        if os.path.exists(self._get_pushed_consent_file_path()):
-            os.rename(self._get_pushed_consent_file_path(), _CONSENT_FILE)
-
-
-    def _get_crash_dir(self, username):
-        if username == 'chronos':
-            return _USER_CRASH_DIR
-        else:
-            return _SYSTEM_CRASH_DIR
-
-
-    def _initialize_crash_reporter(self):
-        utils.system('%s --init --nounclean_check' % _CRASH_REPORTER_PATH)
-
-
-    def initialize(self):
-        test.test.initialize(self)
-        self._log_reader = site_log_reader.LogReader()
-
-
-    def cleanup(self):
-        self._reset_rate_limiting()
-        self._clear_spooled_crashes()
-        test.test.cleanup(self)
-
-
-    def _create_fake_crash_dir_entry(self, name):
-        entry = os.path.join(_SYSTEM_CRASH_DIR, name)
-        if not os.path.exists(_SYSTEM_CRASH_DIR):
-            os.makedirs(_SYSTEM_CRASH_DIR)
-        utils.system('touch ' + entry)
-        return entry
-
-
-    def _prepare_sender_one_crash(self,
-                                  send_success,
-                                  reports_enabled,
-                                  username,
-                                  minidump):
-        self._set_sending_mock(mock_enabled=True, send_success=send_success)
-        self._set_consent(reports_enabled)
-        if minidump is None:
-            minidump = self._create_fake_crash_dir_entry('fake.dmp')
-        return minidump
-
-
-    def _parse_sender_output(self, output):
-        """Parse the log output from the crash_sender script.
-
-        This script can run on the logs from either a mocked or true
-        crash send.
-
-        Args:
-          output: output from the script
-
-        Returns:
-          A dictionary with these values:
-            send_attempt: did the script attempt to send a crash.
-            send_success: if it attempted, was the crash send successful.
-            sleep_time: if it attempted, how long did it sleep before
-              sending (if mocked, how long would it have slept)
-            output: the output from the script, copied
-        """
-        sleep_match = re.search('Scheduled to send in (\d+)s', output)
-        send_attempt = sleep_match is not None
-        if send_attempt:
-            sleep_time = int(sleep_match.group(1))
-        else:
-            sleep_time = None
-        send_success = 'Mocking successful send' in output
-        return {'send_attempt': send_attempt,
-                'send_success': send_success,
-                'sleep_time': sleep_time,
-                'output': output}
-
-
-    def _call_sender_one_crash(self,
-                               send_success=True,
-                               reports_enabled=True,
-                               username='root',
-                               minidump=None):
-        """Call the crash sender script to mock upload one crash.
-
-        Args:
-          send_success: Mock a successful send if true
-          reports_enabled: Has the user consented to sending crash reports.
-          username: user to emulate a crash from
-          minidump: minidump to use for crash, if None we create one.
-
-        Returns:
-          Returns a dictionary describing the result with the keys
-          from _parse_sender_output, as well as:
-            minidump_exists: does the minidump still exist after calling
-              send script
-            rate_count: how many crashes have been uploaded in the past
-              24 hours.
-        """
-        minidump = self._prepare_sender_one_crash(send_success,
-                                                  reports_enabled,
-                                                  username,
-                                                  minidump)
-        self._log_reader.set_start_by_current()
-        script_output = utils.system_output(
-            '/bin/sh -c "%s" 2>&1' % _CRASH_SENDER_PATH,
-            ignore_status=True)
-        # Wait for up to 2s for no crash_sender to be running,
-        # otherwise me might get only part of the output.
-        site_utils.poll_for_condition(
-            lambda: utils.system('pgrep crash_sender',
-                                 ignore_status=True) != 0,
-            timeout=2,
-            exception=error.TestError(
-              'Timeout waiting for crash_sender to finish: ' +
-              self._log_reader.get_logs()))
-
-        output = self._log_reader.get_logs()
-        logging.debug('Crash sender message output:\n' + output)
-        if script_output != '':
-            raise error.TestFail(
-                'Unexpected crash_sender stdout/stderr: ' + script_output)
-
-        if os.path.exists(minidump):
-            minidump_exists = True
-            os.remove(minidump)
-        else:
-            minidump_exists = False
-        if os.path.exists(_CRASH_SENDER_RATE_DIR):
-            rate_count = len(os.listdir(_CRASH_SENDER_RATE_DIR))
-        else:
-            rate_count = 0
-
-        result = self._parse_sender_output(output)
-        result['minidump_exists'] = minidump_exists
-        result['rate_count'] = rate_count
-
-        # Show the result for debugging but remove 'output' key
-        # since it's large and earlier in debug output.
-        debug_result = dict(result)
-        del debug_result['output']
-        logging.debug('Result of send (besides output): %s' % debug_result)
-
-        return result
-
-
     def _test_reporter_startup(self):
         """Test that the core_pattern is set up by crash reporter."""
         output = utils.read_file(_CORE_PATTERN).rstrip()
         expected_core_pattern = ('|%s --signal=%%s --pid=%%p' %
-                                 _CRASH_REPORTER_PATH)
+                                 self._CRASH_REPORTER_PATH)
         if output != expected_core_pattern:
             raise error.TestFail('core pattern should have been %s, not %s' %
                                  (expected_core_pattern, output))
@@ -254,158 +39,11 @@ class logging_UserCrash(test.test):
     def _test_reporter_shutdown(self):
         """Test the crash_reporter shutdown code works."""
         self._log_reader.set_start_by_current()
-        utils.system('%s --clean_shutdown' % _CRASH_REPORTER_PATH)
+        utils.system('%s --clean_shutdown' % self._CRASH_REPORTER_PATH)
         output = utils.read_file(_CORE_PATTERN).rstrip()
         if output != 'core':
             raise error.TestFail('core pattern should have been core, not %s' %
                                  output)
-
-
-    def _test_sender_simple(self):
-        """Test sending a single crash."""
-        self._set_sending(True)
-        result = self._call_sender_one_crash()
-        if (result['minidump_exists'] or
-            result['rate_count'] != 1 or
-            not result['send_attempt'] or
-            not result['send_success'] or
-            result['sleep_time'] < 0 or
-            result['sleep_time'] >= _SECONDS_SEND_SPREAD):
-            raise error.TestFail('Simple send failed')
-
-
-    def _test_sender_pausing(self):
-        """Test the sender returns immediately when the pause file is present.
-
-        This is testing the sender's test functionality - if this regresses,
-        other tests can become flaky because the cron-started sender may run
-        asynchronously to these tests."""
-        self._set_sending(False)
-        result = self._call_sender_one_crash()
-        if (not result['minidump_exists'] or
-            not 'Exiting early due to' in result['output'] or
-            result['send_attempt']):
-            raise error.TestFail('Sender did not pause')
-
-
-    def _test_sender_reports_disabled(self):
-        """Test that when reporting is disabled, we don't send."""
-        self._set_sending(True)
-        result = self._call_sender_one_crash(reports_enabled=False)
-        if (result['minidump_exists'] or
-            not 'Uploading is disabled' in result['output'] or
-            result['send_attempt']):
-            raise error.TestFail('Sender did not handle reports disabled')
-
-
-    def _test_sender_rate_limiting(self):
-        """Test the sender properly rate limits and sends with delay."""
-        self._set_sending(True)
-        sleep_times = []
-        for i in range(1, _DAILY_RATE_LIMIT + 1):
-            result = self._call_sender_one_crash()
-            if not result['send_attempt'] or not result['send_success']:
-                raise error.TestFail('Crash uploader did not send on #%d' % i)
-            if result['rate_count'] != i:
-                raise error.TestFail('Did not properly persist rate on #%d' % i)
-            sleep_times.append(result['sleep_time'])
-        logging.debug('Sleeps between sending crashes were: %s' % sleep_times)
-        unique_times = {}
-        for i in range(0, _DAILY_RATE_LIMIT):
-            unique_times[sleep_times[i]] = True
-        if len(unique_times) < _MIN_UNIQUE_TIMES:
-            raise error.TestFail('Expected at least %d unique times: %s' %
-                                 _MIN_UNIQUE_TIMES, sleep_times)
-        # Now the _DAILY_RATE_LIMIT ^ th send request should fail.
-        result = self._call_sender_one_crash()
-        if (not result['minidump_exists'] or
-            not 'Cannot send more crashes' in result['output'] or
-            result['rate_count'] != _DAILY_RATE_LIMIT):
-            raise error.TestFail('Crash rate limiting did not take effect')
-
-        # Set one rate file a day earlier and verify can send
-        rate_files = os.listdir(_CRASH_SENDER_RATE_DIR)
-        rate_path = os.path.join(_CRASH_SENDER_RATE_DIR, rate_files[0])
-        statinfo = os.stat(rate_path)
-        os.utime(rate_path, (statinfo.st_atime,
-                             statinfo.st_mtime - (60 * 60 * 25)))
-        utils.system('ls -l ' + _CRASH_SENDER_RATE_DIR)
-        result = self._call_sender_one_crash()
-        if (not result['send_attempt'] or
-            not result['send_success'] or
-            result['rate_count'] != _DAILY_RATE_LIMIT):
-            raise error.TestFail('Crash not sent even after 25hrs pass')
-
-
-    def _test_sender_single_instance(self):
-        """Test the sender fails to start when another instance is running.
-
-        Here we rely on the sender not checking the other running pid
-        is of the same instance.
-        """
-        self._set_sending(True)
-        utils.open_write_close(_CRASH_SENDER_RUN_PATH, str(os.getpid()))
-        result = self._call_sender_one_crash()
-        if (not 'Already running.' in result['output'] or
-            result['send_attempt'] or not result['minidump_exists']):
-            raise error.TestFail('Allowed multiple instances to run')
-        os.remove(_CRASH_SENDER_RUN_PATH)
-
-
-    def _test_sender_send_fails(self):
-        """Test that when the send fails we try again later."""
-        self._set_sending(True)
-        result = self._call_sender_one_crash(send_success=False)
-        if not result['send_attempt'] or result['send_success']:
-            raise error.TestError('Did not properly cause a send failure')
-        if result['rate_count'] != 1:
-            raise error.TestFail('Did not count a failed send against rate '
-                                 'limiting')
-        if not result['minidump_exists']:
-            raise error.TestFail('Expected minidump to be saved for later '
-                                 'sending')
-
-
-    def _test_sender_leaves_core_files(self):
-        """Test that a core file is left in the send directory.
-
-        Core files will only persist for developer/testing images.  We
-        should never remove such a file."""
-        self._set_sending(True)
-        # Call prepare function to make sure the directory exists.
-        core_name = 'something.ending.with.core'
-        core_path = self._create_fake_crash_dir_entry(core_name)
-        result = self._call_sender_one_crash()
-        if not 'Ignoring core file.' in result['output']:
-            raise error.TestFail('Expected ignoring core file message')
-        if not os.path.exists(core_path):
-            raise error.TestFail('Core file was removed')
-
-
-    def _test_cron_runs(self):
-        """Test sender runs successfully as part of the hourly cron job.
-
-        Assuming we've run test_sender_simple which shows that a minidump
-        gets removed as part of sending, we run the cron job (which is
-        asynchronous) and wait for that file to be removed to just verify
-        the job eventually runs the sender."""
-        self._set_sending(True)
-        minidump = self._prepare_sender_one_crash(send_success=True,
-                                                  reports_enabled=True,
-                                                  username='root',
-                                                  minidump=None)
-        if not os.path.exists(minidump):
-            raise error.TestError('minidump not created')
-        utils.system(_CRASH_SENDER_CRON_PATH)
-        self._log_reader.set_start_by_current()
-        site_utils.poll_for_condition(
-            lambda: not os.path.exists(minidump),
-            desc='minidump to be removed')
-        crash_sender_log = self._log_reader.get_logs()
-        logging.debug('Contents of crash sender log: ' + crash_sender_log)
-        result = self._parse_sender_output(crash_sender_log)
-        if not result['send_attempt'] or not result['send_success']:
-            raise error.TestFail('Cron simple run test failed')
 
 
     def _prepare_crasher(self):
@@ -762,17 +400,9 @@ class logging_UserCrash(test.test):
     # non-root, non-chronos user.
 
     def run_once(self):
-        test_names = [
+        self.run_crash_tests([
             'reporter_startup',
             'reporter_shutdown',
-            'sender_simple',
-            'sender_pausing',
-            'sender_reports_disabled',
-            'sender_rate_limiting',
-            'sender_single_instance',
-            'sender_send_fails',
-            'sender_leaves_core_files',
-            'cron_runs',
             'no_crash',
             'chronos_breakpad_crasher',
             'chronos_nobreakpad_crasher',
@@ -780,28 +410,4 @@ class logging_UserCrash(test.test):
             'root_nobreakpad_crasher',
             'core_file_removed_in_production',
             'core_file_persists_in_debug',
-            ]
-
-        self._push_consent()
-
-        # Sanity check test_names is complete
-        for attr in dir(self):
-            if attr.find('_test_') == 0:
-                test_name = attr[6:]
-                if not test_name in test_names:
-                    raise error.TestError('Test %s is missing' % test_name)
-
-        for test_name in test_names:
-            logging.info(('=' * 20) + ('Running %s' % test_name) + ('=' * 20))
-            self._initialize_crash_reporter()
-            self._kill_running_sender()
-            self._reset_rate_limiting()
-            self._clear_spooled_crashes()
-            self._set_sending(False)
-            getattr(self, '_test_' + test_name)()
-
-
-    def cleanup(self):
-            self._set_sending(True)
-            self._set_sending_mock(mock_enabled=False)
-            self._pop_consent()
+            ])

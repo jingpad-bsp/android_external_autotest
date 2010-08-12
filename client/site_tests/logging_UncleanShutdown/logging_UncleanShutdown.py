@@ -10,7 +10,7 @@ _CRASH_PATH = '/sbin/crash_reporter'
 _PENDING_SHUTDOWN_PATH = '/var/lib/crash_reporter/pending_clean_shutdown'
 _UNCLEAN_SHUTDOWN_MESSAGE = 'Last shutdown was not clean'
 
-class logging_KernelCrash(site_ui_test.UITest):
+class logging_UncleanShutdown(site_ui_test.UITest):
     version = 1
     auto_login = False
 
@@ -27,13 +27,13 @@ class logging_KernelCrash(site_ui_test.UITest):
             raise error.TestFail(
                 'Unexpectedly detected kernel crash during boot')
 
-	# Log in and out twice to make sure that doesn't cause
-	# an unclean shutdown message.
-	for i in range(2):
-	  self.login()
-	  time.sleep(5)
-	  self.logout()
-	  time.sleep(5)
+        # Log in and out twice to make sure that doesn't cause
+        # an unclean shutdown message.
+        for i in range(2):
+            self.login()
+            time.sleep(5)
+            self.logout()
+            time.sleep(5)
 
         if log_reader.can_find(_UNCLEAN_SHUTDOWN_MESSAGE):
             logging.info('Unexpected logs: ', log_reader.get_logs())

@@ -21,4 +21,4 @@ detected and handled appropriately.
 client = hosts.create_host(machines[0])
 client_at = autotest.Autotest(client)
 client.reboot()
-client_at.run_test('logging_KernelCrash')
+client_at.run_test('logging_UncleanShutdown')
