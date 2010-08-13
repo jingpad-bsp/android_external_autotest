@@ -174,7 +174,7 @@ class LinuxRouter(object):
                         # Make sure hw_mode is set
                         if conf.get('hw_mode') == 'a':
                             conf['hw_mode'] = 'g'
-                       
+
                         # Freq = 5 * chan + 2407, except channel 14
                         if freq == 2484:
                             conf['channel'] = 14

@@ -5,13 +5,13 @@
 import datetime, logging, re, subprocess, os
 
 # These certificate trees are for testing only in sealed containers
-# so it is okay that we have them checked into a GIT repository. 
+# so it is okay that we have them checked into a GIT repository.
 # Nobody will ever use this information on the open air.
 
 cert_info = {
     'cert1': {
         'router': {
-            'ca_cert': 
+            'ca_cert':
 """-----BEGIN CERTIFICATE-----
 MIIDMTCCApqgAwIBAgIJANAMhNy2leWKMA0GCSqGSIb3DQEBBQUAMG8xCzAJBgNV
 BAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBW
@@ -32,7 +32,7 @@ AmrjmwnYU+yFkGgscyoq6wLzA+VbbfeBo088GT1LTyzUFqnsLNk7NrT1dtuCPijS
 p8gKkMu03kpkoKO0H9OB7HMRcdB7O87c5S1de4PLqdTwooF0f+yT6dqivUHgP5KF
 K3F2V44=
 -----END CERTIFICATE-----""",
-            'server_cert': 
+            'server_cert':
 """-----BEGIN CERTIFICATE-----
 MIIDPTCCAqagAwIBAgIDEAABMA0GCSqGSIb3DQEBBAUAMG8xCzAJBgNVBAYTAlVT
 MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MTMw
@@ -72,7 +72,7 @@ m/oD+Bx58kjw7CDfauMCQGV7dPtWmA6DbparS8Z59Fx25XpN6+asw+Krrq3iGqpf
             'eap_user_file': '* TLS'
         },
         'client': {
-            'client_cert': 
+            'client_cert':
 """-----BEGIN CERTIFICATE-----
 MIIDKjCCApOgAwIBAgIDEAACMA0GCSqGSIb3DQEBBAUAMG8xCzAJBgNVBAYTAlVT
 MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MTMw
@@ -133,7 +133,7 @@ def insert_conf_file(host, filename, contents):
                                  content_lines[0])
         host.run('cat <<EOF >>%s\n%s\nEOF\n' %
                  (filename, '\n'.join(buflist)))
-    
+
 def router_config(router, cert):
     """
     Configure a router, and return the added config parameters
@@ -145,7 +145,7 @@ def router_config(router, cert):
 
     if cert not in cert_info:
         raise error.TestFail('Cert profile %s not in the configuration' % cert)
-        
+
     for k, v in cert_info[cert]['router'].iteritems():
         filename = "/tmp/hostap_%s" % k
         insert_conf_file(router, filename, v)

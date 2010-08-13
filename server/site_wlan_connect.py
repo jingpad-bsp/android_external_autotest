@@ -73,7 +73,7 @@ def ResetService(init_state):
     print>>sys.stderr, "cleared ourselves out of '%s' after %3.1f secs" % \
         (init_state, wait_time)
     time.sleep(4)
-    
+
 
 def TryConnect(assoc_time):
     init_assoc_time = assoc_time
@@ -218,4 +218,3 @@ if status != "ready":
 print "OK %3.1f %3.1f %s (assoc and config times in sec, quirks)" \
     %(assoc_time, config_time, str(connect_quirks.keys()))
 sys.exit(0)
-
