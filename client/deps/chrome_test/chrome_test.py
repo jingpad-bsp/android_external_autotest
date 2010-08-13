@@ -21,7 +21,7 @@ def setup(top_dir):
     testsrc_dir = top_dir + '/test_src'
 
     # Copy test build outputs.
-    utils.run('cp -r %s %s' % (chrome_test_files, testsrc_dir))
+    utils.run('cp -ral %s %s' % (chrome_test_files, testsrc_dir))
 
 
 pwd = os.getcwd()
