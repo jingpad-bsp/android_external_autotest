@@ -112,7 +112,7 @@ class UITest(bin_test.test):
 
                 servers = ipconfig.GetProperties().get('NameServers', None)
                 if servers != None:
-                  self._dns[path] = ','.join(servers)
+                    self._dns[path] = ','.join(servers)
                 ipconfig.SetProperty('NameServers', '127.0.0.1')
 
         site_utils.poll_for_condition(
@@ -128,10 +128,15 @@ class UITest(bin_test.test):
         """
         for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
+            logging.debug("Considering " + properties['Type'])
             for path in properties['IPConfigs']:
                 if path in self._dns:
                     ipconfig = self._flim.GetObjectInterface('IPConfig', path)
                     ipconfig.SetProperty('NameServers', self._dns[path])
+                    logging.debug("Changed DNS for "  + properties['Type'])
+                else:
+                    logging.debug("Have no stored DNS settings for " +
+                                  properties['Type'])
 
         site_utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com',
