@@ -8,7 +8,7 @@ from autotest_lib.client.bin import site_crash_test, site_utils, test
 from autotest_lib.client.common_lib import error, utils
 
 _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
-_LEAVE_CORE_PATH = '/etc/leave_core'
+_LEAVE_CORE_PATH = '/root/.leave_core'
 
 
 class logging_UserCrash(site_crash_test.CrashTest):
@@ -383,17 +383,25 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
     def _test_core_file_persists_in_debug(self):
         """Test that a core file persists for development/test builds."""
-        os.system('mount -norw,remount /')
-        utils.open_write_close(_LEAVE_CORE_PATH, '')
+        if not os.path.exists(_LEAVE_CORE_PATH):
+            raise error.TestFail('%s does not exist' % _LEAVE_CORE_PATH)
         self._check_core_file_persisting(True)
 
 
     def _test_core_file_removed_in_production(self):
         """Test that core files do not stick around for production builds."""
-        os.system('mount -norw,remount /')
-        if os.path.exists(_LEAVE_CORE_PATH):
+        # Avoid remounting / rw by instead creating a tmpfs in /root and
+        # populating it with everything but the
+        utils.system('tar -cvz -C /root -f /tmp/root.tgz .')
+        utils.system('mount -t tmpfs tmpfs /root')
+        try:
+            utils.system('tar -xvz -C /root -f /tmp/root.tgz .')
             os.remove(_LEAVE_CORE_PATH)
-        self._check_core_file_persisting(False)
+            if os.path.exists(_LEAVE_CORE_PATH):
+                raise error.TestFail('.leave_core file did not disappear')
+            self._check_core_file_persisting(False)
+        finally:
+            os.system('umount /root')
 
 
     # TODO(kmixter): Test crashing a process as ntp or some other
@@ -408,6 +416,6 @@ class logging_UserCrash(site_crash_test.CrashTest):
             'chronos_nobreakpad_crasher',
             'root_breakpad_crasher',
             'root_nobreakpad_crasher',
-            'core_file_removed_in_production',
             'core_file_persists_in_debug',
+            'core_file_removed_in_production',
             ])
