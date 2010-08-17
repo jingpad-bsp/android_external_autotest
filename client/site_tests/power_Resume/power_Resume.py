@@ -13,7 +13,7 @@ class power_Resume(test.test):
 
     def _get_last_msg_time(self, msg):
         data = commands.getoutput(
-            "grep '%s' /var/log/messages | tail -n 1" % msg)
+            "grep -a '%s' /var/log/messages | tail -n 1" % msg)
         match = re.search(r' \[\s*([0-9.]+)\] ', data)
         if match is None:
             raise error.TestError('Failed to find log message: ' + msg)
