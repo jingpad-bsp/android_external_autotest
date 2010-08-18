@@ -30,7 +30,10 @@ def run_sat():
 
 
 def run_gpu():
-    job.run_test('graphics_SanAngeles', iterations=2, tag=_tag)
+    job.run_test('graphics_SanAngeles',
+                 iterations=2,
+                 tag=_tag,
+                 creds='$backdoor')
 
 
 job.parallel([run_resume], [run_sat], [run_gpu])

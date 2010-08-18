@@ -35,7 +35,7 @@ TESTS = [
   ('graphics_GLAPICheck', {}),
   ('graphics_GLBench', {}),
   ('graphics_O3DSelenium', {}),
-  ('graphics_SanAngeles', {}),
+  ('graphics_SanAngeles', {'creds': '$backdoor'}),
   ('graphics_WindowManagerGraphicsCapture', {}),
   ('hackbench', {}),
   ('hardware_Backlight', {}),

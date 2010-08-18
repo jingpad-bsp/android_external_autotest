@@ -30,7 +30,7 @@ class graphics_SanAngeles(site_ui_test.UITest):
             cmd = cmd_gles_s
         else:
             raise error.TestFail('Fail to locate SanAngles Observation exe.'
-                                 'Test setup error.') 
+                                 'Test setup error.')
 
         cmd = site_ui.xcommand(cmd)
         result = utils.run(cmd, ignore_status = True)

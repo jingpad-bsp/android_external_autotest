@@ -69,7 +69,7 @@ job.run_test('graphics_GLBench',
                  'mpixels_sec_fill_tex_nearest >= 190',
                  'mpixels_sec_fill_tex_bilinear >= 190',
              ])
-job.run_test('graphics_SanAngeles')
+job.run_test('graphics_SanAngeles', creds='$backdoor')
 
 # Video
 job.run_test('audiovideo_FFMPEG',
