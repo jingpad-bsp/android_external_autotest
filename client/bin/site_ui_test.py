@@ -7,6 +7,7 @@ from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.bin import site_login, site_utils, test as bin_test
 from autotest_lib.client.common_lib import error, site_ui
 from autotest_lib.client.common_lib import site_auth_server, site_dns_server
+from dbus.mainloop.glib import DBusGMainLoop
 
 # Workaround so flimflam.py doesn't need to be installed in the chroot.
 sys.path.append(os.environ.get('SYSROOT', '') + '/usr/lib/flimflam/test')
@@ -44,52 +45,20 @@ class UITest(bin_test.test):
         self._dns = {}  # for saving/restoring dns entries
         bin_test.test.__init__(self, job, bindir, outputdir)
 
-    def __is_screensaver(self, status):
-        """Returns True if xscreensaver reports a matching status.
-
-        This function matches the output of `xscreensaver -time` against the
-        specified status.  It does no sanity checking or framing of the status
-        value, so use with caution.
-
-        Args:
-            status: String representing the status to match against.
-        """
-        return self.xsystem('xscreensaver-command -time | ' +
-                            'egrep -q "%s"' % status, ignore_status=True) == 0
-
-
-    def is_screensaver_locked(self):
-        """Returns True if the screensaver is locked, false otherwise.
-
-        The screensaver has more than two potential states, do not assume
-        that the screensaver is completely deactivated if this returns False,
-        use is_screensaver_unlocked() for that.
-        """
-        return self.__is_screensaver('locked|no saver status')
-
-
-    def is_screensaver_unlocked(self):
-        """Returns True if the screensaver is unlocked, false otherwise.
-
-        The screensaver has more than two potential states, do not assume
-        that the screensaver is completely locked if this returns False,
-        use is_screensaver_locked() for that.
-        """
-        return self.__is_screensaver('non-blanked')
-
-
     def xsystem(self, cmd, timeout=None, ignore_status=False):
         """Convenience wrapper around site_ui.xsystem, to save you an import.
         """
         return site_ui.xsystem(cmd, timeout, ignore_status)
 
-
-    def wait_for_screensaver(self, timeout=site_login._DEFAULT_TIMEOUT):
-        """Convenience wrapper around site_login.wait_for_screensaver, to save
-        you an import.
+    def listen_to_signal(self, callback, signal, interface):
+        """Listens to the given |signal| that is sent to power manager.
         """
-        site_login.wait_for_screensaver(timeout=timeout)
-
+        self._system_bus.add_signal_receiver(
+            handler_function=callback,
+            signal_name=signal,
+            dbus_interface=interface,
+            bus_name=None,
+            path='/')
 
     def __attempt_resolve(self, hostname, ip, expected=True):
         try:
@@ -97,14 +66,14 @@ class UITest(bin_test.test):
         except socket.gaierror, error:
             logging.error(error)
 
-
     def use_local_dns(self, dns_port=53):
         """Set all devices to use our in-process mock DNS server.
         """
         self._dnsServer = site_dns_server.LocalDns(local_port=dns_port)
         self._dnsServer.run()
-
-        self._flim = flimflam.FlimFlam(dbus.SystemBus())
+        self._bus_loop = DBusGMainLoop(set_as_default=True)
+        self._system_bus = dbus.SystemBus(mainloop=self._bus_loop)
+        self._flim = flimflam.FlimFlam(self._system_bus)
         for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
             for path in properties['IPConfigs']:

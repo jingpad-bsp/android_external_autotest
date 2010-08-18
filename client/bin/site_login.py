@@ -220,22 +220,6 @@ def wait_for_login_prompt(timeout=_DEFAULT_TIMEOUT):
         timeout=timeout)
 
 
-def wait_for_screensaver(timeout=_DEFAULT_TIMEOUT):
-    """Wait until xscreensaver is responding.
-
-    Args:
-        timeout: float number of seconds to wait
-
-    Raises:
-        TimeoutError: xscreensaver didn't respond before timeout
-    """
-    site_utils.poll_for_condition(
-        lambda: site_ui.xsystem('xscreensaver-command -version',
-                                ignore_status=True) == 0,
-        TimeoutError('Timed out waiting for xscreensaver to respond'),
-        timeout=timeout)
-
-
 def wait_for_window_manager(timeout=_DEFAULT_TIMEOUT):
     """Wait until the window manager is running.
 

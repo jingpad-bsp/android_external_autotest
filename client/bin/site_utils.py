@@ -35,6 +35,6 @@ def poll_for_condition(
                 desc = 'Timed out waiting for condition: %s' % desc
             else:
                 desc = 'Timed out waiting for unnamed condition'
-            raise error.TestError(desc)
+            raise TimeoutError, desc
 
         time.sleep(sleep_interval)
