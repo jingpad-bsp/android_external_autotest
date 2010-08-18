@@ -12,12 +12,15 @@
                           "wep_key0":  "0123456789abcdef0123456789",
                           "wep_key1":  "89abcdef0123456789abcdef01",
                           "wep_key2":  "fedcba9876543210fedcba9876",
-                          "wep_key3":  "109fedcba987654321fedcba98"
+                          "wep_key3":  "109fedcba987654321fedcba98",
+                          # TODO(pstew): This should be done below in
+                          # the "key index 0" setup, but the linux router
+                          # can't handle two "config"s in a row.
+                          "deftxkey":"0"
                         }
     ],
 
     # key index 0, 104-bit WEP
-    [ "config",         { "deftxkey":"0" } ],
     [ "connect",        { "security":"wep",
                           "psk":"0:0123456789abcdef0123456789" } ],
     [ "client_ping",    { "count":"10" } ],
