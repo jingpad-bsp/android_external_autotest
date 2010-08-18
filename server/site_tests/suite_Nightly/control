@@ -120,10 +120,11 @@ def run_assigned_tests(machine):
   if client_attributes.has_80211n:
     client_at.run_test('network_WiFiCaps')
   if not client_attributes.has_resume_bug:
-     client_at.run_test('power_Resume')
+    client_at.run_test('power_Resume')
 
   job.run_test("platform_KernelErrorPaths", host=client)
-
+  if client_attributes.has_working_kcrash:
+    job.run_test("logging_KernelCrashServer", host=client)
 
 job.parallel_on_machines(run_assigned_tests, machines)
 

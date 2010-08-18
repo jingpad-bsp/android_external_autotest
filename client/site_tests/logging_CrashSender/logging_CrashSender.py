@@ -17,17 +17,36 @@ class logging_CrashSender(site_crash_test.CrashTest):
     version = 1
 
 
-    def _test_sender_simple(self):
-        """Test sending a single crash."""
+    def _test_sender_simple_minidump(self):
+        """Test sending a single minidump crash report."""
         self._set_sending(True)
         result = self._call_sender_one_crash()
-        if (result['minidump_exists'] or
+        if (result['report_exists'] or
             result['rate_count'] != 1 or
             not result['send_attempt'] or
             not result['send_success'] or
             result['sleep_time'] < 0 or
-            result['sleep_time'] >= _SECONDS_SEND_SPREAD):
-            raise error.TestFail('Simple send failed')
+            result['sleep_time'] >= _SECONDS_SEND_SPREAD or
+            result['report_kind'] != 'minidump' or
+            result['exec_name'] != 'fake'):
+            raise error.TestFail('Simple minidump send failed')
+
+
+    def _test_sender_simple_kernel_crash(self):
+        """Test sending a single kcrash report."""
+        self._set_sending(True)
+        kcrash_fake_report = self.create_fake_crash_dir_entry(
+            'kernel.today.kcrash')
+        result = self._call_sender_one_crash(report=kcrash_fake_report)
+        if (result['report_exists'] or
+            result['rate_count'] != 1 or
+            not result['send_attempt'] or
+            not result['send_success'] or
+            result['sleep_time'] < 0 or
+            result['sleep_time'] >= _SECONDS_SEND_SPREAD or
+            result['report_kind'] != 'kcrash' or
+            result['exec_name'] != 'kernel'):
+            raise error.TestFail('Simple kcrash send failed')
 
 
     def _test_sender_pausing(self):
@@ -38,7 +57,7 @@ class logging_CrashSender(site_crash_test.CrashTest):
         asynchronously to these tests."""
         self._set_sending(False)
         result = self._call_sender_one_crash()
-        if (not result['minidump_exists'] or
+        if (not result['report_exists'] or
             not 'Exiting early due to' in result['output'] or
             result['send_attempt']):
             raise error.TestFail('Sender did not pause')
@@ -48,7 +67,7 @@ class logging_CrashSender(site_crash_test.CrashTest):
         """Test that when reporting is disabled, we don't send."""
         self._set_sending(True)
         result = self._call_sender_one_crash(reports_enabled=False)
-        if (result['minidump_exists'] or
+        if (result['report_exists'] or
             not 'Uploading is disabled' in result['output'] or
             result['send_attempt']):
             raise error.TestFail('Sender did not handle reports disabled')
@@ -74,7 +93,7 @@ class logging_CrashSender(site_crash_test.CrashTest):
                                  _MIN_UNIQUE_TIMES, sleep_times)
         # Now the _DAILY_RATE_LIMIT ^ th send request should fail.
         result = self._call_sender_one_crash()
-        if (not result['minidump_exists'] or
+        if (not result['report_exists'] or
             not 'Cannot send more crashes' in result['output'] or
             result['rate_count'] != _DAILY_RATE_LIMIT):
             raise error.TestFail('Crash rate limiting did not take effect')
@@ -103,7 +122,7 @@ class logging_CrashSender(site_crash_test.CrashTest):
         utils.open_write_close(_CRASH_SENDER_RUN_PATH, str(os.getpid()))
         result = self._call_sender_one_crash()
         if (not 'Already running.' in result['output'] or
-            result['send_attempt'] or not result['minidump_exists']):
+            result['send_attempt'] or not result['report_exists']):
             raise error.TestFail('Allowed multiple instances to run')
         os.remove(_CRASH_SENDER_RUN_PATH)
 
@@ -117,7 +136,7 @@ class logging_CrashSender(site_crash_test.CrashTest):
         if result['rate_count'] != 1:
             raise error.TestFail('Did not count a failed send against rate '
                                  'limiting')
-        if not result['minidump_exists']:
+        if not result['report_exists']:
             raise error.TestFail('Expected minidump to be saved for later '
                                  'sending')
 
@@ -130,12 +149,24 @@ class logging_CrashSender(site_crash_test.CrashTest):
         self._set_sending(True)
         # Call prepare function to make sure the directory exists.
         core_name = 'something.ending.with.core'
-        core_path = self._create_fake_crash_dir_entry(core_name)
+        core_path = self.create_fake_crash_dir_entry(core_name)
         result = self._call_sender_one_crash()
         if not 'Ignoring core file.' in result['output']:
             raise error.TestFail('Expected ignoring core file message')
         if not os.path.exists(core_path):
             raise error.TestFail('Core file was removed')
+
+
+    def _test_sender_unknown_report_kind(self):
+        self._set_sending(True)
+        bad_report = self.create_fake_crash_dir_entry('fake.bad')
+        result = self._call_sender_one_crash(report=bad_report)
+        if (result['report_exists'] or
+            result['rate_count'] != 0 or
+            result['send_attempt'] or
+            result['send_success'] or
+            not 'Unknown report' in result['output']):
+            raise error.TestFail('Error handling of unknown report kind failed')
 
 
     def _test_cron_runs(self):
@@ -149,7 +180,7 @@ class logging_CrashSender(site_crash_test.CrashTest):
         minidump = self._prepare_sender_one_crash(send_success=True,
                                                   reports_enabled=True,
                                                   username='root',
-                                                  minidump=None)
+                                                  report=None)
         if not os.path.exists(minidump):
             raise error.TestError('minidump not created')
         utils.system(_CRASH_SENDER_CRON_PATH)
@@ -166,11 +197,13 @@ class logging_CrashSender(site_crash_test.CrashTest):
 
     def run_once(self):
         self.run_crash_tests([
-            'sender_simple',
+            'sender_simple_minidump',
+            'sender_simple_kernel_crash',
             'sender_pausing',
             'sender_reports_disabled',
             'sender_rate_limiting',
             'sender_single_instance',
             'sender_send_fails',
             'sender_leaves_core_files',
+            'sender_unknown_report_kind',
             'cron_runs'])

@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib import error, utils
 
 _CRASH_PATH = '/sbin/crash_reporter'
 _PENDING_SHUTDOWN_PATH = '/var/lib/crash_reporter/pending_clean_shutdown'
+_UNCLEAN_SHUTDOWN_DETECTED_PATH = '/tmp/unclean-shutdown-detected'
 _UNCLEAN_SHUTDOWN_MESSAGE = 'Last shutdown was not clean'
 
 class logging_UncleanShutdown(site_ui_test.UITest):
@@ -25,7 +26,10 @@ class logging_UncleanShutdown(site_ui_test.UITest):
 
         if log_reader.can_find(_UNCLEAN_SHUTDOWN_MESSAGE):
             raise error.TestFail(
-                'Unexpectedly detected kernel crash during boot')
+                'Unexpectedly detected unclean shutdown during boot')
+
+        if os.path.exists(_UNCLEAN_SHUTDOWN_DETECTED_PATH):
+            raise error.TestFail('an unclean shutdown file was detected')
 
         # Log in and out twice to make sure that doesn't cause
         # an unclean shutdown message.
@@ -40,6 +44,9 @@ class logging_UncleanShutdown(site_ui_test.UITest):
             raise error.TestFail(
                 'Unexpectedly detected kernel crash during login/logout')
 
+        if os.path.exists(_UNCLEAN_SHUTDOWN_DETECTED_PATH):
+            raise error.TestFail('an unclean shutdown file was generated')
+
         # Run the shutdown and verify it does not complain of unclean
         # shutdown.
 
@@ -47,7 +54,8 @@ class logging_UncleanShutdown(site_ui_test.UITest):
         utils.system('%s --clean_shutdown' % _CRASH_PATH)
         utils.system('%s --init' % _CRASH_PATH)
 
-        if log_reader.can_find(_UNCLEAN_SHUTDOWN_MESSAGE):
+        if (log_reader.can_find(_UNCLEAN_SHUTDOWN_MESSAGE) or
+            os.path.exists(_UNCLEAN_SHUTDOWN_DETECTED_PATH)):
             raise error.TestFail('Incorrectly signalled unclean shutdown')
 
         # Now simulate an unclean shutdown and test handling.
@@ -57,3 +65,8 @@ class logging_UncleanShutdown(site_ui_test.UITest):
 
         if not log_reader.can_find(_UNCLEAN_SHUTDOWN_MESSAGE):
             raise error.TestFail('Did not signal unclean shutdown when should')
+
+        if not os.path.exists(_UNCLEAN_SHUTDOWN_DETECTED_PATH):
+            raise error.TestFail('Did not touch unclean shutdown file')
+
+        os.remove(_UNCLEAN_SHUTDOWN_DETECTED_PATH)

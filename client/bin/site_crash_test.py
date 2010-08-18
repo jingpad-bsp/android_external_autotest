@@ -15,7 +15,7 @@ class CrashTest(test.test):
     _CRASH_SENDER_RATE_DIR = '/var/lib/crash_sender'
     _CRASH_SENDER_RUN_PATH = '/var/run/crash_sender.pid'
     _MOCK_CRASH_SENDING = '/tmp/mock-crash-sending'
-    _PAUSE_FILE = '/tmp/pause-crash-sending'
+    _PAUSE_FILE = '/var/lib/crash_sender_paused'
     _SYSTEM_CRASH_DIR = '/var/spool/crash'
     _USER_CRASH_DIR = '/home/chronos/user/crash'
 
@@ -92,7 +92,7 @@ class CrashTest(test.test):
         utils.system('%s --init --nounclean_check' % self._CRASH_REPORTER_PATH)
 
 
-    def _create_fake_crash_dir_entry(self, name):
+    def create_fake_crash_dir_entry(self, name):
         entry = os.path.join(self._SYSTEM_CRASH_DIR, name)
         if not os.path.exists(self._SYSTEM_CRASH_DIR):
             os.makedirs(self._SYSTEM_CRASH_DIR)
@@ -104,12 +104,12 @@ class CrashTest(test.test):
                                   send_success,
                                   reports_enabled,
                                   username,
-                                  minidump):
+                                  report):
         self._set_sending_mock(mock_enabled=True, send_success=send_success)
         self._set_consent(reports_enabled)
-        if minidump is None:
-            minidump = self._create_fake_crash_dir_entry('fake.dmp')
-        return minidump
+        if report is None:
+            report = self.create_fake_crash_dir_entry('fake.dmp')
+        return report
 
 
     def _parse_sender_output(self, output):
@@ -123,6 +123,9 @@ class CrashTest(test.test):
 
         Returns:
           A dictionary with these values:
+            exec_name: name of executable which crashed
+            report_kind: kind of report sent (minidump vs kernel)
+            report_name: name of the report sent
             send_attempt: did the script attempt to send a crash.
             send_success: if it attempted, was the crash send successful.
             sleep_time: if it attempted, how long did it sleep before
@@ -135,8 +138,23 @@ class CrashTest(test.test):
             sleep_time = int(sleep_match.group(1))
         else:
             sleep_time = None
+        report_kind_match = re.search('Report: (\S+) \((\S+)\)', output)
+        if report_kind_match:
+            report_name = report_kind_match.group(1)
+            report_kind = report_kind_match.group(2)
+        else:
+            report_name = None
+            report_kind = None
+        exec_name_match = re.search('Exec name: (\S+)', output)
+        if exec_name_match:
+            exec_name = exec_name_match.group(1)
+        else:
+            exec_name = None
         send_success = 'Mocking successful send' in output
-        return {'send_attempt': send_attempt,
+        return {'exec_name': exec_name,
+                'report_kind': report_kind,
+                'report_name': report_name,
+                'send_attempt': send_attempt,
                 'send_success': send_success,
                 'sleep_time': sleep_time,
                 'output': output}
@@ -146,27 +164,27 @@ class CrashTest(test.test):
                                send_success=True,
                                reports_enabled=True,
                                username='root',
-                               minidump=None):
+                               report=None):
         """Call the crash sender script to mock upload one crash.
 
         Args:
           send_success: Mock a successful send if true
           reports_enabled: Has the user consented to sending crash reports.
           username: user to emulate a crash from
-          minidump: minidump to use for crash, if None we create one.
+          report: report to use for crash, if None we create one.
 
         Returns:
           Returns a dictionary describing the result with the keys
           from _parse_sender_output, as well as:
-            minidump_exists: does the minidump still exist after calling
+            report_exists: does the minidump still exist after calling
               send script
             rate_count: how many crashes have been uploaded in the past
               24 hours.
         """
-        minidump = self._prepare_sender_one_crash(send_success,
-                                                  reports_enabled,
-                                                  username,
-                                                  minidump)
+        report = self._prepare_sender_one_crash(send_success,
+                                                reports_enabled,
+                                                username,
+                                                report)
         self._log_reader.set_start_by_current()
         script_output = utils.system_output(
             '/bin/sh -c "%s" 2>&1' % self._CRASH_SENDER_PATH,
@@ -187,18 +205,18 @@ class CrashTest(test.test):
             raise error.TestFail(
                 'Unexpected crash_sender stdout/stderr: ' + script_output)
 
-        if os.path.exists(minidump):
-            minidump_exists = True
-            os.remove(minidump)
+        if os.path.exists(report):
+            report_exists = True
+            os.remove(report)
         else:
-            minidump_exists = False
+            report_exists = False
         if os.path.exists(self._CRASH_SENDER_RATE_DIR):
             rate_count = len(os.listdir(self._CRASH_SENDER_RATE_DIR))
         else:
             rate_count = 0
 
         result = self._parse_sender_output(output)
-        result['minidump_exists'] = minidump_exists
+        result['report_exists'] = report_exists
         result['rate_count'] = rate_count
 
         # Show the result for debugging but remove 'output' key
@@ -213,32 +231,48 @@ class CrashTest(test.test):
     def initialize(self):
         test.test.initialize(self)
         self._log_reader = site_log_reader.LogReader()
+        self._leave_crash_sending = True
 
 
     def cleanup(self):
         self._reset_rate_limiting()
         self._clear_spooled_crashes()
-        self._set_sending(True)
+        self._set_sending(self._leave_crash_sending)
         self._set_sending_mock(mock_enabled=False)
         self._pop_consent()
         test.test.cleanup(self)
 
 
-    def run_crash_tests(self, test_names):
+    def run_crash_tests(self,
+                        test_names,
+                        initialize_crash_reporter=False,
+                        clear_spool_first=True,
+                        must_run_all=True):
+        """Run crash tests defined in this class.
+
+        Args:
+          test_names: array of test names
+          initialize_crash_reporter: should set up crash reporter for every run
+          must_run_all: should make sure every test in this class is mentioned
+            in test_names
+        """
         self._push_consent()
 
-        # Sanity check test_names is complete
-        for attr in dir(self):
-            if attr.find('_test_') == 0:
-                test_name = attr[6:]
-                if not test_name in test_names:
-                    raise error.TestError('Test %s is missing' % test_name)
+        if must_run_all:
+            # Sanity check test_names is complete
+            for attr in dir(self):
+                if attr.find('_test_') == 0:
+                    test_name = attr[6:]
+                    if not test_name in test_names:
+                        raise error.TestError('Test %s is missing' % test_name)
 
         for test_name in test_names:
             logging.info(('=' * 20) + ('Running %s' % test_name) + ('=' * 20))
-            self._initialize_crash_reporter()
+            if initialize_crash_reporter:
+                self._initialize_crash_reporter()
             self._kill_running_sender()
             self._reset_rate_limiting()
-            self._clear_spooled_crashes()
+            if clear_spool_first:
+                self._clear_spooled_crashes()
             self._set_sending(False)
             getattr(self, '_test_' + test_name)()

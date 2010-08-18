@@ -31,7 +31,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
         self._log_reader.set_start_by_reboot(-1)
 
-        if not self._log_reader.can_find('Enabling crash handling'):
+        if not self._log_reader.can_find('Enabling user crash handling'):
             raise error.TestFail(
                 'user space crash handling was not started during last boot')
 
@@ -224,17 +224,23 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
 
     def _check_generated_minidump_sending(self, minidump_path,
-                                          username, crasher_basename):
+                                          username, crasher_basename,
+                                          will_syslog_give_name):
         # Now check that the sending works
         self._set_sending(True)
         result = self._call_sender_one_crash(
             username=username,
-            minidump=os.path.basename(minidump_path))
+            report=os.path.basename(minidump_path))
         if (not result['send_attempt'] or not result['send_success'] or
-            result['minidump_exists']):
+            result['report_exists']):
             raise error.TestFail('Minidump not sent properly')
-        if not crasher_basename in result['output']:
-            raise error.TestFail('Log did not contain crashing executable name')
+        if will_syslog_give_name:
+            if result['exec_name'] != crasher_basename:
+                raise error.TestFail('Executable name incorrect')
+        if result['report_kind'] != 'minidump':
+            raise error.TestFail('Expected a minidump report')
+        if result['report_name'] != minidump_path:
+            raise error.TestFail('Sent the wrong minidump report')
 
 
     def _check_crashing_process(self, username, with_breakpad):
@@ -300,6 +306,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
             self._check_minidump_stackwalk(crash_reporter_minidump,
                                            basename,
                                            from_crash_reporter=True)
+            will_syslog_give_name = True
 
         if breakpad_minidump:
             self._check_minidump_stackwalk(breakpad_minidump,
@@ -307,10 +314,18 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                            from_crash_reporter=False)
             send_minidump = breakpad_minidump
             os.unlink(crash_reporter_minidump)
+            # If you link against -lcrash, upon sending the syslog will
+            # just say exec_name: <very-long-guid>, where that GUID is the
+            # GUID generated during breakpad.  Since -lcrash is going away,
+            # it seems ok to have the syslog be a little more opaque for
+            # these crashes.  They'll be next to sends for the real crash
+            # anyway.
+            will_syslog_give_name = False
 
         self._check_generated_minidump_sending(send_minidump,
                                                username,
-                                               basename)
+                                               basename,
+                                               will_syslog_give_name)
 
     def _test_no_crash(self):
         """Test a program linked against libcrash_dumper can exit normally."""
@@ -408,14 +423,13 @@ class logging_UserCrash(site_crash_test.CrashTest):
     # non-root, non-chronos user.
 
     def run_once(self):
-        self.run_crash_tests([
-            'reporter_startup',
-            'reporter_shutdown',
-            'no_crash',
-            'chronos_breakpad_crasher',
-            'chronos_nobreakpad_crasher',
-            'root_breakpad_crasher',
-            'root_nobreakpad_crasher',
-            'core_file_persists_in_debug',
-            'core_file_removed_in_production',
-            ])
+        self.run_crash_tests(['reporter_startup',
+                              'reporter_shutdown',
+                              'no_crash',
+                              'chronos_breakpad_crasher',
+                              'chronos_nobreakpad_crasher',
+                              'root_breakpad_crasher',
+                              'root_nobreakpad_crasher',
+                              'core_file_persists_in_debug',
+                              'core_file_removed_in_production'],
+                              initialize_crash_reporter = True)

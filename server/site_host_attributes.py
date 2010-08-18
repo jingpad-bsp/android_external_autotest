@@ -35,7 +35,7 @@ import logging, os, utils
 #
 # Example configuration:
 #   private_host_attributes = {
-#     "myserver": ["has_80211n,True",
+#     "mydevice": ["has_80211n,True",
 #                  "has_resume_bug,False"]
 #   }
 #
@@ -58,12 +58,13 @@ except ImportError, e:
 
 
 _DEFAULT_ATTRIBUTES = [
+    'has_3g,False',
     'has_80211n,True',
     'has_bluetooth,True',
     'has_chromeos_firmware,False',
     'has_resume_bug,False',
     'has_ssd,True',
-    'has_3g,False',
+    'has_working_kcrash,False'
     ]
 
 
