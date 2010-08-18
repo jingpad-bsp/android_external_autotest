@@ -4,7 +4,6 @@
 
 import logging
 import os
-from autotest_lib.client.bin import base_partition, os_dep, test
 from autotest_lib.client.common_lib import error, utils, site_verity
 
 class platform_DMVerityCorruption(site_verity.VerityImageTest):
