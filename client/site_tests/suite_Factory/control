@@ -148,7 +148,7 @@ test_list = [
     factory.TestData(
         label_en='audio',
         label_zw='音源裝置',
-        formal_name='factory_Dummy',
+        formal_name='factory_Audio',
         trigger='a',
         dargs={'sample':'deps/factory/fhorn.wav'}),
     factory.TestData(
