@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil
-from autotest_lib.client.bin import site_login, site_ui_test
-from autotest_lib.client.common_lib import error, site_ui, utils
+from autotest_lib.client.bin import site_login, site_ui_test, utils
+from autotest_lib.client.common_lib import error, site_ui
 
 
 class graphics_O3DSelenium(site_ui_test.UITest):
@@ -30,9 +30,19 @@ class graphics_O3DSelenium(site_ui_test.UITest):
                        "TestStressCullingZSort"]
 
 
-    def setup(self):
+    def setup(self, tarball='o3d-tests-0.0.1.tar.bz2'):
         if not os.path.exists(self.srcdir):
             os.mkdir(self.srcdir)
+
+        dst_path = os.path.join(self.bindir, 'O3D')
+        tarball_path = os.path.join(self.bindir, tarball)
+        if not os.path.exists(dst_path):
+            if not os.path.exists(tarball_path):
+                utils.get_file(
+                    'http://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/' + tarball,
+                    tarball_path)
+            utils.extract_tarball_to_dir(tarball_path, dst_path)
+
         src_assets_path = os.path.join(self.bindir, 'assets_o3dtgz')
         tgz_file_list = os.listdir(src_assets_path)
         dst_assets_path = os.path.join(self.bindir,
