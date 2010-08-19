@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 { "name":"CheckSharedKey_WEP104",
-  "skip_test":"Temporarily disable; nl80211 does not handle auto-select between open+shared key auth",
   "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "mode":"11g",
@@ -21,6 +20,7 @@
     [ "connect",        { "security":"wep",
                           "psk":"0:0123456789abcdef0123456789" } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
     [ "deconfig" ],
 
     # key index 1, 104-bit WEP
@@ -28,6 +28,7 @@
     [ "connect",        { "security":"wep",
                            "psk":"1:89abcdef0123456789abcdef01" } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
     [ "deconfig" ],
 
     # key index 2, 104-bit WEP
@@ -35,6 +36,7 @@
     [ "connect",        { "security":"wep",
                           "psk":"2:fedcba9876543210fedcba9876" } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
     [ "deconfig" ],
 
     # key index 3, 104-bit WEP
@@ -42,6 +44,7 @@
     [ "connect",        { "security":"wep",
                           "psk":"3:109fedcba9876544321fedcba98" } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
 
     [ "destroy" ],
   ],
