@@ -88,8 +88,8 @@ test_list = [
                 dargs={'approved_dbs':'qualified_components*',
                        'ignored_cids':[
                            'hash_ro_firmware',
-                           'part_id_bios',
                            'part_id_hwqual',
+                           'vendor_id_bios',
                            'version_rw_firmware',
                        ]}),
             factory.TestData(
