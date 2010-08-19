@@ -26,7 +26,6 @@ TESTS = [
   ('desktopui_SunSpiderBench', {}),
   ('desktopui_UrlFetch', {}),
   ('desktopui_V8Bench', {}),
-  ('desktopui_BrowserTest', {}),
   ('desktopui_SyncIntegrationTests', {}),
   ('desktopui_WindowManagerFocusNewWindows', {}),
   ('desktopui_WindowManagerHotkeys', {}),
