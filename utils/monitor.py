@@ -95,7 +95,7 @@ def SetLogger(namespace, logfile, loglevel):
     We use RotatingFileHandler to handle rotating the log files when they reach
     maxsize in bytes.
     """
-    maxsize = 8192000  # Max size to grow log files, in bytes.
+    MAXSIZE = 8192000  # Max size to grow log files, in bytes.
 
     levels = {'debug': logging.DEBUG,
               'info': logging.INFO,
@@ -106,7 +106,7 @@ def SetLogger(namespace, logfile, loglevel):
 
     logger = logging.getLogger(namespace)
     c = logging.StreamHandler()
-    h = logging.handlers.RotatingFileHandler(logfile, maxBytes=maxsize,
+    h = logging.handlers.RotatingFileHandler(logfile, maxBytes=MAXSIZE,
                                              backupCount=10)
     hf = logging.Formatter('%(asctime)s %(process)d %(levelname)s: %(message)s')
     cf = logging.Formatter('%(levelname)s: %(message)s')
@@ -159,16 +159,14 @@ class RemoteWorker(object):
             self.client.connect(self.hostname, username='root',
                            key_filename=TB.privkey, timeout=TIMEOUT)
             TB.hosts[self.hostname]['status'] = True
+            self.ReadRelease()
+            self.ReadResources()
         except Exception, e:
             TB.logger.error('Host %s: %s', self.hostname, e)
             TB.hosts[self.hostname]['status'] = False
-        # Only check release and resources if host is accessible.
-        if TB.hosts[self.hostname]['status']:
-            self.ReadRelease()
-            self.ReadResources()
+        finally:
             TB.logger.debug('Closing client for %s', self.hostname)
             self.client.close()
-
 
     def ReadRelease(self):
         """Get the Chrome OS Release version."""
