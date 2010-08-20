@@ -200,15 +200,22 @@ test_list = [
     factory.TestData(
         label_en='final',
         label_zw='最後測試',
-        formal_name='step_final',
+        formal_name='step_final_stage1',
         automated_seq=[
             # THIS IS A GOOGLE REQUIRED TEST.
             # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
             factory.TestData(
+                label_en='write GBB',
+                label_zw='寫入GBB',
+                formal_name='factory_WriteGBB'),
+            factory.TestData(
+                label_en='reboot',
+                label_zw='重新開機',
+                formal_name='factory_RebootStub'),
+            factory.TestData(
                 label_en='component validation',
                 label_zw='元件驗證',
-                formal_name='hardware_Components',
-                dargs={'approved_dbs':'qualified_components*'})],
+                formal_name='hardware_Components')],
         trigger='f'),
 
     # THIS IS A GOOGLE REQUIRED TEST.
@@ -250,7 +257,6 @@ for test in test_list:
 test_map = factory.make_test_map(test_list)
 trigger_set = factory.make_trigger_set(test_list)
 
-hwqual = None
 
 def run_subtest(name, dargs_map):
     job.run_test(name, **dargs_map[name])
@@ -267,19 +273,33 @@ def step_reboot_seq(dargs_map, i=0):
         step_init()
 
 
-def step_runin(ui, dargs_map):
-    run_subtest('hardware_Components', dargs_map)
-    # Find the HWQual ID by getting the result of above hardware component test.
-    # TODO: Move this functionality to StatusMap.
+hwqual_id = None
+
+def get_hwqual_id():
+    # TODO: Move HWQual ID to StatusMap.
+    global hwqual_id
+    if not hwqual_id:
+        hwqual_id = find_hwqual_id()
+    return hwqual_id
+
+def find_hwqual_id():
     cmd = ('find %s -name keyval | xargs grep -h ^hwqual_id= | '
            'sed s/hwqual_id=// | head -1' %
            (_RESULTS_PATH + '/hardware_Components.step_runin_*'))
-    hwqual = utils.system_output(cmd).strip()
-    if hwqual:
-        factory.log('HWQual ID = %s' % hwqual)
-    else:
+    hwqual_id = utils.system_output(cmd).strip()
+    hwqual_id = hwqual_id.rsplit(' ', 1)[0].replace(' ', '_')
+    if not hwqual_id:
         factory.log('fail to get the HWQual ID')
+    return hwqual_id
 
+
+def update_dargs(test, dargs_map, update_map):
+    for (key, value) in update_map.iteritems():
+        dargs_map[test][key] = value
+
+
+def step_runin(ui, dargs_map):
+    run_subtest('hardware_Components', dargs_map)
     run_subtest('hardware_GPIOSwitches', dargs_map)
     job.drop_caches_between_iterations = True
     run_subtest('hardware_SAT', dargs_map)
@@ -288,8 +308,22 @@ def step_runin(ui, dargs_map):
     step_reboot_seq(dargs_map)
 
 
-def step_final(ui, dargs_map):
+def step_final_stage1(ui, dargs_map):
+    update_dargs('factory_WriteGBB', dargs_map,
+                 {'gbb_file': 'gbb_*%s' % get_hwqual_id()})
+    run_subtest('factory_WriteGBB', dargs_map)
+    job.next_step_prepend([step_final_stage2, ui, dargs_map])
+    factory.log('rebooting')
+    time.sleep(5)
+    job.reboot()
+
+
+def step_final_stage2(ui, dargs_map):
+    run_subtest('factory_RebootStub', dargs_map)
+    update_dargs('hardware_Components', dargs_map,
+                 {'approved_dbs': 'qualified_components_*%s' % get_hwqual_id()})
     run_subtest('hardware_Components', dargs_map)
+    step_init()
 
 
 def step_init():
