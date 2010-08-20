@@ -65,11 +65,13 @@ Usage:
 """
 
 __author__ = 'kdlucas@gmail.com (Kelly Lucas)'
-__version__ = '1.91'
+__version__ = '1.92'
 
-import logging, optparse, os, paramiko, Queue, subprocess, sys, threading
-import logging.handlers
+import logging, logging.handlers, optparse, os, paramiko, Queue, shutil
+import subprocess, sys, threading
+
 import common
+
 from IPy import IP
 from time import *
 
@@ -78,6 +80,8 @@ os.environ['DJANGO_SETTINGS_MODULE'] = settings
 
 from autotest_lib.frontend.afe import models as afe_models
 
+TIMEOUT = 5  # Timeout for accessing remote hosts.
+RUNTIME = 240  # Total time to allow the host queue to finish all tasks.
 
 def SetLogger(namespace, logfile, loglevel):
     """Create a log handler and set log level.
@@ -128,7 +132,7 @@ class MonitorThread(threading.Thread):
             host = TB.q.get()
             if host is None:
                 break  # reached end of queue.
-            worker = RemoteWorker(host)
+            worker = RemoteWorker(host.hostname)
             worker.run()
             # Notify Queue that process is finished.
             TB.logger.debug('Releasing host %s from queue', host.hostname)
@@ -138,84 +142,74 @@ class MonitorThread(threading.Thread):
 class RemoteWorker(object):
     """SSH into remote hosts to obtain resource data."""
 
-    def __init__(self,host):
+    def __init__(self, hostname):
         """
         Args:
-            logger: initialized logger object.
-            src: pathname of chrome os source code.
+            hostname: string, hostname of AutoTest host.
         """
-        cros_keys = 'scripts/mod_for_test_scripts/ssh_keys'
-        self.privkey = os.path.join(TB.src, cros_keys, 'testing_rsa')
-        self.h = host
+        self.hostname = hostname
+        self.client = paramiko.SSHClient()
+        self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 
     def run(self):
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        TB.hosts[self.h.hostname]['time'] = strftime(
+        TB.hosts[self.hostname]['time'] = strftime(
             '%d%b%Y %H:%M:%S', localtime())
         try:
-            client.connect(self.h.hostname, username='root',
-                           key_filename=self.privkey, timeout=TB.TIMEOUT)
-            TB.hosts[self.h.hostname]['status'] = True
+            self.client.connect(self.hostname, username='root',
+                           key_filename=TB.privkey, timeout=TIMEOUT)
+            TB.hosts[self.hostname]['status'] = True
         except Exception, e:
-            TB.logger.error('Host %s: %s', self.h.hostname, e)
-            TB.hosts[self.h.hostname]['status'] = False
+            TB.logger.error('Host %s: %s', self.hostname, e)
+            TB.hosts[self.hostname]['status'] = False
         # Only check release and resources if host is accessible.
-        if TB.hosts[self.h.hostname]['status']:
-            self.ReadRelease(client, self.h.hostname)
-            self.ReadResources(client, self.h.hostname)
-            TB.logger.debug('Closing client for %s', self.h.hostname)
-            client.close()
+        if TB.hosts[self.hostname]['status']:
+            self.ReadRelease()
+            self.ReadResources()
+            TB.logger.debug('Closing client for %s', self.hostname)
+            self.client.close()
 
 
-    def ReadRelease(self, client, hostname):
-        """Get the Chrome OS Release version.
+    def ReadRelease(self):
+        """Get the Chrome OS Release version."""
 
-        Args:
-            client: paramiko client connection.
-            hostname: string, hostname of AutoTest host.
-        """
         output = []
         cmd = 'cat /etc/lsb-release'
         try:
-            stdin, stdout, stderr = client.exec_command(cmd)
+            stdin, stdout, stderr = self.client.exec_command(cmd)
+            for line in stdout:
+                if 'CHROMEOS_RELEASE_DESCRIPTION' in line:
+                    release = line.split('=')
+                    TB.hosts[self.hostname]['release'] = release[1]
         except Exception, e:
-            TB.logger.error('Error getting release version\n%s', e)
-        for line in stdout:
-            if 'CHROMEOS_RELEASE_DESCRIPTION' in line:
-                release = line.split('=')
-                TB.hosts[hostname]['release'] = release[1]
-        if not 'release' in TB.hosts[hostname]:
-            TB.hosts[hostname]['release'] = 'unknown'
+            TB.logger.error('Error getting release version on host %s\n%s',
+                            self.hostname, e)
+        if not 'release' in TB.hosts[self.hostname]:
+            TB.hosts[self.hostname]['release'] = 'unknown'
 
 
-    def ReadResources(self, client, hostname):
-        """Get resources that we are monitoring on the host.
+    def ReadResources(self):
+        """Get resources that we are monitoring on the host."""
 
-        Args:
-            client: paramiko client connection.
-            hostname: string, hostname of AutoTest host.
-        """
         advisor = Resource()
         if TB.update == True:
-            TB.logger.debug('Collecting data on %s', hostname)
+            TB.logger.debug('Collecting data on %s', self.hostname)
             cmd = advisor.GetCommands()
             for k in advisor.resources:
                 output = []
                 try:
-                    stdin, stdout, stderr = client.exec_command(cmd[k])
+                    stdin, stdout, stderr = self.client.exec_command(cmd[k])
+                    for line in stdout:
+                        output.append(line)
                 except Exception, e:
-                    TB.logger.error('Cannot read %s from %s', k, hostname)
-                for line in stdout:
-                    output.append(line)
-                TB.hosts[hostname]['data'][k] = "".join(output)
-            TB.logger.debug('Formatting data for %s', hostname)
-            advisor.FormatData(hostname)
-        advisor.ProcessRRD(hostname)
+                    TB.logger.error('Cannot read %s from %s', k, self.hostname)
+                TB.hosts[self.hostname]['data'][k] = "".join(output)
+            TB.logger.debug('Formatting data for %s', self.hostname)
+            advisor.FormatData(self.hostname)
+        advisor.ProcessRRD(self.hostname)
         if TB.html:
-            TB.logger.debug('Building HTML files for %s', hostname)
-            advisor.BuildHTML(hostname)
+            TB.logger.debug('Building HTML files for %s', self.hostname)
+            advisor.BuildHTML(self.hostname)
 
 
 class TestBed(object):
@@ -227,13 +221,12 @@ class TestBed(object):
     raw and formatted data that was collected.
     """
 
-    def __init__(self, logfile, debug, start_time, graph, home, html, src,
-                 threads, update, url):
+    def __init__(self, logfile, debug, graph, home, html, src, threads, update,
+                 url):
         """
         Args:
             logfile: string, name of logfile.
             debug: string, the debug log level.
-            start_time: string, time the program started.
             graph: boolean, flag to create graphs.
             home: string, pathname of root directory of monitor files.
             html: boolean, flag to build html files.
@@ -242,8 +235,7 @@ class TestBed(object):
             update: boolean, flag to get update data from remote hosts.
             url: string, base URL of system health monitor.
         """
-        self.TIMEOUT = 5  # Timeout for accessing remote hosts.
-        self.RUNTIME = 240  # Total time to allow the host queue to finish.
+        start_time = strftime('%H:%M:%S', localtime())
         self.logger = SetLogger('SystemMonitor', logfile, debug)
         self.logger.info('Script started at: %s', start_time)
         self.graph = graph
@@ -251,7 +243,6 @@ class TestBed(object):
         self.html = html
         self.rrdtimes = ['-1hours', '-4hours', '-24hours', '-1week', '-1month',
                          '-1year']
-        self.src = src
         self.thread_num = threads
         self.update = update
         self.url = url
@@ -259,6 +250,8 @@ class TestBed(object):
 
         # Create a queue for checking resources on remote hosts.
         self.q = TBQueue()
+        cros_keys = 'scripts/mod_for_test_scripts/ssh_keys'
+        self.privkey = os.path.join(src, cros_keys, 'testing_rsa')
 
 
 class Monitor(object):
@@ -310,9 +303,9 @@ class Monitor(object):
 
         if TB.graph:
             # Graphing takes much longer, so increase the max runtime.
-            maxtime = TB.RUNTIME * 5
+            maxtime = RUNTIME * 5
         else:
-            maxtime = TB.RUNTIME
+            maxtime = RUNTIME
         # Queue.join() will wait for all jobs in the queue to finish, or
         # until the timeout value is reached.  Timeout is needed because
         # sometimes the paramiko client will hang.
@@ -342,6 +335,7 @@ class Monitor(object):
             if host.hostname == hostname:
                 TB.q.put(host)
                 break
+        TB.q.join(timeout=TIMEOUT)
         TB.logger.info('%s status is %s', hostname,
                        TB.hosts[hostname]['status'])
 
@@ -392,6 +386,7 @@ class Monitor(object):
         templist = [(IP(h.hostname).int(), h) for h in iplist]
         templist.sort()
         newlist = [h[1] for h in templist]
+        hostlist.sort()
         newlist.extend(hostlist)
 
         return newlist
@@ -415,14 +410,16 @@ class Monitor(object):
                 readyhosts = readyhosts + 1
 
         LandPageFile = os.path.join(TB.home, 'index.html')
-        f = open(LandPageFile, 'w')
+        # The temp file is used so that there will always be viewable html page
+        # when the new page is being built.
+        LandPageTemp = os.path.join(TB.home, 'temp.html')
+        f = open(LandPageTemp, 'w')
         f.write('<HTML><HEAD>')
         f.write('<LINK REL="stylesheet" TYPE="text/css" HREF="table.css">')
         f.write('<center><TITLE>AutoTest System Health Check</TITLE></HEAD>')
         f.write('<BODY>')
         f.write('<img src="chrome.png" style="float:left;"/>')
-        f.write('<table border=3 style="float: right; bgcolor=#CDCDC1;')
-        f.write('font-family:comic sans ms; font-size: 12;">')
+        f.write('<table style="float: right">')
         f.write('<TR><TD><em>Total Hosts</em><TD>%d' % (downhosts + readyhosts))
         f.write('<TR><TD><em>Inaccessible Hosts</em><TD>%d' % downhosts)
         f.write('<TR><TD><em>Accessible Hosts</em><TD>%d' % readyhosts)
@@ -430,11 +427,10 @@ class Monitor(object):
         f.write('<H1>CAUTOTEST Testbed</H1>')
         f.write('<H2>System Health</H2>')
         f.write('<HR>')
-        f.write('<table border=1 style="font-family:verdana,comic sans ms;')
-        f.write('color: #0066FF;font-size: 12;">')
+        f.write('<table>')
         f.write('<CAPTION><EM>Graphs updated every 30 mintues</EM></CAPTION>')
-        f.write('<TH>Hostname<TH>Status<TH>Labels<TH>Last Update')
-        f.write('<TH>Release<TH>Health')
+        f.write('<TR><TH>Hostname<TH>Status<TH>Labels<TH>Last Update')
+        f.write('<TH>Release<TH>Health</TR>')
         for h in sorted_hosts:
             if TB.hosts[h.hostname]['status']:
                 status = 'Ready'
@@ -444,6 +440,9 @@ class Monitor(object):
                 bgcolor = '#FF9999'
             link_dir = 'hosts/' + h.hostname + '/rrd'
             rrd_dir = os.path.join(TB.home, 'hosts', h.hostname, 'rrd')
+            fqn = 'http://cautotest.corp.google.com/'
+            view_host = 'afe/#tab_id=view_host&object_id=%s' % h
+            hlink = fqn + view_host
             if not os.path.isdir(rrd_dir):
                 os.makedirs(rrd_dir)
                 os.chmod(rrd_dir, 0755)
@@ -466,8 +465,9 @@ class Monitor(object):
                     TB.logger.error('Release file: %s\n%s', release_file, e)
                 rf.write(TB.hosts[h.hostname]['release'])
                 rf.close()
-            f.write('<tr><th>%s' % h.hostname)
-            f.write('<td bgcolor=%s><em>%s</em>' % (bgcolor, status))
+            f.write('<tr bgcolor=%s><th>' % bgcolor)
+            f.write('<a href=%s>%s</a></th>' % (hlink, h.hostname))
+            f.write('<td><em>%s</em>' % status)
             f.write('<td>')
             for label in h.labels.values_list('name', flat=True):
               f.write('%s<br>' % label)
@@ -481,7 +481,9 @@ class Monitor(object):
                 f.write('<td>None</td>')
         f.write('</table><p>\n</center>\n</BODY></HTML>')
         f.close()
+        shutil.copyfile(LandPageTemp, LandPageFile)
         os.chmod(LandPageFile, 0644)
+
 
 
 class Resource(object):
@@ -1506,6 +1508,30 @@ class RRD(object):
             return p.returncode
 
 
+class TBQueue(Queue.Queue):
+    """A subclass of class Queue to override join method with timeout."""
+
+    def __init__(self):
+        Queue.Queue.__init__(self)
+
+
+    def join(self, timeout=None):
+        deadline = None
+        waittime = None
+        if timeout:
+            deadline = time() + timeout
+        self.all_tasks_done.acquire()
+        try:
+            while self.unfinished_tasks:
+                if deadline:
+                    waittime = deadline - time()
+                    if waittime < 0:
+                        break
+                self.all_tasks_done.wait(waittime)
+        finally:
+            self.all_tasks_done.release()
+
+
 def ParseArgs():
     """Parse all command line options."""
     # Assume Chrome OS source is located on /usr/local/google.
@@ -1557,38 +1583,13 @@ def ParseArgs():
     return parser.parse_args()
 
 
-class TBQueue(Queue.Queue):
-    """A subclass of class Queue to override join method with timeout."""
-
-    def __init__(self):
-        Queue.Queue.__init__(self)
-
-
-    def join(self, timeout=None):
-        deadline = None
-        waittime = None
-        if timeout:
-            deadline = time() + timeout
-        self.all_tasks_done.acquire()
-        try:
-            while self.unfinished_tasks:
-                if deadline:
-                    waittime = deadline - time()
-                    if waittime < 0:
-                        break
-                self.all_tasks_done.wait(waittime)
-        finally:
-            self.all_tasks_done.release()
-
-
 def main(argv):
     start = time()
-    starttime = strftime('%H:%M:%S', localtime())
     options, args = ParseArgs()
     global TB
-    TB = TestBed(options.logfile, options.debug, starttime, options.graph,
-                 options.home, options.html, options.gclient, options.threads,
-                 options.update, options.url)
+    TB = TestBed(options.logfile, options.debug, options.graph, options.home,
+                 options.html, options.gclient, options.threads, options.update,
+                 options.url)
     sysmon = Monitor()
     sysmon.UpdateStatus()
     sysmon.BuildLandingPage()
