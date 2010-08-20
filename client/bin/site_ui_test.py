@@ -76,13 +76,16 @@ class UITest(bin_test.test):
         self._flim = flimflam.FlimFlam(self._system_bus)
         for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
+            logging.debug("Considering " + properties['Type'])
             for path in properties['IPConfigs']:
                 ipconfig = self._flim.GetObjectInterface('IPConfig', path)
 
                 servers = ipconfig.GetProperties().get('NameServers', None)
                 if servers != None:
                     self._dns[path] = ','.join(servers)
+                    logging.debug("Cached DNS for "  + properties['Type'])
                 ipconfig.SetProperty('NameServers', '127.0.0.1')
+                logging.debug("Changed DNS for "  + properties['Type'])
 
         site_utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
