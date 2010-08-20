@@ -29,7 +29,7 @@ class hardware_Keyboard(test.test):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.system('make')
+        utils.make()
 
     def _supported(self, event, key_name):
         cmd = os.path.join(self.srcdir, 'evtest') + ' ' + event

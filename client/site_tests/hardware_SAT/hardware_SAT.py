@@ -48,7 +48,7 @@ class hardware_SAT(test.test):
         os.chdir(self.srcdir)
         # ./configure stores relevant path and environment variables.
         utils.configure(configure=var_flags + ' ./configure')
-        utils.system('make -j %d' % utils.count_cpus())
+        utils.make()
 
 
     def run_once(self, seconds=60):

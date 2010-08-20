@@ -18,8 +18,8 @@ class audiovideo_V4L2(test.test):
     def setup(self):
         # TODO(jiesun): make binary here when cross compile issue is resolved.
         os.chdir(self.srcdir)
-        utils.system("make clean")
-        utils.system("make")
+        utils.make('clean')
+        utils.make()
 
 
     def run_once(self, run_unit_tests=True, run_capture_tests=True,

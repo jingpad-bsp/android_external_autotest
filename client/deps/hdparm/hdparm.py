@@ -12,7 +12,7 @@ def setup(tarball, topdir):
     os.chdir(srcdir)
     # This binary is not necessary and breaks non-x86 autotest builds
     os.remove('contrib/fix_standby')
-    utils.system('make')
+    utils.make()
     utils.system('make binprefix=%s manprefix=%s install' % (topdir, topdir))
     os.chdir(topdir)
 

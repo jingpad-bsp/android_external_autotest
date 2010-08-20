@@ -28,7 +28,7 @@ class hardware_StorageFio(test.test):
         os.chdir(self.srcdir)
         utils.system('patch -p1 < ../Makefile.patch')
         utils.system('patch -p1 < ../arm.patch')
-        utils.system('%s %s make' % (var_ldflags, var_cflags))
+        utils.make(make='%s %s make' % (var_ldflags, var_cflags))
 
 
     def __find_free_root_partition(self):

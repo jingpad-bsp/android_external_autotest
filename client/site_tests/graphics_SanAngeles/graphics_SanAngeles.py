@@ -14,8 +14,8 @@ class graphics_SanAngeles(site_ui_test.UITest):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.system('make clean')
-        utils.system('make all')
+        utils.make('clean')
+        utils.make('all')
 
 
     def run_once(self):

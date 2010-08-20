@@ -15,7 +15,7 @@ def setup(tarball, topdir):
     utils.extract_tarball_to_dir(tarball, 'src')
     os.chdir(srcdir)
     utils.configure('--prefix=%s' % topdir)
-    utils.system('make')
+    utils.make()
     os.chdir(topdir)
 
 pwd = os.getcwd()

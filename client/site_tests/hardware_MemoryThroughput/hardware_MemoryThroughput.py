@@ -15,8 +15,8 @@ class hardware_MemoryThroughput(test.test):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.system('make clean')
-        utils.system('make')
+        utils.make('clean')
+        utils.make()
 
     def run_once(self, num_iteration = -1, test_list = ''):
         exefile = os.path.join(self.srcdir, 'hardware_MemoryThroughput')

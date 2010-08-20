@@ -17,8 +17,8 @@ class unit_test(test.test):
 
     def setup(self):
       os.chdir(self.srcdir)
-      utils.system('make clean')
-      utils.system('make all')
+      utils.make('clean')
+      utils.make('all')
       
       self.job.setup_dep(['gtest'])
 

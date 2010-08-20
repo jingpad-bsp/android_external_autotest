@@ -12,7 +12,7 @@ version = 1
 def setup(topdir):
     srcdir = os.path.join(topdir, 'src')
     os.chdir(srcdir)
-    utils.system('make')
+    utils.make()
     os.chdir(topdir)
 
 pwd = os.getcwd()

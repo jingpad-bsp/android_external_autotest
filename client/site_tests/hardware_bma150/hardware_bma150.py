@@ -18,7 +18,7 @@ class hardware_bma150(test.test):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.system('make')
+        utils.make()
 
     def run_once(self):
         bma_test_cmd = os.path.join(self.srcdir, "bma150tst")

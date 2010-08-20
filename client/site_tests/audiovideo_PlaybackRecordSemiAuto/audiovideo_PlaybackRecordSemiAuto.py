@@ -291,8 +291,8 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.system('make clean')
-        utils.system('make')
+        utils.make('clean')
+        utils.make()
 
 
     def initialize(self, creds = '$default'):

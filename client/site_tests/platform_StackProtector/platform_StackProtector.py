@@ -23,7 +23,7 @@ class platform_StackProtector(test.test):
         os.chdir(self.srcdir)
         utils.system("patch -p1 < ../binutils-2.19-arm.patch");
         utils.configure()
-        utils.system("make")
+        utils.make()
 
 
     def run_once(self, rootdir="/"):

@@ -12,7 +12,7 @@ class hardware_TPM(test.test):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.system('make clean all')
+        utils.make('clean all')
 
     def run_once(self, suite):
         site_tpm.run_trousers_tests('%s/src/tests/%s' % (self.bindir, suite))

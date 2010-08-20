@@ -15,8 +15,8 @@ class platform_MiniJailVfsNamespace(test.test):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.system('make clean')
-        utils.system('make all')
+        utils.make('clean')
+        utils.make('all')
 
 
     def __run_cmd(self, cmd):

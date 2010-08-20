@@ -21,7 +21,7 @@ class hardware_TPMFirmware(test.test):
         sysroot = os.environ['SYSROOT']
         bin_path = os.path.join(sysroot, 'usr/sbin/tpm_takeownership')
         shutil.copy(bin_path, self.bindir)
-        utils.system('make -C %s' % self.srcdir)
+        utils.make('-C %s' % self.srcdir)
 
 
     # Runs a command, logs the output, and returns the exit status.
