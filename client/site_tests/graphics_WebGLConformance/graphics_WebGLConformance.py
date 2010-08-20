@@ -18,8 +18,18 @@ class graphics_WebGLConformance(site_ui_test.UITest):
         site_ui_test.UITest.initialize(self, creds)
 
 
-    def setup(self):
+    def setup(self, tarball='webgl-tests-0.0.1.tar.bz2'):
         shutil.rmtree(self.srcdir, ignore_errors=True)
+
+        dst_path = os.path.join(self.bindir, 'WebGL')
+        tarball_path = os.path.join(self.bindir, tarball)
+        if not os.path.exists(dst_path):
+            if not os.path.exists(tarball_path):
+                utils.get_file(
+                    'http://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/' + tarball,
+                     tarball_path)
+            utils.extract_tarball_to_dir(tarball_path, dst_path)
+
         shutil.copytree(os.path.join(self.bindir, 'WebGL'), self.srcdir)
         os.chdir(self.srcdir)
         utils.system('patch -p1 < ../r11002.patch')
