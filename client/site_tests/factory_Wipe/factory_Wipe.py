@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import os
+import time
 
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
@@ -81,19 +82,34 @@ class factory_Wipe(test.test):
                  write_protect=True,
                  check_developer_switch=True,
                  status_file_path=None,
-                 test_list=None):
-        # first, check if all previous tests are passed.
-        status_map = ful.StatusMap(status_file_path, test_list)
-        failed = status_map.filter(ful.FAILED)
-        if failed:
-            raise error.TestFail('Some tests were failed. Cannot start wipe.')
+                 test_list=None,
+                 force_skip_required_test_check=False):
 
-        # check if all Google Required Tests are passed
-        passed = [t.formal_name for t in status_map.filter(ful.PASSED)]
-        if not set(GOOGLE_REQUIRED_TESTS).issubset(passed):
-            missing = list(set(GOOGLE_REQUIRED_TESTS).difference(passed))
-            raise error.TestFail('You need to execute following Google Required'
-                                 ' Tests: %s' % (','.join(missing)))
+        if force_skip_required_test_check:
+            # alert user what he is doing
+            alert_seconds = 3
+            for i in range(alert_seconds):
+                factory.log('WARNING: REQUIRED TEST CHECK IS BYPASSED. ' +
+                            'THIS DEVICE CANNOT BE QUALIFIED.')
+            factory.log("Waiting %d seconds before test start." % alert_seconds)
+            for i in range(alert_seconds, 0, -1):
+                factory.log(">> wipe test will start in %d seconds..." % i)
+                time.sleep(1)
+        else:
+            # first, check if all previous tests are passed.
+            status_map = ful.StatusMap(status_file_path, test_list)
+            failed = status_map.filter(ful.FAILED)
+            if failed:
+                raise error.TestFail('Some tests were failed. ' +
+                                     'Cannot start wipe.')
+
+            # check if all Google Required Tests are passed
+            passed = [t.formal_name for t in status_map.filter(ful.PASSED)]
+            if not set(GOOGLE_REQUIRED_TESTS).issubset(passed):
+                missing = list(set(GOOGLE_REQUIRED_TESTS).difference(passed))
+                raise error.TestFail('You need to execute following ' +
+                                     'Google Required Tests: %s' %
+                                     (','.join(missing)))
 
         # apply each final tests
         self.check_developer_switch(check_developer_switch)

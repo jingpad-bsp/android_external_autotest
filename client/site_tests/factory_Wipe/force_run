@@ -10,8 +10,13 @@ TEST_CLASS = 'factory'
 TEST_TYPE = 'client'
 
 DOC = """
-This test switches the bootable partition to the release partition, 
+This test switches the bootable partition to the release partition,
 and tags the factory partition to be wiped.
 """
 
-job.run_test('factory_Wipe')
+# adjust following parameters for your test.
+job.run_test('factory_Wipe',
+    secure_wipe=False,
+    write_protect=False,
+    check_developer_switch=True,
+    force_skip_required_test_check=True)
