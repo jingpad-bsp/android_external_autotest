@@ -8,14 +8,12 @@ import re
 import socket
 import urlparse
 
-from autotest_lib.client.bin import site_utils
 from autotest_lib.client.common_lib import error
-
 
 STATEFULDEV_UPDATER = '/usr/local/bin/stateful_update'
 UPDATER_BIN = '/usr/bin/update_engine_client'
 UPDATER_IDLE = 'UPDATE_STATUS_IDLE'
-UPDATER_NEED_REBOOT = 'UPDATED_NEED_REBOOT'
+UPDATER_NEED_REBOOT = 'UPDATE_STATUS_UPDATED_NEED_REBOOT'
 
 
 class ChromiumOSError(error.InstallError):
@@ -35,14 +33,27 @@ class ChromiumOSUpdater():
         self.update_url = update_url
         self.update_version = url_to_version(update_url)
 
+
     def check_update_status(self):
         update_status_cmd = ' '.join([UPDATER_BIN, '-status', '2>&1',
                                       '| grep CURRENT_OP'])
         update_status = self._run(update_status_cmd)
         return update_status.stdout.strip().split('=')[-1]
 
+
+    def reset_update_engine(self):
+        self._run('initctl stop update-engine')
+        self._run('rm -f /tmp/update_engine_autoupdate_completed')
+        self._run('initctl start update-engine')
+        # May need to wait if service becomes slow to restart.
+        if self.check_update_status() != UPDATER_IDLE:
+            raise ChromiumOSError('%s is not in an installable state' %
+                                  self.host.hostname)
+
+
     def _run(self, cmd, *args, **kwargs):
         return self.host.run(cmd, *args, **kwargs)
+
 
     def run_update(self):
         # TODO(seano): Retrieve update_engine.log from target host.
@@ -65,53 +76,49 @@ class ChromiumOSUpdater():
         # update left the machine in a good state. Reset update_engine's
         # state & ensure that update_engine is idle.
         if self.check_update_status() != UPDATER_IDLE:
-            self._run('initctl stop update-engine')
-            self._run('rm -f /tmp/update_engine_autoupdate_completed')
-            self._run('initctl start update-engine')
-        # May need to wait if service becomes slow to restart.
-        if self.check_update_status() != UPDATER_IDLE:
-            raise ChromiumOSError('%s is not in an installable state' %
+            self.reset_update_engine()
+
+        # Run autoupdate command. This tells the autoupdate process on
+        # the host to look for an update at a specific URL and version
+        # string.
+        autoupdate_cmd = ' '.join([UPDATER_BIN,
+                                   '--update',
+                                   '--omaha_url=%s' % self.update_url,
+                                   '--app_version ForcedUpdate',
+                                   ' 2>&1'])
+        logging.info(autoupdate_cmd)
+        try:
+            self._run(autoupdate_cmd, timeout=900)
+        except error.AutoservRunError, e:
+            # Either a runtime error occurred on the host, or
+            # update_engine_client exited with > 0.
+            raise ChromiumOSError('update_engine failed on %s' %
                                   self.host.hostname)
 
-        # First, attempt dev & test tools update (which don't live on
-        # the rootfs). This must succeed so that the newly installed
-        # host is testable after we run the autoupdater.
+        # Check that the installer completed as expected.
+        status = self.check_update_status()
+        if status != UPDATER_NEED_REBOOT:
+            # TODO(seano): should we aggressively reset update-engine here?
+            raise ChromiumOSError('update-engine error on %s: '
+                                  '"%s" from update-engine' %
+                                  (self.host.hostname, status))
+
+        # Attempt dev & test tools update (which don't live on the
+        # rootfs). This must succeed so that the newly installed host
+        # is testable after we run the autoupdater.
         statefuldev_url = self.update_url.replace('update', 'static/archive')
 
         statefuldev_cmd = ' '.join([STATEFULDEV_UPDATER, statefuldev_url,
                                     '2>&1'])
         logging.info(statefuldev_cmd)
         try:
-            self._run(statefuldev_cmd, timeout=1200)
+            self._run(statefuldev_cmd, timeout=600)
         except error.AutoservRunError, e:
+            # TODO(seano): If statefuldev update failed, we must mark
+            # the update as failed, and keep the same rootfs after
+            # reboot.
             raise ChromiumOSError('stateful_update failed on %s' %
                                   self.host.hostname)
-
-        # Run autoupdate command. This tells the autoupdate process on
-        # the host to look for an update at a specific URL and version
-        # string.
-        autoupdate_cmd = ' '.join([UPDATER_BIN,
-                                   '--omaha_url=%s' % self.update_url,
-                                   '--app_version ForcedUpdate'])
-        logging.info(autoupdate_cmd)
-        try:
-            self._run(autoupdate_cmd, timeout=60)
-        except error.AutoservRunError, e:
-            raise ChromiumOSError('unable to run updater on %s' %
-                                  self.host.hostname)
-
-        # Check that the installer completed as expected.
-        def update_successful():
-            status = self.check_update_status()
-            if status == UPDATER_IDLE:
-                raise ChromiumOSError('update-engine error on %s' %
-                                      self.host.hostname)
-            else:
-                return 'UPDATED_NEED_REBOOT' in status
-
-        site_utils.poll_for_condition(update_successful,
-                                      ChromiumOSError('Updater failed'),
-                                      900, 10)
         return True
 
 
@@ -125,6 +132,7 @@ class ChromiumOSUpdater():
                                   self.host.hostname)
         else:
             return True
+
 
     def get_build_id(self):
         """Turns the CHROMEOS_RELEASE_DESCRIPTION into a string that
