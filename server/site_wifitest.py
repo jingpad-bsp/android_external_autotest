@@ -376,17 +376,19 @@ class WiFiTest(object):
 
     def __get_pingstats(self, str):
         stats = {}
+        for k in ('xmit', 'recv', 'loss', 'min', 'avg', 'max'):
+            stats[k] = '???'
         m = re.search('([0-9]*) packets transmitted,[ ]*([0-9]*)[ ]'
-            'received, ([0-9]*)', str)
+            '(packets |)received, ([0-9]*)', str)
         if m is not None:
             stats['xmit'] = m.group(1)
             stats['recv'] = m.group(2)
-            stats['loss'] = m.group(3)
-        m = re.search('rtt min[^=]*= ([0-9.]*)/([0-9.]*)/([0-9.]*)', str)
+            stats['loss'] = m.group(4)
+        m = re.search('(round-trip|rtt) min[^=]*= ([0-9.]*)/([0-9.]*)/([0-9.]*)', str)
         if m is not None:
-            stats['min'] = m.group(1)
-            stats['avg'] = m.group(2)
-            stats['max'] = m.group(3)
+            stats['min'] = m.group(2)
+            stats['avg'] = m.group(3)
+            stats['max'] = m.group(4)
         return stats
 
 
