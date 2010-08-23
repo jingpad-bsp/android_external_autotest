@@ -43,6 +43,7 @@ _LED_COUNT = 3
 _LED_Y_OFFSET = 10
 _LED_X_OFFSETS = [10, 80, 150]
 _LED_RADIUS = 18
+_SHFL_XYR = {'x':166,'y':20, 'r':9}
 
 
 def run_led_ctl(led_ctl_path, args):
@@ -71,7 +72,8 @@ def pattern_orange_on(led_ctl_fn):
 _PATTERN_LIST = [
     ('all off', pattern_all_off),
     ('blue on', pattern_blue_on),
-    ('orange on', pattern_orange_on)]
+    ('orange on', pattern_orange_on),
+    ('shift led', False)]
 
 
 class factory_Leds(test.test):
@@ -84,9 +86,28 @@ class factory_Leds(test.test):
             return
         self._current_pattern, cb_fn = self._pattern_queue.pop()
         self._status_map[self._current_pattern] = ful.ACTIVE
-        led_ctl_fn = lambda args: run_led_ctl(self._led_ctl_path, args)
-        self._led_colors = cb_fn(led_ctl_fn)
+        if cb_fn:
+            led_ctl_fn = lambda args: run_led_ctl(self._led_ctl_path, args)
+            self._led_colors = cb_fn(led_ctl_fn)
+        else:
+            self._pattern_da.connect('expose_event', self.shift_led_expose)
         self._pattern_da.queue_draw()
+
+    def shift_led_expose(self, widget, event):
+        context = widget.window.cairo_create()
+        context.set_source_surface(self._shf_image, 0, 0)
+        context.paint()
+
+        if self._shift_cnt is 2:
+            if self._shift_color is ful.BLACK:
+                self._shift_color = ful.BLUE
+            else:
+                self._shift_color = ful.BLACK
+            self._shift_cnt = 0
+        context.set_source_color(self._shift_color)
+        context.arc(_SHFL_XYR['x'], _SHFL_XYR['y'], _SHFL_XYR['r'],
+                    0.0, 2.0 * pi)
+        context.fill()
 
     def pattern_expose(self, widget, event):
         context = widget.window.cairo_create()
@@ -141,6 +162,10 @@ class factory_Leds(test.test):
         elif event.keyval == gtk.keysyms.Return:
             self._status_map[self._current_pattern] = ful.PASSED
             self.goto_next_pattern()
+        elif self._current_pattern.startswith("shift") and \
+                event.keyval == gtk.keysyms.Shift_L:
+            self._shift_cnt += 1
+            self._pattern_da.queue_draw()
         else:
             self._ft_state.exit_on_trigger(event)
         return True
@@ -160,10 +185,16 @@ class factory_Leds(test.test):
 
         self._led_ctl_path = led_ctl_path
 
+        self._shift_color = ful.BLACK
+        self._shift_cnt = 0
+
         os.chdir(self.srcdir)
         image = cairo.ImageSurface.create_from_png('leds.png')
         image_size = (image.get_width(), image.get_height())
         self._leds_image = image
+
+        image = cairo.ImageSurface.create_from_png('shf.png')
+        self._shf_image = image
 
         self._pattern_queue = [x for x in reversed(_PATTERN_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n, f in _PATTERN_LIST)
