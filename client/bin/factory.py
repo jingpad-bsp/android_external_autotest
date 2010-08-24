@@ -51,7 +51,8 @@ class FactoryAutotestTest(FactoryTest):
 
 class OperatorTest(FactoryAutotestTest):
     def __init__(self, label_en='', label_zw='', autotest_name=None,
-                 kbd_shortcut=None, dargs={}, drop_caches=False):
+                 kbd_shortcut=None, dargs={}, drop_caches=False,
+                 unique_name=None):
         self.__dict__.update(vars())
 
 class InformationScreen(OperatorTest):
@@ -60,18 +61,18 @@ class InformationScreen(OperatorTest):
 
 class AutomatedSequence(FactoryTest):
     def __init__(self, label_en='', label_zw='', subtest_tag_prefix=None,
-                 kbd_shortcut=None, subtest_list=[]):
+                 kbd_shortcut=None, subtest_list=[], unique_name=None):
         self.__dict__.update(vars())
 
 class AutomatedSubTest(FactoryAutotestTest):
     def __init__(self, label_en='', label_zw='', autotest_name=None,
-                 dargs={}, drop_caches=False):
+                 dargs={}, drop_caches=False, unique_name=None):
         self.__dict__.update(vars())
 
 class AutomatedRebootSubTest(FactoryAutotestTest):
     def __init__(self, label_en='', label_zw='', iterations=None,
                  autotest_name='factory_RebootStub', dargs={},
-                 drop_caches=False):
+                 drop_caches=False, unique_name=None):
         self.__dict__.update(vars())
 
 
@@ -100,8 +101,12 @@ class TestDatabase:
                                        self.seq_test_set], []))
         self._subtest_map = dict((self._tag_prefix_map[st], st)
                                  for st in self.subtest_set)
-        self._unique_name_map = dict((self.get_unique_name(t), t)
-                                     for t in self._tag_prefix_map)
+        self.all_tests = set(test_list) | self.subtest_set
+        self._unique_name_map = dict((t.unique_name, t) for t in self.all_tests
+                                     if isinstance(t, FactoryAutotestTest)
+                                     and t.unique_name is not None)
+        self._unique_details_map = dict((self.get_unique_details(t), t)
+                                        for t in self.all_tests)
         self._kbd_shortcut_map = dict((test.kbd_shortcut, test)
                                       for test in test_list)
         self.kbd_shortcut_set = set(self._kbd_shortcut_map)
@@ -115,23 +120,23 @@ class TestDatabase:
                 (test.label_en, collision.label_en, test.kbd_shortcut))
         assert not delta
 
-    def get_test_by_details(self, autotest_name, tag_prefix):
-        unique_name = '%s.%s' % (autotest_name, tag_prefix)
-        return self._unique_name_map.get(unique_name)
+    def get_tag_prefix(self, test):
+        return self._tag_prefix_map[test]
+
+    def get_unique_details(self, test):
+        if isinstance(test, AutomatedSequence):
+            return test.subtest_tag_prefix
+        return '%s.%s' % (test.autotest_name, self.get_tag_prefix(test))
+
+    def get_test_by_unique_details(self, autotest_name, tag_prefix):
+        unique_details = '%s.%s' % (autotest_name, tag_prefix)
+        return self._unique_details_map.get(unique_details)
 
     def get_test_by_kbd_shortcut(self, kbd_shortcut):
         return self._kbd_shortcut_map.get(kbd_shortcut)
 
-    def get_unique_name(self, test):
-        if isinstance(test, AutomatedSequence):
-            return test.subtest_tag_prefix
-        return '%s.%s' % (test.autotest_name, self._tag_prefix_map[test])
-
-    def get_tag_prefix(self, test):
-        return self._tag_prefix_map[test]
-
-    def get_all_tests(self):
-        return set(self.test_queue) | self.subtest_set
+    def get_test_by_unique_name(self, unique_name):
+        return self._unique_name_map.get(unique_name)
 
     def get_subtest_parent(self, test):
         return self._subtest_parent_map.get(test)
@@ -152,7 +157,7 @@ class StatusMap:
 
     def __init__(self, test_list, status_file_path):
         self.test_db = TestDatabase(test_list)
-        all_tests = self.test_db.get_all_tests()
+        all_tests = self.test_db.all_tests
         self._status_map = dict((t, StatusMap.Entry()) for t in all_tests)
         self._status_file_path = status_file_path
         self._status_file_pos = 0
@@ -187,8 +192,8 @@ class StatusMap:
 
     def next_untested(self):
         remaining = self.filter(UNTESTED)
-        unique_names = [self.test_db.get_unique_name(t) for t in remaining]
-        log('remaining untested = [%s]' % ', '.join(unique_names))
+        unique_details = [self.test_db.get_unique_details(t) for t in remaining]
+        log('remaining untested = [%s]' % ', '.join(unique_details))
         return remaining is not [] and remaining.pop() or None
 
     def read_new_data(self):
@@ -206,7 +211,7 @@ class StatusMap:
                     % (code, test_id, error_msg))
                 autotest_name, _, tag = test_id.rpartition('.')
                 tag_prefix, _, count = tag.rpartition('_')
-                test = self.test_db.get_test_by_details(
+                test = self.test_db.get_test_by_unique_details(
                     autotest_name, tag_prefix)
                 if test is None:
                     log('ignoring update (%s) for test "%s" "%s"' %
@@ -231,23 +236,23 @@ class StatusMap:
             parent_seq_test = self.test_db.get_subtest_parent(test)
             active_tests -= set([parent_seq_test])
         for bad_test in active_tests:
-            unique_name = self.test_db.get_unique_name(bad_test)
+            unique_details = self.test_db.get_unique_details(bad_test)
             log('WARNING: assuming test %s FAILED (status log has no data)' %
-                unique_name)
+                unique_details)
             self.update(bad_test, FAILED, self.lookup_count(bad_test),
                         'assumed FAILED (status log has no data)')
 
     def update(self, test, status, count, error_msg):
         entry = self._status_map[test]
-        unique_name = self.test_db.get_unique_name(test)
+        unique_details = self.test_db.get_unique_details(test)
         if count < entry.count:
             log('ERROR: count regression for %s (%d -> %d)' %
-                (unique_name, entry.count, count))
+                (unique_details, entry.count, count))
         if isinstance(test, InformationScreen) and status in [PASSED, FAILED]:
             status = UNTESTED
         if status != entry.status:
             log('status change for %s : %s/%s -> %s/%s' %
-                (unique_name, entry.status, entry.count, status, count))
+                (unique_details, entry.status, entry.count, status, count))
             if entry.label_box is not None:
                 entry.label_box.update(status)
             if status == ACTIVE:
@@ -255,15 +260,18 @@ class StatusMap:
         entry.status = status
         entry.count = count
         entry.error_msg = error_msg
-        log('%s new status = %s' % (unique_name, self._status_map[test].status))
+        log('%s new status = %s' %
+            (unique_details, self._status_map[test].status))
 
     def update_seq_test(self, test):
         subtest_status_set = set(map(self.lookup_status, test.subtest_list))
         max_count = max(map(self.lookup_count, test.subtest_list))
         if len(subtest_status_set) == 1:
             status = subtest_status_set.pop()
+        elif subtest_status_set == set([PASSED, FAILED]):
+            status = FAILED
         else:
-            status = ACTIVE in subtest_status_set and ACTIVE or FAILED
+            status = ACTIVE
         self.update(test, status, max_count, None)
 
     def set_label_box(self, test, label_box):

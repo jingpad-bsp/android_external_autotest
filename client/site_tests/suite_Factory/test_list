@@ -36,6 +36,7 @@ _SAT_DURATION_SECS = 60
 # example, reorder runin to occur as the first test in the test_list.
 
 TEST_LIST = [
+
     OperatorTest(
         label_en='start',
         label_zw='開始',
@@ -43,13 +44,19 @@ TEST_LIST = [
         kbd_shortcut='e',
         dargs={'quit_key':ord(' '),
                'msg':'Hit SPACE to start testing...\n按 "空白鍵" 開始測試...'}),
-    OperatorTest(
-        label_en='sync',
-        label_zw='同步',
-        autotest_name='factory_ScriptWrapper',
-        kbd_shortcut='s',
-        dargs={'cmdline': job.autodir +
-               '/site_tests/factory_ScriptWrapper/dummy.sh'}),
+
+    # The factory_ScriptWrapper allows interactive execution of
+    # external scripts or programs with the output displayed in the
+    # testing widget area of the screen. This is useful, for example,
+    # to sync-up with the assembly line IT system.
+    # OperatorTest(
+    #    label_en='sync',
+    #    label_zw='同步',
+    #    autotest_name='factory_ScriptWrapper',
+    #    kbd_shortcut='s',
+    #    dargs={'cmdline': job.autodir +
+    #           '/site_tests/factory_ScriptWrapper/dummy.sh'}),
+
     AutomatedSequence(
         label_en='run-in',
         label_zw='燒機測試',
@@ -64,6 +71,7 @@ TEST_LIST = [
                  label_en='hw-qual-id matching',
                  label_zw='型號匹配',
                  autotest_name='hardware_Components',
+                 unique_name='hw-qual-id-match',
                  dargs={'approved_dbs':'qualified_components*',
                         'ignored_cids':[
                             'hash_ro_firmware',
@@ -75,31 +83,37 @@ TEST_LIST = [
                  label_en='gpio switch check',
                  label_zw='檢查 gpio 開關',
                  autotest_name='hardware_GPIOSwitches'),
+
              AutomatedSubTest(
                  label_en='system stress',
                  label_zw='壓力測試',
                  autotest_name='hardware_SAT',
                  dargs={'seconds': _SAT_DURATION_SECS},
                  drop_caches=True),
+
              AutomatedSubTest(
                  label_en='graphics',
                  label_zw='圖型',
                  autotest_name='graphics_GLBench'),
+
              AutomatedRebootSubTest(
                  label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
                  label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
                  iterations=_REBOOT_SEQ_ITERATIONS)]),
+
     OperatorTest(
         label_en='keyboard',
         label_zw='鍵盤',
         autotest_name='factory_Keyboard',
         kbd_shortcut='k',
         dargs={'layout':'en_us'}),
+
     OperatorTest(
         label_en='touchpad',
         label_zw='觸控板',
         autotest_name='factory_Touchpad',
         kbd_shortcut='t'),
+
     OperatorTest(
         label_en='leds',
         label_zw='機身側燈',
@@ -107,11 +121,13 @@ TEST_LIST = [
         kbd_shortcut='l',
         dargs={'led_ctl_path':
                  '/usr/local/autotest/site_tests/factory_Leds/src/ec_ctl'}),
+
     OperatorTest(
         label_en='display',
         label_zw='顯示',
         autotest_name='factory_Display',
         kbd_shortcut='m'),
+
     OperatorTest(
         label_en='x-display',
         label_zw='外接顯示',
@@ -119,45 +135,53 @@ TEST_LIST = [
         kbd_shortcut='n',
         dargs={'has_audio':True,
                'sample':'deps/factory/fhorn.wav'}),
+
     OperatorTest(
         label_en='camera',
         label_zw='相機',
         autotest_name='factory_Camera',
         kbd_shortcut='c'),
+
     OperatorTest(
         label_en='audio',
         label_zw='音源裝置',
         autotest_name='factory_Audio',
         kbd_shortcut='a',
         dargs={'sample':'deps/factory/fhorn.wav'}),
+
     OperatorTest(
         label_en='usb',
         autotest_name='factory_ExternalStorage',
         kbd_shortcut='u',
         dargs={'media':'USB'}),
+
     OperatorTest(
         label_en='sd',
         autotest_name='factory_ExternalStorage',
         kbd_shortcut='d',
         dargs={'media':'SD'}),
-    OperatorTest(
-        label_en='bluetooth',
-        label_zw='藍芽',
-        autotest_name='factory_Dummy',
-        kbd_shortcut='o',
-        dargs={'msg':'bluetooth test, one day...'}),
-    OperatorTest(
-        label_en='3g',
-        label_zw='3G上網',
-        autotest_name='factory_Dummy',
-        kbd_shortcut='g',
-        dargs={'msg':'3g test, one day...'}),
-    OperatorTest(
-        label_en='wifi',
-        label_zw='無線上網',
-        autotest_name='factory_Dummy',
-        kbd_shortcut='w',
-        dargs={'msg':'wifi test, one day...'}),
+
+    # OperatorTest(
+    #    label_en='bluetooth',
+    #    label_zw='藍芽',
+    #    autotest_name='factory_Dummy',
+    #    kbd_shortcut='o',
+    #    dargs={'msg':'bluetooth test, one day...'}),
+
+    # OperatorTest(
+    #    label_en='3g',
+    #    label_zw='3G上網',
+    #    autotest_name='factory_Dummy',
+    #    kbd_shortcut='g',
+    #    dargs={'msg':'3g test, one day...'}),
+
+    # OperatorTest(
+    #    label_en='wifi',
+    #    label_zw='無線上網',
+    #    autotest_name='factory_Dummy',
+    #    kbd_shortcut='w',
+    #    dargs={'msg':'wifi test, one day...'}),
+
     OperatorTest(
         label_en='light sensor',
         label_zw='光传感器',
@@ -182,14 +206,17 @@ TEST_LIST = [
         subtest_tag_prefix='final_stage_1',
         kbd_shortcut='f',
         subtest_list=[
+
             AutomatedSubTest(
                 label_en='write GBB',
                 label_zw='寫入GBB',
                 autotest_name='factory_WriteGBB'),
+
             AutomatedRebootSubTest(
                 label_en='reboot',
                 label_zw='重新開機',
                 iterations=1),
+
             AutomatedSubTest(
                 label_en='component validation',
                 label_zw='元件驗證',

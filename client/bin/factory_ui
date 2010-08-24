@@ -201,8 +201,10 @@ class UiState():
         automated sequences, since there is no other window, the no
         active test message is replaced with an updated list of
         subtest status.'''
-        if test == self.active_test:
+        if test is None or test == self.active_test:
             return
+        factory.log('UI active test -> %s' %
+                    self._status_map.test_db.get_unique_details(test))
         self.active_test = test
         self._test_widget_box.remove(self._active_test_widget)
         active_widget = (test in self._status_map.test_db.seq_test_set
