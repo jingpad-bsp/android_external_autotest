@@ -97,7 +97,7 @@ class factory_Wipe(test.test):
                 time.sleep(1)
         else:
             # first, check if all previous tests are passed.
-            status_map = ful.StatusMap(status_file_path, test_list)
+            status_map = ful.StatusMap(test_list, status_file_path)
             failed = status_map.filter(ful.FAILED)
             if failed:
                 raise error.TestFail('Some tests were failed. ' +

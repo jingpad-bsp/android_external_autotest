@@ -345,7 +345,8 @@ class ControlState:
 
     def run_test(self, test):
         self._status_map.incr_count(test)
-        dargs = test.dargs
+        dargs = {}
+        dargs.update(test.dargs)
         dargs.update(self._std_dargs)
         test_tag = self._status_map.lookup_tag(test)
         dargs.update({'tag': test_tag,

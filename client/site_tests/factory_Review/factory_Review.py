@@ -46,7 +46,7 @@ class factory_Review(test.test):
 
         self._ft_state = ful.State(trigger_set)
 
-        status_map = ful.StatusMap(status_file_path, test_list)
+        status_map = factory.StatusMap(test_list, status_file_path)
         untested = status_map.filter(ful.UNTESTED)
         passed = status_map.filter(ful.PASSED)
         failed = status_map.filter(ful.FAILED)
@@ -55,7 +55,7 @@ class factory_Review(test.test):
                                'PASSED=%d\t' % len(passed) +
                                'FAILED=%d' % len(failed))
 
-        failed_msgs_map = [(t, status_map.lookup_error(t)) for t in failed]
+        failed_msgs_map = [(t, status_map.lookup_error_msg(t)) for t in failed]
         failure_report_list = ['%s : %s' % (t.label_en, e)
                                for t, e in failed_msgs_map]
         failure_report = ful.make_label('\n'.join(failure_report_list))
