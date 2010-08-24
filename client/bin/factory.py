@@ -348,7 +348,8 @@ class ControlState:
         self._job.run_test(test.autotest_name, **dargs)
         self._job.drop_caches_between_iterations = False
         self._log_data.read_new_data()
-        activated_ks = self._log_data.shared_dict.pop('activated_kbd_shortcut')
+        activated_ks = self._log_data.shared_dict.pop(
+            'activated_kbd_shortcut', None)
         lookup = self._status_map.test_db.get_test_by_kbd_shortcut
         self.activated_kbd_shortcut_test = (
             activated_ks and lookup(activated_ks) or None)
