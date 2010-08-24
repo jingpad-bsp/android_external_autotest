@@ -12,8 +12,7 @@ class power_Backlight(test.test):
 
 
     def run_once(self, delay=60, seconds=10, tries=20):
-        # disable screen locker and powerd
-        os.system('stop screen-locker')
+        # disable powerd
         os.system('stop powerd')
 
         # disable screen blanking. Stopping screen-locker isn't
@@ -21,9 +20,9 @@ class power_Backlight(test.test):
         # and fixes all this for us.
         # TODO(davidjames): Power manager should support this feature directly
         time.sleep(5)
-        site_ui.xsystem('xset s off')
-        site_ui.xsystem('xset dpms 0 0 0')
-        site_ui.xsystem('xset -dpms')
+        site_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset s off')
+        site_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset dpms 0 0 0')
+        site_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset -dpms')
 
         status = site_power_status.get_status()
         if status.linepower[0].online:
@@ -59,5 +58,4 @@ class power_Backlight(test.test):
     def cleanup(self):
         # Re-enable screen locker and powerd. This also re-enables dpms.
         os.system('start powerd')
-        os.system('start screen-locker')
 
