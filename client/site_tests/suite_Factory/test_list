@@ -96,6 +96,11 @@ TEST_LIST = [
                  label_zw='圖型',
                  autotest_name='graphics_GLBench'),
 
+             AutomatedSubTest(
+                 label_en='sleep / wake',
+                 label_zw='睡眠 / 喚醒',
+                 autotest_name='power_Resume'),
+
              AutomatedRebootSubTest(
                  label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
                  label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
