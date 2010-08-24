@@ -24,30 +24,25 @@ control process).  """
 
 
 import imp
-import subprocess
-import sys
-import time
-
 imp.load_source('common', job.autodir + '/bin/common.py')
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import utils
 
 
-# -- CUSTOMIZATION --------------------------------------------------
-# You can tune these settings to fit your factory process.
-
-# change this to False if you want and allow fast wipe (insecure)
-DO_FACTORY_SECURE_WIPE = True
-
-# -- END OF CUSTOMIZATION ------------------------------------------
-
-
-_RESULTS_PATH = job.autodir + '/results/default'
-_STATUS_FILE_PATH = _RESULTS_PATH + '/status'
-_FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
+# These definitions are expose these classes directly into this
+# namespace, so that the following exec'ed file can have cleaner
+# syntax.  These are done in this fashion, as opposed to "from factory
+# import <class>" to work-around Python namespace wackiness -- the
+# from syntax does not work, creating new classes.
+OperatorTest = factory.OperatorTest
+InformationScreen = factory.InformationScreen
+AutomatedSequence = factory.AutomatedSequence
+AutomatedSubTest = factory.AutomatedSubTest
+AutomatedRebootSubTest = factory.AutomatedRebootSubTest
 
 
-_REBOOT_SEQ_ITERATIONS = 2
+# This exec defines TEST_LIST in global scope.
+execfile(job.autodir + '/site_tests/suite_Factory/test_list')
 
 
 # Hack to work around autotest's obsession with GRUB.
@@ -55,336 +50,46 @@ job.bootloader.set_default = lambda x: None
 job.bootloader.boot_once = lambda x: None
 
 
-# TEST ORDERING: Tests in the test_list will be run in the order
-# below, unless the operator interrupts the flow via keyboard
-# shortcut.  To cause immediate execution of the run-in tests, for
-# example, reorder runin to occur as the first test in the test_list.
-
-test_list = [
-    factory.TestData(
-        label_en='start',
-        label_zw='開始',
-        formal_name='factory_Dummy',
-        trigger='e',
-        dargs={'quit_key':ord(' '),
-               'msg':'Hit SPACE to start testing...\n按 "空白鍵" 開始測試...'}),
-    factory.TestData(
-        label_en='sync',
-        label_zw='同步',
-        formal_name='factory_ScriptWrapper',
-        trigger='s',
-        dargs={'cmdline': job.autodir +
-               '/site_tests/factory_ScriptWrapper/dummy.sh'}),
-    factory.TestData(
-        label_en='run-in',
-        label_zw='燒機測試',
-        formal_name='step_runin',
-        automated_seq=[
-            # Match HWQual ID by running hardware_Components with ignored cids.
-            factory.TestData(
-                label_en='hwqual id matching',
-                label_zw='型號匹配',
-                formal_name='hardware_Components',
-                dargs={'approved_dbs':'qualified_components*',
-                       'ignored_cids':[
-                           'hash_ro_firmware',
-                           'part_id_hwqual',
-                           'vendor_id_bios',
-                           'version_rw_firmware',
-                       ]}),
-            factory.TestData(
-                label_en='gpio switch check',
-                label_zw='檢查 gpio 開關',
-                formal_name='hardware_GPIOSwitches'),
-            factory.TestData(
-                label_en='system stress',
-                label_zw='壓力測試',
-                formal_name='hardware_SAT',
-                dargs={'seconds': 60}),
-            factory.TestData(
-                label_en='graphics',
-                label_zw='圖型',
-                formal_name='graphics_GLBench'),
-            factory.TestData(
-                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
-                label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
-                formal_name='factory_RebootStub')],
-        trigger='r'),
-    factory.TestData(
-        label_en='keyboard',
-        label_zw='鍵盤',
-        formal_name='factory_Keyboard',
-        trigger='k',
-        dargs={'layout':'en_us'}),
-    factory.TestData(
-        label_en='touchpad',
-        label_zw='觸控板',
-        formal_name='factory_Touchpad',
-        trigger='t'),
-    factory.TestData(
-        label_en='leds',
-        label_zw='機身側燈',
-        formal_name='factory_Leds',
-        trigger='l',
-        dargs={'led_ctl_path':
-               '/usr/local/autotest/site_tests/factory_Leds/src/ec_ctl'}),
-    factory.TestData(
-        label_en='display',
-        label_zw='顯示',
-        formal_name='factory_Display',
-        trigger='m'),
-    factory.TestData(
-        label_en='ExtDisplay',
-        label_zw='外接顯示',
-        formal_name='factory_ExtDisplay',
-        trigger='n',
-        dargs={'has_audio':True,
-               'sample':'deps/factory/fhorn.wav'}),
-    factory.TestData(
-        label_en='camera',
-        label_zw='相機',
-        formal_name='factory_Camera',
-        trigger='c'),
-    factory.TestData(
-        label_en='audio',
-        label_zw='音源裝置',
-        formal_name='factory_Audio',
-        trigger='a',
-        dargs={'sample':'deps/factory/fhorn.wav'}),
-    factory.TestData(
-        label_en='usb',
-        formal_name='factory_ExternalStorage',
-        trigger='u',
-        dargs={'media':'USB'}),
-    factory.TestData(
-        label_en='sd',
-        formal_name='factory_ExternalStorage',
-        trigger='d',
-        dargs={'media':'SD'}),
-    factory.TestData(
-        label_en='bluetooth',
-        label_zw='藍芽',
-        formal_name='factory_Dummy',
-        trigger='o',
-        dargs={'msg':'bluetooth test, one day...'}),
-    factory.TestData(
-        label_en='3g',
-        label_zw='3G上網',
-        formal_name='factory_Dummy',
-        trigger='g',
-        dargs={'msg':'3g test, one day...'}),
-    factory.TestData(
-        label_en='wifi',
-        label_zw='無線上網',
-        formal_name='factory_Dummy',
-        trigger='w',
-        dargs={'msg':'wifi test, one day...'}),
-    factory.TestData(
-        label_en='light sensor',
-        label_zw='光传感器',
-        formal_name='factory_LightSensor',
-        dargs={'lux_max':1000, 'lux_min':1},
-        trigger='i'),
-
-    # THIS IS A GOOGLE REQUIRED TEST.
-    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
-    factory.TestData(
-        label_en='devrec',
-        label_zw='還原模式',
-        formal_name='factory_DeveloperRecovery',
-        trigger='b',
-        dargs={'layout':'devrec'}),
-
-    # THIS IS A GOOGLE REQUIRED TEST.
-    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
-    factory.TestData(
-        label_en='final',
-        label_zw='最後測試',
-        formal_name='step_final_stage1',
-        automated_seq=[
-            # THIS IS A GOOGLE REQUIRED TEST.
-            # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
-            factory.TestData(
-                label_en='write GBB',
-                label_zw='寫入GBB',
-                formal_name='factory_WriteGBB'),
-            factory.TestData(
-                label_en='reboot',
-                label_zw='重新開機',
-                formal_name='factory_RebootStub'),
-            factory.TestData(
-                label_en='component validation',
-                label_zw='元件驗證',
-                formal_name='hardware_Components')],
-        trigger='f'),
-
-    # THIS IS A GOOGLE REQUIRED TEST.
-    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION DEVICES.
-    factory.TestData(
-        label_en='wipe',
-        label_zw='清除',
-        formal_name='factory_Wipe',
-        trigger='x',
-        dargs={'secure_wipe':DO_FACTORY_SECURE_WIPE,
-               'write_protect':False,
-               'msg':('hit TAB+ENTER to write protect FW and '
-                      'wipe test image!...\n'
-                      '請按下 TAB+ENTER 啟用寫入保護以及清除'
-                      '測試程式資料!...')}),
-        # NOTE: factory_Wipe.dargs support following variables for temporary
-        #       testing. You can add these settings to help internal test, but
-        #       THESE ARE GOOGLE REQUIRED TESTS SO YOU SHOULD NOT DISABLE THEM
-        #       IN PRODUCTION RELEASES.
-        #       - check_developer_switch: check for developer button switch
-        #       - write_protect: enable and check flash ROM write protection
-        # TODO(hungte) Although the 'write_protect' should be a Google required
-        #       test, we decide to disable it until first official release of
-        #       Chrome OS. Please remove that line for the real release.
-
-    factory.TestData(
-        label_en='review',
-        label_zw='報告',
-        formal_name='factory_Review',
-        repeat_forever=True,
-        trigger='z'),
-]
-
-for test in test_list:
-    test.tag_prefix = test.trigger
-    for subtest in test.automated_seq:
-        subtest.tag_prefix = test.formal_name
-
-test_map = factory.make_test_map(test_list)
-trigger_set = factory.make_trigger_set(test_list)
-
-
-def run_subtest(name, dargs_map):
-    job.run_test(name, **dargs_map[name])
-
-
-def step_reboot_seq(dargs_map, i=0):
-    if i < _REBOOT_SEQ_ITERATIONS:
-        job.next_step_prepend([step_reboot_seq, dargs_map, i + 1])
-        factory.log('rebooting (iteration %d)' % i)
-        time.sleep(5)
+def step_reboot_seq(tag_prefix, total_iterations, i=0):
+    if i < total_iterations:
+        job.next_step_prepend([step_reboot_seq, tag_prefix,
+                               total_iterations, i + 1])
+        factory.log('rebooting (iteration %d of %d)' % (i, total_iterations))
         job.reboot()
     else:
-        run_subtest('factory_RebootStub', dargs_map)
-        step_init()
+        step_init(intentional_reboot_subtest_tag_prefix=tag_prefix)
 
 
-hwqual_id = None
-
-def get_hwqual_id():
-    # TODO: Move HWQual ID to StatusMap.
-    global hwqual_id
-    if not hwqual_id:
-        hwqual_id = find_hwqual_id()
-    return hwqual_id
-
-def find_hwqual_id():
-    cmd = ('find %s -name keyval | xargs grep -h ^hwqual_id= | '
-           'sed s/hwqual_id=// | head -1' %
-           (_RESULTS_PATH + '/hardware_Components.step_runin_*'))
-    hwqual_id = utils.system_output(cmd).strip()
-    hwqual_id = hwqual_id.rsplit(' ', 1)[0].replace(' ', '_')
-    if not hwqual_id:
-        factory.log('fail to get the HWQual ID')
-    return hwqual_id
-
-
-def update_dargs(test, dargs_map, update_map):
-    for (key, value) in update_map.iteritems():
-        dargs_map[test][key] = value
-
-
-def step_runin(ui, dargs_map):
-    run_subtest('hardware_Components', dargs_map)
-    run_subtest('hardware_GPIOSwitches', dargs_map)
-    job.drop_caches_between_iterations = True
-    run_subtest('hardware_SAT', dargs_map)
-    job.drop_caches_between_iterations = False
-    run_subtest('graphics_GLBench', dargs_map)
-    step_reboot_seq(dargs_map)
-
-
-def step_final_stage1(ui, dargs_map):
-    update_dargs('factory_WriteGBB', dargs_map,
-                 {'gbb_file': 'gbb_*%s' % get_hwqual_id()})
-    run_subtest('factory_WriteGBB', dargs_map)
-    job.next_step_prepend([step_final_stage2, ui, dargs_map])
-    factory.log('rebooting')
-    time.sleep(5)
-    job.reboot()
-
-
-def step_final_stage2(ui, dargs_map):
-    run_subtest('factory_RebootStub', dargs_map)
-    update_dargs('hardware_Components', dargs_map,
-                 {'approved_dbs': 'qualified_components_*%s' % get_hwqual_id()})
-    run_subtest('hardware_Components', dargs_map)
-    step_init()
-
-
-def step_init():
-    '''Launch the factory UI, which will then make decisions on which
-    tests to run in which order.  This is to support user driven
-    out-of-order test execution based on keyboard shortcuts.
-
-    For each test, a trigger (possibly None) is communicated to the
-    UI, which then replies with the test name and a count number that
-    becomes the autotest tag to allow repeated test execution while
-    preserving logs.
-
-    When the tests themselves run, they are expected to look for
-    (using the factory_test library) keyboard events that match test
-    switching triggers.  When a trigger happens, it should be written
-    to the factory.RESULT_FILE_PATH, which will be read after the test
-    completed and the result comminicated onwards to the UI.'''
-
+def step_init(intentional_reboot_subtest_tag_prefix=None):
     job.next_step([step_init])
 
-    ui = factory.UiClient(_FACTORY_UI_PATH)
+    factory_ui_path = job.autodir + '/bin/factory_ui'
+    status_file_path = job.autodir + '/results/default/status'
 
-    ui.send(test_list)
-    ui.send(_STATUS_FILE_PATH)
+    status_map = factory.StatusMap(TEST_LIST, status_file_path)
+    ui = factory.UiClient(TEST_LIST, factory_ui_path, status_file_path)
+    control_state = factory.ControlState(job, TEST_LIST, ui, status_map,
+                                         status_file_path)
 
-    test_widget_size = ui.recv()
-    factory.log('received test_widget_size = %s' % repr(test_widget_size))
+    if intentional_reboot_subtest_tag_prefix:
+        reboot_subtest = status_map.test_db.get_subtest_by_tag_prefix(
+            intentional_reboot_subtest_tag_prefix)
+        control_state.run_test(reboot_subtest)
+        status_map.read_new_data()
 
-    ui.send_cmd_next_test()
-    test, test_count = ui.recv_target_test_update(test_map)
-
+    test = status_map.next_untested()
     while test is not None:
-        if test.automated_seq:
-            tag = '%s_%s' % (test.formal_name, test_count)
-            dargs_map = dict((st.formal_name, st.dargs)
-                             for st in test.automated_seq)
-            for i in dargs_map:
-                dargs_map[i].update(tag=tag)
-            exec('%s(ui, dargs_map)' % (test.formal_name))
-            result = None
+        if isinstance(test, factory.AutomatedSequence):
+            for subtest in test.subtest_list:
+                if isinstance(subtest, factory.AutomatedRebootSubTest):
+                    tag_prefix = status_map.test_db.get_tag_prefix(subtest)
+                    step_reboot_seq(tag_prefix, subtest.iterations)
+                else:
+                    control_state.run_test(subtest)
+                if control_state.activated_kbd_shortcut_test:
+                    break
         else:
-            dargs = test.dargs
-            dargs.update({
-                'tag': '%s_%s' % (test.tag_prefix, test_count),
-                'test_tag_prefix': test.tag_prefix,
-                'test_count': test_count,
-                'test_widget_size': test_widget_size,
-                'trigger_set': trigger_set,
-                'status_file_path' : _STATUS_FILE_PATH,
-                'test_list': test_list})
-            with open(factory.RESULT_FILE_PATH, 'w') as file:
-                file.write('None\n')
-            job.run_test(test.formal_name, **dargs)
-            with open(factory.RESULT_FILE_PATH, 'r') as file:
-                result = eval(file.readline())
-
-        if result is not None:
-            ui.send_cmd_switch_to(result)
-        else:
-            ui.send_cmd_next_test()
-
-        test, test_count = ui.recv_target_test_update(test_map)
-
-    factory.log('factory testing completed')
+            control_state.run_test(test)
+        status_map.read_new_data()
+        test = (control_state.activated_kbd_shortcut_test or
+                status_map.next_untested())

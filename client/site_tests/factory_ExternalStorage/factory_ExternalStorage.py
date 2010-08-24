@@ -71,7 +71,7 @@ class factory_ExternalStorage(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-    def rescan_storage(self, test_tag):
+    def rescan_storage(self, subtest_tag):
         if self._state == _STATE_WAIT_INSERT:
             new_devices = find_all_storage_dev()
             diff = new_devices - self._devices
@@ -87,7 +87,7 @@ class factory_ExternalStorage(test.test):
                 test._result = self.job.run_test('hardware_StorageFio',
                                                  dev=devpath,
                                                  quicktest=True,
-                                                 tag=test_tag)
+                                                 tag=subtest_tag)
                 self._prompt.set_text(_REMOVE_FMT_STR(self._media))
                 self._state = _STATE_WAIT_REMOVE
                 self._image = self.removal_image
@@ -107,8 +107,7 @@ class factory_ExternalStorage(test.test):
     def run_once(self,
                  test_widget_size=None,
                  trigger_set=None,
-                 test_tag_prefix=None,
-                 test_count=None,
+                 subtest_tag=None,
                  media=None):
 
         factory.log('%s run_once' % self.__class__)
@@ -134,8 +133,7 @@ class factory_ExternalStorage(test.test):
         assert len(image_size_set) == 1
         image_size = image_size_set.pop()
 
-        test_tag = '%s_%s' % (test_tag_prefix, test_count)
-        factory.log('test_tag = %s' % test_tag)
+        factory.log('subtest_tag = %s' % subtest_tag)
 
         self._ft_state = ful.State(trigger_set)
 
@@ -150,7 +148,7 @@ class factory_ExternalStorage(test.test):
         self._image = self.insertion_image
         self._result = False
         self._devices = find_all_storage_dev()
-        gobject.timeout_add(250, self.rescan_storage, test_tag)
+        gobject.timeout_add(250, self.rescan_storage, subtest_tag)
 
         drawing_area = gtk.DrawingArea()
         drawing_area.set_size_request(*image_size)

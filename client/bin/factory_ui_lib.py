@@ -18,6 +18,8 @@
 from autotest_lib.client.bin import factory
 from autotest_lib.client.common_lib import error
 
+from factory import ACTIVE, PASSED, FAILED, UNTESTED, STATUS_CODE_MAP
+
 import cairo
 import gtk
 import pango
@@ -34,17 +36,6 @@ LIGHT_GREEN = gtk.gdk.color_parse('light green')
 
 RGBA_GREEN_OVERLAY = (0, 0.5, 0, 0.6)
 RGBA_YELLOW_OVERLAY = (0.6, 0.6, 0, 0.6)
-
-ACTIVE = 'ACTIVE'
-PASSED = 'PASS'
-FAILED = 'FAIL'
-UNTESTED = 'UNTESTED'
-
-STATUS_CODE_MAP = {
-    'START': ACTIVE,
-    'GOOD': PASSED,
-    'FAIL': FAILED,
-    'ERROR': FAILED}
 
 LABEL_COLORS = {
     ACTIVE: gtk.gdk.color_parse('light goldenrod'),
@@ -144,113 +135,7 @@ class State:
         gtk.gdk.pointer_ungrab()
         gtk.gdk.keyboard_ungrab()
 
-        if self._got_trigger is None:
-            return
-        with open(factory.RESULT_FILE_PATH, 'w') as file:
-            file.write('%s\n' % repr(self._got_trigger))
-        raise error.TestFail('explicit test switch triggered (%s)' %
-                             self._got_trigger)
-
-
-class StatusMap():
-
-    def __init__(self, status_file_path, test_list):
-        self._test_queue = [t for t in reversed(test_list)]
-        self._as_test_set = set(t for t in test_list if t.automated_seq)
-        self._status_map = {}
-        for test in test_list:
-            test_index = self.index(test.formal_name, test.tag_prefix)
-            self._status_map[test_index] = (test, UNTESTED, 0, None, None)
-            for subtest in test.automated_seq:
-                st_index = self.index(subtest.formal_name, subtest.tag_prefix)
-                self._status_map[st_index] = (subtest, UNTESTED, 0, None, None)
-        self._status_file_path = status_file_path
-        self._status_file_pos = 0
-        self.read_new_data()
-
-    def index(self, formal_name, tag_prefix):
-        return '%s.%s' % (formal_name, tag_prefix)
-
-    def filter(self, target_status):
-        comp = (isinstance(target_status, list) and
-                (lambda s: s in target_status) or
-                (lambda s: s == target_status))
-        return [t for t in self._test_queue if comp(self.lookup_status(t))]
-
-    def next_untested(self):
-        remaining = self.filter(UNTESTED)
-        factory.log('remaining untested = [%s]' %
-                    ', '.join([self.index(t.formal_name, t.tag_prefix)
-                               for t in remaining]))
-        if not remaining: return None
-        return remaining.pop()
-
-    def read_new_data(self):
-        with open(self._status_file_path) as file:
-            file.seek(self._status_file_pos)
-            for line in file:
-                cols = line.strip().split('\t') + ['']
-                code = cols[0]
-                test_id = cols[1]
-                if code not in STATUS_CODE_MAP or test_id == '----':
-                    continue
-                status = STATUS_CODE_MAP[code]
-                error = status == FAILED and cols[len(cols) - 2] or None
-                factory.log('reading code = %s, test_id = %s, error_msg = "%s"'
-                            % (code, test_id, error))
-                formal_name, _, tag = test_id.rpartition('.')
-                tag_prefix, _, count = tag.rpartition('_')
-                self.update(formal_name, tag_prefix, status, int(count), error)
-            self._status_file_pos = file.tell()
-        map(self.update_as_test, self._as_test_set)
-        return True
-
-    def update(self, formal_name, tag_prefix, status, count, error):
-        test_index = self.index(formal_name, tag_prefix)
-        if test_index not in self._status_map:
-            factory.log('ignoring status update (%s) for test %s' %
-                        (status, test_index))
-            return
-        test, old_status, old_count, label, _ = self._status_map[test_index]
-        if count < old_count:
-            factory.log('ERROR: count regression for %s (%d-%d)' %
-                        (test_index, old_count, count))
-        if test.repeat_forever and status in [PASSED, FAILED]:
-            status = UNTESTED
-        if status != old_status:
-            factory.log('status change for %s : %s/%s -> %s/%s' %
-                        (test_index, old_status, old_count, status, count))
-            if label is not None:
-                label.update(status)
-        self._status_map[test_index] = (test, status, count, label, error)
-
-    def update_as_test(self, test):
-        st_status_set = set(map(self.lookup_status, test.automated_seq))
-        max_count = max(map(self.lookup_count, test.automated_seq))
-        if len(st_status_set) == 1:
-            status = st_status_set.pop()
-        else:
-            status = ACTIVE in st_status_set and ACTIVE or FAILED
-        self.update(test.formal_name, test.tag_prefix, status, max_count, None)
-
-    def set_label(self, test, label):
-        test_index = self.index(test.formal_name, test.tag_prefix)
-        test, status, count, _, error = self._status_map[test_index]
-        label.update(status)
-        self._status_map[test_index] = test, status, count, label, error
-
-    def lookup_status(self, test):
-        test_index = self.index(test.formal_name, test.tag_prefix)
-        return self._status_map[test_index][1]
-
-    def lookup_count(self, test):
-        test_index = self.index(test.formal_name, test.tag_prefix)
-        return self._status_map[test_index][2]
-
-    def lookup_label(self, test):
-        test_index = self.index(test.formal_name, test.tag_prefix)
-        return self._status_map[test_index][3]
-
-    def lookup_error(self, test):
-        test_index = self.index(test.formal_name, test.tag_prefix)
-        return self._status_map[test_index][4]
+        if self._got_trigger is not None:
+            factory.log('run_test_widget returning kbd_shortcut "%s"' %
+                        self._got_trigger)
+            factory.log_shared_data('activated_kbd_shortcut', self._got_trigger)

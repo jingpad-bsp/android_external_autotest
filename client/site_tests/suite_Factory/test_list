@@ -1,0 +1,226 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# DOCUMENTATION:
+#
+# Define below an ordered list if tests for execution on factory
+# assembly lines.  This list can be customized for specific factory
+# needs, within the limits set by the below comments -- specifically,
+# ODMs should not remove any Google required tests.
+#
+# This file is loaded via a call to execfile() in the primary factory
+# autotest control file.
+
+
+# -- CUSTOMIZATION VARIABLES ---------------------------------------
+# You can tune these settings to fit your factory process.
+
+# Change this to False if you want and allow fast wipe (insecure).
+_DO_FACTORY_SECURE_WIPE = True
+
+# Change this to the number of reboots you want during run-in.
+_REBOOT_SEQ_ITERATIONS = 2
+
+# Change this to the duration of SAT during run-in (suggested 10+ mins).
+_SAT_DURATION_SECS = 60
+
+# -- END OF CUSTOMIZATION VARIABLES --------------------------------
+
+
+# TEST ORDERING: Tests in the test_list will be run in the order
+# below, unless the operator interrupts the flow via keyboard
+# shortcut.  To cause immediate execution of the run-in tests, for
+# example, reorder runin to occur as the first test in the test_list.
+
+TEST_LIST = [
+    OperatorTest(
+        label_en='start',
+        label_zw='開始',
+        autotest_name='factory_Dummy',
+        kbd_shortcut='e',
+        dargs={'quit_key':ord(' '),
+               'msg':'Hit SPACE to start testing...\n按 "空白鍵" 開始測試...'}),
+    OperatorTest(
+        label_en='sync',
+        label_zw='同步',
+        autotest_name='factory_ScriptWrapper',
+        kbd_shortcut='s',
+        dargs={'cmdline': job.autodir +
+               '/site_tests/factory_ScriptWrapper/dummy.sh'}),
+    AutomatedSequence(
+        label_en='run-in',
+        label_zw='燒機測試',
+        subtest_tag_prefix='runin',
+        kbd_shortcut='r',
+        subtest_list=[
+
+             # THIS IS A GOOGLE REQUIRED TEST.
+             # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
+             # Match HW-Qual-ID by setting ignored_cids.
+             AutomatedSubTest(
+                 label_en='hw-qual-id matching',
+                 label_zw='型號匹配',
+                 autotest_name='hardware_Components',
+                 dargs={'approved_dbs':'qualified_components*',
+                        'ignored_cids':[
+                            'hash_ro_firmware',
+                            'part_id_bios',
+                            'part_id_hwqual',
+                            'version_rw_firmware']}),
+
+             AutomatedSubTest(
+                 label_en='gpio switch check',
+                 label_zw='檢查 gpio 開關',
+                 autotest_name='hardware_GPIOSwitches'),
+             AutomatedSubTest(
+                 label_en='system stress',
+                 label_zw='壓力測試',
+                 autotest_name='hardware_SAT',
+                 dargs={'seconds': _SAT_DURATION_SECS},
+                 drop_caches=True),
+             AutomatedSubTest(
+                 label_en='graphics',
+                 label_zw='圖型',
+                 autotest_name='graphics_GLBench'),
+             AutomatedRebootSubTest(
+                 label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
+                 label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
+                 iterations=_REBOOT_SEQ_ITERATIONS)]),
+    OperatorTest(
+        label_en='keyboard',
+        label_zw='鍵盤',
+        autotest_name='factory_Keyboard',
+        kbd_shortcut='k',
+        dargs={'layout':'en_us'}),
+    OperatorTest(
+        label_en='touchpad',
+        label_zw='觸控板',
+        autotest_name='factory_Touchpad',
+        kbd_shortcut='t'),
+    OperatorTest(
+        label_en='leds',
+        label_zw='機身側燈',
+        autotest_name='factory_Leds',
+        kbd_shortcut='l',
+        dargs={'led_ctl_path':
+                 '/usr/local/autotest/site_tests/factory_Leds/src/ec_ctl'}),
+    OperatorTest(
+        label_en='display',
+        label_zw='顯示',
+        autotest_name='factory_Display',
+        kbd_shortcut='m'),
+    OperatorTest(
+        label_en='x-display',
+        label_zw='外接顯示',
+        autotest_name='factory_ExtDisplay',
+        kbd_shortcut='n',
+        dargs={'has_audio':True,
+               'sample':'deps/factory/fhorn.wav'}),
+    OperatorTest(
+        label_en='camera',
+        label_zw='相機',
+        autotest_name='factory_Camera',
+        kbd_shortcut='c'),
+    OperatorTest(
+        label_en='audio',
+        label_zw='音源裝置',
+        autotest_name='factory_Audio',
+        kbd_shortcut='a',
+        dargs={'sample':'deps/factory/fhorn.wav'}),
+    OperatorTest(
+        label_en='usb',
+        autotest_name='factory_ExternalStorage',
+        kbd_shortcut='u',
+        dargs={'media':'USB'}),
+    OperatorTest(
+        label_en='sd',
+        autotest_name='factory_ExternalStorage',
+        kbd_shortcut='d',
+        dargs={'media':'SD'}),
+    OperatorTest(
+        label_en='bluetooth',
+        label_zw='藍芽',
+        autotest_name='factory_Dummy',
+        kbd_shortcut='o',
+        dargs={'msg':'bluetooth test, one day...'}),
+    OperatorTest(
+        label_en='3g',
+        label_zw='3G上網',
+        autotest_name='factory_Dummy',
+        kbd_shortcut='g',
+        dargs={'msg':'3g test, one day...'}),
+    OperatorTest(
+        label_en='wifi',
+        label_zw='無線上網',
+        autotest_name='factory_Dummy',
+        kbd_shortcut='w',
+        dargs={'msg':'wifi test, one day...'}),
+    OperatorTest(
+        label_en='light sensor',
+        label_zw='光传感器',
+        autotest_name='factory_LightSensor',
+        dargs={'lux_max':1000, 'lux_min':1},
+        kbd_shortcut='i'),
+
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
+    OperatorTest(
+        label_en='devrec',
+        label_zw='還原模式',
+        autotest_name='factory_DeveloperRecovery',
+        kbd_shortcut='b',
+        dargs={'layout':'devrec'}),
+
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
+    AutomatedSequence(
+        label_en='final',
+        label_zw='最後測試',
+        subtest_tag_prefix='final_stage_1',
+        kbd_shortcut='f',
+        subtest_list=[
+            AutomatedSubTest(
+                label_en='write GBB',
+                label_zw='寫入GBB',
+                autotest_name='factory_WriteGBB'),
+            AutomatedRebootSubTest(
+                label_en='reboot',
+                label_zw='重新開機',
+                iterations=1),
+            AutomatedSubTest(
+                label_en='component validation',
+                label_zw='元件驗證',
+                autotest_name='hardware_Components')]),
+
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
+    OperatorTest(
+        label_en='wipe',
+        label_zw='清除',
+        autotest_name='factory_Wipe',
+        kbd_shortcut='x',
+         # NOTE: factory_Wipe.dargs support following variables for temporary
+         #       testing. You can add these settings to help internal test, but
+         #       THESE ARE GOOGLE REQUIRED TESTS SO YOU SHOULD NOT DISABLE THEM
+         #       IN PRODUCTION RELEASES.
+         #       - check_developer_switch: check for developer button switch
+         #       - write_protect: enable and check flash ROM write protection
+         # TODO(hungte) Although the 'write_protect' should be a Google required
+         #       test, we decide to disable it until first official release of
+         #       Chrome OS. Please remove that line for the real release.
+        dargs={'secure_wipe':_DO_FACTORY_SECURE_WIPE,
+               'write_protect':False,
+               'msg':('hit TAB+ENTER to write protect FW and '
+                      'wipe test image!...\n'
+                      '請按下 TAB+ENTER 啟用寫入保護以及清除'
+                      '測試程式資料!...')}),
+
+    InformationScreen(
+        label_en='review',
+        label_zw='報告',
+        autotest_name='factory_Review',
+        kbd_shortcut='z'),
+]
