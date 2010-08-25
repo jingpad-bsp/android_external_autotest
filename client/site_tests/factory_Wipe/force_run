@@ -17,6 +17,4 @@ and tags the factory partition to be wiped.
 # adjust following parameters for your test.
 job.run_test('factory_Wipe',
     secure_wipe=False,
-    write_protect=False,
-    check_developer_switch=True,
-    force_skip_required_test_check=True)
+    only_run_from_factory_finalize_unless_testing=False)

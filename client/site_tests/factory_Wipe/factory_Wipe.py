@@ -3,28 +3,14 @@
 # found in the LICENSE file.
 
 import os
-import time
 
 from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 
-GPIO_ROOT = '/home/gpio'
-GOOGLE_REQUIRED_TESTS = [ 'hardware_Components', 'hardware_DeveloperRecovery' ]
-
-
-def init_gpio(gpio_root=GPIO_ROOT):
-    """ initializes GPIO in GPIO_ROOT """
-    if os.path.exists(gpio_root):
-        utils.system("rm -rf '%s'" % gpio_root)
-    utils.system("mkdir '%s'" % (gpio_root))
-    utils.system("/usr/sbin/gpio_setup")
-
-
 class factory_Wipe(test.test):
-    version = 2
+    version = 3
 
     def wipe_stateful_partition(self, secure_wipe):
         # Stub test to switch to boot from the release image,
@@ -48,70 +34,19 @@ class factory_Wipe(test.test):
         # Time for reboot.
         utils.run('shutdown -r now')
 
-    def check_developer_switch(self, do_check):
-        if not do_check:
-            factory.log('WARNING: DEVELOPER SWITCH BUTTON ' +
-                        'IS NOT TESTED/ENABLED!');
-            return True
-
-        init_gpio()
-        status = open(os.path.join(GPIO_ROOT, "developer_switch")).read()
-        status_val = int(status)
-        if status_val != 0:
-            raise error.TestFail('Developer Switch Button is enabled')
-
-    def flashrom_write_protect(self, do_check):
-        # enable write protection (and test it) for flashrom
-
-        if not do_check:
-            factory.log('WARNING: FLASHROM WRITE PROTECTION ' +
-                        'IS NOT TESTED/ENABLED!');
-            return True
-
-        factory.log('enable write protect (factory_EnableWriteProtect)')
-        self.job.run_test('factory_EnableWriteProtect')
-
-        # verify if write protection range is properly fixed,
-        # and all bits in RW is writable.
-        factory.log('verify write protect (hardware_EepromWriteProtect)')
-        if not self.job.run_test('hardware_EepromWriteProtect'):
-            raise error.TestFail('Flashrom write protection test failed.')
-
     def run_once(self,
                  secure_wipe,
-                 write_protect=True,
-                 check_developer_switch=True,
                  status_file_path=None,
                  test_list=None,
-                 force_skip_required_test_check=False):
+                 only_run_from_factory_finalize_unless_testing=True):
 
-        if force_skip_required_test_check:
-            # alert user what he is doing
-            alert_seconds = 3
-            for i in range(alert_seconds):
-                factory.log('WARNING: REQUIRED TEST CHECK IS BYPASSED. ' +
-                            'THIS DEVICE CANNOT BE QUALIFIED.')
-            factory.log("Waiting %d seconds before test start." % alert_seconds)
-            for i in range(alert_seconds, 0, -1):
-                factory.log(">> wipe test will start in %d seconds..." % i)
-                time.sleep(1)
+        test_name = factory.FINAL_VERIFICATION_TEST_UNIQUE_NAME
+        if only_run_from_factory_finalize_unless_testing:
+            if factory.lookup_status_by_unique_name(
+                    test_name, test_list, status_file_path) != factory.PASSED:
+                raise error.TestFail('You need to pass %s first.' % test_name)
         else:
-            # first, check if all previous tests are passed.
-            status_map = ful.StatusMap(test_list, status_file_path)
-            failed = status_map.filter(ful.FAILED)
-            if failed:
-                raise error.TestFail('Some tests were failed. ' +
-                                     'Cannot start wipe.')
+            factory.log('WARNING: Final Verification is bypassed.\n' +
+                        'THIS DEVICE CANNOT BE QUALIFIED.')
 
-            # check if all Google Required Tests are passed
-            passed = [t.formal_name for t in status_map.filter(ful.PASSED)]
-            if not set(GOOGLE_REQUIRED_TESTS).issubset(passed):
-                missing = list(set(GOOGLE_REQUIRED_TESTS).difference(passed))
-                raise error.TestFail('You need to execute following ' +
-                                     'Google Required Tests: %s' %
-                                     (','.join(missing)))
-
-        # apply each final tests
-        self.check_developer_switch(check_developer_switch)
-        self.flashrom_write_protect(write_protect)
         self.wipe_stateful_partition(secure_wipe)

@@ -29,6 +29,7 @@ STATUS_CODE_MAP = {
 
 LOG_PATH = '/var/log/factory.log'
 DATA_PREFIX = 'FACTORY_DATA:'
+FINAL_VERIFICATION_TEST_UNIQUE_NAME = 'factory_Verify'
 
 def log(s):
     print >> sys.stderr, 'FACTORY: ' + s
@@ -36,6 +37,12 @@ def log(s):
 def log_shared_data(key, value):
     print >> sys.stderr, '%s %s=%s' % (DATA_PREFIX, key, repr(value))
 
+def lookup_status_by_unique_name(unique_name, test_list, status_file_path):
+    """ quick way to determine the status of given test """
+    status_map = StatusMap(test_list, status_file_path)
+    testdb = status_map.test_db
+    xtest = testdb.get_test_by_unique_name(unique_name)
+    return status_map.lookup_status(xtest)
 
 class FactoryTest:
     def __repr__(self):
