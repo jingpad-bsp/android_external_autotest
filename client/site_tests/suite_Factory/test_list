@@ -27,6 +27,16 @@ _REBOOT_SEQ_ITERATIONS = 2
 # Change this to the duration of SAT during run-in (suggested 10+ mins).
 _SAT_DURATION_SECS = 60
 
+# Change this to match your local log upload site.
+_LOG_UPLOAD_DESTINATION = {
+  'method': 'ftp',
+  'host': '*',  # change to hostname/IP of destination
+  'port': 21,  # change this if you are using different port
+  'id': 'anonymous',
+  'pw': '*',
+}
+
+
 # -- END OF CUSTOMIZATION VARIABLES --------------------------------
 
 
@@ -200,15 +210,16 @@ TEST_LIST = [
         label_en='devrec',
         label_zw='還原模式',
         autotest_name='factory_DeveloperRecovery',
+        unique_name='GRT_DevRec',
         kbd_shortcut='b',
         dargs={'layout':'devrec'}),
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
     AutomatedSequence(
-        label_en='final',
-        label_zw='最後測試',
-        subtest_tag_prefix='final_stage_1',
+        label_en='HWID',
+        label_zw='硬體代號',
+        subtest_tag_prefix='hwid',
         kbd_shortcut='f',
         subtest_list=[
 
@@ -225,30 +236,46 @@ TEST_LIST = [
             AutomatedSubTest(
                 label_en='component validation',
                 label_zw='元件驗證',
+                unique_name='GRT_HWComponents',
                 autotest_name='hardware_Components')]),
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
-    OperatorTest(
-        label_en='wipe',
-        label_zw='清除',
-        autotest_name='factory_Wipe',
+    AutomatedSequence(
+        label_en='final',
+        label_zw='最終步驟',
+        subtest_tag_prefix='finalize',
         kbd_shortcut='x',
-         # NOTE: factory_Wipe.dargs support following variables for temporary
-         #       testing. You can add these settings to help internal test, but
-         #       THESE ARE GOOGLE REQUIRED TESTS SO YOU SHOULD NOT DISABLE THEM
-         #       IN PRODUCTION RELEASES.
-         #       - check_developer_switch: check for developer button switch
-         #       - write_protect: enable and check flash ROM write protection
-         # TODO(hungte) Although the 'write_protect' should be a Google required
-         #       test, we decide to disable it until first official release of
-         #       Chrome OS. Please remove that line for the real release.
-        dargs={'secure_wipe':_DO_FACTORY_SECURE_WIPE,
-               'write_protect':False,
-               'msg':('hit TAB+ENTER to write protect FW and '
-                      'wipe test image!...\n'
-                      '請按下 TAB+ENTER 啟用寫入保護以及清除'
-                      '測試程式資料!...')}),
+        subtest_list=[
+            AutomatedSubTest(
+                label_en='final verification',
+                label_zw='最後驗證',
+                unique_name=factory.FINAL_VERIFICATION_TEST_UNIQUE_NAME,
+                autotest_name='factory_Verify',
+                dargs={
+                    'check_and_enable_write_protect':False,
+                }),
+            # NOTE: factory_Verify.dargs support following variables for
+            # temporary testing. You can add these settings to help internal
+            # test, but THESE ARE GOOGLE REQUIRED TESTS SO YOU SHOULD NOT
+            # DISABLE THEM IN PRODUCTION RELEASES.
+            #  - check_developer_switch: check for developer button switch
+            #  - check_required_tests: check if all required tests are passed
+            #  - check_and_enable_write_protect: enable and check flash ROM
+            #    write protection
+            # TODO(hungte) Although the 'write_protect' should be a Google
+            #   required test, we decide to disable it until first official
+            #   release of Chrome OS. Please remove that for official release.
+            AutomatedSubTest(
+                label_en='upload log reports',
+                label_zw='上傳記錄',
+                autotest_name='factory_UploadLogs',
+                dargs={'destination':_LOG_UPLOAD_DESTINATION}),
+            AutomatedSubTest(
+                label_en='wipe',
+                label_zw='清除',
+                autotest_name='factory_Wipe',
+                dargs={'secure_wipe':_DO_FACTORY_SECURE_WIPE})]),
 
     InformationScreen(
         label_en='review',
