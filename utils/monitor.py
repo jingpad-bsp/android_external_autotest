@@ -468,13 +468,17 @@ class Monitor(object):
             f.write('<td><em>%s</em>' % status)
             f.write('<td>')
             for label in h.labels.values_list('name', flat=True):
-              f.write('%s<br>' % label)
+                if 'netbook' in label:
+                    f.write('<em><b>%s</b></em><br>' % label)
+                else:
+                    f.write('%s<br>' % label)
             f.write('<td>%s' % TB.hosts[h.hostname]['time'])
             f.write('<td>%s' % TB.hosts[h.hostname]['release'])
             index_file = os.path.join(rrd_dir, 'index.html')
             if os.path.isfile(index_file):
                 f.write('<td><a href=%s' % TB.url)
-                f.write('%s/index.html>health</a></td>' % link_dir)
+                f.write('%s/index.html target="_blank">' % link_dir)
+                f.write('health</a></td>')
             else:
                 f.write('<td>None</td>')
         f.write('</table><p>\n</center>\n</BODY></HTML>')
@@ -493,7 +497,7 @@ class Resource(object):
     def __init__(self):
         self.files = {
             'battery': '/proc/acpi/battery/BAT?/state',
-            'boot': '/tmp/uptime-login-prompt-ready',
+            'boot': '/tmp/firmware-boot-time /tmp/uptime-login-prompt-ready',
             'cpu': '/proc/stat',
             'load': '/proc/loadavg',
             'memory': '/proc/meminfo',
@@ -654,12 +658,19 @@ class Resource(object):
             rrdfile = os.path.join(rrd_dir, r + '.html')
             f = open(rrdfile, 'w')
             f.write('<HTML><HEAD>')
-            f.write('<center><TITLE>%s %s Resources</TITILE></HEAD>' % (
+            f.write('<center><TITLE>%s %s Resources</TITLE></HEAD>' % (
                      hostname, r))
             f.write('<BODY><H1>%s %s Resources</H1>' % (hostname, r))
+            f.write('<table border=5 bgcolor=#B5B5B5>')
+            f.write('<tr>')
+            for h in TB.rrdtimes:
+                f.write('<td><a href="#%s"><b>%s</b></a>' % (h, h))
+            f.write('</table>')
+            f.write('<HR>')
             f.write('<table border=1 bgcolor=#EEEEEE>')
             for h in TB.rrdtimes:
-                f.write('<tr><td><img src=%s%s.png></td></tr>\n' % (r, h))
+                f.write('<tr><td><a name="%s"><img src=%s%s.png>' % (h, r, h))
+                f.write('</a></td></tr>\n')
             f.write('</table><p>\n')
             f.write('</center>\n')
             f.write('</BODY></HTML>')
@@ -699,11 +710,14 @@ class Resource(object):
         Args:
             h: string, hostname of host in AutoTest.
             k: string, resource key.
-        We only want the first value from this file.
+        We only want the first and 2nd values from the raw data.
         """
+        fields = []
         TB.hosts[h]['rrddata'][k] = []
-        fields = TB.hosts[h]['data'][k].split()
-        TB.hosts[h]['rrddata'][k].append(fields[0])
+        lines = TB.hosts[h]['data'][k].split('\n')
+        for line in lines:
+            fields.extend(line.split())
+        TB.hosts[h]['rrddata'][k] = fields[0:2]
 
 
     def ParseFS(self, h, k):
@@ -970,25 +984,36 @@ class RRD(object):
                 'type': 'GAUGE',
                 'units': '"Seconds"',
                 'items': [
+                    'firmware',
                     'ready',
                     ],
                 'graph': [
                     '-l 0 -u 30 -r',
-                    'CDEF:bg=ready,UN,0,ready,IF,0,GT,UNKN,INF,IF',
+                    'CDEF:total=firmware,ready,+',
+                    'CDEF:bg=total,UN,0,total,IF,0,GT,UNKN,INF,IF',
                     'AREA:bg#DDDDDD:',
-                    'CDEF:fast=ready,10,LE,ready,UNKN,IF',
-                    'CDEF:avg=ready,10,15,LIMIT',
-                    'CDEF:slow=ready,15,GE,ready,UNKN,IF',
-                    'AREA:fast#0066CC:"Fast "',
-                    'AREA:avg#FF9900:"Average "',
-                    'AREA:slow#CC3300:"Slow  \\n"',
-                    'VDEF:maxT=ready,MAXIMUM',
-                    'VDEF:minT=ready,MINIMUM',
-                    'VDEF:avgT=ready,AVERAGE',
-                    'GPRINT:minT:"Min %2.1lf"',
+                    'AREA:firmware#26466D:"Firmware    "',
+                    'LINE1:firmware#660000:',
+                    'VDEF:maxF=firmware,MAXIMUM',
+                    'VDEF:minF=firmware,MINIMUM',
+                    'VDEF:avgF=firmware,AVERAGE',
+                    'GPRINT:minF:"Min %2.1lf"',
+                    'GPRINT:maxF:"Max %2.1lf"',
+                    'GPRINT:avgF:"Avg %2.1lf Seconds \\n"',
+                    'AREA:ready#0BB5FF:"Login Prompt":STACK',
+                    'LINE1:firmware#660000:',
+                    'VDEF:maxR=ready,MAXIMUM',
+                    'VDEF:minR=ready,MINIMUM',
+                    'VDEF:avgR=ready,AVERAGE',
+                    'GPRINT:minR:"Min %2.1lf"',
+                    'GPRINT:maxR:"Max %2.1lf"',
+                    'GPRINT:avgR:"Avg %2.1lf Seconds \\n"',
+                    'VDEF:maxT=total,MAXIMUM',
+                    'VDEF:minT=total,MINIMUM',
+                    'VDEF:avgT=total,AVERAGE',
+                    'GPRINT:minT:"Total           Min %2.1lf"',
                     'GPRINT:maxT:"Max %2.1lf"',
                     'GPRINT:avgT:"Avg %2.1lf Seconds \\n"',
-                    'LINE1:ready#660000:',
                     'HRULE:15#FF0000',
                     'HRULE:10#FFA500',
                     ],
