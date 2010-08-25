@@ -1,0 +1,15 @@
+This directory contains reference images for graphics_GLBench test.  After
+uncompressing to RGBA these images will match checksums in
+glbench/src/checksums.  For example:
+
+    > convert mpixels_sec_clear_color.png rgba:- | md5sum
+    e3609de1022a164fe240a562c69367de
+
+"convert" tool comes from imagemagick package.
+
+graphics_GLBench dumps raw RGBA images if -save flag is specified.  To convert
+a raw image from the test back to png for storing here, "convert" utility can
+be used like this:
+
+    convert -size 512x512 -depth 8 rgba:mpixels_sec_clear_color \
+        mpixels_sec_clear_color.png
