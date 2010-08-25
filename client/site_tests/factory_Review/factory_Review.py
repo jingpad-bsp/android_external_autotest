@@ -55,9 +55,22 @@ class factory_Review(test.test):
                                'PASSED=%d\t' % len(passed) +
                                'FAILED=%d' % len(failed))
 
-        failed_msgs_map = [(t, status_map.lookup_error_msg(t)) for t in failed]
-        failure_report_list = ['%s : %s' % (t.label_en, e)
-                               for t, e in failed_msgs_map]
+        # decompose automated sequence tests
+        failure_report_list =[]
+        for t in failed:
+            t_name = t.label_en
+            if not isinstance(t, factory.AutomatedSequence):
+                # Simple Test
+                err_msg = status_map.lookup_error_msg(t)
+                failure_report_list.append('%s: %s' % (t_name, err_msg))
+                continue
+            # Complex Test
+            for subtest in t.subtest_list:
+                if status_map.lookup_status(subtest) != ful.FAILED:
+                    continue
+                err_msg = status_map.lookup_error_msg(subtest)
+                failure_report_list.append(
+                        '%s: (%s) %s' % (t_name, subtest.label_en, err_msg))
         failure_report = ful.make_label('\n'.join(failure_report_list))
 
         vbox = gtk.VBox()
