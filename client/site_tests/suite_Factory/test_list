@@ -30,10 +30,12 @@ _SAT_DURATION_SECS = 60
 # Change this to match your local log upload site.
 _LOG_UPLOAD_DESTINATION = {
   'method': 'ftp',
-  'host': '*',  # change to hostname/IP of destination
-  'port': 21,  # change this if you are using different port
-  'id': 'anonymous',
-  'pw': '*',
+  'host': '*',  # change to hostname/IP of destination. '*' will bypass upload.
+  'port': 21,  # change this if you are using different port.
+  'user': 'anonymous',  # change this if you have a specific login id.
+  'passwd': '*',  # change this to password of the login id.
+  'initdir': '',  # change this if you want to assign the folder to store logs.
+  'timeout': 3*60,  # change this if you have a really poor slow network...
 }
 
 
