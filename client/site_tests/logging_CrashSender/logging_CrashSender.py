@@ -7,7 +7,6 @@ from autotest_lib.client.bin import site_crash_test, site_utils, test
 from autotest_lib.client.common_lib import error, utils
 
 _CRASH_SENDER_CRON_PATH = '/etc/cron.hourly/crash_sender.hourly'
-_CRASH_SENDER_RUN_PATH = '/var/run/crash_sender.pid'
 _DAILY_RATE_LIMIT = 8
 _MIN_UNIQUE_TIMES = 4
 _SECONDS_SEND_SPREAD = 3600
@@ -119,12 +118,12 @@ class logging_CrashSender(site_crash_test.CrashTest):
         is of the same instance.
         """
         self._set_sending(True)
-        utils.open_write_close(_CRASH_SENDER_RUN_PATH, str(os.getpid()))
+        utils.open_write_close(self._CRASH_SENDER_RUN_PATH, str(os.getpid()))
         result = self._call_sender_one_crash()
         if (not 'Already running.' in result['output'] or
             result['send_attempt'] or not result['report_exists']):
             raise error.TestFail('Allowed multiple instances to run')
-        os.remove(_CRASH_SENDER_RUN_PATH)
+        os.remove(self._CRASH_SENDER_RUN_PATH)
 
 
     def _test_sender_send_fails(self):

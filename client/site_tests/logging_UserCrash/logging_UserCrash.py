@@ -9,6 +9,7 @@ from autotest_lib.client.common_lib import error, utils
 
 _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
 _LEAVE_CORE_PATH = '/root/.leave_core'
+_MAX_CRASH_DIRECTORY_SIZE = 8
 
 
 class logging_UserCrash(site_crash_test.CrashTest):
@@ -180,6 +181,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
               'Timeout waiting for crash_reporter to finish: ' +
               self._log_reader.get_logs()))
 
+        logging.debug('crash_reporter_caught message: ' + expected_message)
         crash_reporter_caught = self._log_reader.can_find(expected_message)
 
         result = {'crashed': crasher.returncode == expected_result,
@@ -359,6 +361,48 @@ class logging_UserCrash(site_crash_test.CrashTest):
         self._check_crashing_process('root', False)
 
 
+    def _test_max_enqueued_crashes(self):
+        """Test that _MAX_CRASH_DIRECTORY_SIZE is enforced."""
+        self._log_reader.set_start_by_current()
+        username = 'root'
+
+        crash_dir = self._get_crash_dir(username)
+        full_message = ('Crash directory %s already full with %d pending '
+                        'reports' % (crash_dir, _MAX_CRASH_DIRECTORY_SIZE))
+
+        # Fill up the queue.
+        for i in range(0, _MAX_CRASH_DIRECTORY_SIZE):
+          result = self._run_crasher_process(username, with_breakpad=False)
+          if not result['crashed']:
+            raise error.TestFail('failure while setting up queue: %d' %
+                                 result['returncode'])
+          if self._log_reader.can_find(full_message):
+            raise error.TestFail('unexpected full message: ' + full_message)
+
+        crash_dir_size = len(os.listdir(crash_dir))
+        # For debugging
+        utils.system('ls -l %s' % crash_dir)
+        logging.info('Crash directory had %d entries' % crash_dir_size)
+
+        # Crash a bunch more times, but make sure no new reports
+        # are enqueued.
+        for i in range(0, 10):
+          self._log_reader.set_start_by_current()
+          result = self._run_crasher_process(username, with_breakpad=False)
+          logging.info('New log messages: %s' % self._log_reader.get_logs())
+          if not result['crashed']:
+            raise error.TestFail('failure after setting up queue: %d' %
+                                 result['returncode'])
+          if not self._log_reader.can_find(full_message):
+            raise error.TestFail('expected full message: ' + full_message)
+
+          if crash_dir_size != len(os.listdir(crash_dir)):
+            utils.system('ls -l %s' % crash_dir)
+            raise error.TestFail('expected no new files (now %d were %d)',
+                                 len(os.listdir(crash_dir)),
+                                 crash_dir_size)
+
+
     def _check_core_file_persisting(self, expect_persist):
         self._log_reader.set_start_by_current()
 
@@ -430,6 +474,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
                               'chronos_nobreakpad_crasher',
                               'root_breakpad_crasher',
                               'root_nobreakpad_crasher',
+                              'max_enqueued_crashes',
                               'core_file_persists_in_debug',
                               'core_file_removed_in_production'],
                               initialize_crash_reporter = True)
