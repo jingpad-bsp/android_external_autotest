@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, hashlib, logging, os, pprint, re
+import glob, hashlib, logging, os, pprint, re, sys
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
@@ -283,6 +283,20 @@ class hardware_Components(test.test):
         return '%d' % (versions[0])
 
 
+    def force_get_property(self, property_name):
+        """ Returns property value or empty string on error. """
+        try:
+            return getattr(self, property_name)()
+        except error.TestError as e:
+            logging.error("Test error in getting property %s", property_name,
+                          exc_info=1)
+            return ''
+        except:
+            logging.error("Exception getting property %s", property_name,
+                          exc_info=1)
+            return ''
+
+
     def pformat(self, obj):
         return "\n" + self._pp.pformat(obj) + "\n"
 
@@ -308,7 +322,7 @@ class hardware_Components(test.test):
             logging.debug('Approved DB: %s', self.pformat(self._approved))
 
             for cid in self._cids:
-                self.check_component(cid, getattr(self, 'get_' + cid)())
+                self.check_component(cid, self.force_get_property('get_' + cid))
 
             for cid in self._pci_cids:
                 self.check_approved_part_id_existence(cid, type='pci')
