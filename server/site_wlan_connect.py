@@ -34,7 +34,7 @@ def DbusSetup():
             "org.chromium.flimflam.Service")
     except Exception, e:
         print "FAIL(GetService): ssid %s exception %s" %(ssid, e)
-        sys.exit(1)
+        ErrExit(1)
 
     return (path, service)
 
@@ -111,15 +111,20 @@ def TryConnect(assoc_time):
             return (None, 'FAIL')
         # What is this exception?
         print "FAIL(Connect): ssid %s DBus exception %s" %(ssid, e)
-        sys.exit(2)
+        ErrExit(2)
     except Exception, e:
         print "FAIL(Connect): ssid %s exception %s" %(ssid, e)
-        sys.exit(2)
+        ErrExit(2)
 
     properties = None
     # wait up to assoc_timeout seconds to associate
     while assoc_time < assoc_timeout:
-        properties = service.GetProperties()
+        try:
+            properties = service.GetProperties()
+        except dbus.exceptions.DBusException, e:
+            connect_quirks['get_prop'] = 1
+            print>>sys.stderr, "Got exception trying GetProperties()!"
+            return (None, 'DBUSFAIL')
         status = properties.get("State", None)
         #    print>>sys.stderr, "time %3.1f state %s" % (assoc_time, status)
         if status == "failure":
@@ -136,7 +141,7 @@ def TryConnect(assoc_time):
         if properties is None:
             properties = service.GetProperties()
         return (properties, 'TIMEOUT')
-        sys.exit(4)
+        ErrExit(4)
 
 
 # Open /var/log/messages and seek to the current end
@@ -163,6 +168,13 @@ def DumpLogs(logs):
         subprocess.Popen(["iw", "dev", "wlan0", "scan"],
                          stdout=subprocess.PIPE).communicate()[0]
 
+def ErrExit(code):
+    try:
+        service.Disconnect()
+    except:
+        pass
+    DumpLogs(logs)
+    sys.exit(code)
 
 logs = OpenLogs('/var/log/messages', '/var/log/hostap.log')
 
@@ -186,8 +198,7 @@ if attempt > 0:
 if failure_type is not None:
     print "%s(assoc): ssid %s assoc %3.1f secs props %s" \
         %(failure_type, ssid, assoc_time, ParseProps(properties))
-    DumpLogs(logs)
-    sys.exit(3)
+    ErrExit(3)
 
 # wait another config_timeout seconds to get an ip address
 config_time = 0
@@ -200,21 +211,23 @@ if status != "ready":
         if status == "failure":
             print "FAIL(config): ssid %s assoc %3.1f config %3.1f secs" \
                 %(ssid, assoc_time, config_time)
-            sys.exit(5)
+            ErrExit(5)
         if status == "ready":
             break
         if status != "configuration":
             print "FAIL(config): ssid %s assoc %3.1f config %3.1f secs *%s*" \
                 %(ssid, assoc_time, config_time, status)
-            break
+            ErrExit(4)
         time.sleep(.5)
         config_time += .5
     if config_time >= config_timeout:
         print "TIMEOUT(config): ssid %s assoc %3.1f config %3.1f secs" \
             %(ssid, assoc_time, config_time)
-        DumpLogs(logs)
-        sys.exit(6)
+        ErrExit(6)
 
 print "OK %3.1f %3.1f %s (assoc and config times in sec, quirks)" \
     %(assoc_time, config_time, str(connect_quirks.keys()))
+
+if connect_quirks:
+    DumpLogs(logs)
 sys.exit(0)
