@@ -8,11 +8,9 @@
 # DESCRIPTION :
 #
 # This library provides convenience routines to launch factory tests.
-# This includes support for identifying keyboard test switching
-# triggers, grabbing control of the keyboard and mouse, and making the
-# mouse cursor disappear.  It also manages communication of any found
-# keyboard triggers to the control process, via writing data to
-# factory.RESULT_FILE_PATH.
+# This includes support for drawing the test widget in a window at the
+# proper location, grabbing control of the mouse, and making the mouse
+# cursor disappear.
 
 
 from autotest_lib.client.bin import factory
@@ -33,6 +31,8 @@ BLUE =  gtk.gdk.Color(0, 0, 0xFFFF)
 WHITE = gtk.gdk.Color(0xFFFF, 0xFFFF, 0xFFFF)
 
 LIGHT_GREEN = gtk.gdk.color_parse('light green')
+
+SEP_COLOR = gtk.gdk.color_parse('grey50')
 
 RGBA_GREEN_OVERLAY = (0, 0.5, 0, 0.6)
 RGBA_YELLOW_OVERLAY = (0.6, 0.6, 0, 0.6)
@@ -64,6 +64,20 @@ def make_label(message, font=LABEL_FONT, fg=LIGHT_GREEN,
     return l
 
 
+def make_hsep(width=1):
+    frame = gtk.EventBox()
+    frame.set_size_request(-1, width)
+    frame.modify_bg(gtk.STATE_NORMAL, SEP_COLOR)
+    return frame
+
+
+def make_vsep(width=1):
+    frame = gtk.EventBox()
+    frame.set_size_request(width, -1)
+    frame.modify_bg(gtk.STATE_NORMAL, SEP_COLOR)
+    return frame
+
+
 def make_countdown_widget():
     title = make_label('time remaining / 剩餘時間: ', alignment=(1, 0.5))
     countdown = make_label('%d' % FAIL_TIMEOUT, alignment=(0, 0.5))
@@ -83,59 +97,34 @@ def hide_cursor(gdk_window):
     gdk_window.set_cursor(cursor)
 
 
-class State:
+def run_test_widget(job, test_widget,
+                    invisible_cursor=True,
+                    window_registration_callback=None,
+                    cleanup_callback=None):
 
-    def __init__(self, trigger_set=set()):
-        self._got_trigger = None
-        self._trigger_set = [ord(x) for x in trigger_set]
+    test_widget_size = job.factory_shared_dict.get('test_widget_size')
 
-    def exit_on_trigger(self, event):
-        char = event.keyval in range(32,127) and chr(event.keyval) or None
-        if ('GDK_CONTROL_MASK' not in event.state.value_names
-            or event.keyval not in self._trigger_set):
-            return False
-        factory.log('got test switch trigger %s(%s)' % (event.keyval, char))
-        self._got_trigger = char
-        gtk.main_quit()
-        return True
+    window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+    window.modify_bg(gtk.STATE_NORMAL, BLACK)
+    window.set_size_request(*test_widget_size)
 
-    def run_test_widget(self,
-                        test_widget=None,
-                        test_widget_size=None,
-                        invisible_cursor=True,
-                        window_registration_callback=None,
-                        cleanup_callback=None):
+    align = gtk.Alignment(xalign=0.5, yalign=0.5)
+    align.add(test_widget)
 
-        window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-        window.modify_bg(gtk.STATE_NORMAL, BLACK)
-        window.set_size_request(*test_widget_size)
+    window.add(align)
+    window.show_all()
 
-        align = gtk.Alignment(xalign=0.5, yalign=0.5)
-        align.add(test_widget)
+    if window_registration_callback is not None:
+        window_registration_callback(window)
 
-        window.add(align)
-        window.show_all()
+    gtk.gdk.pointer_grab(window.window, confine_to=window.window)
 
-        gtk.gdk.pointer_grab(window.window, confine_to=window.window)
-        gtk.gdk.keyboard_grab(window.window)
+    if invisible_cursor:
+        hide_cursor(window.window)
 
-        if invisible_cursor:
-            hide_cursor(window.window)
+    gtk.main()
 
-        if window_registration_callback is not None:
-            window_registration_callback(window)
+    gtk.gdk.pointer_ungrab()
 
-        factory.log('factory_test running gtk.main')
-        gtk.main()
-        factory.log('factory_test quit gtk.main')
-
-        if cleanup_callback is not None:
-            cleanup_callback()
-
-        gtk.gdk.pointer_ungrab()
-        gtk.gdk.keyboard_ungrab()
-
-        if self._got_trigger is not None:
-            factory.log('run_test_widget returning kbd_shortcut "%s"' %
-                        self._got_trigger)
-            factory.log_shared_data('activated_kbd_shortcut', self._got_trigger)
+    if cleanup_callback is not None:
+        cleanup_callback()

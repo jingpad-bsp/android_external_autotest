@@ -24,9 +24,28 @@ control process).  """
 
 
 import imp
+import os
+
 imp.load_source('common', job.autodir + '/bin/common.py')
+
 from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import parallel
+
+
+FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
+STATUS_FILE_PATH = job.autodir + '/results/default/status'
+TEST_LIST_PATH = job.autodir + '/site_tests/suite_Factory/test_list'
+
+
+# Hack to grab the pid for forked tests.
+
+from autotest_lib.client.bin.parallel import fork_waitfor as orig_fork_waitfor
+
+def new_fork_waitfor(tmp, pid):
+    factory.log_shared_data('active_test_data', (tmp, pid))
+    orig_fork_waitfor(tmp, pid)
+
+parallel.fork_waitfor = new_fork_waitfor
 
 
 # These definitions are expose these classes directly into this
@@ -42,7 +61,7 @@ AutomatedRebootSubTest = factory.AutomatedRebootSubTest
 
 
 # This exec defines TEST_LIST in global scope.
-execfile(job.autodir + '/site_tests/suite_Factory/test_list')
+execfile(TEST_LIST_PATH)
 
 
 # Hack to work around autotest's obsession with GRUB.
@@ -63,13 +82,15 @@ def step_reboot_seq(tag_prefix, total_iterations, i=0):
 def step_init(intentional_reboot_subtest_tag_prefix=None):
     job.next_step([step_init])
 
-    factory_ui_path = job.autodir + '/bin/factory_ui'
-    status_file_path = job.autodir + '/results/default/status'
+    ui_proc_args = [FACTORY_UI_PATH, TEST_LIST_PATH,
+                    STATUS_FILE_PATH, str(os.getpid())]
+    factory.log('starting ui -- %s' % repr(ui_proc_args))
+    ui_proc = subprocess.Popen(ui_proc_args)
 
-    status_map = factory.StatusMap(TEST_LIST, status_file_path)
-    ui = factory.UiClient(TEST_LIST, factory_ui_path, status_file_path)
-    control_state = factory.ControlState(job, TEST_LIST, ui, status_map,
-                                         status_file_path)
+    status_map = factory.StatusMap(TEST_LIST, STATUS_FILE_PATH)
+    control_state = factory.ControlState(
+        job, TEST_LIST, status_map, STATUS_FILE_PATH,
+        parallel.fork_nuke_subprocess)
 
     if intentional_reboot_subtest_tag_prefix:
         reboot_subtest = status_map.test_db.get_subtest_by_tag_prefix(
@@ -79,6 +100,8 @@ def step_init(intentional_reboot_subtest_tag_prefix=None):
 
     test = status_map.next_untested()
     while test is not None:
+        factory.log('next test = %s' %
+                    status_map.test_db.get_unique_details(test))
         if isinstance(test, factory.AutomatedSequence):
             for subtest in test.subtest_list:
                 if isinstance(subtest, factory.AutomatedRebootSubTest):

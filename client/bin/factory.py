@@ -10,6 +10,8 @@
 # allow its use by the autotest control process.
 
 
+import gobject
+import signal
 import subprocess
 import sys
 import time
@@ -306,66 +308,63 @@ class LogData:
                 self.shared_dict[key] = eval(raw_value)
             self._log_file_pos = file.tell()
 
-
-class UiClient:
-    '''Support communication with the factory_ui process.  To simplify
-    surrounding code, this communication is an exchange of well formed
-    python expressions.  Basically send wraps its arguments in a call
-    to repr() and recv calls eval() to re-generate the python data.'''
-
-    def __init__(self, test_list, factory_ui_path, status_file_path):
-        self._proc = subprocess.Popen(factory_ui_path,
-                                      stdin=subprocess.PIPE,
-                                      stdout=subprocess.PIPE)
-        self.send(test_list)
-        self.send(status_file_path)
-        self.test_widget_size = self.recv()
-        log('control received test_widget_size = %s' %
-            repr(self.test_widget_size))
-
-    def __del__(self):
-        log('control deleting factory_ui subprocess')
-        self._proc.terminate()
-        time.sleep(1)
-        if self._proc.poll() is None:
-            self._proc.kill()
-
-    def send(self, x=None):
-        print >> self._proc.stdin, repr(x)
-        self._proc.stdin.flush()
-
-    def recv(self):
-        return eval(self._proc.stdout.readline().rstrip())
+    def get(self, key):
+        return self.shared_dict.get(key)
 
 
 class ControlState:
 
-    def __init__(self, job, test_list, ui, status_map, status_file_path):
+    def __init__(self, job, test_list, status_map, status_file_path, nuke_fn):
         self._job = job
         self._status_map = status_map
         self._log_data = LogData()
         self._std_dargs = {
-            'test_widget_size': ui.test_widget_size,
-            'trigger_set': status_map.test_db.kbd_shortcut_set,
             'status_file_path' : status_file_path,
             'test_list': test_list}
+        self._nuke_fn = nuke_fn
+        self.activated_kbd_shortcut_test = None
+        signal.signal(signal.SIGUSR1, self.kill_current_test_callback)
+
+        log('waiting for ui to come up...')
+        while self._log_data.get('test_widget_size') is None:
+            time.sleep(1)
+            self._log_data.read_new_data()
+
+    def kill_current_test_callback(self, signum, frame):
+        self._log_data.read_new_data()
+        active_test_data = self._log_data.get('active_test_data')
+        log('KILLING active_test_data %s' % repr(active_test_data))
+        if active_test_data is not None:
+            self._nuke_fn(*active_test_data)
 
     def run_test(self, test):
         self._status_map.incr_count(test)
+        self._log_data.read_new_data()
+        test_tag = self._status_map.lookup_tag(test)
         dargs = {}
         dargs.update(test.dargs)
         dargs.update(self._std_dargs)
-        test_tag = self._status_map.lookup_tag(test)
         dargs.update({'tag': test_tag,
                       'subtest_tag': test_tag,
                       'shared_dict': self._log_data.shared_dict})
+
+        self._job.factory_shared_dict = self._log_data.shared_dict
+
+        log('control shared dict = %s' % repr(self._log_data.shared_dict))
+
         if test.drop_caches:
             self._job.drop_caches_between_iterations = True
+        self.activated_kbd_shortcut_test = None
+
         self._job.run_test(test.autotest_name, **dargs)
+
         self._job.drop_caches_between_iterations = False
         self._log_data.read_new_data()
-        activated_ks = self._log_data.shared_dict.pop(
+        kbd_shortcut = self._log_data.shared_dict.pop(
             'activated_kbd_shortcut', None)
-        lookup = self._status_map.test_db.get_test_by_kbd_shortcut
-        self.activated_kbd_shortcut_test = (
-            activated_ks and lookup(activated_ks) or None)
+        if kbd_shortcut is not None:
+            test_db = self._status_map.test_db
+            target_test = test_db.get_test_by_kbd_shortcut(kbd_shortcut)
+            self.activated_kbd_shortcut_test = target_test
+            log('kbd_shortcut %s -> %s)' % (
+                kbd_shortcut, test_db.get_unique_details(target_test)))

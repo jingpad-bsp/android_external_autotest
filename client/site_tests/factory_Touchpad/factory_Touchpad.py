@@ -55,10 +55,9 @@ _Y_TF_OFFSET = 117 + _F_RADIUS + 2
 
 class TouchpadTest:
 
-    def __init__(self, tp_image, drawing_area, ft_state):
+    def __init__(self, tp_image, drawing_area):
         self._tp_image = tp_image
         self._drawing_area = drawing_area
-        self._ft_state = ft_state
         self._motion_grid = {}
         for x in range(_X_SEGMENTS):
             for y in range(_Y_SEGMENTS):
@@ -192,10 +191,6 @@ class TouchpadTest:
 
         return True
 
-    def key_press_event(self, widget, event):
-        self._ft_state.exit_on_trigger(event)
-        return True
-
     def button_press_event(self, widget, event):
         factory.log('button_press_event %d,%d' % (event.x, event.y))
         return True
@@ -207,10 +202,6 @@ class TouchpadTest:
     def motion_event(self, widget, event):
         factory.log('motion_event %d,%d' % (event.x, event.y))
         return True
-
-    def register_callbacks(self, window):
-        window.connect('key-press-event', self.key_press_event)
-        window.add_events(gdk.KEY_PRESS_MASK)
 
 
 class SynClient:
@@ -263,13 +254,9 @@ class factory_Touchpad(test.test):
     version = 1
     preserve_srcdir = True
 
-    def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None):
+    def run_once(self):
 
         factory.log('%s run_once' % self.__class__)
-
-        ft_state = ful.State(trigger_set)
 
         os.chdir(self.srcdir)
         tp_image = cairo.ImageSurface.create_from_png('touchpad.png')
@@ -277,7 +264,7 @@ class factory_Touchpad(test.test):
 
         drawing_area = gtk.DrawingArea()
 
-        test = TouchpadTest(tp_image, drawing_area, ft_state)
+        test = TouchpadTest(tp_image, drawing_area)
 
         drawing_area.set_size_request(*image_size)
         drawing_area.connect('expose_event', test.expose_event)
@@ -299,10 +286,7 @@ class factory_Touchpad(test.test):
 
         synclient = SynClient(test)
 
-        ft_state.run_test_widget(
-            test_widget=test_widget,
-            test_widget_size=test_widget_size,
-            window_registration_callback=test.register_callbacks,
+        ful.run_test_widget(self.job, test_widget,
             cleanup_callback=synclient.quit)
 
         missing = test.calc_missing_string()

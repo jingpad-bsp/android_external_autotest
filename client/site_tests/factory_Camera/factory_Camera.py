@@ -106,15 +106,14 @@ class factory_Camera(test.test):
                 self.dev.capture_mmap_start()
             self.label.hide()
             glib.timeout_add(1000, lambda *x: self.label.show())
-
-        self.ft_state.exit_on_trigger(event)
-        return
+        return True
 
     def register_callbacks(self, w):
         w.connect('key-release-event', self.key_release_callback)
         w.add_events(gdk.KEY_RELEASE_MASK)
 
-    def run_once(self, test_widget_size=None, trigger_set=None, led_rounds=5):
+    def run_once(self,
+                 led_rounds=5):
         '''Run the camera test
 
         Parameter
@@ -136,8 +135,6 @@ class factory_Camera(test.test):
             # ensure one on round and one off round
             self.ledstats = randrange(2 ** led_rounds - 2) + 1
         self.stage = 0
-
-        self.ft_state = ful.State(trigger_set)
 
         self.label = label = gtk.Label(MESSAGE_STR)
         label.modify_font(LABEL_FONT)
@@ -178,9 +175,7 @@ class factory_Camera(test.test):
         dev.capture_mmap_prepare(PREFERRED_BUFFER_COUNT, 2)
         dev.capture_mmap_start()
 
-        self.ft_state.run_test_widget(
-            test_widget=test_widget,
-            test_widget_size=test_widget_size,
+        ful.run_test_widget(self.job, test_widget,
             window_registration_callback=self.register_callbacks)
 
         # we don't call capture_mmap_stop here,

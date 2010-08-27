@@ -33,7 +33,6 @@ class factory_Dummy(test.test):
         factory.log('key_release %s(%s)' % (event.keyval, char))
         if event.keyval == self._quit_key:
             gtk.main_quit()
-        self._ft_state.exit_on_trigger(event)
         return True
 
     def register_callbacks(self, window):
@@ -41,8 +40,6 @@ class factory_Dummy(test.test):
         window.add_events(gdk.KEY_RELEASE_MASK)
 
     def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
                  quit_key=ord('Q'),
                  msg='factory_Dummy'):
 
@@ -50,17 +47,13 @@ class factory_Dummy(test.test):
 
         self._quit_key = quit_key
 
-        self._ft_state = ful.State(trigger_set)
-
         label = ful.make_label(msg)
 
         test_widget = gtk.EventBox()
         test_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
         test_widget.add(label)
 
-        self._ft_state.run_test_widget(
-            test_widget=test_widget,
-            test_widget_size=test_widget_size,
+        ful.run_test_widget(self.job, test_widget,
             window_registration_callback=self.register_callbacks)
 
-        factory.log('%s run_once finished' % self.__class__)
+        factory.log('%s run_once finished' % repr(self.__class__))

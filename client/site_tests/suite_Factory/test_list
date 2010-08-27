@@ -164,7 +164,7 @@ TEST_LIST = [
         label_zw='音源裝置',
         autotest_name='factory_Audio',
         kbd_shortcut='a',
-        dargs={'sample':'deps/factory/fhorn.wav'}),
+        dargs={'audio_sample_path':'fhorn.wav'}),
 
     OperatorTest(
         label_en='usb',

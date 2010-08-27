@@ -28,23 +28,11 @@ from autotest_lib.client.common_lib import error
 class factory_Review(test.test):
     version = 1
 
-    def key_release_callback(self, widget, event):
-        self._ft_state.exit_on_trigger(event)
-        return True
-
-    def register_callbacks(self, window):
-        window.connect('key-release-event', self.key_release_callback)
-        window.add_events(gdk.KEY_RELEASE_MASK)
-
     def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
                  status_file_path=None,
                  test_list=None):
 
         factory.log('%s run_once' % self.__class__)
-
-        self._ft_state = ful.State(trigger_set)
 
         status_map = factory.StatusMap(test_list, status_file_path)
         untested = status_map.filter(ful.UNTESTED)
@@ -82,9 +70,6 @@ class factory_Review(test.test):
         test_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
         test_widget.add(vbox)
 
-        self._ft_state.run_test_widget(
-            test_widget=test_widget,
-            test_widget_size=test_widget_size,
-            window_registration_callback=self.register_callbacks)
+        ful.run_test_widget(self.job, test_widget)
 
         factory.log('%s run_once finished' % self.__class__)

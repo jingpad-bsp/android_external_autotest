@@ -65,7 +65,7 @@ class factory_ScriptWrapper(test.test):
     def key_release_callback(self, widget, event):
         char = event.keyval in range(32,127) and chr(event.keyval) or None
         char = event.keyval == gdk.keyval_from_name('Return') and '\n' or char
-        if not self._ft_state.exit_on_trigger(event) and char is not None:
+        if char is not None:
             self._script.send(char)
         return True
 
@@ -73,14 +73,9 @@ class factory_ScriptWrapper(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gdk.KEY_RELEASE_MASK)
 
-    def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
-                 cmdline=None):
+    def run_once(self, cmdline=None):
 
         factory.log('%s run_once' % self.__class__)
-
-        self._ft_state = ful.State(trigger_set)
 
         label = ful.make_label('', alignment=(0.5, 0.5))
 
@@ -90,9 +85,7 @@ class factory_ScriptWrapper(test.test):
 
         self._script = Script(cmdline, pexpect, label)
 
-        self._ft_state.run_test_widget(
-            test_widget=test_widget,
-            test_widget_size=test_widget_size,
+        ful.run_test_widget(self.job, test_widget,
             window_registration_callback=self.register_callbacks)
 
         factory.log('%s run_once finished' % self.__class__)

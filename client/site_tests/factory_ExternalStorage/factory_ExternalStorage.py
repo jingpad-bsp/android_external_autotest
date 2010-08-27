@@ -54,22 +54,11 @@ class factory_ExternalStorage(test.test):
     version = 1
     preserve_srcdir = True
 
-    def key_release_callback(self, widget, event):
-        char = event.keyval in range(32,127) and chr(event.keyval) or None
-        factory.log('key_release_callback %s(%s)' %
-                             (event.keyval, char))
-        self._ft_state.exit_on_trigger(event)
-        return True
-
     def expose_event(self, widget, event):
         context = widget.window.cairo_create()
         context.set_source_surface(self._image, 0, 0)
         context.paint()
         return True
-
-    def register_callbacks(self, window):
-        window.connect('key-release-event', self.key_release_callback)
-        window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
     def rescan_storage(self, subtest_tag):
         if self._state == _STATE_WAIT_INSERT:
@@ -105,8 +94,6 @@ class factory_ExternalStorage(test.test):
         return True
 
     def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
                  subtest_tag=None,
                  media=None):
 
@@ -135,8 +122,6 @@ class factory_ExternalStorage(test.test):
 
         factory.log('subtest_tag = %s' % subtest_tag)
 
-        self._ft_state = ful.State(trigger_set)
-
         label = gtk.Label('')
         label.modify_font(pango.FontDescription('courier new condensed 20'))
         label.set_alignment(0.5, 0.5)
@@ -163,10 +148,7 @@ class factory_ExternalStorage(test.test):
         test_widget.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse('black'))
         test_widget.add(vbox)
 
-        self._ft_state.run_test_widget(
-            test_widget=test_widget,
-            test_widget_size=test_widget_size,
-            window_registration_callback=self.register_callbacks)
+        ful.run_test_widget(self.job, test_widget)
 
         if self._error:
             raise error.TestFail(self._error)

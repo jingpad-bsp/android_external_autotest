@@ -32,10 +32,9 @@ from autotest_lib.client.common_lib import error
 
 class KeyboardTest:
 
-    def __init__(self, kbd_image, bindings, ft_state):
+    def __init__(self, kbd_image, bindings):
         self._kbd_image = kbd_image
         self._bindings = bindings
-        self._ft_state = ft_state
         self._pressed_keys = set()
         self._deadline = None
         self.successful_keys = set()
@@ -45,8 +44,9 @@ class KeyboardTest:
                               set(self._bindings) - self.successful_keys)
         if not missing_keys:
             return ''
-        return 'Missing following keys\n' \
-               '沒有偵測到下列按鍵，鍵盤可能故障，請檢修: %s' % ', '.join(missing_keys)
+        return ('Missing following keys\n' +
+                '沒有偵測到下列按鍵，鍵盤可能故障，請檢修: %s' %
+                ', '.join(missing_keys))
 
     def timer_event(self, countdown_label):
         if not self._deadline:   # Ignore timer with no countdown in progress.
@@ -80,8 +80,6 @@ class KeyboardTest:
         return True
 
     def key_press_event(self, widget, event):
-        if self._ft_state.exit_on_trigger(event):
-            return True
         if ('GDK_MOD1_MASK' in event.state.value_names
             and event.keyval == gtk.keysyms.q):
             # Alt-q for early exit.
@@ -130,14 +128,9 @@ class factory_Keyboard(test.test):
     version = 1
     preserve_srcdir = True
 
-    def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
-                 layout=None):
+    def run_once(self, layout=None):
 
         factory.log('%s run_once' % self.__class__)
-
-        ft_state = ful.State(trigger_set)
 
         os.chdir(self.srcdir)
         kbd_image = cairo.ImageSurface.create_from_png('%s.png' % layout)
@@ -146,7 +139,7 @@ class factory_Keyboard(test.test):
         with open('%s.bindings' % layout, 'r') as file:
             bindings = eval(file.read())
 
-        test = KeyboardTest(kbd_image, bindings, ft_state)
+        test = KeyboardTest(kbd_image, bindings)
 
         drawing_area = gtk.DrawingArea()
         drawing_area.set_size_request(*image_size)
@@ -161,9 +154,7 @@ class factory_Keyboard(test.test):
         test_widget.pack_start(drawing_area, False, False)
         test_widget.pack_start(countdown_widget, False, False)
 
-        ft_state.run_test_widget(
-            test_widget=test_widget,
-            test_widget_size=test_widget_size,
+        ful.run_test_widget(self.job, test_widget,
             window_registration_callback=test.register_callbacks)
 
         missing = test.calc_missing_string()

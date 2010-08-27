@@ -109,8 +109,6 @@ class factory_ExtDisplay(test.test):
             self.goto_next_subtest()
         elif event.keyval == ord('Q'):
             gtk.main_quit()
-        else:
-            self._ft_state.exit_on_trigger(event)
 
         # evaluating a new subtest now
         if subtest_name is not self._current_subtest[0]:
@@ -161,18 +159,14 @@ class factory_ExtDisplay(test.test):
         self._sample=sample
 
     def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
                  has_audio=False,
-                 sample=None,
-                 ):
+                 sample=None):
 
         factory.log('%s run_once' % self.__class__)
-        # because audio files relative to that
+
+        # Src contains the audio files.
         os.chdir(self.autodir)
 
-        self._ft_state = ful.State(trigger_set=trigger_set)
-        self._test_widget_size = test_widget_size
         self._started = False
 
         if has_audio:
@@ -198,9 +192,7 @@ class factory_ExtDisplay(test.test):
         self.goto_next_subtest()
         self.start_subtest()
 
-        self._ft_state.run_test_widget(
-            test_widget=vbox,
-            test_widget_size=test_widget_size,
+        ful.run_test_widget(self.job, vbox,
             window_registration_callback=self.register_callbacks)
 
         failed_set = set(name for name, status in self._status_map.items()

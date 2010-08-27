@@ -110,8 +110,6 @@ class factory_Display(test.test):
             self.goto_next_pattern()
         elif event.keyval == ord('Q'):
             gtk.main_quit()
-        else:
-            self._ft_state.exit_on_trigger(event)
         self._test_widget.queue_draw()
         return True
 
@@ -147,13 +145,9 @@ class factory_Display(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gdk.KEY_RELEASE_MASK)
 
-    def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None):
+    def run_once(self):
 
         factory.log('%s run_once' % self.__class__)
-
-        self._ft_state = ful.State(trigger_set)
 
         self._pattern_queue = [x for x in reversed(_PATTERN_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n, f in _PATTERN_LIST)
@@ -176,9 +170,7 @@ class factory_Display(test.test):
 
         self._fs_window = None
 
-        self._ft_state.run_test_widget(
-            test_widget=test_widget,
-            test_widget_size=test_widget_size,
+        ful.run_test_widget(self.job, test_widget,
             window_registration_callback=self.register_callbacks)
 
         failed_set = set(name for name, status in self._status_map.items()

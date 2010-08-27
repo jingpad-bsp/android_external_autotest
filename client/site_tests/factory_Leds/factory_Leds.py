@@ -166,22 +166,15 @@ class factory_Leds(test.test):
                 event.keyval == gtk.keysyms.Shift_L:
             self._shift_cnt += 1
             self._pattern_da.queue_draw()
-        else:
-            self._ft_state.exit_on_trigger(event)
         return True
 
     def register_callbacks(self, window):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gdk.KEY_RELEASE_MASK)
 
-    def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
-                 led_ctl_path=None):
+    def run_once(self, led_ctl_path=None):
 
         factory.log('%s run_once' % self.__class__)
-
-        self._ft_state = ful.State(trigger_set)
 
         self._led_ctl_path = led_ctl_path
 
@@ -230,9 +223,7 @@ class factory_Leds(test.test):
 
         self.goto_next_pattern()
 
-        self._ft_state.run_test_widget(
-            test_widget=test_widget,
-            test_widget_size=test_widget_size,
+        ful.run_test_widget(self.job, test_widget,
             window_registration_callback=self.register_callbacks,
             cleanup_callback=self.quit)
 

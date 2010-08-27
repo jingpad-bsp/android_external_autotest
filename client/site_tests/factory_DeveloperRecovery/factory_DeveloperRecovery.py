@@ -310,6 +310,7 @@ class DevRecGpio:
     def gpio_state(self, name):
         return self.table[name][1]
 
+
 class factory_DeveloperRecovery(test.test):
     version = 1
     preserve_srcdir = True
@@ -322,22 +323,9 @@ class factory_DeveloperRecovery(test.test):
         utils.system("/usr/sbin/gpio_setup")
         self._gpio_root=gpio_root
 
-    def key_release_callback(self, widget, event):
-        self._ft_state.exit_on_trigger(event)
-        return True
-
-    def register_callbacks(self, window):
-        window.connect('key-release-event', self.key_release_callback)
-        window.add_events(gtk.gdk.KEY_RELEASE_MASK)
-
-    def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
-                 layout=None):
+    def run_once(self, layout=None):
 
         factory.log('%s run_once' % self.__class__)
-
-        self._ft_state = ful.State(trigger_set)
 
         os.chdir(self.srcdir)
         dr_image = cairo.ImageSurface.create_from_png('%s.png' % layout)
@@ -353,9 +341,6 @@ class factory_DeveloperRecovery(test.test):
 
         test.start_countdown(test.timeout)
 
-        self._ft_state.run_test_widget(
-            test_widget=drawing_area,
-            test_widget_size=test_widget_size,
-            window_registration_callback=self.register_callbacks)
+        ful.run_test_widget(self.job, drawing_area)
 
         factory.log('%s run_once finished' % self.__class__)

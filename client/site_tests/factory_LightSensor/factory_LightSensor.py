@@ -108,8 +108,6 @@ class factory_LightSensor(test.test):
     def key_release_callback(self, widget, event):
         if event.keyval == ord('Q'):
             gtk.main_quit()
-        else:
-            self._ft_state.exit_on_trigger(event)
         return True
 
     def timer_event(self, countdown_label):
@@ -172,28 +170,23 @@ class factory_LightSensor(test.test):
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
     def run_once(self,
-                 test_widget_size=None,
-                 trigger_set=None,
                  lux_min=None,
                  lux_max=None,
-                 timeout=60,
-                 ):
+                 timeout=60):
+
         factory.log('%s run_once' % self.__class__)
 
-        self._test_widget_size=test_widget_size
         self._als = tsl2563()
         self._deadline = time.time() + timeout
-
-        self._ft_state = ful.State(trigger_set=trigger_set)
 
         self._subtest_queue = [x for x in reversed(_SUBTEST_LIST)]
         self._status_map = dict((n, ful.ACTIVE) for n in _SUBTEST_LIST)
 
         vbox = gtk.VBox()
-        prompt_label = ful.make_label('Cover Sensor with Finger\n' + \
-                                          '请遮蔽光传感器\n\n' + \
-                                          'Shine flashlight at Sensor\n' + \
-                                          '请以灯光照射光传感器\n\n', fg=ful.WHITE)
+        prompt_label = ful.make_label(
+            'Cover Sensor with Finger\n' + '请遮蔽光传感器\n\n' +
+            'Shine flashlight at Sensor\n' + '请以灯光照射光传感器\n\n',
+            fg=ful.WHITE)
         vbox.pack_start(prompt_label, False, False)
 
         for name in _SUBTEST_LIST:
@@ -211,9 +204,7 @@ class factory_LightSensor(test.test):
         gobject.timeout_add(200, self.timer_event, countdown_label)
 
         self._test_widget = vbox
-        self._ft_state.run_test_widget(
-            test_widget=vbox,
-            test_widget_size=test_widget_size,
+        ful.run_test_widget(self.job, vbox,
             window_registration_callback=self.register_callbacks)
 
         failed_set = set(name for name, status in self._status_map.items()
