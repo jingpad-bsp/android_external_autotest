@@ -1,0 +1,34 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Smoke"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "client"
+
+DOC = """
+This test suite runs smoke tests on each build from the buildbots. The tests
+listed here must be capable of running in a virtual machine.
+"""
+
+job.run_test('build_RootFilesystemSize')
+job.run_test('desktopui_ChromeFirstRender')
+job.run_test('desktopui_FlashSanityCheck')
+job.run_test('desktopui_KillRestart', binary='^chrome$', tag='chrome')
+job.run_test('desktopui_KillRestart', binary='^session_manager$', tag='session')
+job.run_test('logging_CrashSender')
+job.run_test('login_Backdoor', creds='$backdoor') 
+job.run_test('login_BadAuthentication')
+job.run_test('login_CryptohomeIncognitoMounted', creds='$backdoor')
+job.run_test('login_CryptohomeMounted')
+job.run_test('login_LoginSuccess')
+job.run_test('login_RemoteLogin')
+job.run_test('platform_FilePerms')
+job.run_test('platform_OSLimits') 
+
+###  Local Variables:
+###  mode: python
+###  End:

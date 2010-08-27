@@ -296,6 +296,7 @@ def refresh_login_screen(timeout=_DEFAULT_TIMEOUT):
     except OSError, e:
       if e.errno != errno.ENOENT:
         raise e
+    wait_for_browser()
     nuke_process_by_name(chromeos_constants.BROWSER, with_prejudice=True)
     wait_for_browser()
     wait_for_login_prompt()
