@@ -240,14 +240,14 @@ class UITest(bin_test.test):
         """Overridden from test.cleanup() to log out when the test is complete.
         """
         try:
-            shutil.copy(chromeos_constants.USER_DATA_DIR+'/chrome_log',
+            shutil.copy(chromeos_constants.CHROME_LOG_DIR+'/chrome',
                         self.resultsdir+'/chrome_prelogin_log')
         except (IOError, OSError) as error:
             logging.error(error)
 
         if site_login.logged_in():
             try:
-                shutil.copy(chromeos_constants.USER_DATA_DIR+'/user/chrome_log',
+                shutil.copy(chromeos_constants.CRYPTOHOME_MOUNT_PT+'/chrome',
                             self.resultsdir+'/chrome_postlogin_log')
             except (IOError, OSError) as error:
                 logging.error(error)

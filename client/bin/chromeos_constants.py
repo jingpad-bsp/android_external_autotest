@@ -4,6 +4,7 @@
 
 # The names of expected mount-points, devices, magic files, etc on chrome os.
 
+CHROME_LOG_DIR = '/var/log/chrome'
 USER_DATA_DIR = '/home/chronos'
 
 LOGIN_PROFILE = USER_DATA_DIR+'/Default'
