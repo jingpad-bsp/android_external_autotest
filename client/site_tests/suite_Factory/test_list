@@ -87,7 +87,6 @@ TEST_LIST = [
                  dargs={'approved_dbs':'qualified_components*',
                         'ignored_cids':[
                             'hash_ro_firmware',
-                            'part_id_bios',
                             'part_id_hwqual',
                             'version_rw_firmware']}),
 

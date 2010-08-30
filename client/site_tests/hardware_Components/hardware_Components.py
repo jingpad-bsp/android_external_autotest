@@ -22,7 +22,6 @@ class hardware_Components(test.test):
         'part_id_hwqual',
         'part_id_storage',
         'part_id_wireless',
-        'vendor_id_bios',
         'vendor_id_touchpad',
         'version_rw_firmware',
     ]
@@ -206,13 +205,6 @@ class hardware_Components(test.test):
         part_id = utils.read_one_line('/sys/class/net/wlan0/device/device')
         vendor_id = utils.read_one_line('/sys/class/net/wlan0/device/vendor')
         return "%s:%s" % (vendor_id.replace('0x',''), part_id.replace('0x',''))
-
-
-    def get_vendor_id_bios(self):
-        cmd = ('dmidecode | grep -A 1 "BIOS Information" | grep Vendor: '
-               '| sed "s/.*Vendor: //"')
-        part_id = utils.system_output(cmd, ignore_status=True).strip()
-        return part_id
 
 
     def get_vendor_id_touchpad(self):

@@ -24,7 +24,6 @@
     'part_id_vga': ['*'],
     'part_id_webcam': ['*'],
     'part_id_wireless': ['*'],
-    'vendor_id_bios': ['*'],
     'vendor_id_touchpad': ['*'],
     'version_rw_firmware': ['*'],
 }
