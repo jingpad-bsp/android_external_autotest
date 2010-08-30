@@ -147,20 +147,19 @@ class factory_ExtDisplay(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-    def locate_asample(self, sample):
-        if not sample:
+    def locate_audio_sample(self, path):
+        if not path:
             raise error.TestFail('ERROR: Must provide an audio sample')
-        if not os.path.isabs(sample):
-            # assume its in deps
-            sample = self.autodir + '/' + sample
-        if not os.path.exists(sample):
-            raise error.TestFail('ERROR: Unable to find audio sample %s' \
-                                     % sample)
-        self._sample=sample
+        if not os.path.isabs(path):
+             # Assume the relative path is based in autotest directory.
+            path = os.path.join(self.autodir, path)
+        if not os.path.exists(path):
+            raise error.TestFail('ERROR: Unable to find audio sample %s' % path)
+        self._sample = path
 
     def run_once(self,
                  has_audio=False,
-                 sample=None):
+                 audio_sample_path=None):
 
         factory.log('%s run_once' % self.__class__)
 
@@ -170,7 +169,7 @@ class factory_ExtDisplay(test.test):
         self._started = False
 
         if has_audio:
-            self.locate_asample(sample)
+            self.locate_audio_sample(audio_sample_path)
             _SUBTEST_LIST.append(_OPTIONAL)
 
         self._subtest_queue = [x for x in reversed(_SUBTEST_LIST)]

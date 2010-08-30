@@ -172,8 +172,8 @@ class factory_Audio(test.test):
         if path is None:
             raise error.TestFail('ERROR: Must provide an audio sample')
         if not os.path.isabs(path):
-            # Assume rel-path samples are in deps/factory.
-            path = self.job.autodir + '/deps/factory/' + path
+            # Assume the relative path is based in autotest directory.
+            path = os.path.join(self.job.autodir, path)
         if not os.path.exists(path):
             raise error.TestFail('ERROR: Unable to find audio sample %s' % path)
         return path
