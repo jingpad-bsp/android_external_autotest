@@ -42,7 +42,7 @@
     # key index 3, 104-bit WEP
     [ "config",         { "deftxkey":"3" } ],
     [ "connect",        { "security":"wep",
-                          "psk":"3:109fedcba9876544321fedcba98" } ],
+                          "psk":"3:109fedcba987654321fedcba98" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "disconnect" ],
 
