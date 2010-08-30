@@ -38,7 +38,7 @@ class hardware_StorageFio(test.test):
             '3': '5',
             '5': '3',
         }
-        rootdev = utils.system_output('rootdev')
+        rootdev = utils.system_output('rootdev -s')
         spare_root = rootdev[:-1] + spare_root_map[rootdev[-1]]
         self.__filename = spare_root
 

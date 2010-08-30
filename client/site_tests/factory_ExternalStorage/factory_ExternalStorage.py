@@ -39,8 +39,8 @@ _ERR_DEV_NOT_REMOVE_FMT_STR = \
         lambda t: 'Please remove %s.\n請移除 %s\n' % (t, t)
 
 def find_root_dev():
-    rootdev = utils.system_output('rootdev')
-    return os.path.basename(rootdev[:-1])
+    rootdev = utils.system_output('rootdev -s -d')
+    return os.path.basename(rootdev)
 
 
 def find_all_storage_dev():
