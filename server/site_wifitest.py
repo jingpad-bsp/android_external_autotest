@@ -265,12 +265,12 @@ class WiFiTest(object):
 
     def client_powersave_on(self, params):
         """ Enable power save operation """
-        self.client.run("iwconfig %s power on" % self.client_wlanif)
+        self.client.run("iw dev %s set power_save on" % self.client_wlanif)
 
 
     def client_powersave_off(self, params):
         """ Disable power save operation """
-        self.client.run("iwconfig %s power off" % self.client_wlanif)
+        self.client.run("iw dev %s set power_save off" % self.client_wlanif)
 
 
     def __client_check(self, param, want):
