@@ -8,6 +8,7 @@ import re
 import socket
 import urlparse
 
+from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.common_lib import error
 
 STATEFULDEV_UPDATER = '/usr/local/bin/stateful_update'
@@ -42,8 +43,12 @@ class ChromiumOSUpdater():
 
 
     def reset_update_engine(self):
-        self._run('initctl stop update-engine')
+        logging.info('Resetting update-engine.')
         self._run('rm -f /tmp/update_engine_autoupdate_completed')
+        try:
+            self._run('initctl stop update-engine')
+        except error.AutoservRunError, e:
+            logging.warn('Stopping update-engine service failed. Already dead?')
         self._run('initctl start update-engine')
         # May need to wait if service becomes slow to restart.
         if self.check_update_status() != UPDATER_IDLE:
@@ -55,8 +60,17 @@ class ChromiumOSUpdater():
         return self.host.run(cmd, *args, **kwargs)
 
 
+    def rootdev(self):
+        return self._run('rootdev').stdout.strip()
+
+
+    def revert_boot_partition(self):
+        part = self.rootdev()
+        logging.warn('Reverting update; Boot partition will be %s', part)
+        return self._run('/postinst %s 2>&1' % part)
+
+
     def run_update(self):
-        # TODO(seano): Retrieve update_engine.log from target host.
         if not self.update_url:
             return False
 
@@ -71,12 +85,8 @@ class ChromiumOSUpdater():
 
         logging.info('Installing from %s to: %s' % (self.update_url,
                                                     self.host.hostname))
-        # If we find the system an updated-but-not-rebooted state,
-        # that's probably bad and we shouldn't trust that the previous
-        # update left the machine in a good state. Reset update_engine's
-        # state & ensure that update_engine is idle.
-        if self.check_update_status() != UPDATER_IDLE:
-            self.reset_update_engine()
+        # Reset update_engine's state & check that update_engine is idle.
+        self.reset_update_engine()
 
         # Run autoupdate command. This tells the autoupdate process on
         # the host to look for an update at a specific URL and version
@@ -84,7 +94,6 @@ class ChromiumOSUpdater():
         autoupdate_cmd = ' '.join([UPDATER_BIN,
                                    '--update',
                                    '--omaha_url=%s' % self.update_url,
-                                   '--app_version ForcedUpdate',
                                    ' 2>&1'])
         logging.info(autoupdate_cmd)
         try:
@@ -98,7 +107,6 @@ class ChromiumOSUpdater():
         # Check that the installer completed as expected.
         status = self.check_update_status()
         if status != UPDATER_NEED_REBOOT:
-            # TODO(seano): should we aggressively reset update-engine here?
             raise ChromiumOSError('update-engine error on %s: '
                                   '"%s" from update-engine' %
                                   (self.host.hostname, status))
@@ -117,17 +125,18 @@ class ChromiumOSUpdater():
             # TODO(seano): If statefuldev update failed, we must mark
             # the update as failed, and keep the same rootfs after
             # reboot.
-            raise ChromiumOSError('stateful_update failed on %s' %
+            self.revert_boot_partition()
+            raise ChromiumOSError('stateful_update failed on %s.' %
                                   self.host.hostname)
         return True
 
 
     def check_version(self):
         booted_version = self.get_build_id()
-        if booted_version != self.update_version:
+        if not booted_version in self.update_version:
             logging.error('Expected Chromium OS version: %s.'
                           'Found Chromium OS %s',
-                          (self.update_version, booted_version))
+                          self.update_version, booted_version)
             raise ChromiumOSError('Updater failed on host %s' %
                                   self.host.hostname)
         else:
@@ -147,8 +156,6 @@ class ChromiumOSUpdater():
             raise ChromiumOSError('Unable to get build ID from %s. Found "%s"',
                                   self.host.hostname, version)
         version, build_id, builder = version_match.groups()
-        # Continuous builds have an extra "builder number" on the end.
-        # Report it if this looks like one.
         build_match = re.match(r'.*: (\d+)', builder)
         if build_match:
             builder_num = '-b%s' % build_match.group(1)

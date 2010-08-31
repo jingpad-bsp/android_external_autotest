@@ -43,3 +43,5 @@ TOKEN_AUTH_URL = '/accounts/TokenAuth'
 
 LOGIN_SERVICE = 'gaia'
 LOGIN_ERROR = 'Error=BadAuthentication'
+
+UPDATE_ENGINE_LOG = '/var/log/update_engine.log'

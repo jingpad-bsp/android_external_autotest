@@ -2,6 +2,7 @@ import os, shutil, re
 
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_sysinfo
+from autotest_lib.client.bin import chromeos_constants
 
 
 logfile = base_sysinfo.logfile
@@ -15,6 +16,7 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         # add in some extra command logging
         self.test_loggables.add(command(
             "ls -l /boot", "boot_file_list"))
+        self.test_loggables.add(logfile(chromeos_constants.UPDATE_ENGINE_LOG))
 
 
     def log_test_keyvals(self, test_sysinfodir):
