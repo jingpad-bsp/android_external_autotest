@@ -22,16 +22,14 @@ class hardware_SsdDetection(test.test):
         # TODO(ericli): need to find a general solution to install dep packages
         # when tests are pre-compiled, so setup() is not called from client any
         # more.
+
         dep = 'hdparm'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
 
-        cmdline = file('/proc/cmdline').read()
-        match = re.search(r'root=([^ ]+)', cmdline)
-        if not match:
-            raise error.TestError('Unable to find the root partition')
-        device = match.group(1)[:-1]
-
+        # Use rootdev to find the underlying block device even if the
+        # system booted to /dev/dm-0.
+        device = utils.system_output('rootdev -s -d')
         path = self.autodir + '/deps/hdparm/sbin/'
         hdparm = utils.run(path + 'hdparm -I %s' % device)
 
@@ -46,18 +44,14 @@ class hardware_SsdDetection(test.test):
             raise error.TestFail(
                 'Rotation Rate not reported from the device, '
                 'unable to ensure it is a SSD')
-        
 
         # Check if SSD is > 8GB in size
         match = re.search("device size with M = 1000\*1000: (.+) MBytes",
                           hdparm.stdout, re.MULTILINE)
-        
+
         if match and match.group(1):
             size = int(match.group(1))
             self.write_perf_keyval({"mb_ssd_device_size" : size})
-        else: 
+        else:
             raise error.TestFail(
                 'Device size info missing from the device')
-
-            
-

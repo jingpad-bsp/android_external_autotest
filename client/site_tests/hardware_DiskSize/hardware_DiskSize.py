@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import re
 
 from autotest_lib.client.bin import test, utils
@@ -12,11 +13,8 @@ class hardware_DiskSize(test.test):
     version = 1
 
     def run_once(self):
-        cmdline = file('/proc/cmdline').read()
-        match = re.search(r'root=/dev/([^ ]+)', cmdline)
-        if not match:
-            raise error.TestError('Unable to find the root partition')
-        device = match.group(1)[:-1]
+        devnode = utils.system_output('rootdev -s -d -i')
+        device = os.path.basename(devnode)
 
         for line in file('/proc/partitions'):
             try:
