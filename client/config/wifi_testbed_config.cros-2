@@ -7,11 +7,11 @@
 {
   # client/netbook running Chrome OS
   "client"      : {
-    "addr"      : "172.22.18.36"
+    "addr"      : "172.22.18.50"
   },
   # machine on router net for ping/netperf
   "server"      : {
-#   "addr"      : "172.22.18.66",       # NB: not reachable
+    "addr"      : "172.22.18.66",       # NB: not reachable
     "wifi_addr" : "192.168.2.254"
   },
   # configurable wifi/router that can reached by ssh

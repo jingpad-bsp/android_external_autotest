@@ -7,11 +7,11 @@
 {
   # client/netbook running Chrome OS
   "client"      : {
-    "addr"      : "172.22.18.38"	# unassigned
+    "addr"      : "172.22.18.49"	# rfnb-cros-1
   },
   # machine on router net for ping/netperf
   "server"      : {
-#   "addr"      : "172.22.18.65",       # NB: not reachable
+    "addr"      : "172.22.18.65",
     "wifi_addr" : "192.168.2.254"
   },
   # configurable wifi/router that can reached by ssh

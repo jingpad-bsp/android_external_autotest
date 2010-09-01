@@ -119,7 +119,8 @@ class WiFiTest(object):
             self.server = hosts.create_host(server['addr'])
             self.server_at = autotest.Autotest(self.server)
             # if not specified assume the same as the control address
-            self.server_wifi_ip = getattr(server, 'wifi_addr', self.server.ip)
+            self.server_wifi_ip = server.get('wifi_addr', self.server.ip)
+            self.__server_discover_commands(server)
         else:
             self.server = None;
             # NB: wifi address must be set if not reachable from control
@@ -130,9 +131,9 @@ class WiFiTest(object):
 
         # potential bg thread for client network monitoring
         self.client_netdump_thread = None
-        self.client_cmd_netdump = client.get('cmd_netdump', 'tshark')
-        self.client_cmd_ifconfig = client.get('cmd_ifconfig', 'ifconfig')
-        self.client_cmd_iw = client.get('cmd_iw', 'iw')
+        self.__client_discover_commands(client)
+        self.netperf_iter = 0
+        self.firewall_rules = []
 
 
     def cleanup(self, params):
@@ -140,6 +141,30 @@ class WiFiTest(object):
         self.disconnect({})
         self.wifi.destroy({})
         self.client_netdump_stop({})
+        self.firewall_cleanup({})
+
+
+    def __client_discover_commands(self, client):
+        self.client_cmd_netdump = client.get('cmd_netdump', 'tshark')
+        self.client_cmd_ifconfig = client.get('cmd_ifconfig', 'ifconfig')
+        self.client_cmd_iw = client.get('cmd_iw', 'iw')
+        self.client_cmd_netperf = client.get('cmd_netperf_client',
+                                             '/usr/local/bin/netperf')
+        self.client_cmd_netserv = client.get('cmd_netperf_server',
+                                             '/usr/local/sbin/netserver')
+        self.client_cmd_iptables = '/sbin/iptables'
+
+
+    def __server_discover_commands(self, server):
+        self.server_cmd_netperf = server.get('cmd_netperf_client',
+                                             '/usr/bin/netperf')
+        self.server_cmd_netserv = server.get('cmd_netperf_server',
+                                             '/usr/bin/netserver')
+        # /usr/bin/ping is preferred, as it is likely to be iputils
+        if self.__is_installed(self.server, '/usr/bin/ping'):
+            self.server_ping_cmd = '/usr/bin/ping'
+        else:
+            self.server_ping_cmd = 'ping'
 
 
     def __get_defssid(self, ipaddr):
@@ -384,7 +409,8 @@ class WiFiTest(object):
             stats['xmit'] = m.group(1)
             stats['recv'] = m.group(2)
             stats['loss'] = m.group(4)
-        m = re.search('(round-trip|rtt) min[^=]*= ([0-9.]*)/([0-9.]*)/([0-9.]*)', str)
+        m = re.search('(round-trip|rtt) min[^=]*= '
+                      '([0-9.]*)/([0-9.]*)/([0-9.]*)', str)
         if m is not None:
             stats['min'] = m.group(2)
             stats['avg'] = m.group(3)
@@ -398,6 +424,17 @@ class WiFiTest(object):
              stats['min'], stats['avg'], stats['max'])
 
 
+    def __ping_prefix(self, params):
+        if 'name' in params:
+            return params['name']
+
+        args = []
+        for k, v in params.items():
+            if k != 'count':
+                args.append('%s_%s' % (k, v))
+        return '/'.join(args)
+
+
     def client_ping(self, params):
         """ Ping the server from the client """
         ping_ip = params.get('ping_ip', self.server_wifi_ip)
@@ -407,8 +444,9 @@ class WiFiTest(object):
             (self.__ping_args(params), ping_ip), timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
+        prefix = 'client_ping_%s_' % self.__ping_prefix(params)
         for k,v in stats.iteritems():
-            self.keyvals['client_ping_' + k] = v
+            self.keyvals[prefix + k] = v
         self.__print_pingstats("client_ping ", stats)
 
 
@@ -435,10 +473,12 @@ class WiFiTest(object):
         ping_ip = params.get('ping_ip', self.client_wifi_ip)
         count = params.get('count', self.defpingcount)
         # set timeout for 3s / ping packet
-        result = self.server.run("ping %s %s" % \
-            (self.__ping_args(params), ping_ip), timeout=3*int(count))
+        result = self.server.run("%s %s %s" % \
+            (self.server_ping_cmd, self.__ping_args(params),
+             ping_ip), timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
+        prefix = 'server_ping_' + self.__ping_prefix(params)
         for k,v in stats.iteritems():
             self.keyvals['server_ping_' + k] = v
         self.__print_pingstats("server_ping ", stats)
@@ -520,59 +560,144 @@ class WiFiTest(object):
         self.__run_iperf(self.server_wifi_ip, self.client_wifi_ip, params)
 
 
-    def __run_netperf(self, client_ip, server_ip, params):
-        template = "job.run_test('"
-        if self.server is None:
-            template += "network_netperf2"
+    def __is_installed(self, host, filename):
+        result = host.run("ls %s" % filename, ignore_status=True)
+        m = re.search(filename, result.stdout)
+        return m is not None
+
+
+    def __firewall_open(self, proto, src):
+        rule = 'INPUT -s %s/32 -p %s -m %s -j ACCEPT' % (src, proto, proto)
+        result = self.client.run('%s -S INPUT' % self.client_cmd_iptables)
+        if '-A %s ' % rule in result.stdout.splitlines():
+            return None
+        self.client.run('%s -A %s' % (self.client_cmd_iptables, rule))
+        self.firewall_rules.append(rule)
+        return rule
+
+
+    def __firewall_close(self, rule):
+        if rule in self.firewall_rules:
+            self.client.run('%s -D %s' % (self.client_cmd_iptables, rule))
+            self.firewall_rules.remove(rule)
+
+    def firewall_cleanup(self, params):
+        for rule in self.firewall_rules:
+            self.__firewall_close(rule)
+
+    def __run_netperf(self, mode, params):
+        np_rules = []
+        if mode == 'server':
+            server = { 'host': self.client, 'cmd': self.client_cmd_netserv }
+            client = { 'host': self.server, 'cmd': self.server_cmd_netperf,
+                       'target': self.client_wifi_ip }
+
+            # Open up access from the server into our DUT
+            np_rules.append(self.__firewall_open('tcp', self.server_wifi_ip))
+            np_rules.append(self.__firewall_open('udp', self.server_wifi_ip))
         else:
-            template += "netperf2"
-        template += "', server_ip='%s', client_ip='%s', role='%s'"
-        if 'test' in params:
-            template += ", test='%s'" % params['test']
-        if 'bidir' in params:
-            template += ", bidi=True"
-        if 'time' in params:
-            template += ", test_time=%s" % params['time']
-        template += ", wait_time=%s" % params.get('wait_time', self.defwaittime)
+            server = { 'host': self.server, 'cmd': self.server_cmd_netserv }
+            client = { 'host': self.client, 'cmd': self.client_cmd_netperf,
+                       'target': self.server_wifi_ip }
 
-        # add a tag to distinguish runs when multiple tests are run
-        if 'tag' in params:
-            template += ", tag='%s'" % params['tag']
-        elif 'test' in params:
-            template += ", tag='%s'" % params['test']
+        # If appropriate apps are not installed, raise an error
+        if not self.__is_installed(client['host'], client['cmd']) or \
+                not self.__is_installed(server['host'], server['cmd']):
+            raise error.TestFail('Unable to find netperf on client or server')
 
-        template += ")"
+        # There are legitimate ways this command can fail, eg. already running
+        server['host'].run(server['cmd'], ignore_status=True)
 
-        client_control_file = template % (server_ip, client_ip, 'client')
-        client_command = subcommand.subcommand(self.client_at.run,
-               [client_control_file, self.client.hostname])
-        cmds = [client_command]
+        # Assemble arguments for client command
+        test = params.get('test', 'TCP_STREAM')
+        netperf_args = '-H %s -t %s -l %d' % (client['target'], test,
+                                              params.get('test_time', 15))
 
-        if self.server is None:
-            logging.info("%s: netperf %s => (%s)",
-                self.name, client_ip, server_ip)
+        # Run netperf command and receive command results
+        t0 = time.time()
+        results = client['host'].run("%s %s" % (client['cmd'], netperf_args))
+        actual_time = time.time() - t0
+        logging.info('actual_time: %f', actual_time)
+
+        # Close up whatever firewall rules we created for netperf
+        for rule in np_rules:
+            self.__firewall_close(rule)
+
+        # Results are prefixed with the iteration or a caller-defined name
+        prefix = 'Netperf_%s_' % params.get('name', str(self.netperf_iter))
+        self.netperf_iter += 1
+
+        self.keyvals[prefix + 'test'] = test
+        self.keyvals[prefix + 'mode'] = mode
+        self.keyvals[prefix + 'actual_time'] = actual_time
+
+        logging.info(results)
+
+        lines = results.stdout.splitlines()
+
+        # Each test type has a different form of output
+        if test in ['TCP_STREAM', 'TCP_MAERTS', 'TCP_SENDFILE']:
+            """Parses the following (works for both TCP_STREAM, TCP_MAERTS and
+            TCP_SENDFILE) and returns a singleton containing throughput.
+
+            TCP STREAM TEST from 0.0.0.0 (0.0.0.0) port 0 AF_INET to \
+            foo.bar.com (10.10.10.3) port 0 AF_INET
+            Recv   Send    Send
+            Socket Socket  Message  Elapsed
+            Size   Size    Size     Time     Throughput
+            bytes  bytes   bytes    secs.    10^6bits/sec
+
+            87380  16384  16384    2.00      941.28
+            """
+            self.keyvals[prefix + 'Throughput'] = float(lines[6].split()[4])
+        elif test == 'UDP_STREAM':
+            """Parses the following and returns a touple containing throughput
+            and the number of errors.
+
+            UDP UNIDIRECTIONAL SEND TEST from 0.0.0.0 (0.0.0.0) port 0 AF_INET \
+            to foo.bar.com (10.10.10.3) port 0 AF_INET
+            Socket  Message  Elapsed      Messages
+            Size    Size     Time         Okay Errors   Throughput
+            bytes   bytes    secs            #      #   10^6bits/sec
+
+            129024   65507   2.00         3673      0     961.87
+            131072           2.00         3673            961.87
+            """
+            udp_tokens = lines[5].split()
+            self.keyvals[prefix + 'Throughput'] = float(udp_tokens[5])
+            self.keyvals[prefix + 'Errors'] = float(udp_tokens[4])
+        elif test in ['TCP_RR', 'TCP_CRR', 'UDP_RR']:
+            """Parses the following which works for both rr (TCP and UDP)
+            and crr tests and returns a singleton containing transfer rate.
+
+            TCP REQUEST/RESPONSE TEST from 0.0.0.0 (0.0.0.0) port 0 AF_INET \
+            to foo.bar.com (10.10.10.3) port 0 AF_INET
+            Local /Remote
+            Socket Size   Request  Resp.   Elapsed  Trans.
+            Send   Recv   Size     Size    Time     Rate
+            bytes  Bytes  bytes    bytes   secs.    per sec
+
+            16384  87380  1        1       2.00     14118.53
+            16384  87380
+            """
+            self.kevals[prefix + 'Trasnfer_Rate'] = float(lines[6].split()[5])
         else:
-            server_control_file = template % (server_ip, client_ip, 'server')
-            server_command = subcommand.subcommand(self.server_at.run,
-                   [server_control_file, self.server.hostname])
-            cmds.append(server_command)
+            raise error.TestError('Unhandled test')
 
-            logging.info("%s: netperf %s => %s",
-                self.name, client_ip, server_ip)
-
-        subcommand.parallel(cmds)
+        return True
 
 
     def client_netperf(self, params):
         """ Run netperf on the client against the server """
-        self.__run_netperf(self.client_wifi_ip, self.server_wifi_ip, params)
+        self.__run_netperf('client', params)
+
 
     def server_netperf(self, params):
         """ Run netperf on the server against the client """
         if self.server is None:
             self.__unreachable("server_netperf")
             return
-        self.__run_netperf(self.server_wifi_ip, self.client_wifi_ip, params)
+        self.__run_netperf('server', params)
 
 
     def __create_netdump_dev(self, devname='mon0'):
@@ -631,6 +756,7 @@ def __byfile(a, b):
         return 1
     else:
         return 0
+
 
 def read_tests(dir, *args):
     """
