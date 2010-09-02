@@ -113,6 +113,23 @@ class platform_BootPerf(test.test):
         for resultname, filename in uptime_files:
             results[resultname] = self.__parse_uptime(filename)
 
+        # Not all 'uptime-network-*-ready' files necessarily exist;
+        # probably there's only one.  We go through a list of
+        # possibilities and pick the first one we find.  We're not
+        # looking for 3G here, so we're not guaranteed to find any
+        # file.
+        network_time_files = [
+            '/tmp/uptime-network-wifi-ready',
+            '/tmp/uptime-network-ethernet-ready' ]
+
+        for filename in network_time_files:
+            try:
+                network_time = self.__parse_uptime(filename)
+                results['seconds_kernel_to_network'] = network_time
+                break
+            except error.TestFail:
+                pass
+
         diskstat_files = [
             ('sectors_read_kernel_to_startup', '/tmp/disk-pre-startup'),
             ('sectors_read_kernel_to_startup_done', '/tmp/disk-post-startup'),
