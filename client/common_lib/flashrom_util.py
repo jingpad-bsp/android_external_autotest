@@ -325,11 +325,16 @@ class flashrom_util(object):
 
     def get_size(self):
         """ Gets size of current flash ROM """
-        # TODO(hungte) Newer version of tool (flashrom) may support --get-size
-        # command which is faster in future. Right now we use back-compatible
-        # method: read whole and then get length.
-        image = self.read_whole()
-        return len(image)
+        cmd = '%s"%s" --get-size' % (self.cmd_prefix, self.tool_path)
+        if self.verbose:
+            print 'flashrom_util.get_size(): ', cmd
+        output = utils.system_output(cmd, ignore_status=True)
+        last_line = output.rpartition('\n')[2]
+        try:
+            size = long(last_line)
+        except ValueError:
+            raise TestError('INTERNAL ERROR: unable to get the flash size.')
+        return size
 
     def detect_target_map(self):
         """
@@ -757,19 +762,23 @@ class mock_utils(object):
         arch = re.sub(r"i\d86", r"i386", arch, 1)
         return arch
 
-    def system(self, cmd, ignore_status=False):
+    def run_command(self, cmd, ignore_status=False):
         p = subprocess.Popen(cmd, shell=True,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         p.wait()
-        if p.returncode:
-            err_msg = p.stderr.read()
-            print p.stdout.read()
-            print err_msg
-            if not ignore_status:
-                raise TestError("failed to execute: %s\nError messages: %s" % (
-                    cmd, err_msg()))
-        return p.returncode
+        if p.returncode and not ignore_status:
+            raise TestError("failed to execute: %s\nError messages: %s" % (
+                cmd, p.stderr.read()))
+        return (p.returncode, p.stdout.read())
+
+    def system(self, cmd, ignore_status=False):
+        (returncode, output) = self.run_command(cmd, ignore_status)
+        return returncode
+
+    def system_output(self, cmd, ignore_status=False):
+        (returncode, output) = self.run_command(cmd, ignore_status)
+        return output
 
 
 # import autotest or mock utilities

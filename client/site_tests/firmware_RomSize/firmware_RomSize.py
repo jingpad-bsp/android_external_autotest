@@ -7,7 +7,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
 
 class firmware_RomSize(test.test):
-    version = 2
+    version = 3
 
     def run_once(self):
         flashrom = flashrom_util.flashrom_util()
@@ -17,6 +17,9 @@ class firmware_RomSize(test.test):
 
         flashrom.select_ec_flashrom()
         ec_size = flashrom.get_size() / 1024
+
+        # Always restore system flashrom selection to BIOS.
+        flashrom.select_bios_flashrom()
 
         self.write_perf_keyval({"kb_system_rom_size": bios_size,
                                 "kb_ec_rom_size": ec_size})
