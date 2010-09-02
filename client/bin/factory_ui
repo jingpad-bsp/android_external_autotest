@@ -332,6 +332,9 @@ def main(test_list, status_file_path, control_pid):
 
     console = Console(console_box.get_allocation())
 
+    print 'Factory UI ready.'
+    sys.stdout.flush()
+
     factory.log('factory_ui setup done, starting gtk.main()...')
 
     gtk.main()

@@ -10,7 +10,6 @@
 # allow its use by the autotest control process.
 
 
-import gobject
 import signal
 import subprocess
 import sys
@@ -325,11 +324,6 @@ class ControlState:
         self.activated_kbd_shortcut_test = None
         signal.signal(signal.SIGUSR1, self.kill_current_test_callback)
 
-        log('waiting for ui to come up...')
-        while self._log_data.get('test_widget_size') is None:
-            time.sleep(1)
-            self._log_data.read_new_data()
-
     def kill_current_test_callback(self, signum, frame):
         self._log_data.read_new_data()
         active_test_data = self._log_data.get('active_test_data')
@@ -338,6 +332,8 @@ class ControlState:
             self._nuke_fn(*active_test_data)
 
     def run_test(self, test):
+        log_shared_data('activated_kbd_shortcut', None)
+
         self._status_map.incr_count(test)
         self._log_data.read_new_data()
         test_tag = self._status_map.lookup_tag(test)

@@ -69,6 +69,15 @@ job.bootloader.set_default = lambda x: None
 job.bootloader.boot_once = lambda x: None
 
 
+def start_ui():
+  ui_proc_args = [FACTORY_UI_PATH, TEST_LIST_PATH,
+                  STATUS_FILE_PATH, str(os.getpid())]
+  factory.log('starting ui -- %s' % repr(ui_proc_args))
+  sp = subprocess.Popen(ui_proc_args, stdout=subprocess.PIPE)
+  factory.log('waiting for ui to come up...')
+  factory.log('got message from UI : %s' % repr(sp.stdout.readline().strip()))
+
+
 def step_reboot_seq(tag_prefix, total_iterations, i=0):
     if i < total_iterations:
         job.next_step_prepend([step_reboot_seq, tag_prefix,
@@ -82,10 +91,7 @@ def step_reboot_seq(tag_prefix, total_iterations, i=0):
 def step_init(intentional_reboot_subtest_tag_prefix=None):
     job.next_step([step_init])
 
-    ui_proc_args = [FACTORY_UI_PATH, TEST_LIST_PATH,
-                    STATUS_FILE_PATH, str(os.getpid())]
-    factory.log('starting ui -- %s' % repr(ui_proc_args))
-    ui_proc = subprocess.Popen(ui_proc_args)
+    start_ui()
 
     status_map = factory.StatusMap(TEST_LIST, STATUS_FILE_PATH)
     control_state = factory.ControlState(
