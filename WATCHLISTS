@@ -14,7 +14,7 @@
   'WATCHLISTS': {
     'autotest': ['ericli@chromium.org',
                  'petkov+cc@chromium.org',
-                 'seano@chromium.org',
+                 'seano+cc@chromium.org',
                  'sosa+cc@chromium.org',
                  ],
     'window_manager_tests': ['derat@chromium.org'],
