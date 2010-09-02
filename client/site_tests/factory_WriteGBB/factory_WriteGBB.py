@@ -4,6 +4,7 @@
 
 import glob, os
 
+from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
@@ -12,8 +13,15 @@ from autotest_lib.client.common_lib import flashrom_util
 class factory_WriteGBB(test.test):
     version = 1
 
-    def run_once(self, gbb_file):
+    def run_once(self, gbb_file='', shared_dict={}):
         os.chdir(self.bindir)
+
+        # If found the HwQual ID in shared_dict, use the GBB with the same ID.
+        if 'part_id_hwqual' in shared_dict:
+            id = shared_dict['part_id_hwqual']
+            id = id.rpartition(' ')[0].replace(' ', '_')
+            gbb_file = 'gbb*%s' % id
+
         gbb_files = glob.glob(gbb_file)
         if len(gbb_files) > 1:
             raise error.TestError('More than one GBB file found')

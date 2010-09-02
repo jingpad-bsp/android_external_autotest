@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import glob, hashlib, logging, os, pprint, re, sys
+from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
@@ -300,10 +301,17 @@ class hardware_Components(test.test):
         self._pp = pprint.PrettyPrinter()
 
 
-    def run_once(self, approved_dbs='approved_components', ignored_cids=[]):
+    def run_once(self, approved_dbs='approved_components', ignored_cids=[],
+            shared_dict={}):
         self._ignored = ignored_cids
         all_failures = ''
         os.chdir(self.bindir)
+
+        # If found the HwQual ID in shared_dict, use the list with the same ID.
+        if 'part_id_hwqual' in shared_dict:
+            id = shared_dict['part_id_hwqual']
+            id = id.rpartition(' ')[0].replace(' ', '_')
+            approved_dbs = 'qualified_components*%s' % id
 
         # approved_dbs supports shell-like filename expansion.
         for db in glob.iglob(approved_dbs):
@@ -337,9 +345,10 @@ class hardware_Components(test.test):
                 all_failures += 'Approved DB: %s' % db
                 all_failures += self.pformat(self._failures)
             else:
-                # If one of DBs is matched, record the hwqual_id and exit.
-                self.write_test_keyval(
-                    {'hwqual_id': self._approved['part_id_hwqual'][0]})
+                # If one of DBs is matched, record some data in shared_dict.
+                cids_need_to_be_record = ['part_id_hwqual']
+                for cid in cids_need_to_be_record:
+                    factory.log_shared_data(cid, self._approved[cid][0])
                 return
 
         raise error.TestFail(all_failures)
