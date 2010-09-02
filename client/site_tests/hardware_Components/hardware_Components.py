@@ -231,7 +231,9 @@ class hardware_Components(test.test):
             raise error.TestError('Cannot select BIOS flashrom')
         base_img = flashrom.read_whole()
         flashrom_size = len(base_img)
-        layout = flashrom.detect_chromeos_bios_layout(flashrom_size)
+        # XXX we can NOT trust base image here for layout, otherwise firmware
+        # can provide fake (non-used) GBB/BSTUB in garbage area.
+        layout = flashrom.detect_chromeos_bios_layout(flashrom_size, None)
         if not layout:
             raise error.TestError('Cannot detect ChromeOS flashrom laout')
         hash_src = ''
@@ -260,7 +262,8 @@ class hardware_Components(test.test):
             raise error.TestError('Cannot select BIOS flashrom')
         base_img = flashrom.read_whole()
         flashrom_size = len(base_img)
-        layout = flashrom.detect_chromeos_bios_layout(flashrom_size)
+        # we can trust base image for layout, since it's only RW.
+        layout = flashrom.detect_chromeos_bios_layout(flashrom_size, base_imge)
         if not layout:
             raise error.TestError('Cannot detect ChromeOS flashrom laout')
         for index, name in enumerate(section_names):

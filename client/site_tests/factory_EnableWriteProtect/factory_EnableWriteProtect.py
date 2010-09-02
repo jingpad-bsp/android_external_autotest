@@ -63,7 +63,9 @@ class factory_EnableWriteProtect(test.test):
                         'Cannot read valid flash rom data.\n' \
                         '無法讀取快閃記憶體資料')
             flashrom_size = len(original)
-            layout = self.flashrom.detect_layout(conf['layout'], flashrom_size)
+            # do not trust current image when detecting layout.
+            layout = self.flashrom.detect_layout(conf['layout'],
+                                                 flashrom_size, None)
             if not layout:
                 raise error.TestError(
                         'Cannot detect flash rom layout.\n' \

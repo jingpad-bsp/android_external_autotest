@@ -67,6 +67,19 @@ DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS = {
           """,
 }
 
+# The default conversion table for fmap_decode.
+DEFAULT_CHROMEOS_FMAP_CONVERSION = {
+    "Boot Stub": "FV_BSTUB",
+    "GBB Area": "FV_GBB",
+    "Recovery Firmware": "FVDEV",
+    "RO VPD": "RO_VPD",
+    "Firmware A Key": "VBOOTA",
+    "Firmware A Data": "FVMAIN",
+    "Firmware B Key": "VBOOTB",
+    "Firmware B Data": "FVMAINB",
+    "Log Volume": "FV_LOG",
+}
+
 # Default "skip" sections when verifying section data.
 # This is required because some flashrom chip may create timestamps (or checksum
 # values) when (or immediately after) we change flashrom content.
@@ -180,6 +193,75 @@ def compile_layout(desc, size):
     return layout
 
 
+def _convert_fmap_layout(conversion_map, fmap_areas):
+    """
+    (internal utility) Converts a FMAP areas structure to flashrom layout format
+                       by conversion_map.
+    Args:
+        conversion_map: dictionary of names to convert.
+        fmap_areas: a list of {name, offset, size} dictionary.
+
+    Returns: layout structure for flashrom_util, or empty for failure.
+    """
+    layout = {}
+    for entry in fmap_areas:
+        name = entry['name']
+        offset = entry['offset']
+        size = entry['size']
+        if name in conversion_map:
+            name = conversion_map[name]
+        name = name.replace(' ', '%20')
+        layout[name] = (offset, offset + size - 1)
+    return layout
+
+
+def decode_fmap_layout_external(conversion_map, image_file_name):
+    """
+    (Utility) Decodes layout by an external fmap_decode command provided by
+              system PATH.
+    Args:
+        conversion_map: dictionary for FMAP area name conversion
+        image_file_name: file name of firmware image with FMAP structure for
+            parsing layout.
+
+    Returns: layout structure for flashrom_util, or empty for failure.
+    """
+    if os.system('type fmap_decode 2>/dev/null') != 0:
+        # print 'error: no fmap_decode in system.'
+        return {}
+    fmap_object = []
+    fmap = os.popen("fmap_decode %s 2>/dev/null" % image_file_name).readlines()
+    for entry in fmap:
+        if 'area_name' not in entry:
+            continue
+        # format: area_offset="HEX" area_size="HEX" area_name="NAME" ...
+        offset = int(re.findall('area_offset="([^"]*)"', entry)[0], 0)
+        size = int(re.findall('area_size="([^"]*)"', entry)[0], 0)
+        name = re.findall('area_name="([^"]*)"', entry)[0]
+        # print 'off=%s, size=%s, name=%s' % (offset, size, name)
+        fmap_object.append({'offset':offset, 'size':size, 'name':name})
+    return _convert_fmap_layout(conversion_map, fmap_object)
+
+
+def decode_fmap_layout(conversion_map, image_blob):
+    """
+    (Utility) Uses fmap_decode to retrieve embedded layout of a prepared
+              firmware image.
+    Args:
+        conversion_map: dictionary for FMAP area name conversion
+        image_blob: binary data of firmware image containing FMAP
+
+    Returns: layout structure for flashrom_util, or empty for failure.
+    """
+    try:
+        import site_fmap
+        fmap_object = site_fmap.fmap_decode(image_blob)['areas']
+    except:
+        # print 'decode_fmap_layout: failed to decode from image blob'
+        fmap_object = []
+    return _convert_fmap_layout(conversion_map, fmap_object)
+
+
 def csv_to_list(csv, delimiter=','):
     """
     (Utility) Converts a comma-separated-value (or list) to a list.
@@ -265,6 +347,7 @@ class flashrom_util(object):
         self.verbose = verbose
         self.keep_temp_files = keep_temp_files
         self.target_map = target_map
+        self.is_debug = False
         # detect bbs map if target_map is None.
         # NOTE when target_map == {}, that means "do not execute commands",
         # different to default value.
@@ -347,41 +430,63 @@ class flashrom_util(object):
                 return target_map
         raise TestError('INTERNAL ERROR: unknown architecture, need target_map')
 
-    def detect_layout(self, layout_desciption, size=None):
+    def detect_layout(self, layout_desciption, size, image):
         """
         Detects and builds layout according to current flash ROM size
-        and a simple layout description language.
-        If parameter 'size' is omitted, self.get_size() will be called.
+        (or image) and a simple layout description language.
 
-        See help(flashrom_util.compile_layout) for the syntax of description.
+        NOTE: if you don't trust any available FMAP layout information in
+              flashrom image, pass image = None.
+
+        Args:
+            layout_description: Pre-defined layout description. See
+                help(flashrom_util.compile_layout) for syntax detail.
+            size: Size of flashrom. If size is None, self.get_size()
+                will be called.
+            image: (optional) Flash ROM image that contains FMAP layout info.
+                If image is None, layout will be calculated by size only.
 
         Returns the layout map (empty if any error).
         """
-        if not size:
-            size = self.get_size()
-        return compile_layout(layout_desciption, size)
+        ret = None
+        if image:
+            if self.is_debug:
+                print " * detect_layout: try FMAP"
+            ret = decode_fmap_layout(DEFAULT_CHROMEOS_FMAP_CONVERSION, image)
+        if not ret:
+            if not size:
+                size = self.get_size()
+            ret = compile_layout(layout_desciption, size)
+            if self.is_debug:
+                print " * detect_layout: using pre-defined memory layout"
+        elif self.is_debug:
+            print " * detect_layout: using FMAP layout in firmware image."
+        return ret
 
-    def detect_chromeos_layout(self, target, size=None):
+    def detect_chromeos_layout(self, target, size, image):
         """
         Detects and builds ChromeOS firmware layout according to current flash
-        ROM size.  If parameter 'size' is None, self.get_size() will be called.
+        ROM size.  Currently supported targets are: 'bios' or 'ec'.
 
-        Currently supported targets are: 'bios' or 'ec'.
+        See help(flashrom_util.flashrom_util.detect_layout) for detail
+        information of argument size and image.
 
         Returns the layout map (empty if any error).
         """
         assert target in DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS, \
                 'unknown layout target: ' + test
         chromeos_target = DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS[target]
-        return self.detect_layout(chromeos_target, size)
+        return self.detect_layout(chromeos_target, size, image)
 
-    def detect_chromeos_bios_layout(self, size=None):
-        """ Detects standard ChromeOS BIOS layout """
-        return self.detect_chromeos_layout(self.TARGET_BIOS, size)
+    def detect_chromeos_bios_layout(self, size, image):
+        """ Detects standard ChromeOS BIOS layout.
+            A short cut to detect_chromeos_layout(TARGET_BIOS, size, image). """
+        return self.detect_chromeos_layout(self.TARGET_BIOS, size, image)
 
-    def detect_chromeos_ec_layout(self, size=None):
-        """ Detects standard ChromeOS Embedded Controller layout """
-        return self.detect_chromeos_layout(self.TARGET_EC, size)
+    def detect_chromeos_ec_layout(self, size, image):
+        """ Detects standard ChromeOS Embedded Controller layout.
+            A short cut to detect_chromeos_layout(TARGET_EC, size, image). """
+        return self.detect_chromeos_layout(self.TARGET_EC, size, image)
 
     def read_whole(self):
         '''
@@ -555,7 +660,7 @@ class FlashromUtility(object):
 
         Arguments:
             flashrom_util_instance: An instance of existing flashrom_util.  If
-                                    not provided, FirmwareUpdater will create
+                                    not provided, FlashromUtility will create
                                     one with all default values.
             is_verbose:             Flag to control outputting verbose messages.
         """
@@ -570,21 +675,43 @@ class FlashromUtility(object):
         self.is_verbose = is_verbose
         self.is_debug = False
 
-    def initialize(self, target, layout_desc=None, skip_verify=None):
-        """ Starts flashrom initialization with given target. """
+    def initialize(self, target, layout_image=None, layout_desc=None,
+                   use_fmap_layout=True, skip_verify=None):
+        """
+        Starts flashrom initialization with given target.
+
+        Args:
+            target: Name of the target you are dealing with (check TARGET_*)
+            layout_desc: (optional) Description of pre-defined layout
+            layout_image: (optional) A image blob containing FMAP for building
+                layout. None if you want to use current system flash content
+            use_fmap_layout: Use True (default) if you trust the FMAP in
+                layout_image.
+            skip_verify: Description of what data must be skipped when
+                doing comparison / verification.
+        """
         flashrom = self.flashrom
         if not flashrom.select_target(target):
             raise TestError("Cannot Select Target. Abort.")
+
         if self.is_verbose:
             print " - reading current content"
         self.current_image = flashrom.read_whole()
         if not self.current_image:
             raise TestError("Cannot read flashrom image. Abort.")
         flashrom_size = len(self.current_image)
+
+        if not use_fmap_layout:
+            layout_image = None
+        elif not layout_image:
+            layout_image = current_image
+
         if layout_desc:
-            layout = flashrom.detect_layout(layout_desc, flashrom_size)
+            layout = flashrom.detect_layout(
+                    layout_desc, flashrom_size, layout_image)
         else:
-            layout = flashrom.detect_chromeos_layout(target, flashrom_size)
+            layout = flashrom.detect_chromeos_layout(
+                    target, flashrom_size, layout_image)
         self.layout = layout
         self.whole_flash_layout = flashrom.detect_layout('all', flashrom_size)
         if not skip_verify:
