@@ -320,7 +320,10 @@ class factory_DeveloperRecovery(test.test):
         if os.path.exists(gpio_root):
             utils.system("rm -rf %s" % gpio_root)
         utils.system("mkdir %s" % (gpio_root))
-        utils.system("/usr/sbin/gpio_setup")
+        try:
+            utils.system("/usr/sbin/gpio_setup")
+        except error.CmdError:
+            raise error.TestNAError('GPIO setup failed\nGPIO 設定失敗')
         self._gpio_root=gpio_root
 
     def run_once(self, layout=None):

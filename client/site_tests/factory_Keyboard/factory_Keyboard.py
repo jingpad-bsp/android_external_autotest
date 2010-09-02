@@ -133,11 +133,20 @@ class factory_Keyboard(test.test):
         factory.log('%s run_once' % self.__class__)
 
         os.chdir(self.srcdir)
-        kbd_image = cairo.ImageSurface.create_from_png('%s.png' % layout)
-        image_size = (kbd_image.get_width(), kbd_image.get_height())
 
-        with open('%s.bindings' % layout, 'r') as file:
-            bindings = eval(file.read())
+        try:
+            kbd_image = cairo.ImageSurface.create_from_png('%s.png' % layout)
+            image_size = (kbd_image.get_width(), kbd_image.get_height())
+        except cairo.Error as e:
+            raise error.TestNAError('Error while opening %s.png: %s' %
+                                    (layout, e.message))
+
+        try:
+            with open('%s.bindings' % layout, 'r') as file:
+                bindings = eval(file.read())
+        except IOError as e:
+            raise error.TestNAError('Error while opening %s: %s [Errno %d]' %
+                                    (e.filename, e.strerror, e.errno))
 
         test = KeyboardTest(kbd_image, bindings)
 

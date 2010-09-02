@@ -177,12 +177,19 @@ class factory_Leds(test.test):
         factory.log('%s run_once' % self.__class__)
 
         self._led_ctl_path = led_ctl_path
+        if not os.path.exists(self._led_ctl_path):
+            raise error.TestNAError('Command %s does not exist' %
+                                    self._led_ctl_path)
 
         self._shift_color = ful.BLACK
         self._shift_cnt = 0
 
         os.chdir(self.srcdir)
-        image = cairo.ImageSurface.create_from_png('leds.png')
+        try:
+            image = cairo.ImageSurface.create_from_png('leds.png')
+        except cairo.Error as e:
+            raise error.TestNAError('Error while opening leds.png: %s' %
+                                    e.message)
         image_size = (image.get_width(), image.get_height())
         self._leds_image = image
 

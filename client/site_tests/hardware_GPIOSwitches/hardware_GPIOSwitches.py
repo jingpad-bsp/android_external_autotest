@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -25,7 +27,10 @@ class hardware_GPIOSwitches(test.test):
         if os.path.exists(gpio_root):
             utils.system("rm -rf %s" % gpio_root)
         utils.system("mkdir %s" % (gpio_root))
-        utils.system("/usr/sbin/gpio_setup")
+        try:
+            utils.system("/usr/sbin/gpio_setup")
+        except error.CmdError:
+            raise error.TestNAError('GPIO setup failed\nGPIO 設定失敗')
         self._gpio_root=gpio_root
 
     def run_once(self):

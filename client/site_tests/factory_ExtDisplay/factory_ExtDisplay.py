@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -68,7 +70,10 @@ class factory_ExtDisplay(test.test):
         subtest_name, subtest_cfg = self._current_subtest
         if 'cfg' in subtest_cfg:
             for cfg in subtest_cfg['cfg']:
-                utils.system(cfg)
+                try:
+                    utils.system(cfg)
+                except error.CmdError:
+                    raise error.TestNAError('Setup failed\n設定失敗\nCmd: %s' % cfg)
                 factory.log("cmd: " + cfg)
         if 'cmd' in subtest_cfg:
             cmd = "%s %s" % (subtest_cfg['cmd'], self._sample)
@@ -81,7 +86,10 @@ class factory_ExtDisplay(test.test):
         subtest_name, subtest_cfg = self._current_subtest
         if 'postcfg' in subtest_cfg:
             for cfg in subtest_cfg['postcfg']:
-                utils.system(cfg)
+                try:
+                    utils.system(cfg)
+                except error.CmdError:
+                    raise error.TestNAError('Setup failed\n設定失敗\nCmd: %s' % cfg)
                 factory.log("cmd: " + cfg)
         self.close_bgjob(subtest_cfg)
 
