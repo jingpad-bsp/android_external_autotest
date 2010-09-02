@@ -6,7 +6,7 @@
 # This script can be called to switch from kernel slot A / sda3
 # to kernel slot B / sda5 and vice versa.
 
-ROOT_DEV=$(rootdev)
+ROOT_DEV=$(rootdev -s)
 OTHER_ROOT_DEV=$(echo $ROOT_DEV | tr '35' '53')
 
 if [ "${ROOT_DEV}" = "${OTHER_ROOT_DEV}" ]
@@ -18,9 +18,9 @@ fi
 # Successfully being able to mount the other partition
 # and run postinst guarantees that there is a real partition there.
 echo "Running postinst on $OTHER_ROOT_DEV"
-MOUNTPOINT=/tmp/newpart
+MOUNTPOINT=$(mktemp -d)
 mkdir -p "$MOUNTPOINT"
-mount "$OTHER_ROOT_DEV" "$MOUNTPOINT"
+mount -o ro  "$OTHER_ROOT_DEV" "$MOUNTPOINT"
 "$MOUNTPOINT"/postinst "$OTHER_ROOT_DEV"
 POSTINST_RETURN_CODE=$?
 umount "$MOUNTPOINT"
