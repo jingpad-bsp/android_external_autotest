@@ -61,10 +61,10 @@ class tsl2563():
         utils.system(cmd)
         time.sleep(1)
         if not os.path.isfile(self.PARAMS['rd']):
-            raise error.CmdError(cmd + 'did not create' + self.PARAMS['rd'])
+            raise error.TestError(cmd + 'did not create ' + self.PARAMS['rd'])
         val = self.read('first',samples=1)
         if val <= self.PARAMS['min'] or val >= self.PARAMS['max']:
-            raise error.CmdError("Failed initial read\n")
+            raise error.TestError("Failed initial read\n")
 
 
     def read(self, type, delay=None, samples=1):
