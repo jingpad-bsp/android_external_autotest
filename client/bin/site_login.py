@@ -293,11 +293,15 @@ def refresh_login_screen(timeout=_DEFAULT_TIMEOUT):
         raise UnexpectedCondition('Already logged in')
     wait_for_browser()
     wait_for_login_prompt()
+    oldpid = __get_session_manager_pid()
     try:
       os.unlink(chromeos_constants.LOGIN_PROMPT_READY_MAGIC_FILE)
     except OSError, e:
       if e.errno != errno.ENOENT:
         raise e
-    nuke_process_by_name(chromeos_constants.BROWSER, with_prejudice=True)
-    wait_for_browser()
+    nuke_login_manager()
+    site_utils.poll_for_condition(
+        lambda: __session_manager_restarted(oldpid),
+        TimeoutError('Timed out waiting for logout'),
+        timeout)
     wait_for_login_prompt()
