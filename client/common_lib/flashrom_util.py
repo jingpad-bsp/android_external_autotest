@@ -704,7 +704,7 @@ class FlashromUtility(object):
         if not use_fmap_layout:
             layout_image = None
         elif not layout_image:
-            layout_image = current_image
+            layout_image = self.current_image
 
         if layout_desc:
             layout = flashrom.detect_layout(
@@ -713,7 +713,8 @@ class FlashromUtility(object):
             layout = flashrom.detect_chromeos_layout(
                     target, flashrom_size, layout_image)
         self.layout = layout
-        self.whole_flash_layout = flashrom.detect_layout('all', flashrom_size)
+        self.whole_flash_layout = flashrom.detect_layout('all', flashrom_size,
+                                                         None)
         if not skip_verify:
             skip_verify = DEFAULT_CHROMEOS_FIRMWARE_SKIP_VERIFY_LIST[target]
         self.skip_verify = skip_verify
