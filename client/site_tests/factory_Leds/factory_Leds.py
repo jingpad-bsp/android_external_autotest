@@ -16,6 +16,7 @@ import pango
 import os
 import subprocess
 import sys
+import re
 
 from cmath import pi
 from gtk import gdk
@@ -23,6 +24,7 @@ from gtk import gdk
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 
@@ -172,9 +174,28 @@ class factory_Leds(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gdk.KEY_RELEASE_MASK)
 
+    def _get_embedded_controller_vendor(self):
+        # example output of superiotool:
+        #  Found Nuvoton WPCE775x (id=0x05, rev=0x02) at 0x2e
+        re_vendor = re.compile(r'Found (\w*)')
+        vendor = []
+        res = utils.system_output('superiotool', ignore_status=True).split('\n')
+        for line in res:
+            match = re_vendor.search(line)
+            if match:
+                vendor.append(match.group(1))
+        return vendor
+
     def run_once(self, led_ctl_path=None):
 
         factory.log('%s run_once' % self.__class__)
+
+        ec_vendor = self._get_embedded_controller_vendor()
+        if len(ec_vendor) == 0:
+            raise error.TestNAError('No embedded controller vendor found')
+        if 'Nuvoton' not in ec_vendor:
+            raise error.TestNAError('Currently not supported embedded controllers: %s' %
+                                    ', '.join(ec_vendor))
 
         self._led_ctl_path = led_ctl_path
         if not os.path.exists(self._led_ctl_path):
