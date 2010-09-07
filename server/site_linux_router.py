@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re
+import logging, re, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_eap_tls
 
@@ -314,8 +314,19 @@ class LinuxRouter(object):
         # Tear down the bridge.
         self.router.run("%s link set %s down" % (self.cmd_ip, self.bridgeif),
             ignore_status=True)
-        self.router.run("%s delbr %s" % (self.cmd_brctl, self.bridgeif),
-            ignore_status=True)
+
+        # Try a couple times to remove the bridge; hostapd may still be exiting
+        for attempt in range(3):
+            result = self.router.run("%s delbr %s" %
+                                     (self.cmd_brctl, self.bridgeif),
+                                     ignore_status=True)
+            if not result.stderr:
+                break
+            time.sleep(1)
+        else:
+            raise error.TestFail("Unable to delete bridge %s: %s" %
+                                 (self.bridgeif, result.stderr))
+
 
         self.hostapd['configured'] = False
 
