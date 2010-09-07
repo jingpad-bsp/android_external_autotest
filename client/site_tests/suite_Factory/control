@@ -72,53 +72,63 @@ job.bootloader.boot_once = lambda x: None
 def start_ui():
   ui_proc_args = [FACTORY_UI_PATH, TEST_LIST_PATH,
                   STATUS_FILE_PATH, str(os.getpid())]
-  factory.log('starting ui -- %s' % repr(ui_proc_args))
+  factory.log('starting ui %s' % repr(ui_proc_args))
   sp = subprocess.Popen(ui_proc_args, stdout=subprocess.PIPE)
   factory.log('waiting for ui to come up...')
-  factory.log('got message from UI : %s' % repr(sp.stdout.readline().strip()))
+  factory.log('got message from ui : %s' % repr(sp.stdout.readline().strip()))
 
 
-def step_reboot_seq(tag_prefix, total_iterations, i=0):
+def step_reboot_seq(next_subtest_info, total_iterations, i=0):
     if i < total_iterations:
-        job.next_step_prepend([step_reboot_seq, tag_prefix,
+        job.next_step_prepend([step_reboot_seq, next_subtest_info,
                                total_iterations, i + 1])
         factory.log('rebooting (iteration %d of %d)' % (i, total_iterations))
         job.reboot()
     else:
-        step_init(intentional_reboot_subtest_tag_prefix=tag_prefix)
+        step_init(next_subtest_info)
 
 
-def step_init(intentional_reboot_subtest_tag_prefix=None):
+def step_init(next_subtest_info=None):
     job.next_step([step_init])
 
     start_ui()
 
+    test_db = factory.TestDatabase(TEST_LIST)
     status_map = factory.StatusMap(TEST_LIST, STATUS_FILE_PATH)
     control_state = factory.ControlState(
-        job, TEST_LIST, status_map, STATUS_FILE_PATH,
+        job, TEST_LIST, test_db, status_map, STATUS_FILE_PATH,
         parallel.fork_nuke_subprocess)
 
-    if intentional_reboot_subtest_tag_prefix:
-        reboot_subtest = status_map.test_db.get_subtest_by_tag_prefix(
-            intentional_reboot_subtest_tag_prefix)
-        control_state.run_test(reboot_subtest)
+    def run_automated_sequence(test, count, start_index=0):
+        for subtest in test.subtest_list[start_index:]:
+            if isinstance(subtest, factory.AutomatedRebootSubTest):
+                next_subtest_info = (test_db.get_tag_prefix(subtest), count)
+                step_reboot_seq(next_subtest_info, subtest.iterations)
+            else:
+                shortcut_target = control_state.run_test(subtest, count)
+            status_map.read_new_data()
+            if shortcut_target:
+                return shortcut_target
+            if status_map.lookup_status(test) == factory.FAILED:
+                return None
+
+    if next_subtest_info:
+        tag_prefix, count = next_subtest_info
+        reboot_subtest = test_db.get_subtest_by_tag_prefix(tag_prefix)
+        control_state.run_test(reboot_subtest, count)
         status_map.read_new_data()
+        automated_seq = test_db.get_subtest_parent(reboot_subtest)
+        rst_index = automated_seq.subtest_list.index(reboot_subtest)
+        run_automated_sequence(automated_seq, count, start_index=rst_index + 1)
 
     test = status_map.next_untested()
     while test is not None:
-        factory.log('next test = %s' %
-                    status_map.test_db.get_unique_details(test))
+        unique_id_str = test_db.get_unique_id_str(test)
+        count = status_map.lookup_count(test) + 1
+        factory.log('control running test %s/%s' % (unique_id_str, count))
         if isinstance(test, factory.AutomatedSequence):
-            for subtest in test.subtest_list:
-                if isinstance(subtest, factory.AutomatedRebootSubTest):
-                    tag_prefix = status_map.test_db.get_tag_prefix(subtest)
-                    step_reboot_seq(tag_prefix, subtest.iterations)
-                else:
-                    control_state.run_test(subtest)
-                if control_state.activated_kbd_shortcut_test:
-                    break
+            shortcut_target = run_automated_sequence(test, count)
         else:
-            control_state.run_test(test)
-        status_map.read_new_data()
-        test = (control_state.activated_kbd_shortcut_test or
-                status_map.next_untested())
+            shortcut_target = control_state.run_test(test, count)
+            status_map.read_new_data()
+        test = shortcut_target or status_map.next_untested()

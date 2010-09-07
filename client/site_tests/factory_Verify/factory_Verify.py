@@ -68,20 +68,19 @@ class factory_Verify(test.test):
             return
 
         # check if all previous tests are passed.
-        status_map = factory.StatusMap(test_list, status_file)
-        db = status_map.test_db
+        db = factory.TestDatabase(test_list)
+        status_map = factory.StatusMap(test_list, status_file, db)
         failed_list = status_map.filter(ful.FAILED)
         if failed_list:
-            failed = ','.join([db.get_unique_details(t) for t in failed_list])
-            raise error.TestFail('Some previous tests failed: %s' %
-                                 failed)
+            failed = ','.join([db.get_unique_id_str(t) for t in failed_list])
+            raise error.TestFail('Some previous tests failed: %s' % failed)
 
         # check if all Google Required Tests are passed
         missing = []
         for g in GOOGLE_REQUIRED_TESTS:
             t = db.get_test_by_unique_name(g)
             if status_map.lookup_status(t) != ful.PASSED:
-                missing.append('%s(%s)' % (g, db.get_unique_details(t)))
+                missing.append('%s(%s)' % (g, db.get_unique_id_str(t)))
         if missing:
             missing_msg = ', '.join(missing)
             raise error.TestFail('You need to execute following ' +

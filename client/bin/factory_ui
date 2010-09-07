@@ -163,7 +163,7 @@ class SubTestLabelBox(gtk.EventBox):
 
 class UiState():
 
-    def __init__(self, status_map, test_widget_box):
+    def __init__(self, test_widget_box, automated_sequence_set):
 
         def make_empty_test_label_widget():
             label_box = gtk.EventBox()
@@ -173,17 +173,16 @@ class UiState():
             label_box.add(label)
             return label_box
 
-        def make_automated_seq_label_widget(subtest_list):
+        def make_automated_sequence_label_widget(subtest_list):
             vbox = gtk.VBox()
             vbox.set_spacing(0)
             for subtest in subtest_list:
                 label_box = SubTestLabelBox(subtest)
-                status_map.set_label_box(subtest, label_box)
-                vbox.pack_start(status_map.lookup_label_box(subtest),
-                                False, False)
+                self.set_label_box(subtest, label_box)
+                vbox.pack_start(label_box, False, False)
             return vbox
 
-        self._status_map = status_map
+        self._label_box_map = {}
         self._test_widget_box = test_widget_box
         self._empty_test_widget = make_empty_test_label_widget()
         self._active_test_widget = self._empty_test_widget
@@ -192,10 +191,18 @@ class UiState():
         self._test_widget_box.add(self._empty_test_widget)
 
         self._automated_seq_widget_map = dict(
-            (t, make_automated_seq_label_widget(t.subtest_list))
-            for t in self._status_map.test_db.seq_test_set)
+            (test, make_automated_sequence_label_widget(test.subtest_list))
+            for test in automated_sequence_set)
 
-    def set_active_test(self, test):
+    def status_change_callback(self, test, status):
+        label_box = self._label_box_map.get(test)
+        if label_box:
+            label_box.update(status)
+
+    def set_label_box(self, test, label_box):
+        self._label_box_map[test] = label_box
+
+    def set_active_test(self, test_db, test):
         '''Control what kind of widget is shown in the testing area of
         the screen.  For normal operator tests, this is just a label
         saying there is no active test.  The expectation is that the
@@ -205,11 +212,10 @@ class UiState():
         subtest status.'''
         if test is None or test == self.active_test:
             return
-        factory.log('UI active test -> %s' %
-                    self._status_map.test_db.get_unique_details(test))
+        factory.log('UI active test is %s' % test_db.get_unique_id_str(test))
         self.active_test = test
         self._test_widget_box.remove(self._active_test_widget)
-        active_widget = (test in self._status_map.test_db.seq_test_set
+        active_widget = (isinstance(test, factory.AutomatedSequence)
                          and self._automated_seq_widget_map[test]
                          or self._empty_test_widget)
         self._test_widget_box.add(active_widget)
@@ -217,10 +223,10 @@ class UiState():
         self._test_widget_box.show_all()
 
 
-def refresh_status(status_map, ui_state):
+def refresh_status(status_map, test_db, ui_state):
     status_map.read_new_data()
     active_test = status_map.get_active_top_level_test()
-    ui_state.set_active_test(active_test)
+    ui_state.set_active_test(test_db, active_test)
     return True
 
 
@@ -265,7 +271,7 @@ def main(test_list, status_file_path, control_pid):
     value is logged with log_shared_data() and a SIGUSR1 is sent to
     the control program.'''
 
-    status_map = factory.StatusMap(test_list, status_file_path)
+    test_db = factory.TestDatabase(test_list)
 
     window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     window.connect('destroy', lambda _: gtk.main_quit())
@@ -294,8 +300,6 @@ def main(test_list, status_file_path, control_pid):
     test_widget_box = gtk.Alignment(xalign=0.5, yalign=0.5)
     test_widget_box.set_size_request(-1, -1)
 
-    ui_state = UiState(status_map, test_widget_box)
-
     lhs_box = gtk.VBox()
     lhs_box.pack_end(console_box, False, False)
     lhs_box.pack_start(test_widget_box)
@@ -309,19 +313,26 @@ def main(test_list, status_file_path, control_pid):
     window.connect('key-release-event', handle_key_release_event)
     window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-    gobject.timeout_add(_STATUS_REFRESH_MS, refresh_status,
-                        status_map, ui_state)
+    ui_state = UiState(test_widget_box, test_db.get_automated_sequences())
 
     for test in test_list:
         label_box = TestLabelBox(test)
-        status_map.set_label_box(test, label_box)
+        ui_state.set_label_box(test, label_box)
         label_trough.pack_start(label_box, False, False)
         label_trough.pack_start(ful.make_hsep(), False, False)
 
     window.add(base_box)
     window.show_all()
 
-    grab_shortcut_keys(status_map.test_db.kbd_shortcut_set, control_pid)
+    status_map = factory.StatusMap(
+        test_list, status_file_path, test_db=test_db,
+        status_change_callback=ui_state.status_change_callback)
+
+    gobject.timeout_add(_STATUS_REFRESH_MS, refresh_status,
+                        status_map, test_db, ui_state)
+
+    kbd_shortcut_db = factory.KbdShortcutDatabase(test_list, test_db)
+    grab_shortcut_keys(kbd_shortcut_db.get_shortcut_keys(), control_pid)
 
     ful.hide_cursor(window.window)
 
