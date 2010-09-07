@@ -7,6 +7,7 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
+from autotest_lib.client.common_lib import gbb_util
 from autotest_lib.client.common_lib import site_vblock
 
 
@@ -39,7 +40,14 @@ class hardware_Components(test.test):
         'part_id_gps',
     ]
     _check_existence_cids = [
+        'key_recovery',
+        'key_root',
         'part_id_chrontel',
+    ]
+    _non_check_cids = [
+        'data_bitmap_fv',
+        'data_display_geometry',
+        'data_recovery_url',
     ]
     _not_present = 'Not Present'
 
@@ -97,6 +105,18 @@ class hardware_Components(test.test):
                 return
 
         self._failures[cid] = [ 'No match' ]
+
+
+    def check_existence_key_recovery(self, part_id):
+        current_key = self._gbb.get_recoverykey()
+        target_key = utils.read_file(part_id)
+        return current_key == target_key
+
+
+    def check_existence_key_root(self, part_id):
+        current_key = self._gbb.get_rootkey()
+        target_key = utils.read_file(part_id)
+        return current_key == target_key
 
 
     def check_existence_part_id_chrontel(self, part_id):
@@ -236,7 +256,7 @@ class hardware_Components(test.test):
         # can provide fake (non-used) GBB/BSTUB in garbage area.
         layout = flashrom.detect_chromeos_bios_layout(flashrom_size, None)
         if not layout:
-            raise error.TestError('Cannot detect ChromeOS flashrom laout')
+            raise error.TestError('Cannot detect ChromeOS flashrom layout')
         hash_src = ''
         for section in hash_ro_list:
             src = flashrom.get_section(base_img, layout, section)
@@ -264,9 +284,9 @@ class hardware_Components(test.test):
         base_img = flashrom.read_whole()
         flashrom_size = len(base_img)
         # we can trust base image for layout, since it's only RW.
-        layout = flashrom.detect_chromeos_bios_layout(flashrom_size, base_imge)
+        layout = flashrom.detect_chromeos_bios_layout(flashrom_size, base_img)
         if not layout:
-            raise error.TestError('Cannot detect ChromeOS flashrom laout')
+            raise error.TestError('Cannot detect ChromeOS flashrom layout')
         for index, name in enumerate(section_names):
             data = flashrom.get_section(base_img, layout, name)
             block = site_vblock.unpack_verification_block(data)
@@ -298,6 +318,7 @@ class hardware_Components(test.test):
 
 
     def initialize(self):
+        self._gbb = gbb_util.GBBUtility()
         self._pp = pprint.PrettyPrinter()
 
 

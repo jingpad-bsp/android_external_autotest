@@ -488,18 +488,25 @@ class flashrom_util(object):
             A short cut to detect_chromeos_layout(TARGET_EC, size, image). """
         return self.detect_chromeos_layout(self.TARGET_EC, size, image)
 
+    def read_whole_to_file(self, output_file):
+        '''
+        Reads whole flash ROM data to a file.
+        Returns True on success, otherwise False.
+        '''
+        cmd = '%s"%s" -r "%s"' % (self.cmd_prefix, self.tool_path,
+                                  output_file)
+        if self.verbose:
+            print 'flashrom_util.read_whole_to_file(): ', cmd
+        return utils.system(cmd, ignore_status=True) == 0
+
     def read_whole(self):
         '''
         Reads whole flash ROM data.
         Returns the data read from flash ROM, or empty string for other error.
         '''
-        tmpfn = self._get_temp_filename('rd_')
-        cmd = '%s"%s" -r "%s"' % (self.cmd_prefix, self.tool_path, tmpfn)
-        if self.verbose:
-            print 'flashrom_util.read_whole(): ', cmd
         result = ''
-
-        if utils.system(cmd, ignore_status=True) == 0:  # failure for non-zero
+        tmpfn = self._get_temp_filename('rd_')
+        if self.read_whole_to_file(tmpfn):
             try:
                 result = open(tmpfn, 'rb').read()
             except IOError:
@@ -895,9 +902,13 @@ class mock_utils(object):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         p.wait()
-        if p.returncode and not ignore_status:
-            raise TestError("failed to execute: %s\nError messages: %s" % (
-                cmd, p.stderr.read()))
+        if p.returncode:
+            err_msg = p.stderr.read()
+            print p.stdout.read()
+            print err_msg
+            if not ignore_status:
+                raise TestError("failed to execute: %s\nError messages: %s" % (
+                    cmd, err_msg))
         return (p.returncode, p.stdout.read())
 
     def system(self, cmd, ignore_status=False):

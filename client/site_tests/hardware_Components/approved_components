@@ -5,7 +5,12 @@
 {
     # key: component ID
     # value: a list of approved component IDs ('*' indicates any)
+    'data_bitmap_fv': ['*'],
+    'data_display_geometry': ['*'],
+    'data_recovery_url': ['*'],
     'hash_ro_firmware': ['*'],
+    'key_recovery': ['*'],
+    'key_root': ['*'],
     'part_id_3g': ['*'],
     'part_id_audio_codec': ['*'],
     'part_id_bluetooth': ['*'],
