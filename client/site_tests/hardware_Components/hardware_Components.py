@@ -325,7 +325,8 @@ class hardware_Components(test.test):
     def run_once(self, approved_dbs='approved_components', ignored_cids=[],
             shared_dict={}):
         self._ignored = ignored_cids
-        all_failures = ''
+        only_cardreader_failed = False
+        all_failures = 'The following components are not matched.\n'
         os.chdir(self.bindir)
 
         # If found the HwQual ID in shared_dict, use the list with the same ID.
@@ -363,7 +364,9 @@ class hardware_Components(test.test):
             utils.open_write_close(outdb, self.pformat(self._system))
 
             if self._failures:
-                all_failures += 'Approved DB: %s' % db
+                if self._failures.keys() == ['part_id_cardreader']:
+                    only_cardreader_failed = True
+                all_failures += 'For DB %s:' % db
                 all_failures += self.pformat(self._failures)
             else:
                 # If one of DBs is matched, record some data in shared_dict.
@@ -371,5 +374,9 @@ class hardware_Components(test.test):
                 for cid in cids_need_to_be_record:
                     factory.log_shared_data(cid, self._approved[cid][0])
                 return
+
+        if only_cardreader_failed:
+            all_failures = ('You may forget to insert an SD card.\n' +
+                            all_failures)
 
         raise error.TestFail(all_failures)
