@@ -24,7 +24,6 @@ TESTS = [
   ('desktopui_IBusTest', {}),
   ('desktopui_SpeechSynthesisSemiAuto', {}),
   ('desktopui_SunSpiderBench', {}),
-  ('desktopui_UrlFetch', {}),
   ('desktopui_V8Bench', {}),
   ('desktopui_WindowManagerFocusNewWindows', {}),
   ('desktopui_WindowManagerHotkeys', {}),
@@ -88,6 +87,10 @@ TESTS = [
   ('realtimecomm_GTalkAudioBench', {}),
   ('realtimecomm_GTalkunittest', {}),
   ('unixbench', {}),
+# desktopui_UrlFetch has an undesired 'shutdown' command inside which will cause
+# consecutive test to be aborted unexpectly. Move it to the end of the test
+# loop.  
+  ('desktopui_UrlFetch', {}),  
 ]
 
 # A dict which holds {machine: [(test, argv), (test, argv), ...]}
