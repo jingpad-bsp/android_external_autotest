@@ -89,6 +89,18 @@ _DEVICE_SECTION_ENTRY_TMPL = '''<tr>
 </tr>
 '''
 
+_DEVICE_SECTION_ENTRY_PORT_START_TMPL = '''<tr>
+<td>%(name)s</td>
+<td>%(index)d</td>
+<td>%(channels)d</td>
+<td>%(is_hardware)d</td>
+<td>%(sample_format)s</td>
+<td>%(sample_rate)s</td>
+'''
+_DEVICE_SECTION_ENTRY_PORT_END_TMPL = '''<td>%s</td>
+</tr>
+'''
+
 _DEVICE_LIST_TEST = '''
 <tr><td><table> <tr>
 <td>Device List Looks Correct?</td>
@@ -211,7 +223,7 @@ _CHANNEL_MAP_RE = re.compile('\tchannel map:\s+(.+)')
 _TOP_LEVEL_RE = re.compile('\t\S')
 _PORTS_RE = re.compile('\tports:')
 _PORT_SPEC_RE = re.compile('\t\t(\S+): .* \(priority \d+\)')
-
+_ACTIVE_PORT_RE = re.compile('\tactive port: <(.+)>')
 
 class ToneThread(threading.Thread):
     """Wraps the running of test_tones in a thread."""
@@ -320,6 +332,9 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
 
 
     def cleanup(self):
+        for device in self._playback_devices['info']:
+            if device['is_hardware']:
+                self.restore_playback_port(device)
         self._testServer.stop()
         site_ui_test.UITest.cleanup(self)
 
@@ -446,7 +461,7 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
 
         server.wfile.write(_VOLUME_INSTRUCTIONS)
 
-        self.render_single_device_summary(server, device)
+        self.render_single_device_summary(server, device, port)
 
         server.wfile.write(_VOLUME_TEST_DETAILS % device)
         if device.has_key('channel_map'):
@@ -483,7 +498,7 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
 
         server.wfile.write(_PLAYBACK_INSTRUCTIONS)
 
-        self.render_single_device_summary(server, device)
+        self.render_single_device_summary(server, device, port)
         self.render_channel_test_order(server, device, port)
 
         # End Page.
@@ -517,7 +532,7 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
 
         server.wfile.write(_RECORD_INSTRUCTIONS)
 
-        self.render_single_device_summary(server, device)
+        self.render_single_device_summary(server, device, port)
         self.render_channel_test_order(server, device, port)
 
         # End Page.
@@ -600,11 +615,12 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
         server.wfile.write(_HTML_FOOTER)
 
 
-    def render_single_device_summary(self, server, device):
+    def render_single_device_summary(self, server, device, port):
         """Output a HTML table with information on a single device"""
         server.wfile.write(_DEVICE_LIST_START)
         server.wfile.write(_DEVICE_SECTION_START)
-        server.wfile.write(_DEVICE_SECTION_ENTRY_TMPL % device)
+        server.wfile.write(_DEVICE_SECTION_ENTRY_PORT_START_TMPL % device)
+        server.wfile.write(_DEVICE_SECTION_ENTRY_PORT_END_TMPL % port)
         server.wfile.write(_DEVICE_SECTION_END)
         server.wfile.write(_DEVICE_LIST_END)
 
@@ -767,6 +783,10 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
             for channel in m.group(1).split(','):
                 channel_map.append(channel)
             current_sink['channel_map'] = channel_map
+        
+        m = _ACTIVE_PORT_RE.match(line)
+        if m is not None:
+            current_sink['active_port'] = m.group(1)
 
 
     def parse_device_info(self, device_info_output):
@@ -850,6 +870,19 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
             logging.info('-- setting port %s' % port)
 
 
+    def restore_playback_port(self, device):
+        """Restores the sink's active port to what it was before testing.
+
+        Args:
+          device: A dictionary with the parsed device information.
+        """
+        if device['active_port'] is not None:
+            self.do_pacmd('set-sink-port %d %s' %
+                (device['index'], device['active_port']))
+            logging.info('Restoring device %d to port %s' %
+                (device['index'], device['active_port']))
+
+
     def do_signal_test_end(self):
         """Play 3 short 1000Hz tones to signal a test case's completion.
 
@@ -867,8 +900,8 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
 
         This sets the default playback device is set to whatever device
         is returned first in enumerate_playback_devices().  The playback
-        device is set to use its first port, unmuted, and set to the
-        test_volume.
+        device is set to use the default port (active port before running
+        tests), unmuted, and set to the test_volume.
 
         For each channel on the given device and port, a sample is recorded
         and played-back at max source volume. Then once again with all
@@ -890,7 +923,9 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
         playback_device = self._playback_devices['info'][0]
         playback_volume = self.get_test_volume(playback_device)
         playback_port = None
-        if len(playback_device['ports']):
+        if playback_device['active_port'] is not None:
+            self.restore_playback_port(playback_device)
+        elif len(playback_device['ports']):
             playback_port = playback_device['ports'][0]
         self.set_default_device_and_port('sink', playback_device,
                                          playback_port)
