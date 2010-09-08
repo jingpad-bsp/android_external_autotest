@@ -311,12 +311,11 @@ class LinuxRouter(object):
         self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
 #        self.router.run("rm -f %s" % self.hostapd['file'])
 
-        # Tear down the bridge.
-        self.router.run("%s link set %s down" % (self.cmd_ip, self.bridgeif),
-            ignore_status=True)
-
         # Try a couple times to remove the bridge; hostapd may still be exiting
         for attempt in range(3):
+            self.router.run("%s link set %s down" %
+                            (self.cmd_ip, self.bridgeif), ignore_status=True)
+
             result = self.router.run("%s delbr %s" %
                                      (self.cmd_brctl, self.bridgeif),
                                      ignore_status=True)
