@@ -70,7 +70,7 @@ class factory_Verify(test.test):
         # check if all previous tests are passed.
         db = factory.TestDatabase(test_list)
         status_map = factory.StatusMap(test_list, status_file, db)
-        failed_list = status_map.filter(ful.FAILED)
+        failed_list = status_map.filter_by_status(ful.FAILED)
         if failed_list:
             failed = ','.join([db.get_unique_id_str(t) for t in failed_list])
             raise error.TestFail('Some previous tests failed: %s' % failed)
