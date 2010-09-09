@@ -65,7 +65,7 @@ Usage:
 """
 
 __author__ = 'kdlucas@gmail.com (Kelly Lucas)'
-__version__ = '1.92'
+__version__ = '1.94'
 
 import logging, logging.handlers, optparse, os, paramiko, Queue, shutil
 import subprocess, sys, threading
@@ -83,13 +83,15 @@ from autotest_lib.frontend.afe import models as afe_models
 TIMEOUT = 5  # Timeout for accessing remote hosts.
 RUNTIME = 240  # Total time to allow the host queue to finish all tasks.
 
-def SetLogger(namespace, logfile, loglevel):
+def SetLogger(namespace, logfile, loglevel, log_to_stdout=False):
     """Create a log handler and set log level.
 
     Args:
         namespace: name of the logger.
         logfile: log file name.
         loglevel: debug level of logger.
+        log_to_stdout: boolean, True = send msgs to stdout and logfile,
+                                False = send msgs to log file only.
     Returns:
         Logger object.
     We use RotatingFileHandler to handle rotating the log files when they reach
@@ -111,9 +113,10 @@ def SetLogger(namespace, logfile, loglevel):
     hf = logging.Formatter('%(asctime)s %(process)d %(levelname)s: %(message)s')
     cf = logging.Formatter('%(levelname)s: %(message)s')
     logger.addHandler(h)
-    logger.addHandler(c)
     h.setFormatter(hf)
-    c.setFormatter(cf)
+    if log_to_stdout:
+        logger.addHandler(c)
+        c.setFormatter(cf)
 
     logger.setLevel(levels.get(loglevel, logging.INFO))
 
@@ -147,43 +150,153 @@ class RemoteWorker(object):
         Args:
             hostname: string, hostname of AutoTest host.
         """
-        self.hostname = hostname
+        self.h = hostname
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 
     def run(self):
-        TB.hosts[self.hostname]['time'] = strftime(
+        TB.hosts[self.h]['time'] = strftime(
             '%d%b%Y %H:%M:%S', localtime())
         try:
-            self.client.connect(self.hostname, username='root',
-                           key_filename=TB.privkey, timeout=TIMEOUT)
-            TB.hosts[self.hostname]['status'] = True
-            self.ReadRelease()
-            self.ReadResources()
+            self.client.connect(self.h, username='root',
+                                key_filename=TB.privkey, timeout=TIMEOUT)
+            TB.hosts[self.h]['status'] = True
         except Exception, e:
-            TB.logger.error('Host %s: %s', self.hostname, e)
-            TB.hosts[self.hostname]['status'] = False
+            TB.logger.error('Host %s: %s', self.h, e)
+            TB.hosts[self.h]['status'] = False
         finally:
-            TB.logger.debug('Closing client for %s', self.hostname)
+            if TB.hosts[self.h]['status']:
+                self.ReadRelease()
+                self.ReadFirmware()
+            self.UpdateRelease()  # Must be done before ReadResources().
+            if TB.hosts[self.h]['status']:
+                self.ReadResources()
+            TB.logger.debug('Closing client for %s', self.h)
             self.client.close()
+
 
     def ReadRelease(self):
         """Get the Chrome OS Release version."""
+        # The PTR key will mark the current version.
 
-        output = []
         cmd = 'cat /etc/lsb-release'
         try:
             stdin, stdout, stderr = self.client.exec_command(cmd)
             for line in stdout:
                 if 'CHROMEOS_RELEASE_DESCRIPTION' in line:
                     release = line.split('=')
-                    TB.hosts[self.hostname]['release'] = release[1]
+                    TB.hosts[self.h]['release']['PTR'] = release[1].strip()
         except Exception, e:
             TB.logger.error('Error getting release version on host %s\n%s',
-                            self.hostname, e)
-        if not 'release' in TB.hosts[self.hostname]:
-            TB.hosts[self.hostname]['release'] = 'unknown'
+                            self.h, e)
+
+
+    def ReadFirmware(self):
+        """Get the Firmware versions."""
+        # The PTR key will mark the current versions.
+        cmd = '/usr/sbin/mosys -k smbios info bios'
+        try:
+            stdin, stdout, stderr = self.client.exec_command(cmd)
+            for line in stdout:
+                lines = line.split('" ')
+                for item in lines:
+                    if 'ec_version' in item:
+                        fields = item.split('=')
+                        # We must sanitize the string for RRDTool.
+                        val = fields[1].strip('\n" ')
+                        TB.hosts[self.h]['ec_firmware']['PTR'] = val
+                    elif 'version' in item:
+                        fields = item.split('=')
+                        val = fields[1].strip('\n" ')
+                        TB.hosts[self.h]['firmware']['PTR'] = val
+        except Exception, e:
+            TB.logger.error('Error getting firmware versions on host %s\n%s',
+                            self.h, e)
+
+
+    def UpdateRelease(self):
+        """Update Release info with most current release versions.
+
+        The PTR key points to the most recent released version. This will also
+        preserve the last known release version in case the host is down.
+        """
+        rrd_dir = os.path.join(TB.home, 'hosts', self.h, 'rrd')
+        for item in TB.releases:
+            update_file = False
+            relfile = os.path.join(rrd_dir, item)
+            tmpfile = os.path.join(rrd_dir, item + '.tmp')
+            if os.path.isfile(relfile):
+                try:
+                    rf = open(relfile, 'r')
+                    lines = rf.readlines()
+                except IOError, e:
+                    TB.logger.error('Error parsing release file %s\n%s',
+                                    relfile, e)
+                finally:
+                    rf.close()
+
+                for line in lines:
+                    fields = line.split('=')
+                    # The correct format will have two strings separated by =.
+                    if len(fields) == 2:
+                        if fields[0] == 'PTR':
+                            if TB.hosts[self.h][item]['PTR']:
+                                if TB.hosts[self.h][item]['PTR'] != fields[1]:
+                                    # Most recent version has changed.
+                                    update_file = True
+                                    lines.pop(lines.index(line))
+                                    TB.hosts[self.h][item][TB.time] = (
+                                        TB.hosts[self.h][item]['PTR'])
+                            else:
+                                # Host is down so use last known value.
+                                TB.hosts[self.h][item]['PTR'] = (
+                                    fields[1].strip())
+                        else:
+                            TB.hosts[self.h][item][fields[0]] = (
+                                fields[1].strip())
+                    elif len(line) > 3:
+                        # This means the release file has the wrong format, so
+                        # we'll just write a new one with current values.
+                        update_file = True
+                        lines.pop(lines.index(line))
+                    else:
+                        # If we get here than it's probably a blank line.
+                        update_file = True
+                        lines.pop(lines.index(line))
+
+                if update_file:
+                    TB.logger.info('Updating %s', relfile)
+                    shutil.move(relfile, tmpfile)
+                    # Put the most recent update in the new file, and make the
+                    # PTR key to point to it.
+                    lines.append('%s=%s\n' % (TB.time,
+                                 TB.hosts[self.h][item]['PTR']))
+                    lines.append('PTR=%s' % TB.hosts[self.h][item]['PTR'])
+                    try:
+                        rf = open(relfile, 'w')
+                        for line in lines:
+                            rf.write(line)
+                    except IOError, e:
+                        TB.logger.error('Error writing %s\n%s', relfile, e)
+                    finally:
+                        rf.close()
+            else:
+                # Create a new release file, as it does not exist.
+                if TB.hosts[self.h][item]['PTR']:
+                    TB.logger.info('Creating new %s', relfile)
+                    try:
+                        rf = open(relfile, 'w')
+                        rf.write('%s=%s\n' % (
+                            TB.time,TB.hosts[self.h][item]['PTR']))
+                        rf.write('PTR=%s' % TB.hosts[self.h][item]['PTR'])
+                    except IOError, e:
+                        TB.logger.error('Error writing %s\n%s', relfile, e)
+                    finally:
+                        rf.close()
+
+                    TB.hosts[self.h][item][TB.time] = (
+                        TB.hosts[self.h][item]['PTR'])
 
 
     def ReadResources(self):
@@ -191,7 +304,7 @@ class RemoteWorker(object):
 
         advisor = Resource()
         if TB.update == True:
-            TB.logger.debug('Collecting data on %s', self.hostname)
+            TB.logger.debug('Collecting data on %s', self.h)
             cmd = advisor.GetCommands()
             for k in advisor.resources:
                 output = []
@@ -200,14 +313,14 @@ class RemoteWorker(object):
                     for line in stdout:
                         output.append(line)
                 except Exception, e:
-                    TB.logger.error('Cannot read %s from %s', k, self.hostname)
-                TB.hosts[self.hostname]['data'][k] = "".join(output)
-            TB.logger.debug('Formatting data for %s', self.hostname)
-            advisor.FormatData(self.hostname)
-        advisor.ProcessRRD(self.hostname)
+                    TB.logger.error('Cannot read %s from %s', k, self.h)
+                TB.hosts[self.h]['data'][k] = "".join(output)
+            TB.logger.debug('Formatting data for %s', self.h)
+            advisor.FormatData(self.h)
+        advisor.ProcessRRD(self.h)
         if TB.html:
-            TB.logger.debug('Building HTML files for %s', self.hostname)
-            advisor.BuildHTML(self.hostname)
+            TB.logger.debug('Building HTML files for %s', self.h)
+            advisor.BuildHTML(self.h)
 
 
 class TestBed(object):
@@ -219,11 +332,12 @@ class TestBed(object):
     raw and formatted data that was collected.
     """
 
-    def __init__(self, logfile, debug, graph, home, html, src, threads, update,
-                 url):
+    def __init__(self, logfile, log_to_stdout, debug, graph, home, html, src,
+                 threads, update, url):
         """
         Args:
             logfile: string, name of logfile.
+            log_to_stdout: boolean, True = send log msgs to stdout.
             debug: string, the debug log level.
             graph: boolean, flag to create graphs.
             home: string, pathname of root directory of monitor files.
@@ -233,8 +347,11 @@ class TestBed(object):
             update: boolean, flag to get update data from remote hosts.
             url: string, base URL of system health monitor.
         """
+        self.releases = ['ec_firmware', 'firmware', 'release']
         start_time = strftime('%H:%M:%S', localtime())
-        self.logger = SetLogger('SystemMonitor', logfile, debug)
+        self.time = int(time())
+        self.logger = SetLogger('SystemMonitor', logfile, debug,
+                                log_to_stdout=log_to_stdout)
         self.logger.info('Script started at: %s', start_time)
         self.graph = graph
         self.home = home
@@ -277,9 +394,11 @@ class Monitor(object):
             TB.hosts[host.hostname] = {}
             TB.hosts[host.hostname]['data'] = {}  # Raw data from hosts.
             TB.hosts[host.hostname]['rrddata'] = {}  # Formatted data.
-            TB.hosts[host.hostname]['release'] = 'unknown'
             TB.hosts[host.hostname]['status'] = None
             TB.hosts[host.hostname]['time'] = None
+            for item in TB.releases:
+                TB.hosts[host.hostname][item] = {}
+                TB.hosts[host.hostname][item]['PTR'] = None
 
         return afe_hosts
 
@@ -444,25 +563,6 @@ class Monitor(object):
             if not os.path.isdir(rrd_dir):
                 os.makedirs(rrd_dir)
                 os.chmod(rrd_dir, 0755)
-            release_file = os.path.join(rrd_dir, 'release')
-            # Do the following to preserve release info for downed hosts.
-            if TB.hosts[h.hostname]['release'] == 'unknown':
-                if os.path.isfile(release_file):
-                    try:
-                        rf = open(release_file, 'r')
-                    except IOError, e:
-                        TB.logger.error('Error reading release file!')
-                        TB.logger.error('Release file: %s\n%s', release_file, e)
-                    TB.hosts[h.hostname]['release'] = rf.read()
-                    rf.close()
-            else:
-                try:
-                    rf = open(release_file, 'w')
-                except IOError, e:
-                    TB.logger.error('Error writing release file!')
-                    TB.logger.error('Release file: %s\n%s', release_file, e)
-                rf.write(TB.hosts[h.hostname]['release'])
-                rf.close()
             f.write('<tr bgcolor=%s><th>' % bgcolor)
             f.write('<a href=%s>%s</a></th>' % (hlink, h.hostname))
             f.write('<td><em>%s</em>' % status)
@@ -473,7 +573,10 @@ class Monitor(object):
                 else:
                     f.write('%s<br>' % label)
             f.write('<td>%s' % TB.hosts[h.hostname]['time'])
-            f.write('<td>%s' % TB.hosts[h.hostname]['release'])
+            if TB.hosts[h.hostname]['release']['PTR']:
+                f.write('<td>%s' % TB.hosts[h.hostname]['release']['PTR'])
+            else:
+                f.write('<td>Unknown')
             index_file = os.path.join(rrd_dir, 'index.html')
             if os.path.isfile(index_file):
                 f.write('<td><a href=%s' % TB.url)
@@ -485,7 +588,6 @@ class Monitor(object):
         f.close()
         shutil.copyfile(LandPageTemp, LandPageFile)
         os.chmod(LandPageFile, 0644)
-
 
 
 class Resource(object):
@@ -626,6 +728,8 @@ class Resource(object):
             f.write('<center><TITLE>%s System Health</TITLE></HEAD>' %
                     hostname)
             f.write('<BODY><H1>%s System Health</H1>' % hostname)
+            for i in TB.releases:
+                f.write('<H4>%s: %s</H4>' % (i, TB.hosts[hostname][i]['PTR']))
             for h in TB.rrdtimes:
                 f.write('<a href="%s">%s</a>&nbsp;<b>|</b>' % (
                         html_file[h], h))
@@ -661,6 +765,8 @@ class Resource(object):
             f.write('<center><TITLE>%s %s Resources</TITLE></HEAD>' % (
                      hostname, r))
             f.write('<BODY><H1>%s %s Resources</H1>' % (hostname, r))
+            for i in TB.releases:
+                f.write('<H4>%s: %s</H4>' % (i, TB.hosts[hostname][i]['PTR']))
             f.write('<table border=5 bgcolor=#B5B5B5>')
             f.write('<tr>')
             for h in TB.rrdtimes:
@@ -1481,6 +1587,10 @@ class RRD(object):
         width = '850'
         height = '300'
         end = 'now'
+        rcolor = {'release': '#9966FF',
+                  'firmware': '#990033',
+                  'ec_firmware': '#009933',
+                 }
 
         for time in TB.rrdtimes:
             png_filename = self.rrdname + time + '.png'
@@ -1496,6 +1606,25 @@ class RRD(object):
             for ds in self.dd['items']:
                 rrd_cmd.append('DEF:%s=%s:%s:AVERAGE' % (ds, self.rrdfile, ds))
             rrd_cmd = rrd_cmd + self.dd['graph']
+            rrd_cmd.append('COMMENT:"Release History \\s"')
+            rrd_cmd.append('COMMENT:"=============== \\n"')
+            for item in TB.releases:
+                sorted_items = []
+                for k in TB.hosts[self.hostname][item]:
+                    if k != 'PTR':
+                        sorted_items.append(k)
+                    sorted_items.sort()
+                for i in sorted_items:
+                    # Get a date/time string to display, localtime requires
+                    # a float, so convert i to float.
+                    datetime = strftime('%D %H\\:%M', localtime(float(i)))
+                    # Need to escape any ':' for RRDTool.
+                    filter_val = (
+                        TB.hosts[self.hostname][item][i].replace(':', '\\:'))
+                    # Insert Veritical Lines for release and firmware updates.
+                    vrule = 'VRULE:%s%s:"%s %s=%s \\n"' % (i, rcolor[item],
+                            datetime, item, filter_val)
+                    rrd_cmd.append(vrule)
 
             exec_str = ' '.join(rrd_cmd)
             result = self.Exec(exec_str)
@@ -1590,6 +1719,10 @@ def ParseArgs():
                       help='name of logfile [default: %default]',
                       default='monitor.log',
                       dest='logfile')
+    parser.add_option('--log_to_stdout',
+                      help='Send output to StdOut [default: %default]',
+                      default=False,
+                      dest='log_to_stdout')
     parser.add_option('--threads',
                       help='Number of threads to create [default: %default]',
                       default=25,
@@ -1610,9 +1743,9 @@ def main(argv):
     start = time()
     options, args = ParseArgs()
     global TB
-    TB = TestBed(options.logfile, options.debug, options.graph, options.home,
-                 options.html, options.gclient, options.threads, options.update,
-                 options.url)
+    TB = TestBed(options.logfile, options.log_to_stdout, options.debug,
+                 options.graph, options.home, options.html, options.gclient,
+                 options.threads, options.update, options.url)
     sysmon = Monitor()
     sysmon.UpdateStatus()
     sysmon.BuildLandingPage()
