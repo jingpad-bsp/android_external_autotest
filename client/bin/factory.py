@@ -221,7 +221,7 @@ class StatusMap:
         comp = (isinstance(target_status, list) and
                 (lambda s: s in target_status) or
                 (lambda s: s == target_status))
-        return [test for test in self._test_db.all_tests
+        return [test for test in self._test_db.get_all_tests()
                 if comp(self.lookup_status(test))]
 
     def next_untested(self):
