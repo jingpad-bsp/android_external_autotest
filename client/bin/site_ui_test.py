@@ -239,9 +239,14 @@ class UITest(bin_test.test):
     def cleanup(self):
         """Overridden from test.cleanup() to log out when the test is complete.
         """
+        logpath = chromeos_constants.CHROME_LOG_DIR
+
         try:
-            shutil.copy(chromeos_constants.CHROME_LOG_DIR+'/chrome',
-                        self.resultsdir+'/chrome_prelogin_log')
+            for file in os.listdir(logpath):
+                fullpath = os.path.join(logpath, file)
+                if os.path.isfile(fullpath):
+                    shutil.copy(fullpath, os.path.join(self.resultsdir, file))
+
         except (IOError, OSError) as error:
             logging.error(error)
 

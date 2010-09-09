@@ -294,11 +294,26 @@ def refresh_login_screen(timeout=_DEFAULT_TIMEOUT):
     wait_for_browser()
     wait_for_login_prompt()
     oldpid = __get_session_manager_pid()
+
+    # Clear breadcrumb that shows we've emitted login-prompt-ready.
     try:
-      os.unlink(chromeos_constants.LOGIN_PROMPT_READY_MAGIC_FILE)
+        os.unlink(chromeos_constants.LOGIN_PROMPT_READY_MAGIC_FILE)
     except OSError, e:
-      if e.errno != errno.ENOENT:
-        raise e
+        if e.errno != errno.ENOENT:
+            raise e
+
+    # Clear old log files.
+    logpath = chromeos_constants.CHROME_LOG_DIR
+    try:
+        for file in os.listdir(logpath):
+            fullpath = os.path.join(logpath, file)
+            if os.path.isfile(fullpath):
+                os.unlink(fullpath)
+
+    except (IOError, OSError) as error:
+        logging.error(error)
+
+    # Restart the UI.
     nuke_login_manager()
     site_utils.poll_for_condition(
         lambda: __session_manager_restarted(oldpid),
