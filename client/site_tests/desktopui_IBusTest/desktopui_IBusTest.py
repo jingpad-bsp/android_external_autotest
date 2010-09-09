@@ -6,23 +6,13 @@ import logging, os, re, string, time
 from autotest_lib.client.bin import site_ui_test, test
 from autotest_lib.client.common_lib import error, site_ui, utils
 
-def wait_for_ibus_daemon_or_die(timeout=10):
-    # Wait until ibus-daemon starts. ibus-daemon starts after a user
-    # logs in (see src/platform/init for details), hence it's not
-    # guaranteed that ibus-daemon is running when the test starts.
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        if os.system('pgrep ^ibus-daemon$') == 0:  # Returns 0 on success.
-            return
-        time.sleep(1)
-    raise error.TestFail('ibus-daemon is not running')
-
-
 class desktopui_IBusTest(site_ui_test.UITest):
     version = 1
     preserve_srcdir = True
 
     def setup(self):
+        self._ibus_job = None
+        self._candidate_window_job = None
         self.job.setup_dep(['ibusclient'])
 
 
@@ -77,7 +67,43 @@ class desktopui_IBusTest(site_ui_test.UITest):
 
     def test_check_unused_ibus_values(self):
         engine_list = ['hangul', 'pinyin', 'mozc', 'chewing']
-        expected_unread = set([# TODO: Uncomment these when mozc loads config
+        expected_unread = set(['engine/PinyinCorrectPinyin_UEN_UN',
+                               'engine/PinyinFuzzyPinyin_Z_ZH',
+                               'engine/PinyinFuzzyPinyin_CH_C',
+                               'engine/PinyinFuzzyPinyin_S_SH',
+                               'engine/PinyinFuzzyPinyin_EN_ENG',
+                               'engine/PinyinFuzzyPinyin_AN_ANG',
+                               'engine/PinyinFuzzyPinyin_IANG_IAN',
+                               'engine/PinyinSpecialPhrases',
+                               'engine/PinyinFuzzyPinyin_UAN_UANG',
+                               'engine/PinyinFuzzyPinyin_IN_ING',
+                               'engine/PinyinFuzzyPinyin_G_K',
+                               'engine/PinyinCorrectPinyin_UEI_UI',
+                               'engine/PinyinCorrectPinyin_UE_VE',
+                               'engine/PinyinFuzzyPinyin_F_H',
+                               'engine/PinyinFuzzyPinyin_SH_S',
+                               'engine/PinyinIncompletePinyin',
+                               'engine/PinyinFuzzyPinyin_L_R',
+                               'engine/PinyinFuzzyPinyin_K_G',
+                               'engine/PinyinFuzzyPinyin_ANG_AN',
+                               'engine/PinyinFuzzyPinyin_C_CH',
+                               'engine/PinyinCorrectPinyin_MG_NG',
+                               'engine/PinyinLookupTableOrientation',
+                               'engine/PinyinFuzzyPinyin_L_N',
+                               'engine/PinyinFuzzyPinyin_ING_IN',
+                               'engine/PinyinFuzzyPinyin_IAN_IANG',
+                               'engine/PinyinFuzzyPinyin_N_L',
+                               'engine/PinyinCorrectPinyin_IOU_IU',
+                               'engine/PinyinFuzzyPinyin_ENG_EN',
+                               'engine/PinyinCorrectPinyin_VE_UE',
+                               'engine/PinyinCorrectPinyin_V_U',
+                               'engine/PinyinFuzzyPinyin_UANG_UAN',
+                               'engine/PinyinDoublePinyinShowRaw',
+                               'engine/PinyinFuzzyPinyin_H_F',
+                               'engine/PinyinFuzzyPinyin_ZH_Z',
+                               'engine/PinyinFuzzyPinyin_R_L',
+
+                               # TODO: Uncomment these when mozc loads config
                                # values from ibus.
                                'engine/Mozchistory_learning_level',
                                'engine/Mozcincognito_mode',
@@ -154,8 +180,6 @@ class desktopui_IBusTest(site_ui_test.UITest):
                                   'generalglobal_engine',
 
                                   # We don't set these prefernces.
-                                  'general/hotkeynext_engine',
-                                  'general/hotkeyprev_engine',
                                   'general/hotkeytrigger',
                                   'generalembed_preedit_text',
                                   'generalenable_by_default',
@@ -164,6 +188,11 @@ class desktopui_IBusTest(site_ui_test.UITest):
                                   'generaluse_system_keyboard_layout'])
 
         self.preload_engines(engine_list)
+
+        # ibus takes some time to preload the engines, and they can't be
+        # activated until they are done loading.  Since we don't get notified
+        # when they are ready, we have to wait here to give them time.
+        time.sleep(2)
 
         # Send a ctrl+l to enter a text field.
         ax = self.get_autox()
@@ -220,7 +249,7 @@ class desktopui_IBusTest(site_ui_test.UITest):
 
 
     def run_once(self):
-        wait_for_ibus_daemon_or_die()
+        self.start_ibus_daemon_or_die()
         dep = 'ibusclient'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
@@ -234,3 +263,21 @@ class desktopui_IBusTest(site_ui_test.UITest):
             self.test_config(type_name)
 
         self.test_check_unused_ibus_values()
+        self._ibus_job = None
+        self._candidate_window_job = None
+        utils.system_output("kill -9 `pgrep ^ibus-daemon$`")
+
+
+    def start_ibus_daemon_or_die(self, timeout=10):
+        self._ibus_job = utils.BgJob(
+            "su chronos -c '%s'" %
+            "/usr/bin/ibus-daemon --panel=disable --cache=none --restart")
+        time.sleep(2)
+        self._candidate_window_job = utils.BgJob(
+            "su chronos -c '/opt/google/chrome/candidate_window'")
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if os.system('pgrep ^ibus-daemon$') == 0:
+                return
+            time.sleep(1)
+        raise error.TestFail('ibus-daemon is not running')
