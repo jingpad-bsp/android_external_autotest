@@ -396,5 +396,6 @@ class ControlState:
 def lookup_status_by_unique_name(unique_name, test_list, status_file_path):
     """Determine the status of given test.  Somewhat heavyweight,
     since it parses the status file."""
-    test = TestDatabase(test_list).get_test_by_unique_name(unique_name)
+    test_db = TestDatabase(test_list)
+    test = test_db.get_test_by_unique_name(unique_name)
     return StatusMap(test_list, status_file_path, test_db).lookup_status(test)
