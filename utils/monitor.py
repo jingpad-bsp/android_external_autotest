@@ -156,8 +156,6 @@ class RemoteWorker(object):
 
 
     def run(self):
-        TB.hosts[self.h]['time'] = strftime(
-            '%d%b%Y %H:%M:%S', localtime())
         try:
             self.client.connect(self.h, username='root',
                                 key_filename=TB.privkey, timeout=TIMEOUT)
@@ -167,13 +165,15 @@ class RemoteWorker(object):
             TB.hosts[self.h]['status'] = False
         finally:
             if TB.hosts[self.h]['status']:
-                self.ReadRelease()
+                self.ReadRelease()  # Must be done before UpdateRelease().
                 self.ReadFirmware()
             self.UpdateRelease()  # Must be done before ReadResources().
             if TB.hosts[self.h]['status']:
                 self.ReadResources()
             TB.logger.debug('Closing client for %s', self.h)
             self.client.close()
+        TB.hosts[self.h]['time'] = strftime(
+            '%d%b%Y %H:%M:%S', localtime())
 
 
     def ReadRelease(self):
@@ -266,7 +266,7 @@ class RemoteWorker(object):
                         lines.pop(lines.index(line))
 
                 if update_file:
-                    TB.logger.info('Updating %s', relfile)
+                    TB.logger.debug('Updating %s', relfile)
                     shutil.move(relfile, tmpfile)
                     # Put the most recent update in the new file, and make the
                     # PTR key to point to it.
@@ -420,7 +420,7 @@ class Monitor(object):
 
         if TB.graph:
             # Graphing takes much longer, so increase the max runtime.
-            maxtime = RUNTIME * 5
+            maxtime = RUNTIME * 6
         else:
             maxtime = RUNTIME
         # Queue.join() will wait for all jobs in the queue to finish, or
@@ -751,6 +751,7 @@ class Resource(object):
                     newrow = True
             f.write('</table><p>\n')
             f.write('</center>\n')
+            f.write('<H5>Last Update: %s</H5>' % TB.hosts[hostname]['time'])
             f.write('</BODY></HTML>')
             f.close()
             os.chmod(pathname[k], 0644)
@@ -779,6 +780,7 @@ class Resource(object):
                 f.write('</a></td></tr>\n')
             f.write('</table><p>\n')
             f.write('</center>\n')
+            f.write('<H5>Last Update: %s</H5>' % TB.hosts[hostname]['time'])
             f.write('</BODY></HTML>')
             f.close()
             os.chmod(rrdfile, 0644)
@@ -1725,7 +1727,7 @@ def ParseArgs():
                       dest='log_to_stdout')
     parser.add_option('--threads',
                       help='Number of threads to create [default: %default]',
-                      default=25,
+                      default=50,
                       dest='threads')
     parser.add_option('--update',
                       help='Collect data from hosts [default: %default]',
