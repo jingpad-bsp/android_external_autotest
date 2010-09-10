@@ -252,9 +252,11 @@ class hardware_Components(test.test):
             raise error.TestError('Cannot select BIOS flashrom')
         base_img = flashrom.read_whole()
         flashrom_size = len(base_img)
-        # XXX we can NOT trust base image here for layout, otherwise firmware
-        # can provide fake (non-used) GBB/BSTUB in garbage area.
-        layout = flashrom.detect_chromeos_bios_layout(flashrom_size, None)
+        # XXX Allowing the FMAP to override our default layout may be an exploit
+        # here, because vendor can provide fake (non-used) GBB/BSTUB in unused
+        # area.  However since the flash memory layout may change, we need to
+        # trust FMAP here.
+        layout = flashrom.detect_chromeos_bios_layout(flashrom_size, base_img)
         if not layout:
             raise error.TestError('Cannot detect ChromeOS flashrom layout')
         hash_src = ''
