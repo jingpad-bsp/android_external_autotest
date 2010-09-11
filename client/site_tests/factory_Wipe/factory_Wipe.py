@@ -19,8 +19,11 @@ class factory_Wipe(test.test):
 
         factory.log('switch to boot from release image and prepare wipe')
 
+        # Switch to the release image.
+        utils.run('./switch_partitions.sh')
+
         # Tag the current image to be wiped according to preference
-        # (secure or fast).
+        # (secure or fast). Don't tag until partition switch passes.
         tag_filename = '/mnt/stateful_partition/factory_install_reset'
         if secure_wipe:
             utils.run('touch %s' % tag_filename)
@@ -29,8 +32,6 @@ class factory_Wipe(test.test):
 
         # Copy the wipe splash image to state partition.
         utils.run('cp -f wipe_splash.png /mnt/stateful_partition/')
-        # Switch to the release image.
-        utils.run('./switch_partitions.sh')
         # Time for reboot.
         utils.run('shutdown -r now')
 
