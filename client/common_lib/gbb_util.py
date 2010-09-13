@@ -28,15 +28,29 @@ class GBBUtility(object):
         self._gbb_command = gbb_command
         self._temp_dir = temp_dir
         self._keep_temp_files = keep_temp_files
-        self._bios_file = None
+        self._need_commit = False
+        self._clear_cached()
 
 
     def __del__(self):
-        if self._bios_file:
-            self._remove_temp_file(self._bios_file)
+        if self._gbb_file:
+            self._remove_temp_file(self._gbb_file)
+        if self._need_commit:
+            raise error.TestError(
+                'You changed somethings; should commit or discard them.')
 
 
-    def _get_temp_filename(self, prefix='tmp'):
+    def _clear_cached(self):
+        if self._gbb_file:
+            self._remove_temp_file(self._gbb_file)
+        self._gbb_file = None
+        self._bmpfv = None
+        self._recoverykey = None
+        self._rootkey = None
+        self._hwid = None
+
+
+    def _get_temp_filename(self, prefix='tmp_'):
         """Returns the name of a temporary file in self._temp_dir."""
         (fd, name) = tempfile.mkstemp(prefix=prefix, dir=self._temp_dir)
         os.close(fd)
@@ -51,23 +65,24 @@ class GBBUtility(object):
             os.remove(filename)
 
 
-    def _read_bios(self, force=False):
-        """Reads the BIOS to a file, self._bios_file."""
-        if not self._bios_file or force:
-            flashrom = flashrom_util.flashrom_util()
-            if not flashrom.select_bios_flashrom():
-                raise error.TestError('Unable to select BIOS flashrom')
-            bios_file = self._get_temp_filename('bios')
-            if not flashrom.read_whole_to_file(bios_file):
-                raise error.TestError('Unable to read the BIOS image')
-            self._bios_file = bios_file
+    def _get_current_gbb_file(self):
+        """Gets the GBB in BIOS to a file, self._gbb_file."""
+        if not self._gbb_file:
+            flashrom = flashrom_util.FlashromUtility()
+            flashrom.initialize(flashrom.TARGET_BIOS)
+
+            gbb_data = flashrom.read_section('FV_GBB')
+            gbb_file = self._get_temp_filename('current_gbb_')
+            utils.open_write_close(gbb_file, gbb_data)
+            self._gbb_file = gbb_file
+
+        return self._gbb_file
 
 
-    def _run_gbb_utility(self, args='', output_file=''):
+    def _run_gbb_utility(self, args, output_file=''):
         """Runs gbb_utility on the current BIOS firmware data."""
-        self._read_bios()
-        cmd = 'gbb_utility %s "%s" "%s"' % (args, self._bios_file,
-                                            output_file)
+        gbb_file = self._get_current_gbb_file()
+        cmd = 'gbb_utility %s "%s" "%s"' % (args, gbb_file, output_file)
         result = utils.system_output(cmd)
         return result
 
@@ -79,26 +94,99 @@ class GBBUtility(object):
             'recoverykey', or 'rootkey'.
         @return: The returned GBB value.
         """
-        value_file = self._get_temp_filename(key)
+        value_file = self._get_temp_filename('get_%s_' % key)
         self._run_gbb_utility('--get --%s=%s' % (key, value_file))
-        with open(value_file, 'rb') as f:
-            value = f.read()
+        value = utils.read_file(value_file)
         self._remove_temp_file(value_file)
         return value
 
 
     def get_bmpfv(self):
-        return self._get_gbb_value('bmpfv')
+        if not self._bmpfv:
+            self._bmpfv = self._get_gbb_value('bmpfv')
+        return self._bmpfv
 
 
     def get_hwid(self):
-        result = _self._run_gbb_utility(self, '--get --hwid')
-        return result.strip().partition('hardware_id: ')[2]
+        if not self._hwid:
+            result = _self._run_gbb_utility(self, '--get --hwid')
+            self._hwid = result.strip().partition('hardware_id: ')[2]
+        return self._hwid
 
 
     def get_recoverykey(self):
-        return self._get_gbb_value('recoverykey')
+        if not self._recoverykey:
+            self._recoverykey = self._get_gbb_value('recoverykey')
+        return self._recoverykey
 
 
     def get_rootkey(self):
-        return self._get_gbb_value('rootkey')
+        if not self._rootkey:
+            self._rootkey = self._get_gbb_value('rootkey')
+        return self._rootkey
+
+
+    def set_bmpfv(self, bmpfv):
+        self._bmpfv = bmpfv
+        self._need_commit = True
+
+
+    def set_hwid(self, hwid):
+        self._hwid = hwid
+        self._need_commit = True
+
+
+    def set_recoverykey(self, recoverykey):
+        self._recoverykey = recoverykey
+        self._need_commit = True
+
+
+    def set_rootkey(self, rootkey):
+        self._rootkey = rootkey
+        self._need_commit = True
+
+
+    def commit(self):
+        """Commit all changes to the current BIOS."""
+        if self._need_commit:
+            args = '--set'
+            if self._bmpfv:
+                bmpfv_file = self._get_temp_filename('set_bmpfv_')
+                utils.open_write_close(bmpfv_file, self._bmpfv)
+                args += ' --bmpfv=%s' % bmpfv_file
+            if self._hwid:
+                args += ' --hwid="%s"' % self._hwid
+            if self._recoverykey:
+                recoverykey_file = self._get_temp_filename('set_recoverykey_')
+                utils.open_write_close(recoverykey_file, self._recoverykey)
+                args += ' --recoverykey=%s' % recoverykey_file
+            if self._rootkey:
+                rootkey_file = self._get_temp_filename('set_rootkey_')
+                utils.open_write_close(rootkey_file, self._rootkey)
+                args += ' --rootkey=%s' % rootkey_file
+
+            flashrom = flashrom_util.FlashromUtility()
+            flashrom.initialize(flashrom.TARGET_BIOS)
+
+            new_gbb_file = self._get_temp_filename('new_gbb_')
+            self._run_gbb_utility(args, output_file=new_gbb_file)
+            new_gbb = utils.read_file(new_gbb_file)
+
+            flashrom.write_section('FV_GBB', new_gbb)
+            flashrom.commit()
+
+            if self._bmpfv:
+                self._remove_temp_file(bmpfv_file)
+            if self._recoverykey:
+                self._remove_temp_file(recoverykey_file)
+            if self._rootkey:
+                self._remove_temp_file(rootkey_file)
+            self._need_commit = False
+            self._clear_cached()
+
+
+    def discard(self):
+        """Discard all uncommitted changes."""
+        if self._need_commit:
+            self._need_commit = False
+            self._clear_cached()

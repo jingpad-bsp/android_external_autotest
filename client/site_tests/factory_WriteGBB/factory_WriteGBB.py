@@ -4,44 +4,35 @@
 
 import glob, os
 
-from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import flashrom_util
+from autotest_lib.client.common_lib import gbb_util
 
 
 class factory_WriteGBB(test.test):
-    version = 1
+    version = 2
 
-    def run_once(self, gbb_file='', shared_dict={}):
-        os.chdir(self.bindir)
+    def run_once(self, shared_dict={}):
+        # More convenient to set the CWD to hardware_Components since a lot of
+        # values in the component list are based on that directory.
+        os.chdir(os.path.join(self.bindir, '../hardware_Components'))
 
-        # If found the HwQual ID in shared_dict, use the GBB with the same ID.
+        # If found the HwQual ID in shared_dict, identify the component files.
         if 'part_id_hwqual' in shared_dict:
-            id = shared_dict['part_id_hwqual']
-            id = id.rpartition(' ')[0].replace(' ', '_')
-            gbb_file = 'gbb*%s' % id
+            id = shared_dict['part_id_hwqual'].replace(' ', '_')
+            component_file = 'data_*/components_%s' % id
 
-        gbb_files = glob.glob(gbb_file)
-        if len(gbb_files) > 1:
-            raise error.TestError('More than one GBB file found')
-        elif len(gbb_files) == 1:
-            gbb_file = gbb_files[0]
-        else:
-            raise error.TestError('Unable to find GBB file: %s' % gbb_file)
-        gbb_data = utils.read_file(gbb_file)
+        component_files = glob.glob(component_file)
+        if len(component_files) != 1:
+            raise error.TestError(
+                'Unable to find the component file: %s' % component_file)
+        component_file = component_files[0]
+        components = eval(utils.read_file(component_file))
 
-        flashrom = flashrom_util.FlashromUtility()
-        flashrom.initialize(flashrom.TARGET_BIOS)
-
-        gbb_section = 'FV_GBB'
-        original_data = flashrom.read_section(gbb_section)
-        # If no difference, no need to update.
-        if gbb_data == original_data:
-            return
-
-        original_file = os.path.join(self.resultsdir, 'original_gbb.bin')
-        utils.open_write_close(original_file, original_data)
-
-        flashrom.write_section(gbb_section, gbb_data)
-        flashrom.commit()
+        gbb = gbb_util.GBBUtility(temp_dir=self.resultsdir,
+                                  keep_temp_files=True)
+        gbb.set_bmpfv(utils.read_file(components['data_bitmap_fv'][0]))
+        gbb.set_hwid(components['part_id_hwqual'][0])
+        gbb.set_recoverykey(utils.read_file(components['key_recovery'][0]))
+        gbb.set_rootkey(utils.read_file(components['key_root'][0]))
+        gbb.commit()
