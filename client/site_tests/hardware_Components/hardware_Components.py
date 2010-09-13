@@ -110,13 +110,13 @@ class hardware_Components(test.test):
     def check_existence_key_recovery(self, part_id):
         current_key = self._gbb.get_recoverykey()
         target_key = utils.read_file(part_id)
-        return current_key == target_key
+        return current_key.startswith(target_key)
 
 
     def check_existence_key_root(self, part_id):
         current_key = self._gbb.get_rootkey()
         target_key = utils.read_file(part_id)
-        return current_key == target_key
+        return current_key.startswith(target_key)
 
 
     def check_existence_part_id_chrontel(self, part_id):
@@ -333,18 +333,18 @@ class hardware_Components(test.test):
 
         # If found the HwQual ID in shared_dict, use the list with the same ID.
         if 'part_id_hwqual' in shared_dict:
-            id = shared_dict['part_id_hwqual']
-            id = id.rpartition(' ')[0].replace(' ', '_')
-            approved_dbs = 'qualified_components*%s' % id
+            id = shared_dict['part_id_hwqual'].replace(' ', '_')
+            approved_dbs = 'data_*/components_%s' % id
 
         # approved_dbs supports shell-like filename expansion.
-        for db in glob.iglob(approved_dbs):
+        existing_dbs = glob.glob(approved_dbs)
+        if not existing_dbs:
+            raise error.TestError('Unable to find approved db: %s' %
+                                  approved_dbs)
+
+        for db in existing_dbs:
             self._system = {}
             self._failures = {}
-
-            if not os.path.exists(db):
-                raise error.TestError('Unable to find approved db: %s' % db)
-
             self._approved = eval(utils.read_file(db))
             logging.debug('Approved DB: %s', self.pformat(self._approved))
 

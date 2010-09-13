@@ -84,7 +84,7 @@ TEST_LIST = [
                  label_zw='型號匹配',
                  autotest_name='hardware_Components',
                  unique_name='hw-qual-id-match',
-                 dargs={'approved_dbs':'qualified_components*',
+                 dargs={'approved_dbs':'data_*/components*',
                         'ignored_cids':[
                             'hash_ro_firmware',
                             'part_id_hwqual',
