@@ -8,6 +8,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
 from autotest_lib.client.common_lib import gbb_util
+from autotest_lib.client.common_lib import site_fmap
 from autotest_lib.client.common_lib import site_vblock
 
 
@@ -260,6 +261,10 @@ class hardware_Components(test.test):
         if not layout:
             raise error.TestError('Cannot detect ChromeOS flashrom layout')
         hash_src = ''
+        fmap_obj = site_fmap.fmap_decode(base_img)
+        if not fmap_obj:
+            raise error.TestError('No FMAP structure in flashrom.')
+        hash_src = hash_src + site_fmap.fmap_encode(fmap_obj)
         for section in hash_ro_list:
             src = flashrom.get_section(base_img, layout, section)
             if not src:
