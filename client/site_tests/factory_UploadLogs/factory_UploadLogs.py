@@ -64,7 +64,7 @@ class factory_UploadLogs(test.test):
             return
         src_hash, src_obj = self.prepare_source_object(factory.LOG_PATH)
         dest = {}
-        dest.update(DEFAULT_DESTINATION_PARAM)
+        dest.update(self.DEFAULT_DESTINATION_PARAM)
         dest.update(destination)
         dest_name = src_hash + '.log'
         if self.USE_GZIP:

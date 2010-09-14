@@ -29,6 +29,7 @@ class GBBUtility(object):
         self._temp_dir = temp_dir
         self._keep_temp_files = keep_temp_files
         self._need_commit = False
+        self._gbb_file = None
         self._clear_cached()
 
 
