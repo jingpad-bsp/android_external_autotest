@@ -52,10 +52,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
         crasher is only gzipped to subvert Portage stripping.
         """
-        self._crasher_path = {
-            True: os.path.join(self.srcdir, 'crasher_breakpad'),
-            False: os.path.join(self.srcdir, 'crasher_nobreakpad')
-            }
+        self._crasher_path = os.path.join(self.srcdir, 'crasher_nobreakpad')
         utils.system('cd %s; tar xzf crasher.tgz' %
                      self.srcdir)
 
@@ -72,26 +69,25 @@ class logging_UserCrash(site_crash_test.CrashTest):
         utils.system('rm -rf %s' % self._symbol_dir)
         os.mkdir(self._symbol_dir)
 
-        for with_breakpad in [True, False]:
-            basename = os.path.basename(self._crasher_path[with_breakpad])
-            utils.system('/usr/bin/dump_syms %s > %s.sym' %
-                         (self._crasher_path[with_breakpad],
-                          basename))
-            sym_name = '%s.sym' % basename
-            symbols = utils.read_file(sym_name)
-            # First line should be like:
-            # MODULE Linux x86 7BC3323FBDBA2002601FA5BA3186D6540 crasher_XXX
-            #  or
-            # MODULE Linux arm C2FE4895B203D87DD4D9227D5209F7890 crasher_XXX
-            first_line = symbols.split('\n')[0]
-            tokens = first_line.split()
-            if tokens[0] != 'MODULE' or tokens[1] != 'Linux':
-                raise error.TestError('Unexpected symbols format: %s',
-                                      first_line)
-            file_id = tokens[3]
-            target_dir = os.path.join(self._symbol_dir, basename, file_id)
-            os.makedirs(target_dir)
-            os.rename(sym_name, os.path.join(target_dir, sym_name))
+        basename = os.path.basename(self._crasher_path)
+        utils.system('/usr/bin/dump_syms %s > %s.sym' %
+                     (self._crasher_path,
+                      basename))
+        sym_name = '%s.sym' % basename
+        symbols = utils.read_file(sym_name)
+        # First line should be like:
+        # MODULE Linux x86 7BC3323FBDBA2002601FA5BA3186D6540 crasher_XXX
+        #  or
+        # MODULE Linux arm C2FE4895B203D87DD4D9227D5209F7890 crasher_XXX
+        first_line = symbols.split('\n')[0]
+        tokens = first_line.split()
+        if tokens[0] != 'MODULE' or tokens[1] != 'Linux':
+          raise error.TestError('Unexpected symbols format: %s',
+                                first_line)
+        file_id = tokens[3]
+        target_dir = os.path.join(self._symbol_dir, basename, file_id)
+        os.makedirs(target_dir)
+        os.rename(sym_name, os.path.join(target_dir, sym_name))
 
 
     def _verify_stack(self, stack, basename, from_crash_reporter):
@@ -125,12 +121,11 @@ class logging_UserCrash(site_crash_test.CrashTest):
             raise error.TestFail('Did not show main on stack')
 
 
-    def _run_crasher_process(self, username, with_breakpad, cause_crash=True):
+    def _run_crasher_process(self, username, cause_crash=True):
         """Runs the crasher process.
 
         Args:
           username: runs as given user
-          with_breakpad: run crasher that has breakpad (-lcrash) linked in
           extra_args: additional parameters to pass to crasher process
 
         Returns:
@@ -150,8 +145,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
             crasher_command = []
             expected_result = -SIGSEGV
 
-        crasher_command.append(self._crasher_path[with_breakpad])
-        basename = os.path.basename(self._crasher_path[with_breakpad])
+        crasher_command.append(self._crasher_path)
+        basename = os.path.basename(self._crasher_path)
         if not cause_crash:
             crasher_command.append('--nocrash')
         crasher = subprocess.Popen(crasher_command,
@@ -159,7 +154,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                    stderr=subprocess.PIPE)
         output = crasher.communicate()[1]
         logging.debug('Output from %s: %s' %
-                      (self._crasher_path[with_breakpad], output))
+                      (self._crasher_path, output))
 
         # Grab the pid from the process output.  We can't just use
         # crasher.pid unfortunately because that may be the PID of su.
@@ -245,10 +240,10 @@ class logging_UserCrash(site_crash_test.CrashTest):
             raise error.TestFail('Sent the wrong minidump report')
 
 
-    def _check_crashing_process(self, username, with_breakpad):
+    def _check_crashing_process(self, username):
         self._log_reader.set_start_by_current()
 
-        result = self._run_crasher_process(username, with_breakpad)
+        result = self._run_crasher_process(username)
 
         if not result['crashed']:
             raise error.TestFail('crasher did not do its job of crashing: %d' %
@@ -261,7 +256,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
         crash_dir = self._get_crash_dir(username)
         crash_contents = os.listdir(crash_dir)
-        basename = os.path.basename(self._crasher_path[with_breakpad])
+        basename = os.path.basename(self._crasher_path)
 
         breakpad_minidump = None
         crash_reporter_minidump = None
@@ -286,11 +281,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
                     raise error.TestFail('Breakpad wrote multimpe minidumps')
                 breakpad_minidump = os.path.join(crash_dir, filename)
 
-        if with_breakpad and not breakpad_minidump:
-            raise error.TestFail('%s did not generate breakpad minidump' %
-                                 basename)
-
-        if not with_breakpad and breakpad_minidump:
+        if breakpad_minidump:
             raise error.TestFail('%s did generate breakpad minidump' % basename)
 
         if not crash_reporter_minidump:
@@ -333,7 +324,6 @@ class logging_UserCrash(site_crash_test.CrashTest):
         """Test a program linked against libcrash_dumper can exit normally."""
         self._log_reader.set_start_by_current()
         result = self._run_crasher_process(username='root',
-                                           with_breakpad=True,
                                            cause_crash=False)
         if (result['crashed'] or
             result['crash_reporter_caught'] or
@@ -341,24 +331,14 @@ class logging_UserCrash(site_crash_test.CrashTest):
             raise error.TestFail('Normal exit of program with dumper failed')
 
 
-    def _test_chronos_breakpad_crasher(self):
-        """Test a user space crash when running as chronos is handled."""
-        self._check_crashing_process('chronos', True)
-
-
     def _test_chronos_nobreakpad_crasher(self):
         """Test a user space crash when running as chronos is handled."""
-        self._check_crashing_process('chronos', False)
-
-
-    def _test_root_breakpad_crasher(self):
-        """Test a user space crash when running as root is handled."""
-        self._check_crashing_process('root', True)
+        self._check_crashing_process('chronos')
 
 
     def _test_root_nobreakpad_crasher(self):
         """Test a user space crash when running as root is handled."""
-        self._check_crashing_process('root', False)
+        self._check_crashing_process('root')
 
 
     def _test_max_enqueued_crashes(self):
@@ -372,7 +352,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
         # Fill up the queue.
         for i in range(0, _MAX_CRASH_DIRECTORY_SIZE):
-          result = self._run_crasher_process(username, with_breakpad=False)
+          result = self._run_crasher_process(username)
           if not result['crashed']:
             raise error.TestFail('failure while setting up queue: %d' %
                                  result['returncode'])
@@ -388,7 +368,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
         # are enqueued.
         for i in range(0, 10):
           self._log_reader.set_start_by_current()
-          result = self._run_crasher_process(username, with_breakpad=False)
+          result = self._run_crasher_process(username)
           logging.info('New log messages: %s' % self._log_reader.get_logs())
           if not result['crashed']:
             raise error.TestFail('failure after setting up queue: %d' %
@@ -406,7 +386,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
     def _check_core_file_persisting(self, expect_persist):
         self._log_reader.set_start_by_current()
 
-        result = self._run_crasher_process('root', with_breakpad=False)
+        result = self._run_crasher_process('root')
 
         if not result['crashed']:
             raise error.TestFail('crasher did not crash')
@@ -470,9 +450,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
         self.run_crash_tests(['reporter_startup',
                               'reporter_shutdown',
                               'no_crash',
-                              'chronos_breakpad_crasher',
                               'chronos_nobreakpad_crasher',
-                              'root_breakpad_crasher',
                               'root_nobreakpad_crasher',
                               'max_enqueued_crashes',
                               'core_file_persists_in_debug',

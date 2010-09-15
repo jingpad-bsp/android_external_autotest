@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-BINS = crasher_breakpad crasher_nobreakpad
+BINS = crasher_nobreakpad
 SRC = crasher.cc
 OBJS = crasher.o bomb.o
 TGZ = crasher.tgz
@@ -13,11 +13,8 @@ all: $(TGZ)
 $(TGZ): $(BINS)
 	tar czf $(TGZ) $^
 
-crasher_breakpad: $(OBJS)
-	$(CXX) -o $@ $^ -lcrash
-
 crasher_nobreakpad: $(OBJS)
-	$(CXX) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@
