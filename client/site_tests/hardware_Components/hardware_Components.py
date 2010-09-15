@@ -351,7 +351,7 @@ class hardware_Components(test.test):
             self._system = {}
             self._failures = {}
             self._approved = eval(utils.read_file(db))
-            logging.debug('Approved DB: %s', self.pformat(self._approved))
+            factory.log('Approved DB: %s' % self.pformat(self._approved))
 
             for cid in self._cids:
                 self.check_component(cid, self.force_get_property('get_' + cid))
@@ -365,7 +365,7 @@ class hardware_Components(test.test):
             for cid in self._check_existence_cids:
                 self.check_approved_part_id_existence(cid, type='others')
 
-            logging.debug('System: %s', self.pformat(self._system))
+            factory.log('System: %s' % self.pformat(self._system))
 
             outdb = os.path.join(self.resultsdir, 'system_components')
             utils.open_write_close(outdb, self.pformat(self._system))
@@ -386,4 +386,4 @@ class hardware_Components(test.test):
             all_failures = ('You may forget to insert an SD card.\n' +
                             all_failures)
 
-        raise error.TestFail(all_failures)
+        raise error.TestFail(repr(all_failures))
