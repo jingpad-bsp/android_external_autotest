@@ -9,6 +9,7 @@ from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_eap_tls
+from autotest_lib.client.common_lib import error
 
 class NotImplemented(Exception):
     def __init__(self, what):
