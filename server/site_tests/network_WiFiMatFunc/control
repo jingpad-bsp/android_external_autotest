@@ -25,28 +25,5 @@ router     - the IP address of the WiFi AP/Router and the names of the
 
 from autotest_lib.server import site_wifitest
 
-import os
+site_wifitest.run_test_dir("network_WiFiMatFunc", job, args, machines)
 
-# convert autoserv args to something usable
-opts = dict([[k, v] for (k, e, v) in [x.partition('=') for x in args]])
-
-config_file = opts.get('config_file', 'wifi_testbed_config')
-test_pat = opts.get('test_pat', '[0-9]*')
-router_addr = opts.get('router_addr', None)
-server_addr = opts.get('server_addr', None)
-
-config = site_wifitest.read_wifi_testbed_config(
-    os.path.join(job.configdir, config_file),
-    client_addr = machines[0],    # NB: take client identity from command line
-    router_addr = router_addr,
-    server_addr = server_addr)
-server = config['server']
-router = config['router']
-
-logging.info("Client %s, Server %s, AP %s" % \
-    (machines[0], server.get('addr', 'N/A'), router['addr']))
-
-dir = os.path.join(job.serverdir, "site_tests", "network_WiFiMatFunc")
-
-for t in site_wifitest.read_tests(dir, test_pat):
-   job.run_test("network_WiFiMatFunc", testcase=t, config=config, tag=t['file'])

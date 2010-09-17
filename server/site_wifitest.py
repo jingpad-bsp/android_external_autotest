@@ -9,6 +9,7 @@ from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_eap_tls
+from autotest_lib.server import test
 from autotest_lib.client.common_lib import error
 
 class NotImplemented(Exception):
@@ -810,3 +811,63 @@ def read_wifi_testbed_config(file, client_addr=None, server_addr=None,
     config['tagname'] = router['addr']
 
     return config
+
+def run_test_dir(test_name, job, args, machines):
+    # convert autoserv args to something usable
+    opts = dict([[k, v] for (k, e, v) in [x.partition('=') for x in args]])
+
+    config_file = opts.get('config_file', 'wifi_testbed_config')
+    test_pat = opts.get('test_pat', '[0-9]*')
+    router_addr = opts.get('router_addr', None)
+    server_addr = opts.get('server_addr', None)
+
+    config = read_wifi_testbed_config(
+        os.path.join(job.configdir, config_file),
+        client_addr = machines[0],    # NB: take client identity from command line
+        router_addr = router_addr,
+        server_addr = server_addr)
+    server = config['server']
+    router = config['router']
+
+    logging.info("Client %s, Server %s, AP %s" % \
+        (machines[0], server.get('addr', 'N/A'), router['addr']))
+
+    test_dir = os.path.join(job.serverdir, "site_tests", test_name)
+
+    for t in read_tests(test_dir, test_pat):
+       job.run_test(test_name, testcase=t, config=config, tag=t['file'])
+
+class test(test.test):
+  """
+  Base class for network_WiFi* classes that are created in the control
+  directory for each test suite
+  """
+  version = 1
+
+  def expect_failure(self, name, reason):
+    if reason is None:
+      reason = "no reason given"
+    logging.info("%s: ignore failure (%s)", name, reason)
+
+
+  # The testcase config, setup, etc are done out side the individual
+  # test loop, in the control file.
+  def run_once(self, testcase, config):
+    name = testcase['name']
+    try:
+      if 'skip_test' in testcase:
+        logging.info("%s: SKIP: %s", name, testcase['skip_test'])
+      else:
+        wt = WiFiTest(name, testcase['steps'], config)
+        wt.run()
+        wt.write_keyvals(self)
+    except error.TestFail:
+      if 'expect_failure' in testcase:
+        self.expect_failure(name, testcase['expect_failure'])
+      else:
+        raise
+    except Exception, e:
+      if 'expect_failure' in testcase:
+        self.expect_failure(name, testcase['expect_failure'])
+      else:
+        raise error.TestFail(e)
