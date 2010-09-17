@@ -7,7 +7,7 @@ from autotest_lib.client.bin import site_crash_test, site_utils, test
 from autotest_lib.client.common_lib import error, utils
 
 _CRASH_SENDER_CRON_PATH = '/etc/cron.hourly/crash_sender.hourly'
-_DAILY_RATE_LIMIT = 8
+_DAILY_RATE_LIMIT = 32
 _MIN_UNIQUE_TIMES = 4
 _SECONDS_SEND_SPREAD = 3600
 

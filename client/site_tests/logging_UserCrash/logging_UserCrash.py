@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error, utils
 
 _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
 _LEAVE_CORE_PATH = '/root/.leave_core'
-_MAX_CRASH_DIRECTORY_SIZE = 8
+_MAX_CRASH_DIRECTORY_SIZE = 32
 
 
 class logging_UserCrash(site_crash_test.CrashTest):
