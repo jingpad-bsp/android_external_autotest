@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import os, time
-from autotest_lib.client.bin import site_ui_test, test
+from autotest_lib.client.bin import site_login, site_ui_test, test
 from autotest_lib.client.common_lib import error
 
 class desktopui_WindowManagerFocusNewWindows(site_ui_test.UITest):
@@ -21,11 +21,11 @@ class desktopui_WindowManagerFocusNewWindows(site_ui_test.UITest):
         """
         try:
             self.autox.await_condition(
-                lambda: info.is_focused,
-                desc='Waiting for window 0x%x to be focused' % id)
-            self.autox.await_condition(
                 lambda: self.autox.get_active_window_property() == id,
                 desc='Waiting for _NET_ACTIVE_WINDOW to contain 0x%x' % id)
+            self.autox.await_condition(
+                lambda: info.is_focused,
+                desc='Waiting for window 0x%x to be focused' % id)
 
             # get_geometry() returns a tuple, so we need to construct a tuple to
             # compare against it.
@@ -44,6 +44,10 @@ class desktopui_WindowManagerFocusNewWindows(site_ui_test.UITest):
                 'Timed out on condition: %s' % exception.__str__())
 
     def run_once(self):
+        # Make sure that we don't have the initial browser window popping up in
+        # the middle of the test.
+        site_login.wait_for_initial_chrome_window()
+
         self.autox = self.get_autox()
 
         # Create a window and check that we switch to it.
@@ -56,14 +60,6 @@ class desktopui_WindowManagerFocusNewWindows(site_ui_test.UITest):
         win2 = self.autox.create_and_map_window(
             width=200, height=200, title='test 2')
         info2 = self.autox.get_window_info(win2.id)
-        self.__check_active_window(win2.id, info2)
-
-        # Cycle backwards to the first window.
-        self.autox.send_hotkey('Alt-Shift-Tab')
-        self.__check_active_window(win.id, info)
-
-        # Cycle forwards to the second window.
-        self.autox.send_hotkey('Alt-Tab')
         self.__check_active_window(win2.id, info2)
 
         # Now destroy the second window and check that the WM goes back

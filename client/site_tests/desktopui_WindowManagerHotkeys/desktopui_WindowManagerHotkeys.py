@@ -3,13 +3,18 @@
 # found in the LICENSE file.
 
 import os, random, re, shutil, time
-from autotest_lib.client.bin import site_ui_test, site_utils, test, utils
+from autotest_lib.client.bin import site_login, site_ui_test, site_utils, \
+        test, utils
 from autotest_lib.client.common_lib import error
 
 class desktopui_WindowManagerHotkeys(site_ui_test.UITest):
     version = 1
 
     def run_once(self):
+        # Make sure that we don't have the initial browser window popping up in
+        # the middle of the test.
+        site_login.wait_for_initial_chrome_window()
+
         ax = self.get_autox()
 
         # Start a terminal and wait for it to get the focus.
