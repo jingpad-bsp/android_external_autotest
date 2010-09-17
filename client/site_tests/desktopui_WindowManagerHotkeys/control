@@ -4,9 +4,9 @@
 
 AUTHOR = "Daniel Erat <derat@chromium.org>"
 NAME = "desktopui_WindowManagerHotkeys"
-PURPOSE = "Verify that the window manager hot keys are correct."
+PURPOSE = "Verify that some window manager hotkeys are functional."
 CRITERIA = """
-Fails if the hot keys do not adjust the proper component.
+Fails if the hotkeys do not perform the expected actions.
 """
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
