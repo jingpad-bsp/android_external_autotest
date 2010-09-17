@@ -68,7 +68,7 @@ class WiFiTest(object):
     def __init__(self, name, steps, config):
         self.name = name
         self.steps = steps
-        self.keyvals = {}
+        self.perf_keyvals = {}
 
         router = config['router']
         self.router = hosts.create_host(router['addr'])
@@ -132,9 +132,14 @@ class WiFiTest(object):
         # potential bg thread for client network monitoring
         self.client_netdump_thread = None
         self.__client_discover_commands(client)
-        self.netperf_iter = 0
         self.firewall_rules = []
 
+        # Find all repeated steps and create iterators for them
+        self.iterated_steps = {}
+        step_names = [step[0] for step in steps]
+        for step_name in list(set(step_names)):
+            if step_names.count(step_name) > 1:
+                self.iterated_steps[step_name] = 0
 
     def cleanup(self, params):
         """ Cleanup state: disconnect client and destroy ap """
@@ -188,6 +193,15 @@ class WiFiTest(object):
             else:
                 params = {}
 
+            # What should perf data be prefixed with?
+            if 'perf_prefix' in params:
+                self.prefix = '%s_%s' % (method, params.pop('perf_prefix'))
+            elif method in self.iterated_steps:
+                self.prefix = '%s_%d' % (method, self.iterated_steps[method])
+                self.iterated_steps[method] += 1
+            else:
+                self.prefix = method
+
             logging.info("%s: step '%s' params %s", self.name, method, params)
 
             func = getattr(self, method, None)
@@ -213,8 +227,11 @@ class WiFiTest(object):
 
 
     def write_keyvals(self, job):
-        job.write_perf_keyval(self.keyvals)
+        job.write_perf_keyval(self.perf_keyvals)
 
+    def write_perf(self, data):
+        for key, value in data.iteritems():
+            self.perf_keyvals['%s_%s' % (self.prefix, key)] = value
 
     def __get_ipaddr(self, host, ifnet):
         # XXX gotta be a better way to do this
@@ -250,11 +267,12 @@ class WiFiTest(object):
 
         result_times = re.match("OK ([0-9\.]*) ([0-9\.]*) .*", result)
 
-        self.keyvals['connect_config_s'] = result_times.group(1)
-        self.keyvals['connect_assoc_s'] = result_times.group(2)
-        for k in ('multiple_attempts', 'clear_error', 'fast_fail'):
+        self.write_perf({'config_s': result_times.group(1),
+                          'assoc_s': result_times.group(2)})
+        for k in ('already_connected', 'clear_error', 'fast_fail',
+                  'get_prop', 'in_progress', 'lost_dbus', 'multiple_attempts'):
             if re.search(k, result) is not None:
-                self.keyvals[k] = 'true'
+                self.write_perf({k:'true'})
 
         print "%s: %s" % (self.name, result)
 
@@ -424,17 +442,6 @@ class WiFiTest(object):
              stats['min'], stats['avg'], stats['max'])
 
 
-    def __ping_prefix(self, params):
-        if 'name' in params:
-            return params['name']
-
-        args = []
-        for k, v in params.items():
-            if k != 'count':
-                args.append('%s_%s' % (k, v))
-        return '/'.join(args)
-
-
     def client_ping(self, params):
         """ Ping the server from the client """
         ping_ip = params.get('ping_ip', self.server_wifi_ip)
@@ -444,9 +451,7 @@ class WiFiTest(object):
             (self.__ping_args(params), ping_ip), timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
-        prefix = 'client_ping_%s_' % self.__ping_prefix(params)
-        for k,v in stats.iteritems():
-            self.keyvals[prefix + k] = v
+        self.write_perf(stats)
         self.__print_pingstats("client_ping ", stats)
 
 
@@ -478,9 +483,7 @@ class WiFiTest(object):
              ping_ip), timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
-        prefix = 'server_ping_' + self.__ping_prefix(params)
-        for k,v in stats.iteritems():
-            self.keyvals['server_ping_' + k] = v
+        self.write_perf(stats)
         self.__print_pingstats("server_ping ", stats)
 
 
@@ -623,13 +626,7 @@ class WiFiTest(object):
         for rule in np_rules:
             self.__firewall_close(rule)
 
-        # Results are prefixed with the iteration or a caller-defined name
-        prefix = 'Netperf_%s_' % params.get('name', str(self.netperf_iter))
-        self.netperf_iter += 1
-
-        self.keyvals[prefix + 'test'] = test
-        self.keyvals[prefix + 'mode'] = mode
-        self.keyvals[prefix + 'actual_time'] = actual_time
+        self.write_perf({'test':test, 'mode':mode, 'actual_time':actual_time})
 
         logging.info(results)
 
@@ -649,7 +646,7 @@ class WiFiTest(object):
 
             87380  16384  16384    2.00      941.28
             """
-            self.keyvals[prefix + 'Throughput'] = float(lines[6].split()[4])
+            self.write_perf({'Throughput':float(lines[6].split()[4])})
         elif test == 'UDP_STREAM':
             """Parses the following and returns a touple containing throughput
             and the number of errors.
@@ -664,8 +661,8 @@ class WiFiTest(object):
             131072           2.00         3673            961.87
             """
             udp_tokens = lines[5].split()
-            self.keyvals[prefix + 'Throughput'] = float(udp_tokens[5])
-            self.keyvals[prefix + 'Errors'] = float(udp_tokens[4])
+            self.write_perf({'Throughput':float(udp_tokens[5]),
+                             'Errors':float(udp_tokens[4])})
         elif test in ['TCP_RR', 'TCP_CRR', 'UDP_RR']:
             """Parses the following which works for both rr (TCP and UDP)
             and crr tests and returns a singleton containing transfer rate.
@@ -680,7 +677,7 @@ class WiFiTest(object):
             16384  87380  1        1       2.00     14118.53
             16384  87380
             """
-            self.kevals[prefix + 'Trasnfer_Rate'] = float(lines[6].split()[5])
+            self.write_perf({'Trasnfer_Rate':float(lines[6].split()[5])})
         else:
             raise error.TestError('Unhandled test')
 
