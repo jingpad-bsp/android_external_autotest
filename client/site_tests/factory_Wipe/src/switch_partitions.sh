@@ -18,6 +18,7 @@ fi
 DEV=${ROOT_DEV%[0-9]}
 # Note: this works only for single digit partition numbers.
 ROOT_PART=$(echo "${ROOT_DEV}" | sed -e 's/^.*\([0-9]\)$/\1/')
+OTHER_ROOT_PART=$(echo "${OTHER_ROOT_DEV}" | sed -e 's/^.*\([0-9]\)$/\1/')
 
 # Successfully being able to mount the other partition
 # and run postinst guarantees that there is a real partition there.
@@ -33,8 +34,12 @@ rmdir "$MOUNTPOINT"
 # Destroy this root partition if we've successfully switched.
 if [ "${POSTINST_RETURN_CODE}" = "0" ]; then
   cgpt add -i "$((${ROOT_PART} - 1))" -P 0 -S 0 -T 0 "${DEV}"
-  RC=$?
-  if [ "${RC}" != "0" ]; then
+  if [ "$?" != "0" ]; then
+    echo "Failed to run cgpt"
+    return 1
+  fi
+  cgpt add -i "$((${OTHER_ROOT_PART} - 1))" -P 3 -S 1 -T 0 "${DEV}"
+  if [ "$?" != "0" ]; then
     echo "Failed to run cgpt"
     return 1
   fi
