@@ -15,6 +15,7 @@ from autotest_lib.client.common_lib import site_vblock
 class hardware_Components(test.test):
     version = 1
     _cids = [
+        'data_display_geometry',
         'hash_ro_firmware',
         'part_id_audio_codec',
         'part_id_cpu',
@@ -47,17 +48,18 @@ class hardware_Components(test.test):
     ]
     _non_check_cids = [
         'data_bitmap_fv',
-        'data_display_geometry',
         'data_recovery_url',
     ]
     _not_present = 'Not Present'
 
 
-    def check_component(self, comp_key, comp_id):
+    def check_component(self, comp_key, comp_ids):
         if comp_key in self._ignored:
             return
 
-        self._system[comp_key] = [ comp_id ]
+        if not isinstance(comp_ids, list):
+            comp_ids = [ comp_ids ]
+        self._system[comp_key] = comp_ids
 
         if not self._approved.has_key(comp_key):
             raise error.TestFail('%s missing from database' % comp_key)
@@ -67,8 +69,12 @@ class hardware_Components(test.test):
         if '*' in app_cids:
             return
 
-        if not comp_id in app_cids:
-            self._failures[comp_key] = [ comp_id ]
+        for comp_id in comp_ids:
+            if not comp_id in app_cids:
+                if comp_key in self._failures:
+                    self._failures[comp_key].append(comp_id)
+                else:
+                    self._failures[comp_key] = [ comp_id ]
 
 
     def check_approved_part_id_existence(self, cid, type):
@@ -138,6 +144,15 @@ class hardware_Components(test.test):
             return present
 
         return False
+
+
+    def get_data_display_geometry(self):
+        cmd = ('get-edid | parse-edid | grep "Mode " | '
+               'sed \'s/^.*"\(.*\)".*$/\\1/\'')
+        data = utils.system_output(cmd).split()
+        if not data:
+            data = [ '' ]
+        return data
 
 
     def get_part_id_audio_codec(self):
