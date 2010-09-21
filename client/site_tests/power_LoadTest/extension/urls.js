@@ -85,7 +85,7 @@ var tasks = [
     duration: 6 * 60 * 1000,
     focus: true,
     tabs: [
-      'http://www.youtube.com/watch_popup?v=ecI_hCBGEIM'
+        'http://www.youtube.com/v/ecI_hCBGEIM&autoplay=1'
     ]
   },
 ];

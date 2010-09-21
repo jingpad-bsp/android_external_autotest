@@ -36,21 +36,5 @@ import time
 loop_time = 3600
 loop_count = 9
 
-def run_audiovideo_V4L2():
-    # TODO (snanda): Exit out of run_audiovideo_V4L2 earlier if
-    # run_power_load_test completes earlier than loop_time * loop_count
-    for i in range(loop_count):
-        # enable webcam for 5% of the test time, 90% into the test
-        run_time = loop_time * 0.05
-        time.sleep(loop_time * 0.90)
-        job.run_test('audiovideo_V4L2', time=run_time, run_capture_tests=False,
-               run_default_capture_test=True, assert_mandatory_controls=False,
-               tag=i)
-
-
-def run_power_load_test():
-    job.run_test('power_LoadTest', loop_time=loop_time, loop_count=loop_count,
-                 low_battery_threshold=3)
-
-
-job.parallel([run_audiovideo_V4L2], [run_power_load_test])
+job.run_test('power_LoadTest', loop_time=loop_time, loop_count=loop_count,
+              low_battery_threshold=3)
