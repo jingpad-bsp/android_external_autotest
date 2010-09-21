@@ -21,6 +21,10 @@ class factory_WriteGBB(test.test):
         if 'part_id_hwqual' in shared_dict:
             id = shared_dict['part_id_hwqual'].replace(' ', '_')
             component_file = 'data_*/components_%s' % id
+        else:
+            raise error.TestError(
+                    'You need to run this test from factory UI, and have ' +
+                    'successfully completed the HWQual-ID matching test ')
 
         component_files = glob.glob(component_file)
         if len(component_files) != 1:
