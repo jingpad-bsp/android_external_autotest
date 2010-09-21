@@ -43,23 +43,11 @@ DEFAULT_TARGET_NAME_EC = 'ec'
 
 # The default description of ChromeOS firmware layout
 # Check help(compile_layout) for the syntax.
-# NOTE: "FVMAIN" is not typo, although it seems like lack of 'A' as postfix.
+# NOTE: Since the memory layout of BIOS may change very often,
+#       the default layout is removed to prevent confusion.
+#       Any BIOS image without FMAP is considered as corrupted.
 DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS = {
-    "bios": """
-            FV_LOG          = 0x20000,
-            NV_COMMON_STORE = 0x10000,
-            VBOOTA          = 0x02000,
-            FVMAIN          = 0xB0000,
-            VBOOTB          = 0x02000,
-            FVMAINB         = 0xB0000,
-            NVSTORAGE       = 0x10000,
-            FV_RW_RESERVED  = *,
-            |
-            FV_RO_RESERVED  = *,
-            FVDEV           = 0xB0000,
-            FV_GBB          = 0x20000,
-            FV_BSTUB        = 0x40000,
-            """,
+    "bios": "",  # retrieve from fmap, no defaults.
     "ec": """
             EC_RO
             |
@@ -68,6 +56,7 @@ DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS = {
 }
 
 # The default conversion table for fmap_decode.
+# NOTE: "FVMAIN" is not typo, although it seems like lack of 'A' as postfix.
 DEFAULT_CHROMEOS_FMAP_CONVERSION = {
     "Boot Stub": "FV_BSTUB",
     "GBB Area": "FV_GBB",
