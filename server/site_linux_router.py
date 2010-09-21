@@ -319,7 +319,7 @@ class LinuxRouter(object):
             result = self.router.run("%s delbr %s" %
                                      (self.cmd_brctl, self.bridgeif),
                                      ignore_status=True)
-            if not result.stderr:
+            if not result.stderr or 'No such device' in result.stderr:
                 break
             time.sleep(1)
         else:
