@@ -22,6 +22,7 @@ TESTS = [
   ('compilebench', {}),
   ('dbench', {}),
   ('desktopui_IBusTest', {}),
+  ('desktopui_ImeTest', {}),
   ('desktopui_SpeechSynthesisSemiAuto', {}),
   ('desktopui_SunSpiderBench', {}),
   ('desktopui_V8Bench', {}),
@@ -89,8 +90,8 @@ TESTS = [
   ('unixbench', {}),
 # desktopui_UrlFetch has an undesired 'shutdown' command inside which will cause
 # consecutive test to be aborted unexpectly. Move it to the end of the test
-# loop.  
-  ('desktopui_UrlFetch', {}),  
+# loop.
+  ('desktopui_UrlFetch', {}),
 ]
 
 # A dict which holds {machine: [(test, argv), (test, argv), ...]}
