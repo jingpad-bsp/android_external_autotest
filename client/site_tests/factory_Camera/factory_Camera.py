@@ -30,7 +30,7 @@ from random import randrange
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.bin import factory_error as error
 
 import v4l2
 

@@ -23,7 +23,7 @@ import time
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.bin import factory_error as error
 from autotest_lib.client.common_lib import utils
 
 _LABEL_STATUS_SIZE = (140, 30)

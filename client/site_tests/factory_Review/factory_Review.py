@@ -23,7 +23,6 @@ from itertools import count, izip, product
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
 
 from factory import AutomatedSequence
 
@@ -81,8 +80,10 @@ class factory_Review(test.test):
         return vbox
 
     def make_error_tab(self, status_map, t):
-        msg = '%s (%s)\n%s' % (t.label_en, t.label_zw,
-                               status_map.lookup_error_msg(t))
+        msg = status_map.lookup_error_msg(t)
+        if isinstance(msg, str) or isinstance(msg, str):
+            msg = msg.replace('<br/>', '\n')
+        msg = '%s (%s)\n%s' % (t.label_en, t.label_zw, msg)
         label = ful.make_label(msg,
                                font=LABEL_EN_FONT,
                                alignment=(0.0, 0.0))
