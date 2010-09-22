@@ -12,11 +12,25 @@ class power_Resume(test.test):
 
 
     def _get_last_msg_time(self, msg):
-        data = commands.getoutput(
-            "grep -a '%s' /var/log/messages | tail -n 1" % msg)
+        cmd = "grep -a '%s' /var/log/messages | tail -n 1" % msg
+        # The order in which processes are un-frozen is indeterminate
+        # and therfore this test may get resumed before the system has gotten
+        # a chance to finalize writes to logfile. Sleep a bit to take care of
+        # this race.
+        count = 0
+        data = commands.getoutput(cmd)
+        while len(data) == 0 and count < 5:
+            count +=1
+            time.sleep(1)
+            data = commands.getoutput(cmd)
+
+        if count == 5:
+            raise error.TestError("Failed to find log message: " + msg)
+
         match = re.search(r' \[\s*([0-9.]+)\] ', data)
         if match is None:
-            raise error.TestError('Failed to find log message: ' + msg)
+            raise error.TestError('Failed to find timestamp for log message: '
+                                  + msg)
 
         msg_time = float(match.group(1))
         logging.debug("Last message '%s' time = %f" % (msg, msg_time))
@@ -97,19 +111,6 @@ class power_Resume(test.test):
         start_suspend_time = self._get_start_suspend_time()
         end_suspend_time = self._get_end_suspend_time()
         end_resume_time = self._get_end_resume_time()
-
-        # The order in which processes are un-frozen is indeterminate
-        # and therfore this test may get resumed before the system has gotten
-        # a chance to write the end resume message. Sleep for a short time
-        # to take care of this race.
-        count = 0
-        while end_resume_time < start_suspend_time and count < 5:
-            count += 1
-            time.sleep(1)
-            end_resume_time = self._get_end_resume_time()
-
-        if count == 5:
-            raise error.TestError('Failed to find end resume time')
 
         # Calculate the suspend/resume times
         total_resume_time = self._get_hwclock_seconds() - alarm_time
