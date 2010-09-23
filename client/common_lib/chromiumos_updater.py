@@ -15,6 +15,7 @@ STATEFULDEV_UPDATER = '/usr/local/bin/stateful_update'
 UPDATER_BIN = '/usr/bin/update_engine_client'
 UPDATER_IDLE = 'UPDATE_STATUS_IDLE'
 UPDATER_NEED_REBOOT = 'UPDATE_STATUS_UPDATED_NEED_REBOOT'
+UPDATED_MARKER = '/var/run/update_engine_autoupdate_completed'
 
 
 class ChromiumOSError(error.InstallError):
@@ -44,7 +45,7 @@ class ChromiumOSUpdater():
 
     def reset_update_engine(self):
         logging.info('Resetting update-engine.')
-        self._run('rm -f /tmp/update_engine_autoupdate_completed')
+        self._run('rm -f %s' % UPDATED_MARKER)
         try:
             self._run('initctl stop update-engine')
         except error.AutoservRunError, e:
