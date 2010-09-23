@@ -159,14 +159,31 @@ def OpenLogs(*logfiles):
     return logs
 
 
+# Returns the list of the wifi interfaces (e.g. "wlan0") known to flimflam
+def GetWifiInterfaces():
+    interfaces = []
+    device_paths = manager.GetProperties().get("Devices", None)
+    for device_path in device_paths:
+        device = dbus.Interface(
+            bus.get_object("org.chromium.flimflam", device_path),
+            "org.chromium.flimflam.Device")
+        props = device.GetProperties()
+        type = props.get("Type", None)
+        interface = props.get("Interface", None)
+        if type == "wifi":
+            interfaces.append(interface)
+    return interfaces
+
 def DumpLogs(logs):
     for log in logs:
         print>>sys.stderr, "Content of %s during our run:" % log['name']
         print>>sys.stderr, "  )))  ".join(log['file'].readlines())
 
-    print>>sys.stderr, "iw dev wlan0 scan output: %s" % \
-        subprocess.Popen(["iw", "dev", "wlan0", "scan"],
-                         stdout=subprocess.PIPE).communicate()[0]
+    for interface in GetWifiInterfaces():
+        print>>sys.stderr, "iw dev %s scan output: %s" % \
+            ( interface,
+              subprocess.Popen(["iw", "dev", interface, "scan"],
+                               stdout=subprocess.PIPE).communicate()[0])
 
 def ErrExit(code):
     try:
