@@ -5,13 +5,16 @@
 BINS = crasher_nobreakpad
 SRC = crasher.cc
 OBJS = crasher.o bomb.o
-TGZ = crasher.tgz
+# Use a non-standard extension to avoid the AUTOTEST_MASK that intends to
+# remove these since they're usually large and redundant.
+TGZ = crasher.tgz-unmasked
 
 all: $(TGZ)
 
 # gzip so that portage does not strip.
 $(TGZ): $(BINS)
 	tar czf $(TGZ) $^
+	rm -f $(BINS)
 
 crasher_nobreakpad: $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^

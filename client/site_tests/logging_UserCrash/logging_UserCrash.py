@@ -53,7 +53,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
         crasher is only gzipped to subvert Portage stripping.
         """
         self._crasher_path = os.path.join(self.srcdir, 'crasher_nobreakpad')
-        utils.system('cd %s; tar xzf crasher.tgz' %
+        utils.system('cd %s; tar xzf crasher.tgz-unmasked' %
                      self.srcdir)
 
 
