@@ -70,16 +70,19 @@ class platform_ProcessPrivileges(site_ui_test.UITest):
 
     def run_once(self):
         self._failed = []
-        self.check_process('candidate_window', user='chronos', do_login=True)
+        self.check_process('cashewd', user='cashew')
         self.check_process('chrome')
-
+        self.check_process('cryptohomed', user='root')
         # TODO(mazda): Change the user value to 'messagebus'.
         # 201 is a uid of messagebus. ps command displays 201 as the
         # user name for some reasons (bug of the ps command?).
         self.check_process('dbus-daemon', user='201')
-
-        self.check_process('ibus-daemon', user='chronos', do_login=True)
-        self.check_process('ibus-memconf', user='chronos', do_login=True)
+        self.check_process('flimflamd', user='root')
+        self.check_process('metrics_daemon', user='root')
+        self.check_process('powerd')
+        self.check_process('rsyslogd', user='root')
+        self.check_process('udevd', user='root')
+        self.check_process('wpa_supplicant', user='root')
         self.check_process('X', user='root')
 
         if len(self._failed) != 0:
