@@ -26,7 +26,8 @@ class desktopui_ChromeFirstRender(site_ui_test.UITest):
                 site_login.TimeoutError('Timed out waiting for initial login'))
             site_utils.poll_for_condition(
                 lambda: os.access(self._FIRST_RENDER_FILE, os.F_OK),
-                site_login.TimeoutError('Timed out waiting for initial render'))
+                site_login.TimeoutError('Timed out waiting for initial render'),
+                timeout=60)
 
             start_time = self.__parse_uptime(self._LOGIN_SUCCESS_FILE)
             end_time = self.__parse_uptime(self._FIRST_RENDER_FILE)
