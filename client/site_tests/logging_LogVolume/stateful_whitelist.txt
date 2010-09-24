@@ -59,10 +59,7 @@
 /home/chronos/\.bluetooth/lib
 /home/chronos/\.bluetooth/lib/bluetooth
 /home/chronos/\.bluetooth/lib/bluetooth/.*
-/home/chronos/\.cache
-/home/chronos/\.cache/chromium
-/home/chronos/\.cache/chromium/Cache
-/home/chronos/\.cache/chromium/Cache/.*
+/home/chronos/\.cache/(chromium|google-chrome)(|/.*)
 /home/chronos/\.cache/ibus
 /home/chronos/\.cache/ibus/.*
 /home/chronos/\.config
@@ -123,6 +120,8 @@
 /home/chronos/\.pulse-cookie
 /home/chronos/\.pulse
 /home/chronos/\.pulse/.*
+/home/chronos/\.trousers(|/user\.data)
+/home/chronos/Consent To Send Stats
 /home/chronos/Default
 /home/chronos/Default/Cache
 /home/chronos/Default/Cache/.*
@@ -138,6 +137,7 @@
 # the name.
 /home/chronos/.*@.*\.\*_image
 /home/chronos/user
+/home/chronos/user/\.cache/(chromium|google-chrome)(|/.*)
 /home/chronos/user/\.config
 /home/chronos/user/\.config/chromium
 /home/chronos/user/\.config/google-chrome
@@ -151,10 +151,20 @@
 /home/chronos/user/chrome(|_\d{8}-\d{6})
 # Crash dumps involving processes run as "chronos" user.
 /home/chronos/user/crash
-/home/chronos/user/crash/.*\.dmp
+/home/chronos/user/crash/.*\.(core|dmp)
 /home/chronos/user/log
 # Window manager logs when logged in.  Cleaned by system-wide script.
 /home/chronos/user/log/chromeos-wm\.(LATEST|\d{8}-\d{6})
+/home/chronos/user/Archived\ History(|-journal)
+/home/chronos/user/Cookies
+/home/chronos/user/Cache(|/.*)
+/home/chronos/user/Downloads(|/.*)
+/home/chronos/user/Login Data
+/home/chronos/user/History(|-journal)
+/home/chronos/user/Thumbnails(|-journal)
+/home/chronos/user/Sync Data(|/.*)
+/home/chronos/user/Visited Links
+/home/chronos/user/Web Data(|-journal)
 /lost\+found
 # Everything under /usr/local is expected to be part of developer tools.
 /usr/local/.*
@@ -185,14 +195,9 @@
 /var/lib/.*
 /var/lock
 /var/log
-/var/log/ConsoleKit
-/var/log/ConsoleKit/history
-/var/log/Xorg.0.log
-/var/log/Xorg.0.log.old
-/var/log/Xorg.1.log
-/var/log/Xorg.1.log.old
 /var/log/boot.log
 /var/log/build
+/var/log/cashew(|/.*)
 # Chrome logs when not logged in.  Cleaned, but not by system-wide script.
 /var/log/chrome(|/chrome(_\d{8}-\d{6})?)
 /var/log/cron
@@ -210,13 +215,7 @@
 /var/log/messages(|\.\d+)
 # This is an autotest artifact.
 /var/log/messages.autotest_start
-/var/log/metrics
-/var/log/metrics/autotest-events
-/var/log/metrics/disk_shutdown_start
-/var/log/metrics/disk_shutdown_stop
-/var/log/metrics/uma-events
-/var/log/metrics/uptime_shutdown_stop
-/var/log/metrics/uptime_shutdown_start
+/var/log/metrics(|/.*)
 /var/log/portage
 /var/log/portage/.*
 # Power manager logs - cleaned.
@@ -237,6 +236,12 @@
 /var/log/update_engine.log
 # Window manager logs when not logged in.  Cleaned by system-wide script.
 /var/log/window_manager(|/chromeos-wm\.(LATEST|\d{8}-\d{6}))
+/var/log/ConsoleKit
+/var/log/ConsoleKit/history
+/var/log/Xorg.0.log
+/var/log/Xorg.0.log.old
+/var/log/Xorg.1.log
+/var/log/Xorg.1.log.old
 /var/mail
 # /var/run is entirely on tmpfs, so ignore it.
 /var/run
@@ -245,7 +250,7 @@
 /var/spool/mail
 # Crash dumps involving processes run as other than "chronos" user.
 /var/spool/crash
-/var/spool/crash/.*\.dmp
+/var/spool/crash/.*\.(core|dmp)
 /var/spool/cron
 /var/spool/cron/crontabs
 /var/spool/cron/lastrun
