@@ -17,6 +17,8 @@ CRYPTOHOME_DEVICE_REGEX = r'^/home/\.shadow/.*/vault$'
 CRYPTOHOME_INCOGNITO = 'guestfs'
 CRYPTOHOME_MOUNT_PT = USER_DATA_DIR+'/user'
 
+CRYPTOHOMED_LOG = '/var/log/cryptohomed.log'
+
 LOGIN_TRUST_ROOTS = '/etc/login_trust_root.pem'
 
 BROWSER = 'chrome'

@@ -258,6 +258,14 @@ class UITest(bin_test.test):
                 logging.error(error)
             self.logout()
 
+        if os.path.isfile(chromeos_constants.CRYPTOHOMED_LOG):
+            try:
+                base = os.path.basename(chromeos_constants.CRYPTOHOMED_LOG)
+                shutil.copy(chromeos_constants.CRYPTOHOMED_LOG,
+                            os.path.join(self.resultsdir, base))
+            except (IOError, OSError) as error:
+                logging.error(error)
+
         self.stop_authserver()
 
 
