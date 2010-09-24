@@ -56,7 +56,6 @@ Usage:
     --home: the top level directory for systemhealth files to be placed.
     --html: boolean, if set to True it will build html pages.
     --logfile: set the file name of the log file. Default: monitor.log
-    --threads: set the number of threads to create.
     --update: boolean, if True, it will collect new data from all monitored
       hosts, and update the RRD databases with the newly collected data.
     --url: string, the base URL for the landing page.
@@ -65,7 +64,7 @@ Usage:
 """
 
 __author__ = 'kdlucas@gmail.com (Kelly Lucas)'
-__version__ = '1.94'
+__version__ = '1.95'
 
 import logging, logging.handlers, optparse, os, paramiko, Queue, shutil
 import subprocess, sys, threading
@@ -128,18 +127,19 @@ class MonitorThread(threading.Thread):
 
     def __init__(self):
         threading.Thread.__init__(self)
+        self.tb = TB  # In case the thread outlives the main program.
 
 
     def run(self):
-        while True:
-            host = TB.q.get()
-            if host is None:
-                break  # reached end of queue.
-            worker = RemoteWorker(host.hostname)
+        host = self.tb.q.get()
+        worker = RemoteWorker(host.hostname)
+        try:
             worker.run()
-            # Notify Queue that process is finished.
-            TB.logger.debug('Releasing host %s from queue', host.hostname)
-            TB.q.task_done()
+        except Exception, e:
+            self.tb.logger.error('Error on remote host: %s\n%s', self.h, e)
+        # Notify Queue that process is finished.
+        self.tb.logger.debug('Releasing host %s from queue', host.hostname)
+        self.tb.q.task_done()
 
 
 class RemoteWorker(object):
@@ -153,26 +153,35 @@ class RemoteWorker(object):
         self.h = hostname
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.tb = TB  # In case the thread outlives the main program.
+        # Send paramiko messages to our log file.
+        paramiko.util.log_to_file(self.tb.logfile, level=self.tb.loglevel)
 
 
     def run(self):
         try:
             self.client.connect(self.h, username='root',
-                                key_filename=TB.privkey, timeout=TIMEOUT)
-            TB.hosts[self.h]['status'] = True
+                                key_filename=self.tb.privkey, timeout=TIMEOUT)
+            self.tb.hosts[self.h]['status'] = True
         except Exception, e:
-            TB.logger.error('Host %s: %s', self.h, e)
-            TB.hosts[self.h]['status'] = False
+            self.tb.logger.error('Host %s: %s', self.h, e)
+            self.tb.hosts[self.h]['status'] = False
         finally:
-            if TB.hosts[self.h]['status']:
-                self.ReadRelease()  # Must be done before UpdateRelease().
-                self.ReadFirmware()
+            if self.tb.hosts[self.h]['status']:
+                try:
+                    self.ReadRelease()  # Must be done before UpdateRelease().
+                    self.ReadFirmware()
+                except Exception, e:
+                    self.tb.logger.error('Error on : %s\n%s', self.h, e)
             self.UpdateRelease()  # Must be done before ReadResources().
-            if TB.hosts[self.h]['status']:
-                self.ReadResources()
-            TB.logger.debug('Closing client for %s', self.h)
+            if self.tb.hosts[self.h]['status']:
+                try:
+                    self.ReadResources()
+                except Exception, e:
+                    self.tb.logger.error('Error on: %s\n%s', self.h, e)
+            self.tb.logger.debug('Closing client for %s', self.h)
             self.client.close()
-        TB.hosts[self.h]['time'] = strftime(
+        self.tb.hosts[self.h]['time'] = strftime(
             '%d%b%Y %H:%M:%S', localtime())
 
 
@@ -186,9 +195,9 @@ class RemoteWorker(object):
             for line in stdout:
                 if 'CHROMEOS_RELEASE_DESCRIPTION' in line:
                     release = line.split('=')
-                    TB.hosts[self.h]['release']['PTR'] = release[1].strip()
+                    self.tb.hosts[self.h]['release']['PTR'] = release[1].strip()
         except Exception, e:
-            TB.logger.error('Error getting release version on host %s\n%s',
+            self.tb.logger.error('Error getting release version on host %s\n%s',
                             self.h, e)
 
 
@@ -205,13 +214,13 @@ class RemoteWorker(object):
                         fields = item.split('=')
                         # We must sanitize the string for RRDTool.
                         val = fields[1].strip('\n" ')
-                        TB.hosts[self.h]['ec_firmware']['PTR'] = val
+                        self.tb.hosts[self.h]['ec_firmware']['PTR'] = val
                     elif 'version' in item:
                         fields = item.split('=')
                         val = fields[1].strip('\n" ')
-                        TB.hosts[self.h]['firmware']['PTR'] = val
+                        self.tb.hosts[self.h]['firmware']['PTR'] = val
         except Exception, e:
-            TB.logger.error('Error getting firmware versions on host %s\n%s',
+            self.tb.logger.error('Error getting firmware versions on %s\n%s',
                             self.h, e)
 
 
@@ -221,17 +230,17 @@ class RemoteWorker(object):
         The PTR key points to the most recent released version. This will also
         preserve the last known release version in case the host is down.
         """
-        rrd_dir = os.path.join(TB.home, 'hosts', self.h, 'rrd')
-        for item in TB.releases:
+        rrd_dir = os.path.join(self.tb.home, 'hosts', self.h, 'rrd')
+        for v in self.tb.version:
             update_file = False
-            relfile = os.path.join(rrd_dir, item)
-            tmpfile = os.path.join(rrd_dir, item + '.tmp')
+            relfile = os.path.join(rrd_dir, v)
+            tmpfile = os.path.join(rrd_dir, v + '.tmp')
             if os.path.isfile(relfile):
                 try:
                     rf = open(relfile, 'r')
                     lines = rf.readlines()
                 except IOError, e:
-                    TB.logger.error('Error parsing release file %s\n%s',
+                    self.tb.logger.error('Error parsing release file %s\n%s',
                                     relfile, e)
                 finally:
                     rf.close()
@@ -241,19 +250,19 @@ class RemoteWorker(object):
                     # The correct format will have two strings separated by =.
                     if len(fields) == 2:
                         if fields[0] == 'PTR':
-                            if TB.hosts[self.h][item]['PTR']:
-                                if TB.hosts[self.h][item]['PTR'] != fields[1]:
+                            if self.tb.hosts[self.h][v]['PTR']:
+                                if self.tb.hosts[self.h][v]['PTR'] != fields[1]:
                                     # Most recent version has changed.
                                     update_file = True
                                     lines.pop(lines.index(line))
-                                    TB.hosts[self.h][item][TB.time] = (
-                                        TB.hosts[self.h][item]['PTR'])
+                                    self.tb.hosts[self.h][v][self.tb.time] = (
+                                        self.tb.hosts[self.h][v]['PTR'])
                             else:
                                 # Host is down so use last known value.
-                                TB.hosts[self.h][item]['PTR'] = (
+                                self.tb.hosts[self.h][v]['PTR'] = (
                                     fields[1].strip())
                         else:
-                            TB.hosts[self.h][item][fields[0]] = (
+                            self.tb.hosts[self.h][v][fields[0]] = (
                                 fields[1].strip())
                     elif len(line) > 3:
                         # This means the release file has the wrong format, so
@@ -266,60 +275,60 @@ class RemoteWorker(object):
                         lines.pop(lines.index(line))
 
                 if update_file:
-                    TB.logger.debug('Updating %s', relfile)
+                    self.tb.logger.debug('Updating %s', relfile)
                     shutil.move(relfile, tmpfile)
                     # Put the most recent update in the new file, and make the
                     # PTR key to point to it.
-                    lines.append('%s=%s\n' % (TB.time,
-                                 TB.hosts[self.h][item]['PTR']))
-                    lines.append('PTR=%s' % TB.hosts[self.h][item]['PTR'])
+                    lines.append('%s=%s\n' % (self.tb.time,
+                                 self.tb.hosts[self.h][v]['PTR']))
+                    lines.append('PTR=%s' % self.tb.hosts[self.h][v]['PTR'])
                     try:
                         rf = open(relfile, 'w')
                         for line in lines:
                             rf.write(line)
                     except IOError, e:
-                        TB.logger.error('Error writing %s\n%s', relfile, e)
+                        self.tb.logger.error('Error writing %s\n%s', relfile, e)
                     finally:
                         rf.close()
             else:
                 # Create a new release file, as it does not exist.
-                if TB.hosts[self.h][item]['PTR']:
-                    TB.logger.info('Creating new %s', relfile)
+                if self.tb.hosts[self.h][v]['PTR']:
+                    self.tb.logger.info('Creating new %s', relfile)
                     try:
                         rf = open(relfile, 'w')
                         rf.write('%s=%s\n' % (
-                            TB.time,TB.hosts[self.h][item]['PTR']))
-                        rf.write('PTR=%s' % TB.hosts[self.h][item]['PTR'])
+                            self.tb.time,self.tb.hosts[self.h][v]['PTR']))
+                        rf.write('PTR=%s' % self.tb.hosts[self.h][v]['PTR'])
                     except IOError, e:
-                        TB.logger.error('Error writing %s\n%s', relfile, e)
+                        self.tb.logger.error('Error writing %s\n%s', relfile, e)
                     finally:
                         rf.close()
 
-                    TB.hosts[self.h][item][TB.time] = (
-                        TB.hosts[self.h][item]['PTR'])
+                    self.tb.hosts[self.h][v][self.tb.time] = (
+                        self.tb.hosts[self.h][v]['PTR'])
 
 
     def ReadResources(self):
         """Get resources that we are monitoring on the host."""
 
         advisor = Resource()
-        if TB.update == True:
-            TB.logger.debug('Collecting data on %s', self.h)
+        if self.tb.update == True:
+            self.tb.logger.debug('Collecting data on %s', self.h)
             cmd = advisor.GetCommands()
-            for k in advisor.resources:
+            for r in advisor.resources:
                 output = []
                 try:
-                    stdin, stdout, stderr = self.client.exec_command(cmd[k])
+                    stdin, stdout, stderr = self.client.exec_command(cmd[r])
                     for line in stdout:
                         output.append(line)
                 except Exception, e:
-                    TB.logger.error('Cannot read %s from %s', k, self.h)
-                TB.hosts[self.h]['data'][k] = "".join(output)
-            TB.logger.debug('Formatting data for %s', self.h)
+                    self.tb.logger.error('Cannot read %s from %s', r, self.h)
+                self.tb.hosts[self.h]['data'][r] = "".join(output)
+            self.tb.logger.debug('Formatting data for %s', self.h)
             advisor.FormatData(self.h)
         advisor.ProcessRRD(self.h)
-        if TB.html:
-            TB.logger.debug('Building HTML files for %s', self.h)
+        if self.tb.html:
+            self.tb.logger.debug('Building HTML files for %s', self.h)
             advisor.BuildHTML(self.h)
 
 
@@ -333,7 +342,7 @@ class TestBed(object):
     """
 
     def __init__(self, logfile, log_to_stdout, debug, graph, home, html, src,
-                 threads, update, url):
+                 update, url):
         """
         Args:
             logfile: string, name of logfile.
@@ -343,13 +352,22 @@ class TestBed(object):
             home: string, pathname of root directory of monitor files.
             html: boolean, flag to build html files.
             src: pathname of Chrome OS src directory.
-            threads: integer, number of threads to run.
             update: boolean, flag to get update data from remote hosts.
             url: string, base URL of system health monitor.
         """
-        self.releases = ['ec_firmware', 'firmware', 'release']
+        loglevels = {'debug': 10,
+                     'info': 20,
+                     'warning': 30,
+                     'error': 40,
+                     'critical': 50
+                    }
+        self.version = ['ec_firmware', 'firmware', 'release']
         start_time = strftime('%H:%M:%S', localtime())
         self.time = int(time())
+        self.update_runfile = '/var/run/systemhealth/update.running'
+        self.graph_runfile = '/var/run/systemhealth/graph.running'
+        self.logfile = logfile
+        self.loglevel = loglevels[debug]
         self.logger = SetLogger('SystemMonitor', logfile, debug,
                                 log_to_stdout=log_to_stdout)
         self.logger.info('Script started at: %s', start_time)
@@ -358,7 +376,6 @@ class TestBed(object):
         self.html = html
         self.rrdtimes = ['-1hours', '-4hours', '-24hours', '-1week', '-1month',
                          '-1year']
-        self.thread_num = threads
         self.update = update
         self.url = url
         self.hosts = {}  # Dictionary to hold data from each host.
@@ -381,6 +398,7 @@ class Monitor(object):
     def __init__(self):
         """Monitor will use config data from TestBed."""
         self.afe_hosts = self.LoadHosts()
+        self.threads = []
 
     def LoadHosts(self):
         """Get a list of hosnames from the AutoTest server."""
@@ -396,9 +414,9 @@ class Monitor(object):
             TB.hosts[host.hostname]['rrddata'] = {}  # Formatted data.
             TB.hosts[host.hostname]['status'] = None
             TB.hosts[host.hostname]['time'] = None
-            for item in TB.releases:
-                TB.hosts[host.hostname][item] = {}
-                TB.hosts[host.hostname][item]['PTR'] = None
+            for v in TB.version:
+                TB.hosts[host.hostname][v] = {}
+                TB.hosts[host.hostname][v]['PTR'] = None
 
         return afe_hosts
 
@@ -407,9 +425,11 @@ class Monitor(object):
         """Update data from all monitored hosts."""
 
         # Create new threads of class MonitorThread.
-        for i in range(TB.thread_num):
+        self.hostqty = len(self.afe_hosts)
+        for i in range(self.hostqty):
             t = MonitorThread()
             t.setDaemon(True)
+            self.threads.append(t)
             t.start()
 
         # Fill the requests queue with AutoTest host objects.
@@ -424,17 +444,43 @@ class Monitor(object):
         else:
             maxtime = RUNTIME
         # Queue.join() will wait for all jobs in the queue to finish, or
-        # until the timeout value is reached.  Timeout is needed because
-        # sometimes the paramiko client will hang.
+        # until the timeout value is reached.
         TB.logger.debug('Joining run queue.')
         TB.q.join(timeout=maxtime)
         TB.logger.info('%s hosts left in host queue', TB.q.qsize())
+        TB.logger.info('Runtime is %d seconds', (time() - TB.time))
 
         LogLevel = TB.logger.getEffectiveLevel()
         if LogLevel == 10:
             for host in self.afe_hosts:
                 TB.logger.debug('%s status is %s', host.hostname,
                                 TB.hosts[host.hostname]['status'])
+
+        # If there are any running threads, give them time to finish.
+        # Since paramiko is multi threaded, this check is needed. A deadline
+        # will be set since we don't want the process to run indefinitely.
+        # A deadline needs to be set because one or more of the paramiko
+        # threads could hang.
+        deadline = time() + maxtime
+        running = True
+        while running:
+            for t in self.threads:
+                if t.isAlive():
+                    continue
+                else:
+                    self.threads.remove(t)
+            if len(self.threads) == 0:
+                TB.logger.info('All threads have completed their jobs.')
+                TB.logger.info('Runtime is %d seconds', (time() - TB.time))
+                running = False
+            else:
+                TB.logger.debug('%d threads still running.', len(self.threads))
+                sleep(TIMEOUT)
+            waittime = deadline - time()
+            if waittime < 0:
+                TB.logger.info('Deadline reached. Aborting running threads.')
+                TB.logger.info('%d threads still running!', len(self.threads))
+                running = False
 
 
     def CheckStatus(self, hostname):
@@ -545,7 +591,7 @@ class Monitor(object):
         f.write('<H2>System Health</H2>')
         f.write('<HR>')
         f.write('<table>')
-        f.write('<CAPTION><EM>Graphs updated every 30 mintues</EM></CAPTION>')
+        f.write('<CAPTION><EM>Graphs updated every hour</EM></CAPTION>')
         f.write('<TR><TH>Hostname<TH>Status<TH>Labels<TH>Last Update')
         f.write('<TH>Release<TH>Health</TR>')
         for h in sorted_hosts:
@@ -679,25 +725,25 @@ class Resource(object):
             os.makedirs(rrd_dir)
             os.chmod(rrd_dir, 0755)
         os.chmod(hostdir, 0755)
-        for k in self.resources:
+        for r in self.resources:
             dk = None  # datakey only needs to be set if it's a file system.
-            if k in self.fs:
-                if '_space' in k:
+            if r in self.fs:
+                if '_space' in r:
                     dk = 'fs_space'
-                elif '_inode' in k:
+                elif '_inode' in r:
                     dk = 'fs_inode'
-                elif '_stat' in k:
+                elif '_stat' in r:
                     dk = 'fs_stat'
 
 
-            rrd = RRD(k, hostname, rrd_dir, datakey=dk)
+            rrd = RRD(r, hostname, rrd_dir, datakey=dk)
             if not os.path.exists(rrd.rrdfile):
                 rrd.Create()
             if TB.update == True:
-                TB.logger.debug('Updating %s for host %s', k, hostname)
+                TB.logger.debug('Updating %s for host %s', r, hostname)
                 rrd.Update()
             if TB.graph:
-                TB.logger.debug('Building %s graphs for %s', k, hostname)
+                TB.logger.debug('Building %s graphs for %s', r, hostname)
                 rrd.Graph()
 
 
@@ -715,35 +761,35 @@ class Resource(object):
         resource_list.sort()
         index_file = os.path.join(rrd_dir, 'index.html')
         html_file = {}
-        for k in TB.rrdtimes:
-            html_file[k] = hostname + k + '.html'
+        for t in TB.rrdtimes:
+            html_file[t] = hostname + t + '.html'
         pathname = {}
-        for k in html_file:
-            pathname[k] = os.path.join(rrd_dir, html_file[k])
+        for name in html_file:
+            pathname[name] = os.path.join(rrd_dir, html_file[name])
 
         # Create HTML files for each time period we are graphing.
-        for k in pathname:
-            f = open(pathname[k], 'w')
+        for path in pathname:
+            f = open(pathname[path], 'w')
             f.write('<HTML><HEAD>')
             f.write('<center><TITLE>%s System Health</TITLE></HEAD>' %
                     hostname)
             f.write('<BODY><H1>%s System Health</H1>' % hostname)
-            for i in TB.releases:
-                f.write('<H4>%s: %s</H4>' % (i, TB.hosts[hostname][i]['PTR']))
-            for h in TB.rrdtimes:
+            for v in TB.version:
+                f.write('<H4>%s: %s</H4>' % (v, TB.hosts[hostname][v]['PTR']))
+            for t in TB.rrdtimes:
                 f.write('<a href="%s">%s</a>&nbsp;<b>|</b>' % (
-                        html_file[h], h))
+                        html_file[t], t))
             f.write('<a href="%s">SystemHealth Home</a>' % mainindex)
             f.write('<p><HR>')
 
-            f.write('<b>%s</b><table border=1 bgcolor=#EEEEEE>' % k)
+            f.write('<b>%s</b><table border=1 bgcolor=#EEEEEE>' % path)
             newrow = True
             for r in resource_list:
                 if newrow:
                     f.write('<tr>')
                 f.write('<td>%s<br><a href=%s.html>' % (r, r))
                 f.write('<img src=%s%s.png width=475 height=250></a></td>' % (
-                    r,k))
+                    r, path))
                 if newrow:
                     newrow = False
                 else:
@@ -754,7 +800,7 @@ class Resource(object):
             f.write('<H5>Last Update: %s</H5>' % TB.hosts[hostname]['time'])
             f.write('</BODY></HTML>')
             f.close()
-            os.chmod(pathname[k], 0644)
+            os.chmod(pathname[path], 0644)
         if not os.path.isfile(index_file):
             os.symlink(pathname[TB.rrdtimes[0]], index_file)
 
@@ -766,17 +812,17 @@ class Resource(object):
             f.write('<center><TITLE>%s %s Resources</TITLE></HEAD>' % (
                      hostname, r))
             f.write('<BODY><H1>%s %s Resources</H1>' % (hostname, r))
-            for i in TB.releases:
-                f.write('<H4>%s: %s</H4>' % (i, TB.hosts[hostname][i]['PTR']))
+            for v in TB.version:
+                f.write('<H4>%s: %s</H4>' % (v, TB.hosts[hostname][v]['PTR']))
             f.write('<table border=5 bgcolor=#B5B5B5>')
             f.write('<tr>')
-            for h in TB.rrdtimes:
-                f.write('<td><a href="#%s"><b>%s</b></a>' % (h, h))
+            for t in TB.rrdtimes:
+                f.write('<td><a href="#%s"><b>%s</b></a>' % (t, t))
             f.write('</table>')
             f.write('<HR>')
             f.write('<table border=1 bgcolor=#EEEEEE>')
-            for h in TB.rrdtimes:
-                f.write('<tr><td><a name="%s"><img src=%s%s.png>' % (h, r, h))
+            for t in TB.rrdtimes:
+                f.write('<tr><td><a name="%s"><img src=%s%s.png>' % (t, r, t))
                 f.write('</a></td></tr>\n')
             f.write('</table><p>\n')
             f.write('</center>\n')
@@ -985,18 +1031,18 @@ class Resource(object):
 
         command = {}
 
-        for k in self.resources:
-            if k in self.files:
-                command[k] = 'cat %s' % self.files[k]
-            elif k in self.fs:
-                if '_space' in k:
-                    command[k] = 'df -lP %s' % self.fs[k]
-                elif '_inode' in k:
-                    command[k] = 'df -iP %s' % self.fs[k]
-                elif '_stat' in k:
-                    command[k] = 'cat /proc/diskstats | grep %s' % self.fs[k]
+        for r in self.resources:
+            if r in self.files:
+                command[r] = 'cat %s' % self.files[r]
+            elif r in self.fs:
+                if '_space' in r:
+                    command[r] = 'df -lP %s' % self.fs[r]
+                elif '_inode' in r:
+                    command[r] = 'df -iP %s' % self.fs[r]
+                elif '_stat' in r:
+                    command[r] = 'cat /proc/diskstats | grep %s' % self.fs[r]
                 else:
-                    TB.logger.error('Error in key name of %s', k)
+                    TB.logger.error('Error in key name of %s', r)
         return command
 
 
@@ -1610,9 +1656,9 @@ class RRD(object):
             rrd_cmd = rrd_cmd + self.dd['graph']
             rrd_cmd.append('COMMENT:"Release History \\s"')
             rrd_cmd.append('COMMENT:"=============== \\n"')
-            for item in TB.releases:
+            for v in TB.version:
                 sorted_items = []
-                for k in TB.hosts[self.hostname][item]:
+                for k in TB.hosts[self.hostname][v]:
                     if k != 'PTR':
                         sorted_items.append(k)
                     sorted_items.sort()
@@ -1622,10 +1668,10 @@ class RRD(object):
                     datetime = strftime('%D %H\\:%M', localtime(float(i)))
                     # Need to escape any ':' for RRDTool.
                     filter_val = (
-                        TB.hosts[self.hostname][item][i].replace(':', '\\:'))
+                        TB.hosts[self.hostname][v][i].replace(':', '\\:'))
                     # Insert Veritical Lines for release and firmware updates.
-                    vrule = 'VRULE:%s%s:"%s %s=%s \\n"' % (i, rcolor[item],
-                            datetime, item, filter_val)
+                    vrule = 'VRULE:%s%s:"%s %s=%s \\n"' % (i, rcolor[v],
+                            datetime, v, filter_val)
                     rrd_cmd.append(vrule)
 
             exec_str = ' '.join(rrd_cmd)
@@ -1725,10 +1771,6 @@ def ParseArgs():
                       help='Send output to StdOut [default: %default]',
                       default=False,
                       dest='log_to_stdout')
-    parser.add_option('--threads',
-                      help='Number of threads to create [default: %default]',
-                      default=50,
-                      dest='threads')
     parser.add_option('--update',
                       help='Collect data from hosts [default: %default]',
                       default=True,
@@ -1741,22 +1783,68 @@ def ParseArgs():
     return parser.parse_args()
 
 
+def CheckRun(action):
+    """Check the run status of monitor.py, and add/remove run files.
+
+    This function will ensure we only running one program with either the graph
+    or update option.
+    Args:
+        action: string, indicates if monitor.py is starting or stopping.
+    """
+    if action == 'start':
+        if TB.update == True:
+            if os.path.isfile(TB.update_runfile):
+                TB.logger.info('Exiting, already running with update option')
+                sys.exit(1)
+            else:
+                try:
+                    open(TB.update_runfile, 'w').close()
+                except IOError, e:
+                    TB.logger.error('Error with %s\n%s', TB.update_runfile, e)
+        if TB.graph:
+            if os.path.isfile(TB.graph_runfile):
+                TB.logger.info('Exiting, already running with graph option')
+                sys.exit(1)
+            else:
+                try:
+                    open(TB.graph_runfile, 'w').close()
+                except IOError, e:
+                    TB.logger.error('Error with %s\n%s', TB.graph_runfile, e)
+    elif action == 'stop':
+        if TB.update == True:
+            if os.path.isfile(TB.update_runfile):
+                try:
+                    os.remove(TB.update_runfile)
+                except IOError, e:
+                    TB.logger.error('Error with %s\n%s', TB.update_runfile, e)
+        if TB.graph:
+            if os.path.isfile(TB.graph_runfile):
+                try:
+                    os.remove(TB.graph_runfile)
+                except IOError, e:
+                    TB.logger.error('Error with %s\n%s', TB.graph_runfile, e)
+    else:
+        TB.logger.error('Unknown option passed to CheckRun(): %s', action)
+        sys.exit(1)
+
+
 def main(argv):
-    start = time()
     options, args = ParseArgs()
+
     global TB
     TB = TestBed(options.logfile, options.log_to_stdout, options.debug,
                  options.graph, options.home, options.html, options.gclient,
-                 options.threads, options.update, options.url)
+                 options.update, options.url)
+    CheckRun('start')
     sysmon = Monitor()
     sysmon.UpdateStatus()
     sysmon.BuildLandingPage()
-    runtime = time() - start
+    runtime = time() - TB.time
     endtime = strftime('%H:%M:%S', localtime())
     TB.logger.info('End Time: %s', endtime)
     TB.logger.info('Time of run: %s seconds', runtime)
-    TB.logger.info('Ran with %d threads', TB.thread_num)
-
+    TB.logger.info('Ran with %d threads', sysmon.hostqty)
+    CheckRun('stop')
 
 if __name__ == '__main__':
     main(sys.argv)
