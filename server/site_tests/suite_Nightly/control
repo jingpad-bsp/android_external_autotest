@@ -29,7 +29,6 @@ TESTS = [
   ('desktopui_WindowManagerFocusNewWindows', {}),
   ('desktopui_WindowManagerHotkeys', {}),
   ('disktest', {}),
-  ('firmware_VbootCrypto', {}),
   ('fsx', {}),
   ('graphics_GLAPICheck', {}),
   ('graphics_GLBench', {}),
