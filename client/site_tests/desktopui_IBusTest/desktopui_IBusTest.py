@@ -171,14 +171,6 @@ class desktopui_IBusTest(site_ui_test.UITest):
                                   'engine/PinyinLookupTableOrientation',
                                   'engine/PinyinSpecialPhrases',
 
-                                  # These preferences are actually read, but
-                                  # ibus-daemon reads them before chrome
-                                  # connects,  so they show up as a false
-                                  # failure.
-                                  'general/hotkeynext_engine_in_menu',
-                                  'general/hotkeyprevious_engine',
-                                  'generalglobal_engine',
-
                                   # We don't set these prefernces.
                                   'general/hotkeytrigger',
                                   'generalembed_preedit_text',
@@ -186,6 +178,13 @@ class desktopui_IBusTest(site_ui_test.UITest):
                                   'generalpreload_engines',
                                   'generaluse_global_engine',
                                   'generaluse_system_keyboard_layout'])
+
+        # These preferences are actually written, but due to a race condition
+        # on startup, they can be read by ibus-daemon before chrome connects,
+        # and so sometimes they show up as a false failure.
+        ignored_unwritten = set(['general/hotkeynext_engine_in_menu',
+                                 'general/hotkeyprevious_engine',
+                                 'generalglobal_engine'])
 
         self.preload_engines(engine_list)
 
@@ -208,6 +207,9 @@ class desktopui_IBusTest(site_ui_test.UITest):
 
         actual_unread = set(re.split('\n', match.group(1).strip()))
         actual_unwritten = set(re.split('\n', match.group(2).strip()))
+
+        # Filter out any preferences we're ignoring
+        actual_unwritten.difference_update(ignored_unwritten)
 
         new_unread = actual_unread.difference(expected_unread)
         now_read = expected_unread.difference(actual_unread)
