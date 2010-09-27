@@ -7,10 +7,11 @@ assoc_timeout  = float(sys.argv[4])
 config_timeout = float(sys.argv[5])
 reset_timeout  = float(sys.argv[6]) if len(sys.argv) > 6 else assoc_timeout
 
+FLIMFLAM = "org.chromium.flimflam"
+
 bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus(mainloop=bus_loop)
-manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
-    "org.chromium.flimflam.Manager")
+manager = dbus.Interface(bus.get_object(FLIMFLAM, "/"), FLIMFLAM + ".Manager")
 connect_quirks = {}
 
 connection_settings = {
@@ -26,14 +27,14 @@ if security == '802_1x':
 else:
    connection_settings["Passphrase"] = psk
 
+
 def DbusSetup():
     try:
         path = manager.GetService((connection_settings))
         service = dbus.Interface(
-            bus.get_object("org.chromium.flimflam", path),
-            "org.chromium.flimflam.Service")
+            bus.get_object(FLIMFLAM, path), FLIMFLAM + ".Service")
     except Exception, e:
-        print "FAIL(GetService): ssid %s exception %s" %(ssid, e)
+        print "FAIL(GetService): ssid %s exception %s" % (ssid, e)
         ErrExit(1)
 
     return (path, service)
@@ -123,7 +124,7 @@ def TryConnect(assoc_time):
             properties = service.GetProperties()
         except dbus.exceptions.DBusException, e:
             connect_quirks['get_prop'] = 1
-            print>>sys.stderr, "Got exception trying GetProperties()!"
+            print>>sys.stderr, "Got exception trying GetProperties(): %s" % e
             return (None, 'DBUSFAIL')
         status = properties.get("State", None)
         #    print>>sys.stderr, "time %3.1f state %s" % (assoc_time, status)
@@ -141,7 +142,6 @@ def TryConnect(assoc_time):
         if properties is None:
             properties = service.GetProperties()
         return (properties, 'TIMEOUT')
-        ErrExit(4)
 
 
 # Open /var/log/messages and seek to the current end
@@ -158,6 +158,15 @@ def OpenLogs(*logfiles):
 
     return logs
 
+
+def DumpObjectList(kind):
+    print>>sys.stderr, "%s list:" % kind
+    for item in [dbus.Interface(bus.get_object(FLIMFLAM, path),
+                                FLIMFLAM + "." + kind)
+                 for path in manager.GetProperties().get(kind + 's', [])]:
+        print>>sys.stderr, "[ %s ]" % (item.object_path)
+        for key, val in item.GetProperties().items():
+            print>>sys.stderr, "    %s = %s" % (key, str(val))
 
 # Returns the list of the wifi interfaces (e.g. "wlan0") known to flimflam
 def GetWifiInterfaces():
@@ -184,6 +193,8 @@ def DumpLogs(logs):
             ( interface,
               subprocess.Popen(["iw", "dev", interface, "scan"],
                                stdout=subprocess.PIPE).communicate()[0])
+
+    DumpObjectList("Service")
 
 def ErrExit(code):
     try:
