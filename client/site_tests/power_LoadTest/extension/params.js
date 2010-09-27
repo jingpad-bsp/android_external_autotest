@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 var test_time_ms = 60 * 60 * 1000;
+var test_startup_delay = 15 * 1000;
 var should_scroll = true;
 var should_scroll_up = true;
 var scroll_loop = false;

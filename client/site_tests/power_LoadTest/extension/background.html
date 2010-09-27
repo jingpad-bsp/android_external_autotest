@@ -126,10 +126,17 @@ function send_status() {
   console.log(post.join("&"));
 }
 
-
 chrome.windows.getAll(null, function(windows) {
-  preexisting_windows = windows;
+  // delay starting test by short amount of time to allow chromeos
+  // login process to settle down
+  setTimeout(startTest, test_startup_delay);
+});
+
+function startTest() {
   var end = 0;
+  chrome.windows.getAll(null, function(windows) {
+    preexisting_windows = windows;
+  });
   for (var i = 0; i < tasks.length; i++) {
     end = Math.max(end, (tasks[i].start + tasks[i].duration) / time_ratio);
     setTimeout(launch_task, tasks[i].start / time_ratio, tasks[i]);
@@ -139,7 +146,7 @@ chrome.windows.getAll(null, function(windows) {
   // Add a 5sec delay between sending the status back and closing browser
   // so that status message can reach autotest safely
   setTimeout(close_browser, end + 5 * 1000);
-});
+}
 
 
 </script>
