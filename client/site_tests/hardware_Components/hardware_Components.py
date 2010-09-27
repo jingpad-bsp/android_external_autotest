@@ -244,10 +244,53 @@ class hardware_Components(test.test):
         return "%s:%s" % (vendor_id.replace('0x',''), part_id.replace('0x',''))
 
 
-    def get_vendor_id_touchpad(self):
-        cmd = 'grep -i Touchpad /proc/bus/input/devices | sed s/.\*=//'
-        part_id = utils.system_output(cmd).strip('"')
+    def get_closed_vendor_id_touchpad(self, vendor_name):
+        """
+        Using closed-source method to derive the vendor information 
+        given the vendor name.
+        """
+        part_id = ''
+        if vendor_name.lower() == 'synaptics':
+            # Turn off raw mode in order to show touch pad as input 
+            script_set_raw = '/opt/Synaptics/bin/synset'
+            redirect_std_1_2 = '> /dev/null 2>&1'
+            if not os.path.exists(script_set_raw):
+                return part_id
+            cmd_disable_raw = ' '.join([script_set_raw, 'stop', \
+                              redirect_std_1_2])
+            utils.system(cmd_disable_raw, ignore_status=True) 
+
+            # Now we can capture touch pad input under /sys/class/input
+            touchpad_input_path = '/sys/class/input/'
+            input_dirs = os.listdir(touchpad_input_path)
+            part_ids = []
+            for input_dir in input_dirs:
+                if not input_dir.startswith('input'): 
+                    continue
+                fname = os.path.join(touchpad_input_path, input_dir, 'name')
+                input_id = utils.read_file(fname)
+                if input_id.startswith('SynPS'):
+                    part_ids.append(input_id.strip())
+            part_id = ",".join(part_ids)
+
+            # Turn on raw mode again
+            cmd_enable_raw = ' '.join([script_set_raw, 'start', \
+                             redirect_std_1_2])
+            utils.system(cmd_enable_raw)
         return part_id
+
+
+    def get_vendor_id_touchpad(self):
+        # First, try to use closed-source method to probe touch pad
+        part_id = self.get_closed_vendor_id_touchpad('Synaptics')
+        if part_id != '': 
+            return part_id
+        # If the closed-source method above fails to find vendor infomation,
+        # try an open-source method.
+        else:	
+            cmd_grep = 'grep -i Touchpad /proc/bus/input/devices | sed s/.\*=//'
+            part_id = utils.system_output(cmd_grep).strip('"')
+            return part_id
 
 
     def get_vendor_id_webcam(self):
