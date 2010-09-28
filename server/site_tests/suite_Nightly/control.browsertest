@@ -18,6 +18,7 @@ fully functional.  These are meant to run nightly in less than 8 hours.
 # List of client tests with parameters
 TESTS = [
   ('desktopui_BrowserTest', {}),
+  ('desktopui_PyAutoFunctionalTests', {}),
   ('desktopui_SyncIntegrationTests', {}),
 ]
 
