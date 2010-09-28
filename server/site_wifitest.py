@@ -186,10 +186,17 @@ class WiFiTest(object):
         """
         Run a WiFi test.  Each step is interpreted as a method either
         in this class or the ancillary router class and invoked with
-        the supplied parameter dictionary.
+        the supplied parameter dictionary.  If the method is prefixed
+        with '!' then we expect the operation to fail; this is useful,
+        for example, for testing parameter checking in flimflam.
         """
         for s in self.steps:
             method = s[0]
+            if method[0] == '!':
+                expect_failure = True
+                method = method[1:]
+            else:
+                expect_failure = False
             if len(s) > 1:
                 params = s[1]
             else:
@@ -204,7 +211,12 @@ class WiFiTest(object):
             else:
                 self.prefix = method
 
-            logging.info("%s: step '%s' params %s", self.name, method, params)
+            if expect_failure is True:
+                logging.info("%s: step '%s' (expect failure)  params %s",
+                    self.name, method, params)
+            else:
+                logging.info("%s: step '%s' params %s", self.name, method,
+                    params)
 
             func = getattr(self, method, None)
             if func is None:
@@ -212,12 +224,15 @@ class WiFiTest(object):
             if func is not None:
                 try:
                     func(params)
+                    if expect_failure is True:
+                        raise error.TestFail("Expected failure")
                 except Exception, e:
+                    if expect_failure is True:
+                        continue
                     logging.error("%s: Step '%s' failed: %s; abort test",
                         self.name, method, str(e))
                     self.cleanup(params)
                     raise e
-                    break
             else:
                 logging.error("%s: Step '%s' unknown; abort test",
                     self.name, method)
