@@ -102,27 +102,14 @@ class power_LoadTest(site_ui_test.UITest):
             raise error.TestError(
                 'Ethernet interface is active. Please remove Ethernet cable')
 
-        # TODO (snanda):
-        # - set brightness level
-        # - turn off suspend on idle (not implemented yet in Chrome OS)
-
-        # record the current and max backlight levels
+        # record the max backlight level
         cmd = 'backlight-tool --get_max_brightness'
-        self._tmp_keyvals['level_backlight_max'] = int(
-                                             utils.system_output(cmd).rstrip())
-
-        cmd = 'backlight-tool --get_brightness'
-        self._tmp_keyvals['level_backlight_current'] = int(
-                                             utils.system_output(cmd).rstrip())
-
-        # disable screen locker and powerd
-        os.system('stop screen-locker')
-        os.system('stop powerd')
+        self._max_backlight = int(utils.system_output(cmd).rstrip())
+        self._tmp_keyvals['level_backlight_max'] = self._max_backlight
 
         # fix up file perms for the power test extension so that chrome
         # can access it
         os.system('chmod -R 755 %s' % self.bindir)
-
 
         # TODO (bleung) :
         # The new external extension packed crx means we can't pass params by
@@ -174,6 +161,16 @@ class power_LoadTest(site_ui_test.UITest):
                 site_login.attempt_logout()
             # the act of logging in will launch chrome with external extension.
             self.login(self.username, self.password)
+
+            # stop powerd
+            os.system('stop powerd')
+
+            # reset X settings since X gets restarted upon login
+            self._do_xset()
+
+            # reset backlight level since powerd might've modified it
+            # based on ambient light
+            self._set_backlight_level()
 
             low_battery = self._do_wait(self._verbose, self._loop_time,
                                         latch)
@@ -241,9 +238,8 @@ class power_LoadTest(site_ui_test.UITest):
             jsonfile = os.path.join(self._json_path, 'external_extensions.json')
             if os.path.exists(jsonfile):
                 os.system('rm -f %s' % jsonfile)
-        # re-enable screen locker and powerd. This also re-enables dpms.
+        # re-enable powerd
         os.system('start powerd')
-        os.system('start screen-locker')
         if site_login.logged_in():
             site_login.attempt_logout()
 
@@ -306,3 +302,28 @@ class power_LoadTest(site_ui_test.UITest):
             logging.debug("Didn't get status back from power extension")
 
         return low_battery
+
+
+    def _do_xset(self):
+        XSET = 'LD_LIBRARY_PATH=/usr/local/lib xset'
+        # Disable X screen saver
+        site_ui.xsystem('%s s 0 0' % XSET)
+        # Disable DPMS Standby/Suspend/Off
+        site_ui.xsystem('%s dpms 0 0 0' % XSET)
+        # Force monitor on
+        site_ui.xsystem('%s dpms force on' % XSET)
+        # Save off X settings
+        site_ui.xsystem('%s q' % XSET)
+
+
+    def _set_backlight_level(self):
+        # set backlight level to 40% of max
+        cmd = 'backlight-tool --set_brightness %d ' % (
+              int(self._max_backlight * 0.4))
+        os.system(cmd)
+
+        # record brightness level
+        cmd = 'backlight-tool --get_brightness'
+        level = int(utils.system_output(cmd).rstrip())
+        logging.info('backlight level is %d' % level)
+        self._tmp_keyvals['level_backlight_current'] = level
