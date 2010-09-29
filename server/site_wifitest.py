@@ -751,6 +751,37 @@ class WiFiTest(object):
             self.client_netdump_thread = None
 
 
+    def client_suspend(self, params):
+        """ Suspend the system """
+
+        script_client_file = self.install_script('site_system_suspend.py',
+                                                 '../client/common_lib/rtc.py',
+                                                 '../client/common_lib/'
+                                                 'sys_power.py')
+        result = self.client.run('python "%s" %d' %
+            (script_client_file, int(params.get("suspend_time", 5))))
+
+
+    def client_suspend_bg(self, params):
+        """ Suspend the system in the background """
+
+        script_client_file = self.install_script('site_system_suspend.py',
+                                                 '../client/common_lib/rtc.py',
+                                                 '../client/common_lib/'
+                                                 'sys_power.py')
+        cmd = ('python "%s" %d' %
+               (script_client_file, int(params.get("suspend_time", 5))))
+        self.client_suspend_thread = HelperThread(self.client, cmd)
+        self.client_suspend_thread.start()
+
+
+    def client_suspend_end(self, params):
+        """ Join the backgrounded suspend thread """
+
+        self.client_suspend_thread.join()
+        if self.client_suspend_thread.result.exit_status:
+            raise error.TestError('suspend failed')
+
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
     def __init__(self, client, cmd):
@@ -760,8 +791,7 @@ class HelperThread(threading.Thread):
 
     def run(self):
         # NB: set ignore_status as we're always terminated w/ pkill
-        self.client.run(self.cmd, ignore_status=True)
-
+        self.result = self.client.run(self.cmd, ignore_status=True)
 
 def __byfile(a, b):
     if a['file'] < b['file']:
