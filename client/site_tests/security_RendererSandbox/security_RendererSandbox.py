@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 
-import os, subprocess, time
+import os, subprocess, time, re
 from autotest_lib.client.bin import site_login, site_ui_test
 from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error, site_ui
@@ -24,10 +24,36 @@ class security_RendererSandbox(site_ui_test.UITest):
             error.TestFail('Timed out waiting to obtain pid of renderer'),
             time_to_wait)
 
-        #check if renderer is sandboxed
-        cwd_contents = os.listdir('/proc/%s/cwd' % self.render_pid)
-        if len(cwd_contents) > 0:
-            raise error.TestFail('Contents present in the CWD directory')
+        # check if renderer is sandboxed
+        # for now, x86 renderer must be running in a seccomp sandbox and
+        # arm render must run in a setuid sandbox
+        arch = utils.get_arch()
+        if arch == 'i386':
+            # the seccomp sandbox has exactly one child process that has no
+            # other threads, this is the trusted helper process.
+            seccomp = subprocess.Popen(['ps', 'h', '--format', 'pid',
+                                        '--ppid', '%s' % self.render_pid],
+                                       stdout=subprocess.PIPE)
+            helper_processes = seccomp.communicate()[0].splitlines()
+            if len(helper_processes) != 1:
+                raise error.TestFail('Invalid number of Renderer child process')
+
+            helper_pid = helper_processes[0].strip()
+            threads = os.listdir('/proc/%s/task' % helper_pid)
+            if len(threads) != 1:
+                raise error.TestFail('Invalid number of helper process threads')
+
+            exe = os.readlink('/proc/%s/exe' % helper_pid)
+            pattern = re.compile('/chrome$')
+            chrome = pattern.search(exe)
+            if chrome == None:
+                raise error.TestFail('Invalid child process executable')
+        else:
+            # for setuid sandbox, make sure there is no content in the CWD
+            # directory
+            cwd_contents = os.listdir('/proc/%s/cwd' % self.render_pid)
+            if len(cwd_contents) > 0:
+                raise error.TestFail('Contents present in the CWD directory')
 
 
     # queries pgrep for the pid of the renderer. since this function is passed
