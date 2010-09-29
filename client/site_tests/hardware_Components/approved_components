@@ -8,6 +8,7 @@
     'data_bitmap_fv': ['*'],
     'data_display_geometry': ['*'],
     'data_recovery_url': ['*'],
+    'hash_ec_firmware': ['*'],
     'hash_ro_firmware': ['*'],
     'key_recovery': ['*'],
     'key_root': ['*'],

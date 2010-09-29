@@ -786,6 +786,28 @@ class FlashromUtility(object):
                                               data)
         return self.image_copy(section, section, new_image)
 
+    def get_verification_image(self, from_image, pad_value=chr(0)):
+        """
+        Returns an image derived from from_image with "skip verification"
+        regions padded by pad_value.
+        """
+        layout = self.layout
+
+        # decode skip_verify with layout, and then modify images
+        for verify_tuple in csv_to_list(self.skip_verify):
+            (name, offset, size) = verify_tuple.split(':')
+            name = name.strip()
+            offset = int(offset.strip(), 0)
+            size = int(size.strip(), 0)
+            assert name in layout, "(make_verify) Unknown section name: " + name
+            if self.is_debug:
+                print " ** skipping range: %s +%d [%d]" % (name, offset, size)
+            # XXX we use the layout's internal structure here...
+            offset = layout[name][0] + offset
+            from_image = from_image[:offset] + (pad_value * size) + \
+                         from_image[(offset + size):]
+        return from_image
+
     def verify_sections(self, from_list, to_list, from_image, to_image):
         """
         Compares if sections in from_list and to_list are the same, skipping
@@ -797,23 +819,11 @@ class FlashromUtility(object):
         from_list = csv_to_list(from_list)
         to_list = csv_to_list(to_list)
         flashrom = self.flashrom
-        layout = self.layout
 
-        # decode skip_verify with layout, and then modify images
-        for verify_tuple in csv_to_list(self.skip_verify):
-            (name, offset, size) = verify_tuple.split(':')
-            name = name.strip()
-            offset = int(offset.strip(), 0)
-            size = int(size.strip(), 0)
-            assert name in layout, "(verify_sec) Unknown section name: " + name
-            if self.is_debug:
-                print " ** skipping range: %s +%d [%d]" % (name, offset, size)
-            # XXX we use the layout's internal structure here...
-            offset = layout[name][0] + offset
-            from_image = from_image[:offset] + (chr(0)*size) + \
-                         from_image[(offset + size):]
-            to_image = to_image[:offset] + (chr(0) * size) + \
-                       to_image[(offset + size):]
+        # prepare verification image
+        if self.skip_verify:
+            from_image = self.get_verification_image(from_image)
+            to_image = self.get_verification_image(to_image)
 
         # compare sections in image
         if not (from_list or to_list):

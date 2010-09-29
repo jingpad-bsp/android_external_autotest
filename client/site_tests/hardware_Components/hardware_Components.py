@@ -16,6 +16,7 @@ class hardware_Components(test.test):
     version = 1
     _cids = [
         'data_display_geometry',
+        'hash_ec_firmware',
         'hash_ro_firmware',
         'part_id_audio_codec',
         'part_id_cpu',
@@ -246,26 +247,26 @@ class hardware_Components(test.test):
 
     def get_closed_vendor_id_touchpad(self, vendor_name):
         """
-        Using closed-source method to derive the vendor information 
+        Using closed-source method to derive the vendor information
         given the vendor name.
         """
         part_id = ''
         if vendor_name.lower() == 'synaptics':
-            # Turn off raw mode in order to show touch pad as input 
+            # Turn off raw mode in order to show touch pad as input
             script_set_raw = '/opt/Synaptics/bin/synset'
             redirect_std_1_2 = '> /dev/null 2>&1'
             if not os.path.exists(script_set_raw):
                 return part_id
             cmd_disable_raw = ' '.join([script_set_raw, 'stop', \
                               redirect_std_1_2])
-            utils.system(cmd_disable_raw, ignore_status=True) 
+            utils.system(cmd_disable_raw, ignore_status=True)
 
             # Now we can capture touch pad input under /sys/class/input
             touchpad_input_path = '/sys/class/input/'
             input_dirs = os.listdir(touchpad_input_path)
             part_ids = []
             for input_dir in input_dirs:
-                if not input_dir.startswith('input'): 
+                if not input_dir.startswith('input'):
                     continue
                 fname = os.path.join(touchpad_input_path, input_dir, 'name')
                 input_id = utils.read_file(fname)
@@ -283,11 +284,11 @@ class hardware_Components(test.test):
     def get_vendor_id_touchpad(self):
         # First, try to use closed-source method to probe touch pad
         part_id = self.get_closed_vendor_id_touchpad('Synaptics')
-        if part_id != '': 
+        if part_id != '':
             return part_id
         # If the closed-source method above fails to find vendor infomation,
         # try an open-source method.
-        else:	
+        else:
             cmd_grep = 'grep -i Touchpad /proc/bus/input/devices | sed s/.\*=//'
             part_id = utils.system_output(cmd_grep).strip('"')
             return part_id
@@ -301,7 +302,7 @@ class hardware_Components(test.test):
 
     def get_hash_ro_firmware(self):
         """
-        Returns a hash of Read Only firmware parts,
+        Returns a hash of Read Only (BIOS) firmware parts,
         to confirm we have proper keys / boot code / recovery image installed.
         """
         # hash_ro_list: RO section to be hashed
@@ -333,6 +334,17 @@ class hardware_Components(test.test):
             raise error.TestError('Invalid hash source from flashrom.')
         return hashlib.sha256(hash_src).hexdigest()
 
+    def get_hash_ec_firmware(self):
+        """
+        Returns a hash of Embedded Controller firmware parts,
+        to confirm we have proper updated version of EC firmware.
+        """
+        flashrom = flashrom_util.FlashromUtility()
+        flashrom.initialize(flashrom.TARGET_EC)
+        # to bypass the 'skip verification' sections
+        image = flashrom.get_current_image()
+        hash_src = flashrom.get_verification_image(image)
+        return hashlib.sha256(hash_src).hexdigest()
 
     def get_version_rw_firmware(self):
         """
