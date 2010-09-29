@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import os
+import common
 from autotest_lib.client.bin import utils
 
 version = 1
@@ -15,10 +16,10 @@ def setup(tarball, topdir):
     os.chdir(srcdir)
     # FIXEME - Waiting to be able to use self.autodir instead of
     # os.environ['AUTODIR']
-    utils.configure('--prefix=%s/pgpool --with-pgsql=%s/deps/pgsql/pgsql' \
+    utils.system('./configure --prefix=%s/pgpool --with-pgsql=%s/deps/pgsql/pgsql' \
                     % (topdir, os.environ['AUTODIR']))
-    utils.make('-j %d' % utils.count_cpus())
-    utils.make('install')
+    utils.system('make -j %d' % utils.count_cpus())
+    utils.system('make install')
 
     os.chdir(topdir)
 

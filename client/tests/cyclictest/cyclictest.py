@@ -14,7 +14,7 @@ class cyclictest(test.test):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.make()
+        utils.system('make')
 
 
     def execute(self, args = '-t 10 -l 100000'):

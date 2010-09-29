@@ -58,28 +58,20 @@ variants:
         only Fedora.13.64
         only unattended_install.cdrom boot shutdown
         # qemu needs -enable-kvm on the cmdline
-        extra_params += ' -enable-kvm'
+        extra_params = ' -enable-kvm'
 
     # Runs qemu-kvm, f13 64 bit guest OS, install, boot, shutdown
     - @qemu_kvm_f13_quick:
         # We want qemu-kvm for this run
         qemu_binary = /usr/bin/qemu-kvm
         only qcow2
-        only virtio_net
-        only virtio_blk
+        only rtl8139
+        only ide
         only smp2
         only no_pci_assignable
         only smallpages
         only Fedora.13.64
         only unattended_install.cdrom boot shutdown
-
-# You may provide information about the DTM server for WHQL tests here:
-#whql:
-#    server_address = 10.20.30.40
-#    server_shell_port = 10022
-#    server_file_transfer_port = 10023
-# Note that the DTM server must run rss.exe (available under deps/),
-# preferably with administrator privileges.
 
 # Uncomment the following lines to enable abort-on-error mode:
 #abort_on_error = yes

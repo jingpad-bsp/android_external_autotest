@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import os
+import common
 from autotest_lib.client.bin import utils
 
 # To use this, you have to set PERL5LIB to:
@@ -15,9 +16,9 @@ def setup(tarball, topdir):
     srcdir = os.path.join(topdir, 'src')
     utils.extract_tarball_to_dir(tarball, srcdir)
     os.chdir(srcdir)
-    utils.system('perl Makefile.PL PREFIX=' + topdir)
-    utils.make()
-    utils.make('install')
+    utils.system ('perl Makefile.PL PREFIX=' + topdir)
+    utils.system ('make')
+    utils.system ('make install')
     os.chdir(topdir)
 
 

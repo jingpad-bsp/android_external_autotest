@@ -38,8 +38,8 @@ class bonnie(test.test):
 
         os_dep.command('g++')
         utils.system('patch -p1 < ../bonnie++-1.03a-gcc43.patch')
-        utils.configure()
-        utils.make()
+        utils.system('./configure')
+        utils.system('make')
 
 
     def run_once(self, dir=None, extra_args='', user='root'):

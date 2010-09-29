@@ -1,15 +1,7 @@
-package autotest.afe.create;
+package autotest.afe;
 
-import autotest.afe.AfeUtils;
-import autotest.afe.CheckBoxPanel;
-import autotest.afe.ControlTypeSelect;
-import autotest.afe.HostSelector;
-import autotest.afe.IButton;
-import autotest.afe.ICheckBox;
-import autotest.afe.ITextArea;
-import autotest.afe.ITextBox;
-import autotest.afe.TestSelector;
 import autotest.afe.TestSelector.TestSelectorListener;
+import autotest.afe.UserPreferencesView.UserPreferencesListener;
 import autotest.common.JSONArrayList;
 import autotest.common.JsonRpcCallback;
 import autotest.common.JsonRpcProxy;
@@ -18,7 +10,7 @@ import autotest.common.StaticDataRepository;
 import autotest.common.Utils;
 import autotest.common.ui.NotifyManager;
 import autotest.common.ui.RadioChooser;
-import autotest.common.ui.SimplifiedList;
+import autotest.common.ui.TabView;
 
 import com.google.gwt.event.dom.client.BlurEvent;
 import com.google.gwt.event.dom.client.BlurHandler;
@@ -26,14 +18,11 @@ import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
-import com.google.gwt.event.dom.client.HasClickHandlers;
 import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.KeyPressEvent;
 import com.google.gwt.event.dom.client.KeyPressHandler;
 import com.google.gwt.event.logical.shared.CloseEvent;
 import com.google.gwt.event.logical.shared.CloseHandler;
-import com.google.gwt.event.logical.shared.HasCloseHandlers;
-import com.google.gwt.event.logical.shared.HasOpenHandlers;
 import com.google.gwt.event.logical.shared.OpenEvent;
 import com.google.gwt.event.logical.shared.OpenHandler;
 import com.google.gwt.json.client.JSONArray;
@@ -45,80 +34,172 @@ import com.google.gwt.json.client.JSONString;
 import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.Window;
+import com.google.gwt.user.client.ui.Anchor;
+import com.google.gwt.user.client.ui.Button;
+import com.google.gwt.user.client.ui.CheckBox;
+import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.user.client.ui.DisclosurePanel;
-import com.google.gwt.user.client.ui.HasText;
-import com.google.gwt.user.client.ui.HasValue;
+import com.google.gwt.user.client.ui.FlexTable;
+import com.google.gwt.user.client.ui.HorizontalPanel;
+import com.google.gwt.user.client.ui.Label;
+import com.google.gwt.user.client.ui.ListBox;
+import com.google.gwt.user.client.ui.Panel;
+import com.google.gwt.user.client.ui.RadioButton;
+import com.google.gwt.user.client.ui.TextArea;
+import com.google.gwt.user.client.ui.TextBox;
+import com.google.gwt.user.client.ui.VerticalPanel;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class CreateJobViewPresenter implements TestSelectorListener {
-    public static interface Display {
-        public CheckBoxPanel.Display getCheckBoxPanelDisplay();
-        public ControlTypeSelect.Display getControlTypeSelectDisplay();
-        public TestSelector.Display getTestSelectorDisplay();
-        public IButton getEditControlButton();
-        public HasText getJobName();
-        public SimplifiedList getPriorityList();
-        public HasText getTimeout();
-        public HasText getMaxRuntime();
-        public HasText getEmailList();
-        public ICheckBox getSkipVerify();
-        public RadioChooser.Display getRebootBefore();
-        public RadioChooser.Display getRebootAfter();
-        public HasValue<Boolean> getParseFailedRepair();
-        public ICheckBox getHostless();
-        public HostSelector.Display getHostSelectorDisplay();
-        public SimplifiedList getDroneSet();
-        public ITextBox getSynchCountInput();
-        public ITextArea getControlFile();
-        public void setControlFilePanelOpen(boolean isOpen);
-        public ICheckBox getRunNonProfiledIteration();
-        public ITextBox getKernel();
-        public ITextBox getKernelCmdline();
-        public HasText getViewLink();
-        public HasCloseHandlers<DisclosurePanel> getControlFilePanelClose();
-        public HasOpenHandlers<DisclosurePanel> getControlFilePanelOpen();
-        public IButton getSubmitJobButton();
-        public HasClickHandlers getCreateTemplateJobButton();
-        public HasClickHandlers getResetButton();
-    }
+public class CreateJobView extends TabView
+                           implements TestSelectorListener, UserPreferencesListener {
+    public static final int TEST_COLUMNS = 5;
 
-    private static final String EDIT_CONTROL_STRING = "Edit control file";
-    private static final String UNEDIT_CONTROL_STRING= "Revert changes";
-    private static final String VIEW_CONTROL_STRING = "View control file";
-    private static final String HIDE_CONTROL_STRING = "Hide control file";
+    protected static final String EDIT_CONTROL_STRING = "Edit control file";
+    protected static final String UNEDIT_CONTROL_STRING= "Revert changes";
+    protected static final String VIEW_CONTROL_STRING = "View control file";
+    protected static final String HIDE_CONTROL_STRING = "Hide control file";
 
     public interface JobCreateListener {
         public void onJobCreated(int jobId);
     }
 
-    private JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
-    private JobCreateListener listener;
+    protected JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    protected JobCreateListener listener;
 
-    private StaticDataRepository staticData = StaticDataRepository.getRepository();
+    private static class CheckBoxPanel<T extends CheckBox> extends Composite {
+        protected int numColumns;
+        protected FlexTable table = new FlexTable();
+        protected List<T> testBoxes = new ArrayList<T>();
 
-    private CheckBoxPanel profilersPanel = new CheckBoxPanel();
-    private ControlTypeSelect controlTypeSelect = new ControlTypeSelect();
-    protected TestSelector testSelector = new TestSelector();
-    private RadioChooser rebootBefore = new RadioChooser();
-    private RadioChooser rebootAfter = new RadioChooser();
-    private HostSelector hostSelector;
+        public CheckBoxPanel(int columns) {
+            numColumns = columns;
+            initWidget(table);
+        }
 
-    private boolean controlEdited = false;
-    private boolean controlReadyForSubmit = false;
-    private JSONArray dependencies = new JSONArray();
+        public void add(T checkBox) {
+            int row = testBoxes.size() / numColumns;
+            int col = testBoxes.size() % numColumns;
+            table.setWidget(row, col, checkBox);
+            testBoxes.add(checkBox);
+        }
 
-    private Display display;
+        public List<T> getChecked() {
+            List<T> result = new ArrayList<T>();
+            for(T checkBox : testBoxes) {
+                if (checkBox.getValue())
+                    result.add(checkBox);
+            }
+            return result;
+        }
 
-    public void bindDisplay(Display display) {
-        this.display = display;
+        public void setEnabled(boolean enabled) {
+            for(T thisBox : testBoxes) {
+                thisBox.setEnabled(enabled);
+            }
+        }
+
+        public void reset() {
+            for (T thisBox : testBoxes) {
+                thisBox.setValue(false);
+            }
+        }
     }
 
-    public CreateJobViewPresenter(JobCreateListener listener) {
+    private static class ControlTypeSelect extends Composite {
+        public static final String RADIO_GROUP = "controlTypeGroup";
+        protected RadioButton client, server;
+        protected Panel panel = new HorizontalPanel();
+
+        public ControlTypeSelect() {
+            client = new RadioButton(RADIO_GROUP, TestSelector.CLIENT_TYPE);
+            server = new RadioButton(RADIO_GROUP, TestSelector.SERVER_TYPE);
+            panel.add(client);
+            panel.add(server);
+            client.setValue(true); // client is default
+            initWidget(panel);
+
+            client.addClickHandler(new ClickHandler() {
+                public void onClick(ClickEvent event) {
+                    onChanged();
+                }
+            });
+            server.addClickHandler(new ClickHandler() {
+                public void onClick(ClickEvent event) {
+                    onChanged();
+                }
+            });
+        }
+
+        public String getControlType() {
+            if (client.getValue())
+                return client.getText();
+            return server.getText();
+        }
+
+        public void setControlType(String type) {
+            if (client.getText().equals(type))
+                client.setValue(true);
+            else if (server.getText().equals(type))
+                server.setValue(true);
+            else
+                throw new IllegalArgumentException("Invalid control type");
+            onChanged();
+        }
+
+        public void setEnabled(boolean enabled) {
+            client.setEnabled(enabled);
+            server.setEnabled(enabled);
+        }
+
+        protected void onChanged() {
+        }
+    }
+
+    protected StaticDataRepository staticData = StaticDataRepository.getRepository();
+
+    protected TextBox jobName = new TextBox();
+    protected ListBox priorityList = new ListBox();
+    protected TextBox kernel = new TextBox();
+    protected TextBox kernel_cmdline = new TextBox();
+    protected TextBox timeout = new TextBox();
+    private TextBox maxRuntime = new TextBox();
+    protected TextBox emailList = new TextBox();
+    protected CheckBox skipVerify = new CheckBox();
+    private RadioChooser rebootBefore = new RadioChooser();
+    private RadioChooser rebootAfter = new RadioChooser();
+    private CheckBox parseFailedRepair = new CheckBox();
+    private CheckBox hostless = new CheckBox();
+    protected TestSelector testSelector;
+    protected CheckBoxPanel<CheckBox> profilersPanel =
+        new CheckBoxPanel<CheckBox>(TEST_COLUMNS);
+    private CheckBox runNonProfiledIteration =
+        new CheckBox("Run each test without profilers first");
+    private ListBox droneSet = new ListBox();
+    protected TextArea controlFile = new TextArea();
+    protected DisclosurePanel controlFilePanel = new DisclosurePanel();
+    protected ControlTypeSelect controlTypeSelect;
+    protected TextBox synchCountInput = new TextBox();
+    protected Button editControlButton = new Button(EDIT_CONTROL_STRING);
+    protected HostSelector hostSelector;
+    protected Button submitJobButton = new Button("Submit Job");
+    protected Button createTemplateJobButton = new Button("Create Template Job");
+    private Button resetButton = new Button("Reset");
+
+    protected boolean controlEdited = false;
+    protected boolean controlReadyForSubmit = false;
+    private JSONArray dependencies = new JSONArray();
+
+    public CreateJobView(JobCreateListener listener) {
         this.listener = listener;
+    }
+
+    @Override
+    public String getElementId() {
+        return "create_job";
     }
 
     public void cloneJob(JSONValue cloneInfo) {
@@ -133,34 +214,39 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         JSONObject cloneObject = cloneInfo.isObject();
         JSONObject jobObject = cloneObject.get("job").isObject();
 
-        display.getJobName().setText(jobObject.get("name").isString().stringValue());
+        jobName.setText(jobObject.get("name").isString().stringValue());
 
         String priority = jobObject.get("priority").isString().stringValue();
-        display.getPriorityList().selectByName(priority);
+        for (int i = 0; i < priorityList.getItemCount(); i++) {
+            if (priorityList.getItemText(i).equals(priority)) {
+                priorityList.setSelectedIndex(i);
+                break;
+            }
+        }
 
-        display.getTimeout().setText(Utils.jsonToString(jobObject.get("timeout")));
-        display.getMaxRuntime().setText(Utils.jsonToString(jobObject.get("max_runtime_hrs")));
-        display.getEmailList().setText(
+        timeout.setText(Utils.jsonToString(jobObject.get("timeout")));
+        maxRuntime.setText(Utils.jsonToString(jobObject.get("max_runtime_hrs")));
+        emailList.setText(
                 jobObject.get("email_list").isString().stringValue());
 
-        display.getSkipVerify().setValue(!jobObject.get("run_verify").isBoolean().booleanValue());
+        skipVerify.setValue(!jobObject.get("run_verify").isBoolean().booleanValue());
         rebootBefore.setSelectedChoice(Utils.jsonToString(jobObject.get("reboot_before")));
         rebootAfter.setSelectedChoice(Utils.jsonToString(jobObject.get("reboot_after")));
-        display.getParseFailedRepair().setValue(
+        parseFailedRepair.setValue(
                 jobObject.get("parse_failed_repair").isBoolean().booleanValue());
-        display.getHostless().setValue(cloneObject.get("hostless").isBoolean().booleanValue());
-        if (display.getHostless().getValue()) {
+        hostless.setValue(cloneObject.get("hostless").isBoolean().booleanValue());
+        if (hostless.getValue()) {
             hostSelector.setEnabled(false);
         }
         if (cloneObject.get("drone_set").isNull() == null) {
-            display.getDroneSet().selectByName(Utils.jsonToString(cloneObject.get("drone_set")));
+            AfeUtils.setSelectedItem(droneSet, Utils.jsonToString(cloneObject.get("drone_set")));
         }
 
         controlTypeSelect.setControlType(
                 jobObject.get("control_type").isString().stringValue());
-        display.getSynchCountInput().setText(Utils.jsonToString(jobObject.get("synch_count")));
+        synchCountInput.setText(Utils.jsonToString(jobObject.get("synch_count")));
         setSelectedDependencies(jobObject.get("dependencies").isArray());
-        display.getControlFile().setText(
+        controlFile.setText(
                 jobObject.get("control_file").isString().stringValue());
         controlReadyForSubmit = true;
 
@@ -182,38 +268,40 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         hostSelector.refresh();
     }
 
-    private void openControlFileEditor() {
-        display.getControlFile().setReadOnly(false);
-        display.getEditControlButton().setText(UNEDIT_CONTROL_STRING);
-        display.setControlFilePanelOpen(true);
+    protected void openControlFileEditor() {
+        controlFile.setReadOnly(false);
+        editControlButton.setText(UNEDIT_CONTROL_STRING);
+        controlFilePanel.setOpen(true);
         controlTypeSelect.setEnabled(true);
-        display.getSynchCountInput().setEnabled(true);
-        display.getEditControlButton().setEnabled(true);
+        synchCountInput.setEnabled(true);
+        editControlButton.setEnabled(true);
     }
 
-    private void populatePriorities(JSONArray priorities) {
+    protected void populatePriorities(JSONArray priorities) {
         for(int i = 0; i < priorities.size(); i++) {
             JSONArray priorityData = priorities.get(i).isArray();
             String priority = priorityData.get(1).isString().stringValue();
-            display.getPriorityList().addItem(priority, priority);
+            priorityList.addItem(priority);
         }
 
         resetPriorityToDefault();
     }
 
-    private void resetPriorityToDefault() {
+    protected void resetPriorityToDefault() {
         JSONValue defaultValue = staticData.getData("default_priority");
         String defaultPriority = defaultValue.isString().stringValue();
-        display.getPriorityList().selectByName(defaultPriority);
+        for(int i = 0; i < priorityList.getItemCount(); i++) {
+            if (priorityList.getItemText(i).equals(defaultPriority))
+                priorityList.setSelectedIndex(i);
+        }
     }
 
-    private void populateProfilers() {
+    protected void populateProfilers() {
         JSONArray tests = staticData.getData("profilers").isArray();
 
         for(JSONObject profiler : new JSONArrayList<JSONObject>(tests)) {
             String name = profiler.get("name").isString().stringValue();
-            ICheckBox checkbox = profilersPanel.generateCheckBox();
-            checkbox.setText(name);
+            CheckBox checkbox = new CheckBox(name);
             checkbox.addClickHandler(new ClickHandler() {
                 public void onClick(ClickEvent event) {
                     updateNonProfiledRunControl();
@@ -224,19 +312,19 @@ public class CreateJobViewPresenter implements TestSelectorListener {
             profilersPanel.add(checkbox);
         }
 
-        display.getRunNonProfiledIteration().addClickHandler(new ClickHandler() {
+        runNonProfiledIteration.addClickHandler(new ClickHandler() {
             @Override
             public void onClick(ClickEvent event) {
                 generateControlFile(false);
             }
         });
         // default to checked -- run a non-profiled iteration by default
-        display.getRunNonProfiledIteration().setValue(true);
+        runNonProfiledIteration.setValue(true);
     }
 
     private void updateNonProfiledRunControl() {
         boolean anyProfilersChecked = !profilersPanel.getChecked().isEmpty();
-        display.getRunNonProfiledIteration().setVisible(anyProfilersChecked);
+        runNonProfiledIteration.setVisible(anyProfilersChecked);
     }
 
     private void populateRebootChoices() {
@@ -270,10 +358,9 @@ public class CreateJobViewPresenter implements TestSelectorListener {
     protected JSONObject getControlFileParams(boolean readyForSubmit) {
         JSONObject params = new JSONObject();
 
-        String kernelString = display.getKernel().getText();
+        String kernelString = kernel.getText();
         if (!kernelString.equals("")) {
-            params.put(
-                    "kernel", getKernelParams(kernelString, display.getKernelCmdline().getText()));
+            params.put("kernel", getKernelParams(kernelString, kernel_cmdline.getText()));
         }
 
         JSONArray tests = new JSONArray();
@@ -282,22 +369,22 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         }
 
         JSONArray profilers = new JSONArray();
-        for (ICheckBox profiler : profilersPanel.getChecked()) {
+        for (CheckBox profiler : profilersPanel.getChecked()) {
             profilers.set(profilers.size(), new JSONString(profiler.getText()));
         }
 
         params.put("tests", tests);
         params.put("profilers", profilers);
 
-        if (display.getRunNonProfiledIteration().isVisible()) {
-            boolean profileOnly = !display.getRunNonProfiledIteration().getValue();
+        if (runNonProfiledIteration.isVisible()) {
+            boolean profileOnly = !runNonProfiledIteration.getValue();
             params.put("profile_only", JSONBoolean.getInstance(profileOnly));
         }
 
         return params;
     }
 
-    private void generateControlFile(final boolean readyForSubmit,
+    protected void generateControlFile(final boolean readyForSubmit,
                                        final SimpleCallback finishedCallback,
                                        final SimpleCallback errorCallback) {
         JSONObject params = getControlFileParams(readyForSubmit);
@@ -309,22 +396,20 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 boolean isServer = controlInfo.get("is_server").isBoolean().booleanValue();
                 String synchCount = Utils.jsonToString(controlInfo.get("synch_count"));
                 setSelectedDependencies(controlInfo.get("dependencies").isArray());
-                display.getControlFile().setText(controlFileText);
+                controlFile.setText(controlFileText);
                 controlTypeSelect.setControlType(isServer ? TestSelector.SERVER_TYPE :
                                                             TestSelector.CLIENT_TYPE);
-                display.getSynchCountInput().setText(synchCount);
+                synchCountInput.setText(synchCount);
                 controlReadyForSubmit = readyForSubmit;
-                if (finishedCallback != null) {
+                if (finishedCallback != null)
                     finishedCallback.doCallback(this);
-                }
             }
 
             @Override
             public void onError(JSONObject errorObject) {
                 super.onError(errorObject);
-                if (errorCallback != null) {
+                if (errorCallback != null)
                     errorCallback.doCallback(this);
-                }
             }
         });
     }
@@ -344,10 +429,10 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         }
 
         if (shouldSkipVerify) {
-            display.getSkipVerify().setValue(true);
-            display.getSkipVerify().setEnabled(false);
+            skipVerify.setValue(true);
+            skipVerify.setEnabled(false);
         } else {
-            display.getSkipVerify().setEnabled(true);
+            skipVerify.setEnabled(true);
         }
     }
 
@@ -355,30 +440,24 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         testSelector.setEnabled(true);
         profilersPanel.setEnabled(true);
         handleSkipVerify();
-        display.getKernel().setEnabled(true);
-        display.getKernelCmdline().setEnabled(true);
+        kernel.setEnabled(true);
+        kernel_cmdline.setEnabled(true);
+    }
+
+    protected  boolean isClientTypeSelected() {
+        return testSelector.getSelectedTestType().equals(TestSelector.CLIENT_TYPE);
     }
 
     protected void disableInputs() {
         testSelector.setEnabled(false);
         profilersPanel.setEnabled(false);
-        display.getKernel().setEnabled(false);
-        display.getKernelCmdline().setEnabled(false);
+        kernel.setEnabled(false);
+        kernel_cmdline.setEnabled(false);
     }
 
+    @Override
     public void initialize() {
-        profilersPanel.bindDisplay(display.getCheckBoxPanelDisplay());
-        controlTypeSelect.bindDisplay(display.getControlTypeSelectDisplay());
-        testSelector.bindDisplay(display.getTestSelectorDisplay());
-        rebootBefore.bindDisplay(display.getRebootBefore());
-        rebootAfter.bindDisplay(display.getRebootAfter());
-
-        display.getEditControlButton().setText(EDIT_CONTROL_STRING);
-        display.getViewLink().setText(VIEW_CONTROL_STRING);
-
-        hostSelector = new HostSelector();
-        hostSelector.initialize();
-        hostSelector.bindDisplay(display.getHostSelectorDisplay());
+        super.initialize();
 
         populatePriorities(staticData.getData("priorities").isArray());
 
@@ -388,37 +467,65 @@ public class CreateJobViewPresenter implements TestSelectorListener {
             }
         };
 
-        display.getKernel().addBlurHandler(kernelBlurHandler);
-        display.getKernelCmdline().addBlurHandler(kernelBlurHandler);
+        kernel.addBlurHandler(kernelBlurHandler);
+        kernel_cmdline.addBlurHandler(kernelBlurHandler);
 
         KeyPressHandler kernelKeyPressHandler = new KeyPressHandler() {
             public void onKeyPress(KeyPressEvent event) {
-                if (event.getCharCode() == (char) KeyCodes.KEY_ENTER) {
+                if (event.getCharCode() == (char) KeyCodes.KEY_ENTER)
                     generateControlFile(false);
-                }
             }
         };
 
-        display.getKernel().addKeyPressHandler(kernelKeyPressHandler);
-        display.getKernelCmdline().addKeyPressHandler(kernelKeyPressHandler);
+        kernel.addKeyPressHandler(kernelKeyPressHandler);
+        kernel_cmdline.addKeyPressHandler(kernelKeyPressHandler);
 
         populateProfilers();
+        Panel profilerControls = new VerticalPanel();
+        profilerControls.add(profilersPanel);
+        profilerControls.add(runNonProfiledIteration);
         updateNonProfiledRunControl();
+
+        testSelector = new TestSelector();
 
         populateRebootChoices();
         onPreferencesChanged();
 
+        controlFile.setSize("50em", "30em");
+        controlTypeSelect = new ControlTypeSelect();
+        HorizontalPanel controlOptionsPanel = new HorizontalPanel();
+        controlOptionsPanel.setVerticalAlignment(HorizontalPanel.ALIGN_BOTTOM);
+        controlOptionsPanel.add(controlTypeSelect);
+        Label useLabel = new Label("Use");
+        useLabel.getElement().getStyle().setProperty("marginLeft", "1em");
+        synchCountInput.setSize("3em", ""); // set width only
+        synchCountInput.getElement().getStyle().setProperty("margin", "0 0.5em 0 0.5em");
+        controlOptionsPanel.add(useLabel);
+        controlOptionsPanel.add(synchCountInput);
+        controlOptionsPanel.add(new Label("host(s) per execution"));
+        Panel controlEditPanel = new VerticalPanel();
+        controlEditPanel.add(controlOptionsPanel);
+        controlEditPanel.add(controlFile);
+
+        Panel controlHeaderPanel = new HorizontalPanel();
+        final Anchor viewLink = new Anchor(VIEW_CONTROL_STRING);
+        controlHeaderPanel.add(viewLink);
+        controlHeaderPanel.add(editControlButton);
+
         if (parameterizedJobsEnabled()) {
-            display.getEditControlButton().setEnabled(false);
+            editControlButton.setEnabled(false);
         }
 
-        display.getEditControlButton().addClickHandler(new ClickHandler() {
+        controlFilePanel.setHeader(controlHeaderPanel);
+        controlFilePanel.add(controlEditPanel);
+
+        editControlButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 DOM.eventCancelBubble(DOM.eventGetCurrentEvent(), true);
 
-                if (display.getEditControlButton().getText().equals(EDIT_CONTROL_STRING)) {
+                if (editControlButton.getText().equals(EDIT_CONTROL_STRING)) {
                     disableInputs();
-                    display.getEditControlButton().setEnabled(false);
+                    editControlButton.setEnabled(false);
                     SimpleCallback onGotControlFile = new SimpleCallback() {
                         public void doCallback(Object source) {
                             openControlFileEditor();
@@ -427,7 +534,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                     SimpleCallback onControlFileError = new SimpleCallback() {
                         public void doCallback(Object source) {
                             setInputsEnabled();
-                            display.getEditControlButton().setEnabled(true);
+                            editControlButton.setEnabled(true);
                         }
                     };
                     generateControlFile(true, onGotControlFile, onControlFileError);
@@ -435,67 +542,92 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 else {
                     if (controlEdited &&
                         !Window.confirm("Are you sure you want to revert your" +
-                                        " changes?")) {
+                                        " changes?"))
                         return;
-                    }
                     generateControlFile(false);
-                    display.getControlFile().setReadOnly(true);
+                    controlFile.setReadOnly(true);
                     setInputsEnabled();
-                    display.getEditControlButton().setText(EDIT_CONTROL_STRING);
+                    editControlButton.setText(EDIT_CONTROL_STRING);
                     controlTypeSelect.setEnabled(false);
-                    display.getSynchCountInput().setEnabled(false);
+                    synchCountInput.setEnabled(false);
                     controlEdited = false;
                 }
             }
         });
 
-        display.getControlFile().addChangeHandler(new ChangeHandler() {
+        controlFile.addChangeHandler(new ChangeHandler() {
             public void onChange(ChangeEvent event) {
                 controlEdited = true;
             }
         });
 
-        display.getControlFilePanelClose().addCloseHandler(new CloseHandler<DisclosurePanel>() {
+        controlFilePanel.addCloseHandler(new CloseHandler<DisclosurePanel>() {
             public void onClose(CloseEvent<DisclosurePanel> event) {
-                display.getViewLink().setText(VIEW_CONTROL_STRING);
+                viewLink.setText(VIEW_CONTROL_STRING);
             }
         });
 
-        display.getControlFilePanelOpen().addOpenHandler(new OpenHandler<DisclosurePanel>() {
+        controlFilePanel.addOpenHandler(new OpenHandler<DisclosurePanel>() {
             public void onOpen(OpenEvent<DisclosurePanel> event) {
-                display.getViewLink().setText(HIDE_CONTROL_STRING);
+                viewLink.setText(HIDE_CONTROL_STRING);
             }
         });
 
-        display.getSubmitJobButton().addClickHandler(new ClickHandler() {
+        hostSelector = new HostSelector();
+        HostSelectorDisplay hostSelectorDisplay = new HostSelectorDisplay();
+        hostSelector.initialize();
+        hostSelector.bindDisplay(hostSelectorDisplay);
+
+        submitJobButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 submitJob(false);
             }
         });
 
-        display.getCreateTemplateJobButton().addClickHandler(new ClickHandler() {
+        createTemplateJobButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 submitJob(true);
             }
         });
 
-        display.getResetButton().addClickHandler(new ClickHandler() {
+        resetButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 reset();
             }
         });
 
-        display.getHostless().addClickHandler(new ClickHandler() {
+        hostless.addClickHandler(new ClickHandler() {
             @Override
             public void onClick(ClickEvent event) {
-                hostSelector.setEnabled(!display.getHostless().getValue());
+                hostSelector.setEnabled(!hostless.getValue());
             }
         });
 
         reset();
 
+        addWidget(jobName, "create_job_name");
+        addWidget(kernel, "create_kernel");
+        addWidget(kernel_cmdline, "create_kernel_cmdline");
+        addWidget(timeout, "create_timeout");
+        addWidget(maxRuntime, "create_max_runtime");
+        addWidget(emailList, "create_email_list");
+        addWidget(priorityList, "create_priority");
+        addWidget(skipVerify, "create_skip_verify");
+        addWidget(rebootBefore, "create_reboot_before");
+        addWidget(rebootAfter, "create_reboot_after");
+        addWidget(parseFailedRepair, "create_parse_failed_repair");
+        addWidget(hostless, "create_hostless");
+        addWidget(testSelector, "create_tests");
+        addWidget(profilerControls, "create_profilers");
+        addWidget(controlFilePanel, "create_edit_control");
+        addWidget(hostSelectorDisplay, "create_host_selector");
+        addWidget(submitJobButton, "create_submit");
+        addWidget(createTemplateJobButton, "create_template_job");
+        addWidget(resetButton, "create_reset");
+
         if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
-            AfeUtils.populateListBox(display.getDroneSet(), "drone_sets");
+            AfeUtils.popualateListBox(droneSet, "drone_sets");
+            addWidget(droneSet, "create_drone_set");
         } else {
             AfeUtils.removeElement("create_drone_set_wrapper");
         }
@@ -506,83 +638,80 @@ public class CreateJobViewPresenter implements TestSelectorListener {
     public void reset() {
         StaticDataRepository repository = StaticDataRepository.getRepository();
 
-        display.getJobName().setText("");
+        jobName.setText("");
         resetPriorityToDefault();
         rebootBefore.reset();
         rebootAfter.reset();
-        display.getParseFailedRepair().setValue(
+        parseFailedRepair.setValue(
                 repository.getData("parse_failed_repair_default").isBoolean().booleanValue());
-        display.getHostless().setValue(false);
-        display.getKernel().setText("");
-        display.getKernelCmdline().setText("");
-        display.getTimeout().setText(Utils.jsonToString(repository.getData("job_timeout_default")));
-        display.getMaxRuntime().setText(
-                Utils.jsonToString(repository.getData("job_max_runtime_hrs_default")));
-        display.getEmailList().setText("");
+        hostless.setValue(false);
+        kernel.setText("");
+        kernel_cmdline.setText("");
+        timeout.setText(Utils.jsonToString(repository.getData("job_timeout_default")));
+        maxRuntime.setText(Utils.jsonToString(repository.getData("job_max_runtime_hrs_default")));
+        emailList.setText("");
         testSelector.reset();
-        display.getSkipVerify().setValue(false);
+        skipVerify.setValue(false);
         profilersPanel.reset();
         setInputsEnabled();
         controlTypeSelect.setControlType(TestSelector.CLIENT_TYPE);
         controlTypeSelect.setEnabled(false);
-        display.getSynchCountInput().setEnabled(false);
-        display.getSynchCountInput().setText("1");
-        display.getControlFile().setText("");
-        display.getControlFile().setReadOnly(true);
+        synchCountInput.setEnabled(false);
+        synchCountInput.setText("1");
+        controlFile.setText("");
+        controlFile.setReadOnly(true);
         controlEdited = false;
-        display.setControlFilePanelOpen(false);
-        display.getEditControlButton().setText(EDIT_CONTROL_STRING);
+        controlFilePanel.setOpen(false);
+        editControlButton.setText(EDIT_CONTROL_STRING);
         hostSelector.reset();
         dependencies = new JSONArray();
     }
 
-    private void submitJob(final boolean isTemplate) {
+    protected void submitJob(final boolean isTemplate) {
         final int timeoutValue, maxRuntimeValue;
         final JSONValue synchCount;
         try {
-            timeoutValue = parsePositiveIntegerInput(display.getTimeout().getText(), "timeout");
-            maxRuntimeValue = parsePositiveIntegerInput(
-                    display.getMaxRuntime().getText(), "max runtime");
+            timeoutValue = parsePositiveIntegerInput(timeout.getText(), "timeout");
+            maxRuntimeValue = parsePositiveIntegerInput(maxRuntime.getText(), "max runtime");
 
-            if (display.getHostless().getValue()) {
+            if (hostless.getValue()) {
                 synchCount = JSONNull.getInstance();
             } else {
                 synchCount = new JSONNumber(parsePositiveIntegerInput(
-                    display.getSynchCountInput().getText(),
-                    "number of machines used per execution"));
+                    synchCountInput.getText(), "number of machines used per execution"));
             }
         } catch (IllegalArgumentException exc) {
             return;
         }
 
         // disallow accidentally clicking submit twice
-        display.getSubmitJobButton().setEnabled(false);
+        submitJobButton.setEnabled(false);
 
         final SimpleCallback doSubmit = new SimpleCallback() {
             public void doCallback(Object source) {
                 JSONObject args = new JSONObject();
-                args.put("name", new JSONString(display.getJobName().getText()));
-                String priority = display.getPriorityList().getSelectedName();
+                args.put("name", new JSONString(jobName.getText()));
+                String priority = priorityList.getItemText(priorityList.getSelectedIndex());
                 args.put("priority", new JSONString(priority));
-                args.put("control_file", new JSONString(display.getControlFile().getText()));
+                args.put("control_file", new JSONString(controlFile.getText()));
                 args.put("control_type",
                          new JSONString(controlTypeSelect.getControlType()));
                 args.put("synch_count", synchCount);
                 args.put("timeout", new JSONNumber(timeoutValue));
                 args.put("max_runtime_hrs", new JSONNumber(maxRuntimeValue));
-                args.put("email_list", new JSONString(display.getEmailList().getText()));
-                args.put("run_verify", JSONBoolean.getInstance(
-                        !display.getSkipVerify().getValue()));
+                args.put("email_list", new JSONString(emailList.getText()));
+                args.put("run_verify", JSONBoolean.getInstance(!skipVerify.getValue()));
                 args.put("is_template", JSONBoolean.getInstance(isTemplate));
                 args.put("dependencies", getSelectedDependencies());
                 args.put("reboot_before", new JSONString(rebootBefore.getSelectedChoice()));
                 args.put("reboot_after", new JSONString(rebootAfter.getSelectedChoice()));
                 args.put("parse_failed_repair",
-                         JSONBoolean.getInstance(display.getParseFailedRepair().getValue()));
-                args.put("hostless", JSONBoolean.getInstance(display.getHostless().getValue()));
+                         JSONBoolean.getInstance(parseFailedRepair.getValue()));
+                args.put("hostless", JSONBoolean.getInstance(hostless.getValue()));
 
                 if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
-                    args.put("drone_set", new JSONString(display.getDroneSet().getSelectedName()));
+                    args.put("drone_set",
+                            new JSONString(droneSet.getItemText(droneSet.getSelectedIndex())));
                 }
 
                 HostSelector.HostSelection hosts = hostSelector.getSelectedHosts();
@@ -598,31 +727,29 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                         NotifyManager.getInstance().showMessage(
                                     "Job " + Integer.toString(id) + " created");
                         reset();
-                        if (listener != null) {
+                        if (listener != null)
                             listener.onJobCreated(id);
-                        }
-                        display.getSubmitJobButton().setEnabled(true);
+                        submitJobButton.setEnabled(true);
                     }
 
                     @Override
                     public void onError(JSONObject errorObject) {
                         super.onError(errorObject);
-                        display.getSubmitJobButton().setEnabled(true);
+                        submitJobButton.setEnabled(true);
                     }
                 });
             }
         };
 
         // ensure control file is ready for submission
-        if (!controlReadyForSubmit) {
+        if (!controlReadyForSubmit)
             generateControlFile(true, doSubmit, new SimpleCallback() {
                 public void doCallback(Object source) {
-                    display.getSubmitJobButton().setEnabled(true);
+                    submitJobButton.setEnabled(true);
                 }
             });
-        } else {
+        else
             doSubmit.doCallback(this);
-        }
     }
 
     private JSONArray getSelectedDependencies() {
@@ -650,7 +777,9 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         return parsedInt;
     }
 
+    @Override
     public void refresh() {
+        super.refresh();
         hostSelector.refresh();
     }
 
@@ -667,11 +796,8 @@ public class CreateJobViewPresenter implements TestSelectorListener {
 
     private void selectPreferredDroneSet() {
         JSONObject user = staticData.getData("current_user").isObject();
-        JSONValue droneSet = user.get("drone_set");
-        if (droneSet.isNull() == null) {
-            String preference = Utils.jsonToString(user.get("drone_set"));
-            display.getDroneSet().selectByName(preference);
-        }
+        String preference = Utils.jsonToString(user.get("drone_set"));
+        AfeUtils.setSelectedItem(droneSet, preference);
     }
 
     public void onPreferencesChanged() {

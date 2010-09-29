@@ -23,8 +23,8 @@ class stress(test.test):
         utils.extract_tarball_to_dir(tarball, self.srcdir)
         os.chdir(self.srcdir)
 
-        utils.configure()
-        utils.make()
+        utils.system('./configure')
+        utils.system('make')
 
 
     def run_once(self, args = '', stress_length=60):

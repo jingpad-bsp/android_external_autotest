@@ -13,7 +13,7 @@ class netpipe(test.test):
         utils.extract_tarball_to_dir(tarball, self.srcdir)
         os.chdir(self.srcdir)
         utils.system('patch -p1 < ../makefile.patch')
-        utils.make()
+        utils.system('make')
 
 
     def initialize(self):

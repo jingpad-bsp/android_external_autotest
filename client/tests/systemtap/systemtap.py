@@ -43,8 +43,8 @@ class systemtap(test.test):
         testsuite = os.path.join(self.srcdir, 'testsuite')
         os.chdir(testsuite)
 
-        utils.configure()
-        utils.make()
+        utils.system('./configure')
+        utils.system('make')
 
         # Run a simple systemtap script to make sure systemtap and the
         # kernel debuginfo packages are correctly installed

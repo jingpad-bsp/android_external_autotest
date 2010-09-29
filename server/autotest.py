@@ -213,10 +213,11 @@ class BaseAutotest(installable_object.InstallableObject):
             try:
                 self._install_using_packaging(host, autodir)
                 return
-            except (error.PackageInstallError, error.AutoservRunError,
-                    global_config.ConfigError), e:
+            except global_config.ConfigError, e:
                 logging.info("Could not install autotest using the packaging "
-                             "system: %s. Trying other methods",  e)
+                             "system: %s",  e)
+            except (error.PackageInstallError, error.AutoservRunError), e:
+                logging.error("Could not install autotest from repos")
 
         # try to install from file or directory
         if self.source_material:

@@ -43,7 +43,7 @@ class scrashme(test.test):
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
         os.chdir(self.srcdir)
-        utils.make()
+        utils.system('make')
 
 
     def run_once(self, args_list=''):

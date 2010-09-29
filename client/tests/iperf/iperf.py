@@ -19,7 +19,7 @@ class iperf(test.test):
 
         os.chdir(self.srcdir)
         utils.configure()
-        utils.make()
+        utils.system('make')
         utils.system('sync')
 
 

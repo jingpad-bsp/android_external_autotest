@@ -1,9 +1,9 @@
 # Uncomment this line, and replace the device with something sensible
 # for you ...
-# fs = job.partition('/dev/hda2', job.tmpdir)
+# fs = job.filesystem('/dev/hda2', job.tmpdir)
 # or ...
 
-part = job.partition('/tmp/looped', 1024, job.tmpdir)
+fs = job.filesystem('/tmp/looped', job.tmpdir, loop_size = 1024)
 
 # dbench 1024, ltp, 1024-byte blocksize, a few other things.  Lots of fscking.
 # I haven't tested nobh mode yet, 
@@ -11,15 +11,15 @@ part = job.partition('/tmp/looped', 1024, job.tmpdir)
 # (different mount options for ext3)
 
 def test_fs():
-	part.mkfs(fstype)
-	part.mount()
+	fs.mkfs(fstype)
+	fs.mount()
 	try:
-		job.run_test('fsx', dir=part.mountpoint, tag=fstype)
-		job.run_test('iozone', dir=part.mountpoint, tag=fstype)
-		job.run_test('dbench', dir=part.mountpoint, tag=fstype)
+		job.run_test('fsx', dir=job.tmpdir, tag=fstype)
+		job.run_test('iozone', dir=job.tmpdir, tag=fstype)
+		job.run_test('dbench', dir=job.tmpdir, tag=fstype)
 	finally:
-		part.unmount()
-		part.fsck()
+		fs.unmount()
+		fs.fsck()
 
 for fstype in ('ext2', 'ext3', 'jfs', 'xfs', 'reiserfs'):
 	job.run_group(test_fs)

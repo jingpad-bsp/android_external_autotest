@@ -542,12 +542,10 @@ class base_server_job(base_job.base_job):
 
                 # no error occured, so we don't need to collect crashinfo
                 collect_crashinfo = False
-            except Exception, e:
+            except:
                 try:
                     logging.exception(
                             'Exception escaped control file, job aborting:')
-                    self.record('INFO', None, None, str(e),
-                                {'job_abort_reason': str(e)})
                 except:
                     pass # don't let logging exceptions here interfere
                 raise

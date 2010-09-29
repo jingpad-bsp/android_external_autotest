@@ -1,10 +1,9 @@
 package autotest.afe;
 
-import autotest.afe.create.CreateJobViewPresenter.JobCreateListener;
-import autotest.afe.create.CreateJobViewTab;
+import autotest.afe.CreateJobView.JobCreateListener;
 
 class ClassFactory {
-    public CreateJobViewTab getCreateJobView(JobCreateListener listener) {
-        return new CreateJobViewTab(listener);
+    public CreateJobView getCreateJobView(JobCreateListener listener) {
+        return new CreateJobView(listener);
     }
 }

@@ -21,7 +21,7 @@ class posixtest(test.test):
         # Applying a small patch that introduces some linux specific
         # linking options
         utils.system('patch -p1 < ../posix-linux.patch')
-        utils.make()
+        utils.system('make')
 
 
     def execute(self):

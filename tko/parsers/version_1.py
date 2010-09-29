@@ -285,14 +285,9 @@ class parser(base.parser):
                 subdir_stack.append(line.subdir)
                 continue
             elif line.type == "INFO":
-                fields = line.optional_fields
                 # update the current kernel if one is defined in the info
-                if "kernel" in fields:
+                if "kernel" in line.optional_fields:
                     current_kernel = line.get_kernel()
-                # update the SERVER_JOB reason if one was logged for an abort
-                if "job_abort_reason" in fields:
-                    running_job.reason = fields["job_abort_reason"]
-                    new_tests.append(running_job)
                 continue
             elif line.type == "STATUS":
                 # update the stacks
@@ -390,7 +385,7 @@ class parser(base.parser):
 
         # the job is finished, produce the final SERVER_JOB entry and exit
         final_job = test.parse_test(self.job, "----", "SERVER_JOB",
-                                    self.job.exit_status(), running_job.reason,
+                                    self.job.exit_status(), "",
                                     current_kernel,
                                     self.job.started_time,
                                     self.job.finished_time,

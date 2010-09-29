@@ -1,7 +1,7 @@
 """This class defines the Remote host class, mixing in the SiteHost class
 if it is available."""
 
-import os, logging, urllib
+import os, logging
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import base_classes, bootloader
@@ -25,7 +25,6 @@ class RemoteHost(base_classes.Host):
 
     DEFAULT_REBOOT_TIMEOUT = base_classes.Host.DEFAULT_REBOOT_TIMEOUT
     LAST_BOOT_TAG = object()
-    DEFAULT_HALT_TIMEOUT = 2 * 60
 
     VAR_LOG_MESSAGES_COPY_PATH = "/var/log/messages.autotest_start"
 
@@ -87,12 +86,6 @@ class RemoteHost(base_classes.Host):
 
     def sysrq_reboot(self):
         self.run('echo b > /proc/sysrq-trigger &')
-
-
-    def halt(self, timeout=DEFAULT_HALT_TIMEOUT, wait=True):
-        self.run('/sbin/halt')
-        if wait:
-            self.wait_down(timeout=timeout)
 
 
     def reboot(self, timeout=DEFAULT_REBOOT_TIMEOUT, label=LAST_BOOT_TAG,
@@ -218,21 +211,6 @@ class RemoteHost(base_classes.Host):
             return keyvals.get('platform', None)
         else:
             return None
-
-
-    def get_all_labels(self):
-        """
-        Return all labels, or empty list if label is not set.
-        """
-        if self.job:
-            keyval_path = os.path.join(self.job.resultdir, 'host_keyvals',
-                                       self.hostname)
-            keyvals = utils.read_keyval(keyval_path)
-            all_labels = keyvals.get('labels', '')
-            if all_labels:
-              all_labels = all_labels.split(',')
-              return [urllib.unquote(label) for label in all_labels]
-        return []
 
 
     def delete_tmp_dir(self, tmpdir):

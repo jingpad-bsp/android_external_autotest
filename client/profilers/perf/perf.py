@@ -5,8 +5,7 @@ supports functionality similar to oprofile and more.
 @see: http://lwn.net/Articles/310260/
 """
 
-import time, os, stat, subprocess, signal
-import logging
+import time, os, subprocess, signal
 from autotest_lib.client.bin import profiler, os_dep, utils
 
 
@@ -52,8 +51,3 @@ class perf(profiler.profiler):
             p = subprocess.Popen(cmd, shell=True, stdout=outfile,
                                  stderr=subprocess.STDOUT)
             p.wait()
-        # The raw detailed perf output is HUGE.  We cannot store it by default.
-        perf_log_size = os.stat(self.logfile)[stat.ST_SIZE]
-        logging.info('Removing %s after generating reports (saving %s bytes).',
-                     self.logfile, perf_log_size)
-        os.unlink(self.logfile)

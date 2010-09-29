@@ -503,8 +503,7 @@ class base_client_job(base_job.base_job):
                 raise error.TestError("Dependency %s does not exist" % dep)
 
             os.chdir(dep_dir)
-            if execfile('%s.py' % dep, {}) is None:
-                logging.info('Dependency %s successfuly built', dep)
+            utils.system('./' + dep + '.py')
 
 
     def _runtest(self, url, tag, args, dargs):

@@ -1,50 +1,51 @@
 package autotest.common.ui;
 
-import autotest.afe.IRadioButton;
+import com.google.gwt.user.client.ui.Composite;
+import com.google.gwt.user.client.ui.HorizontalPanel;
+import com.google.gwt.user.client.ui.Panel;
+import com.google.gwt.user.client.ui.RadioButton;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class RadioChooser {
-    public static interface Display {
-        public IRadioButton generateRadioButton(String groupName, String choice);
-    }
-
+public class RadioChooser extends Composite {
     private static int groupNameCounter = 0;
+    
+    private List<RadioButton> radioButtons = new ArrayList<RadioButton>();
+    private RadioButton defaultButton;
+    private Panel container = new HorizontalPanel();
     private String groupName = getFreshGroupName();
-    private List<IRadioButton> radioButtons = new ArrayList<IRadioButton>();
-    private IRadioButton defaultButton;
-
-    private Display display;
-
-    public void bindDisplay(Display display) {
-        this.display = display;
+    
+    public RadioChooser() {
+        initWidget(container);
+        setStyleName("radio-chooser");
     }
-
+    
     private static String getFreshGroupName() {
         groupNameCounter++;
         return "group" + Integer.toString(groupNameCounter);
     }
-
+    
     public void addChoice(String choice) {
-        IRadioButton button = display.generateRadioButton(groupName, choice);
+        RadioButton button = new RadioButton(groupName, choice);
         if (radioButtons.isEmpty()) {
             // first button in this group
             defaultButton = button;
             button.setValue(true);
         }
         radioButtons.add(button);
+        container.add(button);
     }
-
+    
     public String getSelectedChoice() {
-        for (IRadioButton button : radioButtons) {
+        for (RadioButton button : radioButtons) {
             if (button.getValue()) {
                 return button.getText();
             }
         }
         throw new RuntimeException("No radio button selected");
     }
-
+    
     public void reset() {
         if (defaultButton != null) {
             defaultButton.setValue(true);
@@ -58,9 +59,9 @@ public class RadioChooser {
     public void setSelectedChoice(String choice) {
         findButtonForChoice(choice).setValue(true);
     }
-
-    private IRadioButton findButtonForChoice(String choice) {
-        for (IRadioButton button : radioButtons) {
+    
+    private RadioButton findButtonForChoice(String choice) {
+        for (RadioButton button : radioButtons) {
             if (button.getText().equals(choice)) {
                 return button;
             }
