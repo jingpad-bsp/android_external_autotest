@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import os
-import common
 from autotest_lib.client.bin import utils
 
 version = 1
@@ -11,8 +10,8 @@ def setup(tarball, topdir):
     utils.extract_tarball_to_dir(tarball, srcdir)
     os.chdir(srcdir)
     utils.system('patch -p1 < ../00_arches.patch')
-    utils.system('make')
-    utils.system('make prefix=%s install' % topdir)
+    utils.make()
+    utils.make('prefix=%s install' % topdir)
     os.chdir(topdir)
 
 

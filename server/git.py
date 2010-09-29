@@ -1,74 +1,60 @@
-#
-# Copyright 2007 IBM Corp. Released under the GPL v2
-# Authors: Ryan Harper <ryanh@us.ibm.com>
-#
-
 """
 This module defines a class for handling building from git repos
+
+@author: Ryan Harper (ryanh@us.ibm.com)
+@copyright: IBM 2007
 """
 
-__author__ = """
-ryanh@us.ibm.com (Ryan Harper)
-"""
-
-
-import os
-from autotest_lib.client.common_lib import error
+import os, warnings, logging
+from autotest_lib.client.common_lib import error, revision_control
+from autotest_lib.client.bin import os_dep
 from autotest_lib.server import utils, installable_object
 
 
-class GitRepo(installable_object.InstallableObject):
+class InstallableGitRepo(installable_object.InstallableObject):
     """
-    This class represents a git repo.
-
-    It is used to pull down a local copy of a git repo, check if the local
-    repo is up-to-date, if not update.  It delegates the install to
-    implementation classes.
-
+    This class helps to pick a git repo and install it in a host.
     """
-
-    def __init__(self, repodir, giturl, weburl):
-        super(installable_object.InstallableObject, self).__init__()
-        if repodir is None:
-            e_msg = 'You must provide a directory to hold the git repository'
-            raise ValueError(e_msg)
-        self.repodir = utils.sh_escape(repodir)
-        if giturl is None:
-            raise ValueError('You must provide a git URL to the repository')
+    def __init__(self, repodir, giturl, weburl=None):
+        self.repodir = repodir
         self.giturl = giturl
-        if weburl is None:
-            raise ValueError('You must provide a http URL to the repository')
         self.weburl = weburl
-
-        # path to .git dir
-        self.gitpath = utils.sh_escape(os.path.join(self.repodir,'.git'))
-
-        # base git command , pointing to gitpath git dir
-        self.gitcmdbase = 'git --git-dir=%s' % self.gitpath
-
+        self.git_repo = revision_control.GitRepo(self.repodir, self.giturl,
+                                                 self.weburl)
         # default to same remote path as local
-        self.__build = os.path.dirname(self.repodir)
-
-
-    def run(self, command, timeout=None, ignore_status=False):
-        return utils.run(r'%s' % (utils.sh_escape(command)),
-                          timeout, ignore_status)
+        self._build = os.path.dirname(self.repodir)
 
 
     # base install method
     def install(self, host, builddir=None):
+        """
+        Install a git repo in a host. It works by pushing the downloaded source
+        code to the host.
+
+        @param host: Host object.
+        @param builddir: Directory on the host filesystem that will host the
+                source code.
+        """
         # allow override of target remote dir
         if builddir:
-            self.__build = builddir
+            self._build = builddir
 
         # push source to host for install
-        print 'pushing %s to host:%s' %(self.source_material, self.__build)
-        host.send_file(self.source_material, self.__build)
+        logging.info('Pushing code dir %s to host %s', self.source_material,
+                     self._build)
+        host.send_file(self.source_material, self._build)
 
 
     def gitcmd(self, cmd, ignore_status=False):
-        return self.run('%s %s'%(self.gitcmdbase, cmd),
-                                        ignore_status=ignore_status)
+        """
+        Wrapper for a git command.
+
+        @param cmd: Git subcommand (ex 'clone').
+        @param ignore_status: Whether we should supress error.CmdError
+                exceptions if the command did return exit code !=0 (True), or
+                not supress them (False).
+        """
+        return self.git_repo.gitcmd(cmd, ignore_status)
 
 
     def get(self, **kwargs):
@@ -78,108 +64,75 @@ class GitRepo(installable_object.InstallableObject):
         this method will leave an up-to-date version of git repo at
         'giturl' in 'repodir' directory to be used by build/install
         methods.
+
+        @param **kwargs: Dictionary of parameters to the method get.
         """
-
-        if not self.is_repo_initialized():
-            # this is your first time ...
-            print 'cloning repo...'
-            cmd = 'clone %s %s ' %(self.giturl, self.repodir)
-            rv = self.gitcmd(cmd, True)
-            if rv.exit_status != 0:
-                print rv.stderr
-                raise error.CmdError('Failed to clone git url', rv)
-            else:
-                print rv.stdout
-
-        else:
-            # exiting repo, check if we're up-to-date
-            if self.is_out_of_date():
-                print 'updating repo...'
-                rv = self.gitcmd('pull', True)
-                if rv.exit_status != 0:
-                    print rv.stderr
-                    e_msg = 'Failed to pull git repo data'
-                    raise error.CmdError(e_msg, rv)
-            else:
-                print 'repo up-to-date'
-
-
-        # remember where the source is
         self.source_material = self.repodir
+        return self.git_repo.get(**kwargs)
 
 
     def get_local_head(self):
-        cmd = 'log --max-count=1'
-        gitlog = self.gitcmd(cmd).stdout
+        """
+        Get the top commit hash of the current local git branch.
 
-        # parsing the commit checksum out of git log 's first entry.
-        # Output looks like:
-        #
-        #       commit 1dccba29b4e5bf99fb98c324f952386dda5b097f
-        #       Merge: 031b69b... df6af41...
-        #       Author: Avi Kivity <avi@qumranet.com>
-        #       Date:   Tue Oct 23 10:36:11 2007 +0200
-        #
-        #           Merge home:/home/avi/kvm/linux-2.6
-        return str(gitlog.split('\n')[0]).split()[1]
+        @return: Top commit hash of local git branch
+        """
+        return self.git_repo.get_local_head()
 
 
     def get_remote_head(self):
-        def __needs_refresh(lines):
-            tag = '<meta http-equiv="refresh" content="0"/>'
-            if len(filter(lambda x: x.startswith(tag), lines)) > 0:
-                return True
+        """
+        Get the top commit hash of the current remote git branch.
 
-            return False
-
-
-        # scan git web interface for revision HEAD's commit tag
-        gitwebaction=';a=commit;h=HEAD'
-        url = self.weburl+gitwebaction
-        max_refresh = 4
-        r = 0
-
-        print 'checking %s for changes' %(url)
-        u = utils.urlopen(url)
-        lines = u.read().split('\n')
-
-        while __needs_refresh(lines) and r < max_refresh:
-            print 'refreshing url'
-            r = r+1
-            u = utils.urlopen(url)
-            lines = u.read().split('\n')
-
-        if r >= max_refresh:
-            e_msg = 'Failed to get remote repo status, refreshed %s times' % r
-            raise IndexError(e_msg)
-
-        # looking for a line like:
-        # <tr><td>commit</td><td # class="sha1">aadea67210c8b9e7a57744a1c2845501d2cdbac7</td></tr>
-        commit_filter = lambda x: x.startswith('<tr><td>commit</td>')
-        commit_line = filter(commit_filter, lines)
-
-        # extract the sha1 sum from the commit line
-        return str(commit_line).split('>')[4].split('<')[0]
+        @return: Top commit hash of remote git branch
+        """
+        return self.git_repo.get_remote_head()
 
 
     def is_out_of_date(self):
-        local_head = self.get_local_head()
-        remote_head = self.get_remote_head()
+        """
+        Return whether this branch is out of date with regards to remote branch.
 
-        # local is out-of-date, pull
-        if local_head != remote_head:
-            return True
-
-        return False
+        @return: False, if the branch is outdated, True if it is current.
+        """
+        return self.git_repo.is_out_of_date()
 
 
     def is_repo_initialized(self):
-        # if we fail to get a rv of 0 out of the git log command
-        # then the repo is bogus
+        """
+        Return whether the git repo was already initialized (has a top commit).
 
-        cmd = 'log --max-count=1'
-        rv = self.gitcmd(cmd, True)
-        if rv.exit_status == 0:
-            return True
+        @return: False, if the repo was initialized, True if it was not.
+        """
+        return self.git_repo.is_repo_initialized()
 
-        return False
+
+    def get_revision(self):
+        """
+        Return current HEAD commit id
+        """
+        return self.git_repo.get_revision()
+
+
+    def checkout(self, remote, local=None):
+        """
+        Check out the git commit id, branch, or tag given by remote.
+
+        Optional give the local branch name as local.
+
+        @param remote: Remote commit hash
+        @param local: Local commit hash
+        @note: For git checkout tag git version >= 1.5.0 is required
+        """
+        return self.git_repo.checkout(remote, local)
+
+
+    def get_branch(self, all=False, remote_tracking=False):
+        """
+        Show the branches.
+
+        @param all: List both remote-tracking branches and local branches (True)
+                or only the local ones (False).
+        @param remote_tracking: Lists the remote-tracking branches.
+        """
+        return self.git_repo.get_branch(all, remote_tracking)

@@ -90,7 +90,6 @@ variants:
         pre_command += " scripts/unattended.py;"
         extra_params += " -boot d"
         guest_port_unattended_install = 12323
-        floppy = "images/floppy.img"
         kernel = vmlinuz
         initrd = initrd.img
         nic_mode = tap
@@ -205,34 +204,66 @@ variants:
 
     - timedrift:    install setup unattended_install.cdrom
         variants:
-            - with_load:
-                type = timedrift
-                # Pin the VM and host load to CPU #0
-                cpu_mask = 0x1
-                # Set the load and rest durations
-                load_duration = 20
-                rest_duration = 20
-                # Fail if the drift after load is higher than 50%
-                drift_threshold = 50
-                # Fail if the drift after the rest period is higher than 10%
-                drift_threshold_after_rest = 10
-                # For now, make sure this test is executed alone
-                used_cpus = 100
-            - with_migration:
-                type = timedrift_with_migration
-                migration_iterations = 3
-                drift_threshold = 10
-                drift_threshold_single = 3
-            - with_reboot:
-                type = timedrift_with_reboot
-                reboot_iterations = 1
-                drift_threshold = 10
-                drift_threshold_single = 3
-            - with_stop:
-                type = timedrift_with_stop
-                stop_interations = 1
-                drift_threshold = 10
-                drift_threshold_single = 3
+            - ntp:
+                variants:
+                    - with_load:
+                        type = timedrift
+                        # Pin the VM and host load to CPU #0
+                        cpu_mask = 0x1
+                        # Set the load and rest durations
+                        load_duration = 20
+                        rest_duration = 20
+                        # Fail if the drift after load is higher than 50%
+                        drift_threshold = 50
+                        # Fail if the drift after the rest period is higher than 10%
+                        drift_threshold_after_rest = 10
+                        # For now, make sure this test is executed alone
+                        used_cpus = 100
+                    - with_migration:
+                        type = timedrift_with_migration
+                        migration_iterations = 3
+                        drift_threshold = 10
+                        drift_threshold_single = 3
+                    - with_reboot:
+                        type = timedrift_with_reboot
+                        reboot_iterations = 1
+                        drift_threshold = 10
+                        drift_threshold_single = 3
+                    - with_stop:
+                        type = timedrift_with_stop
+                        stop_interations = 1
+                        drift_threshold = 10
+                        drift_threshold_single = 3
+            - date:
+                variants:
+                    - with_load:
+                        type = timedrift
+                        # Pin the VM and host load to CPU #0
+                        cpu_mask = 0x1
+                        # Set the load and rest durations
+                        load_duration = 20
+                        rest_duration = 20
+                        # Fail if the drift after load is higher than 50%
+                        drift_threshold = 50
+                        # Fail if the drift after the rest period is higher than 10%
+                        drift_threshold_after_rest = 10
+                        # For now, make sure this test is executed alone
+                        used_cpus = 100
+                    - with_migration:
+                        type = timedrift_with_migration
+                        migration_iterations = 3
+                        drift_threshold = 10
+                        drift_threshold_single = 3
+                    - with_reboot:
+                        type = timedrift_with_reboot
+                        reboot_iterations = 1
+                        drift_threshold = 10
+                        drift_threshold_single = 3
+                    - with_stop:
+                        type = timedrift_with_stop
+                        stop_interations = 1
+                        drift_threshold = 10
+                        drift_threshold_single = 3
 
     - balloon_check:  install setup unattended_install.cdrom
         type = balloon_check
@@ -285,6 +316,90 @@ variants:
         type = iozone_windows
         iozone_cmd = "D:\IOzone\iozone.exe -a"
         iozone_timeout = 3600
+
+    - @whql:         install setup unattended_install.cdrom
+        nic_mode = tap
+        # Replace this with the address of an installed DTM server
+        server_address = 10.20.30.40
+        # The server should run rss.exe like a regular Windows VM, preferably
+        # with administrator privileges (or at least with permission to write
+        # to the DTM studio directory)
+        server_shell_port = 10022
+        server_file_transfer_port = 10023
+        server_studio_path = %programfiles%\Microsoft Driver Test Manager\Studio
+        wtt_services = wttsvc
+        variants:
+            - whql_client_install:
+                type = whql_client_install
+                dsso_delete_machine_binary = deps/whql_delete_machine_15.exe
+                # The username and password are required for accessing the DTM client
+                # installer binary shared by the server
+                server_username = administrator
+                server_password = 1q2w3eP
+                # This path refers to a shared directory on the server
+                # (the final cmd will be something like \\servername\DTMInstall\...)
+                install_cmd = \DTMInstall\Client\Setup.exe /passive
+                install_timeout = 3600
+            - whql_submission:    whql_client_install
+                type = whql_submission
+                extra_params += " -snapshot"
+                dsso_test_binary = deps/whql_submission_15.exe
+                test_timeout = 3600
+                device_data = cat0 cat1 cat2 cat3 logoarch logoos whqlos whqlqual prog desc filter virt
+                descriptors = desc1 desc2 desc3
+                # DeviceData names
+                dd_name_cat0     = Category
+                dd_name_cat1     = Category
+                dd_name_cat2     = Category
+                dd_name_cat3     = Category
+                dd_name_logoarch = LogoProcessorArchitecture
+                dd_name_logoos   = LogoOperatingSystem
+                dd_name_whqlos   = WhqlOs
+                dd_name_whqlqual = WhqlQualification
+                dd_name_prog     = LogoProgramId
+                dd_name_desc     = LogoProgramDescription
+                dd_name_filter   = WDKFilterAttribute
+                dd_name_virt     = ParaVirtualizationDriver
+                # Common DeviceData data
+                dd_data_filter   = FilterIfNoInf
+                dd_data_virt     = True
+                variants:
+                    - keyboard:
+                        # test_device is a regular expression that should match a device's
+                        # name as it appears in device manager.  The first device that matches
+                        # is used.
+                        test_device = keyboard
+                        # Set timeout to 10 hours
+                        test_timeout = 36000
+                        dd_data_cat0 = Input\Keyboard
+                        dd_data_cat1 = Device Fundamentals
+                        dd_data_cat2 = System Fundamentals\Dynamic Partitioning
+                        dd_data_prog = InputKbd
+                        dd_data_desc = Input > Keyboard
+                    - hdd:
+                        test_device = qemu harddisk
+                        device_data += " ex0 ex1 ex2 ex3"
+                        dd_data_cat0 = Storage\Device Class\Disk\Disk
+                        dd_data_cat1 = Storage\Device Class\Disk\Fixed
+                        dd_data_cat2 = Storage\Device Class\Disk\Bus\ATA
+                        dd_data_cat3 = Device Fundamentals
+                        dd_data_prog = StorHDD
+                        dd_data_desc = Storage > Hard Disk Drive (HDD)
+                        dd_name_ex0 = Storage_bus_type
+                        dd_data_ex0 = ATA/ATAPI
+                        dd_name_ex1 = Hybrid_HDD_Support
+                        dd_data_ex1 = 0
+                        dd_name_ex2 = Non_Rotating_Media
+                        dd_data_ex2 = 0
+                        dd_name_ex3 = Secure_Storage
+                        dd_data_ex3 = 0
+                        variants:
+                            - full:
+                                # Yes, 100 hours, this is not a mistake
+                                test_timeout = 360000
+                            - syscache_test:
+                                job_filter = syscache test
+                                test_timeout = 7200
 
     - guest_s4:     install setup unattended_install.cdrom
         type = guest_s4
@@ -378,8 +493,23 @@ variants:
                 ksm_mode = "serial"
             - ksm_parallel:
                 ksm_mode = "parallel"
+
     - iofuzz:
         type = iofuzz
+
+    - virtio_console:
+        vms = ''
+        type = virtio_console
+        # smoke params - $console_type:data_string
+        # FIXME: test_smoke doesn't work with console yet (virtio_console bug)
+        # "serialport;console:Custom data"
+        virtio_console_smoke = "serialport"
+        # loopback params - '$source_console_type@buffer_length:$destination_console_type1@buffer_length:...:$loopback_buffer_length;...'
+        virtio_console_loopback = "serialport:serialport;serialport@1024:serialport@32:console@1024:console@8:16"
+        # perf params - $console_type@buffer_length:$test_duration
+        # FIXME: test_perf doesn't work with console yet (virtio_console bug)
+        # virtio_console_perf = "serialport;serialport@1000000:120;console@1024:60"
+        virtio_console_perf = "serialport;serialport@1000000:120"
 
     # This unit test module is for older branches of KVM that use the
     # kvmctl test harness (such as the code shipped with RHEL 5.x)
@@ -490,7 +620,7 @@ variants:
         nic_model = rtl8139
     - e1000:
         nic_model = e1000
-    - virtio:
+    - virtio_net:
         nic_model = virtio
 
 
@@ -498,7 +628,7 @@ variants:
 variants:
     # Linux section
     - @Linux:
-        no autoit iozone_windows
+        no autoit iozone_windows whql
         shutdown_command = shutdown -h now
         reboot_command = shutdown -r now
         status_test_command = echo $?
@@ -511,6 +641,12 @@ variants:
         mem_chk_cmd = dmidecode -t 17 | awk -F: '/Size/ {print $2}'
         mem_chk_cur_cmd = grep MemTotal /proc/meminfo
         cpu_chk_cmd = grep -c processor /proc/cpuinfo
+        unattended_install.cdrom:
+            # If you want to use floppy to hold kickstarts,
+            # comment the 3 lines below
+            cdroms += " unattended"
+            drive_index_unattended = 1
+            drive_index_cd1 = 2
         timedrift:
             extra_params += " -no-kvm-pit-reinjection"
             time_command = date +'TIME: %a %m/%d/%Y %H:%M:%S.%N'
@@ -521,6 +657,14 @@ variants:
             guest_load_stop_command = "killall -9 dd"
             host_load_command = "bzip2 -c --best /dev/urandom > /dev/null"
             host_load_instances = 8
+            ntp:
+                time_command = "ntpdate -d -q ns1.nay.redhat.com"
+                time_filter_re = "originate timestamp:.*, (.\w+\s+\d+\s+\d+\s+\d+:\d+:\d+)\.(.\d+)"
+                time_format = "%b %d %Y %H:%M:%S"
+            date:
+                time_command = date +'TIME: %a %m/%d/%Y %H:%M:%S.%N'
+                time_filter_re = "(?:TIME: \w\w\w )(.{19})(?:\.\d\d)"
+                time_format = "%m/%d/%Y %H:%M:%S"
 
         variants:
             - Fedora:
@@ -533,7 +677,10 @@ variants:
                     tftp = "images/tftpboot"
                     bootp = "/pxelinux.0"
                     extra_params += " -boot cn"
-                    kernel_args = "ks=floppy nicdelay=60 console=ttyS0,115200 console=tty0"
+                    # You have to use ks=floppy if you want to use floppies to
+                    # hold your kickstart file
+                    #kernel_args = "ks=floppy nicdelay=60 console=ttyS0,115200 console=tty0"
+                    kernel_args = "ks=cdrom nicdelay=60 console=ttyS0,115200 console=tty0"
 
                 variants:
                     - 8.32:
@@ -547,7 +694,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-8.ks
                             tftp = images/f8-32/tftpboot
-                            floppy = images/f8-32/floppy.img
+                            #floppy = images/f8-32/ks.vfd
+                            cdrom_unattended = images/f8-32/ks.iso
 
                     - 8.64:
                         no setup
@@ -560,7 +708,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-8.ks
                             tftp = images/f8-64/tftpboot
-                            floppy = images/f8-64/floppy.img
+                            #floppy = images/f8-64/ks.vfd
+                            cdrom_unattended = images/f8-64/ks.iso
 
                     - 9.32:
                         image_name = f9-32
@@ -572,7 +721,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-9.ks
                             tftp = images/f9-32/tftpboot
-                            floppy = images/f9-32/floppy.img
+                            #floppy = images/f9-32/ks.vfd
+                            cdrom_unattended = images/f9-32/ks.iso
 
                     - 9.64:
                         image_name = f9-64
@@ -584,7 +734,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-9.ks
                             tftp = images/f9-64/tftpboot
-                            floppy = images/f9-64/floppy.img
+                            #floppy = images/f9-64/ks.vfd
+                            cdrom_unattended = images/f9-64/ks.iso
 
                     - 10.32:
                         image_name = f10-32
@@ -594,7 +745,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-10.ks
                             tftp = images/f10-32/tftpboot
-                            floppy = images/f10-32/floppy.img
+                            #floppy = images/f10-32/ks.vfd
+                            cdrom_unattended = images/f10-32/ks.iso
 
                     - 10.64:
                         image_name = f10-64
@@ -604,7 +756,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-10.ks
                             tftp = images/f10-64/tftpboot
-                            floppy = images/f10-64/floppy.img
+                            #floppy = images/f10-64/ks.vfd
+                            cdrom_unattended = images/f10-64/ks.iso
 
                     - 11.32:
                         image_name = f11-32
@@ -616,7 +769,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-11.ks
                             tftp = images/f11-32/tftpboot
-                            floppy = images/f11-32/floppy.img
+                            #floppy = images/f11-32/ks.vfd
+                            cdrom_unattended = images/f11-32/ks.iso
 
                     - 11.64:
                         image_name = f11-64
@@ -626,7 +780,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-11.ks
                             tftp = images/f11-64/tftpboot
-                            floppy = images/f11-64/floppy.img
+                            #floppy = images/f11-64/ks.vfd
+                            cdrom_unattended = images/f11-64/ks.iso
 
                     - 12.32:
                         image_name = f12-32
@@ -636,7 +791,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-12.ks
                             tftp = images/f12-32/tftpboot
-                            floppy = images/f12-32/floppy.img
+                            #floppy = images/f12-32/ks.vfd
+                            cdrom_unattended = images/f12-32/ks.iso
 
                     - 12.64:
                         image_name = f12-64
@@ -646,27 +802,30 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/Fedora-12.ks
                             tftp = images/f12-64/tftpboot
-                            floppy = images/f12-64/floppy.img
+                            #floppy = images/f12-64/ks.vfd
+                            cdrom_unattended = images/f12-64/ks.iso
 
                     - 13.32:
                         image_name = f13-32
                         cdrom_cd1 = linux/Fedora-13-i386-DVD.iso
                         md5sum = 212fec517c2629b4b5eaf3662ac13136
                         md5sum_1m = 4e1578a6ed5a6e7cd03b8fb074030746
-                        unattended_install:
+                        unattended_install.cdrom:
                             unattended_file = unattended/Fedora-13.ks
                             tftp = images/f13-32/tftpboot
-                            floppy = images/f13-32/floppy.img
+                            #floppy = images/f13-32/ks.vfd
+                            cdrom_unattended = images/f13-32/ks.iso
 
                     - 13.64:
                         image_name = f13-64
                         cdrom_cd1 = linux/Fedora-13-x86_64-DVD.iso
                         md5sum = 6fbae6379cf27f36e1f2c7827ba7dc35
                         md5sum_1m = 68821b9de4d3b5975d6634334e7f47a6
-                        unattended_install:
+                        unattended_install.cdrom:
                             unattended_file = unattended/Fedora-13.ks
                             tftp = images/f13-64/tftpboot
-                            floppy = images/f13-64/floppy.img
+                            #floppy = images/f13-64/ks.vfd
+                            cdrom_unattended = images/f13-64/ks.iso
 
 
             - DSL-4.2.5:
@@ -695,7 +854,10 @@ variants:
                     tftp = "images/tftpboot"
                     bootp = "/pxelinux.0"
                     extra_params += " -boot cn"
-                    kernel_args = "autoyast=floppy console=ttyS0,115200 console=tty0"
+                    # You have to use autoyast=floppy if you want to use floppies to
+                    # hold your autoyast file
+                    #kernel_args = "autoyast=floppy console=ttyS0,115200 console=tty0"
+                    kernel_args = "autoyast=cdrom console=ttyS0,115200 console=tty0"
                     post_install_delay = 10
 
                 variants:
@@ -720,7 +882,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-0-64/tftpboot
-                            floppy = images/opensuse-11-0-64/floppy.img
+                            #floppy = images/opensuse-11-0-64/autoyast.vfd
+                            cdrom_unattended = images/opensuse-11-0-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
                     - 11.1.32:
@@ -733,7 +896,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-1-32/tftpboot
-                            floppy = images/opensuse-11-1-32/floppy.img
+                            #floppy = images/opensuse-11-1-32/autoyast.vfd
+                            cdrom_unattended = images/opensuse-11-1-32/autoyast.iso
                             pxe_dir = boot/i386/loader
 
                     - 11.1.64:
@@ -746,7 +910,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-1-64/tftpboot
-                            floppy = images/opensuse-11-1-64/floppy.img
+                            #floppy = images/opensuse-11-1-64/autoyast.vfd
+                            cdrom_unattended = images/opensuse-11-1-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
                     - 11.2.32:
@@ -757,7 +922,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-2-32/tftpboot
-                            floppy = images/opensuse-11-2-32/floppy.img
+                            #floppy = images/opensuse-11-2-32/autoyast.vfd
+                            cdrom_unattended = images/opensuse-11-2-32/autoyast.iso
                             pxe_dir = boot/i386/loader
 
                     - 11.2.64:
@@ -768,7 +934,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-2-64/tftpboot
-                            floppy = images/opensuse11-2-64/floppy.img
+                            #floppy = images/opensuse11-2-64/autoyast.vfd
+                            cdrom_unattended = images/opensuse11-2-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
                     - 11.3.32:
@@ -779,7 +946,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-3-32/tftpboot
-                            floppy = images/opensuse-11-3-32/floppy.img
+                            #floppy = images/opensuse-11-3-32/autoyast.vfd
+                            cdrom_unattended = images/opensuse-11-3-32/autoyast.iso
                             pxe_dir = boot/i386/loader
 
                     - 11.3.64:
@@ -790,7 +958,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-3-64/tftpboot
-                            floppy = images/opensuse-11-3-64/floppy.img
+                            #floppy = images/opensuse-11-3-64/autoyast.vfd
+                            cdrom_unattended = images/opensuse-11-3-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
             - SLES:
@@ -800,7 +969,10 @@ variants:
                     pxe_initrd = "initrd"
                     bootp = "/pxelinux.0"
                     extra_params += " -boot cn"
-                    kernel_args = "autoyast=floppy console=ttyS0,115200 console=tty0"
+                    # You have to use autoyast=floppy if you want to use floppies to
+                    # hold your autoyast file
+                    #kernel_args = "autoyast=floppy console=ttyS0,115200 console=tty0"
+                    kernel_args = "autoyast=cdrom console=ttyS0,115200 console=tty0"
                     post_install_delay = 10
 
                 variants:
@@ -811,9 +983,10 @@ variants:
                         md5sum_1m = 1f19d4eff5bcead2a3e5b8b4212b6796
                         unattended_install.cdrom:
                             unattended_file = unattended/SLES-11.xml
-                            tftp = "images/sles-11-0-32/tftpboot"
-                            floppy = "images/sles-11-0-32/floppy.img"
-                            pxe_dir = "boot/i386/loader"
+                            tftp = images/sles-11-0-32/tftpboot
+                            #floppy = images/sles-11-0-32/autoyast.vfd
+                            cdrom_unattended = images/sles-11-0-32/autoyast.iso
+                            pxe_dir = boot/i386/loader
 
                     - 11.0.64:
                         image_name = sles11-64
@@ -822,9 +995,10 @@ variants:
                         md5sum_1m = 00000951cab7c32e332362fc424c1054
                         unattended_install.cdrom:
                             unattended_file = unattended/SLES-11.xml
-                            tftp = "images/sles-11-0-64/tftpboot"
-                            floppy = "images/sles-11-0-64/floppy.img"
-                            pxe_dir = "boot/x86_64/loader"
+                            tftp = images/sles-11-0-64/tftpboot
+                            #floppy = images/sles-11-0-64/autoyast.vfd
+                            cdrom_unattended = images/sles-11-0-64/autoyast.iso
+                            pxe_dir = boot/x86_64/loader
 
                     - 11.1.32:
                         image_name = sles11sp1-32
@@ -833,9 +1007,10 @@ variants:
                         md5sum_1m = a626a3d50813410e3ac42794e05773bb
                         unattended_install:
                             unattended_file = unattended/SLES-11.xml
-                            tftp = "images/sles-11-1-32/tftpboot"
-                            floppy = "images/sles-11-1-32/floppy.img"
-                            pxe_dir = "boot/i386/loader"
+                            tftp = images/sles-11-1-32/tftpboot
+                            #floppy = images/sles-11-1-32/autoyast.vfd
+                            cdrom_unattended = images/sles-11-1-32/autoyast.iso
+                            pxe_dir = boot/i386/loader
 
                     - 11.1.64:
                         image_name = sles11sp1-64
@@ -844,9 +1019,10 @@ variants:
                         md5sum_1m = f7f67b5da46923a9f01da8a2b6909654
                         unattended_install:
                             unattended_file = unattended/SLES-11.xml
-                            tftp = "images/sles-11-1-64/tftpboot"
-                            floppy = "images/sles-11-1-64/floppy.img"
-                            pxe_dir = "boot/x86_64/loader"
+                            tftp = images/sles-11-1-64/tftpboot
+                            #floppy = images/sles-11-1-64/autoyast.vfd
+                            cdrom_unattended = images/sles-11-1-64/autoyast.iso
+                            pxe_dir = boot/x86_64/loader
 
             - @Ubuntu:
                 shell_prompt = "^root@.*[\#\$]\s*$"
@@ -893,7 +1069,10 @@ variants:
                     tftp = "images/tftpboot"
                     bootp = "/pxelinux.0"
                     extra_params += " -boot cn"
-                    kernel_args = "ks=floppy nicdelay=60 console=ttyS0,115200 console=tty0"
+                    # You have to use ks=floppy if you want to use floppies to
+                    # hold your kickstart file
+                    #kernel_args = "ks=floppy nicdelay=60 console=ttyS0,115200 console=tty0"
+                    kernel_args = "ks=cdrom nicdelay=60 console=ttyS0,115200 console=tty0"
 
                 variants:
                     - 3.9.i386:
@@ -908,7 +1087,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-3-series.ks
                             tftp = images/rhel39-32/tftpboot
-                            floppy = images/rhel39-32/floppy.img
+                            #floppy = images/rhel39-32/ks.vfd
+                            cdrom_unattended = images/rhel39-32/ks.iso
 
                     - 3.9.x86_64:
                         no setup autotest linux_s3 guest_s4 shutdown
@@ -922,7 +1102,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-3-series.ks
                             tftp = images/rhel39-64/tftpboot
-                            floppy = images/rhel39-64/floppy.img
+                            #floppy = images/rhel39-64/ks.vfd
+                            cdrom_unattended = images/rhel39-64/ks.iso
 
                     - 4.7.i386:
                         no setup autotest
@@ -935,7 +1116,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-4-series.ks
                             tftp = images/rhel47-32/tftpboot
-                            floppy = images/rhel47-32/floppy.img
+                            #floppy = images/rhel47-32/ks.vfd
+                            cdrom_unattended = images/rhel47-32/ks.iso
 
                     - 4.7.x86_64:
                         no setup autotest
@@ -948,7 +1130,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-4-series.ks
                             tftp = images/rhel47-64/tftpboot
-                            floppy = images/rhel47-64/floppy.img
+                            #floppy = images/rhel47-64/ks.vfd
+                            cdrom_unattended = images/rhel47-64/ks.iso
 
                     - 4.8.i386:
                         no setup autotest
@@ -959,7 +1142,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-4-series.ks
                             tftp = images/rhel48-32/tftpboot
-                            floppy = images/rhel48-32/floppy.img
+                            #floppy = images/rhel48-32/ks.vfd
+                            cdrom_unattended = images/rhel48-32/ks.iso
 
                     - 4.8.x86_64:
                         no setup autotest
@@ -970,7 +1154,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-4-series.ks
                             tftp = images/rhel48-64/tftpboot
-                            floppy = images/rhel48-64/floppy.img
+                            #floppy = images/rhel48-64/ks.vfd
+                            cdrom_unattended = images/rhel48-64/ks.iso
 
                     - 5.3.i386:
                         no setup
@@ -983,7 +1168,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-5-series.ks
                             tftp = images/rhel53-32/tftpboot
-                            floppy = images/rhel53-32/floppy.img
+                            #floppy = images/rhel53-32/ks.vfd
+                            cdrom_unattended = images/rhel53-32/ks.iso
 
                     - 5.3.x86_64:
                         no setup
@@ -996,7 +1182,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-5-series.ks
                             tftp = images/rhel53-64/tftpboot
-                            floppy = images/rhel53-64/floppy.img
+                            #floppy = images/rhel53-64/ks.vfd
+                            cdrom_unattended = images/rhel53-64/ks.iso
 
                     - 5.4.i386:
                         no setup
@@ -1007,7 +1194,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-5-series.ks
                             tftp = images/rhel54-32/tftpboot
-                            floppy = images/rhel54-32/floppy.img
+                            #floppy = images/rhel54-32/ks.vfd
+                            cdrom_unattended = images/rhel54-32/ks.iso
 
                     - 5.4.x86_64:
                         no setup
@@ -1018,7 +1206,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-5-series.ks
                             tftp = images/rhel54-64/tftpboot
-                            floppy = images/rhel54-64/floppy.img
+                            #floppy = images/rhel54-64/ks.vfd
+                            cdrom_unattended = images/rhel54-64/ks.iso
 
                     - 5.5.i386:
                         no setup
@@ -1029,7 +1218,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-5-series.ks
                             tftp = images/rhel55-32/tftpboot
-                            floppy = images/rhel55-32/floppy.img
+                            #floppy = images/rhel55-32/ks.vfd
+                            cdrom_unattended = images/rhel55-32/ks.iso
 
                     - 5.5.x86_64:
                         no setup
@@ -1040,7 +1230,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/RHEL-5-series.ks
                             tftp = images/rhel55-64/tftpboot
-                            floppy = images/rhel55-64/floppy.img
+                            #floppy = images/rhel55-64/ks.vfd
+                            cdrom_unattended = images/rhel55-64/ks.iso
 
 
     # Windows section
@@ -1071,9 +1262,16 @@ variants:
         unattended_install.cdrom:
             timeout = 7200
             finish_program = deps/finish.exe
-            cdroms += " winutilscd"
-            cdrom_winutilscd = windows/winutils.iso
-            drive_index_winutilscd = 2
+            cdroms += " winutils"
+            cdrom_winutils = windows/winutils.iso
+            drive_index_winutils = 2
+            # Turn install_virtio = yes if you want to install the
+            # Windows virtio drivers. It might be a lot of setup though :)
+            #install_virtio = no
+            #cdroms += " virtio"
+            #cdrom_virtio = windows/virtio-win.iso
+            #drive_index_virtio = 3
+            #virtio_floppy = /usr/share/virtio-win/virtio-drivers.vfd
         migrate:
             migration_test_command = ver && vol
             migration_bg_command = start ping -t localhost
@@ -1098,6 +1296,15 @@ variants:
             # Alternative host load:
             #host_load_command = "dd if=/dev/urandom of=/dev/null"
             host_load_instances = 8
+            ntp:
+                time_command = "w32tm /stripchart /samples:1 /computer:ns1.nay.redhat.com"
+                time_filter_re = "\d+/\d+/\d+\s\d+:\d+:\d+ [AP]M"
+                time_format = "%m/%d/%Y %H:%M:%S"
+            date:
+                time_command = "echo TIME: %date% %time%"
+                time_filter_re = "(?<=TIME: \w\w\w ).{19}(?=\.\d\d)"
+                time_format = "%m/%d/%Y %H:%M:%S"
+
         guest_s4:
             check_s4_support_cmd = powercfg /hibernate on
             test_s4_cmd = start ping -t localhost
@@ -1123,7 +1330,7 @@ variants:
 
         variants:
             - Win2000:
-                no reboot
+                no reboot whql
                 image_name = win2000-32
                 kill_vm_gracefully = no
                 install:
@@ -1139,7 +1346,7 @@ variants:
                     md5sum = dda6039f3a9173f0f6bfae40f5efdfea
                     md5sum_1m = dd28fba196d366d56fe774bd93df5527
                     unattended_file = unattended/win2000-32.sif
-                    floppy = images/win2000-32/floppy.img
+                    floppy = images/win2000-32/answer.vfd
 
             - WinXP:
                 image_name = winXP
@@ -1159,7 +1366,20 @@ variants:
                             md5sum = 743450644b1d9fe97b3cf379e22dceb0
                             md5sum_1m = b473bf75af2d1269fec8958cf0202bfd
                             unattended_file = unattended/winxp32.sif
-                            floppy = images/winXP-32/floppy.img
+                            floppy = images/winXP-32/answer.vfd
+                            # Uncomment virtio_network_installer_path line if
+                            # you have an msi installer, also make sure the
+                            # paths are properly set in your virtio driver iso.
+                            virtio_oemsetup_id = WXP32
+                            virtio_network_path = 'F:\NetKVM\xp\x86'
+                            #virtio_network_installer_path = 'F:\RHEV-Network32.msi'
+                        whql_submission:
+                            desc_path_desc1 = $\WDK\Logo Type\Device Logo\Windows XP
+                            desc_path_desc2 = $\WDK\Logo Type\Systems Logo\Windows XP
+                            dd_data_logoarch = X86
+                            dd_data_logoos = Windows XP
+                            dd_data_whqlos = Windows XP
+                            dd_data_whqlqual = Basic
 
                     - 64:
                         image_name += -64
@@ -1176,7 +1396,20 @@ variants:
                             md5sum = 8d3f007ec9c2060cec8a50ee7d7dc512
                             md5sum_1m = e812363ff427effc512b7801ee70e513
                             unattended_file = unattended/winxp64.sif
-                            floppy = images/winXP-64/floppy.img
+                            floppy = images/winXP-64/answer.vfd
+                            # Uncomment virtio_network_installer_path line if
+                            # you have an msi installer, also make sure the
+                            # paths are properly set in your virtio driver iso.
+                            virtio_oemsetup_id = WNET64
+                            virtio_network_path = 'F:\NetKVM\xp\amd64'
+                            #virtio_network_installer_path = 'F:\RHEV-Network64.msi'
+                        whql_submission:
+                            desc_path_desc1 = $\WDK\Logo Type\Device Logo\Windows XP
+                            desc_path_desc2 = $\WDK\Logo Type\Systems Logo\Windows XP
+                            dd_data_logoarch = AMD64
+                            dd_data_logoos = Windows XP 64-Bit Edition Version 2003
+                            dd_data_whqlos = Windows XP x64
+                            dd_data_whqlqual = Basic
 
             - Win2003:
                 image_name = win2003
@@ -1198,7 +1431,19 @@ variants:
                             md5sum = 03e921e9b4214773c21a39f5c3f42ef7
                             md5sum_1m = 37c2fdec15ac4ec16aa10fdfdb338aa3
                             unattended_file = unattended/win2003-32.sif
-                            floppy = images/win2003-32/floppy.img
+                            floppy = images/win2003-32/answer.vfd
+                            # Uncomment virtio_network_installer_path line if
+                            # you have an msi installer, also make sure the
+                            # paths are properly set in your virtio driver iso.
+                            virtio_oemsetup_id = WNET32
+                            virtio_network_path = 'F:\NetKVM\2k3\x86'
+                            #virtio_network_installer_path = 'F:\RHEV-Network32.msi'
+                        whql_submission:
+                            desc_path_desc1 = $\WDK\Logo Type\Device Logo\Windows Server 2003
+                            dd_data_logoarch = X86
+                            dd_data_logoos = Windows Server 2003
+                            dd_data_whqlos = Windows Server 2003
+                            dd_data_whqlqual = Basic
 
                     - 64:
                         image_name += -64
@@ -1215,145 +1460,240 @@ variants:
                             md5sum = 5703f87c9fd77d28c05ffadd3354dbbd
                             md5sum_1m = 439393c384116aa09e08a0ad047dcea8
                             unattended_file = unattended/win2003-64.sif
-                            floppy = images/win2003-64/floppy.img
+                            floppy = images/win2003-64/answer.vfd
+                            # Uncomment virtio_network_installer_path line if
+                            # you have an msi installer, also make sure the
+                            # paths are properly set in your virtio driver iso.
+                            virtio_oemsetup_id = WNET64
+                            virtio_network_path = 'F:\NetKVM\2k3\amd64'
+                            #virtio_network_installer_path = 'F:\RHEV-Network64.msi'
+
+                        whql_submission:
+                            desc_path_desc1 = $\WDK\Logo Type\Device Logo\Windows Server 2003
+                            dd_data_logoarch = AMD64
+                            dd_data_logoos = Windows Server 2003
+                            dd_data_whqlos = Windows Server 2003 x64
+                            dd_data_whqlqual = Basic
 
             - WinVista:
                 image_name = winvista
                 image_size = 20G
+                whql_submission:
+                    desc_path_desc1 = $\WDK\Logo Type\Device Logo\Vista Client\Device Premium
+                    desc_path_desc2 = $\WDK\Logo Type\Device Logo\Vista Client\Device Standard
+                    desc_path_desc3 = $\WDK\Logo Type\Device Logo\Vista Client
 
                 variants:
-                    - 32sp1:
-                        image_name += sp1-32
-                        install:
-                            cdrom_cd1 = windows/WindowsVista-32.iso
-                            md5sum = 1008f323d5170c8e614e52ccb85c0491
-                            md5sum_1m = c724e9695da483bc0fd59e426eaefc72
-                            steps = Win-Vista-32.steps
-                        setup:
-                            steps = WinVista-32-rss.steps
-                        unattended_install.cdrom:
-                            cdrom_cd1 = windows/WindowsVista-32.iso
-                            md5sum = 1008f323d5170c8e614e52ccb85c0491
-                            md5sum_1m = c724e9695da483bc0fd59e426eaefc72
-                            unattended_file = unattended/winvista-32-autounattend.xml
-                            floppy = images/winvista-sp1-32/floppy.img
+                    - 32:
+                        whql_submission:
+                            dd_data_logoarch = X86
+                            dd_data_logoos = Windows Vista
+                            dd_data_whqlos = Windows Vista Client
+                            dd_data_whqlqual = Premium
+                        variants:
+                            - sp1:
+                                image_name += -sp1-32
+                                install:
+                                    cdrom_cd1 = windows/WindowsVista-32.iso
+                                    md5sum = 1008f323d5170c8e614e52ccb85c0491
+                                    md5sum_1m = c724e9695da483bc0fd59e426eaefc72
+                                    steps = Win-Vista-32.steps
+                                setup:
+                                    steps = WinVista-32-rss.steps
+                                unattended_install.cdrom:
+                                    cdrom_cd1 = windows/WindowsVista-32.iso
+                                    md5sum = 1008f323d5170c8e614e52ccb85c0491
+                                    md5sum_1m = c724e9695da483bc0fd59e426eaefc72
+                                    unattended_file = unattended/winvista-32-autounattend.xml
+                                    floppy = images/winvista-sp1-32/answer.vfd
+                                    # Uncomment virtio_network_installer_path line if
+                                    # you have an msi installer, also make sure the
+                                    # paths are properly set in your virtio driver iso.
+                                    virtio_storage_path = 'F:\viostor\w7\x86'
+                                    virtio_network_path = 'F:\NetKVM\w7\x86'
+                                    #virtio_network_installer_path = 'F:\RHEV-Network32.msi'
 
-                    - 64sp1:
-                        image_name += sp1-64
-                        install:
-                            cdrom_cd1 = windows/WindowsVista-64.iso
-                            md5sum = 11e2010d857fffc47813295e6be6d58d
-                            md5sum_1m = 0947bcd5390546139e25f25217d6f165
-                            steps = Win-Vista-64.steps
-                        setup:
-                            steps = WinVista-64-rss.steps
-                        unattended_install.cdrom:
-                            cdrom_cd1 = windows/WindowsVista-64.iso
-                            md5sum = 11e2010d857fffc47813295e6be6d58d
-                            md5sum_1m = 0947bcd5390546139e25f25217d6f165
-                            unattended_file = unattended/winvista-64-autounattend.xml
-                            floppy = images/winvista-sp1-64/floppy.img
+                            - sp2:
+                                image_name += -sp2-32
+                                unattended_install.cdrom:
+                                    cdrom_cd1 = windows/en_windows_vista_with_sp2_x86_dvd_342266.iso
+                                    md5sum = 19ca90a425667812977bab6f4ce24175
+                                    md5sum_1m = 89c15020e0e6125be19acf7a2e5dc614
+                                    sha1sum = 25ad9a776503e6a583bec07879dbcc5dfd20cd6e
+                                    sha1sum_1m = a2afa4cffdc1c362dbf9e62942337f4f875a22cf
+                                    unattended_file = unattended/winvista-32-autounattend.xml
+                                    floppy = images/winvista-sp2-32/answer.vfd
+                                    # Uncomment virtio_network_installer_path line if
+                                    # you have an msi installer, also make sure the
+                                    # paths are properly set in your virtio driver iso.
+                                    virtio_storage_path = 'F:\viostor\w7\x86'
+                                    virtio_network_path = 'F:\NetKVM\w7\x86'
+                                    #virtio_network_installer_path = 'F:\RHEV-Network32.msi'
 
-                    - 32sp2:
-                        image_name += sp2-32
-                        unattended_install.cdrom:
-                            cdrom_cd1 = windows/en_windows_vista_with_sp2_x86_dvd_342266.iso
-                            md5sum = 19ca90a425667812977bab6f4ce24175
-                            md5sum_1m = 89c15020e0e6125be19acf7a2e5dc614
-                            sha1sum = 25ad9a776503e6a583bec07879dbcc5dfd20cd6e
-                            sha1sum_1m = a2afa4cffdc1c362dbf9e62942337f4f875a22cf
-                            unattended_file = unattended/winvista-32-autounattend.xml
-                            floppy = images/winvista-sp2-32/floppy.img
-
-                    - 64sp2:
-                        image_name += sp2-64
-                        unattended_install.cdrom:
-                            cdrom_cd1 = windows/en_windows_vista_sp2_x64_dvd_342267.iso
-                            md5sum = a1c024d7abaf34bac3368e88efbc2574
-                            md5sum_1m = 3d84911a80f3df71d1026f7adedc2181
-                            sha1sum = aaee3c04533899f9f8c4ae0c4250ef5fafbe29a3
-                            sha1sum_1m = 1fd21bd3ce2a4de8856c7b8fe6fdf80260f6d1c7
-                            unattended_file = unattended/winvista-64-autounattend.xml
-                            floppy = images/winvista-sp2-64/floppy.img
+                    - 64:
+                        whql_submission:
+                            dd_data_logoarch = AMD64
+                            dd_data_logoos = Windows Vista
+                            dd_data_whqlos = Windows Vista Client x64
+                            dd_data_whqlqual = Premium
+                        variants:
+                            - sp1:
+                                image_name += -sp1-64
+                                install:
+                                    cdrom_cd1 = windows/WindowsVista-64.iso
+                                    md5sum = 11e2010d857fffc47813295e6be6d58d
+                                    md5sum_1m = 0947bcd5390546139e25f25217d6f165
+                                    steps = Win-Vista-64.steps
+                                setup:
+                                    steps = WinVista-64-rss.steps
+                                unattended_install.cdrom:
+                                    cdrom_cd1 = windows/WindowsVista-64.iso
+                                    md5sum = 11e2010d857fffc47813295e6be6d58d
+                                    md5sum_1m = 0947bcd5390546139e25f25217d6f165
+                                    unattended_file = unattended/winvista-64-autounattend.xml
+                                    floppy = images/winvista-sp1-64/answer.vfd
+                                    # Uncomment virtio_network_installer_path line if
+                                    # you have an msi installer, also make sure the
+                                    # paths are properly set in your virtio driver iso.
+                                    virtio_storage_path = 'F:\viostor\w7\amd64'
+                                    virtio_network_path = 'F:\NetKVM\w7\amd64'
+                                    #virtio_network_installer_path = 'F:\RHEV-Network64.msi'
+                            - sp2:
+                                image_name += -sp2-64
+                                unattended_install.cdrom:
+                                    cdrom_cd1 = windows/en_windows_vista_sp2_x64_dvd_342267.iso
+                                    md5sum = a1c024d7abaf34bac3368e88efbc2574
+                                    md5sum_1m = 3d84911a80f3df71d1026f7adedc2181
+                                    sha1sum = aaee3c04533899f9f8c4ae0c4250ef5fafbe29a3
+                                    sha1sum_1m = 1fd21bd3ce2a4de8856c7b8fe6fdf80260f6d1c7
+                                    unattended_file = unattended/winvista-64-autounattend.xml
+                                    floppy = images/winvista-sp2-64/answer.vfd
+                                    # Uncomment virtio_network_installer_path line if
+                                    # you have an msi installer, also make sure the
+                                    # paths are properly set in your virtio driver iso.
+                                    virtio_storage_path = 'F:\viostor\w7\amd64'
+                                    virtio_network_path = 'F:\NetKVM\w7\amd64'
+                                    #virtio_network_installer_path = 'F:\RHEV-Network64.msi'
 
             - Win2008:
+                no whql
                 image_name = win2008
                 image_size = 20G
 
                 variants:
-                    - 32sp1:
-                        image_name += sp1-32
-                        install:
-                            cdrom_cd1 = windows/Windows2008-x86.iso
-                            #en_windows_server_2008_datacenter_enterprise_standard_x86_dvd_X14-26710.iso
-                            md5sum=0bfca49f0164de0a8eba236ced47007d
-                            md5sum_1m=07d7f5006393f74dc76e6e2e943e2440
-                            sha1sum = 6ca018ff96f1e9b2b310a36546b6fded99a421e6
-                            steps = Win2008-32.steps
-                        setup:
-                            steps = Win2008-32-rss.steps
-                        unattended_install.cdrom:
-                            cdrom_cd1 = windows/Windows2008-x86.iso
-                            md5sum=0bfca49f0164de0a8eba236ced47007d
-                            md5sum_1m=07d7f5006393f74dc76e6e2e943e2440
-                            unattended_file = unattended/win2008-32-autounattend.xml
-                            floppy = images/win2008-sp1-32/floppy.img
+                    - 32:
+                        variants:
+                            - sp1:
+                                image_name += -sp1-32
+                                install:
+                                    cdrom_cd1 = windows/Windows2008-x86.iso
+                                    #en_windows_server_2008_datacenter_enterprise_standard_x86_dvd_X14-26710.iso
+                                    md5sum=0bfca49f0164de0a8eba236ced47007d
+                                    md5sum_1m=07d7f5006393f74dc76e6e2e943e2440
+                                    sha1sum = 6ca018ff96f1e9b2b310a36546b6fded99a421e6
+                                    steps = Win2008-32.steps
+                                setup:
+                                    steps = Win2008-32-rss.steps
+                                unattended_install.cdrom:
+                                    cdrom_cd1 = windows/Windows2008-x86.iso
+                                    md5sum=0bfca49f0164de0a8eba236ced47007d
+                                    md5sum_1m=07d7f5006393f74dc76e6e2e943e2440
+                                    unattended_file = unattended/win2008-32-autounattend.xml
+                                    floppy = images/win2008-sp1-32/answer.vfd
+                                    # Uncomment virtio_network_installer_path line if
+                                    # you have an msi installer, also make sure the
+                                    # paths are properly set in your virtio driver iso.
+                                    virtio_storage_path = 'F:\viostor\2k8\x86'
+                                    virtio_network_path = 'F:\NetKVM\2k8\x86'
+                                    #virtio_network_installer_path = 'F:\RHEV-Network32.msi'
 
-                    - 64sp1:
-                        image_name += sp1-64
-                        install:
-                            steps = Win2008-64.steps
-                            cdrom_cd1 = windows/Windows2008-x64.iso
-                            #en_windows_server_2008_datacenter_enterprise_standard_x64_dvd_X14-26714.iso
-                            md5sum=27c58cdb3d620f28c36333a5552f271c
-                            md5sum_1m=efdcc11d485a1ef9afa739cb8e0ca766
-                            sha1sum = bd000374709f67e9358814db6ec8f0ddaaa16f70
-                            passwd = 1q2w3eP
-                        setup:
-                            steps = Win2008-64-rss.steps
-                        unattended_install.cdrom:
-                            cdrom_cd1 = windows/Windows2008-x64.iso
-                            md5sum=27c58cdb3d620f28c36333a5552f271c
-                            md5sum_1m=efdcc11d485a1ef9afa739cb8e0ca766
-                            unattended_file = unattended/win2008-64-autounattend.xml
-                            floppy = images/win2008-sp1-64/floppy.img
+                            - sp2:
+                                image_name += -sp2-32
+                                unattended_install.cdrom:
+                                    cdrom_cd1 = windows/en_windows_server_2008_datacenter_enterprise_standard_sp2_x86_dvd_342333.iso
+                                    md5sum = b9201aeb6eef04a3c573d036a8780bdf
+                                    md5sum_1m = b7a9d42e55ea1e85105a3a6ad4da8e04
+                                    sha1sum = 49d0d6917c1256fe81048d414fa473bbc76a8724
+                                    sha1sum_1m = 9662ff7ed715faa00407e4befc484ea52a92a9fb
+                                    unattended_file = unattended/win2008-32-autounattend.xml
+                                    floppy = images/win2008-sp2-32/answer.vfd
+                                    # Uncomment virtio_network_installer_path line if
+                                    # you have an msi installer, also make sure the
+                                    # paths are properly set in your virtio driver iso.
+                                    virtio_storage_path = 'F:\viostor\2k8\x86'
+                                    virtio_network_path = 'F:\NetKVM\2k8\x86'
+                                    #virtio_network_installer_path = 'F:\RHEV-Network32.msi'
 
-                    - 32sp2:
-                        image_name += sp2-32
-                        unattended_install.cdrom:
-                            cdrom_cd1 = windows/en_windows_server_2008_datacenter_enterprise_standard_sp2_x86_dvd_342333.iso
-                            md5sum = b9201aeb6eef04a3c573d036a8780bdf
-                            md5sum_1m = b7a9d42e55ea1e85105a3a6ad4da8e04
-                            sha1sum = 49d0d6917c1256fe81048d414fa473bbc76a8724
-                            sha1sum_1m = 9662ff7ed715faa00407e4befc484ea52a92a9fb
-                            unattended_file = unattended/win2008-32-autounattend.xml
-                            floppy = images/win2008-sp2-32/floppy.img
+                    - 64:
+                        variants:
+                            -sp1:
+                                image_name += -sp1-64
+                                install:
+                                    steps = Win2008-64.steps
+                                    cdrom_cd1 = windows/Windows2008-x64.iso
+                                    #en_windows_server_2008_datacenter_enterprise_standard_x64_dvd_X14-26714.iso
+                                    md5sum=27c58cdb3d620f28c36333a5552f271c
+                                    md5sum_1m=efdcc11d485a1ef9afa739cb8e0ca766
+                                    sha1sum = bd000374709f67e9358814db6ec8f0ddaaa16f70
+                                    passwd = 1q2w3eP
+                                setup:
+                                    steps = Win2008-64-rss.steps
+                                unattended_install.cdrom:
+                                    cdrom_cd1 = windows/Windows2008-x64.iso
+                                    md5sum=27c58cdb3d620f28c36333a5552f271c
+                                    md5sum_1m=efdcc11d485a1ef9afa739cb8e0ca766
+                                    unattended_file = unattended/win2008-64-autounattend.xml
+                                    floppy = images/win2008-sp1-64/answer.vfd
+                                    # Uncomment virtio_network_installer_path line if
+                                    # you have an msi installer, also make sure the
+                                    # paths are properly set in your virtio driver iso.
+                                    virtio_storage_path = 'F:\viostor\2k8\amd64'
+                                    virtio_network_path = 'F:\NetKVM\2k8\amd64'
+                                    #virtio_network_installer_path = 'F:\RHEV-Network64.msi'
 
-                    - 64sp2:
-                        image_name += sp2-64
-                        unattended_install.cdrom:
-                            cdrom_cd1 = windows/en_windows_server_2008_datacenter_enterprise_standard_sp2_x64_dvd_342336.iso
-                            md5sum = e94943ef484035b3288d8db69599a6b5
-                            md5sum_1m = ee55506823d0efffb5532ddd88a8e47b
-                            sha1sum = 34c7d726c57b0f8b19ba3b40d1b4044c15fc2029
-                            sha1sum_1m = 8fe08b03e3531906855a60a78020ac9577dff5ba
-                            unattended_file = unattended/win2008-64-autounattend.xml
-                            floppy = images/win2008-sp2-64/floppy.img
+                            - sp2:
+                                image_name += -sp2-64
+                                unattended_install.cdrom:
+                                    cdrom_cd1 = windows/en_windows_server_2008_datacenter_enterprise_standard_sp2_x64_dvd_342336.iso
+                                    md5sum = e94943ef484035b3288d8db69599a6b5
+                                    md5sum_1m = ee55506823d0efffb5532ddd88a8e47b
+                                    sha1sum = 34c7d726c57b0f8b19ba3b40d1b4044c15fc2029
+                                    sha1sum_1m = 8fe08b03e3531906855a60a78020ac9577dff5ba
+                                    unattended_file = unattended/win2008-64-autounattend.xml
+                                    floppy = images/win2008-sp2-64/answer.vfd
+                                    # Uncomment virtio_network_installer_path line if
+                                    # you have an msi installer, also make sure the
+                                    # paths are properly set in your virtio driver iso.
+                                    virtio_storage_path = 'F:\viostor\2k8\amd64'
+                                    virtio_network_path = 'F:\NetKVM\2k8\amd64'
+                                    #virtio_network_installer_path = 'F:\RHEV-Network64.msi'
 
-                    - r2:
-                        image_name += -r2
-                        unattended_install.cdrom:
-                            cdrom_cd1 = windows/en_windows_server_2008_r2_standard_enterprise_datacenter_and_web_x64_dvd_x15-59754.iso
-                            md5sum = 0207ef392c60efdda92071b0559ca0f9
-                            md5sum_1m = a5a22ce25008bd7109f6d830d627e3ed
-                            sha1sum = ad855ea913aaec3f1d0e1833c1aef7a0de326b0a
-                            sha1sum_1m = 9194a3aabae25b36e5f73cad001314b2c8d07d14
-                            unattended_file = unattended/win2008-r2-autounattend.xml
-                            floppy = images/win2008-r2-64/floppy.img
+                            - r2:
+                                image_name += -r2-64
+                                unattended_install.cdrom:
+                                    cdrom_cd1 = windows/en_windows_server_2008_r2_standard_enterprise_datacenter_and_web_x64_dvd_x15-59754.iso
+                                    md5sum = 0207ef392c60efdda92071b0559ca0f9
+                                    md5sum_1m = a5a22ce25008bd7109f6d830d627e3ed
+                                    sha1sum = ad855ea913aaec3f1d0e1833c1aef7a0de326b0a
+                                    sha1sum_1m = 9194a3aabae25b36e5f73cad001314b2c8d07d14
+                                    unattended_file = unattended/win2008-r2-autounattend.xml
+                                    floppy = images/win2008-r2-64/answer.vfd
+                                    # Uncomment virtio_network_installer_path line if
+                                    # you have an msi installer, also make sure the
+                                    # paths are properly set in your virtio driver iso.
+                                    virtio_storage_path = 'F:\viostor\2k8\amd64'
+                                    virtio_network_path = 'F:\NetKVM\2k8\amd64'
+                                    #virtio_network_installer_path = 'F:\RHEV-Network64.msi'
 
             - Win7:
                 image_name = win7
                 image_size = 20G
+                whql_submission:
+                    desc_path_desc1 = $\WDK\Logo Type\Device Logo\Windows 7 Client\Logo
+                    desc_path_desc2 = $\WDK\Logo Type\Device Logo\Windows 7 Client
+                    device_data += " adq"
+                    dd_name_adq = AdditionalQualificationGroup
+                    dd_data_adq = Windows 7
 
                 variants:
                     - 32:
@@ -1365,7 +1705,18 @@ variants:
                             sha1sum = 5395dc4b38f7bdb1e005ff414deedfdb16dbf610
                             sha1sum_1m = 9f9c3780aebeb28a9bf22188eed6bc15475dc9c5
                             unattended_file = unattended/win7-32-autounattend.xml
-                            floppy = images/win7-32/floppy.img
+                            floppy = images/win7-32/answer.vfd
+                            # Uncomment virtio_network_installer_path line if
+                            # you have an msi installer, also make sure the
+                            # paths are properly set in your virtio driver iso.
+                            virtio_storage_path = 'F:\viostor\w7\x86'
+                            virtio_network_path = 'F:\NetKVM\w7\x86'
+                            #virtio_network_installer_path = 'F:\RHEV-Network32.msi'
+                        whql_submission:
+                            dd_data_logoarch = X86
+                            dd_data_logoos = Windows 7
+                            dd_data_whqlos = Windows 7 Client
+                            dd_data_whqlqual = Logo
 
                     - 64:
                         image_name += -64
@@ -1384,7 +1735,18 @@ variants:
                             sha1sum = 326327cc2ff9f05379f5058c41be6bc5e004baa7
                             sha1sum_1m = 4a3903bd5157de54f0702e5263e0a683c5775515
                             unattended_file = unattended/win7-64-autounattend.xml
-                            floppy = images/win7-64/floppy.img
+                            floppy = images/win7-64/answer.vfd
+                            # Uncomment virtio_network_installer_path line if
+                            # you have an msi installer, also make sure the
+                            # paths are properly set in your virtio driver iso.
+                            virtio_storage_path = 'F:\viostor\w7\amd64'
+                            virtio_network_path = 'F:\NetKVM\w7\amd64'
+                            #virtio_network_installer_path = 'F:\RHEV-Network64.msi'
+                        whql_submission:
+                            dd_data_logoarch = AMD64
+                            dd_data_logoos = Windows 7
+                            dd_data_whqlos = Windows 7 Client x64
+                            dd_data_whqlqual = Logo
 
 
     # Unix/BSD section
@@ -1463,8 +1825,9 @@ variants:
         image_boot=yes
 
 
-virtio|virtio_blk|e1000|balloon_check:
-    only Fedora.11 Fedora.12 Win2008 WinVista Win7 OpenSUSE.11 SLES.11 Ubuntu-8.10-server
+virtio_net|virtio_blk|e1000|balloon_check:
+    only Fedora.11 Fedora.12 Fedora.13 RHEL.5 OpenSUSE.11 SLES.11 Ubuntu-8.10-server
+    # only WinXP Win2003 Win2008 WinVista Win7 Fedora.11 Fedora.12 Fedora.13 RHEL.5 OpenSUSE.11 SLES.11 Ubuntu-8.10-server
 
 
 variants:

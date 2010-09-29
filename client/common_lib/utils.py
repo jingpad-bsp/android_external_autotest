@@ -202,6 +202,44 @@ def open_write_close(filename, data):
         f.close()
 
 
+def matrix_to_string(matrix, header=None):
+    """
+    Return a pretty, aligned string representation of a nxm matrix.
+
+    This representation can be used to print any tabular data, such as
+    database results. It works by scanning the lengths of each element
+    in each column, and determining the format string dynamically.
+
+    @param matrix: Matrix representation (list with n rows of m elements).
+    @param header: Optional tuple with header elements to be displayed.
+    """
+    lengths = []
+    for row in matrix:
+        for column in row:
+            i = row.index(column)
+            cl = len(column)
+            try:
+                ml = lengths[i]
+                if cl > ml:
+                    lengths[i] = cl
+            except IndexError:
+                lengths.append(cl)
+
+    lengths = tuple(lengths)
+    format_string = ""
+    for length in lengths:
+        format_string += "%-" + str(length) + "s "
+    format_string += "\n"
+
+    matrix_str = ""
+    if header:
+        matrix_str += format_string % header
+    for row in matrix:
+        matrix_str += format_string % tuple(row)
+
+    return matrix_str
+
+
 def read_keyval(path):
     """
     Read a key-value pair format file into a dictionary, and return it.
@@ -1230,3 +1268,35 @@ def args_to_dict(args):
             logging.warning("args_to_dict: argument '%s' doesn't match "
                             "'%s' pattern. Ignored." % (arg, arg_re.pattern))
     return dict
+
+
+def get_unused_port():
+    """
+    Finds a semi-random available port. A race condition is still
+    possible after the port number is returned, if another process
+    happens to bind it.
+
+    Returns:
+        A port number that is unused on both TCP and UDP.
+    """
+
+    def try_bind(port, socket_type, socket_proto):
+        s = socket.socket(socket.AF_INET, socket_type, socket_proto)
+        try:
+            try:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                s.bind(('', port))
+                return s.getsockname()[1]
+            except socket.error:
+                return None
+        finally:
+            s.close()
+
+    # On the 2.6 kernel, calling try_bind() on UDP socket returns the
+    # same port over and over. So always try TCP first.
+    while True:
+        # Ask the OS for an unused port.
+        port = try_bind(0, socket.SOCK_STREAM, socket.IPPROTO_TCP)
+        # Check if this port is unused on the other protocol.
+        if port and try_bind(port, socket.SOCK_DGRAM, socket.IPPROTO_UDP):
+            return port

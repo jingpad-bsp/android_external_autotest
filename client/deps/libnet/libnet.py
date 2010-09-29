@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import os
-import common
 from autotest_lib.client.bin import utils
 
 version = 1
@@ -13,9 +12,9 @@ def setup(tarball, topdir):
                        tarball)
     utils.extract_tarball_to_dir(tarball, 'src')
     os.chdir(srcdir)
-    utils.system ('./configure --prefix=%s/libnet' % topdir)
-    utils.system('make')
-    utils.system('make install')
+    utils.configure ('--prefix=%s/libnet' % topdir)
+    utils.make()
+    utils.make('install')
 
     os.chdir(topdir)
 
