@@ -4,7 +4,7 @@
 
 import commands, logging, random, re, time, utils
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, rtc, sys_power
 
 class power_Resume(test.test):
     version = 1
@@ -100,12 +100,12 @@ class power_Resume(test.test):
         time_to_sleep = 10
 
         # Set the alarm
-        alarm_time = int(utils.get_hwclock_seconds()) + time_to_sleep
+        alarm_time = rtc.get_seconds() + time_to_sleep
         logging.debug('alarm_time = %d', alarm_time)
-        utils.set_wake_alarm(alarm_time)
+        rtc.set_wake_alarm(alarm_time)
 
         # Suspend the system to RAM
-        utils.suspend_to_ram()
+        sys_power.suspend_to_ram()
 
         # Get suspend and resume times from /var/log/messages
         start_suspend_time = self._get_start_suspend_time()
