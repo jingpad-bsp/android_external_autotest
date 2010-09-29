@@ -4,8 +4,8 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "login_CryptohomeMounted"
-PURPOSE = "Verify the cryptohome is correctly mounted after login."
-CRITERIA = "This test will fail if cryptohome is not mounted at login."
+PURPOSE = "Verify the cryptohome is mounted after login."
+CRITERIA = "This test will fail if cryptohome is not mounted after login."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
@@ -13,8 +13,6 @@ TEST_TYPE = "client"
 
 DOC = """
 This test checks that, after logging in successfully, a cryptohome was mounted.
-It also checks that a successful login correctly handles the (unexpected) case
-where a user homedir is previously mounted before login.
 """
 
 job.run_test('login_CryptohomeMounted')
