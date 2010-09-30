@@ -3,8 +3,6 @@
 /usr/local/autotest/client/tests/disktest/control
 /usr/local/autotest/client/tests/fsx/control
 /usr/local/autotest/client/tests/hackbench/control
-/usr/local/autotest/client/tests/ltp/control
-/usr/local/autotest/client/tests/ltp/control.ballista
 /usr/local/autotest/client/tests/unixbench/control
 /usr/local/autotest/client/tests/sleeptest/control
 /usr/local/autotest/server/tests/iperf/control.srv
