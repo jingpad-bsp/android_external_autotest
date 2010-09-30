@@ -78,7 +78,10 @@ class HostAttributes(object):
         the AFE models if they can be found.
         """
         self._add_attributes(_DEFAULT_ATTRIBUTES)
+        if private_host_attributes is not None:
+            logging.info('Using your private_host_attributes file')
         if host in private_host_attributes:
+            logging.info('Using private_host_attributes file for %s' % host)
             self._add_attributes(private_host_attributes[host])
         if has_models:
             host_obj = models.Host.valid_objects.get(hostname=host)

@@ -121,7 +121,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
             raise error.TestFail('Did not show main on stack')
 
 
-    def _run_crasher_process(self, username, cause_crash=True):
+    def _run_crasher_process(self, username, cause_crash=True, consent=True):
         """Runs the crasher process.
 
         Args:
@@ -149,6 +149,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
         basename = os.path.basename(self._crasher_path)
         if not cause_crash:
             crasher_command.append('--nocrash')
+        self._set_consent(consent)
         crasher = subprocess.Popen(crasher_command,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
@@ -164,8 +165,13 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                  output)
         pid = int(match.group(1))
 
-        expected_message = ('Received crash notification for '
-                            '%s[%d] sig 11' % (basename, pid))
+        if consent:
+            handled_string = 'handling'
+        else:
+            handled_string = 'ignoring'
+        expected_message = (
+            'Received crash notification for %s[%d] sig 11 (%s)' %
+            (basename, pid, handled_string))
 
         # Wait until no crash_reporter is running.
         site_utils.poll_for_condition(
@@ -177,10 +183,10 @@ class logging_UserCrash(site_crash_test.CrashTest):
               self._log_reader.get_logs()))
 
         logging.debug('crash_reporter_caught message: ' + expected_message)
-        crash_reporter_caught = self._log_reader.can_find(expected_message)
+        is_caught = self._log_reader.can_find(expected_message)
 
         result = {'crashed': crasher.returncode == expected_result,
-                  'crash_reporter_caught': crash_reporter_caught,
+                  'crash_reporter_caught': is_caught,
                   'output': output,
                   'returncode': crasher.returncode}
         logging.debug('Crasher process result: %s' % result)
@@ -220,7 +226,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
         self._verify_stack(stack, basename, from_crash_reporter)
 
 
-    def _check_generated_minidump_sending(self, minidump_path,
+    def _check_generated_minidump_sending(self, meta_path, minidump_path,
                                           username, crasher_basename,
                                           will_syslog_give_name):
         # Now check that the sending works
@@ -236,14 +242,23 @@ class logging_UserCrash(site_crash_test.CrashTest):
                 raise error.TestFail('Executable name incorrect')
         if result['report_kind'] != 'minidump':
             raise error.TestFail('Expected a minidump report')
-        if result['report_name'] != minidump_path:
-            raise error.TestFail('Sent the wrong minidump report')
+        if result['report_payload'] != minidump_path:
+            raise error.TestFail('Sent the wrong minidump payload')
+        if result['meta_path'] != meta_path:
+            raise error.TestFail('Used the wrong meta file')
+
+        # Check version matches.
+        lsb_release = utils.read_file('/etc/lsb-release')
+        version_match = re.search(r'CHROMEOS_RELEASE_VERSION=(.*)', lsb_release)
+        if not ('Version: %s' % version_match.group(1)) in result['output']:
+            raise error.TestFail('Did not find version %s in log output' %
+                                 version_match.group(1))
 
 
-    def _check_crashing_process(self, username):
+    def _check_crashing_process(self, username, consent=True):
         self._log_reader.set_start_by_current()
 
-        result = self._run_crasher_process(username)
+        result = self._run_crasher_process(username, consent=consent)
 
         if not result['crashed']:
             raise error.TestFail('crasher did not do its job of crashing: %d' %
@@ -255,11 +270,18 @@ class logging_UserCrash(site_crash_test.CrashTest):
             raise error.TestFail('Did not find segv message')
 
         crash_dir = self._get_crash_dir(username)
+
+        if not consent:
+            if os.path.exists(crash_dir):
+                raise error.TestFail('Crash directory should not exist')
+            return
+
         crash_contents = os.listdir(crash_dir)
         basename = os.path.basename(self._crasher_path)
 
         breakpad_minidump = None
         crash_reporter_minidump = None
+        crash_reporter_meta = None
 
         self._check_crash_directory_permissions(crash_dir)
 
@@ -269,12 +291,19 @@ class logging_UserCrash(site_crash_test.CrashTest):
             if filename.endswith('.core'):
                 # Ignore core files.  We'll test them later.
                 pass
-            elif filename.startswith(basename):
+            elif (filename.startswith(basename) and
+                  filename.endswith('.dmp')):
                 # This appears to be a minidump created by the crash reporter.
                 if not crash_reporter_minidump is None:
                     raise error.TestFail('Crash reporter wrote multiple '
                                          'minidumps')
                 crash_reporter_minidump = os.path.join(crash_dir, filename)
+            elif (filename.startswith(basename) and
+                  filename.endswith('.meta')):
+                if not crash_reporter_meta is None:
+                    raise error.TestFail('Crash reported wrote multiple '
+                                         'meta files')
+                crash_reporter_meta = os.path.join(crash_dir, filename)
             else:
                 # This appears to be a breakpad created minidump.
                 if not breakpad_minidump is None:
@@ -287,13 +316,12 @@ class logging_UserCrash(site_crash_test.CrashTest):
         if not crash_reporter_minidump:
             raise error.TestFail('crash reporter did not generate minidump')
 
+        if not crash_reporter_meta:
+            raise error.TestFail('crash reporter did not generate meta')
+
         if not self._log_reader.can_find('Stored minidump to ' +
                                          crash_reporter_minidump):
             raise error.TestFail('crash reporter did not announce minidump')
-
-        # By default test sending the crash_reporter minidump unless there
-        # is a breakpad minidump, and then we test sending it instead.
-        send_minidump = crash_reporter_minidump
 
         if crash_reporter_minidump:
             self._check_minidump_stackwalk(crash_reporter_minidump,
@@ -301,21 +329,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                            from_crash_reporter=True)
             will_syslog_give_name = True
 
-        if breakpad_minidump:
-            self._check_minidump_stackwalk(breakpad_minidump,
-                                           basename,
-                                           from_crash_reporter=False)
-            send_minidump = breakpad_minidump
-            os.unlink(crash_reporter_minidump)
-            # If you link against -lcrash, upon sending the syslog will
-            # just say exec_name: <very-long-guid>, where that GUID is the
-            # GUID generated during breakpad.  Since -lcrash is going away,
-            # it seems ok to have the syslog be a little more opaque for
-            # these crashes.  They'll be next to sends for the real crash
-            # anyway.
-            will_syslog_give_name = False
-
-        self._check_generated_minidump_sending(send_minidump,
+        self._check_generated_minidump_sending(crash_reporter_meta,
+                                               crash_reporter_minidump,
                                                username,
                                                basename,
                                                will_syslog_give_name)
@@ -331,14 +346,24 @@ class logging_UserCrash(site_crash_test.CrashTest):
             raise error.TestFail('Normal exit of program with dumper failed')
 
 
-    def _test_chronos_nobreakpad_crasher(self):
+    def _test_chronos_crasher(self):
         """Test a user space crash when running as chronos is handled."""
         self._check_crashing_process('chronos')
 
 
-    def _test_root_nobreakpad_crasher(self):
+    def _test_chronos_crasher_no_consent(self):
+        """Test that without consent no files are stored."""
+        results = self._check_crashing_process('chronos', consent=False)
+
+
+    def _test_root_crasher(self):
         """Test a user space crash when running as root is handled."""
         self._check_crashing_process('root')
+
+
+    def _test_root_crasher_no_consent(self):
+        """Test that without consent no files are stored."""
+        results = self._check_crashing_process('root', consent=False)
 
 
     def _test_max_enqueued_crashes(self):
@@ -450,8 +475,10 @@ class logging_UserCrash(site_crash_test.CrashTest):
         self.run_crash_tests(['reporter_startup',
                               'reporter_shutdown',
                               'no_crash',
-                              'chronos_nobreakpad_crasher',
-                              'root_nobreakpad_crasher',
+                              'chronos_crasher',
+                              'chronos_crasher_no_consent',
+                              'root_crasher',
+                              'root_crasher_no_consent',
                               'max_enqueued_crashes',
                               'core_file_persists_in_debug',
                               'core_file_removed_in_production'],

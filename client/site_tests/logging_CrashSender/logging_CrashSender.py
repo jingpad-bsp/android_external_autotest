@@ -2,24 +2,39 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import logging, os, re
 from autotest_lib.client.bin import site_crash_test, site_utils, test
 from autotest_lib.client.common_lib import error, utils
 
+_25_HOURS_AGO = -25 * 60 * 60
 _CRASH_SENDER_CRON_PATH = '/etc/cron.hourly/crash_sender.hourly'
 _DAILY_RATE_LIMIT = 32
 _MIN_UNIQUE_TIMES = 4
+_HWCLASS_PATH = '/sys/devices/platform/chromeos_acpi/HWID'
 _SECONDS_SEND_SPREAD = 3600
-
 
 class logging_CrashSender(site_crash_test.CrashTest):
     version = 1
 
 
-    def _test_sender_simple_minidump(self):
-        """Test sending a single minidump crash report."""
+    def _check_hardware_info(self, result):
+        # Get board name
+        lsb_release = utils.read_file('/etc/lsb-release')
+        board_match = re.search(r'CHROMEOS_RELEASE_BOARD=(.*)', lsb_release)
+        if not ('Board: %s' % board_match.group(1)) in result['output']:
+            raise error.TestFail('Missing board name %s in output' %
+                                 board_match.group(1))
+        # Get hwid
+        hwclass = 'unknown'
+        if os.path.exists(_HWCLASS_PATH):
+            hwclass = utils.read_file(_HWCLASS_PATH)
+        if not ('HWClass: %s' % hwclass) in result['output']:
+            raise error.TestFail('Missing hwclass %s in output' % hwclass)
+
+
+    def _check_simple_minidump_send(self, report):
         self._set_sending(True)
-        result = self._call_sender_one_crash()
+        result = self._call_sender_one_crash(report=report)
         if (result['report_exists'] or
             result['rate_count'] != 1 or
             not result['send_attempt'] or
@@ -27,15 +42,40 @@ class logging_CrashSender(site_crash_test.CrashTest):
             result['sleep_time'] < 0 or
             result['sleep_time'] >= _SECONDS_SEND_SPREAD or
             result['report_kind'] != 'minidump' or
-            result['exec_name'] != 'fake'):
+            result['report_payload'] != '/var/spool/crash/fake.dmp' or
+            result['exec_name'] != 'fake' or
+            not 'Version: my_ver' in result['output']):
             raise error.TestFail('Simple minidump send failed')
+        self._check_hardware_info(result)
+
+
+    def _test_sender_simple_minidump(self):
+        """Test sending a single minidump crash report."""
+        self._check_simple_minidump_send(None)
+
+
+    def _shift_file_mtime(self, path, delta):
+        statinfo = os.stat(path)
+        os.utime(path, (statinfo.st_atime,
+                        statinfo.st_mtime + delta))
+
+
+    def _test_sender_simple_old_minidump(self):
+        """Test that old minidumps and metadata are sent."""
+        self._set_sending(True)
+        dmp_path = self.write_crash_dir_entry('fake.dmp', '')
+        meta_path = self.write_fake_meta('fake.meta', 'fake')
+        self._shift_file_mtime(dmp_path, _25_HOURS_AGO)
+        self._shift_file_mtime(meta_path, _25_HOURS_AGO)
+        self._check_simple_minidump_send(meta_path)
 
 
     def _test_sender_simple_kernel_crash(self):
         """Test sending a single kcrash report."""
         self._set_sending(True)
-        kcrash_fake_report = self.create_fake_crash_dir_entry(
-            'kernel.today.kcrash')
+        kcrash_fake_report = self.write_crash_dir_entry(
+            'kernel.today.kcrash', '')
+        self.write_fake_meta('kernel.today.meta', 'kernel')
         result = self._call_sender_one_crash(report=kcrash_fake_report)
         if (result['report_exists'] or
             result['rate_count'] != 1 or
@@ -44,8 +84,11 @@ class logging_CrashSender(site_crash_test.CrashTest):
             result['sleep_time'] < 0 or
             result['sleep_time'] >= _SECONDS_SEND_SPREAD or
             result['report_kind'] != 'kcrash' or
+            (result['report_payload'] !=
+             '/var/spool/crash/kernel.today.kcrash') or
             result['exec_name'] != 'kernel'):
             raise error.TestFail('Simple kcrash send failed')
+        self._check_hardware_info(result)
 
 
     def _test_sender_pausing(self):
@@ -100,9 +143,7 @@ class logging_CrashSender(site_crash_test.CrashTest):
         # Set one rate file a day earlier and verify can send
         rate_files = os.listdir(self._CRASH_SENDER_RATE_DIR)
         rate_path = os.path.join(self._CRASH_SENDER_RATE_DIR, rate_files[0])
-        statinfo = os.stat(rate_path)
-        os.utime(rate_path, (statinfo.st_atime,
-                             statinfo.st_mtime - (60 * 60 * 25)))
+        self._shift_file_mtime(rate_path, _25_HOURS_AGO)
         utils.system('ls -l ' + self._CRASH_SENDER_RATE_DIR)
         result = self._call_sender_one_crash()
         if (not result['send_attempt'] or
@@ -140,32 +181,43 @@ class logging_CrashSender(site_crash_test.CrashTest):
                                  'sending')
 
 
-    def _test_sender_leaves_core_files(self):
-        """Test that a core file is left in the send directory.
-
-        Core files will only persist for developer/testing images.  We
-        should never remove such a file."""
+    def _test_sender_orphaned_files(self):
+        """Test that payload and unknown files that are old are removed."""
+        core_file = self.write_crash_dir_entry('random1.core', '')
+        unknown_file = self.write_crash_dir_entry('.unknown', '')
+        # As new files, we expect crash_sender to leave these alone.
         self._set_sending(True)
-        # Call prepare function to make sure the directory exists.
-        core_name = 'something.ending.with.core'
-        core_path = self.create_fake_crash_dir_entry(core_name)
-        result = self._call_sender_one_crash()
-        if not 'Ignoring core file.' in result['output']:
-            raise error.TestFail('Expected ignoring core file message')
-        if not os.path.exists(core_path):
-            raise error.TestFail('Core file was removed')
+        results = self._call_sender_one_crash()
+        if ('Removing old orphaned file' in results['output'] or
+            not os.path.exists(core_file) or
+            not os.path.exists(unknown_file)):
+            raise error.TestFail('New orphaned files were removed')
+        self._shift_file_mtime(core_file, _25_HOURS_AGO)
+        self._shift_file_mtime(unknown_file, _25_HOURS_AGO)
+        results = self._call_sender_one_crash()
+        if (not 'Removing old orphaned file' in results['output'] or
+            os.path.exists(core_file) or os.path.exists(unknown_file)):
+            raise error.TestFail(
+                'Old orphaned files were not removed')
 
 
-    def _test_sender_unknown_report_kind(self):
+    def _test_sender_incomplete_metadata(self):
+        """Test that incomplete metadata file is removed once old."""
+        meta_file = self.write_crash_dir_entry('incomplete.meta', 'half=1')
+        dmp_file = self.write_crash_dir_entry('incomplete.dmp', '')
+        # As new files, we expect crash_sender to leave these alone.
         self._set_sending(True)
-        bad_report = self.create_fake_crash_dir_entry('fake.bad')
-        result = self._call_sender_one_crash(report=bad_report)
-        if (result['report_exists'] or
-            result['rate_count'] != 0 or
-            result['send_attempt'] or
-            result['send_success'] or
-            not 'Unknown report' in result['output']):
-            raise error.TestFail('Error handling of unknown report kind failed')
+        results = self._call_sender_one_crash()
+        if ('Removing recent incomplete report' in results['output'] or
+            not os.path.exists(meta_file) or
+            not os.path.exists(dmp_file)):
+            raise error.TestFail('New unknown files were removed')
+        self._shift_file_mtime(meta_file, _25_HOURS_AGO)
+        results = self._call_sender_one_crash()
+        if (not 'Removing old incomplete metadata' in results['output'] or
+            os.path.exists(meta_file) or os.path.exists(dmp_file)):
+            raise error.TestFail(
+                'Old unknown/incomplete files were not removed')
 
 
     def _test_cron_runs(self):
@@ -197,12 +249,13 @@ class logging_CrashSender(site_crash_test.CrashTest):
     def run_once(self):
         self.run_crash_tests([
             'sender_simple_minidump',
+            'sender_simple_old_minidump',
             'sender_simple_kernel_crash',
             'sender_pausing',
             'sender_reports_disabled',
             'sender_rate_limiting',
             'sender_single_instance',
             'sender_send_fails',
-            'sender_leaves_core_files',
-            'sender_unknown_report_kind',
+            'sender_orphaned_files',
+            'sender_incomplete_metadata',
             'cron_runs'])

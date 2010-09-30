@@ -92,12 +92,19 @@ class CrashTest(test.test):
         utils.system('%s --init --nounclean_check' % self._CRASH_REPORTER_PATH)
 
 
-    def create_fake_crash_dir_entry(self, name):
+    def write_crash_dir_entry(self, name, contents):
         entry = os.path.join(self._SYSTEM_CRASH_DIR, name)
         if not os.path.exists(self._SYSTEM_CRASH_DIR):
             os.makedirs(self._SYSTEM_CRASH_DIR)
-        utils.system('touch ' + entry)
+        utils.open_write_close(entry, contents)
         return entry
+
+
+    def write_fake_meta(self, name, exec_name):
+        return self.write_crash_dir_entry(name,
+                                          'exec_name=%s\n'
+                                          'ver=my_ver\n'
+                                          'done=1\n' % exec_name)
 
 
     def _prepare_sender_one_crash(self,
@@ -108,7 +115,8 @@ class CrashTest(test.test):
         self._set_sending_mock(mock_enabled=True, send_success=send_success)
         self._set_consent(reports_enabled)
         if report is None:
-            report = self.create_fake_crash_dir_entry('fake.dmp')
+            self.write_crash_dir_entry('fake.dmp', '')
+            report = self.write_fake_meta('fake.meta', 'fake')
         return report
 
 
@@ -124,13 +132,13 @@ class CrashTest(test.test):
         Returns:
           A dictionary with these values:
             exec_name: name of executable which crashed
+            meta_path: path to the report metadata file
+            output: the output from the script, copied
             report_kind: kind of report sent (minidump vs kernel)
-            report_name: name of the report sent
             send_attempt: did the script attempt to send a crash.
             send_success: if it attempted, was the crash send successful.
             sleep_time: if it attempted, how long did it sleep before
               sending (if mocked, how long would it have slept)
-            output: the output from the script, copied
         """
         sleep_match = re.search('Scheduled to send in (\d+)s', output)
         send_attempt = sleep_match is not None
@@ -138,13 +146,18 @@ class CrashTest(test.test):
             sleep_time = int(sleep_match.group(1))
         else:
             sleep_time = None
-        report_kind_match = re.search('Report: (\S+) \((\S+)\)', output)
-        if report_kind_match:
-            report_name = report_kind_match.group(1)
-            report_kind = report_kind_match.group(2)
+        meta_match = re.search('Metadata: (\S+) \((\S+)\)', output)
+        if meta_match:
+            meta_path = meta_match.group(1)
+            report_kind = meta_match.group(2)
         else:
-            report_name = None
+            meta_path = None
             report_kind = None
+        payload_match = re.search('Payload: (\S+)', output)
+        if payload_match:
+            report_payload = payload_match.group(1)
+        else:
+            report_payload = None
         exec_name_match = re.search('Exec name: (\S+)', output)
         if exec_name_match:
             exec_name = exec_name_match.group(1)
@@ -153,7 +166,8 @@ class CrashTest(test.test):
         send_success = 'Mocking successful send' in output
         return {'exec_name': exec_name,
                 'report_kind': report_kind,
-                'report_name': report_name,
+                'meta_path': meta_path,
+                'report_payload': report_payload,
                 'send_attempt': send_attempt,
                 'send_success': send_success,
                 'sleep_time': sleep_time,
@@ -232,6 +246,7 @@ class CrashTest(test.test):
         test.test.initialize(self)
         self._log_reader = site_log_reader.LogReader()
         self._leave_crash_sending = True
+        self._automatic_consent_saving = True
 
 
     def cleanup(self):
@@ -239,7 +254,8 @@ class CrashTest(test.test):
         self._clear_spooled_crashes()
         self._set_sending(self._leave_crash_sending)
         self._set_sending_mock(mock_enabled=False)
-        self._pop_consent()
+        if self._automatic_consent_saving:
+            self._pop_consent()
         test.test.cleanup(self)
 
 
@@ -256,7 +272,8 @@ class CrashTest(test.test):
           must_run_all: should make sure every test in this class is mentioned
             in test_names
         """
-        self._push_consent()
+        if self._automatic_consent_saving:
+            self._push_consent()
 
         if must_run_all:
             # Sanity check test_names is complete
@@ -270,6 +287,8 @@ class CrashTest(test.test):
             logging.info(('=' * 20) + ('Running %s' % test_name) + ('=' * 20))
             if initialize_crash_reporter:
                 self._initialize_crash_reporter()
+            # Disable crash_sender and kill off any running ones.
+            self._set_sending(False)
             self._kill_running_sender()
             self._reset_rate_limiting()
             if clear_spool_first:

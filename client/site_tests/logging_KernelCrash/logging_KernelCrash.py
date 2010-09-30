@@ -18,11 +18,8 @@ class logging_KernelCrash(site_crash_test.CrashTest):
     def _test_reporter_startup(self):
         """Test that the crash_reporter is handling kernel crashes."""
         if not self._log_reader.can_find('Enabling kernel crash handling'):
-            if self._log_reader.can_find(
+            if not self._log_reader.can_find(
                 'Kernel does not support crash dumping'):
-                # TODO(kmixter): Remove this exception once I know it has
-                logging.info('Hasnt the kcrash kernel change landed?')
-            else:
                 raise error.TestFail(
                     'Could not find kernel crash found message')
 
@@ -32,7 +29,7 @@ class logging_KernelCrash(site_crash_test.CrashTest):
             r'Collected kernel crash diagnostics into (\S+)',
             self._log_reader.get_logs())
         if not filename_match:
-            raise error.TestFail('Could not message with kcrash filename')
+            return None
         return filename_match.group(1)
 
 
@@ -42,6 +39,16 @@ class logging_KernelCrash(site_crash_test.CrashTest):
             raise error.TestFail('Could not find clearing message')
 
         kcrash_report = self._get_kcrash_name()
+
+        if self._consent:
+            if kcrash_report is None:
+                raise error.TestFail(
+                    'Could not find message with kcrash filename')
+        else:
+            if kcrash_report is not None:
+                raise error.TestFail('Should not have found kcrash filename')
+            return
+
         if not os.path.exists(kcrash_report):
             raise error.TestFail('Crash report gone')
         report_contents = utils.read_file(kcrash_report)
@@ -57,6 +64,8 @@ class logging_KernelCrash(site_crash_test.CrashTest):
 
     def _test_sender_send_kcrash(self):
         """Test that crash_sender properly sends the crash report."""
+        if not self._consent:
+            return
         kcrash_report = self._get_kcrash_name()
         if not os.path.exists(kcrash_report):
             raise error.TestFail('Crash report gone')
@@ -68,12 +77,15 @@ class logging_KernelCrash(site_crash_test.CrashTest):
             raise error.TestFail('kcrash not sent properly')
         if result['exec_name'] != 'kernel' or result['report_kind'] != 'kcrash':
             raise error.TestFail('kcrash exec name or report kind wrong')
-        if result['report_name'] != kcrash_report:
+        if result['report_payload'] != kcrash_report:
             raise error.TestFail('Sent the wrong kcrash report')
 
 
-    def run_once(self, is_before):
+    def run_once(self, is_before, consent):
         self._log_reader.set_start_by_reboot(-1)
+        # We manage consent saving across tests.
+        self._automatic_consent_saving = False
+        self._consent = consent
         if is_before:
             self.run_crash_tests(['reporter_startup'], must_run_all=False)
             # Leave crash sending paused for the kernel crash.
