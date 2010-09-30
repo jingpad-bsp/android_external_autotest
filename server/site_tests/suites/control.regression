@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "Nightly"
+NAME = "Regression"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
@@ -11,8 +11,8 @@ TEST_TYPE = "server"
 
 DOC = """
 This test suite runs automated tests that should all pass and that, together
-with the BuildVerify suite, verify that all major features in the build are
-fully functional.  These are meant to run nightly in less than 8 hours.
+with the control.bvt suite, verify that all major features in the build are
+fully functional.  These are meant to run in less than 8 hours.
 """
 
 from autotest_lib.server import site_host_attributes
@@ -23,16 +23,13 @@ TESTS = [
   ('dbench', {}),
   ('desktopui_IBusTest', {}),
   ('desktopui_ImeTest', {}),
-  ('desktopui_SpeechSynthesisSemiAuto', {}),
   ('desktopui_SunSpiderBench', {}),
   ('desktopui_V8Bench', {}),
-  ('desktopui_WindowManagerFocusNewWindows', {}),
   ('desktopui_WindowManagerHotkeys', {}),
   ('disktest', {}),
   ('fsx', {}),
   ('graphics_GLAPICheck', {}),
   ('graphics_GLBench', {}),
-  ('graphics_O3DSelenium', {}),
   ('graphics_SanAngeles', {'creds': '$backdoor'}),
   ('graphics_WindowManagerGraphicsCapture', {}),
   ('hackbench', {}),
@@ -43,7 +40,6 @@ TESTS = [
   ('hardware_MemoryTotalSize', {}),
   ('hardware_SAT', {'seconds': 20}),
   ('hardware_StorageFio', {}),
-  ('logging_UncleanShutdown', {}),
   ('login_BadAuthentication', {'tag' : 'not_verified',
                                'error_string' : 'NotVerified'}),
   ('login_BadAuthentication', {'tag' : 'no_terms',
@@ -131,4 +127,5 @@ job.parallel_on_machines(run_assigned_tests, machines)
 
 
 # Run server-side suites
-job.run_control('server/site_tests/suite_SecurityFunctional/control')
+job.run_control('server/site_tests/suites/control.security')
+
