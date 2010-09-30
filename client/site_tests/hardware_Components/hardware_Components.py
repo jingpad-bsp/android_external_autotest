@@ -26,6 +26,7 @@ class hardware_Components(test.test):
         'part_id_flash_chip',
         'part_id_hwqual',
         'part_id_storage',
+        'part_id_tpm',
         'part_id_wireless',
         'vendor_id_touchpad',
         'version_rw_firmware',
@@ -292,6 +293,24 @@ class hardware_Components(test.test):
             cmd_grep = 'grep -i Touchpad /proc/bus/input/devices | sed s/.\*=//'
             part_id = utils.system_output(cmd_grep).strip('"')
             return part_id
+
+
+    def get_part_id_tpm(self):
+        """
+        Returns Manufacturer_info : Chip_Version
+        """
+        cmd = 'tpm_version'
+        tpm_output = utils.system_output(cmd)
+        tpm_lines = tpm_output.splitlines()
+        tpm_dict = {}
+        for tpm_line in tpm_lines:
+            [key, colon, value] = tpm_line.partition(':')
+            tpm_dict[key.strip()] = value.strip()
+        part_id = ''
+        key1, key2 = 'Manufacturer Info', 'Chip Version'
+        if key1 in tpm_dict and key2 in tpm_dict:
+            part_id = tpm_dict[key1] + ':' + tpm_dict[key2]
+        return part_id
 
 
     def get_vendor_id_webcam(self):
