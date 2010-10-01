@@ -321,7 +321,7 @@ class WiFiTest(object):
         print "%s: %s" % (self.name, result)
 
 
-    def wait_service(self, params):
+    def __wait_service_start(self, params):
         """ Wait for service transitions on client. """
 
         script_client_file = self.install_script('site_wlan_wait_state.py')
@@ -344,6 +344,17 @@ class WiFiTest(object):
         if not states:
             raise error.TestFail('No states given to wait for')
 
+        for service, state in states:
+            args.append('"%s=%s"' % (service or self.wifi.get_ssid(), state))
+
+        self.wait_service_states = states
+        return 'python "%s" %s' % (script_client_file, ' '.join(args))
+
+
+    def __wait_service_complete(self, result):
+        print "%s: %s" % (self.name, result)
+
+        states = self.wait_service_states
         counts = {}
         for service, state in states:
             cstate = state.strip('+')
@@ -351,14 +362,11 @@ class WiFiTest(object):
                 counts[cstate] = 1
             else:
                 counts[cstate] = 0
-            args.append('"%s=%s"' % (service or self.wifi.get_ssid(), state))
-
-        result = self.client.run('python "%s" %s' %
-                                 (script_client_file, ' '.join(args)))
-
-        print "%s: %s" % (self.name, result)
 
         for (service, state), intr in zip(states, result.stdout.split(' ')):
+            if intr.startswith('ERR_'):
+                raise error.TestFail('Wait for step %s failed with error %s' % 
+                                     (state, intr))
             cstate = state.strip('+')
             if counts[cstate]:
                 index = '%s%d' % (cstate, counts[cstate] - 1)
@@ -368,6 +376,21 @@ class WiFiTest(object):
 
             self.write_perf({ index:float(intr) })
             print "  %s: %s" % (state, intr)
+
+
+    def wait_service(self, params):
+        result = self.client.run(self.__wait_service_start(params))
+        self.__wait_service_complete(result)
+
+
+    def wait_service_suspend_bg(self, params):
+        params['after_command'] = self.__wait_service_start(params)
+        self.client_suspend_bg(params)
+
+
+    def wait_service_suspend_end(self, params):
+        self.client_suspend_end(params)
+        self.__wait_service_complete(self.client_suspend_thread.result)
 
 
     def client_powersave_on(self, params):
@@ -816,8 +839,10 @@ class WiFiTest(object):
                                                  '../client/common_lib/rtc.py',
                                                  '../client/common_lib/'
                                                  'sys_power.py')
-        cmd = ('python "%s" %d' %
-               (script_client_file, int(params.get("suspend_time", 5))))
+        cmd = ('python "%s" %d %s' %
+               (script_client_file,
+                int(params.get("suspend_time", 5)),
+                params.get("after_command", '')))
         self.client_suspend_thread = HelperThread(self.client, cmd)
         self.client_suspend_thread.start()
 

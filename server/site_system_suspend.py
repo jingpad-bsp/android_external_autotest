@@ -26,7 +26,14 @@ else:
     after_command = None
 
 rtc.set_wake_alarm(rtc.get_seconds() + time_to_sleep)
+
+# We want output from suspend_to_ram to go to stderr so that
+# tests that depend on the output of after_command won't have
+# their output polluted
+saveout = os.dup(sys.stdout.fileno())
+os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
 sys_power.suspend_to_ram()
+os.dup2(saveout, sys.stdout.fileno())
 
 if after_command:
     os.system(after_command)
