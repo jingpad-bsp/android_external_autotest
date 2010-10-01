@@ -365,7 +365,7 @@ class WiFiTest(object):
 
         for (service, state), intr in zip(states, result.stdout.split(' ')):
             if intr.startswith('ERR_'):
-                raise error.TestFail('Wait for step %s failed with error %s' % 
+                raise error.TestFail('Wait for step %s failed with error %s' %
                                      (state, intr))
             cstate = state.strip('+')
             if counts[cstate]:
