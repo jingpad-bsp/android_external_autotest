@@ -61,8 +61,3 @@ class desktopui_WindowManagerFocusNewWindows(site_ui_test.UITest):
             width=200, height=200, title='test 2')
         info2 = self.autox.get_window_info(win2.id)
         self.__check_active_window(win2.id, info2)
-
-        # Now destroy the second window and check that the WM goes back
-        # to the first window.
-        win2.destroy()
-        self.__check_active_window(win.id, info)
