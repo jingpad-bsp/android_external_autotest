@@ -259,17 +259,22 @@ class WiFiTest(object):
         return m.group(1)
 
 
+    def install_script(self, script_name, *support_scripts):
+        script_client_dir = self.client.get_tmp_dir()
+        script_client_file = os.path.join(script_client_dir, script_name)
+        for copy_file in [script_name] + list(support_scripts):
+            src_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                    copy_file)
+            dest_file = os.path.join(script_client_dir,
+                                     os.path.basename(src_file))
+            self.client.send_file(src_file, dest_file, delete_dest=True)
+        return script_client_file
+
+
     def connect(self, params):
         """ Connect client to AP/router """
 
-        # copy site_wlan_connect.py over
-        script_name = 'site_wlan_connect.py'
-        script_client_file = self.client.get_tmp_dir() + '/' + script_name
-        self.client.send_file(
-            os.path.dirname(os.path.realpath(__file__)) + '/' + script_name,
-            script_client_file,
-            delete_dest=True)
-
+        script_client_file = self.install_script('site_wlan_connect.py')
         if 'eap-tls' in params:
             params.update(site_eap_tls.client_config(self.client,
                                                      params['eap-tls']))
@@ -307,20 +312,62 @@ class WiFiTest(object):
 
         self.client_ping_bg_stop({})
 
-        # copy site_wlan_disconnect.py over
-        script_name = 'site_wlan_disconnect.py'
-        script_client_file = self.client.get_tmp_dir() + '/' + script_name
-        self.client.send_file(
-            os.path.dirname(os.path.realpath(__file__)) + '/' + script_name,
-            script_client_file,
-            delete_dest=True)
-
+        script_client_file = self.install_script('site_wlan_disconnect.py')
         result = self.client.run('python "%s" "%s" "%d"' %
             (script_client_file,
             params.get('ssid', self.defssid),
             params.get('wait_timeout', self.deftimeout))).stdout.rstrip()
 
         print "%s: %s" % (self.name, result)
+
+
+    def wait_service(self, params):
+        """ Wait for service transitions on client. """
+
+        script_client_file = self.install_script('site_wlan_wait_state.py')
+        args = []
+
+        # Whether to print out all state transitions of watched services to
+        # stderr
+        if params.get('debug', False):
+            args.append('--debug')
+        # Time limit on the execution of a single step
+        if 'step_timeout' in params:
+            args.append('--step_timeout %d' % int(params['step_timeout']))
+        # Time limit to wait for a service to appear in the service list
+        if 'service_timeout' in params:
+            args.append('--svc_timeout %d' % int(params['service_timeout']))
+        # Time limit on the execution of the entire series of steps
+        args.append('--run_timeout=%d' % int(params.get('run_timeout', 10)))
+
+        states = params.get('states', [])
+        if not states:
+            raise error.TestFail('No states given to wait for')
+
+        counts = {}
+        for service, state in states:
+            cstate = state.strip('+')
+            if state in counts:
+                counts[cstate] = 1
+            else:
+                counts[cstate] = 0
+            args.append('"%s=%s"' % (service or self.wifi.get_ssid(), state))
+
+        result = self.client.run('python "%s" %s' %
+                                 (script_client_file, ' '.join(args)))
+
+        print "%s: %s" % (self.name, result)
+
+        for (service, state), intr in zip(states, result.stdout.split(' ')):
+            cstate = state.strip('+')
+            if counts[cstate]:
+                index = '%s%d' % (cstate, counts[cstate] - 1)
+                counts[cstate] += 1
+            else:
+                index = cstate
+
+            self.write_perf({ index:float(intr) })
+            print "  %s: %s" % (state, intr)
 
 
     def client_powersave_on(self, params):

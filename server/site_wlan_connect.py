@@ -191,7 +191,7 @@ def DumpLogs(logs):
     for interface in GetWifiInterfaces():
         print>>sys.stderr, "iw dev %s scan output: %s" % \
             ( interface,
-              subprocess.Popen(["iw", "dev", interface, "scan"],
+              subprocess.Popen(["iw", "dev", interface, "scan", "dump"],
                                stdout=subprocess.PIPE).communicate()[0])
 
     DumpObjectList("Service")
