@@ -107,8 +107,6 @@ class WiFiTest(object):
         self.client = hosts.create_host(client['addr'])
         self.client_at = autotest.Autotest(self.client)
         self.client_wifi_ip = None       # client's IP address on wifi net
-        # interface name on client
-        self.client_wlanif = client.get('wlandev', "wlan0")
 
         #
         # The server machine may be multi-homed or only on the wifi
@@ -136,6 +134,10 @@ class WiFiTest(object):
         self.__client_discover_commands(client)
         self.firewall_rules = []
 
+        # interface name on client
+        self.client_wlanif = client.get('wlandev',
+                                        self.__get_wlan_devs(self.client)[0])
+
         # Find all repeated steps and create iterators for them
         self.iterated_steps = {}
         step_names = [step[0] for step in steps]
@@ -160,6 +162,17 @@ class WiFiTest(object):
         self.client_cmd_netserv = client.get('cmd_netperf_server',
                                              '/usr/local/sbin/netserver')
         self.client_cmd_iptables = '/sbin/iptables'
+
+
+    def __get_wlan_devs(self, host):
+        ret = []
+        result = host.run("%s dev" % self.client_cmd_iw)
+        for line in result.stdout.splitlines():
+            ifmatch = re.search("Interface (\S*)", line)
+            if ifmatch is not None:
+                ret.append(ifmatch.group(1))
+        logging.info("Found wireless interfaces %s" % str(ret))
+        return ret
 
 
     def __server_discover_commands(self, server):
