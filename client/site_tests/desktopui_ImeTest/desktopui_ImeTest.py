@@ -29,18 +29,16 @@ class desktopui_ImeTest(site_ui_test.UITest):
         if not 'OK' in out:
             raise error.TestFail('Failed to preload engines: %s' % engine_names)
 
-        # ibus takes some time to preload the engines, and they can't be
-        # activated until they are done loading.  Since we don't get notified
-        # when they are ready, we have to wait here to give them time.
-        time.sleep(4)
-
 
     # TODO: Make this function talk to chrome directly
     def activate_engine(self, engine_name):
-        out = self.run_ibusclient('activate_engine %s' % engine_name)
-        if not 'OK' in out:
-            raise error.TestFail('Failed to activate engine: %s' % engine_name)
-        time.sleep(1)
+        start_time = time.time()
+        while time.time() - start_time < 10:
+            out = self.run_ibusclient('activate_engine %s' % engine_name)
+            if 'OK' in out and self.get_active_engine() == engine_name:
+                return
+            time.sleep(1)
+        raise error.TestFail('Failed to activate engine: %s' % engine_name)
 
 
     def get_active_engine(self):
@@ -81,14 +79,20 @@ class desktopui_ImeTest(site_ui_test.UITest):
 
         # Select all the text so that it can be accessed via the clipboard.
         ax.send_hotkey('Ctrl-a')
-        time.sleep(1)
 
         # The DISPLAY environment variable isn't set, so we have to manually get
         # the proper display.
         display = gtk.gdk.Display(":0.0")
-
         clip = gtk.Clipboard(display, "PRIMARY")
-        return clip.wait_for_text()
+
+        # Wait 10 seconds for text to be available in the clipboard, or return
+        # an empty string.
+        start_time = time.time()
+        while time.time() - start_time < 10:
+            if clip.wait_is_text_available():
+                return str(clip.wait_for_text())
+            time.sleep(1)
+        return ""
 
 
     def test_ibus_start_process(self):
