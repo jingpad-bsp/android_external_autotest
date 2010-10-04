@@ -32,7 +32,7 @@ class desktopui_ImeTest(site_ui_test.UITest):
         # ibus takes some time to preload the engines, and they can't be
         # activated until they are done loading.  Since we don't get notified
         # when they are ready, we have to wait here to give them time.
-        time.sleep(2)
+        time.sleep(4)
 
 
     # TODO: Make this function talk to chrome directly
@@ -40,26 +40,28 @@ class desktopui_ImeTest(site_ui_test.UITest):
         out = self.run_ibusclient('activate_engine %s' % engine_name)
         if not 'OK' in out:
             raise error.TestFail('Failed to activate engine: %s' % engine_name)
+        time.sleep(1)
 
 
     # TODO: Make this function set the config value directly, instead of
     # attempting to navigate the UI.
     def toggle_ime_process(self):
-        # Before we try to activate the options menu, we need to wait for
-        # previous actions to complete.  Most notably is that pressing F5
-        # immediately after login gets lost.
-        time.sleep(3)
         ax = self.get_autox()
 
         # Open the config dialog.
-        ax.send_hotkey('F5')
-        time.sleep(2)
+        ax.send_hotkey('Ctrl+t')
+        time.sleep(1)
+        ax.send_hotkey('Ctrl+l')
+        time.sleep(1)
+        ax.send_text('chrome://settings/system\n')
+        time.sleep(3)
 
         # Select the "Languages and Input" button.
         ax.send_text('\t\t\t\t\t\t\t\t\t\t\t ')
+        time.sleep(1)
 
         # Select the "International keyboard" checkbox.
-        ax.send_text('\t\t\t\t\t\t ')
+        ax.send_text('\t\t\t\t\t\t\t ')
 
         # Close the window.
         ax.send_hotkey('Ctrl+w')
@@ -121,6 +123,10 @@ class desktopui_ImeTest(site_ui_test.UITest):
         # Focus on the omnibox so that we can enter text.
         ax.send_hotkey('Ctrl-l')
 
+        # Sometimes there is a slight delay before input can be received in the
+        # omnibox.
+        time.sleep(1)
+
         ax.send_text(input_string)
 
         text = self.get_current_text()
@@ -138,10 +144,19 @@ class desktopui_ImeTest(site_ui_test.UITest):
         self.exefile = os.path.join(self.autodir,
                                     'deps/ibusclient/ibusclient')
 
+        # Before we try to activate the options menu, we need to wait for
+        # previous actions to complete.  Most notable is that keystrokes
+        # immediately after login get lost.
+        time.sleep(5)
+
         self.test_ibus_start_process()
         self.test_engine('mozc', 'nihongo \n',
                          '\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
         self.test_engine('chewing', 'hol \n', '\xE6\x93\x8D')
         self.test_engine('hangul', 'wl ', '\xEC\xA7\x80 ')
         self.test_engine('pinyin', 'nihao ', '\xE4\xBD\xA0\xE5\xA5\xBD')
+
+        # Run a test on English last, so that we can type in English to
+        # turn off the IME.
+        self.test_engine('xkb:us::eng', 'asdf', 'asdf')
         self.test_ibus_stop_process()
