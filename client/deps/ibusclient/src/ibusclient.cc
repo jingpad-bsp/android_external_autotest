@@ -302,6 +302,17 @@ void ActivateEngineAndPrintResult(IBusBus* ibus, const char* engine_name) {
   }
 }
 
+// Prints the name of the active IME engine.
+void PrintActiveEngine(IBusBus* ibus) {
+  IBusEngineDesc* engine_desc = ibus_bus_get_global_engine(ibus);
+  if (engine_desc) {
+    printf("%s\n", engine_desc->name);
+    g_object_unref(engine_desc);
+  } else {
+    printf("FAIL (Could not get active engine)\n");
+  }
+}
+
 // Prints the names of the given engines. Takes the ownership of |engines|.
 void PrintEngineNames(GList* engines) {
   for (GList* cursor = engines; cursor; cursor = g_list_next(cursor)) {
@@ -331,6 +342,7 @@ void PrintUsage(const char* argv0) {
   printf("get_unused           List all keys that never were used.\n");
   printf("preload_engines      Preload the listed engines.\n");
   printf("activate_engine      Activate the specified engine.\n");
+  printf("get_active_engine    Print the name of the current active engine.\n");
 }
 
 }  // namespace
@@ -394,6 +406,8 @@ int main(int argc, char **argv) {
       return 1;
     }
     ActivateEngineAndPrintResult(ibus, argv[2]);
+  } else if (command == "get_active_engine") {
+    PrintActiveEngine(ibus);
   } else {
     PrintUsage(argv[0]);
     return 1;

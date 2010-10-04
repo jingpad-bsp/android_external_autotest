@@ -43,6 +43,11 @@ class desktopui_ImeTest(site_ui_test.UITest):
         time.sleep(1)
 
 
+    def get_active_engine(self):
+        out = self.run_ibusclient('get_active_engine')
+        return out.strip()
+
+
     # TODO: Make this function set the config value directly, instead of
     # attempting to navigate the UI.
     def toggle_ime_process(self):
@@ -89,29 +94,47 @@ class desktopui_ImeTest(site_ui_test.UITest):
     def test_ibus_start_process(self):
         # Check that enabling the IME launches ibus.
         self.toggle_ime_process()
-        success = False
         start_time = time.time()
         while time.time() - start_time < 10:
             if os.system('pgrep ^ibus-daemon$') == 0:
-                success = True
-                break
+                return
             time.sleep(1)
-        if not success:
-            raise error.TestFail('ibus-daemon did not start via config')
+        raise error.TestFail('ibus-daemon did not start via config')
 
 
     def test_ibus_stop_process(self):
         # Check that disabling the IME stops ibus.
         self.toggle_ime_process()
-        success = False
         start_time = time.time()
         while time.time() - start_time < 10:
             if os.system('pgrep ^ibus-daemon$') != 0:
-                success = True
-                break
+                return
             time.sleep(1)
-        if not success:
-            raise error.TestFail('ibus-daemon did not stop via config')
+        raise error.TestFail('ibus-daemon did not stop via config')
+
+
+    def test_keyboard_shortcut(self):
+        expected_initial_engine = 'xkb:us::eng'
+        expected_other_engine = 'xkb:us:altgr-intl:eng'
+
+        current_engine = self.get_active_engine()
+        if current_engine != expected_initial_engine:
+            raise error.TestFail('Initial engine is %s, expected %s' %
+                                 (current_engine,
+                                  expected_initial_engine))
+        ax = self.get_autox()
+        ax.send_hotkey('Ctrl-l')
+        ax.send_hotkey('Ctrl-space')
+        start_time = time.time()
+        while time.time() - start_time < 10:
+            current_engine = self.get_active_engine()
+            if current_engine == expected_other_engine:
+                ax.send_hotkey('Ctrl-space')
+                return
+            time.sleep(1)
+        raise error.TestFail('Current engine is %s, expected %s' %
+                             (current_engine,
+                              expected_other_engine))
 
 
     def test_engine(self, engine_name, input_string, expected_string):
@@ -150,6 +173,7 @@ class desktopui_ImeTest(site_ui_test.UITest):
         time.sleep(5)
 
         self.test_ibus_start_process()
+        self.test_keyboard_shortcut()
         self.test_engine('mozc', 'nihongo \n',
                          '\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
         self.test_engine('chewing', 'hol \n', '\xE6\x93\x8D')
