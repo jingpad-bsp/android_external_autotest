@@ -64,9 +64,14 @@ class platform_PartitionCheck(test.test):
     def run_once(self):
         errors = 0
         refsize = 1073741824
+        cpu_type = utils.get_cpu_arch()
 
-        device = 'sda'
-        partitions = ['sda3', 'sda5']
+        if cpu_type == 'arm':
+            device = 'mmcblk0'
+            partitions = ['mmcblk0p3', 'mmcblk0p5']
+        else:
+            device = 'sda'
+            partitions = ['sda3', 'sda5']
 
         block_size = self.get_block_size(device)
 
