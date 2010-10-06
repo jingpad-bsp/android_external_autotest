@@ -56,15 +56,12 @@ class desktopui_ImeTest(site_ui_test.UITest):
         time.sleep(1)
         ax.send_hotkey('Ctrl+l')
         time.sleep(1)
-        ax.send_text('chrome://settings/system\n')
-        time.sleep(3)
-
-        # Select the "Languages and Input" button.
-        ax.send_text('\t\t\t\t\t\t\t\t\t\t\t ')
-        time.sleep(1)
+        # Navigate to the "Languages and Input" menu.
+        ax.send_text('chrome://settings/language\n')
+        time.sleep(5)
 
         # Select the "International keyboard" checkbox.
-        ax.send_text('\t\t\t\t\t\t\t ')
+        ax.send_text('\t\t\t\t\t\t\t\t\t\t\t\t\t\t ')
 
         # Close the window.
         ax.send_hotkey('Ctrl+w')
@@ -77,9 +74,6 @@ class desktopui_ImeTest(site_ui_test.UITest):
         time.sleep(1)
         ax = self.get_autox()
 
-        # Select all the text so that it can be accessed via the clipboard.
-        ax.send_hotkey('Ctrl-a')
-
         # The DISPLAY environment variable isn't set, so we have to manually get
         # the proper display.
         display = gtk.gdk.Display(":0.0")
@@ -89,6 +83,9 @@ class desktopui_ImeTest(site_ui_test.UITest):
         # an empty string.
         start_time = time.time()
         while time.time() - start_time < 10:
+            # Select all the text so that it can be accessed via the clipboard.
+            ax.send_hotkey('Ctrl-a')
+
             if clip.wait_is_text_available():
                 return str(clip.wait_for_text())
             time.sleep(1)
