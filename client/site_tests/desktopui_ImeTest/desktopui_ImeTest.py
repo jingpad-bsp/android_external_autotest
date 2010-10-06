@@ -49,6 +49,10 @@ class desktopui_ImeTest(site_ui_test.UITest):
     # TODO: Make this function set the config value directly, instead of
     # attempting to navigate the UI.
     def toggle_ime_process(self):
+        self.toggle_ime_engine('en-US', 'xkb:us:altgr-intl:eng')
+
+
+    def toggle_ime_engine(self, language, engine):
         ax = self.get_autox()
 
         # Open the config dialog.
@@ -57,11 +61,13 @@ class desktopui_ImeTest(site_ui_test.UITest):
         ax.send_hotkey('Ctrl+l')
         time.sleep(1)
         # Navigate to the "Languages and Input" menu.
-        ax.send_text('chrome://settings/language\n')
+        ax.send_text('chrome://settings/language#lang=%s,focus=%s\n' %
+                     (language, engine))
         time.sleep(5)
 
-        # Select the "International keyboard" checkbox.
-        ax.send_text('\t\t\t\t\t\t\t\t\t\t\t\t\t\t ')
+        # Toggle the checkbox.
+        ax.send_text(' ')
+        time.sleep(1)
 
         # Close the window.
         ax.send_hotkey('Ctrl+w')
