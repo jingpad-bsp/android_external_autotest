@@ -1,0 +1,17 @@
+TIME='SHORT'
+AUTHOR = 'Chromium OS'
+DOC = """
+This test is part of the server/autoupdate_Host test.
+
+It prepares the client for autoupdate by overriding the auserver
+and devsever value in stateful lsb-release.
+"""
+
+NAME = 'autoupdate_SetUp'
+PURPOSE = 'Set up client for autoupdate.'
+CRITERIA = 'Do not run this test. Run server/autoupdate_Host.'
+TEST_CLASS = 'platform'
+TEST_CATEGORY = 'Functional'
+TEST_TYPE = 'client'
+
+job.run_test('autoupdate_SetUp')
