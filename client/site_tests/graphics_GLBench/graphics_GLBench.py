@@ -5,6 +5,7 @@
 import logging
 import os
 import re
+import pprint
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
@@ -32,7 +33,11 @@ class graphics_GLBench(test.test):
       checksum_table = {}
       checksums_filename = os.path.join(self.autodir,
                                         'deps/glbench/src/checksums')
-      checksums = eval(utils.read_file(checksums_filename))
+      # checksums file is a comma separate list of tuples:
+      # (board_1, {test1:checksum1, test2:checksum2}),
+      # (board_2, {test1:checksum1, test2:checksum2}),
+      # etc.
+      checksums = eval('dict([' + utils.read_file(checksums_filename) + '])')
 
       exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
 
@@ -48,37 +53,44 @@ class graphics_GLBench(test.test):
           logging.info("Running on: %s", board_id)
           checksum_table = checksums.get(board_id, {})
       else:
-          logging.info('Could not find board id.')
           checksum_table = {}
 
       keyvals = {}
-      failed_tests = []
-      missing_checksum_tests = []
+      failed_tests = {}
+      missing_checksum_tests = {}
       for keyval in results:
           if keyval.strip().startswith('#'):
               continue
           key, val = keyval.split(':')
           testname = key.strip()
+          test_checksum = md5_file(os.path.join(out_dir, testname))
 
           if testname in checksum_table:
-            if checksum_table[testname] == md5_file(
-                os.path.join(out_dir, testname)):
-              keyvals[testname] = float(val)
-            else:
-              keyvals[testname] = float('nan')
-              failed_tests.append(testname)
+              if checksum_table[testname] == test_checksum:
+                  keyvals[testname] = float(val)
+              else:
+                  keyvals[testname] = float('nan')
+                  failed_tests[testname] = test_checksum
           else:
-            logging.info('No checksum found for test %s', testname)
-            keyvals[testname] = float(val)
-            missing_checksum_tests.append(testname)
+              logging.info('No checksum found for test %s', testname)
+              keyvals[testname] = float(val)
+              missing_checksum_tests[testname] = test_checksum
 
       self.write_perf_keyval(keyvals)
-      if failed_tests or missing_checksum_tests:
-          messages = []
-          if failed_tests:
-              messages.append("Incorrect checksums for: %s" %
-                              ', '.join(failed_tests))
-          if missing_checksum_tests:
-              messages.append("Missing checksums for: %s" %
-                              ', '.join(missing_checksum_tests))
-          raise error.TestFail('; '.join(messages))
+
+      if checksum_table:
+          if failed_tests or missing_checksum_tests:
+              messages = []
+              if failed_tests:
+                  messages.append("Incorrect checksums for: %s" %
+                                  ', '.join(failed_tests))
+              if missing_checksum_tests:
+                  messages.append("Missing checksums for: %s" %
+                                  ', '.join(missing_checksum_tests))
+              raise error.TestFail('; '.join(messages))
+      else:
+          logging.info("Checksums are missing for: %s.", board_id)
+          logging.info("Please verify that the output images are correct " +
+                       "and append the following to the checksums file:\n" +
+                       pprint.pformat((board_id, missing_checksum_tests)) + ',')
+          raise error.TestFail("Checksums are missing for: %s." % board_id)
