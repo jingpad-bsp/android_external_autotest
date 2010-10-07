@@ -16,6 +16,62 @@ class desktopui_ImeTest(site_ui_test.UITest):
         self.job.setup_dep(['ibusclient'])
 
 
+    def log_error(self, test_name, message):
+        self.job.record('ERROR', None, test_name, message)
+        self._failed.append(test_name)
+
+
+    # TODO(zork) We should share this with platform_ProcessPrivleges.
+    # See: crosbug.com/7453
+    def check_process(self, process, user=None):
+        """Check if the process is running as the specified user / root.
+
+        Args:
+            process: Process name to check.
+            user: User process must run as; ignored if None.
+        """
+
+        # Get the process information
+        pscmd = 'ps -o f,euser,ruser,suser,fuser,comm -C %s --no-headers'
+        pscmd = pscmd % process
+        ps = utils.system_output(pscmd,
+                                 ignore_status=True, retain_output=True)
+
+        pslines = ps.splitlines()
+
+        # Fail if process is not running
+        if not len(pslines):
+            self.log_error('check_process %s' % process,
+                           'Process %s is not running' % process)
+            return
+
+        # Check all instances of the process
+        for psline in pslines:
+            ps = psline.split()
+
+            # Fail if not running as the specified user
+            if user is not None:
+                for uid in ps[1:5]:
+                    if uid != user:
+                        self.log_error('check_process %s' % process,
+                                       'Process %s running as %s; expected %s' %
+                                       (process, uid, user))
+                        return
+
+            # Check if process has super-user privileges
+            else:
+                # TODO(zork): Uncomment this once issue 2253 is resolved
+                # if int(ps[0]) & 0x04:
+                #    self.log_error(
+                #        'check_process %s' % process,
+                #        'Process %s running with super-user flag' %
+                #        process)
+                if 'root' in ps:
+                    self.log_error('check_process %s' % process,
+                                   'Process %s running as root' % process)
+                    return
+
+
     # TODO: Get rid of this function.
     def run_ibusclient(self, options):
         cmd = site_ui.xcommand_as('%s %s' % (self.exefile, options), 'chronos')
@@ -27,7 +83,8 @@ class desktopui_ImeTest(site_ui_test.UITest):
         engine_names = string.join(engine_list, " ")
         out = self.run_ibusclient('preload_engines %s' % engine_names)
         if not 'OK' in out:
-            raise error.TestFail('Failed to preload engines: %s' % engine_names)
+            self.log_error('preload_engines %s' % engine_names,
+                           'Failed to preload engines: %s' % engine_names)
 
 
     # TODO: Make this function talk to chrome directly
@@ -38,7 +95,8 @@ class desktopui_ImeTest(site_ui_test.UITest):
             if 'OK' in out and self.get_active_engine() == engine_name:
                 return
             time.sleep(1)
-        raise error.TestFail('Failed to activate engine: %s' % engine_name)
+        self.log_error('activate_engine',
+                       'Failed to activate engine: %s' % engine_name)
 
 
     def get_active_engine(self):
@@ -106,7 +164,8 @@ class desktopui_ImeTest(site_ui_test.UITest):
             if os.system('pgrep ^ibus-daemon$') == 0:
                 return
             time.sleep(1)
-        raise error.TestFail('ibus-daemon did not start via config')
+        self.log_error('test_ibus_start_process',
+                       'ibus-daemon did not start via config')
 
 
     def test_ibus_stop_process(self):
@@ -117,7 +176,8 @@ class desktopui_ImeTest(site_ui_test.UITest):
             if os.system('pgrep ^ibus-daemon$') != 0:
                 return
             time.sleep(1)
-        raise error.TestFail('ibus-daemon did not stop via config')
+        self.log_error('test_ibus_stop_process',
+                       'ibus-daemon did not stop via config')
 
 
     def test_keyboard_shortcut(self):
@@ -126,9 +186,9 @@ class desktopui_ImeTest(site_ui_test.UITest):
 
         current_engine = self.get_active_engine()
         if current_engine != expected_initial_engine:
-            raise error.TestFail('Initial engine is %s, expected %s' %
-                                 (current_engine,
-                                  expected_initial_engine))
+            self.log_error('test_keyboard_shortcut',
+                           'Initial engine is %s, expected %s' %
+                           (current_engine, expected_initial_engine))
         ax = self.get_autox()
         ax.send_hotkey('Ctrl-l')
         ax.send_hotkey('Ctrl-space')
@@ -139,9 +199,9 @@ class desktopui_ImeTest(site_ui_test.UITest):
                 ax.send_hotkey('Ctrl-space')
                 return
             time.sleep(1)
-        raise error.TestFail('Current engine is %s, expected %s' %
-                             (current_engine,
-                              expected_other_engine))
+        self.log_error('test_keyboard_shortcut',
+                       'Current engine is %s, expected %s' %
+                       (current_engine, expected_other_engine))
 
 
     def test_engine(self, engine_name, input_string, expected_string):
@@ -161,12 +221,14 @@ class desktopui_ImeTest(site_ui_test.UITest):
 
         text = self.get_current_text()
         if text != expected_string:
-            raise error.TestFail(
+            self.log_error(
+                'test_engine %s' % engine_name,
                 'Engine %s failed: Got %s, expected %s' % (engine_name, text,
                                                            expected_string))
 
 
     def run_once(self):
+        self._failed = []
         dep = 'ibusclient'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
@@ -180,6 +242,11 @@ class desktopui_ImeTest(site_ui_test.UITest):
         time.sleep(5)
 
         self.test_ibus_start_process()
+
+        self.check_process('candidate_window', user='chronos')
+        self.check_process('ibus-daemon', user='chronos')
+        self.check_process('ibus-memconf', user='chronos')
+
         self.test_keyboard_shortcut()
         self.test_engine('mozc', 'nihongo \n',
                          '\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
@@ -191,3 +258,6 @@ class desktopui_ImeTest(site_ui_test.UITest):
         # turn off the IME.
         self.test_engine('xkb:us::eng', 'asdf', 'asdf')
         self.test_ibus_stop_process()
+        if len(self._failed) != 0:
+            raise error.TestFail(
+                'Failed: %s' % ','.join(self._failed))
