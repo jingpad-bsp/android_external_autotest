@@ -819,6 +819,7 @@ class FlashromUtility(object):
         from_list = csv_to_list(from_list)
         to_list = csv_to_list(to_list)
         flashrom = self.flashrom
+        layout = self.layout
 
         # prepare verification image
         if self.skip_verify:
