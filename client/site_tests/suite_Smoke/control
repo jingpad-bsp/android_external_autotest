@@ -25,7 +25,6 @@ job.run_test('login_BadAuthentication')
 job.run_test('login_CryptohomeIncognitoMounted', creds='$backdoor')
 job.run_test('login_CryptohomeMounted')
 job.run_test('login_LoginSuccess')
-job.run_test('login_RemoteLogin')
 job.run_test('platform_FilePerms')
 job.run_test('platform_OSLimits') 
 
