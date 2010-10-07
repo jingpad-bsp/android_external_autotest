@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import dbus, logging, os, shutil, socket, sys, time
-from autotest_lib.client.bin import chromeos_constants
+from autotest_lib.client.bin import chromeos_constants, site_cryptohome
 from autotest_lib.client.bin import site_login, site_utils, test as bin_test
 from autotest_lib.client.common_lib import error, site_ui
 from autotest_lib.client.common_lib import site_auth_server, site_dns_server
@@ -160,8 +160,32 @@ class UITest(bin_test.test):
             site_login.attempt_logout()
 
         (self.username, self.password) = self.__resolve_creds(creds)
+        # Ensure there's no stale cryptohome from previous tests.
+        try:
+            site_cryptohome.remove_vault(self.username)
+        except site_cryptohome.ChromiumOSError, error:
+            logging.error(error)
+
         if self.auto_login:
             self.login(self.username, self.password)
+
+
+    def __canonicalize(self, credential):
+        """Perform basic canonicalization of |email_address|
+
+        Perform basic canonicalization of |email_address|, taking
+        into account that gmail does not consider '.' or caps inside a
+        username to matter.  It also ignores everything after a '+'.
+        For example, c.masone+abc@gmail.com == cMaSone@gmail.com, per
+        http://mail.google.com/support/bin/answer.py?hl=en&ctx=mail&answer=10313
+        """
+        parts = credential.split('@')
+        if len(parts) != 2:
+          raise error.TestError("Malformed email: " + credential)
+
+        (name, domain) = parts
+        name = name.partition('+')[0].replace('.', '')
+        return '@'.join([name, domain]).lower()
 
 
     def __resolve_creds(self, creds):
@@ -169,9 +193,11 @@ class UITest(bin_test.test):
             if creds not in chromeos_constants.CREDENTIALS:
                 raise error.TestFail('Unknown credentials: %s' % creds)
 
-            return chromeos_constants.CREDENTIALS[creds]
+            (name, passwd) = chromeos_constants.CREDENTIALS[creds]
+            return [self.__canonicalize(name), passwd]
 
-        return creds.split(':')
+        (name, passwd) = creds.split(':')
+        return [self.__canonicalize(name), passwd]
 
 
     def ensure_login_complete(self):
