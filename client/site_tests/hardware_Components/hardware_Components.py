@@ -2,7 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, hashlib, logging, os, pprint, re, sys
+import glob
+import gzip
+import hashlib
+import logging
+import os
+import pprint
+import re
+import sys
+import StringIO
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -318,6 +326,17 @@ class hardware_Components(test.test):
         part_id = utils.system_output(cmd).strip()
         return part_id
 
+    def log_vpds(self, flashrom, base_img, layout, vpd_names):
+        for vpd in vpd_names:
+            if vpd not in layout:
+                continue
+            blob = StringIO.StringIO()
+            gzblob = gzip.GzipFile(fileobj=blob, mode='w')
+            gzblob.write(flashrom.get_section(base_img, layout, vpd))
+            gzblob.close()
+            blob.seek(0)
+            factory.log("VPD Data: %s (gzipped hex): %s"
+                        % (vpd, blob.read().encode('hex')))
 
     def get_hash_ro_firmware(self):
         """
@@ -351,6 +370,8 @@ class hardware_Components(test.test):
             hash_src = hash_src + src
         if not hash_src:
             raise error.TestError('Invalid hash source from flashrom.')
+        # TODO(hungte) we should consider to move VPD reports to somewhere else
+        self.log_vpds(flashrom, base_img, layout, ['RO_VPD', 'RW_VPD'])
         return hashlib.sha256(hash_src).hexdigest()
 
     def get_hash_ec_firmware(self):
