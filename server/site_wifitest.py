@@ -122,7 +122,7 @@ class WiFiTest(object):
             self.server_wifi_ip = server.get('wifi_addr', self.server.ip)
             self.__server_discover_commands(server)
         else:
-            self.server = None;
+            self.server = None
             # NB: wifi address must be set if not reachable from control
             self.server_wifi_ip = server['wifi_addr']
 
@@ -214,6 +214,10 @@ class WiFiTest(object):
                 params = s[1]
             else:
                 params = {}
+            if len(s) > 2:
+                failure_string = s[2]
+            else:
+                failure_string = None
 
             # What should perf data be prefixed with?
             if 'perf_prefix' in params:
@@ -231,6 +235,7 @@ class WiFiTest(object):
                 logging.info("%s: step '%s' params %s", self.name, method,
                     params)
 
+            self.error_message = ''
             func = getattr(self, method, None)
             if func is None:
                 func = getattr(self.wifi, method, None)
@@ -241,7 +246,19 @@ class WiFiTest(object):
                         raise error.TestFail("Expected failure")
                 except Exception, e:
                     if expect_failure is True:
-                        continue
+                        if not failure_string:
+                            continue
+
+                        # If test did not explicitly specify an error message,
+                        # perhaps we can scoop one out of the exception
+                        if not self.error_message and hasattr(e, 'result_obj'):
+                            self.error_message = (e.result_obj.stderr +
+                                                  e.result_obj.stdout)
+                        if re.search(failure_string, self.error_message):
+                            continue
+
+                        logging.error("Expected failure, but error string does "
+                                      "not match what was expected")
                     logging.error("%s: Step '%s' failed: %s; abort test",
                         self.name, method, str(e))
                     self.cleanup(params)
@@ -897,7 +914,7 @@ def read_tests(dir, *args):
     tests = []
     for file in os.listdir(dir):
         if any(fnmatch.fnmatch(file, pat) for pat in args):
-            fd = open(os.path.join(dir, file));
+            fd = open(os.path.join(dir, file))
             try:
                 test = eval(fd.read())
             except Exception, e:
@@ -921,20 +938,20 @@ def read_wifi_testbed_config(file, client_addr=None, server_addr=None,
     # client must be reachable on the control network
     client = config['client']
     if client_addr is not None:
-        client['addr'] = client_addr;
+        client['addr'] = client_addr
 
     # router must be reachable on the control network
     router = config['router']
     if router_addr is None and hasattr(client_attributes, 'router_addr'):
         router_addr = client_attributes.router_addr
     if router_addr is not None:
-        router['addr'] = router_addr;
+        router['addr'] = router_addr
 
     server = config['server']
     if server_addr is None and hasattr(client_attributes, 'server_addr'):
         server_addr = client_attributes.server_addr
     if server_addr is not None:
-        server['addr'] = server_addr;
+        server['addr'] = server_addr
     # TODO(sleffler) check for wifi_addr when no control address
 
     # tag jobs w/ the router's address on the control network
