@@ -1,0 +1,31 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This test tries invalid WPA and RSN passprhase lengths.
+{ "name":"RSNWPABadKeyLength",
+  "steps":[             # Channel [any]
+    [ "!connect",        { "security":"rsn", "psk":"0123456" },
+                           "org.chromium.flimflam.Error.InvalidArguments" ],
+    [ "!connect",        { "security":"wpa", "psk":"0123456" },
+                           "org.chromium.flimflam.Error.InvalidArguments" ],
+    [ "!connect",        { "security":"rsn",
+                           "psk":"0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123" },
+                           "org.chromium.flimflam.Error.InvalidArguments" ],
+    [ "!connect",        { "security":"wpa",
+                           "psk":"0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123" },
+                           "org.chromium.flimflam.Error.InvalidArguments" ],
+  ],
+}
