@@ -251,8 +251,9 @@ class status_line(object):
     def parse_line(cls, line):
         if not status_line.is_status_line(line):
             return None
-        indent, line = re.search(r"^(\t*)(.*)$", line).groups()
+        indent, line = re.search(r"^(\t*)(.*)$", line, flags=re.DOTALL).groups()
         indent = len(indent)
+        line = line.strip()
 
         # split the line into the fixed and optional fields
         parts = line.split("\t")

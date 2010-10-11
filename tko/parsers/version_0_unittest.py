@@ -230,6 +230,20 @@ class test_status_line(unittest.TestCase):
                                "field2": "val2"})
 
 
+    def test_parse_line_handles_embedded_new_lines(self):
+        input_data = ("\tEND FAIL\t----\ttest\tfield1=val1\tStatus\nwith\n"
+                      "embedded\nnew lines\n")
+
+        line = version_0.status_line.parse_line(input_data)
+        self.assertEquals(line.indent, 1)
+        self.assertEquals(line.type, "END")
+        self.assertEquals(line.status, "FAIL")
+        self.assertEquals(line.subdir, None)
+        self.assertEquals(line.testname, "test")
+        self.assertEquals(line.reason, "Status\nwith\nembedded\nnew lines")
+        self.assertEquals(line.optional_fields, {"field1": "val1"})
+
+
     def test_parse_line_fails_on_untabbed_lines(self):
         input_data = "   GOOD\trandom\tfields\tof text"
         line = version_0.status_line.parse_line(input_data)
