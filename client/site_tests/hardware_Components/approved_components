@@ -26,6 +26,7 @@
     'part_id_gps': ['*'],
     'part_id_hwqual': ['*'],
     'part_id_storage': ['*'],
+    'part_id_tpm': ['*'],
     'part_id_usb_hosts': ['*'],
     'part_id_vga': ['*'],
     'part_id_webcam': ['*'],
