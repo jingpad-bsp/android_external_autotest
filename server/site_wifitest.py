@@ -243,6 +243,7 @@ class WiFiTest(object):
                 try:
                     func(params)
                     if expect_failure is True:
+                        expect_failure = False
                         raise error.TestFail("Expected failure")
                 except Exception, e:
                     if expect_failure is True:
