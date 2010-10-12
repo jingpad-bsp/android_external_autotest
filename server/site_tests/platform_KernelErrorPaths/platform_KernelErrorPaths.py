@@ -37,7 +37,7 @@ class platform_KernelErrorPaths(test.test):
                 found = True
                 break
         if not found:
-            error.TestFail("Kernel BUG reporting not working.")
+            raise error.TestFail("Kernel BUG reporting not working.")
 
 
     def test_deadlock(self):
@@ -75,17 +75,17 @@ class platform_KernelErrorPaths(test.test):
                 found = True
                 break
         if not found:
-            error.TestFail("Kernel NULL pointer dereference detection "
-                           "not working.")
+            raise error.TestFail("Kernel NULL pointer dereference detection "
+                                 "not working.")
 
 
     def test_panic(self):
         # Cause the target to panic.
         self.breakme('panic')
         if not self.client.wait_down(timeout=30):
-            error.TestFail("Kernel panic went unnoticed.")
+            raise error.TestFail("Kernel panic went unnoticed.")
         if not self.client.wait_up(timeout=40):
-            error.TestFail("Kernel panic didn't cause successful reboot.")
+            raise error.TestFail("Kernel panic didn't cause successful reboot.")
 
 
     def run_once(self, host=None):

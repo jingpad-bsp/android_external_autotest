@@ -119,7 +119,8 @@ def run_assigned_tests(machine):
   if not client_attributes.has_resume_bug:
     client_at.run_test('power_Resume')
 
-  job.run_test("platform_KernelErrorPaths", host=client)
+# TODO(msb): re-enable KernelErrorPaths, see http://crosbug.com/7679
+# job.run_test("platform_KernelErrorPaths", host=client)
   if client_attributes.has_working_kcrash:
     job.run_test("logging_KernelCrashServer", host=client)
 
