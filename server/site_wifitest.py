@@ -308,7 +308,9 @@ class WiFiTest(object):
         script_client_file = self.install_script('site_wlan_connect.py')
         if 'eap-tls' in params:
             params.update(site_eap_tls.client_config(self.client,
-                                                     params['eap-tls']))
+                                                     params['eap-tls'],
+                                                     params.get('server-auth',
+                                                                None)))
 
         result = self.client.run('python "%s" "%s" "%s" "%s" "%d" "%d"' %
             (script_client_file,
@@ -884,6 +886,11 @@ class WiFiTest(object):
         self.client_suspend_thread.join()
         if self.client_suspend_thread.result.exit_status:
             raise error.TestError('suspend failed')
+
+    def restart_supplicant(self, params):
+        """ Restart wpa_supplicant.  Cert params are unfortunately "sticky". """
+
+        self.client.run("stop wpasupplicant; start wpasupplicant");
 
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.

@@ -22,8 +22,11 @@ connection_settings = {
 }
 
 if security == '802_1x':
+    cert_args = psk.split(':')
     (connection_settings["Identity"],
-     connection_settings["CertPath"]) = psk.split(':')
+     connection_settings["CertPath"]) = cert_args[:2]
+    if len(cert_args) > 2:
+        connection_settings["AuthorityPath"] = cert_args[2]
 else:
    connection_settings["Passphrase"] = psk
 

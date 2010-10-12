@@ -109,6 +109,110 @@ eiLgI+jE9pNSs1FpRg3RAkBAxoAqiYyT9W222119Qt6PdJDTNI/YxKpDfnwRZm84
 7x3V0FVuaN1GW9g4VMSsearlmgYizfRliaIrD+15Bg9Q
 -----END RSA PRIVATE KEY-----""",
         }
+    },
+
+
+    'cert2': {
+        'router': {
+            'ca_cert':
+"""-----BEGIN CERTIFICATE-----
+MIIDNDCCAp2gAwIBAgIJAPCOBeiGsMUzMA0GCSqGSIb3DQEBBQUAMHAxCzAJBgNV
+BAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBW
+aWV3MTQwMgYDVQQDEytjaHJvbWVsYWItd2lmaS10ZXN0YmVkMi1yb290Lm10di5n
+b29nbGUuY29tMB4XDTEwMTAxMTIxMTM1OFoXDTIwMTAwODIxMTM1OFowcDELMAkG
+A1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDU1vdW50YWlu
+IFZpZXcxNDAyBgNVBAMTK2Nocm9tZWxhYi13aWZpLXRlc3RiZWQyLXJvb3QubXR2
+Lmdvb2dsZS5jb20wgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALVcrIDKH5KL
+anHb9qBxI78GA/CxyevvmkUL862xVwWFWedwCFxCYLUeNW5v1GLU1Nlq/8Yp1Kit
+pDMqkgHwhFZheT+cU2CXBHrjCp4csaaZSgEnvDjfgFHwwjf/ghtFgaF+0YgmNm2u
+lClPs/Ar4Ed/xonR3djtPuadqqodl6h3AgMBAAGjgdUwgdIwHQYDVR0OBBYEFMTK
+tCdJf+j7+/ORDIDna9dgIV/SMIGiBgNVHSMEgZowgZeAFMTKtCdJf+j7+/ORDIDn
+a9dgIV/SoXSkcjBwMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEW
+MBQGA1UEBxMNTW91bnRhaW4gVmlldzE0MDIGA1UEAxMrY2hyb21lbGFiLXdpZmkt
+dGVzdGJlZDItcm9vdC5tdHYuZ29vZ2xlLmNvbYIJAPCOBeiGsMUzMAwGA1UdEwQF
+MAMBAf8wDQYJKoZIhvcNAQEFBQADgYEAOcPgWGaHVj/UZBFOV3QutkNb/tsvHFEX
+xVn641V1gw52jVHvM+DFhXmoRjk9JTgT0g6ALj10ehw0zOI0jxV27x30sLRE+op7
+t++4i/fcz1VvuwhFxDRXjoY8BO+1lYUOtsapRHHASZvU1Wf+AhO2N9xtvlckFxpS
+wK+1l98+x4o=
+-----END CERTIFICATE-----""",
+            'server_cert':
+"""-----BEGIN CERTIFICATE-----
+MIIDQDCCAqmgAwIBAgIDEAABMA0GCSqGSIb3DQEBBAUAMHAxCzAJBgNVBAYTAlVT
+MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MTQw
+MgYDVQQDEytjaHJvbWVsYWItd2lmaS10ZXN0YmVkMi1yb290Lm10di5nb29nbGUu
+Y29tMB4XDTEwMTAxMTIxMTM1OFoXDTExMTAxMTIxMTM1OFowcjELMAkGA1UEBhMC
+VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDU1vdW50YWluIFZpZXcx
+NjA0BgNVBAMTLWNocm9tZWxhYi13aWZpLXRlc3RiZWQyLXNlcnZlci5tdHYuZ29v
+Z2xlLmNvbTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEAzP5YdymNCXBlhlD5
+mK5Mm9H3pG+8fLx7oIKvKea3DZ8yjGd/QK8jMo4EWccFY+jI3pjwO7gmI6ntlU5y
+bCL+29GPbjRtoA9zvVmD01ggGEDW+rJVKIUALPlCT/85jcwDHSzqQt9Gpj576oP5
+y/nv4iEkJzmryZv46pGxtnxW6aUCAwEAAaOB5TCB4jAJBgNVHRMEAjAAMBEGCWCG
+SAGG+EIBAQQEAwIGQDAdBgNVHQ4EFgQUJlQFb95atdqXA/Wtf5zd6PWA7AgwgaIG
+A1UdIwSBmjCBl4AUxMq0J0l/6Pv785EMgOdr12AhX9KhdKRyMHAxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3
+MTQwMgYDVQQDEytjaHJvbWVsYWItd2lmaS10ZXN0YmVkMi1yb290Lm10di5nb29n
+bGUuY29tggkA8I4F6IawxTMwDQYJKoZIhvcNAQEEBQADgYEAUQzJuYutS5Zi9DuI
+CKVAyM7pR0poJkK33xwXT2Z3gMpQcNXO66omPdsoXi6aYt2Kmp3XJSAE2Ev+0EKQ
+Lvu56jV19Sw4MBuF94Gd0Ts3Ps8/FB8yyQQ3f2qGWAYg4S37HsK+NIz5fsgzvW5X
+tctFQRntW1evuf4y+hWaBtmpF8M=
+-----END CERTIFICATE-----""",
+            'private_key':
+"""-----BEGIN RSA PRIVATE KEY-----
+MIICXQIBAAKBgQDM/lh3KY0JcGWGUPmYrkyb0fekb7x8vHuggq8p5rcNnzKMZ39A
+ryMyjgRZxwVj6MjemPA7uCYjqe2VTnJsIv7b0Y9uNG2gD3O9WYPTWCAYQNb6slUo
+hQAs+UJP/zmNzAMdLOpC30amPnvqg/nL+e/iISQnOavJm/jqkbG2fFbppQIDAQAB
+AoGAN7x0Gzo98bIQuJttsdi6VaeaOKh0zEmHJ5ZAwBjN7rM5UDmXvOOho04/2pUl
+XwvdCcD1mJcyL4I1aeIhdEtzlZ5NOI1Y503Mrog6Fou6ui7WqB99msIZIxvbfLvG
+mDhxd7HU+29MIZZfxdrvIgYIoZKY7V/s5hioX+7NSQsMfUUCQQDvPoEm4W4TyU9F
+vMinZwIuCmk/FnHeSarZWtqxkSi5X/dQr7L8ko30lpMKjR2VljTYonHmBLPETjPU
+FaDqLe/vAkEA21m/zdbVz4gPY0JtFyOhfnchSY6H/hQITz+IKbyCG3ovvYDIV7ZH
+v7nsGhZd5J78yQJvKXfY63FpNynBos2rqwJBANZvaqljwxs/A6uZEyxgeqaztDPU
+tUktNFJPSdeAKUVGS9DpOn+CCHSjBbaeV1b9Y+6MY5RswIgCJBhDLpDXjccCQD2f
+3U8LCE6hvxD33IYfsINDHMr5jCNJpXv+MVboavUlQrxOrfpWb5nhtf8uQXq1X/dp
+A6n2za530kN5K7l9ZrkCQQDkRew1VFDPg6baShXwEA327XH/0a/s3pSg3WNXaJ22
+KKkkmvz0gVdObfCRIDf+Tw37tQ00n2hUUefuCnTnNFG/
+-----END RSA PRIVATE KEY-----""",
+            'eap_user_file': '* TLS'
+        },
+        'client': {
+            'client_cert':
+"""-----BEGIN CERTIFICATE-----
+MIIDLTCCApagAwIBAgIDEAACMA0GCSqGSIb3DQEBBAUAMHAxCzAJBgNVBAYTAlVT
+MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MTQw
+MgYDVQQDEytjaHJvbWVsYWItd2lmaS10ZXN0YmVkMi1yb290Lm10di5nb29nbGUu
+Y29tMB4XDTEwMTAxMTIxMTQwMFoXDTExMTAxMTIxMTQwMFowcjELMAkGA1UEBhMC
+VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDU1vdW50YWluIFZpZXcx
+NjA0BgNVBAMTLWNocm9tZWxhYi13aWZpLXRlc3RiZWQyLWNsaWVudC5tdHYuZ29v
+Z2xlLmNvbTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEAum3Ffn32tAAotbva
+R1yHQAb/eJ0agM7gkFD7ykTMxQgtvPaNJd1JOIrfzJkUJlkIO8Kw49L7J+yEwl/H
+e4krWBU0H5AS/KgnFs37sUNbQSOuT2GxcJy/5ce3yTvKDx+bX8YBnqVgF/J4ftZg
+k0Gw5bl8csL7ayMEPjQ67l6DmAECAwEAAaOB0jCBzzAJBgNVHRMEAjAAMB0GA1Ud
+DgQWBBRVbfe54dvOd9N5S+z4QQBvxuwiHzCBogYDVR0jBIGaMIGXgBTEyrQnSX/o
++/vzkQyA52vXYCFf0qF0pHIwcDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlm
+b3JuaWExFjAUBgNVBAcTDU1vdW50YWluIFZpZXcxNDAyBgNVBAMTK2Nocm9tZWxh
+Yi13aWZpLXRlc3RiZWQyLXJvb3QubXR2Lmdvb2dsZS5jb22CCQDwjgXohrDFMzAN
+BgkqhkiG9w0BAQQFAAOBgQAG1VF/2QAD9bLOcRm8lpJflLDVJa9mv+p1p/c3liul
+4djWyL2oQt4mWXuP8DNAXnuJVvSCOJFcSDlDZ3HTLYth8WUgkMwAdXO/mWpF74OS
+8HikHuSK5oymkZB/AiQlnJlOY9nSLrEYQVLcvCfiJhhu+ziyDQlVawPIQqkBtX5y
+qA==
+-----END CERTIFICATE-----""",
+            'private_key':
+"""-----BEGIN RSA PRIVATE KEY-----
+MIICXAIBAAKBgQC6bcV+ffa0ACi1u9pHXIdABv94nRqAzuCQUPvKRMzFCC289o0l
+3Uk4it/MmRQmWQg7wrDj0vsn7ITCX8d7iStYFTQfkBL8qCcWzfuxQ1tBI65PYbFw
+nL/lx7fJO8oPH5tfxgGepWAX8nh+1mCTQbDluXxywvtrIwQ+NDruXoOYAQIDAQAB
+AoGAWzjDXnW8da9uPB7DXA/GjmneL+KPyV9xOqylx/+KQw8RclkiD9kLrwMlJzPw
+TCNciAFoFNJz2sE85O+A6M3hys2dlXn/JR5I1IcVjkhOe6zaFu7btcRphbX/YqKi
++5oZj1rxBTEqhBXAKwIDkdF55A2a2Huq0eHIB/NA50Vw5hECQQDqqR4Iz+dGGufU
+FywMoUgHjHW3iDjWgr+TF279k2BY5Fo03IDMIHFaNRT40hfFJFZh3t3hGe/RziJP
+BRgnKikXAkEAy2HSHMuZuvaLAVkgKmUAdafnMkRCaCP4QlEHK98jix7KIyLApzaa
+njuNW0jnUCI+4JTQxFlf4fn3h8Ugyn3GpwJBAIVb2TrO1LPNxKSPCrSez+2iUKAe
+JZcbNT6l2aj4oY/DLtTN39CiO2k1s5Z455NdRE5YtyYfdGB60pqv3Xschb8CQCfM
+z8pUyZO91XwBDftd4pYjsmmy0+//QgDwTF/4fcMm1lXD4kGWvPFEJCh9/s4+tWFL
+ngMenlXhjeAi4oTd0jcCQBqIFwSDElqUqeqkMtlw14wEJH6XIk+0IVQndBEyb+JN
+Nl40AoKFULXtQNMl7pT8uMj4ScYvRHOKg4RjwO7J+qs=
+-----END RSA PRIVATE KEY-----""",
+        }
     }
 }
 
@@ -154,7 +258,7 @@ def router_config(router, cert):
     conf['eap_server'] = '1'
     return conf
 
-def client_config(client, cert):
+def client_config(client, cert, ca_auth=None):
     """
     Configure a client, and return the added config parameters
     """
@@ -165,4 +269,10 @@ def client_config(client, cert):
     info = cert_info[cert]['client']
     insert_conf_file(client, client_pkg,
                      '\n'.join([info['client_cert'], info['private_key']]))
-    return { 'psk':  ':'.join(['chromeos', client_pkg]) }
+    args = ['chromeos', client_pkg]
+    if ca_auth:
+        ca_cert = '/tmp/ca-cert.pem'
+        cert_src = cert_info[ca_auth]['router']['ca_cert']
+        insert_conf_file(client, ca_cert, cert_src)
+        args.append(ca_cert)
+    return { 'psk':  ':'.join(args) }
