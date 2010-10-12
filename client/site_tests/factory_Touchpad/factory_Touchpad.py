@@ -25,6 +25,8 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import factory_error as error
+from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.error import CmdError
 
 
 _SYNCLIENT_SETTINGS_CMDLINE = '/usr/bin/synclient -l'
@@ -208,23 +210,50 @@ class SynClient:
 
     def __init__(self, test):
         self._test = test
-        proc = subprocess.Popen(_SYNCLIENT_SETTINGS_CMDLINE.split(),
-                                stdout=subprocess.PIPE)
-        settings_data = proc.stdout.readlines()
+        try:
+            settings_data = utils.system_output(_SYNCLIENT_SETTINGS_CMDLINE)
+        except CmdError as e:
+            raise error.TestError('Failure on "%s" [%d]' %
+                                  (_SYNCLIENT_SETTINGS_CMDLINE,
+                                   e.args[1].exit_status))
         settings = {}
-        for line in settings_data:
+        for line in settings_data.split('\n'):
             cols = [x for x in line.rstrip().split(' ') if x]
             if len(cols) != 3 or cols[1] != '=':
                 continue
             settings[cols[0]] = cols[2]
-        self._xmin = float(settings['LeftEdge'])
-        self._xmax = float(settings['RightEdge'])
-        self._ymin = float(settings['TopEdge'])
-        self._ymax = float(settings['BottomEdge'])
-        self._zmin = float(settings['FingerLow'])
-        self._zmax = float(settings['FingerHigh'])
-        self._proc = subprocess.Popen(_SYNCLIENT_CMDLINE.split(),
-                                      stdout=subprocess.PIPE)
+        try:
+            for key, attr in (('LeftEdge',   '_xmin'),
+                              ('RightEdge',  '_xmax'),
+                              ('TopEdge',    '_ymin'),
+                              ('BottomEdge', '_ymax'),
+                              ('FingerLow',  '_zmin'),
+                              ('FingerHigh', '_zmax')):
+                v = float(settings[key])
+                setattr(self, attr, v)
+        except KeyError as e:
+            factory.log('Field %s does not exist' % e.args)
+            raise error.TestNAError("Can't detect all hardware information")
+        except ValueError as e:
+            factory.log('Invalid literal format of %s: %s' % (key, e.args[0]))
+            raise error.TestNAError("Can't understand all hardware information")
+        try:
+            self._proc = subprocess.Popen(_SYNCLIENT_CMDLINE.split(),
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE)
+        except OSError as e:
+            raise error.TestError('Failure on launching "%s"' %
+                                  _SYNCLIENT_CMDLINE)
+        # delay before we poll
+        time.sleep(0.1)
+        if self._proc.poll() is not None:
+            if self._proc.returncode != 0:
+                raise error.TestError('Failure on "%s" [%d]' %
+                                      (_SYNCLIENT_CMDLINE,
+                                       self._proc.returncode))
+            else:
+                raise error.TestError('Termination unexpected on "%s"' %
+                                      _SYNCLIENT_CMDLINE)
         gobject.io_add_watch(self._proc.stdout, gobject.IO_IN, self.recv)
 
     def recv(self, src, cond):
