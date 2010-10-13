@@ -13,56 +13,30 @@ POLL_INTERVAL = 5
 class autoupdate_Host(test.test):
     version = 1
 
-    def assert_is_file(self, path):
-        if not os.path.isfile(path):
-            raise error.TestError('%s is not a file' % path)
-
-    def assert_is_zip(self, path):
-        """Raise exception if path is not a zip file.
-        """
-        self.assert_is_file(path)
-        if not zipfile.is_zipfile(path):
-            raise error.TestError('%s is not a zip file' % path)
-
     def run_once(self, host=None, image_path=None):
         localhost = socket.gethostname()
         base_update_url='http://%s:%s' % (localhost,
                                           autoupdate_utils.DEVSERVER_PORT)
         logging.info('Using image at: %s' % image_path)
         logging.info('Base update url: %s' % base_update_url)
-        self.assert_is_zip(image_path)
+
+        # Initiate chromiumos_updater and retrieve old release version.
+        updater = chromiumos_updater.ChromiumOSUpdater(host, base_update_url)
+        old_release = updater.get_build_id()
 
         # Setup client machine by overriding lsb-release.
         client_host = autotest.Autotest(host)
         client_host.run_test('autoupdate_SetUp', devserver=base_update_url)
 
-        cwd = os.getcwd()
-        devserver_bin = os.path.join(cwd, 'dev')
-        devserver_src = os.path.join('/home', os.environ['USER'], 'trunk',
-                                     'src', 'platform', 'dev')
-        devserver_static = os.path.join(devserver_bin, 'static')
         image_name = 'chromiumos_test_image.bin'
 
-        # Copy devserver source into current working directory.
-        os.system('cp -r %s %s' % (devserver_src, cwd))
-
-        # Extract test image.
-        autoupdate_utils.extract_image(image_path, image_name, cwd)
-        test_image = os.path.join(cwd, image_name)
+        tester = autoupdate_utils.AutoUpdateTester(image_path)
 
         # Generate update payload and write to devserver static directory.
-        self.assert_is_file(test_image)
-        payload_path = os.path.join(devserver_static, 'update.gz')
-        autoupdate_utils.generate_update_payload(test_image, payload_path)
-
-        omaha_config = os.path.join(devserver_bin, 'autest.conf')
-        autoupdate_utils.make_omaha_config(omaha_config, 'autest', payload_path)
+        tester.generate_update_payload()
 
         # Starts devserver.
-        devserver = autoupdate_utils.start_devserver(devserver_bin,
-                                                     omaha_config)
-        if devserver is None:
-            error.TestFail('Please kill devserver before running test.')
+        devserver = tester.start_devserver()
 
         # Initiate update process on client.
         update_engine_client_cmd = ('update_engine_client '
@@ -75,12 +49,11 @@ class autoupdate_Host(test.test):
         logging.info('Client boot_id: %s' % boot_id)
 
         # Poll update process until it completes.
-        updater = chromiumos_updater.ChromiumOSUpdater(host, base_update_url)
         status = chromiumos_updater.UPDATER_IDLE
         while status != chromiumos_updater.UPDATER_NEED_REBOOT:
             status = updater.check_update_status()
             if status == chromiumos_updater.UPDATER_IDLE:
-                error.TestFail('Could not initiate update process on client.')
+                raise error.TestFail('Could not initiate update process on client.')
             logging.info('Update status: %s' % status)
             time.sleep(POLL_INTERVAL)
 
@@ -91,14 +64,12 @@ class autoupdate_Host(test.test):
 
         host.wait_for_restart(old_boot_id=boot_id)
 
-        image_release = image_path.split('-')[1]
-        new_release = updater.get_build_id().split('=')[0]
-        logging.info('image release: %s' % image_release)
+        new_release = updater.get_build_id()
+        logging.info('old release: %s' % old_release)
         logging.info('new release: %s' % new_release)
 
-        if not new_release.startswith(image_release):
-            error.TestFail('New release %s is not %s.'
-                           % (new_release, image_release))
+        if new_release == old_release:
+            raise error.TestFail('Failed to update')
 
         # Terminate devserver.
-        autoupdate_utils.kill_devserver(devserver)
+        tester.kill_devserver(devserver)
