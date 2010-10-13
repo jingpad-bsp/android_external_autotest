@@ -256,6 +256,10 @@ TEST_LIST = [
                 dargs={
                     'check_and_enable_write_protect':False,
                 }),
+            AutomatedSubTest(
+                label_en='Log VPD Data',
+                label_zw='記錄產品資料 (VPD)',
+                autotest_name='factory_LogVpd'),
             # NOTE: factory_Verify.dargs support following variables for
             # temporary testing. You can add these settings to help internal
             # test, but THESE ARE GOOGLE REQUIRED TESTS SO YOU SHOULD NOT

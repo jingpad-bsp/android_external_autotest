@@ -4,14 +4,12 @@
 
 import firmware_hash
 import glob
-import gzip
 import hashlib
 import logging
 import os
 import pprint
 import re
 import sys
-import StringIO
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -327,18 +325,6 @@ class hardware_Components(test.test):
         part_id = utils.system_output(cmd).strip()
         return part_id
 
-    def log_vpds(self, flashrom, base_img, layout, vpd_names):
-        # TODO(hungte) move this to a standalone test in future
-        for vpd in vpd_names:
-            if vpd not in layout:
-                continue
-            blob = StringIO.StringIO()
-            gzblob = gzip.GzipFile(fileobj=blob, mode='w')
-            gzblob.write(flashrom.get_section(base_img, layout, vpd))
-            gzblob.close()
-            blob.seek(0)
-            factory.log("VPD Data: %s (gzipped hex): %s"
-                        % (vpd, blob.read().encode('hex')))
 
     def get_hash_ro_firmware(self):
         """
@@ -347,12 +333,14 @@ class hardware_Components(test.test):
         """
         return firmware_hash.get_bios_ro_hash(exception_type=error.TestError)
 
+
     def get_hash_ec_firmware(self):
         """
         Returns a hash of Embedded Controller firmware parts,
         to confirm we have proper updated version of EC firmware.
         """
         return firmware_hash.get_ec_hash(exception_type=error.TestError)
+
 
     def get_version_rw_firmware(self):
         """

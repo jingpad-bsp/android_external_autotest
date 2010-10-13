@@ -66,6 +66,7 @@ DEFAULT_CHROMEOS_FMAP_CONVERSION = {
     "Firmware A Data": "FVMAIN",
     "Firmware B Key": "VBOOTB",
     "Firmware B Data": "FVMAINB",
+    "RW VPD": "RW_VPD",
     "Log Volume": "FV_LOG",
 }
 
