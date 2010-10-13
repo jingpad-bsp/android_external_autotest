@@ -463,7 +463,7 @@ class flashrom_util(object):
         Returns the layout map (empty if any error).
         """
         assert target in DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS, \
-                'unknown layout target: ' + test
+                'unknown layout target: ' + target
         chromeos_target = DEFAULT_CHROMEOS_FIRMWARE_LAYOUT_DESCRIPTIONS[target]
         return self.detect_layout(chromeos_target, size, image)
 
@@ -664,6 +664,7 @@ class FlashromUtility(object):
         if not self.flashrom:
             self.flashrom = flashrom_util(verbose=is_verbose)
         self.current_image = None
+        self.target_file = None
         self.layout = None
         self.whole_flash_layout = None
         self.skip_verify = None
@@ -672,7 +673,7 @@ class FlashromUtility(object):
         self.is_debug = False
 
     def initialize(self, target, layout_image=None, layout_desc=None,
-                   use_fmap_layout=True, skip_verify=None):
+                   use_fmap_layout=True, skip_verify=None, target_file=None):
         """
         Starts flashrom initialization with given target.
 
@@ -683,16 +684,21 @@ class FlashromUtility(object):
                 layout. None if you want to use current system flash content
             use_fmap_layout: Use True (default) if you trust the FMAP in
                 layout_image.
-            skip_verify: Description of what data must be skipped when
-                doing comparison / verification.
+            skip_verify: (optional) Description of what data must be skipped
+                when doing comparison / verification.
+            target_file: (optional) An firmware image file for processing
+                instead of system flashrom.
         """
         flashrom = self.flashrom
-        if not flashrom.select_target(target):
+        if not target_file and not flashrom.select_target(target):
             raise TestError("Cannot Select Target. Abort.")
+        else:
+            self.target_file = target_file
 
         if self.is_verbose:
             print " - reading current content"
-        self.current_image = flashrom.read_whole()
+        self.current_image = self._perform_read_flash()
+
         if not self.current_image:
             raise TestError("Cannot read flashrom image. Abort.")
         flashrom_size = len(self.current_image)
@@ -842,16 +848,30 @@ class FlashromUtility(object):
         """
         return self.verify_sections([], [], image1, image2)
 
+    def _perform_read_flash(self):
+        """ (INTERNAL) Performs a real read to flashrom. """
+        flashrom = self.flashrom
+
+        if self.target_file:
+            return open(self.target_file, 'rb').read()
+        else:
+            return flashrom.read_whole()
+
     def _perform_write_flash(self, changed_list, layout, new_image):
         """ (INTERNAL) Performs a real write to flashrom. """
         flashrom = self.flashrom
         if self.is_verbose:
             print " - writing firmware sections:", ','.join(changed_list)
-        if not flashrom.write_partial(new_image, layout, changed_list):
+
+        if self.target_file:
+            # TODO(hungte) implementt real partial write here?
+            open(self.target_file, 'wb').write(new_image)
+        elif not flashrom.write_partial(new_image, layout, changed_list):
             raise TestError("Cannot re-write firmware. Abort.")
+
         if self.is_verbose:
             print " - verifying firmware data"
-        verify_image = flashrom.read_whole()
+        verify_image = self._perform_read_flash()
         self.current_image = verify_image
         if not self.verify_whole_image(verify_image, new_image):
             raise TestError("Tool return success but actual data is incorrect.")

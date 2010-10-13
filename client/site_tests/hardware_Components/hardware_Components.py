@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import firmware_hash
 import glob
 import gzip
 import hashlib
@@ -327,6 +328,7 @@ class hardware_Components(test.test):
         return part_id
 
     def log_vpds(self, flashrom, base_img, layout, vpd_names):
+        # TODO(hungte) move this to a standalone test in future
         for vpd in vpd_names:
             if vpd not in layout:
                 continue
@@ -343,48 +345,14 @@ class hardware_Components(test.test):
         Returns a hash of Read Only (BIOS) firmware parts,
         to confirm we have proper keys / boot code / recovery image installed.
         """
-        # hash_ro_list: RO section to be hashed
-        hash_ro_list = ['FV_BSTUB', 'FV_GBB', 'FVDEV']
-        flashrom = flashrom_util.flashrom_util()
-        if not flashrom.select_bios_flashrom():
-            raise error.TestError('Cannot select BIOS flashrom')
-        base_img = flashrom.read_whole()
-        flashrom_size = len(base_img)
-        # XXX Allowing the FMAP to override our default layout may be an exploit
-        # here, because vendor can provide fake (non-used) GBB/BSTUB in unused
-        # area.  However since the flash memory layout may change, we need to
-        # trust FMAP here.
-        layout = flashrom.detect_chromeos_bios_layout(flashrom_size, base_img)
-        if not layout:
-            raise error.TestError('Cannot detect ChromeOS flashrom layout')
-        hash_src = ''
-        fmap_obj = site_fmap.fmap_decode(base_img)
-        if not fmap_obj:
-            raise error.TestError('No FMAP structure in flashrom.')
-        hash_src = hash_src + site_fmap.fmap_encode(fmap_obj)
-        for section in hash_ro_list:
-            src = flashrom.get_section(base_img, layout, section)
-            if not src:
-                raise error.TestError('Cannot get section [%s] from flashrom' %
-                                      section)
-            hash_src = hash_src + src
-        if not hash_src:
-            raise error.TestError('Invalid hash source from flashrom.')
-        # TODO(hungte) we should consider to move VPD reports to somewhere else
-        self.log_vpds(flashrom, base_img, layout, ['RO_VPD', 'RW_VPD'])
-        return hashlib.sha256(hash_src).hexdigest()
+        return firmware_hash.get_bios_ro_hash(exception_type=error.TestError)
 
     def get_hash_ec_firmware(self):
         """
         Returns a hash of Embedded Controller firmware parts,
         to confirm we have proper updated version of EC firmware.
         """
-        flashrom = flashrom_util.FlashromUtility()
-        flashrom.initialize(flashrom.TARGET_EC)
-        # to bypass the 'skip verification' sections
-        image = flashrom.get_current_image()
-        hash_src = flashrom.get_verification_image(image)
-        return hashlib.sha256(hash_src).hexdigest()
+        return firmware_hash.get_ec_hash(exception_type=error.TestError)
 
     def get_version_rw_firmware(self):
         """
