@@ -5,7 +5,10 @@
 
 
 import hashlib
+import optparse
+import os
 import sys
+import tempfile
 
 
 # This file may be shared by autotest framework and some command line tools
@@ -79,23 +82,70 @@ def get_ec_hash(file_source=None, exception_type=Exception):
     return hashlib.sha256(hash_src).hexdigest()
 
 
+def change_gbb_on_bios(old_bios, components):
+    """
+    Returns a new bios file that is changed its GBB values from old_bios
+    according to the fields in components.
+
+    Args:
+        old_bios: BIOS file to be changed its GBB values.
+        components: hardware component list to be referred.
+    """
+    for key in ['part_id_hwqual', 'data_bitmap_fv', 'key_root', 'key_recovery']:
+        if len(components[key]) != 1 or components[key][0] == '*':
+            raise Exception("Component list should have a valid value on %s" %
+                            key)
+    (fd, new_bios) = tempfile.mkstemp()
+    cmd = 'gbb_utility --set'
+    cmd += ' --hwid="%s"' % components['part_id_hwqual'][0]
+    cmd += ' --bmpfv="%s"' % components['data_bitmap_fv'][0]
+    cmd += ' --rootkey="%s"' % components['key_root'][0]
+    cmd += ' --recoverykey="%s"' % components['key_recovery'][0]
+    cmd += ' %s' % old_bios
+    cmd += ' %s' % new_bios
+    cmd += ' >/dev/null'
+    if os.system(cmd) != 0:
+        raise Exception("Fail to run gbb_utility: %s", cmd)
+    return new_bios
+
+
+def main():
+    usage = 'Usage: %prog --target=BIOS|EC --image=IMAGE [--gbb=COMPONENTS]'
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option('--target', dest='target', metavar='BIOS|EC',
+        help='hash target, BIOS or EC')
+    parser.add_option('--image', dest='image',
+        help='firmware image file, or empty to read system flashrom')
+    parser.add_option('--gbb', dest='gbb', metavar='COMPONENTS',
+        help='component file to be referred to replace GBB values in BIOS')
+    (options, args) = parser.parse_args()
+
+    image = options.image
+    if image is None:
+        parser.error("Please specify --image to a firmware image file or ''")
+
+    target = options.target and options.target.lower()
+    if target not in ['bios', 'ec']:
+        parser.error("Please specify either BIOS or EC for --target")
+
+    modified_image = None
+    if options.gbb:
+        if target != 'bios':
+            parser.error("Please set --target=BIOS if replace GBB")
+        if image == '':
+            parser.error("Please specify --image to a file if replace GBB")
+        components = eval(open(options.gbb).read())
+        modified_image = change_gbb_on_bios(image, components)
+
+    if target == 'bios':
+        print get_bios_ro_hash(modified_image or image)
+    elif target == 'ec':
+        print get_ec_hash(image)
+
+    # Remove the temporary GBB-modified file.
+    if modified_image:
+        os.remove(modified_image)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) == 3:
-
-        target = sys.argv[1].lower()
-        target_file = sys.argv[2]
-        if target_file == '':
-            target_file = None
-
-        if target == 'bios':
-            print get_bios_ro_hash(target_file)
-            sys.exit(0)
-        elif target == 'ec':
-            print get_ec_hash(target_file)
-            sys.exit(0)
-
-    # error
-    print "Usage: %s TARGET FILE\n" % (sys.argv[0])
-    print "TARGET: EC or BIOS"
-    print "FILE:   a firmware image file, or '' to read system flashrom"
-    sys.exit(1)
+    main()
