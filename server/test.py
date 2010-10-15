@@ -90,7 +90,30 @@ class _sysinfo_logger(object):
             self.host = hosts.create_host(self.job.machines[0],
                                           auto_monitor=False)
             try:
-                tmp_dir = self.host.get_tmp_dir(parent="/tmp/sysinfo")
+                # Since ChromeOS uses tmpfs (in memory fs) we don't want to let
+                # Autotest use it for running tests and storing results. As an
+                # additional wrinkle all fs are mounted noexec. To work around
+                # this we need to setup a mount point and remount it as exec.
+                client_path = "/mnt/stateful_partition/autotest"
+                client_mount_path = "/home/autotest_mount"
+
+                if not self.host.path_exists(client_path):
+                    self.host.run("mkdir " + client_path)
+
+                if not self.host.path_exists(client_mount_path):
+                    self.host.run("mkdir " + client_mount_path)
+
+                # Check for existing mount and unmount if exists.
+                result = self.host.run("mount | grep -q " + client_mount_path,
+                                       ignore_status=True)
+                if result.exit_status == 0:
+                  self.host.run("umount " + client_mount_path)
+
+                self.host.run("mount --bind %s %s" % (client_path,
+                                                      client_mount_path))
+                self.host.run("mount -o remount,exec " + client_mount_path)
+
+                tmp_dir = self.host.get_tmp_dir(parent=client_mount_path)
                 self.autotest = autotest.Autotest(self.host)
                 self.autotest.install(autodir=tmp_dir)
                 self.outputdir = self.host.get_tmp_dir()
