@@ -7,7 +7,7 @@ from autotest_lib.client.bin import chromeos_constants, site_cryptohome
 from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib import error, log_watcher, site_ui
 
-_DEFAULT_TIMEOUT = 30
+_DEFAULT_TIMEOUT = 60
 
 
 class TimeoutError(error.TestError):
