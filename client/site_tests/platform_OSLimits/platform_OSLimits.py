@@ -79,7 +79,7 @@ class platform_OSLimits(test.test):
         ref_equal = {'leases': 1,
                      'panic': -1,
                      'sysrq': 1,
-                     'suid-dump': 0,
+                     'suid-dump': 2,
                     }
 
         refpath = {'file_max': '/proc/sys/fs/file-max',
