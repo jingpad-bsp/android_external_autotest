@@ -76,6 +76,8 @@ def __session_manager_restarted(oldpid):
 
 
 def logged_in():
+    if (not os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)):
+        logging.debug(chromeos_constants.LOGGED_IN_MAGIC_FILE + " no exist")
     # this file is created when the session_manager emits start-user-session
     # and removed when the session_manager emits stop-user-session
     return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)

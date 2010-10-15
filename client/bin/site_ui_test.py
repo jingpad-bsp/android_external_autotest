@@ -165,6 +165,12 @@ class UITest(bin_test.test):
             site_cryptohome.remove_vault(self.username)
         except site_cryptohome.ChromiumOSError, error:
             logging.error(error)
+        # Ensure there's no stale owner state from previous tests.
+        try:
+            os.unlink(chromeos_constants.OWNER_KEY_FILE)
+            os.unlink(chromeos_constants.SIGNED_PREFERENCES_FILE)
+        except (IOError, OSError) as error:
+            logging.info(error)
 
         if self.auto_login:
             self.login(self.username, self.password)

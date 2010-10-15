@@ -39,6 +39,10 @@ CREDENTIALS = {
     '$backdoor': ['chronos@gmail.com', 'chronos'],
 }
 
+WHITELIST_DIR = '/var/lib/whitelist'
+OWNER_KEY_FILE = WHITELIST_DIR+'/owner.key'
+SIGNED_PREFERENCES_FILE = WHITELIST_DIR+'/preferences'
+
 CLIENT_LOGIN_URL = '/accounts/ClientLogin'
 ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 TOKEN_AUTH_URL = '/accounts/TokenAuth'
