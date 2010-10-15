@@ -124,6 +124,9 @@ def run_assigned_tests(machine):
   if client_attributes.has_working_kcrash:
     job.run_test("logging_KernelCrashServer", host=client)
 
+  if client_attributes.has_chromeos_firmware:
+    client_at.run_test('hardware_TPMCheck')
+
 job.parallel_on_machines(run_assigned_tests, machines)
 
 
