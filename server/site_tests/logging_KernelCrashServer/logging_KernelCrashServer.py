@@ -53,7 +53,6 @@ class logging_KernelCrashServer(test.test):
 
     def run_once(self, host=None):
         self._host = host
-        client_attributes = site_host_attributes.HostAttributes(host.hostname)
         client_at = autotest.Autotest(host)
         self._exact_copy(_CONSENT_FILE, _STOWED_CONSENT_FILE)
 
@@ -62,7 +61,8 @@ class logging_KernelCrashServer(test.test):
                            is_before=True,
                            consent=True)
 
-        if not client_attributes.has_working_kcrash:
+        client_attributes = site_host_attributes.HostAttributes(host.hostname)
+        if not client_attributes.has_chromeos_firmware:
             raise error.TestNAError(
                 'This device is unable to report kernel crashes')
 

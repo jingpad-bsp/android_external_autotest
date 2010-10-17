@@ -64,7 +64,6 @@ _DEFAULT_ATTRIBUTES = [
     'has_chromeos_firmware,False',
     'has_resume_bug,False',
     'has_ssd,True',
-    'has_working_kcrash,False'
     ]
 
 

@@ -121,7 +121,7 @@ def run_assigned_tests(machine):
 
 # TODO(msb): re-enable KernelErrorPaths, see http://crosbug.com/7679
 # job.run_test("platform_KernelErrorPaths", host=client)
-  if client_attributes.has_working_kcrash:
+  if client_attributes.has_chromeos_firmware:
     job.run_test("logging_KernelCrashServer", host=client)
 
   if client_attributes.has_chromeos_firmware:
