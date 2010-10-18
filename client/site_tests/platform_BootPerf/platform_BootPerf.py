@@ -103,12 +103,16 @@ class platform_BootPerf(test.test):
         results = {}
 
         uptime_files = [
-            ('seconds_kernel_to_startup', '/tmp/uptime-pre-startup'),
+            # N.B.  Keyval attribute names go into a database that
+            # truncates after 30 characters.
+            # ----+----1----+----2----+----3
+            ('seconds_kernel_to_startup',      '/tmp/uptime-pre-startup'),
             ('seconds_kernel_to_startup_done', '/tmp/uptime-post-startup'),
-            ('seconds_kernel_to_x_started', '/tmp/uptime-x-started'),
-            ('seconds_kernel_to_chrome_exec', '/tmp/uptime-chrome-exec'),
-            ('seconds_kernel_to_chrome_main', '/tmp/uptime-chrome-main'),
-            ('seconds_kernel_to_login', '/tmp/uptime-login-prompt-ready')]
+            ('seconds_kernel_to_x_started',    '/tmp/uptime-x-started'),
+            ('seconds_kernel_to_chrome_exec',  '/tmp/uptime-chrome-exec'),
+            ('seconds_kernel_to_chrome_main',  '/tmp/uptime-chrome-main'),
+            ('seconds_kernel_to_login',        '/tmp/uptime-login-prompt-ready')
+        ]
 
         for resultname, filename in uptime_files:
             results[resultname] = self.__parse_uptime(filename)
@@ -131,14 +135,25 @@ class platform_BootPerf(test.test):
                 pass
 
         diskstat_files = [
-            ('sectors_read_kernel_to_startup', '/tmp/disk-pre-startup'),
-            ('sectors_read_kernel_to_startup_done', '/tmp/disk-post-startup'),
-            ('sectors_read_kernel_to_chrome_exec', '/tmp/disk-chrome-exec'),
-            ('sectors_read_kernel_to_chrome_main', '/tmp/disk-chrome-main'),
-            ('sectors_read_kernel_to_login', '/tmp/disk-login-prompt-ready')]
+            # N.B. 30 character name limit -- see above.
+            # ----+----1----+----2----+----3
+            ('rdbytes_kernel_to_startup',      '/tmp/disk-pre-startup'),
+            ('rdbytes_kernel_to_startup_done', '/tmp/disk-post-startup'),
+            ('rdbytes_kernel_to_chrome_exec',  '/tmp/disk-chrome-exec'),
+            ('rdbytes_kernel_to_chrome_main',  '/tmp/disk-chrome-main'),
+            ('rdbytes_kernel_to_login',        '/tmp/disk-login-prompt-ready')
+        ]
 
+        # Disk statistics are reported in units of 512 byte sectors;
+        # we want the keyvals to report bytes so that downstream
+        # consumers don't have to ask "How big is a sector?".
         for resultname, filename in diskstat_files:
-            results[resultname] = self.__parse_diskstat(filename)
+            results[resultname] = 512 * self.__parse_diskstat(filename)
+
+        # This keyval is provided for backwards compatibility
+        # with the test dashboard.
+        results['sectors_read_kernel_to_login'] = \
+            results['rdbytes_kernel_to_login'] / 512
 
         self.__parse_firmware_boot_time(results)
         self.__parse_syslog(results, last_boot_was_reboot)
