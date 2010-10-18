@@ -230,7 +230,6 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                           username, crasher_basename,
                                           will_syslog_give_name):
         # Now check that the sending works
-        self._set_sending(True)
         result = self._call_sender_one_crash(
             username=username,
             report=os.path.basename(minidump_path))

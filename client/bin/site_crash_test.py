@@ -19,12 +19,24 @@ class CrashTest(test.test):
     _SYSTEM_CRASH_DIR = '/var/spool/crash'
     _USER_CRASH_DIR = '/home/chronos/user/crash'
 
-    def _set_sending(self, is_enabled):
+    def _set_system_sending(self, is_enabled):
+        """Sets whether or not the system crash_sender is allowed to run.
+
+        crash_sender may still be allowed to run if _set_child_sending is
+        called with true and it is run as a child process."""
         if is_enabled:
             if os.path.exists(self._PAUSE_FILE):
                 os.remove(self._PAUSE_FILE)
         else:
             utils.system('touch ' + self._PAUSE_FILE)
+
+
+    def _set_child_sending(self, is_enabled):
+        """Overrides crash sending enabling for child processes."""
+        if is_enabled:
+            os.environ['OVERRIDE_PAUSE_SENDING'] = "1"
+        else:
+            del os.environ['OVERRIDE_PAUSE_SENDING']
 
 
     def _reset_rate_limiting(self):
@@ -252,7 +264,7 @@ class CrashTest(test.test):
     def cleanup(self):
         self._reset_rate_limiting()
         self._clear_spooled_crashes()
-        self._set_sending(self._leave_crash_sending)
+        self._set_system_sending(self._leave_crash_sending)
         self._set_sending_mock(mock_enabled=False)
         if self._automatic_consent_saving:
             self._pop_consent()
@@ -287,11 +299,12 @@ class CrashTest(test.test):
             logging.info(('=' * 20) + ('Running %s' % test_name) + ('=' * 20))
             if initialize_crash_reporter:
                 self._initialize_crash_reporter()
-            # Disable crash_sender and kill off any running ones.
-            self._set_sending(False)
+            # Disable crash_sender from running, kill off any running ones, but
+            # set environment so crash_sender may run as a child process.
+            self._set_system_sending(False)
+            self._set_child_sending(True)
             self._kill_running_sender()
             self._reset_rate_limiting()
             if clear_spool_first:
                 self._clear_spooled_crashes()
-            self._set_sending(False)
             getattr(self, '_test_' + test_name)()

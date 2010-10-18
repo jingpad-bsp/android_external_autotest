@@ -69,7 +69,6 @@ class logging_KernelCrash(site_crash_test.CrashTest):
         kcrash_report = self._get_kcrash_name()
         if not os.path.exists(kcrash_report):
             raise error.TestFail('Crash report gone')
-        self._set_sending(True)
         result = self._call_sender_one_crash(
             report=os.path.basename(kcrash_report))
         if (not result['send_attempt'] or not result['send_success'] or

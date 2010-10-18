@@ -33,7 +33,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
 
 
     def _check_simple_minidump_send(self, report):
-        self._set_sending(True)
         result = self._call_sender_one_crash(report=report)
         if (result['report_exists'] or
             result['rate_count'] != 1 or
@@ -62,7 +61,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
 
     def _test_sender_simple_old_minidump(self):
         """Test that old minidumps and metadata are sent."""
-        self._set_sending(True)
         dmp_path = self.write_crash_dir_entry('fake.dmp', '')
         meta_path = self.write_fake_meta('fake.meta', 'fake')
         self._shift_file_mtime(dmp_path, _25_HOURS_AGO)
@@ -72,7 +70,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
 
     def _test_sender_simple_kernel_crash(self):
         """Test sending a single kcrash report."""
-        self._set_sending(True)
         kcrash_fake_report = self.write_crash_dir_entry(
             'kernel.today.kcrash', '')
         self.write_fake_meta('kernel.today.meta', 'kernel')
@@ -96,8 +93,11 @@ class logging_CrashSender(site_crash_test.CrashTest):
 
         This is testing the sender's test functionality - if this regresses,
         other tests can become flaky because the cron-started sender may run
-        asynchronously to these tests."""
-        self._set_sending(False)
+        asynchronously to these tests.  Disable child sending as normally
+        this environment configuration allows our children to run in spite of
+        the pause file."""
+        self._set_system_sending(False)
+        self._set_child_sending(False)
         result = self._call_sender_one_crash()
         if (not result['report_exists'] or
             not 'Exiting early due to' in result['output'] or
@@ -107,7 +107,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
 
     def _test_sender_reports_disabled(self):
         """Test that when reporting is disabled, we don't send."""
-        self._set_sending(True)
         result = self._call_sender_one_crash(reports_enabled=False)
         if (result['report_exists'] or
             not 'Uploading is disabled' in result['output'] or
@@ -117,7 +116,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
 
     def _test_sender_rate_limiting(self):
         """Test the sender properly rate limits and sends with delay."""
-        self._set_sending(True)
         sleep_times = []
         for i in range(1, _DAILY_RATE_LIMIT + 1):
             result = self._call_sender_one_crash()
@@ -158,7 +156,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
         Here we rely on the sender not checking the other running pid
         is of the same instance.
         """
-        self._set_sending(True)
         utils.open_write_close(self._CRASH_SENDER_RUN_PATH, str(os.getpid()))
         result = self._call_sender_one_crash()
         if (not 'Already running.' in result['output'] or
@@ -169,7 +166,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
 
     def _test_sender_send_fails(self):
         """Test that when the send fails we try again later."""
-        self._set_sending(True)
         result = self._call_sender_one_crash(send_success=False)
         if not result['send_attempt'] or result['send_success']:
             raise error.TestError('Did not properly cause a send failure')
@@ -186,7 +182,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
         core_file = self.write_crash_dir_entry('random1.core', '')
         unknown_file = self.write_crash_dir_entry('.unknown', '')
         # As new files, we expect crash_sender to leave these alone.
-        self._set_sending(True)
         results = self._call_sender_one_crash()
         if ('Removing old orphaned file' in results['output'] or
             not os.path.exists(core_file) or
@@ -206,7 +201,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
         meta_file = self.write_crash_dir_entry('incomplete.meta', 'half=1')
         dmp_file = self.write_crash_dir_entry('incomplete.dmp', '')
         # As new files, we expect crash_sender to leave these alone.
-        self._set_sending(True)
         results = self._call_sender_one_crash()
         if ('Removing recent incomplete report' in results['output'] or
             not os.path.exists(meta_file) or
@@ -227,7 +221,6 @@ class logging_CrashSender(site_crash_test.CrashTest):
         gets removed as part of sending, we run the cron job (which is
         asynchronous) and wait for that file to be removed to just verify
         the job eventually runs the sender."""
-        self._set_sending(True)
         minidump = self._prepare_sender_one_crash(send_success=True,
                                                   reports_enabled=True,
                                                   username='root',
