@@ -283,7 +283,7 @@ class BaseAutotest(installable_object.InstallableObject):
 
     def run(self, control_file, results_dir='.', host=None, timeout=None,
             tag=None, parallel_flag=False, background=False,
-            client_disconnect_timeout=1800):
+            client_disconnect_timeout=1800, ignore_aborts=False):
         """
         Run an autotest job on the remote machine.
 
@@ -301,6 +301,8 @@ class BaseAutotest(installable_object.InstallableObject):
                 for monitoring the client and collecting the results.
         @param client_disconnect_timeout: Seconds to wait for the remote host
                 to come back after a reboot.  [default: 30 minutes]
+        @param ignore_aborts: If the Autotest client aborts unexpectedly, don't
+                record job status as ABORT.
 
         @raises AutotestRunError: If there is a problem executing
                 the control file.
@@ -313,7 +315,7 @@ class BaseAutotest(installable_object.InstallableObject):
 
         atrun = _Run(host, results_dir, tag, parallel_flag, background)
         self._do_run(control_file, results_dir, host, atrun, timeout,
-                     client_disconnect_timeout)
+                     client_disconnect_timeout, ignore_aborts)
 
 
     def _get_host_and_setup(self, host):
@@ -327,7 +329,7 @@ class BaseAutotest(installable_object.InstallableObject):
 
 
     def _do_run(self, control_file, results_dir, host, atrun, timeout,
-                client_disconnect_timeout):
+                client_disconnect_timeout, ignore_aborts):
         try:
             atrun.verify_machine()
         except:
@@ -396,7 +398,8 @@ class BaseAutotest(installable_object.InstallableObject):
 
         atrun.execute_control(
                 timeout=timeout,
-                client_disconnect_timeout=client_disconnect_timeout)
+                client_disconnect_timeout=client_disconnect_timeout,
+                ignore_aborts=ignore_aborts)
 
 
     def run_timed_test(self, test_name, results_dir='.', host=None,
@@ -660,7 +663,7 @@ class _BaseRun(object):
 
 
     def execute_section(self, section, timeout, stderr_redirector,
-                        client_disconnect_timeout):
+                        client_disconnect_timeout, ignore_aborts=False):
         logging.info("Executing %s/bin/autotest %s/control phase %d",
                      self.autodir, self.autodir, section)
 
@@ -683,7 +686,8 @@ class _BaseRun(object):
             err = None
 
         # log something if the client failed AND never finished logging
-        if err and not self.is_client_job_finished(last_line):
+        if (err and not self.is_client_job_finished(last_line)
+            and not ignore_aborts):
             self.log_unexpected_abort(stderr_redirector)
 
         if err:
@@ -718,7 +722,8 @@ class _BaseRun(object):
         self.host.reboot_followup()
 
 
-    def execute_control(self, timeout=None, client_disconnect_timeout=None):
+    def execute_control(self, timeout=None, client_disconnect_timeout=None,
+                        ignore_aborts=False):
         if not self.background:
             collector = log_collector(self.host, self.tag, self.results_dir)
             hostname = self.host.hostname
@@ -740,7 +745,8 @@ class _BaseRun(object):
                     section_timeout = None
                 boot_id = self.host.get_boot_id()
                 last = self.execute_section(section, section_timeout,
-                                            logger, client_disconnect_timeout)
+                                            logger, client_disconnect_timeout,
+                                            ignore_aborts)
                 if self.background:
                     return
                 section += 1
