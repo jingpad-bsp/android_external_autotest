@@ -253,18 +253,25 @@ class status_line(object):
             return None
         indent, line = re.search(r"^(\t*)(.*)$", line, flags=re.DOTALL).groups()
         indent = len(indent)
-        line = line.strip()
 
         # split the line into the fixed and optional fields
-        parts = line.split("\t")
-        status, subdir, testname = parts[0:3]
-        reason = parts[-1]
-        optional_parts = parts[3:-1]
+        parts = line.rstrip("\n").split("\t")
 
-        # all the optional parts should be of the form "key=value"
-        assert sum('=' not in part for part in optional_parts) == 0
-        optional_fields = dict(part.split("=", 1)
-                               for part in optional_parts)
+        part_index = 3
+        status, subdir, testname = parts[0:part_index]
+
+        # all optional parts should be of the form "key=value". once we've found
+        # a non-matching part, treat it and the rest of the parts as the reason.
+        optional_fields = {}
+        while part_index < len(parts):
+          kv = re.search(r"^(\w+)=(.+)", parts[part_index])
+          if not kv:
+            break
+
+          optional_fields[kv.group(1)] = kv.group(2)
+          part_index += 1
+
+        reason = "\t".join(parts[part_index:])
 
         # build up a new status_line and return it
         return cls(indent, status, subdir, testname, reason,
