@@ -91,7 +91,6 @@ class UITest(bin_test.test):
             lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
             site_login.TimeoutError('Timed out waiting for DNS changes.'),
             10)
-        site_login.refresh_login_screen()
 
 
     def revert_dns(self):
@@ -171,6 +170,7 @@ class UITest(bin_test.test):
             os.unlink(chromeos_constants.SIGNED_PREFERENCES_FILE)
         except (IOError, OSError) as error:
             logging.info(error)
+        site_login.refresh_login_screen()
 
         if self.auto_login:
             self.login(self.username, self.password)
