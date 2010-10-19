@@ -7,9 +7,6 @@ from autotest_lib.client.bin import site_backchannel, site_ui_test, site_login
 from autotest_lib.client.common_lib import error, site_httpd, \
                             site_power_status, site_ui, utils
 
-# Workaround so flimflam.py doesn't need to be installed in the chroot.
-sys.path.append(os.environ.get('SYSROOT', '') + '/usr/lib/flimflam/test')
-# NB: /usr/local is temporary for compatibility
 sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
 import flimflam
 

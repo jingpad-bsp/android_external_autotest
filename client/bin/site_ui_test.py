@@ -9,10 +9,7 @@ from autotest_lib.client.common_lib import error, site_ui
 from autotest_lib.client.common_lib import site_auth_server, site_dns_server
 from dbus.mainloop.glib import DBusGMainLoop
 
-# Workaround so flimflam.py doesn't need to be installed in the chroot.
-sys.path.append(os.environ.get('SYSROOT', '') + '/usr/lib/flimflam/test')
-# NB: /usr/local is temporary for compatibility
-sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
+sys.path.append(os.environ.get("SYSROOT", "") + "/usr/local/lib/flimflam/test")
 import flimflam
 
 

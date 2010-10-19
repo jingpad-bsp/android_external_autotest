@@ -7,8 +7,7 @@ from autotest_lib.client.common_lib import error
 
 import dbus, os, sys
 
-import_path = os.environ.get("SYSROOT", "") + "/usr/lib/flimflam/test"
-sys.path.append(import_path)
+sys.path.append(os.environ.get("SYSROOT", "") + "/usr/local/lib/flimflam/test")
 import flimflam
 
 class network_3GModemPresent(test.test):

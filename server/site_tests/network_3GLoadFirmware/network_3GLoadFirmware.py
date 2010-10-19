@@ -11,7 +11,7 @@ class network_3GLoadFirmware(test.test):
 	version = 1
 
 	def flimflam(self, prog):
-		return '/usr/lib/flimflam/test/%s' % prog
+		return '/usr/local/lib/flimflam/test/%s' % prog
 
 	def modem_isup(self):
 		result = self.client.run(self.flimflam('mm-status'))

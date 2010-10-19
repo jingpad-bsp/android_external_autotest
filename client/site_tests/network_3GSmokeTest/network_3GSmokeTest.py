@@ -8,9 +8,7 @@ from autotest_lib.client.common_lib import error
 import logging, os, re, socket, string, sys, time, urllib2
 import dbus, dbus.mainloop.glib, gobject
 
-# Workaround so flimflam.py can remain part of flimflam scripts
-import_path = os.environ.get('SYSROOT', '') + '/usr/lib/flimflam/test'
-sys.path.append(import_path)
+sys.path.append(os.environ.get("SYSROOT", "") + "/usr/local/lib/flimflam/test")
 import flimflam, routing, mm
 
 
