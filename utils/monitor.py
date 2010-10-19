@@ -64,23 +64,17 @@ Usage:
 """
 
 __author__ = 'kdlucas@gmail.com (Kelly Lucas)'
-__version__ = '1.95'
+__version__ = '2.01'
 
 import logging, logging.handlers, optparse, os, paramiko, Queue, shutil
 import subprocess, sys, threading
 
-import common
-
 from IPy import IP
 from time import *
 
-settings = 'autotest_lib.frontend.settings'
-os.environ['DJANGO_SETTINGS_MODULE'] = settings
-
-from autotest_lib.frontend.afe import models as afe_models
-
 TIMEOUT = 5  # Timeout for accessing remote hosts.
 RUNTIME = 240  # Total time to allow the host queue to finish all tasks.
+AUTOTEST_BIN = '/home/build/static/projects/chromeos/autotest'
 
 def SetLogger(namespace, logfile, loglevel, log_to_stdout=False):
     """Create a log handler and set log level.
@@ -94,9 +88,11 @@ def SetLogger(namespace, logfile, loglevel, log_to_stdout=False):
     Returns:
         Logger object.
     We use RotatingFileHandler to handle rotating the log files when they reach
-    maxsize in bytes.
+    MAXSIZE in bytes.
     """
-    MAXSIZE = 8192000  # Max size to grow log files, in bytes.
+    # The logs are linked to the landing page, so we don't want to allow them to
+    # grow too large.
+    MAXSIZE = 1024000  # Max size to grow log files, in bytes.
 
     levels = {'debug': logging.DEBUG,
               'info': logging.INFO,
@@ -132,13 +128,13 @@ class MonitorThread(threading.Thread):
 
     def run(self):
         host = self.tb.q.get()
-        worker = RemoteWorker(host.hostname)
+        worker = RemoteWorker(host)
         try:
             worker.run()
         except Exception, e:
-            self.tb.logger.error('Error on remote host: %s\n%s', self.h, e)
+            self.tb.logger.error('Error on remote host: %s\n%s', host, e)
         # Notify Queue that process is finished.
-        self.tb.logger.debug('Releasing host %s from queue', host.hostname)
+        self.tb.logger.debug('Releasing host %s from queue', host)
         self.tb.q.task_done()
 
 
@@ -154,8 +150,11 @@ class RemoteWorker(object):
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.tb = TB  # In case the thread outlives the main program.
-        # Send paramiko messages to our log file.
-        paramiko.util.log_to_file(self.tb.logfile, level=self.tb.loglevel)
+        # Send paramiko messages to it's own log file.
+        # paramiko.util.log_to_file() will overwrite the log file each time you
+        # call it, therefore do not send paramiko messages to the update log.
+        self.logger = SetLogger('SSH', self.tb.sshlog, self.tb.loglevel)
+        paramiko.util.log_to_file(self.tb.sshlog, level=30)
 
 
     def run(self):
@@ -164,7 +163,7 @@ class RemoteWorker(object):
                                 key_filename=self.tb.privkey, timeout=TIMEOUT)
             self.tb.hosts[self.h]['status'] = True
         except Exception, e:
-            self.tb.logger.error('Host %s: %s', self.h, e)
+            self.logger.error('Host %s: %s', self.h, e)
             self.tb.hosts[self.h]['status'] = False
         finally:
             if self.tb.hosts[self.h]['status']:
@@ -172,7 +171,7 @@ class RemoteWorker(object):
                     self.ReadRelease()  # Must be done before UpdateRelease().
                     self.ReadFirmware()
                 except Exception, e:
-                    self.tb.logger.error('Error on : %s\n%s', self.h, e)
+                    self.logger.error('Error on : %s\n%s', self.h, e)
             self.UpdateRelease()  # Must be done before ReadResources().
             if self.tb.hosts[self.h]['status']:
                 try:
@@ -355,22 +354,23 @@ class TestBed(object):
             update: boolean, flag to get update data from remote hosts.
             url: string, base URL of system health monitor.
         """
-        loglevels = {'debug': 10,
-                     'info': 20,
-                     'warning': 30,
-                     'error': 40,
-                     'critical': 50
-                    }
         self.version = ['ec_firmware', 'firmware', 'release']
         start_time = strftime('%H:%M:%S', localtime())
         self.time = int(time())
-        self.update_runfile = '/var/run/systemhealth/update.running'
-        self.graph_runfile = '/var/run/systemhealth/graph.running'
+        rundir = '/var/run/systemhealth'
+        if not os.path.isdir(rundir):
+            os.mkdir(rundir)
+        self.update_runfile = os.path.join(rundir, 'update.running')
+        self.graph_runfile = os.path.join(rundir, 'graph.running')
         self.logfile = logfile
-        self.loglevel = loglevels[debug]
+        self.sshlog = os.path.join(home, 'ssh.log')
         self.logger = SetLogger('SystemMonitor', logfile, debug,
                                 log_to_stdout=log_to_stdout)
+	self.logger.info('****************************************')
+	self.logger.info('***************RUN START****************')
+	self.logger.info('****************************************')
         self.logger.info('Script started at: %s', start_time)
+        self.loglevel = debug
         self.graph = graph
         self.home = home
         self.html = html
@@ -402,21 +402,34 @@ class Monitor(object):
 
     def LoadHosts(self):
         """Get a list of hosnames from the AutoTest server."""
-        # We need to refine the list of afe_hosts.
-        # self.afe_hosts are host objects from AutoTest afe models.
-        # We only want AclGroup acl_cros_test.
-        obj_list = afe_models.AclGroup.objects.get(name='acl_cros_test')
-        afe_hosts = obj_list.hosts.all()
+        # We only want AclGroup acl_cros_test, and depend on the atest tool to
+        # get the hosts from the AutoTest server.
+        # We'll return a dictionary keyed by hostname/ip address.
+        afe_hosts = {}
+        cmd = '%s/cli/atest host list -a acl_cros_test' % AUTOTEST_BIN
+        atest_out = Exec(cmd, output=True)
+        lines = atest_out.split('\n')
+        for line in lines:
+            fields = line.split()
+            if len(fields) > 4:
+                afe_hosts[fields[0]] = {}
+                afe_hosts[fields[0]]['status'] = fields[1]
+                afe_hosts[fields[0]]['locked'] = fields[2]
+                afe_hosts[fields[0]]['platform'] = fields[3]
+                afe_hosts[fields[0]]['labels'] = fields[4:]
+        # Remove atest's field labels.
+        if 'Host' in afe_hosts:
+            del afe_hosts['Host']
         # Set up some dictionaries for each host.
         for host in afe_hosts:
-            TB.hosts[host.hostname] = {}
-            TB.hosts[host.hostname]['data'] = {}  # Raw data from hosts.
-            TB.hosts[host.hostname]['rrddata'] = {}  # Formatted data.
-            TB.hosts[host.hostname]['status'] = None
-            TB.hosts[host.hostname]['time'] = None
+            TB.hosts[host] = {}
+            TB.hosts[host]['data'] = {}  # Raw data from hosts.
+            TB.hosts[host]['rrddata'] = {}  # Formatted data.
+            TB.hosts[host]['status'] = None
+            TB.hosts[host]['time'] = None
             for v in TB.version:
-                TB.hosts[host.hostname][v] = {}
-                TB.hosts[host.hostname][v]['PTR'] = None
+                TB.hosts[host][v] = {}
+                TB.hosts[host][v]['PTR'] = None
 
         return afe_hosts
 
@@ -434,7 +447,7 @@ class Monitor(object):
 
         # Fill the requests queue with AutoTest host objects.
         for host in self.afe_hosts:
-            TB.logger.debug('Placing %s in host queue.', host.hostname)
+            TB.logger.debug('Placing %s in host queue.', host)
             TB.q.put(host)
 
 
@@ -450,11 +463,11 @@ class Monitor(object):
         TB.logger.info('%s hosts left in host queue', TB.q.qsize())
         TB.logger.info('Runtime is %d seconds', (time() - TB.time))
 
-        LogLevel = TB.logger.getEffectiveLevel()
-        if LogLevel == 10:
+        loglevel = TB.logger.getEffectiveLevel()
+        if loglevel == 10:
             for host in self.afe_hosts:
-                TB.logger.debug('%s status is %s', host.hostname,
-                                TB.hosts[host.hostname]['status'])
+                TB.logger.debug('%s status is %s', host,
+                                TB.hosts[host]['status'])
 
         # If there are any running threads, give them time to finish.
         # Since paramiko is multi threaded, this check is needed. A deadline
@@ -471,7 +484,7 @@ class Monitor(object):
                     self.threads.remove(t)
             if len(self.threads) == 0:
                 TB.logger.info('All threads have completed their jobs.')
-                TB.logger.info('Runtime is %d seconds', (time() - TB.time))
+
                 running = False
             else:
                 TB.logger.debug('%d threads still running.', len(self.threads))
@@ -495,7 +508,7 @@ class Monitor(object):
         t.start()
 
         for host in self.afe_hosts:
-            if host.hostname == hostname:
+            if host == hostname:
                 TB.q.put(host)
                 break
         TB.q.join(timeout=TIMEOUT)
@@ -507,9 +520,9 @@ class Monitor(object):
         """Show raw data collected from each host."""
 
         for host in self.afe_hosts:
-            TB.logger.info('Hostname: %s', host.hostname)
-            for k in TB.hosts[host.hostname]['data']:
-                TB.logger.info('%s: %s' , k, TB.hosts[host.hostname]['data'][k])
+            TB.logger.info('Hostname: %s', host)
+            for k in TB.hosts[host]['data']:
+                TB.logger.info('%s: %s' , k, TB.hosts[host]['data'][k])
 
 
     def ValidIP(self, address):
@@ -541,12 +554,12 @@ class Monitor(object):
         hostlist = []
 
         for h in afelist:
-            if self.ValidIP(h.hostname):
+            if self.ValidIP(h):
                 iplist.append(h)
             else:
                 hostlist.append(h)
 
-        templist = [(IP(h.hostname).int(), h) for h in iplist]
+        templist = [(IP(h).int(), h) for h in iplist]
         templist.sort()
         newlist = [h[1] for h in templist]
         hostlist.sort()
@@ -562,16 +575,27 @@ class Monitor(object):
         sorted_hosts = []
         downhosts = 0
         readyhosts = 0
-        sorted_ip = self.SortAFEHosts(self.afe_hosts)
+        hostlist = self.afe_hosts.keys()
+        sorted_ip = self.SortAFEHosts(hostlist)
         # Put host that are down first
         for h in sorted_ip:
-            if not TB.hosts[h.hostname]['status']:
+            if not TB.hosts[h]['status']:
                 sorted_hosts.insert(downhosts, h)
                 downhosts = downhosts + 1
             else:
                 sorted_hosts.append(h)
                 readyhosts = readyhosts + 1
 
+        # Create symlink to the log file if it does not exist.
+        if TB.graph:
+            log_filename = os.path.join(TB.home, 'monitor-graph.log')
+        else:
+            log_filename = os.path.join(TB.home, 'monitor.log')
+        if not os.path.isfile(log_filename):
+            try:
+                os.symlink(TB.logfile, log_filename)
+            except OSError, e:
+                TB.logger.error('Error linking to logfile\n%s', e)
         LandPageFile = os.path.join(TB.home, 'index.html')
         # The temp file is used so that there will always be viewable html page
         # when the new page is being built.
@@ -586,23 +610,34 @@ class Monitor(object):
         f.write('<TR><TD><em>Total Hosts</em><TD>%d' % (downhosts + readyhosts))
         f.write('<TR><TD><em>Inaccessible Hosts</em><TD>%d' % downhosts)
         f.write('<TR><TD><em>Accessible Hosts</em><TD>%d' % readyhosts)
+        f.write('<TR><TD><em>Update Log<em><TD><a href=%s>%s</a>' % (
+                'monitor.log', 'log'))
+        f.write('<TR><TD><em>Graphing Log<em><TD><a href=%s>%s</a>' % (
+                'monitor-graph.log', 'log'))
+        f.write('<TR><TD><em>Connection Log<em><TD><a href=%s>%s</a>' % (
+                'ssh.log', 'log'))
         f.write('</table>')
         f.write('<H1>CAUTOTEST Testbed</H1>')
         f.write('<H2>System Health</H2>')
+        f.write('<BR><BR>')
         f.write('<HR>')
         f.write('<table>')
         f.write('<CAPTION><EM>Graphs updated every hour</EM></CAPTION>')
         f.write('<TR><TH>Hostname<TH>Status<TH>Labels<TH>Last Update')
         f.write('<TH>Release<TH>Health</TR>')
         for h in sorted_hosts:
-            if TB.hosts[h.hostname]['status']:
-                status = 'Ready'
-                bgcolor = '#FFFFFF'
+            if TB.hosts[h]['status']:
+                if self.afe_hosts[h]['status'] == 'Running':
+                    status = 'Running'
+                    bgcolor = '#FFCC66'
+                else:
+                    status = 'Ready'
+                    bgcolor = '#FFFFFF'
             else:
                 status = 'Down'
                 bgcolor = '#FF9999'
-            link_dir = 'hosts/' + h.hostname + '/rrd'
-            rrd_dir = os.path.join(TB.home, 'hosts', h.hostname, 'rrd')
+            link_dir = 'hosts/' + h + '/rrd'
+            rrd_dir = os.path.join(TB.home, 'hosts', h, 'rrd')
             fqn = 'http://cautotest.corp.google.com/'
             view_host = 'afe/#tab_id=view_host&object_id=%s' % h
             hlink = fqn + view_host
@@ -610,17 +645,15 @@ class Monitor(object):
                 os.makedirs(rrd_dir)
                 os.chmod(rrd_dir, 0755)
             f.write('<tr bgcolor=%s><th>' % bgcolor)
-            f.write('<a href=%s>%s</a></th>' % (hlink, h.hostname))
+            f.write('<a href=%s>%s</a></th>' % (hlink, h))
             f.write('<td><em>%s</em>' % status)
             f.write('<td>')
-            for label in h.labels.values_list('name', flat=True):
-                if 'netbook' in label:
-                    f.write('<em><b>%s</b></em><br>' % label)
-                else:
-                    f.write('%s<br>' % label)
-            f.write('<td>%s' % TB.hosts[h.hostname]['time'])
-            if TB.hosts[h.hostname]['release']['PTR']:
-                f.write('<td>%s' % TB.hosts[h.hostname]['release']['PTR'])
+            f.write('<em><b>%s</b></em><br>' % self.afe_hosts[h]['platform'])
+            for label in self.afe_hosts[h]['labels']:
+                f.write('%s<br>' % label)
+            f.write('<td>%s' % TB.hosts[h]['time'])
+            if TB.hosts[h]['release']['PTR']:
+                f.write('<td>%s' % TB.hosts[h]['release']['PTR'])
             else:
                 f.write('<td>Unknown')
             index_file = os.path.join(rrd_dir, 'index.html')
@@ -870,7 +903,8 @@ class Resource(object):
         TB.hosts[h]['rrddata'][k] = []
         lines = TB.hosts[h]['data'][k].split('\n')
         for line in lines:
-            fields.extend(line.split())
+            if not '==>' in line:
+                fields.extend(line.split())
         TB.hosts[h]['rrddata'][k] = fields[0:2]
 
 
@@ -1033,7 +1067,10 @@ class Resource(object):
 
         for r in self.resources:
             if r in self.files:
-                command[r] = 'cat %s' % self.files[r]
+                if r == 'boot':
+                    command[r] = 'head %s' % self.files[r]
+                else:
+                    command[r] = 'cat %s' % self.files[r]
             elif r in self.fs:
                 if '_space' in r:
                     command[r] = 'df -lP %s' % self.fs[r]
@@ -1601,7 +1638,7 @@ class RRD(object):
         rrd_cmd = rrd_cmd + rrd_suffix
         # Convert the rrd_cmd to a string with space separated commands.
         exec_str = ' '.join(rrd_cmd)
-        result = self.Exec(exec_str)
+        result = Exec(exec_str)
         if result:
             TB.logger.error('Error executing:')
             TB.logger.error('%s\n', exec_str)
@@ -1622,7 +1659,7 @@ class RRD(object):
                 TB.hosts[self.hostname]['rrddata'][self.rrdname])
         rrd_cmd = [self.rrdtool, 'update', self.rrdfile, data]
         exec_str = ' '.join(rrd_cmd)
-        result = self.Exec(exec_str)
+        result = Exec(exec_str)
         if result:
             TB.logger.error('Error executing:')
             TB.logger.error('%s\n', exec_str)
@@ -1675,37 +1712,11 @@ class RRD(object):
                     rrd_cmd.append(vrule)
 
             exec_str = ' '.join(rrd_cmd)
-            result = self.Exec(exec_str)
+            result = Exec(exec_str)
             if result:
                 TB.logger.error('Error while running %s', exec_str)
             if os.path.isfile(png_file):
                 os.chmod(png_file, 0644)
-
-
-    def Exec(self, cmd, output=False):
-        """Run subprocess.Popen() and return output if output=True.
-
-        Args:
-            cmd: string, represents command with arguments.
-            output: boolean, True=capture and return output.
-        Returns:
-            string if output = True
-            return code of command if output = False
-        """
-
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        p.wait()
-        out = p.stdout.read()
-        errors = p.stderr.read()
-        if p.returncode:
-            TB.logger.error(out)
-            TB.logger.error(errors)
-
-        if output:
-            return out
-        else:
-            return p.returncode
 
 
 class TBQueue(Queue.Queue):
@@ -1732,11 +1743,38 @@ class TBQueue(Queue.Queue):
             self.all_tasks_done.release()
 
 
+def Exec(cmd, output=False):
+    """Run subprocess.Popen() and return output if output=True.
+
+    Args:
+        cmd: string, represents command with arguments.
+        output: boolean, True=capture and return output.
+    Returns:
+        string if output = True
+        return code of command if output = False
+    """
+
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    p.wait()
+    out = p.stdout.read()
+    errors = p.stderr.read()
+    if p.returncode:
+        TB.logger.error(out)
+        TB.logger.error(errors)
+
+    if output:
+        return out
+    else:
+        return p.returncode
+
+
 def ParseArgs():
     """Parse all command line options."""
     # Assume Chrome OS source is located on /usr/local/google.
     homedir = os.environ['HOME']
-    cros_src = '/usr/local/google' + homedir + '/chromeos/chromeos/src'
+    logfile = os.path.join(homedir, 'monitor.log')
+    cros_src = '/usr/local/google' + homedir + '/chromeos/src'
     systemhealth_home = os.path.join(homedir, 'www', 'systemhealth')
 
     parser = optparse.OptionParser(version= __version__)
@@ -1765,7 +1803,7 @@ def ParseArgs():
                       dest='html')
     parser.add_option('--logfile',
                       help='name of logfile [default: %default]',
-                      default='monitor.log',
+                      default=logfile,
                       dest='logfile')
     parser.add_option('--log_to_stdout',
                       help='Send output to StdOut [default: %default]',
