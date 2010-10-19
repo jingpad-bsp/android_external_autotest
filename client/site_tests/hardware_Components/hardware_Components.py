@@ -45,7 +45,6 @@ class hardware_Components(test.test):
     ]
     _usb_cids = [
         'part_id_bluetooth',
-        'part_id_cardreader',
         'part_id_webcam',
         'part_id_3g',
         'part_id_gps',
@@ -53,6 +52,7 @@ class hardware_Components(test.test):
     _check_existence_cids = [
         'key_recovery',
         'key_root',
+        'part_id_cardreader',
         'part_id_chrontel',
     ]
     _non_check_cids = [
@@ -133,6 +133,18 @@ class hardware_Components(test.test):
         current_key = self._gbb.get_rootkey()
         target_key = utils.read_file(part_id)
         return current_key.startswith(target_key)
+
+
+    def check_existence_part_id_cardreader(self, part_id):
+        # A cardreader is always power off until a card inserted. So checking
+        # it using log messages instead of lsusb can limit operator-attended.
+        # But note that it does not guarantee the cardreader presented during
+        # the time of the test.
+        [vendor_id, product_id] = part_id.split(':')
+        found_pattern = ('New USB device found, idVendor=%s, idProduct=%s' %
+                         (vendor_id, product_id))
+        cmd = 'grep -qs "%s" /var/log/messages*' % found_pattern
+        return utils.system(cmd, ignore_status=True) == 0
 
 
     def check_existence_part_id_chrontel(self, part_id):
