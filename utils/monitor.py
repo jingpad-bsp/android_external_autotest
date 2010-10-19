@@ -366,9 +366,9 @@ class TestBed(object):
         self.sshlog = os.path.join(home, 'ssh.log')
         self.logger = SetLogger('SystemMonitor', logfile, debug,
                                 log_to_stdout=log_to_stdout)
-	self.logger.info('****************************************')
-	self.logger.info('***************RUN START****************')
-	self.logger.info('****************************************')
+        self.logger.info('========================================')
+        self.logger.info('===============RUN START================')
+        self.logger.info('========================================')
         self.logger.info('Script started at: %s', start_time)
         self.loglevel = debug
         self.graph = graph
