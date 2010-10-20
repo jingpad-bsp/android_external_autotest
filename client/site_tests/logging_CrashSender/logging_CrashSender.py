@@ -227,14 +227,15 @@ class logging_CrashSender(site_crash_test.CrashTest):
                                                   report=None)
         if not os.path.exists(minidump):
             raise error.TestError('minidump not created')
-        utils.system(_CRASH_SENDER_CRON_PATH)
         self._log_reader.set_start_by_current()
-        site_utils.poll_for_condition(
-            lambda: not os.path.exists(minidump),
-            desc='minidump to be removed')
+        utils.system(_CRASH_SENDER_CRON_PATH)
+        self.wait_for_sender_completion()
+        if os.path.exists(minidump):
+            raise error.TestFail('minidump was not removed')
         crash_sender_log = self._log_reader.get_logs()
         logging.debug('Contents of crash sender log: ' + crash_sender_log)
         result = self._parse_sender_output(crash_sender_log)
+        logging.debug('Result of crash send: %s' % result)
         if not result['send_attempt'] or not result['send_success']:
             raise error.TestFail('Cron simple run test failed')
 

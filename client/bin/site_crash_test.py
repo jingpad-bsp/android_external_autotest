@@ -186,6 +186,27 @@ class CrashTest(test.test):
                 'output': output}
 
 
+    def wait_for_sender_completion(self):
+        """Wait for crash_sender to complete.
+
+        Wait for no crash_sender's last message to be placed in the
+        system log before continuing and for the process to finish.
+        Otherwise we might get only part of the output."""
+        site_utils.poll_for_condition(
+            lambda: self._log_reader.can_find('crash_sender done.'),
+            timeout=60,
+            exception=error.TestError(
+              'Timeout waiting for crash_sender to emit done: ' +
+              self._log_reader.get_logs()))
+        site_utils.poll_for_condition(
+            lambda: utils.system('pgrep crash_sender',
+                                 ignore_status=True) != 0,
+            timeout=60,
+            exception=error.TestError(
+                'Timeout waiting for crash_sender to finish: ' +
+                self._log_reader.get_logs()))
+
+
     def _call_sender_one_crash(self,
                                send_success=True,
                                reports_enabled=True,
@@ -215,16 +236,7 @@ class CrashTest(test.test):
         script_output = utils.system_output(
             '/bin/sh -c "%s" 2>&1' % self._CRASH_SENDER_PATH,
             ignore_status=True)
-        # Wait for up to 2s for no crash_sender to be running,
-        # otherwise me might get only part of the output.
-        site_utils.poll_for_condition(
-            lambda: utils.system('pgrep crash_sender',
-                                 ignore_status=True) != 0,
-            timeout=2,
-            exception=error.TestError(
-              'Timeout waiting for crash_sender to finish: ' +
-              self._log_reader.get_logs()))
-
+        self.wait_for_sender_completion()
         output = self._log_reader.get_logs()
         logging.debug('Crash sender message output:\n' + output)
         if script_output != '':
