@@ -967,7 +967,7 @@ def read_wifi_testbed_config(file, client_addr=None, server_addr=None,
 
     return config
 
-def run_test_dir(test_name, job, args, machines):
+def run_test_dir(test_name, job, args, machine):
     # convert autoserv args to something usable
     opts = dict([[k, v] for (k, e, v) in [x.partition('=') for x in args]])
 
@@ -978,14 +978,14 @@ def run_test_dir(test_name, job, args, machines):
 
     config = read_wifi_testbed_config(
         os.path.join(job.configdir, config_file),
-        client_addr = machines[0],    # NB: take client identity from command line
+        client_addr = machine,    # NB: take client identity from command line
         router_addr = router_addr,
         server_addr = server_addr)
     server = config['server']
     router = config['router']
 
     logging.info("Client %s, Server %s, AP %s" % \
-        (machines[0], server.get('addr', 'N/A'), router['addr']))
+        (machine, server.get('addr', 'N/A'), router['addr']))
 
     test_dir = os.path.join(job.serverdir, "site_tests", test_name)
 

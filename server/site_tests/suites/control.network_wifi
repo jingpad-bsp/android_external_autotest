@@ -27,37 +27,17 @@ router     - the IP address of the WiFi AP/Router and the names of the
 
 import os
 
-from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_host_attributes, site_wifitest
 
+
 def run_server_tests(machine):
-  client = hosts.create_host(machine)
   client_attributes = site_host_attributes.HostAttributes(machine)
 
-  test_pat = '[0-9]*'
-  router_addr = str(client_attributes.router_addr)
-  server_addr = str(client_attributes.server_addr)
+  args.append('router_addr=' + str(client_attributes.router_addr))
+  args.append('server_addr=' + str(client_attributes.server_addr))
 
-  config = site_wifitest.read_wifi_testbed_config(
-      os.path.join(job.configdir, 'wifi_testbed_config'),
-      client_addr = machine,
-      router_addr = router_addr,
-      server_addr = server_addr)
+  site_wifitest.run_test_dir("network_WiFiSecMat", job, args, machine)
+  site_wifitest.run_test_dir("network_WiFiMatFunc", job, args, machine)
 
-  server = config['server']
-  router = config['router']
-
-  logging.info("Client %s, Server %s, AP %s" % \
-      (machine, server.get('addr', 'N/A'), router['addr']))
-
-  dir = os.path.join(job.serverdir, "site_tests", "network_WiFiSecMat")
-  for t in site_wifitest.read_tests(dir, test_pat):
-    job.run_test("network_WiFiSecMat", testcase=t, config=config, tag=t['file'])
-
-  dir = os.path.join(job.serverdir, "site_tests", "network_WiFiMatFunc")
-  for t in site_wifitest.read_tests(dir, test_pat):
-    job.run_test("network_WiFiMatFunc", testcase=t, config=config,
-        tag=t['file'])
 
 parallel_simple(run_server_tests, machines)
-
