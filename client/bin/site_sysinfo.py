@@ -1,4 +1,4 @@
-import os, shutil, re
+import os, shutil, re, logging
 
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_sysinfo
@@ -9,6 +9,45 @@ logfile = base_sysinfo.logfile
 command = base_sysinfo.command
 
 
+class logdir(base_sysinfo.loggable):
+    def __init__(self, directory):
+        super(logdir, self).__init__(directory, log_in_keyval=False)
+        self.dir = directory
+
+
+    def __repr__(self):
+        return "site_sysinfo.logdir(%r)" % self.dir
+
+
+    def __eq__(self, other):
+        if isinstance(other, logdir):
+            return self.dir == other.dir
+        elif isinstance(other, loggable):
+            return False
+        return NotImplemented
+
+
+    def __ne__(self, other):
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return result
+        return not result
+
+
+    def __hash__(self):
+        return hash(self.dir)
+
+
+    def run(self, logdir):
+        if os.path.exists(self.dir):
+            if self.dir.startswith('/'):
+                dest_dir = os.path.join(logdir, self.dir[1:])
+            else:
+                dest_dir = os.path.join(logdir, self.dir)
+            utils.system("mkdir -p %s" % dest_dir)
+            utils.system("cp -pr %s/* %s" % (self.dir, dest_dir))
+
+
 class site_sysinfo(base_sysinfo.base_sysinfo):
     def __init__(self, job_resultsdir):
         super(site_sysinfo, self).__init__(job_resultsdir)
@@ -16,7 +55,13 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         # add in some extra command logging
         self.test_loggables.add(command(
             "ls -l /boot", "boot_file_list"))
-        self.test_loggables.add(logfile(chromeos_constants.UPDATE_ENGINE_LOG))
+        self.test_loggables.add(logdir("/home/chronos/user/crash"))
+        self.test_loggables.add(logdir("/home/chronos/user/log"))
+        self.test_loggables.add(logdir("/tmp"))
+        self.test_loggables.add(logdir("/var/log"))
+        self.test_loggables.add(logdir("/var/spool/crash"))
+        self.test_loggables.add(logfile("/home/chronos/.Google/"
+                                        "Google Talk Plugin/gtbplugin.log"))
 
 
     def log_test_keyvals(self, test_sysinfodir):
