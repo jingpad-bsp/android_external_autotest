@@ -167,10 +167,13 @@ class WiFiTest(object):
     def __get_wlan_devs(self, host):
         ret = []
         result = host.run("%s dev" % self.client_cmd_iw)
+        current_if = None
         for line in result.stdout.splitlines():
             ifmatch = re.search("Interface (\S*)", line)
             if ifmatch is not None:
-                ret.append(ifmatch.group(1))
+                current_if = ifmatch.group(1)
+            elif 'type managed' in line and current_if:
+                ret.append(current_if)
         logging.info("Found wireless interfaces %s" % str(ret))
         return ret
 
