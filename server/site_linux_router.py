@@ -150,7 +150,10 @@ class LinuxRouter(object):
     def config(self, params):
         """ Configure the AP per test requirements """
 
-        if self.hostapd['configured']:
+        multi_interface = 'multi_interface' in params
+        if multi_interface:
+            params.pop('multi_interface')
+        elif self.hostapd['configured']:
             self.deconfig({})
 
         if self.apmode:
@@ -284,14 +287,16 @@ class LinuxRouter(object):
 
             # Set up the bridge.
             logging.info("Setting up the bridge...")
-            self.router.run("%s setfd %s %d" %
-                (self.cmd_brctl, self.bridgeif, 0))
-            self.router.run("%s addif %s %s" %
-                (self.cmd_brctl, self.bridgeif, self.wiredif))
-            self.router.run("%s link set %s up" %
-                (self.cmd_ip, self.wiredif))
-            self.router.run("%s link set %s up" %
-                (self.cmd_ip, self.bridgeif))
+            if not multi_interface:
+                self.router.run("%s setfd %s %d" %
+                                (self.cmd_brctl, self.bridgeif, 0))
+                self.router.run("%s addif %s %s" %
+                                (self.cmd_brctl, self.bridgeif, self.wiredif))
+                self.router.run("%s link set %s up" %
+                                (self.cmd_ip, self.wiredif))
+                self.router.run("%s link set %s up" %
+                                (self.cmd_ip, self.bridgeif))
+                self.hostapd['interface'] = conf['interface']
 
             logging.info("AP configured.")
 
