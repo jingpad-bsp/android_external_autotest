@@ -337,3 +337,10 @@ class LinuxRouter(object):
 
     def get_ssid(self):
         return self.hostapd['conf']['ssid']
+
+
+    def set_txpower(self, params):
+        self.router.run("%s dev %s set txpower %s" %
+                        (self.cmd_iw, params.get('interface',
+                                                 self.hostapd['interface']),
+                         params.get('power', 'auto')))
