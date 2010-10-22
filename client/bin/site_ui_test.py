@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, shutil, socket, sys, time
+import dbus, logging, os, re, shutil, socket, sys, time
 from autotest_lib.client.bin import chromeos_constants, site_cryptohome
 from autotest_lib.client.bin import site_login, site_utils, test as bin_test
-from autotest_lib.client.common_lib import error, site_ui
+from autotest_lib.client.common_lib import error, log_watcher, site_ui
 from autotest_lib.client.common_lib import site_auth_server, site_dns_server
 from dbus.mainloop.glib import DBusGMainLoop
 
@@ -37,6 +37,9 @@ class UITest(bin_test.test):
     auto_login = True
     username = None
     password = None
+
+    """Processes that we know crash and are willing to ignore."""
+    crash_blacklist = ['powerm']
 
     def __init__(self, job, bindir, outputdir):
         self._dns = {}  # for saving/restoring dns entries
@@ -150,6 +153,12 @@ class UITest(bin_test.test):
                 Defaults to '$default'.
 
         """
+
+        # Mark /var/log/messages now; we'll run through all subsequent
+        # log messages at the end of the test and log info about processes that
+        # crashed.
+        self._watcher = log_watcher.LogWatcher(filename='/var/log/messages')
+
         self.start_authserver()
 
         if site_login.logged_in():
@@ -265,6 +274,20 @@ class UITest(bin_test.test):
         self._dnsServer.stop()
 
 
+    def __log_crashed_processes(self, watcher, processes):
+        """Runs through the log watched by |watcher| to see if a crash was
+        reported for any process names listed in |processes|.
+        """
+        line = watcher.ReadLine()
+        while line:
+            m = re.match('.*Received crash notification for (\w+).+ (sig \d+)',
+                         line)
+            if m != None and not m.group(1) in processes:
+                self.job.record('INFO', self.tagged_testname,
+                                "%s crash" % m.group(1), m.group(2))
+            line = watcher.ReadLine()
+
+
     def cleanup(self):
         """Overridden from test.cleanup() to log out when the test is complete.
         """
@@ -296,6 +319,7 @@ class UITest(bin_test.test):
                 logging.error(error)
 
         self.stop_authserver()
+        self.__log_crashed_processes(self._watcher, self.crash_blacklist)
 
 
     def get_auth_endpoint_misses(self):
