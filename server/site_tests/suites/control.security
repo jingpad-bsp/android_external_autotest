@@ -18,6 +18,7 @@ Security Functional test suite.
 TESTS = [
   ('security_RendererSandbox', {}),
   ('security_RestartJob', {}),
+  ('security_SuidBinaries', {}),
 ]
 
 # A dict which holds {machine: [(test, argv), (test, argv), ...]}
