@@ -1,0 +1,39 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This test run is designed to check that we roam successfully when signal
+# strength varies.
+{ "name":"MultiSwitch",
+  "steps":[
+    [ "create",         { "type":"hostap" } ],
+
+    [ "config",         { "channel":"2412", "mode":"11g", "pureg":None } ],
+
+    # Connect to the first AP.
+    [ "connect",        { "security":"none" } ],
+    [ "client_ping",    { "count":"10" } ],
+
+    # Create a second AP at the same time on the 5GHz radio, Channel 48
+    [ "config",         { "channel":"5240", "ht40":None, "puren":None,
+                          "multi_interface":None } ],
+
+    # Drop the transmit power of the first AP
+    [ "set_txpower",    { "power":"fixed 0" } ],
+
+    # Instead of explicitly connecting, just wait to see if the DUT
+    # re-connects by itself
+    [ "wait_service",   { "run_timeout":40,   # Timeout connection in 20 seconds
+                          "debug":True,       # Print out all state transitions
+                          "states":[
+                             (None, '+ready')  # Wait for the "current AP" (as
+                          ] } ],              # read off the AP)
+                                              # service to transition to "ready"
+    [ "client_ping",    { "count":"10" } ],
+
+    # Return AP to auto transmit power
+    [ "set_txpower",    { "power":"auto" } ],
+
+    [ "destroy" ],
+  ],
+}
