@@ -36,6 +36,15 @@ _LOG_UPLOAD_DESTINATION = {
   'passwd': '*',  # change this to password of the login id.
   'initdir': '',  # change this if you want to assign the folder to store logs.
   'timeout': 3*60,  # change this if you have a really poor slow network...
+  # 'gzip': False, # uncomment if you don't want the logs to be gzipped
+
+  # 'filename_pattern': '%(hash)s.log%(gz)s',
+  ## Uncomment and change the above filename_pattern if you want to customize
+  ## the filename to be upload. Supported variables are:
+  ##  hash: a SHA1 hash of log file
+  ##  gz: '.gz' if the 'gzip' param is True, otherwise empty string
+  ##  vpd_*: any values reported by 'mosys vpd' command
+  ## Examples: '%(vpd_product_serial_number)s.log%(gz)s'
 }
 
 
