@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib import error, site_ui
 class hardware_VideoOutSemiAuto(test.test):
     version = 1
     XRANDR_PATH = "/usr/bin/xrandr"
-    RECONFIG_PATH = "/usr/sbin/monitor_reconfigure"
+    RECONFIG_PATH = "/usr/bin/monitor_reconfigure"
     HDMI_ID = "HDMI"
     VGA_ID = "VGA"
 
@@ -42,7 +42,7 @@ class hardware_VideoOutSemiAuto(test.test):
             utils.system_output(site_ui.xcommand(query_cmd)).split(':')[0]
         )
 
-        # Gets 100 lines (to be safe) after context to get output after 
+        # Gets 100 lines (to be safe) after context to get output after
         query_cmd = \
             "%s -q | grep '%s[0-9] connected' -n -A 100 | grep connected" % \
                 (self.XRANDR_PATH, output)
@@ -67,7 +67,7 @@ class hardware_VideoOutSemiAuto(test.test):
 
 
     # Configures |output| and returns if |output| has been configured.
-    # Also will return false immediately if no device detected on the port 
+    # Also will return false immediately if no device detected on the port
     def __configure_and_check_output(self, output):
         connected = self.__output_connected(output)
         if not connected:
@@ -85,23 +85,20 @@ class hardware_VideoOutSemiAuto(test.test):
     def run_once(self):
         # Sanity check for xrandr application.
         if not os.path.isfile(self.XRANDR_PATH):
-            raise error.TestFail("""
-                XRandr missing from device cannot complete test        
-            """)
+            raise error.TestFail("xrandr not at %s" % self.XRANDR_PATH)
 
-        # Determine if devices of interest are on system.                
+        # Determine if devices of interest are on system.
         hdmi_exists = self.__query_for_output(self.HDMI_ID)
         vga_exists = self.__query_for_output(self.VGA_ID)
 
         # Raises NAError since these are optional devices.
         if (not hdmi_exists) and (not vga_exists):
-            raise error.TestFail("Neither VGA or HDMI ports detected")
+            raise error.TestFail("Neither VGA nor HDMI ports detected")
 
         # Sanity check to make sure we can configure the devices.
         if not os.path.isfile(self.RECONFIG_PATH):
-            raise error.TestFail("""
-                Device detected but missing monitor_reconfigure tool
-            """)
+            raise error.TestFail("monitor_reconfigure not at %s" %
+                                 self.RECONFIG_PATH);
 
         # If either device is connected and able to be configured
         # the test is successful.
