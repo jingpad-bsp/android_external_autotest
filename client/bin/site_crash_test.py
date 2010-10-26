@@ -149,6 +149,7 @@ class CrashTest(test.test):
             report_kind: kind of report sent (minidump vs kernel)
             send_attempt: did the script attempt to send a crash.
             send_success: if it attempted, was the crash send successful.
+            sig: signature of the report, if given.
             sleep_time: if it attempted, how long did it sleep before
               sending (if mocked, how long would it have slept)
         """
@@ -175,6 +176,11 @@ class CrashTest(test.test):
             exec_name = exec_name_match.group(1)
         else:
             exec_name = None
+        sig_match = re.search('Sig: (\S+)', output)
+        if sig_match:
+            sig = sig_match.group(1)
+        else:
+            sig = None
         send_success = 'Mocking successful send' in output
         return {'exec_name': exec_name,
                 'report_kind': report_kind,
@@ -182,6 +188,7 @@ class CrashTest(test.test):
                 'report_payload': report_payload,
                 'send_attempt': send_attempt,
                 'send_success': send_success,
+                'sig': sig,
                 'sleep_time': sleep_time,
                 'output': output}
 

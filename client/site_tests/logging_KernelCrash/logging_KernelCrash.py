@@ -21,16 +21,20 @@ class logging_KernelCrash(site_crash_test.CrashTest):
             if not self._log_reader.can_find(
                 'Kernel does not support crash dumping'):
                 raise error.TestFail(
-                    'Could not find kernel crash found message')
+                    'Could not find kernel crash enabling message')
 
 
     def _get_kcrash_name(self):
-        filename_match = re.search(
-            r'Collected kernel crash diagnostics into (\S+)',
+        filename_match = re.search(r'Stored kcrash to (\S+)',
             self._log_reader.get_logs())
         if not filename_match:
             return None
         return filename_match.group(1)
+
+
+    def _is_signature_match(self, signature):
+        return (re.match(r'kernel-write_breakme-[0-9A-F]{8}$', signature) is
+                not None)
 
 
     def _test_reporter_kcrash_storage(self):
@@ -38,15 +42,31 @@ class logging_KernelCrash(site_crash_test.CrashTest):
         if not self._log_reader.can_find('Cleared kernel crash diagnostics'):
             raise error.TestFail('Could not find clearing message')
 
+        announce_match = re.search(
+            r'Received .* from kernel \(signature ([^\)]+)\) \(([^\)]+)\)',
+            self._log_reader.get_logs())
+
+        if not announce_match:
+            raise error.TestFail('Could not find kernel crash announcement')
+
+        if not self._is_signature_match(announce_match.group(1)):
+            raise error.TestFail(
+                'Kernel crash signature (%s) did not match expected pattern' %
+                announce_match.group(1))
+
         kcrash_report = self._get_kcrash_name()
 
         if self._consent:
             if kcrash_report is None:
                 raise error.TestFail(
                     'Could not find message with kcrash filename')
+            if announce_match.group(2) != 'handling':
+                raise error.TestFail('Did not announce handling of kcrash')
         else:
             if kcrash_report is not None:
                 raise error.TestFail('Should not have found kcrash filename')
+            if announce_match.group(2) != 'ignoring':
+                raise error.TestFail('Did not announce ignoring of kcrash')
             return
 
         if not os.path.exists(kcrash_report):
@@ -78,6 +98,8 @@ class logging_KernelCrash(site_crash_test.CrashTest):
             raise error.TestFail('kcrash exec name or report kind wrong')
         if result['report_payload'] != kcrash_report:
             raise error.TestFail('Sent the wrong kcrash report')
+        if not self._is_signature_match(result['sig']):
+            raise error.TestFail('Sent the wrong kcrash signature')
 
 
     def run_once(self, is_before, consent):

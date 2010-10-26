@@ -245,6 +245,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
             raise error.TestFail('Sent the wrong minidump payload')
         if result['meta_path'] != meta_path:
             raise error.TestFail('Used the wrong meta file')
+        if result['sig'] is not None:
+            raise error.TestFail('User crash should not have signature')
 
         # Check version matches.
         lsb_release = utils.read_file('/etc/lsb-release')
