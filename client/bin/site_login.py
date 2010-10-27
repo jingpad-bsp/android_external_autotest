@@ -288,13 +288,14 @@ def wait_for_initial_chrome_window(timeout=_DEFAULT_TIMEOUT):
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't get the browser up to see if the browser crashed.
     watcher = log_watcher.LogWatcher(filename='/var/log/messages')
-    site_utils.poll_for_condition(
+    wait_for_condition(
         lambda: os.access(
             chromeos_constants.CHROME_WINDOW_MAPPED_MAGIC_FILE, os.F_OK),
         'Timed out waiting for initial Chrome window',
-        timeout,
-        watcher,
-        'Chrome crashed before first tab rendered.')
+        timeout=timeout,
+        process='chrome',
+        watcher=watcher,
+        crash_msg='Chrome crashed before first tab rendered.')
 
 
 def nuke_login_manager():
