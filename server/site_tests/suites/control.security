@@ -18,6 +18,7 @@ Security Functional test suite.
 TESTS = [
   ('security_RendererSandbox', {}),
   ('security_RestartJob', {}),
+  ('security_RootfsOwners', {}),
   ('security_SuidBinaries', {}),
 ]
 
