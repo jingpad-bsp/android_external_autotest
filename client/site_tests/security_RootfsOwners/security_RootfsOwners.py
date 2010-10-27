@@ -18,8 +18,7 @@ class security_RootfsOwners(test.test):
         """
         cmd = 'find / -xdev -user chronos -print'
         cmd_output = utils.system_output(cmd, ignore_status=True)
-        
+
         if (cmd_output != '') :
             logging.error(cmd_output)
             raise error.TestFail('Rootfs should not contain any files owned by chronos')
-
