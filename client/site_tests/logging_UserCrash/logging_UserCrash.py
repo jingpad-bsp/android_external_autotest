@@ -7,6 +7,8 @@ from signal import SIGSEGV
 from autotest_lib.client.bin import site_crash_test, site_utils, test
 from autotest_lib.client.common_lib import error, utils
 
+_COLLECTION_ERROR_SIGNATURE = 'crash_reporter-user-collection'
+_CORE2MD_PATH = '/usr/bin/core2md'
 _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
 _LEAVE_CORE_PATH = '/root/.leave_core'
 _MAX_CRASH_DIRECTORY_SIZE = 32
@@ -155,7 +157,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                    stderr=subprocess.PIPE)
         output = crasher.communicate()[1]
         logging.debug('Output from %s: %s' %
-                      (self._crasher_path, output))
+                      (crasher_command, output))
 
         # Grab the pid from the process output.  We can't just use
         # crasher.pid unfortunately because that may be the PID of su.
@@ -168,7 +170,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
         if consent:
             handled_string = 'handling'
         else:
-            handled_string = 'ignoring'
+            handled_string = 'ignoring - no consent'
         expected_message = (
             'Received crash notification for %s[%d] sig 11 (%s)' %
             (basename, pid, handled_string))
@@ -226,27 +228,31 @@ class logging_UserCrash(site_crash_test.CrashTest):
         self._verify_stack(stack, basename, from_crash_reporter)
 
 
-    def _check_generated_minidump_sending(self, meta_path, minidump_path,
-                                          username, crasher_basename,
-                                          will_syslog_give_name):
+    def _check_generated_report_sending(self, meta_path, payload_path,
+                                        username, exec_name, report_kind,
+                                        expected_sig=None):
         # Now check that the sending works
         result = self._call_sender_one_crash(
             username=username,
-            report=os.path.basename(minidump_path))
+            report=os.path.basename(payload_path))
         if (not result['send_attempt'] or not result['send_success'] or
             result['report_exists']):
-            raise error.TestFail('Minidump not sent properly')
-        if will_syslog_give_name:
-            if result['exec_name'] != crasher_basename:
-                raise error.TestFail('Executable name incorrect')
-        if result['report_kind'] != 'minidump':
+            raise error.TestFail('Report not sent properly')
+        if result['exec_name'] != exec_name:
+            raise error.TestFail('Executable name incorrect')
+        if result['report_kind'] != report_kind:
             raise error.TestFail('Expected a minidump report')
-        if result['report_payload'] != minidump_path:
+        if result['report_payload'] != payload_path:
             raise error.TestFail('Sent the wrong minidump payload')
         if result['meta_path'] != meta_path:
             raise error.TestFail('Used the wrong meta file')
-        if result['sig'] is not None:
-            raise error.TestFail('User crash should not have signature')
+        if expected_sig is None:
+            if result['sig'] is not None:
+                raise error.TestFail('Report should not have signature')
+        else:
+            if not 'sig' in result or result['sig'] != expected_sig:
+                raise error.TestFail('Report signature mismatch: %s vs %s' %
+                                     (result['sig'], expected_sig))
 
         # Check version matches.
         lsb_release = utils.read_file('/etc/lsb-release')
@@ -256,26 +262,22 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                  version_match.group(1))
 
 
-    def _check_crashing_process(self, username, consent=True):
+    def _run_crasher_process_and_analyze(self, username,
+                                         cause_crash=True, consent=True):
         self._log_reader.set_start_by_current()
 
-        result = self._run_crasher_process(username, consent=consent)
+        result = self._run_crasher_process(username, cause_crash=cause_crash,
+                                           consent=consent)
 
-        if not result['crashed']:
-            raise error.TestFail('crasher did not do its job of crashing: %d' %
-                                 result['returncode'])
-
-        if not result['crash_reporter_caught']:
-            logging.debug('Messages that should have included segv: %s' %
-                          self._log_reader.get_logs())
-            raise error.TestFail('Did not find segv message')
+        if not result['crashed'] or not result['crash_reporter_caught']:
+            return result;
 
         crash_dir = self._get_crash_dir(username)
 
         if not consent:
             if os.path.exists(crash_dir):
                 raise error.TestFail('Crash directory should not exist')
-            return
+            return result
 
         crash_contents = os.listdir(crash_dir)
         basename = os.path.basename(self._crasher_path)
@@ -283,6 +285,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
         breakpad_minidump = None
         crash_reporter_minidump = None
         crash_reporter_meta = None
+        crash_reporter_log = None
 
         self._check_crash_directory_permissions(crash_dir)
 
@@ -302,9 +305,15 @@ class logging_UserCrash(site_crash_test.CrashTest):
             elif (filename.startswith(basename) and
                   filename.endswith('.meta')):
                 if not crash_reporter_meta is None:
-                    raise error.TestFail('Crash reported wrote multiple '
+                    raise error.TestFail('Crash reporter wrote multiple '
                                          'meta files')
                 crash_reporter_meta = os.path.join(crash_dir, filename)
+            elif (filename.startswith(basename) and
+                  filename.endswith('.log')):
+                if not crash_reporter_log is None:
+                    raise error.TestFail('Crash reporter wrote multiple '
+                                         'log files')
+                crash_reporter_log = os.path.join(crash_dir, filename)
             else:
                 # This appears to be a breakpad created minidump.
                 if not breakpad_minidump is None:
@@ -314,33 +323,57 @@ class logging_UserCrash(site_crash_test.CrashTest):
         if breakpad_minidump:
             raise error.TestFail('%s did generate breakpad minidump' % basename)
 
-        if not crash_reporter_minidump:
-            raise error.TestFail('crash reporter did not generate minidump')
-
         if not crash_reporter_meta:
             raise error.TestFail('crash reporter did not generate meta')
 
+        result['minidump'] = crash_reporter_minidump
+        result['basename'] = basename
+        result['meta'] = crash_reporter_meta
+        result['log'] = crash_reporter_log
+        return result
+
+
+    def _check_crashed_and_caught(self, result):
+        if not result['crashed']:
+            raise error.TestFail('crasher did not do its job of crashing: %d' %
+                                 result['returncode'])
+
+        if not result['crash_reporter_caught']:
+            logging.debug('Messages that should have included segv: %s' %
+                          self._log_reader.get_logs())
+            raise error.TestFail('Did not find segv message')
+
+
+    def _check_crashing_process(self, username, consent=True):
+        result = self._run_crasher_process_and_analyze(username,
+                                                       consent=consent)
+
+        self._check_crashed_and_caught(result)
+
+        if not consent:
+            return
+
+        if not result['minidump']:
+            raise error.TestFail('crash reporter did not generate minidump')
+
         if not self._log_reader.can_find('Stored minidump to ' +
-                                         crash_reporter_minidump):
+                                         result['minidump']):
             raise error.TestFail('crash reporter did not announce minidump')
 
-        if crash_reporter_minidump:
-            self._check_minidump_stackwalk(crash_reporter_minidump,
-                                           basename,
-                                           from_crash_reporter=True)
-            will_syslog_give_name = True
-
-        self._check_generated_minidump_sending(crash_reporter_meta,
-                                               crash_reporter_minidump,
-                                               username,
-                                               basename,
-                                               will_syslog_give_name)
+        self._check_minidump_stackwalk(result['minidump'],
+                                       result['basename'],
+                                       from_crash_reporter=True)
+        self._check_generated_report_sending(result['meta'],
+                                             result['minidump'],
+                                             username,
+                                             result['basename'],
+                                             'minidump')
 
     def _test_no_crash(self):
         """Test a program linked against libcrash_dumper can exit normally."""
         self._log_reader.set_start_by_current()
-        result = self._run_crasher_process(username='root',
-                                           cause_crash=False)
+        result = self._run_crasher_process_and_analyze(username='root',
+                                                       cause_crash=False)
         if (result['crashed'] or
             result['crash_reporter_caught'] or
             result['returncode'] != 0):
@@ -407,6 +440,48 @@ class logging_UserCrash(site_crash_test.CrashTest):
             raise error.TestFail('expected no new files (now %d were %d)',
                                  len(os.listdir(crash_dir)),
                                  crash_dir_size)
+
+
+    def _check_collection_failure(self, test_option, failure_string):
+        # Add parameter to core_pattern.
+        old_core_pattern = utils.read_file(_CORE_PATTERN)[:-1]
+        try:
+            utils.system('echo "%s %s" > %s' % (old_core_pattern, test_option,
+                                                _CORE_PATTERN))
+            result = self._run_crasher_process_and_analyze('root',
+                                                           consent=True)
+            self._check_crashed_and_caught(result)
+            if not self._log_reader.can_find(failure_string):
+                raise error.TestFail('Did not find fail string in log %s' %
+                                     failure_string)
+            if result['minidump']:
+                raise error.TestFail('failed collection resulted in minidump')
+            if not result['log']:
+                raise error.TestFail('failed collection had no log')
+            log_contents = utils.read_file(result['log'])
+            if not log_contents.startswith(failure_string):
+                raise error.TestFail('Expected logged error '
+                                     '\"%s\" was \"%s\"' %
+                                     (failure_string, log_contents))
+            self._check_generated_report_sending(result['meta'],
+                                                 result['log'],
+                                                 'root',
+                                                 result['basename'],
+                                                 'log',
+                                                 _COLLECTION_ERROR_SIGNATURE)
+        finally:
+            utils.system('echo "%s" > %s' % (old_core_pattern, _CORE_PATTERN))
+
+
+    def _test_core2md_failure(self):
+        self._check_collection_failure('--core2md_failure_test',
+                                       'Problem during %s [result=1]: Usage:' %
+                                       _CORE2MD_PATH)
+
+
+    def _test_internal_directory_failure(self):
+        self._check_collection_failure('--directory_failure_test',
+                                       'Purposefully failing to create')
 
 
     def _check_core_file_persisting(self, expect_persist):
@@ -481,6 +556,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
                               'root_crasher',
                               'root_crasher_no_consent',
                               'max_enqueued_crashes',
+                              'core2md_failure',
+                              'internal_directory_failure',
                               'core_file_persists_in_debug',
                               'core_file_removed_in_production'],
                               initialize_crash_reporter = True)

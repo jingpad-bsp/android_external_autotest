@@ -112,11 +112,16 @@ class CrashTest(test.test):
         return entry
 
 
-    def write_fake_meta(self, name, exec_name):
+    def write_fake_meta(self, name, exec_name, payload, complete=True):
+        last_line = ''
+        if complete:
+            last_line = 'done=1\n'
         return self.write_crash_dir_entry(name,
                                           'exec_name=%s\n'
                                           'ver=my_ver\n'
-                                          'done=1\n' % exec_name)
+                                          'payload=%s\n'
+                                          '%s' % (exec_name, payload,
+                                                  last_line))
 
 
     def _prepare_sender_one_crash(self,
@@ -127,8 +132,8 @@ class CrashTest(test.test):
         self._set_sending_mock(mock_enabled=True, send_success=send_success)
         self._set_consent(reports_enabled)
         if report is None:
-            self.write_crash_dir_entry('fake.dmp', '')
-            report = self.write_fake_meta('fake.meta', 'fake')
+            payload = self.write_crash_dir_entry('fake.dmp', '')
+            report = self.write_fake_meta('fake.meta', 'fake', payload)
         return report
 
 

@@ -65,7 +65,7 @@ class logging_KernelCrash(site_crash_test.CrashTest):
         else:
             if kcrash_report is not None:
                 raise error.TestFail('Should not have found kcrash filename')
-            if announce_match.group(2) != 'ignoring':
+            if announce_match.group(2) != 'ignoring - no consent':
                 raise error.TestFail('Did not announce ignoring of kcrash')
             return
 
