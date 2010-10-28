@@ -79,6 +79,7 @@ class factory_Display(test.test):
         window.add(drawing_area)
         window.show_all()
         self._fs_window = window
+        self.register_callbacks(self._fs_window)
         drawing_area.connect('expose_event', pattern_callback)
 
     def goto_next_pattern(self):
