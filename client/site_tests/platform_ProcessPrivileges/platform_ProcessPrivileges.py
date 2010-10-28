@@ -15,7 +15,7 @@ class platform_ProcessPrivileges(site_ui_test.UITest):
         self.job.record('ERROR', None, command, message)
         self._failed.append(process)
 
-    def check_process(self, process, user=None, do_login=False):
+    def check_process(self, process, user=None, do_login=False, grep_arg=None):
         """Check if the process is running as the specified user / root.
 
         Args:
@@ -29,8 +29,10 @@ class platform_ProcessPrivileges(site_ui_test.UITest):
             time.sleep(10)
 
         # Get the process information
-        pscmd = 'ps -o f,euser,ruser,suser,fuser,comm -C %s --no-headers'
+        pscmd = 'ps -o f,euser,ruser,suser,fuser,args -C %s --no-headers'
         pscmd = pscmd % process
+        if grep_arg:
+            pscmd += ' | grep "%s"' % grep_arg
         ps = utils.system_output(pscmd,
                                  ignore_status=True, retain_output=True)
 
@@ -76,7 +78,8 @@ class platform_ProcessPrivileges(site_ui_test.UITest):
         # TODO(mazda): Change the user value to 'messagebus'.
         # 201 is a uid of messagebus. ps command displays 201 as the
         # user name for some reasons (bug of the ps command?).
-        self.check_process('dbus-daemon', user='201')
+        self.check_process('dbus-daemon', user='201',
+                           grep_arg=' --system --fork$')
         self.check_process('flimflamd', user='root')
         self.check_process('metrics_daemon', user='root')
         self.check_process('powerd')
