@@ -17,7 +17,6 @@
 /usr/bin/sudoedit
 /usr/bin/gpasswd
 /opt/google/chrome/chrome-sandbox
-/opt/google/memento_updater/suid_exec
 /sbin/unix_chkpwd
 /bin/umount
 /bin/passwd
