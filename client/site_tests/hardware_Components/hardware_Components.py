@@ -272,32 +272,17 @@ class hardware_Components(test.test):
         """
         part_id = ''
         if vendor_name.lower() == 'synaptics':
-            # Turn off raw mode in order to show touch pad as input
-            script_set_raw = '/opt/Synaptics/bin/synset'
-            redirect_std_1_2 = '> /dev/null 2>&1'
-            if not os.path.exists(script_set_raw):
-                return part_id
-            cmd_disable_raw = ' '.join([script_set_raw, 'stop', \
-                              redirect_std_1_2])
-            utils.system(cmd_disable_raw, ignore_status=True)
-
-            # Now we can capture touch pad input under /sys/class/input
-            touchpad_input_path = '/sys/class/input/'
-            input_dirs = os.listdir(touchpad_input_path)
-            part_ids = []
-            for input_dir in input_dirs:
-                if not input_dir.startswith('input'):
-                    continue
-                fname = os.path.join(touchpad_input_path, input_dir, 'name')
-                input_id = utils.read_file(fname)
-                if input_id.startswith('SynPS'):
-                    part_ids.append(input_id.strip())
-            part_id = ",".join(part_ids)
-
-            # Turn on raw mode again
-            cmd_enable_raw = ' '.join([script_set_raw, 'start', \
-                             redirect_std_1_2])
-            utils.system(cmd_enable_raw)
+            detect_program = '/opt/Synaptics/bin/syndetect'
+            model_string_str = 'Model String'
+            firmware_id_str = 'Firmware ID'
+            if os.path.exists(detect_program):
+                data = utils.system_output(detect_program, ignore_status=True)
+                properties = dict(map(str.strip, line.split('=', 1))
+                                  for line in data.splitlines() if '=' in line)
+                # Format: Model String # Firmware Id
+                part_id = ( properties.get(model_string_str, 'UnknownModel') +
+                            ' #' +
+                            properties.get(firmware_id_str, 'UnknownFWID') )
         return part_id
 
 
