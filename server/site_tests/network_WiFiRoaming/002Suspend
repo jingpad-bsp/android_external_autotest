@@ -48,8 +48,9 @@
     # before we proceed.
     [ "sleep",          { "time":"15" } ],
 
-    # Change the channel that the AP sits on
-    [ "config",         { "channel":"2437", "mode":"11b",
+    # Change the channel that the AP sits on.  Switch bands too, which has
+    # the side-effect on our APs of changing the MAC address as well
+    [ "config",         { "channel":"5240", "mode":"11a",
                           "ssid_suffix": 't1'} ],
 
     # Wait for the DUT to wake up and return the results of wait_suspend
