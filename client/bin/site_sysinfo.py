@@ -38,14 +38,28 @@ class logdir(base_sysinfo.loggable):
         return hash(self.dir)
 
 
-    def run(self, logdir):
+    def run(self, log_dir):
         if os.path.exists(self.dir):
             if self.dir.startswith('/'):
-                dest_dir = os.path.join(logdir, self.dir[1:])
+                dest_dir = os.path.join(log_dir, self.dir[1:])
             else:
-                dest_dir = os.path.join(logdir, self.dir)
+                dest_dir = os.path.join(log_dir, self.dir)
             utils.system("mkdir -p %s" % dest_dir)
-            utils.system("cp -pr %s/* %s" % (self.dir, dest_dir))
+            utils.system("cp -pr %s/* %s" % (self.dir, dest_dir),
+                         ignore_status=True)
+
+
+class purgeable_logdir(logdir):
+    def __init__(self, directory):
+        super(purgeable_logdir, self).__init__(directory)
+
+
+    def run(self, log_dir):
+        super(purgeable_logdir, self).run(log_dir)
+
+        if os.path.exists(self.dir):
+            utils.system("rm -rf %s/*" % (self.dir))
+
 
 
 class site_sysinfo(base_sysinfo.base_sysinfo):
@@ -53,13 +67,13 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         super(site_sysinfo, self).__init__(job_resultsdir)
 
         # add in some extra command logging
-        self.test_loggables.add(command(
-            "ls -l /boot", "boot_file_list"))
-        self.test_loggables.add(logdir("/home/chronos/user/crash"))
-        self.test_loggables.add(logdir("/home/chronos/user/log"))
+        self.boot_loggables.add(command("ls -l /boot",
+                                        "boot_file_list"))
+        self.test_loggables.add(purgeable_logdir("/home/chronos/user/crash"))
+        self.test_loggables.add(purgeable_logdir("/home/chronos/user/log"))
         self.test_loggables.add(logdir("/tmp"))
         self.test_loggables.add(logdir("/var/log"))
-        self.test_loggables.add(logdir("/var/spool/crash"))
+        self.test_loggables.add(purgeable_logdir("/var/spool/crash"))
         self.test_loggables.add(logfile("/home/chronos/.Google/"
                                         "Google Talk Plugin/gtbplugin.log"))
 
