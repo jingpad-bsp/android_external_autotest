@@ -18,10 +18,8 @@ control.regression.
 # List of client tests with parameters
 TESTS = [
   ('desktopui_SpeechSynthesisSemiAuto', {}),
-  ('desktopui_WindowManagerFocusNewWindows', {}),
   ('graphics_O3DSelenium', {}),
   ('logging_UncleanShutdown', {}),  
-  ('login_RemoteLogin', {}),
 ]
 
 # A dict which holds {machine: [(test, argv), (test, argv), ...]}

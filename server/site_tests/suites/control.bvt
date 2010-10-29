@@ -18,6 +18,9 @@ in less than 30 minutes and should maximize coverage.
 from autotest_lib.server import site_host_attributes
 
 TESTS = [
+  ('platform_FilePerms', {}),
+  ('platform_OSLimits', {}),
+  ('platform_PartitionCheck', {}),
   ('build_RootFilesystemSize', {}),
   ('desktopui_ChromeFirstRender', {}),
   ('desktopui_FlashSanityCheck', {}),
@@ -25,6 +28,7 @@ TESTS = [
                              'tag': 'chrome'}),
   ('desktopui_KillRestart', {'binary': '^session_manager$',
                              'tag': 'session'}),
+  ('desktopui_WindowManagerFocusNewWindows', {}),                             
 # TODO(ericli): reenable it after screen locker is enabled.
 # http://code.google.com/p/chromium-os/issues/detail?id=7758
 #  ('desktopui_ScreenLocker', {}),
@@ -36,43 +40,16 @@ TESTS = [
   ('login_CryptohomeIncognitoMounted', {'creds': '$backdoor'}),
   ('login_CryptohomeMounted', {}),
   ('login_LoginSuccess', {}),
+  ('login_RemoteLogin', {}),
   ('network_DisableInterface', {'iface_name': 'wlan0',
                                 'tag': 'wlan0'}),
   ('network_Ping', {}),
-  ('platform_FilePerms', {}),
-  ('platform_OSLimits', {}),
-  ('platform_PartitionCheck', {}),
   ('platform_Shutdown', {}),
 ]
 
 
 def run_tests(machine):
   client = hosts.create_host(machine)
-
-  # Test the boot performance.  Add a generous constraint (at least for
-  # x86 platforms) on the boot time.  We just look at the time from
-  # kernel start to login prompt and require it to be under 18s.  As of
-  # 3/30/2010 the time is 13.5s on a slow HDD platform.  Note that this
-  # may still fail if this is run on on a platform machine before
-  # /home/chronos is populated (that seems to add another 23s). But as
-  # BuildVerify tests are run after the boot after reimaging, the
-  # home directory should already be populated.  Once we are running
-  # these tests only on qualified systems we can lower the constraints
-  # to be in-line with suite_HWQual.  Once we are running our own firmware
-  # and we have firmware timing support on ARM we can also add the
-  # constraint on firmware boot time.
-  client_attributes = site_host_attributes.HostAttributes(machine)
-
-  bootperf_constraints = []
-  if client_attributes.has_ssd:
-     bootperf_constraints.append('seconds_kernel_to_login <= 8')
-  else:
-     bootperf_constraints.append('seconds_kernel_to_login <= 18')
-  if client_attributes.has_chromeos_firmware:
-     bootperf_constraints.append('seconds_firmware_boot <= 1.3')
-  job.run_test('platform_BootPerfServer',
-               host=client,
-               constraints=bootperf_constraints)
 
   client_at = autotest.Autotest(client)
   for test, argv in TESTS:
