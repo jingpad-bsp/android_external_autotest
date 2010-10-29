@@ -100,6 +100,10 @@ class network_3GSmokeTest(test.test):
     def ResetAllModems(self):
         """Disable/Enable cycle all modems to ensure valid starting state."""
         manager = mm.ModemManager()
+        service = self.FindCellularService()
+        print 'ResetAllModems: service %s' % service
+        if service.GetProperties()['Favorite']:
+            service.SetProperty('AutoConnect', False)
         for path in manager.manager.EnumerateDevices():
             modem = manager.Modem(path)
             modem.Enable(False)
@@ -119,6 +123,7 @@ class network_3GSmokeTest(test.test):
         results = {}
         manager = mm.ModemManager()
 
+        print 'Devices: %s' % ', '.join(manager.manager.EnumerateDevices())
         for path in manager.manager.EnumerateDevices():
             modem = manager.Modem(path)
             props = manager.Properties(path)
@@ -189,16 +194,18 @@ class network_3GSmokeTest(test.test):
         bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus(mainloop=bus_loop)
 
-        if not site_backchannel.setup():
-            raise error.TestError('Could not setup Backchannel network.')
-
         # Get to a good starting state
         self.ResetAllModems()
+
+        # Wait for the modem to pick up a network after being reenabled. If we
+        # don't wait here, GetModemInfo() (below) might fail partway through
+        # with a "I have no network!" exception, and then at the end when we
+        # test that the modem info matches, it won't. Oops.
+        time.sleep(5)
         self.DisconnectFrom3GNetwork(disconnect_timeout=60)
 
         # Get information about all the modems
         modem_info = self.GetModemInfo()
-        logging.info('Info: %s' % ', '.join(modem_info))
 
         for ii in xrange(connect_count):
             self.ConnectTo3GNetwork(config_timeout=120)
@@ -211,6 +218,7 @@ class network_3GSmokeTest(test.test):
             # Verify that we can still get information for all the modems
             logging.info('Info: %s' % ', '.join(modem_info))
             if len(self.GetModemInfo()) != len(modem_info):
+                logging.info('NewInfo: %s' % ', '.join(self.GetModemInfo()))
                 raise error.TestFail('Test shutdown: '
                                      'failed to leave modem in working state.')
 
@@ -219,10 +227,15 @@ class network_3GSmokeTest(test.test):
               time.sleep(sleep_kludge)
 
     def run_once(self, connect_count=30, sleep_kludge=5):
+        site_backchannel.setup()
+        time.sleep(3)
         self.flim = flimflam.FlimFlam()
         self.device_manager = flimflam.DeviceManager(self.flim)
         try:
             self.device_manager.ShutdownAllExcept('cellular')
             self.run_once_internal(connect_count, sleep_kludge)
         finally:
-            self.device_manager.RestoreDevices()
+            try:
+                self.device_manager.RestoreDevices()
+            finally:
+                site_backchannel.teardown()
