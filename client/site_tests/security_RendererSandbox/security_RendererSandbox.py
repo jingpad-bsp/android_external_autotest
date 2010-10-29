@@ -13,6 +13,37 @@ class security_RendererSandbox(site_ui_test.UITest):
     version = 1
     render_pid = -1
 
+
+    def check_for_seccomp_sandbox(self):
+        # the seccomp sandbox has exactly one child process that has no
+        # other threads, this is the trusted helper process.
+        seccomp = subprocess.Popen(['ps', 'h', '--format', 'pid',
+                                    '--ppid', '%s' % self.render_pid],
+                                   stdout=subprocess.PIPE)
+        helper_processes = seccomp.communicate()[0].splitlines()
+        if len(helper_processes) != 1:
+            raise error.TestFail('Invalid number of Renderer child process')
+
+        helper_pid = helper_processes[0].strip()
+        threads = os.listdir('/proc/%s/task' % helper_pid)
+        if len(threads) != 1:
+            raise error.TestFail('Invalid number of helper process threads')
+
+        exe = os.readlink('/proc/%s/exe' % helper_pid)
+        pattern = re.compile('/chrome$')
+        chrome = pattern.search(exe)
+        if chrome == None:
+            raise error.TestFail('Invalid child process executable')
+
+
+    def check_for_suid_sandbox(self):
+        # for setuid sandbox, make sure there is no content in the CWD
+        # directory
+        cwd_contents = os.listdir('/proc/%s/cwd' % self.render_pid)
+        if len(cwd_contents) > 0:
+          raise error.TestFail('Contents present in the CWD directory')
+
+
     def run_once(self, time_to_wait=20):
         # open a browser window
         site_login.wait_for_initial_chrome_window()
@@ -29,31 +60,12 @@ class security_RendererSandbox(site_ui_test.UITest):
         # arm render must run in a setuid sandbox
         arch = utils.get_arch()
         if arch == 'i386':
-            # the seccomp sandbox has exactly one child process that has no
-            # other threads, this is the trusted helper process.
-            seccomp = subprocess.Popen(['ps', 'h', '--format', 'pid',
-                                        '--ppid', '%s' % self.render_pid],
-                                       stdout=subprocess.PIPE)
-            helper_processes = seccomp.communicate()[0].splitlines()
-            if len(helper_processes) != 1:
-                raise error.TestFail('Invalid number of Renderer child process')
-
-            helper_pid = helper_processes[0].strip()
-            threads = os.listdir('/proc/%s/task' % helper_pid)
-            if len(threads) != 1:
-                raise error.TestFail('Invalid number of helper process threads')
-
-            exe = os.readlink('/proc/%s/exe' % helper_pid)
-            pattern = re.compile('/chrome$')
-            chrome = pattern.search(exe)
-            if chrome == None:
-                raise error.TestFail('Invalid child process executable')
+            # Seccomp is currently disabled because of performance issues. See
+            # crosbug.com/8397
+            # self.check_for_seccomp_sandbox()
+            self.check_for_suid_sandbox()
         else:
-            # for setuid sandbox, make sure there is no content in the CWD
-            # directory
-            cwd_contents = os.listdir('/proc/%s/cwd' % self.render_pid)
-            if len(cwd_contents) > 0:
-                raise error.TestFail('Contents present in the CWD directory')
+            self.check_for_suid_sandbox()
 
 
     # queries pgrep for the pid of the renderer. since this function is passed
