@@ -1,18 +1,8 @@
 #!/usr/bin/python
 #
-# Copyright 2010 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may abtain a copy of the license at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright (c) 2010 The Chromium OS Authors. All Rights Reserved.
+# Use of this souce code is governed by a BSD-sytle license that can be
+# found in the LICENSE file.
 
 """System Monitor.
 
@@ -64,7 +54,7 @@ Usage:
 """
 
 __author__ = 'kdlucas@gmail.com (Kelly Lucas)'
-__version__ = '2.01'
+__version__ = '2.02'
 
 import logging, logging.handlers, optparse, os, paramiko, Queue, shutil
 import subprocess, sys, threading
@@ -366,9 +356,9 @@ class TestBed(object):
         self.sshlog = os.path.join(home, 'ssh.log')
         self.logger = SetLogger('SystemMonitor', logfile, debug,
                                 log_to_stdout=log_to_stdout)
-        self.logger.info('*************************************************')
-        self.logger.info('*****************Starting Run********************')
-        self.logger.info('*************************************************')
+        self.logger.info('=================================================')
+        self.logger.info('=====================Run Start===================')
+        self.logger.info('=================================================')
         self.logger.info('Script started at: %s', start_time)
         self.loglevel = debug
         self.graph = graph
@@ -626,24 +616,41 @@ class Monitor(object):
         f.write('<TR><TH>Hostname<TH>Status<TH>Labels<TH>Last Update')
         f.write('<TH>Release<TH>Health</TR>')
         for h in sorted_hosts:
-            if TB.hosts[h]['status']:
-                if self.afe_hosts[h]['status'] == 'Running':
-                    status = 'Running'
-                    bgcolor = '#FFCC66'
-                else:
-                    status = 'Ready'
-                    bgcolor = '#FFFFFF'
-            else:
-                status = 'Down'
-                bgcolor = '#FF9999'
             link_dir = 'hosts/' + h + '/rrd'
             rrd_dir = os.path.join(TB.home, 'hosts', h, 'rrd')
+            downfile = os.path.join(rrd_dir, 'downtime')
             fqn = 'http://cautotest.corp.google.com/'
             view_host = 'afe/#tab_id=view_host&object_id=%s' % h
             hlink = fqn + view_host
             if not os.path.isdir(rrd_dir):
                 os.makedirs(rrd_dir)
                 os.chmod(rrd_dir, 0755)
+            if TB.hosts[h]['status']:
+                if os.path.isfile(downfile):
+                    try:
+                        os.remove(downfile)
+                    except OSError, e:
+                        TB.logger.error('Error deleting %s\n%s', downfile, e)
+                if self.afe_hosts[h]['status'] == 'Running':
+                    status = 'Running'
+                    bgcolor = '#99CCFF'
+                else:
+                    status = 'Ready'
+                    bgcolor = '#FFFFFF'
+            else:
+                if os.path.isfile(downfile):
+                    status = 'Down'
+                    bgcolor = '#FF9999'
+                    df = open(downfile, 'r')
+                    TB.hosts[h]['time'] = df.read()
+                    df.close()
+                else:
+                    status = 'Unknown'
+                    bgcolor = '#E8E8E8'
+                    df = open(downfile, 'w')
+                    df.write(TB.hosts[h]['time'])
+                    df.close()
+
             f.write('<tr bgcolor=%s><th>' % bgcolor)
             f.write('<a href=%s>%s</a></th>' % (hlink, h))
             f.write('<td><em>%s</em>' % status)
