@@ -25,11 +25,11 @@ class logging_CrashSender(site_crash_test.CrashTest):
             raise error.TestFail('Missing board name %s in output' %
                                  board_match.group(1))
         # Get hwid
-        hwclass = 'unknown'
+        hwclass = 'undefined'
         if os.path.exists(_HWCLASS_PATH):
             hwclass = utils.read_file(_HWCLASS_PATH)
         if not ('HWClass: %s' % hwclass) in result['output']:
-            raise error.TestFail('Missing hwclass %s in output' % hwclass)
+            raise error.TestFail('Expected hwclass %s in output' % hwclass)
 
 
     def _check_simple_minidump_send(self, report):

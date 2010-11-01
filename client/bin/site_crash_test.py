@@ -181,7 +181,7 @@ class CrashTest(test.test):
             exec_name = exec_name_match.group(1)
         else:
             exec_name = None
-        sig_match = re.search('Sig: (\S+)', output)
+        sig_match = re.search('sig: (\S+)', output)
         if sig_match:
             sig = sig_match.group(1)
         else:

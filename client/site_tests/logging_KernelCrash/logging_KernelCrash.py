@@ -70,7 +70,7 @@ class logging_KernelCrash(site_crash_test.CrashTest):
             return
 
         if not os.path.exists(kcrash_report):
-            raise error.TestFail('Crash report gone')
+            raise error.TestFail('Crash report %s gone' % kcrash_report)
         report_contents = utils.read_file(kcrash_report)
         if not 'kernel BUG at fs/proc/breakme.c' in report_contents:
             raise error.TestFail('Crash report has unexpected contents')
@@ -88,7 +88,7 @@ class logging_KernelCrash(site_crash_test.CrashTest):
             return
         kcrash_report = self._get_kcrash_name()
         if not os.path.exists(kcrash_report):
-            raise error.TestFail('Crash report gone')
+            raise error.TestFail('Crash report %s gone' % kcrash_report)
         result = self._call_sender_one_crash(
             report=os.path.basename(kcrash_report))
         if (not result['send_attempt'] or not result['send_success'] or
