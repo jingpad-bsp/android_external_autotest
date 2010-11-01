@@ -9,7 +9,8 @@ from autotest_lib.client.common_lib import error, log_watcher, site_ui
 from autotest_lib.client.common_lib import site_auth_server, site_dns_server
 from dbus.mainloop.glib import DBusGMainLoop
 
-sys.path.append(os.environ.get("SYSROOT", "") + "/usr/local/lib/flimflam/test")
+sys.path.append(os.environ.get("SYSROOT", "/usr/local") +
+                "/usr/lib/flimflam/test")
 import flimflam
 
 
