@@ -69,11 +69,14 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         # add in some extra command logging
         self.boot_loggables.add(command("ls -l /boot",
                                         "boot_file_list"))
-        self.test_loggables.add(purgeable_logdir("/home/chronos/user/crash"))
         self.test_loggables.add(purgeable_logdir("/home/chronos/user/log"))
         self.test_loggables.add(logdir("/tmp"))
         self.test_loggables.add(logdir("/var/log"))
-        self.test_loggables.add(purgeable_logdir("/var/spool/crash"))
+        # We only want to gather and purge crash reports after the client test
+        # runs in case a client test is checking that a crash found at boot
+        # (such as a kernel crash) is handled.
+        self.after_iteration_loggables.add(purgeable_logdir("/home/chronos/user/crash"))
+        self.after_iteration_loggables.add(purgeable_logdir("/var/spool/crash"))
         self.test_loggables.add(logfile("/home/chronos/.Google/"
                                         "Google Talk Plugin/gtbplugin.log"))
 
