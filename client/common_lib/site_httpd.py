@@ -14,7 +14,7 @@
 import cgi, logging, os, posixpath, SimpleHTTPServer, socket
 import socket, ssl, sys, threading, urllib, urlparse
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-from SocketServer import BaseServer
+from SocketServer import BaseServer, ThreadingMixIn
 
 
 class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -164,7 +164,7 @@ class HTTPListener(object):
         self._server_thread.join()
 
 
-class SecureHTTPServer(HTTPServer):
+class SecureHTTPServer(ThreadingMixIn, HTTPServer):
     def __init__(self, server_address, HandlerClass, cert_path, key_path):
         _socket = socket.socket(self.address_family, self.socket_type)
         self.socket = ssl.wrap_socket(_socket,
