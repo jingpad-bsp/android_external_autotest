@@ -40,13 +40,10 @@ class logdir(base_sysinfo.loggable):
 
     def run(self, log_dir):
         if os.path.exists(self.dir):
-            if self.dir.startswith('/'):
-                dest_dir = os.path.join(log_dir, self.dir[1:])
-            else:
-                dest_dir = os.path.join(log_dir, self.dir)
-            utils.system("mkdir -p %s" % dest_dir)
-            utils.system("cp -pr %s/* %s" % (self.dir, dest_dir),
-                         ignore_status=True)
+            parent_dir = os.path.dirname(self.dir)
+            utils.system("mkdir -p %s%s" % (log_dir, parent_dir))
+            utils.system("rsync -a --exclude=autoserv* %s %s%s" % 
+                         (self.dir, log_dir, parent_dir))
 
 
 class purgeable_logdir(logdir):
