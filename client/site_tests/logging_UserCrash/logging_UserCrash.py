@@ -9,7 +9,6 @@ from autotest_lib.client.common_lib import error, utils
 
 _COLLECTION_ERROR_SIGNATURE = 'crash_reporter-user-collection'
 _CORE2MD_PATH = '/usr/bin/core2md'
-_CORE_PATTERN = '/proc/sys/kernel/core_pattern'
 _LEAVE_CORE_PATH = '/root/.leave_core'
 _MAX_CRASH_DIRECTORY_SIZE = 32
 
@@ -25,7 +24,9 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
     def _test_reporter_startup(self):
         """Test that the core_pattern is set up by crash reporter."""
-        output = utils.read_file(_CORE_PATTERN).rstrip()
+        # Turn off crash filtering so we see the original setting.
+        self.disable_crash_filtering()
+        output = utils.read_file(self._CORE_PATTERN).rstrip()
         expected_core_pattern = ('|%s --signal=%%s --pid=%%p' %
                                  self._CRASH_REPORTER_PATH)
         if output != expected_core_pattern:
@@ -43,7 +44,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
         """Test the crash_reporter shutdown code works."""
         self._log_reader.set_start_by_current()
         utils.system('%s --clean_shutdown' % self._CRASH_REPORTER_PATH)
-        output = utils.read_file(_CORE_PATTERN).rstrip()
+        output = utils.read_file(self._CORE_PATTERN).rstrip()
         if output != 'core':
             raise error.TestFail('core pattern should have been core, not %s' %
                                  output)
@@ -54,6 +55,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
         crasher is only gzipped to subvert Portage stripping.
         """
+        self.enable_crash_filtering('crasher_nobreakpad')
         self._crasher_path = os.path.join(self.srcdir, 'crasher_nobreakpad')
         utils.system('cd %s; tar xzf crasher.tgz-unmasked' %
                      self.srcdir)
@@ -400,6 +402,38 @@ class logging_UserCrash(site_crash_test.CrashTest):
         results = self._check_crashing_process('root', consent=False)
 
 
+    def _check_filter_crasher(self, should_receive):
+        self._log_reader.set_start_by_current()
+        crasher_basename = os.path.basename(self._crasher_path)
+        utils.system(self._crasher_path, ignore_status=True);
+        if should_receive:
+            to_find = 'Received crash notification for ' + crasher_basename
+        else:
+            to_find = 'Ignoring crash from ' + crasher_basename
+        site_utils.poll_for_condition(
+            lambda: self._log_reader.can_find(to_find),
+            timeout=10,
+            exception=error.TestError(
+              'Timeout waiting for: ' + to_find + ' in ' +
+              self._log_reader.get_logs()))
+
+
+    def _test_crash_filtering(self):
+        """Test that crash filtering (a feature needed for testing) works."""
+        self._prepare_crasher()
+        crasher_basename = os.path.basename(self._crasher_path)
+        self._log_reader.set_start_by_current()
+
+        self.enable_crash_filtering('none')
+        self._check_filter_crasher(False)
+
+        self.enable_crash_filtering('sleep')
+        self._check_filter_crasher(False)
+
+        self.disable_crash_filtering()
+        self._check_filter_crasher(True)
+
+
     def _test_max_enqueued_crashes(self):
         """Test that _MAX_CRASH_DIRECTORY_SIZE is enforced."""
         self._log_reader.set_start_by_current()
@@ -444,10 +478,10 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
     def _check_collection_failure(self, test_option, failure_string):
         # Add parameter to core_pattern.
-        old_core_pattern = utils.read_file(_CORE_PATTERN)[:-1]
+        old_core_pattern = utils.read_file(self._CORE_PATTERN)[:-1]
         try:
             utils.system('echo "%s %s" > %s' % (old_core_pattern, test_option,
-                                                _CORE_PATTERN))
+                                                self._CORE_PATTERN))
             result = self._run_crasher_process_and_analyze('root',
                                                            consent=True)
             self._check_crashed_and_caught(result)
@@ -470,7 +504,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                                  'log',
                                                  _COLLECTION_ERROR_SIGNATURE)
         finally:
-            utils.system('echo "%s" > %s' % (old_core_pattern, _CORE_PATTERN))
+            utils.system('echo "%s" > %s' % (old_core_pattern,
+                                             self._CORE_PATTERN))
 
 
     def _test_core2md_failure(self):
@@ -555,6 +590,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
                               'chronos_crasher_no_consent',
                               'root_crasher',
                               'root_crasher_no_consent',
+                              'crash_filtering',
                               'max_enqueued_crashes',
                               'core2md_failure',
                               'internal_directory_failure',

@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib import error, utils
 class CrashTest(test.test):
 
     _CONSENT_FILE = '/home/chronos/Consent To Send Stats'
+    _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
     _CRASH_REPORTER_PATH = '/sbin/crash_reporter'
     _CRASH_SENDER_PATH = '/sbin/crash_sender'
     _CRASH_SENDER_RATE_DIR = '/var/lib/crash_sender'
@@ -102,6 +103,10 @@ class CrashTest(test.test):
 
     def _initialize_crash_reporter(self):
         utils.system('%s --init --nounclean_check' % self._CRASH_REPORTER_PATH)
+        # Completely disable crash_reporter from generating crash dumps
+        # while any tests are running, otherwise a crashy system can make
+        # these tests flaky.
+        self.enable_crash_filtering('none')
 
 
     def write_crash_dir_entry(self, name, contents):
@@ -278,11 +283,29 @@ class CrashTest(test.test):
         return result
 
 
+    def _replace_crash_reporter_filter_in(self, new_parameter):
+        core_pattern = utils.read_file(self._CORE_PATTERN)[:-1]
+        core_pattern = re.sub('--filter_in=\S*\s*', '',
+                              core_pattern).rstrip()
+        if new_parameter:
+            core_pattern += ' ' + new_parameter
+        utils.system('echo "%s" > %s' % (core_pattern, self._CORE_PATTERN))
+
+
+    def enable_crash_filtering(self, name):
+        self._replace_crash_reporter_filter_in('--filter_in=' + name)
+
+
+    def disable_crash_filtering(self):
+        self._replace_crash_reporter_filter_in('')
+
+
     def initialize(self):
         test.test.initialize(self)
         self._log_reader = site_log_reader.LogReader()
         self._leave_crash_sending = True
         self._automatic_consent_saving = True
+        self.enable_crash_filtering('none')
 
 
     def cleanup(self):
@@ -292,6 +315,7 @@ class CrashTest(test.test):
         self._set_sending_mock(mock_enabled=False)
         if self._automatic_consent_saving:
             self._pop_consent()
+        self.disable_crash_filtering()
         test.test.cleanup(self)
 
 
