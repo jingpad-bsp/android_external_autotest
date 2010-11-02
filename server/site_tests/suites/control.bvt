@@ -44,7 +44,6 @@ TESTS = [
   ('network_DisableInterface', {'iface_name': 'wlan0',
                                 'tag': 'wlan0'}),
   ('network_Ping', {}),
-  ('platform_Shutdown', {}),
 ]
 
 
@@ -54,6 +53,9 @@ def run_tests(machine):
   client_at = autotest.Autotest(client)
   for test, argv in TESTS:
     client_at.run_test(test, **argv)
+
+  client_at.reboot()
+  client_at.run_test('platform_Shutdown')
 
 
 job.parallel_on_machines(run_tests, machines)
