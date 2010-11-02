@@ -364,6 +364,8 @@ int main(int argc, char **argv) {
   if (command == "check_reachable") {
     printf("%s\n", connected ? "YES" : "NO");
     return 0;
+  } else if (!connected) {
+    printf("FAIL (Not connected)\n");
   }
 
   // Other commands need the bus to be connected.
