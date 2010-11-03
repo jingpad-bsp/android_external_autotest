@@ -16,6 +16,7 @@
                  'petkov+cc@chromium.org',
                  'seano+cc@chromium.org',
                  'sosa+cc@chromium.org',
+                 'truty+cc@chromium.org',
                  ],
     'window_manager_tests': ['derat@chromium.org'],
   },
