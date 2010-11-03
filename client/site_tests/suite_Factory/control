@@ -89,6 +89,8 @@ def step_reboot_seq(next_subtest_info, total_iterations, i=0):
 
 
 def step_init(next_subtest_info=None):
+    factory.log('TEST_LIST = %s' % repr(TEST_LIST))
+
     job.next_step([step_init])
 
     start_ui()

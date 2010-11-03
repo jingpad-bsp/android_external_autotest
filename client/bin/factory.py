@@ -25,7 +25,9 @@ STATUS_CODE_MAP = {
     'START': ACTIVE,
     'GOOD': PASSED,
     'FAIL': FAILED,
-    'ERROR': FAILED}
+    'ERROR': FAILED,
+    'ABORT': FAILED,
+    'TEST_NA': FAILED}
 
 
 LOG_PATH = '/var/log/factory.log'
