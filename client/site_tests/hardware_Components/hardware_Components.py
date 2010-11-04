@@ -229,7 +229,8 @@ class hardware_Components(test.test):
         # example output:
         #  Found chip "Winbond W25x16" (2048 KB, FWH) at physical address 0xfe
         parts = []
-        lines = utils.system_output('flashrom', ignore_status=True).split('\n')
+        lines = utils.system_output('flashrom -V',
+                                    ignore_status=True).split('\n')
         for line in lines:
             match = re.search(r'Found chip "(.*)" .* at physical address ',
                               line)
