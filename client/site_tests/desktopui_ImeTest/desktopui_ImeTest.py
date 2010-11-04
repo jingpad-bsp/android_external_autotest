@@ -253,6 +253,7 @@ class desktopui_ImeTest(site_ui_test.UITest):
         self.test_engine('chewing', 'hol \n', '\xE6\x93\x8D')
         self.test_engine('hangul', 'wl ', '\xEC\xA7\x80 ')
         self.test_engine('pinyin', 'nihao ', '\xE4\xBD\xA0\xE5\xA5\xBD')
+        self.test_engine('m17n:zh:quick', 'aa', '\xE9\x96\x93')
 
         # Run a test on English last, so that we can type in English to
         # turn off the IME.
