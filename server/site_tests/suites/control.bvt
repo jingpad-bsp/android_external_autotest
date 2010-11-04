@@ -28,7 +28,7 @@ TESTS = [
                              'tag': 'chrome'}),
   ('desktopui_KillRestart', {'binary': '^session_manager$',
                              'tag': 'session'}),
-  ('desktopui_WindowManagerFocusNewWindows', {}),                             
+  ('desktopui_WindowManagerFocusNewWindows', {}),
 # TODO(ericli): reenable it after screen locker is enabled.
 # http://code.google.com/p/chromium-os/issues/detail?id=7758
 #  ('desktopui_ScreenLocker', {}),
@@ -54,7 +54,7 @@ def run_tests(machine):
   for test, argv in TESTS:
     client_at.run_test(test, **argv)
 
-  client_at.reboot()
+  client.reboot()
   client_at.run_test('platform_Shutdown')
 
 
