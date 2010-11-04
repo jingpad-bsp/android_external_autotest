@@ -34,9 +34,8 @@ class power_Backlight(test.test):
             raise error.TestFail('Must have at least 5 backlight levels')
         keyvals = {}
         rates = []
-        
-        levels = [0, int(0.25*max_brightness), int(0.5*max_brightness),
-                  int(0.75*max_brightness), max_brightness]
+
+        levels = [0, int(0.5*max_brightness), max_brightness]
         for i in levels:
             utils.system('backlight-tool --set_brightness %d' % i)
             time.sleep(delay)
@@ -58,4 +57,3 @@ class power_Backlight(test.test):
     def cleanup(self):
         # Re-enable screen locker and powerd. This also re-enables dpms.
         os.system('start powerd')
-
