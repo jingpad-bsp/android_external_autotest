@@ -35,9 +35,9 @@ TESTS = [
   ('graphics_WindowManagerGraphicsCapture', {}),
   ('logging_CrashSender', {}),
   ('logging_UserCrash', {}),
-  ('login_Backdoor', {'creds': '$backdoor'}),
   ('login_BadAuthentication', {}),
-  ('login_CryptohomeIncognitoMounted', {'creds': '$backdoor'}),
+# TODO(cmasone): re-implement to use Guest mode and re-enable.
+#  ('login_CryptohomeIncognitoMounted', {'creds': '$backdoor'}),
   ('login_CryptohomeMounted', {}),
   ('login_LoginSuccess', {}),
   ('login_RemoteLogin', {}),
