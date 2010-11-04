@@ -24,7 +24,7 @@ def init_gpio(gpio_root=GPIO_ROOT):
 
 
 class factory_Verify(test.test):
-    version = 1
+    version = 2
 
     def alert_bypassed(self, target, times=3):
         """ Alerts user that a required test is bypassed. """
@@ -46,19 +46,16 @@ class factory_Verify(test.test):
         if status_val != 0:
             raise error.TestFail('Developer Switch Button is enabled')
 
-    def check_flashrom_write_protect(self, do_check):
+    def check_flashrom_write_protect(self, do_check, subtest_tag):
         """ Enables and checks write protection for flashrom """
         if not do_check:
             self.alert_bypassed("FLASHROM WRITE PROTECTION")
             return
 
-        factory.log('enable write protect (factory_EnableWriteProtect)')
-        self.job.run_test('factory_EnableWriteProtect')
-
-        # verify if write protection range is properly fixed,
-        # and all bits in RW is writable.
-        factory.log('verify write protect (hardware_EepromWriteProtect)')
-        if not self.job.run_test('hardware_EepromWriteProtect'):
+        # this is an important message, so print it several times to alert user
+        for i in range(3):
+            factory.log('ENABLE WRITE PROTECTION (factory_EnableWriteProtect)')
+        if not self.job.run_test('factory_EnableWriteProtect', tag=subtest_tag):
             raise error.TestFail('Flashrom write protection test failed.')
 
     def check_google_required_tests(self, do_check, status_file, test_list):
@@ -90,6 +87,7 @@ class factory_Verify(test.test):
                  check_required_tests=True,
                  check_developer_switch=True,
                  check_and_enable_write_protect=True,
+                 subtest_tag=None,
                  status_file_path=None,
                  test_list=None):
 
@@ -98,4 +96,5 @@ class factory_Verify(test.test):
                                          status_file_path,
                                          test_list)
         self.check_developer_switch(check_developer_switch)
-        self.check_flashrom_write_protect(check_and_enable_write_protect)
+        self.check_flashrom_write_protect(check_and_enable_write_protect,
+                                          subtest_tag)

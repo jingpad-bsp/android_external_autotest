@@ -21,7 +21,7 @@ class factory_EnableWriteProtect(test.test):
           if the protection stuff is set correctly, use test
           hardware_EepromWriteProtect instead.
     """
-    version = 1
+    version = 2
     verbose = True
 
     def setup(self):
@@ -52,23 +52,22 @@ class factory_EnableWriteProtect(test.test):
             # select target
             if not self.flashrom.select_target(conf['target']):
                 raise error.TestError(
-                        'ERROR: cannot select target %s\n' \
+                        'ERROR: cannot select target %s\n'
                         '錯誤: 無法選取快閃記憶體目標 %s' %
                         (conf['name'], conf['name']))
 
             # build layout
-            original = self.flashrom.read_whole()
-            if not original:
+            flashrom_size = self.flashrom.get_size()
+            if not flashrom_size:
                 raise error.TestError(
-                        'Cannot read valid flash rom data.\n' \
-                        '無法讀取快閃記憶體資料')
-            flashrom_size = len(original)
+                        'Cannot get flash rom size.\n'
+                        '無法取得快閃記憶體大小')
             # do not trust current image when detecting layout.
             layout = self.flashrom.detect_layout(conf['layout'],
                                                  flashrom_size, None)
             if not layout:
                 raise error.TestError(
-                        'Cannot detect flash rom layout.\n' \
+                        'Cannot detect flash rom layout.\n'
                         '無法偵測快閃記憶體配置結構')
 
             # enable write protection
@@ -76,17 +75,31 @@ class factory_EnableWriteProtect(test.test):
                 print ' - Enable Write Protection for %s' % conf['name']
             if layout.keys().count('ro') != 1:
                 raise error.TestError(
-                        "INTERNAL ERROR: Must be 1 RO section\n" \
+                        "INTERNAL ERROR: Must be 1 RO section\n"
                         "內部錯誤: 須要單一個唯讀區段")
-            if not self.flashrom.enable_write_protect(layout, 'ro'):
+            # only configure (enable) write protection if current status is not
+            # correct, because sometimes the factory test is executed several
+            # times without resetting WP status.
+            if not self.flashrom.verify_write_protect(layout, 'ro'):
+                if not (self.flashrom.enable_write_protect(layout, 'ro') and
+                        self.flashrom.verify_write_protect(layout, 'ro')):
+                    raise error.TestError(
+                            'ERROR: cannot enable write protection.\n'
+                            '錯誤: 無法啟用寫入保護')
+
+            # check write protection
+            if self.verbose:
+                print ' - Check Write Protection for %s' % conf['name']
+            self.flashrom.disable_write_protect()
+            if not self.flashrom.verify_write_protect(layout, 'ro'):
                 raise error.TestError(
-                        'ERROR: cannot enable write protection.\n' \
-                        '錯誤: 無法啟用寫入保護')
+                        'ERROR: not write-protected (modifiable status).\n'
+                        '錯誤: 寫入保護不正常 (狀況可被改變)')
 
         # restore default selection.
         if not self.flashrom.select_target(system_default_selection):
             raise error.TestError(
-                    'ERROR: cannot restore target.\n' \
+                    'ERROR: cannot restore target.\n'
                     '錯誤: 無法還原快閃記憶體目標')
         print " - Complete."
 

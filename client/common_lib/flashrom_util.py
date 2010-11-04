@@ -402,7 +402,7 @@ class flashrom_util(object):
         if self.verbose:
             print 'flashrom_util.get_size(): ', cmd
         output = utils.system_output(cmd, ignore_status=True)
-        last_line = output.rpartition('\n')[2]
+        last_line = output.rpartition('\n')[-1]
         try:
             size = long(last_line)
         except ValueError:
@@ -571,15 +571,102 @@ class flashrom_util(object):
             raise TestError('INTERNAL ERROR: unknown section.')
         # syntax: flashrom --wp-range offset size
         #         flashrom --wp-enable
+        # NOTE: wp-* won't return error value even if they failed to change
+        # the value/status due to WP already enabled, so we can't rely on the
+        # return value; the real status must be verified by --wp-status.
         addr = layout_map[section]
-        cmd = '%s"%s" --wp-range 0x%06X 0x%06X && "%s" --wp-enable' % (
-                self.cmd_prefix, self.tool_path,
-                addr[0], addr[1] - addr[0] + 1,
-                self.tool_path)
+        cmd = ('%s"%s" --wp-disable && '
+               '"%s" --wp-range 0x%06X 0x%06X && '
+               '"%s" --wp-enable' % (
+                       self.cmd_prefix, self.tool_path,
+                       self.tool_path, addr[0], addr[1] - addr[0] + 1,
+                       self.tool_path))
         if self.verbose:
             print 'flashrom.enable_write_protect(): ', cmd
         # failure for non-zero
         return utils.system(cmd, ignore_status=True) == 0
+
+    def disable_write_protect(self):
+        '''
+        Disables whole "write protection" range and status.
+        '''
+        # syntax: flashrom --wp-range offset size
+        #         flashrom --wp-disable
+        cmd = '%s"%s" --wp-disable && "%s" --wp-range 0 0' % (
+                self.cmd_prefix, self.tool_path, self.tool_path)
+        if self.verbose:
+            print 'flashrom.disable_write_protect(): ', cmd
+        # failure for non-zero
+        return utils.system(cmd, ignore_status=True) == 0
+
+    def verify_write_protect(self, layout_map, section):
+        '''
+        Verifies if write protection is configured correctly.
+        '''
+        if section not in layout_map:
+            raise TestError('INTERNAL ERROR: unknown section.')
+        # syntax: flashrom --wp-status
+        addr = layout_map[section]
+        cmd = '%s"%s" --wp-status | grep "^WP: "' % (
+                self.cmd_prefix, self.tool_path)
+        if self.verbose:
+            print 'flashrom.verify_write_protect(): ', cmd
+        results = utils.system_output(cmd, ignore_status=True).split('\n')
+        # output: WP: status: 0x80
+        #         WP: status.srp0: 1
+        #         WP: write protect is %s. (disabled/enabled)
+        #         WP: write protect range: start=0x%8x, len=0x%08x
+        wp_enabled = None
+        wp_range_start = -1
+        wp_range_len = -1
+        for result in results:
+            result = result.strip()
+            if result.startswith('WP: write protect is '):
+                result = result.rpartition(' ')[-1].strip('.')
+                if result == 'enabled':
+                    wp_enabled = True
+                elif result == 'disabled':
+                    wp_enabled = False
+                else:
+                    if self.verbose:
+                        print 'flashrom.verify_write_protect: unknown status:',
+                        print result
+                continue
+            if result.startswith('WP: write protect range: '):
+                value_start = re.findall('start=[0-9xXa-fA-F]+', result)
+                value_len = re.findall('len=[0-9xXa-fA-F]+', result)
+                if value_start and value_len:
+                    wp_range_start = int(value_start[0].rpartition('=')[-1], 0)
+                    wp_range_len = int(value_len[0].rpartition('=')[-1], 0)
+                continue
+        if self.verbose:
+            print 'wp_enabled:', wp_enabled
+            print 'wp_range_start:', wp_range_start
+            print 'wp_range_len:', wp_range_len
+        if (wp_enabled == None) or ((wp_range_start < 0) or (wp_range_len < 0)):
+            if self.verbose:
+                print 'flashrom.verify_write_protect(): invalid output:'
+                print '\n'.join(results)
+            return False
+
+        # expected: enabled, and correct range
+        addr = layout_map[section]
+        addr_start = addr[0]
+        addr_len = addr[1] - addr[0] + 1
+        if (wp_range_start != addr_start) or (wp_range_len != addr_len):
+            if self.verbose:
+                print ('flashrom.verify_write_protect(): unmatched range: '
+                       'current (%08lx, %08lx), expected (%08lx,%08lx)' %
+                       (wp_range_start, wp_range_len, addr_start, addr_len))
+            return False
+        if not wp_enabled:
+            if self.verbose:
+                print ('flashrom.verify_write_protect(): '
+                       'write protect is not enabled.')
+            return False
+
+        # everything is correct.
+        return True
 
     def select_target(self, target):
         '''
