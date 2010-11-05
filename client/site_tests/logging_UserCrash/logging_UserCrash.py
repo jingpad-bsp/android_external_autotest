@@ -19,7 +19,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
     def setup(self):
         os.chdir(self.srcdir)
-        utils.make('clean all')
+        utils.make('clean')
+        utils.make('all')
 
 
     def _test_reporter_startup(self):

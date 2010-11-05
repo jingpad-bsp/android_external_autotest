@@ -22,7 +22,8 @@ class firmware_VbootCrypto(test.test):
     # http://code.google.com/p/chromium-os/issues/detail?id=3792
     def setup_Disabled(self):
         os.chdir(self.srcdir)
-        utils.make('clean all')
+        utils.make('clean')
+        utils.make('all')
 
 
     # Parses the [result] and output the key-value pairs.
