@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib import gbb_util
 
 
 class factory_WriteGBB(test.test):
-    version = 2
+    version = 3
 
     def run_once(self, shared_dict={}):
         # More convenient to set the CWD to hardware_Components since a lot of
@@ -37,6 +37,4 @@ class factory_WriteGBB(test.test):
                                   keep_temp_files=True)
         gbb.set_bmpfv(utils.read_file(components['data_bitmap_fv'][0]))
         gbb.set_hwid(components['part_id_hwqual'][0])
-        gbb.set_recoverykey(utils.read_file(components['key_recovery'][0]))
-        gbb.set_rootkey(utils.read_file(components['key_root'][0]))
         gbb.commit()
