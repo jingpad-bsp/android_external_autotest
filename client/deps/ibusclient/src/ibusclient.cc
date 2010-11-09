@@ -366,6 +366,7 @@ int main(int argc, char **argv) {
     return 0;
   } else if (!connected) {
     printf("FAIL (Not connected)\n");
+    return 0;
   }
 
   // Other commands need the bus to be connected.
