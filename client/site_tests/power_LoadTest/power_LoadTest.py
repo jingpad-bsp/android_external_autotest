@@ -154,9 +154,9 @@ class power_LoadTest(site_ui_test.UITest):
             # the power test extension will report its status here
             latch = self._testServer.add_wait_url('/status')
 
-            if site_login.logged_in():
-                site_login.attempt_logout()
             # the act of logging in will launch chrome with external extension.
+            # NOTE: self.login() will log out the current session if it's
+            # currently logged in.
             self.login(self.username, self.password)
 
             # stop powerd

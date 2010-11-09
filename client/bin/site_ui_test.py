@@ -240,6 +240,7 @@ class UITest(bin_test.test):
         """
         if site_login.logged_in():
             site_login.attempt_logout(timeout=site_login._DEFAULT_TIMEOUT)
+            site_login.refresh_login_screen()
 
         site_login.attempt_login(username or self.username,
                                  password or self.password)
