@@ -1283,4 +1283,4 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
             logging.info('[tone %dHz]' % args['frequency'])
         elif args['type'] == 'scale':
             logging.info('[A# harmonic minor scale]')
-        utils.system(self.pacmd(cmd))
+        utils.system(cmd)
