@@ -104,13 +104,7 @@ class desktopui_ImeTest(site_ui_test.UITest):
         return out.strip()
 
 
-    # TODO: Make this function set the config value directly, instead of
-    # attempting to navigate the UI.
     def toggle_ime_process(self):
-        self.toggle_ime_engine('en-US', 'xkb:us:altgr-intl:eng')
-
-
-    def toggle_ime_engine(self, language, engine):
         ax = self.get_autox()
 
         # Open the config dialog.
@@ -120,10 +114,76 @@ class desktopui_ImeTest(site_ui_test.UITest):
         time.sleep(1)
         # Navigate to the "Languages and Input" menu.
         ax.send_text('chrome://settings/language#lang=%s,focus=%s\n' %
-                     (language, engine))
+                     ('en-US', 'xkb:us:altgr-intl:eng'))
         time.sleep(5)
 
         # Toggle the checkbox.
+        ax.send_text(' ')
+        time.sleep(1)
+
+        # Close the window.
+        ax.send_hotkey('Ctrl+w')
+        time.sleep(1)
+
+
+    def start_ime_engine(self, language, engine):
+        """
+        Enable an IME engine via the Chrome settings dialog.
+
+        @param language Language ID of the IME.
+        @param engine Name of the engine to enable.
+        """
+        ax = self.get_autox()
+
+        # Open the config dialog.
+        ax.send_hotkey('Ctrl+t')
+        time.sleep(1)
+        ax.send_hotkey('Ctrl+l')
+        time.sleep(1)
+        # Navigate to the "Languages and Input" menu.
+        ax.send_text('chrome://settings/language#focus=add,lang_add=%s\n' %
+                     language)
+        time.sleep(3)
+        ax.send_text(' ')
+        time.sleep(1)
+        ax.send_hotkey('Ctrl+w')
+        time.sleep(1)
+        ax.send_hotkey('Ctrl+t')
+        time.sleep(1)
+        ax.send_hotkey('Ctrl+l')
+        time.sleep(1)
+        ax.send_text('chrome://settings/language#lang=%s,focus=%s\n' %
+                     (language, engine))
+        time.sleep(3)
+
+        # Toggle the checkbox.
+        ax.send_text(' ')
+        time.sleep(1)
+
+        # Close the window.
+        ax.send_hotkey('Ctrl+w')
+        time.sleep(1)
+
+
+    def stop_ime_language(self, language):
+        """
+        Remove a language from Chrome's preferred list and disable all its IMEs.
+
+        @param language Language ID of the language to remove.
+        """
+        ax = self.get_autox()
+
+        # Open the config dialog.
+        ax.send_hotkey('Ctrl+t')
+        time.sleep(1)
+        ax.send_hotkey('Ctrl+l')
+        time.sleep(1)
+        # Navigate to the "Languages and Input" menu.
+        ax.send_text('chrome://settings/language#lang=%s,focus=remove\n' %
+                     language)
+        time.sleep(3)
+
+        # Push the button
         ax.send_text(' ')
         time.sleep(1)
 
@@ -204,8 +264,8 @@ class desktopui_ImeTest(site_ui_test.UITest):
                        (current_engine, expected_other_engine))
 
 
-    def test_engine(self, engine_name, input_string, expected_string):
-        self.preload_engines([engine_name])
+    def test_engine(self, language, engine_name, input_string, expected_string):
+        self.start_ime_engine(language, engine_name)
         self.activate_engine(engine_name)
 
         ax = self.get_autox()
@@ -225,6 +285,8 @@ class desktopui_ImeTest(site_ui_test.UITest):
                 'test_engine %s' % engine_name,
                 'Engine %s failed: Got %s, expected %s' % (engine_name, text,
                                                            expected_string))
+        self.activate_engine('xkb:us::eng')
+        self.stop_ime_language(language)
 
 
     def run_once(self):
@@ -248,16 +310,14 @@ class desktopui_ImeTest(site_ui_test.UITest):
         self.check_process('ibus-memconf', user='chronos')
 
         self.test_keyboard_shortcut()
-        self.test_engine('mozc', 'nihongo \n',
+        self.test_engine('ja', 'mozc', 'nihongo \n',
                          '\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
-        self.test_engine('chewing', 'hol \n', '\xE6\x93\x8D')
-        self.test_engine('hangul', 'wl ', '\xEC\xA7\x80 ')
-        self.test_engine('pinyin', 'nihao ', '\xE4\xBD\xA0\xE5\xA5\xBD')
-        self.test_engine('m17n:zh:quick', 'aa', '\xE9\x96\x93')
+        self.test_engine('zh-TW', 'chewing', 'hol \n', '\xE6\x93\x8D')
+        self.test_engine('ko', 'hangul', 'wl ', '\xEC\xA7\x80 ')
+        self.test_engine('zh-CN', 'pinyin', 'nihao ',
+                         '\xE4\xBD\xA0\xE5\xA5\xBD')
+        self.test_engine('zh-TW', 'm17n:zh:quick', 'aa', '\xE9\x96\x93')
 
-        # Run a test on English last, so that we can type in English to
-        # turn off the IME.
-        self.test_engine('xkb:us::eng', 'asdf', 'asdf')
         self.test_ibus_stop_process()
         if len(self._failed) != 0:
             raise error.TestFail(
