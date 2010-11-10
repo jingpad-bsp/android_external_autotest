@@ -280,10 +280,13 @@ class hardware_Components(test.test):
                 data = utils.system_output(detect_program, ignore_status=True)
                 properties = dict(map(str.strip, line.split('=', 1))
                                   for line in data.splitlines() if '=' in line)
-                # Format: Model String # Firmware Id
-                part_id = ( properties.get(model_string_str, 'UnknownModel') +
-                            ' #' +
-                            properties.get(firmware_id_str, 'UnknownFWID') )
+                model = properties.get(model_string_str, 'UnknownModel')
+                firmware_id = properties.get(firmware_id_str, 'UnknownFWID')
+                # The pattern " on xxx Port" may vary by the detection approach,
+                # so we need to strip it.
+                model = re.sub(' on [^ ]* [Pp]ort$', '', model)
+                # Format: Model #FirmwareId
+                part_id = '%s #%s' % (model, firmware_id)
         return part_id
 
 
