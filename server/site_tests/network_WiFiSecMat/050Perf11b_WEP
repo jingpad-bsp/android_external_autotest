@@ -5,7 +5,7 @@
 { "name":"Perf11b_WEP",
   "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"hostap" } ],
-    [ "config",         { "channel":"2412", "mode":"11g",
+    [ "config",         { "channel":"2412", "mode":"11b",
 #                          "authmode":"open", "wepmode":"on",
                           "wepmode":"on",
                           # 26 digits : 01234567890123456789012345
