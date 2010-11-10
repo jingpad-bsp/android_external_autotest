@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+
+import common
+import sys
+
+class FailManager(common.ModemManager):
+    def EnumerateDevices(self, *args, **kwargs):
+        raise common.RandomError
+
+common.setup()
+common.cleanup(lambda: sys.exit(0))
+FailManager(common.bus, common.OCMM)
+common.run()
