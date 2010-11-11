@@ -60,6 +60,10 @@ class logging_UserCrash(site_crash_test.CrashTest):
         self._crasher_path = os.path.join(self.srcdir, 'crasher_nobreakpad')
         utils.system('cd %s; tar xzf crasher.tgz-unmasked' %
                      self.srcdir)
+        # Make sure all users (specifically chronos) have access to
+        # this directory and its decendents in order to run crasher
+        # executable as different users.
+        utils.system('chmod -R a+rx ' + self.bindir)
 
 
     def _populate_symbols(self):
