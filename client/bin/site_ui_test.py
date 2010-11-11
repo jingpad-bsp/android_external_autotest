@@ -77,16 +77,17 @@ class UITest(bin_test.test):
         self._flim = flimflam.FlimFlam(self._system_bus)
         for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
-            logging.debug("Considering " + properties['Type'])
+            interface = properties['Interface']
+            logging.debug("Considering " + interface)
             for path in properties['IPConfigs']:
                 ipconfig = self._flim.GetObjectInterface('IPConfig', path)
 
                 servers = ipconfig.GetProperties().get('NameServers', None)
                 if servers != None:
                     self._dns[path] = ','.join(servers)
-                    logging.debug("Cached DNS for "  + properties['Type'])
+                    logging.debug("Stored DNS for "  + interface)
                 ipconfig.SetProperty('NameServers', '127.0.0.1')
-                logging.debug("Changed DNS for "  + properties['Type'])
+                logging.debug("Using local DNS for "  + interface)
 
         site_utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
@@ -100,15 +101,15 @@ class UITest(bin_test.test):
         """
         for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
-            logging.debug("Considering " + properties['Type'])
+            interface = properties['Interface']
+            logging.debug("Considering " + interface)
             for path in properties['IPConfigs']:
                 if path in self._dns:
                     ipconfig = self._flim.GetObjectInterface('IPConfig', path)
                     ipconfig.SetProperty('NameServers', self._dns[path])
-                    logging.debug("Changed DNS for "  + properties['Type'])
+                    logging.debug("Reverted DNS for "  + interface)
                 else:
-                    logging.debug("Have no stored DNS settings for " +
-                                  properties['Type'])
+                    logging.debug("No stored DNS for " + interface)
 
         site_utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com',
