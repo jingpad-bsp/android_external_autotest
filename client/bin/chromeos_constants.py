@@ -9,6 +9,7 @@ USER_DATA_DIR = '/home/chronos'
 
 LOGIN_PROFILE = USER_DATA_DIR+'/Default'
 
+CLEANUP_LOGS_PAUSED_FILE = '/var/lib/cleanup_logs_paused'
 # TODO(fes): With the switch to ecryptfs, the cryptohome device is no longer
 # static--it includes a system-specific hash of the username whose vault is
 # mounted.  seano points out that this is no longer a constant, and we may want

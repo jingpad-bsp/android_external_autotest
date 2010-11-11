@@ -15,6 +15,7 @@ that a build has some minimal functionality.  These are meant to run quickly
 in less than 30 minutes and should maximize coverage.
 """
 
+from autotest_lib.client.bin import site_logging
 from autotest_lib.server import site_host_attributes
 
 TESTS = [
@@ -54,8 +55,13 @@ def run_tests(machine):
   for test, argv in TESTS:
     client_at.run_test(test, **argv)
 
+  # Disable log rotation while shutting down just in case
+  # platform_Shutdown needs to find logs.
+  log_pauser = site_logging.LogRotationPauser(client)
+  log_pauser.begin()
   client.reboot()
   client_at.run_test('platform_Shutdown')
+  log_pauser.end()
 
 
 job.parallel_on_machines(run_tests, machines)

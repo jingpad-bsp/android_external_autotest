@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import os, select, sys, time
+from autotest_lib.client.bin.chromeos_constants import CLEANUP_LOGS_PAUSED_FILE
 
 class LogWatcher(object):
     """Track additions to a log file.
@@ -18,6 +19,9 @@ class LogWatcher(object):
           filename: The name of the file to watch.
         """
         self.SetFile(filename)
+        if not os.path.exists(CLEANUP_LOGS_PAUSED_FILE):
+            raise error.TestError('LogReader created without ' +
+                                  CLEANUP_LOGS_PAUSED_FILE)
 
     def SetFile(self, filename):
         """Change the file being tracked.

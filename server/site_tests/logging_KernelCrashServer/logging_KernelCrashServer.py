@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, shutil, time
+from autotest_lib.client.bin import site_logging
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest, site_host_attributes, test
 
@@ -51,7 +52,7 @@ class logging_KernelCrashServer(test.test):
         self._host.wait_for_restart(old_boot_id=boot_id)
 
 
-    def run_once(self, host=None):
+    def _run_while_paused(self, host):
         self._host = host
         client_at = autotest.Autotest(host)
         self._exact_copy(_CONSENT_FILE, _STOWED_CONSENT_FILE)
@@ -85,3 +86,13 @@ class logging_KernelCrashServer(test.test):
                                tag='after-crash-no-consent',
                                is_before=False,
                                consent=False)
+
+    def run_once(self, host=None):
+        # For the entire duration of this server test (across crashes
+        # and boots after crashes) we want to disable log rotation.
+        log_pauser = site_logging.LogRotationPauser(host)
+        try:
+            log_pauser.begin()
+            self._run_while_paused(host)
+        finally:
+            log_pauser.end()

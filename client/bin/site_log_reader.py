@@ -2,8 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import re
-from autotest_lib.client.common_lib import utils
+import os, re
+from autotest_lib.client.bin.chromeos_constants import CLEANUP_LOGS_PAUSED_FILE
+from autotest_lib.client.common_lib import error, utils
 
 class LogReader(object):
     """
@@ -13,6 +14,9 @@ class LogReader(object):
     def __init__(self, filename='/var/log/messages'):
         self._start_line = 1
         self._filename = filename
+        if not os.path.exists(CLEANUP_LOGS_PAUSED_FILE):
+            raise error.TestError('LogReader created without ' +
+                                  CLEANUP_LOGS_PAUSED_FILE)
 
 
     def set_start_by_regexp(self, index, regexp):
