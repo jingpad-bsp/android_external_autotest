@@ -4,8 +4,8 @@
 
 import errno, logging, os, re, utils, signal, subprocess, time
 from autotest_lib.client.bin import chromeos_constants, site_cryptohome
-from autotest_lib.client.bin import site_utils, test
-from autotest_lib.client.common_lib import error, log_watcher, site_ui
+from autotest_lib.client.bin import site_utils, test, site_log_reader
+from autotest_lib.client.common_lib import error, site_ui
 
 _DEFAULT_TIMEOUT = 30
 
@@ -88,21 +88,16 @@ def logged_in():
     return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)
 
 
-def process_crashed(process, watcher):
-    """Runs through the log watched by |watcher| to see if a crash was
-    reported for |process|.
+def process_crashed(process, log_reader):
+    """Checks the log watched by |log_reader| to see if a crash was reported
+    for |process|.
 
     Returns True if so, False if not.
     """
-    line = watcher.ReadLine()
-    while line:
-        if re.search('Received crash notification for %s' % process, line):
-            return True
-        line = watcher.ReadLine()
-    return False
+    return log_reader.can_find('Received crash notification for %s' % process)
 
 
-def wait_for_condition(condition, timeout_msg, timeout, process, watcher,
+def wait_for_condition(condition, timeout_msg, timeout, process, log_reader,
                        crash_msg):
     try:
         site_utils.poll_for_condition(
@@ -111,7 +106,7 @@ def wait_for_condition(condition, timeout_msg, timeout, process, watcher,
             timeout=timeout)
     except TimeoutError, e:
         # We could fail faster if necessary, but it'd be more complicated.
-        if process_crashed(process, watcher):
+        if process_crashed(process, log_reader):
             raise CrashError(crash_msg)
         else:
             raise e
@@ -141,7 +136,8 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
 
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't log in to see if the browser crashed.
-    watcher = log_watcher.LogWatcher(filename='/var/log/messages')
+    log_reader = site_log_reader.LogReader()
+    log_reader.set_start_by_current()
 
     ax = site_ui.get_autox()
     # navigate to login screen
@@ -163,7 +159,7 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
                        timeout_msg='Timed out waiting for login',
                        timeout=timeout,
                        process='chrome',
-                       watcher=watcher,
+                       log_reader=log_reader,
                        crash_msg='Chrome crashed during login')
 
 
@@ -184,7 +180,9 @@ def attempt_logout(timeout=_DEFAULT_TIMEOUT):
 
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't TERM and restart the session manager.
-    watcher = log_watcher.LogWatcher(filename='/var/log/messages')
+    log_reader = site_log_reader.LogReader()
+    log_reader.set_start_by_current()
+
     # Gracefully exiting the session manager causes the user's session to end.
     utils.system('pkill -TERM -o ^%s$' % chromeos_constants.SESSION_MANAGER)
 
@@ -193,7 +191,7 @@ def attempt_logout(timeout=_DEFAULT_TIMEOUT):
         timeout_msg='Timed out waiting for logout',
         timeout=timeout,
         process='session_manager',
-        watcher=watcher,
+        log_reader=log_reader,
         crash_msg='session_manager crashed while shutting down.')
 
 
@@ -208,13 +206,14 @@ def wait_for_browser(timeout=_DEFAULT_TIMEOUT):
     """
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't start chrome to see if the browser crashed.
-    watcher = log_watcher.LogWatcher(filename='/var/log/messages')
+    log_reader = site_log_reader.LogReader()
+    log_reader.set_start_by_current()
     wait_for_condition(
         lambda: os.system('pgrep ^%s$' % chromeos_constants.BROWSER) == 0,
         timeout_msg='Timed out waiting for Chrome to start',
         timeout=timeout,
         process='chrome',
-        watcher=watcher,
+        log_reader=log_reader,
         crash_msg='Chrome crashed while starting up.')
 
 
@@ -229,13 +228,14 @@ def wait_for_cryptohome(timeout=_DEFAULT_TIMEOUT):
     """
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't get the browser up to see if the browser crashed.
-    watcher = log_watcher.LogWatcher(filename='/var/log/messages')
+    log_reader = site_log_reader.LogReader()
+    log_reader.set_start_by_current()
     wait_for_condition(
         condition=lambda: site_cryptohome.is_mounted(),
         timeout_msg='Timed out waiting for cryptohome to be mounted',
         timeout=timeout,
         process='cryptohomed',
-        watcher=watcher,
+        log_reader=log_reader,
         crash_msg='cryptohomed crashed during mount attempt')
 
 
@@ -250,14 +250,15 @@ def wait_for_login_prompt(timeout=_DEFAULT_TIMEOUT):
     """
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't get the browser up to see if the browser crashed.
-    watcher = log_watcher.LogWatcher(filename='/var/log/messages')
+    log_reader = site_log_reader.LogReader()
+    log_reader.set_start_by_current()
     wait_for_condition(
         condition=lambda: os.access(
             chromeos_constants.LOGIN_PROMPT_READY_MAGIC_FILE, os.F_OK),
         timeout_msg='Timed out waiting for login prompt',
         timeout=timeout,
         process='chrome',
-        watcher=watcher,
+        log_reader=log_reader,
         crash_msg='Chrome crashed before the login prompt.')
 
 
@@ -287,14 +288,15 @@ def wait_for_initial_chrome_window(timeout=_DEFAULT_TIMEOUT):
     """
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't get the browser up to see if the browser crashed.
-    watcher = log_watcher.LogWatcher(filename='/var/log/messages')
+    log_reader = site_log_reader.LogReader()
+    log_reader.set_start_by_current()
     wait_for_condition(
         lambda: os.access(
             chromeos_constants.CHROME_WINDOW_MAPPED_MAGIC_FILE, os.F_OK),
         'Timed out waiting for initial Chrome window',
         timeout=timeout,
         process='chrome',
-        watcher=watcher,
+        log_reader=log_reader,
         crash_msg='Chrome crashed before first tab rendered.')
 
 
