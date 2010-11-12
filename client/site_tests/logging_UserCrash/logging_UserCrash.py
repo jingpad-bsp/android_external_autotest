@@ -99,6 +99,38 @@ class logging_UserCrash(site_crash_test.CrashTest):
         os.rename(sym_name, os.path.join(target_dir, sym_name))
 
 
+    def _is_frame_in_stack(self, frame_index, module_name,
+                           function_name, file_name,
+                           line_number, stack):
+        """Search for frame entries in the given stack dump text.
+
+        A frame entry looks like (alone on a line):
+          16  crasher_nobreakpad!main [crasher.cc : 21 + 0xb]
+
+        Args:
+          frame_index: number of the stack frame (0 is innermost frame)
+          module_name: name of the module (executable or dso)
+          function_name: name of the function in the stack
+          file_name: name of the file containing the function
+          line_number: line number
+          stack: text string of stack frame entries on separate lines.
+
+        Returns:
+          Boolean indicating if an exact match is present.
+
+        Note:
+          We do not care about the full function signature - ie, is it
+          foo or foo(ClassA *).  These are present in function names
+          pulled by dump_syms for Stabs but not for DWARF.
+        """
+        regexp = (r'\n\s*%d\s+%s!%s.*\[\s*%s\s*:\s*%d\s.*\]' %
+                  (frame_index, module_name,
+                   function_name, file_name,
+                   line_number))
+        logging.info('Searching for regexp ' + regexp)
+        return re.search(regexp, stack) is not None
+
+
     def _verify_stack(self, stack, basename, from_crash_reporter):
         logging.debug('Crash stackwalk was: %s' % stack)
 
@@ -117,16 +149,19 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                  expected_address)
 
         # Should identify crash at *(char*)0x16 assignment line
-        if not (' 0  %s!recbomb(int) [bomb.cc : 9 ' % basename) in stack:
+        if not self._is_frame_in_stack(0, basename,
+                                       'recbomb', 'bomb.cc', 9, stack):
             raise error.TestFail('Did not show crash line on stack')
 
         # Should identify recursion line which is on the stack
         # for 15 levels
-        if not ('15  %s!recbomb(int) [bomb.cc : 12 ' % basename) in stack:
+        if not self._is_frame_in_stack(15, basename, 'recbomb',
+                                       'bomb.cc', 12, stack):
             raise error.TestFail('Did not show recursion line on stack')
 
         # Should identify main line
-        if not ('16  %s!main [crasher.cc : 21 ' % basename) in stack:
+        if not self._is_frame_in_stack(16, basename, 'main',
+                                       'crasher.cc', 21, stack):
             raise error.TestFail('Did not show main on stack')
 
 
