@@ -11,6 +11,7 @@ import ftplib
 import gzip
 import hashlib
 import os
+import time
 import StringIO
 
 from autotest_lib.client.bin import factory
@@ -19,6 +20,8 @@ from autotest_lib.client.bin import factory_error as error
 
 class factory_UploadLogs(test.test):
     version = 2
+
+    NETWORK_RETRY_DURATION_SECONDS = 60
 
     # Please check suite_Factory/test_list for the more information
     DEFAULT_DESTINATION_PARAM = {
@@ -58,8 +61,18 @@ class factory_UploadLogs(test.test):
 
         assert dest['method'] == 'ftp', "only FTP is supported now."
         ftp = ftplib.FTP()
-        ftp.connect(host=dest['host'], port=dest['port'],
-                    timeout=dest['timeout'])
+        while True:
+            try:
+                ftp.connect(host=dest['host'], port=dest['port'],
+                            timeout=dest['timeout'])
+                break
+            except Exception as e:
+                factory.log("")  # empty line to help operator seeing error
+                factory.log("FTP ERROR: %s" % e)
+                for i in range(self.NETWORK_RETRY_DURATION_SECONDS, 0, -1):
+                    if i % 10 == 0:
+                        factory.log(" Retry FTP after %d seconds..." % i)
+                    time.sleep(1)
         ftp.login(user=dest['user'], passwd=dest['passwd'])
         ftp.storbinary('STOR %s' % dest['filename'], fileobj)
         ftp.quit()
