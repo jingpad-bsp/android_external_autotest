@@ -19,8 +19,8 @@ job.run_test('desktopui_ChromeFirstRender')
 job.run_test('desktopui_FlashSanityCheck')
 job.run_test('desktopui_KillRestart', binary='^chrome$', tag='chrome')
 job.run_test('desktopui_KillRestart', binary='^session_manager$', tag='session')
-# TODO(kmixter): crosbug.com/8159
-# job.run_test('logging_CrashSender')
+job.run_test('logging_CrashSender')
+job.run_test('logging_UserCrash')
 job.run_test('login_BadAuthentication')
 # TODO(cmasone): make this test log in via Guest mode and re-enable.
 # job.run_test('login_CryptohomeIncognitoMounted')
