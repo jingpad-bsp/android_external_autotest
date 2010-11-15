@@ -561,6 +561,7 @@ def kill_tail_threads():
     for t in threading.enumerate():
         if hasattr(t, "name") and t.name.startswith("tail_thread"):
             t.join(10)
+    _thread_kill_requested = False
 
 
 class kvm_tail(kvm_spawn):

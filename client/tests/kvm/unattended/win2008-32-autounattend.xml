@@ -16,7 +16,7 @@
 			<UserLocale>en-us</UserLocale>
 		</component>
 		<component name="Microsoft-Windows-PnpCustomizationsWinPE"
-			processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35"
+			processorArchitecture="x86" publicKeyToken="31bf3856ad364e35"
 			language="neutral" versionScope="nonSxS"
 			xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
 			xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -147,6 +147,7 @@
 				<SynchronousCommand wcm:action="add">
 					<CommandLine>%WINDIR%\System32\cmd /c net start telnet</CommandLine>
 					<Order>5</Order>
+<<<<<<< HEAD
 				</SynchronousCommand>
 				<SynchronousCommand wcm:action="add">
 					<CommandLine>%WINDIR%\System32\cmd /c E:\setuprss.bat</CommandLine>
@@ -159,6 +160,24 @@
 				<SynchronousCommand wcm:action="add">
 					<CommandLine>%WINDIR%\System32\cmd /c ping 10.0.2.2 -n 20 &#38;&#38; A:\finish.exe</CommandLine>
 					<Order>8</Order>
+=======
+				</SynchronousCommand>
+				<SynchronousCommand wcm:action="add">
+					<CommandLine>%WINDIR%\System32\cmd /c bcdedit /set {current} bootstatuspolicy ignoreallfailures</CommandLine>
+			  		<Order>6</Order>
+				</SynchronousCommand>
+				<SynchronousCommand wcm:action="add">
+					<CommandLine>%WINDIR%\System32\cmd /c E:\setuprss.bat</CommandLine>
+					<Order>7</Order>
+				</SynchronousCommand>
+				<SynchronousCommand wcm:action="add">
+					<CommandLine>%WINDIR%\System32\cmd /c netsh interface ip set address "Local Area Connection" dhcp</CommandLine>
+					<Order>8</Order>
+				</SynchronousCommand>
+				<SynchronousCommand wcm:action="add">
+					<CommandLine>%WINDIR%\System32\cmd /c ping 10.0.2.2 -n 20 &#38;&#38; A:\finish.exe</CommandLine>
+					<Order>9</Order>
+>>>>>>> cros/upstream
 				</SynchronousCommand>
 			</FirstLogonCommands>
 			<OOBE>

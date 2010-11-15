@@ -5,9 +5,26 @@ KVM test utility functions.
 """
 
 import time, string, random, socket, os, signal, re, logging, commands, cPickle
-from autotest_lib.client.bin import utils
+import fcntl, shelve, ConfigParser
+from autotest_lib.client.bin import utils, os_dep
 from autotest_lib.client.common_lib import error, logging_config
 import kvm_subprocess
+try:
+    import koji
+    KOJI_INSTALLED = True
+except ImportError:
+    KOJI_INSTALLED = False
+
+
+def _lock_file(filename):
+    f = open(filename, "w")
+    fcntl.lockf(f, fcntl.LOCK_EX)
+    return f
+
+
+def _unlock_file(f):
+    fcntl.lockf(f, fcntl.LOCK_UN)
+    f.close()
 
 
 def dump_env(obj, filename):
@@ -82,163 +99,113 @@ def get_sub_dict_names(dict, keyword):
 
 # Functions related to MAC/IP addresses
 
-def mac_str_to_int(addr):
+def _open_mac_pool(lock_mode):
+    lock_file = open("/tmp/mac_lock", "w+")
+    fcntl.lockf(lock_file, lock_mode)
+    pool = shelve.open("/tmp/address_pool")
+    return pool, lock_file
+
+
+def _close_mac_pool(pool, lock_file):
+    pool.close()
+    fcntl.lockf(lock_file, fcntl.LOCK_UN)
+    lock_file.close()
+
+
+def _generate_mac_address_prefix(mac_pool):
     """
-    Convert MAC address string to integer.
+    Generate a random MAC address prefix and add it to the MAC pool dictionary.
+    If there's a MAC prefix there already, do not update the MAC pool and just
+    return what's in there. By convention we will set KVM autotest MAC
+    addresses to start with 0x9a.
 
-    @param addr: String representing the MAC address.
+    @param mac_pool: The MAC address pool object.
+    @return: The MAC address prefix.
     """
-    return sum(int(s, 16) * 256 ** i
-               for i, s in enumerate(reversed(addr.split(":"))))
+    if "prefix" in mac_pool:
+        prefix = mac_pool["prefix"]
+        logging.debug("Used previously generated MAC address prefix for this "
+                      "host: %s", prefix)
+    else:
+        r = random.SystemRandom()
+        prefix = "9a:%02x:%02x:%02x:" % (r.randint(0x00, 0xff),
+                                         r.randint(0x00, 0xff),
+                                         r.randint(0x00, 0xff))
+        mac_pool["prefix"] = prefix
+        logging.debug("Generated MAC address prefix for this host: %s", prefix)
+    return prefix
 
 
-def mac_int_to_str(addr):
+def generate_mac_address(vm_instance, nic_index):
     """
-    Convert MAC address integer to string.
+    Randomly generate a MAC address and add it to the MAC address pool.
 
-    @param addr: Integer representing the MAC address.
+    Try to generate a MAC address based on a randomly generated MAC address
+    prefix and add it to a persistent dictionary.
+    key = VM instance + NIC index, value = MAC address
+    e.g. {'20100310-165222-Wt7l:0': '9a:5d:94:6a:9b:f9'}
+
+    @param vm_instance: The instance attribute of a VM.
+    @param nic_index: The index of the NIC.
+    @return: MAC address string.
     """
-    return ":".join("%02x" % (addr >> 8 * i & 0xFF)
-                    for i in reversed(range(6)))
+    mac_pool, lock_file = _open_mac_pool(fcntl.LOCK_EX)
+    key = "%s:%s" % (vm_instance, nic_index)
+    if key in mac_pool:
+        mac = mac_pool[key]
+    else:
+        prefix = _generate_mac_address_prefix(mac_pool)
+        r = random.SystemRandom()
+        while key not in mac_pool:
+            mac = prefix + "%02x:%02x" % (r.randint(0x00, 0xff),
+                                          r.randint(0x00, 0xff))
+            if mac in mac_pool.values():
+                continue
+            mac_pool[key] = mac
+            logging.debug("Generated MAC address for NIC %s: %s", key, mac)
+    _close_mac_pool(mac_pool, lock_file)
+    return mac
 
 
-def ip_str_to_int(addr):
+def free_mac_address(vm_instance, nic_index):
     """
-    Convert IP address string to integer.
+    Remove a MAC address from the address pool.
 
-    @param addr: String representing the IP address.
+    @param vm_instance: The instance attribute of a VM.
+    @param nic_index: The index of the NIC.
     """
-    return sum(int(s) * 256 ** i
-               for i, s in enumerate(reversed(addr.split("."))))
+    mac_pool, lock_file = _open_mac_pool(fcntl.LOCK_EX)
+    key = "%s:%s" % (vm_instance, nic_index)
+    if key in mac_pool:
+        logging.debug("Freeing MAC address for NIC %s: %s", key, mac_pool[key])
+        del mac_pool[key]
+    _close_mac_pool(mac_pool, lock_file)
 
 
-def ip_int_to_str(addr):
+def set_mac_address(vm_instance, nic_index, mac):
     """
-    Convert IP address integer to string.
+    Set a MAC address in the pool.
 
-    @param addr: Integer representing the IP address.
+    @param vm_instance: The instance attribute of a VM.
+    @param nic_index: The index of the NIC.
     """
-    return ".".join(str(addr >> 8 * i & 0xFF)
-                    for i in reversed(range(4)))
+    mac_pool, lock_file = _open_mac_pool(fcntl.LOCK_EX)
+    mac_pool["%s:%s" % (vm_instance, nic_index)] = mac
+    _close_mac_pool(mac_pool, lock_file)
 
 
-def offset_mac(base, offset):
+def get_mac_address(vm_instance, nic_index):
     """
-    Add offset to a given MAC address.
+    Return a MAC address from the pool.
 
-    @param base: String representing a MAC address.
-    @param offset: Offset to add to base (integer)
-    @return: A string representing the offset MAC address.
+    @param vm_instance: The instance attribute of a VM.
+    @param nic_index: The index of the NIC.
+    @return: MAC address string.
     """
-    return mac_int_to_str(mac_str_to_int(base) + offset)
-
-
-def offset_ip(base, offset):
-    """
-    Add offset to a given IP address.
-
-    @param base: String representing an IP address.
-    @param offset: Offset to add to base (integer)
-    @return: A string representing the offset IP address.
-    """
-    return ip_int_to_str(ip_str_to_int(base) + offset)
-
-
-def get_mac_ip_pair_from_dict(dict):
-    """
-    Fetch a MAC-IP address pair from dict and return it.
-
-    The parameters in dict are expected to conform to a certain syntax.
-    Typical usage may be:
-
-    address_ranges = r1 r2 r3
-
-    address_range_base_mac_r1 = 55:44:33:22:11:00
-    address_range_base_ip_r1 = 10.0.0.0
-    address_range_size_r1 = 16
-
-    address_range_base_mac_r2 = 55:44:33:22:11:40
-    address_range_base_ip_r2 = 10.0.0.60
-    address_range_size_r2 = 25
-
-    address_range_base_mac_r3 = 55:44:33:22:12:10
-    address_range_base_ip_r3 = 10.0.1.20
-    address_range_size_r3 = 230
-
-    address_index = 0
-
-    All parameters except address_index specify a MAC-IP address pool.  The
-    pool consists of several MAC-IP address ranges.
-    address_index specified the index of the desired MAC-IP pair from the pool.
-
-    @param dict: The dictionary from which to fetch the addresses.
-    """
-    index = int(dict.get("address_index", 0))
-    for mac_range_name in get_sub_dict_names(dict, "address_ranges"):
-        mac_range_params = get_sub_dict(dict, mac_range_name)
-        mac_base = mac_range_params.get("address_range_base_mac")
-        ip_base = mac_range_params.get("address_range_base_ip")
-        size = int(mac_range_params.get("address_range_size", 1))
-        if index < size:
-            return (mac_base and offset_mac(mac_base, index),
-                    ip_base and offset_ip(ip_base, index))
-        index -= size
-    return (None, None)
-
-
-def get_sub_pool(dict, piece, num_pieces):
-    """
-    Split a MAC-IP pool and return a single requested piece.
-
-    For example, get_sub_pool(dict, 0, 3) will split the pool in 3 pieces and
-    return a dict representing the first piece.
-
-    @param dict: A dict that contains pool parameters.
-    @param piece: The index of the requested piece.  Should range from 0 to
-        num_pieces - 1.
-    @param num_pieces: The total number of pieces.
-    @return: A copy of dict, modified to describe the requested sub-pool.
-    """
-    range_dicts = [get_sub_dict(dict, name) for name in
-                   get_sub_dict_names(dict, "address_ranges")]
-    if not range_dicts:
-        return dict
-    ranges = [[d.get("address_range_base_mac"),
-               d.get("address_range_base_ip"),
-               int(d.get("address_range_size", 1))] for d in range_dicts]
-    total_size = sum(r[2] for r in ranges)
-    base = total_size * piece / num_pieces
-    size = total_size * (piece + 1) / num_pieces - base
-
-    # Find base of current sub-pool
-    for i in range(len(ranges)):
-        r = ranges[i]
-        if base < r[2]:
-            r[0] = r[0] and offset_mac(r[0], base)
-            r[1] = r[1] and offset_ip(r[1], base)
-            r[2] -= base
-            break
-        base -= r[2]
-
-    # Collect ranges up to end of current sub-pool
-    new_ranges = []
-    for i in range(i, len(ranges)):
-        r = ranges[i]
-        new_ranges.append(r)
-        if size <= r[2]:
-            r[2] = size
-            break
-        size -= r[2]
-
-    # Write new dict
-    new_dict = dict.copy()
-    new_dict["address_ranges"] = " ".join("r%d" % i for i in
-                                          range(len(new_ranges)))
-    for i in range(len(new_ranges)):
-        new_dict["address_range_base_mac_r%d" % i] = new_ranges[i][0]
-        new_dict["address_range_base_ip_r%d" % i] = new_ranges[i][1]
-        new_dict["address_range_size_r%d" % i] = new_ranges[i][2]
-    return new_dict
+    mac_pool, lock_file = _open_mac_pool(fcntl.LOCK_SH)
+    mac = mac_pool.get("%s:%s" % (vm_instance, nic_index))
+    _close_mac_pool(mac_pool, lock_file)
+    return mac
 
 
 def verify_ip_address_ownership(ip, macs, timeout=10.0):
@@ -715,7 +682,7 @@ def scp_from_remote(host, port, username, password, remote_path, local_path,
 
 # The following are utility functions related to ports.
 
-def is_port_free(port):
+def is_port_free(port, address):
     """
     Return True if the given port is available for use.
 
@@ -724,15 +691,22 @@ def is_port_free(port):
     try:
         s = socket.socket()
         #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind(("localhost", port))
-        free = True
+        if address == "localhost":
+            s.bind(("localhost", port))
+            free = True
+        else:
+            s.connect((address, port))
+            free = False
     except socket.error:
-        free = False
+        if address == "localhost":
+            free = False
+        else:
+            free = True
     s.close()
     return free
 
 
-def find_free_port(start_port, end_port):
+def find_free_port(start_port, end_port, address="localhost"):
     """
     Return a host free port in the range [start_port, end_port].
 
@@ -740,12 +714,12 @@ def find_free_port(start_port, end_port):
     @param end_port: Port immediately after the last one that will be checked.
     """
     for i in range(start_port, end_port):
-        if is_port_free(i):
+        if is_port_free(i, address):
             return i
     return None
 
 
-def find_free_ports(start_port, end_port, count):
+def find_free_ports(start_port, end_port, count, address="localhost"):
     """
     Return count of host free ports in the range [start_port, end_port].
 
@@ -756,7 +730,7 @@ def find_free_ports(start_port, end_port, count):
     ports = []
     i = start_port
     while i < end_port and count > 0:
-        if is_port_free(i):
+        if is_port_free(i, address):
             ports.append(i)
             count -= 1
         i += 1
@@ -1278,3 +1252,141 @@ class PciAssignable(object):
                     logging.info("Released device %s successfully", pci_id)
         except:
             return
+
+
+class KojiDownloader(object):
+    """
+    Stablish a connection with the build system, either koji or brew.
+
+    This class provides a convenience methods to retrieve packages hosted on
+    the build system.
+    """
+    def __init__(self, cmd):
+        """
+        Verifies whether the system has koji or brew installed, then loads
+        the configuration file that will be used to download the files.
+
+        @param cmd: Command name, either 'brew' or 'koji'. It is important
+                to figure out the appropriate configuration used by the
+                downloader.
+        @param dst_dir: Destination dir for the packages.
+        """
+        if not KOJI_INSTALLED:
+            raise ValueError('No koji/brew installed on the machine')
+
+        if os.path.isfile(cmd):
+            koji_cmd = cmd
+        else:
+            koji_cmd = os_dep.command(cmd)
+
+        logging.debug("Found %s as the buildsystem interface", koji_cmd)
+
+        config_map = {'/usr/bin/koji': '/etc/koji.conf',
+                      '/usr/bin/brew': '/etc/brewkoji.conf'}
+
+        try:
+            config_file = config_map[koji_cmd]
+        except IndexError:
+            raise ValueError('Could not find config file for %s' % koji_cmd)
+
+        base_name = os.path.basename(koji_cmd)
+        if os.access(config_file, os.F_OK):
+            f = open(config_file)
+            config = ConfigParser.ConfigParser()
+            config.readfp(f)
+            f.close()
+        else:
+            raise IOError('Configuration file %s missing or with wrong '
+                          'permissions' % config_file)
+
+        if config.has_section(base_name):
+            self.koji_options = {}
+            session_options = {}
+            server = None
+            for name, value in config.items(base_name):
+                if name in ('user', 'password', 'debug_xmlrpc', 'debug'):
+                    session_options[name] = value
+                self.koji_options[name] = value
+            self.session = koji.ClientSession(self.koji_options['server'],
+                                              session_options)
+        else:
+            raise ValueError('Koji config file %s does not have a %s '
+                             'session' % (config_file, base_name))
+
+
+    def get(self, src_package, dst_dir, rfilter=None, tag=None, build=None,
+            arch=None):
+        """
+        Download a list of packages from the build system.
+
+        This will download all packages originated from source package [package]
+        with given [tag] or [build] for the architecture reported by the
+        machine.
+
+        @param src_package: Source package name.
+        @param dst_dir: Destination directory for the downloaded packages.
+        @param rfilter: Regexp filter, only download the packages that match
+                that particular filter.
+        @param tag: Build system tag.
+        @param build: Build system ID.
+        @param arch: Package arch. Useful when you want to download noarch
+                packages.
+
+        @return: List of paths with the downloaded rpm packages.
+        """
+        if build and build.isdigit():
+            build = int(build)
+
+        if tag and build:
+            logging.info("Both tag and build parameters provided, ignoring tag "
+                         "parameter...")
+
+        if not tag and not build:
+            raise ValueError("Koji install selected but neither koji_tag "
+                             "nor koji_build parameters provided. Please "
+                             "provide an appropriate tag or build name.")
+
+        if not build:
+            builds = self.session.listTagged(tag, latest=True,
+                                             package=src_package)
+            if not builds:
+                raise ValueError("Tag %s has no builds of %s" % (tag,
+                                                                 src_package))
+            info = builds[0]
+        else:
+            info = self.session.getBuild(build)
+
+        if info is None:
+            raise ValueError('No such brew/koji build: %s' % build)
+
+        if arch is None:
+            arch = utils.get_arch()
+
+        rpms = self.session.listRPMs(buildID=info['id'],
+                                     arches=arch)
+        if not rpms:
+            raise ValueError("No %s packages available for %s" %
+                             arch, koji.buildLabel(info))
+
+        rpm_paths = []
+        for rpm in rpms:
+            rpm_name = koji.pathinfo.rpm(rpm)
+            url = ("%s/%s/%s/%s/%s" % (self.koji_options['pkgurl'],
+                                       info['package_name'],
+                                       info['version'], info['release'],
+                                       rpm_name))
+            if rfilter:
+                filter_regexp = re.compile(rfilter, re.IGNORECASE)
+                if filter_regexp.match(os.path.basename(rpm_name)):
+                    download = True
+                else:
+                    download = False
+            else:
+                download = True
+
+            if download:
+                r = utils.get_file(url,
+                                   os.path.join(dst_dir, os.path.basename(url)))
+                rpm_paths.append(r)
+
+        return rpm_paths

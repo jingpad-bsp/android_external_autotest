@@ -5,7 +5,7 @@ Utility classes and functions to handle Virtual Machine creation using qemu.
 @copyright: 2008-2009 Red Hat Inc.
 """
 
-import time, socket, os, logging, fcntl, re, commands, glob
+import time, socket, os, logging, fcntl, re, commands, shelve, glob
 import kvm_utils, kvm_subprocess, kvm_monitor, rss_file_transfer
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
@@ -109,15 +109,15 @@ class VM:
         self.serial_console = None
         self.redirs = {}
         self.vnc_port = 5900
-        self.uuid = None
         self.monitors = []
         self.pci_assignable = None
+        self.netdev_id = []
+        self.uuid = None
 
         self.name = name
         self.params = params
         self.root_dir = root_dir
         self.address_cache = address_cache
-        self.netdev_id = []
 
         # Find a unique identifier for this VM
         while True:
@@ -234,20 +234,40 @@ class VM:
             if boot: cmd += ",boot=on"
             return cmd
 
-        def add_nic(help, vlan, model=None, mac=None, netdev_id=None):
-            if has_option(help, "netdev"):
-                cmd = " -net nic,netdev=%s" % netdev_id
+        def add_nic(help, vlan, model=None, mac=None, netdev_id=None,
+                    nic_extra_params=None):
+            if has_option(help, "device"):
+                if model == "virtio":
+                    model="virtio-net-pci"
+                if not model:
+                    model= "rtl8139"
+                cmd = " -device %s" % model
+                if mac:
+                    cmd += ",mac=%s" % mac
+                if has_option(help, "netdev"):
+                    cmd += ",netdev=%s" % netdev_id
+                else:
+                    cmd += "vlan=%d,"  % vlan
+                if nic_extra_params:
+                    cmd += ",%s" % nic_extra_params
             else:
-                cmd = " -net nic,vlan=%d" % vlan
-            if model: cmd += ",model=%s" % model
-            if mac: cmd += ",macaddr='%s'" % mac
+                if has_option(help, "netdev"):
+                    cmd = " -net nic,netdev=%s" % netdev_id
+                else:
+                    cmd = " -net nic,vlan=%d" % vlan
+                if model:
+                    cmd += ",model=%s" % model
+                if mac:
+                    cmd += ",macaddr='%s'" % mac
             return cmd
 
         def add_net(help, vlan, mode, ifname=None, script=None,
                     downscript=None, tftp=None, bootfile=None, hostfwd=[],
-                    netdev_id=None):
+                    netdev_id=None, vhost=False):
             if has_option(help, "netdev"):
                 cmd = " -netdev %s,id=%s" % (mode, netdev_id)
+                if vhost:
+                    cmd +=",vhost=on"
             else:
                 cmd = " -net %s,vlan=%d" % (mode, vlan)
             if mode == "tap":
@@ -384,11 +404,10 @@ class VM:
         for nic_name in kvm_utils.get_sub_dict_names(params, "nics"):
             nic_params = kvm_utils.get_sub_dict(params, nic_name)
             # Handle the '-net nic' part
-            mac = None
-            if "address_index" in nic_params:
-                mac = kvm_utils.get_mac_ip_pair_from_dict(nic_params)[0]
+            mac = self.get_mac_address(vlan)
             qemu_cmd += add_nic(help, vlan, nic_params.get("nic_model"), mac,
-                                self.netdev_id[vlan])
+                                self.netdev_id[vlan],
+                                nic_params.get("nic_extra_params"))
             # Handle the '-net tap' or '-net user' part
             script = nic_params.get("nic_script")
             downscript = nic_params.get("nic_downscript")
@@ -400,10 +419,11 @@ class VM:
             if tftp:
                 tftp = kvm_utils.get_path(root_dir, tftp)
             qemu_cmd += add_net(help, vlan, nic_params.get("nic_mode", "user"),
-                                nic_params.get("nic_ifname"),
+                                self.get_ifname(vlan),
                                 script, downscript, tftp,
                                 nic_params.get("bootp"), redirs,
-                                self.netdev_id[vlan])
+                                self.netdev_id[vlan],
+                                nic_params.get("vhost")=="yes")
             # Proceed to next NIC
             vlan += 1
 
@@ -487,22 +507,22 @@ class VM:
         return qemu_cmd
 
 
-    def create(self, name=None, params=None, root_dir=None,
-               for_migration=False, timeout=5.0, extra_params=None):
+    def create(self, name=None, params=None, root_dir=None, timeout=5.0,
+               migration_mode=None, migration_exec_cmd=None, mac_source=None):
         """
         Start the VM by running a qemu command.
-        All parameters are optional. The following applies to all parameters
-        but for_migration: If a parameter is not supplied, the corresponding
-        value stored in the class attributes is used, and if it is supplied,
-        it is stored for later use.
+        All parameters are optional. If name, params or root_dir are not
+        supplied, the respective values stored as class attributes are used.
 
         @param name: The name of the object
         @param params: A dict containing VM params
         @param root_dir: Base directory for relative filenames
-        @param for_migration: If True, start the VM with the -incoming
-        option
-        @param extra_params: extra params for qemu command.e.g -incoming option
-        Please use this parameter instead of for_migration.
+        @param migration_mode: If supplied, start VM for incoming migration
+                using this protocol (either 'tcp', 'unix' or 'exec')
+        @param migration_exec_cmd: Command to embed in '-incoming "exec: ..."'
+                (e.g. 'gzip -c -d filename') if migration_mode is 'exec'
+        @param mac_source: A VM object from which to copy MAC addresses. If not
+                specified, new addresses will be generated.
         """
         self.destroy()
 
@@ -577,6 +597,15 @@ class VM:
                 self.uuid = f.read().strip()
                 f.close()
 
+            # Generate or copy MAC addresses for all NICs
+            num_nics = len(kvm_utils.get_sub_dict_names(params, "nics"))
+            for vlan in range(num_nics):
+                mac = mac_source and mac_source.get_mac_address(vlan)
+                if mac:
+                    kvm_utils.set_mac_address(self.instance, vlan, mac)
+                else:
+                    kvm_utils.generate_mac_address(self.instance, vlan)
+
             # Assign a PCI assignable device
             self.pci_assignable = None
             pa_type = params.get("pci_assignable")
@@ -623,17 +652,15 @@ class VM:
             # Make qemu command
             qemu_command = self.make_qemu_command()
 
-            # Enable migration support for VM by adding extra_params.
-            if extra_params is not None:
-                if " -incoming tcp:0:%d" == extra_params:
-                    self.migration_port = kvm_utils.find_free_port(5200, 6000)
-                    qemu_command += extra_params % self.migration_port
-                elif " -incoming unix:%s" == extra_params:
-                    self.migration_file = os.path.join("/tmp/", "unix-" +
-                                          time.strftime("%Y%m%d-%H%M%S"))
-                    qemu_command += extra_params % self.migration_file
-                else:
-                    qemu_command += extra_params
+            # Add migration parameters if required
+            if migration_mode == "tcp":
+                self.migration_port = kvm_utils.find_free_port(5200, 6000)
+                qemu_command += " -incoming tcp:0:%d" % self.migration_port
+            elif migration_mode == "unix":
+                self.migration_file = "/tmp/migration-unix-%s" % self.instance
+                qemu_command += " -incoming unix:%s" % self.migration_file
+            elif migration_mode == "exec":
+                qemu_command += ' -incoming "exec:%s"' % migration_exec_cmd
 
             logging.debug("Running qemu command:\n%s", qemu_command)
             self.process = kvm_subprocess.run_bg(qemu_command, None,
@@ -750,7 +777,7 @@ class VM:
                         logging.debug("Shutdown command sent; waiting for VM "
                                       "to go down...")
                         if kvm_utils.wait_for(self.is_dead, 60, 1, 1):
-                            logging.debug("VM is down")
+                            logging.debug("VM is down, freeing mac address.")
                             return
                     finally:
                         session.close()
@@ -794,6 +821,14 @@ class VM:
                     os.unlink(f)
                 except OSError:
                     pass
+            if hasattr(self, "migration_file"):
+                try:
+                    os.unlink(self.migration_file)
+                except OSError:
+                    pass
+            num_nics = len(kvm_utils.get_sub_dict_names(self.params, "nics"))
+            for vlan in range(num_nics):
+                self.free_mac_address(vlan)
 
 
     @property
@@ -880,26 +915,23 @@ class VM:
         nic_name = nics[index]
         nic_params = kvm_utils.get_sub_dict(self.params, nic_name)
         if nic_params.get("nic_mode") == "tap":
-            mac, ip = kvm_utils.get_mac_ip_pair_from_dict(nic_params)
+            mac = self.get_mac_address(index)
             if not mac:
                 logging.debug("MAC address unavailable")
                 return None
-            if not ip or nic_params.get("always_use_tcpdump") == "yes":
-                # Get the IP address from the cache
-                ip = self.address_cache.get(mac)
-                if not ip:
-                    logging.debug("Could not find IP address for MAC address: "
-                                  "%s" % mac)
-                    return None
-                # Make sure the IP address is assigned to this guest
-                nic_dicts = [kvm_utils.get_sub_dict(self.params, nic)
-                             for nic in nics]
-                macs = [kvm_utils.get_mac_ip_pair_from_dict(dict)[0]
-                        for dict in nic_dicts]
-                if not kvm_utils.verify_ip_address_ownership(ip, macs):
-                    logging.debug("Could not verify MAC-IP address mapping: "
-                                  "%s ---> %s" % (mac, ip))
-                    return None
+            mac = mac.lower()
+            # Get the IP address from the cache
+            ip = self.address_cache.get(mac)
+            if not ip:
+                logging.debug("Could not find IP address for MAC address: %s" %
+                              mac)
+                return None
+            # Make sure the IP address is assigned to this guest
+            macs = [self.get_mac_address(i) for i in range(len(nics))]
+            if not kvm_utils.verify_ip_address_ownership(ip, macs):
+                logging.debug("Could not verify MAC-IP address mapping: "
+                              "%s ---> %s" % (mac, ip))
+                return None
             return ip
         else:
             return "localhost"
@@ -923,6 +955,39 @@ class VM:
                 logging.warn("Warning: guest port %s requested but not "
                              "redirected" % port)
             return self.redirs.get(port)
+
+
+    def get_ifname(self, nic_index=0):
+        """
+        Return the ifname of a tap device associated with a NIC.
+
+        @param nic_index: Index of the NIC
+        """
+        nics = kvm_utils.get_sub_dict_names(self.params, "nics")
+        nic_name = nics[nic_index]
+        nic_params = kvm_utils.get_sub_dict(self.params, nic_name)
+        if nic_params.get("nic_ifname"):
+            return nic_params.get("nic_ifname")
+        else:
+            return "t%d-%s" % (nic_index, self.instance[-11:])
+
+
+    def get_mac_address(self, nic_index=0):
+        """
+        Return the MAC address of a NIC.
+
+        @param nic_index: Index of the NIC
+        """
+        return kvm_utils.get_mac_address(self.instance, nic_index)
+
+
+    def free_mac_address(self, nic_index=0):
+        """
+        Free a NIC's MAC address.
+
+        @param nic_index: Index of the NIC
+        """
+        kvm_utils.free_mac_address(self.instance, nic_index)
 
 
     def get_pid(self):

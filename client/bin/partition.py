@@ -176,6 +176,24 @@ def get_partition_list(job, min_blocks=0, filter_func=None, exclude_swap=True,
     return partitions
 
 
+def get_mount_info(partition_list):
+    """
+    Picks up mount point information about the machine mounts. By default, we
+    try to associate mount points with UUIDs, because in newer distros the
+    partitions are uniquely identified using them.
+    """
+    mount_info = set()
+    for p in partition_list:
+        try:
+            uuid = utils.system_output('blkid -s UUID -o value %s' % p.device)
+        except error.CmdError:
+            # fall back to using the partition
+            uuid = p.device
+        mount_info.add((uuid, p.get_mountpoint()))
+
+    return mount_info
+
+
 def filter_partition_list(partitions, devnames):
     """
     Pick and choose which partition to keep.
@@ -311,11 +329,11 @@ def is_valid_disk(device):
 
 
 def run_test_on_partitions(job, test, partitions, mountpoint_func,
-                           tag, fs_opt, **dargs):
+                           tag, fs_opt, do_fsck=True, **dargs):
     """
     Run a test that requires multiple partitions.  Filesystems will be
     made on the partitions and mounted, then the test will run, then the
-    filesystems will be unmounted and fsck'd.
+    filesystems will be unmounted and optionally fsck'd.
 
     @param job: A job instance to run the test
     @param test: A string containing the name of the test
@@ -327,6 +345,7 @@ def run_test_on_partitions(job, test, partitions, mountpoint_func,
             files that make multiple calls to this routine with the same value
             of 'test'.)
     @param fs_opt: An FsOptions instance that describes what filesystem to make
+    @param do_fsck: include fsck in post-test partition cleanup.
     @param dargs: Dictionary of arguments to be passed to job.run_test() and
             eventually the test
     """
@@ -342,8 +361,10 @@ def run_test_on_partitions(job, test, partitions, mountpoint_func,
     # run the test against all the partitions
     job.run_test(test, tag=tag, partitions=partitions, dir=mountpoint, **dargs)
 
-    # fsck and then remake all the filesystems in parallel
-    parallel(partitions, 'cleanup_after_test')
+    parallel(partitions, 'unmount')  # unmount all partitions in parallel
+    if do_fsck:
+        parallel(partitions, 'fsck')  # fsck all partitions in parallel
+    # else fsck is done by caller
 
 
 class partition(object):
@@ -430,15 +451,6 @@ class partition(object):
         self.mount(mountpoint)
 
 
-    def cleanup_after_test(self):
-        """
-        Cleans up a partition after running a filesystem test.  The
-        filesystem is unmounted, and then checked for errors.
-        """
-        self.unmount()
-        self.fsck()
-
-
     def run_test_on_partition(self, test, mountpoint_func, **dargs):
         """
         Executes a test fs-style (umount,mkfs,mount,test)
@@ -470,7 +482,9 @@ class partition(object):
             try:
                 self.job.run_test(test, tag=test_tag, dir=mountpoint, **dargs)
             finally:
-                self.cleanup_after_test()
+                self.unmount()
+                self.fsck()
+
 
         mountpoint = mountpoint_func(self)
 
@@ -496,7 +510,7 @@ class partition(object):
         if filename:
             for line in open_func(filename).readlines():
                 parts = line.split()
-                if parts[0] == self.device:
+                if parts[0] == self.device or parts[1] == self.mountpoint:
                     return parts[1] # The mountpoint where it's mounted
             return None
 

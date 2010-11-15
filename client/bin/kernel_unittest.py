@@ -18,8 +18,11 @@ class TestAddKernelToBootLoader(unittest.TestCase):
         # record
         bootloader.remove_kernel.expect_call(tag)
         bootloader.add_kernel.expect_call(image, tag, initrd=initrd,
-                                          args=bootloader_args,
-                                          root=bootloader_root)
+                                          args='_dummy_', root=bootloader_root)
+
+        for a in bootloader_args.split():
+            bootloader.add_args.expect_call(kernel=tag, args=a)
+        bootloader.remove_args.expect_call(kernel=tag, args='_dummy_')
 
         # run and check
         kernel._add_kernel_to_bootloader(bootloader, base_args, tag, args,
@@ -475,7 +478,7 @@ class TestKernel(unittest.TestCase):
         # record
         os.chdir.expect_call(self.build_dir)
         self.kernel.set_cross_cc.expect_call()
-        self.kernel.clean.expect_call(logged=False)
+        self.kernel.clean.expect_call()
         build_string = "/usr/bin/time -o /dev/null make  -j 8 vmlinux"
         build_string += ' > /dev/null 2>&1'
         utils.system.expect_call(build_string)
@@ -509,6 +512,7 @@ class TestKernel(unittest.TestCase):
         self.job.config_get.expect_call(
             'kernel.mkinitrd_extra_args').and_return(None)
         args = ''
+        glob.glob.expect_call('/lib/modules/2.6.24*').and_return(['2.6.24'])
         os.path.isfile.expect_call('/usr/sbin/mkinitrd').and_return(True)
         cmd = '/usr/sbin/mkinitrd'
         utils.system.expect_call('%s %s -o initrd 2.6.24' % (cmd, args))

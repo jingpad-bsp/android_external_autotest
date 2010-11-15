@@ -4,6 +4,7 @@
 import os, pickle, random, re, resource, select, shutil, signal, StringIO
 import socket, struct, subprocess, sys, time, textwrap, urlparse
 import warnings, smtplib, logging, urllib2
+from threading import Thread, Event
 try:
     import hashlib
 except ImportError:
@@ -190,6 +191,30 @@ def read_file(filename):
         f.close()
 
 
+def get_field(data, param, linestart="", sep=" "):
+    """
+    Parse data from string.
+    @param data: Data to parse.
+        example:
+          data:
+             cpu   324 345 34  5 345
+             cpu0  34  11  34 34  33
+             ^^^^
+             start of line
+             params 0   1   2  3   4
+    @param param: Position of parameter after linestart marker.
+    @param linestart: String to which start line with parameters.
+    @param sep: Separator between parameters regular expression.
+    """
+    search = re.compile(r"(?<=^%s)\s*(.*)" % linestart, re.MULTILINE)
+    find = search.search(data)
+    if find != None:
+        return re.split("%s" % sep, find.group(1))[param]
+    else:
+        print "There is no line which starts with %s in data." % linestart
+        return None
+
+
 def write_one_line(filename, line):
     open_write_close(filename, line.rstrip('\n') + '\n')
 
@@ -211,9 +236,14 @@ def matrix_to_string(matrix, header=None):
     in each column, and determining the format string dynamically.
 
     @param matrix: Matrix representation (list with n rows of m elements).
-    @param header: Optional tuple with header elements to be displayed.
+    @param header: Optional tuple or list with header elements to be displayed.
     """
+    if type(header) is list:
+        header = tuple(header)
     lengths = []
+    if header:
+        for column in header:
+            lengths.append(len(column))
     for row in matrix:
         for column in row:
             i = row.index(column)
@@ -292,6 +322,156 @@ def write_keyval(path, dictionary, type_tag=None):
             keyval.write('%s=%s\n' % (key, dictionary[key]))
     finally:
         keyval.close()
+
+
+class FileFieldMonitor(object):
+    """
+    Monitors the information from the file and reports it's values.
+
+    It gather the information at start and stop of the measurement or
+    continuously during the measurement.
+    """
+    class Monitor(Thread):
+        """
+        Internal monitor class to ensure continuous monitor of monitored file.
+        """
+        def __init__(self, master):
+            """
+            @param master: Master class which control Monitor
+            """
+            Thread.__init__(self)
+            self.master = master
+
+        def run(self):
+            """
+            Start monitor in thread mode
+            """
+            while not self.master.end_event.isSet():
+                self.master._get_value(self.master.logging)
+                time.sleep(self.master.time_step)
+
+
+    def __init__(self, status_file, data_to_read, mode_diff, continuously=False,
+                 contlogging=False, separator=" +", time_step=0.1):
+        """
+        Initialize variables.
+        @param status_file: File contain status.
+        @param mode_diff: If True make a difference of value, else average.
+        @param data_to_read: List of tuples with data position.
+            format: [(start_of_line,position in params)]
+            example:
+              data:
+                 cpu   324 345 34  5 345
+                 cpu0  34  11  34 34  33
+                 ^^^^
+                 start of line
+                 params 0   1   2  3   4
+        @param mode_diff: True to subtract old value from new value,
+            False make average of the values.
+        @parma continuously: Start the monitoring thread using the time_step
+            as the measurement period.
+        @param contlogging: Log data in continuous run.
+        @param separator: Regular expression of separator.
+        @param time_step: Time period of the monitoring value.
+        """
+        self.end_event = Event()
+        self.start_time = 0
+        self.end_time = 0
+        self.test_time = 0
+
+        self.status_file = status_file
+        self.separator = separator
+        self.data_to_read = data_to_read
+        self.num_of_params = len(self.data_to_read)
+        self.mode_diff = mode_diff
+        self.continuously = continuously
+        self.time_step = time_step
+
+        self.value = [0 for i in range(self.num_of_params)]
+        self.old_value = [0 for i in range(self.num_of_params)]
+        self.log = []
+        self.logging = contlogging
+
+        self.started = False
+        self.num_of_get_value = 0
+        self.monitor = None
+
+
+    def _get_value(self, logging=True):
+        """
+        Return current values.
+        @param logging: If true log value in memory. There can be problem
+          with long run.
+        """
+        data = read_file(self.status_file)
+        value = []
+        for i in range(self.num_of_params):
+            value.append(int(get_field(data,
+                             self.data_to_read[i][1],
+                             self.data_to_read[i][0],
+                             self.separator)))
+
+        if logging:
+            self.log.append(value)
+        if not self.mode_diff:
+            value = map(lambda x, y: x + y, value, self.old_value)
+
+        self.old_value = value
+        self.num_of_get_value += 1
+        return value
+
+
+    def start(self):
+        """
+        Start value monitor.
+        """
+        if self.started:
+            self.stop()
+        self.old_value = [0 for i in range(self.num_of_params)]
+        self.num_of_get_value = 0
+        self.log = []
+        self.end_event.clear()
+        self.start_time = time.time()
+        self._get_value()
+        self.started = True
+        if (self.continuously):
+            self.monitor = FileFieldMonitor.Monitor(self)
+            self.monitor.start()
+
+
+    def stop(self):
+        """
+        Stop value monitor.
+        """
+        if self.started:
+            self.started = False
+            self.end_time = time.time()
+            self.test_time = self.end_time - self.start_time
+            self.value = self._get_value()
+            if (self.continuously):
+                self.end_event.set()
+                self.monitor.join()
+            if (self.mode_diff):
+                self.value = map(lambda x, y: x - y, self.log[-1], self.log[0])
+            else:
+                self.value = map(lambda x: x / self.num_of_get_value,
+                                 self.value)
+
+
+    def get_status(self):
+        """
+        @return: Status of monitored process average value,
+            time of test and array of monitored values and time step of
+            continuous run.
+        """
+        if self.started:
+            self.stop()
+        if self.mode_diff:
+            for i in range(len(self.log) - 1):
+                self.log[i] = (map(lambda x, y: x - y,
+                                   self.log[i + 1], self.log[i]))
+            self.log.pop()
+        return (self.value, self.test_time, self.log, self.time_step)
 
 
 def is_url(path):
@@ -801,6 +981,226 @@ def get_cpu_percentage(function, *args, **dargs):
     return cpu_percent, to_return
 
 
+class SystemLoad(object):
+    """
+    Get system and/or process values and return average value of load.
+    """
+    def __init__(self, pids, advanced=False, time_step=0.1, cpu_cont=False,
+                 use_log=False):
+        """
+        @param pids: List of pids to be monitored. If pid = 0 whole system will
+          be monitored. pid == 0 means whole system.
+        @param advanced: monitor add value for system irq count and softirq
+          for process minor and maior page fault
+        @param time_step: Time step for continuous monitoring.
+        @param cpu_cont: If True monitor CPU load continuously.
+        @param use_log: If true every monitoring is logged for dump.
+        """
+        self.pids = []
+        self.stats = {}
+        for pid in pids:
+            if pid == 0:
+                cpu = FileFieldMonitor("/proc/stat",
+                                       [("cpu", 0), # User Time
+                                        ("cpu", 2), # System Time
+                                        ("intr", 0), # IRQ Count
+                                        ("softirq", 0)], # Soft IRQ Count
+                                       True,
+                                       cpu_cont,
+                                       use_log,
+                                       " +",
+                                       time_step)
+                mem = FileFieldMonitor("/proc/meminfo",
+                                       [("MemTotal:", 0), # Mem Total
+                                        ("MemFree:", 0), # Mem Free
+                                        ("Buffers:", 0), # Buffers
+                                        ("Cached:", 0)], # Cached
+                                       False,
+                                       True,
+                                       use_log,
+                                       " +",
+                                       time_step)
+                self.stats[pid] = ["TOTAL", cpu, mem]
+                self.pids.append(pid)
+            else:
+                name = ""
+                if (type(pid) is int):
+                    self.pids.append(pid)
+                    name = get_process_name(pid)
+                else:
+                    self.pids.append(pid[0])
+                    name = pid[1]
+
+                cpu = FileFieldMonitor("/proc/%d/stat" %
+                                       self.pids[-1],
+                                       [("", 13), # User Time
+                                        ("", 14), # System Time
+                                        ("", 9), # Minority Page Fault
+                                        ("", 11)], # Majority Page Fault
+                                       True,
+                                       cpu_cont,
+                                       use_log,
+                                       " +",
+                                       time_step)
+                mem = FileFieldMonitor("/proc/%d/status" %
+                                       self.pids[-1],
+                                       [("VmSize:", 0), # Virtual Memory Size
+                                        ("VmRSS:", 0), # Resident Set Size
+                                        ("VmPeak:", 0), # Peak VM Size
+                                        ("VmSwap:", 0)], # VM in Swap
+                                       False,
+                                       True,
+                                       use_log,
+                                       " +",
+                                       time_step)
+                self.stats[self.pids[-1]] = [name, cpu, mem]
+
+        self.advanced = advanced
+
+
+    def __str__(self):
+        """
+        Define format how to print
+        """
+        out = ""
+        for pid in self.pids:
+            for stat in self.stats[pid][1:]:
+                out += str(stat.get_status()) + "\n"
+        return out
+
+
+    def start(self, pids=[]):
+        """
+        Start monitoring of the process system usage.
+        @param pids: List of PIDs you intend to control. Use pids=[] to control
+            all defined PIDs.
+        """
+        if pids == []:
+            pids = self.pids
+
+        for pid in pids:
+            for stat in self.stats[pid][1:]:
+                stat.start()
+
+
+    def stop(self, pids=[]):
+        """
+        Stop monitoring of the process system usage.
+        @param pids: List of PIDs you intend to control. Use pids=[] to control
+            all defined PIDs.
+        """
+        if pids == []:
+            pids = self.pids
+
+        for pid in pids:
+            for stat in self.stats[pid][1:]:
+                stat.stop()
+
+
+    def dump(self, pids=[]):
+        """
+        Get the status of monitoring.
+        @param pids: List of PIDs you intend to control. Use pids=[] to control
+            all defined PIDs.
+         @return:
+            tuple([cpu load], [memory load]):
+                ([(PID1, (PID1_cpu_meas)), (PID2, (PID2_cpu_meas)), ...],
+                 [(PID1, (PID1_mem_meas)), (PID2, (PID2_mem_meas)), ...])
+
+            PID1_cpu_meas:
+                average_values[], test_time, cont_meas_values[[]], time_step
+            PID1_mem_meas:
+                average_values[], test_time, cont_meas_values[[]], time_step
+            where average_values[] are the measured values (mem_free,swap,...)
+            which are described in SystemLoad.__init__()-FileFieldMonitor.
+            cont_meas_values[[]] is a list of average_values in the sampling
+            times.
+        """
+        if pids == []:
+            pids = self.pids
+
+        cpus = []
+        memory = []
+        for pid in pids:
+            stat = (pid, self.stats[pid][1].get_status())
+            cpus.append(stat)
+        for pid in pids:
+            stat = (pid, self.stats[pid][2].get_status())
+            memory.append(stat)
+
+        return (cpus, memory)
+
+
+    def get_cpu_status_string(self, pids=[]):
+        """
+        Convert status to string array.
+        @param pids: List of PIDs you intend to control. Use pids=[] to control
+            all defined PIDs.
+        @return: String format to table.
+        """
+        if pids == []:
+            pids = self.pids
+
+        headers = ["NAME",
+                   ("%7s") % "PID",
+                   ("%5s") % "USER",
+                   ("%5s") % "SYS",
+                   ("%5s") % "SUM"]
+        if self.advanced:
+            headers.extend(["MINFLT/IRQC",
+                            "MAJFLT/SOFTIRQ"])
+        headers.append(("%11s") % "TIME")
+        textstatus = []
+        for pid in pids:
+            stat = self.stats[pid][1].get_status()
+            time = stat[1]
+            stat = stat[0]
+            textstatus.append(["%s" % self.stats[pid][0],
+                               "%7s" % pid,
+                               "%4.0f%%" % (stat[0] / time),
+                               "%4.0f%%" % (stat[1] / time),
+                               "%4.0f%%" % ((stat[0] + stat[1]) / time),
+                               "%10.3fs" % time])
+            if self.advanced:
+                textstatus[-1].insert(-1, "%11d" % stat[2])
+                textstatus[-1].insert(-1, "%14d" % stat[3])
+
+        return matrix_to_string(textstatus, tuple(headers))
+
+
+    def get_mem_status_string(self, pids=[]):
+        """
+        Convert status to string array.
+        @param pids: List of PIDs you intend to control. Use pids=[] to control
+            all defined PIDs.
+        @return: String format to table.
+        """
+        if pids == []:
+            pids = self.pids
+
+        headers = ["NAME",
+                   ("%7s") % "PID",
+                   ("%8s") % "TOTAL/VMSIZE",
+                   ("%8s") % "FREE/VMRSS",
+                   ("%8s") % "BUFFERS/VMPEAK",
+                   ("%8s") % "CACHED/VMSWAP",
+                   ("%11s") % "TIME"]
+        textstatus = []
+        for pid in pids:
+            stat = self.stats[pid][2].get_status()
+            time = stat[1]
+            stat = stat[0]
+            textstatus.append(["%s" % self.stats[pid][0],
+                               "%7s" % pid,
+                               "%10dMB" % (stat[0] / 1024),
+                               "%8dMB" % (stat[1] / 1024),
+                               "%12dMB" % (stat[2] / 1024),
+                               "%11dMB" % (stat[3] / 1024),
+                               "%10.3fs" % time])
+
+        return matrix_to_string(textstatus, tuple(headers))
+
+
 def get_arch(run_function=run):
     """
     Get the hardware architecture of the machine.
@@ -1098,6 +1498,14 @@ def get_pid_from_file(program_name):
         pidfile.close()
 
     return pid
+
+
+def get_process_name(pid):
+    """
+    Get process name from PID.
+    @param pid: PID of process.
+    """
+    return get_field(read_file("/proc/%d/stat" % pid), 1)[1:-1]
 
 
 def program_is_alive(program_name):

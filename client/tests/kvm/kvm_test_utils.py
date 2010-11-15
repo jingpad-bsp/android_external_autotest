@@ -21,7 +21,7 @@ More specifically:
 @copyright: 2008-2009 Red Hat Inc.
 """
 
-import time, os, logging, re, commands
+import time, os, logging, re, commands, signal
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
 import kvm_utils, kvm_vm, kvm_subprocess, scan_results
@@ -157,9 +157,11 @@ def migrate(vm, env=None, mig_timeout=3600, mig_protocol="tcp",
     def mig_cancelled():
         o = vm.monitor.info("migrate")
         if isinstance(o, str):
-            return "Migration status: cancelled" in o
+            return ("Migration status: cancelled" in o or
+                    "Migration status: canceled" in o)
         else:
-            return o.get("status") == "cancelled"
+            return (o.get("status") == "cancelled" or
+                    o.get("status") == "canceled")
 
     def wait_for_migration():
         if not kvm_utils.wait_for(mig_finished, mig_timeout, 2, 2,
@@ -167,79 +169,122 @@ def migrate(vm, env=None, mig_timeout=3600, mig_protocol="tcp",
             raise error.TestFail("Timeout expired while waiting for migration "
                                  "to finish")
 
+    dest_vm = vm.clone()
 
-    migration_file = os.path.join("/tmp/",
-                                  mig_protocol + time.strftime("%Y%m%d-%H%M%S"))
-    if mig_protocol == "tcp":
-        mig_extra_params = " -incoming tcp:0:%d"
-    elif mig_protocol == "unix":
-        mig_extra_params = " -incoming unix:%s"
-    elif mig_protocol == "exec":
+    if mig_protocol == "exec":
         # Exec is a little different from other migrate methods - first we
         # ask the monitor the migration, then the vm state is dumped to a
         # compressed file, then we start the dest vm with -incoming pointing
         # to it
-        mig_extra_params = " -incoming \"exec: gzip -c -d %s\"" % migration_file
-        uri = "\"exec:gzip -c > %s\"" % migration_file
-        vm.monitor.cmd("stop")
-        o = vm.monitor.migrate(uri)
-        wait_for_migration()
-
-    # Clone the source VM and ask the clone to wait for incoming migration
-    dest_vm = vm.clone()
-    if not dest_vm.create(extra_params=mig_extra_params):
-        raise error.TestError("Could not create dest VM")
-
-    try:
-        if mig_protocol == "tcp":
-            uri = "tcp:localhost:%d" % dest_vm.migration_port
-        elif mig_protocol == "unix":
-            uri = "unix:%s" % dest_vm.migration_file
-
-        if mig_protocol != "exec":
-            o = vm.monitor.migrate(uri)
-
-            if mig_protocol == "tcp" and mig_cancel:
-                time.sleep(2)
-                o = vm.monitor.cmd("migrate_cancel")
-                if not kvm_utils.wait_for(mig_cancelled, 60, 2, 2,
-                                          "Waiting for migration cancel"):
-                    raise error.TestFail("Fail to cancel migration")
-                dest_vm.destroy(gracefully=False)
-                return vm
-
+        try:
+            exec_file = "/tmp/exec-%s.gz" % kvm_utils.generate_random_string(8)
+            exec_cmd = "gzip -c -d %s" % exec_file
+            uri = '"exec:gzip -c > %s"' % exec_file
+            vm.monitor.cmd("stop")
+            vm.monitor.migrate(uri)
             wait_for_migration()
 
-        # Report migration status
-        if mig_succeeded():
-            logging.info("Migration finished successfully")
-        elif mig_failed():
-            raise error.TestFail("Migration failed")
-        else:
-            raise error.TestFail("Migration ended with unknown status")
+            if not dest_vm.create(migration_mode=mig_protocol,
+                                  migration_exec_cmd=exec_cmd, mac_source=vm):
+                raise error.TestError("Could not create dest VM")
+        finally:
+            logging.debug("Removing migration file %s", exec_file)
+            try:
+                os.remove(exec_file)
+            except OSError:
+                pass
+    else:
+        if not dest_vm.create(migration_mode=mig_protocol, mac_source=vm):
+            raise error.TestError("Could not create dest VM")
+        try:
+            if mig_protocol == "tcp":
+                uri = "tcp:localhost:%d" % dest_vm.migration_port
+            elif mig_protocol == "unix":
+                uri = "unix:%s" % dest_vm.migration_file
+            vm.monitor.migrate(uri)
 
-        o = dest_vm.monitor.info("status")
-        if "paused" in o:
-            logging.debug("Destination VM is paused, resuming it...")
-            dest_vm.monitor.cmd("cont")
+            if mig_cancel:
+                time.sleep(2)
+                vm.monitor.cmd("migrate_cancel")
+                if not kvm_utils.wait_for(mig_cancelled, 60, 2, 2,
+                                          "Waiting for migration "
+                                          "cancellation"):
+                    raise error.TestFail("Failed to cancel migration")
+                dest_vm.destroy(gracefully=False)
+                return vm
+            else:
+                wait_for_migration()
+        except:
+            dest_vm.destroy()
+            raise
 
-        if os.path.exists(migration_file):
-            logging.debug("Removing migration file %s", migration_file)
-            os.remove(migration_file)
+    # Report migration status
+    if mig_succeeded():
+        logging.info("Migration finished successfully")
+    elif mig_failed():
+        raise error.TestFail("Migration failed")
+    else:
+        raise error.TestFail("Migration ended with unknown status")
 
-        # Kill the source VM
-        vm.destroy(gracefully=False)
+    if "paused" in dest_vm.monitor.info("status"):
+        logging.debug("Destination VM is paused, resuming it...")
+        dest_vm.monitor.cmd("cont")
 
-        # Replace the source VM with the new cloned VM
-        if env is not None:
-            kvm_utils.env_register_vm(env, vm.name, dest_vm)
+    # Kill the source VM
+    vm.destroy(gracefully=False)
 
-        # Return the new cloned VM
-        return dest_vm
+    # Replace the source VM with the new cloned VM
+    if env is not None:
+        kvm_utils.env_register_vm(env, vm.name, dest_vm)
 
-    except:
-        dest_vm.destroy()
-        raise
+    # Return the new cloned VM
+    return dest_vm
+
+
+def stop_windows_service(session, service, timeout=120):
+    """
+    Stop a Windows service using sc.
+    If the service is already stopped or is not installed, do nothing.
+
+    @param service: The name of the service
+    @param timeout: Time duration to wait for service to stop
+    @raise error.TestError: Raised if the service can't be stopped
+    """
+    end_time = time.time() + timeout
+    while time.time() < end_time:
+        o = session.get_command_output("sc stop %s" % service, timeout=60)
+        # FAILED 1060 means the service isn't installed.
+        # FAILED 1062 means the service hasn't been started.
+        if re.search(r"\bFAILED (1060|1062)\b", o, re.I):
+            break
+        time.sleep(1)
+    else:
+        raise error.TestError("Could not stop service '%s'" % service)
+
+
+def start_windows_service(session, service, timeout=120):
+    """
+    Start a Windows service using sc.
+    If the service is already running, do nothing.
+    If the service isn't installed, fail.
+
+    @param service: The name of the service
+    @param timeout: Time duration to wait for service to start
+    @raise error.TestError: Raised if the service can't be started
+    """
+    end_time = time.time() + timeout
+    while time.time() < end_time:
+        o = session.get_command_output("sc start %s" % service, timeout=60)
+        # FAILED 1060 means the service isn't installed.
+        if re.search(r"\bFAILED 1060\b", o, re.I):
+            raise error.TestError("Could not start service '%s' "
+                                  "(service not installed)" % service)
+        # FAILED 1056 means the service is already running.
+        if re.search(r"\bFAILED 1056\b", o, re.I):
+            break
+        time.sleep(1)
+    else:
+        raise error.TestError("Could not start service '%s'" % service)
 
 
 def get_time(session, time_command, time_filter_re, time_format):
@@ -505,3 +550,131 @@ def run_autotest(vm, session, control_path, timeout, outputdir):
             e_msg = ("Tests %s failed during control file execution" %
                      " ".join(bad_results))
         raise error.TestFail(e_msg)
+
+
+def get_loss_ratio(output):
+    """
+    Get the packet loss ratio from the output of ping
+.
+    @param output: Ping output.
+    """
+    try:
+        return int(re.findall('(\d+)% packet loss', output)[0])
+    except IndexError:
+        logging.debug(output)
+        return -1
+
+
+def raw_ping(command, timeout, session, output_func):
+    """
+    Low-level ping command execution.
+
+    @param command: Ping command.
+    @param timeout: Timeout of the ping command.
+    @param session: Local executon hint or session to execute the ping command.
+    """
+    if session is None:
+        process = kvm_subprocess.run_bg(command, output_func=output_func,
+                                        timeout=timeout)
+
+        # Send SIGINT signal to notify the timeout of running ping process,
+        # Because ping have the ability to catch the SIGINT signal so we can
+        # always get the packet loss ratio even if timeout.
+        if process.is_alive():
+            kvm_utils.kill_process_tree(process.get_pid(), signal.SIGINT)
+
+        status = process.get_status()
+        output = process.get_output()
+
+        process.close()
+        return status, output
+    else:
+        session.sendline(command)
+        status, output = session.read_up_to_prompt(timeout=timeout,
+                                                   print_func=output_func)
+        if not status:
+            # Send ctrl+c (SIGINT) through ssh session
+            session.send("\003")
+            status, output2 = session.read_up_to_prompt(print_func=output_func)
+            output += output2
+            if not status:
+                # We also need to use this session to query the return value
+                session.send("\003")
+
+        session.sendline(session.status_test_command)
+        s2, o2 = session.read_up_to_prompt()
+        if not s2:
+            status = -1
+        else:
+            try:
+                status = int(re.findall("\d+", o2)[0])
+            except:
+                status = -1
+
+        return status, output
+
+
+def ping(dest=None, count=None, interval=None, interface=None,
+         packetsize=None, ttl=None, hint=None, adaptive=False,
+         broadcast=False, flood=False, timeout=0,
+         output_func=logging.debug, session=None):
+    """
+    Wrapper of ping.
+
+    @param dest: Destination address.
+    @param count: Count of icmp packet.
+    @param interval: Interval of two icmp echo request.
+    @param interface: Specified interface of the source address.
+    @param packetsize: Packet size of icmp.
+    @param ttl: IP time to live.
+    @param hint: Path mtu discovery hint.
+    @param adaptive: Adaptive ping flag.
+    @param broadcast: Broadcast ping flag.
+    @param flood: Flood ping flag.
+    @param timeout: Timeout for the ping command.
+    @param output_func: Function used to log the result of ping.
+    @param session: Local executon hint or session to execute the ping command.
+    """
+    if dest is not None:
+        command = "ping %s " % dest
+    else:
+        command = "ping localhost "
+    if count is not None:
+        command += " -c %s" % count
+    if interval is not None:
+        command += " -i %s" % interval
+    if interface is not None:
+        command += " -I %s" % interface
+    if packetsize is not None:
+        command += " -s %s" % packetsize
+    if ttl is not None:
+        command += " -t %s" % ttl
+    if hint is not None:
+        command += " -M %s" % hint
+    if adaptive:
+        command += " -A"
+    if broadcast:
+        command += " -b"
+    if flood:
+        command += " -f -q"
+        output_func = None
+
+    return raw_ping(command, timeout, session, output_func)
+
+
+def get_linux_ifname(session, mac_address):
+    """
+    Get the interface name through the mac address.
+
+    @param session: session to the virtual machine
+    @mac_address: the macaddress of nic
+    """
+
+    output = session.get_command_output("ifconfig -a")
+
+    try:
+        ethname = re.findall("(\w+)\s+Link.*%s" % mac_address, output,
+                             re.IGNORECASE)[0]
+        return ethname
+    except:
+        return None

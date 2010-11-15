@@ -59,9 +59,17 @@ def _add_kernel_to_bootloader(bootloader, base_args, tag, args, image, initrd):
         else:
             arglist.append(arg)
 
-    # add the kernel entry
-    bootloader.add_kernel(image, tag, initrd=initrd, args=' '.join(arglist),
-                          root=root)
+    # Add the kernel entry. it will keep all arguments from the default entry.
+    # args='_dummy_' is used to workaround a boottool limitation of not being
+    # able to add arguments to a kernel that does not already have any of its
+    # own by way of its own append= section below the image= line in lilo.conf.
+    bootloader.add_kernel(image, tag, initrd=initrd, root=root, args='_dummy_')
+    # Now, for each argument in arglist, try to add it to the kernel that was
+    # just added. In each step, if the arg already existed on the args string,
+    # that particular arg will be skipped
+    for a in arglist:
+        bootloader.add_args(kernel=tag, args=a)
+    bootloader.remove_args(kernel=tag, args='_dummy_')
 
 
 class BootableKernel(object):
@@ -83,7 +91,6 @@ class BootableKernel(object):
         @param subdir: job-step qualifier in status log
         @param notes:  additional comment in status log
         """
-
         # If we can check the kernel identity do so.
         if ident_check:
             when = int(time.time())
@@ -94,11 +101,7 @@ class BootableKernel(object):
             self.job.next_step_prepend(["job.end_reboot", subdir,
                                         expected_ident, notes])
 
-        # Point bootloader to the selected tag.
-        _add_kernel_to_bootloader(self.job.bootloader,
-                                  self.job.config_get('boot.default_args'),
-                                  self.installed_as, args, self.image,
-                                  self.initrd)
+        self.add_to_bootloader(args)
 
         # defer fsck for next reboot, to avoid reboots back to default kernel
         utils.system('touch /fastboot')  # this file is removed automatically
@@ -106,6 +109,14 @@ class BootableKernel(object):
         # Boot it.
         self.job.start_reboot()
         self.job.reboot(tag=self.installed_as)
+
+
+    def add_to_bootloader(self, args=''):
+        # Point bootloader to the selected tag.
+        _add_kernel_to_bootloader(self.job.bootloader,
+                                  self.job.config_get('boot.default_args'),
+                                  self.installed_as, args, self.image,
+                                  self.initrd)
 
 
 class kernel(BootableKernel):
@@ -307,6 +318,8 @@ class kernel(BootableKernel):
         # if base_tree is a dir, assume uncompressed kernel
         if os.path.isdir(base_tree):
             print 'Symlinking existing kernel source'
+            if os.path.islink(self.build_dir):
+                os.remove(self.build_dir)
             os.symlink(base_tree, self.build_dir)
 
         # otherwise, extract tarball
@@ -372,7 +385,7 @@ class kernel(BootableKernel):
         os.chdir(self.build_dir)
         self.set_cross_cc()
 
-        self.clean(logged=False)
+        self.clean()
         build_string = "/usr/bin/time -o %s make %s -j %s vmlinux" \
                                         % (timefile, make_opts, threads)
         build_string += ' > %s 2>&1' % output
@@ -420,8 +433,28 @@ class kernel(BootableKernel):
         if not args:
             args = ''
 
+        # It is important to match the version with a real directory inside
+        # /lib/modules
+        real_version_list = glob.glob('/lib/modules/%s*' % version)
+        rl = len(real_version_list)
+        if rl == 0:
+            logging.error("No directory %s found under /lib/modules. Initramfs"
+                          "creation will most likely fail and your new kernel"
+                          "will fail to build", version)
+        else:
+            if rl > 1:
+                logging.warning("Found more than one possible match for "
+                                "kernel version %s under /lib/modules", version)
+            version = os.path.basename(real_version_list[0])
+
         if vendor in ['Red Hat', 'Fedora Core']:
-            utils.system('mkinitrd %s %s %s' % (args, initrd, version))
+            try:
+                cmd = os_dep.command('dracut')
+                full_cmd = '%s -f %s %s' % (cmd, initrd, version)
+            except ValueError:
+                cmd = os_dep.command('mkinitrd')
+                full_cmd = '%s %s %s %s' % (cmd, args, initrd, version)
+            utils.system(full_cmd)
         elif vendor in ['SUSE']:
             utils.system('mkinitrd %s -k %s -i %s -M %s' %
                          (args, image, initrd, system_map))
@@ -719,7 +752,7 @@ class rpm_kernel(BootableKernel):
 
             # search for initrd
             for file in files:
-                if file.startswith('/boot/initrd'):
+                if file.startswith('/boot/init'):
                     self.initrd = file
                     # prefer /boot/initrd-version before /boot/initrd
                     if len(file) > len('/boot/initrd'):

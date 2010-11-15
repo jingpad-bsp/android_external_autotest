@@ -35,6 +35,7 @@ smp = 1
 mem = 512
 image_size = 10G
 drive_index_image1 = 0
+drive_cache = none
 shell_port = 22
 display = vnc
 drive_index_cd1 = 1
@@ -54,7 +55,7 @@ guest_port_remote_shell = 22
 nic_mode = user
 #nic_mode = tap
 nic_script = scripts/qemu-ifup
-address_index = 0
+#nic_script = scripts/qemu-ifup-ipv6
 run_tcpdump = yes
 
 # Misc
@@ -274,7 +275,6 @@ variants:
         type = stress_boot
         max_vms = 5    
         alive_test_cmd = uname -a
-        clone_address_index_base = 10
         login_timeout = 240
         kill_vm = yes
         kill_vm_vm1 = no
@@ -456,17 +456,90 @@ variants:
             - fmt_raw:
                 image_format_stg = raw
 
-    - vlan_tag:  install setup unattended_install.cdrom
-        type = vlan_tag
+    - qmp_basic: install setup unattended_install.cdrom
+        type = qmp_basic
+
+    - vlan:  install setup unattended_install.cdrom
+        type = vlan
         # subnet should not be used by host
-        subnet = 192.168.123
-        vlans = "10 20"
+        subnet = "192.168"
+        vlan_num = 5
+        file_size = 10
+        maximal = 4094
+        listen_cmd = "nc -l %s > %s"
+        send_cmd = "nc %s %s < %s"
         nic_mode = tap
         vms += " vm2"
-        extra_params_vm1 += " -snapshot"
-        extra_params_vm2 += " -snapshot"
+        image_snapshot = yes
+        kill_vm_vm2 = yes
         kill_vm_gracefully_vm2 = no
-        address_index_vm2 = 1
+
+    - ping: install setup unattended_install.cdrom
+        type = ping
+        counts = 100
+        flood_minutes = 10
+
+    - jumbo: install setup unattended_install.cdrom
+        type = jumbo
+
+    - file_transfer: install setup unattended_install.cdrom
+        type = file_transfer
+        filesize = 4000
+        transfer_timeout = 1000
+        variants:
+            - remote:
+                transfer_type = remote
+
+    - nicdriver_unload:  install setup unattended_install.cdrom
+        type = nicdriver_unload
+        nic_mode = tap
+        file_size = 100
+        connect_time = 4
+        scp_timeout = 300
+        thread_num = 10
+
+    - nic_promisc:  install setup unattended_install.cdrom
+        type = nic_promisc
+        file_size = 1, 1460, 65000, 100000000
+
+    - multicast: install setup unattended_install.cdrom
+        type = multicast
+        nic_mode = tap
+        mcast = 225.0.0.1
+        mgroup_count = 20
+        flood_minutes = 1
+
+    - pxe:
+        type = pxe
+        images = pxe
+        image_name_pxe = pxe-test
+        image_size_pxe = 1G
+        force_create_image_pxe = yes
+        remove_image_pxe = yes
+        extra_params += ' -boot n'
+        kill_vm_on_error = yes
+        network = bridge
+        restart_vm = yes
+        pxe_timeout = 60
+
+    - mac_change: install setup unattended_install.cdrom
+        type = mac_change
+        kill_vm = yes
+
+    - netperf: install setup unattended_install.cdrom
+        type = netperf
+        nic_mode = tap
+        netperf_files = netperf-2.4.5.tar.bz2 wait_before_data.patch
+        setup_cmd = "cd %s && tar xvfj netperf-2.4.5.tar.bz2 && cd netperf-2.4.5 && patch -p0 < ../wait_before_data.patch && ./configure && make"
+        netserver_cmd =  %s/netperf-2.4.5/src/netserver
+        # test time is 60 seconds, set the buffer size to 1 for more hardware interrupt
+        netperf_cmd = %s/netperf-2.4.5/src/netperf -t %s -H %s -l 60 -- -m 1
+        protocols = "TCP_STREAM TCP_MAERTS TCP_RR TCP_CRR UDP_RR TCP_SENDFILE UDP_STREAM"
+
+    - ethtool: install setup unattended_install.cdrom
+        type = ethtool
+        filesize = 512
+        nic_mode = tap
 
     - physical_resources_check: install setup unattended_install.cdrom
         type = physical_resources_check
@@ -618,11 +691,26 @@ variants:
 variants:
     - @rtl8139:
         nic_model = rtl8139
+        jumbo:
+            mtu = 1500
     - e1000:
         nic_model = e1000
+        jumbo:
+            mtu = 16110
+        ethtool:
+                # gso gro lro is only supported by latest kernel
+                supported_features = "tx rx sg tso gso gro lro"
     - virtio_net:
         nic_model = virtio
-
+        # You can add advanced attributes on nic_extra_params such as mrg_rxbuf
+        #nic_extra_params =
+        # You can set vhost = yes to enable the vhost kernel backend
+        # (This only works if nic_mode=tap)
+        vhost = no
+        jumbo:
+            mtu = 65520
+        ethtool:
+            supported_features = "tx sg tso gso"
 
 # Guests
 variants:
@@ -665,6 +753,9 @@ variants:
                 time_command = date +'TIME: %a %m/%d/%Y %H:%M:%S.%N'
                 time_filter_re = "(?:TIME: \w\w\w )(.{19})(?:\.\d\d)"
                 time_format = "%m/%d/%Y %H:%M:%S"
+        file_transfer:
+            tmp_dir = /tmp/
+            clean_cmd = rm -f
 
         variants:
             - Fedora:
@@ -856,8 +947,8 @@ variants:
                     extra_params += " -boot cn"
                     # You have to use autoyast=floppy if you want to use floppies to
                     # hold your autoyast file
-                    #kernel_args = "autoyast=floppy console=ttyS0,115200 console=tty0"
-                    kernel_args = "autoyast=cdrom console=ttyS0,115200 console=tty0"
+                    kernel_args = "autoyast=floppy console=ttyS0,115200 console=tty0"
+                    #kernel_args = "autoyast=cdrom console=ttyS0,115200 console=tty0"
                     post_install_delay = 10
 
                 variants:
@@ -871,7 +962,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-0-32/tftpboot
-                            floppy = images/opensuse-11-0-32/floppy.img
+                            floppy = images/opensuse-11-0-32/autoyast.vfd
+                            #cdrom_unattended = images/opensuse-11-0-32/autoyast.iso
                             pxe_dir = boot/i386/loader
 
                     - 11.0.64:
@@ -882,8 +974,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-0-64/tftpboot
-                            #floppy = images/opensuse-11-0-64/autoyast.vfd
-                            cdrom_unattended = images/opensuse-11-0-64/autoyast.iso
+                            floppy = images/opensuse-11-0-64/autoyast.vfd
+                            #cdrom_unattended = images/opensuse-11-0-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
                     - 11.1.32:
@@ -896,8 +988,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-1-32/tftpboot
-                            #floppy = images/opensuse-11-1-32/autoyast.vfd
-                            cdrom_unattended = images/opensuse-11-1-32/autoyast.iso
+                            floppy = images/opensuse-11-1-32/autoyast.vfd
+                            #cdrom_unattended = images/opensuse-11-1-32/autoyast.iso
                             pxe_dir = boot/i386/loader
 
                     - 11.1.64:
@@ -910,8 +1002,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-1-64/tftpboot
-                            #floppy = images/opensuse-11-1-64/autoyast.vfd
-                            cdrom_unattended = images/opensuse-11-1-64/autoyast.iso
+                            floppy = images/opensuse-11-1-64/autoyast.vfd
+                            #cdrom_unattended = images/opensuse-11-1-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
                     - 11.2.32:
@@ -922,8 +1014,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-2-32/tftpboot
-                            #floppy = images/opensuse-11-2-32/autoyast.vfd
-                            cdrom_unattended = images/opensuse-11-2-32/autoyast.iso
+                            floppy = images/opensuse-11-2-32/autoyast.vfd
+                            #cdrom_unattended = images/opensuse-11-2-32/autoyast.iso
                             pxe_dir = boot/i386/loader
 
                     - 11.2.64:
@@ -934,8 +1026,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-2-64/tftpboot
-                            #floppy = images/opensuse11-2-64/autoyast.vfd
-                            cdrom_unattended = images/opensuse11-2-64/autoyast.iso
+                            floppy = images/opensuse11-2-64/autoyast.vfd
+                            #cdrom_unattended = images/opensuse11-2-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
                     - 11.3.32:
@@ -946,8 +1038,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-3-32/tftpboot
-                            #floppy = images/opensuse-11-3-32/autoyast.vfd
-                            cdrom_unattended = images/opensuse-11-3-32/autoyast.iso
+                            floppy = images/opensuse-11-3-32/autoyast.vfd
+                            #cdrom_unattended = images/opensuse-11-3-32/autoyast.iso
                             pxe_dir = boot/i386/loader
 
                     - 11.3.64:
@@ -958,8 +1050,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/OpenSUSE-11.xml
                             tftp = images/opensuse-11-3-64/tftpboot
-                            #floppy = images/opensuse-11-3-64/autoyast.vfd
-                            cdrom_unattended = images/opensuse-11-3-64/autoyast.iso
+                            floppy = images/opensuse-11-3-64/autoyast.vfd
+                            #cdrom_unattended = images/opensuse-11-3-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
             - SLES:
@@ -971,8 +1063,8 @@ variants:
                     extra_params += " -boot cn"
                     # You have to use autoyast=floppy if you want to use floppies to
                     # hold your autoyast file
-                    #kernel_args = "autoyast=floppy console=ttyS0,115200 console=tty0"
-                    kernel_args = "autoyast=cdrom console=ttyS0,115200 console=tty0"
+                    kernel_args = "autoyast=floppy console=ttyS0,115200 console=tty0"
+                    #kernel_args = "autoyast=cdrom console=ttyS0,115200 console=tty0"
                     post_install_delay = 10
 
                 variants:
@@ -986,6 +1078,8 @@ variants:
                             tftp = images/sles-11-0-32/tftpboot
                             #floppy = images/sles-11-0-32/autoyast.vfd
                             cdrom_unattended = images/sles-11-0-32/autoyast.iso
+                            floppy = images/sles-11-0-32/autoyast.vfd
+                            #cdrom_unattended = images/sles-11-0-32/autoyast.iso
                             pxe_dir = boot/i386/loader
 
                     - 11.0.64:
@@ -996,8 +1090,8 @@ variants:
                         unattended_install.cdrom:
                             unattended_file = unattended/SLES-11.xml
                             tftp = images/sles-11-0-64/tftpboot
-                            #floppy = images/sles-11-0-64/autoyast.vfd
-                            cdrom_unattended = images/sles-11-0-64/autoyast.iso
+                            floppy = images/sles-11-0-64/autoyast.vfd
+                            #cdrom_unattended = images/sles-11-0-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
                     - 11.1.32:
@@ -1008,8 +1102,8 @@ variants:
                         unattended_install:
                             unattended_file = unattended/SLES-11.xml
                             tftp = images/sles-11-1-32/tftpboot
-                            #floppy = images/sles-11-1-32/autoyast.vfd
-                            cdrom_unattended = images/sles-11-1-32/autoyast.iso
+                            floppy = images/sles-11-1-32/autoyast.vfd
+                            #cdrom_unattended = images/sles-11-1-32/autoyast.iso
                             pxe_dir = boot/i386/loader
 
                     - 11.1.64:
@@ -1020,8 +1114,8 @@ variants:
                         unattended_install:
                             unattended_file = unattended/SLES-11.xml
                             tftp = images/sles-11-1-64/tftpboot
-                            #floppy = images/sles-11-1-64/autoyast.vfd
-                            cdrom_unattended = images/sles-11-1-64/autoyast.iso
+                            floppy = images/sles-11-1-64/autoyast.vfd
+                            #cdrom_unattended = images/sles-11-1-64/autoyast.iso
                             pxe_dir = boot/x86_64/loader
 
             - @Ubuntu:
@@ -1236,7 +1330,7 @@ variants:
 
     # Windows section
     - @Windows:
-        no autotest linux_s3 vlan_tag ioquit unattended_install.(url|nfs|remote_ks)
+        no autotest linux_s3 vlan ioquit unattended_install.(url|nfs|remote_ks) jumbo nicdriver_unload nic_promisc multicast mac_change ethtool
         shutdown_command = shutdown /s /f /t 0
         reboot_command = shutdown /r /f /t 0
         status_test_command = echo %errorlevel%
@@ -1328,6 +1422,9 @@ variants:
         physical_resources_check:
             catch_uuid_cmd = 
 
+        file_transfer:
+            tmp_dir = C:\
+            clean_cmd = del
         variants:
             - Win2000:
                 no reboot whql

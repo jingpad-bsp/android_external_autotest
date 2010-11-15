@@ -16,7 +16,7 @@ class GitKernel(git.InstallableGitRepo):
     It is used to pull down a local copy of a git repo, check if the local repo
     is up-to-date, if not update and then build the kernel from the git repo.
     """
-    def __init__(self, repodir, giturl, weburl):
+    def __init__(self, repodir, giturl, weburl=None):
         super(GitKernel, self).__init__(repodir, giturl, weburl)
         self._patches = []
         self._config = None
@@ -96,13 +96,17 @@ class GitKernel(git.InstallableGitRepo):
             self._build = os.path.join(host.get_tmp_dir(), "build")
             logging.warning('Builddir %s is not persistent (it will be erased '
                             'in future jobs)', self._build)
+        else:
+            self._build = builddir
 
         # push source to host for install
         logging.info('Pushing %s to host', self.source_material)
         host.send_file(self.source_material, self._build)
+        remote_source_material= os.path.join(self._build,
+                                        os.path.basename(self.source_material))
 
         # use a source_kernel to configure, patch, build and install.
-        sk = source_kernel.SourceKernel(self._build)
+        sk = source_kernel.SourceKernel(remote_source_material)
 
         if build:
             # apply patches
