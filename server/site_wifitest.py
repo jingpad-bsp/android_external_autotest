@@ -80,7 +80,9 @@ class WiFiTest(object):
         defaults = config.get('defaults', {})
         self.deftimeout = defaults.get('timeout', 30)
         self.defpingcount = defaults.get('pingcount', 10)
-        self.defwaittime = str(defaults.get('netperf_wait_time', 3))
+        self.defwaittime = defaults.get('netperf_wait_time', 3)
+        self.defiperfport = str(defaults.get('iperf_port', 12866))
+        self.defnetperfport = str(defaults.get('netperf_port', 12865))
         if 'type' not in router:
             # auto-detect router type
             if site_linux_router.isLinuxRouter(self.router):
@@ -161,6 +163,8 @@ class WiFiTest(object):
                                              '/usr/local/bin/netperf')
         self.client_cmd_netserv = client.get('cmd_netperf_server',
                                              '/usr/local/sbin/netserver')
+        self.client_cmd_iperf = client.get('cmd_iperf_client',
+                                           '/usr/local/bin/iperf')
         self.client_cmd_iptables = '/sbin/iptables'
 
 
@@ -183,6 +187,8 @@ class WiFiTest(object):
                                              '/usr/bin/netperf')
         self.server_cmd_netserv = server.get('cmd_netperf_server',
                                              '/usr/bin/netserver')
+        self.server_cmd_iperf = server.get('cmd_iperf_client',
+                                           '/usr/bin/iperf')
         # /usr/bin/ping is preferred, as it is likely to be iputils
         if self.__is_installed(self.server, '/usr/bin/ping'):
             self.server_ping_cmd = '/usr/bin/ping'
@@ -631,51 +637,117 @@ class WiFiTest(object):
             self.ping_thread = None
 
 
-    def __run_iperf(self, client_ip, server_ip, params):
-        template = ''.join(["job.run_test('iperf', \
-            server_ip='%s', client_ip='%s', role='%s'"])
+    def __run_iperf(self, mode, params):
+        iperf_args = ""
         if 'udp' in params:
-            template += ", udp=True"
-        if 'bidir' in params:
-            template += ", bidirectional=True"
-        if 'time' in params:
-            template += ", test_time=%s" % params['time']
-
-        # add a tag to distinguish runs when multiple tests are run
-        if 'tag' in params:
-            tag = params['tag']
-        elif 'udp' in params:
-            tag = "udp"
+            iperf_args += " -u"
+            test = "UDP"
         else:
-            tag = "tcp"
-        if 'bidir' in params:
-            tag += "_bidir"
-        template += ", tag='%s'" % tag
+            test = "TCP"
+        if 'nodelay' in params:
+            iperf_args += " -N"
+            self.write_perf({'nodelay':'true'})
+        if 'window' in params:
+            iperf_args += " -w %s" % params['window']
+            self.write_perf({'window':params['window']})
+        iperf_args += " -p %s" % self.defiperfport
 
-        template += ")"
+        # Assemble client-specific arguments
+        client_args = iperf_args + " -f m -t %s" % params.get('test_time', 15)
+        if 'bandwidth' in params:
+            client_args += " -b %s" % params['bandwidth']
+            self.write_perf({'bandwidth':params['bandwidth']})
 
-        client_control_file = template % (server_ip, client_ip, 'client')
-        client_command = subcommand.subcommand(self.client_at.run,
-               [client_control_file, self.client.hostname])
-        cmds = [client_command]
+        ip_rules = []
+        if mode == 'server':
+            server = { 'host': self.client, 'cmd': self.client_cmd_iperf }
+            client = { 'host': self.server, 'cmd': self.server_cmd_iperf,
+                       'target': self.client_wifi_ip }
 
-        if self.server is None:
-            logging.info("%s: iperf %s => (%s)",
-                self.name, client_ip, server_ip)
+            # Open up access from the server into our DUT
+            ip_rules.append(self.__firewall_open('tcp', self.server_wifi_ip))
+            ip_rules.append(self.__firewall_open('udp', self.server_wifi_ip))
         else:
-            server_control_file = template % (server_ip, client_ip, 'server')
-            server_command = subcommand.subcommand(self.server_at.run,
-                   [server_control_file, self.server.hostname])
-            cmds.append(server_command)
+            server = { 'host': self.server, 'cmd': self.server_cmd_iperf }
+            client = { 'host': self.client, 'cmd': self.client_cmd_iperf,
+                       'target': self.server_wifi_ip }
 
-            logging.info("%s: iperf %s => %s", self.name, client_ip, server_ip)
+        # If appropriate apps are not installed, raise an error
+        if not self.__is_installed(client['host'], client['cmd']) or \
+                not self.__is_installed(server['host'], server['cmd']):
+            raise error.TestFail('Unable to find iperf on client or server')
 
-        subcommand.parallel(cmds)
+        iperf_thread = HelperThread(server['host'],
+            "%s -s %s" % (server['cmd'], iperf_args))
+        iperf_thread.start()
+        # NB: block to allow server time to startup
+        time.sleep(self.defwaittime)
+
+        # Run iperf command and receive command results
+        t0 = time.time()
+        results = client['host'].run("%s -c %s%s" % \
+            (client['cmd'], client['target'], client_args))
+        actual_time = time.time() - t0
+        logging.info('actual_time: %f', actual_time)
+
+        server['host'].run("pkill iperf", ignore_status=True)
+        iperf_thread.join()
+
+        # Close up whatever firewall rules we created for iperf
+        for rule in ip_rules:
+            self.__firewall_close(rule)
+
+        self.write_perf({'test':test, 'mode':mode, 'actual_time':actual_time})
+
+        logging.info(results)
+
+        lines = results.stdout.splitlines()
+
+        # Each test type has a different form of output
+        if test in ['TCP', 'TCP_NODELAY']:
+            """Parses the following and returns a singleton containing
+            throughput.
+
+            ------------------------------------------------------------
+            Client connecting to localhost, TCP port 5001
+            TCP window size: 49.4 KByte (default)
+            ------------------------------------------------------------
+            [  3] local 127.0.0.1 port 57936 connected with 127.0.0.1 port 5001
+            [ ID] Interval       Transfer     Bandwidth
+            [  3]  0.0-10.0 sec  2.09 GBytes  1.79 Gbits/sec
+            """
+            self.write_perf({'throughput':float(lines[6].split()[6])})
+        elif test in ['UDP', 'UDP_NODELAY']:
+            """Parses the following and returns a touple containing throughput
+            and the number of errors.
+
+            ------------------------------------------------------------
+            Client connecting to localhost, UDP port 5001
+            Sending 1470 byte datagrams
+            UDP buffer size:   108 KByte (default)
+            ------------------------------------------------------------
+            [  3] local 127.0.0.1 port 54244 connected with 127.0.0.1 port 5001
+            [ ID] Interval       Transfer     Bandwidth
+            [  3]  0.0-10.0 sec  1.25 MBytes  1.05 Mbits/sec
+            [  3] Sent 893 datagrams
+            [  3] Server Report:
+            [ ID] Interval       Transfer     Bandwidth       Jitter   Lost/Total Datagrams
+            [  3]  0.0-10.0 sec  1.25 MBytes  1.05 Mbits/sec  0.032 ms    1/  894 (0.11%)
+            """
+            # NB: no ID line on openwrt so use "last line"
+            udp_tokens = lines[-1].replace('/', ' ').split()
+            self.write_perf({'throughput':float(udp_tokens[6]),
+                             'jitter':float(udp_tokens[9]),
+                             'lost':float(udp_tokens[13].strip('()%'))})
+        else:
+            raise error.TestError('Unhandled test')
+
+        return True
 
 
     def client_iperf(self, params):
         """ Run iperf on the client against the server """
-        self.__run_iperf(self.client_wifi_ip, self.server_wifi_ip, params)
+        self.__run_iperf('client', params)
 
 
     def server_iperf(self, params):
@@ -683,7 +755,7 @@ class WiFiTest(object):
         if self.server is None:
             self.__unreachable("server_iperf")
             return
-        self.__run_iperf(self.server_wifi_ip, self.client_wifi_ip, params)
+        self.__run_iperf('server', params)
 
 
     def __is_installed(self, host, filename):
@@ -731,19 +803,25 @@ class WiFiTest(object):
                 not self.__is_installed(server['host'], server['cmd']):
             raise error.TestFail('Unable to find netperf on client or server')
 
-        # There are legitimate ways this command can fail, eg. already running
-        server['host'].run(server['cmd'], ignore_status=True)
+        netperf_thread = HelperThread(server['host'],
+            "%s -p %s" % (server['cmd'],  self.defnetperfport))
+        netperf_thread.start()
+        # NB: block to allow server time to startup
+        time.sleep(self.defwaittime)
 
         # Assemble arguments for client command
         test = params.get('test', 'TCP_STREAM')
-        netperf_args = '-H %s -t %s -l %d' % (client['target'], test,
-                                              params.get('test_time', 15))
+        netperf_args = '-H %s -p %s -t %s -l %d' % (client['target'],
+                        self.defnetperfport, test, params.get('test_time', 15))
 
         # Run netperf command and receive command results
         t0 = time.time()
         results = client['host'].run("%s %s" % (client['cmd'], netperf_args))
         actual_time = time.time() - t0
         logging.info('actual_time: %f', actual_time)
+
+        server['host'].run("pkill netserver", ignore_status=True)
+        netperf_thread.join()
 
         # Close up whatever firewall rules we created for netperf
         for rule in np_rules:
