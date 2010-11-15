@@ -1028,4 +1028,4 @@ class test(test.test):
       if 'expect_failure' in testcase:
         self.expect_failure(name, testcase['expect_failure'])
       else:
-        raise error.TestFail(e)
+        raise
