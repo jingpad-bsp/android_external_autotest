@@ -168,7 +168,12 @@ class hardware_Components(test.test):
 
 
     def get_data_display_geometry(self):
-        cmd = ('get-edid | parse-edid | grep "Mode " | '
+        # Get edid from driver. TODO(nsanders): this is driver specific.
+        # TODO(waihong): read-edid is also x86 only.
+        cmd = 'find /sys/devices/ -name edid | grep LVDS'
+        edid_file = utils.system_output(cmd)
+
+        cmd = ('cat ' + edid_file + ' | parse-edid | grep "Mode " | '
                'sed \'s/^.*"\(.*\)".*$/\\1/\'')
         data = utils.system_output(cmd).split()
         if not data:
@@ -189,7 +194,10 @@ class hardware_Components(test.test):
 
 
     def get_part_id_display_panel(self):
-        cmd = ('get-edid | parse-edid | grep ModelName | '
+        cmd = 'find /sys/devices/ -name edid | grep LVDS'
+        edid_file = utils.system_output(cmd)
+
+        cmd = ('cat ' + edid_file + ' | parse-edid | grep ModelName | '
                'sed \'s/^.*ModelName "\(.*\)"$/\\1/\'')
         part_id = utils.system_output(cmd).strip()
         return part_id
