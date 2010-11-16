@@ -61,6 +61,12 @@ class BaseAutotest(installable_object.InstallableObject):
 
 
     @classmethod
+    def get_client_autodir_real_path(cls, host):
+        return global_config.global_config.get_config_value(
+                'AUTOSERV', 'client_autodir_real_path', type=str)
+
+
+    @classmethod
     def get_installed_autodir(cls, host):
         """
         Find where the Autotest client is installed on the host.
@@ -106,9 +112,26 @@ class BaseAutotest(installable_object.InstallableObject):
     @classmethod
     def _find_installable_dir(cls, host):
         client_autodir_paths = cls.get_client_autodir_paths(host)
+        client_autodir_real_path = utils.sh_escape(
+            cls.get_client_autodir_real_path(host))
         for path in client_autodir_paths:
             try:
-                host.run('mkdir -p %s' % utils.sh_escape(path))
+                path = utils.sh_escape(path)
+                # Since ChromeOS uses tmpfs (in memory fs) we don't want to let
+                # Autotest use it for running tests and storing results. As an
+                # additional wrinkle all fs are mounted noexec. To work around
+                # this we need to setup a mount point and remount it as exec.
+                host.run('mkdir -p ' + client_autodir_real_path)
+                host.run('mkdir -p ' + path)
+
+                # Check for existing mount and unmount if exists.
+                result = host.run('mount | grep -q ' + path, ignore_status=True)
+                if result.exit_status == 0:
+                    host.run('umount ' + path)
+
+                host.run('mount --bind %s %s' % (client_autodir_real_path,
+                                                 path))
+                host.run('mount -o remount,exec ' + path)
                 return path
             except error.AutoservRunError:
                 logging.debug('Failed to create %s', path)

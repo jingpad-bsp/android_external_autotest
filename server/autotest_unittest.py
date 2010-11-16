@@ -231,7 +231,8 @@ class TestBaseAutotest(unittest.TestCase):
         os.path.abspath.expect_call('control').and_return('control')
         os.remove.expect_call("temp")
 
-        run_obj.execute_control.expect_call(timeout=30,
+        run_obj.execute_control.expect_call(ignore_aborts=False,
+                                            timeout=30,
                                             client_disconnect_timeout=1800)
 
         # run and check output
@@ -244,6 +245,13 @@ class TestBaseAutotest(unittest.TestCase):
             return ['/some/path', '/another/path']
         self.god.stub_with(autotest.Autotest, 'get_client_autodir_paths',
                            classmethod(mock_get_client_autodir_paths))
+
+
+    def _stub_get_client_autodir_real_path(self):
+        def mock_get_client_autodir_real_path(cls, host):
+            return '/shiny/path'
+        self.god.stub_with(autotest.Autotest, 'get_client_autodir_real_path',
+                           classmethod(mock_get_client_autodir_real_path))
 
 
     def _expect_failed_run(self, command):
@@ -263,14 +271,23 @@ class TestBaseAutotest(unittest.TestCase):
 
     def test_get_install_dir(self):
         self._stub_get_client_autodir_paths()
+        self._stub_get_client_autodir_real_path()
         self.host.get_autodir.expect_call().and_return(None)
         self._expect_failed_run('test -x /some/path/bin/autotest')
         self._expect_failed_run('test -x /another/path/bin/autotest')
-        self._expect_failed_run('mkdir -p /some/path')
-        self.host.run.expect_call('mkdir -p /another/path')
+        self.host.run.expect_call('mkdir -p /shiny/path')
+        self.host.run.expect_call('mkdir -p /some/path')
+
+        result = client_utils.CmdResult()
+        result.exit_status = 0
+        self.host.run.expect_call('mount | grep -q /some/path',
+                                  ignore_status=True).and_return(result)
+        self.host.run.expect_call('umount /some/path')
+        self.host.run.expect_call('mount --bind /shiny/path /some/path')
+        self.host.run.expect_call('mount -o remount,exec /some/path')
 
         install_dir = autotest.Autotest.get_install_dir(self.host)
-        self.assertEquals(install_dir, '/another/path')
+        self.assertEquals(install_dir, '/some/path')
 
 
     def test_client_logger_process_line_log_copy_collection_failure(self):
