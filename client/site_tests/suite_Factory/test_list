@@ -263,7 +263,7 @@ TEST_LIST = [
                 unique_name=factory.FINAL_VERIFICATION_TEST_UNIQUE_NAME,
                 autotest_name='factory_Verify',
                 dargs={
-                    'check_and_enable_write_protect':False,
+                    'check_and_enable_write_protect':True,
                 }),
             AutomatedSubTest(
                 label_en='Log VPD Data',
