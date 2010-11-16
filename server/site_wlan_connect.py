@@ -113,9 +113,10 @@ def TryConnect(assoc_time):
             print>>sys.stderr, "Lost the service handle during Connect()!"
             time.sleep(0.5)
             return (None, 'FAIL')
-        # What is this exception?
-        print "FAIL(Connect): ssid %s DBus exception %s" %(ssid, e)
-        ErrExit(2)
+        if e.get_dbus_name() != 'org.chromium.flimflam.Error.AlreadyConnected':
+            # What is this exception?
+            print "FAIL(Connect): ssid %s DBus exception %s" %(ssid, e)
+            ErrExit(2)
     except Exception, e:
         print "FAIL(Connect): ssid %s exception %s" %(ssid, e)
         ErrExit(2)
