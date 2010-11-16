@@ -66,6 +66,8 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         # add in some extra command logging
         self.boot_loggables.add(command("ls -l /boot",
                                         "boot_file_list"))
+        self.before_iteration_loggables.add(
+            command("/opt/google/chrome/chrome --version", "chrome_version"))
         self.test_loggables.add(purgeable_logdir("/home/chronos/user/log"))
         self.test_loggables.add(logdir("/var/log"))
         # We only want to gather and purge crash reports after the client test
