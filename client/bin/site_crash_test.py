@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re
+import logging, os, re, shutil
 from autotest_lib.client.bin import site_log_reader, site_utils, test
 from autotest_lib.client.common_lib import error, utils
 
@@ -85,13 +85,15 @@ class CrashTest(test.test):
 
     def _push_consent(self):
         if os.path.exists(self._CONSENT_FILE):
-            os.rename(self._CONSENT_FILE, self._get_pushed_consent_file_path())
+            shutil.move(self._CONSENT_FILE,
+                        self._get_pushed_consent_file_path())
 
 
     def _pop_consent(self):
         self._set_consent(False)
         if os.path.exists(self._get_pushed_consent_file_path()):
-            os.rename(self._get_pushed_consent_file_path(), self._CONSENT_FILE)
+            shutil.move(self._get_pushed_consent_file_path(),
+                        self._CONSENT_FILE)
 
 
     def _get_crash_dir(self, username):
