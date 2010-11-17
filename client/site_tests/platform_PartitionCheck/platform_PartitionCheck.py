@@ -13,6 +13,7 @@ import stat
 from autotest_lib.client.bin import utils, test
 from autotest_lib.client.common_lib import error
 
+ROOTFS_SIZE = 2 * 1024 * 1024 * 1024
 
 class platform_PartitionCheck(test.test):
     """
@@ -63,7 +64,6 @@ class platform_PartitionCheck(test.test):
 
     def run_once(self):
         errors = 0
-        refsize = 1073741824
         cpu_type = utils.get_cpu_arch()
 
         if cpu_type == 'arm':
@@ -78,7 +78,7 @@ class platform_PartitionCheck(test.test):
         for p in partitions:
             pblocks = self.get_partition_size(device, p)
             psize = pblocks * block_size
-            if psize != refsize:
+            if psize != ROOTFS_SIZE:
                 logging.warn('%s is %d bytes' % (p, psize))
                 errors += 1
 
