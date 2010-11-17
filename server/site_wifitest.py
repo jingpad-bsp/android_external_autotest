@@ -716,7 +716,9 @@ class WiFiTest(object):
             [ ID] Interval       Transfer     Bandwidth
             [  3]  0.0-10.0 sec  2.09 GBytes  1.79 Gbits/sec
             """
-            self.write_perf({'throughput':float(lines[6].split()[6])})
+            tcp_tokens = lines[6].split()
+            if len(tcp_tokens) >= 6:
+                self.write_perf({'throughput':float(tcp_tokens[6])})
         elif test in ['UDP', 'UDP_NODELAY']:
             """Parses the following and returns a touple containing throughput
             and the number of errors.
@@ -736,9 +738,10 @@ class WiFiTest(object):
             """
             # NB: no ID line on openwrt so use "last line"
             udp_tokens = lines[-1].replace('/', ' ').split()
-            self.write_perf({'throughput':float(udp_tokens[6]),
-                             'jitter':float(udp_tokens[9]),
-                             'lost':float(udp_tokens[13].strip('()%'))})
+            if len(udp_tokens) >= 13:
+                self.write_perf({'throughput':float(udp_tokens[6]),
+                                 'jitter':float(udp_tokens[9]),
+                                 'lost':float(udp_tokens[13].strip('()%'))})
         else:
             raise error.TestError('Unhandled test')
 
