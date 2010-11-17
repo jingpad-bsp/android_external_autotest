@@ -85,46 +85,27 @@ TEST_LIST = [
         kbd_shortcut='r',
         subtest_list=[
 
-             # THIS IS A GOOGLE REQUIRED TEST.
-             # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
-             # Match HW-Qual-ID by setting ignored_cids.
-             AutomatedSubTest(
-                 label_en='hw-qual-id matching',
-                 label_zw='型號匹配',
-                 autotest_name='hardware_Components',
-                 unique_name='hw-qual-id-match',
-                 dargs={'approved_dbs':'data_*/components*',
-                        'ignored_cids':[
-                            'hash_ro_firmware',
-                            'part_id_hwqual',
-                            'version_rw_firmware']}),
+            AutomatedSubTest(
+                label_en='system stress',
+                label_zw='壓力測試',
+                autotest_name='hardware_SAT',
+                dargs={'seconds': _SAT_DURATION_SECS},
+                drop_caches=True),
 
-             AutomatedSubTest(
-                 label_en='gpio switch check',
-                 label_zw='檢查 gpio 開關',
-                 autotest_name='hardware_GPIOSwitches'),
+            AutomatedSubTest(
+                label_en='graphics',
+                label_zw='圖型',
+                autotest_name='graphics_GLBench'),
 
-             AutomatedSubTest(
-                 label_en='system stress',
-                 label_zw='壓力測試',
-                 autotest_name='hardware_SAT',
-                 dargs={'seconds': _SAT_DURATION_SECS},
-                 drop_caches=True),
+            AutomatedSubTest(
+                label_en='sleep / wake',
+                label_zw='睡眠 / 喚醒',
+                autotest_name='power_Resume'),
 
-             AutomatedSubTest(
-                 label_en='graphics',
-                 label_zw='圖型',
-                 autotest_name='graphics_GLBench'),
-
-             AutomatedSubTest(
-                 label_en='sleep / wake',
-                 label_zw='睡眠 / 喚醒',
-                 autotest_name='power_Resume'),
-
-             AutomatedRebootSubTest(
-                 label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
-                 label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
-                 iterations=_REBOOT_SEQ_ITERATIONS)]),
+            AutomatedRebootSubTest(
+                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
+                label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
+                iterations=_REBOOT_SEQ_ITERATIONS)]),
 
     OperatorTest(
         label_en='keyboard',
@@ -230,8 +211,27 @@ TEST_LIST = [
         label_en='HWID',
         label_zw='硬體代號',
         subtest_tag_prefix='hwid',
-        kbd_shortcut='f',
+        kbd_shortcut='h',
         subtest_list=[
+
+            # THIS IS A GOOGLE REQUIRED TEST.
+            # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
+            # Match HW-Qual-ID by setting ignored_cids.
+            AutomatedSubTest(
+                label_en='hw-qual-id matching',
+                label_zw='型號匹配',
+                autotest_name='hardware_Components',
+                unique_name='hw-qual-id-match',
+                dargs={'approved_dbs':'data_*/components*',
+                       'ignored_cids':[
+                           'hash_ro_firmware',
+                           'part_id_hwqual',
+                           'version_rw_firmware']}),
+
+            AutomatedSubTest(
+                label_en='gpio switch check',
+                label_zw='檢查 gpio 開關',
+                autotest_name='hardware_GPIOSwitches'),
 
             AutomatedSubTest(
                 label_en='write GBB',
@@ -255,7 +255,7 @@ TEST_LIST = [
         label_en='final',
         label_zw='最終步驟',
         subtest_tag_prefix='finalize',
-        kbd_shortcut='x',
+        kbd_shortcut='f',
         subtest_list=[
             AutomatedSubTest(
                 label_en='final verification',
