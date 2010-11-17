@@ -109,6 +109,8 @@ class hardware_BluetoothSemiAuto(site_ui_test.UITest):
 
     def run_once(self):
         question_prepend = ''
+        checkboxes = ['BT Mouse', 'Built In Mouse']
+        textinputs = ['BT Keyboard', 'Built In Keyboard']
         while True:
             question = question_prepend + _QUESTION_START
             hciscan = utils.system_output('hcitool scan')
@@ -127,17 +129,19 @@ class hardware_BluetoothSemiAuto(site_ui_test.UITest):
             question += '</table><br>'
 
             dialog = site_ui.Dialog(question=question,
-                                    choices=['Pass', 'Fail', 'Rescan'])
-            result = dialog.get_result()
-            if result is None:
+                                    choices=['Done', 'Rescan'],
+                                    checkboxes=checkboxes,
+                                    textinputs=textinputs)
+            form_entries = dialog.get_entries()
+            if not form_entries:
                 raise error.TestFail('Timeout')
-            if result == 'Pass':
-                return
-            if result == 'Fail':
-                raise error.TestFail('Unable to find Bluetooth devices')
+            result = form_entries['result']
             if result == 'Rescan':
                 question_prepend = ''
                 continue
+            elif result == 'Done':
+                self.process_form_entries(form_entries, checkboxes, textinputs)
+                return
 
             logging.debug("Connecting to %s", result)
             try:
@@ -146,3 +150,16 @@ class hardware_BluetoothSemiAuto(site_ui_test.UITest):
             except Exception, e:
                 logging.debug('Unable to connect: %s', e)
                 question_prepend = 'Unable to pair with device %s.<br>' % result
+
+
+    def process_form_entries(self, form_entries, checkboxes, textinputs):
+        bt_errors = []
+        for check in checkboxes:
+            if form_entries.get(check) != 'on':
+                bt_errors.append('"%s" not checked' % check)
+        for text in textinputs:
+            if not form_entries.get(text):
+                bt_errors.append('no input in "%s" field' % text)
+        if bt_errors:
+            raise error.TestFail('Bluetooth input errors:\n%s' %
+                                 '\n'.join(bt_errors))

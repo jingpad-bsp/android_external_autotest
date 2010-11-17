@@ -107,9 +107,20 @@ function do_submit(value) {
 '''
 
 _HTML_BUTTON_ = '''<input type="button" value="%s" onclick="do_submit('%s')">'''
+_HTML_CHECKBOX_ = '''<input type="checkbox" name="%s">%s'''
+_HTML_TEXT_ = '''%s <input type="text" name="%s">'''
 
 _HTML_FOOTER_ = '''</form></body></html>'''
 
+
+def add_html_elements(template, values):
+    if not values:
+        return ''
+    html_elements = ['<table><tr>']
+    for value in values:
+        html_elements.append('<td>' + template % (value, value))
+    html_elements.append('</table><p>')
+    return ' '.join(html_elements)
 
 
 class Dialog(object):
@@ -118,25 +129,36 @@ class Dialog(object):
     and receiving the answer.
     """
 
-    def __init__(self, question='', choices=['Pass', 'Fail'], timeout=60):
-        self.init(question, choices, timeout)
+    def __init__(self, question='',
+                 choices=['Pass', 'Fail'],
+                 checkboxes=[],
+                 textinputs=[],
+                 timeout=60):
+        self.init(question, choices, checkboxes, textinputs, timeout)
 
 
-    def init(self, question='', choices=['Pass', 'Fail'], timeout=60):
+    def init(self, question='',
+             choices=['Pass', 'Fail'],
+             checkboxes=[],
+             textinputs=[],
+             timeout=60):
         self._question = question
         self._choices = choices
+        self._checkboxes = checkboxes
+        self._textinputs = textinputs
         self._timeout = timeout
 
 
     def return_html(self, server, args):
         html = _HTML_HEADER_ % self._question
-        for choice in self._choices:
-            html += _HTML_BUTTON_ % (choice, choice)
+        html += add_html_elements(_HTML_CHECKBOX_, self._checkboxes)
+        html += add_html_elements(_HTML_TEXT_, self._textinputs)
+        html += add_html_elements(_HTML_BUTTON_, self._choices)
         html += _HTML_FOOTER_
         server.wfile.write(html)
 
 
-    def get_result(self):
+    def get_entries(self):
         # Run a HTTP server.
         url = 'http://localhost:8000/'
         http_server = site_httpd.HTTPListener(8000)
@@ -162,6 +184,13 @@ class Dialog(object):
             http_server.stop()
             return None
 
-        result = http_server.get_form_entries()['result']
+        entries = http_server.get_form_entries()
         http_server.stop()
-        return result
+        return entries
+
+
+    def get_result(self):
+        entries = self.get_entries()
+        if not entries:
+            return None
+        return entries.get('result')
