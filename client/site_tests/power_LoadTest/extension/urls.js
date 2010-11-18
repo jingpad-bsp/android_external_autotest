@@ -39,7 +39,7 @@ var tasks = [
     name: 'email',
     start: 36 * 60 * 1000 + 1 * 1000,
     duration: 12 * 60 * 1000 - 1 * 1000,
-    delay: 60 * 1000, // A minute on each page
+    delay: 5 * 60 * 1000, // 5 minutes between full gmail refresh
     timeout: 10 * 1000,
     focus: true,
     urls: [
@@ -58,7 +58,7 @@ var tasks = [
     timeout: 10 * 1000,
     focus: false,
     urls: [
-      'http://www.bbc.co.uk/iplayer/console/worldservice/',
+      'http://www.bbc.co.uk/worldservice/audioconsole/?stream=live',
       'http://www.npr.org/templates/player/mediaPlayer.html?action=3&t=live1',
       'http://www.cbc.ca/radio2/channels/popup.html?stream=classical'
     ]
@@ -68,7 +68,7 @@ var tasks = [
     type: 'cycle',
     name: 'docs',
     start: 48 * 60 * 1000,
-    duration: 12 * 60 * 1000,
+    duration: 6 * 60 * 1000,
     delay: 60 * 1000, // A minute on each page
     timeout: 10 * 1000,
     focus: true,
