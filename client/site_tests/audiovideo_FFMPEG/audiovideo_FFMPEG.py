@@ -7,6 +7,15 @@ import glob, logging, os, re, shutil, stat, string, time, urllib
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 
+# See partner bug 891 for why these tests' performance is being ignored.
+_IGNORE_PERFORMANCE_TESTS=(
+    'tulip_hp.mp4',
+    'tulip_bp.mp4',
+    'tulip_mp.mp4',
+    'tulip_vc1.wmv',
+    'tulip_wmv8.wmv',
+    'tulip_wmv9.wmv')
+
 class audiovideo_FFMPEG(test.test):
     version = 1
 
@@ -17,17 +26,18 @@ class audiovideo_FFMPEG(test.test):
         # sysroot = os.environ["SYSROOT"]
         # testdir = os.path.join(sysroot, "usr/local/autotest-chrome")
         # testbin = os.path.join(testdir, "ffmpeg_tests")
-	# TODO(jiesun): retrieve chrome test asset from build.
+        # TODO(jiesun): retrieve chrome test asset from build.
         # shutil.copy(testbin, self.bindir)
 
 
-    def run_once(self):
+    def run_once(self, fps_warning=0):
         """ Run FFMPEG performance test! """
         # fetch all the test cases from file.
         testcases = os.path.join(self.bindir, "testcases")
         self.performance_results = {}
         self.min_fps_video = 100
         self.max_tpf_audio = 0
+        self._fps_warning = fps_warning
 
         for line in open(testcases, "rt"):
             # skip comment line and blank line
@@ -49,7 +59,6 @@ class audiovideo_FFMPEG(test.test):
             executable = os.path.join(self.bindir, "ffmpeg_tests.arm")
         file_url = testcase[0]
 
-        # TODO(jiesun): if url is not local, grab it from internet.
         if file_url.startswith("http"):
             file_name = file_url.split('/')[-1]
             file_path = os.path.join(self.bindir, file_name)
@@ -76,14 +85,20 @@ class audiovideo_FFMPEG(test.test):
 
         cpu_usage *= 100.0  # in percentage.
 
-        # what's the fps we measures for video.
+        # what's the fps we measure for video.
         fps_pattern = re.search(r"FPS:\s+([\d\.]+)", stdout)
         # what's the time per frame for audio.
         tpf_pattern = re.search(r"TIME PER FRAME \(MS\):\s+([\d\.]+)", stdout)
         if fps_pattern:
             fps = float(fps_pattern.group(1))
-            logging.info("CPU Usage %s%%; FPS: %s" % (cpu_usage, fps))
-            self.min_fps_video = min(self.min_fps_video, fps);
+            logging.info("CPU Usage %s%%; FPS: %s (%s)" % (cpu_usage, fps,
+                                                           file_name))
+            if not file_name in _IGNORE_PERFORMANCE_TESTS:
+                self.min_fps_video = min(self.min_fps_video, fps);
+            if fps < self._fps_warning:
+                self.job.record('WARN', None, 'FPS Warning',
+                                '%s had fps %g < %g' %
+                                (file_url, fps, self._fps_warning))
             # record the performance data for future analysis.
             namekey = file_name.lower().replace('.', '_')
             self.performance_results['fps_' + namekey] = fps
@@ -103,5 +118,3 @@ class audiovideo_FFMPEG(test.test):
 
         # remove file after test to save diskspace.
         os.remove(file_path);
-
-
