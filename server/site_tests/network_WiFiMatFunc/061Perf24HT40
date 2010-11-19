@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 { "name":"Perf24HT40",
+  "skip_test":"Temporarily busted due to openwrt problem",
   "steps":[             # Channel 6
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2437", "ht40":None, "puren":None } ],
