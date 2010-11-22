@@ -4,7 +4,7 @@
 
 import os, string, time, gtk
 from autotest_lib.client.bin import site_ui_test, test
-from autotest_lib.client.common_lib import error, site_ui, utils
+from autotest_lib.client.common_lib import error, site_ui, utils, site_httpd
 
 
 class desktopui_ImeTest(site_ui_test.UITest):
@@ -14,6 +14,18 @@ class desktopui_ImeTest(site_ui_test.UITest):
     def setup(self):
         # TODO: We shouldn't use ibusclient, we should talk to Chrome directly
         self.job.setup_dep(['ibusclient'])
+
+    def initialize(self, creds='$default'):
+        self._test_url = 'http://localhost:8000/interaction_form.html'
+        self._test_server = site_httpd.HTTPListener(8000, docroot=self.bindir)
+        self._test_server.run()
+
+        site_ui_test.UITest.initialize(self, creds)
+
+
+    def cleanup(self):
+        self._test_server.stop()
+        site_ui_test.UITest.cleanup(self)
 
 
     def log_error(self, test_name, message):
@@ -158,7 +170,8 @@ class desktopui_ImeTest(site_ui_test.UITest):
 
         # Toggle the checkbox.
         ax.send_text(' ')
-        time.sleep(1)
+        # The toggling can take longer than 1 sec.
+        time.sleep(2)
 
         # Close the window.
         ax.send_hotkey('Ctrl+w')
@@ -251,6 +264,8 @@ class desktopui_ImeTest(site_ui_test.UITest):
                            (current_engine, expected_initial_engine))
         ax = self.get_autox()
         ax.send_hotkey('Ctrl-l')
+        # If we don't sleep here sometimes the following keys are not received
+        time.sleep(1)
         ax.send_hotkey('Ctrl-space')
         start_time = time.time()
         while time.time() - start_time < 10:
@@ -267,7 +282,16 @@ class desktopui_ImeTest(site_ui_test.UITest):
     def test_engine(self, language, engine_name, input_string, expected_string):
         self.start_ime_engine(language, engine_name)
         self.activate_engine(engine_name)
+        self.test_engine_omnibox(language, engine_name, input_string,
+                                 expected_string)
+        self.test_engine_form(language, engine_name, input_string,
+                              expected_string)
+        self.activate_engine('xkb:us::eng')
+        self.stop_ime_language(language)
 
+
+    def test_engine_omnibox(self, language, engine_name, input_string,
+                            expected_string):
         ax = self.get_autox()
 
         # Focus on the omnibox so that we can enter text.
@@ -282,11 +306,31 @@ class desktopui_ImeTest(site_ui_test.UITest):
         text = self.get_current_text()
         if text != expected_string:
             self.log_error(
-                'test_engine %s' % engine_name,
-                'Engine %s failed: Got %s, expected %s' % (engine_name, text,
-                                                           expected_string))
+                'test_engine %s in omnibox' % engine_name,
+                'Engine %s failed : Got %s, expected %s' % (
+                    engine_name, text, expected_string))
+        # Clear the omnibox for future tests.
+        ax.send_hotkey('BackSpace')
+
+
+    def test_engine_form(self, language, engine_name, input_string,
+                         expected_string):
+        ax = self.get_autox()
+        # Go to the page containing the form.
         self.activate_engine('xkb:us::eng')
-        self.stop_ime_language(language)
+        ax.send_hotkey("Ctrl+l")
+        time.sleep(1)
+        ax.send_text("%s \n" % self._test_url)
+        time.sleep(1)
+        self.activate_engine(engine_name)
+
+        ax.send_text(input_string)
+        text = self.get_current_text()
+        if text != expected_string:
+            self.log_error(
+                'test_engine %s in form' % engine_name,
+                'Engine %s failed : Got %s, expected %s' % (
+                    engine_name, text, expected_string))
 
 
     def run_once(self):
@@ -316,9 +360,10 @@ class desktopui_ImeTest(site_ui_test.UITest):
         self.test_engine('ko', 'hangul', 'wl ', '\xEC\xA7\x80 ')
         self.test_engine('zh-CN', 'pinyin', 'nihao ',
                          '\xE4\xBD\xA0\xE5\xA5\xBD')
-        self.test_engine('zh-TW', 'm17n:zh:quick', 'aa', '\xE9\x96\x93')
+        self.test_engine('zh-TW', 'm17n:zh:quick', 'aa ', '\xE9\x96\x93')
 
         self.test_ibus_stop_process()
+
         if len(self._failed) != 0:
             raise error.TestFail(
                 'Failed: %s' % ','.join(self._failed))

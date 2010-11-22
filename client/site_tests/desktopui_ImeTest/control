@@ -7,7 +7,9 @@ NAME = "desktopui_ImeTest"
 PURPOSE = "Verify IME is functioning properly."
 CRITERIA = """
 This test will fail under any of the following conditions:
-  - TODO(Bad things)
+  - cannot toggle Japanese, Chinese, Korean IMEs
+  - keyboard shortcuts are not working correctly
+  - CJK characters can not be inputted in the omnibox or in web forms
 """
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -15,7 +17,8 @@ TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
-This test checks whether the IME is working properly.
+This test checks whether the IME is working properly in the omnibox and
+web forms.
 """
 
 job.run_test('desktopui_ImeTest')
