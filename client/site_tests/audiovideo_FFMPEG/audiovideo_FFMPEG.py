@@ -11,10 +11,7 @@ from autotest_lib.client.common_lib import error, utils
 _IGNORE_PERFORMANCE_TESTS=(
     'tulip_hp.mp4',
     'tulip_bp.mp4',
-    'tulip_mp.mp4',
-    'tulip_vc1.wmv',
-    'tulip_wmv8.wmv',
-    'tulip_wmv9.wmv')
+    'tulip_mp.mp4')
 
 class audiovideo_FFMPEG(test.test):
     version = 1
