@@ -52,6 +52,7 @@ class hardware_BluetoothSemiAuto(site_ui_test.UITest):
 
     def cleanup(self):
         site_ui_test.UITest.cleanup(self)
+        self.disconnect_all()
 
 
     def handle_reply(self, device):
@@ -64,10 +65,7 @@ class hardware_BluetoothSemiAuto(site_ui_test.UITest):
         self.mainloop.quit()
 
 
-    def do_connect(self, addr):
-        logging.debug("do_connect: %s", addr)
-        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-
+    def get_bus_adapter(self):
         bus = dbus.SystemBus()
         manager = dbus.Interface(bus.get_object("org.bluez", "/"),
                                  "org.bluez.Manager")
@@ -75,7 +73,17 @@ class hardware_BluetoothSemiAuto(site_ui_test.UITest):
         adapter = dbus.Interface(bus.get_object("org.bluez",
                                                 manager.DefaultAdapter()),
                                  "org.bluez.Adapter")
+        return (bus, adapter)
 
+    def do_connect(self, addr):
+        logging.debug("do_connect: %s", addr)
+        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+        pin_required = addr.endswith('p')
+        if pin_required:
+            addr = addr[:-1]
+
+        bus, adapter = self.get_bus_adapter()
 
         logging.debug("Creating Agent")
         agent_path = "/blueztestagent"
@@ -97,6 +105,22 @@ class hardware_BluetoothSemiAuto(site_ui_test.UITest):
                                    error_handler=self.handle_error)
 
         logging.debug('Starting mainloop...')
+
+        if pin_required:
+            # The user will have to enter the pin code on the keyboard. The
+            # code must be entered after the discovery process starts. The
+            # problem is that the Agent class defined above does not provide
+            # enough flexibility to allow the caller to do something after
+            # pairing started but before it has been completed or timed out.
+            # This point in time is the closest to the pairing process start.
+            # So we ask the user to enter the pin code 5 seconds after this
+            # page closes: pairing starts right after that and 5 seconds is
+            # enough for the process to be ready to accept user input.
+            question = 'Enter pin code "0000" on the BT keyboard '
+            question += 'at least 5 secs after this page closes'
+            dialog = site_ui.Dialog(question=question, choices=[],
+                                    checkboxes=[], textinputs=[], timeout=5)
+            dialog.get_entries()
         self.mainloop.run()
         logging.debug('... mainloop ended.')
 
@@ -105,6 +129,14 @@ class hardware_BluetoothSemiAuto(site_ui_test.UITest):
                                "org.bluez.Input")
         input.Connect()
         logging.debug('Connected to input:%s.', addr)
+
+    def disconnect_all(self):
+        logging.debug('disconnect_all')
+        _, adapter = self.get_bus_adapter()
+
+        for dev in list(adapter.ListDevices()):
+            logging.debug('disconnecting %s' % dev)
+            adapter.RemoveDevice(dev)
 
 
     def run_once(self):
@@ -120,6 +152,8 @@ class hardware_BluetoothSemiAuto(site_ui_test.UITest):
                 match = re.search(r'^(..:..:..:..:..:..)\s+(.*)$', line)
                 if match:
                     addr = match.group(1)
+                    if 'keyboard' in line.lower():
+                        addr += 'p'  # Pin's required
                     question += '<tr>'
                     question += ('<td>' +
                                  (_HREF_START % addr) + addr + _HREF_END +
