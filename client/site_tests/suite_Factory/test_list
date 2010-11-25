@@ -190,7 +190,7 @@ TEST_LIST = [
 
     OperatorTest(
         label_en='light sensor',
-        label_zw='光传感器',
+        label_zw='光感應器',
         autotest_name='factory_LightSensor',
         dargs={'lux_max':1000, 'lux_min':1},
         kbd_shortcut='i'),
@@ -258,6 +258,10 @@ TEST_LIST = [
         kbd_shortcut='f',
         subtest_list=[
             AutomatedSubTest(
+                label_en='pre flight',
+                label_zw='就緒檢查',
+                autotest_name='factory_PreFinalCheck'),
+            AutomatedSubTest(
                 label_en='final verification',
                 label_zw='最後驗證',
                 unique_name=factory.FINAL_VERIFICATION_TEST_UNIQUE_NAME,
@@ -277,9 +281,6 @@ TEST_LIST = [
             #  - check_required_tests: check if all required tests are passed
             #  - check_and_enable_write_protect: enable and check flash ROM
             #    write protection
-            # TODO(hungte) Although the 'write_protect' should be a Google
-            #   required test, we decide to disable it until first official
-            #   release of Chrome OS. Please remove that for official release.
             AutomatedSubTest(
                 label_en='upload log reports',
                 label_zw='上傳記錄',
