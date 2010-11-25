@@ -411,10 +411,17 @@ class hardware_Components(test.test):
         all_failures = 'The following components are not matched.\n'
         os.chdir(self.bindir)
 
-        # If found the HwQual ID in shared_dict, use the list with the same ID.
         if 'part_id_hwqual' in shared_dict:
+            # If HwQual ID is already specified, find the list with same ID.
             id = shared_dict['part_id_hwqual'].replace(' ', '_')
             approved_dbs = 'data_*/components_%s' % id
+        else:
+            sample_approved_dbs = 'approved_components.default'
+            if (not glob.glob(approved_dbs)) and glob.glob(sample_approved_dbs):
+                # Fallback to the default (sample) version
+                approved_dbs = sample_approved_dbs
+                factory.log('Using default (sample) approved component list: %s'
+                            % sample_approved_dbs)
 
         # approved_dbs supports shell-like filename expansion.
         existing_dbs = glob.glob(approved_dbs)
