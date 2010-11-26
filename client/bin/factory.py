@@ -295,12 +295,12 @@ class StatusMap:
     def update_automated_sequence(self, test):
         max_count = max([self._status_map[st].count
                          for st in test.subtest_list])
-        lookup_fn = lambda x: self.lookup_status(x, min_count=max_count)
         subtest_status_set = set(
-            self.lookup_status(subtest) for subtest in test.subtest_list)
-        log('automated sequence %s status set = %s' % (
+            self.lookup_status(subtest, min_count=max_count)
+            for subtest in test.subtest_list)
+        log('automated sequence %s count = %s status set = %s' % (
             self._test_db.get_unique_id_str(test),
-            repr(subtest_status_set)))
+            max_count, repr(subtest_status_set)))
         if len(subtest_status_set) == 1:
             status = subtest_status_set.pop()
         elif (test == self._active_automated_seq and
