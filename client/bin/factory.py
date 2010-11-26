@@ -33,6 +33,7 @@ STATUS_CODE_MAP = {
 LOG_PATH = '/var/log/factory.log'
 DATA_PREFIX = 'FACTORY_DATA:'
 FINAL_VERIFICATION_TEST_UNIQUE_NAME = 'factory_Verify'
+REVIEW_INFORMATION_TEST_UNIQUE_NAME = 'ReviewInformation'
 
 def log(s):
     print >> sys.stderr, 'FACTORY: ' + s
@@ -238,6 +239,7 @@ class StatusMap:
         active_tests = [test for test in self._test_list
                         if self.lookup_status(test) == ACTIVE]
         if len(active_tests) > 1:
+            # This warning message is noisy.
             log('ERROR -- multiple active top level tests %s' %
                 repr([self._test_db.get_unique_id_str(test)
                       for test in active_tests]))
@@ -331,7 +333,14 @@ class LogData:
                     continue
                 key, raw_value = parts.pop().strip().split('=', 1)
                 log('updating shared_dict[%s]=%s' % (key, raw_value))
-                self.shared_dict[key] = eval(raw_value)
+                # XXX When factory.log is corrupted, evaluating shared_dict may
+                # raise SyntaxError. We should use some more robust way to
+                # handle shared data.
+                try:
+                    self.shared_dict[key] = eval(raw_value)
+                except SyntaxError, e:
+                    # Drop this entry.
+                    continue
             self._log_file_pos = file.tell()
 
     def get(self, key):

@@ -279,8 +279,8 @@ def main(test_list, status_file_path, control_pid):
 
     screen = window.get_screen()
     if (screen is None):
-        log('ERROR: communication with the X server is not working, ' +
-            'could not find a working screen.  UI exiting.')
+        factory.log('ERROR: communication with the X server is not working, ' +
+                    'could not find a working screen.  UI exiting.')
         sys.exit(1)
 
     screen_size = (screen.get_width(), screen.get_height())

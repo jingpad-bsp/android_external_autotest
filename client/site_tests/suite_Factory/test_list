@@ -296,5 +296,6 @@ TEST_LIST = [
         label_en='review',
         label_zw='報告',
         autotest_name='factory_Review',
+        unique_name='ReviewInformation',  # REVIEW_INFORMATION_TEST_UNIQUE_NAME
         kbd_shortcut='z'),
 ]

@@ -76,7 +76,18 @@ def start_ui():
   sp = subprocess.Popen(ui_proc_args, stdout=subprocess.PIPE)
   factory.log('waiting for ui to come up...')
   factory.log('got message from ui : %s' % repr(sp.stdout.readline().strip()))
+  # TODO(hungte) define some protocol so that we know the UI failed to start.
+  return sp
 
+def stop_ui(ui_process):
+    try:
+        factory.log('stopping ui %d...' % ui_process.pid)
+        ui_process.terminate()
+        ui_process.kill()
+        ui_process.wait()
+        factory.log('ui process end with code: %d' % ui_process.returncode)
+    except:
+        factory.log('WARNING: failed to stop ui. ignored.')
 
 def step_reboot_seq(next_subtest_info, total_iterations, i=0):
     if i < total_iterations:
@@ -87,13 +98,26 @@ def step_reboot_seq(next_subtest_info, total_iterations, i=0):
     else:
         step_init(next_subtest_info)
 
+def find_next_test_to_run(status_map, test_db):
+    test = status_map.next_untested()
+    if test:
+        return test
+    # XXX When the status_map is corrupted, we may need to hack the list and
+    # force some test to run. Currently we assume
+    # factory.REVIEW_INFORMATION_TEST_UNIQUE_NAME is always runnable.
+    review_test = test_db.get_test_by_unique_name(
+            factory.REVIEW_INFORMATION_TEST_UNIQUE_NAME)
+    if review_test:
+        factory.log("HACK: Running %s" % str(review_test))
+        return review_test
+    return  None
 
 def step_init(next_subtest_info=None):
     factory.log('TEST_LIST = %s' % repr(TEST_LIST))
 
     job.next_step([step_init])
 
-    start_ui()
+    ui_process = start_ui()
 
     test_db = factory.TestDatabase(TEST_LIST)
     status_map = factory.StatusMap(TEST_LIST, STATUS_FILE_PATH)
@@ -123,7 +147,7 @@ def step_init(next_subtest_info=None):
         rst_index = automated_seq.subtest_list.index(reboot_subtest)
         run_automated_sequence(automated_seq, count, start_index=rst_index + 1)
 
-    test = status_map.next_untested()
+    test = find_next_test_to_run(status_map, test_db)
     while test is not None:
         unique_id_str = test_db.get_unique_id_str(test)
         count = status_map.lookup_count(test) + 1
@@ -133,4 +157,7 @@ def step_init(next_subtest_info=None):
         else:
             shortcut_target = control_state.run_test(test, count)
             status_map.read_new_data()
-        test = shortcut_target or status_map.next_untested()
+        test = shortcut_target or find_next_test_to_run(status_map, test_db)
+
+    # TODO(hungte) we may need to also stop UI when exception was raised.
+    stop_ui(ui_process)
