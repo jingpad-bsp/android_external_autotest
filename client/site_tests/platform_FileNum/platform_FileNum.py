@@ -1,93 +1,67 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2010 The Chromium Authors. All rights reserved.
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """
-This testcase exercises the file system by ensuring we can copy a sufficient
-number of files into one directory, in this case will create 100,000 files.
+This testcase exercises the file system by ensuring we can create a sufficient
+number of files into one directory. In this case we will create 150,000 files on
+the stateful partition and 2,000 files on the /tmp partition.
 """
 
-__author__ = 'kdlucas@chromium.org (Kelly Lucas)'
+__author__ = ['kdlucas@chromium.org (Kelly Lucas)',
+              'dalecurtis@chromium.org (Dale Curtis)']
 
-import commands
-import logging
 import os
-import sys
 import shutil
 
-from autotest_lib.client.bin import utils, test
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 
 class platform_FileNum(test.test):
-    """
-    Test file number limitations per directory.
-    """
+    """Test file number limitations per directory."""
     version = 1
 
-    def create_files(self, targetdir, fqty):
-        """
-        Create the number of files specified by fqty into targetdir.
+    _TEST_PLAN = [
+        {'dir': '/mnt/stateful_partition', 'count': 150000},
+        {'dir': '/tmp', 'count': 2000}]
+
+    _TEST_TEXT = 'ChromeOS rocks with fast response and low maintenance costs!'
+
+    def create_files(self, target_dir, count):
+        """Create the number of files specified by count in target_dir.
 
         Args:
-            targetdir: string, directory to create files in.
-            fqty: quantity of files to create.
+            target_dir: Directory to create files in.
+            count: Number of files to create.
         Returns:
-            int, quantity of verified files created.
+            Number of files created.
         """
-        TEXT = 'ChromeOS rocks with fast response and low maintenance costs!\n'
-        f_dir1 = os.path.join(targetdir, 'createdir')
-        f_dir2 = os.path.join(targetdir, 'copydir')
-        if not os.path.exists(f_dir1):
-            try:
-                os.makedirs(f_dir1)
-            except IOError, e:
-                logging.warn('Error making directory %s\n%s' % (f_dir1, e))
-                raise error.TestFail(e)
-        if not os.path.exists(f_dir2):
-            try:
-                os.makedirs(f_dir2)
-            except IOError, e:
-                logging.warn('Error making directory %s\n%s' % (f_dir2, e))
-                raise error.TestFail(e)
+        create_dir = os.path.join(target_dir, 'createdir')
+        try:
+            if os.path.exists(create_dir):
+                shutil.rmtree(create_dir)
 
-        for i in range(fqty):
-            # Create one file in f_dir1 and copy it to f_dir2
-            file1 = os.path.join(f_dir1, '%s.txt' % str(i))
-            file2 = os.path.join(f_dir2, '%s.txt' % str(i))
-            try:
-                fh = file(file1, 'w')
-                fh.write(TEXT)
-                fh.close()
-            except IOError, e:
-                logging.warn('Error creating file %s\n%s' % (file1, e))
-                raise error.TestFail(e)
-            try:
-                shutil.copyfile(file1, file2)
-            except IOError, e:
-                logging.warn('Error copying file %s\n%s' % (file1, e))
-                raise error.TestFail(e)
+            os.makedirs(create_dir)
 
-        total_created = len(os.listdir(f_dir1))
-        total_copied = len(os.listdir(f_dir2))
-        if total_created != (fqty) or total_copied != (fqty):
-            logging.warn('Number of files requested: %s' % fqty)
-            logging.warn('Number of files created: %s' % total_created)
-            logging.warn('Number of files copied: %s' % total_copied)
-            raise error.TestFail('Number of files is not correct!')
+            for i in xrange(count):
+                f = open(os.path.join(create_dir, '%d.txt' % i), 'w')
+                f.write(self._TEST_TEXT)
+                f.close()
 
-        shutil.rmtree(f_dir1)
-        shutil.rmtree(f_dir2)
+            total_created = len(os.listdir(create_dir))
+        finally:
+            shutil.rmtree(create_dir)
 
         return total_created
 
     def run_once(self):
-        reqdir = ['/mnt/stateful_partition', '/tmp']
-        reqnum = [100000, 1000]
-
-        for i in range(2):
-            filenum = self.create_files(reqdir[i], reqnum[i])
-            if filenum != reqnum[i]:
-                raise error.TestFail('File qty in %s is incorrect!' % reqdir[i])
+        for item in self._TEST_PLAN:
+            actual_count = self.create_files(item['dir'], item['count'])
+            if actual_count != item['count']:
+                raise error.TestFail(
+                    'File creation count in %s is incorrect! Found %d files '
+                    'when there should have been %d!'
+                    % (item['dir'], actual_count, item['count']))
