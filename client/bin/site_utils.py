@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import time
+import logging, os, platform, time
 from autotest_lib.client.common_lib import error
 
 
@@ -38,3 +38,26 @@ def poll_for_condition(
             raise TimeoutError, desc
 
         time.sleep(sleep_interval)
+
+
+def save_vm_state(checkpoint):
+    """Saves the current state of the virtual machine.
+
+    This function is a NOOP if the test is not running under a virtual machine
+    with the USB serial port redirected.
+
+    Arguments:
+      checkpoint - Name used to identify this state
+
+    Returns:
+      None
+    """
+    # The QEMU monitor has been redirected to the guest serial port located at
+    # /dev/ttyUSB0. To save the state of the VM, we just send the 'savevm'
+    # command to the serial port.
+    proc = platform.processor()
+    if 'QEMU' in proc and os.path.exists('/dev/ttyUSB0'):
+        logging.info('Saving VM state "%s"' % checkpoint)
+        serial = open('/dev/ttyUSB0', 'w')
+        serial.write("savevm %s\r\n" % checkpoint)
+        logging.info('Done saving VM state "%s"' % checkpoint)
