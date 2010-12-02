@@ -3,6 +3,5 @@
 /usr/libexec/polkit-explicit-grant-helper
 /usr/sbin/ssmtp
 /usr/libexec/polkit-grant-helper
-/usr/bin/aterm
 /usr/bin/crontab
 /usr/bin/write

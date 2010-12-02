@@ -12,14 +12,8 @@ class security_SuidBinaries(test.test):
     version = 1
 
     def load_baseline(self,bltype):
-        # Figure out path to baseline file, by looking up our own path
-        bpath = os.path.abspath(__file__)
-        bpath = os.path.join(os.path.dirname(bpath), 'baseline.%s' % bltype)
-        bfile = open(bpath)
-        baseline_data = bfile.read()
-        baseline_set = set(baseline_data.splitlines())
-        bfile.close()
-        return baseline_set
+        baseline_file = open(os.path.join(self.bindir, 'baseline.' + bltype))
+        return set(l.strip() for l in baseline_file)
 
 
     def run_once(self, baseline='suid'):
