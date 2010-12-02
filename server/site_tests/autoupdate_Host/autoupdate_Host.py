@@ -32,9 +32,6 @@ class autoupdate_Host(test.test):
 
         tester = autoupdate_utils.AutoUpdateTester(image_path)
 
-        # Generate update payload and write to devserver static directory.
-        tester.generate_update_payload()
-
         # Starts devserver.
         devserver = tester.start_devserver()
 

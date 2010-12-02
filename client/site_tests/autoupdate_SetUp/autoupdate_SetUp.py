@@ -15,7 +15,6 @@ class autoupdate_SetUp(test.test):
         """Override the lsb-release with one in the stateful partition
         """
         auserver_key = 'CHROMEOS_AUSERVER'
-        board_key = 'CHROMEOS_RELEASE_BOARD'
         devserver_key = 'CHROMEOS_DEVSERVER'
         track_key = 'CHROMEOS_RELEASE_TRACK'
 
@@ -23,7 +22,6 @@ class autoupdate_SetUp(test.test):
             devserver = 'http://%s' % devserver
 
         new_auserver_value = '%s/update' % devserver
-        new_board_value = 'autest'
         new_devserver_value = devserver
         new_track_value = 'test-channel'
 
@@ -36,7 +34,6 @@ class autoupdate_SetUp(test.test):
         # Read and override auserver and devserver values.
         lsb_release = utils.read_keyval(ROOTFS_LSB_RELEASE)
         lsb_release[auserver_key] = new_auserver_value
-        lsb_release[board_key] = new_board_value
         lsb_release[devserver_key] = new_devserver_value
         lsb_release[track_key] = new_track_value
 
