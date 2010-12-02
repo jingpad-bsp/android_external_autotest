@@ -8,24 +8,28 @@ from autotest_lib.client.common_lib import error, site_power_status, utils
 
 # Specify registers to check.  The format needs to be:
 #   register offset : ('bits', 'expression')
-dmi_bar_checks = {
-            '0x88':  [('1:0', 3)],
-            '0x200': [('27:26', 0)],
-            '0x210': [('2:0', 1), ('15:8', 1)],
-            '0xc28': [('5:1', 7),],
-            '0xc2e': [('5', 1)],
-            '0xc30': [('11', 0), ('10:8', 4)],
-            '0xc34': [('9:4', 7), ('0', 1)],
-           }
+DMI_BAR_CHECKS = {
+    '0x88':  [('1:0', 3)],
+    '0x200': [('27:26', 0)],
+    '0x210': [('2:0', 1), ('15:8', 1)],
+    '0xc28': [('5:1', 7)],
+    '0xc2e': [('5', 1)],
+    '0xc30': [('11', 0), ('10:8', 4)],
+    '0xc34': [('9:4', 7), ('0', 1)],
+}
 
-mch_bar_checks = {
-           }
+MCH_BAR_CHECKS = {}
 
-msr_checks = {
-        '0xe2': [('7', 0), ('2:0', 4)],
-        '0x198': [('28:24', 6)],
-        '0x1a0': [('33:32', 3), ('26:25', 3), ('16', 1)],
-       }
+MSR_CHECKS = {
+    '0xe2':  [('7', 0), ('2:0', 4)],
+    '0x198': [('28:24', 6)],
+    '0x1a0': [('33:32', 3), ('26:25', 3), ('16', 1)],
+}
+
+# Give an ASPM exception for these PCI devices. ID is taken from lspci -n.
+ASPM_EXCEPTED_DEVICES = [
+    '8086:27d8'  # Intel Corporation 82801G High Definition Audio Controller
+]
 
 
 class power_x86Settings(test.test):
@@ -114,9 +118,9 @@ class power_x86Settings(test.test):
 
     def _verify_storage_power_settings(self):
         if self._on_ac:
-            expected_state = 'max_performance'
-        else:
-            expected_state = 'min_power'
+            return 0
+
+        expected_state = 'min_power'
 
         dirs_path = '/sys/class/scsi_host/host*'
         dirs = glob.glob(dirs_path)
@@ -183,13 +187,16 @@ class power_x86Settings(test.test):
 
     def _verify_pcie_aspm(self):
         errors = 0
-        out = utils.system_output('lspci')
+        out = utils.system_output('lspci -n')
         for line in out.splitlines():
-            slot = line.split()[0]
+            slot, _, id = line.split()[0:3]
             slot_out = utils.system_output('lspci -s %s -vv' % slot,
                                             retain_output=True)
             match = re.search(r'LnkCtl:(.*);', slot_out)
             if match:
+                if id in ASPM_EXCEPTED_DEVICES:
+                    continue
+
                 split = match.group(1).split()
                 if split[1] == 'Disabled' or \
                    (split[2] == 'Enabled' and split[1] != 'L1'):
@@ -208,7 +215,7 @@ class power_x86Settings(test.test):
         logging.debug('DMI BAR is %s', hex(self._dmi_bar))
 
         return self._verify_registers('dmi', self._read_dmi_bar,
-                                      dmi_bar_checks)
+                                      DMI_BAR_CHECKS)
 
 
     def _verify_mch_bar(self):
@@ -218,11 +225,11 @@ class power_x86Settings(test.test):
         logging.debug('MCH BAR is %s', hex(self._mch_bar))
 
         return self._verify_registers('mch', self._read_mch_bar,
-                                       mch_bar_checks)
+                                       MCH_BAR_CHECKS)
 
 
     def _verify_msrs(self):
-        return self._verify_registers('msr', self._read_msr, msr_checks)
+        return self._verify_registers('msr', self._read_msr, MSR_CHECKS)
 
 
     def _verify_registers(self, type, read_fn, match_list):
