@@ -64,6 +64,7 @@ class power_LoadTest(site_ui_test.UITest):
         self._tmp_keyvals = {}
         self._power_status = site_power_status.get_status()
         self._json_path = None
+        self._force_wifi = force_wifi
 
         # verify that initial conditions are met:
         if self._power_status.linepower[0].online:
@@ -78,7 +79,7 @@ class power_LoadTest(site_ui_test.UITest):
 
         # If force wifi enabled, convert eth0 to backchannel and connect to the
         # specified WiFi AP.
-        if force_wifi:
+        if self._force_wifi:
             # If backchannel is already running, don't run it again.
             if not site_backchannel.setup():
                 raise error.TestError('Could not setup Backchannel network.')
@@ -239,6 +240,9 @@ class power_LoadTest(site_ui_test.UITest):
         os.system('start powerd')
         if site_login.logged_in():
             site_login.attempt_logout()
+        # cleanup backchannel interface
+        if self._force_wifi:
+            site_backchannel.teardown()
 
 
     def _percent_current_charge(self):
