@@ -3,14 +3,30 @@
 # found in the LICENSE file.
 
 import datetime
+import fnmatch
 import logging
+import os
 import re
+import shutil
 import utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 class platform_BootPerf(test.test):
     version = 2
+
+
+    def __copy_timestamp_files(self):
+        tmpdir = '/tmp'
+        for fname in os.listdir(tmpdir):
+          if (not fnmatch.fnmatch(fname, 'uptime-*') and
+                  not fnmatch.fnmatch(fname, 'disk-*')):
+              continue
+          shutil.copy(os.path.join(tmpdir, fname), self.resultsdir)
+        try:
+          shutil.copy('/tmp/firmware-boot-time', self.resultsdir)
+        except:
+          pass
 
 
     def __parse_uptime(self, filename):
@@ -99,6 +115,8 @@ class platform_BootPerf(test.test):
 
 
     def run_once(self, last_boot_was_reboot=False):
+        self.__copy_timestamp_files()
+
         # Parse key metric files and generate key/value pairs
         results = {}
 
