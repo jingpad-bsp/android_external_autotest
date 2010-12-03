@@ -51,6 +51,7 @@ class platform_StackProtector(test.test):
                " -wholename '/home/chronos/Safe Browsing Bloom*' -prune -o "
                # libc needs to be checked differently, skip here:
                " -wholename '%s' -prune -o "
+               " -wholename '/usr/lib/gconv/libCNS.so' -prune -o"
                " -type f -size +511 -exec "
                "sh -c 'binutils/objdump -CR {} 2>&1 | "
                "egrep -q \"(stack_chk|Invalid|not recognized)\" || echo {}' ';'"
