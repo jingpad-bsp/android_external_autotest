@@ -6,7 +6,8 @@ This file contains the implementation of a host object for the local machine.
 
 import glob, httplib, logging, os, platform, socket, urlparse
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import chromiumos_updater, error, hosts
+from autotest_lib.client.common_lib import error, hosts
+from autotest_lib.client.common_lib.cros import autoupdater
 
 
 class LocalHost(hosts.Host):
@@ -58,8 +59,8 @@ class LocalHost(hosts.Host):
         if not update_url:
             return False
 
-        updater = chromiumos_updater.ChromiumOSUpdater(host=self,
-                                                       update_url=update_url)
+        updater = autoupdater.ChromiumOSUpdater(host=self,
+                                                update_url=update_url)
         # Updater has returned, successfully, reboot the host and
         # validate the installation from the calling script.
         return updater.run_update()

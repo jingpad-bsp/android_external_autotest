@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.common_lib import chromiumos_updater, global_config
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server.hosts import base_classes
 
@@ -31,8 +32,8 @@ class ChromiumOSHost(base_classes.Host):
             update_url=parser.options.image
         elif not update_url:
             return False
-        updater = chromiumos_updater.ChromiumOSUpdater(host=self,
-                                                       update_url=update_url)
+        updater = autoupdater.ChromiumOSUpdater(host=self,
+                                                update_url=update_url)
         updater.run_update()
         # Updater has returned, successfully, reboot the host.
         self.reboot(timeout=60, wait=True)
