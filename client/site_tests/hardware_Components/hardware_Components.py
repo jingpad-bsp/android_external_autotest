@@ -4,12 +4,10 @@
 
 import firmware_hash
 import glob
-import hashlib
 import logging
 import os
 import pprint
 import re
-import sys
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -20,8 +18,14 @@ from autotest_lib.client.common_lib import site_vblock
 
 
 class hardware_Components(test.test):
-    version = 1
-    _cids = [
+    version = 2
+    # We divide all component IDs (cids) into 5 categories:
+    #  - enumable: able to get the results by running specific commands;
+    #  - PCI: PCI devices;
+    #  - USB: USB devices;
+    #  - probable: returns existed or not by given some pre-defined choices;
+    #  - not test: only data, don't test them.
+    _enumerable_cids = [
         'data_display_geometry',
         'hash_ec_firmware',
         'hash_ro_firmware',
@@ -49,122 +53,82 @@ class hardware_Components(test.test):
         'part_id_3g',
         'part_id_gps',
     ]
-    _check_existence_cids = [
+    _probable_cids = [
         'key_recovery',
         'key_root',
         'part_id_cardreader',
         'part_id_chrontel',
     ]
-    _non_check_cids = [
+    _not_test_cids = [
         'data_bitmap_fv',
         'data_recovery_url',
+    ]
+    _to_be_tested_cids_groups = [
+        _enumerable_cids,
+        _pci_cids,
+        _usb_cids,
+        _probable_cids,
     ]
     _not_present = 'Not Present'
 
 
-    def check_component(self, comp_key, comp_ids):
-        if comp_key in self._ignored:
+    def get_all_enumerable_components(self):
+        results = {}
+        for cid in self._enumerable_cids:
+            components = self.force_get_property('get_' + cid)
+            if not isinstance(components, list):
+                components = [ components ]
+            results[cid] = components
+        return results
+
+
+    def get_all_pci_components(self):
+        cmd = 'lspci -n | cut -f3 -d" "'
+        return utils.system_output(cmd).split()
+
+
+    def get_all_usb_components(self):
+        cmd = 'lsusb | cut -f6 -d" "'
+        return utils.system_output(cmd).split()
+
+
+    def check_enumerable_component(self, cid, exact_values, approved_values):
+        if '*' in approved_values:
             return
 
-        if not isinstance(comp_ids, list):
-            comp_ids = [ comp_ids ]
-        self._system[comp_key] = comp_ids
-
-        if not self._approved.has_key(comp_key):
-            raise error.TestFail('%s missing from database' % comp_key)
-
-        app_cids = self._approved[comp_key]
-
-        if '*' in app_cids:
-            return
-
-        for comp_id in comp_ids:
-            if not comp_id in app_cids:
-                if comp_key in self._failures:
-                    self._failures[comp_key].append(comp_id)
+        for value in exact_values:
+            if value not in approved_values:
+                if cid in self._failures:
+                    self._failures[cid].append(value)
                 else:
-                    self._failures[comp_key] = [ comp_id ]
+                    self._failures[cid] = [ value ]
 
 
-    def check_approved_part_id_existence(self, cid, type):
-        """
-        Check if there are matching devices on the system.
-        Parameter type should be one of 'pci', 'usb', or 'others'.
-        """
-        if cid in self._ignored:
-            return
-
-        if not self._approved.has_key(cid):
-            raise error.TestFail('%s missing from database' % cid)
-
-        approved_devices = self._approved[cid]
-        if '*' in approved_devices:
+    def check_pci_usb_component(self, cid, system_values, approved_values):
+        if '*' in approved_values:
             self._system[cid] = [ '*' ]
             return
 
-        for device in approved_devices:
-            present = False
-            if type in ['pci', 'usb']:
-                try:
-                    cmd = '/usr/sbin/ls' + type + ' -d %s'
-                    output = utils.system_output(cmd % device)
-                    # If it shows something, means found.
-                    if output:
-                        present = True
-                except:
-                    pass
-            elif type == 'others':
-                present = getattr(self, 'check_existence_' + cid)(device)
-
-            if present:
-                self._system[cid] = [ device ]
+        for value in approved_values:
+            if value in system_values:
+                self._system[cid] = [ value ]
                 return
 
         self._failures[cid] = [ 'No match' ]
 
 
-    def check_existence_key_recovery(self, part_id):
-        current_key = self._gbb.get_recoverykey()
-        target_key = utils.read_file(part_id)
-        return current_key.startswith(target_key)
+    def check_probable_component(self, cid, approved_values):
+        if '*' in approved_values:
+            self._system[cid] = [ '*' ]
+            return
 
+        for value in approved_values:
+            present = getattr(self, 'probe_' + cid)(value)
+            if present:
+                self._system[cid] = [ value ]
+                return
 
-    def check_existence_key_root(self, part_id):
-        current_key = self._gbb.get_rootkey()
-        target_key = utils.read_file(part_id)
-        return current_key.startswith(target_key)
-
-
-    def check_existence_part_id_cardreader(self, part_id):
-        # A cardreader is always power off until a card inserted. So checking
-        # it using log messages instead of lsusb can limit operator-attended.
-        # But note that it does not guarantee the cardreader presented during
-        # the time of the test.
-        [vendor_id, product_id] = part_id.split(':')
-        found_pattern = ('New USB device found, idVendor=%s, idProduct=%s' %
-                         (vendor_id, product_id))
-        cmd = 'grep -qs "%s" /var/log/messages*' % found_pattern
-        return utils.system(cmd, ignore_status=True) == 0
-
-
-    def check_existence_part_id_chrontel(self, part_id):
-        if part_id == self._not_present:
-            return True
-
-        if part_id == 'ch7036':
-            grep_cmd = 'grep i2c_dev /proc/modules'
-            i2c_loaded = (utils.system(grep_cmd, ignore_status=True) == 0)
-            if not i2c_loaded:
-                utils.system('modprobe i2c_dev')
-
-            probe_cmd = 'ch7036_monitor -p'
-            present = (utils.system(probe_cmd, ignore_status=True) == 0)
-
-            if not i2c_loaded:
-                utils.system('modprobe -r i2c_dev')
-            return present
-
-        return False
+        self._failures[cid] = [ 'No match' ]
 
 
     def get_data_display_geometry(self):
@@ -179,6 +143,22 @@ class hardware_Components(test.test):
         if not data:
             data = [ '' ]
         return data
+
+
+    def get_hash_ec_firmware(self):
+        """
+        Returns a hash of Embedded Controller firmware parts,
+        to confirm we have proper updated version of EC firmware.
+        """
+        return firmware_hash.get_ec_hash(exception_type=error.TestError)
+
+
+    def get_hash_ro_firmware(self):
+        """
+        Returns a hash of Read Only (BIOS) firmware parts,
+        to confirm we have proper keys / boot code / recovery image installed.
+        """
+        return firmware_hash.get_bios_ro_hash(exception_type=error.TestError)
 
 
     def get_part_id_audio_codec(self):
@@ -264,6 +244,24 @@ class hardware_Components(test.test):
         return part_id
 
 
+    def get_part_id_tpm(self):
+        """
+        Returns Manufacturer_info : Chip_Version
+        """
+        cmd = 'tpm_version'
+        tpm_output = utils.system_output(cmd)
+        tpm_lines = tpm_output.splitlines()
+        tpm_dict = {}
+        for tpm_line in tpm_lines:
+            [key, colon, value] = tpm_line.partition(':')
+            tpm_dict[key.strip()] = value.strip()
+        part_id = ''
+        key1, key2 = 'Manufacturer Info', 'Chip Version'
+        if key1 in tpm_dict and key2 in tpm_dict:
+            part_id = tpm_dict[key1] + ':' + tpm_dict[key2]
+        return part_id
+
+
     def get_part_id_wireless(self):
         """
           Returns a colon delimited string where the first section
@@ -311,44 +309,10 @@ class hardware_Components(test.test):
             return part_id
 
 
-    def get_part_id_tpm(self):
-        """
-        Returns Manufacturer_info : Chip_Version
-        """
-        cmd = 'tpm_version'
-        tpm_output = utils.system_output(cmd)
-        tpm_lines = tpm_output.splitlines()
-        tpm_dict = {}
-        for tpm_line in tpm_lines:
-            [key, colon, value] = tpm_line.partition(':')
-            tpm_dict[key.strip()] = value.strip()
-        part_id = ''
-        key1, key2 = 'Manufacturer Info', 'Chip Version'
-        if key1 in tpm_dict and key2 in tpm_dict:
-            part_id = tpm_dict[key1] + ':' + tpm_dict[key2]
-        return part_id
-
-
     def get_vendor_id_webcam(self):
         cmd = 'cat /sys/class/video4linux/video0/name'
         part_id = utils.system_output(cmd).strip()
         return part_id
-
-
-    def get_hash_ro_firmware(self):
-        """
-        Returns a hash of Read Only (BIOS) firmware parts,
-        to confirm we have proper keys / boot code / recovery image installed.
-        """
-        return firmware_hash.get_bios_ro_hash(exception_type=error.TestError)
-
-
-    def get_hash_ec_firmware(self):
-        """
-        Returns a hash of Embedded Controller firmware parts,
-        to confirm we have proper updated version of EC firmware.
-        """
-        return firmware_hash.get_ec_hash(exception_type=error.TestError)
 
 
     def get_version_rw_firmware(self):
@@ -381,6 +345,50 @@ class hardware_Components(test.test):
         return '%d' % (versions[0])
 
 
+    def probe_key_recovery(self, part_id):
+        current_key = self._gbb.get_recoverykey()
+        target_key = utils.read_file(part_id)
+        return current_key.startswith(target_key)
+
+
+    def probe_key_root(self, part_id):
+        current_key = self._gbb.get_rootkey()
+        target_key = utils.read_file(part_id)
+        return current_key.startswith(target_key)
+
+
+    def probe_part_id_cardreader(self, part_id):
+        # A cardreader is always power off until a card inserted. So checking
+        # it using log messages instead of lsusb can limit operator-attended.
+        # But note that it does not guarantee the cardreader presented during
+        # the time of the test.
+        [vendor_id, product_id] = part_id.split(':')
+        found_pattern = ('New USB device found, idVendor=%s, idProduct=%s' %
+                         (vendor_id, product_id))
+        cmd = 'grep -qs "%s" /var/log/messages*' % found_pattern
+        return utils.system(cmd, ignore_status=True) == 0
+
+
+    def probe_part_id_chrontel(self, part_id):
+        if part_id == self._not_present:
+            return True
+
+        if part_id == 'ch7036':
+            grep_cmd = 'grep i2c_dev /proc/modules'
+            i2c_loaded = (utils.system(grep_cmd, ignore_status=True) == 0)
+            if not i2c_loaded:
+                utils.system('modprobe i2c_dev')
+
+            probe_cmd = 'ch7036_monitor -p'
+            present = (utils.system(probe_cmd, ignore_status=True) == 0)
+
+            if not i2c_loaded:
+                utils.system('modprobe -r i2c_dev')
+            return present
+
+        return False
+
+
     def force_get_property(self, property_name):
         """ Returns property value or empty string on error. """
         try:
@@ -399,18 +407,28 @@ class hardware_Components(test.test):
         return "\n" + self._pp.pformat(obj) + "\n"
 
 
-    def initialize(self):
-        self._gbb = gbb_util.GBBUtility()
-        self._pp = pprint.PrettyPrinter()
+    def update_ignored_cids(self, ignored_cids):
+        for cid in ignored_cids:
+            for group in self._to_be_tested_cids_groups:
+                if cid in group:
+                    group.remove(cid)
+                    break
+            else:
+                raise error.TestError('The ignored cid %s is not defined' % cid)
+            self._not_test_cids.append(cid)
 
 
-    def run_once(self, approved_dbs='approved_components', ignored_cids=[],
-            shared_dict={}):
-        self._ignored = ignored_cids
-        only_cardreader_failed = False
-        all_failures = 'The following components are not matched.\n'
+    def read_approved_from_file(self, filename):
+        approved = eval(utils.read_file(filename))
+        for group in self._to_be_tested_cids_groups + [ self._not_test_cids ]:
+            for cid in group:
+                if cid not in approved:
+                    raise error.TestFail('%s missing from database' % cid)
+        return approved
+
+
+    def select_correct_dbs(self, approved_dbs, shared_dict):
         os.chdir(self.bindir)
-
         if 'part_id_hwqual' in shared_dict:
             # If HwQual ID is already specified, find the list with same ID.
             id = shared_dict['part_id_hwqual'].replace(' ', '_')
@@ -429,27 +447,47 @@ class hardware_Components(test.test):
             raise error.TestError('Unable to find approved db: %s' %
                                   approved_dbs)
 
-        for db in existing_dbs:
-            self._system = {}
-            self._failures = {}
-            self._approved = eval(utils.read_file(db))
-            factory.log('Approved DB: %s' % self.pformat(self._approved))
+        return existing_dbs
 
-            for cid in self._cids:
-                self.check_component(cid, self.force_get_property('get_' + cid))
+
+    def initialize(self):
+        self._gbb = gbb_util.GBBUtility()
+        self._pp = pprint.PrettyPrinter()
+
+
+    def run_once(self, approved_dbs='approved_components', shared_dict={},
+            ignored_cids=[]):
+        self.update_ignored_cids(ignored_cids)
+        enumerable_system = self.get_all_enumerable_components()
+        pci_system = self.get_all_pci_components()
+        usb_system = self.get_all_usb_components()
+
+        only_cardreader_failed = False
+        all_failures = 'The following components are not matched.\n'
+        correct_dbs = self.select_correct_dbs(approved_dbs, shared_dict)
+        for db in correct_dbs:
+            self._system = enumerable_system
+            self._failures = {}
+            approved = self.read_approved_from_file(db)
+            factory.log('Approved DB: %s' % self.pformat(approved))
+
+            for cid in self._enumerable_cids:
+                self.check_enumerable_component(
+                        cid, enumerable_system[cid], approved[cid])
 
             for cid in self._pci_cids:
-                self.check_approved_part_id_existence(cid, type='pci')
+                self.check_pci_usb_component(cid, pci_system, approved[cid])
 
             for cid in self._usb_cids:
-                self.check_approved_part_id_existence(cid, type='usb')
+                self.check_pci_usb_component(cid, usb_system, approved[cid])
 
-            for cid in self._check_existence_cids:
-                self.check_approved_part_id_existence(cid, type='others')
+            for cid in self._probable_cids:
+                self.check_probable_component(cid, approved[cid])
 
             factory.log('System: %s' % self.pformat(self._system))
 
-            outdb = os.path.join(self.resultsdir, 'system_components')
+            outdb = 'system_%s' % os.path.basename(db).replace('approved_', '')
+            outdb = os.path.join(self.resultsdir, outdb)
             utils.open_write_close(outdb, self.pformat(self._system))
 
             if self._failures:
@@ -461,11 +499,11 @@ class hardware_Components(test.test):
                 # If one of DBs is matched, record some data in shared_dict.
                 cids_need_to_be_record = ['part_id_hwqual']
                 for cid in cids_need_to_be_record:
-                    factory.log_shared_data(cid, self._approved[cid][0])
+                    factory.log_shared_data(cid, approved[cid][0])
                 return
 
         if only_cardreader_failed:
             all_failures = ('You may forget to insert an SD card.\n' +
                             all_failures)
 
-        raise error.TestFail(repr(all_failures))
+        raise error.TestFail(all_failures)
