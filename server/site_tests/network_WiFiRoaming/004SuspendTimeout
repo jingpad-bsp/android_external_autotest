@@ -1,0 +1,31 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This test run seeks to place the DUT in suspend-to-RAM for longer
+# than the AP will wait for it, to see if/how the DUT notices that
+# it's been disassociated.
+{ "name":"Suspend",
+  "steps":[             # Channel 1,6,11
+    [ "create",         { "type":"hostap" } ],
+
+    # Connect the DUT to an AP
+    [ "config",         { "channel":"2412", "mode":"11b",
+                          "ssid_suffix": 't1',
+			  "ap_max_inactivity" : '10'} ],
+    [ "connect",        { "security":"none" } ],
+    [ "client_ping",    { "count":"10" } ],
+
+    # Put the system to sleep for 20 seconds
+    [ "client_suspend", { "suspend_time": "20" } ],
+
+    # The AP should have given up on the DUT. If the DUT realizes this
+    # (what we're testing), then it can reassociate and this will
+    # succeed. If it doesn't realze it, we'll assume we're still
+    # associated and the ping will fail.
+    [ "client_ping",    { "count":"10" } ],
+
+    [ "destroy" ],
+
+  ],
+}
