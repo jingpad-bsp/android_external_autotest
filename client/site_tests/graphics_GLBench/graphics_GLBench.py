@@ -30,6 +30,17 @@ class graphics_GLBench(test.test):
       dep_dir = os.path.join(self.autodir, 'deps', dep)
       self.job.install_pkg(dep, 'dep', dep_dir)
 
+      # These tests do not draw anything, they can only be used to check
+      # performance.
+      no_checksum_tests = set(['mpixels_sec_pixel_read',
+                               'mpixels_sec_pixel_read_2',
+                               'mpixels_sec_pixel_read_3',
+                               'mvtx_sec_attribute_fetch_shader',
+                               'mvtx_sec_attribute_fetch_shader_2_attr',
+                               'mvtx_sec_attribute_fetch_shader_4_attr',
+                               'mvtx_sec_attribute_fetch_shader_8_attr',
+                               'us_swap_swap'])
+
       checksum_table = {}
       checksums_filename = os.path.join(self.autodir,
                                         'deps/glbench/src/checksums')
@@ -72,9 +83,10 @@ class graphics_GLBench(test.test):
                   keyvals[testname] = float('nan')
                   failed_tests[testname] = test_checksum
           else:
-              logging.info('No checksum found for test %s', testname)
               keyvals[testname] = float(val)
-              missing_checksum_tests[testname] = test_checksum
+              if testname not in no_checksum_tests:
+                logging.info('No checksum found for test %s', testname)
+                missing_checksum_tests[testname] = test_checksum
 
       self.write_perf_keyval(keyvals)
 
