@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 import os, re
-from autotest_lib.client.bin.chromeos_constants import CLEANUP_LOGS_PAUSED_FILE
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.cros.constants import CLEANUP_LOGS_PAUSED_FILE
 
 class LogReader(object):
     """

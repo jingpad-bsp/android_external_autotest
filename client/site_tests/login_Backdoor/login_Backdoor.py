@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import shutil, utils
-from autotest_lib.client.bin import chromeos_constants, site_login, site_ui_test
+from autotest_lib.client.bin import site_login, site_ui_test
 from autotest_lib.client.common_lib import site_auth_server
 
 class login_Backdoor(site_ui_test.UITest):

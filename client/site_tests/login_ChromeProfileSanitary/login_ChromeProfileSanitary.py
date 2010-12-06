@@ -3,8 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, stat, time, utils
-from autotest_lib.client.bin import chromeos_constants, site_cryptohome
+from autotest_lib.client.bin import site_cryptohome
 from autotest_lib.client.bin import site_login, site_ui_test
+from autotest_lib.client.cros import constants as chromeos_constants
 from autotest_lib.client.common_lib import error, site_httpd, site_ui
 
 def respond_with_cookies(handler, url_args):
