@@ -3,8 +3,9 @@
 # found in the LICENSE file.
 
 import httplib, logging, os, socket, stat, time, utils
-from autotest_lib.client.bin import chromeos_constants, site_cryptohome
+from autotest_lib.client.bin import site_cryptohome
 from autotest_lib.client.common_lib import error, site_httpd
+from autotest_lib.client.cros import constants as chromeos_constants
 
 class GoogleAuthServer(object):
     """A mock Google accounts server that can be run in a separate thread

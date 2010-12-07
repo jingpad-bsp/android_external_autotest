@@ -7,10 +7,9 @@ import logging
 import os.path
 import subprocess
 
-from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.bin import site_login, test, utils
 from autotest_lib.client.common_lib import error
-
+from autotest_lib.client.cros import constants as chromeos_constants
 
 class security_RestartJob(test.test):
     version = 1

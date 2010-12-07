@@ -3,11 +3,12 @@
 # found in the LICENSE file.
 
 import dbus, logging, os, re, shutil, socket, sys, time
-from autotest_lib.client.bin import chromeos_constants, site_cryptohome
+from autotest_lib.client.bin import site_cryptohome
 from autotest_lib.client.bin import site_login, site_utils, test as bin_test
 from autotest_lib.client.bin import site_log_reader
 from autotest_lib.client.common_lib import error, site_ui
 from autotest_lib.client.common_lib import site_auth_server, site_dns_server
+from autotest_lib.client.cros import constants as chromeos_constants
 from dbus.mainloop.glib import DBusGMainLoop
 
 sys.path.append(os.environ.get("SYSROOT", "/usr/local") +

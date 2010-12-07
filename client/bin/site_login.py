@@ -3,9 +3,10 @@
 # found in the LICENSE file.
 
 import errno, logging, os, re, utils, signal, subprocess, time
-from autotest_lib.client.bin import chromeos_constants, site_cryptohome
+from autotest_lib.client.bin import site_cryptohome
 from autotest_lib.client.bin import site_utils, test, site_log_reader
 from autotest_lib.client.common_lib import error, site_ui
+from autotest_lib.client.cros import constants as chromeos_constants
 
 _DEFAULT_TIMEOUT = 30
 
