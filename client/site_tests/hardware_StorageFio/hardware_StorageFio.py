@@ -74,14 +74,22 @@ class hardware_StorageFio(test.test):
         # be in /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-5/1-5:1.0/host4/
         # target4:0:0/4:0:0:0/block/sdb.
         # Then read the vendor and model name in its grand-parent directory.
-        device = os.path.basename(self.__filename[:-1])
-        findsys = utils.run('find /sys/devices -name %s' % device)
-        path = findsys.stdout.rstrip()
 
-        vendor = file(path.replace('block/%s' % device,
-                                   'vendor')).read().strip()
-        model = file(path.replace('block/%s' % device, 'model')).read().strip()
-        self.__description = vendor + ' ' + model
+        # Obtain the device name by stripping the partition number.
+        # For example, on x86: sda3 => sda; on ARM: mmcblk1p3 => mmcblk1.
+        device = os.path.basename(
+                re.sub('(sd[a-z]|mmcblk[0-9]+)p?[0-9]+', '\\1', self.__filename)
+        findsys = utils.run('find /sys/devices -name %s' % device)
+        device_path = findsys.stdout.rstrip()
+
+        vendor_file = device_path.replace('block/%s' % device, 'vendor')
+        model_file = device_path.replace('block/%s' % device, 'model')
+        if os.path.exists(vendor_file) and os.path.exists(model_file):
+            vendor = utils.read_one_line(vendor_file).strip()
+            model = utils.read_one_line(model_file).strip()
+            self.__description = vendor + ' ' + model
+        else:
+            self.__description = ''
 
 
     def __parse_fio(self, lines):
