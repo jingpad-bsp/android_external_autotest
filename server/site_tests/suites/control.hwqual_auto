@@ -24,8 +24,10 @@ def run_client_test(machine):
   client = hosts.create_host(machine)
   client_at = autotest.Autotest(client)
 
-  client_control = open(os.path.join(job.autodir, CLIENT_CONTROL), 'r').read()
-  exec(client_control, {'job': client_at})
+  # Copy global state and replace job token with client Autotest instance.
+  temp_globals = dict(globals())
+  temp_globals['job'] = client_at
+  execfile(os.path.join(job.autodir, CLIENT_CONTROL), temp_globals)
 
 
 job.parallel_on_machines(run_client_test, machines)
