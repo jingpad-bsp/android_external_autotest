@@ -7,8 +7,8 @@
 """GoogleAuthServer unittest."""
 
 import logging, os, sys, threading, time, unittest, urllib
+from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.common_lib import site_auth_server
-from autotest_lib.client.cros import constants as chromeos_constants
 from site_auth_server import GoogleAuthServer
 
 class test_auth_server(unittest.TestCase):

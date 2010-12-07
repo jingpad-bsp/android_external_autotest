@@ -8,8 +8,8 @@ import re
 import socket
 import urlparse
 
+from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants as chromeos_constants
 
 STATEFULDEV_UPDATER = '/usr/local/bin/stateful_update'
 UPDATER_BIN = '/usr/bin/update_engine_client'

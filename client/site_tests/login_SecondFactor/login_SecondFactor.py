@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import site_login, site_ui_test
+from autotest_lib.client.bin import chromeos_constants, site_login, site_ui_test
 from autotest_lib.client.common_lib import error, site_auth_server
 
 class login_SecondFactor(site_ui_test.UITest):

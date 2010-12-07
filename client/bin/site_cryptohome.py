@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, re, utils
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import chromeos_constants, test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants as chromeos_constants
+
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 

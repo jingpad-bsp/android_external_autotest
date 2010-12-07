@@ -3,8 +3,9 @@
 # found in the LICENSE file.
 
 import os
+from autotest_lib.client.bin import chromeos_constants
 from autotest_lib.client.bin import site_cryptohome, site_login, site_ui_test
-from autotest_lib.client.cros import constants as chromeos_constants
+
 
 TEST_USER = 'cryptohome_test@chromium.org'
 TEST_PASS = 'testme'

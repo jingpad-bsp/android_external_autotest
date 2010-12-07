@@ -3,10 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, os.path, signal, time
-from autotest_lib.client.bin import site_crash_test
+from autotest_lib.client.bin import chromeos_constants, site_crash_test
 from autotest_lib.client.bin import site_log_reader, site_login, site_utils
 from autotest_lib.client.common_lib import utils, error
-from autotest_lib.client.cros import constants as chromeos_constants
 
 class logging_CrashServices(site_crash_test.CrashTest):
     version = 1

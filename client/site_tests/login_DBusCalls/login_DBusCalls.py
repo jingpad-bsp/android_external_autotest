@@ -3,10 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os
-from autotest_lib.client.bin import site_log_reader
+from autotest_lib.client.bin import chromeos_constants, site_log_reader
 from autotest_lib.client.bin import site_ui_test, site_utils
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import constants as chromeos_constants
 
 _SESSION_MANAGER_DEST='org.chromium.SessionManager'
 _SESSION_MANAGER_OBJECT='org.chromium.SessionManagerInterface'

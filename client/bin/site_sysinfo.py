@@ -2,7 +2,7 @@ import os, shutil, re, logging
 
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_sysinfo
-from autotest_lib.client.cros import constants as chromeos_constants
+from autotest_lib.client.bin import chromeos_constants
 
 
 logfile = base_sysinfo.logfile
