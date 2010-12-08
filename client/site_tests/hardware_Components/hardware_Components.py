@@ -35,6 +35,7 @@ class hardware_Components(test.test):
         'part_id_embedded_controller',
         'part_id_ethernet',
         'part_id_flash_chip',
+        'part_id_ec_flash_chip',
         'part_id_hwqual',
         'part_id_storage',
         'part_id_tpm',
@@ -217,7 +218,7 @@ class hardware_Components(test.test):
         # example output:
         #  Found chip "Winbond W25x16" (2048 KB, FWH) at physical address 0xfe
         parts = []
-        lines = utils.system_output('flashrom -V',
+        lines = utils.system_output('flashrom -V -p internal:bus=spi',
                                     ignore_status=True).split('\n')
         for line in lines:
             match = re.search(r'Found chip "(.*)" .* at physical address ',
@@ -227,6 +228,21 @@ class hardware_Components(test.test):
         part_id = ", ".join(parts)
         return part_id
 
+    def get_part_id_ec_flash_chip(self):
+        # example output:
+        #  Found chip "Winbond W25x10" (128 KB, SPI) at physical address ...
+        parts = []
+        # Undo BBS register after call.
+        lines = utils.system_output('flashrom -V -p internal:bus=lpc; '
+                                    'flashrom -p internal:bus=spi',
+                                    ignore_status=True).split('\n')
+        for line in lines:
+            match = re.search(r'Found chip "(.*)" .* at physical address ',
+                              line)
+            if match:
+                parts.append(match.group(1))
+        part_id = ", ".join(parts)
+        return part_id
 
     def get_part_id_hwqual(self):
         hwid_file = '/sys/devices/platform/chromeos_acpi/HWID'

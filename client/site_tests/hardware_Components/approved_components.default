@@ -23,6 +23,7 @@
     'part_id_embedded_controller': ['*'],
     'part_id_ethernet': ['*'],
     'part_id_flash_chip': ['*'],
+    'part_id_ec_flash_chip': ['*'],
     'part_id_gps': ['*'],
     'part_id_hwqual': ['*'],
     'part_id_storage': ['*'],
