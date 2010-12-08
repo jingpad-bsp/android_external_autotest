@@ -8,7 +8,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autotest, test, autoupdate_utils
 
-IGNORE_PATTERNS = ('*.pyc', '^.git', '^.gitignore')
 POLL_INTERVAL = 5
 
 class autoupdate_Host(test.test):
@@ -34,7 +33,7 @@ class autoupdate_Host(test.test):
         tester = autoupdate_utils.AutoUpdateTester(image_path)
 
         # Starts devserver.
-        devserver = tester.start_devserver()
+        tester.start_devserver()
 
         # Initiate update process on client.
         update_engine_client_cmd = ('update_engine_client '
@@ -62,6 +61,9 @@ class autoupdate_Host(test.test):
 
         host.wait_for_restart(old_boot_id=boot_id)
 
+        # Terminate devserver.
+        tester.kill_devserver()
+
         new_release = updater.get_build_id()
         logging.info('old release: %s' % old_release)
         logging.info('new release: %s' % new_release)
@@ -69,5 +71,3 @@ class autoupdate_Host(test.test):
         if new_release == old_release:
             raise error.TestFail('Failed to update')
 
-        # Terminate devserver.
-        tester.kill_devserver(devserver)

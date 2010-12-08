@@ -6,8 +6,8 @@
 """Utilities to test the autoupdate process.
 """
 
-from autotest_lib.client.common_lib import error, pexpect, utils
-import logging, socket, os, sys, time, urllib2
+from autotest_lib.client.common_lib import error, utils
+import logging, socket, os, urllib2, subprocess
 
 DEVSERVER_PORT = 8080
 
@@ -16,7 +16,7 @@ CMD_TIMEOUT = 120
 CWD = os.getcwd()
 DEVSERVER_SRC = os.path.join('/home', os.environ['USER'], 'trunk',
                              'src', 'platform', 'dev')
-DEVSERVER_DIR = os.path.join(CWD, 'dev')
+DEVSERVER_LOG = os.path.join(CWD, 'devserver.log')
 
 class AutoUpdateTester():
 
@@ -24,7 +24,6 @@ class AutoUpdateTester():
         """Copy devserver source into current working directory.
         """
         self.image_path = image_path
-        os.system('cp -r %s %s' % (DEVSERVER_SRC, CWD))
 
     def is_devserver_running(self):
         localhost = socket.gethostname()
@@ -39,13 +38,7 @@ class AutoUpdateTester():
 
     def start_devserver(self):
         """Start devserver
-
-        Assumes payload is $PWD/dev/static/update.gz.
-
-        Returns:
-            pexpect process running devserver.
         """
-
         if self.is_devserver_running():
             logging.info('Devserver is already running')
             raise error.TestFail('Please kill devserver before running test.')
@@ -54,33 +47,18 @@ class AutoUpdateTester():
 
         opts = ('--client_prefix ChromeOSUpdateEngine '
                 '--image %s' % self.image_path)
-        cmd = 'python devserver.py %s' % opts
-        devserver = pexpect.spawn(cmd, timeout=CMD_TIMEOUT, cwd=DEVSERVER_DIR)
-        # Wait for devserver to start up.
-        time.sleep(10)
+        cmd = 'python devserver.py %s &>%s &' % (opts, DEVSERVER_LOG)
+        logging.info('devserver cmd: %s' % cmd)
 
-        patterns = [str(DEVSERVER_PORT)]
         try:
-            index = devserver.expect_exact(patterns)
-            if index == 0:
-                if self.is_devserver_running():
-                  logging.info('devserver is running...')
-                  return devserver
-                else:
-                  raise Exception('Could not start devserver')
-        except pexpect.EOF:
-            raise Exception('EOF')
-        except pexpect.TIMEOUT:
-            raise Exception('Process timed out')
+          subprocess.Popen(cmd, shell=True, cwd=DEVSERVER_SRC)
+        except OSError, e:
+          raise Exception('Could not start devserver: %s' % e.child_traceback)
 
-    def kill_devserver(self, devserver):
-        """Kill chroot of devserver.
-        Send interrupt signal to devserver and wait for it to terminate.
 
-        Args:
-            devserver: pexpect process running devserver.
+    def kill_devserver(self):
+        """Kill devserver.
         """
-        if devserver.isalive():
-            devserver.sendintr()
-            devserver.wait()
-
+        logging.info('Killing devserver...')
+        pkill_cmd = 'pkill -f devserver'
+        subprocess.Popen(pkill_cmd, shell=True)
