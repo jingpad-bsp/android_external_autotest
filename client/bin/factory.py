@@ -377,10 +377,14 @@ class ControlState:
         else:
             log('SIGUSR1 ... KILLING NOTHING, no active test')
 
-    def process_kbd_shortcut_activation(self):
+    def process_fail_or_kbd_shortcut_activation(self, last_status=None):
         kbd_shortcut = self._log_data.get('activated_kbd_shortcut')
         if kbd_shortcut is None:
-            return None
+            if last_status != FAILED:
+                return None
+            log('last test failed, routing to review screen...')
+            return self._test_db.get_test_by_unique_name(
+                REVIEW_INFORMATION_TEST_UNIQUE_NAME)
         target_test = self._kbd_shortcut_db.lookup_test(kbd_shortcut)
         log('activated kbd_shortcut %s -> %s' % (
             kbd_shortcut, self._test_db.get_unique_id_str(target_test)))
@@ -401,7 +405,9 @@ class ControlState:
         self._job.run_test(test.autotest_name, **dargs)
         self._job.drop_caches_between_iterations = False
         self._log_data.read_new_data()
-        return self.process_kbd_shortcut_activation()
+        self._status_map.read_new_data()
+        status = self._status_map.lookup_status(test, min_count=count)
+        return self.process_fail_or_kbd_shortcut_activation(status)
 
 
 def lookup_status_by_unique_name(unique_name, test_list, status_file_path):
