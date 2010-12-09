@@ -5,10 +5,11 @@
 import logging, os, re
 
 import os, time
-from autotest_lib.client.bin import site_login, site_ui_test
+from autotest_lib.client.bin import site_login
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.cros import ui_test
 
-class graphics_WindowManagerGraphicsCapture(site_ui_test.UITest):
+class graphics_WindowManagerGraphicsCapture(ui_test.UITest):
     version = 1
 
     def setup(self):

@@ -3,9 +3,10 @@
 # found in the LICENSE file.
 
 import logging, os, shutil, sys, time
-from autotest_lib.client.bin import site_backchannel, site_ui_test, site_login
+from autotest_lib.client.bin import site_backchannel, site_login
 from autotest_lib.client.common_lib import error, site_httpd, \
                             site_power_status, site_ui, utils
+from autotest_lib.client.cros import ui_test
 
 sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
 import flimflam
@@ -21,12 +22,12 @@ params_dict = {
 }
 
 
-class power_LoadTest(site_ui_test.UITest):
+class power_LoadTest(ui_test.UITest):
     version = 2
 
     def ensure_login_complete(self):
         """
-        Override site_ui_test.UITest's ensure_login_complete.
+        Override ui_test.UITest's ensure_login_complete.
         Do not use auth server and local dns for our test. We need to be
         able to reach the web.
         """
@@ -144,7 +145,7 @@ class power_LoadTest(site_ui_test.UITest):
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
 
-        # from site_ui_test.UITest.initialize, sans authserver & local dns.
+        # from ui_test.UITest.initialize, sans authserver & local dns.
         (self.username, self.password) = self._UITest__resolve_creds(creds)
 
     def run_once(self):

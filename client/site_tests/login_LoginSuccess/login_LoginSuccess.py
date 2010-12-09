@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.client.bin import site_ui_test
+from autotest_lib.client.cros import ui_test
 
-class login_LoginSuccess(site_ui_test.UITest):
+class login_LoginSuccess(ui_test.UITest):
     version = 1
 
 

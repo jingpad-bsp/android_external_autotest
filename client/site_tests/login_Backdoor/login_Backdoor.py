@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 import shutil, utils
-from autotest_lib.client.bin import site_login, site_ui_test
-from autotest_lib.client.common_lib import site_auth_server
+from autotest_lib.client.bin import site_login
+from autotest_lib.client.cros import auth_server, ui_test
 
-class login_Backdoor(site_ui_test.UITest):
+class login_Backdoor(ui_test.UITest):
     version = 1
 
 
@@ -17,7 +17,7 @@ class login_Backdoor(site_ui_test.UITest):
 
 
     def start_authserver(self):
-        self._authServer = site_auth_server.GoogleAuthServer(
+        self._authServer = auth_server.GoogleAuthServer(
             cl_responder=self.__login_denier)
         self._authServer.run()
 

@@ -7,11 +7,13 @@ import gobject
 import os
 import time
 
-from autotest_lib.client.bin import site_ui_test, site_utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui_test
+
 from dbus.mainloop.glib import DBusGMainLoop
 
-class desktopui_ScreenLocker(site_ui_test.UITest):
+class desktopui_ScreenLocker(ui_test.UITest):
     version = 1
     _POWER_MANAGER_INTERFACE = 'org.chromium.PowerManager'
 
@@ -50,7 +52,7 @@ class desktopui_ScreenLocker(site_ui_test.UITest):
         ax = self.get_autox()
         ax.send_hotkey('Ctrl-Alt-l')
 
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             condition=lambda: self.is_screen_locked(),
             desc='screenlocker lock')
 
@@ -60,7 +62,7 @@ class desktopui_ScreenLocker(site_ui_test.UITest):
 
         # verify that the screen unlock attempt failed
         try:
-          site_utils.poll_for_condition(
+          utils.poll_for_condition(
               condition=lambda: self.is_screen_unlocked(),
               desc='screen unlock',
               timeout=5)
@@ -74,6 +76,6 @@ class desktopui_ScreenLocker(site_ui_test.UITest):
         ax.send_hotkey('Return')
 
         # wait for screen to unlock
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             condition=lambda: self.is_screen_unlocked(),
             desc='screenlocker unlock')

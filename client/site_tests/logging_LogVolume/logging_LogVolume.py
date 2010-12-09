@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 import logging, os, re, stat, subprocess, utils
-from autotest_lib.client.bin import site_login, site_ui_test, test
+from autotest_lib.client.bin import site_login, test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui_test
 
-
-class logging_LogVolume(site_ui_test.UITest):
+class logging_LogVolume(ui_test.UITest):
     version = 1
 
 

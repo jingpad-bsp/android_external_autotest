@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 import os, time
-from autotest_lib.client.bin import site_login, site_ui_test, test
+from autotest_lib.client.bin import site_login, test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui_test
 
-class desktopui_WindowManagerFocusNewWindows(site_ui_test.UITest):
+class desktopui_WindowManagerFocusNewWindows(ui_test.UITest):
     version = 1
 
     def __check_active_window(self, id, info):

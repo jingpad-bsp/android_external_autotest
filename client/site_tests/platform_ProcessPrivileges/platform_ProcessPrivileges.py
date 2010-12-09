@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.client.bin import site_login, site_ui_test, utils
+from autotest_lib.client.bin import site_login, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui_test
 
-class platform_ProcessPrivileges(site_ui_test.UITest):
+class platform_ProcessPrivileges(ui_test.UITest):
     version = 1
 
     auto_login = False

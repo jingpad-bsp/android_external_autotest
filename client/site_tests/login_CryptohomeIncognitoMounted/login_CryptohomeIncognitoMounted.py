@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import site_cryptohome, site_ui_test
-from autotest_lib.client.common_lib import error, site_auth_server
+from autotest_lib.client.bin import site_cryptohome
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import auth_server, ui_test
 from autotest_lib.client.cros import constants as chromeos_constants
 
-class login_CryptohomeIncognitoMounted(site_ui_test.UITest):
+class login_CryptohomeIncognitoMounted(ui_test.UITest):
     version = 1
 
 
@@ -17,7 +18,7 @@ class login_CryptohomeIncognitoMounted(site_ui_test.UITest):
 
 
     def start_authserver(self):
-        self._authServer = site_auth_server.GoogleAuthServer(
+        self._authServer = auth_server.GoogleAuthServer(
             cl_responder=self.__login_denier)
         self._authServer.run()
 

@@ -7,7 +7,7 @@ from autotest_lib.client.bin import site_cryptohome
 from autotest_lib.client.bin import site_login, site_utils, test as bin_test
 from autotest_lib.client.bin import site_log_reader
 from autotest_lib.client.common_lib import error, site_ui
-from autotest_lib.client.common_lib import site_auth_server, site_dns_server
+from autotest_lib.client.cros import auth_server, dns_server
 from autotest_lib.client.cros import constants as chromeos_constants
 from dbus.mainloop.glib import DBusGMainLoop
 
@@ -72,7 +72,7 @@ class UITest(bin_test.test):
     def use_local_dns(self, dns_port=53):
         """Set all devices to use our in-process mock DNS server.
         """
-        self._dnsServer = site_dns_server.LocalDns(local_port=dns_port)
+        self._dnsServer = dns_server.LocalDns(local_port=dns_port)
         self._dnsServer.run()
         self._bus_loop = DBusGMainLoop(set_as_default=True)
         self._system_bus = dbus.SystemBus(mainloop=self._bus_loop)
@@ -127,7 +127,7 @@ class UITest(bin_test.test):
         will trick Chrome into talking to our mock when we login.
         Subclasses can override this method to change this behavior.
         """
-        self._authServer = site_auth_server.GoogleAuthServer()
+        self._authServer = auth_server.GoogleAuthServer()
         self._authServer.run()
         self.use_local_dns()
 

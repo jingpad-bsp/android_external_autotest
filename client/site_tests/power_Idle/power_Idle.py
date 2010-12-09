@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.client.bin import site_ui_test
 from autotest_lib.client.common_lib import error, site_power_status, utils
+from autotest_lib.client.cros import ui_test
 
 
-class power_Idle(site_ui_test.UITest):
+class power_Idle(ui_test.UITest):
     version = 1
 
     def warmup(self, warmup_time=60):

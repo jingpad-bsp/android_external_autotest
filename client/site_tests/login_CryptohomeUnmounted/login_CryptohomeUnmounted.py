@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import site_cryptohome, site_ui_test
+from autotest_lib.client.bin import site_cryptohome
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui_test
 
-class login_CryptohomeUnmounted(site_ui_test.UITest):
+class login_CryptohomeUnmounted(ui_test.UITest):
     version = 1
 
 

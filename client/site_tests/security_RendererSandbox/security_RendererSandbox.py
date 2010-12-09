@@ -4,12 +4,12 @@
 
 
 import os, subprocess, time, re
-from autotest_lib.client.bin import site_login, site_ui_test
-from autotest_lib.client.bin import site_utils, test, utils
+from autotest_lib.client.bin import site_login
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, site_ui
+from autotest_lib.client.cros import ui_test
 
-
-class security_RendererSandbox(site_ui_test.UITest):
+class security_RendererSandbox(ui_test.UITest):
     version = 1
     render_pid = -1
 
@@ -50,7 +50,7 @@ class security_RendererSandbox(site_ui_test.UITest):
 
         # wait till the page is loaded and poll for the renderer pid
         # if renderer pid is found, it is stored in self.render_pid
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             self._get_renderer_pid,
             error.TestFail('Timed out waiting to obtain pid of renderer'),
             time_to_wait)
@@ -69,7 +69,7 @@ class security_RendererSandbox(site_ui_test.UITest):
 
 
     # queries pgrep for the pid of the renderer. since this function is passed
-    # as an argument to site_utils.poll_for_condition, the return values are set
+    # as an argument to utils.poll_for_condition, the return values are set
     # to true/false depending on whether a pid has been found
     def _get_renderer_pid(self):                             
         pgrep = subprocess.Popen(['pgrep', '-f', '%s' % 'type=renderer'],

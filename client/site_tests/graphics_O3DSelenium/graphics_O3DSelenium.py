@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil
-from autotest_lib.client.bin import site_login, site_ui_test, utils
+from autotest_lib.client.bin import site_login, utils
 from autotest_lib.client.common_lib import error, site_ui
+from autotest_lib.client.cros import ui_test
 
-
-class graphics_O3DSelenium(site_ui_test.UITest):
+class graphics_O3DSelenium(ui_test.UITest):
     version = 1
 
     flaky_test_list = ["TestSampleanimated_sceneLarge",

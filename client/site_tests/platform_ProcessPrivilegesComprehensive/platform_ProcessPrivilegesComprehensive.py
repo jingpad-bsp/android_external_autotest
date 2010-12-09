@@ -10,10 +10,11 @@ import re
 import string
 import time
 
-from autotest_lib.client.bin import site_login, site_ui_test, utils
+from autotest_lib.client.bin import site_login, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui_test
 
-class platform_ProcessPrivilegesComprehensive(site_ui_test.UITest):
+class platform_ProcessPrivilegesComprehensive(ui_test.UITest):
     """
     Builds a process list (without spawning 'ps'), and validates
     the list against a baseline of expected processes, their priviliges,

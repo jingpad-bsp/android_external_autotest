@@ -4,9 +4,10 @@
 
 import logging, os, stat, time, utils
 from autotest_lib.client.bin import site_cryptohome
-from autotest_lib.client.bin import site_login, site_ui_test
-from autotest_lib.client.cros import constants as chromeos_constants
+from autotest_lib.client.bin import site_login
 from autotest_lib.client.common_lib import error, site_httpd, site_ui
+from autotest_lib.client.cros import constants as chromeos_constants
+from autotest_lib.client.cros import ui_test
 
 def respond_with_cookies(handler, url_args):
     """Responds with a Set-Cookie header to any GET request, and redirects
@@ -20,7 +21,7 @@ def respond_with_cookies(handler, url_args):
     handler.wfile.write('%s:\n' % url_args)
 
 
-class login_ChromeProfileSanitary(site_ui_test.UITest):
+class login_ChromeProfileSanitary(ui_test.UITest):
     version = 1
 
     def __wait_for_login_profile(self, timeout=10):
@@ -42,12 +43,12 @@ class login_ChromeProfileSanitary(site_ui_test.UITest):
         self._testServer.add_url_handler('/set_cookie', respond_with_cookies)
         self._testServer.run()
 
-        site_ui_test.UITest.initialize(self, creds)
+        ui_test.UITest.initialize(self, creds)
 
 
     def cleanup(self):
         self._testServer.stop()
-        site_ui_test.UITest.cleanup(self)
+        ui_test.UITest.cleanup(self)
 
 
     def run_once(self, timeout = 10):

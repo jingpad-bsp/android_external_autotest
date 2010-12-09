@@ -5,12 +5,13 @@
 import logging
 import os
 
-from autotest_lib.client.bin import site_ui_test, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui_test
 
 # We do this as a UITest so that we include any daemons that
 # might be spawned at login, in our test results.
-class security_NetworkListeners(site_ui_test.UITest):
+class security_NetworkListeners(ui_test.UITest):
     version = 1
 
     def load_baseline(self):

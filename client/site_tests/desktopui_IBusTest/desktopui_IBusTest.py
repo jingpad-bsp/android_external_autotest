@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 import logging, os, re, string, time
-from autotest_lib.client.bin import site_ui_test, test
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, site_ui, utils
+from autotest_lib.client.cros import ui_test
 
-class desktopui_IBusTest(site_ui_test.UITest):
+class desktopui_IBusTest(ui_test.UITest):
     version = 1
     preserve_srcdir = True
 

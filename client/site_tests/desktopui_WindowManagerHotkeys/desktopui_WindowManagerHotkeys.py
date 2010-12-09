@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 import os, random, re, shutil, time
-from autotest_lib.client.bin import site_login, site_ui_test, site_utils, \
-        test, utils
+from autotest_lib.client.bin import site_login, test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui_test
 
-class desktopui_WindowManagerHotkeys(site_ui_test.UITest):
+class desktopui_WindowManagerHotkeys(ui_test.UITest):
     version = 1
 
     def run_once(self):
@@ -28,7 +28,7 @@ class desktopui_WindowManagerHotkeys(site_ui_test.UITest):
         screenshot_dir = '/home/chronos/user/Downloads/Screenshots'
         shutil.rmtree(screenshot_dir, ignore_errors=True)
         ax.send_hotkey('Print')
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             lambda: os.access(screenshot_dir, os.F_OK) and \
                     os.listdir(screenshot_dir),
             error.TestFail(

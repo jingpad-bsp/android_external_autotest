@@ -4,8 +4,8 @@
 
 import copy, logging, os, pprint, re, threading, time, urllib
 
-from autotest_lib.client.bin import site_ui_test
 from autotest_lib.client.common_lib import error, site_httpd, site_ui, utils
+from autotest_lib.client.cros import ui_test
 
 # HTML templates.
 _STATIC_CSS ='''
@@ -277,7 +277,7 @@ class VolumeChangeThread(threading.Thread):
         self.audio.do_set_volume(self.type, self.index, self.end_volume)
 
 
-class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
+class audiovideo_PlaybackRecordSemiAuto(ui_test.UITest):
     version = 1
     preserve_srcdir = True
     crash_handling_enabled = False
@@ -328,7 +328,7 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
         self._testServer = site_httpd.HTTPListener(port=8000,
                                                    docroot=self.bindir)
         self._testServer.run()
-        site_ui_test.UITest.initialize(self, creds)
+        ui_test.UITest.initialize(self, creds)
 
 
     def cleanup(self):
@@ -336,7 +336,7 @@ class audiovideo_PlaybackRecordSemiAuto(site_ui_test.UITest):
             if device['is_hardware']:
                 self.restore_playback_port(device)
         self._testServer.stop()
-        site_ui_test.UITest.cleanup(self)
+        ui_test.UITest.cleanup(self)
 
 
     def run_once(self, timeout=10000):

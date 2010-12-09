@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 import logging, os, re
-from autotest_lib.client.bin import site_login, site_ui_test
+from autotest_lib.client.bin import site_login
 from autotest_lib.client.common_lib import error, site_ui, utils
+from autotest_lib.client.cros import ui_test
 
-class graphics_GLAPICheck(site_ui_test.UITest):
+class graphics_GLAPICheck(ui_test.UITest):
     version = 1
     preserve_srcdir = True
     error_message = ""

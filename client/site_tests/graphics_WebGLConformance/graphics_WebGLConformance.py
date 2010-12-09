@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 import logging, os, shutil
-from autotest_lib.client.bin import site_ui_test, utils
+from autotest_lib.client.bin import ui_test, utils
 from autotest_lib.client.common_lib import error, site_httpd, site_ui
+from autotest_lib.client.cros import ui_test
 
-
-class graphics_WebGLConformance(site_ui_test.UITest):
+class graphics_WebGLConformance(ui_test.UITest):
     version = 1
 
 
@@ -15,7 +15,7 @@ class graphics_WebGLConformance(site_ui_test.UITest):
         self._test_url = 'http://localhost:8000/webgl-conformance-tests.html'
         self._testServer = site_httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        site_ui_test.UITest.initialize(self, creds)
+        ui_test.UITest.initialize(self, creds)
 
 
     def setup(self, tarball='webgl-tests-0.0.1.tar.bz2'):
@@ -37,7 +37,7 @@ class graphics_WebGLConformance(site_ui_test.UITest):
 
     def cleanup(self):
         self._testServer.stop()
-        site_ui_test.UITest.cleanup(self)
+        ui_test.UITest.cleanup(self)
 
 
     def run_once(self, timeout=300):
