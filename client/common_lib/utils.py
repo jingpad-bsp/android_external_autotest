@@ -79,7 +79,7 @@ class BgJob(object):
                                    # Default shell in ChromeOS test image is
                                    # already bash. We're seeing shell-init
                                    # errors if this value is set.
-                                   
+
                                    #executable="/bin/bash",
                                    stdin=stdin)
 
