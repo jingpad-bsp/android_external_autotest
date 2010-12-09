@@ -19,11 +19,14 @@ class login_BadAuthentication(ui_test.UITest):
         handler.wfile.write(self._errorString)
 
 
+    def initialize(self, creds='$default'):
+        super(login_BadAuthentication, self).initialize(creds)
+
+
     def start_authserver(self):
         self._authServer = auth_server.GoogleAuthServer(
             cl_responder=self.__login_denier)
         self._authServer.run()
-
         self.use_local_dns()
 
 
@@ -36,5 +39,4 @@ class login_BadAuthentication(ui_test.UITest):
             pass
         else:
             raise error.TestFail('Should not have logged in')
-
         self._authServer.wait_for_client_login()

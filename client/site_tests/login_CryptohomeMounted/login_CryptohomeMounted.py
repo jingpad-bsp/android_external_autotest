@@ -15,6 +15,10 @@ TEST_FILE = os.path.join(chromeos_constants.CRYPTOHOME_MOUNT_PT, 'hello')
 class login_CryptohomeMounted(ui_test.UITest):
     version = 1
 
+    def initialize(self, creds='$default'):
+        super(login_CryptohomeMounted, self).initialize(creds)
+
+
     def run_once(self):
         site_login.wait_for_cryptohome()
         site_login.attempt_logout()

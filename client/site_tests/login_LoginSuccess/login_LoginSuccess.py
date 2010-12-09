@@ -9,6 +9,10 @@ class login_LoginSuccess(ui_test.UITest):
     version = 1
 
 
+    def initialize(self, creds='$default'):
+        super(login_LoginSuccess, self).initialize(creds)
+
+
     def ensure_login_complete(self):
         """Wait for login to complete, including cookie fetching."""
         self._authServer.wait_for_client_login()

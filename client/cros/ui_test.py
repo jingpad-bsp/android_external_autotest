@@ -132,7 +132,7 @@ class UITest(bin_test.test):
         self.use_local_dns()
 
 
-    def initialize(self, creds='$default'):
+    def initialize(self, creds=None):
         """Overridden from test.initialize() to log out and (maybe) log in.
 
         If self.auto_login is True, this will automatically log in using the
@@ -154,7 +154,7 @@ class UITest(bin_test.test):
             creds: String specifying the credentials for this test case.  Can
                 be a named set of credentials as defined by
                 chromeos_constants.CREDENTIALS, or a 'username:password' pair.
-                Defaults to '$default'.
+                Defaults to None -- browse without signing-in.
 
         """
 
@@ -164,7 +164,8 @@ class UITest(bin_test.test):
         self._log_reader = site_log_reader.LogReader()
         self._log_reader.set_start_by_current()
 
-        self.start_authserver()
+        if creds:
+            self.start_authserver()
 
         if site_login.logged_in():
             site_login.attempt_logout()
@@ -196,6 +197,9 @@ class UITest(bin_test.test):
         For example, c.masone+abc@gmail.com == cMaSone@gmail.com, per
         http://mail.google.com/support/bin/answer.py?hl=en&ctx=mail&answer=10313
         """
+        if not credential:
+          return None
+
         parts = credential.split('@')
         if len(parts) != 2:
           raise error.TestError("Malformed email: " + credential)
@@ -206,6 +210,8 @@ class UITest(bin_test.test):
 
 
     def __resolve_creds(self, creds):
+        if not creds:
+            return [None, None]  # Browse without signing-in.
         if creds[0] == '$':
             if creds not in chromeos_constants.CREDENTIALS:
                 raise error.TestFail('Unknown credentials: %s' % creds)
@@ -221,7 +227,8 @@ class UITest(bin_test.test):
         """Wait for authentication to complete.  If you want a different
         termination condition, override this method.
         """
-        self._authServer.wait_for_client_login()
+        if hasattr(self, '_authServer'):
+            self._authServer.wait_for_client_login()
 
 
     def login(self, username=None, password=None):
@@ -275,9 +282,10 @@ class UITest(bin_test.test):
         subclass does not create these objects, you will want to override this
         method as well.
         """
-        self.revert_dns()
-        self._authServer.stop()
-        self._dnsServer.stop()
+        if hasattr(self, '_authServer'):
+            self.revert_dns()
+            self._authServer.stop()
+            self._dnsServer.stop()
 
 
     def __log_crashed_processes(self, processes):

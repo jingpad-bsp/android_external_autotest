@@ -18,4 +18,4 @@ basic features of OpenGL like vertex arrays, color arrays, and lighting. It
 also uses objects generated using procedural algorithms.
 """
 
-job.run_test('graphics_SanAngeles', creds='$backdoor')
+job.run_test('graphics_SanAngeles', creds=None)

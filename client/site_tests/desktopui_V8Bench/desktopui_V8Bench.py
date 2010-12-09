@@ -10,7 +10,7 @@ from autotest_lib.client.cros import ui_test
 class desktopui_V8Bench(ui_test.UITest):
     version = 1
 
-    def initialize(self, creds = '$default'):
+    def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/run.html'
         self._testServer = site_httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()

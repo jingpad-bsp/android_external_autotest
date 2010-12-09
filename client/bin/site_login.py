@@ -146,15 +146,18 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     # escape out of any login screen menus (e.g., the network selection menu)
     ax.send_hotkey("Escape")
     time.sleep(0.5)
-    # focus username
-    ax.send_hotkey("Alt+U")
-    ax.send_text(username)
-    # TODO(rginda): remove Tab after http://codereview.chromium.org/1390003
-    ax.send_hotkey("Tab")
-    # focus password
-    ax.send_hotkey("Alt+P")
-    ax.send_text(password)
-    ax.send_hotkey("Return")
+    if (username):
+        # focus username
+        ax.send_hotkey("Alt+U")
+        ax.send_text(username)
+        # TODO(rginda): remove Tab after http://codereview.chromium.org/1390003
+        ax.send_hotkey("Tab")
+        # focus password
+        ax.send_hotkey("Alt+P")
+        ax.send_text(password)
+        ax.send_hotkey("Return")
+    else:
+        ax.send_hotkey("Alt+B")  # Browse without signing-in
 
     wait_for_condition(condition=logged_in,
                        timeout_msg='Timed out waiting for login',

@@ -26,6 +26,10 @@ class desktopui_ChromeFirstRender(ui_test.UITest):
                         and os.path.getsize(target_file))
 
 
+    def initialize(self, creds='$default'):
+        super(desktopui_ChromeFirstRender, self).initialize(creds)
+
+
     def run_once(self):
         try:
             utils.poll_for_condition(
