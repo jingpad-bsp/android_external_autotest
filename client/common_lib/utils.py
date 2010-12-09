@@ -75,7 +75,12 @@ class BgJob(object):
         self.sp = subprocess.Popen(command, stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE,
                                    preexec_fn=self._reset_sigpipe, shell=True,
-                                   executable="/bin/bash",
+
+                                   # Default shell in ChromeOS test image is
+                                   # already bash. We're seeing shell-init
+                                   # errors if this value is set.
+                                   
+                                   #executable="/bin/bash",
                                    stdin=stdin)
 
 
