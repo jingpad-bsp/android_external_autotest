@@ -58,8 +58,8 @@ _LABEL_EN_SIZE = (170, 35)
 _LABEL_ZW_SIZE = (70, 35)
 _LABEL_EN_FONT = pango.FontDescription('courier new extra-condensed 16')
 _LABEL_ZW_FONT = pango.FontDescription('normal 12')
-_LABEL_T_SIZE = (30, 35)
-_LABEL_T_FONT = pango.FontDescription('courier new italic ultra-condensed 10')
+_LABEL_T_SIZE = (40, 35)
+_LABEL_T_FONT = pango.FontDescription('arial ultra-condensed 10')
 _LABEL_UNTESTED_FG = gtk.gdk.color_parse('grey40')
 _LABEL_TROUGH_COLOR = gtk.gdk.color_parse('grey20')
 _LABEL_STATUS_SIZE = (140, 30)
@@ -101,7 +101,7 @@ def handle_key_release_event(_, event):
 
 class TestLabelBox(gtk.EventBox):
 
-    def __init__(self, test):
+    def __init__(self, test, show_shortcut=False):
         gtk.EventBox.__init__(self)
         self.modify_bg(gtk.STATE_NORMAL, ful.LABEL_COLORS[ful.UNTESTED])
 
@@ -111,9 +111,21 @@ class TestLabelBox(gtk.EventBox):
         label_zw = ful.make_label(test.label_zw, size=_LABEL_ZW_SIZE,
                                   font=_LABEL_ZW_FONT, alignment=(0.5, 0.5),
                                   fg=_LABEL_UNTESTED_FG)
-        label_t = ful.make_label('C-' + test.kbd_shortcut, size=_LABEL_T_SIZE,
+        label_t = ful.make_label('C-' + test.kbd_shortcut.upper(),
+                                 size=_LABEL_T_SIZE,
                                  font=_LABEL_T_FONT, alignment=(0.5, 0.5),
                                  fg=ful.BLACK)
+
+        # build a better label_en with shortcuts
+        index_hotkey = test.label_en.upper().find(test.kbd_shortcut.upper())
+        if show_shortcut and index_hotkey >= 0:
+            attrs = label_en.get_attributes() or pango.AttrList()
+            attrs.insert(pango.AttrUnderline(
+                    pango.UNDERLINE_LOW, index_hotkey, index_hotkey + 1))
+            attrs.insert(pango.AttrWeight(
+                    pango.WEIGHT_BOLD, index_hotkey, index_hotkey + 1))
+            label_en.set_attributes(attrs)
+
         hbox = gtk.HBox()
         hbox.pack_start(label_en, False, False)
         hbox.pack_start(label_zw, False, False)
@@ -316,7 +328,7 @@ def main(test_list, status_file_path, control_pid):
     ui_state = UiState(test_widget_box, test_db.get_automated_sequences())
 
     for test in test_list:
-        label_box = TestLabelBox(test)
+        label_box = TestLabelBox(test, True)
         ui_state.set_label_box(test, label_box)
         label_trough.pack_start(label_box, False, False)
         label_trough.pack_start(ful.make_hsep(), False, False)
