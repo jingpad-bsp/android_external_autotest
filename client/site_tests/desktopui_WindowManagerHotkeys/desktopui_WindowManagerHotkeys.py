@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import os, random, re, shutil, time
-from autotest_lib.client.bin import site_login, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.cros import login, ui_test
 
 class desktopui_WindowManagerHotkeys(ui_test.UITest):
     version = 1
@@ -13,7 +13,7 @@ class desktopui_WindowManagerHotkeys(ui_test.UITest):
     def run_once(self):
         # Make sure that we don't have the initial browser window popping up in
         # the middle of the test.
-        site_login.wait_for_initial_chrome_window()
+        login.wait_for_initial_chrome_window()
 
         ax = self.get_autox()
 

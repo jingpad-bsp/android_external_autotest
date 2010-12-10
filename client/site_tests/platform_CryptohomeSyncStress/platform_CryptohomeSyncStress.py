@@ -3,8 +3,9 @@
 # found in the LICENSE file.
 
 import dbus, string
-from autotest_lib.client.bin import site_login, test
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import login
 
 class platform_CryptohomeSyncStress(test.test):
     version = 1
@@ -12,7 +13,7 @@ class platform_CryptohomeSyncStress(test.test):
     def run_once(self, username, password):
         # log in. don't use UITest because it uses its own auth and
         # DNS servers, and we need to do real login and chrome sync
-        site_login.attempt_login(username, password)
+        login.attempt_login(username, password)
 
         # make sure cryptohome is mounted
         bus = dbus.SystemBus()

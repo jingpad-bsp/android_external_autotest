@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil, time
-from autotest_lib.client.bin import site_utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest, test
 
@@ -20,7 +20,7 @@ class network_3GLoadFirmware(test.test):
 
 	def wait_modem(self):
 		timeout = 15
-		site_utils.poll_for_condition(
+		utils.poll_for_condition(
 		    lambda: self.modem_isup(),
 		    error.TestError('Timed out waiting for modem'),
 		    timeout=timeout)

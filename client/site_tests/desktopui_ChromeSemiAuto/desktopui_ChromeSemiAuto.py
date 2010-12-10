@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, utils
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_httpd, site_ui, utils
-
+import logging
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import httpd, ui
 
 class desktopui_ChromeSemiAuto(test.test):
     version = 1
@@ -13,7 +13,7 @@ class desktopui_ChromeSemiAuto(test.test):
     def initialize(self):
         self._test_url = 'http://localhost:8000/interaction.html'
         # TODO(seano): Use ephemeral port.
-        self._testServer = site_httpd.HTTPListener(8000, docroot=self.bindir)
+        self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
 
 
@@ -24,7 +24,7 @@ class desktopui_ChromeSemiAuto(test.test):
     def run_once(self, timeout=60):
         latch = self._testServer.add_wait_url('/interaction/test')
 
-        session = site_ui.ChromeSession(self._test_url)
+        session = ui.ChromeSession(self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
         session.close()

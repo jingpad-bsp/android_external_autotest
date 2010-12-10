@@ -4,8 +4,9 @@
 
 import copy, logging, os, pprint, re, threading, time, urllib
 
-from autotest_lib.client.common_lib import error, site_httpd, site_ui, utils
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import httpd, ui, ui_test
 
 # HTML templates.
 _STATIC_CSS ='''
@@ -325,8 +326,7 @@ class audiovideo_PlaybackRecordSemiAuto(ui_test.UITest):
 
         # Run test server.
         self._server_root = 'http://localhost:8000/'
-        self._testServer = site_httpd.HTTPListener(port=8000,
-                                                   docroot=self.bindir)
+        self._testServer = httpd.HTTPListener(port=8000, docroot=self.bindir)
         self._testServer.run()
         ui_test.UITest.initialize(self, creds)
 
@@ -358,7 +358,7 @@ class audiovideo_PlaybackRecordSemiAuto(ui_test.UITest):
 
         latch = self._testServer.add_wait_url('/done')
         try:
-            session = site_ui.ChromeSession(
+            session = ui.ChromeSession(
                     self._server_root + _CONTROL_ENDPOINT)
             logging.debug('Chrome session started.')
 

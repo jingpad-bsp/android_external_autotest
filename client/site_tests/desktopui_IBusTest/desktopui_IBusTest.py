@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, re, string, time
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_ui, utils
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui, ui_test
 
 class desktopui_IBusTest(ui_test.UITest):
     version = 1
@@ -18,7 +18,7 @@ class desktopui_IBusTest(ui_test.UITest):
 
 
     def run_ibusclient(self, options):
-        cmd = site_ui.xcommand_as('%s %s' % (self.exefile, options), 'chronos')
+        cmd = ui.xcommand_as('%s %s' % (self.exefile, options), 'chronos')
         return utils.system_output(cmd, retain_output=True)
 
 

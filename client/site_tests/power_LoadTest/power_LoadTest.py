@@ -3,10 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, shutil, sys, time
-from autotest_lib.client.bin import site_backchannel, site_login
-from autotest_lib.client.common_lib import error, site_httpd, \
-                            site_power_status, site_ui, utils
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.bin import site_backchannel, utils
+from autotest_lib.client.common_lib import error, site_power_status
+from autotest_lib.client.cros import httpd, login, ui, ui_test
 
 sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
 import flimflam
@@ -128,7 +127,7 @@ class power_LoadTest(ui_test.UITest):
 
         # setup a HTTP Server to listen for status updates from the power
         # test extension
-        self._testServer = site_httpd.HTTPListener(8001, docroot=self.bindir)
+        self._testServer = httpd.HTTPListener(8001, docroot=self.bindir)
         self._testServer.run()
 
         # initialize various interesting power related stats
@@ -239,8 +238,8 @@ class power_LoadTest(ui_test.UITest):
                 os.system('rm -f %s' % jsonfile)
         # re-enable powerd
         os.system('start powerd')
-        if site_login.logged_in():
-            site_login.attempt_logout()
+        if login.logged_in():
+            login.attempt_logout()
         # cleanup backchannel interface
         if self._force_wifi:
             site_backchannel.teardown()
@@ -309,13 +308,13 @@ class power_LoadTest(ui_test.UITest):
     def _do_xset(self):
         XSET = 'LD_LIBRARY_PATH=/usr/local/lib xset'
         # Disable X screen saver
-        site_ui.xsystem('%s s 0 0' % XSET)
+        ui.xsystem('%s s 0 0' % XSET)
         # Disable DPMS Standby/Suspend/Off
-        site_ui.xsystem('%s dpms 0 0 0' % XSET)
+        ui.xsystem('%s dpms 0 0 0' % XSET)
         # Force monitor on
-        site_ui.xsystem('%s dpms force on' % XSET)
+        ui.xsystem('%s dpms force on' % XSET)
         # Save off X settings
-        site_ui.xsystem('%s q' % XSET)
+        ui.xsystem('%s q' % XSET)
 
 
     def _set_backlight_level(self):

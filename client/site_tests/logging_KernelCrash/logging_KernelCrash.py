@@ -4,8 +4,8 @@
 
 import logging, os, re
 from autotest_lib.client.bin import site_crash_test, site_log_reader, \
-     site_utils, test
-from autotest_lib.client.common_lib import error, utils
+    test, utils
+from autotest_lib.client.common_lib import error
 
 
 _KCRASH_FILE = '/sys/kernel/debug/preserved/kcrash'

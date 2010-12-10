@@ -2,9 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import site_login
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import auth_server, ui_test
+from autotest_lib.client.cros import auth_server, login, ui_test
 
 class login_BadAuthentication(ui_test.UITest):
     version = 1
@@ -35,7 +34,7 @@ class login_BadAuthentication(ui_test.UITest):
         # TODO(cmasone): find better way to determine login has failed.
         try:
             self.login(self.username, self.password)
-        except site_login.TimeoutError:
+        except login.TimeoutError:
             pass
         else:
             raise error.TestFail('Should not have logged in')

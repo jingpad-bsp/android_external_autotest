@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, shutil
-from autotest_lib.client.bin import ui_test, utils
-from autotest_lib.client.common_lib import error, site_httpd, site_ui
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import httpd, ui, ui_test
 
 class graphics_WebGLConformance(ui_test.UITest):
     version = 1
@@ -13,7 +13,7 @@ class graphics_WebGLConformance(ui_test.UITest):
 
     def initialize(self, creds = '$default'):
         self._test_url = 'http://localhost:8000/webgl-conformance-tests.html'
-        self._testServer = site_httpd.HTTPListener(8000, docroot=self.srcdir)
+        self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
         ui_test.UITest.initialize(self, creds)
 
@@ -42,7 +42,7 @@ class graphics_WebGLConformance(ui_test.UITest):
 
     def run_once(self, timeout=300):
         latch = self._testServer.add_wait_url('/WebGL/results')
-        session = site_ui.ChromeSession(' --enable-webgl %s' % self._test_url)
+        session = ui.ChromeSession(' --enable-webgl %s' % self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
         session.close()

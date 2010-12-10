@@ -4,9 +4,9 @@
 
 import logging, os
 
-from autotest_lib.client.bin import site_login
-from autotest_lib.client.common_lib import error, site_ui, utils
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui, ui_test
 
 
 def html_button(label, onclick=None):
@@ -52,7 +52,7 @@ class graphics_TearTest(ui_test.UITest):
                     "see two vertical lines scrolling horizontally. The test " +
                     "passes if lines stay straight with no tearing.<br/>" +
                     html_button('Start'))
-            dialog = site_ui.Dialog(question=TEMPLATE.format(header, tests),
+            dialog = ui.Dialog(question=TEMPLATE.format(header, tests),
                                     choices=[])
             result = dialog.get_result()
 
@@ -62,11 +62,11 @@ class graphics_TearTest(ui_test.UITest):
             for test in tests:
                 cmd = test['cmd']
                 logging.info("command launched: %s" % cmd)
-                ret = utils.system(site_ui.xcommand(cmd), ignore_status=True)
+                ret = utils.system(ui.xcommand(cmd), ignore_status=True)
 
                 if ret == 0:
                     test['result'] = html_button('Pass') + html_button('Fail')
-                    dialog = site_ui.Dialog(
+                    dialog = ui.Dialog(
                         question=TEMPLATE.format(header, tests), choices=[])
                     # Store user's response if the testcase passed or failed.
                     result = dialog.get_result()
@@ -80,8 +80,8 @@ class graphics_TearTest(ui_test.UITest):
             header = ("Test %s.<br/>" % ("passed" if passed else "failed") +
                       html_button('Done') + html_button('Restart'))
             # Show the summary screen.
-            dialog = site_ui.Dialog(question=TEMPLATE.format(header, tests),
-                                    choices=[])
+            dialog = ui.Dialog(question=TEMPLATE.format(header, tests),
+                               choices=[])
             result = dialog.get_result()
 
             # If user chose 'Restart', run the whole thing again.

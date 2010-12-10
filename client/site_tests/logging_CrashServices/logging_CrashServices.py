@@ -4,9 +4,9 @@
 
 import logging, os, os.path, signal, time
 from autotest_lib.client.bin import site_crash_test
-from autotest_lib.client.bin import site_log_reader, site_login, site_utils
-from autotest_lib.client.common_lib import utils, error
-from autotest_lib.client.cros import constants as chromeos_constants
+from autotest_lib.client.bin import site_log_reader, utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import constants as chromeos_constants, login 
 
 class logging_CrashServices(site_crash_test.CrashTest):
     version = 1
@@ -71,10 +71,10 @@ class logging_CrashServices(site_crash_test.CrashTest):
             raise error.TestFail("Failed to kill process %s" % process_path)
 
         # wait for .core and .dmp files to appear in a crash directory
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             condition=lambda: self._find_core(),
             desc="Waiting for .core for %s" % process_path)
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             condition=lambda: self._find_dmp(),
             desc="Waiting for .dmp for %s" % process_path)
 
@@ -105,7 +105,7 @@ class logging_CrashServices(site_crash_test.CrashTest):
 
         # log in
         (username, password) = chromeos_constants.CREDENTIALS["$default"]
-        site_login.attempt_login(username, password)
+        login.attempt_login(username, password)
 
         # test processes
         for process_path in self.process_list:
@@ -115,6 +115,5 @@ class logging_CrashServices(site_crash_test.CrashTest):
 
         # killing session manager logs out, so this will probably fail
         try:
-            site_login.attempt_logout()
-        except site_login.UnexpectedCondition:
+            login.attempt_logout()
             pass

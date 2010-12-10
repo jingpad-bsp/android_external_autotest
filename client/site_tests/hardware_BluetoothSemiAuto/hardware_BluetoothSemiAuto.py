@@ -3,8 +3,9 @@
 # found in the LICENSE file.
 
 import dbus, dbus.mainloop.glib, dbus.service, gobject, logging, re
-from autotest_lib.client.common_lib import error, site_ui, utils
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui, ui_test
 
 
 _QUESTION_START = '''
@@ -115,8 +116,8 @@ class hardware_BluetoothSemiAuto(ui_test.UITest):
             # enough for the process to be ready to accept user input.
             question = 'Enter pin code "0000" on the BT keyboard '
             question += 'at least 5 secs after this page closes'
-            dialog = site_ui.Dialog(question=question, choices=[],
-                                    checkboxes=[], textinputs=[], timeout=5)
+            dialog = ui.Dialog(question=question, choices=[],
+                               checkboxes=[], textinputs=[], timeout=5)
             dialog.get_entries()
         self.mainloop.run()
         logging.debug('... mainloop ended.')
@@ -159,10 +160,8 @@ class hardware_BluetoothSemiAuto(ui_test.UITest):
                     question += '</tr>'
             question += '</table><br>'
 
-            dialog = site_ui.Dialog(question=question,
-                                    choices=['Done', 'Rescan'],
-                                    checkboxes=checkboxes,
-                                    textinputs=textinputs)
+            dialog = ui.Dialog(question=question, choices=['Done', 'Rescan'],
+                               checkboxes=checkboxes, textinputs=textinputs)
             form_entries = dialog.get_entries()
             if not form_entries:
                 raise error.TestFail('Timeout')

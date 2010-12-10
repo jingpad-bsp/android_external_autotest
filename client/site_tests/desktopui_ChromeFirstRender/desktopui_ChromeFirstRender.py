@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, re, time
-from autotest_lib.client.bin import site_login, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.cros import login, ui_test
 
 class desktopui_ChromeFirstRender(ui_test.UITest):
     version = 1
@@ -34,10 +34,10 @@ class desktopui_ChromeFirstRender(ui_test.UITest):
         try:
             utils.poll_for_condition(
                 self.__check_logfile(self._LOGIN_SUCCESS_FILE),
-                site_login.TimeoutError('Timeout waiting for initial login'))
+                login.TimeoutError('Timeout waiting for initial login'))
             utils.poll_for_condition(
                 self.__check_logfile(self._FIRST_RENDER_FILE),
-                site_login.TimeoutError('Timeout waiting for initial render'),
+                login.TimeoutError('Timeout waiting for initial render'),
                 timeout=60)
 
             start_time = self.__parse_uptime(self._LOGIN_SUCCESS_FILE)

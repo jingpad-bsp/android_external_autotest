@@ -4,10 +4,9 @@
 
 
 import os, subprocess, time, re
-from autotest_lib.client.bin import site_login
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error, site_ui
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import login, ui_test
 
 class security_RendererSandbox(ui_test.UITest):
     version = 1
@@ -46,7 +45,7 @@ class security_RendererSandbox(ui_test.UITest):
 
     def run_once(self, time_to_wait=20):
         # open a browser window
-        site_login.wait_for_initial_chrome_window()
+        login.wait_for_initial_chrome_window()
 
         # wait till the page is loaded and poll for the renderer pid
         # if renderer pid is found, it is stored in self.render_pid

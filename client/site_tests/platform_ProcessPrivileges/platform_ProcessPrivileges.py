@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.client.bin import site_login, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import ui_test
 

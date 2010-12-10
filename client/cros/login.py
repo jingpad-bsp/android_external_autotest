@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import errno, logging, os, re, utils, signal, subprocess, time
-from autotest_lib.client.bin import site_cryptohome
-from autotest_lib.client.bin import site_utils, test, site_log_reader
-from autotest_lib.client.common_lib import error, site_ui
-from autotest_lib.client.cros import constants as chromeos_constants
+import errno, logging, os, re, signal, subprocess, time
+import common
+import constants as chromeos_constants, cryptohome, ui
+from autotest_lib.client.bin import test, utils, site_log_reader
+from autotest_lib.client.common_lib import error
+
 
 _DEFAULT_TIMEOUT = 30
 
@@ -57,7 +58,7 @@ def __session_manager_restarted(oldpid):
     newpid = __get_session_manager_pid()
     if newpid and newpid != oldpid:
         try:
-            ax = site_ui.get_autox()
+            ax = ui.get_autox()
         except autox.Xlib.error.DisplayConnectionError:
             return False
 
@@ -101,7 +102,7 @@ def process_crashed(process, log_reader):
 def wait_for_condition(condition, timeout_msg, timeout, process, log_reader,
                        crash_msg):
     try:
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             condition,
             TimeoutError(timeout_msg),
             timeout=timeout)
@@ -140,7 +141,7 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     log_reader = site_log_reader.LogReader()
     log_reader.set_start_by_current()
 
-    ax = site_ui.get_autox()
+    ax = ui.get_autox()
     # navigate to login screen
     ax.send_hotkey("Ctrl+Alt+L")
     # escape out of any login screen menus (e.g., the network selection menu)
@@ -235,7 +236,7 @@ def wait_for_cryptohome(timeout=_DEFAULT_TIMEOUT):
     log_reader = site_log_reader.LogReader()
     log_reader.set_start_by_current()
     wait_for_condition(
-        condition=lambda: site_cryptohome.is_mounted(),
+        condition=lambda: cryptohome.is_mounted(),
         timeout_msg='Timed out waiting for cryptohome to be mounted',
         timeout=timeout,
         process='cryptohomed',
@@ -275,7 +276,7 @@ def wait_for_window_manager(timeout=_DEFAULT_TIMEOUT):
     Raises:
         TimeoutError: window manager didn't start before timeout
     """
-    site_utils.poll_for_condition(
+    utils.poll_for_condition(
         lambda: not os.system('pgrep ^%s$' % chromeos_constants.WINDOW_MANAGER),
         TimeoutError('Timed out waiting for window manager to start'),
         timeout=timeout)
@@ -368,7 +369,7 @@ def refresh_login_screen(timeout=_DEFAULT_TIMEOUT):
 
     # Restart the UI.
     nuke_login_manager()
-    site_utils.poll_for_condition(
+    utils.poll_for_condition(
         lambda: __session_manager_restarted(oldpid),
         TimeoutError('Timed out waiting for logout'),
         timeout)

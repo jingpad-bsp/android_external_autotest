@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import shutil, utils
-from autotest_lib.client.bin import site_login
 from autotest_lib.client.cros import auth_server, ui_test
 
 class login_Backdoor(ui_test.UITest):

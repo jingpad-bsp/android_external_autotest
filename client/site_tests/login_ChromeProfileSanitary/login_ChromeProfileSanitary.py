@@ -3,11 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, stat, time, utils
-from autotest_lib.client.bin import site_cryptohome
-from autotest_lib.client.bin import site_login
-from autotest_lib.client.common_lib import error, site_httpd, site_ui
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants as chromeos_constants
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.cros import login, httpd, ui, ui_test
 
 def respond_with_cookies(handler, url_args):
     """Responds with a Set-Cookie header to any GET request, and redirects
@@ -39,7 +37,7 @@ class login_ChromeProfileSanitary(ui_test.UITest):
         path = '/set_cookie'
         self._wait_path = '/test_over'
         self._test_url = spec + path + '?continue=' + spec + self._wait_path
-        self._testServer = site_httpd.HTTPListener(8000, docroot=self.srcdir)
+        self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.add_url_handler('/set_cookie', respond_with_cookies)
         self._testServer.run()
 
@@ -57,20 +55,19 @@ class login_ChromeProfileSanitary(ui_test.UITest):
         cookies_mtime = cookies_info[stat.ST_MTIME]
 
         # Wait for chrome to show, then "crash" it.
-        site_login.wait_for_initial_chrome_window()
-        site_login.nuke_process_by_name(chromeos_constants.BROWSER,
+        login.wait_for_initial_chrome_window()
+        login.nuke_process_by_name(chromeos_constants.BROWSER,
                                         with_prejudice = True)
-        site_login.refresh_window_manager()
-        site_login.wait_for_browser()
-        site_login.wait_for_initial_chrome_window()
+        login.refresh_window_manager()
+        login.wait_for_browser()
+        login.wait_for_initial_chrome_window()
 
         # Navigate to site that leaves cookies.
         latch = self._testServer.add_wait_url(self._wait_path)
         cookie_fetch_args = ("--user-data-dir=" +
                              chromeos_constants.USER_DATA_DIR + ' ' +
                              self._test_url)
-        session = site_ui.ChromeSession(args=cookie_fetch_args,
-                                        clean_state=False)
+        session = ui.ChromeSession(args=cookie_fetch_args, clean_state=False)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
         if not latch.is_set():

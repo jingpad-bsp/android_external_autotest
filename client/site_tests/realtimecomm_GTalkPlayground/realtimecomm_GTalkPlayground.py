@@ -5,7 +5,8 @@
 import os, re, shutil, sys, time
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error, site_ui
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui
 
 WARMUP_TIME = 60
 SLEEP_DURATION = 260
@@ -89,14 +90,14 @@ class realtimecomm_GTalkPlayground(test.test):
         #     --no-first-run %s\' &' % playground_url)
 
         # This seems to be broken also.
-        # Using site_ui.ChromeSession(local_page) doesn't work for local folder.
+        # Using ui.ChromeSession(local_page) doesn't work for local folder.
         # However it works fine if login manually and open the page.
         # So, might be a bug in autotest.
-        # session =  site_ui.ChromeSession(playground_url)
+        # session =  ui.ChromeSession(playground_url)
 
         # As a workaround, for now, have to use the remote server.
         # TODO(zhurunz) Find a better way to do that.
-        session = site_ui.ChromeSession('http://www.corp.google.com/~zhurunz/no_crawl/VideoPlayground/buzz/javascript/media/examples/videoplayground.html?callType=v')
+        session = ui.ChromeSession('http://www.corp.google.com/~zhurunz/no_crawl/VideoPlayground/buzz/javascript/media/examples/videoplayground.html?callType=v')
 
         # Collect ctime,stime for GoogleTalkPlugin
         time.sleep(WARMUP_TIME)

@@ -3,9 +3,8 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.client.bin import site_login
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.cros import login, ui_test
 
 class login_RemoteLogin(ui_test.UITest):
     version = 1
@@ -16,7 +15,7 @@ class login_RemoteLogin(ui_test.UITest):
 
 
     def ensure_login_complete(self):
-        if not site_login.logged_in():
+        if not login.logged_in():
             raise error.TestFail("Did not log in.")
 
 

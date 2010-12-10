@@ -7,9 +7,9 @@ import logging
 import os.path
 import subprocess
 
-from autotest_lib.client.bin import site_login, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants as chromeos_constants
+from autotest_lib.client.cros import constants as chromeos_constants, login
 
 class security_RestartJob(test.test):
     version = 1
@@ -24,7 +24,7 @@ class security_RestartJob(test.test):
         Verifies that RestartJob cannot be abused to exec
         arbitrary processes.
         """
-        site_login.wait_for_browser()
+        login.wait_for_browser()
         bus = dbus.SystemBus()
         proxy = bus.get_object('org.chromium.SessionManager',
                                '/org/chromium/SessionManager')
@@ -47,7 +47,7 @@ class security_RestartJob(test.test):
 
         # Clean up, before we throw our TestFail, since this test
         # killed chrome and mangled its argv...
-        site_login.nuke_login_manager()
+        login.nuke_login_manager()
 
         if testfail:
             raise error.TestFail('RestartJob regression, see cros bug 7018')

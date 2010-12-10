@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time, utils
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_power_status, site_ui, \
-                                           utils
+import logging, os, time
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error, site_power_status
+from autotest_lib.client.cros import ui
 
 class power_Backlight(test.test):
     version = 1
@@ -20,9 +20,9 @@ class power_Backlight(test.test):
         # and fixes all this for us.
         # TODO(davidjames): Power manager should support this feature directly
         time.sleep(5)
-        site_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset s off')
-        site_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset dpms 0 0 0')
-        site_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset -dpms')
+        ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset s off')
+        ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset dpms 0 0 0')
+        ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset -dpms')
 
         status = site_power_status.get_status()
         if status.linepower[0].online:

@@ -9,8 +9,7 @@
 import logging, os, sys, threading, time, unittest, urllib
 
 import common
-from autotest_lib.client.cros import auth_server
-from autotest_lib.client.cros import constants as chromeos_constants
+import auth_server, constants as chromeos_constants
 from auth_server import GoogleAuthServer
 
 class test_auth_server(unittest.TestCase):
@@ -18,7 +17,7 @@ class test_auth_server(unittest.TestCase):
         print "starting"
         self._ssl_port=50030
         creds_path = (os.path.dirname(os.path.realpath( __file__)) +
-                      '/site_httpd_unittest_server')
+                      '/httpd_unittest_server')
 
         self._test_server = GoogleAuthServer(port=self._ssl_port,
                                              cert_path=(creds_path+'.pem'),

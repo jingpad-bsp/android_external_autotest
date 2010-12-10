@@ -3,12 +3,11 @@
 # found in the LICENSE file.
 
 import dbus, logging, os, re, shutil, socket, sys, time
-from autotest_lib.client.bin import site_cryptohome
-from autotest_lib.client.bin import site_login, site_utils, test as bin_test
-from autotest_lib.client.bin import site_log_reader
-from autotest_lib.client.common_lib import error, site_ui
-from autotest_lib.client.cros import auth_server, dns_server
-from autotest_lib.client.cros import constants as chromeos_constants
+import common
+import auth_server, constants as chromeos_constants, cryptohome, dns_server
+import login, ui
+from autotest_lib.client.bin import test, site_log_reader, utils
+from autotest_lib.client.common_lib import error
 from dbus.mainloop.glib import DBusGMainLoop
 
 sys.path.append(os.environ.get("SYSROOT", "/usr/local") +
@@ -16,7 +15,7 @@ sys.path.append(os.environ.get("SYSROOT", "/usr/local") +
 import flimflam
 
 
-class UITest(bin_test.test):
+class UITest(test.test):
     """Base class for tests that drive some portion of the user interface.
 
     By default subclasses will use the default remote credentials before
@@ -46,12 +45,12 @@ class UITest(bin_test.test):
 
     def __init__(self, job, bindir, outputdir):
         self._dns = {}  # for saving/restoring dns entries
-        bin_test.test.__init__(self, job, bindir, outputdir)
+        test.test.__init__(self, job, bindir, outputdir)
 
     def xsystem(self, cmd, timeout=None, ignore_status=False):
-        """Convenience wrapper around site_ui.xsystem, to save you an import.
+        """Convenience wrapper around ui.xsystem, to save you an import.
         """
-        return site_ui.xsystem(cmd, timeout, ignore_status)
+        return ui.xsystem(cmd, timeout, ignore_status)
 
     def listen_to_signal(self, callback, signal, interface):
         """Listens to the given |signal| that is sent to power manager.
@@ -91,9 +90,9 @@ class UITest(bin_test.test):
                 ipconfig.SetProperty('NameServers', '127.0.0.1')
                 logging.debug("Using local DNS for "  + interface)
 
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
-            site_login.TimeoutError('Timed out waiting for DNS changes.'),
+            login.TimeoutError('Timed out waiting for DNS changes.'),
             10)
 
 
@@ -113,11 +112,11 @@ class UITest(bin_test.test):
                 else:
                     logging.debug("No stored DNS for " + interface)
 
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com',
                                            '127.0.0.1',
                                            expected=False),
-            site_login.TimeoutError('Timed out waiting to revert DNS.'),
+            login.TimeoutError('Timed out waiting to revert DNS.'),
             10)
 
 
@@ -167,14 +166,14 @@ class UITest(bin_test.test):
         if creds:
             self.start_authserver()
 
-        if site_login.logged_in():
-            site_login.attempt_logout()
+        if login.logged_in():
+            login.attempt_logout()
 
         (self.username, self.password) = self.__resolve_creds(creds)
         # Ensure there's no stale cryptohome from previous tests.
         try:
-            site_cryptohome.remove_vault(self.username)
-        except site_cryptohome.ChromiumOSError, error:
+            cryptohome.remove_vault(self.username)
+        except cryptohome.ChromiumOSError, error:
             logging.error(error)
         # Ensure there's no stale owner state from previous tests.
         try:
@@ -182,7 +181,7 @@ class UITest(bin_test.test):
             os.unlink(chromeos_constants.SIGNED_PREFERENCES_FILE)
         except (IOError, OSError) as error:
             logging.info(error)
-        site_login.refresh_login_screen()
+        login.refresh_login_screen()
 
         if self.auto_login:
             self.login(self.username, self.password)
@@ -247,14 +246,14 @@ class UITest(bin_test.test):
         Forces a log out if the test is already logged in.
 
         Raises:
-            Exceptions raised by site_login.attempt_login
+            Exceptions raised by login.attempt_login
         """
-        if site_login.logged_in():
-            site_login.attempt_logout(timeout=site_login._DEFAULT_TIMEOUT)
-            site_login.refresh_login_screen()
+        if login.logged_in():
+            login.attempt_logout(timeout=login._DEFAULT_TIMEOUT)
+            login.refresh_login_screen()
 
-        site_login.attempt_login(username or self.username,
-                                 password or self.password)
+        login.attempt_login(username or self.username,
+                            password or self.password)
         self.ensure_login_complete()
 
 
@@ -264,7 +263,7 @@ class UITest(bin_test.test):
         This method is called from UITest.cleanup(), so you won't need it
         unless your testcase needs to test functionality while logged out.
         """
-        site_login.attempt_logout()
+        login.attempt_logout()
 
 
     def get_autox(self):
@@ -274,7 +273,7 @@ class UITest(bin_test.test):
         object, but beware that logging out will invalidate any existing
         sessions.
         """
-        return site_ui.get_autox()
+        return ui.get_autox()
 
 
     def stop_authserver(self):
@@ -314,7 +313,7 @@ class UITest(bin_test.test):
         except (IOError, OSError) as error:
             logging.error(error)
 
-        if site_login.logged_in():
+        if login.logged_in():
             try:
                 shutil.copy(chromeos_constants.CRYPTOHOME_MOUNT_PT+'/chrome',
                             self.resultsdir+'/chrome_postlogin_log')

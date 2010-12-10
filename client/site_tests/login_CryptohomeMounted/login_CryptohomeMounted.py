@@ -3,9 +3,8 @@
 # found in the LICENSE file.
 
 import os
-from autotest_lib.client.bin import site_cryptohome, site_login
 from autotest_lib.client.cros import constants as chromeos_constants
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.cros import cryptohome, login, ui_test
 
 TEST_USER = 'cryptohome_test@chromium.org'
 TEST_PASS = 'testme'
@@ -20,11 +19,11 @@ class login_CryptohomeMounted(ui_test.UITest):
 
 
     def run_once(self):
-        site_login.wait_for_cryptohome()
-        site_login.attempt_logout()
-        site_cryptohome.remove_vault(TEST_USER)
-        site_cryptohome.mount_vault(TEST_USER, TEST_PASS, create=True)
+        login.wait_for_cryptohome()
+        login.attempt_logout()
+        cryptohome.remove_vault(TEST_USER)
+        cryptohome.mount_vault(TEST_USER, TEST_PASS, create=True)
         open(TEST_FILE, 'w').close()
         self.login()
-        site_login.wait_for_cryptohome()
+        login.wait_for_cryptohome()
         self.assert_(not os.path.exists(TEST_FILE))

@@ -7,7 +7,8 @@
 """HTTPlistener unittest."""
 
 import logging, os, sys, threading, urllib
-from site_httpd import HTTPListener, SecureHTTPListener
+import common
+from httpd import HTTPListener, SecureHTTPListener
 
 GET_TEST_PATH = '/get_test'
 
@@ -62,7 +63,7 @@ def test():
         return err
 
     creds_path = (os.path.dirname(os.path.realpath( __file__)) +
-                  '/site_httpd_unittest_server')
+                  '/httpd_unittest_server')
     ssl_port=50000
     test_server = SecureHTTPListener(port=ssl_port,
                                      cert_path=(creds_path+'.pem'),

@@ -3,9 +3,10 @@
 # found in the LICENSE file.
 
 import glob, logging, os, re, stat, time
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_ui, utils
 
 class audiovideo_V4L2(test.test):
     version = 1
@@ -139,7 +140,7 @@ class audiovideo_V4L2(test.test):
         executable = os.path.join(self.bindir, "media_v4l2_test")
         try:
             cmd = "%s %s" % (executable, " ".join(options))
-            cmd = site_ui.xcommand(cmd)
+            cmd = ui.xcommand(cmd)
             logging.info("Running %s" % cmd)
             stdout = utils.system_output(cmd, retain_output=True)
         except:

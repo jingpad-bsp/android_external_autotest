@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import os, string, time, gtk
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_ui, utils, site_httpd
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import httpd, ui, ui_test
 
 class desktopui_ImeTest(ui_test.UITest):
     version = 1
@@ -17,7 +17,7 @@ class desktopui_ImeTest(ui_test.UITest):
 
     def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/interaction_form.html'
-        self._test_server = site_httpd.HTTPListener(8000, docroot=self.bindir)
+        self._test_server = httpd.HTTPListener(8000, docroot=self.bindir)
         self._test_server.run()
 
         ui_test.UITest.initialize(self, creds)
@@ -86,7 +86,7 @@ class desktopui_ImeTest(ui_test.UITest):
 
     # TODO: Get rid of this function.
     def run_ibusclient(self, options):
-        cmd = site_ui.xcommand_as('%s %s' % (self.exefile, options), 'chronos')
+        cmd = ui.xcommand_as('%s %s' % (self.exefile, options), 'chronos')
         return utils.system_output(cmd, retain_output=True)
 
 

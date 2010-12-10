@@ -4,8 +4,8 @@
 
 import grp, logging, os, pwd, re, stat, subprocess
 from signal import SIGSEGV
-from autotest_lib.client.bin import site_crash_test, site_utils, test
-from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.bin import site_crash_test, test, utils
+from autotest_lib.client.common_lib import error
 
 _COLLECTION_ERROR_SIGNATURE = 'crash_reporter-user-collection'
 _CORE2MD_PATH = '/usr/bin/core2md'
@@ -218,7 +218,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
             (basename, pid, handled_string))
 
         # Wait until no crash_reporter is running.
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             lambda: utils.system('pgrep crash_reporter',
                                  ignore_status=True) != 0,
             timeout=10,
@@ -450,7 +450,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
             to_find = 'Received crash notification for ' + crasher_basename
         else:
             to_find = 'Ignoring crash from ' + crasher_basename
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             lambda: self._log_reader.can_find(to_find),
             timeout=10,
             exception=error.TestError(

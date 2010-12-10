@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, re
-from autotest_lib.client.bin import site_login
-from autotest_lib.client.common_lib import error, site_ui, utils
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui, ui_test
 
 class graphics_GLAPICheck(ui_test.UITest):
     version = 1
@@ -123,7 +123,7 @@ class graphics_GLAPICheck(ui_test.UITest):
 
 
     def __run_x_cmd(self, cmd):
-        cmd = site_ui.xcommand(cmd)
+        cmd = ui.xcommand(cmd)
         result = utils.system_output(cmd, retain_output=True,
                                      ignore_status=True)
         return result

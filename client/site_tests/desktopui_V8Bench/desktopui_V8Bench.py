@@ -4,15 +4,15 @@
 
 import logging, os, shutil
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error, site_httpd, site_ui
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import httpd, ui, ui_test
 
 class desktopui_V8Bench(ui_test.UITest):
     version = 1
 
     def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/run.html'
-        self._testServer = site_httpd.HTTPListener(8000, docroot=self.srcdir)
+        self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
         ui_test.UITest.initialize(self, creds)
 
@@ -33,7 +33,7 @@ class desktopui_V8Bench(ui_test.UITest):
     def run_once(self, timeout=60):
         latch = self._testServer.add_wait_url('/v8/scores')
 
-        session = site_ui.ChromeSession(self._test_url)
+        session = ui.ChromeSession(self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
         session.close()

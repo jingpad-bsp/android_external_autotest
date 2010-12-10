@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, shutil
-from autotest_lib.client.common_lib import site_httpd, utils
+import common
+import httpd
+from autotest_lib.client.bin import utils
 
 
 def xcommand(cmd):
@@ -161,7 +163,7 @@ class Dialog(object):
     def get_entries(self):
         # Run a HTTP server.
         url = 'http://localhost:8000/'
-        http_server = site_httpd.HTTPListener(8000)
+        http_server = httpd.HTTPListener(8000)
         http_server.run()
 
         # Assign the handlers.

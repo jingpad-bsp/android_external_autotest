@@ -5,7 +5,8 @@
 
 import logging, re, time
 from autotest_lib.client.bin import test, utils, site_log_reader
-from autotest_lib.client.common_lib import error, site_ui
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui
 
 class desktopui_FlashSanityCheck(test.test):
     version = 1
@@ -17,7 +18,7 @@ class desktopui_FlashSanityCheck(test.test):
         self._log_reader.set_start_by_current()
 
         # open browser to youtube.com.
-        session = site_ui.ChromeSession('http://www.youtube.com')
+        session = ui.ChromeSession('http://www.youtube.com')
         # wait some time till the webpage got fully loaded.
         time.sleep(time_to_wait)
         session.close()

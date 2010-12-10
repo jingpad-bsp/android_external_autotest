@@ -20,8 +20,8 @@ VERSION = '1'
 import os, re
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error, site_ui
-
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ui
 
 def find_root_dev():
     rootdev = utils.system_output('rootdev -s -d')
@@ -36,7 +36,7 @@ def find_all_storage_dev():
 
 
 num_retry = 3
-dialog = site_ui.Dialog(question=("Please insert a USB flash drive and "
+dialog = ui.Dialog(question=("Please insert a USB flash drive and "
     "a SD-card. Then press the RETRY button."), choices=['RETRY'])
 
 
