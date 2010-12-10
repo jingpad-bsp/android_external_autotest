@@ -18,6 +18,7 @@ class site_job(base_client_job):
 
     def run_test(self, url, *args, **dargs):
         log_pauser = site_logging.LogRotationPauser()
+        passed = False
         try:
             log_pauser.begin()
             passed = base_client_job.run_test(self, url, *args, **dargs)
@@ -31,6 +32,7 @@ class site_job(base_client_job):
                 utils.save_vm_state(checkpoint_name)
         finally:
             log_pauser.end()
+        return passed
 
 
     def reboot(self, tag=LAST_BOOT_TAG):
