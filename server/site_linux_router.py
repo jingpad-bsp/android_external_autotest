@@ -279,6 +279,15 @@ class LinuxRouter(object):
                 (self.hostapd['file'], '\n'.join(
                 "%s=%s" % kv for kv in conf.iteritems())))
 
+            if not multi_interface:
+                logging.info("Initializing bridge...")
+                self.router.run("%s addbr %s" %
+                                (self.cmd_brctl, self.bridgeif))
+                self.router.run("%s setfd %s %d" %
+                                (self.cmd_brctl, self.bridgeif, 0))
+                self.router.run("%s stp %s %d" %
+                                (self.cmd_brctl, self.bridgeif, 0))
+
             # Run hostapd.
             logging.info("Starting hostapd...")
             self.router.run("%s -B %s" %
@@ -286,10 +295,8 @@ class LinuxRouter(object):
 
 
             # Set up the bridge.
-            logging.info("Setting up the bridge...")
             if not multi_interface:
-                self.router.run("%s setfd %s %d" %
-                                (self.cmd_brctl, self.bridgeif, 0))
+                logging.info("Setting up the bridge...")
                 self.router.run("%s addif %s %s" %
                                 (self.cmd_brctl, self.bridgeif, self.wiredif))
                 self.router.run("%s link set %s up" %
