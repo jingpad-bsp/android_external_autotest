@@ -134,6 +134,7 @@ class WiFiTest(object):
         # potential bg thread for client network monitoring
         self.client_netdump_thread = None
         self.__client_discover_commands(client)
+        self.profile_save({})
         self.firewall_rules = []
 
         # interface name on client
@@ -149,8 +150,10 @@ class WiFiTest(object):
 
     def cleanup(self, params):
         """ Cleanup state: disconnect client and destroy ap """
-        self.disconnect({})
-        self.wifi.destroy({})
+        if params.get('force_disconnect'):
+            self.disconnect({})
+            self.wifi.destroy({})
+        self.profile_cleanup({})
         self.client_netdump_stop({})
         self.firewall_cleanup({})
 
@@ -166,6 +169,8 @@ class WiFiTest(object):
         self.client_cmd_iperf = client.get('cmd_iperf_client',
                                            '/usr/local/bin/iperf')
         self.client_cmd_iptables = '/sbin/iptables'
+        self.client_cmd_flimflam_lib = client.get('flimflam_lib',
+                                                  '/usr/local/lib/flimflam')
 
 
     def __get_wlan_devs(self, host):
@@ -276,11 +281,11 @@ class WiFiTest(object):
             else:
                 logging.error("%s: Step '%s' unknown; abort test",
                     self.name, method)
-                self.cleanup(params)
+                self.cleanup({'force_disconnect':True})
                 break
-
-        # Other cleanup steps might be optional, but this is mandatory
-        self.client_netdump_stop({})
+        else:
+            # If all steps ran successfully perform the normal cleanup steps
+            self.cleanup({})
 
 
     def write_keyvals(self, job):
@@ -975,6 +980,26 @@ class WiFiTest(object):
         """ Restart wpa_supplicant.  Cert params are unfortunately "sticky". """
 
         self.client.run("stop wpasupplicant; start wpasupplicant");
+
+    def __list_profile(self):
+        ret = []
+        result = self.client.run('%s/test/list-entries' %
+                                 self.client_cmd_flimflam_lib)
+        for line in result.stdout.splitlines():
+            m = re.search('\[(wifi_.*)\]', line)
+            if m is not None:
+                ret.append(m.group(1))
+        return ret
+
+    def profile_save(self, params):
+        self.client_profile_list = self.__list_profile()
+
+    def profile_cleanup(self, params):
+        exceptions = params.get('except', self.client_profile_list)
+        for entry in self.__list_profile():
+            if entry not in exceptions:
+                self.client.run('%s/test/delete-entry %s' %
+                                (self.client_cmd_flimflam_lib, entry))
 
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
