@@ -24,7 +24,8 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 
-from factory import AutomatedSequence
+# Expose the class into the namespace rather than "from factory import <class>"
+AutomatedSequence = factory.AutomatedSequence
 
 N_ROW = 15
 LABEL_EN_SIZE = (170, 35)
@@ -125,8 +126,6 @@ class factory_Review(test.test):
                 if not isinstance(t, AutomatedSequence) and \
                    status_map.lookup_status(t) == ful.FAILED)
         for i, t in izip(count(1), ts):
-            if not isinstance(t, AutomatedSequence) and \
-               status_map.lookup_status(t) == ful.FAILED:
                 tab = self.make_error_tab(status_map, t)
                 tab.set_border_width(TAB_BORDER)
                 self.notebook.append_page(tab, ful.make_label('#%02d' % i))
