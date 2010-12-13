@@ -16,7 +16,7 @@ class desktopui_ImeTest(ui_test.UITest):
         self.job.setup_dep(['ibusclient'])
 
     def initialize(self, creds='$default'):
-        self._test_url = 'http://localhost:8000/interaction_form.html'
+        self._test_url = 'http://127.0.0.1:8000/interaction_form.html'
         self._test_server = httpd.HTTPListener(8000, docroot=self.bindir)
         self._test_server.run()
 
