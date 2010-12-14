@@ -126,9 +126,9 @@ class factory_Review(test.test):
                 if not isinstance(t, AutomatedSequence) and \
                    status_map.lookup_status(t) == ful.FAILED)
         for i, t in izip(count(1), ts):
-                tab = self.make_error_tab(status_map, t)
-                tab.set_border_width(TAB_BORDER)
-                self.notebook.append_page(tab, ful.make_label('#%02d' % i))
+            tab = self.make_error_tab(status_map, t)
+            tab.set_border_width(TAB_BORDER)
+            self.notebook.append_page(tab, ful.make_label('#%02d' % i))
 
         control_label = ful.make_label('Press j/k to change tabs',
                                        font=LABEL_EN_FONT,
