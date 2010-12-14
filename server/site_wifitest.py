@@ -678,9 +678,10 @@ class WiFiTest(object):
                        'target': self.server_wifi_ip }
 
         # If appropriate apps are not installed, raise an error
-        if not self.__is_installed(client['host'], client['cmd']) or \
-                not self.__is_installed(server['host'], server['cmd']):
-            raise error.TestFail('Unable to find iperf on client or server')
+        if not self.__is_installed(client['host'], client['cmd']):
+            raise error.TestFail('Unable to find %s on client', client['cmd'])
+        if not self.__is_installed(server['host'], server['cmd']):
+            raise error.TestFail('Unable to find %s on server', server['cmd'])
 
         iperf_thread = HelperThread(server['host'],
             "%s -s %s" % (server['cmd'], iperf_args))
@@ -807,9 +808,10 @@ class WiFiTest(object):
                        'target': self.server_wifi_ip }
 
         # If appropriate apps are not installed, raise an error
-        if not self.__is_installed(client['host'], client['cmd']) or \
-                not self.__is_installed(server['host'], server['cmd']):
-            raise error.TestFail('Unable to find netperf on client or server')
+        if not self.__is_installed(client['host'], client['cmd']):
+            raise error.TestFail('Unable to find %s on client', client['cmd'])
+        if not self.__is_installed(server['host'], server['cmd']):
+            raise error.TestFail('Unable to find %s on server', server['cmd'])
 
         netperf_thread = HelperThread(server['host'],
             "%s -p %s" % (server['cmd'],  self.defnetperfport))
