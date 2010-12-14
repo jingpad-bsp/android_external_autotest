@@ -1,0 +1,311 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# DOCUMENTATION:
+#
+# Define below an ordered list if tests for execution on factory
+# assembly lines.  This list can be customized for specific factory
+# needs, within the limits set by the below comments -- specifically,
+# ODMs should not remove any Google required tests.
+#
+# This file is loaded via a call to execfile() in the primary factory
+# autotest control file.
+
+
+# -- CUSTOMIZATION VARIABLES ---------------------------------------
+# You can tune these settings to fit your factory process.
+
+# Change this to False if you want and allow fast wipe (insecure).
+_DO_FACTORY_SECURE_WIPE = True
+
+# Change this to the number of reboots you want during run-in.
+_REBOOT_SEQ_ITERATIONS = 2
+
+# Change this to the duration of SAT during run-in (suggested 10+ mins).
+_SAT_DURATION_SECS = 60
+
+# Change this to match your local log upload site.
+_LOG_UPLOAD_DESTINATION = {
+  'method': 'ftp',
+  'host': '*',  # change to hostname/IP of destination. '*' will bypass upload.
+  'port': 21,  # change this if you are using different port.
+  'user': 'anonymous',  # change this if you have a specific login id.
+  'passwd': '*',  # change this to password of the login id.
+  'initdir': '',  # change this if you want to assign the folder to store logs.
+  'timeout': 3*60,  # change this if you have a really poor slow network...
+  # 'gzip': False, # uncomment if you don't want the logs to be gzipped
+
+  # 'filename_pattern': '%(hash)s.log%(gz)s',
+  ## Uncomment and change the above filename_pattern if you want to customize
+  ## the filename to be upload. Supported variables are:
+  ##  hash: a SHA1 hash of log file
+  ##  gz: '.gz' if the 'gzip' param is True, otherwise empty string
+  ##  vpd_*: any values reported by 'mosys vpd' command
+  ## Examples: '%(vpd_product_serial_number)s.log%(gz)s'
+}
+
+
+# -- END OF CUSTOMIZATION VARIABLES --------------------------------
+
+
+# TEST ORDERING: Tests in the test_list will be run in the order
+# below, unless the operator interrupts the flow via keyboard
+# shortcut.  To cause immediate execution of the run-in tests, for
+# example, reorder runin to occur as the first test in the test_list.
+
+TEST_LIST = [
+
+    OperatorTest(
+        label_en='start',
+        label_zw='開始',
+        autotest_name='factory_Dummy',
+        kbd_shortcut='e',
+        dargs={'quit_key':ord(' '),
+               'msg':'Hit SPACE to start testing...\n按 "空白鍵" 開始測試...'}),
+
+    # The factory_ScriptWrapper allows interactive execution of
+    # external scripts or programs with the output displayed in the
+    # testing widget area of the screen. This is useful, for example,
+    # to sync-up with the assembly line IT system.
+    # OperatorTest(
+    #    label_en='sync',
+    #    label_zw='同步',
+    #    autotest_name='factory_ScriptWrapper',
+    #    kbd_shortcut='s',
+    #    dargs={'cmdline': job.autodir +
+    #           '/site_tests/factory_ScriptWrapper/dummy.sh'}),
+
+    AutomatedSequence(
+        label_en='run-in',
+        label_zw='燒機測試',
+        subtest_tag_prefix='runin',
+        kbd_shortcut='r',
+        subtest_list=[
+
+            AutomatedSubTest(
+                label_en='system stress',
+                label_zw='壓力測試',
+                autotest_name='hardware_SAT',
+                dargs={'seconds': _SAT_DURATION_SECS},
+                drop_caches=True),
+
+            AutomatedSubTest(
+                label_en='graphics',
+                label_zw='圖型',
+                autotest_name='graphics_GLBench'),
+
+            AutomatedSubTest(
+                label_en='sleep / wake',
+                label_zw='睡眠 / 喚醒',
+                autotest_name='power_Resume'),
+
+            AutomatedRebootSubTest(
+                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
+                label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
+                iterations=_REBOOT_SEQ_ITERATIONS)]),
+
+    #TODO(hungte) unlock keyboard when the layout image is ready
+    #OperatorTest(
+    #    label_en='keyboard',
+    #    label_zw='鍵盤',
+    #    autotest_name='factory_Keyboard',
+    #    kbd_shortcut='k',
+    #    dargs={'layout':'en_us'}),
+
+    OperatorTest(
+        label_en='touchpad',
+        label_zw='觸控板',
+        autotest_name='factory_Touchpad',
+        kbd_shortcut='t'),
+
+    # XXX this is commented because LED controller is EC specific
+    #OperatorTest(
+    #    label_en='leds',
+    #    label_zw='機身側燈',
+    #    autotest_name='factory_Leds',
+    #    kbd_shortcut='l',
+    #    dargs={'led_ctl_path':
+    #             '/usr/local/autotest/site_tests/factory_Leds/src/ec_ctl'}),
+
+    OperatorTest(
+        label_en='display',
+        label_zw='顯示',
+        autotest_name='factory_Display',
+        kbd_shortcut='m'),
+
+    # XXX this is commented because not every device has HDMI ports
+    #OperatorTest(
+    #    label_en='x-display',
+    #    label_zw='外接顯示',
+    #    autotest_name='factory_ExtDisplay',
+    #    kbd_shortcut='n',
+    #    dargs={'has_audio':True,
+    #           'audio_sample_path':'site_tests/suite_Factory/fhorn.wav'}),
+
+    OperatorTest(
+        label_en='camera',
+        label_zw='相機',
+        autotest_name='factory_Camera',
+        kbd_shortcut='c'),
+
+    OperatorTest(
+        label_en='audio',
+        label_zw='音源裝置',
+        autotest_name='factory_Audio',
+        kbd_shortcut='a',
+        dargs={'audio_sample_path':'site_tests/suite_Factory/fhorn.wav'}),
+
+    OperatorTest(
+        label_en='usb',
+        autotest_name='factory_ExternalStorage',
+        kbd_shortcut='u',
+        dargs={'media':'USB'}),
+
+    OperatorTest(
+        label_en='sd',
+        autotest_name='factory_ExternalStorage',
+        kbd_shortcut='d',
+        dargs={'media':'SD'}),
+
+    # OperatorTest(
+    #    label_en='bluetooth',
+    #    label_zw='藍芽',
+    #    autotest_name='factory_Dummy',
+    #    kbd_shortcut='o',
+    #    dargs={'msg':'bluetooth test, one day...'}),
+
+    # OperatorTest(
+    #    label_en='3g',
+    #    label_zw='3G上網',
+    #    autotest_name='factory_Dummy',
+    #    kbd_shortcut='g',
+    #    dargs={'msg':'3g test, one day...'}),
+
+    # OperatorTest(
+    #    label_en='wifi',
+    #    label_zw='無線上網',
+    #    autotest_name='factory_Dummy',
+    #    kbd_shortcut='w',
+    #    dargs={'msg':'wifi test, one day...'}),
+
+    # XXX this is commented because light sensor controlling seems not portable
+    # for some devices
+    #OperatorTest(
+    #    label_en='light sensor',
+    #    label_zw='光感應器',
+    #    autotest_name='factory_LightSensor',
+    #    dargs={'lux_max':1000, 'lux_min':1},
+    #    kbd_shortcut='i'),
+
+    # XXX this is commented because only ChromeOS hardware design provides it.
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
+    #OperatorTest(
+    #    label_en='devrec',
+    #    label_zw='還原模式',
+    #    autotest_name='factory_DeveloperRecovery',
+    #    unique_name='GRT_DevRec',
+    #    kbd_shortcut='b',
+    #    dargs={'layout':'devrec'}),
+
+    # XXX this is commented because only ChromeOS hardware have hw-qual-id
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
+    #AutomatedSequence(
+    #    label_en='HWID',
+    #    label_zw='硬體代號',
+    #    subtest_tag_prefix='hwid',
+    #    kbd_shortcut='h',
+    #    subtest_list=[
+
+    #        # THIS IS A GOOGLE REQUIRED TEST.
+    #        # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
+    #        # Match HW-Qual-ID by setting ignored_cids.
+    #        AutomatedSubTest(
+    #            label_en='hw-qual-id matching',
+    #            label_zw='型號匹配',
+    #            autotest_name='hardware_Components',
+    #            unique_name='hw-qual-id-match',
+    #            dargs={'approved_dbs':'data_*/components*',
+    #                   'ignored_cids':[
+    #                       'hash_ro_firmware',
+    #                       'part_id_hwqual',
+    #                       'version_rw_firmware']}),
+
+    #        AutomatedSubTest(
+    #            label_en='gpio switch check',
+    #            label_zw='檢查 gpio 開關',
+    #            autotest_name='hardware_GPIOSwitches'),
+
+    #        AutomatedSubTest(
+    #            label_en='write GBB',
+    #            label_zw='寫入GBB',
+    #            autotest_name='factory_WriteGBB'),
+
+    #        AutomatedRebootSubTest(
+    #            label_en='reboot',
+    #            label_zw='重新開機',
+    #            iterations=1),
+
+    #        AutomatedSubTest(
+    #            label_en='component validation',
+    #            label_zw='元件驗證',
+    #            unique_name='GRT_HWComponents',
+    #            autotest_name='hardware_Components')]),
+
+    # XXX 'final verify' is hacked by 'pre flight' because only some Google
+    # Required Tests are skipped for non-ChromeOS devies.
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
+    AutomatedSequence(
+        label_en='final',
+        label_zw='最終步驟',
+        subtest_tag_prefix='finalize',
+        kbd_shortcut='f',
+        subtest_list=[
+            AutomatedSubTest(
+                label_en='pre flight',
+                label_zw='就緒檢查',
+                unique_name=factory.FINAL_VERIFICATION_TEST_UNIQUE_NAME,
+                autotest_name='factory_PreFinalCheck'),
+    #        AutomatedSubTest(
+    #            label_en='final verification',
+    #            label_zw='最後驗證',
+    #            unique_name=factory.FINAL_VERIFICATION_TEST_UNIQUE_NAME,
+    #            autotest_name='factory_Verify',
+    #            dargs={
+    #                'check_and_enable_write_protect':True,
+    #            }),
+    #        AutomatedSubTest(
+    #            label_en='Log VPD Data',
+    #            label_zw='記錄產品資料 (VPD)',
+    #            autotest_name='factory_LogVpd'),
+    #        # NOTE: factory_Verify.dargs support following variables for
+    #        # temporary testing. You can add these settings to help internal
+    #        # test, but THESE ARE GOOGLE REQUIRED TESTS SO YOU SHOULD NOT
+    #        # DISABLE THEM IN PRODUCTION RELEASES.
+    #        #  - check_developer_switch: check for developer button switch
+    #        #  - check_required_tests: check if all required tests are passed
+    #        #  - check_and_enable_write_protect: enable and check flash ROM
+    #        #    write protection
+            AutomatedSubTest(
+                label_en='upload log reports',
+                label_zw='上傳記錄',
+                autotest_name='factory_UploadLogs',
+                dargs={'destination':_LOG_UPLOAD_DESTINATION}),
+            AutomatedSubTest(
+                label_en='wipe',
+                label_zw='清除',
+                autotest_name='factory_Wipe',
+                dargs={'secure_wipe':_DO_FACTORY_SECURE_WIPE})]),
+
+    InformationScreen(
+        label_en='review',
+        label_zw='報告',
+        autotest_name='factory_Review',
+        unique_name='ReviewInformation',  # REVIEW_INFORMATION_TEST_UNIQUE_NAME
+        kbd_shortcut='z'),
+]
