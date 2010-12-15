@@ -164,6 +164,11 @@ bool InitGraphics(Display** display,
   const int kWindowHeight = 100;
   const EGLint config_attribs[] = {
     EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+    EGL_NONE
+  };
+  const EGLint context_attribs[] = {
+    EGL_CONTEXT_CLIENT_VERSION, 2,
     EGL_NONE
   };
 
@@ -177,7 +182,7 @@ bool InitGraphics(Display** display,
   int screen = XDefaultScreen(*display);
   Window window = XCreateSimpleWindow(*display, RootWindow(*display, screen),
                                       0, 0, kWindowWidth, kWindowHeight,
-                                      0, 0, WhitePixel(display, screen));
+                                      0, 0, WhitePixel(*display, screen));
   XMapWindow(*display, window);
   XSync(*display, True);
 
@@ -210,7 +215,8 @@ bool InitGraphics(Display** display,
     return false;
   }
   // Context.
-  *egl_context = eglCreateContext(*egl_display, egl_config, NULL, NULL);
+  *egl_context = eglCreateContext(*egl_display, egl_config, EGL_NO_CONTEXT,
+                                  context_attribs);
   if (*egl_context == EGL_NO_CONTEXT) {
     printf("ERROR: eglCreateContext failed\n");
     return false;

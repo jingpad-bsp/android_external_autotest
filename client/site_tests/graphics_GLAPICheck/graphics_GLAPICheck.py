@@ -52,11 +52,16 @@ class graphics_GLAPICheck(ui_test.UITest):
 
     def __check_gles_extensions(self, info):
         extensions = [
-            'EGL_KHR_image_pixmap',
             'GL_OES_EGL_image',
-            'GL_OES_texture_npot'
+            'EGL_KHR_image'
         ]
-        return self.__check_extensions(info, extensions)
+        extensions2 = [
+            'GL_OES_EGL_image',
+            'EGL_KHR_image_base',
+            'EGL_KHR_image_pixmap'
+        ]
+        return (self.__check_extensions(info, extensions) or
+                self.__check_extensions(info, extensions2))
 
 
     def __check_gl(self, result):
