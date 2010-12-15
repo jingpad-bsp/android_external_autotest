@@ -119,16 +119,19 @@ class CrashTest(test.test):
         return entry
 
 
-    def write_fake_meta(self, name, exec_name, payload, complete=True):
+    def write_fake_meta(self, name, exec_name, payload, log=None,
+                        complete=True):
         last_line = ''
         if complete:
             last_line = 'done=1\n'
-        return self.write_crash_dir_entry(name,
-                                          'exec_name=%s\n'
-                                          'ver=my_ver\n'
-                                          'payload=%s\n'
-                                          '%s' % (exec_name, payload,
-                                                  last_line))
+        contents = ('exec_name=%s\n'
+                    'ver=my_ver\n'
+                    'payload=%s\n'
+                    '%s' % (exec_name, payload,
+                            last_line))
+        if log:
+            contents = ('log=%s\n' % log) + contents
+        return self.write_crash_dir_entry(name, contents)
 
 
     def _prepare_sender_one_crash(self,

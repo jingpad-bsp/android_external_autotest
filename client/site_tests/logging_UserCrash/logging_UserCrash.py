@@ -56,7 +56,6 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
         crasher is only gzipped to subvert Portage stripping.
         """
-        self.enable_crash_filtering('crasher_nobreakpad')
         self._crasher_path = os.path.join(self.srcdir, 'crasher_nobreakpad')
         utils.system('cd %s; tar xzf crasher.tgz-unmasked' %
                      self.srcdir)
@@ -165,7 +164,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
             raise error.TestFail('Did not show main on stack')
 
 
-    def _run_crasher_process(self, username, cause_crash=True, consent=True):
+    def _run_crasher_process(self, username, cause_crash=True, consent=True,
+                             crasher_path=None):
         """Runs the crasher process.
 
         Args:
@@ -179,8 +179,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
             crash_reporter_caught: did crash_reporter catch a segv
             output: stderr/stdout output of the crasher process
         """
-        self._prepare_crasher()
-        self._populate_symbols()
+        if crasher_path is None: crasher_path=self._crasher_path
+        self.enable_crash_filtering(os.path.basename(crasher_path))
 
         if username != 'root':
             crasher_command = ['su', username, '-c']
@@ -189,8 +189,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
             crasher_command = []
             expected_result = -SIGSEGV
 
-        crasher_command.append(self._crasher_path)
-        basename = os.path.basename(self._crasher_path)
+        crasher_command.append(crasher_path)
+        basename = os.path.basename(crasher_path)
         if not cause_crash:
             crasher_command.append('--nocrash')
         self._set_consent(consent)
@@ -305,11 +305,14 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
 
     def _run_crasher_process_and_analyze(self, username,
-                                         cause_crash=True, consent=True):
+                                         cause_crash=True, consent=True,
+                                         crasher_path=None):
         self._log_reader.set_start_by_current()
 
+        if crasher_path is None: crasher_path=self._crasher_path
         result = self._run_crasher_process(username, cause_crash=cause_crash,
-                                           consent=consent)
+                                           consent=consent,
+                                           crasher_path=crasher_path)
 
         if not result['crashed'] or not result['crash_reporter_caught']:
             return result;
@@ -322,7 +325,7 @@ class logging_UserCrash(site_crash_test.CrashTest):
             return result
 
         crash_contents = os.listdir(crash_dir)
-        basename = os.path.basename(self._crasher_path)
+        basename = os.path.basename(crasher_path)
 
         breakpad_minidump = None
         crash_reporter_minidump = None
@@ -460,7 +463,6 @@ class logging_UserCrash(site_crash_test.CrashTest):
 
     def _test_crash_filtering(self):
         """Test that crash filtering (a feature needed for testing) works."""
-        self._prepare_crasher()
         crasher_basename = os.path.basename(self._crasher_path)
         self._log_reader.set_start_by_current()
 
@@ -559,6 +561,41 @@ class logging_UserCrash(site_crash_test.CrashTest):
                                        'Purposefully failing to create')
 
 
+    def _test_crash_logs_creation(self):
+        logs_triggering_crasher = os.path.join(os.path.dirname(self.bindir),
+                                               'crash_log_test')
+        # Copy crasher_path to a test location with correct mode and a
+        # special name to trigger crash log creation.
+        utils.system('cp -a "%s" "%s"' % (self._crasher_path,
+                                          logs_triggering_crasher))
+        result = self._run_crasher_process_and_analyze(
+            'root', crasher_path=logs_triggering_crasher)
+        self._check_crashed_and_caught(result)
+        contents = utils.read_file(result['log'])
+        if contents != 'hello world\n':
+            raise error.TestFail('Crash log contents unexpected: %s' % contents)
+        if not ('log=' + result['log']) in utils.read_file(result['meta']):
+            raise error.TestFail('Meta file does not reference log')
+
+
+    def _test_crash_log_infinite_recursion(self):
+        recursion_triggering_crasher = os.path.join(
+            os.path.dirname(self.bindir), 'crash_log_recursion_test')
+        # The configuration file hardcodes this path, so make sure it's still
+        # the same.
+        if (recursion_triggering_crasher !=
+            '/home/autotest/tests/crash_log_recursion_test'):
+          raise error.TestError('Path to recursion test changed')
+        # Copy crasher_path to a test location with correct mode and a
+        # special name to trigger crash log creation.
+        utils.system('cp -a "%s" "%s"' % (self._crasher_path,
+                                          recursion_triggering_crasher))
+        # Simply completing this command means that we avoided
+        # infinite recursion.
+        result = self._run_crasher_process(
+            'root', crasher_path=recursion_triggering_crasher)
+
+
     def _check_core_file_persisting(self, expect_persist):
         self._log_reader.set_start_by_current()
 
@@ -623,6 +660,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
     # non-root, non-chronos user.
 
     def run_once(self):
+        self._prepare_crasher()
+        self._populate_symbols()
         self.run_crash_tests(['reporter_startup',
                               'reporter_shutdown',
                               'no_crash',
@@ -634,6 +673,8 @@ class logging_UserCrash(site_crash_test.CrashTest):
                               'max_enqueued_crashes',
                               'core2md_failure',
                               'internal_directory_failure',
+                              'crash_logs_creation',
+                              'crash_log_infinite_recursion',
                               'core_file_persists_in_debug',
                               'core_file_removed_in_production'],
                               initialize_crash_reporter = True)
