@@ -1,265 +1,217 @@
-import dbus, dbus.mainloop.glib, gobject, logging, re, sys, time, subprocess
+#!/usr/bin/python
 
-ssid           = sys.argv[1]
-security       = sys.argv[2]
-psk            = sys.argv[3]
-assoc_timeout  = float(sys.argv[4])
-config_timeout = float(sys.argv[5])
-reset_timeout  = float(sys.argv[6]) if len(sys.argv) > 6 else assoc_timeout
+"""Connect to a WiFi service and report the amount of time it took
 
-FLIMFLAM = "org.chromium.flimflam"
+This script initiates a connection to a WiFi service and reports
+the time to major state changes (assoc, config).  If the connection
+fails within the desired time, it outputs the contents of the log
+files during that intervening time.
 
-bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-bus = dbus.SystemBus(mainloop=bus_loop)
-manager = dbus.Interface(bus.get_object(FLIMFLAM, "/"), FLIMFLAM + ".Manager")
+"""
+
+import logging
+import optparse
+import sys
+import time
+import traceback
+import dbus
+import dbus.mainloop.glib
+import gobject
+from site_wlan_wait_state import *
+
+FLIMFLAM_ERROR = FLIMFLAM + '.Error'
+FLIMFLAM_ERROR_INPROGRESS = FLIMFLAM_ERROR + '.InProgress'
+FLIMFLAM_ERROR_UNKNOWNMETHOD = FLIMFLAM_ERROR + '.UnknownMethod'
+FLIMFLAM_ERROR_ALREADYCONNECTED = FLIMFLAM_ERROR + '.AlreadyConnected'
 connect_quirks = {}
 
-connection_settings = {
-   "Type": "wifi",
-   "Mode": "managed",
-   "SSID": ssid,
-   "Security": security
-}
+class ConnectStateHandler(StateHandler):
+  def __init__(self, dbus_bus, connection_settings, hidden, timeout,
+               start_time=None, debug=False, scan_retry=8):
+    self.connection_settings = connection_settings
+    self.configuration_time = None
+    self.hidden = hidden
+    self.service_handle = None
+    self.scan_timeout = None
+    self.scan_retry = scan_retry
+    StateHandler.__init__(self, dbus_bus,
+                          [(connection_settings['SSID'], 'ready')],
+                          timeout, None, timeout, debug)
+    if start_time:
+      self.run_start_time = start_time
 
-if security == '802_1x':
-    cert_args = psk.split(':')
-    (connection_settings["Identity"],
-     connection_settings["CertPath"]) = cert_args[:2]
-    if len(cert_args) > 2:
-        connection_settings["AuthorityPath"] = cert_args[2]
-else:
-   connection_settings["Passphrase"] = psk
-
-
-def DbusSetup():
-    try:
-        path = manager.GetService((connection_settings))
-        service = dbus.Interface(
-            bus.get_object(FLIMFLAM, path), FLIMFLAM + ".Service")
-    except Exception, e:
-        print "FAIL(GetService): ssid %s exception %s" % (ssid, e)
-        ErrExit(1)
-
-    return (path, service)
-
-
-def ParseProps(props):
-    proplist = []
-    if props is not None:
-        for p in props:
-            proplist.append("'%s': '%s'" % (str(p), str(props[p])))
-        return '{ %s }' % ', '.join(proplist)
-    else:
-        return 'None'
-
-
-def ResetService(init_state):
-    wait_time = 0
-
-    if init_state == 'idle':
-        # If we are already idle, we have nothing to do
-        return
-    if init_state == 'ready':
-        # flimflam is already connected.  Disconnect.
-        connect_quirks['already_connected'] = 1
-        service.Disconnect()
-    else:
-        # Workaround to force flimflam out of error state and back to 'idle'
-        connect_quirks['clear_error'] = 1
-        service.ClearProperty('Error')
-
-    while wait_time < reset_timeout:
-        if service.GetProperties().get("State", None) == "idle":
+  def FindService(self, path_list=None):
+    service = None
+    for svc in FindObjects('Service', 'Name', self.service_name,
+                           path_list=path_list):
+      props = svc.GetProperties()
+      for key, val in self.connection_settings.items():
+        if key != 'SSID' and props.get(key) != val:
+          if key in ('Passphrase', 'Identity', 'CertPath', 'AuthorityPath'):
+            try:
+              svc.SetProperty(key, val)
+            except dbus.exceptions.DBusException, e:
+              self.failure = ('SetProperty: DBus exception %s for set of %s' %
+                              (e, key))
+              return None
+          else:
+            self.Debug('Service key mismatch: %s %s != %s' %
+                       (key, val, str(props.get(key))))
             break
-        time.sleep(2)
-        wait_time += 2
-
-    print>>sys.stderr, "cleared ourselves out of '%s' after %3.1f secs" % \
-        (init_state, wait_time)
-    time.sleep(4)
-
-
-def TryConnect(assoc_time):
-    init_assoc_time = assoc_time
-    try:
-        init_props = service.GetProperties()
-        init_state = init_props.get("State", None)
-        if init_state == "configuration" or init_state == "ready":
-            if assoc_time > 0:
-                # We connected in the time between the last failure and now
-                print>>sys.stderr, "Associated while we weren't looking!"
-                return (init_props, None)
-    except dbus.exceptions.DBusException, e:
-        connect_quirks['lost_dbus'] = 1
-        print>>sys.stderr, "We just lost the service handle!"
-        return (None, 'DBUSFAIL')
-
-    ResetService(init_state)
-
-    # print "INIT_STATUS1: %s" % service.GetProperties().get("State", None)
-
-    try:
-        service.Connect()
-    except dbus.exceptions.DBusException, e:
-        if e.get_dbus_name() ==  'org.chromium.flimflam.Error.InProgress':
-            # We can hope that a ResetService in the next call will solve this
-            connect_quirks['in_progress'] = 1
-            print>>sys.stderr, "Previous connect is still in progress!"
-            time.sleep(5)
-            return (None, 'FAIL')
-        if e.get_dbus_name() ==  'org.freedesktop.DBus.Error.UnknownMethod':
-            # We can hope that a ResetService in the next call will solve this
-            connect_quirks['lost_dbus_connect'] = 1
-            print>>sys.stderr, "Lost the service handle during Connect()!"
-            time.sleep(0.5)
-            return (None, 'FAIL')
-        if e.get_dbus_name() != 'org.chromium.flimflam.Error.AlreadyConnected':
-            # What is this exception?
-            print "FAIL(Connect): ssid %s DBus exception %s" %(ssid, e)
-            ErrExit(2)
-    except Exception, e:
-        print "FAIL(Connect): ssid %s exception %s" %(ssid, e)
-        ErrExit(2)
-
-    properties = None
-    # wait up to assoc_timeout seconds to associate
-    while assoc_time < assoc_timeout:
+      else:
+        service = svc
+        if self.scan_timeout is not None:
+          gobject.source_remove(self.scan_timeout)
+          self.scan_timeout = None
+        break
+    else:
+      if self.hidden:
         try:
-            properties = service.GetProperties()
-        except dbus.exceptions.DBusException, e:
-            connect_quirks['get_prop'] = 1
-            print>>sys.stderr, "Got exception trying GetProperties(): %s" % e
-            return (None, 'DBUSFAIL')
-        status = properties.get("State", None)
-        #    print>>sys.stderr, "time %3.1f state %s" % (assoc_time, status)
-        if status == "failure":
-            if assoc_time == init_assoc_time:
-                connect_quirks['fast_fail'] = 1
-                print>>sys.stderr, "failure on first try!  Sleep 5 seconds"
-                time.sleep(5)
-            return (properties, 'FAIL')
-        if status == "configuration" or status == "ready":
-            return (properties, None)
-        time.sleep(.5)
-        assoc_time += .5
-    if assoc_time >= assoc_timeout:
-        if properties is None:
-            properties = service.GetProperties()
-        return (properties, 'TIMEOUT')
-
-
-# Open /var/log/messages and seek to the current end
-def OpenLogs(*logfiles):
-    logs = []
-    for logfile in logfiles:
-        try:
-            msgs = open(logfile)
-            msgs.seek(0, 2)
-            logs.append({ 'name': logfile, 'file': msgs })
+          path = manager.GetService((self.connection_settings))
+          service = dbus.Interface(
+              self.bus.get_object(FLIMFLAM, path), FLIMFLAM + '.Service')
         except Exception, e:
-            # If we cannot open the file, this is not necessarily an error
-            pass
+          self.failure = ('GetService: DBus exception %s for settings %s' %
+                          (e, self.connection_settings))
+          return None
+      else:
+        if not self.scan_timeout:
+          self.DoScan()
+        return None
 
-    return logs
+    # If service isn't already connecting or connected, start now
+    if (service.GetProperties()['State'] not in ('association', 'configuration',
+                                                 'ready')):
+      try:
+        service.Connect()
+      except dbus.exceptions.DBusException, e:
+        if e.get_dbus_name() == FLIMFLAM_ERROR_INPROGRESS:
+          self.Debug('Service was already in progress (state=%s)' %
+                     service.GetProperties().get('State'))
+          connect_quirks['in_progress'] = 1
 
+    self.service_handle = service
+    return service
 
-def DumpObjectList(kind):
-    print>>sys.stderr, "%s list:" % kind
-    for item in [dbus.Interface(bus.get_object(FLIMFLAM, path),
-                                FLIMFLAM + "." + kind)
-                 for path in manager.GetProperties().get(kind + 's', [])]:
-        print>>sys.stderr, "[ %s ]" % (item.object_path)
-        for key, val in item.GetProperties().items():
-            print>>sys.stderr, "    %s = %s" % (key, str(val))
+  def DoScan(self):
+    self.scan_timeout = None
+    self.Debug('Service not found; requesting scan...')
+    try:
+      manager.RequestScan('wifi')
+    except dbus.exceptions.DBusException, e:
+      if e.get_dbus_name() != FLIMFLAM_ERROR_INPROGRESS:
+        raise
+    self.scan_timeout = gobject.timeout_add(int(self.scan_retry*1000),
+                                                  self.DoScan)
 
-# Returns the list of the wifi interfaces (e.g. "wlan0") known to flimflam
-def GetWifiInterfaces():
-    interfaces = []
-    device_paths = manager.GetProperties().get("Devices", None)
-    for device_path in device_paths:
-        device = dbus.Interface(
-            bus.get_object("org.chromium.flimflam", device_path),
-            "org.chromium.flimflam.Device")
-        props = device.GetProperties()
-        type = props.get("Type", None)
-        interface = props.get("Interface", None)
-        if type == "wifi":
-            interfaces.append(interface)
-    return interfaces
+  def StateChanged(self):
+    # If we entered the "configuration" state, mark that down
+    if self.svc_state == 'configuration':
+      self.configuration_time = time.time()
 
-def DumpLogs(logs):
-    for log in logs:
-        print>>sys.stderr, "Content of %s during our run:" % log['name']
-        print>>sys.stderr, "  )))  ".join(log['file'].readlines())
+  def Stage(self):
+    if not self.wait_path:
+      return 'acquire'
+    elif not self.configuration_time:
+      return 'assoc'
+    else:
+      return 'config'
 
-    for interface in GetWifiInterfaces():
-        print>>sys.stderr, "iw dev %s scan output: %s" % \
-            ( interface,
-              subprocess.Popen(["iw", "dev", interface, "scan", "dump"],
-                               stdout=subprocess.PIPE).communicate()[0])
-
-    DumpObjectList("Service")
 
 def ErrExit(code):
-    try:
-        service.Disconnect()
-    except:
-        pass
-    DumpLogs(logs)
-    sys.exit(code)
+  try:
+    handler.service_handle.Disconnect()
+  except:
+    pass
+  DumpLogs(logs)
+  sys.exit(code)
 
-logs = OpenLogs('/var/log/messages', '/var/log/hostap.log')
 
-(path, service) = DbusSetup()
+def main(argv):
+  parser = optparse.OptionParser('Usage: %prog [options...] '
+                                 'ssid security psk assoc_timeout cfg_timeout')
+  parser.add_option('--hidden', dest='hidden', action='store_true',
+                    help='This is a hidden network')
+  parser.add_option('--debug', dest='debug', action='store_true',
+                    help='Report state changes and other debug info')
+  parser.add_option('--find_timeout', dest='find_timeout', type='int',
+                    default=10, help='This is a hidden network')
+  (options, args) = parser.parse_args(argv[1:])
 
-assoc_start = time.time()
-for attempt in range(5):
-    assoc_time = time.time() - assoc_start
-    print>>sys.stderr, "connect attempt #%d %3.1f secs" % (attempt, assoc_time)
-    (properties, failure_type) = TryConnect(assoc_time)
-    if failure_type is None or failure_type == 'TIMEOUT':
-        break
-    if failure_type == 'DBUSFAIL':
-        (path, service) = DbusSetup()
+  if len(argv) <= 4:
+    parser.error('Required arguments: ssid security psk assoc_timeount '
+                 'config_timeout')
 
-assoc_time = time.time() - assoc_start
+  ssid           = args[0]
+  security       = args[1]
+  psk            = args[2]
+  assoc_timeout  = float(args[3])
+  config_timeout = float(args[4])
 
-if attempt > 0:
-    connect_quirks['multiple_attempts'] = 1
+  connection_settings = {
+      'Type': 'wifi',
+      'Mode': 'managed',
+      'SSID': ssid,
+      'Security': security
+  }
 
-if failure_type is not None:
-    print "%s(assoc): ssid %s assoc %3.1f secs props %s" \
-        %(failure_type, ssid, assoc_time, ParseProps(properties))
+  if security == '802_1x':
+    cert_args = psk.split(':')
+    (connection_settings['Identity'],
+     connection_settings['CertPath']) = cert_args[:2]
+    if len(cert_args) > 2:
+      connection_settings['AuthorityPath'] = cert_args[2]
+  else:
+    connection_settings['Passphrase'] = psk
+
+  global logs
+  global handler
+  logs = OpenLogs('/var/log/messages')
+
+  assoc_start = time.time()
+  handler = ConnectStateHandler(bus, connection_settings, options.hidden,
+                                assoc_timeout, assoc_start, options.debug)
+  try:
+    if handler.NextState():
+      handler.RunLoop()
+  except dbus.exceptions.DBusException, e:
+    if e.get_dbus_name() == FLIMFLAM_ERROR_INPROGRESS:
+      connect_quirks['in_progress'] = 1
+      print>>sys.stderr, 'Previous connect is still in progress!'
+    if e.get_dbus_name() == FLIMFLAM_ERROR_UNKNOWNMETHOD:
+      connect_quirks['lost_dbus_connect'] = 1
+      print>>sys.stderr, 'Lost the service handle during Connect()!'
+    if e.get_dbus_name() != FLIMFLAM_ERROR_ALREADYCONNECTED:
+      print 'FAIL(%s): ssid %s DBus exception %s' % (handler.Stage(), ssid, e)
+      ErrExit(2)
+  except Exception, e:
+    print 'FAIL(%s): ssid %s exception %s' % (handler.Stage(), ssid, e)
+    traceback.print_exc(file=sys.stderr)
+    ErrExit(2)
+  if handler.Failure():
+    print 'FAIL(%s): ssid %s %s' % (handler.Stage(), ssid, handler.Failure())
+    ErrExit(2)
+
+  end = time.time()
+  config_start = handler.configuration_time
+  if config_start:
+    config_time = end - config_start
+    assoc_time = config_start - assoc_start
+  else:
+    config_time = 0.0
+    assoc_time = end - assoc_start
+
+  if not handler.Success():
+    print ('TIMEOUT(%s): ssid %s assoc %3.1f config %3.1f secs state %s' %
+           (handler.Stage(), ssid, assoc_time, config_time, handler.svc_state))
     ErrExit(3)
 
-# wait another config_timeout seconds to get an ip address
-config_time = 0
-status = properties.get("State", None)
-if status != "ready":
-    while config_time < config_timeout:
-        properties = service.GetProperties()
-        status = properties.get("State", None)
-#        print>>sys.stderr, "time %3.1f state %s" % (config_time, status)
-        if status == "failure":
-            print "FAIL(config): ssid %s assoc %3.1f config %3.1f secs" \
-                %(ssid, assoc_time, config_time)
-            ErrExit(5)
-        if status == "ready":
-            break
-        if status != "configuration":
-            print "FAIL(config): ssid %s assoc %3.1f config %3.1f secs *%s*" \
-                %(ssid, assoc_time, config_time, status)
-            ErrExit(4)
-        time.sleep(.5)
-        config_time += .5
-    if config_time >= config_timeout:
-        print "TIMEOUT(config): ssid %s assoc %3.1f config %3.1f secs" \
-            %(ssid, assoc_time, config_time)
-        ErrExit(6)
+  print ('OK %3.1f %3.1f %s (assoc and config times in sec, quirks)' %
+         (assoc_time, config_time, str(connect_quirks.keys())))
 
-print "OK %3.1f %3.1f %s (assoc and config times in sec, quirks)" \
-    %(assoc_time, config_time, str(connect_quirks.keys()))
-
-if connect_quirks:
+  if connect_quirks:
     DumpLogs(logs)
-sys.exit(0)
+  sys.exit(0)
+
+if __name__ == '__main__':
+  main(sys.argv)

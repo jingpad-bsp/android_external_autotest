@@ -6,7 +6,7 @@
   "steps":[             # Channel 6
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2437", "mode":"11g", "hidessid":None } ],
-    [ "connect",        { "security":"none" } ],
+    [ "connect",        { "security":"none", "hidden":True } ],
     [ "client_ping",    { "count":"10" } ],
     [ "destroy" ],
   ],

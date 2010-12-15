@@ -5,11 +5,11 @@
 # This test tries invalid WPA and RSN passprhase lengths.
 { "name":"RSNWPABadKeyLength",
   "steps":[             # Channel [any]
-    [ "!connect",        { "security":"rsn", "psk":"0123456" },
+    [ "!connect",        { "security":"rsn", "psk":"0123456", "hidden":True },
                            "org.chromium.flimflam.Error.InvalidArguments" ],
-    [ "!connect",        { "security":"wpa", "psk":"0123456" },
+    [ "!connect",        { "security":"wpa", "psk":"0123456", "hidden":True },
                            "org.chromium.flimflam.Error.InvalidArguments" ],
-    [ "!connect",        { "security":"rsn",
+    [ "!connect",        { "security":"rsn", "hidden":True,
                            "psk":"0123456789"
                                  "0123456789"
                                  "0123456789"
@@ -18,7 +18,7 @@
                                  "0123456789"
                                  "0123" },
                            "org.chromium.flimflam.Error.InvalidArguments" ],
-    [ "!connect",        { "security":"wpa",
+    [ "!connect",        { "security":"wpa", "hidden":True,
                            "psk":"0123456789"
                                  "0123456789"
                                  "0123456789"

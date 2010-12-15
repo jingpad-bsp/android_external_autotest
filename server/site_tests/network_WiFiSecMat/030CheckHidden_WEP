@@ -13,7 +13,8 @@
                         }
     ],
     # key index 0, 40-bit WEP
-    [ "connect",        { "security":"wep", "psk":"0:0123456789" } ],
+    [ "connect",        { "security":"wep", "psk":"0:0123456789",
+                          "hidden":True } ],
     [ "client_ping",    { "count":"10" } ],
     [ "destroy" ],
   ],

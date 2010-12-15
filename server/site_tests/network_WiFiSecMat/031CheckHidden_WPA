@@ -10,7 +10,7 @@
                           "wpa_pairwise":"TKIP CCMP",
                           "rsn_pairwise":"CCMP",
                           "wpa_passphrase":"chromeos" } ],
-    [ "connect",        { "security":"rsn", "psk":"chromeos" } ],
+    [ "connect",        { "security":"rsn", "psk":"chromeos", "hidden":True } ],
     [ "client_ping",    { "count":"10" } ],
     [ "destroy" ],
   ],

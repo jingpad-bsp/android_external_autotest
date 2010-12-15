@@ -109,6 +109,7 @@ class WiFiTest(object):
         self.client = hosts.create_host(client['addr'])
         self.client_at = autotest.Autotest(self.client)
         self.client_wifi_ip = None       # client's IP address on wifi net
+        self.client_installed_scripts = {}
 
         #
         # The server machine may be multi-homed or only on the wifi
@@ -305,6 +306,8 @@ class WiFiTest(object):
 
 
     def install_script(self, script_name, *support_scripts):
+        if script_name in self.client_installed_scripts:
+            return self.client_installed_scripts[script_name]
         script_client_dir = self.client.get_tmp_dir()
         script_client_file = os.path.join(script_client_dir, script_name)
         for copy_file in [script_name] + list(support_scripts):
@@ -313,26 +316,35 @@ class WiFiTest(object):
             dest_file = os.path.join(script_client_dir,
                                      os.path.basename(src_file))
             self.client.send_file(src_file, dest_file, delete_dest=True)
+        self.client_installed_scripts[script_name] = script_client_file
         return script_client_file
 
 
     def connect(self, params):
         """ Connect client to AP/router """
 
-        script_client_file = self.install_script('site_wlan_connect.py')
+        script_client_file = self.install_script('site_wlan_connect.py',
+                                                 'site_wlan_wait_state.py')
         if 'eap-tls' in params:
             params.update(site_eap_tls.client_config(self.client,
                                                      params['eap-tls'],
                                                      params.get('server-auth',
                                                                 None)))
 
-        result = self.client.run('python "%s" "%s" "%s" "%s" "%d" "%d"' %
+        flags = []
+        if params.get('debug', True):
+            flags.append('--debug')
+        if params.get('hidden', False):
+            flags.append('--hidden')
+
+        result = self.client.run('python "%s" %s "%s" "%s" "%s" "%d" "%d"' %
             (script_client_file,
-            params.get('ssid', self.wifi.get_ssid()),
-            params.get('security', ''),
-            params.get('psk', ''),
-            params.get('assoc_timeout', self.deftimeout),
-            params.get('config_timeout', self.deftimeout))).stdout.rstrip()
+             ' '.join(flags),
+             params.get('ssid', self.wifi.get_ssid()),
+             params.get('security', ''),
+             params.get('psk', ''),
+             params.get('assoc_timeout', self.deftimeout),
+             params.get('config_timeout', self.deftimeout))).stdout.rstrip()
 
         result_times = re.match("OK ([0-9\.]*) ([0-9\.]*) .*", result)
 
@@ -376,7 +388,7 @@ class WiFiTest(object):
 
         # Whether to print out all state transitions of watched services to
         # stderr
-        if params.get('debug', False):
+        if params.get('debug', True):
             args.append('--debug')
         # Time limit on the execution of a single step
         if 'step_timeout' in params:

@@ -25,6 +25,7 @@ import time
 import dbus
 import dbus.mainloop.glib
 import gobject
+import subprocess
 
 FLIMFLAM = 'org.chromium.flimflam'
 
@@ -46,13 +47,64 @@ def PrintProperties(item):
     print>>sys.stderr, '    %s = %s' % (key, str(val))
 
 
-def FindObject(kind, attr, val, path_list=None, cache=None):
+# Open each log file and seek to the current end
+def OpenLogs(*logfiles):
+  logs = []
+  for logfile in logfiles:
+    try:
+      msgs = open(logfile)
+      msgs.seek(0, 2)
+      logs.append({ 'name': logfile, 'file': msgs })
+    except Exception, e:
+      # If we cannot open the file, this is not necessarily an error
+      pass
+
+  return logs
+
+
+def DumpObjectList(kind):
+  print>>sys.stderr, '%s list:' % kind
+  for item in GetObjectList(kind, None):
+    PrintProperties(item)
+
+
+# Returns the list of the wifi interfaces (e.g. "wlan0") known to flimflam
+def GetWifiInterfaces():
+  interfaces = []
+  device_paths = manager.GetProperties().get('Devices', None)
+  for device_path in device_paths:
+    device = dbus.Interface(
+      bus.get_object('org.chromium.flimflam', device_path),
+      'org.chromium.flimflam.Device')
+    props = device.GetProperties()
+    type = props.get('Type', None)
+    interface = props.get('Interface', None)
+    if type == 'wifi':
+      interfaces.append(interface)
+  return interfaces
+
+
+def DumpLogs(logs):
+  for log in logs:
+    print>>sys.stderr, 'Content of %s during our run:' % log['name']
+    print>>sys.stderr, '  )))  '.join(log['file'].readlines())
+
+  for interface in GetWifiInterfaces():
+    print>>sys.stderr, 'iw dev %s scan output: %s' % \
+        ( interface,
+          subprocess.Popen(['iw', 'dev', interface, 'scan', 'dump'],
+                           stdout=subprocess.PIPE).communicate()[0])
+
+  DumpObjectList('Service')
+
+
+def FindObjects(kind, attr, val, path_list=None, cache=None):
   """Find an object in the manager of type _kind_ with _attr_ set to _val_."""
 
   if cache is None:
     cache = {}
 
-  ret = None
+  ret = []
   if val in cache:
     return cache[val]
 
@@ -60,14 +112,21 @@ def FindObject(kind, attr, val, path_list=None, cache=None):
   for obj in GetObjectList(kind, path_list):
     if obj in values:
       continue
-    props = obj.GetProperties()
+    try:
+      props = obj.GetProperties()
+    except dbus.exceptions.DBusException, e:
+      print>>sys.stderr, ('Got exception %s while getting props on %s' %
+                          (e.get_dbus_name() , obj))
+      continue
     if attr in props:
       objval = props[attr]
-      cache[objval] = obj
+      if not objval in cache:
+        cache[objval] = [obj]
+      else:
+        cache[objval].append(obj)
       if objval == val:
-        ret = obj
+        ret.append(obj)
   return ret
-
 
 class StateHandler(object):
   """Listens for state transitions."""
@@ -95,17 +154,21 @@ class StateHandler(object):
     self.waiting_for_services = False
     self.results = []
     self.service_cache = {}
+    self.svc_state = None
+    self.failure = False
 
   def Debug(self, debugstr):
     if self.debug:
-      print>>sys.stderr, debugstr
+      elapsed_time = time.time() - self.step_start_time
+      print>>sys.stderr, '[%8.3f] %s' % (elapsed_time, debugstr)
 
   def StateChangeCallback(self, attr, value, **kwargs):
     """State change callback handle: did we enter the desired state?"""
 
     if str(attr) != 'State':
-      self.Debug('Received non-state-change signal (%s=%s)' %
-                 (str(attr), str(value)))
+      if str(attr) == 'Strength':
+        value = int(value)
+      self.Debug('Received signal (%s=%s)' % (str(attr), str(value)))
       return
 
     state = str(value)
@@ -119,17 +182,18 @@ class StateHandler(object):
                  (kwargs['path'], self.wait_path))
       return
 
-    elapsed_time = time.time() - self.step_start_time
     self.svc_state = state
-    self.Debug('[%8.3f] Service %s changed state: %s' % (elapsed_time,
-                                                         self.service_name,
-                                                         state))
+    self.Debug('Service %s changed state: %s' % (self.service_name, state))
 
     if state == self.wait_state:
-      self.results.append('%.3f' % elapsed_time)
+      self.results.append('%.3f' % (time.time() - self.step_start_time))
       if not self.NextState():
         self.runloop.quit()
+    else:
+      self.StateChanged()
 
+  def StateChanged(self):
+    pass
 
   def ServicesChangeCallback(self, attr, value):
     """Each time service list changes, check to see if we find our service."""
@@ -142,15 +206,26 @@ class StateHandler(object):
       # Not interested -- this is not a change to "Services"
       return
 
-    svc = FindObject('Service', 'Name', self.service_name,
-                     path_list=value,
-                     cache=self.service_cache)
+    svc = self.FindService(value)
     if svc:
+      self.Debug('Service %s added to service list' % self.service_name)
       self.CancelTimeout()
       elapsed_time = time.time() - self.step_start_time
       if self.WaitForState(svc, self.step_timeout - elapsed_time):
         self.results.append('%.3f' % elapsed_time)
         return self.NextState()
+    elif self.failure:
+      self.results.append('ERR_FAILURE')
+      self.runloop.quit()
+      
+
+  def FindService(self, path_list=None):
+    ret = FindObjects('Service', 'Name', self.service_name,
+                       path_list=path_list, cache=self.service_cache)
+    if len(ret):
+      return ret[0]
+    return None
+
 
   def NextState(self):
     """Set up a timer for the next desired state transition."""
@@ -176,10 +251,12 @@ class StateHandler(object):
     self.step_start_time = now
 
     # Find a service that matches this ssid
-    svc = FindObject('Service', 'Name', self.service_name,
-                     cache=self.service_cache)
+    svc = self.FindService()
     if not svc:
-      if self.svc_timeout <= 0:
+      if self.failure:
+        self.results.append('ERR_FAILURE')
+        return False
+      elif self.svc_timeout <= 0:
         self.results.append('ERR_NOTFOUND')
         return False
       self.WaitForService(min(self.svc_timeout, self.step_timeout))
@@ -209,8 +286,10 @@ class StateHandler(object):
     """Setup a callback for state changes on our service."""
 
     # Are we already in the desired state?
-    self.svc_state = svc.GetProperties().get('State', None)
+    self.svc_state = svc.GetProperties().get('State')
     self.wait_path = svc.object_path
+
+    self.StateChanged()
 
     if self.svc_state == self.wait_state and not self.waitchange:
       return True
@@ -256,6 +335,8 @@ class StateHandler(object):
       return False
     return True
 
+  def Failure(self):
+    return self.failure
 
 def main(argv):
   parser = optparse.OptionParser('Usage: %prog [options...] [SSID=state...]')
@@ -282,12 +363,14 @@ def main(argv):
                          options.step_timeout, options.svc_timeout,
                          options.debug)
 
+  logs = OpenLogs('/var/log/messages')
   if handler.NextState():
     handler.RunLoop()
 
   handler.PrintSummary()
 
   if not handler.Success():
+    DumpLogs(logs)
     sys.exit(1)
 
   sys.exit(0)
