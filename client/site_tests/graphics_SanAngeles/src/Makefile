@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# To statically link to GLES libs, export IMPORTGL=0
+# To dynamically link to GLES libs, export IMPORTGL=1
+IMPORTGL = 0
 
 OPTIONS = -O3 -Wall
 FLAGS = -D SUPERSHAPE_HIGH_RES
