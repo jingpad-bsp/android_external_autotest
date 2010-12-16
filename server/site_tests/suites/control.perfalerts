@@ -18,9 +18,20 @@ contributing (and previously unaware) developers of the impact.
 Ideally these are run for each build in order to make blame easier.
 """
 
+# TODO(jrbarnette):  The extra call to client.reboot() below is a
+# workaround that should be removed.
+#
+# The problem is that if platform_BootPerfServer is the first test
+# after an automatic update, the first boot of the test takes at
+# least 1 second longer than normal to mount the stateful partition.
+# The cause of the long mount is an unknown interaction between the
+# stateful_update script and autotest RemoteHost.reboot().  The
+# long mount time causes anomalies in the boot data, so we work
+# around the problem by forcing the long boot here, before starting
+# the test.
 def run_assigned_tests(machine):
   client = hosts.create_host(machine)
-
+  client.reboot()
   job.run_test(
       "platform_BootPerfServer", host=client, iterations=100)
 
