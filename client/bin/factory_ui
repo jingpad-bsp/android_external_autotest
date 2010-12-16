@@ -279,7 +279,7 @@ def grab_shortcut_keys(kbd_shortcut_set, control_pid):
             xevent = xhandle.next_event()
             if xevent.type == X.KeyPress:
                 keycode = xevent.detail
-                factory.log_shared_data('activated_kbd_shortcut',
+                factory.set_shared_data('activated_kbd_shortcut',
                                         keycode_map[keycode])
                 os.kill(control_pid, signal.SIGUSR1)
         return True
@@ -291,7 +291,7 @@ def main(test_list, status_file_path, control_pid):
     '''This process is launched by the autotest suite_Factory control
     process, which should be identified by the <control pid> cmdline
     argument.  When operators press keyboard shortcuts, the shortcut
-    value is logged with log_shared_data() and a SIGUSR1 is sent to
+    value is sent by set_shared_data() and a SIGUSR1 is sent to
     the control program.'''
 
     test_db = factory.TestDatabase(test_list)
@@ -356,7 +356,7 @@ def main(test_list, status_file_path, control_pid):
     test_widget_allocation = test_widget_box.get_allocation()
     test_widget_size = (test_widget_allocation.width,
                         test_widget_allocation.height)
-    factory.log_shared_data('test_widget_size', test_widget_size)
+    factory.set_shared_data('test_widget_size', test_widget_size)
 
     console = Console(console_box.get_allocation())
     gobject.io_add_watch(sys.stdin, gobject.IO_IN, state_change_handler,

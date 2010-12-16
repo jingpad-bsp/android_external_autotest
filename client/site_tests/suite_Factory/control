@@ -44,7 +44,7 @@ TEST_LIST_PATH = job.autodir + '/site_tests/suite_Factory/test_list'
 from autotest_lib.client.bin.parallel import fork_waitfor as orig_fork_waitfor
 
 def new_fork_waitfor(tmp, pid):
-    factory.log_shared_data('active_test_data', (tmp, pid))
+    factory.set_shared_data('active_test_data', (tmp, pid))
     try:
         orig_fork_waitfor(tmp, pid)
     except os.error, e:

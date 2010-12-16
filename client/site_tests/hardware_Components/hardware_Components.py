@@ -443,12 +443,18 @@ class hardware_Components(test.test):
         return approved
 
 
-    def select_correct_dbs(self, approved_dbs, shared_dict):
+    def select_correct_dbs(self, approved_dbs):
         os.chdir(self.bindir)
-        if 'part_id_hwqual' in shared_dict:
+        id_hwqual = None
+        try:
+            id_hwqual = factory.get_shared_data('part_id_hwqual')
+        except Exception, e:
+            # hardware_Components may run without factory environment
+            factory.log('Failed getting shared data, ignored: %s' % repr(e))
+        if id_hwqual:
             # If HwQual ID is already specified, find the list with same ID.
-            id = shared_dict['part_id_hwqual'].replace(' ', '_')
-            approved_dbs = 'data_*/components_%s' % id
+            id_hwqual = id_hwqual.replace(' ', '_')
+            approved_dbs = 'data_*/components_%s' % id_hwqual
         else:
             sample_approved_dbs = 'approved_components.default'
             if (not glob.glob(approved_dbs)) and glob.glob(sample_approved_dbs):
@@ -471,8 +477,7 @@ class hardware_Components(test.test):
         self._pp = pprint.PrettyPrinter()
 
 
-    def run_once(self, approved_dbs='approved_components', shared_dict={},
-            ignored_cids=[]):
+    def run_once(self, approved_dbs='approved_components', ignored_cids=[]):
         self.update_ignored_cids(ignored_cids)
         enumerable_system = self.get_all_enumerable_components()
         pci_system = self.get_all_pci_components()
@@ -480,7 +485,7 @@ class hardware_Components(test.test):
 
         only_cardreader_failed = False
         all_failures = 'The following components are not matched.\n'
-        correct_dbs = self.select_correct_dbs(approved_dbs, shared_dict)
+        correct_dbs = self.select_correct_dbs(approved_dbs)
         for db in correct_dbs:
             self._system = enumerable_system
             self._failures = {}
@@ -512,10 +517,15 @@ class hardware_Components(test.test):
                 all_failures += 'For DB %s:' % db
                 all_failures += self.pformat(self._failures)
             else:
-                # If one of DBs is matched, record some data in shared_dict.
+                # If one of DBs is matched, record some data in shared_data.
                 cids_need_to_be_record = ['part_id_hwqual']
-                for cid in cids_need_to_be_record:
-                    factory.log_shared_data(cid, approved[cid][0])
+                try:
+                    for cid in cids_need_to_be_record:
+                        factory.set_shared_data(cid, approved[cid][0])
+                except Exception, e:
+                    # hardware_Components may run without factory environment
+                    factory.log('Failed setting shared data, ignored: %s' %
+                                repr(e))
                 return
 
         if only_cardreader_failed:

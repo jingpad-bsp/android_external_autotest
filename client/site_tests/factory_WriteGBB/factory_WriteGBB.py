@@ -4,7 +4,7 @@
 
 import glob, os
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import factory, test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import gbb_util
 
@@ -12,15 +12,16 @@ from autotest_lib.client.common_lib import gbb_util
 class factory_WriteGBB(test.test):
     version = 3
 
-    def run_once(self, shared_dict={}):
+    def run_once(self):
         # More convenient to set the CWD to hardware_Components since a lot of
         # values in the component list are based on that directory.
         os.chdir(os.path.join(self.bindir, '../hardware_Components'))
 
-        # If found the HwQual ID in shared_dict, identify the component files.
-        if 'part_id_hwqual' in shared_dict:
-            id = shared_dict['part_id_hwqual'].replace(' ', '_')
-            component_file = 'data_*/components_%s' % id
+        # If found the HwQual ID in shared_data, identify the component files.
+        id_hwqual = factory.get_shared_data('part_id_hwqual')
+        if id_hwqual:
+            id_hwqual = id_hwqual.replace(' ', '_')
+            component_file = 'data_*/components_%s' % id_hwqual
         else:
             raise error.TestError(
                     'You need to run this test from factory UI, and have ' +

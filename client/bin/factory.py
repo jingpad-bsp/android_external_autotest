@@ -46,10 +46,6 @@ def get_shared_data(key):
 def set_shared_data(key, value):
     return get_state_instance().set_shared(key, value)
 
-def log_shared_data(key, value):
-    ''' (for backward compatibility) Same as set_shared_data '''
-    return set_shared_data(key, value)
-
 
 class FactoryTest:
     def __repr__(self):
@@ -318,7 +314,7 @@ class ControlState:
         target_test = self._kbd_shortcut_db.lookup_test(kbd_shortcut)
         log('activated kbd_shortcut %s -> %s' % (
             kbd_shortcut, self._test_db.get_unique_id_str(target_test)))
-        log_shared_data('activated_kbd_shortcut', None)
+        set_shared_data('activated_kbd_shortcut', None)
         return target_test
 
     def run_test(self, test, count=None):
@@ -329,11 +325,8 @@ class ControlState:
         dargs = {}
         dargs.update(test.dargs)
         dargs.update(self._std_dargs)
-        # TODO(hungte) we should deprecate shared_dict in dargs and use
-        # factory.get_shared_data / set_shared_data
         dargs.update({'tag': test_tag,
-                      'subtest_tag': test_tag,
-                      'shared_dict': get_state_instance().get_shared_dict()})
+                      'subtest_tag': test_tag})
         self._job.drop_caches_between_iterations = test.drop_caches
         self._status_map.update(test, ACTIVE, None)
         status = FAILED
