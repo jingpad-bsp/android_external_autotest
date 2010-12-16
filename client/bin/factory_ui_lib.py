@@ -16,7 +16,7 @@
 from autotest_lib.client.bin import factory
 from autotest_lib.client.common_lib import error
 
-from factory import ACTIVE, PASSED, FAILED, UNTESTED, STATUS_CODE_MAP
+from factory import ACTIVE, PASSED, FAILED, UNTESTED
 
 import cairo
 import gtk
@@ -102,7 +102,7 @@ def run_test_widget(job, test_widget,
                     window_registration_callback=None,
                     cleanup_callback=None):
 
-    test_widget_size = job.factory_shared_dict.get('test_widget_size')
+    test_widget_size = factory.get_shared_data('test_widget_size')
 
     window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     window.modify_bg(gtk.STATE_NORMAL, BLACK)

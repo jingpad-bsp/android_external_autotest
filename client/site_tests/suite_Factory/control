@@ -25,6 +25,7 @@ control process).  """
 
 import imp
 import os
+import pprint
 
 imp.load_source('common', job.autodir + '/bin/common.py')
 
@@ -34,6 +35,7 @@ from autotest_lib.client.bin import factory_error as error
 
 
 FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
+FACTORY_STATE_SERVER_PATH = job.autodir + '/bin/factory_state.py'
 STATUS_FILE_PATH = job.autodir + '/results/default/status'
 TEST_LIST_PATH = job.autodir + '/site_tests/suite_Factory/test_list'
 
@@ -72,26 +74,35 @@ execfile(TEST_LIST_PATH)
 job.bootloader.set_default = lambda x: None
 job.bootloader.boot_once = lambda x: None
 
+def start_state_server():
+  state_proc_args = [FACTORY_STATE_SERVER_PATH]
+  factory.log('starting state server %s' % repr(state_proc_args))
+  sp = subprocess.Popen(state_proc_args, stdout=subprocess.PIPE)
+  factory.log('waiting for state server to come up...')
+  factory.log('got message from server : %s' % sp.stdout.readline().strip())
+  return sp
 
 def start_ui():
   ui_proc_args = [FACTORY_UI_PATH, TEST_LIST_PATH,
                   STATUS_FILE_PATH, str(os.getpid())]
   factory.log('starting ui %s' % repr(ui_proc_args))
-  sp = subprocess.Popen(ui_proc_args, stdout=subprocess.PIPE)
+  sp = subprocess.Popen(ui_proc_args, stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE)
   factory.log('waiting for ui to come up...')
   factory.log('got message from ui : %s' % repr(sp.stdout.readline().strip()))
   # TODO(hungte) define some protocol so that we know the UI failed to start.
   return sp
 
-def stop_ui(ui_process):
+def stop_process(process, caption):
     try:
-        factory.log('stopping ui %d...' % ui_process.pid)
-        ui_process.terminate()
-        ui_process.kill()
-        ui_process.wait()
-        factory.log('ui process end with code: %d' % ui_process.returncode)
+        factory.log('stopping %s process %d...' % (caption, process.pid))
+        process.terminate()
+        process.kill()
+        process.wait()
+        factory.log('%s process ended with code: %d' % (caption,
+                                                        process.returncode))
     except:
-        factory.log('WARNING: failed to stop ui. ignored.')
+        factory.log('WARNING: failed to stop %s process. ignored.' % caption)
 
 def step_reboot_seq(next_subtest_info, total_iterations, i=0):
     if i < total_iterations:
@@ -117,51 +128,85 @@ def find_next_test_to_run(status_map, test_db):
     return  None
 
 def step_init(next_subtest_info=None):
-    factory.log('TEST_LIST = %s' % repr(TEST_LIST))
-
     job.next_step([step_init])
+    factory.log('TEST_LIST:\n%s' % pprint.pformat(TEST_LIST))
+    ui_process = None
+    state_server_process = None
 
-    ui_process = start_ui()
+    class FactoryUINotifyObject(object):
+        def __init__(self, notify_fd):
+            self.notify_fd = notify_fd
 
+        def notify(self, test, status):
+            self.notify_fd.write(' ')
+            self.notify_fd.flush()
+    try:
+        state_server_process = start_state_server()
+        ui_process = start_ui()
+        ui_notify_fd = ui_process.stdin
+        ui_notify_obj = FactoryUINotifyObject(ui_notify_fd)
+        main_loop(next_subtest_info, ui_notify_obj.notify)
+    finally:
+        stop_process(ui_process, 'ui')
+        stop_process(state_server_process, 'state server')
+
+def main_loop(next_subtest_info, notify_callback):
     test_db = factory.TestDatabase(TEST_LIST)
-    status_map = factory.StatusMap(TEST_LIST, STATUS_FILE_PATH)
+    status_map = factory.StatusMap(TEST_LIST, STATUS_FILE_PATH,
+                                   status_change_callback=notify_callback)
+
+    # initialize factory test states
+    state_instance = factory.get_state_instance()
+    # TODO(hungte) maybe we should merge this into StatusMap or ControlState
+    register_test_list = [test_db.get_unique_id_str(test)
+                          for test in test_db.get_all_tests()]
+    if state_instance.register_tests(register_test_list, factory.UNTESTED):
+        factory.log('Registered new test list.')
+    else:
+        factory.log('Continue with existing test list.')
+
+    # any 'active' tests should be fail now.
+    for test in test_db.get_all_tests():
+        status = status_map.lookup_status(test)
+        # factory.log('test %s: %s' % (test_db.get_unique_id_str(test), status))
+        if status == factory.UNTESTED:
+            continue
+        elif isinstance(test, factory.InformationScreen):
+            status_map.update(test, factory.UNTESTED)
+        elif ((not isinstance(test, factory.AutomatedRebootSubTest)) and
+              status == factory.ACTIVE):
+            status_map.update(test, factory.FAILED, 'Unknown (reboot?)')
+
     control_state = factory.ControlState(
         job, TEST_LIST, test_db, status_map, STATUS_FILE_PATH,
         parallel.fork_nuke_subprocess)
 
-    def run_automated_sequence(test, count, start_index=0):
+    def run_automated_sequence(test, start_index=0):
         for subtest in test.subtest_list[start_index:]:
             if isinstance(subtest, factory.AutomatedRebootSubTest):
-                next_subtest_info = (test_db.get_tag_prefix(subtest), count)
+                next_subtest_info = (test_db.get_tag_prefix(subtest))
                 step_reboot_seq(next_subtest_info, subtest.iterations)
             else:
-                shortcut_target = control_state.run_test(subtest, count)
-            status_map.read_new_data()
-            if shortcut_target:
-                return shortcut_target
+                shortcut_target = control_state.run_test(subtest)
+                if shortcut_target:
+                    return shortcut_target
             if status_map.lookup_status(test) == factory.FAILED:
                 return None
 
     if next_subtest_info:
-        tag_prefix, count = next_subtest_info
+        tag_prefix = next_subtest_info
         reboot_subtest = test_db.get_subtest_by_tag_prefix(tag_prefix)
-        control_state.run_test(reboot_subtest, count)
-        status_map.read_new_data()
+        control_state.run_test(reboot_subtest)
         automated_seq = test_db.get_subtest_parent(reboot_subtest)
         rst_index = automated_seq.subtest_list.index(reboot_subtest)
-        run_automated_sequence(automated_seq, count, start_index=rst_index + 1)
+        run_automated_sequence(automated_seq, start_index=rst_index + 1)
 
     test = find_next_test_to_run(status_map, test_db)
     while test is not None:
         unique_id_str = test_db.get_unique_id_str(test)
-        count = status_map.lookup_count(test) + 1
-        factory.log('control running test %s/%s' % (unique_id_str, count))
+        factory.log('control running test %s' % unique_id_str)
         if isinstance(test, factory.AutomatedSequence):
-            shortcut_target = run_automated_sequence(test, count)
+            shortcut_target = run_automated_sequence(test)
         else:
-            shortcut_target = control_state.run_test(test, count)
-            status_map.read_new_data()
+            shortcut_target = control_state.run_test(test)
         test = shortcut_target or find_next_test_to_run(status_map, test_db)
-
-    # TODO(hungte) we may need to also stop UI when exception was raised.
-    stop_ui(ui_process)

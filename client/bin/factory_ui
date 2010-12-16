@@ -28,6 +28,7 @@ import gtk
 import imp
 import os
 import pango
+import select
 import signal
 import subprocess
 import sys
@@ -35,6 +36,7 @@ import time
 
 import common
 import factory
+import factory_state
 import factory_ui_lib as ful
 
 from gtk import gdk
@@ -69,8 +71,6 @@ _OTHER_LABEL_FONT = pango.FontDescription('courier new condensed 20')
 
 _ST_LABEL_EN_SIZE = (250, 35)
 _ST_LABEL_ZW_SIZE = (150, 35)
-
-_STATUS_REFRESH_MS = 100
 
 class Console:
     '''Display a progress log.  Implemented by launching an borderless
@@ -166,8 +166,6 @@ class SubTestLabelBox(gtk.EventBox):
         self.label_status = label_status
 
     def update(self, status):
-        if status == ful.UNTESTED:
-            return
         self.label_status.set_text(status)
         self.label_status.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
         self.queue_draw()
@@ -235,10 +233,23 @@ class UiState():
         self._test_widget_box.show_all()
 
 
-def refresh_status(status_map, test_db, ui_state):
-    status_map.read_new_data()
-    active_test = status_map.get_active_top_level_test()
-    ui_state.set_active_test(test_db, active_test)
+def state_change_handler(fd, cb_condition, test_db, test_state, ui_state):
+    # Currently the 'state change' event (sent via fd) is fired when each single
+    # test changed its state, but the state_change_handler will change all tests
+    # at once.  To get best performance, we use select(0.01) to collect and
+    # accumulate all changes occured in a short period.
+    while len(select.select((fd,), (), (), 0.01)[0]) > 0:
+        fd.read(1)
+
+    try:
+        for name, status in test_state.get_all_tests().items():
+            test = test_db.get_test_by_unique_id_str(name)
+            ui_state.status_change_callback(test, status)
+            if (status == factory.ACTIVE and
+                (not isinstance(test, AutomatedSubTest))):
+                ui_state.set_active_test(test_db, test)
+    except Exception, e:
+        factory.log('state_change_handler got exception: %s', repr(e))
     return True
 
 
@@ -284,6 +295,7 @@ def main(test_list, status_file_path, control_pid):
     the control program.'''
 
     test_db = factory.TestDatabase(test_list)
+    test_state = factory_state.get_instance()
 
     window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     window.connect('destroy', lambda _: gtk.main_quit())
@@ -336,13 +348,6 @@ def main(test_list, status_file_path, control_pid):
     window.add(base_box)
     window.show_all()
 
-    status_map = factory.StatusMap(
-        test_list, status_file_path, test_db=test_db,
-        status_change_callback=ui_state.status_change_callback)
-
-    gobject.timeout_add(_STATUS_REFRESH_MS, refresh_status,
-                        status_map, test_db, ui_state)
-
     kbd_shortcut_db = factory.KbdShortcutDatabase(test_list, test_db)
     grab_shortcut_keys(kbd_shortcut_db.get_shortcut_keys(), control_pid)
 
@@ -354,14 +359,15 @@ def main(test_list, status_file_path, control_pid):
     factory.log_shared_data('test_widget_size', test_widget_size)
 
     console = Console(console_box.get_allocation())
+    gobject.io_add_watch(sys.stdin, gobject.IO_IN, state_change_handler,
+                         test_db, test_state, ui_state)
 
-    print 'Factory UI ready.'
+    # This is to notify suite_Factory/control that UI is ready.
+    sys.stdout.write('Factory UI Ready\n')
     sys.stdout.flush()
 
     factory.log('factory_ui setup done, starting gtk.main()...')
-
     gtk.main()
-
     factory.log('factory_ui gtk.main() finished, exiting.')
 
 if __name__ == '__main__':

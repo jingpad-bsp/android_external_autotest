@@ -15,6 +15,15 @@ class site_job(base_client_job):
     def __init__(self, *args, **kwargs):
         base_client_job.__init__(self, *args, **kwargs)
 
+    def _runtest(self, url, tag, args, dargs):
+        # this replaced base_client_job._runtest, which is called by
+        # base_client_job.runtest.group_func (see job.py)
+        try:
+            self.last_error = None
+            base_client_job._runtest(self, url, tag, args, dargs)
+        except error.TestBaseException, detail:
+            self.last_error = detail
+            raise
 
     def run_test(self, url, *args, **dargs):
         log_pauser = site_logging.LogRotationPauser()

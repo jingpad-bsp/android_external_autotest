@@ -14,6 +14,7 @@ import signal
 import subprocess
 import sys
 import time
+import factory_state
 
 
 ACTIVE = 'ACTIVE'
@@ -21,25 +22,33 @@ PASSED = 'PASS'
 FAILED = 'FAIL'
 UNTESTED = 'UNTESTED'
 
-STATUS_CODE_MAP = {
-    'START': ACTIVE,
-    'GOOD': PASSED,
-    'FAIL': FAILED,
-    'ERROR': FAILED,
-    'ABORT': FAILED,
-    'TEST_NA': FAILED}
-
-
 LOG_PATH = '/var/log/factory.log'
 DATA_PREFIX = 'FACTORY_DATA:'
 FINAL_VERIFICATION_TEST_UNIQUE_NAME = 'factory_Verify'
 REVIEW_INFORMATION_TEST_UNIQUE_NAME = 'ReviewInformation'
 
+_state_instance = None
+
+
 def log(s):
     print >> sys.stderr, 'FACTORY: ' + s
 
+def get_state_instance():
+    ''' A quick way to get a (cached) instance for factory_state '''
+    global _state_instance
+    if _state_instance is None:
+        _state_instance = factory_state.get_instance()
+    return _state_instance
+
+def get_shared_data(key):
+    return get_state_instance().get_shared(key)
+
+def set_shared_data(key, value):
+    return get_state_instance().set_shared(key, value)
+
 def log_shared_data(key, value):
-    print >> sys.stderr, '%s %s=%s' % (DATA_PREFIX, key, repr(value))
+    ''' (for backward compatibility) Same as set_shared_data '''
+    return set_shared_data(key, value)
 
 
 class FactoryTest:
@@ -143,6 +152,8 @@ class TestDatabase:
         self._unique_name_map = dict(
             (t.unique_name, t) for t in self.get_all_tests()
             if getattr(t, 'unique_name', None) is not None)
+        self._unique_id_str_map = dict(
+            (self.get_unique_id_str(t), t) for t in self.get_all_tests())
 
     def get_test_by_unique_details(self, autotest_name, tag_prefix):
         return self._unique_details_map.get((autotest_name, tag_prefix))
@@ -155,6 +166,9 @@ class TestDatabase:
 
     def get_test_by_unique_name(self, unique_name):
         return self._unique_name_map.get(unique_name)
+
+    def get_test_by_unique_id_str(self, unique_id_str):
+        return self._unique_id_str_map.get(unique_id_str)
 
     def get_subtest_parent(self, test):
         return self._subtest_parent_map.get(test)
@@ -179,48 +193,37 @@ class TestDatabase:
 
 
 class StatusMap:
-    '''Parse the contents of an autotest status file for factory tests
-    into a database containing status, count, and error message
-    information.  On __init__ the status file is parsed once.  Changes
-    to the file are dealt with by running read_new_data().  Complexity
-    is introduced here because AutomatedSequences are not directly
-    represented in the status file and their status must be derived
-    from subtest results.'''
-
-    class Entry:
-
-        def __init__(self):
-            self.status = UNTESTED
-            self.count = 0
-            self.error_msg = None
+    '''
+    Manipulates the status of factory tests by providing query and set
+    operations to the status, counter, and error messages associated with tests
+    in test database, by wrapping calls to factory_state.
+    '''
 
     def __init__(self, test_list, status_file_path, test_db=None,
                  status_change_callback=None):
+        self._state = get_state_instance()
         self._test_list = [test for test in test_list]
         self._test_db = test_db if test_db else TestDatabase(test_list)
-        self._status_map = dict(
-            (test, StatusMap.Entry()) for test in self._test_db.get_all_tests())
-        self._status_file_path = status_file_path
-        self._status_file_pos = 0
-        self._active_automated_seq = None
         self._status_change_callback = status_change_callback
-        self.read_new_data()
 
-    def lookup_status(self, test, min_count=0):
-        entry = self._status_map[test]
-        return entry.status if entry.count >= min_count else UNTESTED
+    def lookup_status(self, test):
+        return self._state.lookup_test_status(
+                self._test_db.get_unique_id_str(test))
 
     def lookup_count(self, test):
-        if isinstance(test, AutomatedSubTest):
-            parent = self._test_db.get_subtest_parent(test)
-            return self._status_map[parent].count
-        else:
-            return self._status_map[test].count
+        return self._state.lookup_test_count(
+                self._test_db.get_unique_id_str(test))
+
+    def increase_count(self, test):
+        return self._state.increase_test_count(
+                self._test_db.get_unique_id_str(test))
 
     def lookup_error_msg(self, test):
-        return self._status_map[test].error_msg
+        return self._state.lookup_test_error_msg(
+                self._test_db.get_unique_id_str(test))
 
     def filter_by_status(self, target_status):
+        # TODO(hungte) use self._state.filter_by_status?
         comp = (isinstance(target_status, list) and
                 (lambda s: s in target_status) or
                 (lambda s: s == target_status))
@@ -234,117 +237,46 @@ class StatusMap:
         return None
 
     def get_active_top_level_test(self):
-        if self._active_automated_seq:
-            return self._active_automated_seq
-        active_tests = [test for test in self._test_list
-                        if self.lookup_status(test) == ACTIVE]
-        if len(active_tests) > 1:
-            # This warning message is noisy.
-            log('ERROR -- multiple active top level tests %s' %
-                repr([self._test_db.get_unique_id_str(test)
-                      for test in active_tests]))
-        return active_tests.pop() if active_tests != [] else None
+        assert False, "not supported yet"
 
-    def read_new_data(self):
-        with open(self._status_file_path) as file:
-            file.seek(self._status_file_pos)
-            for line in file:
-                cols = line.strip().split('\t') + ['']
-                code = cols[0]
-                test_id = cols[1]
-                if code not in STATUS_CODE_MAP or test_id == '----':
-                    continue
-                status = STATUS_CODE_MAP[code]
-                error_msg = status == FAILED and cols[len(cols) - 2] or None
-                autotest_name, _, tag = test_id.rpartition('.')
-                tag_prefix, _, count = tag.rpartition('_')
-                test = self._test_db.get_test_by_unique_details(
-                    autotest_name, tag_prefix)
-                if test is None:
-                    log('status map ignoring update (%s) for test %s %s' %
-                        (status, repr(autotest_name), repr(tag_prefix)))
-                    continue
-                self.update(test, status, int(count), error_msg)
-            self._status_file_pos = file.tell()
-
-    def update(self, test, status, count, error_msg):
-        entry = self._status_map[test]
-        unique_id_str = self._test_db.get_unique_id_str(test)
-        if count < entry.count:
-            log('ignoring older data for %s (data count %d < state count  %d)' %
-                (unique_id_str, count, entry.count))
-            return
-        if isinstance(test, InformationScreen) and status in [PASSED, FAILED]:
+    def _do_update(self, test, status, error_msg=None):
+        if isinstance(test, InformationScreen) and (status in [PASSED, FAILED]):
             status = UNTESTED
-        parent_as = self._test_db.get_subtest_parent(test)
-        if status != entry.status:
-            log('status change for %s : %s/%s -> %s/%s (as = %s)' %
-                (unique_id_str, entry.status, entry.count, status,
-                 count, self._test_db.get_unique_id_str(parent_as)))
+        unique_id_str = self._test_db.get_unique_id_str(test)
+        last_status = self.lookup_status(test)
+        if status != last_status:
+            parent_as = self._test_db.get_subtest_parent(test)
+            log('status change for %s : %s -> %s (as = %s)' %
+                (unique_id_str, last_status, status,
+                 self._test_db.get_unique_id_str(parent_as)))
+            self._state.update_test_status(unique_id_str, status, error_msg)
             if self._status_change_callback is not None:
                 self._status_change_callback(test, status)
-        entry.status = status
-        entry.count = count
-        entry.error_msg = error_msg
-        if (status == ACTIVE and not isinstance(test, AutomatedSequence) and
-            self._active_automated_seq != parent_as):
-            if self._active_automated_seq is not None:
-                self.update_automated_sequence(self._active_automated_seq)
-            self._active_automated_seq = parent_as
-        if parent_as is not None:
-            self.update_automated_sequence(parent_as)
 
-    def update_automated_sequence(self, test):
-        max_count = max([self._status_map[st].count
-                         for st in test.subtest_list])
-        subtest_status_set = set(
-            self.lookup_status(subtest, min_count=max_count)
-            for subtest in test.subtest_list)
-        log('automated sequence %s count = %s status set = %s' % (
-            self._test_db.get_unique_id_str(test),
-            max_count, repr(subtest_status_set)))
+    def update(self, test, status, error_msg=None):
+        ''' Updates the status information of a factory test.
+        If parameter 'test' is a AutomatedSubTest, also update its parent. '''
+        parent_as = self._test_db.get_subtest_parent(test)
+        self._do_update(test, status, error_msg)
+        if isinstance(parent_as, AutomatedSequence):
+            self.update_automated_sequence(parent_as, test)
+
+    def update_automated_sequence(self, test, sub_test):
+        rst_index = test.subtest_list.index(sub_test) + 1
+        for sub_test in test.subtest_list[rst_index:]:
+            if self.lookup_status(sub_test) != UNTESTED:
+                self._do_update(sub_test, UNTESTED)
+        subtest_status_set = set(self.lookup_status(subtest)
+                                 for subtest in test.subtest_list)
+        log('automated sequence %s status set = %s' % (
+            self._test_db.get_unique_id_str(test), repr(subtest_status_set)))
         if len(subtest_status_set) == 1:
             status = subtest_status_set.pop()
-        elif (test == self._active_automated_seq and
-              FAILED not in subtest_status_set):
+        elif FAILED not in subtest_status_set:
             status = ACTIVE
         else:
             status = FAILED
-        self.update(test, status, max_count, None)
-
-
-class LogData:
-    '''Parse the factory log looking for specially formatted
-    name-value declarations and recording the last of any such
-    bindings in a dict.  Data in the right format is written to the
-    log using log_shared_data().'''
-
-    def __init__(self):
-        self._log_file_pos = 0
-        self.shared_dict = {}
-        self.read_new_data()
-
-    def read_new_data(self):
-        with open(LOG_PATH) as file:
-            file.seek(self._log_file_pos)
-            for line in file:
-                parts = line.rsplit(DATA_PREFIX, 1)
-                if not len(parts) == 2:
-                    continue
-                key, raw_value = parts.pop().strip().split('=', 1)
-                log('updating shared_dict[%s]=%s' % (key, raw_value))
-                # XXX When factory.log is corrupted, evaluating shared_dict may
-                # raise SyntaxError. We should use some more robust way to
-                # handle shared data.
-                try:
-                    self.shared_dict[key] = eval(raw_value)
-                except SyntaxError, e:
-                    # Drop this entry.
-                    continue
-            self._log_file_pos = file.tell()
-
-    def get(self, key):
-        return self.shared_dict.get(key)
+        self._do_update(test, status)
 
 
 class ControlState:
@@ -361,7 +293,6 @@ class ControlState:
         self._status_map = status_map
         self._kbd_shortcut_db = KbdShortcutDatabase(test_list, test_db)
         self._test_db = test_db
-        self._log_data = LogData()
         self._std_dargs = {
             'status_file_path' : status_file_path,
             'test_list': test_list}
@@ -369,8 +300,7 @@ class ControlState:
         signal.signal(signal.SIGUSR1, self.kill_current_test_callback)
 
     def kill_current_test_callback(self, signum, frame):
-        self._log_data.read_new_data()
-        active_test_data = self._log_data.get('active_test_data')
+        active_test_data = get_shared_data('active_test_data')
         if active_test_data is not None:
             log('SIGUSR1 ... KILLING active test %s' % repr(active_test_data))
             self._nuke_fn(*active_test_data)
@@ -378,7 +308,7 @@ class ControlState:
             log('SIGUSR1 ... KILLING NOTHING, no active test')
 
     def process_fail_or_kbd_shortcut_activation(self, last_status=None):
-        kbd_shortcut = self._log_data.get('activated_kbd_shortcut')
+        kbd_shortcut = get_shared_data('activated_kbd_shortcut')
         if kbd_shortcut is None:
             if last_status != FAILED:
                 return None
@@ -391,28 +321,38 @@ class ControlState:
         log_shared_data('activated_kbd_shortcut', None)
         return target_test
 
-    def run_test(self, test, count):
-        self._log_data.read_new_data()
+    def run_test(self, test, count=None):
+        if count == None:
+            count = self._status_map.lookup_count(test)
+            self._status_map.increase_count(test)
         test_tag = '%s_%s' % (self._test_db.get_tag_prefix(test), count)
         dargs = {}
         dargs.update(test.dargs)
         dargs.update(self._std_dargs)
+        # TODO(hungte) we should deprecate shared_dict in dargs and use
+        # factory.get_shared_data / set_shared_data
         dargs.update({'tag': test_tag,
                       'subtest_tag': test_tag,
-                      'shared_dict': self._log_data.shared_dict})
-        self._job.factory_shared_dict = self._log_data.shared_dict
+                      'shared_dict': get_state_instance().get_shared_dict()})
         self._job.drop_caches_between_iterations = test.drop_caches
-        self._job.run_test(test.autotest_name, **dargs)
+        self._status_map.update(test, ACTIVE, None)
+        status = FAILED
+        error_msg = None
+        if self._job.run_test(test.autotest_name, **dargs):
+            status = PASSED
+        elif hasattr(self._job, 'last_error'):
+            error_msg = str(self._job.last_error)
+        self._status_map.update(test, status, error_msg)
         self._job.drop_caches_between_iterations = False
-        self._log_data.read_new_data()
-        self._status_map.read_new_data()
-        status = self._status_map.lookup_status(test, min_count=count)
         return self.process_fail_or_kbd_shortcut_activation(status)
 
 
-def lookup_status_by_unique_name(unique_name, test_list, status_file_path):
+def lookup_status_by_unique_name(unique_name, test_list, _=None):
     """Determine the status of given test.  Somewhat heavyweight,
     since it parses the status file."""
+    # TODO(hungte) we should deprecate this function and use StatusMap or
+    # factory_state to query directly.
     test_db = TestDatabase(test_list)
     test = test_db.get_test_by_unique_name(unique_name)
-    return StatusMap(test_list, status_file_path, test_db).lookup_status(test)
+    unique_id = test_db.get_unique_id_str(test)
+    return get_state_instance().lookup_test_status(unique_id)
