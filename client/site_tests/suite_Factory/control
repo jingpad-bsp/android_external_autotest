@@ -31,7 +31,6 @@ imp.load_source('common', job.autodir + '/bin/common.py')
 
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import parallel
-from autotest_lib.client.bin import factory_error as error
 
 
 FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
