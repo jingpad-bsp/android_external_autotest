@@ -21,7 +21,7 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
-from autotest_lib.client.bin import factory_error as error
+from autotest_lib.client.common_lib import error
 
 
 _STATE_WAIT_INSERT = 1

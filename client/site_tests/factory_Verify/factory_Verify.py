@@ -8,7 +8,7 @@ import time
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.bin import factory_error as error
+from autotest_lib.client.common_lib import error
 
 
 GPIO_ROOT = '/home/gpio'

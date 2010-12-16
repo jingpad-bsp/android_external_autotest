@@ -5,7 +5,7 @@
 import logging
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.bin import factory_error as error
+from autotest_lib.client.common_lib import error
 
 class factory_Fail(test.test):
     version = 1
