@@ -30,6 +30,7 @@ imp.load_source('common', job.autodir + '/bin/common.py')
 
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import parallel
+from autotest_lib.client.bin import factory_error as error
 
 
 FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
@@ -43,7 +44,10 @@ from autotest_lib.client.bin.parallel import fork_waitfor as orig_fork_waitfor
 
 def new_fork_waitfor(tmp, pid):
     factory.log_shared_data('active_test_data', (tmp, pid))
-    orig_fork_waitfor(tmp, pid)
+    try:
+        orig_fork_waitfor(tmp, pid)
+    except os.error, e:
+        raise error.TestError('Test Interrupted (maybe keyboard shortcut)')
 
 parallel.fork_waitfor = new_fork_waitfor
 
