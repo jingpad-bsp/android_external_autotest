@@ -15,9 +15,9 @@ SCRIPT="$0"
 usage_help() {
   echo "usage: $SCRIPT [options]
     options:
-      -s | state:   clear state files ( $FACTORY_STATE_PREFIX* )
+      -s | state:   clear state files, implies -r ( $FACTORY_STATE_PREFIX* )
       -l | log:     backup and reset factory log files ( $FACTORY_LOG_FILE )
-      -c | control: refresh factory control file ( $FACTORY_CONTROL_FILE )
+      -c | control: refresh control file, implies -r ( $FACTORY_CONTROL_FILE )
       -r | restart: clear factory start tag ( $FACTORY_START_TAG_FILE )
       -a | all:     restart everything
       -h | help:    this help screen
@@ -49,9 +49,11 @@ while [ $# -gt 0 ]; do
       ;;
     -s | state )
       opt_state=1
+      opt_start_tag=1
       ;;
     -c | control )
       opt_control=1
+      opt_start_tag=1
       ;;
     -r | restart )
       opt_start_tag=1
