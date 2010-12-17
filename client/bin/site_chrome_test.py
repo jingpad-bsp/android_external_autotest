@@ -4,7 +4,8 @@
 
 import logging, os, re, shutil, subprocess, tempfile, utils
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, global_config, site_ui
+from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.cros import ui
 
 class ChromeTestBase(test.test):
     home_dir = None
@@ -48,7 +49,7 @@ class ChromeTestBase(test.test):
                                                 test_binary)
             cmd = 'HOME=%s CR_SOURCE_ROOT=%s %s' % (self.home_dir,
                                                     self.cr_source_dir,
-                                                    site_ui.xcommand(cmd))
+                                                    ui.xcommand(cmd))
             logging.debug("Running %s" % cmd)
             test_proc = subprocess.Popen(cmd,
                                          shell=True,
@@ -74,7 +75,7 @@ class ChromeTestBase(test.test):
             cmd = '%s/%s %s' % (self.test_binary_dir, test_to_run, extra_params)
             cmd = 'HOME=%s CR_SOURCE_ROOT=%s %s' % (self.home_dir,
                                                     self.cr_source_dir,
-                                                    site_ui.xcommand(cmd))
+                                                    ui.xcommand(cmd))
             utils.system(cmd)
         except error.CmdError, e:
             logging.debug(e)
