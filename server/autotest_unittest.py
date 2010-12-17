@@ -101,6 +101,10 @@ class TestBaseAutotest(unittest.TestCase):
         self.host.wait_up.expect_call(timeout=30)
         self.host.setup.expect_call()
         self.host.get_autodir.expect_call().and_return("autodir")
+        result = client_utils.CmdResult()
+        result.exit_status = 0
+        self.host.run.expect_call('mount | grep -q autodir',
+                                  ignore_status=True).and_return(result)
         self.host.set_autodir.expect_call("autodir")
         self.host.run.expect_call('mkdir -p autodir')
         self.host.run.expect_call('rm -rf autodir/results/*',

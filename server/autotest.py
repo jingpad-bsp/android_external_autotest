@@ -76,6 +76,15 @@ class BaseAutotest(installable_object.InstallableObject):
         autodir = host.get_autodir()
         if autodir:
             logging.debug('Using existing host autodir: %s', autodir)
+            # We have an autodir, make sure it's mounted.
+            result = host.run('mount | grep -q ' + autodir, ignore_status=True)
+            if result.exit_status != 0:
+                # Attempt to remount if it isn't.
+                client_autodir_real_path = utils.sh_escape(
+                    cls.get_client_autodir_real_path(host))
+                host.run('mount --bind %s %s' % (client_autodir_real_path,
+                                                 autodir))
+                host.run('mount -o remount,exec ' + autodir)
             return autodir
 
         for path in Autotest.get_client_autodir_paths(host):
