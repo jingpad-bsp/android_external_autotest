@@ -1,0 +1,39 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "InstallFW"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Install"
+TEST_CLASS = "platform"
+TEST_TYPE = "server"
+
+DOC = """
+This test install the BIOS/EC on a specified device.
+This is useful for testing firmware.
+Here is the command to install firmware;
+run_remote_tests --args='bios_path=<PATH_TO_BIOS_FILE>
+                         bios_name=<NAME_OF_THE_FILE>'
+                 --remote=<IP addres>
+                 --board=<board name>
+                 platform_InstallFW
+"""
+from autotest_lib.client.common_lib import error
+
+# Convert autoserv args to something usable.
+opts = dict([[k, v] for (k, _, v) in [x.partition('=') for x in args]])
+
+def run_installfw(machine):
+    # Verify bios path arg.
+    if 'bios_path' not in opts:
+      raise error.TestFail('No --bios_path specified')
+    # Verify bios_name.
+    if 'bios_name' not in opts:
+      raise error.TestFail('No --bios_name specified')
+    # Setup the client machine.
+    host = hosts.create_host(machine)
+    job.run_test("platform_InstallFW", host=host, bios_path=opts['bios_path'],
+                 bios_name=opts['bios_name'])
+
+parallel_simple(run_installfw, machines)
