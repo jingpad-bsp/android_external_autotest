@@ -134,6 +134,9 @@ class ControlData(object):
     def set_test_type(self, val):
         self._set_option('test_type', val, ['client', 'server'])
 
+    def set_test_parameters(self, val):
+        self._set_set('test_parameters', val)
+
 
 def _extract_const(n):
     assert(n.__class__ == compiler.ast.Assign)

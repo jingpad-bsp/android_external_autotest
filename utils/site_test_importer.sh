@@ -7,9 +7,6 @@
 # This script adds desired tests to ChromeOS Autotest server.
 
 pushd $(dirname "$0") > /dev/null
-# Clean all tests
-./test_importer.py -C
-
 # Add all site_tests
 ./test_importer.py -t /usr/local/autotest/client/site_tests
 ./test_importer.py -t /usr/local/autotest/server/site_tests
