@@ -14,7 +14,7 @@ class desktopui_SunSpiderBench(ui_test.UITest):
         self._test_url = 'http://localhost:8000/sunspider-driver.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        test.UITest.initialize(self, creds)
+        ui_test.UITest.initialize(self, creds)
 
 
     def setup(self, tarball = 'sunspider-0.9.tar.bz2'):
