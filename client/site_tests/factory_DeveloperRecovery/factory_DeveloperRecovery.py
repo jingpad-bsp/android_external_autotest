@@ -241,56 +241,38 @@ class DevRecGpio:
         self._gpio_root = gpio_root
         self._cur_gpio = None
         self._gpio_list = []
-        self.gpio_read = None
         self.table = None
         self.cfg()
 
     def cfg(self):
-        self.sku_table = {
-            # SKU: gpio_read, recovery GPIO, developer mode,
-            # firmware writeprotect
-            'atom-proto': {'gpio_read': self.acpi_gpio_read,
-                           # name : [<default>, <state>]
-                           # <default> == 0 || 1
-                           # <state> == number counts down 0
-                           'gpios' : {'developer_switch': [1, 2],
-                                      'recovery_button': [1, 2],
-                                      },
-                           }
-            }
+        # The GPIO values should be interpreted by kernel driver so gpio_read
+        # is always returning "logical" values. For example, developer_switch
+        # should always be "0" for "disabled" and "1" for "enabled", no matter
+        # whether the real PCB is made pull-high or pull-low.
+        self.table = {
+            # name : [<default>, <state>]
+            # <default> == 0 || 1
+            # <state> == number counts down 0
+            'developer_switch': [1, 2],
+            'recovery_button': [1, 2],
+        }
 
-        # TODO(nsanders): Detect actual system type here by HWQual ID (?)
-        # and redirect to the correct check.
-        # We're just checking for any Atom here, and hoping for the best.
-        if not os.system('cat /proc/cpuinfo | grep "model name" | '
-                         'grep -qe "N4[0-9][0-9]"'):
-            systemsku = 'atom-proto'
-        else:
-            raise error.TestNAError(
-                    'Unknown system to test program\n'
-                    '測試程式未知的硬體系統')
-
-        # Look up hardware configuration.
-        if systemsku in self.sku_table:
-            table = self.sku_table[systemsku]
-            self.table = table['gpios']
-            self.gpio_read = table['gpio_read']
-        else:
-            raise error.TestNAError(
-                    'Test missing corresponding hardware for %s'
-                    '測試程式沒有與 %s 相對應的硬體組態' %
-                    (systemsku, systemsku))
         self._gpio_list = self.table.keys()
         self._gpio_list.reverse()
         self.num_gpios = len(self._gpio_list)
 
-    def acpi_gpio_read(self, name):
+    def gpio_read(self, name):
         if name not in self.table:
             raise error.TestNAError(
                     'Unable to locate definition for gpio %s\n'
                     '測試程式找不到 gpio %s' % (name, name))
-
-        return int(utils.system_output("cat %s/%s" % (self._gpio_root, name)))
+        try:
+            with open(os.path.join(self._gpio_root, name)) as f:
+                return int(f.read())
+        except:
+            raise error.TestError(
+                    'Unable to read gpio value "%s"\n'
+                    '測試程式無法讀取 gpio 數值 "%s"' % (name, name))
 
     def cur_gpio(self):
         if self._cur_gpio is None:
