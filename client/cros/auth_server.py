@@ -42,11 +42,11 @@ class GoogleAuthServer(object):
         logging.info('Serving HTTPS on %s, port %s' % (sa[0], sa[1]))
 
         if cl_responder is None:
-            cl_responder = self.__client_login_responder
+            cl_responder = self.client_login_responder
         if it_responder is None:
-            it_responder = self.__issue_token_responder
+            it_responder = self.issue_token_responder
         if ta_responder is None:
-            ta_responder = self.__token_auth_responder
+            ta_responder = self.token_auth_responder
 
         self._testServer.add_url_handler(self._client_login, cl_responder)
         self._testServer.add_url_handler(self._issue_token, it_responder)
@@ -95,13 +95,13 @@ class GoogleAuthServer(object):
     def get_endpoint_misses(self):
         results = {}
         if (self.__issue_auth_token_miss_count > 0):
-            results['issue_auth_token_miss'] = self.__issue_auth_token_miss_count
+            results['issue_auth_token_miss'] =self.__issue_auth_token_miss_count
         if (self.__token_auth_miss_count > 0):
             results['token_auth_miss'] = self.__token_auth_miss_count
         return results
 
 
-    def __client_login_responder(self, handler, url_args):
+    def client_login_responder(self, handler, url_args):
         logging.info(url_args)
         handler.send_response(httplib.OK)
         handler.end_headers()
@@ -109,7 +109,7 @@ class GoogleAuthServer(object):
         handler.wfile.write('LSID=%s\n' % self.lsid)
 
 
-    def __issue_token_responder(self, handler, url_args):
+    def issue_token_responder(self, handler, url_args):
         logging.info(url_args)
         if url_args['service'].value != chromeos_constants.LOGIN_SERVICE:
             handler.send_response(httplib.FORBIDDEN)
@@ -125,7 +125,7 @@ class GoogleAuthServer(object):
         handler.wfile.write(self.token)
 
 
-    def __token_auth_responder(self, handler, url_args):
+    def token_auth_responder(self, handler, url_args):
         logging.info(url_args)
         if not self.token == url_args['auth'][0]:
             raise error.TestError('TokenAuth called with incorrect args')

@@ -204,7 +204,9 @@ class UITest(test.test):
           raise error.TestError("Malformed email: " + credential)
 
         (name, domain) = parts
-        name = name.partition('+')[0].replace('.', '')
+        name = name.partition('+')[0]
+        if (domain == chromeos_constants.SPECIAL_CASE_DOMAIN):
+            name = name.replace('.', '')
         return '@'.join([name, domain]).lower()
 
 

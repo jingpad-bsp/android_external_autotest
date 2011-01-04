@@ -22,6 +22,7 @@ CLIENT_LOGIN_URL = '/accounts/ClientLogin'
 
 CREDENTIALS = {
     '$default': ['performance.test.account@gmail.com', 'perfsmurf'],
+    '$apps': ['performance.test.account@googleapps.com', 'perfsmurf'],
     '$backdoor': ['chronos@gmail.com', 'chronos'],
 }
 
@@ -51,6 +52,7 @@ OWNER_KEY_FILE = WHITELIST_DIR+'/owner.key'
 
 SESSION_MANAGER = 'session_manager'
 SIGNED_PREFERENCES_FILE = WHITELIST_DIR+'/preferences'
+SPECIAL_CASE_DOMAIN = 'gmail.com'
 
 TOKEN_AUTH_URL = '/accounts/TokenAuth'
 
