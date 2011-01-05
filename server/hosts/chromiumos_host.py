@@ -44,6 +44,3 @@ class ChromiumOSHost(base_classes.Host):
         for path in global_config.global_config.get_config_value(
                 'AUTOSERV', 'client_autodir_paths', type=list):
             self.run('rm -rf ' + path)
-
-        self.run('rm -rf ' + global_config.global_config.get_config_value(
-            'AUTOSERV', 'client_autodir_real_path', type=str))
