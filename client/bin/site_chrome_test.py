@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil, subprocess, tempfile, utils
+from autotest_lib.client.cros import constants, login
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.cros import ui
@@ -21,14 +22,15 @@ class ChromeTestBase(test.test):
         self.home_dir = tempfile.mkdtemp()
         dep = 'chrome_test'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
-        repo = global_config.global_config.get_config_value(
-            'PACKAGES', 'fetch_location',
-            type=str, default='/usr/local/autotest-pkgs')
-
-        self.job.add_repository([repo])
         self.job.install_pkg(dep, 'dep', dep_dir)
         self.cr_source_dir = '%s/test_src' % dep_dir
         self.test_binary_dir = '%s/out/Release' % self.cr_source_dir
+        try:
+            open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
+        except IOError, e:
+            logging.debug(e)
+            raise error.TestError('Failed to disable browser restarting.')
+        login.nuke_process_by_name(name=constants.BROWSER, with_prejudice=True)
         try:
             setup_cmd = '/bin/sh %s/%s' % (self.test_binary_dir,
                                            'setup_test_links.sh')
@@ -89,6 +91,11 @@ class ChromeTestBase(test.test):
 
 
     def cleanup(self):
+        # Allow chrome to be restarted again.
+        os.unlink(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
+        # Reset the UI.
+        login.nuke_login_manager()
+        login.refresh_login_screen()
         if self.home_dir:
             shutil.rmtree(self.home_dir, ignore_errors=True)
         test.test.cleanup(self)
