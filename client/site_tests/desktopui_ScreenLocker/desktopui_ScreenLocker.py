@@ -9,11 +9,11 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.cros import cros_ui_test
 
 from dbus.mainloop.glib import DBusGMainLoop
 
-class desktopui_ScreenLocker(ui_test.UITest):
+class desktopui_ScreenLocker(cros_ui_test.UITest):
     version = 1
     _POWER_MANAGER_INTERFACE = 'org.chromium.PowerManager'
 

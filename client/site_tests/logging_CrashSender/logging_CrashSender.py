@@ -3,8 +3,10 @@
 # found in the LICENSE file.
 
 import logging, os, re
-from autotest_lib.client.bin import site_crash_test, utils, test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import crash_test
+
 
 _25_HOURS_AGO = -25 * 60 * 60
 _CRASH_SENDER_CRON_PATH = '/etc/cron.hourly/crash_sender.hourly'
@@ -13,7 +15,7 @@ _MIN_UNIQUE_TIMES = 4
 _HWCLASS_PATH = '/sys/devices/platform/chromeos_acpi/HWID'
 _SECONDS_SEND_SPREAD = 3600
 
-class logging_CrashSender(site_crash_test.CrashTest):
+class logging_CrashSender(crash_test.CrashTest):
     version = 1
 
 

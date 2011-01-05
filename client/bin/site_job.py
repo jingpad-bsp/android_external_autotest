@@ -3,17 +3,21 @@
 # found in the LICENSE file.
 
 import os
-
-from autotest_lib.client.bin import boottool, site_logging, utils
+from datetime import datetime
+from autotest_lib.client.bin import boottool, utils
 from autotest_lib.client.bin.job import base_client_job
 from autotest_lib.client.common_lib import error
-from datetime import datetime
+from autotest_lib.client.cros import cros_logging
+
 
 LAST_BOOT_TAG = object()
 
 class site_job(base_client_job):
+
+
     def __init__(self, *args, **kwargs):
         base_client_job.__init__(self, *args, **kwargs)
+
 
     def _runtest(self, url, tag, args, dargs):
         # this replaced base_client_job._runtest, which is called by
@@ -25,8 +29,9 @@ class site_job(base_client_job):
             self.last_error = detail
             raise
 
+
     def run_test(self, url, *args, **dargs):
-        log_pauser = site_logging.LogRotationPauser()
+        log_pauser = cros_logging.LogRotationPauser()
         passed = False
         try:
             log_pauser.begin()

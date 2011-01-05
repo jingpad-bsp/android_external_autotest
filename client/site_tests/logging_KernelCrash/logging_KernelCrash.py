@@ -3,15 +3,15 @@
 # found in the LICENSE file.
 
 import logging, os, re
-from autotest_lib.client.bin import site_crash_test, site_log_reader, \
-    test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import crash_test
 
 
 _KCRASH_FILE = '/sys/kernel/debug/preserved/kcrash'
 
 
-class logging_KernelCrash(site_crash_test.CrashTest):
+class logging_KernelCrash(crash_test.CrashTest):
     version = 1
 
 

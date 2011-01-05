@@ -4,11 +4,11 @@
 
 
 import os, subprocess, time, re
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import login, ui_test
+from autotest_lib.client.cros import cros_ui_test, login
 
-class security_RendererSandbox(ui_test.UITest):
+class security_RendererSandbox(cros_ui_test.UITest):
     version = 1
     render_pid = -1
 

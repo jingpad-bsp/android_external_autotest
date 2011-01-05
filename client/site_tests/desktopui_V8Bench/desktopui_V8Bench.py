@@ -5,16 +5,16 @@
 import logging, os, shutil
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import httpd, ui, ui_test
+from autotest_lib.client.cros import cros_ui_test, httpd, ui
 
-class desktopui_V8Bench(ui_test.UITest):
+class desktopui_V8Bench(cros_ui_test.UITest):
     version = 1
 
     def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/run.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        ui_test.UITest.initialize(self, creds)
+        cros_ui_test.UITest.initialize(self, creds)
 
 
     def setup(self, tarball='v8_v5.tar.bz2'):
@@ -27,7 +27,7 @@ class desktopui_V8Bench(ui_test.UITest):
 
     def cleanup(self):
         self._testServer.stop()
-        ui_test.UITest.cleanup(self)
+        cros_ui_test.UITest.cleanup(self)
 
 
     def run_once(self, timeout=60):

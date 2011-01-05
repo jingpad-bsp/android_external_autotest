@@ -4,8 +4,10 @@
 
 import grp, logging, os, pwd, re, stat, subprocess
 from signal import SIGSEGV
-from autotest_lib.client.bin import site_crash_test, test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import crash_test
+
 
 _COLLECTION_ERROR_SIGNATURE = 'crash_reporter-user-collection'
 _CORE2MD_PATH = '/usr/bin/core2md'
@@ -13,7 +15,7 @@ _LEAVE_CORE_PATH = '/root/.leave_core'
 _MAX_CRASH_DIRECTORY_SIZE = 32
 
 
-class logging_UserCrash(site_crash_test.CrashTest):
+class logging_UserCrash(crash_test.CrashTest):
     version = 1
 
 

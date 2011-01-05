@@ -5,9 +5,9 @@
 import logging, os, shutil
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import httpd, ui, ui_test
+from autotest_lib.client.cros import cros_ui_test, httpd, ui
 
-class graphics_WebGLConformance(ui_test.UITest):
+class graphics_WebGLConformance(cros_ui_test.UITest):
     version = 1
 
 
@@ -15,7 +15,7 @@ class graphics_WebGLConformance(ui_test.UITest):
         self._test_url = 'http://localhost:8000/webgl-conformance-tests.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        ui_test.UITest.initialize(self, creds)
+        cros_ui_test.UITest.initialize(self, creds)
 
 
     def setup(self, tarball='webgl-tests-0.0.1.tar.bz2'):
@@ -37,7 +37,7 @@ class graphics_WebGLConformance(ui_test.UITest):
 
     def cleanup(self):
         self._testServer.stop()
-        ui_test.UITest.cleanup(self)
+        cros_ui_test.UITest.cleanup(self)
 
 
     def run_once(self, timeout=300):

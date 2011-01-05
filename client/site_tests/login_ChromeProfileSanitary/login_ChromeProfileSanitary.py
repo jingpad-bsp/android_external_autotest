@@ -5,7 +5,7 @@
 import logging, os, stat, time, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants as chromeos_constants
-from autotest_lib.client.cros import login, httpd, ui, ui_test
+from autotest_lib.client.cros import cros_ui_test, login, httpd, ui
 
 def respond_with_cookies(handler, url_args):
     """Responds with a Set-Cookie header to any GET request, and redirects
@@ -19,7 +19,7 @@ def respond_with_cookies(handler, url_args):
     handler.wfile.write('%s:\n' % url_args)
 
 
-class login_ChromeProfileSanitary(ui_test.UITest):
+class login_ChromeProfileSanitary(cros_ui_test.UITest):
     version = 1
 
     def __wait_for_login_profile(self, timeout=10):
@@ -41,12 +41,12 @@ class login_ChromeProfileSanitary(ui_test.UITest):
         self._testServer.add_url_handler('/set_cookie', respond_with_cookies)
         self._testServer.run()
 
-        ui_test.UITest.initialize(self, creds)
+        cros_ui_test.UITest.initialize(self, creds)
 
 
     def cleanup(self):
         self._testServer.stop()
-        ui_test.UITest.cleanup(self)
+        cros_ui_test.UITest.cleanup(self)
 
 
     def run_once(self, timeout = 10):

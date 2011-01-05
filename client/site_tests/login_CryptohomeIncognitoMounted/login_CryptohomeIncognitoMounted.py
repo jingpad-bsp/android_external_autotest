@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import auth_server, cryptohome, ui_test
+from autotest_lib.client.cros import auth_server, cros_ui_test, cryptohome
 from autotest_lib.client.cros import constants as chromeos_constants
 
-class login_CryptohomeIncognitoMounted(ui_test.UITest):
+class login_CryptohomeIncognitoMounted(cros_ui_test.UITest):
     version = 1
 
 

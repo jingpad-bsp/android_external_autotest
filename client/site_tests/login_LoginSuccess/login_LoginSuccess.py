@@ -4,9 +4,9 @@
 
 import logging
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import auth_server, ui_test
+from autotest_lib.client.cros import auth_server, cros_ui_test
 
-class login_LoginSuccess(ui_test.UITest):
+class login_LoginSuccess(cros_ui_test.UITest):
     version = 1
 
     def __creds_checker(self, handler, url_args):
@@ -26,6 +26,10 @@ class login_LoginSuccess(ui_test.UITest):
             cl_responder=self.__creds_checker)
         self._authServer.run()
         self.use_local_dns()
+
+
+    def initialize(self, creds='$default'):
+        super(login_LoginSuccess, self).initialize(creds)
 
 
     def ensure_login_complete(self):

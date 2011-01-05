@@ -5,8 +5,8 @@
 import dbus, logging, os, re, shutil, socket, sys, time
 import common
 import auth_server, constants as chromeos_constants, cryptohome, dns_server
-import login, ui
-from autotest_lib.client.bin import test, site_log_reader, utils
+import cros_logging, login, ui
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from dbus.mainloop.glib import DBusGMainLoop
 
@@ -160,7 +160,7 @@ class UITest(test.test):
         # Mark /var/log/messages now; we'll run through all subsequent
         # log messages at the end of the test and log info about processes that
         # crashed.
-        self._log_reader = site_log_reader.LogReader()
+        self._log_reader = cros_logging.LogReader()
         self._log_reader.set_start_by_current()
 
         if creds:

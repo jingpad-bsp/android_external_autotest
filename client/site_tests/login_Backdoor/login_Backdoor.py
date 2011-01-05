@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import shutil, utils
-from autotest_lib.client.cros import auth_server, ui_test
+from autotest_lib.client.cros import cros_ui_test, auth_server
 
-class login_Backdoor(ui_test.UITest):
+class login_Backdoor(cros_ui_test.UITest):
     version = 1
 
 

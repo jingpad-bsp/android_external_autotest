@@ -4,9 +4,9 @@
 
 
 import logging, re, time
-from autotest_lib.client.bin import test, utils, site_log_reader
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui
+from autotest_lib.client.cros import cros_logging, ui
 
 class desktopui_FlashSanityCheck(test.test):
     version = 1
@@ -14,7 +14,7 @@ class desktopui_FlashSanityCheck(test.test):
 
     def run_once(self, time_to_wait=25):
         # take a snapshot from /var/log/messages.
-        self._log_reader = site_log_reader.LogReader()
+        self._log_reader = cros_logging.LogReader()
         self._log_reader.set_start_by_current()
 
         # open browser to youtube.com.

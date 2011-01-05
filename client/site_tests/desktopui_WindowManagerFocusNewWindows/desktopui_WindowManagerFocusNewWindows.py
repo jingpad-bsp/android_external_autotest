@@ -5,10 +5,15 @@
 import os, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import login, ui_test
+from autotest_lib.client.cros import cros_ui_test, login
 
-class desktopui_WindowManagerFocusNewWindows(ui_test.UITest):
+class desktopui_WindowManagerFocusNewWindows(cros_ui_test.UITest):
     version = 1
+
+
+    def initialize(self, creds = '$default'):
+        cros_ui_test.UITest.initialize(self, creds)
+
 
     def __check_active_window(self, id, info):
         """Check that a particular window is active.

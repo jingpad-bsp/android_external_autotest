@@ -12,9 +12,9 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.cros import cros_ui_test
 
-class platform_ProcessPrivilegesComprehensive(ui_test.UITest):
+class platform_ProcessPrivilegesComprehensive(cros_ui_test.UITest):
     """
     Builds a process list (without spawning 'ps'), and validates
     the list against a baseline of expected processes, their priviliges,

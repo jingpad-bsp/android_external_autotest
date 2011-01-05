@@ -4,14 +4,14 @@
 
 import os
 from autotest_lib.client.cros import constants as chromeos_constants
-from autotest_lib.client.cros import cryptohome, login, ui_test
+from autotest_lib.client.cros import cros_ui_test, cryptohome, login
 
 TEST_USER = 'cryptohome_test@chromium.org'
 TEST_PASS = 'testme'
 TEST_FILE = os.path.join(chromeos_constants.CRYPTOHOME_MOUNT_PT, 'hello')
 
 
-class login_CryptohomeMounted(ui_test.UITest):
+class login_CryptohomeMounted(cros_ui_test.UITest):
     version = 1
 
     def initialize(self, creds='$default'):

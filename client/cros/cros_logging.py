@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, re
-from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros.constants import CLEANUP_LOGS_PAUSED_FILE
+import logging, os, re
+import common
+from constants import CLEANUP_LOGS_PAUSED_FILE
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 
 class LogReader(object):
     """
@@ -78,3 +80,57 @@ class LogReader(object):
         @return boolean indicating if we found the string.
         """
         return string in self.get_logs()
+
+
+class LogRotationPauser(object):
+    """
+    Class to control when logs are rotated from either server or client.
+
+    Assumes all setting of CLEANUP_LOGS_PAUSED_FILE is done by this class
+    and that all calls to begin and end are properly
+    nested.  For instance, [ a.begin(), b.begin(), b.end(), a.end() ] is
+    supported, but [ a.begin(), b.begin(), a.end(), b.end() ]  is not.
+    We do support redundant calls to the same class, such as
+    [ a.begin(), a.begin(), a.end() ].
+    """
+    def __init__(self, host=None):
+        self._host = host
+        self._begun = False
+        self._is_nested = True
+
+
+    def _run(self, command, *args, **dargs):
+        if self._host:
+            return self._host.run(command, *args, **dargs).exit_status
+        else:
+            return utils.system(command, *args, **dargs)
+
+
+    def begin(self):
+        """Make sure that log rotation is disabled."""
+        if self._begun:
+            return
+        print "in begin " + str(self._begun)
+        self._is_nested = (self._run(('[ -r %s ]' %
+                                      CLEANUP_LOGS_PAUSED_FILE),
+                                     ignore_status=True) == 0)
+        print "in begin is nested: " + str(self._is_nested)
+        if self._is_nested:
+            print logging.__file__
+            logging.info('File %s was already present' %
+                         CLEANUP_LOGS_PAUSED_FILE)
+            print 1
+        else:
+            self._run('touch ' + CLEANUP_LOGS_PAUSED_FILE)
+            print 2
+        self._begun = True
+
+
+    def end(self):
+        print "in end" + str(self._begun)
+        assert self._begun
+        if not self._is_nested:
+            self._run('rm -f ' + CLEANUP_LOGS_PAUSED_FILE)
+        else:
+            logging.info('Leaving existing %s file' % CLEANUP_LOGS_PAUSED_FILE)
+        self._begun = False

@@ -6,7 +6,7 @@ import logging, os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui, ui_test
+from autotest_lib.client.cros import cros_ui_test, ui
 
 
 def html_button(label, onclick=None):
@@ -22,7 +22,7 @@ TEMPLATE = '''
 </table>
 '''
 
-class graphics_TearTest(ui_test.UITest):
+class graphics_TearTest(cros_ui_test.UITest):
     version = 1
 
 

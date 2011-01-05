@@ -5,9 +5,9 @@
 import logging, os, re
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui, ui_test
+from autotest_lib.client.cros import cros_ui_test, ui
 
-class graphics_GLAPICheck(ui_test.UITest):
+class graphics_GLAPICheck(cros_ui_test.UITest):
     version = 1
     preserve_srcdir = True
     error_message = ""

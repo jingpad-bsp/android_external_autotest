@@ -5,9 +5,9 @@
 import logging, os, re, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.cros import cros_ui_test
 
-class graphics_WindowManagerGraphicsCapture(ui_test.UITest):
+class graphics_WindowManagerGraphicsCapture(cros_ui_test.UITest):
     version = 1
 
     def setup(self):

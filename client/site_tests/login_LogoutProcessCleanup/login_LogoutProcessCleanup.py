@@ -4,7 +4,7 @@
 
 import logging, os, time, utils, signal
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.cros import cros_ui_test
 
 class TestProcess:
 
@@ -44,7 +44,7 @@ class TestProcess:
         return self.pid_bash != ''
 
 
-class login_LogoutProcessCleanup(ui_test.UITest):
+class login_LogoutProcessCleanup(cros_ui_test.UITest):
     version = 1
 
     def __get_session_manager_pid(self):

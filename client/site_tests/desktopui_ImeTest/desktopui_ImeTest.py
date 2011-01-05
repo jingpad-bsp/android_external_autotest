@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 import os, string, time, gtk
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import httpd, ui, ui_test
+from autotest_lib.client.cros import cros_ui_test, httpd
 
-class desktopui_ImeTest(ui_test.UITest):
+class desktopui_ImeTest(cros_ui_test.UITest):
     version = 1
     preserve_srcdir = True
 
@@ -20,12 +20,12 @@ class desktopui_ImeTest(ui_test.UITest):
         self._test_server = httpd.HTTPListener(8000, docroot=self.bindir)
         self._test_server.run()
 
-        ui_test.UITest.initialize(self, creds)
+        cros_ui_test.UITest.initialize(self, creds)
 
 
     def cleanup(self):
         self._test_server.stop()
-        ui_test.UITest.cleanup(self)
+        cros_ui_test.UITest.cleanup(self)
 
 
     def log_error(self, test_name, message):

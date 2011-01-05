@@ -5,7 +5,7 @@
 import logging, os, shutil, sys, time
 from autotest_lib.client.bin import site_backchannel, utils
 from autotest_lib.client.common_lib import error, site_power_status
-from autotest_lib.client.cros import httpd, login, ui, ui_test
+from autotest_lib.client.cros import cros_ui_test, httpd, login, ui
 
 sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
 import flimflam
@@ -21,16 +21,18 @@ params_dict = {
 }
 
 
-class power_LoadTest(ui_test.UITest):
+class power_LoadTest(cros_ui_test.UITest):
     version = 2
+
 
     def ensure_login_complete(self):
         """
-        Override ui_test.UITest's ensure_login_complete.
+        Override cros_ui_test.UITest's ensure_login_complete.
         Do not use auth server and local dns for our test. We need to be
         able to reach the web.
         """
         pass
+
 
     def initialize(self, creds='$default', percent_initial_charge_min=None,
                  check_network=True, loop_time=3600, loop_count=1,
@@ -144,7 +146,7 @@ class power_LoadTest(ui_test.UITest):
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
 
-        # from ui_test.UITest.initialize, sans authserver & local dns.
+        # from cros_ui_test.UITest.initialize, sans authserver & local dns.
         (self.username, self.password) = self._UITest__resolve_creds(creds)
 
     def run_once(self):

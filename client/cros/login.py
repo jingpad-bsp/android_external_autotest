@@ -4,8 +4,8 @@
 
 import errno, logging, os, re, signal, subprocess, time
 import common
-import constants as chromeos_constants, cryptohome, ui
-from autotest_lib.client.bin import test, utils, site_log_reader
+import constants as chromeos_constants, cros_logging, cryptohome, ui
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 
@@ -138,7 +138,7 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
 
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't log in to see if the browser crashed.
-    log_reader = site_log_reader.LogReader()
+    log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
 
     ax = ui.get_autox()
@@ -185,7 +185,8 @@ def attempt_logout(timeout=_DEFAULT_TIMEOUT):
 
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't TERM and restart the session manager.
-    log_reader = site_log_reader.LogReader()
+
+    log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
 
     # Gracefully exiting the session manager causes the user's session to end.
@@ -211,7 +212,7 @@ def wait_for_browser(timeout=_DEFAULT_TIMEOUT):
     """
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't start chrome to see if the browser crashed.
-    log_reader = site_log_reader.LogReader()
+    log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
     wait_for_condition(
         lambda: os.system('pgrep ^%s$' % chromeos_constants.BROWSER) == 0,
@@ -233,7 +234,7 @@ def wait_for_cryptohome(timeout=_DEFAULT_TIMEOUT):
     """
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't get the browser up to see if the browser crashed.
-    log_reader = site_log_reader.LogReader()
+    log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
     wait_for_condition(
         condition=lambda: cryptohome.is_mounted(),
@@ -255,7 +256,7 @@ def wait_for_login_prompt(timeout=_DEFAULT_TIMEOUT):
     """
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't get the browser up to see if the browser crashed.
-    log_reader = site_log_reader.LogReader()
+    log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
     wait_for_condition(
         condition=lambda: os.access(
@@ -293,7 +294,7 @@ def wait_for_initial_chrome_window(timeout=_DEFAULT_TIMEOUT):
     """
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't get the browser up to see if the browser crashed.
-    log_reader = site_log_reader.LogReader()
+    log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
     wait_for_condition(
         lambda: os.access(

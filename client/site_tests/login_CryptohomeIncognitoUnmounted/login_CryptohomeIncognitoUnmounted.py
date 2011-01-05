@@ -4,9 +4,9 @@
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants as chromeos_constants
-from autotest_lib.client.cros import auth_server, cryptohome, ui_test
+from autotest_lib.client.cros import auth_server, cros_ui_test, cryptohome
 
-class login_CryptohomeIncognitoUnmounted(ui_test.UITest):
+class login_CryptohomeIncognitoUnmounted(cros_ui_test.UITest):
     version = 1
 
 

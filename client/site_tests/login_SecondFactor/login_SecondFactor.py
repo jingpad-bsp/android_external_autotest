@@ -3,12 +3,12 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import auth_server, ui_test
+from autotest_lib.client.cros import auth_server, cros_ui_test
 
-class login_SecondFactor(ui_test.UITest):
+class login_SecondFactor(cros_ui_test.UITest):
     version = 1
-
     auto_login = False
+
 
     def __login_denier(self, handler, url_args):
         handler.send_response(403)

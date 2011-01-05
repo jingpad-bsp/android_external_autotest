@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, math, re, utils
-from autotest_lib.client.bin import site_log_reader, test
+import logging, math, re
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cros_logging
+
 
 class platform_AccurateTime(test.test):
     version = 1
@@ -21,7 +23,7 @@ class platform_AccurateTime(test.test):
             return float(offset.group(1))
 
     def run_once(self):
-        reader = site_log_reader.LogReader()
+        reader = cros_logging.LogReader()
         reader.set_start_by_current()
         # Check if htpdate is currently running
         if utils.system('pgrep htpdate', ignore_status=True) != 0:

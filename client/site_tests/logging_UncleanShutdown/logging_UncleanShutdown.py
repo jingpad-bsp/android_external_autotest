@@ -3,16 +3,16 @@
 # found in the LICENSE file.
 
 import logging, os, time
-from autotest_lib.client.bin import site_log_reader, test
-from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import ui_test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cros_logging, cros_ui_test
 
 _CRASH_PATH = '/sbin/crash_reporter'
 _PENDING_SHUTDOWN_PATH = '/var/lib/crash_reporter/pending_clean_shutdown'
 _UNCLEAN_SHUTDOWN_DETECTED_PATH = '/tmp/unclean-shutdown-detected'
 _UNCLEAN_SHUTDOWN_MESSAGE = 'Last shutdown was not clean'
 
-class logging_UncleanShutdown(ui_test.UITest):
+class logging_UncleanShutdown(cros_ui_test.UITest):
     version = 1
     auto_login = False
 
@@ -22,7 +22,7 @@ class logging_UncleanShutdown(ui_test.UITest):
             raise error.TestFail('pending shutdown file, %s, not found' %
                                  _PENDING_SHUTDOWN_PATH)
 
-        log_reader = site_log_reader.LogReader()
+        log_reader = cros_logging.LogReader()
         log_reader.set_start_by_reboot(-1)
 
         if log_reader.can_find(_UNCLEAN_SHUTDOWN_MESSAGE):

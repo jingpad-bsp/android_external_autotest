@@ -3,12 +3,12 @@
 # found in the LICENSE file.
 
 import logging, os, os.path, signal, time
-from autotest_lib.client.bin import site_crash_test
-from autotest_lib.client.bin import site_log_reader, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants as chromeos_constants, login 
+from autotest_lib.client.cros import crash_test
 
-class logging_CrashServices(site_crash_test.CrashTest):
+class logging_CrashServices(crash_test.CrashTest):
     version = 1
 
     process_list = ["/usr/sbin/acpid",
@@ -87,7 +87,7 @@ class logging_CrashServices(site_crash_test.CrashTest):
 
 
     def initialize(self):
-        site_crash_test.CrashTest.initialize(self)
+        crash_test.CrashTest.initialize(self)
         self._reset_rate_limiting()
         self._clear_spooled_crashes()
         self._push_consent()
@@ -95,7 +95,7 @@ class logging_CrashServices(site_crash_test.CrashTest):
 
 
     def cleanup(self):
-        site_crash_test.CrashTest.cleanup(self)
+        crash_test.CrashTest.cleanup(self)
 
 
     def run_once(self, process_path=None):

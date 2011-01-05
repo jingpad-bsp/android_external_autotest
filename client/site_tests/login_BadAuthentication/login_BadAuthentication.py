@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import auth_server, login, ui_test
+from autotest_lib.client.cros import auth_server, cros_ui_test, login
 
-class login_BadAuthentication(ui_test.UITest):
+class login_BadAuthentication(cros_ui_test.UITest):
     version = 1
 
     auto_login = False

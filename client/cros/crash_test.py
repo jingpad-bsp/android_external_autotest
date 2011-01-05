@@ -3,8 +3,10 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil
-from autotest_lib.client.bin import site_log_reader, site_utils, test
-from autotest_lib.client.common_lib import error, utils
+import common
+import cros_logging
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
 
 
 class CrashTest(test.test):
@@ -214,13 +216,13 @@ class CrashTest(test.test):
         Wait for no crash_sender's last message to be placed in the
         system log before continuing and for the process to finish.
         Otherwise we might get only part of the output."""
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             lambda: self._log_reader.can_find('crash_sender done.'),
             timeout=60,
             exception=error.TestError(
               'Timeout waiting for crash_sender to emit done: ' +
               self._log_reader.get_logs()))
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             lambda: utils.system('pgrep crash_sender',
                                  ignore_status=True) != 0,
             timeout=60,
@@ -307,7 +309,7 @@ class CrashTest(test.test):
 
     def initialize(self):
         test.test.initialize(self)
-        self._log_reader = site_log_reader.LogReader()
+        self._log_reader = cros_logging.LogReader()
         self._leave_crash_sending = True
         self._automatic_consent_saving = True
         self.enable_crash_filtering('none')

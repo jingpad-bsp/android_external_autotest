@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil, subprocess, tempfile, utils
-from autotest_lib.client.cros import constants, login
+import common
+import constants, login, ui
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, global_config
-from autotest_lib.client.cros import ui
 
 class ChromeTestBase(test.test):
     home_dir = None
