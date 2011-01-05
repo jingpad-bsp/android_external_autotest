@@ -158,7 +158,7 @@ class _sysinfo_logger(object):
     def before_hook(self, mytest, host, at, outputdir):
         # run the pre-test sysinfo script
         at.run(_sysinfo_before_test_script % outputdir,
-               results_dir=self.job.resultdir, ignore_aborts=True)
+               results_dir=self.job.resultdir)
 
         self._pull_pickle(host, outputdir)
 
@@ -173,7 +173,7 @@ class _sysinfo_logger(object):
         at.run(_sysinfo_iteration_script %
                (outputdir, 'log_before_each_iteration', mytest.iteration,
                 'before'),
-               results_dir=self.job.resultdir, ignore_aborts=True)
+               results_dir=self.job.resultdir)
 
         # get the new sysinfo state from the client
         self._pull_pickle(host, outputdir)
@@ -188,7 +188,7 @@ class _sysinfo_logger(object):
         at.run(_sysinfo_iteration_script %
                (outputdir, 'log_after_each_iteration', mytest.iteration,
                 'after'),
-               results_dir=self.job.resultdir, ignore_aborts=True)
+               results_dir=self.job.resultdir)
 
         # get the new sysinfo state from the client
         self._pull_pickle(host, outputdir)
@@ -200,7 +200,7 @@ class _sysinfo_logger(object):
         self._push_pickle(host, outputdir);
         # run the post-test sysinfo script
         at.run(_sysinfo_after_test_script % outputdir,
-               results_dir=self.job.resultdir, ignore_aborts=True)
+               results_dir=self.job.resultdir)
 
         self._pull_sysinfo_keyval(host, outputdir, mytest)
 
