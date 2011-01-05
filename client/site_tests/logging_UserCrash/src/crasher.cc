@@ -11,14 +11,14 @@
 
 int recbomb(int n);
 void PrepareBelow(int argc, char *argv[]);
-
-int DefeatTailOptimization() {
+extern int DefeatTailOptimizationForCrasher();
+int DefeatTailOptimizationForBomb() {
   return 0;
 }
 
 int main(int argc, char *argv[]) {
   PrepareBelow(argc, argv);
-  return recbomb(16);
+  return recbomb(16) + DefeatTailOptimizationForCrasher();
 }
 
 // Prepare for doing the crash, but do it below main so that main's
