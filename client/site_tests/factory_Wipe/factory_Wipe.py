@@ -25,10 +25,12 @@ class factory_Wipe(test.test):
         # Tag the current image to be wiped according to preference
         # (secure or fast). Don't tag until partition switch passes.
         tag_filename = '/mnt/stateful_partition/factory_install_reset'
-        if secure_wipe:
-            utils.run('touch %s' % tag_filename)
-        else:
-            utils.run('echo "fast" > %s' % tag_filename)
+        clobber_args = "factory"
+        if not secure_wipe:
+            clobber_args += " fast"
+
+        with open(tag_filename, "w") as f:
+          f.write("%s\n" % clobber_args)
 
         # Copy the wipe splash image to state partition.
         utils.run('cp -f wipe_splash.png /mnt/stateful_partition/')
