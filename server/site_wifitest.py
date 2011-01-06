@@ -108,7 +108,8 @@ class WiFiTest(object):
         client = config['client']
         self.client = hosts.create_host(client['addr'])
         self.client_at = autotest.Autotest(self.client)
-        self.client_wifi_ip = None       # client's IP address on wifi net
+        self.client_wifi_ip = None            # client's IP address on wifi net
+        self.client_wifi_device_path = None   # client's flimflam wifi path
         self.client_installed_scripts = {}
 
         #
@@ -1014,6 +1015,37 @@ class WiFiTest(object):
             if entry not in exceptions:
                 self.client.run('%s/test/delete-entry %s' %
                                 (self.client_cmd_flimflam_lib, entry))
+
+    def __get_wifi_device_path(self):
+        if self.client_wifi_device_path:
+            return self.client_wifi_device_path
+        ret = []
+        result = self.client.run('%s/test/list-devices' %
+                                 self.client_cmd_flimflam_lib)
+        device_path = None
+        for line in result.stdout.splitlines():
+            m = re.match('\[\s*(\S*)\s*\]', line)
+            if m is not None:
+                device_path = m.group(1)
+                continue
+            if re.search('Name = Wireless', line) is not None:
+                self.client_wifi_device_path = device_path
+                break
+
+        return self.client_wifi_device_path
+
+    def enable_wifi(self, params):
+        wifi = self.__get_wifi_device_path()
+        if wifi:
+            self.client.run('%s/test/enable-device %s' %
+                            (self.client_cmd_flimflam_lib, wifi))
+
+    def disable_wifi(self, params):
+        wifi = self.__get_wifi_device_path()
+        if wifi:
+            self.client.run('%s/test/disable-device %s' %
+                            (self.client_cmd_flimflam_lib, wifi))
+
 
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
