@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 import logging, os, shutil, time
-from autotest_lib.client.bin import site_logging
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cros_logging
 from autotest_lib.server import autotest, site_host_attributes, test
 
 _CONSENT_FILE = '/home/chronos/Consent To Send Stats'
@@ -90,7 +90,7 @@ class logging_KernelCrashServer(test.test):
     def run_once(self, host=None):
         # For the entire duration of this server test (across crashes
         # and boots after crashes) we want to disable log rotation.
-        log_pauser = site_logging.LogRotationPauser(host)
+        log_pauser = cros_logging.LogRotationPauser(host)
         try:
             log_pauser.begin()
             self._run_while_paused(host)
