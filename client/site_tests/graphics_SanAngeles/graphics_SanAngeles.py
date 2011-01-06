@@ -6,7 +6,7 @@ import logging, os, re
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, ui
+from autotest_lib.client.cros import cros_ui, cros_ui_test
 
 class graphics_SanAngeles(cros_ui_test.UITest):
     version = 1
@@ -33,7 +33,7 @@ class graphics_SanAngeles(cros_ui_test.UITest):
             raise error.TestFail('Fail to locate SanAngles Observation exe.'
                                  'Test setup error.')
 
-        cmd = ui.xcommand(cmd)
+        cmd = cros_ui.xcommand(cmd)
         result = utils.run(cmd, ignore_status = True)
 
         report = re.findall(r"frame_rate = ([0-9.]+)", result.stdout)

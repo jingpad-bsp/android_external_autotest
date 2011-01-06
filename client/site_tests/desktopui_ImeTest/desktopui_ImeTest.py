@@ -5,7 +5,7 @@
 import os, string, time, gtk
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, httpd
+from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
 
 class desktopui_ImeTest(cros_ui_test.UITest):
     version = 1
@@ -86,7 +86,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
 
     # TODO: Get rid of this function.
     def run_ibusclient(self, options):
-        cmd = ui.xcommand_as('%s %s' % (self.exefile, options), 'chronos')
+        cmd = cros_ui.xcommand_as('%s %s' % (self.exefile, options), 'chronos')
         return utils.system_output(cmd, retain_output=True)
 
 

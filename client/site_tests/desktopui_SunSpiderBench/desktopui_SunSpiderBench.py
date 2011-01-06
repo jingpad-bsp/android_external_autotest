@@ -5,7 +5,7 @@
 import logging, os, shutil
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, httpd, ui
+from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
 
 class desktopui_SunSpiderBench(cros_ui_test.UITest):
     version = 1
@@ -33,7 +33,7 @@ class desktopui_SunSpiderBench(cros_ui_test.UITest):
     def run_once(self, timeout=180):
         latch = self._testServer.add_wait_url('/sunspider/scores')
 
-        session = ui.ChromeSession(self._test_url)
+        session = cros_ui.ChromeSession(self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
         session.close()

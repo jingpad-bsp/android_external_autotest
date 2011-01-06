@@ -6,7 +6,7 @@ import copy, logging, os, pprint, re, threading, time, urllib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, httpd, ui
+from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
 
 # HTML templates.
 _STATIC_CSS ='''
@@ -358,7 +358,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
         latch = self._testServer.add_wait_url('/done')
         try:
-            session = ui.ChromeSession(
+            session = cros_ui.ChromeSession(
                     self._server_root + _CONTROL_ENDPOINT)
             logging.debug('Chrome session started.')
 

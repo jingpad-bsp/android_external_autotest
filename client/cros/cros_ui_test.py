@@ -5,7 +5,7 @@
 import dbus, logging, os, re, shutil, socket, sys, time
 import common
 import auth_server, constants as chromeos_constants, cryptohome, dns_server
-import cros_logging, login, ui
+import cros_logging, cros_ui, login
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from dbus.mainloop.glib import DBusGMainLoop
@@ -48,9 +48,9 @@ class UITest(test.test):
         test.test.__init__(self, job, bindir, outputdir)
 
     def xsystem(self, cmd, timeout=None, ignore_status=False):
-        """Convenience wrapper around ui.xsystem, to save you an import.
+        """Convenience wrapper around cros_ui.xsystem, to save you an import.
         """
-        return ui.xsystem(cmd, timeout, ignore_status)
+        return cros_ui.xsystem(cmd, timeout, ignore_status)
 
     def listen_to_signal(self, callback, signal, interface):
         """Listens to the given |signal| that is sent to power manager.
@@ -275,7 +275,7 @@ class UITest(test.test):
         object, but beware that logging out will invalidate any existing
         sessions.
         """
-        return ui.get_autox()
+        return cros_ui.get_autox()
 
 
     def stop_authserver(self):

@@ -5,7 +5,7 @@
 import logging, os, shutil
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, httpd, ui
+from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
 
 class graphics_WebGLConformance(cros_ui_test.UITest):
     version = 1
@@ -42,7 +42,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
 
     def run_once(self, timeout=300):
         latch = self._testServer.add_wait_url('/WebGL/results')
-        session = ui.ChromeSession(' --enable-webgl %s' % self._test_url)
+        session = cros_ui.ChromeSession(' --enable-webgl %s' % self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
         session.close()

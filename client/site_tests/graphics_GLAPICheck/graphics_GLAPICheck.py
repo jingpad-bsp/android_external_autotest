@@ -5,7 +5,7 @@
 import logging, os, re
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, ui
+from autotest_lib.client.cros import cros_ui, cros_ui_test
 
 class graphics_GLAPICheck(cros_ui_test.UITest):
     version = 1
@@ -128,7 +128,7 @@ class graphics_GLAPICheck(cros_ui_test.UITest):
 
 
     def __run_x_cmd(self, cmd):
-        cmd = ui.xcommand(cmd)
+        cmd = cros_ui.xcommand(cmd)
         result = utils.system_output(cmd, retain_output=True,
                                      ignore_status=True)
         return result

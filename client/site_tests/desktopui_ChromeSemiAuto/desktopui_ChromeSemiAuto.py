@@ -5,7 +5,7 @@
 import logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import httpd, ui
+from autotest_lib.client.cros import cros_ui, httpd
 
 class desktopui_ChromeSemiAuto(test.test):
     version = 1
@@ -24,7 +24,7 @@ class desktopui_ChromeSemiAuto(test.test):
     def run_once(self, timeout=60):
         latch = self._testServer.add_wait_url('/interaction/test')
 
-        session = ui.ChromeSession(self._test_url)
+        session = cros_ui.ChromeSession(self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
         session.close()

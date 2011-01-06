@@ -5,7 +5,7 @@
 import dbus, dbus.mainloop.glib, dbus.service, gobject, logging, re
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, ui
+from autotest_lib.client.cros import cros_ui, cros_ui_test
 
 
 _QUESTION_START = '''
@@ -120,7 +120,7 @@ class hardware_BluetoothSemiAuto(cros_ui_test.UITest):
             # enough for the process to be ready to accept user input.
             question = 'Enter pin code "0000" on the BT keyboard '
             question += 'at least 5 secs after this page closes'
-            dialog = ui.Dialog(question=question, choices=[],
+            dialog = cros_ui.Dialog(question=question, choices=[],
                                checkboxes=[], textinputs=[], timeout=5)
             dialog.get_entries()
         self.mainloop.run()
@@ -164,7 +164,7 @@ class hardware_BluetoothSemiAuto(cros_ui_test.UITest):
                     question += '</tr>'
             question += '</table><br>'
 
-            dialog = ui.Dialog(question=question, choices=['Done', 'Rescan'],
+            dialog = cros_ui.Dialog(question=question, choices=['Done', 'Rescan'],
                                checkboxes=checkboxes, textinputs=textinputs)
             form_entries = dialog.get_entries()
             if not form_entries:

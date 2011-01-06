@@ -5,7 +5,7 @@
 import logging, os, stat, time, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants as chromeos_constants
-from autotest_lib.client.cros import cros_ui_test, login, httpd, ui
+from autotest_lib.client.cros import cros_ui, cros_ui_test, login, httpd
 
 def respond_with_cookies(handler, url_args):
     """Responds with a Set-Cookie header to any GET request, and redirects
@@ -67,7 +67,7 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
         cookie_fetch_args = ("--user-data-dir=" +
                              chromeos_constants.USER_DATA_DIR + ' ' +
                              self._test_url)
-        session = ui.ChromeSession(args=cookie_fetch_args, clean_state=False)
+        session = cros_ui.ChromeSession(args=cookie_fetch_args, clean_state=False)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
         if not latch.is_set():

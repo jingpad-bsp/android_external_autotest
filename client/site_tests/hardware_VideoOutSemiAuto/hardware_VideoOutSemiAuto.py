@@ -7,7 +7,7 @@ import os.path
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui
+from autotest_lib.client.cros import cros_ui
 
 class hardware_VideoOutSemiAuto(test.test):
     version = 1
@@ -20,7 +20,7 @@ class hardware_VideoOutSemiAuto(test.test):
     # Returns True if given |output| port is found on system.
     def __query_for_output(self, output):
         query_cmd = "%s -q | grep %s -c" % (self.XRANDR_PATH, output)
-        xrandr_out = utils.system_output(ui.xcommand(query_cmd),
+        xrandr_out = utils.system_output(cros_ui.xcommand(query_cmd),
                                          ignore_status=True)
         return int(xrandr_out) > 0
 
@@ -29,7 +29,7 @@ class hardware_VideoOutSemiAuto(test.test):
     def __output_connected(self, output):
         query_cmd = "%s -q | grep '%s[0-9] connected' -c" % \
             (self.XRANDR_PATH, output)
-        xrandr_out = utils.system_output(ui.xcommand(query_cmd),
+        xrandr_out = utils.system_output(cros_ui.xcommand(query_cmd),
                                          ignore_status=True)
         return int(xrandr_out) > 0
 
@@ -40,7 +40,7 @@ class hardware_VideoOutSemiAuto(test.test):
         query_cmd = "%s -q | grep '%s[0-9] connected' -n" % \
             (self.XRANDR_PATH, output)
         start_line = int(
-            utils.system_output(ui.xcommand(query_cmd)).split(':')[0]
+            utils.system_output(cros_ui.xcommand(query_cmd)).split(':')[0]
         )
 
         # Gets 100 lines (to be safe) after context to get output after
@@ -50,7 +50,7 @@ class hardware_VideoOutSemiAuto(test.test):
 
         try:
             end_line = int(utils.system_output(
-                ui.xcommand(query_cmd)).split('\n')[1].split('-')[0])
+                cros_ui.xcommand(query_cmd)).split('\n')[1].split('-')[0])
         except:
             logging.info("End line not found, assuming last output")
             end_line = -1
@@ -62,7 +62,7 @@ class hardware_VideoOutSemiAuto(test.test):
         query_cmd = "%s -q | grep '%s[0-9] connected' -A %d | grep \\*" % \
                 (self.XRANDR_PATH, output, lines_between)
         try:
-            utils.system(ui.xcommand(query_cmd))
+            utils.system(cros_ui.xcommand(query_cmd))
         except:
             raise error.TestFail("%s not set with monitor_reconfigure" % output)
 
@@ -78,7 +78,7 @@ class hardware_VideoOutSemiAuto(test.test):
             return False
         else:
             #TODO(sosa@chromium.org) - Verify this is synchronous.
-            utils.system(ui.xcommand(self.RECONFIG_PATH))
+            utils.system(cros_ui.xcommand(self.RECONFIG_PATH))
             self.__output_is_set(output)
             return True
 

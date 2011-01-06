@@ -5,7 +5,7 @@
 import logging, os, shutil, sys, time
 from autotest_lib.client.bin import site_backchannel, utils
 from autotest_lib.client.common_lib import error, site_power_status
-from autotest_lib.client.cros import cros_ui_test, httpd, login, ui
+from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd, login
 
 sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
 import flimflam
@@ -310,13 +310,13 @@ class power_LoadTest(cros_ui_test.UITest):
     def _do_xset(self):
         XSET = 'LD_LIBRARY_PATH=/usr/local/lib xset'
         # Disable X screen saver
-        ui.xsystem('%s s 0 0' % XSET)
+        cros_ui.xsystem('%s s 0 0' % XSET)
         # Disable DPMS Standby/Suspend/Off
-        ui.xsystem('%s dpms 0 0 0' % XSET)
+        cros_ui.xsystem('%s dpms 0 0 0' % XSET)
         # Force monitor on
-        ui.xsystem('%s dpms force on' % XSET)
+        cros_ui.xsystem('%s dpms force on' % XSET)
         # Save off X settings
-        ui.xsystem('%s q' % XSET)
+        cros_ui.xsystem('%s q' % XSET)
 
 
     def _set_backlight_level(self):

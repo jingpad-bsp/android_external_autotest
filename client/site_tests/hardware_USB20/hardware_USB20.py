@@ -6,7 +6,7 @@ import glob, re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ui
+from autotest_lib.client.cros import cros_ui
 
 class hardware_USB20(test.test):
     version = 1
@@ -18,7 +18,7 @@ class hardware_USB20(test.test):
         cmd = 'lsusb'
         original_lsusb = utils.system_output(cmd).split('\n')
 
-        dialog = ui.Dialog(question="Please plug a USB 2.0 device in.",
+        dialog = cros_ui.Dialog(question="Please plug a USB 2.0 device in.",
                            choices=["OK"])
         result = dialog.get_result()
         plugin_lsusb = utils.system_output(cmd).split('\n')

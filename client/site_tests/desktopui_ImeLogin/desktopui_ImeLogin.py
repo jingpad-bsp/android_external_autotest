@@ -5,7 +5,7 @@
 import os, string, time, gtk
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import ui
+from autotest_lib.client.cros import cros_ui
 
 class desktopui_ImeLogin(test.test):
     version = 1
@@ -27,7 +27,7 @@ class desktopui_ImeLogin(test.test):
         # Because there can be a slight delay between entering text and the
         # output from the ime being received, we need to sleep here.
         time.sleep(1)
-        ax = ui.get_autox()
+        ax = cros_ui.get_autox()
 
         # The DISPLAY environment variable isn't set, so we have to manually get
         # the proper display.
@@ -69,7 +69,7 @@ class desktopui_ImeLogin(test.test):
         # language in the list.
         # That position changes relative to the selected language
         # so it is difficult.
-        ax = ui.get_autox()
+        ax = cros_ui.get_autox()
         # Navigate to the language selection and select Japanese.
         navigate_to_ui_lang = ["Tab", "Tab", "Tab", "space", "Up", "Right"]
         go_to_japanese = ["Down"] * self._japanese_rank
@@ -82,7 +82,7 @@ class desktopui_ImeLogin(test.test):
         self.change_ui_language(language)
 
         # Change the keyboard layout to the one we want.
-        ax = ui.get_autox()
+        ax = cros_ui.get_autox()
         ax.send_hotkey("Ctrl+space")
         time.sleep(1)
 

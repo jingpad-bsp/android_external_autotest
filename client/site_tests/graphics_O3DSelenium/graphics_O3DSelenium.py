@@ -5,7 +5,7 @@
 import logging, os, re, shutil
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, ui
+from autotest_lib.client.cros import cros_ui, cros_ui_test
 
 class graphics_O3DSelenium(cros_ui_test.UITest):
     version = 1
@@ -62,7 +62,7 @@ class graphics_O3DSelenium(cros_ui_test.UITest):
         cmd = cmd + " --browser=*googlechrome"
         cmd = cmd + " --screenshotsdir=tests/selenium/screenshots_chrome"
         cmd = cmd + " --java=/usr/local/lib/icedtea6/bin/java"
-        cmd = ui.xcommand(cmd)
+        cmd = cros_ui.xcommand(cmd)
         result = utils.run(cmd, ignore_status = True)
 
         # Find out total tests.

@@ -4,7 +4,7 @@
 
 import errno, logging, os, re, signal, subprocess, time
 import common
-import constants as chromeos_constants, cros_logging, cryptohome, ui
+import constants as chromeos_constants, cros_logging, cros_ui, cryptohome
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
@@ -58,7 +58,7 @@ def __session_manager_restarted(oldpid):
     newpid = __get_session_manager_pid()
     if newpid and newpid != oldpid:
         try:
-            ax = ui.get_autox()
+            ax = cros_ui.get_autox()
         except autox.Xlib.error.DisplayConnectionError:
             return False
 
@@ -141,7 +141,7 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
 
-    ax = ui.get_autox()
+    ax = cros_ui.get_autox()
     # navigate to login screen
     ax.send_hotkey("Ctrl+Alt+L")
     # escape out of any login screen menus (e.g., the network selection menu)
