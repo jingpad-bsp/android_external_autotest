@@ -6,16 +6,18 @@
 # than the AP will wait for it, to see if/how the DUT notices that
 # it's been disassociated.
 #
-# open authentication (no crypto)
-{ "name":"Suspend",
+# WPA+TKIP/WPA-PSK authentication
+{ "name":"SuspendWPA",
   "steps":[             # Channel 1,6,11
     [ "create",         { "type":"hostap" } ],
 
     # Connect the DUT to an AP
-    [ "config",         { "channel":"2412", "mode":"11b",
-                          "ssid_suffix": 't1',
+    [ "config",         { "channel":"2412", "mode":"11g",
+                          "wpa":"1", "wpa_key_mgmt":"WPA-PSK",
+                          "wpa_pairwise":"TKIP",
+                          "wpa_passphrase":"chromeos",
                           "ap_max_inactivity" : '10'} ],
-    [ "connect",        { "security":"none" } ],
+    [ "connect",        { "security":"wpa", "psk":"chromeos" } ],
     [ "client_ping",    { "count":"10" } ],
 
     # Put the system to sleep for 20 seconds

@@ -6,16 +6,26 @@
 # than the AP will wait for it, to see if/how the DUT notices that
 # it's been disassociated.
 #
-# open authentication (no crypto)
-{ "name":"Suspend",
-  "steps":[             # Channel 1,6,11
+# static key WEP-40
+{ "name":"SuspendWEP",
+  "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"hostap" } ],
 
     # Connect the DUT to an AP
-    [ "config",         { "channel":"2412", "mode":"11b",
+    [ "config",         { "channel":"2412", "mode":"11g",
                           "ssid_suffix": 't1',
+#                          "authmode":"open", "wepmode":"on",
+                          "wepmode":"on",
+                          # 10 digits : 0123456789
+                          "wep_key0":  "0123456789",
+                          "wep_key1":  "89abcdef01",
+                          "wep_key2":  "9876543210",
+                          "wep_key3":  "fedcba9876",
+                          "deftxkey":"1",
                           "ap_max_inactivity" : '10'} ],
-    [ "connect",        { "security":"none" } ],
+
+    # key index 1, 40-bit WEP
+    [ "connect",        { "security":"wep", "psk":"1:89abcdef01" } ],
     [ "client_ping",    { "count":"10" } ],
 
     # Put the system to sleep for 20 seconds
