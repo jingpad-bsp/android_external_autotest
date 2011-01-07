@@ -36,7 +36,7 @@ def run_stress_boot(tests, params, env):
             vm_name = "vm" + str(num)
             vm_params = vm.get_params().copy()
             curr_vm = vm.clone(vm_name, vm_params)
-            env.register_vm(vm_name, curr_vm)
+            kvm_utils.env_register_vm(env, vm_name, curr_vm)
             logging.info("Booting guest #%d" % num)
             kvm_preprocessing.preprocess_vm(tests, vm_params, env, vm_name)
             params['vms'] += " " + vm_name
@@ -51,9 +51,7 @@ def run_stress_boot(tests, params, env):
 
             # check whether all previous shell sessions are responsive
             for i, se in enumerate(sessions):
-                try:
-                    se.cmd(params.get("alive_test_cmd"))
-                except kvm_subprocess.ShellError:
+                if se.get_command_status(params.get("alive_test_cmd")) != 0:
                     raise error.TestFail("Session #%d is not responsive" % i)
             num += 1
 

@@ -332,17 +332,15 @@ class kernel(BootableKernel):
             utils.extract_tarball_to_dir(tarball, self.build_dir)
 
 
-    def extraversion(self, tag, append=True):
+    def extraversion(self, tag, append=1):
         os.chdir(self.build_dir)
-        extraversion_sub = r's/^CONFIG_LOCALVERSION=\s*"\(.*\)"/CONFIG_LOCALVERSION='
-        cfg = self.build_dir + '/.config'
+        extraversion_sub = r's/^EXTRAVERSION =\s*\(.*\)/EXTRAVERSION = '
         if append:
-            p = extraversion_sub + '"\\1-%s"/' % tag
+            p = extraversion_sub + '\\1-%s/' % tag
         else:
-            p = extraversion_sub + '"-%s"/' % tag
-        utils.system('mv %s %s.old' % (cfg, cfg))
-        utils.system("sed '%s' < %s.old > %s" % (p, cfg, cfg))
-        self.config(make='oldconfig')
+            p = extraversion_sub + '-%s/' % tag
+        utils.system('mv Makefile Makefile.old')
+        utils.system('sed "%s" < Makefile.old > Makefile' % p)
 
 
     @log.record

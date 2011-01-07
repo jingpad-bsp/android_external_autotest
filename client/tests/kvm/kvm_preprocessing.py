@@ -50,17 +50,15 @@ def preprocess_vm(test, params, env, name):
     @param name: The name of the VM object.
     """
     logging.debug("Preprocessing VM '%s'..." % name)
-    vm = env.get_vm(name)
+    vm = kvm_utils.env_get_vm(env, name)
     if vm:
         logging.debug("VM object found in environment")
     else:
         logging.debug("VM object does not exist; creating it")
         vm = kvm_vm.VM(name, params, test.bindir, env.get("address_cache"))
-        env.register_vm(name, vm)
+        kvm_utils.env_register_vm(env, name, vm)
 
     start_vm = False
-
-    migration_mode = params.get("migration_mode", None)
 
     if params.get("restart_vm") == "yes":
         logging.debug("'restart_vm' specified; (re)starting VM...")
@@ -74,19 +72,11 @@ def preprocess_vm(test, params, env, name):
             logging.debug("VM's qemu command differs from requested one; "
                           "restarting it...")
             start_vm = True
-    elif migration_mode is not None:
-        logging.debug("Starting VM on migration incoming mode...")
-        start_vm = True
 
     if start_vm:
-        if migration_mode is not None:
-            if not vm.create(name, params, test.bindir,
-                             migration_mode=migration_mode):
-                raise error.TestError("Could not start VM for migration")
-        else:
-            # Start the VM (or restart it if it's already up)
-            if not vm.create(name, params, test.bindir):
-                raise error.TestError("Could not start VM")
+        # Start the VM (or restart it if it's already up)
+        if not vm.create(name, params, test.bindir):
+            raise error.TestError("Could not start VM")
     else:
         # Don't start the VM, just update its params
         vm.params = params
@@ -122,7 +112,7 @@ def postprocess_vm(test, params, env, name):
     @param name: The name of the VM object.
     """
     logging.debug("Postprocessing VM '%s'..." % name)
-    vm = env.get_vm(name)
+    vm = kvm_utils.env_get_vm(env, name)
     if vm:
         logging.debug("VM object found in environment")
     else:
@@ -183,11 +173,13 @@ def process(test, params, env, image_func, vm_func):
     @param vm_func: A function to call for each VM.
     """
     # Get list of VMs specified for this test
-    for vm_name in params.objects("vms"):
-        vm_params = params.object_params(vm_name)
+    vm_names = kvm_utils.get_sub_dict_names(params, "vms")
+    for vm_name in vm_names:
+        vm_params = kvm_utils.get_sub_dict(params, vm_name)
         # Get list of images specified for this VM
-        for image_name in vm_params.objects("images"):
-            image_params = vm_params.object_params(image_name)
+        image_names = kvm_utils.get_sub_dict_names(vm_params, "images")
+        for image_name in image_names:
+            image_params = kvm_utils.get_sub_dict(vm_params, image_name)
             # Call image_func for each image
             image_func(test, image_params)
         # Call vm_func for each vm
@@ -212,7 +204,7 @@ def preprocess(test, params, env):
     if "tcpdump" not in env and params.get("run_tcpdump", "yes") == "yes":
         cmd = "%s -npvi any 'dst port 68'" % kvm_utils.find_command("tcpdump")
         logging.debug("Starting tcpdump (%s)...", cmd)
-        env["tcpdump"] = kvm_subprocess.Tail(
+        env["tcpdump"] = kvm_subprocess.kvm_tail(
             command=cmd,
             output_func=_update_address_cache,
             output_params=(env["address_cache"],))
@@ -224,7 +216,7 @@ def preprocess(test, params, env):
                 env["tcpdump"].get_output()))
 
     # Destroy and remove VMs that are no longer needed in the environment
-    requested_vms = params.objects("vms")
+    requested_vms = kvm_utils.get_sub_dict_names(params, "vms")
     for key in env.keys():
         vm = env[key]
         if not kvm_utils.is_vm(vm):
@@ -338,7 +330,7 @@ def postprocess(test, params, env):
     if params.get("kill_unresponsive_vms") == "yes":
         logging.debug("'kill_unresponsive_vms' specified; killing all VMs "
                       "that fail to respond to a remote login request...")
-        for vm in env.get_all_vms():
+        for vm in kvm_utils.env_get_all_vms(env):
             if vm.is_alive():
                 session = vm.remote_login()
                 if session:
@@ -350,7 +342,7 @@ def postprocess(test, params, env):
     kvm_subprocess.kill_tail_threads()
 
     # Terminate tcpdump if no VMs are alive
-    living_vms = [vm for vm in env.get_all_vms() if vm.is_alive()]
+    living_vms = [vm for vm in kvm_utils.env_get_all_vms(env) if vm.is_alive()]
     if not living_vms and "tcpdump" in env:
         env["tcpdump"].close()
         del env["tcpdump"]
@@ -370,7 +362,7 @@ def postprocess_on_error(test, params, env):
     @param params: A dict containing all VM and image parameters.
     @param env: The environment (a dict-like object).
     """
-    params.update(params.object_params("on_error"))
+    params.update(kvm_utils.get_sub_dict(params, "on_error"))
 
 
 def _update_address_cache(address_cache, line):
@@ -382,11 +374,9 @@ def _update_address_cache(address_cache, line):
         matches = re.findall(r"\w*:\w*:\w*:\w*:\w*:\w*", line)
         if matches and address_cache.get("last_seen"):
             mac_address = matches[0].lower()
-            if time.time() - address_cache.get("time_%s" % mac_address, 0) > 5:
-                logging.debug("(address cache) Adding cache entry: %s ---> %s",
-                              mac_address, address_cache.get("last_seen"))
+            logging.debug("(address cache) Adding cache entry: %s ---> %s",
+                          mac_address, address_cache.get("last_seen"))
             address_cache[mac_address] = address_cache.get("last_seen")
-            address_cache["time_%s" % mac_address] = time.time()
             del address_cache["last_seen"]
 
 
@@ -408,7 +398,7 @@ def _take_screendumps(test, params, env):
     cache = {}
 
     while True:
-        for vm in env.get_all_vms():
+        for vm in kvm_utils.env_get_all_vms(env):
             if not vm.is_alive():
                 continue
             try:

@@ -20,7 +20,7 @@ Usage: check_patch.py -p [/path/to/patch]
 @author: Lucas Meneghel Rodrigues <lmr@redhat.com>
 """
 
-import os, stat, logging, sys, optparse, time
+import os, stat, logging, sys, optparse
 import common
 from autotest_lib.client.common_lib import utils, error, logging_config
 from autotest_lib.client.common_lib import logging_manager
@@ -30,20 +30,6 @@ class CheckPatchLoggingConfig(logging_config.LoggingConfig):
     def configure_logging(self, results_dir=None, verbose=False):
         super(CheckPatchLoggingConfig, self).configure_logging(use_console=True,
                                                                verbose=verbose)
-
-
-def ask(question, auto=False):
-    """
-    Raw input with a prompt that emulates logging.
-
-    @param question: Question to be asked
-    @param auto: Whether to return "y" instead of asking the question
-    """
-    if auto:
-        logging.info("%s (y/n) y" % question)
-        return "y"
-    return raw_input("%s INFO | %s (y/n) " %
-                     (time.strftime("%H:%M:%S", time.localtime()), question))
 
 
 class VCS(object):
@@ -118,7 +104,6 @@ class SubVersionBackend(object):
     """
     def __init__(self):
         logging.debug("Subversion VCS backend initialized.")
-        self.ignored_extension_list = ['.orig', '.bak']
 
 
     def get_unknown_files(self):
@@ -127,9 +112,7 @@ class SubVersionBackend(object):
         for line in status.split("\n"):
             status_flag = line[0]
             if line and status_flag == "?":
-                for extension in self.ignored_extension_list:
-                    if not line.endswith(extension):
-                        unknown_files.append(line[1:].strip())
+                unknown_files.append(line[1:].strip())
         return unknown_files
 
 
@@ -198,16 +181,13 @@ class FileChecker(object):
     Picks up a given file and performs various checks, looking after problems
     and eventually suggesting solutions.
     """
-    def __init__(self, path, confirm=False):
+    def __init__(self, path):
         """
         Class constructor, sets the path attribute.
 
         @param path: Path to the file that will be checked.
-        @param confirm: Whether to answer yes to all questions asked without
-                prompting the user.
         """
         self.path = path
-        self.confirm = confirm
         self.basename = os.path.basename(self.path)
         if self.basename.endswith('.py'):
             self.is_python = True
@@ -224,7 +204,7 @@ class FileChecker(object):
         self.first_line = checked_file.readline()
         checked_file.close()
         self.corrective_actions = []
-        self.indentation_exceptions = ['job_unittest.py']
+        self.indentation_exceptions = ['cli/job_unittest.py']
 
 
     def _check_indent(self):
@@ -246,6 +226,8 @@ class FileChecker(object):
         reindent_results = reindent_raw.split(" ")[-1].strip(".")
         if reindent_results == "changed":
             if self.basename not in self.indentation_exceptions:
+                logging.error("Possible indentation and spacing issues on "
+                              "file %s" % self.path)
                 self.corrective_actions.append("reindent.py -v %s" % self.path)
 
 
@@ -260,7 +242,8 @@ class FileChecker(object):
         c_cmd = 'run_pylint.py %s' % self.path
         rc = utils.system(c_cmd, ignore_status=True)
         if rc != 0:
-            logging.error("Syntax issues found during '%s'", c_cmd)
+            logging.error("Possible syntax problems on file %s", self.path)
+            logging.error("You might want to rerun '%s'", c_cmd)
 
 
     def _check_unittest(self):
@@ -277,8 +260,9 @@ class FileChecker(object):
                 unittest_cmd = 'python %s' % unittest_path
                 rc = utils.system(unittest_cmd, ignore_status=True)
                 if rc != 0:
-                    logging.error("Unittest issues found during '%s'",
-                                  unittest_cmd)
+                    logging.error("Problems during unit test execution "
+                                  "for file %s", self.path)
+                    logging.error("You might want to rerun '%s'", unittest_cmd)
 
 
     def _check_permissions(self):
@@ -289,10 +273,14 @@ class FileChecker(object):
         """
         if self.first_line.startswith("#!"):
             if not self.is_executable:
-                self.corrective_actions.append("svn propset svn:executable ON %s" % self.path)
+                logging.info("File %s seems to require execution "
+                             "permissions. ", self.path)
+                self.corrective_actions.append("chmod +x %s" % self.path)
         else:
             if self.is_executable:
-                self.corrective_actions.append("svn propdel svn:executable %s" % self.path)
+                logging.info("File %s does not seem to require execution "
+                             "permissions. ", self.path)
+                self.corrective_actions.append("chmod -x %s" % self.path)
 
 
     def report(self):
@@ -306,9 +294,10 @@ class FileChecker(object):
             self._check_code()
             self._check_unittest()
         if self.corrective_actions:
+            logging.info("The following corrective actions are suggested:")
             for action in self.corrective_actions:
-                answer = ask("Would you like to execute %s?" % action,
-                             auto=self.confirm)
+                logging.info(action)
+                answer = raw_input("Would you like to apply it? (y/n) ")
                 if answer == "y":
                     rc = utils.system(action, ignore_status=True)
                     if rc != 0:
@@ -316,8 +305,7 @@ class FileChecker(object):
 
 
 class PatchChecker(object):
-    def __init__(self, patch=None, patchwork_id=None, confirm=False):
-        self.confirm = confirm
+    def __init__(self, patch=None, patchwork_id=None):
         self.base_dir = os.getcwd()
         if patch:
             self.patch = os.path.abspath(patch)
@@ -334,7 +322,7 @@ class PatchChecker(object):
         if changed_files_before:
             logging.error("Repository has changed files prior to patch "
                           "application. ")
-            answer = ask("Would you like to revert them?", auto=self.confirm)
+            answer = raw_input("Would you like to revert them? (y/n) ")
             if answer == "n":
                 logging.error("Not safe to proceed without reverting files.")
                 sys.exit(1)
@@ -382,20 +370,20 @@ class PatchChecker(object):
             for untracked_file in add_to_vcs:
                 logging.info(untracked_file)
             logging.info("Might need to be added to VCS")
-            answer = ask("Would you like to add them to VCS ?")
+            logging.info("Would you like to add them to VCS ? (y/n/abort) ")
+            answer = raw_input()
             if answer == "y":
                 for untracked_file in add_to_vcs:
                     self.vcs.add_untracked_file(untracked_file)
                     modified_files_after.append(untracked_file)
             elif answer == "n":
                 pass
+            elif answer == "abort":
+                sys.exit(1)
 
         for modified_file in modified_files_after:
-            # Additional safety check, new commits might introduce
-            # new directories
-            if os.path.isfile(modified_file):
-                file_checker = FileChecker(modified_file)
-                file_checker.report()
+            file_checker = FileChecker(modified_file)
+            file_checker.report()
 
 
     def check(self):
@@ -411,37 +399,20 @@ if __name__ == "__main__":
                       help='id of a given patchwork patch')
     parser.add_option('--verbose', dest="debug", action='store_true',
                       help='include debug messages in console output')
-    parser.add_option('-f', '--full-check', dest="full_check",
-                      action='store_true',
-                      help='check the full tree for corrective actions')
-    parser.add_option('-y', '--yes', dest="confirm",
-                      action='store_true',
-                      help='Answer yes to all questions')
 
     options, args = parser.parse_args()
     local_patch = options.local_patch
     id = options.id
     debug = options.debug
-    full_check = options.full_check
-    confirm = options.confirm
 
     logging_manager.configure_logging(CheckPatchLoggingConfig(), verbose=debug)
 
-    ignore_file_list = ['common.py']
-    if full_check:
-        for root, dirs, files in os.walk('.'):
-            if not '.svn' in root:
-                for file in files:
-                    if file not in ignore_file_list:
-                        path = os.path.join(root, file)
-                        file_checker = FileChecker(path, confirm=confirm)
-                        file_checker.report()
+    if local_patch:
+        patch_checker = PatchChecker(patch=local_patch)
+    elif id:
+        patch_checker = PatchChecker(patchwork_id=id)
     else:
-        if local_patch:
-            patch_checker = PatchChecker(patch=local_patch, confirm=confirm)
-        elif id:
-            patch_checker = PatchChecker(patchwork_id=id, confirm=confirm)
-        else:
-            logging.error('No patch or patchwork id specified. Aborting.')
-            sys.exit(1)
-        patch_checker.check()
+        logging.error('No patch or patchwork id specified. Aborting.')
+        sys.exit(1)
+
+    patch_checker.check()

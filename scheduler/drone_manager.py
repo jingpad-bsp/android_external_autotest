@@ -159,7 +159,8 @@ class DroneManager(object):
         self._results_dir = base_results_dir
 
         for hostname in drone_hostnames:
-            self._add_drone(hostname)
+            drone = self._add_drone(hostname)
+            drone.call('initialize', self.absolute_path(''))
 
         if not self._drones:
             # all drones failed to initialize
@@ -204,9 +205,8 @@ class DroneManager(object):
     def _add_drone(self, hostname):
         logging.info('Adding drone %s' % hostname)
         drone = drones.get_drone(hostname)
-        if drone:
-            self._drones[drone.hostname] = drone
-            drone.call('initialize', self.absolute_path(''))
+        self._drones[drone.hostname] = drone
+        return drone
 
 
     def _remove_drone(self, hostname):

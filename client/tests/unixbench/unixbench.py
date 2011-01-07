@@ -19,7 +19,7 @@ class unixbench(test.test):
 
         utils.system('patch -p1 < ../unixbench.patch')
         utils.system('patch -p1 < ../Makefile.patch')
-        utils.make()
+        utils.system('make')
         utils.system('rm pgms/select')
 
 

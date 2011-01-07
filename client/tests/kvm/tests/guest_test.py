@@ -20,9 +20,7 @@ def run_guest_test(test, params, env):
     reboot = params.get("reboot", "no")
 
     vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    serial_login = (params.get("serial_login", "no") == "yes")
-    session = kvm_test_utils.wait_for_login(vm, timeout=login_timeout,
-                                            serial=serial_login)
+    session = kvm_test_utils.wait_for_login(vm, timeout=login_timeout)
 
     if reboot == "yes":
         logging.debug("Rebooting guest before test ...")
@@ -50,25 +48,34 @@ def run_guest_test(test, params, env):
             # Change dir to dst_rsc_dir, and remove the guest script dir there
             rm_cmd = "cd %s && (rmdir /s /q %s || del /s /q %s)" % \
                      (dst_rsc_dir, rsc_dir, rsc_dir)
-            session.cmd(rm_cmd, timeout=test_timeout)
+            if session.get_command_status(rm_cmd, timeout=test_timeout) != 0:
+                raise error.TestFail("Remove %s failed." % rsc_dir)
             logging.debug("Clean directory succeeded.")
 
             # then download the resource.
             rsc_cmd = "cd %s && %s %s" %(dst_rsc_dir, download_cmd, rsc_server)
-            session.cmd(rsc_cmd, timeout=test_timeout)
+            if session.get_command_status(rsc_cmd, timeout=test_timeout) != 0:
+                raise error.TestFail("Download test resource failed.")
             logging.info("Download resource finished.")
         else:
-            session.cmd_output("del %s" % dst_rsc_path, internal_timeout=0)
+            session.get_command_output("del %s" % dst_rsc_path,
+                                       internal_timeout=0)
             script_path = kvm_utils.get_path(test.bindir, script)
             vm.copy_files_to(script_path, dst_rsc_path, timeout=60)
 
-        cmd = "%s %s %s" % (interpreter, dst_rsc_path, script_params)
+        command = "cmd /c %s %s %s" %(interpreter, dst_rsc_path, script_params)
 
-        try:
-            logging.info("------------ Script output ------------")
-            session.cmd(cmd, print_func=logging.info, timeout=test_timeout)
-        finally:
-            logging.info("------------ End of script output ------------")
+        logging.info("---------------- Script output ----------------")
+        status = session.get_command_status(command,
+                                            print_func=logging.info,
+                                            timeout=test_timeout)
+        logging.info("---------------- End of script output ----------------")
+
+        if status is None:
+            raise error.TestFail("Timeout expired before script execution "
+                                 "completed (or something weird happened)")
+        if status != 0:
+            raise error.TestFail("Script execution failed")
 
         if reboot == "yes":
             logging.debug("Rebooting guest after test ...")

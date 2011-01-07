@@ -70,14 +70,11 @@ class iteration(models.iteration):
                 val_type = "perf"
 
         # parse the actual value into a dict
-        try:
-            if val_type == "attr":
-                attr_dict[key] = value
-            elif val_type == "perf":
-                perf_dict[key] = float(value)
-            else:
-                raise ValueError
-        except ValueError:
+        if val_type == "attr":
+            attr_dict[key] = value
+        elif val_type == "perf" and re.search("^\d+(\.\d+)?$", value):
+            perf_dict[key] = float(value)
+        else:
             msg = ("WARNING: line '%s' found in test "
                    "iteration keyval could not be parsed")
             msg %= line

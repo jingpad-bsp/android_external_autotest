@@ -16,12 +16,16 @@ def run_linux_s3(test, params, env):
     session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
 
     logging.info("Checking that VM supports S3")
-    session.cmd("grep -q mem /sys/power/state")
+    status = session.get_command_status("grep -q mem /sys/power/state")
+    if status == None:
+        logging.error("Failed to check if S3 exists")
+    elif status != 0:
+        raise error.TestFail("Guest does not support S3")
 
     logging.info("Waiting for a while for X to start")
     time.sleep(10)
 
-    src_tty = session.cmd_output("fgconsole").strip()
+    src_tty = session.get_command_output("fgconsole").strip()
     logging.info("Current virtual terminal is %s" % src_tty)
     if src_tty not in map(str, range(1,10)):
         raise error.TestFail("Got a strange current vt (%s)" % src_tty)
@@ -34,7 +38,9 @@ def run_linux_s3(test, params, env):
     command = "chvt %s && echo mem > /sys/power/state && chvt %s" % (dst_tty,
                                                                      src_tty)
     suspend_timeout = 120 + int(params.get("smp")) * 60
-    session.cmd(command, timeout=suspend_timeout)
+    status = session.get_command_status(command, timeout=suspend_timeout)
+    if status != 0:
+        raise error.TestFail("Suspend to mem failed")
 
     logging.info("VM resumed after S3")
 

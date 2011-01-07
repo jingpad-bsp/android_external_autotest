@@ -244,27 +244,45 @@ def form_ntuples_from_machines(machines, n=2, mapping_func=default_mappings):
     return (ntuples, failures)
 
 
-def parse_machine(machine, user='root', password='', port=22):
+def parse_machine(machine, user = 'root', port = 22, password = ''):
     """
     Parse the machine string user:pass@host:port and return it separately,
     if the machine string is not complete, use the default parameters
     when appropriate.
     """
 
-    if '@' in machine:
-        user, machine = machine.split('@', 1)
+    user = user
+    port = port
+    password = password
 
-    if ':' in user:
-        user, password = user.split(':', 1)
+    if re.search('@', machine):
+        machine = machine.split('@')
 
-    if ':' in machine:
-        machine, port = machine.split(':', 1)
-        port = int(port)
+        if re.search(':', machine[0]):
+            machine[0] = machine[0].split(':')
+            user = machine[0][0]
+            password = machine[0][1]
 
-    if not machine or not user:
-        raise ValueError
+        else:
+            user = machine[0]
 
-    return machine, user, password, port
+        if re.search(':', machine[1]):
+            machine[1] = machine[1].split(':')
+            hostname = machine[1][0]
+            port = int(machine[1][1])
+
+        else:
+            hostname = machine[1]
+
+    elif re.search(':', machine):
+        machine = machine.split(':')
+        hostname = machine[0]
+        port = int(machine[1])
+
+    else:
+        hostname = machine
+
+    return hostname, user, password, port
 
 
 def get_public_key():

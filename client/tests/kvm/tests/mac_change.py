@@ -17,10 +17,12 @@ def run_mac_change(test, params, env):
     """
     timeout = int(params.get("login_timeout", 360))
     vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session_serial = kvm_test_utils.wait_for_login(vm, 0, timeout, 0, 2,
-                                                   serial=True)
-    # This session will be used to assess whether the IP change worked
-    session = kvm_test_utils.wait_for_login(vm, 0, timeout, 0, 2)
+    logging.info("Trying to log into guest '%s' by serial", vm.name)
+    session = kvm_utils.wait_for(lambda: vm.serial_login(),
+                                  timeout, 0, step=2)
+    if not session:
+        raise error.TestFail("Could not log into guest '%s'" % vm.name)
+
     old_mac = vm.get_mac_address(0)
     while True:
         vm.free_mac_address(0)
@@ -28,21 +30,23 @@ def run_mac_change(test, params, env):
         if old_mac != new_mac:
             break
     logging.info("The initial MAC address is %s", old_mac)
-    interface = kvm_test_utils.get_linux_ifname(session_serial, old_mac)
+    interface = kvm_test_utils.get_linux_ifname(session, old_mac)
     # Start change MAC address
     logging.info("Changing MAC address to %s", new_mac)
     change_cmd = ("ifconfig %s down && ifconfig %s hw ether %s && "
                   "ifconfig %s up" % (interface, interface, new_mac, interface))
-    session_serial.cmd(change_cmd)
+    if session.get_command_status(change_cmd) != 0:
+        raise error.TestFail("Fail to send mac_change command")
 
     # Verify whether MAC address was changed to the new one
     logging.info("Verifying the new mac address")
-    session_serial.cmd("ifconfig | grep -i %s" % new_mac)
+    if session.get_command_status("ifconfig | grep -i %s" % new_mac) != 0:
+        raise error.TestFail("Fail to change MAC address")
 
     # Restart `dhclient' to regain IP for new mac address
     logging.info("Restart the network to gain new IP")
     dhclient_cmd = "dhclient -r && dhclient %s" % interface
-    session_serial.sendline(dhclient_cmd)
+    session.sendline(dhclient_cmd)
 
     # Re-log into the guest after changing mac address
     if kvm_utils.wait_for(session.is_responsive, 120, 20, 3):

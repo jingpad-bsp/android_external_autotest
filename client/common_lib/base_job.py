@@ -422,9 +422,6 @@ class status_log_entry(object):
     TIMESTAMP_FIELD = 'timestamp'
     LOCALTIME_FIELD = 'localtime'
 
-    # non-space whitespace is forbidden in any fields
-    BAD_CHAR_REGEX = re.compile(r'[\t\n\r\v\f]')
-
     def __init__(self, status_code, subdir, operation, message, fields,
                  timestamp=None):
         """Construct a status.log entry.
@@ -442,16 +439,18 @@ class status_log_entry(object):
 
         @raise ValueError: if any of the parameters are invalid
         """
+        # non-space whitespace is forbidden in any fields
+        bad_char_regex = r'[\t\n\r\v\f]'
 
         if not log.is_valid_status(status_code):
             raise ValueError('status code %r is not valid' % status_code)
         self.status_code = status_code
 
-        if subdir and self.BAD_CHAR_REGEX.search(subdir):
+        if subdir and re.search(bad_char_regex, subdir):
             raise ValueError('Invalid character in subdir string')
         self.subdir = subdir
 
-        if operation and self.BAD_CHAR_REGEX.search(operation):
+        if operation and re.search(bad_char_regex, operation):
             raise ValueError('Invalid character in operation string')
         self.operation = operation
 
@@ -461,7 +460,7 @@ class status_log_entry(object):
         message_lines = message.split('\n')
         self.message = message_lines[0].replace('\t', ' ' * 8)
         self.extra_message_lines = message_lines[1:]
-        if self.BAD_CHAR_REGEX.search(self.message):
+        if re.search(bad_char_regex, self.message):
             raise ValueError('Invalid character in message %r' % self.message)
 
         if not fields:
@@ -469,7 +468,7 @@ class status_log_entry(object):
         else:
             self.fields = fields.copy()
         for key, value in self.fields.iteritems():
-            if self.BAD_CHAR_REGEX.search(key + value):
+            if re.search(bad_char_regex, key + value):
                 raise ValueError('Invalid character in %r=%r field'
                                  % (key, value))
 

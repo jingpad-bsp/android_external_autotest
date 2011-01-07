@@ -27,13 +27,12 @@ def run_ksm_overcommit(test, params, env):
         """
         logging.debug("Starting allocator.py on guest %s", vm.name)
         session.sendline("python /tmp/allocator.py")
-        try:
-            (match, data) = session.read_until_last_line_matches(
-                                                            ["PASS:", "FAIL:"],
-                                                            timeout)
-        except kvm_subprocess.ExpectProcessTerminatedError, e:
-            raise error.TestFail("Command allocator.py on vm '%s' failed: %s" %
-                                 (vm.name, str(e)))
+        (match, data) = session.read_until_last_line_matches(["PASS:", "FAIL:"],
+                                                             timeout)
+        if match == 1 or match is None:
+            raise error.TestFail("Command allocator.py on guest %s failed.\n"
+                                 "return code: %s\n output:\n%s" %
+                                 (vm.name, match, data))
 
 
     def _execute_allocator(command, vm, session, timeout):
@@ -51,14 +50,12 @@ def run_ksm_overcommit(test, params, env):
         logging.debug("Executing '%s' on allocator.py loop, vm: %s, timeout: %s",
                       command, vm.name, timeout)
         session.sendline(command)
-        try:
-            (match, data) = session.read_until_last_line_matches(
-                                                             ["PASS:","FAIL:"],
+        (match, data) = session.read_until_last_line_matches(["PASS:","FAIL:"],
                                                              timeout)
-        except kvm_subprocess.ExpectProcessTerminatedError, e:
-            e_str = ("Failed to execute command '%s' on allocator.py, "
-                     "vm '%s': %s" % (command, vm.name, str(e)))
-            raise error.TestFail(e_str)
+        if match == 1 or match is None:
+            raise error.TestFail("Failed to execute '%s' on allocator.py, "
+                                 "vm: %s, output:\n%s" %
+                                 (command, vm.name, data))
         return (match, data)
 
 
@@ -83,7 +80,9 @@ def run_ksm_overcommit(test, params, env):
             vm = lvms[lsessions.index(session)]
 
             logging.debug("Turning off swap on vm %s" % vm.name)
-            session.cmd("swapoff -a", timeout=300)
+            ret = session.get_command_status("swapoff -a", timeout=300)
+            if ret is None or ret:
+                raise error.TestFail("Failed to swapoff on VM %s" % vm.name)
 
             # Start the allocator
             _start_allocator(vm, session, 60 * perf_ratio)
@@ -233,7 +232,7 @@ def run_ksm_overcommit(test, params, env):
                            (mem / 200 * 50 * perf_ratio))
         logging.debug(kvm_test_utils.get_memory_info([lvms[last_vm]]))
 
-        lsessions[i].cmd_output("die()", 20)
+        (status, data) = lsessions[i].get_command_status_output("die()", 20)
         lvms[last_vm].destroy(gracefully = False)
         logging.info("Phase 3b: PASS")
 
@@ -254,7 +253,9 @@ def run_ksm_overcommit(test, params, env):
                 raise error.TestFail("Could not log into guest %s" %
                                      vm.name)
 
-        session.cmd("swapoff -a", timeout=300)
+        ret = session.get_command_status("swapoff -a", timeout=300)
+        if ret != 0:
+            raise error.TestFail("Failed to turn off swap on %s" % vm.name)
 
         for i in range(0, max_alloc):
             # Start the allocator
@@ -359,7 +360,7 @@ def run_ksm_overcommit(test, params, env):
 
         logging.debug("Cleaning up...")
         for i in range(0, max_alloc):
-            lsessions[i].cmd_output("die()", 20)
+            lsessions[i].get_command_status_output("die()", 20)
         session.close()
         vm.destroy(gracefully = False)
 
@@ -544,7 +545,7 @@ def run_ksm_overcommit(test, params, env):
 
     # Creating the first guest
     kvm_preprocessing.preprocess_vm(test, params, env, vm_name)
-    lvms.append(env.get_vm(vm_name))
+    lvms.append(kvm_utils.env_get_vm(env, vm_name))
     if not lvms[0]:
         raise error.TestError("VM object not found in environment")
     if not lvms[0].is_alive():
@@ -575,7 +576,7 @@ def run_ksm_overcommit(test, params, env):
 
         # Last VM is later used to run more allocators simultaneously
         lvms.append(lvms[0].clone(vm_name, params))
-        env.register_vm(vm_name, lvms[i])
+        kvm_utils.env_register_vm(env, vm_name, lvms[i])
         params['vms'] += " " + vm_name
 
         logging.debug("Booting guest %s" % lvms[i].name)

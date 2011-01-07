@@ -147,6 +147,20 @@
 				<SynchronousCommand wcm:action="add">
 					<CommandLine>%WINDIR%\System32\cmd /c net start telnet</CommandLine>
 					<Order>5</Order>
+<<<<<<< HEAD
+				</SynchronousCommand>
+				<SynchronousCommand wcm:action="add">
+					<CommandLine>%WINDIR%\System32\cmd /c E:\setuprss.bat</CommandLine>
+					<Order>6</Order>
+				</SynchronousCommand>
+				<SynchronousCommand wcm:action="add">
+					<CommandLine>%WINDIR%\System32\cmd /c netsh interface ip set address "Local Area Connection" dhcp</CommandLine>
+					<Order>7</Order>
+				</SynchronousCommand>
+				<SynchronousCommand wcm:action="add">
+					<CommandLine>%WINDIR%\System32\cmd /c ping 10.0.2.2 -n 20 &#38;&#38; A:\finish.exe</CommandLine>
+					<Order>8</Order>
+=======
 				</SynchronousCommand>
 				<SynchronousCommand wcm:action="add">
 					<CommandLine>%WINDIR%\System32\cmd /c bcdedit /set {current} bootstatuspolicy ignoreallfailures</CommandLine>
@@ -161,8 +175,9 @@
 					<Order>8</Order>
 				</SynchronousCommand>
 				<SynchronousCommand wcm:action="add">
-					<CommandLine>%WINDIR%\System32\cmd /c A:\finish.exe</CommandLine>
+					<CommandLine>%WINDIR%\System32\cmd /c ping 10.0.2.2 -n 20 &#38;&#38; A:\finish.exe</CommandLine>
 					<Order>9</Order>
+>>>>>>> cros/upstream
 				</SynchronousCommand>
 			</FirstLogonCommands>
 			<OOBE>

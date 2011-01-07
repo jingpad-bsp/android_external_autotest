@@ -1,7 +1,7 @@
 import logging, commands, os
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
-import kvm_test_utils, kvm_subprocess
+import kvm_test_utils
 
 def run_netperf(test, params, env):
     """
@@ -26,19 +26,20 @@ def run_netperf(test, params, env):
     result_file = os.path.join(test.resultsdir, "output_%s" % test.iteration)
 
     firewall_flush = "iptables -F"
-    session.cmd_output(firewall_flush)
+    session.get_command_output(firewall_flush)
 
     for i in params.get("netperf_files").split():
         if not vm.copy_files_to(os.path.join(netperf_dir, i), "/tmp"):
             raise error.TestError("Could not copy file %s to guest" % i)
 
-    try:
-        session.cmd(firewall_flush)
-    except kvm_subprocess.ShellError:
+    if session.get_command_status(firewall_flush):
         logging.warning("Could not flush firewall rules on guest")
 
-    session.cmd(setup_cmd % "/tmp", timeout=200)
-    session.cmd(params.get("netserver_cmd") % "/tmp")
+    if session.get_command_status(setup_cmd % "/tmp", timeout=200):
+        raise error.TestFail("Fail to setup netperf on guest")
+
+    if session.get_command_status(params.get("netserver_cmd") % "/tmp"):
+        raise error.TestFail("Fail to start netperf server on guest")
 
     try:
         logging.info("Setup and run netperf client on host")
@@ -48,18 +49,15 @@ def run_netperf(test, params, env):
         result.write("Netperf test results\n")
 
         for i in params.get("protocols").split():
-            packet_size = params.get("packet_size", "1500")
-            for size in packet_size.split():
-                cmd = params.get("netperf_cmd") % (netperf_dir, i,
-                                                   guest_ip, size)
-                logging.info("Netperf: protocol %s", i)
-                try:
-                    netperf_output = utils.system_output(cmd,
-                                                         retain_output=True)
-                    result.write("%s\n" % netperf_output)
-                except:
-                    logging.error("Test of protocol %s failed", i)
-                    list_fail.append(i)
+            cmd = params.get("netperf_cmd") % (netperf_dir, i, guest_ip)
+            logging.info("Netperf: protocol %s", i)
+            try:
+                netperf_output = utils.system_output(cmd,
+                                                     retain_output=True)
+                result.write("%s\n" % netperf_output)
+            except:
+                logging.error("Test of protocol %s failed", i)
+                list_fail.append(i)
 
         result.close()
 
@@ -68,5 +66,5 @@ def run_netperf(test, params, env):
                                  ", ".join(list_fail))
 
     finally:
-        session.cmd_output("killall netserver")
+        session.get_command_output("killall netserver")
         session.close()

@@ -11,17 +11,10 @@ include cdkeys.cfg
 # * qemu and qemu-img are expected to be found under /usr/bin/qemu-kvm and
 #   /usr/bin/qemu-img respectively.
 # * All image files are expected under /tmp/kvm_autotest_root/images/
-# * All install iso files are expected under /tmp/kvm_autotest_root/isos/
-# * The parameters cdrom_unattended, floppy, kernel and initrd are generated
-#   by KVM autotest, so remember to put them under a writable location
-#   (for example, the cdrom share can be read only)
+# * All iso files are expected under /tmp/kvm_autotest_root/isos/
+qemu_img_binary = /usr/bin/qemu-img
 image_name(_.*)? ?<= /tmp/kvm_autotest_root/images/
-cdrom(_.*)? ?<= /tmp/kvm_autotest_root/
-floppy ?<= /tmp/kvm_autotest_root/
-Linux:
-    unattended_install:
-        kernel ?<= /tmp/kvm_autotest_root/
-        initrd ?<= /tmp/kvm_autotest_root/
+cdrom(_.*)? ?<= /tmp/kvm_autotest_root/isos/
 
 # Here are the test sets variants. The variant 'qemu_kvm_windows_quick' is
 # fully commented, the following ones have comments only on noteworthy points
@@ -33,7 +26,6 @@ variants:
     - @qemu_kvm_windows_quick:
         # We want qemu-kvm for this run
         qemu_binary = /usr/bin/qemu-kvm
-        qemu_img_binary = /usr/bin/qemu-img
         # Only qcow2 file format
         only qcow2
         # Only rtl8139 for nw card (default on qemu-kvm)
@@ -51,11 +43,10 @@ variants:
         # Subtest choice. You can modify that line to add more subtests
         only unattended_install.cdrom boot shutdown
 
-    # Runs qemu, f14 64 bit guest OS, install, boot, shutdown
-    - @qemu_f14_quick:
+    # Runs qemu, f13 64 bit guest OS, install, boot, shutdown
+    - @qemu_f13_quick:
         # We want qemu for this run
         qemu_binary = /usr/bin/qemu
-        qemu_img_binary = /usr/bin/qemu-img
         only qcow2
         # The default nw card for qemu is e1000
         only e1000
@@ -64,23 +55,22 @@ variants:
         only up
         only no_pci_assignable
         only smallpages
-        only Fedora.14.64
+        only Fedora.13.64
         only unattended_install.cdrom boot shutdown
         # qemu needs -enable-kvm on the cmdline
         extra_params += ' -enable-kvm'
 
-    # Runs qemu-kvm, f14 64 bit guest OS, install, boot, shutdown
-    - @qemu_kvm_f14_quick:
+    # Runs qemu-kvm, f13 64 bit guest OS, install, boot, shutdown
+    - @qemu_kvm_f13_quick:
         # We want qemu-kvm for this run
         qemu_binary = /usr/bin/qemu-kvm
-        qemu_img_binary = /usr/bin/qemu-img
         only qcow2
         only virtio_net
         only virtio_blk
         only smp2
         only no_pci_assignable
         only smallpages
-        only Fedora.14.64
+        only Fedora.13.64
         only unattended_install.cdrom boot shutdown
 
 # You may provide information about the DTM server for WHQL tests here:
@@ -97,4 +87,4 @@ variants:
 #kill_unresponsive_vms.* ?= no
 
 # Choose your test list from the testsets defined
-only qemu_kvm_f14_quick
+only qemu_kvm_f13_quick

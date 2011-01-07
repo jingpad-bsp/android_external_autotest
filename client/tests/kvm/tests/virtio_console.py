@@ -1,16 +1,15 @@
 """
 virtio_console test
 
-@copyright: 2010 Red Hat, Inc.
+@copyright: Red Hat 2010
 """
 import array, logging, os, random, re, select, shutil, socket, sys, tempfile
-import threading, time, traceback
+import threading, time
 from collections import deque
 from threading import Thread
 
 import kvm_subprocess, kvm_test_utils, kvm_utils, kvm_preprocessing
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.bin import utils
 
 
 def run_virtio_console(test, params, env):
@@ -31,224 +30,7 @@ def run_virtio_console(test, params, env):
     @param params: Dictionary with the test parameters
     @param env: Dictionary with test environment
     """
-    class SubTest(object):
-        """
-        Collect result of subtest of main test.
-        """
-        def __init__(self):
-            """
-            Initialize object
-            """
-            self.result = []
-            self.passed = 0
-            self.failed = 0
-            self.cleanup_func = None
-            self.cleanup_args = None
-
-
-        def set_cleanup_func(self, func, args):
-            """
-            Set cleanup function which is called when subtest fails.
-
-            @param func: Function which should be called when test fails.
-            @param args: Arguments of cleanup function.
-            """
-            self.cleanup_func = func
-            self.cleanup_args = args
-
-
-        def do_test(self, function, args=None, fatal=False, cleanup=True):
-            """
-            Execute subtest function.
-
-            @param function: Object of function.
-            @param args: List of arguments of function.
-            @param fatal: If true exception is forwarded to main test.
-            @param cleanup: If true call cleanup function after crash of test.
-            @return: Return what returned executed subtest.
-            @raise TestError: If collapse of test is fatal raise forward
-                        exception from subtest.
-            """
-            if args == None:
-                args = []
-            res = [None, function.func_name, args]
-            try:
-                logging.debug("Start test %s." % function.func_name)
-                ret = function(*args)
-                res[0] = True
-                logging.info(self.result_to_string(res))
-                self.result.append(res)
-                self.passed += 1
-                return ret
-            except:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                logging.error("In function (" + function.func_name + "):")
-                logging.error("Call from:\n" +
-                              traceback.format_stack()[-2][:-1])
-                logging.error("Exception from:\n" +
-                              "".join(traceback.format_exception(
-                                                        exc_type, exc_value,
-                                                        exc_traceback.tb_next)))
-                # Clean up environment after subTest crash
-                if cleanup:
-                    self.cleanup_func(*self.cleanup_args)
-                res[0] = False
-                logging.info(self.result_to_string(res))
-                self.result.append(res)
-                self.failed += 1
-                if fatal:
-                    raise
-
-
-        def is_failed(self):
-            """
-            @return: If any of subtest not pass return True.
-            """
-            if self.failed > 0:
-                return True
-            else:
-                return False
-
-
-        def get_result(self):
-            """
-            @return: Result of subtests.
-               Format:
-                 tuple(pass/fail,function_name,call_arguments)
-            """
-            return self.result
-
-
-        def result_to_string_debug(self, result):
-            """
-            @param result: Result of test.
-            """
-            sargs = ""
-            for arg in result[2]:
-                sargs += str(arg) + ","
-            sargs = sargs[:-1]
-            if result[0]:
-                status = "PASS"
-            else:
-                status = "FAIL"
-            return ("Subtest (%s(%s)): --> %s") % (result[1], sargs, status)
-
-
-        def result_to_string(self, result):
-            """
-            @param result: Result of test.
-            """
-            if result[0]:
-                status = "PASS"
-            else:
-                status = "FAIL"
-            return ("Subtest (%s): --> %s") % (result[1], status)
-
-
-        def headline(self, msg):
-            """
-            Add headline to result output.
-
-            @param msg: Test of headline
-            """
-            self.result.append([msg])
-
-
-        def _gen_res(self, format_func):
-            """
-            Format result with foramting function
-
-            @param format_func: Func for formating result.
-            """
-            result = ""
-            for res in self.result:
-                if (len(res) == 3):
-                    result += format_func(res) + "\n"
-                else:
-                    result += res[0] + "\n"
-            return result
-
-
-        def get_full_text_result(self):
-            """
-            @return string with text form of result
-            """
-            return self._gen_res(lambda str: self.result_to_string_debug(str))
-
-
-        def get_text_result(self):
-            """
-            @return string with text form of result
-            """
-            return self._gen_res(lambda str: self.result_to_string(str))
-
-
-    class Port(object):
-        """
-        Define structure to keep information about used port.
-        """
-        def __init__(self, sock, name, port_type, path):
-            """
-            @param vm: virtual machine object that port owned
-            @param sock: Socket of port if port is open.
-            @param name: Name of port for guest side.
-            @param port_type: Type of port yes = console, no= serialport.
-            @param path: Path to port on host side.
-            """
-            self.sock = sock
-            self.name = name
-            self.port_type = port_type
-            self.path = path
-            self.is_open = False
-
-
-        def for_guest(self):
-            """
-            Format data for communication with guest side.
-            """
-            return [self.name, self.port_type]
-
-
-        def open(self):
-            """
-            Open port on host side.
-            """
-            self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.sock.connect(self.path)
-            self.is_open = True
-
-
-        def clean_port(self):
-            """
-            Clean all data from opened port on host side.
-            """
-            if self.is_open:
-                self.close()
-            self.open()
-            ret = select.select([self.sock], [], [], 1.0)
-            if ret[0]:
-                buf = self.sock.recv(1024)
-                logging.debug("Rest in socket: " + buf)
-
-
-        def close(self):
-            """
-            Close port.
-            """
-            self.sock.shutdown(socket.SHUT_RDWR)
-            self.sock.close()
-            self.is_open = False
-
-
-        def __str__(self):
-            """
-            Convert to text.
-            """
-            return ("%s,%s,%s,%s,%d" % ("Socket", self.name, self.port_type,
-                                        self.path, self.is_open))
-
-
-    class ThSend(Thread):
+    class th_send(Thread):
         """
         Random data sender thread.
         """
@@ -271,14 +53,14 @@ def run_virtio_console(test, params, env):
 
 
         def run(self):
-            logging.debug("ThSend %s: run", self.getName())
+            logging.debug("th_send %s: run", self.getName())
             while not self.exitevent.isSet():
                 self.idx += self.port.send(self.data)
-            logging.debug("ThSend %s: exit(%d)", self.getName(),
+            logging.debug("th_send %s: exit(%d)", self.getName(),
                           self.idx)
 
 
-    class ThSendCheck(Thread):
+    class th_send_check(Thread):
         """
         Random data sender thread.
         """
@@ -303,7 +85,7 @@ def run_virtio_console(test, params, env):
 
 
         def run(self):
-            logging.debug("ThSendCheck %s: run", self.getName())
+            logging.debug("th_send_check %s: run", self.getName())
             too_much_data = False
             while not self.exitevent.isSet():
                 # FIXME: workaround the problem with qemu-kvm stall when too
@@ -327,14 +109,14 @@ def run_virtio_console(test, params, env):
                         idx = self.port.send(buf)
                         buf = buf[idx:]
                         self.idx += idx
-            logging.debug("ThSendCheck %s: exit(%d)", self.getName(),
+            logging.debug("th_send_check %s: exit(%d)", self.getName(),
                           self.idx)
             if too_much_data:
-                logging.error("ThSendCheck: workaround the 'too_much_data'"
+                logging.error("th_send_check: workaround the 'too_much_data'"
                               "bug")
 
 
-    class ThRecv(Thread):
+    class th_recv(Thread):
         """
         Recieves data and throws it away.
         """
@@ -352,7 +134,7 @@ def run_virtio_console(test, params, env):
             self.blocklen = blocklen
             self.idx = 0
         def run(self):
-            logging.debug("ThRecv %s: run", self.getName())
+            logging.debug("th_recv %s: run", self.getName())
             while not self.exitevent.isSet():
                 # TODO: Workaround, it didn't work with select :-/
                 try:
@@ -360,10 +142,10 @@ def run_virtio_console(test, params, env):
                 except socket.timeout:
                     pass
             self.port.settimeout(self._port_timeout)
-            logging.debug("ThRecv %s: exit(%d)", self.getName(), self.idx)
+            logging.debug("th_recv %s: exit(%d)", self.getName(), self.idx)
 
 
-    class ThRecvCheck(Thread):
+    class th_recv_check(Thread):
         """
         Random data receiver/checker thread.
         """
@@ -383,10 +165,10 @@ def run_virtio_console(test, params, env):
 
 
         def run(self):
-            logging.debug("ThRecvCheck %s: run", self.getName())
+            logging.debug("th_recv_check %s: run", self.getName())
             while not self.exitevent.isSet():
                 ret = select.select([self.port], [], [], 1.0)
-                if ret[0] and (not self.exitevent.isSet()):
+                if ret and (not self.exitevent.isSet()):
                     buf = self.port.recv(self.blocklen)
                     if buf:
                         # Compare the recvd data with the control data
@@ -404,11 +186,154 @@ def run_virtio_console(test, params, env):
                                 for buf in self.buffer:
                                     ch_ += buf
                                 logging.error("Queue = %s", repr(ch_))
-                                raise error.TestFail("ThRecvCheck: incorrect "
+                                raise error.TestFail("th_recv_check: incorrect "
                                                      "data")
                         self.idx += len(buf)
-            logging.debug("ThRecvCheck %s: exit(%d)", self.getName(),
+            logging.debug("th_recv_check %s: exit(%d)", self.getName(),
                           self.idx)
+
+
+    class cpu_load():
+        """
+        Get average cpu load between start and get_load.
+        """
+        def __init__ (self):
+            self.old_load = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            self.startTime = 0
+            self.endTime = 0
+
+
+        def _get_cpu_load(self):
+            # Let's see if we can calc system load.
+            try:
+                f = open("/proc/stat", "r")
+                tmp = f.readlines(200)
+                f.close()
+            except:
+                logging.critical("Error reading /proc/stat")
+                error.TestFail("average_cpu_load: Error reading /proc/stat")
+
+            # 200 bytes should be enough because the information we need
+            # is typically stored in the first line
+            # Info about individual processors (not yet supported) is in
+            # the second (third, ...?) line
+            for line in tmp:
+                if line[0:4] == "cpu ":
+                    reg = re.compile('[0-9]+')
+                    load_values = reg.findall(line)
+                    # extract values from /proc/stat
+                    load = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                    for i in range(8):
+                        load[i] = int(load_values[i]) - self.old_load[i]
+
+                    for i in range(8):
+                        self.old_load[i] = int(load_values[i])
+                    return load
+
+
+        def start (self):
+            """
+            Start CPU usage measurement
+            """
+            self.old_load = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            self.startTime = time.time()
+            self._get_cpu_load()
+
+
+        def get_load(self):
+            """
+            Get and reset CPU usage
+
+            @return: return group cpu (user[%], system[%], sum[%], testTime[s])
+            """
+            self.endTime = time.time()
+            testTime = self.endTime - self.startTime
+            load = self._get_cpu_load()
+
+            user = load[0] / testTime
+            system = load[2] / testTime
+            sum = user + system
+
+            return (user, system, sum, testTime)
+
+
+    class pid_load():
+        """
+        Get average process cpu load between start and get_load
+        """
+        def __init__ (self, pid, name):
+            self.old_load = [0, 0]
+            self.startTime = 0
+            self.endTime = 0
+            self.pid = pid
+            self.name = name
+
+
+        def _get_cpu_load(self, pid):
+            # Let's see if we can calc system load.
+            try:
+                f = open("/proc/%d/stat" % (pid), "r")
+                line = f.readline()
+                f.close()
+            except:
+                logging.critical("Error reading /proc/%d/stat", pid)
+                error.TestFail("average_process_cpu_load: Error reading "
+                               "/proc/stat")
+            else:
+                reg = re.compile('[0-9]+')
+                load_values = reg.findall(line)
+                del load_values[0:11]
+                # extract values from /proc/stat
+                load = [0, 0]
+                for i in range(2):
+                    load[i] = int(load_values[i]) - self.old_load[i]
+
+                for i in range(2):
+                    self.old_load[i] = int(load_values[i])
+                return load
+
+
+        def start (self):
+            """
+            Start CPU usage measurement
+            """
+            self.old_load = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            self.startTime = time.time()
+            self._get_cpu_load(self.pid)
+
+
+        def get_load(self):
+            """
+            Get and reset CPU usage.
+
+            @return: Group cpu
+                    (pid, user[%], system[%], sum[%], testTime[s])
+            """
+            self.endTime = time.time()
+            testTime = self.endTime - self.startTime
+            load = self._get_cpu_load(self.pid)
+
+            user = load[0] / testTime
+            system = load[1] / testTime
+            sum = user + system
+
+            return (self.name, self.pid, user, system, sum, testTime)
+
+
+    def print_load(process, system):
+        """
+        Print load in tabular mode.
+
+        @param process: List of process statistic tuples.
+        @param system: Tuple of system cpu usage.
+        """
+
+        logging.info("%-10s %6s %5s %5s %5s %11s",
+                     "NAME", "PID", "USER", "SYS", "SUM", "TIME")
+        for pr in process:
+            logging.info("%-10s %6d %4.0f%% %4.0f%% %4.0f%% %10.3fs" % pr)
+        logging.info("TOTAL:     ------ %4.0f%% %4.0f%% %4.0f%% %10.3fs" %
+                     system)
 
 
     def process_stats(stats, scale=1.0):
@@ -427,7 +352,7 @@ def run_virtio_console(test, params, env):
         return stats
 
 
-    def _init_guest(vm, timeout=2):
+    def init_guest(vm, timeout=2):
         """
         Execute virtio_guest.py on guest, wait until it is initialized.
 
@@ -436,43 +361,27 @@ def run_virtio_console(test, params, env):
                 started properly.
         """
         logging.debug("compile virtio_guest.py on guest %s", vm[0].name)
-
-        (match, data) = _on_guest("python -OO /tmp/virtio_guest.py -c &&"
+        vm[1].sendline("python -OO /tmp/virtio_guest.py -c &&"
                        "echo -n 'PASS: Compile virtio_guest finished' ||"
-                       "echo -n 'FAIL: Compile virtio_guest failed'",
-                        vm, timeout)
-
-        if match != 0:
+                       "echo -n 'FAIL: Compile virtio_guest failed'")
+        (match, data) = vm[1].read_until_last_line_matches(["PASS:", "FAIL:"],
+                                                           timeout)
+        if match == 1 or match is None:
             raise error.TestFail("Command console_switch.py on guest %s failed."
                                  "\nreturn code: %s\n output:\n%s" %
                                  (vm[0].name, match, data))
         logging.debug("Starting virtio_guest.py on guest %s", vm[0].name)
-        vm[1].sendline()
-        (match, data) = _on_guest("python /tmp/virtio_guest.pyo &&"
+        vm[1].sendline("python /tmp/virtio_guest.pyo &&"
                        "echo -n 'PASS: virtio_guest finished' ||"
-                       "echo -n 'FAIL: virtio_guest failed'",
-                       vm, timeout)
-        if match != 0:
+                       "echo -n 'FAIL: virtio_guest failed'")
+        (match, data) = vm[1].read_until_last_line_matches(["PASS:", "FAIL:"],
+                                                           timeout)
+        if match == 1 or match is None:
             raise error.TestFail("Command console_switch.py on guest %s failed."
                                  "\nreturn code: %s\n output:\n%s" %
                                  (vm[0].name, match, data))
         # Let the system rest
         time.sleep(2)
-
-
-    def init_guest(vm, consoles):
-        """
-        Prepares guest, executes virtio_guest.py and initialize for testing
-
-        @param vm: Informations about the guest.
-        @param consoles: Informations about consoles
-        """
-        conss = []
-        for mode in consoles:
-            for cons in mode:
-                conss.append(cons.for_guest())
-        _init_guest(vm, 10)
-        on_guest("virt.init(%s)" % (conss), vm, 10)
 
 
     def _on_guest(command, vm, timeout=2):
@@ -489,13 +398,9 @@ def run_virtio_console(test, params, env):
         logging.debug("Executing '%s' on virtio_guest.py loop, vm: %s," +
                       "timeout: %s", command, vm[0].name, timeout)
         vm[1].sendline(command)
-        try:
-            (match, data) = vm[1].read_until_last_line_matches(["PASS:",
-                                                                "FAIL:"],
-                                                               timeout)
-        except (kvm_subprocess.ExpectError):
-            match = None
-            data = "Timeout."
+        (match, data) = vm[1].read_until_last_line_matches(["PASS:", 
+                                                    "FAIL:[Failed to execute]"],
+                                                    timeout)
         return (match, data)
 
 
@@ -520,6 +425,29 @@ def run_virtio_console(test, params, env):
         return (match, data)
 
 
+    def socket_readall(sock, read_timeout, mesagesize):
+        """
+        Read everything from the socket.
+
+        @param sock: Socket.
+        @param read_timeout: Read timeout.
+        @param mesagesize: Size of message.
+        """
+        sock_decriptor = sock.fileno()
+        sock.settimeout(read_timeout)
+        message = ""
+        try:
+            while (len(message) < mesagesize):
+                message += sock.recv(mesagesize)
+        except Exception as inst:
+            if (inst.args[0] == "timed out"):
+                logging.debug("Reading timeout")
+            else:
+                logging.debug(inst)
+        sock.setblocking(1)
+        return message
+
+
     def _guest_exit_threads(vm, send_pts, recv_pts):
         """
         Safely executes on_guest("virt.exit_threads()") using workaround of
@@ -535,7 +463,7 @@ def run_virtio_console(test, params, env):
             logging.debug("Workaround the stuck thread on guest")
             # Thread is stucked in read/write
             for send_pt in send_pts:
-                send_pt.sock.sendall(".")
+                send_pt[0].sendall(".")
         elif match != 0:
             # Something else
             raise error.TestFail("Unexpected fail\nMatch: %s\nData:\n%s"
@@ -543,8 +471,8 @@ def run_virtio_console(test, params, env):
 
         # Read-out all remaining data
         for recv_pt in recv_pts:
-            while select.select([recv_pt.sock], [], [], 0.1)[0]:
-                recv_pt.sock.recv(1024)
+            while select.select([recv_pt[0]], [], [], 0.1)[0]:
+                recv_pt[0].recv(1024)
 
         # This will cause fail in case anything went wrong.
         on_guest("print 'PASS: nothing'", vm, 10)
@@ -554,13 +482,6 @@ def run_virtio_console(test, params, env):
         """
         Creates the VM and connects the specified number of consoles and serial
         ports.
-        Ports are allocated by 2 per 1 virtio-serial-pci device starting with
-        console. (3+2 => CC|CS|S; 0+2 => SS; 3+4 => CC|CS|SS|S, ...) This way
-        it's easy to test communication on the same or different
-        virtio-serial-pci device.
-        Further in tests the consoles are being picked always from the first
-        available one (3+2: 2xC => CC|cs|s <communication on the same PCI>;
-        2xC,1xS => CC|cS|s <communication between 2 PCI devs)
 
         @param no_console: Number of desired virtconsoles.
         @param no_serialport: Number of desired virtserialports.
@@ -573,38 +494,27 @@ def run_virtio_console(test, params, env):
         tmp_dir = tempfile.mkdtemp(prefix="virtio-console-", dir="/tmp/")
         if not params.get('extra_params'):
             params['extra_params'] = ''
+        params['extra_params'] += " -device virtio-serial"
 
-        for i in range(0, no_console):
-            # Spread consoles between multiple PCI devices (2 per a dev)
-            if not i % 2:
-                pci = "virtio-serial-pci%d" % (i / 2)
-                params['extra_params'] += (" -device virtio-serial-pci,id="
-                                           + pci)
-                pci += ".0"
+        for i in  range(0, no_console):
             params['extra_params'] += (" -chardev socket,path=%s/%d,id=vc%d,"
                                        "server,nowait" % (tmp_dir, i, i))
             params['extra_params'] += (" -device virtconsole,chardev=vc%d,"
-                                      "name=console-%d,id=c%d,bus=%s"
-                                      % (i, i, i, pci))
+                                      "name=console-%d,id=c%d" % (i, i, i))
 
         for i in  range(no_console, no_console + no_serialport):
-            # Spread seroal ports between multiple PCI devices (2 per a dev)
-            if not i % 2:
-                pci = "virtio-serial-pci%d" % (i / 2)
-                params['extra_params'] += (" -device virtio-serial-pci,id="
-                                           + pci)
-                pci += ".0"
             params['extra_params'] += (" -chardev socket,path=%s/%d,id=vs%d,"
                                        "server,nowait" % (tmp_dir, i, i))
             params['extra_params'] += (" -device virtserialport,chardev=vs%d,"
-                                       "name=serialport-%d,id=p%d,bus=%s"
-                                       % (i, i, i, pci))
+                                       "name=serialport-%d,id=p%d" % (i, i, i))
+
 
         logging.debug("Booting first guest %s", params.get("main_vm"))
         kvm_preprocessing.preprocess_vm(test, params, env,
                                         params.get("main_vm"))
 
-        vm = env.get_vm(params.get("main_vm"))
+
+        vm = kvm_utils.env_get_vm(env, params.get("main_vm"))
 
         session = kvm_test_utils.wait_for_login(vm, 0,
                                          float(params.get("boot_timeout", 240)),
@@ -612,269 +522,159 @@ def run_virtio_console(test, params, env):
 
         # connect the sockets
         for i in range(0, no_console):
-            consoles.append(Port(None ,"console-%d" % i,
-                                 "yes", "%s/%d" % (tmp_dir, i)))
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect("%s/%d" % (tmp_dir, i))
+            consoles.append([sock, "console-%d" % i, "yes"])
         for i in range(no_console, no_console + no_serialport):
-            serialports.append(Port(None ,"serialport-%d" % i,
-                                    "no", "%s/%d" % (tmp_dir, i)))
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect("%s/%d" % (tmp_dir, i))
+            serialports.append([sock, "serialport-%d" % i, "no"])
 
         return [vm, session, tmp_dir], [consoles, serialports]
 
 
-    def topen(vm, port):
+    def test_smoke(vm, consoles, params):
         """
-        Open virtioconsole port.
+        Virtio console smoke test.
 
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port identifier.
+        Tests the basic functionalities (poll, read/write with and without
+        connected host, etc.
+
+        @param vm: target virtual machine [vm, session, tmp_dir]
+        @param consoles: a field of virtio ports with the minimum of 2 items
+        @param params: test parameters '$console_type:$data;...'
         """
-        on_guest("virt.open('%s')" % (port.name), vm, 2)
-        port.open()
+        logging.info("Smoke test: Tests the basic capabilities of "
+                     "virtio_consoles.")
+        # PREPARE
+        for param in params.split(';'):
+            if not param:
+                continue
+            logging.info("test_smoke: params: %s", param)
+            param = param.split(':')
+            if len(param) > 1:
+                data = param[1]
+            else:
+                data = "Smoke test data"
+            param = (param[0] == 'serialport')
+            send_pt = consoles[param][0]
+            recv_pt = consoles[param][1]
+
+            # TEST
+            # Poll (OUT)
+            on_guest("virt.poll('%s', %s)" % (send_pt[1], select.POLLOUT), vm,
+                     2)
+
+            # Poll (IN, OUT)
+            send_pt[0].sendall("test")
+            for test in [select.POLLIN, select.POLLOUT]:
+                on_guest("virt.poll('%s', %s)" % (send_pt[1], test), vm, 2)
+
+            # Poll (IN HUP)
+            # I store the socket informations and close the socket
+            sock = send_pt[0]
+            send_pt[0] = sock.getpeername()
+            sock.shutdown(2)
+            sock.close()
+            del sock
+            for test in [select.POLLIN, select.POLLHUP]:
+                on_guest("virt.poll('%s', %s)" % (send_pt[1], test), vm, 2)
+
+            # Poll (HUP)
+            on_guest("virt.recv('%s', 4, 1024, False)" % (send_pt[1]), vm, 2)
+            on_guest("virt.poll('%s', %s)" % (send_pt[1], select.POLLHUP), vm,
+                     2)
+
+            # Reconnect the socket
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(send_pt[0])
+            send_pt[0] = sock
+            # Redefine socket in consoles
+            consoles[param][0] = send_pt
+            on_guest("virt.poll('%s', %s)" % (send_pt[1], select.POLLOUT), vm,
+                     2)
+
+            # Read/write without host connected
+            # I store the socket informations and close the socket
+            sock = send_pt[0]
+            send_pt[0] = sock.getpeername()
+            sock.shutdown(2)
+            sock.close()
+            del sock
+            # Read should pass
+            on_guest("virt.recv('%s', 0, 1024, False)" % send_pt[1], vm, 2)
+            # Write should timed-out
+            match, tmp = _on_guest("virt.send('%s', 10, False)"
+                                    % send_pt[1], vm, 2)
+            if match != None:
+                raise error.TestFail("Read on guest while host disconnected "
+                                     "didn't timed out.\nOutput:\n%s"
+                                     % tmp)
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(send_pt[0])
+            send_pt[0] = sock
+
+            # Redefine socket in consoles
+            consoles[param][0] = send_pt
+            if (send_pt[0].recv(1024) < 10):
+                raise error.TestFail("Didn't received data from guest")
+            # Now the _on_guest("virt.send('%s'... command should be finished
+            on_guest("print 'PASS: nothing'", vm, 2)
+
+            # Non-blocking mode
+            on_guest("virt.blocking('%s', False)" % send_pt[1], vm, 2)
+            # Recv should return FAIL with 0 received data
+            match, tmp = _on_guest("virt.recv('%s', 10, 1024, False)" %
+                                   send_pt[1], vm, 2)
+            if match == 0:
+                raise error.TestFail("Received data even when non were sent\n"
+                                     "Data:\n%s" % tmp)
+            elif match == None:
+                raise error.TestFail("Timed out, probably in blocking mode\n"
+                                     "Data:\n%s" % tmp)
+            elif match != 1:
+                raise error.TestFail("Unexpected fail\nMatch: %s\nData:\n%s" %
+                                     (match, tmp))
+            send_pt[0].sendall("1234567890")
+            on_guest("virt.recv('%s', 10, 1024, False)" % send_pt[1], vm, 2)
+
+            # Blocking mode
+            on_guest("virt.blocking('%s', True)" % send_pt[1], vm, 2)
+            # Recv should timed out
+            match, tmp = _on_guest("virt.recv('%s', 10, 1024, False)" %
+                                   send_pt[1], vm, 2)
+            if match == 0:
+                raise error.TestFail("Received data even when non were sent\n"
+                                     "Data:\n%s" % tmp)
+            elif match != None:
+                raise error.TestFail("Unexpected fail\nMatch: %s\nData:\n%s" %
+                                     (match, tmp))
+            send_pt[0].sendall("1234567890")
+            # Now guest received the data end escaped from the recv()
+            on_guest("print 'PASS: nothing'", vm, 2)
+
+            # Basic loopback test
+            on_guest("virt.loopback(['%s'], ['%s'], 1024, virt.LOOP_NONE)" %
+                     (send_pt[1], recv_pt[1]), vm, 2)
+            send_pt[0].sendall(data)
+            tmp = ""
+            i = 0
+            while i <= 10:
+                i += 1
+                ret = select.select([recv_pt[0]], [], [], 1.0)
+                if ret:
+                    tmp += recv_pt[0].recv(1024)
+                if len(tmp) >= len(data):
+                    break
+            if tmp != data:
+                raise error.TestFail("Incorrect data: '%s' != '%s'",
+                                     data, tmp)
+            _guest_exit_threads(vm, [send_pt], [recv_pt])
+
+        return consoles
 
 
-    def tmulti_open(vm, port):
-        """
-        Multiopen virtioconsole port.
-
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port identifier.
-        """
-        on_guest("virt.close('%s')" % (port.name), vm, 2)
-        on_guest("virt.open('%s')" % (port.name), vm, 2)
-        (match, data) = _on_guest("virt.open('%s')" % (port.name), vm, 2)
-        # Console is permitted to open the device multiple times
-        if port.port_type == "yes": #is console?
-            if match != 0: #Multiopen not pass
-                raise error.TestFail("Unexpected fail of opening the console"
-                                     " device for the 2nd time.\n%s" % data)
-        else:
-            if match != 1: #Multiopen not fail:
-                raise error.TestFail("Unexpetded pass of opening the"
-                                     " serialport device for the 2nd time.")
-            elif not "[Errno 24]" in data:
-                raise error.TestFail("Multiple opening fail but with another"
-                                     " exception %s" % data)
-        port.open()
-
-    def tclose(vm, port):
-        """
-        Close socket.
-
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port to open.
-        """
-        on_guest("virt.close('%s')" % (port.name), vm, 2)
-        port.close()
-
-
-    def tpooling(vm, port):
-        """
-        Test try pooling function.
-
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port used in test.
-        """
-        # Poll (OUT)
-        on_guest("virt.poll('%s', %s)" % (port.name, select.POLLOUT), vm,
-                 2)
-
-        # Poll (IN, OUT)
-        port.sock.sendall("test")
-        for test in [select.POLLIN, select.POLLOUT]:
-            on_guest("virt.poll('%s', %s)" % (port.name, test), vm, 2)
-
-        # Poll (IN HUP)
-        # I store the socket informations and close the socket
-        port.close()
-        for test in [select.POLLIN, select.POLLHUP]:
-            on_guest("virt.poll('%s', %s)" % (port.name, test), vm, 2)
-
-        # Poll (HUP)
-        on_guest("virt.recv('%s', 4, 1024, False)" % (port.name), vm, 2)
-        on_guest("virt.poll('%s', %s)" % (port.name, select.POLLHUP), vm,
-                 2)
-
-        # Reconnect the socket
-        port.open()
-        # Redefine socket in consoles
-        on_guest("virt.poll('%s', %s)" % (port.name, select.POLLOUT), vm,
-                 2)
-
-
-    def tsigio(vm, port):
-        """
-        Test try sigio function.
-
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port used in test.
-        """
-        if port.is_open:
-            port.close()
-
-        # Enable sigio on specific port
-        on_guest("virt.async('%s', True, 0)" %
-                 (port.name) , vm, 5)
-        on_guest("virt.get_sigio_poll_return('%s')" % (port.name) , vm, 2)
-
-        #Test sigio when port open
-        on_guest("virt.set_pool_want_return('%s', select.POLLOUT)" %
-                 (port.name), vm, 2)
-        port.open()
-        match = _on_guest("virt.get_sigio_poll_return('%s')" %
-                          (port.name) , vm, 2)[0]
-        if match == 1:
-            raise error.TestFail("Problem with HUP on console port.")
-
-        #Test sigio when port receive data
-        on_guest("virt.set_pool_want_return('%s', select.POLLOUT |"
-                 " select.POLLIN)" % (port.name), vm, 2)
-        port.sock.sendall("0123456789")
-        on_guest("virt.get_sigio_poll_return('%s')" % (port.name) , vm, 2)
-
-        #Test sigio port close event
-        on_guest("virt.set_pool_want_return('%s', select.POLLHUP |"
-                 " select.POLLIN)" % (port.name), vm, 2)
-        port.close()
-        on_guest("virt.get_sigio_poll_return('%s')" % (port.name) , vm, 2)
-
-        #Test sigio port open event and persistence of written data on port.
-        on_guest("virt.set_pool_want_return('%s', select.POLLOUT |"
-                 " select.POLLIN)" % (port.name), vm, 2)
-        port.open()
-        on_guest("virt.get_sigio_poll_return('%s')" % (port.name) , vm, 2)
-
-        #Test event when erase data.
-        on_guest("virt.clean_port('%s')" % (port.name), vm, 2)
-        port.close()
-        on_guest("virt.set_pool_want_return('%s', select.POLLOUT)"
-                 % (port.name), vm, 2)
-        port.open()
-        on_guest("virt.get_sigio_poll_return('%s')" % (port.name) , vm, 2)
-
-        # Disable sigio on specific port
-        on_guest("virt.async('%s', False, 0)" %
-                 (port.name) , vm, 5)
-
-
-    def tlseek(vm, port):
-        """
-        Tests the correct handling of lseek (expected fail)
-
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port used in test.
-        """
-        # The virt.lseek returns PASS when the seek fails
-        on_guest("virt.lseek('%s', 0, 0)" % (port.name), vm, 2)
-
-
-    def trw_host_offline(vm, port):
-        """
-        Guest read/write from host when host is disconnected.
-
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port used in test.
-        """
-        if port.is_open:
-            port.close()
-
-        on_guest("virt.recv('%s', 0, 1024, False)" % port.name, vm, 2)
-        match, tmp = _on_guest("virt.send('%s', 10, False)"
-                                % port.name, vm, 2)
-        if match != None:
-            raise error.TestFail("Write on guest while host disconnected "
-                                 "didn't timed out.\nOutput:\n%s"
-                                 % tmp)
-
-        port.open()
-
-        if (port.sock.recv(1024) < 10):
-            raise error.TestFail("Didn't received data from guest")
-        # Now the _on_guest("virt.send('%s'... command should be finished
-        on_guest("print 'PASS: nothing'", vm, 2)
-
-
-    def trw_blocking_mode(vm, port):
-        """
-        Guest read\write data in blocking mode.
-
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port used in test.
-        """
-        # Blocking mode
-        if not port.is_open:
-            port.open()
-        on_guest("virt.blocking('%s', True)" % port.name, vm, 2)
-        # Recv should timed out
-        match, tmp = _on_guest("virt.recv('%s', 10, 1024, False)" %
-                               port.name, vm, 2)
-        if match == 0:
-            raise error.TestFail("Received data even when non were sent\n"
-                                 "Data:\n%s" % tmp)
-        elif match != None:
-            raise error.TestFail("Unexpected fail\nMatch: %s\nData:\n%s" %
-                                 (match, tmp))
-        port.sock.sendall("1234567890")
-        # Now guest received the data end escaped from the recv()
-        on_guest("print 'PASS: nothing'", vm, 2)
-
-
-    def trw_nonblocking_mode(vm, port):
-        """
-        Guest read\write data in nonblocking mode.
-
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port used in test.
-        """
-        # Non-blocking mode
-        if not port.is_open:
-            port.open()
-        on_guest("virt.blocking('%s', False)" % port.name, vm, 2)
-        # Recv should return FAIL with 0 received data
-        match, tmp = _on_guest("virt.recv('%s', 10, 1024, False)" %
-                              port.name, vm, 2)
-        if match == 0:
-            raise error.TestFail("Received data even when non were sent\n"
-                                 "Data:\n%s" % tmp)
-        elif match == None:
-            raise error.TestFail("Timed out, probably in blocking mode\n"
-                                 "Data:\n%s" % tmp)
-        elif match != 1:
-            raise error.TestFail("Unexpected fail\nMatch: %s\nData:\n%s" %
-                                 (match, tmp))
-        port.sock.sendall("1234567890")
-        on_guest("virt.recv('%s', 10, 1024, False)" % port.name, vm, 2)
-
-
-    def tbasic_loopback(vm, send_port, recv_port, data="Smoke test data"):
-        """
-        Easy loop back test with loop over only two port.
-
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param port: Port used in test.
-        """
-        if not send_port.is_open:
-            send_port.open()
-        if not recv_port.is_open:
-            recv_port.open()
-        on_guest("virt.loopback(['%s'], ['%s'], 1024, virt.LOOP_NONE)" %
-                     (send_port.name, recv_port.name), vm, 2)
-        send_port.sock.sendall(data)
-        tmp = ""
-        i = 0
-        while i <= 10:
-            i += 1
-            ret = select.select([recv_port.sock], [], [], 1.0)
-            if ret:
-                tmp += recv_port.sock.recv(1024)
-            if len(tmp) >= len(data):
-                break
-        if tmp != data:
-            raise error.TestFail("Incorrect data: '%s' != '%s'",
-                                 data, tmp)
-        _guest_exit_threads(vm, [send_port], [recv_port])
-
-
-    def tloopback(vm, consoles, params):
+    def test_loopback(vm, consoles, params):
         """
         Virtio console loopback test.
 
@@ -882,18 +682,21 @@ def run_virtio_console(test, params, env):
         ports and sends length amount of data through this connection.
         It validates the correctness of the data sent.
 
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param consoles: Field of virtio ports with the minimum of 2 items.
+        @param vm: target virtual machine [vm, session, tmp_dir]
+        @param consoles: a field of virtio ports with the minimum of 2 items
         @param params: test parameters, multiple recievers allowed.
             '$source_console_type@buffer_length:
              $destination_console_type1@$buffer_length:...:
              $loopback_buffer_length;...'
         """
+        logging.info("Loopback test: Creates a loopback between sender port "
+                     "and receiving port, send data through this connection, "
+                     "verify data correctness.")
         # PREPARE
         for param in params.split(';'):
             if not param:
                 continue
-            logging.info("test_loopback: params: %s" % (param))
+            logging.info("test_loopback: params: %s", param)
             param = param.split(':')
             idx_serialport = 0
             idx_console = 0
@@ -927,13 +730,6 @@ def run_virtio_console(test, params, env):
             if len(buf_len) == (idx_console + idx_serialport):
                 buf_len.append(1024)
 
-            for p in recv_pts:
-                if not p.is_open:
-                    p.open()
-
-            if not send_pt.is_open:
-                send_pt.open()
-
             if len(recv_pts) == 0:
                 raise error.TestFail("test_loopback: incorrect recv consoles"
                                      "definition")
@@ -943,22 +739,21 @@ def run_virtio_console(test, params, env):
             for i in range(0, len(recv_pts)):
                 queues.append(deque())
 
-            tmp = "'%s'" % recv_pts[0].name
+            tmp = "'%s'" % recv_pts[0][1]
             for recv_pt in recv_pts[1:]:
-                tmp += ", '%s'" % (recv_pt.name)
+                tmp += ", '%s'" % (recv_pt[1])
             on_guest("virt.loopback(['%s'], [%s], %d, virt.LOOP_POLL)"
-                     % (send_pt.name, tmp, buf_len[-1]), vm, 2)
+                     % (send_pt[1], tmp, buf_len[-1]), vm, 2)
 
             exit_event = threading.Event()
 
             # TEST
-            thread = ThSendCheck(send_pt.sock, exit_event, queues,
-                                   buf_len[0])
+            thread = th_send_check(send_pt[0], exit_event, queues, buf_len[0])
             thread.start()
             threads.append(thread)
 
             for i in range(len(recv_pts)):
-                thread = ThRecvCheck(recv_pts[i].sock, queues[i], exit_event,
+                thread = th_recv_check(recv_pts[i][0], queues[i], exit_event,
                                        buf_len[i + 1])
                 thread.start()
                 threads.append(thread)
@@ -975,8 +770,8 @@ def run_virtio_console(test, params, env):
 
             # Read-out all remaining data
             for recv_pt in recv_pts:
-                while select.select([recv_pt.sock], [], [], 0.1)[0]:
-                    recv_pt.sock.recv(1024)
+                while select.select([recv_pt[0]], [], [], 0.1)[0]:
+                    recv_pt[0].recv(1024)
 
             _guest_exit_threads(vm, [send_pt], recv_pts)
 
@@ -984,21 +779,23 @@ def run_virtio_console(test, params, env):
             del threads[:]
 
 
-    def tperf(vm, consoles, params):
+    def test_perf(vm, consoles, params):
         """
         Tests performance of the virtio_console tunel. First it sends the data
         from host to guest and than back. It provides informations about
         computer utilisation and statistic informations about the troughput.
 
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param consoles: Field of virtio ports with the minimum of 2 items.
+        @param vm: target virtual machine [vm, session, tmp_dir]
+        @param consoles: a field of virtio ports with the minimum of 2 items
         @param params: test parameters:
                 '$console_type@$buffer_length:$test_duration;...'
         """
+        logging.info("Performance test: Measure performance for the "
+                     "virtio console tunnel")
         for param in params.split(';'):
             if not param:
                 continue
-            logging.info("test_perf: params: %s" % (param))
+            logging.info("test_perf: params: %s", param)
             param = param.split(':')
             duration = 60.0
             if len(param) > 1:
@@ -1014,38 +811,39 @@ def run_virtio_console(test, params, env):
             param = (param[0] == 'serialport')
             port = consoles[param][0]
 
-            if not port.is_open:
-                port.open()
-
             data = ""
             for i in range(buf_len):
                 data += "%c" % random.randrange(255)
 
             exit_event = threading.Event()
-            slice = float(duration) / 100
+            slice = float(duration)/100
 
             # HOST -> GUEST
             on_guest('virt.loopback(["%s"], [], %d, virt.LOOP_NONE)' %
-                     (port.name, buf_len), vm, 2)
-            thread = ThSend(port.sock, data, exit_event)
+                     (port[1], buf_len), vm, 2)
+            thread = th_send(port[0], data, exit_event)
             stats = array.array('f', [])
-            loads = utils.SystemLoad([(os.getpid(), 'autotest'),
-                                      (vm[0].get_pid(), 'VM'), 0])
-            loads.start()
+            loads = []
+            loads.append(cpu_load())
+            loads.append(pid_load(os.getpid(), 'autotest'))
+            loads.append(pid_load(vm[0].get_pid(), 'VM'))
+
+            for load in loads:
+                load.start()
             _time = time.time()
             thread.start()
             for i in range(100):
                 stats.append(thread.idx)
                 time.sleep(slice)
             _time = time.time() - _time - duration
-            logging.info("\n" + loads.get_cpu_status_string()[:-1])
-            logging.info("\n" + loads.get_mem_status_string()[:-1])
+            print_load([loads[1].get_load(), loads[2].get_load()],
+                       loads[0].get_load())
             exit_event.set()
             thread.join()
 
             # Let the guest read-out all the remaining data
             while not _on_guest("virt.poll('%s', %s)" %
-                                (port.name, select.POLLIN), vm, 2)[0]:
+                                (port[1], select.POLLIN), vm, 2)[0]:
                 time.sleep(1)
 
             _guest_exit_threads(vm, [port], [])
@@ -1055,29 +853,30 @@ def run_virtio_console(test, params, env):
                 "Test ran %fs longer which is more than one slice", _time)
             else:
                 logging.debug("Test ran %fs longer", _time)
-            stats = process_stats(stats[1:], slice * 1048576)
+            stats = process_stats(stats[1:], slice*1048576)
             logging.debug("Stats = %s", stats)
             logging.info("Host -> Guest [MB/s] (min/med/max) = %.3f/%.3f/%.3f",
-                        stats[0], stats[len(stats) / 2], stats[-1])
+                         stats[0], stats[len(stats)/2], stats[-1])
 
             del thread
 
             # GUEST -> HOST
             exit_event.clear()
             stats = array.array('f', [])
-            on_guest("virt.send_loop_init('%s', %d)" % (port.name, buf_len),
+            on_guest("virt.send_loop_init('%s', %d)" % (port[1], buf_len),
                      vm, 30)
-            thread = ThRecv(port.sock, exit_event, buf_len)
+            thread = th_recv(port[0], exit_event, buf_len)
             thread.start()
-            loads.start()
+            for load in loads:
+                load.start()
             on_guest("virt.send_loop()", vm, 2)
             _time = time.time()
             for i in range(100):
                 stats.append(thread.idx)
                 time.sleep(slice)
             _time = time.time() - _time - duration
-            logging.info("\n" + loads.get_cpu_status_string()[:-1])
-            logging.info("\n" + loads.get_mem_status_string()[:-1])
+            print_load([loads[1].get_load(), loads[2].get_load()],
+                       loads[0].get_load())
             on_guest("virt.exit_threads()", vm, 2)
             exit_event.set()
             thread.join()
@@ -1086,152 +885,37 @@ def run_virtio_console(test, params, env):
                 "Test ran %fs longer which is more than one slice", _time)
             else:
                 logging.debug("Test ran %fs longer" % _time)
-            stats = process_stats(stats[1:], slice * 1048576)
+            stats = process_stats(stats[1:], slice*1048576)
             logging.debug("Stats = %s", stats)
             logging.info("Guest -> Host [MB/s] (min/med/max) = %.3f/%.3f/%.3f",
-                         stats[0], stats[len(stats) / 2], stats[-1])
+                         stats[0], stats[len(stats)/2], stats[-1])
 
             del thread
+
             del exit_event
-
-
-    def clean_ports(vm, consoles):
-        """
-        Clean state of all ports and set port to default state.
-        Default state:
-           No data on port or in port buffer.
-           Read mode = blocking.
-
-        @param consoles: Consoles which should be clean.
-        """
-        # Check if python is still alive
-        print "CLEANING"
-        match, tmp = _on_guest("is_alive()", vm, 10)
-        if (match == None) or (match != 0):
-            logging.error("Python died/is stucked/have remaining threads")
-            logging.debug(tmp)
-            vm[1].close()
-            try:
-                vm[1] = kvm_test_utils.wait_for_login(vm[0], 0,
-                                        float(params.get("boot_timeout", 5)),
-                                        0, 2)
-                on_guest("killall -9 python "
-                         "&& echo -n PASS: python killed"
-                         "|| echo -n PASS: python was death",
-                         vm, 10)
-
-                init_guest(vm, consoles)
-                on_guest("virt.clean_port('%s'),1024" % consoles[0][0].name,
-                         vm, 2)
-                on_guest("virt.close('%s'),1024" %
-                         consoles[0][0].name, vm, 2)
-
-            except (error.TestFail, kvm_subprocess.ExpectError,
-                    Exception), inst:
-                logging.error(inst)
-                logging.error("Virtio-console driver is irreparably"
-                              " blocked. Every comd end with sig KILL."
-                              "Try reboot vm for continue in testing.")
-                vm[1] = kvm_test_utils.reboot(vm[0], vm[1], "system_reset")
-                init_guest(vm, consoles)
-                match = _on_guest("virt.clean_port('%s'),1024" %
-                                      consoles[0][0].name, vm, 2)[0]
-
-                if (match == None) or (match != 0):
-                    raise error.TestFail("Virtio-console driver is irrepar"
-                                         "ably blocked. Every comd end"
-                                         " with sig KILL. Neither the "
-                                         "restart did not help.")
-
-        for ctype in consoles:
-            for port in ctype:
-                openned = port.is_open
-                port.clean_port()
-                #on_guest("virt.blocking('%s', True)" % port.name, vm, 2)
-                on_guest("virt.clean_port('%s'),1024" % port.name, vm, 5)
-                if not openned:
-                    port.close()
-                    on_guest("virt.close('%s'),1024" % port.name, vm, 2)
-
-
-    def test_smoke(test, vm, consoles, params):
-        """
-        Virtio console smoke test.
-
-        Tests the basic functionalities (poll, read/write with and without
-        connected host, etc.
-
-        @param test: Main test object.
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param consoles: Field of virtio ports with the minimum of 2 items.
-        @param params: Test parameters '$console_type:$data;...'
-        """
-        # PREPARE
-        for param in params.split(';'):
-            if not param:
-                continue
-            headline = "test_smoke: params: %s" % (param)
-            logging.info(headline)
-            param = param.split(':')
-            if len(param) > 1:
-                data = param[1]
-            else:
-                data = "Smoke test data"
-            param = (param[0] == 'serialport')
-            send_pt = consoles[param][0]
-            recv_pt = consoles[param][1]
-            test.headline(headline)
-            test.do_test(topen, [vm, send_pt], True)
-            test.do_test(tclose, [vm, send_pt], True)
-            test.do_test(tmulti_open, [vm, send_pt])
-            test.do_test(tpooling, [vm, send_pt])
-            test.do_test(tsigio, [vm, send_pt])
-            test.do_test(tlseek, [vm, send_pt])
-            test.do_test(trw_host_offline, [vm, send_pt])
-            test.do_test(trw_nonblocking_mode, [vm, send_pt])
-            test.do_test(trw_blocking_mode, [vm, send_pt])
-            test.do_test(tbasic_loopback, [vm, send_pt, recv_pt, data], True)
-
-
-    def test_multiport(test, vm, consoles, params):
-        """
-        This is group of test which test virtio_console in maximal load and
-        with multiple ports.
-
-        @param test: Main test object.
-        @param vm: Target virtual machine [vm, session, tmp_dir].
-        @param consoles: Field of virtio ports with the minimum of 2 items.
-        @param params: Test parameters '$console_type:$data;...'
-        """
-        test.headline("test_multiport:")
-        #Test Loopback
-        test.do_test(tloopback, [vm, consoles, params[0]])
-
-        #Test Performance
-        test.do_test(tperf, [vm, consoles, params[1]])
+            del loads[:]
 
 
     # INITIALIZE
-
-    tsmoke_params = params.get('virtio_console_smoke', '')
-    tloopback_params = params.get('virtio_console_loopback', '')
-    tperf_params = params.get('virtio_console_perf', '')
+    test_smoke_params = params.get('virtio_console_smoke', '')
+    test_loopback_params = params.get('virtio_console_loopback', '')
+    test_perf_params = params.get('virtio_console_perf', '')
 
     no_serialports = 0
     no_consoles = 0
     # consoles required for Smoke test
-    if (tsmoke_params.count('serialport')):
+    if (test_smoke_params.count('serialport')):
         no_serialports = max(2, no_serialports)
-    if (tsmoke_params.count('console')):
+    if (test_smoke_params.count('console')):
         no_consoles = max(2, no_consoles)
     # consoles required for Loopback test
-    for param in tloopback_params.split(';'):
+    for param in test_loopback_params.split(';'):
         no_serialports = max(no_serialports, param.count('serialport'))
         no_consoles = max(no_consoles, param.count('console'))
     # consoles required for Performance test
-    if (tperf_params.count('serialport')):
+    if (test_perf_params.count('serialport')):
         no_serialports = max(1, no_serialports)
-    if (tperf_params.count('console')):
+    if (test_perf_params.count('console')):
         no_consoles = max(1, no_consoles)
 
     if (no_serialports + no_consoles) == 0:
@@ -1249,26 +933,19 @@ def run_virtio_console(test, params, env):
 
     # ACTUAL TESTING
     # Defines all available consoles; tests udev and sysfs
+    conss = []
+    for mode in consoles:
+        for cons in mode:
+            conss.append(cons[1:3])
+    init_guest(vm, 10)
+    on_guest("virt.init(%s)" % (conss), vm, 10)
 
-    test = SubTest()
-    try:
-        init_guest(vm, consoles)
-
-        test.set_cleanup_func(clean_ports, [vm, consoles])
-        #Test Smoke
-        test_smoke(test, vm, consoles, tsmoke_params)
-
-        #Test multiport functionality and performance.
-        test_multiport(test, vm, consoles, [tloopback_params, tperf_params])
-    finally:
-        logging.info(("Summary: %d tests passed  %d test failed :\n" %
-                      (test.passed, test.failed)) + test.get_text_result())
-
-    if test.is_failed():
-        raise error.TestFail("Virtio_console test FAILED.")
-
+    consoles = test_smoke(vm, consoles, test_smoke_params)
+    test_loopback(vm, consoles, test_loopback_params)
+    test_perf(vm, consoles, test_perf_params)
 
     # CLEANUP
     vm[1].close()
     vm[0].destroy(gracefully=False)
     shutil.rmtree(vm[2])
+

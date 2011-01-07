@@ -27,7 +27,7 @@ class RemoteHost(base_classes.Host):
     LAST_BOOT_TAG = object()
     DEFAULT_HALT_TIMEOUT = 2 * 60
 
-    VAR_LOG_MESSAGES_COPY_PATH = "/var/tmp/messages.autotest_start"
+    VAR_LOG_MESSAGES_COPY_PATH = "/var/log/messages.autotest_start"
 
     def _initialize(self, hostname, autodir=None, *args, **dargs):
         super(RemoteHost, self)._initialize(*args, **dargs)
@@ -230,8 +230,8 @@ class RemoteHost(base_classes.Host):
             keyvals = utils.read_keyval(keyval_path)
             all_labels = keyvals.get('labels', '')
             if all_labels:
-                all_labels = all_labels.split(',')
-                return [urllib.unquote(label) for label in all_labels]
+              all_labels = all_labels.split(',')
+              return [urllib.unquote(label) for label in all_labels]
         return []
 
 

@@ -21,7 +21,7 @@ More specifically:
 @copyright: 2008-2009 Red Hat Inc.
 """
 
-import time, os, logging, re, commands, signal, threading
+import time, os, logging, re, commands, signal
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
 import kvm_utils, kvm_vm, kvm_subprocess, scan_results
@@ -35,7 +35,7 @@ def get_living_vm(env, vm_name):
     @param vm_name: Name of the desired VM object.
     @return: A VM object.
     """
-    vm = env.get_vm(vm_name)
+    vm = kvm_utils.env_get_vm(env, vm_name)
     if not vm:
         raise error.TestError("VM '%s' not found in environment" % vm_name)
     if not vm.is_alive():
@@ -44,33 +44,21 @@ def get_living_vm(env, vm_name):
     return vm
 
 
-def wait_for_login(vm, nic_index=0, timeout=240, start=0, step=2, serial=None):
+def wait_for_login(vm, nic_index=0, timeout=240, start=0, step=2):
     """
     Try logging into a VM repeatedly.  Stop on success or when timeout expires.
 
     @param vm: VM object.
     @param nic_index: Index of NIC to access in the VM.
     @param timeout: Time to wait before giving up.
-    @param serial: Whether to use a serial connection instead of a remote
-            (ssh, rss) one.
     @return: A shell session object.
     """
-    type = 'remote'
-    if serial:
-        type = 'serial'
-        logging.info("Trying to log into guest %s using serial connection,"
-                     " timeout %ds", vm.name, timeout)
-        session = kvm_utils.wait_for(lambda: vm.serial_login(), timeout,
-                                     start, step)
-    else:
-        logging.info("Trying to log into guest %s using remote connection,"
-                     " timeout %ds", vm.name, timeout)
-        session = kvm_utils.wait_for(lambda: vm.remote_login(
-                  nic_index=nic_index), timeout, start, step)
+    logging.info("Trying to log into guest '%s', timeout %ds", vm.name, timeout)
+    session = kvm_utils.wait_for(lambda: vm.remote_login(nic_index=nic_index),
+                                 timeout, start, step)
     if not session:
-        raise error.TestFail("Could not log into guest %s using %s connection" %
-                             (vm.name, type))
-    logging.info("Logged into guest %s using %s connection", vm.name, type)
+        raise error.TestFail("Could not log into guest '%s'" % vm.name)
+    logging.info("Logged into guest '%s'" % vm.name)
     return session
 
 
@@ -133,8 +121,7 @@ def reboot(vm, session, method="shell", sleep_before_reset=10, nic_index=0,
 
 
 def migrate(vm, env=None, mig_timeout=3600, mig_protocol="tcp",
-            mig_cancel=False, offline=False, stable_check=False,
-            clean=False, save_path=None, dest_host='localhost', mig_port=None):
+            mig_cancel=False):
     """
     Migrate a VM locally and re-register it in the environment.
 
@@ -144,10 +131,7 @@ def migrate(vm, env=None, mig_timeout=3600, mig_protocol="tcp",
     @param mig_timeout: timeout value for migration.
     @param mig_protocol: migration protocol
     @param mig_cancel: Test migrate_cancel or not when protocol is tcp.
-    @param dest_host: Destination host (defaults to 'localhost').
-    @param mig_port: Port that will be used for migration.
-    @return: The post-migration VM, in case of same host migration, True in
-            case of multi-host migration.
+    @return: The post-migration VM.
     """
     def mig_finished():
         o = vm.monitor.info("migrate")
@@ -185,32 +169,38 @@ def migrate(vm, env=None, mig_timeout=3600, mig_protocol="tcp",
             raise error.TestFail("Timeout expired while waiting for migration "
                                  "to finish")
 
-    if dest_host == 'localhost':
-        dest_vm = vm.clone()
+    dest_vm = vm.clone()
 
-    if (dest_host == 'localhost') and stable_check:
-        # Pause the dest vm after creation
-        dest_vm.params['extra_params'] = (dest_vm.params.get('extra_params','')
-                                          + ' -S')
+    if mig_protocol == "exec":
+        # Exec is a little different from other migrate methods - first we
+        # ask the monitor the migration, then the vm state is dumped to a
+        # compressed file, then we start the dest vm with -incoming pointing
+        # to it
+        try:
+            exec_file = "/tmp/exec-%s.gz" % kvm_utils.generate_random_string(8)
+            exec_cmd = "gzip -c -d %s" % exec_file
+            uri = '"exec:gzip -c > %s"' % exec_file
+            vm.monitor.cmd("stop")
+            vm.monitor.migrate(uri)
+            wait_for_migration()
 
-    if dest_host == 'localhost':
+            if not dest_vm.create(migration_mode=mig_protocol,
+                                  migration_exec_cmd=exec_cmd, mac_source=vm):
+                raise error.TestError("Could not create dest VM")
+        finally:
+            logging.debug("Removing migration file %s", exec_file)
+            try:
+                os.remove(exec_file)
+            except OSError:
+                pass
+    else:
         if not dest_vm.create(migration_mode=mig_protocol, mac_source=vm):
             raise error.TestError("Could not create dest VM")
-
-    try:
         try:
             if mig_protocol == "tcp":
-                if dest_host == 'localhost':
-                    uri = "tcp:localhost:%d" % dest_vm.migration_port
-                else:
-                    uri = 'tcp:%s:%d' % (dest_host, mig_port)
+                uri = "tcp:localhost:%d" % dest_vm.migration_port
             elif mig_protocol == "unix":
                 uri = "unix:%s" % dest_vm.migration_file
-            elif mig_protocol == "exec":
-                uri = '"exec:nc localhost %s"' % dest_vm.migration_port
-
-            if offline:
-                vm.monitor.cmd("stop")
             vm.monitor.migrate(uri)
 
             if mig_cancel:
@@ -220,42 +210,13 @@ def migrate(vm, env=None, mig_timeout=3600, mig_protocol="tcp",
                                           "Waiting for migration "
                                           "cancellation"):
                     raise error.TestFail("Failed to cancel migration")
-                if offline:
-                    vm.monitor.cmd("cont")
-                if dest_host == 'localhost':
-                    dest_vm.destroy(gracefully=False)
+                dest_vm.destroy(gracefully=False)
                 return vm
             else:
                 wait_for_migration()
-                if (dest_host == 'localhost') and stable_check:
-                    save_path = None or "/tmp"
-                    save1 = os.path.join(save_path, "src")
-                    save2 = os.path.join(save_path, "dst")
-
-                    vm.save_to_file(save1)
-                    dest_vm.save_to_file(save2)
-
-                    # Fail if we see deltas
-                    md5_save1 = utils.hash_file(save1)
-                    md5_save2 = utils.hash_file(save2)
-                    if md5_save1 != md5_save2:
-                        raise error.TestFail("Mismatch of VM state before "
-                                             "and after migration")
-
-                if (dest_host == 'localhost') and offline:
-                    dest_vm.monitor.cmd("cont")
         except:
-            if dest_host == 'localhost':
-                dest_vm.destroy()
+            dest_vm.destroy()
             raise
-
-    finally:
-        if (dest_host == 'localhost') and stable_check and clean:
-            logging.debug("Cleaning the state files")
-            if os.path.isfile(save1):
-                os.remove(save1)
-            if os.path.isfile(save2):
-                os.remove(save2)
 
     # Report migration status
     if mig_succeeded():
@@ -265,23 +226,19 @@ def migrate(vm, env=None, mig_timeout=3600, mig_protocol="tcp",
     else:
         raise error.TestFail("Migration ended with unknown status")
 
-    if dest_host == 'localhost':
-        if "paused" in dest_vm.monitor.info("status"):
-            logging.debug("Destination VM is paused, resuming it...")
-            dest_vm.monitor.cmd("cont")
+    if "paused" in dest_vm.monitor.info("status"):
+        logging.debug("Destination VM is paused, resuming it...")
+        dest_vm.monitor.cmd("cont")
 
     # Kill the source VM
     vm.destroy(gracefully=False)
 
     # Replace the source VM with the new cloned VM
-    if (dest_host == 'localhost') and (env is not None):
-        env.register_vm(vm.name, dest_vm)
+    if env is not None:
+        kvm_utils.env_register_vm(env, vm.name, dest_vm)
 
     # Return the new cloned VM
-    if dest_host == 'localhost':
-        return dest_vm
-    else:
-        return vm
+    return dest_vm
 
 
 def stop_windows_service(session, service, timeout=120):
@@ -295,7 +252,7 @@ def stop_windows_service(session, service, timeout=120):
     """
     end_time = time.time() + timeout
     while time.time() < end_time:
-        o = session.cmd_output("sc stop %s" % service, timeout=60)
+        o = session.get_command_output("sc stop %s" % service, timeout=60)
         # FAILED 1060 means the service isn't installed.
         # FAILED 1062 means the service hasn't been started.
         if re.search(r"\bFAILED (1060|1062)\b", o, re.I):
@@ -317,7 +274,7 @@ def start_windows_service(session, service, timeout=120):
     """
     end_time = time.time() + timeout
     while time.time() < end_time:
-        o = session.cmd_output("sc start %s" % service, timeout=60)
+        o = session.get_command_output("sc start %s" % service, timeout=60)
         # FAILED 1060 means the service isn't installed.
         if re.search(r"\bFAILED 1060\b", o, re.I):
             raise error.TestError("Could not start service '%s' "
@@ -349,7 +306,10 @@ def get_time(session, time_command, time_filter_re, time_format):
     """
     if len(re.findall("ntpdate|w32tm", time_command)) == 0:
         host_time = time.time()
-        s = session.cmd_output(time_command)
+        session.sendline(time_command)
+        (match, s) = session.read_up_to_prompt()
+        if not match:
+            raise error.TestError("Could not get guest time")
 
         try:
             s = re.findall(time_filter_re, s)[0]
@@ -363,7 +323,9 @@ def get_time(session, time_command, time_filter_re, time_format):
 
         guest_time = time.mktime(time.strptime(s, time_format))
     else:
-        o = session.cmd(time_command)
+        s , o = session.get_command_status_output(time_command)
+        if s != 0:
+            raise error.TestError("Could not get guest time")
         if re.match('ntpdate', time_command):
             offset = re.findall('offset (.*) sec',o)[0]
             host_main, host_mantissa = re.findall(time_filter_re, o)[0]
@@ -441,7 +403,7 @@ def run_autotest(vm, session, control_path, timeout, outputdir):
         copy = False
         local_hash = utils.hash_file(local_path)
         basename = os.path.basename(local_path)
-        output = session.cmd_output("md5sum %s" % remote_path)
+        output = session.get_command_output("md5sum %s" % remote_path)
         if "such file" in output:
             remote_hash = "0"
         elif output:
@@ -473,7 +435,10 @@ def run_autotest(vm, session, control_path, timeout, outputdir):
         basename = os.path.basename(remote_path)
         logging.info("Extracting %s...", basename)
         e_cmd = "tar xjvf %s -C %s" % (remote_path, dest_dir)
-        session.cmd(e_cmd, timeout=120)
+        s, o = session.get_command_status_output(e_cmd, timeout=120)
+        if s != 0:
+            logging.error("Uncompress output:\n%s", o)
+            raise error.TestFail("Failed to extract %s on guest" % basename)
 
 
     def get_results():
@@ -494,7 +459,7 @@ def run_autotest(vm, session, control_path, timeout, outputdir):
         Get the status of the tests that were executed on the host and close
         the session where autotest was being executed.
         """
-        output = session.cmd_output("cat results/*/status")
+        output = session.get_command_output("cat results/*/status")
         try:
             results = scan_results.parse_results(output)
             # Report test results
@@ -543,32 +508,26 @@ def run_autotest(vm, session, control_path, timeout, outputdir):
     # Run the test
     logging.info("Running autotest control file %s on guest, timeout %ss",
                  os.path.basename(control_path), timeout)
-    session.cmd("cd %s" % autotest_path)
-    try:
-        session.cmd("rm -f control.state")
-        session.cmd("rm -rf results/*")
-    except kvm_subprocess.ShellError:
-        pass
-    try:
-        try:
-            logging.info("---------------- Test output ----------------")
-            session.cmd_output("bin/autotest control", timeout=timeout,
-                               print_func=logging.info)
-        finally:
-            logging.info("------------- End of test output ------------")
-    except kvm_subprocess.ShellTimeoutError:
-        if vm.is_alive():
-            get_results()
-            get_results_summary()
-            raise error.TestError("Timeout elapsed while waiting for job to "
-                                  "complete")
-        else:
+    session.get_command_output("cd %s" % autotest_path)
+    session.get_command_output("rm -f control.state")
+    session.get_command_output("rm -rf results/*")
+    logging.info("---------------- Test output ----------------")
+    status = session.get_command_status("bin/autotest control",
+                                        timeout=timeout,
+                                        print_func=logging.info)
+    logging.info("------------- End of test output ------------")
+    if status is None:
+        if not vm.is_alive():
             raise error.TestError("Autotest job on guest failed "
                                   "(VM terminated during job)")
-    except kvm_subprocess.ShellProcessTerminatedError:
+        if not session.is_alive():
+            get_results()
+            raise error.TestError("Autotest job on guest failed "
+                                  "(Remote session terminated during job)")
         get_results()
-        raise error.TestError("Autotest job on guest failed "
-                              "(Remote session terminated during job)")
+        get_results_summary()
+        raise error.TestError("Timeout elapsed while waiting for job to "
+                              "complete")
 
     results = get_results_summary()
     get_results()
@@ -630,24 +589,21 @@ def raw_ping(command, timeout, session, output_func):
         process.close()
         return status, output
     else:
-        try:
-            output = session.cmd_output(command, timeout=timeout,
-                                        print_func=output_func)
-        except kvm_subprocess.ShellTimeoutError:
+        session.sendline(command)
+        status, output = session.read_up_to_prompt(timeout=timeout,
+                                                   print_func=output_func)
+        if not status:
             # Send ctrl+c (SIGINT) through ssh session
             session.send("\003")
-            try:
-                output2 = session.read_up_to_prompt(print_func=output_func)
-                output += output2
-            except kvm_subprocess.ExpectTimeoutError, e:
-                output += e.output
+            status, output2 = session.read_up_to_prompt(print_func=output_func)
+            output += output2
+            if not status:
                 # We also need to use this session to query the return value
                 session.send("\003")
 
         session.sendline(session.status_test_command)
-        try:
-            o2 = session.read_up_to_prompt()
-        except kvm_subprocess.ExpectError:
+        s2, o2 = session.read_up_to_prompt()
+        if not s2:
             status = -1
         else:
             try:
@@ -714,7 +670,7 @@ def get_linux_ifname(session, mac_address):
     @mac_address: the macaddress of nic
     """
 
-    output = session.cmd_output("ifconfig -a")
+    output = session.get_command_output("ifconfig -a")
 
     try:
         ethname = re.findall("(\w+)\s+Link.*%s" % mac_address, output,

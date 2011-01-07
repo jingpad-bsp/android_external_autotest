@@ -24,8 +24,6 @@ def get_image_filename(params, root_dir):
     """
     image_name = params.get("image_name", "image")
     image_format = params.get("image_format", "qcow2")
-    if params.get("image_raw_device") == "yes":
-        return image_name
     image_filename = "%s.%s" % (image_name, image_format)
     image_filename = kvm_utils.get_path(root_dir, image_filename)
     return image_filename
@@ -97,7 +95,7 @@ class VM:
     This class handles all basic VM operations.
     """
 
-    def __init__(self, name, params, root_dir, address_cache, state=None):
+    def __init__(self, name, params, root_dir, address_cache):
         """
         Initialize the object and set a few attributes.
 
@@ -106,35 +104,30 @@ class VM:
                 (see method make_qemu_command for a full description)
         @param root_dir: Base directory for relative filenames
         @param address_cache: A dict that maps MAC addresses to IP addresses
-        @param state: If provided, use this as self.__dict__
         """
-        if state:
-            self.__dict__ = state
-        else:
-            self.process = None
-            self.serial_console = None
-            self.redirs = {}
-            self.vnc_port = 5900
-            self.monitors = []
-            self.pci_assignable = None
-            self.netdev_id = []
-            self.uuid = None
-
-            # Find a unique identifier for this VM
-            while True:
-                self.instance = (time.strftime("%Y%m%d-%H%M%S-") +
-                                 kvm_utils.generate_random_string(4))
-                if not glob.glob("/tmp/*%s" % self.instance):
-                    break
+        self.process = None
+        self.serial_console = None
+        self.redirs = {}
+        self.vnc_port = 5900
+        self.monitors = []
+        self.pci_assignable = None
+        self.netdev_id = []
+        self.uuid = None
 
         self.name = name
         self.params = params
         self.root_dir = root_dir
         self.address_cache = address_cache
 
+        # Find a unique identifier for this VM
+        while True:
+            self.instance = (time.strftime("%Y%m%d-%H%M%S-") +
+                             kvm_utils.generate_random_string(4))
+            if not glob.glob("/tmp/*%s" % self.instance):
+                break
 
-    def clone(self, name=None, params=None, root_dir=None, address_cache=None,
-              copy_state=False):
+
+    def clone(self, name=None, params=None, root_dir=None, address_cache=None):
         """
         Return a clone of the VM object with optionally modified parameters.
         The clone is initially not alive and needs to be started using create().
@@ -145,8 +138,6 @@ class VM:
         @param params: Optional new VM creation parameters
         @param root_dir: Optional new base directory for relative filenames
         @param address_cache: A dict that maps MAC addresses to IP addresses
-        @param copy_state: If True, copy the original VM's state to the clone.
-                Mainly useful for make_qemu_command().
         """
         if name is None:
             name = self.name
@@ -156,11 +147,7 @@ class VM:
             root_dir = self.root_dir
         if address_cache is None:
             address_cache = self.address_cache
-        if copy_state:
-            state = self.__dict__.copy()
-        else:
-            state = None
-        return VM(name, params, root_dir, address_cache, state)
+        return VM(name, params, root_dir, address_cache)
 
 
     def make_qemu_command(self, name=None, params=None, root_dir=None):
@@ -249,22 +236,25 @@ class VM:
 
         def add_nic(help, vlan, model=None, mac=None, netdev_id=None,
                     nic_extra_params=None):
-            if has_option(help, "netdev"):
-                netdev_vlan_str = ",netdev=%s" % netdev_id
-            else:
-                netdev_vlan_str = ",vlan=%d" % vlan
             if has_option(help, "device"):
+                if model == "virtio":
+                    model="virtio-net-pci"
                 if not model:
-                    model = "rtl8139"
-                elif model == "virtio":
-                    model = "virtio-net-pci"
-                cmd = " -device %s" % model + netdev_vlan_str
+                    model= "rtl8139"
+                cmd = " -device %s" % model
                 if mac:
-                    cmd += ",mac='%s'" % mac
+                    cmd += ",mac=%s" % mac
+                if has_option(help, "netdev"):
+                    cmd += ",netdev=%s" % netdev_id
+                else:
+                    cmd += "vlan=%d,"  % vlan
                 if nic_extra_params:
                     cmd += ",%s" % nic_extra_params
             else:
-                cmd = " -net nic" + netdev_vlan_str
+                if has_option(help, "netdev"):
+                    cmd = " -net nic,netdev=%s" % netdev_id
+                else:
+                    cmd = " -net nic,vlan=%d" % vlan
                 if model:
                     cmd += ",model=%s" % model
                 if mac:
@@ -273,11 +263,11 @@ class VM:
 
         def add_net(help, vlan, mode, ifname=None, script=None,
                     downscript=None, tftp=None, bootfile=None, hostfwd=[],
-                    netdev_id=None, netdev_extra_params=None):
+                    netdev_id=None, vhost=False):
             if has_option(help, "netdev"):
                 cmd = " -netdev %s,id=%s" % (mode, netdev_id)
-                if netdev_extra_params:
-                    cmd += ",%s" % netdev_extra_params
+                if vhost:
+                    cmd +=",vhost=on"
             else:
                 cmd = " -net %s,vlan=%d" % (mode, vlan)
             if mode == "tap":
@@ -361,9 +351,6 @@ class VM:
         if params is None: params = self.params
         if root_dir is None: root_dir = self.root_dir
 
-        # Clone this VM using the new params
-        vm = self.clone(name, params, root_dir, copy_state=True)
-
         qemu_binary = kvm_utils.get_path(root_dir, params.get("qemu_binary",
                                                               "qemu"))
         # Get the output of 'qemu -help' (log a message in case this call never
@@ -381,19 +368,19 @@ class VM:
         # Add the VM's name
         qemu_cmd += add_name(help, name)
         # Add monitors
-        for monitor_name in params.objects("monitors"):
-            monitor_params = params.object_params(monitor_name)
-            monitor_filename = vm.get_monitor_filename(monitor_name)
+        for monitor_name in kvm_utils.get_sub_dict_names(params, "monitors"):
+            monitor_params = kvm_utils.get_sub_dict(params, monitor_name)
+            monitor_filename = self.get_monitor_filename(monitor_name)
             if monitor_params.get("monitor_type") == "qmp":
                 qemu_cmd += add_qmp_monitor(help, monitor_filename)
             else:
                 qemu_cmd += add_human_monitor(help, monitor_filename)
 
         # Add serial console redirection
-        qemu_cmd += add_serial(help, vm.get_serial_console_filename())
+        qemu_cmd += add_serial(help, self.get_serial_console_filename())
 
-        for image_name in params.objects("images"):
-            image_params = params.object_params(image_name)
+        for image_name in kvm_utils.get_sub_dict_names(params, "images"):
+            image_params = kvm_utils.get_sub_dict(params, image_name)
             if image_params.get("boot_drive") == "no":
                 continue
             qemu_cmd += add_drive(help,
@@ -407,23 +394,20 @@ class VM:
                                   image_params.get("image_boot") == "yes")
 
         redirs = []
-        for redir_name in params.objects("redirs"):
-            redir_params = params.object_params(redir_name)
+        for redir_name in kvm_utils.get_sub_dict_names(params, "redirs"):
+            redir_params = kvm_utils.get_sub_dict(params, redir_name)
             guest_port = int(redir_params.get("guest_port"))
-            host_port = vm.redirs.get(guest_port)
+            host_port = self.redirs.get(guest_port)
             redirs += [(host_port, guest_port)]
 
         vlan = 0
-        for nic_name in params.objects("nics"):
-            nic_params = params.object_params(nic_name)
-            try:
-                netdev_id = vm.netdev_id[vlan]
-            except IndexError:
-                netdev_id = None
+        for nic_name in kvm_utils.get_sub_dict_names(params, "nics"):
+            nic_params = kvm_utils.get_sub_dict(params, nic_name)
             # Handle the '-net nic' part
-            mac = vm.get_mac_address(vlan)
+            mac = self.get_mac_address(vlan)
             qemu_cmd += add_nic(help, vlan, nic_params.get("nic_model"), mac,
-                                netdev_id, nic_params.get("nic_extra_params"))
+                                self.netdev_id[vlan],
+                                nic_params.get("nic_extra_params"))
             # Handle the '-net tap' or '-net user' part
             script = nic_params.get("nic_script")
             downscript = nic_params.get("nic_downscript")
@@ -435,10 +419,11 @@ class VM:
             if tftp:
                 tftp = kvm_utils.get_path(root_dir, tftp)
             qemu_cmd += add_net(help, vlan, nic_params.get("nic_mode", "user"),
-                                vm.get_ifname(vlan),
+                                self.get_ifname(vlan),
                                 script, downscript, tftp,
-                                nic_params.get("bootp"), redirs, netdev_id,
-                                nic_params.get("netdev_extra_params"))
+                                nic_params.get("bootp"), redirs,
+                                self.netdev_id[vlan],
+                                nic_params.get("vhost")=="yes")
             # Proceed to next NIC
             vlan += 1
 
@@ -450,8 +435,9 @@ class VM:
         if smp:
             qemu_cmd += add_smp(help, smp)
 
-        for cdrom in params.objects("cdroms"):
-            cdrom_params = params.object_params(cdrom)
+        cdroms = kvm_utils.get_sub_dict_names(params, "cdroms")
+        for cdrom in cdroms:
+            cdrom_params = kvm_utils.get_sub_dict(params, cdrom)
             iso = cdrom_params.get("cdrom")
             if iso:
                 qemu_cmd += add_cdrom(help, kvm_utils.get_path(root_dir, iso),
@@ -491,27 +477,27 @@ class VM:
             qemu_cmd += add_tcp_redir(help, host_port, guest_port)
 
         if params.get("display") == "vnc":
-            qemu_cmd += add_vnc(help, vm.vnc_port)
+            qemu_cmd += add_vnc(help, self.vnc_port)
         elif params.get("display") == "sdl":
             qemu_cmd += add_sdl(help)
         elif params.get("display") == "nographic":
             qemu_cmd += add_nographic(help)
 
         if params.get("uuid") == "random":
-            qemu_cmd += add_uuid(help, vm.uuid)
+            qemu_cmd += add_uuid(help, self.uuid)
         elif params.get("uuid"):
             qemu_cmd += add_uuid(help, params.get("uuid"))
 
         if params.get("testdev") == "yes":
-            qemu_cmd += add_testdev(help, vm.get_testlog_filename())
+            qemu_cmd += add_testdev(help, self.get_testlog_filename())
 
         if params.get("disable_hpet") == "yes":
             qemu_cmd += add_no_hpet(help)
 
         # If the PCI assignment step went OK, add each one of the PCI assigned
         # devices to the qemu command line.
-        if vm.pci_assignable:
-            for pci_id in vm.pa_pci_ids:
+        if self.pci_assignable:
+            for pci_id in self.pa_pci_ids:
                 qemu_cmd += add_pcidevice(help, pci_id)
 
         extra_params = params.get("extra_params")
@@ -522,7 +508,7 @@ class VM:
 
 
     def create(self, name=None, params=None, root_dir=None, timeout=5.0,
-               migration_mode=None, mac_source=None):
+               migration_mode=None, migration_exec_cmd=None, mac_source=None):
         """
         Start the VM by running a qemu command.
         All parameters are optional. If name, params or root_dir are not
@@ -550,40 +536,38 @@ class VM:
         params = self.params
         root_dir = self.root_dir
 
-        # Verify the md5sum of the ISO images
-        for cdrom in params.objects("cdroms"):
-            cdrom_params = params.object_params(cdrom)
-            iso = cdrom_params.get("cdrom")
-            if iso:
-                iso = kvm_utils.get_path(root_dir, iso)
-                if not os.path.exists(iso):
-                    logging.error("ISO file not found: %s" % iso)
+        # Verify the md5sum of the ISO image
+        iso = params.get("cdrom")
+        if iso:
+            iso = kvm_utils.get_path(root_dir, iso)
+            if not os.path.exists(iso):
+                logging.error("ISO file not found: %s" % iso)
+                return False
+            compare = False
+            if params.get("md5sum_1m"):
+                logging.debug("Comparing expected MD5 sum with MD5 sum of "
+                              "first MB of ISO file...")
+                actual_hash = utils.hash_file(iso, 1048576, method="md5")
+                expected_hash = params.get("md5sum_1m")
+                compare = True
+            elif params.get("md5sum"):
+                logging.debug("Comparing expected MD5 sum with MD5 sum of ISO "
+                              "file...")
+                actual_hash = utils.hash_file(iso, method="md5")
+                expected_hash = params.get("md5sum")
+                compare = True
+            elif params.get("sha1sum"):
+                logging.debug("Comparing expected SHA1 sum with SHA1 sum of "
+                              "ISO file...")
+                actual_hash = utils.hash_file(iso, method="sha1")
+                expected_hash = params.get("sha1sum")
+                compare = True
+            if compare:
+                if actual_hash == expected_hash:
+                    logging.debug("Hashes match")
+                else:
+                    logging.error("Actual hash differs from expected one")
                     return False
-                compare = False
-                if cdrom_params.get("md5sum_1m"):
-                    logging.debug("Comparing expected MD5 sum with MD5 sum of "
-                                  "first MB of ISO file...")
-                    actual_hash = utils.hash_file(iso, 1048576, method="md5")
-                    expected_hash = cdrom_params.get("md5sum_1m")
-                    compare = True
-                elif cdrom_params.get("md5sum"):
-                    logging.debug("Comparing expected MD5 sum with MD5 sum of "
-                                  "ISO file...")
-                    actual_hash = utils.hash_file(iso, method="md5")
-                    expected_hash = cdrom_params.get("md5sum")
-                    compare = True
-                elif cdrom_params.get("sha1sum"):
-                    logging.debug("Comparing expected SHA1 sum with SHA1 sum "
-                                  "of ISO file...")
-                    actual_hash = utils.hash_file(iso, method="sha1")
-                    expected_hash = cdrom_params.get("sha1sum")
-                    compare = True
-                if compare:
-                    if actual_hash == expected_hash:
-                        logging.debug("Hashes match")
-                    else:
-                        logging.error("Actual hash differs from expected one")
-                        return False
 
         # Make sure the following code is not executed by more than one thread
         # at the same time
@@ -592,17 +576,15 @@ class VM:
 
         try:
             # Handle port redirections
-            redir_names = params.objects("redirs")
+            redir_names = kvm_utils.get_sub_dict_names(params, "redirs")
             host_ports = kvm_utils.find_free_ports(5000, 6000, len(redir_names))
             self.redirs = {}
             for i in range(len(redir_names)):
-                redir_params = params.object_params(redir_names[i])
+                redir_params = kvm_utils.get_sub_dict(params, redir_names[i])
                 guest_port = int(redir_params.get("guest_port"))
                 self.redirs[guest_port] = host_ports[i]
 
-            # Generate netdev IDs for all NICs
-            self.netdev_id = []
-            for nic in params.objects("nics"):
+            for nic in kvm_utils.get_sub_dict_names(params, "nics"):
                 self.netdev_id.append(kvm_utils.generate_random_id())
 
             # Find available VNC port, if needed
@@ -616,19 +598,13 @@ class VM:
                 f.close()
 
             # Generate or copy MAC addresses for all NICs
-            num_nics = len(params.objects("nics"))
+            num_nics = len(kvm_utils.get_sub_dict_names(params, "nics"))
             for vlan in range(num_nics):
-                nic_name = params.objects("nics")[vlan]
-                nic_params = params.object_params(nic_name)
-                if nic_params.get("nic_mac", None):
-                    mac = nic_params.get("nic_mac")
+                mac = mac_source and mac_source.get_mac_address(vlan)
+                if mac:
                     kvm_utils.set_mac_address(self.instance, vlan, mac)
                 else:
-                    mac = mac_source and mac_source.get_mac_address(vlan)
-                    if mac:
-                        kvm_utils.set_mac_address(self.instance, vlan, mac)
-                    else:
-                        kvm_utils.generate_mac_address(self.instance, vlan)
+                    kvm_utils.generate_mac_address(self.instance, vlan)
 
             # Assign a PCI assignable device
             self.pci_assignable = None
@@ -684,9 +660,7 @@ class VM:
                 self.migration_file = "/tmp/migration-unix-%s" % self.instance
                 qemu_command += " -incoming unix:%s" % self.migration_file
             elif migration_mode == "exec":
-                self.migration_port = kvm_utils.find_free_port(5200, 6000)
-                qemu_command += (' -incoming "exec:nc -l %s"' %
-                                 self.migration_port)
+                qemu_command += ' -incoming "exec:%s"' % migration_exec_cmd
 
             logging.debug("Running qemu command:\n%s", qemu_command)
             self.process = kvm_subprocess.run_bg(qemu_command, None,
@@ -704,8 +678,9 @@ class VM:
 
             # Establish monitor connections
             self.monitors = []
-            for monitor_name in params.objects("monitors"):
-                monitor_params = params.object_params(monitor_name)
+            for monitor_name in kvm_utils.get_sub_dict_names(params,
+                                                             "monitors"):
+                monitor_params = kvm_utils.get_sub_dict(params, monitor_name)
                 # Wait for monitor connection to succeed
                 end_time = time.time() + timeout
                 while time.time() < end_time:
@@ -758,7 +733,7 @@ class VM:
 
             # Establish a session with the serial console -- requires a version
             # of netcat that supports -U
-            self.serial_console = kvm_subprocess.ShellSession(
+            self.serial_console = kvm_subprocess.kvm_shell_session(
                 "nc -U %s" % self.get_serial_console_filename(),
                 auto_close=False,
                 output_func=kvm_utils.log_line,
@@ -851,7 +826,7 @@ class VM:
                     os.unlink(self.migration_file)
                 except OSError:
                     pass
-            num_nics = len(self.params.objects("nics"))
+            num_nics = len(kvm_utils.get_sub_dict_names(self.params, "nics"))
             for vlan in range(num_nics):
                 self.free_mac_address(vlan)
 
@@ -910,7 +885,7 @@ class VM:
         params).
         """
         return [self.get_monitor_filename(m) for m in
-                self.params.objects("monitors")]
+                kvm_utils.get_sub_dict_names(self.params, "monitors")]
 
 
     def get_serial_console_filename(self):
@@ -936,9 +911,9 @@ class VM:
 
         @param index: Index of the NIC whose address is requested.
         """
-        nics = self.params.objects("nics")
+        nics = kvm_utils.get_sub_dict_names(self.params, "nics")
         nic_name = nics[index]
-        nic_params = self.params.object_params(nic_name)
+        nic_params = kvm_utils.get_sub_dict(self.params, nic_name)
         if nic_params.get("nic_mode") == "tap":
             mac = self.get_mac_address(index)
             if not mac:
@@ -971,8 +946,8 @@ class VM:
         @return: If port redirection is used, return the host port redirected
                 to guest port port. Otherwise return port.
         """
-        nic_name = self.params.objects("nics")[nic_index]
-        nic_params = self.params.object_params(nic_name)
+        nic_name = kvm_utils.get_sub_dict_names(self.params, "nics")[nic_index]
+        nic_params = kvm_utils.get_sub_dict(self.params, nic_name)
         if nic_params.get("nic_mode") == "tap":
             return port
         else:
@@ -988,9 +963,9 @@ class VM:
 
         @param nic_index: Index of the NIC
         """
-        nics = self.params.objects("nics")
+        nics = kvm_utils.get_sub_dict_names(self.params, "nics")
         nic_name = nics[nic_index]
-        nic_params = self.params.object_params(nic_name)
+        nic_params = kvm_utils.get_sub_dict(self.params, nic_name)
         if nic_params.get("nic_ifname"):
             return nic_params.get("nic_ifname")
         else:
@@ -1065,7 +1040,7 @@ class VM:
         @param nic_index: The index of the NIC to connect to.
         @param timeout: Time (seconds) before giving up logging into the
                 guest.
-        @return: ShellSession object on success and None on failure.
+        @return: kvm_spawn object on success and None on failure.
         """
         username = self.params.get("username", "")
         password = self.params.get("password", "")
@@ -1093,7 +1068,7 @@ class VM:
 
     def copy_files_to(self, local_path, remote_path, nic_index=0, timeout=600):
         """
-        Transfer files to the remote host(guest).
+        Transfer files to the guest.
 
         @param local_path: Host path
         @param remote_path: Guest path
@@ -1107,12 +1082,21 @@ class VM:
         address = self.get_address(nic_index)
         port = self.get_port(int(self.params.get("file_transfer_port")))
 
-        log_filename = ("transfer-%s-to-%s-%s.log" %
-                        (self.name, address,
-                        kvm_utils.generate_random_string(4)))
-        return kvm_utils.copy_files_to(address, client, username, password,
-                                       port, local_path, remote_path,
-                                       log_filename, timeout)
+        if not address or not port:
+            logging.debug("IP address or port unavailable")
+            return None
+
+        if client == "scp":
+            log_filename = ("scp-%s-%s.log" %
+                            (self.name, kvm_utils.generate_random_string(4)))
+            return kvm_utils.scp_to_remote(address, port, username, password,
+                                           local_path, remote_path,
+                                           log_filename, timeout)
+        elif client == "rss":
+            c = rss_file_transfer.FileUploadClient(address, port)
+            c.upload(local_path, remote_path, timeout)
+            c.close()
+            return True
 
 
     def copy_files_from(self, remote_path, local_path, nic_index=0, timeout=600):
@@ -1131,11 +1115,21 @@ class VM:
         address = self.get_address(nic_index)
         port = self.get_port(int(self.params.get("file_transfer_port")))
 
-        log_filename = ("transfer-%s-from-%s-%s.log" %
-                        (self.name, address,
-                        kvm_utils.generate_random_string(4)))
-        return kvm_utils.copy_files_from(address, client, username, password,
-                        port, local_path, remote_path, log_filename, timeout)
+        if not address or not port:
+            logging.debug("IP address or port unavailable")
+            return None
+
+        if client == "scp":
+            log_filename = ("scp-%s-%s.log" %
+                            (self.name, kvm_utils.generate_random_string(4)))
+            return kvm_utils.scp_from_remote(address, port, username, password,
+                                             remote_path, local_path,
+                                             log_filename, timeout)
+        elif client == "rss":
+            c = rss_file_transfer.FileDownloadClient(address, port)
+            c.download(remote_path, local_path, timeout)
+            c.close()
+            return True
 
 
     def serial_login(self, timeout=10):
@@ -1145,7 +1139,7 @@ class VM:
         password prompt or a shell prompt) -- fail.
 
         @param timeout: Time (seconds) before giving up logging into the guest.
-        @return: ShellSession object on success and None on failure.
+        @return: kvm_spawn object on success and None on failure.
         """
         username = self.params.get("username", "")
         password = self.params.get("password", "")
@@ -1219,7 +1213,11 @@ class VM:
         if not session:
             return None
         try:
-            return int(session.cmd(self.params.get("cpu_chk_cmd")))
+            cmd = self.params.get("cpu_chk_cmd")
+            s, count = session.get_command_status_output(cmd)
+            if s == 0:
+                return int(count)
+            return None
         finally:
             session.close()
 
@@ -1237,7 +1235,9 @@ class VM:
         try:
             if not cmd:
                 cmd = self.params.get("mem_chk_cmd")
-            mem_str = session.cmd(cmd)
+            s, mem_str = session.get_command_status_output(cmd)
+            if s != 0:
+                return None
             mem = re.findall("([0-9]+)", mem_str)
             mem_size = 0
             for m in mem:
@@ -1259,14 +1259,3 @@ class VM:
         """
         cmd = self.params.get("mem_chk_cur_cmd")
         return self.get_memory_size(cmd)
-
-
-    def save_to_file(self, path):
-        """
-        Save the state of virtual machine to a file through migrate to
-        exec
-        """
-        # Make sure we only get one iteration
-        self.monitor.cmd("migrate_set_speed 1000g")
-        self.monitor.cmd("migrate_set_downtime 100000000")
-        self.monitor.migrate('"exec:cat>%s"' % path)

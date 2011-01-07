@@ -26,12 +26,10 @@ def run_migration(test, params, env):
     mig_timeout = float(params.get("mig_timeout", "3600"))
     mig_protocol = params.get("migration_protocol", "tcp")
     mig_cancel = bool(params.get("mig_cancel"))
-    offline = params.get("offline", "no") == "yes"
-    check = params.get("vmstate_check", "no") == "yes"
 
     # Get the output of migration_test_command
     test_command = params.get("migration_test_command")
-    reference_output = session.cmd_output(test_command)
+    reference_output = session.get_command_output(test_command)
 
     # Start some process in the background (and leave the session open)
     background_command = params.get("migration_bg_command", "")
@@ -44,12 +42,14 @@ def run_migration(test, params, env):
 
     try:
         check_command = params.get("migration_bg_check_command", "")
-        session2.cmd(check_command, timeout=30)
+        if session2.get_command_status(check_command, timeout=30) != 0:
+            raise error.TestError("Could not start background process '%s'" %
+                                  background_command)
         session2.close()
 
         # Migrate the VM
         dest_vm = kvm_test_utils.migrate(vm, env,mig_timeout, mig_protocol,
-                                         mig_cancel, offline, check)
+                                         mig_cancel)
 
         # Log into the guest again
         logging.info("Logging into guest after migration...")
@@ -59,10 +59,12 @@ def run_migration(test, params, env):
         logging.info("Logged in after migration")
 
         # Make sure the background process is still running
-        session2.cmd(check_command, timeout=30)
+        if session2.get_command_status(check_command, timeout=30) != 0:
+            raise error.TestFail("Could not find running background process "
+                                 "after migration: '%s'" % background_command)
 
         # Get the output of migration_test_command
-        output = session2.cmd_output(test_command)
+        output = session2.get_command_output(test_command)
 
         # Compare output to reference output
         if output != reference_output:
@@ -79,7 +81,8 @@ def run_migration(test, params, env):
     finally:
         # Kill the background process
         if session2 and session2.is_alive():
-            session2.cmd_output(params.get("migration_bg_kill_command", ""))
+            session2.get_command_output(params.get("migration_bg_kill_command",
+                                                   ""))
 
     session2.close()
     session.close()
