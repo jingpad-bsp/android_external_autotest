@@ -5,7 +5,7 @@
 import logging, os, os.path, signal, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants as chromeos_constants, login
+from autotest_lib.client.cros import constants as chromeos_constants, login 
 from autotest_lib.client.cros import crash_test
 
 class logging_CrashServices(crash_test.CrashTest):
@@ -116,5 +116,4 @@ class logging_CrashServices(crash_test.CrashTest):
         # killing session manager logs out, so this will probably fail
         try:
             login.attempt_logout()
-        except login.UnexpectedCondition:
             pass
