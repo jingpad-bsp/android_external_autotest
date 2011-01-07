@@ -1,4 +1,4 @@
-import logging
+import logging, threading
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
 import kvm_utils, kvm_test_utils
@@ -21,21 +21,12 @@ def run_nic_promisc(test, params, env):
     timeout = int(params.get("login_timeout", 360))
     vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
     session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
-
-    logging.info("Trying to log into guest '%s' by serial", vm.name)
-    session2 = kvm_utils.wait_for(lambda: vm.serial_login(),
-                                  timeout, 0, step=2)
-    if not session2:
-        raise error.TestFail("Could not log into guest '%s'" % vm.name)
+    session_serial = kvm_test_utils.wait_for_login(vm, 0, timeout, 0, 2,
+                                                   serial=True)
 
     def compare(filename):
-        cmd = "md5sum %s" % filename
         md5_host = utils.hash_file(filename, method="md5")
-        rc_guest, md5_guest = session.get_command_status_output(cmd)
-        if rc_guest:
-            logging.debug("Could not get MD5 hash for file %s on guest,"
-                          "output: %s", filename, md5_guest)
-            return False
+        md5_guest = session.cmd("md5sum %s" % filename)
         md5_guest = md5_guest.split()[0]
         if md5_host != md5_guest:
             logging.error("MD5 hash mismatch between file %s "
@@ -46,11 +37,28 @@ def run_nic_promisc(test, params, env):
         return True
 
     ethname = kvm_test_utils.get_linux_ifname(session, vm.get_mac_address(0))
-    set_promisc_cmd = ("ip link set %s promisc on; sleep 0.01;"
-                       "ip link set %s promisc off; sleep 0.01" %
-                       (ethname, ethname))
-    logging.info("Set promisc change repeatedly in guest")
-    session2.sendline("while true; do %s; done" % set_promisc_cmd)
+
+    class ThreadPromiscCmd(threading.Thread):
+        def __init__(self, session, termination_event):
+            self.session = session
+            self.termination_event = termination_event
+            super(ThreadPromiscCmd, self).__init__()
+
+
+        def run(self):
+            set_promisc_cmd = ("ip link set %s promisc on; sleep 0.01;"
+                               "ip link set %s promisc off; sleep 0.01" %
+                               (ethname, ethname))
+            while True:
+                self.session.cmd_output(set_promisc_cmd)
+                if self.termination_event.isSet():
+                    break
+
+
+    logging.info("Started thread to change promisc mode in guest")
+    termination_event = threading.Event()
+    promisc_thread = ThreadPromiscCmd(session_serial, termination_event)
+    promisc_thread.start()
 
     dd_cmd = "dd if=/dev/urandom of=%s bs=%d count=1"
     filename = "/tmp/nic_promisc_file"
@@ -72,10 +80,7 @@ def run_nic_promisc(test, params, env):
                 success_counter += 1
 
             logging.info("Create %s bytes file on guest" % size)
-            if session.get_command_status(dd_cmd % (filename, int(size)),
-                                                    timeout=100) != 0:
-                logging.error("Create file on guest failed")
-                continue
+            session.cmd(dd_cmd % (filename, int(size)), timeout=100)
 
             logging.info("Transfer file from guest to host")
             if not vm.copy_files_from(filename, filename):
@@ -90,12 +95,14 @@ def run_nic_promisc(test, params, env):
             logging.info("Clean temporary files")
             cmd = "rm -f %s" % filename
             utils.run(cmd)
-            session.get_command_status(cmd)
+            session.cmd_output(cmd)
 
     finally:
+        logging.info("Stopping the promisc thread")
+        termination_event.set()
+        promisc_thread.join(10)
         logging.info("Restore the %s to the nonpromisc mode", ethname)
-        session2.close()
-        session.get_command_status("ip link set %s promisc off" % ethname)
+        session.cmd_output("ip link set %s promisc off" % ethname)
         session.close()
 
     if success_counter != 2 * len(file_size):

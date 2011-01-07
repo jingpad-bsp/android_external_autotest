@@ -21,9 +21,12 @@ class kvm(test.test):
             (Online doc - Getting started with KVM testing)
     """
     version = 1
-    env_version = 0
+    env_version = 1
 
     def run_once(self, params):
+        # Convert params to a Params object
+        params = kvm_utils.Params(params)
+
         # Report the parameters we've received and write them as keyvals
         logging.debug("Test parameters:")
         keys = params.keys()
@@ -40,8 +43,7 @@ class kvm(test.test):
         logging.info("Unpickling env. You may see some harmless error "
                      "messages.")
         env_filename = os.path.join(self.bindir, params.get("env", "env"))
-        env = kvm_utils.load_env(env_filename, self.env_version)
-        logging.debug("Contents of environment: %s", env)
+        env = kvm_utils.Env(env_filename, self.env_version)
 
         test_passed = False
 
@@ -66,13 +68,13 @@ class kvm(test.test):
                     try:
                         kvm_preprocessing.preprocess(self, params, env)
                     finally:
-                        kvm_utils.dump_env(env, env_filename)
+                        env.save()
                     # Run the test function
                     run_func = getattr(test_module, "run_%s" % t_type)
                     try:
                         run_func(self, params, env)
                     finally:
-                        kvm_utils.dump_env(env, env_filename)
+                        env.save()
                     test_passed = True
 
                 except Exception, e:
@@ -82,7 +84,7 @@ class kvm(test.test):
                         kvm_preprocessing.postprocess_on_error(
                             self, params, env)
                     finally:
-                        kvm_utils.dump_env(env, env_filename)
+                        env.save()
                     raise
 
             finally:
@@ -96,15 +98,14 @@ class kvm(test.test):
                         logging.error("Exception raised during "
                                       "postprocessing: %s", e)
                 finally:
-                    kvm_utils.dump_env(env, env_filename)
-                    logging.debug("Contents of environment: %s", env)
+                    env.save()
 
         except Exception, e:
             if params.get("abort_on_error") != "yes":
                 raise
             # Abort on error
             logging.info("Aborting job (%s)", e)
-            for vm in kvm_utils.env_get_all_vms(env):
+            for vm in env.get_all_vms():
                 if vm.is_dead():
                     continue
                 logging.info("VM '%s' is alive.", vm.name)

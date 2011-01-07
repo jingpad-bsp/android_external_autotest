@@ -3,9 +3,9 @@
 #
 # The Console Multiplexor is released under the GNU Public License V2
 
-DRIVERS:=blade hmc reboot-netfinity reboot-newisys reboot-numaq \
+DRIVERS:=blade dli-lpc hmc reboot-netfinity reboot-newisys reboot-numaq \
 	reboot-rsa reboot-rsa2 zseries-console x3270_glue.expect \
-	reboot-acs48 reboot-apc reboot-laurel
+	reboot-acs48 reboot-apc reboot-laurel fence_apc_snmp.py
 
 install::
 	@[ -d $(BASE)/lib/drivers ] || mkdir $(BASE)/lib/drivers
