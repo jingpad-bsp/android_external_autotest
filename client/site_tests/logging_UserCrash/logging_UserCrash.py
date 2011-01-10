@@ -586,7 +586,7 @@ class logging_UserCrash(crash_test.CrashTest):
         # The configuration file hardcodes this path, so make sure it's still
         # the same.
         if (recursion_triggering_crasher !=
-            '/home/autotest/tests/crash_log_recursion_test'):
+            '/usr/local/autotest/tests/crash_log_recursion_test'):
           raise error.TestError('Path to recursion test changed')
         # Copy crasher_path to a test location with correct mode and a
         # special name to trigger crash log creation.

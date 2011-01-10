@@ -338,7 +338,7 @@ class devrec_gpio:
 
         # TODO(tbroch) hardcode for now ... iotools usages going away
         # longer term anyways
-        path = '/home/autotest/deps/iotools/'
+        path = '/usr/local/autotest/deps/iotools/'
         # Generate symlinks for iotools.
         if not os.path.exists(path + 'pci_read32'):
             os.system(path + 'iotools --make-links')

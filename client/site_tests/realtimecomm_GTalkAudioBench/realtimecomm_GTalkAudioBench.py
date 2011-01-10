@@ -24,9 +24,12 @@ class realtimecomm_GTalkAudioBench(test.test):
 #       'telephone-event',
 #       'CN',
     ]
-    # TODO(zhurunz): Support ARM once available.
-    gips_path = '/home/autotest/gips'
-    gips = os.path.join(gips_path, 'audiotesttool.i686')
+
+    def setup(self):
+        # TODO(zhurunz): Support ARM once available.
+        self.gips_path = os.path.join(self.autodir, 'gips')
+        self.gips = os.path.join(self.gips_path, 'audiotesttool.i686')
+
 
     def run_once(self):
         # Setup as appropriate

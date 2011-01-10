@@ -27,7 +27,7 @@ class realtimecomm_GTalkunittest(test.test):
         utils.run('pkill GoogleTalkPlugin', ignore_status=True)
 
         # Setup as appropriate
-        talk_path = '/home/autotest/talk'
+        talk_path = os.path.join(self.autodir, 'talk')
         shutil.rmtree(talk_path, ignore_errors=True)
         shutil.copytree(os.path.join(self.bindir, 'talk'), talk_path)
         utils.run('chown chronos %s -R' % talk_path)

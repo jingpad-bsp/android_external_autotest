@@ -13,10 +13,10 @@ SLEEP_DURATION = 260
 
 class realtimecomm_GTalkPlayground(test.test):
     version = 1
-    playground = '/home/autotest/playground'
     dep = 'realtimecomm_playground'
 
     def setup(self):
+        self.playground = os.path.join(self.autodir, 'playground')
         self.job.setup_dep([self.dep])
 
 

@@ -25,7 +25,6 @@ class security_SuidBinaries(test.test):
         cmd = ('find / -wholename /proc -prune -o '
                ' -wholename /dev -prune -o '
                ' -wholename /sys -prune -o '
-               ' -wholename /home/autotest -prune -o '
                ' -wholename /usr/local -prune -o '
                ' -wholename /mnt/stateful_partition -prune -o '
                '-type f -a -perm /%s -print'
