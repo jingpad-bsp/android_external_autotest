@@ -1,5 +1,2 @@
-# These 3 entries are due to autotest noise.
-# sshd is for autotest, and autotest UITest uses a mock login server http(s)d
-autotest *:http
-autotest *:https
+# These first entries are due to autotest noise.
 sshd *:ssh
