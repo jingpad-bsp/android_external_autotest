@@ -129,7 +129,7 @@ class platform_BootPerf(test.test):
             ('seconds_kernel_to_x_started',    '/tmp/uptime-x-started'),
             ('seconds_kernel_to_chrome_exec',  '/tmp/uptime-chrome-exec'),
             ('seconds_kernel_to_chrome_main',  '/tmp/uptime-chrome-main'),
-            ('seconds_kernel_to_login',        '/tmp/uptime-login-prompt-ready')
+            ('seconds_kernel_to_login',        '/tmp/uptime-boot-complete')
         ]
 
         for resultname, filename in uptime_files:
@@ -157,9 +157,10 @@ class platform_BootPerf(test.test):
             # ----+----1----+----2----+----3
             ('rdbytes_kernel_to_startup',      '/tmp/disk-pre-startup'),
             ('rdbytes_kernel_to_startup_done', '/tmp/disk-post-startup'),
+            ('rdbytes_kernel_to_x_started',    '/tmp/disk-x-started'),
             ('rdbytes_kernel_to_chrome_exec',  '/tmp/disk-chrome-exec'),
             ('rdbytes_kernel_to_chrome_main',  '/tmp/disk-chrome-main'),
-            ('rdbytes_kernel_to_login',        '/tmp/disk-login-prompt-ready')
+            ('rdbytes_kernel_to_login',        '/tmp/disk-boot-complete')
         ]
 
         # Disk statistics are reported in units of 512 byte sectors;
@@ -167,11 +168,6 @@ class platform_BootPerf(test.test):
         # consumers don't have to ask "How big is a sector?".
         for resultname, filename in diskstat_files:
             results[resultname] = 512 * self.__parse_diskstat(filename)
-
-        # This keyval is provided for backwards compatibility
-        # with the test dashboard.
-        results['sectors_read_kernel_to_login'] = \
-            results['rdbytes_kernel_to_login'] / 512
 
         self.__parse_firmware_boot_time(results)
         self.__parse_syslog(results, last_boot_was_reboot)
