@@ -42,7 +42,7 @@ class ConnectStateHandler(StateHandler):
 
   def FindService(self, path_list=None):
     service = None
-    for svc in FindObjects('Service', 'Name', self.service_name,
+    for svc in FindObjects('Service', 'SSID', self.service_name,
                            path_list=path_list):
       props = svc.GetProperties()
       for key, val in self.connection_settings.items():

@@ -34,11 +34,13 @@ bus = dbus.SystemBus(mainloop=bus_loop)
 manager = dbus.Interface(bus.get_object(FLIMFLAM, '/'), FLIMFLAM + '.Manager')
 
 
+def GetObject(kind, path):
+  return dbus.Interface(bus.get_object(FLIMFLAM, path), FLIMFLAM + '.' + kind)
+
 def GetObjectList(kind, path_list):
   if not path_list:
     path_list = manager.GetProperties().get(kind + 's', [])
-  return [dbus.Interface(bus.get_object(FLIMFLAM, path),
-                         FLIMFLAM + '.' + kind) for path in path_list]
+  return [GetObject(kind, path) for path in path_list]
 
 
 def PrintProperties(item):
@@ -98,6 +100,19 @@ def DumpLogs(logs):
   DumpObjectList('Service')
 
 
+def GetObjectProperty(kind, attr, props):
+  if attr == 'SSID' and kind == 'Service':
+    # Special case: Services don't actually have an "SSID" property
+    if 'WiFi.HexSSID' in props:
+      # Use the Service's hex WiFi.HexSSID property to generate a raw string
+      hex_ssid = props['WiFi.HexSSID']
+      return ''.join([chr(int(hex_ssid[offset:offset+2], 16))
+                      for offset in range(0, len(hex_ssid), 2)])
+    # Use the Service's name
+    return str(props.get('Name'))
+  return props.get(attr)
+
+
 def FindObjects(kind, attr, val, path_list=None, cache=None):
   """Find an object in the manager of type _kind_ with _attr_ set to _val_."""
 
@@ -118,8 +133,8 @@ def FindObjects(kind, attr, val, path_list=None, cache=None):
       print>>sys.stderr, ('Got exception %s while getting props on %s' %
                           (e.get_dbus_name() , obj))
       continue
-    if attr in props:
-      objval = props[attr]
+    objval = GetObjectProperty(kind, attr, props)
+    if objval:
       if not objval in cache:
         cache[objval] = [obj]
       else:
@@ -183,7 +198,8 @@ class StateHandler(object):
       return
 
     self.svc_state = state
-    self.Debug('Service %s changed state: %s' % (self.service_name, state))
+    self.Debug('Service %s changed state: %s' %
+               (repr(self.service_name), state))
 
     if state == self.wait_state:
       self.results.append('%.3f' % (time.time() - self.step_start_time))
@@ -208,7 +224,7 @@ class StateHandler(object):
 
     svc = self.FindService(value)
     if svc:
-      self.Debug('Service %s added to service list' % self.service_name)
+      self.Debug('Service %s added to service list' % repr(self.service_name))
       self.CancelTimeout()
       elapsed_time = time.time() - self.step_start_time
       if self.WaitForState(svc, self.step_timeout - elapsed_time):
@@ -217,7 +233,6 @@ class StateHandler(object):
     elif self.failure:
       self.results.append('ERR_FAILURE')
       self.runloop.quit()
-      
 
   def FindService(self, path_list=None):
     ret = FindObjects('Service', 'Name', self.service_name,
