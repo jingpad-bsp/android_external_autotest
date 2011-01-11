@@ -19,7 +19,9 @@ from autotest_lib.client.cros import cros_logging
 from autotest_lib.server import site_host_attributes
 
 TESTS = [
+  ('platform_AccurateTime', {}),
   ('platform_FilePerms', {}),
+  ('platform_KernelVersion', {}),
   ('platform_OSLimits', {}),
   ('platform_PartitionCheck', {}),
   ('build_RootFilesystemSize', {}),
@@ -45,6 +47,7 @@ TESTS = [
   ('network_DisableInterface', {'iface_name': 'wlan0',
                                 'tag': 'wlan0'}),
   ('network_Ping', {}),
+  ('power_Resume', {}),
 ]
 
 
