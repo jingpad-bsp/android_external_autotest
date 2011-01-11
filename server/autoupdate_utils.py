@@ -24,11 +24,13 @@ class AutoUpdateTester():
         """Copy devserver source into current working directory.
         """
         self.image_path = image_path
+        self.devserver_url = 'http://%s:%s' % (socket.gethostname(),
+                                               DEVSERVER_PORT)
+
 
     def is_devserver_running(self):
-        localhost = socket.gethostname()
         try:
-            resp = urllib2.urlopen('http://%s:%s' % (localhost, DEVSERVER_PORT))
+            resp = urllib2.urlopen(self.devserver_url)
         except urllib2.URLError:
             return False
         if resp is None:
@@ -62,3 +64,8 @@ class AutoUpdateTester():
         logging.info('Killing devserver...')
         pkill_cmd = 'pkill -f devserver'
         subprocess.Popen(pkill_cmd, shell=True)
+
+
+    def get_devserver_url(self):
+        """Return devserver_url"""
+        return self.devserver_url

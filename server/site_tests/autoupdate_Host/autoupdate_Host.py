@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, socket, time, zipfile
+import logging, time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import autoupdater
@@ -14,23 +14,21 @@ class autoupdate_Host(test.test):
     version = 1
 
     def run_once(self, host=None, image_path=None):
-        localhost = socket.gethostname()
-        base_update_url='http://%s:%s' % (localhost,
-                                          autoupdate_utils.DEVSERVER_PORT)
+        tester = autoupdate_utils.AutoUpdateTester(image_path)
         logging.info('Using image at: %s' % image_path)
-        logging.info('Base update url: %s' % base_update_url)
+        logging.info('Base update url: %s' % tester.get_devserver_url())
 
         # Initiate autoupdater and retrieve old release version.
-        updater = autoupdater.ChromiumOSUpdater(host, base_update_url)
+        updater = autoupdater.ChromiumOSUpdater(host,
+                                                tester.get_devserver_url())
         old_release = updater.get_build_id()
-
-        # Setup client machine by overriding lsb-release.
-        client_host = autotest.Autotest(host)
-        client_host.run_test('autoupdate_SetUp', devserver=base_update_url)
 
         image_name = 'chromiumos_test_image.bin'
 
-        tester = autoupdate_utils.AutoUpdateTester(image_path)
+        # Setup client machine by overriding lsb-release.
+        client_host = autotest.Autotest(host)
+        client_host.run_test('autoupdate_SetUp',
+                             devserver=tester.get_devserver_url())
 
         # Starts devserver.
         tester.start_devserver()
