@@ -349,8 +349,8 @@ class WiFiTest(object):
 
         result_times = re.match("OK ([0-9\.]*) ([0-9\.]*) .*", result)
 
-        self.write_perf({'config_s': result_times.group(1),
-                          'assoc_s': result_times.group(2)})
+        self.write_perf({'assoc_s': result_times.group(1),
+                         'config_s': result_times.group(2)})
         for k in ('already_connected', 'clear_error', 'fast_fail',
                   'get_prop', 'in_progress', 'lost_dbus', 'multiple_attempts'):
             if re.search(k, result) is not None:
