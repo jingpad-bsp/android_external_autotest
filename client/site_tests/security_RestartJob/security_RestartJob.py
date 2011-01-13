@@ -9,13 +9,13 @@ import subprocess
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants as chromeos_constants, login
+from autotest_lib.client.cros import constants, login
 
 class security_RestartJob(test.test):
     version = 1
     _FLAGFILE = '/tmp/security_RestartJob_regression'
 
-    def _ps(self, proc=chromeos_constants.BROWSER):
+    def _ps(self, proc=constants.BROWSER):
         pscmd = 'ps -C %s -o pid --no-header | head -1' % proc
         return utils.system_output(pscmd)
 
@@ -41,8 +41,12 @@ class security_RestartJob(test.test):
 
         # Try to get our malicious replacement to run
         logging.info('Calling RestartJob(%s,\'%s\')' % (pid,cmd))
-        sessionmanager.RestartJob(pid, cmd)
-
+        testfail = False
+        try:
+            if sessionmanager.RestartJob(pid, cmd):
+                raise error.TestFail('RestartJob regression, see bug 10877')
+        except dbus.DBusException, e:
+            pass
         testfail = os.path.exists(self._FLAGFILE)
 
         # Clean up, before we throw our TestFail, since this test
