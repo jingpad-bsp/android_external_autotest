@@ -1,7 +1,13 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 TIME='SHORT'
 AUTHOR = 'Chromium OS'
 DOC = """
-This test is part of the server/autoupdate_Host test.
+This test is the setup step for:
+server/autoupdate_Host
+server/autoupdate_Loop
 
 It prepares the client for autoupdate by overriding the auserver
 and devsever value in stateful lsb-release.

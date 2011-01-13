@@ -7,7 +7,7 @@
 """
 
 from autotest_lib.client.common_lib import error, utils
-import logging, socket, os, urllib2, subprocess
+import logging, os, socket, subprocess, urllib2
 
 DEVSERVER_PORT = 8080
 
@@ -20,10 +20,9 @@ DEVSERVER_LOG = os.path.join(CWD, 'devserver.log')
 
 class AutoUpdateTester():
 
-    def __init__(self, image_path):
+    def __init__(self):
         """Copy devserver source into current working directory.
         """
-        self.image_path = image_path
         self.devserver_url = 'http://%s:%s' % (socket.gethostname(),
                                                DEVSERVER_PORT)
 
@@ -38,7 +37,7 @@ class AutoUpdateTester():
         return True
 
 
-    def start_devserver(self):
+    def start_devserver(self, image_path):
         """Start devserver
         """
         if self.is_devserver_running():
@@ -48,7 +47,7 @@ class AutoUpdateTester():
         logging.info('Starting devserver...')
 
         opts = ('--client_prefix ChromeOSUpdateEngine '
-                '--image %s' % self.image_path)
+                '--image %s' % image_path)
         cmd = 'python devserver.py %s &>%s &' % (opts, DEVSERVER_LOG)
         logging.info('devserver cmd: %s' % cmd)
 

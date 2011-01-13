@@ -14,7 +14,7 @@ class autoupdate_Host(test.test):
     version = 1
 
     def run_once(self, host=None, image_path=None):
-        tester = autoupdate_utils.AutoUpdateTester(image_path)
+        tester = autoupdate_utils.AutoUpdateTester()
         logging.info('Using image at: %s' % image_path)
         logging.info('Base update url: %s' % tester.get_devserver_url())
 
@@ -31,7 +31,7 @@ class autoupdate_Host(test.test):
                              devserver=tester.get_devserver_url())
 
         # Starts devserver.
-        tester.start_devserver()
+        tester.start_devserver(image_path)
 
         # Initiate update process on client.
         update_engine_client_cmd = ('update_engine_client '
@@ -48,7 +48,7 @@ class autoupdate_Host(test.test):
         while status != autoupdater.UPDATER_NEED_REBOOT:
             status = updater.check_update_status()
             if status == autoupdater.UPDATER_IDLE:
-                raise error.TestFail('Could not initiate update process on client.')
+                raise error.TestFail('Failed to start update process.')
             logging.info('Update status: %s' % status)
             time.sleep(POLL_INTERVAL)
 
