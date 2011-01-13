@@ -22,10 +22,10 @@ job.run_test('desktopui_KillRestart', binary='^session_manager$', tag='session')
 job.run_test('logging_CrashSender')
 job.run_test('logging_UserCrash')
 job.run_test('login_BadAuthentication')
-# TODO(cmasone): make this test log in via Guest mode and re-enable.
-# job.run_test('login_CryptohomeIncognitoMounted')
+job.run_test('login_CryptohomeIncognitoMounted')
 job.run_test('login_CryptohomeMounted')
-job.run_test('login_LoginSuccess')
+job.run_test('login_LoginSuccess', tag='default')
+job.run_test('login_LoginSuccess', creds='$apps', tag='apps')
 job.run_test('platform_FilePerms')
 job.run_test('platform_OSLimits')
 

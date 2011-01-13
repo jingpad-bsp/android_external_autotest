@@ -14,4 +14,4 @@ This test checks that, after logging in incognito, a cryptohome was mounted on
  tmpfs.
 """
 
-job.run_test('login_CryptohomeIncognitoMounted', creds='$backdoor')
+job.run_test('login_CryptohomeIncognitoMounted')
