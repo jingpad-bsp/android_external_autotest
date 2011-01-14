@@ -39,10 +39,10 @@ TESTS = [
   ('logging_CrashSender', {}),
   ('logging_UserCrash', {}),
   ('login_BadAuthentication', {}),
-# TODO(cmasone): re-implement to use Guest mode and re-enable.
-#  ('login_CryptohomeIncognitoMounted', {'creds': '$backdoor'}),
+  ('login_CryptohomeIncognitoMounted', {}),
   ('login_CryptohomeMounted', {}),
-  ('login_LoginSuccess', {}),
+  ('login_LoginSuccess', {'tag': 'default'}),
+  ('login_LoginSuccess', {'creds': '$apps', 'tag': 'apps'}),
   ('login_RemoteLogin', {}),
   ('network_DisableInterface', {'iface_name': 'wlan0',
                                 'tag': 'wlan0'}),
