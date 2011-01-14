@@ -1,0 +1,25 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "login_OwnershipTaken"
+PURPOSE = "Login and ensure that ownership of the device is taken."
+CRITERIA = """
+This test will succeed as long as a test account is able to log in, generate
+and register an 'Owner' keypair.
+"""
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "login"
+TEST_TYPE = "client"
+
+DOC = """
+This is test will log a test user in through the login
+manager, and then simulate taking ownership of the device as the first
+user.
+"""
+
+job.run_test('login_OwnershipTaken')
+
+

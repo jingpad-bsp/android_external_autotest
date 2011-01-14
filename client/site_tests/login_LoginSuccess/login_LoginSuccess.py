@@ -28,10 +28,6 @@ class login_LoginSuccess(cros_ui_test.UITest):
         self.use_local_dns()
 
 
-    def initialize(self, creds='$default'):
-        super(login_LoginSuccess, self).initialize(creds)
-
-
     def ensure_login_complete(self):
         """Wait for login to complete, including cookie fetching."""
         self._authServer.wait_for_client_login()

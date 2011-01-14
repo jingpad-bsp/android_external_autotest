@@ -4,7 +4,7 @@
 
 import errno, logging, os, re, signal, subprocess, time
 import common
-import constants as chromeos_constants, cros_logging, cros_ui, cryptohome
+import constants, cros_logging, cros_ui, cryptohome
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
@@ -37,7 +37,7 @@ def __get_session_manager_pid():
         it is not running.
     """
 
-    p = subprocess.Popen(["pgrep", "^%s$" % chromeos_constants.SESSION_MANAGER],
+    p = subprocess.Popen(["pgrep", "^%s$" % constants.SESSION_MANAGER],
                          stdout=subprocess.PIPE)
     ary = p.communicate()[0].split()
     return int(ary[0]) if ary else None
@@ -87,7 +87,7 @@ def __session_manager_restarted(oldpid):
 def logged_in():
     # this file is created when the session_manager emits start-user-session
     # and removed when the session_manager emits stop-user-session
-    return os.path.exists(chromeos_constants.LOGGED_IN_MAGIC_FILE)
+    return os.path.exists(constants.LOGGED_IN_MAGIC_FILE)
 
 
 def process_crashed(process, log_reader):
@@ -190,7 +190,7 @@ def attempt_logout(timeout=_DEFAULT_TIMEOUT):
     log_reader.set_start_by_current()
 
     # Gracefully exiting the session manager causes the user's session to end.
-    utils.system('pkill -TERM -o ^%s$' % chromeos_constants.SESSION_MANAGER)
+    utils.system('pkill -TERM -o ^%s$' % constants.SESSION_MANAGER)
 
     wait_for_condition(
         condition=lambda: __session_manager_restarted(oldpid),
@@ -215,7 +215,7 @@ def wait_for_browser(timeout=_DEFAULT_TIMEOUT):
     log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
     wait_for_condition(
-        lambda: os.system('pgrep ^%s$' % chromeos_constants.BROWSER) == 0,
+        lambda: os.system('pgrep ^%s$' % constants.BROWSER) == 0,
         timeout_msg='Timed out waiting for Chrome to start',
         timeout=timeout,
         process='chrome',
@@ -260,7 +260,7 @@ def wait_for_login_prompt(timeout=_DEFAULT_TIMEOUT):
     log_reader.set_start_by_current()
     wait_for_condition(
         condition=lambda: os.access(
-            chromeos_constants.LOGIN_PROMPT_READY_MAGIC_FILE, os.F_OK),
+            constants.LOGIN_PROMPT_READY_MAGIC_FILE, os.F_OK),
         timeout_msg='Timed out waiting for login prompt',
         timeout=timeout,
         process='chrome',
@@ -278,7 +278,7 @@ def wait_for_window_manager(timeout=_DEFAULT_TIMEOUT):
         TimeoutError: window manager didn't start before timeout
     """
     utils.poll_for_condition(
-        lambda: not os.system('pgrep ^%s$' % chromeos_constants.WINDOW_MANAGER),
+        lambda: not os.system('pgrep ^%s$' % constants.WINDOW_MANAGER),
         TimeoutError('Timed out waiting for window manager to start'),
         timeout=timeout)
 
@@ -298,12 +298,24 @@ def wait_for_initial_chrome_window(timeout=_DEFAULT_TIMEOUT):
     log_reader.set_start_by_current()
     wait_for_condition(
         lambda: os.access(
-            chromeos_constants.CHROME_WINDOW_MAPPED_MAGIC_FILE, os.F_OK),
+            constants.CHROME_WINDOW_MAPPED_MAGIC_FILE, os.F_OK),
         'Timed out waiting for initial Chrome window',
         timeout=timeout,
         process='chrome',
         log_reader=log_reader,
         crash_msg='Chrome crashed before first tab rendered.')
+
+
+def wait_for_ownership(timeout=_DEFAULT_TIMEOUT):
+    log_reader = cros_logging.LogReader()
+    log_reader.set_start_by_current()
+    wait_for_condition(
+        condition=lambda: os.access(constants.OWNER_KEY_FILE, os.F_OK),
+        timeout_msg='Timed out waiting for ownership',
+        timeout=timeout,
+        process=constants.BROWSER,
+        log_reader=log_reader,
+        crash_msg='Chrome crashed before ownership could be taken.')
 
 
 def nuke_login_manager():
@@ -329,7 +341,7 @@ def refresh_window_manager(timeout=_DEFAULT_TIMEOUT):
     Raises:
         TimeoutError: window manager didn't start before timeout
     """
-    os.unlink(chromeos_constants.CHROME_WINDOW_MAPPED_MAGIC_FILE)
+    os.unlink(constants.CHROME_WINDOW_MAPPED_MAGIC_FILE)
     utils.system('initctl restart window-manager')
     wait_for_window_manager()
 
@@ -352,13 +364,13 @@ def refresh_login_screen(timeout=_DEFAULT_TIMEOUT):
 
     # Clear breadcrumb that shows we've emitted login-prompt-ready.
     try:
-        os.unlink(chromeos_constants.LOGIN_PROMPT_READY_MAGIC_FILE)
+        os.unlink(constants.LOGIN_PROMPT_READY_MAGIC_FILE)
     except OSError, e:
         if e.errno != errno.ENOENT:
             raise e
 
     # Clear old log files.
-    logpath = chromeos_constants.CHROME_LOG_DIR
+    logpath = constants.CHROME_LOG_DIR
     try:
         for file in os.listdir(logpath):
             fullpath = os.path.join(logpath, file)
