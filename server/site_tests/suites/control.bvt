@@ -47,16 +47,19 @@ TESTS = [
   ('network_DisableInterface', {'iface_name': 'wlan0',
                                 'tag': 'wlan0'}),
   ('network_Ping', {}),
-  ('power_Resume', {}),
 ]
 
 
 def run_tests(machine):
   client = hosts.create_host(machine)
+  client_attributes = site_host_attributes.HostAttributes(machine)
 
   client_at = autotest.Autotest(client)
   for test, argv in TESTS:
     client_at.run_test(test, **argv)
+
+  if not client_attributes.has_resume_bug:
+    client_at.run_test('power_Resume')
 
   # Disable log rotation while shutting down just in case
   # platform_Shutdown needs to find logs.
