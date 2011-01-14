@@ -1,18 +1,7 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
-
-import datetime, logging, re, subprocess, os
-
 # These certificate trees are for testing only in sealed containers
 # so it is okay that we have them checked into a GIT repository.
 # Nobody will ever use this information on the open air.
-
-cert_info = {
-    'cert1': {
-        'router': {
-            'ca_cert':
-"""-----BEGIN CERTIFICATE-----
+ca_cert_1 = """-----BEGIN CERTIFICATE-----
 MIIDMTCCApqgAwIBAgIJANAMhNy2leWKMA0GCSqGSIb3DQEBBQUAMG8xCzAJBgNV
 BAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBW
 aWV3MTMwMQYDVQQDEypjaHJvbWVsYWItd2lmaS10ZXN0YmVkLXJvb3QubXR2Lmdv
@@ -31,9 +20,8 @@ Af8wDQYJKoZIhvcNAQEFBQADgYEAZAiBupvbckbb9ICASaz0a1uE4VNSqAZhhBXm
 AmrjmwnYU+yFkGgscyoq6wLzA+VbbfeBo088GT1LTyzUFqnsLNk7NrT1dtuCPijS
 p8gKkMu03kpkoKO0H9OB7HMRcdB7O87c5S1de4PLqdTwooF0f+yT6dqivUHgP5KF
 K3F2V44=
------END CERTIFICATE-----""",
-            'server_cert':
-"""-----BEGIN CERTIFICATE-----
+-----END CERTIFICATE-----"""
+server_cert_1 = """-----BEGIN CERTIFICATE-----
 MIIDPTCCAqagAwIBAgIDEAABMA0GCSqGSIb3DQEBBAUAMG8xCzAJBgNVBAYTAlVT
 MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MTMw
 MQYDVQQDEypjaHJvbWVsYWItd2lmaS10ZXN0YmVkLXJvb3QubXR2Lmdvb2dsZS5j
@@ -52,9 +40,8 @@ Y29tggkA0AyE3LaV5YowDQYJKoZIhvcNAQEEBQADgYEAQphT8fiEPvwuDpzkuClg
 xqajzKwX677ggbYrP+k1v2WIPRBUW7lZs8OdKgwkIxvD4RBNwztEcBreWJG0I5xQ
 sJ9H+K12INdQ+TOrSAiEYuy4bu9EXf2On7MsAgcSTbQHN3bLuvtag3frDVvERlMU
 iaHwTA/p/X5zeCxKQunfwP0=
------END CERTIFICATE-----""",
-            'private_key':
-"""-----BEGIN RSA PRIVATE KEY-----
+-----END CERTIFICATE-----"""
+server_private_key_1 = """-----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQD5+GykS9aOhNFfd+OqWmTZnlbo6fC+oCMZNc+XBQ3LNOyu11eD
 C/zNhj2mLhxRmILOTztvQY7v6BtuOpCP6J+7hBHFXnV1mDrkC/lt0CO3OjWLAIkJ
 jEqS0Zal/atEAgDF7Px4qZtKChmAOU7HaKvVCLM5DiIWRz/mD25CRcqwEwIDAQAB
@@ -68,12 +55,8 @@ ncjrqB0ebQJBAPqe+jk97pazkSKqIyXogpApZ1EbJHHJblS4HU/FAq0wZHMqvDmy
 UrR/L011DTtXD9TRv0Wwts7w00aIl0e1UQBSx9QMCzo//O/CorRSMC15JPF3aQej
 m/oD+Bx58kjw7CDfauMCQGV7dPtWmA6DbparS8Z59Fx25XpN6+asw+Krrq3iGqpf
 /E8LtHSUdiUZztQN0oUUCEh8C//2NRDUK5M2Y7kjF+Y=
------END RSA PRIVATE KEY-----""",
-            'eap_user_file': '* TLS'
-        },
-        'client': {
-            'client_cert':
-"""-----BEGIN CERTIFICATE-----
+-----END RSA PRIVATE KEY-----"""
+client_cert_1 = """-----BEGIN CERTIFICATE-----
 MIIDKjCCApOgAwIBAgIDEAACMA0GCSqGSIb3DQEBBAUAMG8xCzAJBgNVBAYTAlVT
 MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MTMw
 MQYDVQQDEypjaHJvbWVsYWItd2lmaS10ZXN0YmVkLXJvb3QubXR2Lmdvb2dsZS5j
@@ -81,7 +64,7 @@ b20wHhcNMTAwODExMDAyODMwWhcNMTEwODExMDAyODMwWjBxMQswCQYDVQQGEwJV
 UzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzE1
 MDMGA1UEAxMsY2hyb21lbGFiLXdpZmktdGVzdGJlZC1jbGllbnQubXR2Lmdvb2ds
 ZS5jb20wgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAJu8uIlc6Ags6KS2bwqO
-flfILS//9YHJ/ch5GIC6PjA9HCUFlQSVuUb+igZ/CLZ+mTEiC76xVUD5GgZdJdHb
+ flfILS//9YHJ/ch5GIC6PjA9HCUFlQSVuUb+igZ/CLZ+mTEiC76xVUD5GgZdJdHb
 lX0uTC6dI1N42pOklBNl3S3uXXyNGk1Ztg+6Lom/VKw1srlIKHIT/iMVYtzbt3+q
 hXOEjSMbMQb2hivwwV5kQSdDAgMBAAGjgdEwgc4wCQYDVR0TBAIwADAdBgNVHQ4E
 FgQUMGYODAgMy1ohCO7Aau20Zw3lSO8wgaEGA1UdIwSBmTCBloAUcOVpdmBX+u5k
@@ -91,9 +74,8 @@ d2lmaS10ZXN0YmVkLXJvb3QubXR2Lmdvb2dsZS5jb22CCQDQDITctpXlijANBgkq
 hkiG9w0BAQQFAAOBgQAqUk+8N8NLGnLvNdRXYG2krhptGHO9h0YHjOh+xxOUcBis
 DiSKG0/M5ucqGOJmF5DTDNVCLkjOcd69Zv+a/eFohlZ4K3rWo0vQs77e9rtkepB1
 N+6M3dMP8Z9dhfgUp3ha84mSBY6qguNFKzSUZsBQ6JF5xxhjBRHP/5t/Sz2k2A==
------END CERTIFICATE-----""",
-            'private_key':
-"""-----BEGIN RSA PRIVATE KEY-----
+-----END CERTIFICATE-----"""
+client_private_key_1 = """-----BEGIN RSA PRIVATE KEY-----
 MIICXQIBAAKBgQCbvLiJXOgILOiktm8Kjn5XyC0v//WByf3IeRiAuj4wPRwlBZUE
 lblG/ooGfwi2fpkxIgu+sVVA+RoGXSXR25V9LkwunSNTeNqTpJQTZd0t7l18jRpN
 WbYPui6Jv1SsNbK5SChyE/4jFWLc27d/qoVzhI0jGzEG9oYr8MFeZEEnQwIDAQAB
@@ -107,15 +89,8 @@ gDK7Q28MV/xtrvlvo2J1Slod/6sZ681U9BECQQCToBzh5hVZth4x0qwg0XgjmmO0
 gkXC5TBrh3CjTnqQl8Iw0FLTqasbDLZC/UCdUgltmsRTL/44Vlx1TZAyGQ4HtKBX
 eiLgI+jE9pNSs1FpRg3RAkBAxoAqiYyT9W222119Qt6PdJDTNI/YxKpDfnwRZm84
 7x3V0FVuaN1GW9g4VMSsearlmgYizfRliaIrD+15Bg9Q
------END RSA PRIVATE KEY-----""",
-        }
-    },
-
-
-    'cert2': {
-        'router': {
-            'ca_cert':
-"""-----BEGIN CERTIFICATE-----
+-----END RSA PRIVATE KEY-----"""
+ca_cert_2 = """-----BEGIN CERTIFICATE-----
 MIIDNDCCAp2gAwIBAgIJAPCOBeiGsMUzMA0GCSqGSIb3DQEBBQUAMHAxCzAJBgNV
 BAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBW
 aWV3MTQwMgYDVQQDEytjaHJvbWVsYWItd2lmaS10ZXN0YmVkMi1yb290Lm10di5n
@@ -134,9 +109,8 @@ MAMBAf8wDQYJKoZIhvcNAQEFBQADgYEAOcPgWGaHVj/UZBFOV3QutkNb/tsvHFEX
 xVn641V1gw52jVHvM+DFhXmoRjk9JTgT0g6ALj10ehw0zOI0jxV27x30sLRE+op7
 t++4i/fcz1VvuwhFxDRXjoY8BO+1lYUOtsapRHHASZvU1Wf+AhO2N9xtvlckFxpS
 wK+1l98+x4o=
------END CERTIFICATE-----""",
-            'server_cert':
-"""-----BEGIN CERTIFICATE-----
+-----END CERTIFICATE-----"""
+server_cert_2 = """-----BEGIN CERTIFICATE-----
 MIIDQDCCAqmgAwIBAgIDEAABMA0GCSqGSIb3DQEBBAUAMHAxCzAJBgNVBAYTAlVT
 MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MTQw
 MgYDVQQDEytjaHJvbWVsYWItd2lmaS10ZXN0YmVkMi1yb290Lm10di5nb29nbGUu
@@ -155,9 +129,8 @@ bGUuY29tggkA8I4F6IawxTMwDQYJKoZIhvcNAQEEBQADgYEAUQzJuYutS5Zi9DuI
 CKVAyM7pR0poJkK33xwXT2Z3gMpQcNXO66omPdsoXi6aYt2Kmp3XJSAE2Ev+0EKQ
 Lvu56jV19Sw4MBuF94Gd0Ts3Ps8/FB8yyQQ3f2qGWAYg4S37HsK+NIz5fsgzvW5X
 tctFQRntW1evuf4y+hWaBtmpF8M=
------END CERTIFICATE-----""",
-            'private_key':
-"""-----BEGIN RSA PRIVATE KEY-----
+-----END CERTIFICATE-----"""
+server_private_key_2 = """-----BEGIN RSA PRIVATE KEY-----
 MIICXQIBAAKBgQDM/lh3KY0JcGWGUPmYrkyb0fekb7x8vHuggq8p5rcNnzKMZ39A
 ryMyjgRZxwVj6MjemPA7uCYjqe2VTnJsIv7b0Y9uNG2gD3O9WYPTWCAYQNb6slUo
 hQAs+UJP/zmNzAMdLOpC30amPnvqg/nL+e/iISQnOavJm/jqkbG2fFbppQIDAQAB
@@ -171,12 +144,8 @@ tUktNFJPSdeAKUVGS9DpOn+CCHSjBbaeV1b9Y+6MY5RswIgCJBhDLpDXjccCQD2f
 3U8LCE6hvxD33IYfsINDHMr5jCNJpXv+MVboavUlQrxOrfpWb5nhtf8uQXq1X/dp
 A6n2za530kN5K7l9ZrkCQQDkRew1VFDPg6baShXwEA327XH/0a/s3pSg3WNXaJ22
 KKkkmvz0gVdObfCRIDf+Tw37tQ00n2hUUefuCnTnNFG/
------END RSA PRIVATE KEY-----""",
-            'eap_user_file': '* TLS'
-        },
-        'client': {
-            'client_cert':
-"""-----BEGIN CERTIFICATE-----
+-----END RSA PRIVATE KEY-----"""
+client_cert_2 = """-----BEGIN CERTIFICATE-----
 MIIDLTCCApagAwIBAgIDEAACMA0GCSqGSIb3DQEBBAUAMHAxCzAJBgNVBAYTAlVT
 MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MTQw
 MgYDVQQDEytjaHJvbWVsYWItd2lmaS10ZXN0YmVkMi1yb290Lm10di5nb29nbGUu
@@ -195,9 +164,8 @@ BgkqhkiG9w0BAQQFAAOBgQAG1VF/2QAD9bLOcRm8lpJflLDVJa9mv+p1p/c3liul
 4djWyL2oQt4mWXuP8DNAXnuJVvSCOJFcSDlDZ3HTLYth8WUgkMwAdXO/mWpF74OS
 8HikHuSK5oymkZB/AiQlnJlOY9nSLrEYQVLcvCfiJhhu+ziyDQlVawPIQqkBtX5y
 qA==
------END CERTIFICATE-----""",
-            'private_key':
-"""-----BEGIN RSA PRIVATE KEY-----
+-----END CERTIFICATE-----"""
+client_private_key_2 = """-----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQC6bcV+ffa0ACi1u9pHXIdABv94nRqAzuCQUPvKRMzFCC289o0l
 3Uk4it/MmRQmWQg7wrDj0vsn7ITCX8d7iStYFTQfkBL8qCcWzfuxQ1tBI65PYbFw
 nL/lx7fJO8oPH5tfxgGepWAX8nh+1mCTQbDluXxywvtrIwQ+NDruXoOYAQIDAQAB
@@ -211,68 +179,4 @@ JZcbNT6l2aj4oY/DLtTN39CiO2k1s5Z455NdRE5YtyYfdGB60pqv3Xschb8CQCfM
 z8pUyZO91XwBDftd4pYjsmmy0+//QgDwTF/4fcMm1lXD4kGWvPFEJCh9/s4+tWFL
 ngMenlXhjeAi4oTd0jcCQBqIFwSDElqUqeqkMtlw14wEJH6XIk+0IVQndBEyb+JN
 Nl40AoKFULXtQNMl7pT8uMj4ScYvRHOKg4RjwO7J+qs=
------END RSA PRIVATE KEY-----""",
-        }
-    }
-}
-
-def insert_conf_file(host, filename, contents):
-    """
-    If config files are too big, the "host.run()" never returns.
-    As a workaround, break the file up into lines and append the
-    file piece by piece
-    """
-    host.run('rm -f %s >/dev/null 2>&1' % filename, ignore_status=True)
-    content_lines = contents.splitlines()
-    while content_lines:
-        buflist = []
-        buflen = 0
-        while content_lines and buflen + len(content_lines[0]) < 200:
-            line = content_lines.pop(0)
-            buflen += len(line) + 1
-            buflist.append(line)
-
-        if not buflist:
-            raise error.TestFail('Cert profile: line too long: %s' %
-                                 content_lines[0])
-        host.run('cat <<EOF >>%s\n%s\nEOF\n' %
-                 (filename, '\n'.join(buflist)))
-
-def router_config(router, cert):
-    """
-    Configure a router, and return the added config parameters
-    """
-    conf = {}
-    # Make sure time-of-day is correct on router
-    router.run('date -us %s' %
-               datetime.datetime.utcnow().strftime('%Y%m%d%H%M.%S'))
-
-    if cert not in cert_info:
-        raise error.TestFail('Cert profile %s not in the configuration' % cert)
-
-    for k, v in cert_info[cert]['router'].iteritems():
-        filename = "/tmp/hostap_%s" % k
-        insert_conf_file(router, filename, v)
-        conf[k] = filename
-
-    conf['eap_server'] = '1'
-    return conf
-
-def client_config(client, cert, ca_auth=None):
-    """
-    Configure a client, and return the added config parameters
-    """
-    if cert not in cert_info:
-       raise error.TestFail("Cert profile %s not in the configuration" % cert)
-
-    client_pkg = '/tmp/pkg-client.pem'
-    info = cert_info[cert]['client']
-    insert_conf_file(client, client_pkg,
-                     '\n'.join([info['client_cert'], info['private_key']]))
-    args = ['chromeos', client_pkg]
-    if ca_auth:
-        ca_cert = '/tmp/ca-cert.pem'
-        cert_src = cert_info[ca_auth]['router']['ca_cert']
-        insert_conf_file(client, ca_cert, cert_src)
-        args.append(ca_cert)
-    return { 'psk':  ':'.join(args) }
+-----END RSA PRIVATE KEY-----"""

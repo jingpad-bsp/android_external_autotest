@@ -8,7 +8,7 @@ from autotest_lib.server import autotest, hosts, subcommand
 from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_host_attributes
-from autotest_lib.server import site_eap_tls
+from autotest_lib.server import site_eap_certs
 from autotest_lib.server import test
 from autotest_lib.client.common_lib import error
 
@@ -320,17 +320,49 @@ class WiFiTest(object):
         self.client_installed_scripts[script_name] = script_client_file
         return script_client_file
 
+    def insert_file(self, host, filename, contents):
+        """
+        If config files are too big, the "host.run()" never returns.
+        As a workaround, break the file up into lines and append the
+        file piece by piece
+        """
+        host.run('rm -f %s >/dev/null 2>&1' % filename, ignore_status=True)
+        content_lines = contents.splitlines()
+        while content_lines:
+            buflist = []
+            buflen = 0
+            while content_lines and buflen + len(content_lines[0]) < 200:
+                line = content_lines.pop(0)
+                buflen += len(line) + 1
+                buflist.append(line)
+
+            if not buflist:
+                raise error.TestFail('Cert profile: line too long: %s' %
+                                         content_lines[0])
+            host.run('cat <<EOF >>%s\n%s\nEOF\n' %
+                     (filename, '\n'.join(buflist)))
+
+    def install_files(self, params):
+        """ Install files on the client or router with the provided
+        contents"""
+
+        systemname = params.get('system', None)
+        if systemname == 'router':
+            system = self.router
+        elif systemname == 'client':
+            system = self.client
+        else:
+            raise error.TestFail('install_files: Must specify router or client')
+
+        for name,contents in params.get('files', {}).iteritems():
+            self.insert_file(system, name, contents)
+
 
     def connect(self, params):
         """ Connect client to AP/router """
 
         script_client_file = self.install_script('site_wlan_connect.py',
                                                  'site_wlan_wait_state.py')
-        if 'eap-tls' in params:
-            params.update(site_eap_tls.client_config(self.client,
-                                                     params['eap-tls'],
-                                                     params.get('server-auth',
-                                                                None)))
 
         flags = []
         if params.get('debug', True):
