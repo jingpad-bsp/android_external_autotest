@@ -26,8 +26,5 @@ class desktopui_FlashSanityCheck(test.test):
 
         # any better pattern matching?
         if self._log_reader.can_find(' Received crash notification for '):
-            # well, there is a crash. sample crash message:
-            # 2010-10-04T19:13:17.923673-07:00 localhost crash_reporter[30712]:
-            # Received crash notification for chrome[29888] sig 11 (ignoring)
-            raise error.TestFail('Browser crashed during test.\nMessage '
-                                 'from /var/log/messages:\n%s' % new_msg)
+            # well, there is a crash.
+            raise error.TestFail('Browser crashed during test.')
