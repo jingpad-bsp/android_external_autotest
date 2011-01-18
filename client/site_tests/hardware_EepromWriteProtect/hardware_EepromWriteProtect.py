@@ -7,17 +7,7 @@ import os
 from autotest_lib.client.bin import factory, test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
-
-
-GPIO_ROOT = '/home/gpio'
-
-
-def init_gpio(gpio_root=GPIO_ROOT):
-    """ initializes GPIO in GPIO_ROOT """
-    if os.path.exists(gpio_root):
-        utils.system("rm -rf '%s'" % gpio_root)
-    utils.system("mkdir '%s'" % (gpio_root))
-    utils.system("/usr/sbin/gpio_setup")
+from autotest_lib.client.common_lib import site_gpio
 
 
 class hardware_EepromWriteProtect(test.test):
@@ -29,17 +19,20 @@ class hardware_EepromWriteProtect(test.test):
     NOTE: This test only verifies write-protection status.
     If you want to enable write protection, run factory_EnableWriteProtect.
     """
-    version = 1
+    version = 2
     verbose = True
 
     def setup(self):
         """ autotest setup procedure """
         self.flashrom = flashrom_util.flashrom_util(verbose=self.verbose)
+        self.gpio = site_gpio.Gpio(error.TestError)
+        self.gpio.setup()
 
     def check_gpio_write_protection(self):
-        init_gpio()
-        status = open(os.path.join(GPIO_ROOT, 'write_protect')).read()
-        status_val = int(status)
+        try:
+            status_val = self.gpio.read('write_protect')
+        except:
+            raise error.TestFail('Cannot read GPIO Write Protection status.')
         if status_val != 1:
             raise error.TestFail('GPIO Write Protection is not enabled')
 
