@@ -32,7 +32,8 @@ class graphics_GLBench(test.test):
 
       # These tests do not draw anything, they can only be used to check
       # performance.
-      no_checksum_tests = set(['mpixels_sec_pixel_read',
+      no_checksum_tests = set(['1280x768_fps_no_fill_compositing',
+                               'mpixels_sec_pixel_read',
                                'mpixels_sec_pixel_read_2',
                                'mpixels_sec_pixel_read_3',
                                'mvtx_sec_attribute_fetch_shader',
@@ -56,7 +57,11 @@ class graphics_GLBench(test.test):
       out_dir = os.path.join(self.autodir, 'deps/glbench/src/out')
 
       cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
-      results = utils.system_output(cmd, retain_output=True).splitlines()
+      try:
+          utils.system("stop ui")
+          results = utils.system_output(cmd, retain_output=True).splitlines()
+      finally:
+          utils.system("start ui")
 
       if results[0].startswith('# board_id: '):
           board_id = results[0].split('board_id:', 1)[1].strip()
