@@ -1,2 +1,6 @@
 # These first entries are due to autotest noise.
 sshd *:ssh
+
+# For the GPS Daemon
+gpsd 127.0.0.1:2947
+gpsd [::1]:2947

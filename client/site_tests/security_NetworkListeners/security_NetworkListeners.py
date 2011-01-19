@@ -22,7 +22,8 @@ class security_NetworkListeners(cros_ui_test.UITest):
         baseline_data = bfile.read()
         baseline_set = set([])
         for line in baseline_data.splitlines():
-            if line[0] != '#': # skip comments
+            line = line.strip()
+            if len(line) != 0 and line[0] != '#': # skip comments
                 baseline_set.add(line)
         bfile.close()
         return baseline_set
