@@ -27,12 +27,6 @@ class platform_DMVerityCorruption(site_verity.VerityImageTest):
           dev.write('A' * 4096)
 
     def run_once(self):
-        # If dm-verity has a different error_behavior specified, then
-        # running this may result in a reboot or invalid test responses.
-        if self.verity.error_behavior != site_verity.ERROR_BEHAVIOR_ERROR:
-            raise error.TestFail('unexpected error_behavior parameter: %d' %
-                                  self.verity.error_behavior)
-
         # Ensure that basic verification is working.
         # This should NOT fail.
         self.mod_and_test(self.mod_nothing, 1, True)

@@ -12,15 +12,17 @@ from autotest_lib.client.common_lib import error, utils
 """ a wrapper for using verity/dm-verity with a test backing store """
 
 # enum for the 3 possible values of the module parameter.
-ERROR_BEHAVIOR_ERROR = 0
-ERROR_BEHAVIOR_REBOOT = 1
-ERROR_BEHAVIOR_IGNORE = 2
+ERROR_BEHAVIOR_ERROR = 'eio'
+ERROR_BEHAVIOR_REBOOT = 'panic'
+ERROR_BEHAVIOR_IGNORE = 'none'
+ERROR_BEHAVIOR_NOTIFIER = 'notify'  # for platform specific behavior.
 
 # Default configuration for verity_image
 DEFAULT_TARGET_NAME = 'verity_image'
 DEFAULT_DEPTH = 1
-DEFAULT_ALG = 'sha256'
+DEFAULT_ALG = 'sha1'
 DEFAULT_IMAGE_SIZE_IN_BLOCKS = 100
+DEFAULT_ERROR_BEHAVIOR = ERROR_BEHAVIOR_ERROR
 # TODO(wad) make this configurable when dm-verity doesn't hard-code 4096.
 BLOCK_SIZE = 4096
 
@@ -80,27 +82,19 @@ class verity_image(object):
 
         self.alg = DEFAULT_ALG
         self.depth = DEFAULT_DEPTH
+        self.error_behavior = DEFAULT_ERROR_BEHAVIOR
+        self.blocks = DEFAULT_IMAGE_SIZE_IN_BLOCKS
         self.file = None
+        self.has_fs = False
         self.hash_file = None
         self.table = None
         self.target_name = DEFAULT_TARGET_NAME
-        self.blocks = DEFAULT_IMAGE_SIZE_IN_BLOCKS
-        self.has_fs = False
 
         self.__initialized = False
-
-    MODPARAM_ERROR_BEHAVIOR = '/sys/module/dm_verity/parameters/error_behavior'
 
     def __init__(self):
         """Sets up the defaults for the object and then calls reset()
         """
-        try:
-          self.error_behavior = int(file(self.MODPARAM_ERROR_BEHAVIOR).read())
-        except IOError, e:
-          self.error_behavior = -1
-          logging.warn('dm_verity in unknown error_behavior mode. '
-                       'System may reboot!')
-          logging.warn('is /sys mounted? is dm_verity compiled in/or loaded?')
         self.reset()
 
     def __del__(self):
@@ -127,6 +121,9 @@ class verity_image(object):
                                                             self.file,
                                                             self.blocks,
                                                             self.hash_file))
+        # The verity tool doesn't include a templated error value.
+        # For now, we add one.
+        self.table += " ERROR_BEHAVIOR"
         logging.info("table is %s" % self.table)
 
     def _append_hash(self):
@@ -142,6 +139,7 @@ class verity_image(object):
         # Update the table with the loop dev
         self.table = self.table.replace('HASH_DEV', self.loop)
         self.table = self.table.replace('ROOT_DEV', self.loop)
+        self.table = self.table.replace('ERROR_BEHAVIOR', self.error_behavior)
 
         utils.system(self.dmsetup_cmd % (self.target_name, self.table))
         self.device = "/dev/mapper/autotest_%s" % self.target_name
@@ -151,7 +149,8 @@ class verity_image(object):
                    target_name,
                    depth=DEFAULT_DEPTH,
                    alg=DEFAULT_ALG,
-                   size_in_blocks=DEFAULT_IMAGE_SIZE_IN_BLOCKS):
+                   size_in_blocks=DEFAULT_IMAGE_SIZE_IN_BLOCKS,
+                   error_behavior=DEFAULT_ERROR_BEHAVIOR):
         """Performs any required system-level initialization before use.
         """
         try:
@@ -167,6 +166,12 @@ class verity_image(object):
         # Reserve some files to use.
         self.file = os.tempnam(tmpdir, '%s.img.' % self.target_name)
         self.hash_file = os.tempnam(tmpdir, '%s.hash.' % self.target_name)
+
+        # Set up the configurable bits.
+        self.alg = alg
+        self.depth = depth
+        self.error_behavior = error_behavior
+        self.blocks = size_in_blocks
 
         self.__initialized = True
         return True
