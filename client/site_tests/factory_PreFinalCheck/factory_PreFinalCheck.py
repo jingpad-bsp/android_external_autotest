@@ -12,16 +12,26 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import site_gpio
 
 
 # TODO(hungte) We may consider using real factory_Verify in the future.
 class MiniVerifier(object):
     """ Simplified version of factory_Verify. """
+    GPIO_ROOT = '/home/gpio'
 
-    def __init__(self):
-        self._gpio = site_gpio.Gpio(error.TestError)
-        self._gpio.setup()
+    def init_gpio(self):
+        """ initializes GPIO in GPIO_ROOT """
+        # TODO(hungte) GPIO initialization should be isolated as site_gpio.py
+        if hasattr(self, 'gpio_ready'):
+            return self.gpio_ready
+        if os.path.exists(self.GPIO_ROOT):
+            utils.system("rm -rf '%s'" % self.GPIO_ROOT)
+        utils.system("mkdir '%s'" % (self.GPIO_ROOT))
+        if utils.system("/usr/sbin/gpio_setup", ignore_status=True) == 0:
+            self.gpio_ready = True
+        else:
+            self.gpio_ready = False
+        return self.gpio_ready
 
     def set_test_info(self, status_file, test_list):
         """ Configures the test list map """
@@ -32,11 +42,15 @@ class MiniVerifier(object):
         """ Reads an unsigned integer from given GPIO entry
             Returns: >=0 for valid data, otherwise failure.
         """
-        try:
-            status = self._gpio.read(filename)
-        except:
+        if not self.init_gpio():
             return -1
-        return status
+        gpio_path = os.path.join(self.GPIO_ROOT, filename)
+        if not os.path.exists(gpio_path):
+            return -1
+        status = open(gpio_path).read().strip()
+        if not status:
+            return -1
+        return int(status)
 
     def check_developer_switch(self):
         """ Checks if developer switch button is disabled """
@@ -58,7 +72,7 @@ class MiniVerifier(object):
 
 
 class factory_PreFinalCheck(test.test):
-    version = 2
+    version = 1
 
     # messages for localization
     MSG_START = ("Press SPACE to start checking for finalization.\n"

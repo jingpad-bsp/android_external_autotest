@@ -9,14 +9,22 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import site_gpio
 
 
+GPIO_ROOT = '/home/gpio'
 GOOGLE_REQUIRED_TESTS = [ 'GRT_HWComponents', 'GRT_DevRec' ]
 
 
+def init_gpio(gpio_root=GPIO_ROOT):
+    """ initializes GPIO in GPIO_ROOT """
+    if os.path.exists(gpio_root):
+        utils.system("rm -rf '%s'" % gpio_root)
+    utils.system("mkdir '%s'" % (gpio_root))
+    utils.system("/usr/sbin/gpio_setup")
+
+
 class factory_Verify(test.test):
-    version = 3
+    version = 2
 
     def alert_bypassed(self, target, times=3):
         """ Alerts user that a required test is bypassed. """
@@ -32,14 +40,9 @@ class factory_Verify(test.test):
             self.alert_bypassed("DEVELOPER SWITCH BUTTON")
             return
 
-        gpio = site_gpio.Gpio(error.TestFail)
-        gpio.setup()
-        property_name = 'developer_switch'
-        try:
-            status_val = gpio.read(property_name)
-        except:
-            raise error.TestFail('Cannot read GPIO value: %s' % property_name)
-
+        init_gpio()
+        status = open(os.path.join(GPIO_ROOT, "developer_switch")).read()
+        status_val = int(status)
         if status_val != 0:
             raise error.TestFail('Developer Switch Button is enabled')
 
