@@ -180,6 +180,11 @@ class desktopui_IBusTest(cros_ui_test.UITest):
                                   'generaluse_global_engine',
                                   'generaluse_system_keyboard_layout'])
 
+        # We ignore preload_engines since ibus-daemon in ibus-1.3 sometimes
+        # reads it, but the daemon in ibus-1.4 does not. The preference is not
+        # important for this test anyway.
+        ignored_unread = set(['generalpreload_engines'])
+
         # These preferences are actually written, but due to a race condition
         # on startup, they can be read by ibus-daemon before chrome connects,
         # and so sometimes they show up as a false failure.
@@ -210,6 +215,7 @@ class desktopui_IBusTest(cros_ui_test.UITest):
         actual_unwritten = set(re.split('\n', match.group(2).strip()))
 
         # Filter out any preferences we're ignoring
+        actual_unread.difference_update(ignored_unread)
         actual_unwritten.difference_update(ignored_unwritten)
 
         new_unread = actual_unread.difference(expected_unread)
