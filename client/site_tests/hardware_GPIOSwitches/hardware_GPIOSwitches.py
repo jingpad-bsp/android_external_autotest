@@ -9,58 +9,27 @@ __author__ = 'nsanders@chromium.org (Nick Sanders)'
 import logging, os
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, site_gpio
 
 class hardware_GPIOSwitches(test.test):
-    version = 1
+    version = 4
 
+    def initialize(self):
+        self._gpio = site_gpio.Gpio(error.TestError)
+        self._gpio.setup()
 
-    def init_sku_table(self):
-        self.sku_table = {
-            # SKU: gpio_read, recovery GPIO, developer mode,
-            # firmware writeprotect
-            'atom-proto': {'gpio_read': self.acpi_gpio_read}
-            }
-
-    def initialize(self, gpio_root='/home/gpio'):
-        # setup gpio's for reading.  Must re-create after each POR
-        if os.path.exists(gpio_root):
-            utils.system("rm -rf %s" % gpio_root)
-        utils.system("mkdir %s" % (gpio_root))
+    def gpio_read(self, name):
         try:
-            utils.system("/usr/sbin/gpio_setup")
-        except error.CmdError:
-            raise error.TestNAError('GPIO setup failed\nGPIO 設定失敗')
-        self._gpio_root=gpio_root
+            return self._gpio.read(name)
+        except:
+            raise error.TestError(
+                    'Unable to read gpio value "%s"\n'
+                    '測試程式無法讀取 gpio 數值 "%s"' % (name, name))
 
     def run_once(self):
-        self.init_sku_table()
-
-        # TODO(nsanders): Detect actual system type here by HWQual ID (?)
-        # and redirect to the correct check.
-        # We're just checking for any Atom here, and hoping for the best.
-        try:
-          utils.system('cat /proc/cpuinfo | grep "model name" | '
-                       'grep -qe "N4[0-9][0-9]"')
-          systemsku = 'atom-proto'
-        except:
-          systemsku = 'unknown'
-
-        # Look up hardware configuration.
-        if systemsku in self.sku_table:
-          table = self.sku_table[systemsku]
-          self.gpio_read = table['gpio_read']
-        else:
-          raise error.TestError('System settings not defined for board %s' %
-                                systemsku)
-
-
         keyvals = {}
         keyvals['level_recovery'] = self.gpio_read('recovery_button')
         keyvals['level_developer'] = self.gpio_read('developer_switch')
         keyvals['level_firmware_writeprotect'] = self.gpio_read('write_protect')
 
         self.write_perf_keyval(keyvals)
-
-    def acpi_gpio_read(self, name):
-        return int(utils.system_output("cat %s/%s" % (self._gpio_root, name)))

@@ -27,6 +27,7 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import site_gpio
 from autotest_lib.client.common_lib import utils
 
 
@@ -69,12 +70,12 @@ class DevRecTest(object):
                   (0.9, 0.9, 0.0, 0.6),
                   (0.9, 0.0, 0.0, 0.6)]
 
-    def __init__(self, devrec_image, gpio_root):
+    def __init__(self, devrec_image, gpio):
         self._devrec_image = devrec_image
         self._successful = set()
         self._deadline = None
         self._success = None
-        self.gpios = DevRecGpio(gpio_root)
+        self.gpios = DevRecGpio(gpio)
 
     def show_arrow(self, context, cx, cy, headx, heady, awidth, length,
                    degrees):
@@ -237,8 +238,8 @@ class DevRecGpio:
     Borrowed from site_tests/hardware_GPIOSwitches.
     '''
 
-    def __init__(self, gpio_root):
-        self._gpio_root = gpio_root
+    def __init__(self, gpio):
+        self._gpio = gpio
         self._cur_gpio = None
         self._gpio_list = []
         self.table = None
@@ -267,8 +268,7 @@ class DevRecGpio:
                     'Unable to locate definition for gpio %s\n'
                     '測試程式找不到 gpio %s' % (name, name))
         try:
-            with open(os.path.join(self._gpio_root, name)) as f:
-                return int(f.read())
+            return self._gpio.read(name)
         except:
             raise error.TestError(
                     'Unable to read gpio value "%s"\n'
@@ -294,19 +294,12 @@ class DevRecGpio:
 
 
 class factory_DeveloperRecovery(test.test):
-    version = 1
+    version = 2
     preserve_srcdir = True
 
-    def initialize(self, gpio_root = '/home/gpio'):
-        # setup gpio's for reading.  Must re-create after each POR
-        if os.path.exists(gpio_root):
-            utils.system("rm -rf %s" % gpio_root)
-        utils.system("mkdir %s" % (gpio_root))
-        try:
-            utils.system("/usr/sbin/gpio_setup")
-        except error.CmdError:
-            raise error.TestNAError('GPIO setup failed\nGPIO 設定失敗')
-        self._gpio_root=gpio_root
+    def initialize(self):
+        self._gpio = site_gpio.Gpio(error.TestError)
+        self._gpio.setup()
 
     def run_once(self, layout=None):
 
@@ -316,7 +309,7 @@ class factory_DeveloperRecovery(test.test):
         dr_image = cairo.ImageSurface.create_from_png('%s.png' % layout)
         image_size = (dr_image.get_width(), dr_image.get_height())
 
-        test = DevRecTest(dr_image, self._gpio_root)
+        test = DevRecTest(dr_image, self._gpio)
 
         drawing_area = gtk.DrawingArea()
         drawing_area.set_size_request(*image_size)
