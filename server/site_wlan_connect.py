@@ -29,6 +29,8 @@ class ConnectStateHandler(StateHandler):
   def __init__(self, dbus_bus, connection_settings, hidden, timeout,
                start_time=None, debug=False, scan_retry=8):
     self.connection_settings = connection_settings
+    self.acquisition_time = None
+    self.authentication_time = None
     self.configuration_time = None
     self.hidden = hidden
     self.service_handle = None
@@ -39,6 +41,10 @@ class ConnectStateHandler(StateHandler):
                           timeout, None, timeout, debug)
     if start_time:
       self.run_start_time = start_time
+
+    self.bus.add_signal_receiver(self.SupplicantChangeCallback,
+                                 signal_name='PropertiesChanged',
+                                 dbus_interface=SUPPLICANT+'.Interface')
 
   def FindService(self, path_list=None):
     service = None
@@ -79,6 +85,9 @@ class ConnectStateHandler(StateHandler):
           self.DoScan()
         return None
 
+    if not self.acquisition_time:
+      self.acquisition_time = time.time()
+
     # If service isn't already connecting or connected, start now
     if (service.GetProperties()['State'] not in ('association', 'configuration',
                                                  'ready')):
@@ -117,6 +126,15 @@ class ConnectStateHandler(StateHandler):
     else:
       return 'config'
 
+  def SupplicantChangeCallback(self, args, **kwargs):
+    if 'State' in args:
+      state = args['State']
+      self.Debug('Supplicant state is \'%s\'' % state)
+      if (not self.authentication_time and
+          (state == 'authenticating' or state == 'associating')):
+        self.authentication_time = time.time()
+      elif state == 'inactive' or state == 'disconnected':
+        self.authentication_time = None
 
 def ErrExit(code):
   try:
@@ -201,20 +219,36 @@ def main(argv):
 
   end = time.time()
   config_start = handler.configuration_time
+  acq_start = handler.acquisition_time
+  if acq_start:
+    acquire_time = acq_start - assoc_start
+    assoc_start = acq_start
+  else:
+    acquire_time = 0.0
+  auth_start = handler.authentication_time
+  if auth_start:
+    wpa_select_time = auth_start - assoc_start
+    assoc_start = auth_start
+  else:
+    wpa_select_time = 0.0
   if config_start:
     config_time = end - config_start
     assoc_time = config_start - assoc_start
   else:
     config_time = 0.0
     assoc_time = end - assoc_start
-
   if not handler.Success():
-    print ('TIMEOUT(%s): ssid %s assoc %3.1f config %3.1f secs state %s' %
-           (handler.Stage(), ssid, assoc_time, config_time, handler.svc_state))
+    print ('TIMEOUT(%s): ssid %s acquire %3.3f wpa_select %3.3f assoc %3.3f '
+           'config %3.3f secs state %s' %
+           (handler.Stage(), ssid, acquire_time, wpa_select_time, assoc_time,
+            config_time,
+            handler.svc_state))
     ErrExit(3)
 
-  print ('OK %3.1f %3.1f %s (assoc and config times in sec, quirks)' %
-         (assoc_time, config_time, str(connect_quirks.keys())))
+  print ('OK %3.3f %3.3f %3.3f %3.3f %s '
+         '(acquire wpa_select assoc and config times in sec, quirks)' %
+         (acquire_time, wpa_select_time, assoc_time, config_time,
+          str(connect_quirks.keys())))
 
   if connect_quirks:
     DumpLogs(logs)

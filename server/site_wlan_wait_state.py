@@ -28,6 +28,7 @@ import gobject
 import subprocess
 
 FLIMFLAM = 'org.chromium.flimflam'
+SUPPLICANT = 'fi.w1.wpa_supplicant1'
 
 bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus(mainloop=bus_loop)
