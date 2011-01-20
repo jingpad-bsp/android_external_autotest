@@ -255,7 +255,7 @@ class DevRecGpio:
             # <default> == 0 || 1
             # <state> == number counts down 0
             'developer_switch': [1, 2],
-            'recovery_button': [1, 2],
+            'recovery_button': [0, 2],
         }
 
         self._gpio_list = self.table.keys()

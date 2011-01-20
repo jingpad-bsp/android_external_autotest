@@ -19,6 +19,17 @@ import shutil
 import sys
 import tempfile
 
+
+CHROMEOS_HWID_FILEPATH = '/sys/devices/platform/chromeos_acpi/HWID'
+CHROMEOS_FWID_FILEPATH = '/sys/devices/platform/chromeos_acpi/FWID'
+GPIO_ATTR_ACTIVE_LOW = 0x00
+GPIO_ATTR_ACTIVE_HIGH = 0x01
+GPIO_ATTR_ACTIVE_MASK = 0x01
+GPIO_NAME_DEVELOPER_SWITCH = 'developer_switch'
+GPIO_NAME_RECOVERY_BUTTON = 'recovery_button'
+GPIO_NAME_WRITE_PROTECT = 'write_protect'
+
+
 class Gpio(object):
     '''
     Utility to access GPIO values.
@@ -35,6 +46,7 @@ class Gpio(object):
     def __init__(self, exception_type=IOError):
         self._gpio_root = None
         self._exception_type = exception_type
+        self._override_attributes = {}
 
     def setup(self, gpio_root=None):
         '''Configures system for processing GPIO.
@@ -62,6 +74,19 @@ class Gpio(object):
 
         self._gpio_root = gpio_root
 
+        # Customization by FWID
+        with open(CHROMEOS_FWID_FILEPATH, 'r') as fwid_file:
+            fwid = fwid_file.read()
+
+        # TODO(hungte) Mario BIOS has a wrong polarity issue for write_protect,
+        # at least up to 0038G6. Once it's fixed in some version, we need to fix
+        # the list (or by HWID).
+        if fwid.startswith('Mario.'):
+            self._override_attributes = {
+                GPIO_NAME_RECOVERY_BUTTON: GPIO_ATTR_ACTIVE_LOW,
+                GPIO_NAME_WRITE_PROTECT: GPIO_ATTR_ACTIVE_HIGH,
+            }
+
     def read(self, name):
         '''Reads an integer value from GPIO.
 
@@ -74,14 +99,31 @@ class Gpio(object):
         gpio_path = os.path.join(self._gpio_root, name)
         assert gpio_path, "GPIO: unknown property: %s" % name
         with open(gpio_path) as f:
-            return int(f.read())
+            raw_value = int(f.read())
+
+        # For newer version of OS, *.attr provides the polarity information of
+        # GPIO pins.  We use polarity = 1 (active high) as default value.
+        attr_path = gpio_path + '.attr'
+        attr = GPIO_ATTR_ACTIVE_HIGH
+        if name in self._override_attributes:
+            attr = self._override_attributes[name]
+        elif os.path.exists(attr_path):
+            with open(attr_path) as f:
+                attr = int(f.read())
+
+        value = raw_value
+        # attributes: bit 0 = polarity (active high=1/low=0)
+        if (attr & GPIO_ATTR_ACTIVE_MASK) == GPIO_ATTR_ACTIVE_LOW:
+            value = int(not raw_value)
+        return value
 
 
 def main():
     gpio = Gpio()
     try:
         gpio.setup()
-        print "developer switch status: %s" % sys.read('developer_switch')
+        print ("developer switch status: %s" %
+               sys.read(GPIO_NAME_DEVELOPER_SWITCH))
     except:
         print "GPIO failed."
         sys.exit(1)
