@@ -40,9 +40,6 @@ std::string GetElementType(const std::string& list_type_string) {
   return list_type_string;
 }
 
-#if IBUS_CHECK_VERSION(1, 3, 99)
-// For ibus-1.4.
-
 // Converts |type_string| into GVariantClass.
 GVariantClass GetGVariantClassFromStringOrDie(const std::string& type_string) {
   if (type_string == "boolean") {
@@ -59,27 +56,6 @@ GVariantClass GetGVariantClassFromStringOrDie(const std::string& type_string) {
   printf("FAIL (unknown type: %s)\n", type_string.c_str());
   abort();
 }
-#else
-// For ibus-1.3.
-// TODO(yusukes): Remove 1.3 code later (http://crosbug.com/10879)
-
-// Converts |type_string| into GType.
-GType GetGValueTypeFromStringOrDie(const std::string& type_string) {
-  if (type_string == "boolean") {
-    return G_TYPE_BOOLEAN;
-  } else if (type_string == "int") {
-    return G_TYPE_INT;
-  } else if (type_string == "double") {
-    return G_TYPE_DOUBLE;
-  } else if (type_string == "string") {
-    return G_TYPE_STRING;
-  } else if (GetElementType(type_string) != type_string) {
-    return G_TYPE_VALUE_ARRAY;
-  }
-  printf("FAIL (unknown type: %s)\n", type_string.c_str());
-  abort();
-}
-#endif
 
 // Unsets a dummy value from ibus config service.
 void UnsetConfigAndPrintResult(IBusConfig* ibus_config) {
@@ -95,8 +71,6 @@ void UnsetConfigAndPrintResult(IBusConfig* ibus_config) {
 // allowed.
 void SetConfigAndPrintResult(
     IBusConfig* ibus_config, const std::string& type_string) {
-#if IBUS_CHECK_VERSION(1, 3, 99)
-  // For ibus-1.4.
   GVariant* variant = NULL;
   GVariantClass klass = GetGVariantClassFromStringOrDie(type_string);
 
@@ -170,54 +144,6 @@ void SetConfigAndPrintResult(
     printf("OK\n");
     return;
   }
-#else
-  // For ibus-1.3.
-  // TODO(yusukes): Remove 1.3 code later (http://crosbug.com/10879)
-  GValue gvalue = {0};
-
-  const GType gtype = GetGValueTypeFromStringOrDie(type_string);
-  g_value_init(&gvalue, gtype);
-  if (gtype == G_TYPE_BOOLEAN) {
-    g_value_set_boolean(&gvalue, kDummyValueBoolean);
-  } else if (gtype == G_TYPE_INT) {
-    g_value_set_int(&gvalue, kDummyValueInt);
-  } else if (gtype == G_TYPE_DOUBLE) {
-    g_value_set_double(&gvalue, kDummyValueDouble);
-  } else if (gtype == G_TYPE_STRING) {
-    g_value_set_string(&gvalue, kDummyValueString);
-  } else if (gtype == G_TYPE_VALUE_ARRAY) {
-    // Process list types.
-    GValueArray* array = g_value_array_new(kArraySize);
-
-    const GType element_gtype
-        = GetGValueTypeFromStringOrDie(GetElementType(type_string));
-    g_assert(element_gtype != G_TYPE_VALUE_ARRAY);
-
-    for (size_t i = 0; i < kArraySize; ++i) {
-      GValue tmp = {0};
-      g_value_init(&tmp, element_gtype);
-      if (element_gtype ==  G_TYPE_BOOLEAN) {
-        g_value_set_boolean(&tmp, kDummyValueBooleanArray[i]);
-      } else if (element_gtype == G_TYPE_INT) {
-        g_value_set_int(&tmp, kDummyValueIntArray[i]);
-      } else if (element_gtype == G_TYPE_DOUBLE) {
-        g_value_set_double(&tmp, kDummyValueDoubleArray[i]);
-      } else if (element_gtype == G_TYPE_STRING) {
-        g_value_set_string(&tmp, kDummyValueStringArray[i]);
-      }
-      g_value_array_append(array, &tmp);
-    }
-
-    g_value_take_boxed(&gvalue, array);
-  }
-
-  if (ibus_config_set_value(
-          ibus_config, kDummySection, kDummyConfigName, &gvalue)) {
-    printf("OK\n");
-    return;
-  }
-#endif
-
   printf("FAIL\n");
 }
 
@@ -225,8 +151,6 @@ void SetConfigAndPrintResult(
 // dummy value is |type_string| type.
 void GetConfigAndPrintResult(
     IBusConfig* ibus_config, const std::string& type_string) {
-#if IBUS_CHECK_VERSION(1, 3, 99)
-  // For ibus-1.4.
   GVariant* variant = ibus_config_get_value(
       ibus_config, kDummySection, kDummyConfigName);
   if (!variant) {
@@ -307,97 +231,12 @@ void GetConfigAndPrintResult(
       printf("FAIL (unknown type)\n");
       return;
   }
-#else
-  // For ibus-1.3.
-  // TODO(yusukes): Remove 1.3 code later (http://crosbug.com/10879)
-  GValue gvalue = {0};
-  if (!ibus_config_get_value(
-          ibus_config, kDummySection, kDummyConfigName, &gvalue)) {
-    printf("FAIL (not found)\n");
-    return;
-  }
-
-  const GType gtype = GetGValueTypeFromStringOrDie(type_string);
-  if (G_VALUE_TYPE(&gvalue) != gtype) {
-    printf("FAIL (type mismatch)\n");
-    return;
-  }
-
-  if (gtype== G_TYPE_BOOLEAN) {
-    if (g_value_get_boolean(&gvalue) != kDummyValueBoolean) {
-      printf("FAIL (value mismatch)\n");
-      return;
-    }
-  } else if (gtype == G_TYPE_INT) {
-    if (g_value_get_int(&gvalue) != kDummyValueInt) {
-      printf("FAIL (value mismatch)\n");
-      return;
-    }
-  } else if (gtype == G_TYPE_DOUBLE) {
-    if (g_value_get_double(&gvalue) != kDummyValueDouble) {
-      // Note: ibus-gconf does not pass this test since it converts a double
-      // value into string to store it on GConf storage. If you want to use
-      // desktopui_IBusTest against ibus-gconf, you have to rewrite the
-      // condition to allow errors.
-      printf("FAIL (value mismatch)\n");
-      return;
-    }
-  } else if (gtype == G_TYPE_STRING) {
-    if (g_value_get_string(&gvalue) != std::string(kDummyValueString)) {
-      printf("FAIL (value mismatch)\n");
-      return;
-    }
-  } else if (gtype == G_TYPE_VALUE_ARRAY) {
-    // Process list types
-    GValueArray* array
-        = reinterpret_cast<GValueArray*>(g_value_get_boxed(&gvalue));
-    if (!array || (array->n_values != kArraySize)) {
-      printf("FAIL (invalid array)\n");
-      return;
-    }
-
-    const GType element_gtype
-        = GetGValueTypeFromStringOrDie(GetElementType(type_string));
-    g_assert(element_gtype != G_TYPE_VALUE_ARRAY);
-
-    for (size_t i = 0; i < kArraySize; ++i) {
-      const GValue* element = &(array->values[i]);
-      if (G_VALUE_TYPE(element) != element_gtype) {
-        printf("FAIL (list type mismatch)\n");
-        return;
-      }
-      bool match = false;
-      if ((element_gtype ==  G_TYPE_BOOLEAN) &&
-          (g_value_get_boolean(element) == kDummyValueBooleanArray[i])) {
-        match = true;
-      } else if ((element_gtype == G_TYPE_INT) &&
-                 (g_value_get_int(element) == kDummyValueIntArray[i])) {
-        match = true;
-      } else if ((element_gtype == G_TYPE_DOUBLE) &&
-                 (g_value_get_double(element) == kDummyValueDoubleArray[i])) {
-        // See my comment about ibus-gconf above.
-        match = true;
-      } else if ((element_gtype == G_TYPE_STRING) &&
-                 (g_value_get_string(element)
-                  == std::string(kDummyValueStringArray[i]))) {
-        match = true;
-      }
-      if (!match) {
-        printf("FAIL (value mismatch)\n");
-        return;
-      }
-    }
-  }
-#endif
-
   printf("OK\n");
 }
 
 // Prints out the array. It is assumed that the array contains STRING values.
 // On success, returns true
 // On failure, prints out "FAIL (error message)" and returns false
-#if IBUS_CHECK_VERSION(1, 3, 99)
-// For ibus-1.4.
 bool PrintArray(GVariant* variant) {
   if (g_variant_classify(variant) != G_VARIANT_CLASS_ARRAY) {
     printf("FAIL (Not an array)\n");
@@ -423,34 +262,10 @@ bool PrintArray(GVariant* variant) {
   }
   return true;
 }
-#else
-// For ibus-1.3.
-// TODO(yusukes): Remove 1.3 code later (http://crosbug.com/10879)
-bool PrintArray(GValue* gvalue) {
-  GValueArray* array =
-      reinterpret_cast<GValueArray*>(g_value_get_boxed(gvalue));
-  for (guint i = 0; array && (i < array->n_values); ++i) {
-    const GType element_type = G_VALUE_TYPE(&(array->values[i]));
-    if (element_type != G_TYPE_STRING) {
-      printf("FAIL (Array element type is not STRING)\n");
-      return false;
-    }
-    const char* value = g_value_get_string(&(array->values[i]));
-    if (!value) {
-      printf("FAIL (Array element type is NULL)\n");
-      return false;
-    }
-    printf("%s\n", value);
-  }
-  return true;
-}
-#endif
 
 // Print out the list of unused config variables from ibus.
 // On failure, prints out "FAIL (error message)" instead.
 void PrintUnused(IBusConfig* ibus_config) {
-#if IBUS_CHECK_VERSION(1, 3, 99)
-  // For ibus-1.4.
   GVariant* unread = NULL;
   GVariant* unwritten = NULL;
   if (!ibus_config_get_unused(ibus_config, &unread, &unwritten)) {
@@ -488,43 +303,6 @@ void PrintUnused(IBusConfig* ibus_config) {
 
   g_variant_unref(unread);
   g_variant_unref(unwritten);
-#else
-  // For ibus-1.3.
-  // TODO(yusukes): Remove 1.3 code later (http://crosbug.com/10879)
-  GValue unread = {0};
-  GValue unwritten = {0};
-  if (!ibus_config_get_unused(ibus_config, &unread, &unwritten)) {
-    printf("FAIL (get_unused failed)\n");
-    return;
-  }
-
-  if (G_VALUE_TYPE(&unread) != G_TYPE_VALUE_ARRAY) {
-    printf("FAIL (unread is not an array)\n");
-    return;
-  }
-
-  if (G_VALUE_TYPE(&unwritten) != G_TYPE_VALUE_ARRAY) {
-    printf("FAIL (unwritten is not an array)\n");
-    return;
-  }
-
-  printf("Unread:\n");
-  if (!PrintArray(&unread)) {
-    g_value_unset(&unread);
-    g_value_unset(&unwritten);
-    return;
-  }
-
-  printf("Unwritten:\n");
-  if (!PrintArray(&unwritten)) {
-    g_value_unset(&unread);
-    g_value_unset(&unwritten);
-    return;
-  }
-
-  g_value_unset(&unread);
-  g_value_unset(&unwritten);
-#endif
 }
 
 // Set the preload engines to those named in the array |engines| of size
@@ -534,8 +312,6 @@ void PrintUnused(IBusConfig* ibus_config) {
 // that the names of the engines are valid.
 void PreloadEnginesAndPrintResult(IBusConfig* ibus_config, int num_engines,
                                   char** engines) {
-#if IBUS_CHECK_VERSION(1, 3, 99)
-  // For ibus-1.4.
   GVariant* variant = NULL;
   GVariantBuilder variant_builder;
   g_variant_builder_init(&variant_builder, G_VARIANT_TYPE("as"));
@@ -551,29 +327,6 @@ void PreloadEnginesAndPrintResult(IBusConfig* ibus_config, int num_engines,
     printf("FAIL\n");
   }
   g_variant_unref(variant);
-#else
-  // For ibus-1.3.
-  // TODO(yusukes): Remove 1.3 code later (http://crosbug.com/10879)
-  GValue gvalue = {0};
-  g_value_init(&gvalue, G_TYPE_VALUE_ARRAY);
-  GValueArray* array = g_value_array_new(num_engines);
-  for (int i = 0; i < num_engines; ++i) {
-    GValue array_element = {0};
-    g_value_init(&array_element, G_TYPE_STRING);
-    g_value_set_string(&array_element, engines[i]);
-    g_value_array_append(array, &array_element);
-  }
-  g_value_take_boxed(&gvalue, array);
-
-  if (ibus_config_set_value(ibus_config, kGeneralSectionName,
-                            kPreloadEnginesConfigName, &gvalue)) {
-    printf("OK\n");
-  } else {
-    printf("FAIL\n");
-  }
-
-  g_value_unset(&gvalue);
-#endif
 }
 
 // Sets |engine_name| as the active IME engine.
@@ -584,12 +337,6 @@ void ActivateEngineAndPrintResult(IBusBus* ibus, const char* engine_name) {
     printf("OK\n");
   }
 }
-
-#if !IBUS_CHECK_VERSION(1, 3, 99)
-// For ibus-1.3.
-// TODO(yusukes): Remove 1.3 code later (http://crosbug.com/10879)
-#define ibus_engine_desc_get_name(d) ((d)->name)
-#endif
 
 // Prints the name of the active IME engine.
 void PrintActiveEngine(IBusBus* ibus) {
@@ -661,18 +408,10 @@ int main(int argc, char **argv) {
   // Other commands need the bus to be connected.
   assert(ibus);
   assert(connected);
-#if IBUS_CHECK_VERSION(1, 3, 99)
   GDBusConnection* ibus_connection = ibus_bus_get_connection(ibus);
   assert(ibus_connection);
   IBusConfig* ibus_config = ibus_config_new(ibus_connection, NULL, NULL);
   assert(ibus_config);
-#else
-  // For ibus-1.3.
-  IBusConnection* ibus_connection = ibus_bus_get_connection(ibus);
-  assert(ibus_connection);
-  IBusConfig* ibus_config = ibus_config_new(ibus_connection);
-  assert(ibus_config);
-#endif
 
   if (command == "list_engines") {
     PrintEngineNames(ibus_bus_list_engines(ibus));
