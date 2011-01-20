@@ -515,8 +515,8 @@ class WiFiTest(object):
             (self.client_debugfs_path, param))
         got = result.stdout.rstrip()       # NB: chop \n
         if got != want:
-            raise error.TestFail("client_check_%s: wanted %s got %s",
-                param, want, got)
+            raise error.TestFail("client_check_%s: wanted %s got %s" %
+                                 (param, want, got))
 
 
     def client_check_bintval(self, params):
