@@ -9,6 +9,7 @@
 # do supplicant restarts to test.
 
 { "name":"Check1x_TTLS",
+  "skip_test":"TTLS functionality not yet implemented",
   "steps":[             # Channel [any]
     [ "create",         { "type":"hostap" } ],
     [ "install_files",  { "system" : "router",
