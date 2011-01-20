@@ -5,12 +5,14 @@
 # This test tries invalid WPA and RSN passprhase lengths.
 { "name":"RSNWPABadKeyLength",
   "steps":[             # Channel [any]
+    # Test passphrase that is too small by one
     [ "!connect",        { "security":"rsn", "psk":"0123456", "hidden":True },
                            "org.chromium.flimflam.Error.InvalidArguments" ],
     [ "!connect",        { "security":"wpa", "psk":"0123456", "hidden":True },
                            "org.chromium.flimflam.Error.InvalidArguments" ],
+    # Test a textual passphrase that is too large by one
     [ "!connect",        { "security":"rsn", "hidden":True,
-                           "psk":"0123456789"
+                           "psk":"x123456789"
                                  "0123456789"
                                  "0123456789"
                                  "0123456789"
@@ -19,13 +21,32 @@
                                  "0123" },
                            "org.chromium.flimflam.Error.InvalidArguments" ],
     [ "!connect",        { "security":"wpa", "hidden":True,
-                           "psk":"0123456789"
+                           "psk":"x123456789"
                                  "0123456789"
                                  "0123456789"
                                  "0123456789"
                                  "0123456789"
                                  "0123456789"
                                  "0123" },
+                           "org.chromium.flimflam.Error.InvalidArguments" ],
+    # Test a hex-only passphrase that is too large by one
+     [ "!connect",        { "security":"rsn", "hidden":True,
+                           "psk":"0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "01234" },
+                           "org.chromium.flimflam.Error.InvalidArguments" ],
+    [ "!connect",        { "security":"wpa", "hidden":True,
+                           "psk":"0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "0123456789"
+                                 "01234" },
                            "org.chromium.flimflam.Error.InvalidArguments" ],
   ],
 }
