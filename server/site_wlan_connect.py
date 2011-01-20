@@ -32,7 +32,10 @@ class ConnectStateHandler(StateHandler):
     self.acquisition_time = None
     self.authentication_time = None
     self.configuration_time = None
+    self.frequency = None
     self.hidden = hidden
+    self.phymode = None
+    self.security = None
     self.service_handle = None
     self.scan_timeout = None
     self.scan_retry = scan_retry
@@ -117,6 +120,10 @@ class ConnectStateHandler(StateHandler):
     # If we entered the "configuration" state, mark that down
     if self.svc_state == 'configuration':
       self.configuration_time = time.time()
+      props = self.service_handle.GetProperties()
+      self.security = props.get('Security', None)
+      self.frequency = props.get('WiFi.Frequency', None)
+      self.phymode = props.get('WiFi.PhyMode', None)
 
   def Stage(self):
     if not self.wait_path:
@@ -245,9 +252,10 @@ def main(argv):
             handler.svc_state))
     ErrExit(3)
 
-  print ('OK %3.3f %3.3f %3.3f %3.3f %s '
+  print ('OK %3.3f %3.3f %3.3f %3.3f %d %s %s %s '
          '(acquire wpa_select assoc and config times in sec, quirks)' %
          (acquire_time, wpa_select_time, assoc_time, config_time,
+          handler.frequency, handler.phymode, handler.security,
           str(connect_quirks.keys())))
 
   if connect_quirks:

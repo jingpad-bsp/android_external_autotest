@@ -72,6 +72,10 @@ class WiFiTest(object):
         self.steps = steps
         self.perf_keyvals = {}
 
+        self.cur_frequency = None;
+        self.cur_phymode = None;
+        self.cur_security = None;
+
         router = config['router']
         self.router = hosts.create_host(router['addr'])
         # NB: truncate SSID to 32 characters
@@ -239,7 +243,7 @@ class WiFiTest(object):
             if 'perf_prefix' in params:
                 self.prefix = '%s_%s' % (method, params.pop('perf_prefix'))
             elif method in self.iterated_steps:
-                self.prefix = '%s_%d' % (method, self.iterated_steps[method])
+                self.prefix = '%s_%02d' % (method, self.iterated_steps[method])
                 self.iterated_steps[method] += 1
             else:
                 self.prefix = method
@@ -295,7 +299,8 @@ class WiFiTest(object):
 
     def write_perf(self, data):
         for key, value in data.iteritems():
-            self.perf_keyvals['%s_%s' % (self.prefix, key)] = value
+            if value is not None:
+                self.perf_keyvals['%s_%s' % (self.prefix, key)] = value
 
     def __get_ipaddr(self, host, ifnet):
         # XXX gotta be a better way to do this
@@ -380,7 +385,8 @@ class WiFiTest(object):
              params.get('config_timeout', self.deftimeout))).stdout.rstrip()
 
         result_times = re.match('OK ([0-9\.]*) ([0-9\.]*) ([0-9\.]*) '
-                                '([0-9\.]*) .*', result)
+                                '([0-9\.]*) ([0-9]+) ([^ ]+) ([a-zA-Z]+) .*',
+                                result)
 
         self.write_perf({'acquire_s': result_times.group(1),
                          'select_s': result_times.group(2),
@@ -392,6 +398,11 @@ class WiFiTest(object):
                 self.write_perf({k:'true'})
 
         print "%s: %s" % (self.name, result)
+        
+        # stash connection state to emit for each test result
+        self.cur_frequency = result_times.group(5)
+        self.cur_phymode = result_times.group(6)
+        self.cur_security = result_times.group(7)
 
         # fetch IP address of wireless device
         self.client_wifi_ip = self.__get_ipaddr(self.client, self.client_wlanif)
@@ -600,7 +611,11 @@ class WiFiTest(object):
 
 
     def __get_pingstats(self, str):
-        stats = {}
+        stats = {
+            'frequency' : self.cur_frequency,
+            'phymode'   : self.cur_phymode,
+            'security'  : self.cur_security,
+        }
         for k in ('xmit', 'recv', 'loss', 'min', 'avg', 'max'):
             stats[k] = '???'
         m = re.search('([0-9]*) packets transmitted,[ ]*([0-9]*)[ ]'
@@ -751,7 +766,14 @@ class WiFiTest(object):
         for rule in ip_rules:
             self.__firewall_close(rule)
 
-        self.write_perf({'test':test, 'mode':mode, 'actual_time':actual_time})
+        self.write_perf({
+            'frequency'  : self.cur_frequency,
+            'phymode'    : self.cur_phymode,
+            'security'   : self.cur_security,
+            'test'       : test,
+            'mode'       : mode,
+            'actual_time': actual_time,
+        })
 
         logging.info(results)
 
@@ -885,7 +907,14 @@ class WiFiTest(object):
         for rule in np_rules:
             self.__firewall_close(rule)
 
-        self.write_perf({'test':test, 'mode':mode, 'actual_time':actual_time})
+        self.write_perf({
+            'frequency'  : self.cur_frequency,
+            'phymode'    : self.cur_phymode,
+            'security'   : self.cur_security,
+            'test'       : test,
+            'mode'       : mode,
+            'actual_time': actual_time,
+        })
 
         logging.info(results)
 
