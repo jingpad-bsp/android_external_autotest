@@ -282,7 +282,7 @@ class WiFiTest(object):
                                       "not match what was expected")
                     logging.error("%s: Step '%s' failed: %s; abort test",
                         self.name, method, str(e))
-                    self.cleanup(params)
+                    self.cleanup({})
                     raise e
             else:
                 logging.error("%s: Step '%s' unknown; abort test",
