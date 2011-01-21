@@ -385,7 +385,7 @@ class WiFiTest(object):
              params.get('config_timeout', self.deftimeout))).stdout.rstrip()
 
         result_times = re.match('OK ([0-9\.]*) ([0-9\.]*) ([0-9\.]*) '
-                                '([0-9\.]*) ([0-9]+) ([^ ]+) ([a-zA-Z]+) .*',
+                                '([0-9\.]*) ([0-9]+) (\S+) (\w+) .*',
                                 result)
 
         self.write_perf({'acquire_s': result_times.group(1),
@@ -398,7 +398,7 @@ class WiFiTest(object):
                 self.write_perf({k:'true'})
 
         print "%s: %s" % (self.name, result)
-        
+
         # stash connection state to emit for each test result
         self.cur_frequency = result_times.group(5)
         self.cur_phymode = result_times.group(6)
