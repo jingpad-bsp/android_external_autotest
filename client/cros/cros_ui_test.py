@@ -10,9 +10,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from dbus.mainloop.glib import DBusGMainLoop
 
-sys.path.append(os.environ.get("SYSROOT", "/usr/local") +
-                "/usr/lib/flimflam/test")
-import flimflam
+from autotest_lib.client.cros import cros_flimflam
 
 
 class UITest(test.test):

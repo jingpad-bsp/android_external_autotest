@@ -5,10 +5,9 @@
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
-import dbus, os, sys
+import dbus
 
-sys.path.append(os.environ.get("SYSROOT", "") + "/usr/local/lib/flimflam/test")
-import flimflam
+from autotest_lib.client.cros import cros_flimflam
 
 class network_3GModemPresent(test.test):
     version = 1

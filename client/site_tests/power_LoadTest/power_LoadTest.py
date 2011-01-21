@@ -2,13 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, shutil, sys, time
+import logging, os, shutil, time
 from autotest_lib.client.bin import site_backchannel, utils
 from autotest_lib.client.common_lib import error, site_power_status
 from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd, login
 
-sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
-import flimflam
+from autotest_lib.client.cros import cros_flimflam
 
 
 params_dict = {
