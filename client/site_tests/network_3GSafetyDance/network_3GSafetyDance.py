@@ -5,11 +5,12 @@
 from autotest_lib.client.bin import site_backchannel, test, utils
 from autotest_lib.client.common_lib import error
 
-import logging, re, socket, string, time, urllib2
+import logging, os, re, socket, string, sys, time, urllib2
 import dbus, dbus.mainloop.glib, gobject
 import random
 
-from autotest_lib.client.cros import cros_flimflam
+sys.path.append(os.environ.get("SYSROOT", "") + "/usr/local/lib/flimflam/test")
+import flimflam
 
 class network_3GSafetyDance(test.test):
     version = 1

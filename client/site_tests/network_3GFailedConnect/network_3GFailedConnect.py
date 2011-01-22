@@ -5,11 +5,13 @@
 from autotest_lib.client.bin import site_backchannel, test, utils
 from autotest_lib.client.common_lib import error
 
-import logging, time
+import logging, os, sys, time
 import dbus, dbus.mainloop.glib, gobject
 
-from autotest_lib.client.cros import cros_flimflam
-import mm
+sys.path.append(os.environ.get("SYSROOT", "/usr/local") +
+                "/usr/lib/flimflam/test")
+
+import flimflam, mm
 
 
 class network_3GFailedConnect(test.test):

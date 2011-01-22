@@ -5,10 +5,12 @@
 from autotest_lib.client.bin import site_backchannel, test, utils
 from autotest_lib.client.common_lib import error
 
+import os, sys
 import dbus, dbus.mainloop.glib, gobject
 import glib
 
-from autotest_lib.client.cros import cros_flimflam
+sys.path.append(os.environ.get("SYSROOT", "") + "/usr/local/lib/flimflam/test")
+import flimflam
 
 class network_3GDormancyDance(test.test):
     version = 1
