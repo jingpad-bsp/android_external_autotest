@@ -15,7 +15,7 @@ listed here must be capable of running in a virtual machine.
 """
 
 job.run_test('build_RootFilesystemSize')
-#job.run_test('desktopui_ChromeFirstRender')
+job.run_test('desktopui_ChromeFirstRender')
 job.run_test('desktopui_FlashSanityCheck')
 job.run_test('desktopui_KillRestart', binary='^chrome$', tag='chrome')
 job.run_test('desktopui_KillRestart', binary='^session_manager$', tag='session')
