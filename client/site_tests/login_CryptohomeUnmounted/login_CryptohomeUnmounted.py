@@ -6,7 +6,10 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test, cryptohome
 
 class login_CryptohomeUnmounted(cros_ui_test.UITest):
-    version = 1
+    version = 2
+
+    def initialize(self, creds='$default'):
+        super(login_CryptohomeUnmounted, self).initialize(creds)
 
 
     def run_once(self):

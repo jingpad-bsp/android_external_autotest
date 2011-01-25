@@ -317,8 +317,10 @@ class UITest(test.test):
 
         if login.logged_in():
             try:
-                shutil.copy(chromeos_constants.CRYPTOHOME_MOUNT_PT+'/chrome',
-                            self.resultsdir+'/chrome_postlogin_log')
+                shutil.copy(
+                    os.path.join(chromeos_constants.CRYPTOHOME_MOUNT_PT,
+                                 'log', 'chrome'),
+                    self.resultsdir+'/chrome_postlogin_log')
             except (IOError, OSError) as error:
                 logging.error(error)
             self.logout()
