@@ -46,6 +46,21 @@ def run_client_test(machine):
   # Run power_x86Settings test with AC power connected
   client_at.run_test('power_x86Settings', tag='AC_ONLINE')
 
+  # Charge battery to at least 50% first
+  client_at.run_test('power_BatteryCharge', percent_target_charge=50,
+                     max_run_time=60*60*4, tag='CHARGE_50')
+
+  remote_power.set_power_off()
+  try:
+    for test in TESTS:
+        client_at.run_test(test)
+
+    if not client_attributes.has_resume_bug:
+        client_at.run_test('power_Resume')
+
+  finally:
+    remote_power.set_power_on()
+
   # Run the 60/20/10/10 load test
   # Charge the battery to at least 99% in preparation for the load
   # test. Charging the battery from empty to full can take up to 4 hours.
@@ -72,24 +87,6 @@ def run_client_test(machine):
                          check_network=False, tag='WIRED')
   finally:
     remote_power.set_power_on()
-
-  # Charge battery to at least 50% first
-  client_at.run_test('power_BatteryCharge', percent_target_charge=50,
-                     max_run_time=60*60*4, tag='CHARGE_50')
-
-  remote_power.set_power_off()
-
-  try:
-    for test in TESTS:
-        client_at.run_test(test)
-
-    if not client_attributes.has_resume_bug:
-        client_at.run_test('power_Resume')
-
-  finally:
-    remote_power.set_power_on()
-
-  # Run jobs with specific parameters
 
 
 job.parallel_on_machines(run_client_test, machines)
