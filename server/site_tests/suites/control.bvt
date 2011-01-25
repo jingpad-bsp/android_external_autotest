@@ -21,6 +21,7 @@ from autotest_lib.server import site_host_attributes
 TESTS = [
   ('platform_AccurateTime', {}),
   ('platform_FilePerms', {}),
+  ('platform_HighResTimers', {}),
   ('platform_KernelVersion', {}),
   ('platform_OSLimits', {}),
   ('platform_PartitionCheck', {}),

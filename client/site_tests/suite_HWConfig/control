@@ -21,6 +21,7 @@ job.run_test('firmware_RomSize',
                           'kb_ec_rom_size >= 128'])
 
 # RTC, system
+job.run_test('platform_HighResTimers')
 job.run_test('power_Resume')
 
 # RAM

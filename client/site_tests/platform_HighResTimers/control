@@ -1,0 +1,19 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "platform_HighResTimers"
+PURPOSE = "Ensure the high resolution timers are working."
+CRITERIA = "Fails if high res timers are not working correctly."
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+DOC = """
+This test uses a function to compare kernels, and will rasie a test error if
+the running kernel version is older than the variable kernel_version.
+"""
+
+job.run_test('platform_HighResTimers')

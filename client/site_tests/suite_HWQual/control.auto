@@ -22,6 +22,7 @@ job.run_test('power_Resume',
              constraints=['seconds_system_resume <= 1.0'])
 
 # Kernel Support
+job.run_test('platform_HighResTimers')
 job.run_test('platform_KernelVersion')
 
 # CPU
