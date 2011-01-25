@@ -5,7 +5,7 @@
 SRCS = platform_MiniJailReadOnlyFS.cc
 TARGET = ../platform_MiniJailReadOnlyFS
 
-LDFLAGS = -lbase -lglib-2.0 -lrt
+LDFLAGS = -lbase -lglib-2.0 -lrt -pthread
 
 all: $(TARGET)
 
