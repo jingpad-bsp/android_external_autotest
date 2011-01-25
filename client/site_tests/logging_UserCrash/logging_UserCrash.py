@@ -30,7 +30,7 @@ class logging_UserCrash(crash_test.CrashTest):
         # Turn off crash filtering so we see the original setting.
         self.disable_crash_filtering()
         output = utils.read_file(self._CORE_PATTERN).rstrip()
-        expected_core_pattern = ('|%s --signal=%%s --pid=%%p' %
+        expected_core_pattern = ('|%s --user=%%p:%%s:%%e' %
                                  self._CRASH_REPORTER_PATH)
         if output != expected_core_pattern:
             raise error.TestFail('core pattern should have been %s, not %s' %
@@ -537,10 +537,16 @@ class logging_UserCrash(crash_test.CrashTest):
             if not result['log']:
                 raise error.TestFail('failed collection had no log')
             log_contents = utils.read_file(result['log'])
+            logging.debug('Log contents were: ' + log_contents)
             if not log_contents.startswith(failure_string):
                 raise error.TestFail('Expected logged error '
                                      '\"%s\" was \"%s\"' %
                                      (failure_string, log_contents))
+            # Verify we are generating appropriate diagnostic output.
+            if ((not '===ps output===' in log_contents) or
+                (not '===dmesg output===' in log_contents) or
+                (not '===meminfo===' in log_contents)):
+                raise error.TestFail('Expected full logs, got: ' + log_contents)
             self._check_generated_report_sending(result['meta'],
                                                  result['log'],
                                                  'root',
@@ -553,13 +559,13 @@ class logging_UserCrash(crash_test.CrashTest):
 
 
     def _test_core2md_failure(self):
-        self._check_collection_failure('--core2md_failure_test',
+        self._check_collection_failure('--core2md_failure',
                                        'Problem during %s [result=1]: Usage:' %
                                        _CORE2MD_PATH)
 
 
     def _test_internal_directory_failure(self):
-        self._check_collection_failure('--directory_failure_test',
+        self._check_collection_failure('--directory_failure',
                                        'Purposefully failing to create')
 
 
