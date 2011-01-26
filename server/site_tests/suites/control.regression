@@ -59,10 +59,12 @@ TESTS = [
   ('login_OwnershipNotRetaken', {}),
   ('login_OwnershipTaken', {}),
   ('login_DBusCalls', {}),
-  ('logging_LogVolume', {'constraints': ['bytes_unexpected <= 100000',
-                                         'files_unexpected <= 50',
-                                         'percent_stateful_used <= 50',
-                                         'percent_unused_patterns <= 70']}),
+# TODO(kmixter): Fix log volume usage, or change test constraints. See http://crosbug.com/11350
+#  ('logging_LogVolume', {'constraints': ['bytes_unexpected <= 100000',
+#                                         'files_unexpected <= 50',
+#                                         'percent_stateful_used <= 50',
+#                                         'percent_unused_patterns <= 70']}),
+#
 # TODO: Until ltp can pass on chromiumos
 #  ('ltp', {}),
   ('network_UdevRename', {}),
