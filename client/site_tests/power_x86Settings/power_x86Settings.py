@@ -92,8 +92,8 @@ class power_x86Settings(test.test):
     def _check_cpu_type(self):
         cpuinfo = utils.read_file('/proc/cpuinfo')
 
-        # Look for Intel Atom 4xx series CPUs
-        match = re.search(r'Intel.*Atom.*N4', cpuinfo)
+        # Look for Intel Atom N4xx or N5xx series CPUs
+        match = re.search(r'Intel.*Atom.*N[45]', cpuinfo)
         if match:
             return True
 
