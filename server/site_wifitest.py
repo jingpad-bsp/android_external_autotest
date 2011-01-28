@@ -1111,6 +1111,31 @@ class WiFiTest(object):
                             (self.client_cmd_flimflam_lib, wifi))
 
 
+    def bgscan_set(self, params):
+        """ Control wpa_supplicant bgscan """
+        opts = ""
+        if params.get('short_interval', None):
+            opts += " BgscanShortInterval=%s" % params['short_interval']
+        if params.get('long_interval', None):
+            opts += " BgscanInterval=%s" % params['long_interval']
+        if params.get('signal', None):
+            opts += " BgscanSignalThreshold=%s" % params['signal']
+        if params.get('method', None):
+            opts += " BgscanMethod=%s" % params['method']
+        self.client.run('%s/test/set-bgscan %s' %
+                        (self.client_cmd_flimflam_lib, opts))
+
+
+    def bgscan_disable(self, params):
+        """ Disable wpa_supplicant bgscan """
+        self.bgscan_set({'method' : 'none'})
+
+
+    def bgscan_enable(self, params):
+        """ Enable wpa_supplicant bgscan """
+        self.bgscan_set({'method' : 'bgscan'})
+
+
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
     def __init__(self, client, cmd):
