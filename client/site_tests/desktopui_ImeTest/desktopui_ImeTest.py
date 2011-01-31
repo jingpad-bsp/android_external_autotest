@@ -349,7 +349,6 @@ class desktopui_ImeTest(cros_ui_test.UITest):
 
         self.test_ibus_start_process()
 
-        self.check_process('candidate_window', user='chronos')
         self.check_process('ibus-daemon', user='chronos')
         self.check_process('ibus-memconf', user='chronos')
 

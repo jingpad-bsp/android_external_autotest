@@ -13,7 +13,6 @@ class desktopui_IBusTest(cros_ui_test.UITest):
 
     def setup(self):
         self._ibus_job = None
-        self._candidate_window_job = None
         self.job.setup_dep(['ibusclient'])
 
 
@@ -273,7 +272,6 @@ class desktopui_IBusTest(cros_ui_test.UITest):
 
         self.test_check_unused_ibus_values()
         self._ibus_job = None
-        self._candidate_window_job = None
         utils.system_output("kill -9 `pgrep ^ibus-daemon$`")
 
 
@@ -282,8 +280,6 @@ class desktopui_IBusTest(cros_ui_test.UITest):
             "su chronos -c '%s'" %
             "/usr/bin/ibus-daemon --panel=disable --cache=none --restart")
         time.sleep(2)
-        self._candidate_window_job = utils.BgJob(
-            "su chronos -c '/opt/google/chrome/candidate_window'")
         start_time = time.time()
         while time.time() - start_time < timeout:
             if os.system('pgrep ^ibus-daemon$') == 0:
