@@ -51,6 +51,7 @@ ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 OWNER_KEY_FILE = WHITELIST_DIR+'/owner.key'
 
 SESSION_MANAGER = 'session_manager'
+SESSION_MANAGER_LOG = '/var/log/session_manager'
 SIGNED_PREFERENCES_FILE = WHITELIST_DIR+'/preferences'
 SPECIAL_CASE_DOMAIN = 'gmail.com'
 

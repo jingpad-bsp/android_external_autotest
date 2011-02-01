@@ -82,6 +82,7 @@ TESTS = [
   ('platform_MiniJailVfsNamespace', {}),
   ('platform_ProcessPrivileges', {}),
   ('platform_Rootdev', {}),
+  ('platform_SessionManagerTerm', {}),
   ('platform_StackProtector', {}),
   ('platform_TempFS', {}),
   ('realtimecomm_GTalkAudioBench', {}),
