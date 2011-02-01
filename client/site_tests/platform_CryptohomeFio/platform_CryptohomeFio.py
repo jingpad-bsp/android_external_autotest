@@ -3,8 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, shutil, tempfile, utils
-from autotest_lib.client.bin import site_login, test
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import login as site_login
 from autotest_lib.client.cros import cryptohome as site_cryptohome
 from autotest_lib.client.cros import constants as chromeos_constants
 
