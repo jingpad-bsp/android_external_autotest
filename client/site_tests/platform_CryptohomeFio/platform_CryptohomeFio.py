@@ -3,9 +3,10 @@
 # found in the LICENSE file.
 
 import logging, os, shutil, tempfile, utils
-from autotest_lib.client.bin import chromeos_constants, site_cryptohome
 from autotest_lib.client.bin import site_login, test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cryptohome as site_cryptohome
+from autotest_lib.client.cros import constants as chromeos_constants
 
 CRYPTOHOMESTRESS_START = '/tmp/cryptohomestress_begin'
 CRYPTOHOMESTRESS_END = '/tmp/cryptohomestress_end'
@@ -38,7 +39,7 @@ class platform_CryptohomeFio(test.test):
         open(CRYPTOHOMESTRESS_START, 'w').close()
 
 
-    def run_once(self, runtime, mount_cryptohome=True, tmpfs=False, 
+    def run_once(self, runtime, mount_cryptohome=True, tmpfs=False,
                  script=None):
         # Mount a test cryptohome vault.
         self.__mount_cryptohome = mount_cryptohome
@@ -63,7 +64,7 @@ class platform_CryptohomeFio(test.test):
              ])
         fio_bin = os.path.join(self.autodir, 'deps/fio/src/fio')
         fio_opts = ''
-        fio = ' '.join([env_vars, fio_bin, fio_opts, 
+        fio = ' '.join([env_vars, fio_bin, fio_opts,
                         os.path.join(self.bindir, self.__script)])
         #TODO: Call fio and collect / parse logs. See hardware_storageFio.
         status =  utils.run(fio)
