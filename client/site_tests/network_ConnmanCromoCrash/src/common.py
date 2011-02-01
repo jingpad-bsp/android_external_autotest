@@ -2,11 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, glib, gobject, os, sys
+import dbus, glib, gobject
 
-import_path = os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test'
-sys.path.append(import_path)
-
+from autotest_lib.client.cros import flimflam_test_path
 import flimflam_test
 
 Modem = flimflam_test.Modem

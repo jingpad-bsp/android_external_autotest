@@ -38,6 +38,8 @@ CRYPTOHOMED_LOG = '/var/log/cryptohomed.log'
 
 DISABLE_BROWSER_RESTART_MAGIC_FILE = '/tmp/disable_chrome_restart'
 
+FLIMFLAM_TEST_PATH = '/usr/lib/flimflam/test/'
+
 LOGGED_IN_MAGIC_FILE = '/var/run/state/logged-in'
 
 LOGIN_PROFILE = USER_DATA_DIR+'/Default'

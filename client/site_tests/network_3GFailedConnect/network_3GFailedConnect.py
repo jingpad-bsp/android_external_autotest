@@ -5,12 +5,10 @@
 from autotest_lib.client.bin import site_backchannel, test, utils
 from autotest_lib.client.common_lib import error
 
-import logging, os, sys, time
+import logging, time
 import dbus, dbus.mainloop.glib, gobject
 
-sys.path.append(os.environ.get("SYSROOT", "/usr/local") +
-                "/usr/lib/flimflam/test")
-
+from autotest_lib.client.cros import flimflam_test_path
 import flimflam, mm
 
 
