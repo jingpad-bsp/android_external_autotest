@@ -225,7 +225,7 @@ class network_3GSmokeTest(test.test):
               logging.info('Sleeping for %.1f seconds', sleep_kludge)
               time.sleep(sleep_kludge)
 
-    def run_once(self, connect_count=30, sleep_kludge=5):
+    def run_once(self, connect_count=5, sleep_kludge=5):
         site_backchannel.setup()
         time.sleep(3)
         self.flim = flimflam.FlimFlam()
