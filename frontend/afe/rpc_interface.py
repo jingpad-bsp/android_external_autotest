@@ -489,7 +489,7 @@ def create_job(name, priority, control_file, control_type,
                timeout=None, max_runtime_hrs=None, run_verify=True,
                email_list='', dependencies=(), reboot_before=None,
                reboot_after=None, parse_failed_repair=None, hostless=False,
-               keyvals=None, drone_set=None):
+               keyvals=None, drone_set=None, image=None):
     """\
     Create and enqueue a job.
 
@@ -519,11 +519,41 @@ def create_job(name, priority, control_file, control_type,
     @param one_time_hosts List of hosts not in the database to run the job on.
     @param atomic_group_name The name of an atomic group to schedule the job on.
     @param drone_set The name of the drone set to run this test on.
+    @param image OS image to install before running job.
 
 
     @returns The created Job id number.
     """
+
+    if image is None:
+        return rpc_utils.create_job_common(
+                **rpc_utils.get_create_job_common_args(locals()))
+
+    # When image is supplied use a known parameterized test already in the
+    # database to pass the OS image path from the front end, through the
+    # scheduler, and finally to autoserv as the --image parameter.
+
+    # The test autoupdate_ParameterizedJob is in afe_autotests and used to
+    # instantiate a Test object and from there a ParameterizedJob.
+    known_test_obj = models.Test.smart_get('autoupdate_ParameterizedJob')
+    known_parameterized_job = models.ParameterizedJob.objects.create(
+            test=known_test_obj)
+
+    # autoupdate_ParameterizedJob has a single parameter, the image parameter,
+    # stored in the table afe_test_parameters.  We retrieve and set this
+    # instance of the parameter to the OS image path.
+    image_parameter = known_test_obj.testparameter_set.get(id=1)
+    known_parameterized_job.parameterizedjobparameter_set.create(
+            test_parameter=image_parameter, parameter_value=image,
+            parameter_type='string')
+
+    # By passing a parameterized_job to create_job_common the job entry in
+    # the afe_jobs table will have the field parameterized_job_id set.
+    # The scheduler uses this id in the afe_parameterized_jobs table to
+    # match this job to our known test, and then with the
+    # afe_parameterized_job_parameters table to get the actual image path.
     return rpc_utils.create_job_common(
+            parameterized_job=known_parameterized_job.id,
             **rpc_utils.get_create_job_common_args(locals()))
 
 

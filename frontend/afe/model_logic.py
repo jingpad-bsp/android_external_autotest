@@ -677,7 +677,9 @@ class ModelExtensions(object):
                 dest_obj = field_obj.rel.to.smart_get(data[field_name],
                                                       valid_only=False)
                 if to_human_readable:
-                    if dest_obj.name_field is not None:
+                    # parameterized_jobs do not have a name_field
+                    if (field_name != 'parameterized_job' and
+                        dest_obj.name_field is not None):
                         data[field_name] = getattr(dest_obj,
                                                    dest_obj.name_field)
                 else:

@@ -251,6 +251,8 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
         if not job:
             job = queue_entry.job
         autoserv_argv += ['-u', job.owner, '-l', job.name]
+        if job.is_image_update_job():
+            autoserv_argv += ['--image', job.update_image_path]
     if verbose:
         autoserv_argv.append('--verbose')
     return autoserv_argv + extra_args

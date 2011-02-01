@@ -362,6 +362,7 @@ class job_create(job_create_or_clone):
     [--one-time-hosts <hosts>] [--email <email>]
     [--dependencies <labels this job is dependent on>]
     [--atomic_group <atomic group name>] [--parse-failed-repair <option>]
+    [--image <http://path/to/image>]
     job_name
 
     Creating a job is rather different from the other create operations,
@@ -423,6 +424,10 @@ class job_create(job_create_or_clone):
         self.parser.add_option('--max_runtime',
                                help='Job maximum runtime in hours')
 
+        self.parser.add_option('-i', '--image',
+                               help='OS image to install before running the '
+                                    'test.')
+
 
     @staticmethod
     def _get_kernel_data(kernel_list, cmdline):
@@ -481,6 +486,8 @@ class job_create(job_create_or_clone):
             tests = [t.strip() for t in options.test.split(',') if t.strip()]
             self.ctrl_file_data['tests'] = tests
 
+        if options.image:
+            self.data['image'] = options.image
 
         if options.reboot_before:
             self.data['reboot_before'] = options.reboot_before.capitalize()

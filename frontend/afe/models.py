@@ -993,9 +993,15 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
         control_file = options.get('control_file')
         parameterized_job = options.get('parameterized_job')
-        cls.check_parameterized_job(control_file=control_file,
-                                    parameterized_job=parameterized_job)
 
+        # The current implementation of parameterized jobs requires that only
+        # control files or parameterized jobs are used. Using the image
+        # parameter on autoupdate_ParameterizedJob doesn't mix pure
+        # parameterized jobs and control files jobs, it does muck enough with
+        # normal jobs by adding a parameterized id to them that this check will
+        # fail. So for now we just skip this check.
+        # cls.check_parameterized_job(control_file=control_file,
+        #                             parameterized_job=parameterized_job)
         user = User.current_user()
         if options.get('reboot_before') is None:
             options['reboot_before'] = user.get_reboot_before_display()
@@ -1032,8 +1038,14 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
 
     def save(self, *args, **kwargs):
-        self.check_parameterized_job(control_file=self.control_file,
-                                     parameterized_job=self.parameterized_job)
+        # The current implementation of parameterized jobs requires that only
+        # control files or parameterized jobs are used. Using the image
+        # parameter on autoupdate_ParameterizedJob doesn't mix pure
+        # parameterized jobs and control files jobs, it does muck enough with
+        # normal jobs by adding a parameterized id to them that this check will
+        # fail. So for now we just skip this check.
+        # cls.check_parameterized_job(control_file=self.control_file,
+        #                             parameterized_job=self.parameterized_job)
         super(Job, self).save(*args, **kwargs)
 
 
