@@ -2,7 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re
+import logging
+import re
+import socket
+import time
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 
@@ -11,31 +15,42 @@ class hardware_GPS(test.test):
     version = 1
 
     def run_once(self):
+        # Default gpsd port. Can be changed in /etc/init/gpsd.conf.
+        gpsd_port = 2947
         match = False
-        gpspipe = utils.system_output('gpspipe -r -n 10', timeout=60)
+        gpsd_started = False
+
+        gpsd_status = utils.system_output('initctl status gpsd')
+        if not 'start/running' in gpsd_status:
+            utils.system('initctl start gpsd')
+            gpsd_started = True
+            for _ in range(10):
+                try:
+                    c = socket.create_connection(('localhost', gpsd_port))
+                except socket.error:
+                    time.sleep(1)
+                    continue
+                c.close()
+                break
+
+        gpspipe = utils.system_output(
+            'gpspipe -r -n 10 localhost:%d' % gpsd_port, timeout=60)
         logging.debug(gpspipe)
         for line in gpspipe.split('\n'):
             line = line.strip()
-            
-            match = re.search(
-                r'^\$GPRMC\,(.*)\,(.*)\,(.*)\,(.*)\,(.*)\,(.*)\,(.*)\,(.*)\,' +
-                r'(.*)\,(.*)\,(.*)\*(.*)$',
-                line)
-                
-            if match:
-                logging.debug('Time = %s', match.group(1))
-                logging.debug('Status = %s', match.group(2))
-                logging.debug('Latitude = %s %s', match.group(3),
-                              match.group(4))
-                logging.debug('Longitude = %s %s', match.group(5),
-                              match.group(6))
-                logging.debug('Speed = %s', match.group(7))
-                logging.debug('Track Angle = %s', match.group(8))
-                logging.debug('Date = %s', match.group(9))
-                logging.debug('Magnetic Variation = %s %s', match.group(10),
-                              match.group(11))
-                break
-                
-        if not match:
-            raise error.TestFail('Unable to find GPS devices')
 
+            # For now - just look for any GPS sentence in the output.
+            match = re.search(
+                r'^\$GP(BOD|BWC|GGA|GLL|GSA|GSV|HDT|R00|RMA|RMB|' +
+                r'RMC|RTE|STN|TRF|VBW|VTG|WPL|XTE|ZDA)',
+                line)
+
+            if match:
+                break
+
+        if gpsd_started:
+            # If it was us who started it - shut it back down.
+            utils.system('initctl stop gpsd')
+
+        if not match:
+            raise error.TestFail('Unable to find GPS device')
