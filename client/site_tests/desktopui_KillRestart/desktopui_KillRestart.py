@@ -10,6 +10,12 @@ class desktopui_KillRestart(test.test):
     version = 1
 
     def run_once(self, binary = 'chrome'):
+        # Ensure the binary is running.
+        utils.poll_for_condition(
+            lambda: os.system('pgrep %s' % binary) == 0,
+            error.TestFail('%s is not running at start of test' % binary),
+            timeout=60)
+
         # Try to kill all running instances of the binary.
         try:
             utils.system('pkill -KILL %s' % binary)
@@ -21,4 +27,5 @@ class desktopui_KillRestart(test.test):
         # doesn't raise an exception if the command fails).
         utils.poll_for_condition(
             lambda: os.system('pgrep %s' % binary) == 0,
-            error.TestFail('%s is not running after kill' % binary))
+            error.TestFail('%s is not running after kill' % binary),
+            timeout=60)
