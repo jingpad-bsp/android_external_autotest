@@ -28,6 +28,7 @@ router     - the IP address of the WiFi AP/Router and the names of the
 import os
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_host_attributes, site_remote_power
 from autotest_lib.server import site_wifitest
 from autotest_lib.server.hosts import ssh_host
