@@ -8,8 +8,8 @@ TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
-This test simply checks if flash segfaults from Chromium browser inside Chromium
-OS.
+This test logs in, opens a new window, and navigates to youtube to check if
+flash doesn't crash the browser.
 """
 
 job.run_test("desktopui_FlashSanityCheck")
