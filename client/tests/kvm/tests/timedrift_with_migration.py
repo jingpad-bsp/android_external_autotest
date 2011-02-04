@@ -1,6 +1,6 @@
-import logging, time, commands, re
+import logging
 from autotest_lib.client.common_lib import error
-import kvm_subprocess, kvm_test_utils, kvm_utils
+import kvm_test_utils
 
 
 def run_timedrift_with_migration(test, params, env):
@@ -17,9 +17,10 @@ def run_timedrift_with_migration(test, params, env):
     @param params: Dictionary with test parameters.
     @param env: Dictionary with the test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
     timeout = int(params.get("login_timeout", 360))
-    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+    session = vm.wait_for_login(timeout=timeout)
 
     # Collect test parameters:
     # Command to run to get the current time
@@ -45,14 +46,12 @@ def run_timedrift_with_migration(test, params, env):
                                                    time_filter_re, time_format)
             session.close()
             # Run current iteration
-            logging.info("Migrating: iteration %d of %d..." %
-                         (i + 1, migration_iterations))
-            vm = kvm_test_utils.migrate(vm, env)
+            logging.info("Migrating: iteration %d of %d...",
+                         (i + 1), migration_iterations)
+            vm.migrate()
             # Log in
             logging.info("Logging in after migration...")
-            session = kvm_utils.wait_for(vm.remote_login, 30, 0, 2)
-            if not session:
-                raise error.TestFail("Could not log in after migration")
+            session = vm.wait_for_login(timeout=30)
             logging.info("Logged in after migration")
             # Get time after current iteration
             (ht1_, gt1_) = kvm_test_utils.get_time(session, time_command,
@@ -61,12 +60,12 @@ def run_timedrift_with_migration(test, params, env):
             host_delta = ht1_ - ht0_
             guest_delta = gt1_ - gt0_
             drift = abs(host_delta - guest_delta)
-            logging.info("Host duration (iteration %d): %.2f" %
-                         (i + 1, host_delta))
-            logging.info("Guest duration (iteration %d): %.2f" %
-                         (i + 1, guest_delta))
-            logging.info("Drift at iteration %d: %.2f seconds" %
-                         (i + 1, drift))
+            logging.info("Host duration (iteration %d): %.2f",
+                         (i + 1), host_delta)
+            logging.info("Guest duration (iteration %d): %.2f",
+                         (i + 1), guest_delta)
+            logging.info("Drift at iteration %d: %.2f seconds",
+                         (i + 1), drift)
             # Fail if necessary
             if drift > drift_threshold_single:
                 raise error.TestFail("Time drift too large at iteration %d: "
@@ -84,12 +83,12 @@ def run_timedrift_with_migration(test, params, env):
     host_delta = ht1 - ht0
     guest_delta = gt1 - gt0
     drift = abs(host_delta - guest_delta)
-    logging.info("Host duration (%d migrations): %.2f" %
-                 (migration_iterations, host_delta))
-    logging.info("Guest duration (%d migrations): %.2f" %
-                 (migration_iterations, guest_delta))
-    logging.info("Drift after %d migrations: %.2f seconds" %
-                 (migration_iterations, drift))
+    logging.info("Host duration (%d migrations): %.2f",
+                 migration_iterations, host_delta)
+    logging.info("Guest duration (%d migrations): %.2f",
+                 migration_iterations, guest_delta)
+    logging.info("Drift after %d migrations: %.2f seconds",
+                 migration_iterations, drift)
 
     # Fail if necessary
     if drift > drift_threshold:

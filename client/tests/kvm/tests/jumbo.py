@@ -3,6 +3,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
 import kvm_test_utils, kvm_utils
 
+
 def run_jumbo(test, params, env):
     """
     Test the RX jumbo frame function of vnics:
@@ -22,9 +23,9 @@ def run_jumbo(test, params, env):
     @param params: Dictionary with the test parameters.
     @param env: Dictionary with test environment.
     """
-
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm)
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
+    session = vm.wait_for_login(timeout=int(params.get("login_timeout", 360)))
     mtu = params.get("mtu", "1500")
     flood_time = params.get("flood_time", "300")
     max_icmp_pkt_size = int(mtu) - 28
@@ -40,11 +41,7 @@ def run_jumbo(test, params, env):
 
         logging.info("Changing the MTU of guest ...")
         guest_mtu_cmd = "ifconfig %s mtu %s" % (ethname , mtu)
-        s, o = session.get_command_status_output(guest_mtu_cmd)
-        if s != 0:
-            logging.error(o)
-            raise error.TestError("Fail to set the MTU of guest NIC: %s" %
-                                  ethname)
+        session.cmd(guest_mtu_cmd)
 
         logging.info("Chaning the MTU of host tap ...")
         host_mtu_cmd = "ifconfig %s mtu %s" % (ifname, mtu)
@@ -92,7 +89,7 @@ def run_jumbo(test, params, env):
         def size_increase_ping(step=random.randrange(90, 110)):
             logging.info("Size increase ping")
             for size in range(0, max_icmp_pkt_size + 1, step):
-                logging.info("Ping %s with size %s" % (ip, size))
+                logging.info("Ping %s with size %s", ip, size)
                 s, o = kvm_test_utils.ping(ip, 1, interface=ifname,
                                            packetsize=size,
                                            hint="do", timeout=1)

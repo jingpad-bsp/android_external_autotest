@@ -1,6 +1,6 @@
-import logging, time, commands, re
+import logging, time
 from autotest_lib.client.common_lib import error
-import kvm_subprocess, kvm_test_utils, kvm_utils
+import kvm_test_utils
 
 
 def run_timedrift_with_stop(test, params, env):
@@ -21,8 +21,9 @@ def run_timedrift_with_stop(test, params, env):
     """
     login_timeout = int(params.get("login_timeout", 360))
     sleep_time = int(params.get("sleep_time", 30))
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm, timeout=login_timeout)
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
+    session = vm.wait_for_login(timeout=login_timeout)
 
     # Collect test parameters:
     # Command to run to get the current time
@@ -48,8 +49,8 @@ def run_timedrift_with_stop(test, params, env):
             (ht0_, gt0_) = kvm_test_utils.get_time(session, time_command,
                                                    time_filter_re, time_format)
             # Run current iteration
-            logging.info("Stop %s second: iteration %d of %d..." %
-                         (stop_time, i + 1, stop_iterations))
+            logging.info("Stop %s second: iteration %d of %d...",
+                         stop_time, (i + 1), stop_iterations)
 
             vm.monitor.cmd("stop")
             time.sleep(stop_time)
@@ -66,12 +67,12 @@ def run_timedrift_with_stop(test, params, env):
             host_delta = ht1_ - ht0_
             guest_delta = gt1_ - gt0_
             drift = abs(host_delta - guest_delta)
-            logging.info("Host duration (iteration %d): %.2f" %
-                         (i + 1, host_delta))
-            logging.info("Guest duration (iteration %d): %.2f" %
-                         (i + 1, guest_delta))
-            logging.info("Drift at iteration %d: %.2f seconds" %
-                         (i + 1, drift))
+            logging.info("Host duration (iteration %d): %.2f",
+                         (i + 1), host_delta)
+            logging.info("Guest duration (iteration %d): %.2f",
+                         (i + 1), guest_delta)
+            logging.info("Drift at iteration %d: %.2f seconds",
+                         (i + 1), drift)
             # Fail if necessary
             if drift > drift_threshold_single:
                 raise error.TestFail("Time drift too large at iteration %d: "
@@ -89,12 +90,12 @@ def run_timedrift_with_stop(test, params, env):
     host_delta = ht1 - ht0
     guest_delta = gt1 - gt0
     drift = abs(host_delta - guest_delta)
-    logging.info("Host duration (%d stops): %.2f" %
-                 (stop_iterations, host_delta))
-    logging.info("Guest duration (%d stops): %.2f" %
-                 (stop_iterations, guest_delta))
-    logging.info("Drift after %d stops: %.2f seconds" %
-                 (stop_iterations, drift))
+    logging.info("Host duration (%d stops): %.2f",
+                 stop_iterations, host_delta)
+    logging.info("Guest duration (%d stops): %.2f",
+                 stop_iterations, guest_delta)
+    logging.info("Drift after %d stops: %.2f seconds",
+                 stop_iterations, drift)
 
     # Fail if necessary
     if drift > drift_threshold:

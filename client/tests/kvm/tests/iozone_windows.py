@@ -1,8 +1,6 @@
-import logging, time, os
-from autotest_lib.client.common_lib import error
+import logging, os
 from autotest_lib.client.bin import utils
 from autotest_lib.client.tests.iozone import postprocessing
-import kvm_subprocess, kvm_test_utils, kvm_utils
 
 
 def run_iozone_windows(test, params, env):
@@ -17,9 +15,10 @@ def run_iozone_windows(test, params, env):
     @param params: Dictionary with the test parameters
     @param env: Dictionary with test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
     timeout = int(params.get("login_timeout", 360))
-    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+    session = vm.wait_for_login(timeout=timeout)
     results_path = os.path.join(test.resultsdir,
                                 'raw_output_%s' % test.iteration)
     analysisdir = os.path.join(test.resultsdir, 'analysis_%s' % test.iteration)
@@ -28,8 +27,7 @@ def run_iozone_windows(test, params, env):
     c = params.get("iozone_cmd")
     t = int(params.get("iozone_timeout"))
     logging.info("Running IOzone command on guest, timeout %ss", t)
-    results = session.get_command_output(command=c, timeout=t,
-                                         print_func=logging.debug)
+    results = session.cmd_output(cmd=c, timeout=t, print_func=logging.debug)
     utils.open_write_close(results_path, results)
 
     # Postprocess the results using the IOzone postprocessing module

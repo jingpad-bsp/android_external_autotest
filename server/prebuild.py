@@ -44,6 +44,7 @@ def init_test(testdir):
         hostname = None
         user = None
         log = True
+        tap_report = False
     return client_setup_job.init_test(options, testdir)
 
 
@@ -61,4 +62,3 @@ def setup(autotest_client_dir, client_test_dir):
     # instantiate a client_test instance.
     client_test = init_test(client_test_dir)
     client_setup_job.setup_test(client_test)
-

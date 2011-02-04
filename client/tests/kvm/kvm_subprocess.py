@@ -189,6 +189,89 @@ import subprocess, time, signal, re, threading, logging
 import common, kvm_utils
 
 
+class ExpectError(Exception):
+    def __init__(self, patterns, output):
+        Exception.__init__(self, patterns, output)
+        self.patterns = patterns
+        self.output = output
+
+    def _pattern_str(self):
+        if len(self.patterns) == 1:
+            return "pattern %r" % self.patterns[0]
+        else:
+            return "patterns %r" % self.patterns
+
+    def __str__(self):
+        return ("Unknown error occurred while looking for %s    (output: %r)" %
+                (self._pattern_str(), self.output))
+
+
+class ExpectTimeoutError(ExpectError):
+    def __str__(self):
+        return ("Timeout expired while looking for %s    (output: %r)" %
+                (self._pattern_str(), self.output))
+
+
+class ExpectProcessTerminatedError(ExpectError):
+    def __init__(self, patterns, status, output):
+        ExpectError.__init__(self, patterns, output)
+        self.status = status
+
+    def __str__(self):
+        return ("Process terminated while looking for %s    "
+                "(status: %s,    output: %r)" % (self._pattern_str(),
+                                                 self.status, self.output))
+
+
+class ShellError(Exception):
+    def __init__(self, cmd, output):
+        Exception.__init__(self, cmd, output)
+        self.cmd = cmd
+        self.output = output
+
+    def __str__(self):
+        return ("Could not execute shell command %r    (output: %r)" %
+                (self.cmd, self.output))
+
+
+class ShellTimeoutError(ShellError):
+    def __str__(self):
+        return ("Timeout expired while waiting for shell command to "
+                "complete: %r    (output: %r)" % (self.cmd, self.output))
+
+
+class ShellProcessTerminatedError(ShellError):
+    # Raised when the shell process itself (e.g. ssh, netcat, telnet)
+    # terminates unexpectedly
+    def __init__(self, cmd, status, output):
+        ShellError.__init__(self, cmd, output)
+        self.status = status
+
+    def __str__(self):
+        return ("Shell process terminated while waiting for command to "
+                "complete: %r    (status: %s,    output: %r)" %
+                (self.cmd, self.status, self.output))
+
+
+class ShellCmdError(ShellError):
+    # Raised when a command executed in a shell terminates with a nonzero
+    # exit code (status)
+    def __init__(self, cmd, status, output):
+        ShellError.__init__(self, cmd, output)
+        self.status = status
+
+    def __str__(self):
+        return ("Shell command failed: %r    (status: %s,    output: %r)" %
+                (self.cmd, self.status, self.output))
+
+
+class ShellStatusError(ShellError):
+    # Raised when the command's exit status cannot be obtained
+    def __str__(self):
+        return ("Could not get exit status of command: %r    (output: %r)" %
+                (self.cmd, self.output))
+
+
 def run_bg(command, termination_func=None, output_func=None, output_prefix="",
            timeout=1.0):
     """
@@ -210,12 +293,12 @@ def run_bg(command, termination_func=None, output_func=None, output_prefix="",
     @param timeout: Time duration (in seconds) to wait for the subprocess to
             terminate before returning
 
-    @return: A kvm_tail object.
+    @return: A Tail object.
     """
-    process = kvm_tail(command=command,
-                       termination_func=termination_func,
-                       output_func=output_func,
-                       output_prefix=output_prefix)
+    process = Tail(command=command,
+                   termination_func=termination_func,
+                   output_func=output_func,
+                   output_prefix=output_prefix)
 
     end_time = time.time() + timeout
     while time.time() < end_time and process.is_alive():
@@ -256,7 +339,7 @@ def run_fg(command, output_func=None, output_prefix="", timeout=1.0):
     return (status, output)
 
 
-class kvm_spawn:
+class Spawn:
     """
     This class is used for spawning and controlling a child process.
 
@@ -268,7 +351,7 @@ class kvm_spawn:
     The text file can be accessed at any time using get_output().
     In addition, the server opens as many pipes as requested by the client and
     writes the output to them.
-    The pipes are requested and accessed by classes derived from kvm_spawn.
+    The pipes are requested and accessed by classes derived from Spawn.
     These pipes are referred to as "readers".
     The server also receives input from the client and sends it to the child
     process.
@@ -552,7 +635,7 @@ _thread_kill_requested = False
 
 def kill_tail_threads():
     """
-    Kill all kvm_tail threads.
+    Kill all Tail threads.
 
     After calling this function no new threads should be started.
     """
@@ -564,12 +647,12 @@ def kill_tail_threads():
     _thread_kill_requested = False
 
 
-class kvm_tail(kvm_spawn):
+class Tail(Spawn):
     """
     This class runs a child process in the background and sends its output in
     real time, line-by-line, to a callback function.
 
-    See kvm_spawn's docstring.
+    See Spawn's docstring.
 
     This class uses a single pipe reader to read data in real time from the
     child process and report it to a given callback function.
@@ -610,10 +693,10 @@ class kvm_tail(kvm_spawn):
         """
         # Add a reader and a close hook
         self._add_reader("tail")
-        self._add_close_hook(kvm_tail._join_thread)
+        self._add_close_hook(Tail._join_thread)
 
         # Init the superclass
-        kvm_spawn.__init__(self, command, id, auto_close, echo, linesep)
+        Spawn.__init__(self, command, id, auto_close, echo, linesep)
 
         # Remember some attributes
         self.termination_func = termination_func
@@ -629,11 +712,11 @@ class kvm_tail(kvm_spawn):
 
 
     def __getinitargs__(self):
-        return kvm_spawn.__getinitargs__(self) + (self.termination_func,
-                                                  self.termination_params,
-                                                  self.output_func,
-                                                  self.output_params,
-                                                  self.output_prefix)
+        return Spawn.__getinitargs__(self) + (self.termination_func,
+                                              self.termination_params,
+                                              self.output_func,
+                                              self.output_params,
+                                              self.output_prefix)
 
 
     def set_termination_func(self, termination_func):
@@ -765,15 +848,15 @@ class kvm_tail(kvm_spawn):
             t.join()
 
 
-class kvm_expect(kvm_tail):
+class Expect(Tail):
     """
     This class runs a child process in the background and provides expect-like
     services.
 
-    It also provides all of kvm_tail's functionality.
+    It also provides all of Tail's functionality.
     """
 
-    def __init__(self, command=None, id=None, auto_close=False, echo=False,
+    def __init__(self, command=None, id=None, auto_close=True, echo=False,
                  linesep="\n", termination_func=None, termination_params=(),
                  output_func=None, output_params=(), output_prefix=""):
         """
@@ -806,13 +889,13 @@ class kvm_expect(kvm_tail):
         self._add_reader("expect")
 
         # Init the superclass
-        kvm_tail.__init__(self, command, id, auto_close, echo, linesep,
-                          termination_func, termination_params,
-                          output_func, output_params, output_prefix)
+        Tail.__init__(self, command, id, auto_close, echo, linesep,
+                      termination_func, termination_params,
+                      output_func, output_params, output_prefix)
 
 
     def __getinitargs__(self):
-        return kvm_tail.__getinitargs__(self)
+        return Tail.__getinitargs__(self)
 
 
     def read_nonblocking(self, timeout=None):
@@ -858,7 +941,7 @@ class kvm_expect(kvm_tail):
 
 
     def read_until_output_matches(self, patterns, filter=lambda x: x,
-                                  timeout=30.0, internal_timeout=None,
+                                  timeout=60, internal_timeout=None,
                                   print_func=None):
         """
         Read using read_nonblocking until a match is found using match_patterns,
@@ -876,13 +959,14 @@ class kvm_expect(kvm_tail):
         @param internal_timeout: The timeout to pass to read_nonblocking
         @param print_func: A function to be used to print the data being read
                 (should take a string parameter)
-        @return: Tuple containing the match index (or None if no match was
-                found) and the data read so far.
+        @return: Tuple containing the match index and the data read so far
+        @raise ExpectTimeoutError: Raised if timeout expires
+        @raise ExpectProcessTerminatedError: Raised if the child process
+                terminates while waiting for output
+        @raise ExpectError: Raised if an unknown error occurs
         """
-        match = None
-        data = ""
-
         fd = self._get_fd("expect")
+        o = ""
         end_time = time.time() + timeout
         while True:
             try:
@@ -890,41 +974,31 @@ class kvm_expect(kvm_tail):
                                         max(0, end_time - time.time()))
             except (select.error, TypeError):
                 break
-            if fd not in r:
-                break
+            if not r:
+                raise ExpectTimeoutError(patterns, o)
             # Read data from child
-            newdata = self.read_nonblocking(internal_timeout)
+            data = self.read_nonblocking(internal_timeout)
+            if not data:
+                break
             # Print it if necessary
-            if print_func and newdata:
-                str = newdata
-                if str.endswith("\n"):
-                    str = str[:-1]
-                for line in str.split("\n"):
+            if print_func:
+                for line in data.splitlines():
                     print_func(line)
-            data += newdata
-
-            done = False
             # Look for patterns
-            match = self.match_patterns(filter(data), patterns)
+            o += data
+            match = self.match_patterns(filter(o), patterns)
             if match is not None:
-                done = True
-            # Check if child has died
-            if not self.is_alive():
-                logging.debug("Process terminated with status %s" %
-                              self.get_status())
-                done = True
-            # Are we done?
-            if done: break
+                return match, o
 
-        # Print some debugging info
-        if match is None and (self.is_alive() or self.get_status() != 0):
-            logging.debug("Timeout elapsed or process terminated. Output:" +
-                          kvm_utils.format_str_for_message(data.strip()))
-
-        return (match, data)
+        # Check if the child has terminated
+        if kvm_utils.wait_for(lambda: not self.is_alive(), 5, 0, 0.1):
+            raise ExpectProcessTerminatedError(patterns, self.get_status(), o)
+        else:
+            # This shouldn't happen
+            raise ExpectError(patterns, o)
 
 
-    def read_until_last_word_matches(self, patterns, timeout=30.0,
+    def read_until_last_word_matches(self, patterns, timeout=60,
                                      internal_timeout=None, print_func=None):
         """
         Read using read_nonblocking until the last word of the output matches
@@ -936,8 +1010,11 @@ class kvm_expect(kvm_tail):
         @param internal_timeout: The timeout to pass to read_nonblocking
         @param print_func: A function to be used to print the data being read
                 (should take a string parameter)
-        @return: A tuple containing the match index (or None if no match was
-                found) and the data read so far.
+        @return: A tuple containing the match index and the data read so far
+        @raise ExpectTimeoutError: Raised if timeout expires
+        @raise ExpectProcessTerminatedError: Raised if the child process
+                terminates while waiting for output
+        @raise ExpectError: Raised if an unknown error occurs
         """
         def get_last_word(str):
             if str:
@@ -950,7 +1027,7 @@ class kvm_expect(kvm_tail):
                                               print_func)
 
 
-    def read_until_last_line_matches(self, patterns, timeout=30.0,
+    def read_until_last_line_matches(self, patterns, timeout=60,
                                      internal_timeout=None, print_func=None):
         """
         Read using read_nonblocking until the last non-empty line of the output
@@ -967,6 +1044,11 @@ class kvm_expect(kvm_tail):
         @param internal_timeout: The timeout to pass to read_nonblocking
         @param print_func: A function to be used to print the data being read
                 (should take a string parameter)
+        @return: A tuple containing the match index and the data read so far
+        @raise ExpectTimeoutError: Raised if timeout expires
+        @raise ExpectProcessTerminatedError: Raised if the child process
+                terminates while waiting for output
+        @raise ExpectError: Raised if an unknown error occurs
         """
         def get_last_nonempty_line(str):
             nonempty_lines = [l for l in str.splitlines() if l.strip()]
@@ -980,12 +1062,12 @@ class kvm_expect(kvm_tail):
                                               print_func)
 
 
-class kvm_shell_session(kvm_expect):
+class ShellSession(Expect):
     """
     This class runs a child process in the background.  It it suited for
     processes that provide an interactive shell, such as SSH and Telnet.
 
-    It provides all services of kvm_expect and kvm_tail.  In addition, it
+    It provides all services of Expect and Tail.  In addition, it
     provides command running services, and a utility function to test the
     process for responsiveness.
     """
@@ -1022,12 +1104,12 @@ class kvm_shell_session(kvm_expect):
         @param prompt: Regular expression describing the shell's prompt line.
         @param status_test_command: Command to be used for getting the last
                 exit status of commands run inside the shell (used by
-                get_command_status_output() and friends).
+                cmd_status_output() and friends).
         """
         # Init the superclass
-        kvm_expect.__init__(self, command, id, auto_close, echo, linesep,
-                            termination_func, termination_params,
-                            output_func, output_params, output_prefix)
+        Expect.__init__(self, command, id, auto_close, echo, linesep,
+                        termination_func, termination_params,
+                        output_func, output_params, output_prefix)
 
         # Remember some attributes
         self.prompt = prompt
@@ -1035,8 +1117,8 @@ class kvm_shell_session(kvm_expect):
 
 
     def __getinitargs__(self):
-        return kvm_expect.__getinitargs__(self) + (self.prompt,
-                                                   self.status_test_command)
+        return Expect.__getinitargs__(self) + (self.prompt,
+                                               self.status_test_command)
 
 
     def set_prompt(self, prompt):
@@ -1085,7 +1167,7 @@ class kvm_shell_session(kvm_expect):
         return False
 
 
-    def read_up_to_prompt(self, timeout=30.0, internal_timeout=None,
+    def read_up_to_prompt(self, timeout=60, internal_timeout=None,
                           print_func=None):
         """
         Read using read_nonblocking until the last non-empty line of the output
@@ -1101,31 +1183,34 @@ class kvm_shell_session(kvm_expect):
         @param print_func: A function to be used to print the data being
                 read (should take a string parameter)
 
-        @return: A tuple containing True/False indicating whether the prompt
-                was found, and the data read so far.
+        @return: The data read so far
+        @raise ExpectTimeoutError: Raised if timeout expires
+        @raise ExpectProcessTerminatedError: Raised if the shell process
+                terminates while waiting for output
+        @raise ExpectError: Raised if an unknown error occurs
         """
-        (match, output) = self.read_until_last_line_matches([self.prompt],
-                                                            timeout,
-                                                            internal_timeout,
-                                                            print_func)
-        return (match is not None, output)
+        m, o = self.read_until_last_line_matches([self.prompt], timeout,
+                                                 internal_timeout, print_func)
+        return o
 
 
-    def get_command_status_output(self, command, timeout=30.0,
-                                  internal_timeout=None, print_func=None):
+    def cmd_output(self, cmd, timeout=60, internal_timeout=None,
+                   print_func=None):
         """
-        Send a command and return its exit status and output.
+        Send a command and return its output.
 
-        @param command: Command to send (must not contain newline characters)
-        @param timeout: The duration (in seconds) to wait until a match is
-                found
+        @param cmd: Command to send (must not contain newline characters)
+        @param timeout: The duration (in seconds) to wait for the prompt to
+                return
         @param internal_timeout: The timeout to pass to read_nonblocking
         @param print_func: A function to be used to print the data being read
                 (should take a string parameter)
 
-        @return: A tuple (status, output) where status is the exit status or
-                None if no exit status is available (e.g. timeout elapsed), and
-                output is the output of command.
+        @return: The output of cmd
+        @raise ShellTimeoutError: Raised if timeout expires
+        @raise ShellProcessTerminatedError: Raised if the shell process
+                terminates while waiting for output
+        @raise ShellError: Raised if an unknown error occurs
         """
         def remove_command_echo(str, cmd):
             if str and str.splitlines()[0] == cmd:
@@ -1135,79 +1220,132 @@ class kvm_shell_session(kvm_expect):
         def remove_last_nonempty_line(str):
             return "".join(str.rstrip().splitlines(True)[:-1])
 
-        # Print some debugging info
-        logging.debug("Sending command: %s" % command)
-
-        # Read everything that's waiting to be read
+        logging.debug("Sending command: %s" % cmd)
         self.read_nonblocking(timeout=0)
+        self.sendline(cmd)
+        try:
+            o = self.read_up_to_prompt(timeout, internal_timeout, print_func)
+        except ExpectError, e:
+            o = remove_command_echo(e.output, cmd)
+            if isinstance(e, ExpectTimeoutError):
+                raise ShellTimeoutError(cmd, o)
+            elif isinstance(e, ExpectProcessTerminatedError):
+                raise ShellProcessTerminatedError(cmd, e.status, o)
+            else:
+                raise ShellError(cmd, o)
 
-        # Send the command and get its output
-        self.sendline(command)
-        (match, output) = self.read_up_to_prompt(timeout, internal_timeout,
-                                                 print_func)
-        # Remove the echoed command from the output
-        output = remove_command_echo(output, command)
-        # If the prompt was not found, return the output so far
-        if not match:
-            return (None, output)
-        # Remove the final shell prompt from the output
-        output = remove_last_nonempty_line(output)
+        # Remove the echoed command and the final shell prompt
+        return remove_last_nonempty_line(remove_command_echo(o, cmd))
 
-        # Send the 'echo ...' command to get the last exit status
-        self.sendline(self.status_test_command)
-        (match, status) = self.read_up_to_prompt(10.0, internal_timeout)
-        if not match:
-            return (None, output)
-        status = remove_command_echo(status, self.status_test_command)
-        status = remove_last_nonempty_line(status)
+
+    def cmd_status_output(self, cmd, timeout=60, internal_timeout=None,
+                          print_func=None):
+        """
+        Send a command and return its exit status and output.
+
+        @param cmd: Command to send (must not contain newline characters)
+        @param timeout: The duration (in seconds) to wait for the prompt to
+                return
+        @param internal_timeout: The timeout to pass to read_nonblocking
+        @param print_func: A function to be used to print the data being read
+                (should take a string parameter)
+
+        @return: A tuple (status, output) where status is the exit status and
+                output is the output of cmd
+        @raise ShellTimeoutError: Raised if timeout expires
+        @raise ShellProcessTerminatedError: Raised if the shell process
+                terminates while waiting for output
+        @raise ShellStatusError: Raised if the exit status cannot be obtained
+        @raise ShellError: Raised if an unknown error occurs
+        """
+        o = self.cmd_output(cmd, timeout, internal_timeout, print_func)
+        try:
+            # Send the 'echo $?' (or equivalent) command to get the exit status
+            s = self.cmd_output(self.status_test_command, 10, internal_timeout)
+        except ShellError:
+            raise ShellStatusError(cmd, o)
+
         # Get the first line consisting of digits only
-        digit_lines = [l for l in status.splitlines() if l.strip().isdigit()]
-        if not digit_lines:
-            return (None, output)
-        status = int(digit_lines[0].strip())
-
-        # Print some debugging info
-        if status != 0:
-            logging.debug("Command failed; status: %d, output:%s", status,
-                          kvm_utils.format_str_for_message(output.strip()))
-
-        return (status, output)
+        digit_lines = [l for l in s.splitlines() if l.strip().isdigit()]
+        if digit_lines:
+            return int(digit_lines[0].strip()), o
+        else:
+            raise ShellStatusError(cmd, o)
 
 
-    def get_command_status(self, command, timeout=30.0, internal_timeout=None,
-                           print_func=None):
+    def cmd_status(self, cmd, timeout=60, internal_timeout=None,
+                   print_func=None):
         """
         Send a command and return its exit status.
 
-        @param command: Command to send
-        @param timeout: The duration (in seconds) to wait until a match is
-                found
+        @param cmd: Command to send (must not contain newline characters)
+        @param timeout: The duration (in seconds) to wait for the prompt to
+                return
         @param internal_timeout: The timeout to pass to read_nonblocking
         @param print_func: A function to be used to print the data being read
                 (should take a string parameter)
 
-        @return: Exit status or None if no exit status is available (e.g.
-                timeout elapsed).
+        @return: The exit status of cmd
+        @raise ShellTimeoutError: Raised if timeout expires
+        @raise ShellProcessTerminatedError: Raised if the shell process
+                terminates while waiting for output
+        @raise ShellStatusError: Raised if the exit status cannot be obtained
+        @raise ShellError: Raised if an unknown error occurs
         """
-        (status, output) = self.get_command_status_output(command, timeout,
-                                                          internal_timeout,
-                                                          print_func)
-        return status
+        s, o = self.cmd_status_output(cmd, timeout, internal_timeout,
+                                      print_func)
+        return s
 
 
-    def get_command_output(self, command, timeout=30.0, internal_timeout=None,
+    def cmd(self, cmd, timeout=60, internal_timeout=None, print_func=None):
+        """
+        Send a command and return its output. If the command's exit status is
+        nonzero, raise an exception.
+
+        @param cmd: Command to send (must not contain newline characters)
+        @param timeout: The duration (in seconds) to wait for the prompt to
+                return
+        @param internal_timeout: The timeout to pass to read_nonblocking
+        @param print_func: A function to be used to print the data being read
+                (should take a string parameter)
+
+        @return: The output of cmd
+        @raise ShellTimeoutError: Raised if timeout expires
+        @raise ShellProcessTerminatedError: Raised if the shell process
+                terminates while waiting for output
+        @raise ShellError: Raised if the exit status cannot be obtained or if
+                an unknown error occurs
+        @raise ShellStatusError: Raised if the exit status cannot be obtained
+        @raise ShellError: Raised if an unknown error occurs
+        @raise ShellCmdError: Raised if the exit status is nonzero
+        """
+        s, o = self.cmd_status_output(cmd, timeout, internal_timeout,
+                                      print_func)
+        if s != 0:
+            raise ShellCmdError(cmd, s, o)
+        return o
+
+
+    def get_command_output(self, cmd, timeout=60, internal_timeout=None,
                            print_func=None):
         """
-        Send a command and return its output.
-
-        @param command: Command to send
-        @param timeout: The duration (in seconds) to wait until a match is
-                found
-        @param internal_timeout: The timeout to pass to read_nonblocking
-        @param print_func: A function to be used to print the data being read
-                (should take a string parameter)
+        Alias for cmd_output() for backward compatibility.
         """
-        (status, output) = self.get_command_status_output(command, timeout,
-                                                          internal_timeout,
-                                                          print_func)
-        return output
+        return self.cmd_output(cmd, timeout, internal_timeout, print_func)
+
+
+    def get_command_status_output(self, cmd, timeout=60, internal_timeout=None,
+                                  print_func=None):
+        """
+        Alias for cmd_status_output() for backward compatibility.
+        """
+        return self.cmd_status_output(cmd, timeout, internal_timeout,
+                                      print_func)
+
+
+    def get_command_status(self, cmd, timeout=60, internal_timeout=None,
+                           print_func=None):
+        """
+        Alias for cmd_status() for backward compatibility.
+        """
+        return self.cmd_status(cmd, timeout, internal_timeout, print_func)

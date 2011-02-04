@@ -7,10 +7,10 @@ Step file creator/editor.
 @version: "20090401"
 """
 
-import pygtk, gtk, gobject, time, os, commands
+import pygtk, gtk, gobject, time, os, commands, logging
 import common
 from autotest_lib.client.common_lib import error
-import kvm_utils, logging, ppm_utils, stepeditor, kvm_monitor
+import kvm_utils, ppm_utils, stepeditor, kvm_monitor
 pygtk.require('2.0')
 
 
@@ -337,7 +337,7 @@ class StepMaker(stepeditor.StepMakerWindow):
 
 
 def run_stepmaker(test, params, env):
-    vm = kvm_utils.env_get_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params.get("main_vm"))
     if not vm:
         raise error.TestError("VM object not found in environment")
     if not vm.is_alive():

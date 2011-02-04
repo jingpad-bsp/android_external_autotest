@@ -1,7 +1,8 @@
-import logging, commands, re
+import logging, re
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
-import kvm_test_utils, kvm_utils
+import kvm_test_utils, kvm_utils, kvm_subprocess
+
 
 def run_ethtool(test, params, env):
     """
@@ -22,7 +23,7 @@ def run_ethtool(test, params, env):
         find a way to get it installed using yum/apt-get/
         whatever
     """
-    def ethtool_get(type):
+    def ethtool_get(f_type):
         feature_pattern = {
             'tx':  'tx.*checksumming',
             'rx':  'rx.*checksumming',
@@ -32,28 +33,32 @@ def run_ethtool(test, params, env):
             'gro': 'generic.*receive.*offload',
             'lro': 'large.*receive.*offload',
             }
-        s, o = session.get_command_status_output("ethtool -k %s" % ethname)
+        o = session.cmd("ethtool -k %s" % ethname)
         try:
-            return re.findall("%s: (.*)" % feature_pattern.get(type), o)[0]
+            return re.findall("%s: (.*)" % feature_pattern.get(f_type), o)[0]
         except IndexError:
-            logging.debug("Could not get %s status" % type)
+            logging.debug("Could not get %s status", f_type)
 
 
-    def ethtool_set(type, status):
+    def ethtool_set(f_type, status):
         """
         Set ethernet device offload status
 
-        @param type: Offload type name
+        @param f_type: Offload type name
         @param status: New status will be changed to
         """
-        logging.info("Try to set %s %s" % (type, status))
+        logging.info("Try to set %s %s", f_type, status)
         if status not in ["off", "on"]:
             return False
-        cmd = "ethtool -K %s %s %s" % (ethname, type, status)
-        if ethtool_get(type) != status:
-            return session.get_command_status(cmd) == 0
-        if ethtool_get(type) != status:
-            logging.error("Fail to set %s %s" % (type, status))
+        cmd = "ethtool -K %s %s %s" % (ethname, f_type, status)
+        if ethtool_get(f_type) != status:
+            try:
+                session.cmd(cmd)
+                return True
+            except:
+                return False
+        if ethtool_get(f_type) != status:
+            logging.error("Fail to set %s %s", f_type, status)
             return False
         return True
 
@@ -74,13 +79,12 @@ def run_ethtool(test, params, env):
         logging.info("Compare md5sum of the files on guest and host")
         host_result = utils.hash_file(name, method="md5")
         try:
-            o = session.get_command_output("md5sum %s" % name)
+            o = session.cmd_output("md5sum %s" % name)
             guest_result = re.findall("\w+", o)[0]
         except IndexError:
             logging.error("Could not get file md5sum in guest")
             return False
-        logging.debug("md5sum: guest(%s), host(%s)" %
-                      (guest_result, host_result))
+        logging.debug("md5sum: guest(%s), host(%s)", guest_result, host_result)
         return guest_result == host_result
 
 
@@ -92,41 +96,48 @@ def run_ethtool(test, params, env):
         @param src: Source host of transfer file
         @return: Tuple (status, error msg/tcpdump result)
         """
-        session2.get_command_status("rm -rf %s" % filename)
-        dd_cmd = "dd if=/dev/urandom of=%s bs=1M count=%s" % (filename,
-                                                   params.get("filesize"))
-        logging.info("Creat file in source host, cmd: %s" % dd_cmd)
+        session2.cmd_output("rm -rf %s" % filename)
+        dd_cmd = ("dd if=/dev/urandom of=%s bs=1M count=%s" %
+                  (filename, params.get("filesize")))
+        failure = (False, "Failed to create file using dd, cmd: %s" % dd_cmd)
+        logging.info("Creating file in source host, cmd: %s", dd_cmd)
         tcpdump_cmd = "tcpdump -lep -s 0 tcp -vv port ssh"
         if src == "guest":
-            s = session.get_command_status(dd_cmd, timeout=360)
             tcpdump_cmd += " and src %s" % guest_ip
-            copy_files_fun = vm.copy_files_from
+            copy_files_from = vm.copy_files_from
+            try:
+                session.cmd_output(dd_cmd, timeout=360)
+            except kvm_subprocess.ShellCmdError, e:
+                return failure
         else:
-            s, o = commands.getstatusoutput(dd_cmd)
             tcpdump_cmd += " and dst %s" % guest_ip
-            copy_files_fun = vm.copy_files_to
-        if s != 0:
-            return (False, "Fail to create file by dd, cmd: %s" % dd_cmd)
+            copy_files_from = vm.copy_files_to
+            try:
+                utils.system(dd_cmd)
+            except error.CmdError, e:
+                return failure
 
         # only capture the new tcp port after offload setup
         original_tcp_ports = re.findall("tcp.*:(\d+).*%s" % guest_ip,
                                       utils.system_output("/bin/netstat -nap"))
         for i in original_tcp_ports:
             tcpdump_cmd += " and not port %s" % i
-        logging.debug("Listen by command: %s" % tcpdump_cmd)
+        logging.debug("Listen using command: %s", tcpdump_cmd)
         session2.sendline(tcpdump_cmd)
-        if not kvm_utils.wait_for(lambda: session.get_command_status(
-                                           "pgrep tcpdump") == 0, 30):
+        if not kvm_utils.wait_for(
+                           lambda:session.cmd_status("pgrep tcpdump") == 0, 30):
             return (False, "Tcpdump process wasn't launched")
 
         logging.info("Start to transfer file")
-        if not copy_files_fun(filename, filename):
-            return (False, "Child process transfer file failed")
+        try:
+            copy_files_from(filename, filename)
+        except kvm_utils.SCPError, e:
+            return (False, "File transfer failed (%s)" % e)
         logging.info("Transfer file completed")
-        if session.get_command_status("killall tcpdump") != 0:
-            return (False, "Could not kill all tcpdump process")
-        s, tcpdump_string = session2.read_up_to_prompt(timeout=60)
-        if not s:
+        session.cmd("killall tcpdump")
+        try:
+            tcpdump_string = session2.read_up_to_prompt(timeout=60)
+        except kvm_subprocess.ExpectError:
             return (False, "Fail to read tcpdump's output")
 
         if not compare_md5sum(filename):
@@ -169,14 +180,12 @@ def run_ethtool(test, params, env):
         return True
 
 
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm,
-                  timeout=int(params.get("login_timeout", 360)))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
+    session = vm.wait_for_login(timeout=int(params.get("login_timeout", 360)))
     # Let's just error the test if we identify that there's no ethtool installed
-    if session.get_command_status("ethtool -h"):
-        raise error.TestError("Command ethtool not installed on guest")
-    session2 = kvm_test_utils.wait_for_login(vm,
-                  timeout=int(params.get("login_timeout", 360)))
+    session.cmd("ethtool -h")
+    session2 = vm.wait_for_login(timeout=int(params.get("login_timeout", 360)))
     mtu = 1514
     feature_status = {}
     filename = "/tmp/ethtool.dd"
@@ -196,24 +205,24 @@ def run_ethtool(test, params, env):
     ethtool_save_params()
     success = True
     try:
-        for type in supported_features:
-            callback = test_matrix[type][0]
-            for i in test_matrix[type][2]:
+        for f_type in supported_features:
+            callback = test_matrix[f_type][0]
+            for i in test_matrix[f_type][2]:
                 if not ethtool_set(i, "off"):
-                    logging.error("Fail to disable %s" % i)
+                    logging.error("Fail to disable %s", i)
                     success = False
-            for i in [f for f in test_matrix[type][1]] + [type]:
+            for i in [f for f in test_matrix[f_type][1]] + [f_type]:
                 if not ethtool_set(i, "on"):
-                    logging.error("Fail to enable %s" % i)
+                    logging.error("Fail to enable %s", i)
                     success = False
             if not callback():
-                raise error.TestFail("Test failed, %s: on" % type)
+                raise error.TestFail("Test failed, %s: on", f_type)
 
-            if not ethtool_set(type, "off"):
-                logging.error("Fail to disable %s" % type)
+            if not ethtool_set(f_type, "off"):
+                logging.error("Fail to disable %s", f_type)
                 success = False
             if not callback(status="off"):
-                raise error.TestFail("Test failed, %s: off" % type)
+                raise error.TestFail("Test failed, %s: off", f_type)
         if not success:
             raise error.TestError("Enable/disable offload function fail")
     finally:

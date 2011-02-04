@@ -1,6 +1,7 @@
 import logging, time, re
 from autotest_lib.client.common_lib import error
-import kvm_test_utils, kvm_utils
+import kvm_test_utils, kvm_utils, kvm_subprocess
+
 
 def run_vlan(test, params, env):
     """
@@ -18,7 +19,6 @@ def run_vlan(test, params, env):
     @param params: Dictionary with the test parameters.
     @param env: Dictionary with test environment.
     """
-
     vm = []
     session = []
     ifname = []
@@ -31,28 +31,26 @@ def run_vlan(test, params, env):
     maximal = int(params.get("maximal"))
     file_size = params.get("file_size")
 
-    vm.append(kvm_test_utils.get_living_vm(env, params.get("main_vm")))
-    vm.append(kvm_test_utils.get_living_vm(env, "vm2"))
+    vm.append(env.get_vm(params["main_vm"]))
+    vm.append(env.get_vm("vm2"))
+    for vm_ in vm:
+        vm_.verify_alive()
 
-    def add_vlan(session, id, iface="eth0"):
-        if session.get_command_status("vconfig add %s %s" % (iface, id)) != 0:
-            raise error.TestError("Fail to add %s.%s" % (iface, id))
+    def add_vlan(session, v_id, iface="eth0"):
+        session.cmd("vconfig add %s %s" % (iface, v_id))
 
-    def set_ip_vlan(session, id, ip, iface="eth0"):
-        iface = "%s.%s" % (iface, id)
-        if session.get_command_status("ifconfig %s %s" % (iface, ip)) != 0:
-            raise error.TestError("Fail to configure ip for %s" % iface)
+    def set_ip_vlan(session, v_id, ip, iface="eth0"):
+        iface = "%s.%s" % (iface, v_id)
+        session.cmd("ifconfig %s %s" % (iface, ip))
 
     def set_arp_ignore(session, iface="eth0"):
         ignore_cmd = "echo 1 > /proc/sys/net/ipv4/conf/all/arp_ignore"
-        if session.get_command_status(ignore_cmd) != 0:
-            raise error.TestError("Fail to set arp_ignore of %s" % session)
+        session.cmd(ignore_cmd)
 
-    def rem_vlan(session, id, iface="eth0"):
+    def rem_vlan(session, v_id, iface="eth0"):
         rem_vlan_cmd = "if [[ -e /proc/net/vlan/%s ]];then vconfig rem %s;fi"
-        iface = "%s.%s" % (iface, id)
-        s = session.get_command_status(rem_vlan_cmd % (iface, iface))
-        return s
+        iface = "%s.%s" % (iface, v_id)
+        return session.cmd_status(rem_vlan_cmd % (iface, iface))
 
     def nc_transfer(src, dst):
         nc_port = kvm_utils.find_free_port(1025, 5334, vm_ip[dst])
@@ -65,27 +63,26 @@ def run_vlan(test, params, env):
         time.sleep(2)
         #send file from src to dst
         send_cmd = send_cmd % (vlan_ip[dst], str(nc_port), "file")
-        if session[src].get_command_status(send_cmd, timeout = 60) != 0:
-            raise error.TestFail ("Fail to send file"
-                                    " from vm%s to vm%s" % (src+1, dst+1))
-        s, o = session[dst].read_up_to_prompt(timeout=60)
-        if s != True:
+        session[src].cmd(send_cmd, timeout=60)
+        try:
+            session[dst].read_up_to_prompt(timeout=60)
+        except kvm_subprocess.ExpectError:
             raise error.TestFail ("Fail to receive file"
                                     " from vm%s to vm%s" % (src+1, dst+1))
         #check MD5 message digest of receive file in dst
-        output = session[dst].get_command_output("md5sum receive").strip()
+        output = session[dst].cmd_output("md5sum receive").strip()
         digest_receive = re.findall(r'(\w+)', output)[0]
         if digest_receive == digest_origin[src]:
-            logging.info("file succeed received in vm %s" % vlan_ip[dst])
+            logging.info("file succeed received in vm %s", vlan_ip[dst])
         else:
-            logging.info("digest_origin is  %s" % digest_origin[src])
-            logging.info("digest_receive is %s" % digest_receive)
+            logging.info("digest_origin is  %s", digest_origin[src])
+            logging.info("digest_receive is %s", digest_receive)
             raise error.TestFail("File transfered differ from origin")
-        session[dst].get_command_status("rm -f receive")
+        session[dst].cmd_output("rm -f receive")
 
     for i in range(2):
-        session.append(kvm_test_utils.wait_for_login(vm[i],
-                       timeout=int(params.get("login_timeout", 360))))
+        session.append(vm[i].wait_for_login(
+            timeout=int(params.get("login_timeout", 360))))
         if not session[i] :
             raise error.TestError("Could not log into guest(vm%d)" % i)
         logging.info("Logged in")
@@ -97,22 +94,16 @@ def run_vlan(test, params, env):
 
         #produce sized file in vm
         dd_cmd = "dd if=/dev/urandom of=file bs=1024k count=%s"
-        if session[i].get_command_status(dd_cmd % file_size) != 0:
-            raise error.TestFail("File producing failed")
+        session[i].cmd(dd_cmd % file_size)
         #record MD5 message digest of file
-        s, output =session[i].get_command_status_output("md5sum file",
-                                                        timeout=60)
-        if s != 0:
-            raise error.TestFail("File MD5_checking failed" )
+        output = session[i].cmd("md5sum file", timeout=60)
         digest_origin.append(re.findall(r'(\w+)', output)[0])
 
         #stop firewall in vm
-        session[i].get_command_status("/etc/init.d/iptables stop")
+        session[i].cmd_output("/etc/init.d/iptables stop")
 
         #load 8021q module for vconfig
-        load_8021q_cmd = "modprobe 8021q"
-        if session[i].get_command_status(load_8021q_cmd) != 0:
-            raise error.TestError("Fail to load 8021q module on VM%s" % i)
+        session[i].cmd("modprobe 8021q")
 
     try:
         for i in range(2):
@@ -123,7 +114,7 @@ def run_vlan(test, params, env):
             set_arp_ignore(session[i], ifname[i])
 
         for vlan in range(1, vlan_num+1):
-            logging.info("Test for vlan %s" % vlan)
+            logging.info("Test for vlan %s", vlan)
 
             logging.info("Ping between vlans")
             interface = ifname[0] + '.' + str(vlan)
@@ -146,15 +137,14 @@ def run_vlan(test, params, env):
                 # we must use a dedicated session becuase the kvm_subprocess
                 # does not have the other method to interrupt the process in
                 # the guest rather than close the session.
-                session_flood = kvm_test_utils.wait_for_login(vm[src],
-                                                              timeout = 60)
+                session_flood = vm[src].wait_for_login(timeout=60)
                 kvm_test_utils.ping(vlan_ip[dst], flood=True,
                                    interface=ifname[src],
                                    session=session_flood, timeout=10)
                 session_flood.close()
 
-            flood_ping(0,1)
-            flood_ping(1,0)
+            flood_ping(0, 1)
+            flood_ping(1, 0)
 
             logging.info("Transfering data through nc")
             nc_transfer(0, 1)
@@ -164,7 +154,7 @@ def run_vlan(test, params, env):
         for vlan in range(1, vlan_num+1):
             rem_vlan(session[0], vlan, ifname[0])
             rem_vlan(session[1], vlan, ifname[1])
-            logging.info("rem vlan: %s" % vlan)
+            logging.info("rem vlan: %s", vlan)
 
     # Plumb/unplumb maximal unber of vlan interfaces
     i = 1

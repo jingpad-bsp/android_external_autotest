@@ -1,6 +1,6 @@
 import re, string, logging
 from autotest_lib.client.common_lib import error
-import kvm_test_utils, kvm_utils, kvm_monitor
+import kvm_monitor
 
 
 def run_physical_resources_check(test, params, env):
@@ -17,9 +17,10 @@ def run_physical_resources_check(test, params, env):
     @param params: Dictionary with the test parameters
     @param env: Dictionary with test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
     timeout = int(params.get("login_timeout", 360))
-    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+    session = vm.wait_for_login(timeout=timeout)
 
     logging.info("Starting physical resources check test")
     logging.info("Values assigned to VM are the values we expect "
@@ -35,8 +36,8 @@ def run_physical_resources_check(test, params, env):
     if expected_cpu_nr != actual_cpu_nr:
         n_fail += 1
         logging.error("CPU count mismatch:")
-        logging.error("    Assigned to VM: %s" % expected_cpu_nr)
-        logging.error("    Reported by OS: %s" % actual_cpu_nr)
+        logging.error("    Assigned to VM: %s", expected_cpu_nr)
+        logging.error("    Reported by OS: %s", actual_cpu_nr)
 
     # Check memory size
     logging.info("Memory size check")
@@ -45,13 +46,14 @@ def run_physical_resources_check(test, params, env):
     if actual_mem != expected_mem:
         n_fail += 1
         logging.error("Memory size mismatch:")
-        logging.error("    Assigned to VM: %s" % expected_mem)
-        logging.error("    Reported by OS: %s" % actual_mem)
+        logging.error("    Assigned to VM: %s", expected_mem)
+        logging.error("    Reported by OS: %s", actual_mem)
 
     # Define a function for checking number of hard drivers & NICs
     def check_num(devices, info_cmd, check_str):
         f_fail = 0
-        expected_num = kvm_utils.get_sub_dict_names(params, devices).__len__()
+        expected_num = params.objects(devices).__len__()
+        o = ""
         try:
             o = vm.monitor.info(info_cmd)
         except kvm_monitor.MonitorError, e:
@@ -63,26 +65,25 @@ def run_physical_resources_check(test, params, env):
         if expected_num != actual_num:
             f_fail += 1
             logging.error("%s number mismatch:")
-            logging.error("    Assigned to VM: %d" % expected_num)
-            logging.error("    Reported by OS: %d" % actual_num)
+            logging.error("    Assigned to VM: %d", expected_num)
+            logging.error("    Reported by OS: %d", actual_num)
         return expected_num, f_fail
 
     logging.info("Hard drive count check")
-    drives_num, f_fail = check_num("images", "block", "type=hd")
-    n_fail += f_fail
+    n_fail += check_num("images", "block", "type=hd")[1]
 
     logging.info("NIC count check")
-    nics_num, f_fail = check_num("nics", "network", "model=")
-    n_fail += f_fail
+    n_fail += check_num("nics", "network", "model=")[1]
 
     # Define a function for checking hard drives & NICs' model
-    def chk_fmt_model(device, fmt_model, info_cmd, str):
+    def chk_fmt_model(device, fmt_model, info_cmd, regexp):
         f_fail = 0
-        devices = kvm_utils.get_sub_dict_names(params, device)
+        devices = params.objects(device)
         for chk_device in devices:
-            expected = kvm_utils.get_sub_dict(params, chk_device).get(fmt_model)
+            expected = params.object_params(chk_device).get(fmt_model)
             if not expected:
                 expected = "rtl8139"
+            o = ""
             try:
                 o = vm.monitor.info(info_cmd)
             except kvm_monitor.MonitorError, e:
@@ -91,8 +92,8 @@ def run_physical_resources_check(test, params, env):
                 logging.error("info/query monitor command failed (%s)",
                               info_cmd)
 
-            device_found = re.findall(str, o)
-            logging.debug("Found devices: %s" % device_found)
+            device_found = re.findall(regexp, o)
+            logging.debug("Found devices: %s", device_found)
             found = False
             for fm in device_found:
                 if expected in fm:
@@ -101,8 +102,8 @@ def run_physical_resources_check(test, params, env):
             if not found:
                 f_fail += 1
                 logging.error("%s model mismatch:")
-                logging.error("    Assigned to VM: %s" % expected)
-                logging.error("    Reported by OS: %s" % device_found)
+                logging.error("    Assigned to VM: %s", expected)
+                logging.error("    Reported by OS: %s", device_found)
         return f_fail
 
     logging.info("NICs model check")
@@ -114,6 +115,7 @@ def run_physical_resources_check(test, params, env):
     n_fail += f_fail
 
     logging.info("Network card MAC check")
+    o = ""
     try:
         o = vm.monitor.info("network")
     except kvm_monitor.MonitorError, e:
@@ -121,26 +123,26 @@ def run_physical_resources_check(test, params, env):
         logging.error(e)
         logging.error("info/query monitor command failed (network)")
     found_mac_addresses = re.findall("macaddr=(\S+)", o)
-    logging.debug("Found MAC adresses: %s" % found_mac_addresses)
+    logging.debug("Found MAC adresses: %s", found_mac_addresses)
 
-    num_nics = len(kvm_utils.get_sub_dict_names(params, "nics"))
+    num_nics = len(params.objects("nics"))
     for nic_index in range(num_nics):
         mac = vm.get_mac_address(nic_index)
         if not string.lower(mac) in found_mac_addresses:
             n_fail += 1
             logging.error("MAC address mismatch:")
-            logging.error("    Assigned to VM (not found): %s" % mac)
+            logging.error("    Assigned to VM (not found): %s", mac)
 
     # Define a function to verify UUID & Serial number
     def verify_device(expect, name, verify_cmd):
         f_fail = 0
         if verify_cmd:
-            actual = session.get_command_output(verify_cmd)
+            actual = session.cmd_output(verify_cmd)
             if not string.upper(expect) in actual:
                 f_fail += 1
                 logging.error("%s mismatch:")
-                logging.error("    Assigned to VM: %s" % string.upper(expect))
-                logging.error("    Reported by OS: %s" % actual)
+                logging.error("    Assigned to VM: %s", string.upper(expect))
+                logging.error("    Reported by OS: %s", actual)
         return f_fail
 
     logging.info("UUID check")

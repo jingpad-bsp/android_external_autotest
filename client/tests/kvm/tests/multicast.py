@@ -1,7 +1,7 @@
 import logging, os, re
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
-import kvm_test_utils
+import kvm_test_utils, kvm_subprocess
 
 
 def run_multicast(test, params, env):
@@ -18,15 +18,15 @@ def run_multicast(test, params, env):
     @param params: Dictionary with the test parameters.
     @param env: Dictionary with test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm,
-                                  timeout=int(params.get("login_timeout", 360)))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
+    session = vm.wait_for_login(timeout=int(params.get("login_timeout", 360)))
 
     def run_guest(cmd):
-        s, o = session.get_command_status_output(cmd)
-        if s:
-            logging.warning('Command %s executed in guest returned exit code '
-                            '%s, output: %s', cmd, s, o.strip())
+        try:
+            session.cmd(cmd)
+        except kvm_subprocess.ShellError, e:
+            logging.warn(e)
 
     def run_host_guest(cmd):
         run_guest(cmd)
@@ -53,11 +53,10 @@ def run_multicast(test, params, env):
     prefix = re.findall("\d+.\d+.\d+", mcast)[0]
     suffix = int(re.findall("\d+", mcast)[-1])
     # copy python script to guest for joining guest to multicast groups
-    mcast_path = os.path.join(test.bindir, "scripts/join_mcast.py")
-    if not vm.copy_files_to(mcast_path, "/tmp"):
-        raise error.TestError("Fail to copy %s to guest" % mcast_path)
-    output = session.get_command_output("python /tmp/join_mcast.py %d %s %d" %
-                                        (mgroup_count, prefix, suffix))
+    mcast_path = os.path.join(test.bindir, "scripts/multicast_guest.py")
+    vm.copy_files_to(mcast_path, "/tmp")
+    output = session.cmd_output("python /tmp/multicast_guest.py %d %s %d" %
+                                (mgroup_count, prefix, suffix))
 
     # if success to join multicast, the process will be paused, and return PID.
     try:
@@ -86,6 +85,6 @@ def run_multicast(test, params, env):
                                      (s, o))
 
     finally:
-        logging.debug(session.get_command_output("ipmaddr show"))
-        session.get_command_output("kill -s SIGCONT %s" % pid)
+        logging.debug(session.cmd_output("ipmaddr show"))
+        session.cmd_output("kill -s SIGCONT %s" % pid)
         session.close()

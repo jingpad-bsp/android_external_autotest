@@ -9,7 +9,7 @@ import logging, re, os, sys, optparse, array, traceback, cPickle
 import common
 import kvm_utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import logging_config, logging_manager
+from autotest_lib.client.common_lib import logging_manager
 
 
 class config:
@@ -32,7 +32,6 @@ class config:
         self.object_cache = []
         self.object_cache_indices = {}
         self.regex_cache = {}
-        self.filename = filename
         self.debug = debug
         if filename:
             self.parse_file(filename)
@@ -46,9 +45,8 @@ class config:
         """
         if not os.path.exists(filename):
             raise IOError("File %s not found" % filename)
-        self.filename = filename
         str = open(filename).read()
-        self.list = self.parse(configreader(str), self.list)
+        self.list = self.parse(configreader(filename, str), self.list)
 
 
     def parse_string(self, str):
@@ -57,7 +55,7 @@ class config:
 
         @param str: String to parse.
         """
-        self.list = self.parse(configreader(str), self.list)
+        self.list = self.parse(configreader('<string>', str, real_file=False), self.list)
 
 
     def fork_and_parse(self, filename=None, str=None):
@@ -297,7 +295,7 @@ class config:
                 # (inside an exception or inside subvariants)
                 if restricted:
                     e_msg = "Using variants in this context is not allowed"
-                    raise error.AutotestError(e_msg)
+                    cr.raise_error(e_msg)
                 if self.debug and not restricted:
                     _debug_print(indented_line,
                                  "Entering variants block (%d dicts in "
@@ -337,20 +335,21 @@ class config:
                     continue
                 if self.debug and not restricted:
                     _debug_print(indented_line, "Entering file %s" % words[1])
-                if self.filename:
-                    filename = os.path.join(os.path.dirname(self.filename),
-                                            words[1])
-                    if os.path.exists(filename):
-                        str = open(filename).read()
-                        list = self.parse(configreader(str), list, restricted)
-                        if self.debug and not restricted:
-                            _debug_print("", "Leaving file %s" % words[1])
-                    else:
-                        logging.warning("Cannot include %s -- file not found",
-                                        filename)
-                else:
-                    logging.warning("Cannot include %s because no file is "
-                                    "currently open", words[1])
+
+                cur_filename = cr.real_filename()
+                if cur_filename is None:
+                    cr.raise_error("'include' is valid only when parsing a file")
+
+                filename = os.path.join(os.path.dirname(cur_filename),
+                                        words[1])
+                if not os.path.exists(filename):
+                    cr.raise_error("Cannot include %s -- file not found" % (filename))
+
+                str = open(filename).read()
+                list = self.parse(configreader(filename, str), list, restricted)
+                if self.debug and not restricted:
+                    _debug_print("", "Leaving file %s" % words[1])
+
                 continue
 
             # Parse multi-line exceptions
@@ -539,15 +538,20 @@ class configreader:
     whose readline() and/or seek() methods seem to be slow.
     """
 
-    def __init__(self, str):
+    def __init__(self, filename, str, real_file=True):
         """
         Initialize the reader.
 
+        @param filename: the filename we're parsing
         @param str: The string to parse.
+        @param real_file: Indicates if filename represents a real file. Defaults to True.
         """
+        self.filename = filename
+        self.is_real_file = real_file
         self.line_index = 0
         self.lines = []
-        for line in str.splitlines():
+        self.real_number = []
+        for num, line in enumerate(str.splitlines()):
             line = line.rstrip().expandtabs()
             stripped_line = line.strip()
             indent = len(line) - len(stripped_line)
@@ -556,7 +560,16 @@ class configreader:
                 or stripped_line.startswith("//")):
                 continue
             self.lines.append((line, stripped_line, indent))
+            self.real_number.append(num + 1)
 
+
+    def real_filename(self):
+        """Returns the filename we're reading, in case it is a real file
+
+        @returns the filename we are parsing, or None in case we're not parsing a real file
+        """
+        if self.is_real_file:
+            return self.filename
 
     def get_next_line(self):
         """
@@ -587,6 +600,18 @@ class configreader:
         Set the current line index.
         """
         self.line_index = index
+
+    def raise_error(self, msg):
+        """Raise an error related to the last line returned by get_next_line()
+        """
+        if self.line_index == 0: # nothing was read. shouldn't happen, but...
+            line_id = 'BEGIN'
+        elif self.line_index >= len(self.lines): # past EOF
+            line_id = 'EOF'
+        else:
+            # line_index is the _next_ line. get the previous one
+            line_id = str(self.real_number[self.line_index-1])
+        raise error.AutotestError("%s:%s: %s" % (self.filename, line_id, msg))
 
 
 # Array structure:
@@ -682,18 +707,21 @@ if __name__ == "__main__":
     options, args = parser.parse_args()
     debug = options.debug
     if args:
-        filename = args[0]
+        filenames = args
     else:
-        filename = os.path.join(os.path.dirname(sys.argv[0]), "tests.cfg")
+        filenames = [os.path.join(os.path.dirname(sys.argv[0]), "tests.cfg")]
 
     # Here we configure the stand alone program to use the autotest
     # logging system.
     logging_manager.configure_logging(kvm_utils.KvmLoggingConfig(),
                                       verbose=debug)
-    dicts = config(filename, debug=debug).get_generator()
+    cfg = config(debug=debug)
+    for fn in filenames:
+        cfg.parse_file(fn)
+    dicts = cfg.get_generator()
     for i, dict in enumerate(dicts):
-        logging.info("Dictionary #%d:", i)
+        print "Dictionary #%d:" % (i)
         keys = dict.keys()
         keys.sort()
         for key in keys:
-            logging.info("    %s = %s", key, dict[key])
+            print "    %s = %s" % (key, dict[key])

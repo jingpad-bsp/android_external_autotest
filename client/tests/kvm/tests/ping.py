@@ -18,9 +18,9 @@ def run_ping(test, params, env):
     @param params: Dictionary with the test parameters.
     @param env: Dictionary with test environment.
     """
-
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm)
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
+    session = vm.wait_for_login(timeout=int(params.get("login_timeout", 360)))
 
     counts = params.get("ping_counts", 100)
     flood_minutes = float(params.get("flood_minutes", 10))
@@ -34,7 +34,8 @@ def run_ping(test, params, env):
         for i, nic in enumerate(nics):
             ip = vm.get_address(i)
             if not ip:
-                logging.error("Could not get the ip of nic index %d", i)
+                logging.error("Could not get the ip of nic index %d: %s",
+                              i, nic)
                 continue
 
             for size in packet_size:

@@ -18,7 +18,7 @@ class job_test_case(unittest.TestCase):
     job_class = job.base_client_job
 
     def setUp(self):
-        self.god = mock.mock_god()
+        self.god = mock.mock_god(ut=self)
         self.god.stub_with(job.base_client_job, '_get_environ_autodir',
                            classmethod(lambda cls: '/adir'))
         self.job = self.job_class.__new__(self.job_class)
@@ -86,6 +86,7 @@ class test_init_minimal_options(abstract_test_init, job_test_case):
             user = None
             log = False
             args = ''
+            tap_report = None
         self.god.stub_function_to_return(job.utils, 'drop_caches', None)
 
         self.job._job_state = base_job_unittest.stub_job_state
@@ -109,7 +110,7 @@ class first_line_comparator(mock.argument_comparator):
 class test_base_job(unittest.TestCase):
     def setUp(self):
         # make god
-        self.god = mock.mock_god()
+        self.god = mock.mock_god(ut=self)
 
         # need to set some environ variables
         self.autodir = "autodir"
@@ -241,6 +242,7 @@ class test_base_job(unittest.TestCase):
         options.hostname = 'localhost'
         options.user = 'my_user'
         options.args = ''
+        options.tap_report = None
         self.job.__init__(self.control, options,
                           extra_copy_cmdline=['more-blah'])
 
@@ -280,6 +282,7 @@ class test_base_job(unittest.TestCase):
         options.hostname = 'localhost'
         options.user = 'my_user'
         options.args = ''
+        options.tap_report = None
         error = Exception('fail')
 
         self.god.stub_function(self.job, '_post_record_init')
@@ -689,6 +692,19 @@ class test_base_job(unittest.TestCase):
         self.assertRaises(error.JobError, self.job.end_reboot_and_verify,
                           91234567, "2.6.16-smp", "sub")
         self.god.check_playback()
+
+
+    def test_parse_args(self):
+        test_set = {"a='foo bar baz' b='moo apt'":
+                    ["a='foo bar baz'", "b='moo apt'"],
+                    "a='foo bar baz' only=gah":
+                    ["a='foo bar baz'", "only=gah"],
+                    "a='b c d' no=argh":
+                    ["a='b c d'", "no=argh"]}
+        for t in test_set:
+            parsed_args = job.base_client_job._parse_args(t)
+            expected_args = test_set[t]
+            self.assertEqual(parsed_args, expected_args)
 
 
 if __name__ == "__main__":

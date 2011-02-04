@@ -1,6 +1,4 @@
-import logging, time
-from autotest_lib.client.common_lib import error
-import kvm_subprocess, kvm_test_utils, kvm_utils
+import time
 
 
 def run_boot(test, params, env):
@@ -15,19 +13,14 @@ def run_boot(test, params, env):
     @param params: Dictionary with the test parameters
     @param env: Dictionary with test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
     timeout = float(params.get("login_timeout", 240))
-    session = kvm_test_utils.wait_for_login(vm, 0, timeout, 0, 2)
+    session = vm.wait_for_login(timeout=timeout)
 
-    try:
-        if not params.get("reboot_method"):
-            return
+    if params.get("reboot_method"):
+        if params["reboot_method"] == "system_reset":
+            time.sleep(int(params.get("sleep_before_reset", 10)))
+        session = vm.reboot(session, params["reboot_method"], 0, timeout)
 
-        # Reboot the VM
-        session = kvm_test_utils.reboot(vm, session,
-                                    params.get("reboot_method"),
-                                    float(params.get("sleep_before_reset", 10)),
-                                    0, timeout)
-
-    finally:
-        session.close()
+    session.close()

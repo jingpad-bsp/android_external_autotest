@@ -1,7 +1,5 @@
-import os, logging
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.bin import utils
-import kvm_subprocess, kvm_utils, kvm_test_utils
+import os
+import kvm_test_utils
 
 
 def run_autotest(test, params, env):
@@ -12,9 +10,10 @@ def run_autotest(test, params, env):
     @param params: Dictionary with test parameters.
     @param env: Dictionary with the test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
     timeout = int(params.get("login_timeout", 360))
-    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+    session = vm.wait_for_login(timeout=timeout)
 
     # Collect test parameters
     timeout = int(params.get("test_timeout", 300))
@@ -22,4 +21,5 @@ def run_autotest(test, params, env):
                                 params.get("test_control_file"))
     outputdir = test.outputdir
 
-    kvm_test_utils.run_autotest(vm, session, control_path, timeout, outputdir)
+    kvm_test_utils.run_autotest(vm, session, control_path, timeout, outputdir,
+                                params)

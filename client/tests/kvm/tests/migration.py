@@ -1,6 +1,6 @@
 import logging, time
 from autotest_lib.client.common_lib import error
-import kvm_subprocess, kvm_test_utils, kvm_utils
+import kvm_utils
 
 
 def run_migration(test, params, env):
@@ -19,17 +19,20 @@ def run_migration(test, params, env):
     @param params: Dictionary with test parameters.
     @param env: Dictionary with the test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
     timeout = int(params.get("login_timeout", 360))
-    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+    session = vm.wait_for_login(timeout=timeout)
 
     mig_timeout = float(params.get("mig_timeout", "3600"))
     mig_protocol = params.get("migration_protocol", "tcp")
-    mig_cancel = bool(params.get("mig_cancel"))
+    mig_cancel_delay = int(params.get("mig_cancel") == "yes") * 2
+    offline = params.get("offline", "no") == "yes"
+    check = params.get("vmstate_check", "no") == "yes"
 
     # Get the output of migration_test_command
     test_command = params.get("migration_test_command")
-    reference_output = session.get_command_output(test_command)
+    reference_output = session.cmd_output(test_command)
 
     # Start some process in the background (and leave the session open)
     background_command = params.get("migration_bg_command", "")
@@ -38,39 +41,32 @@ def run_migration(test, params, env):
 
     # Start another session with the guest and make sure the background
     # process is running
-    session2 = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+    session2 = vm.wait_for_login(timeout=timeout)
 
     try:
         check_command = params.get("migration_bg_check_command", "")
-        if session2.get_command_status(check_command, timeout=30) != 0:
-            raise error.TestError("Could not start background process '%s'" %
-                                  background_command)
+        session2.cmd(check_command, timeout=30)
         session2.close()
 
         # Migrate the VM
-        dest_vm = kvm_test_utils.migrate(vm, env,mig_timeout, mig_protocol,
-                                         mig_cancel)
+        vm.migrate(mig_timeout, mig_protocol, mig_cancel_delay, offline, check)
 
         # Log into the guest again
         logging.info("Logging into guest after migration...")
-        session2 = kvm_utils.wait_for(dest_vm.remote_login, 30, 0, 2)
-        if not session2:
-            raise error.TestFail("Could not log into guest after migration")
+        session2 = vm.wait_for_login(timeout=30)
         logging.info("Logged in after migration")
 
         # Make sure the background process is still running
-        if session2.get_command_status(check_command, timeout=30) != 0:
-            raise error.TestFail("Could not find running background process "
-                                 "after migration: '%s'" % background_command)
+        session2.cmd(check_command, timeout=30)
 
         # Get the output of migration_test_command
-        output = session2.get_command_output(test_command)
+        output = session2.cmd_output(test_command)
 
         # Compare output to reference output
         if output != reference_output:
             logging.info("Command output before migration differs from "
                          "command output after migration")
-            logging.info("Command: %s" % test_command)
+            logging.info("Command: %s", test_command)
             logging.info("Output before:" +
                          kvm_utils.format_str_for_message(reference_output))
             logging.info("Output after:" +
@@ -81,8 +77,7 @@ def run_migration(test, params, env):
     finally:
         # Kill the background process
         if session2 and session2.is_alive():
-            session2.get_command_output(params.get("migration_bg_kill_command",
-                                                   ""))
+            session2.cmd_output(params.get("migration_bg_kill_command", ""))
 
     session2.close()
     session.close()

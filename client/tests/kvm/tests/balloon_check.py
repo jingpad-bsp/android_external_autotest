@@ -1,6 +1,7 @@
-import re, string, logging, random, time
+import re, logging, random, time
 from autotest_lib.client.common_lib import error
-import kvm_test_utils, kvm_utils, kvm_monitor
+import kvm_monitor
+
 
 def run_balloon_check(test, params, env):
     """
@@ -65,9 +66,10 @@ def run_balloon_check(test, params, env):
 
 
     fail = 0
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
     timeout = int(params.get("login_timeout", 360))
-    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+    session = vm.wait_for_login(timeout=timeout)
 
     # Upper limit that we can raise the memory
     vm_assigned_mem = int(params.get("mem"))

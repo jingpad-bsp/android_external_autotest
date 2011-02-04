@@ -38,7 +38,7 @@ def parse_results(text):
             test_status = parts[0].split()[1]
             # Remove "kvm." prefix
             if test_name.startswith("kvm."):
-                test_name = test_name.split("kvm.")[1]
+                test_name = test_name[4:]
             result_list.append((test_name, test_status,
                                 int(end_time - start_time), info))
 
@@ -86,7 +86,7 @@ def main(resfiles):
 
 
 if __name__ == "__main__":
-    import sys, os, glob
+    import sys, glob
 
     resfiles = glob.glob("../../results/default/status*")
     if len(sys.argv) > 1:

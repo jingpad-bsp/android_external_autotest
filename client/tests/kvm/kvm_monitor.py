@@ -22,7 +22,13 @@ class MonitorConnectError(MonitorError):
 
 
 class MonitorSocketError(MonitorError):
-    pass
+    def __init__(self, msg, e):
+        Exception.__init__(self, msg, e)
+        self.msg = msg
+        self.e = e
+
+    def __str__(self):
+        return "%s    (%s)" % (self.msg, self.e)
 
 
 class MonitorLockError(MonitorError):
@@ -45,8 +51,8 @@ class QMPCmdError(MonitorError):
         self.data = data
 
     def __str__(self):
-        return ("QMP command %r failed (arguments: %r, error message: %r)" %
-                (self.cmd, self.qmp_args, self.data))
+        return ("QMP command %r failed    (arguments: %r,    "
+                "error message: %r)" % (self.cmd, self.qmp_args, self.data))
 
 
 class Monitor:
@@ -119,13 +125,24 @@ class Monitor:
         while self._data_available():
             try:
                 data = self._socket.recv(1024)
-            except socket.error, (errno, msg):
-                raise MonitorSocketError("Could not receive data from monitor "
-                                         "(%s)" % msg)
+            except socket.error, e:
+                raise MonitorSocketError("Could not receive data from monitor",
+                                         e)
             if not data:
                 break
             s += data
         return s
+
+
+    def is_responsive(self):
+        """
+        Return True iff the monitor is responsive.
+        """
+        try:
+            self.verify_responsive()
+            return True
+        except MonitorError:
+            return False
 
 
 class HumanMonitor(Monitor):
@@ -201,9 +218,9 @@ class HumanMonitor(Monitor):
         try:
             try:
                 self._socket.sendall(cmd + "\n")
-            except socket.error, (errno, msg):
-                raise MonitorSocketError("Could not send monitor command '%s' "
-                                         "(%s)" % (cmd, msg))
+            except socket.error, e:
+                raise MonitorSocketError("Could not send monitor command %r" %
+                                         cmd, e)
 
         finally:
             self._lock.release()
@@ -248,17 +265,11 @@ class HumanMonitor(Monitor):
             self._lock.release()
 
 
-    def is_responsive(self):
+    def verify_responsive(self):
         """
         Make sure the monitor is responsive by sending a command.
-
-        @return: True if responsive, False otherwise
         """
-        try:
-            self.cmd("info status")
-            return True
-        except MonitorError:
-            return False
+        self.cmd("info status")
 
 
     # Command wrappers
@@ -309,7 +320,6 @@ class HumanMonitor(Monitor):
         @param wait: If true, wait for completion
         @return: The command's output
         """
-        logging.debug("Migrating to: %s" % uri)
         cmd = "migrate"
         if not wait:
             cmd += " -d"
@@ -480,9 +490,8 @@ class QMPMonitor(Monitor):
         """
         try:
             self._socket.sendall(data)
-        except socket.error, (errno, msg):
-            raise MonitorSocketError("Could not send data: %r (%s)" %
-                                     (data, msg))
+        except socket.error, e:
+            raise MonitorSocketError("Could not send data: %r" % data, e)
 
 
     def _get_response(self, id=None, timeout=20):
@@ -615,17 +624,11 @@ class QMPMonitor(Monitor):
         return self.cmd_obj(self._build_cmd(cmd, args, id), timeout)
 
 
-    def is_responsive(self):
+    def verify_responsive(self):
         """
         Make sure the monitor is responsive by sending a command.
-
-        @return: True if responsive, False otherwise
         """
-        try:
-            self.cmd("query-status")
-            return True
-        except MonitorError:
-            return False
+        self.cmd("query-status")
 
 
     def get_events(self):

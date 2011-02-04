@@ -1,25 +1,38 @@
-import logging, time, os, re
+import logging, os, re
 from autotest_lib.client.common_lib import error
-import kvm_subprocess, kvm_test_utils, kvm_utils, rss_file_transfer
+import kvm_subprocess, kvm_utils, rss_file_transfer
 
 
 def run_whql_submission(test, params, env):
     """
     WHQL submission test:
-    1) Log into the guest (the client machine) and into a DTM server machine
+    1) Log into the client machines and into a DTM server machine
     2) Copy the automation program binary (dsso_test_binary) to the server machine
     3) Run the automation program
     4) Pass the program all relevant parameters (e.g. device_data)
     5) Wait for the program to terminate
     6) Parse and report job results
-    (logs and HTML reports are placed in test.bindir)
+    (logs and HTML reports are placed in test.debugdir)
 
     @param test: kvm test object
     @param params: Dictionary with the test parameters
     @param env: Dictionary with test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm, 0, 240)
+    # Log into all client VMs
+    login_timeout = int(params.get("login_timeout", 360))
+    vms = []
+    sessions = []
+    for vm_name in params.objects("vms"):
+        vms.append(env.get_vm(vm_name))
+        vms[-1].verify_alive()
+        sessions.append(vms[-1].wait_for_login(timeout=login_timeout))
+
+    # Make sure all NICs of all client VMs are up
+    for vm in vms:
+        nics = vm.params.objects("nics")
+        for nic_index in range(len(nics)):
+            s = vm.wait_for_login(nic_index, 600)
+            s.close()
 
     # Collect parameters
     server_address = params.get("server_address")
@@ -30,41 +43,61 @@ def run_whql_submission(test, params, env):
     dsso_test_binary = params.get("dsso_test_binary",
                                   "deps/whql_submission_15.exe")
     dsso_test_binary = kvm_utils.get_path(test.bindir, dsso_test_binary)
-    test_device = params.get("test_device")
-    job_filter = params.get("job_filter", ".*")
+    dsso_delete_machine_binary = params.get("dsso_delete_machine_binary",
+                                            "deps/whql_delete_machine_15.exe")
+    dsso_delete_machine_binary = kvm_utils.get_path(test.bindir,
+                                                    dsso_delete_machine_binary)
     test_timeout = float(params.get("test_timeout", 600))
-    wtt_services = params.get("wtt_services")
 
-    # Restart WTT service(s) on the client
-    logging.info("Restarting WTT services on client")
-    for svc in wtt_services.split():
-        kvm_test_utils.stop_windows_service(session, svc)
-    for svc in wtt_services.split():
-        kvm_test_utils.start_windows_service(session, svc)
-
-    # Copy dsso_test_binary to the server
-    rss_file_transfer.upload(server_address, server_file_transfer_port,
-                             dsso_test_binary, server_studio_path, timeout=60)
+    # Copy dsso binaries to the server
+    for filename in dsso_test_binary, dsso_delete_machine_binary:
+        rss_file_transfer.upload(server_address, server_file_transfer_port,
+                                 filename, server_studio_path, timeout=60)
 
     # Open a shell session with the server
     server_session = kvm_utils.remote_login("nc", server_address,
                                             server_shell_port, "", "",
-                                            session.prompt, session.linesep)
+                                            sessions[0].prompt,
+                                            sessions[0].linesep)
+    server_session.set_status_test_command(sessions[0].status_test_command)
 
-    # Get the computer names of the server and client
+    # Get the computer names of the server and clients
     cmd = "echo %computername%"
-    server_name = server_session.get_command_output(cmd).strip()
-    client_name = session.get_command_output(cmd).strip()
-    session.close()
+    server_name = server_session.cmd_output(cmd).strip()
+    client_names = [session.cmd_output(cmd).strip() for session in sessions]
+
+    # Delete all client machines from the server's data store
+    server_session.cmd("cd %s" % server_studio_path)
+    for client_name in client_names:
+        cmd = "%s %s %s" % (os.path.basename(dsso_delete_machine_binary),
+                            server_name, client_name)
+        server_session.cmd(cmd, print_func=logging.debug)
+
+    # Reboot the client machines
+    sessions = kvm_utils.parallel((vm.reboot, (session,))
+                                  for vm, session in zip(vms, sessions))
+
+    # Check the NICs again
+    for vm in vms:
+        nics = vm.params.objects("nics")
+        for nic_index in range(len(nics)):
+            s = vm.wait_for_login(nic_index, 600)
+            s.close()
+
+    # Run whql_pre_command and close the sessions
+    if params.get("whql_pre_command"):
+        for session in sessions:
+            session.cmd(params.get("whql_pre_command"),
+                        int(params.get("whql_pre_command_timeout", 600)))
+            session.close()
 
     # Run the automation program on the server
-    server_session.get_command_output("cd %s" % server_studio_path)
+    pool_name = "%s_pool" % client_names[0]
+    submission_name = "%s_%s" % (client_names[0],
+                                 params.get("submission_name"))
     cmd = "%s %s %s %s %s %s" % (os.path.basename(dsso_test_binary),
-                                 server_name,
-                                 client_name,
-                                 "%s_pool" % client_name,
-                                 "%s_submission" % client_name,
-                                 test_timeout)
+                                 server_name, pool_name, submission_name,
+                                 test_timeout, " ".join(client_names))
     server_session.sendline(cmd)
 
     # Helper function: wait for a given prompt and raise an exception if an
@@ -78,40 +111,69 @@ def run_whql_submission(test, params, env):
             if errors:
                 raise error.TestError(errors[0])
             else:
-                raise error.TestError("Error running automation program: could "
-                                      "not find '%s' prompt" % prompt)
+                raise error.TestError("Error running automation program: "
+                                      "could not find '%s' prompt" % prompt)
 
     # Tell the automation program which device to test
     find_prompt("Device to test:")
-    server_session.sendline(test_device)
+    server_session.sendline(params.get("test_device"))
 
     # Tell the automation program which jobs to run
     find_prompt("Jobs to run:")
-    server_session.sendline(job_filter)
+    server_session.sendline(params.get("job_filter", ".*"))
 
-    # Give the automation program all the device data supplied by the user
+    # Set submission DeviceData
     find_prompt("DeviceData name:")
-    for dd in kvm_utils.get_sub_dict_names(params, "device_data"):
-        dd_params = kvm_utils.get_sub_dict(params, dd)
+    for dd in params.objects("device_data"):
+        dd_params = params.object_params(dd)
         if dd_params.get("dd_name") and dd_params.get("dd_data"):
             server_session.sendline(dd_params.get("dd_name"))
             server_session.sendline(dd_params.get("dd_data"))
     server_session.sendline()
 
-    # Give the automation program all the descriptor information supplied by
-    # the user
+    # Set submission descriptors
     find_prompt("Descriptor path:")
-    for desc in kvm_utils.get_sub_dict_names(params, "descriptors"):
-        desc_params = kvm_utils.get_sub_dict(params, desc)
+    for desc in params.objects("descriptors"):
+        desc_params = params.object_params(desc)
         if desc_params.get("desc_path"):
             server_session.sendline(desc_params.get("desc_path"))
     server_session.sendline()
 
+    # Set machine dimensions for each client machine
+    for vm_name in params.objects("vms"):
+        vm_params = params.object_params(vm_name)
+        find_prompt(r"Dimension name\b.*:")
+        for dp in vm_params.objects("dimensions"):
+            dp_params = vm_params.object_params(dp)
+            if dp_params.get("dim_name") and dp_params.get("dim_value"):
+                server_session.sendline(dp_params.get("dim_name"))
+                server_session.sendline(dp_params.get("dim_value"))
+        server_session.sendline()
+
+    # Set extra parameters for tests that require them (e.g. NDISTest)
+    for vm_name in params.objects("vms"):
+        vm_params = params.object_params(vm_name)
+        find_prompt(r"Parameter name\b.*:")
+        for dp in vm_params.objects("device_params"):
+            dp_params = vm_params.object_params(dp)
+            if dp_params.get("dp_name") and dp_params.get("dp_regex"):
+                server_session.sendline(dp_params.get("dp_name"))
+                server_session.sendline(dp_params.get("dp_regex"))
+                # Make sure the prompt appears again (if the device isn't found
+                # the automation program will terminate)
+                find_prompt(r"Parameter name\b.*:")
+        server_session.sendline()
+
     # Wait for the automation program to terminate
-    m, o = server_session.read_up_to_prompt(print_func=logging.info,
-                                            timeout=test_timeout + 300)
-    # (test_timeout + 300 is used here because the automation program is
-    # supposed to terminate cleanly on its own when test_timeout expires)
+    try:
+        o = server_session.read_up_to_prompt(print_func=logging.info,
+                                             timeout=test_timeout + 300)
+        # (test_timeout + 300 is used here because the automation program is
+        # supposed to terminate cleanly on its own when test_timeout expires)
+        done = True
+    except kvm_subprocess.ExpectError, e:
+        o = e.output
+        done = False
     server_session.close()
 
     # Look for test results in the automation program's output
@@ -151,38 +213,63 @@ def run_whql_submission(test, params, env):
                 except (KeyError, OSError):
                     pass
 
-    # Print result summary
-    logging.info("")
-    logging.info("Result summary:")
-    name_length = max(len(r.get("job", "")) for r in results)
-    fmt = "%%-6s %%-%ds %%-15s %%-8s %%-8s %%-8s %%-15s" % name_length
-    logging.info(fmt % ("ID", "Job", "Status", "Pass", "Fail", "NotRun",
-                        "NotApplicable"))
-    logging.info(fmt % ("--", "---", "------", "----", "----", "------",
-                        "-------------"))
-    for r in results:
-        logging.info(fmt % (r.get("id"), r.get("job"), r.get("status"),
-                            r.get("pass"), r.get("fail"), r.get("notrun"),
-                            r.get("notapplicable")))
-    logging.info("(see logs and HTML reports in %s)" % test.debugdir)
+    # Print result summary (both to the regular logs and to a file named
+    # 'summary' in test.debugdir)
+    def print_summary_line(f, line):
+        logging.info(line)
+        f.write(line + "\n")
+    if results:
+        # Make sure all results have the required keys
+        for r in results:
+            r["id"] = str(r.get("id"))
+            r["job"] = str(r.get("job"))
+            r["status"] = str(r.get("status"))
+            r["pass"] = int(r.get("pass", 0))
+            r["fail"] = int(r.get("fail", 0))
+            r["notrun"] = int(r.get("notrun", 0))
+            r["notapplicable"] = int(r.get("notapplicable", 0))
+        # Sort the results by failures and total test count in descending order
+        results = [(r["fail"],
+                    r["pass"] + r["fail"] + r["notrun"] + r["notapplicable"],
+                    r) for r in results]
+        results.sort(reverse=True)
+        results = [r[-1] for r in results]
+        # Print results
+        logging.info("")
+        logging.info("Result summary:")
+        name_length = max(len(r["job"]) for r in results)
+        fmt = "%%-6s %%-%ds %%-15s %%-8s %%-8s %%-8s %%-15s" % name_length
+        f = open(os.path.join(test.debugdir, "summary"), "w")
+        print_summary_line(f, fmt % ("ID", "Job", "Status", "Pass", "Fail",
+                                     "NotRun", "NotApplicable"))
+        print_summary_line(f, fmt % ("--", "---", "------", "----", "----",
+                                     "------", "-------------"))
+        for r in results:
+            print_summary_line(f, fmt % (r["id"], r["job"], r["status"],
+                                         r["pass"], r["fail"], r["notrun"],
+                                         r["notapplicable"]))
+        f.close()
+        logging.info("(see logs and HTML reports in %s)", test.debugdir)
 
-    # Kill the VM and fail if the automation program did not terminate on time
-    if not m:
-        vm.destroy()
+    # Kill the client VMs and fail if the automation program did not terminate
+    # on time
+    if not done:
+        kvm_utils.parallel(vm.destroy for vm in vms)
         raise error.TestFail("The automation program did not terminate "
                              "on time")
 
-    # Fail if there are failed or incomplete jobs (kill the VM if there are
-    # incomplete jobs)
-    failed_jobs = [r.get("job") for r in results
-                   if r.get("status", "").lower() == "investigate"]
-    running_jobs = [r.get("job") for r in results
-                    if r.get("status", "").lower() == "inprogress"]
+    # Fail if there are failed or incomplete jobs (kill the client VMs if there
+    # are incomplete jobs)
+    failed_jobs = [r["job"] for r in results
+                   if r["status"].lower() == "investigate"]
+    running_jobs = [r["job"] for r in results
+                    if r["status"].lower() == "inprogress"]
     errors = []
     if failed_jobs:
         errors += ["Jobs failed: %s." % failed_jobs]
     if running_jobs:
-        vm.destroy()
+        for vm in vms:
+            vm.destroy()
         errors += ["Jobs did not complete on time: %s." % running_jobs]
     if errors:
         raise error.TestFail(" ".join(errors))

@@ -135,6 +135,11 @@ class base_client_job(base_job.base_job):
         return autodir, clientdir, None
 
 
+    @classmethod
+    def _parse_args(cls, args):
+        return re.findall("[^\s]*?['|\"].*?['|\"]|[^\s]+", args)
+
+
     def _find_resultdir(self, options):
         """
         Determine the directory for storing results. On a client this is
@@ -162,9 +167,9 @@ class base_client_job(base_job.base_job):
             self._cleanup_results_dir()
 
         logging_manager.configure_logging(
-                client_logging_config.ClientLoggingConfig(),
-                results_dir=self.resultdir,
-                verbose=options.verbose)
+            client_logging_config.ClientLoggingConfig(),
+            results_dir=self.resultdir,
+            verbose=options.verbose)
         logging.info('Writing results to %s', self.resultdir)
 
         # init_group_level needs the state
@@ -174,7 +179,20 @@ class base_client_job(base_job.base_job):
         self._next_step_index = 0
         self._load_state()
 
-        self.harness = harness.select(options.harness, self)
+        # harness is chosen by following rules:
+        # 1. explicitly specified via command line
+        # 2. harness stored in state file (if continuing job '-c')
+        # 3. default harness
+        selected_harness = None
+        if options.harness:
+            selected_harness = options.harness
+            self._state.set('client', 'harness', selected_harness)
+        else:
+            stored_harness = self._state.get('client', 'harness', None)
+            if stored_harness:
+                selected_harness = stored_harness
+
+        self.harness = harness.select(selected_harness, self)
 
         # set up the status logger
         def client_job_record_hook(entry):
@@ -190,8 +208,8 @@ class base_client_job(base_job.base_job):
             # send the entry to stdout, if it's enabled
             logging.info(rendered_entry)
         self._logger = base_job.status_logger(
-            self, status_indenter(self), record_hook=client_job_record_hook)
-
+            self, status_indenter(self), record_hook=client_job_record_hook,
+            tap_writer=self._tap)
 
     def _post_record_init(self, control, options, drop_caches,
                           extra_copy_cmdline):
@@ -230,7 +248,7 @@ class base_client_job(base_job.base_job):
 
         self.args = []
         if options.args:
-            self.args = options.args.split()
+            self.args = self._parse_args(options.args)
 
         if options.user:
             self.user = options.user
@@ -582,6 +600,7 @@ class base_client_job(base_job.base_job):
 
         try:
             self.record('START', subdir, testname)
+            self._state.set('client', 'unexpected_reboot', (subdir, testname))
             result = function(*args, **dargs)
             self.record('END GOOD', subdir, testname)
             return result
@@ -600,6 +619,8 @@ class base_client_job(base_job.base_job):
             err_msg = str(e) + '\n' + traceback.format_exc()
             self.record('END ERROR', subdir, testname, err_msg)
             raise
+        finally:
+            self._state.discard('client', 'unexpected_reboot')
 
 
     def run_group(self, function, tag=None, **dargs):
@@ -664,7 +685,6 @@ class base_client_job(base_job.base_job):
         partition_list = partition_lib.get_partition_list(self,
                                                           exclude_swap=False)
         mount_info = partition_lib.get_mount_info(partition_list)
-
         old_mount_info = self._state.get('client', 'mount_info')
         if mount_info != old_mount_info:
             new_entries = mount_info - old_mount_info
@@ -870,7 +890,12 @@ class base_client_job(base_job.base_job):
 
 
     def complete(self, status):
-        """Clean up and exit"""
+        """Write pending TAP reports, clean up, and exit"""
+        # write out TAP reports
+        if self._tap.do_tap_report:
+            self._tap.write()
+            self._tap._write_tap_archive()
+
         # We are about to exit 'complete' so clean up the control file.
         dest = os.path.join(self.resultdir, os.path.basename(self._state_file))
         shutil.move(self._state_file, dest)
@@ -1043,6 +1068,14 @@ class base_client_job(base_job.base_job):
         if not self._is_continuation:
             if 'step_init' in global_control_vars:
                 self.next_step(global_control_vars['step_init'])
+        else:
+            # if last job failed due to unexpected reboot, record it as fail
+            # so harness gets called
+            last_job = self._state.get('client', 'unexpected_reboot', None)
+            if last_job:
+                subdir, testname = last_job
+                self.record('FAIL', subdir, testname, 'unexpected reboot')
+                self.record('END FAIL', subdir, testname)
 
         # Iterate through the steps.  If we reboot, we'll simply
         # continue iterating on the next step.
@@ -1182,13 +1215,13 @@ def runjob(control, drop_caches, options):
         sys.exit(1)
 
     except error.JobError, instance:
-        logging.error("JOB ERROR: " + instance.args[0])
+        logging.error("JOB ERROR: " + str(instance))
         if myjob:
             command = None
             if len(instance.args) > 1:
                 command = instance.args[1]
-                myjob.record('ABORT', None, command, instance.args[0])
-            myjob.record('END ABORT', None, None, instance.args[0])
+                myjob.record('ABORT', None, command, str(instance))
+            myjob.record('END ABORT', None, None, str(instance))
             assert myjob._record_indent == 0
             myjob.complete(1)
         else:

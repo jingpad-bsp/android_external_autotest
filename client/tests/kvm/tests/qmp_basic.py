@@ -1,5 +1,6 @@
-import kvm_test_utils
 from autotest_lib.client.common_lib import error
+import kvm_test_utils, kvm_monitor
+
 
 def run_qmp_basic(test, params, env):
     """
@@ -197,24 +198,24 @@ def run_qmp_basic(test, params, env):
         Check that QMP's "id" key is correctly handled.
         """
         # The "id" key must be echoed back in error responses
-        id = "kvm-autotest"
-        resp = monitor.cmd_qmp("eject", { "foobar": True }, id=id)
+        id_key = "kvm-autotest"
+        resp = monitor.cmd_qmp("eject", { "foobar": True }, id=id_key)
         check_error_resp(resp)
-        check_str_key(resp, "id", id)
+        check_str_key(resp, "id", id_key)
 
         # The "id" key must be echoed back in success responses
-        resp = monitor.cmd_qmp("query-status", id=id)
+        resp = monitor.cmd_qmp("query-status", id=id_key)
         check_success_resp(resp)
-        check_str_key(resp, "id", id)
+        check_str_key(resp, "id", id_key)
 
         # The "id" key can be any json-object
-        for id in [ True, 1234, "string again!", [1, [], {}, True, "foo"],
+        for id_key in [ True, 1234, "string again!", [1, [], {}, True, "foo"],
                     { "key": {} } ]:
-            resp = monitor.cmd_qmp("query-status", id=id)
+            resp = monitor.cmd_qmp("query-status", id=id_key)
             check_success_resp(resp)
-            if resp["id"] != id:
+            if resp["id"] != id_key:
                 raise error.TestFail("expected id '%s' but got '%s'" %
-                                     (str(id), str(resp["id"])))
+                                     (str(id_key), str(resp["id"])))
 
 
     def test_invalid_arg_key(monitor):
@@ -366,7 +367,8 @@ def run_qmp_basic(test, params, env):
         # is to skip its checking and pass arguments through. Check this
         # works by providing invalid options to device_add and expecting
         # an error message from qdev
-        resp = monitor.cmd_qmp("device_add", { "driver": "e1000","foo": "bar" })
+        resp = monitor.cmd_qmp("device_add", { "driver": "e1000",
+                                              "foo": "bar" })
         check_error_resp(resp, "PropertyNotFound",
                                {"device": "e1000", "property": "foo"})
 
@@ -381,15 +383,25 @@ def run_qmp_basic(test, params, env):
             check_error_resp(resp, "CommandNotFound", { "name": cmd })
 
 
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
+
+    # Look for the first qmp monitor available, otherwise, fail the test
+    qmp_monitor = None
+    for m in vm.monitors:
+        if isinstance(m, kvm_monitor.QMPMonitor):
+            qmp_monitor = m
+
+    if qmp_monitor is None:
+        raise error.TestError('Could not find a QMP monitor, aborting test')
 
     # Run all suites
-    greeting_suite(vm.monitor)
-    input_object_suite(vm.monitor)
-    argument_checker_suite(vm.monitor)
-    unknown_commands_suite(vm.monitor)
-    json_parsing_errors_suite(vm.monitor)
+    greeting_suite(qmp_monitor)
+    input_object_suite(qmp_monitor)
+    argument_checker_suite(qmp_monitor)
+    unknown_commands_suite(qmp_monitor)
+    json_parsing_errors_suite(qmp_monitor)
 
     # check if QMP is still alive
-    if not vm.monitor.is_responsive():
-        raise error.TestFail('QEMU is not alive after QMP testing')
+    if not qmp_monitor.is_responsive():
+        raise error.TestFail('QMP monitor is not responsive after testing')

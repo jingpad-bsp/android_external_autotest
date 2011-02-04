@@ -1,6 +1,6 @@
-import logging, time, re, random
+import logging, re, random
 from autotest_lib.client.common_lib import error
-import kvm_subprocess, kvm_test_utils, kvm_utils
+import kvm_subprocess
 
 
 def run_iofuzz(test, params, env):
@@ -33,11 +33,10 @@ def run_iofuzz(test, params, env):
         logging.debug("outb(0x%x, 0x%x)", port, data)
         outb_cmd = ("echo -e '\\%s' | dd of=/dev/port seek=%d bs=1 count=1" %
                     (oct(data), port))
-        s, o = session.get_command_status_output(outb_cmd)
-        if s is None:
-            logging.debug("Command did not return")
-        if s != 0:
-            logging.debug("Command returned status %s", s)
+        try:
+            session.cmd(outb_cmd)
+        except kvm_subprocess.ShellError, e:
+            logging.debug(e)
 
 
     def inb(session, port):
@@ -49,11 +48,10 @@ def run_iofuzz(test, params, env):
         """
         logging.debug("inb(0x%x)", port)
         inb_cmd = "dd if=/dev/port seek=%d of=/dev/null bs=1 count=1" % port
-        s, o = session.get_command_status_output(inb_cmd)
-        if s is None:
-            logging.debug("Command did not return")
-        if s != 0:
-            logging.debug("Command returned status %s", s)
+        try:
+            session.cmd(inb_cmd)
+        except kvm_subprocess.ShellError, e:
+            logging.debug(e)
 
 
     def fuzz(session, inst_list):
@@ -71,7 +69,7 @@ def run_iofuzz(test, params, env):
         for (op, operand) in inst_list:
             if op == "read":
                 inb(session, operand[0])
-            elif op =="write":
+            elif op == "write":
                 outb(session, operand[0], operand[1])
             else:
                 raise error.TestError("Unknown command %s" % op)
@@ -81,26 +79,26 @@ def run_iofuzz(test, params, env):
                 if vm.process.is_alive():
                     logging.debug("VM is alive, try to re-login")
                     try:
-                        session = kvm_test_utils.wait_for_login(vm, 0, 10, 0, 2)
+                        session = vm.wait_for_login(timeout=10)
                     except:
                         logging.debug("Could not re-login, reboot the guest")
-                        session = kvm_test_utils.reboot(vm, session,
-                                                        method = "system_reset")
+                        session = vm.reboot(method="system_reset")
                 else:
                     raise error.TestFail("VM has quit abnormally during %s",
                                          (op, operand))
 
 
     login_timeout = float(params.get("login_timeout", 240))
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
-    session = kvm_test_utils.wait_for_login(vm, 0, login_timeout, 0, 2)
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
+    session = vm.wait_for_login(timeout=login_timeout)
 
     try:
         ports = {}
         r = random.SystemRandom()
 
         logging.info("Enumerate guest devices through /proc/ioports")
-        ioports = session.get_command_output("cat /proc/ioports")
+        ioports = session.cmd_output("cat /proc/ioports")
         logging.debug(ioports)
         devices = re.findall("(\w+)-(\w+)\ : (.*)", ioports)
 

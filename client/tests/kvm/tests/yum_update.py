@@ -1,6 +1,4 @@
 import logging, time
-from autotest_lib.client.common_lib import error
-import kvm_subprocess, kvm_test_utils, kvm_utils
 
 
 def internal_yum_update(session, command, prompt, timeout):
@@ -16,8 +14,9 @@ def internal_yum_update(session, command, prompt, timeout):
     session.sendline(command)
     end_time = time.time() + timeout
     while time.time() < end_time:
-        (match, text) = session.read_until_last_line_matches(
-                        ["[Ii]s this [Oo][Kk]", prompt], timeout=timeout)
+        match = session.read_until_last_line_matches(
+                                                ["[Ii]s this [Oo][Kk]", prompt],
+                                                timeout=timeout)[0]
         if match == 0:
             logging.info("Got 'Is this ok'; sending 'y'")
             session.sendline("y")
@@ -38,9 +37,10 @@ def run_yum_update(test, params, env):
     @param params: Dictionary with test parameters.
     @param env: Dictionary with the test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
     timeout = int(params.get("login_timeout", 360))
-    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+    session = vm.wait_for_login(timeout=timeout)
 
     internal_yum_update(session, "yum update", params.get("shell_prompt"), 600)
     internal_yum_update(session, "yum update kernel",

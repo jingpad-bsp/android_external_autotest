@@ -1,6 +1,7 @@
 import logging, time
 from autotest_lib.client.common_lib import error
-import kvm_test_utils, kvm_utils, kvm_monitor
+import kvm_monitor
+
 
 def run_boot_savevm(test, params, env):
     """
@@ -13,10 +14,11 @@ def run_boot_savevm(test, params, env):
     @param params: Dictionary with the test parameters
     @param env: Dictionary with test environment.
     """
-    vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
+    vm = env.get_vm(params["main_vm"])
+    vm.verify_alive()
     savevm_delay = float(params.get("savevm_delay"))
     savevm_login_delay = float(params.get("savevm_login_delay"))
-    logging.info("savevm_delay = %f" % savevm_delay)
+    logging.info("savevm_delay = %f", savevm_delay)
     login_expire = time.time() + savevm_login_delay
     end_time = time.time() + float(params.get("savevm_timeout"))
 
@@ -50,12 +52,9 @@ def run_boot_savevm(test, params, env):
         if (time.time() > login_expire):
             login_expire = time.time() + savevm_login_delay
             logging.info("Logging in after loadvm...")
-            session = kvm_utils.wait_for(vm.remote_login, 1, 0, 1)
-            if not session:
-                logging.info("Failed to login")
-            else:
-                logging.info("Logged in to guest!")
-                break
+            session = vm.login()
+            logging.info("Logged in to guest!")
+            break
 
     if (time.time() > end_time):
         raise error.TestFail("fail: timeout")

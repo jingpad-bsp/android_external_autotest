@@ -5,7 +5,7 @@ KVM test utility functions.
 """
 
 import time, string, random, socket, os, signal, re, logging, commands, cPickle
-import fcntl, shelve, ConfigParser
+import fcntl, shelve, ConfigParser, rss_file_transfer, threading, sys, UserDict
 from autotest_lib.client.bin import utils, os_dep
 from autotest_lib.client.common_lib import error, logging_config
 import kvm_subprocess
@@ -27,74 +27,152 @@ def _unlock_file(f):
     f.close()
 
 
-def dump_env(obj, filename):
+def is_vm(obj):
     """
-    Dump KVM test environment to a file.
+    Tests whether a given object is a VM object.
 
-    @param filename: Path to a file where the environment will be dumped to.
+    @param obj: Python object.
     """
-    file = open(filename, "w")
-    cPickle.dump(obj, file)
-    file.close()
+    return obj.__class__.__name__ == "VM"
 
 
-def load_env(filename, version):
+class Env(UserDict.IterableUserDict):
     """
-    Load KVM test environment from an env file.
-    If the version recorded in the file is lower than version, return an empty
-    env.  If some other error occurs during unpickling, return an empty env.
-
-    @param filename: Path to an env file.
+    A dict-like object containing global objects used by tests.
     """
-    default = {"version": version}
-    try:
-        file = open(filename, "r")
-        env = cPickle.load(file)
-        file.close()
-        if env.get("version", 0) < version:
-            logging.warn("Incompatible env file found. Not using it.")
-            return default
-        return env
-    # Almost any exception can be raised during unpickling, so let's catch
-    # them all
-    except Exception, e:
-        logging.warn(e)
-        return default
+    def __init__(self, filename=None, version=0):
+        """
+        Create an empty Env object or load an existing one from a file.
+
+        If the version recorded in the file is lower than version, or if some
+        error occurs during unpickling, or if filename is not supplied,
+        create an empty Env object.
+
+        @param filename: Path to an env file.
+        @param version: Required env version (int).
+        """
+        UserDict.IterableUserDict.__init__(self)
+        empty = {"version": version}
+        if filename:
+            self._filename = filename
+            try:
+                f = open(filename, "r")
+                env = cPickle.load(f)
+                f.close()
+                if env.get("version", 0) >= version:
+                    self.data = env
+                else:
+                    logging.warn("Incompatible env file found. Not using it.")
+                    self.data = empty
+            # Almost any exception can be raised during unpickling, so let's
+            # catch them all
+            except Exception, e:
+                logging.warn(e)
+                self.data = empty
+        else:
+            self.data = empty
 
 
-def get_sub_dict(dict, name):
+    def save(self, filename=None):
+        """
+        Pickle the contents of the Env object into a file.
+
+        @param filename: Filename to pickle the dict into.  If not supplied,
+                use the filename from which the dict was loaded.
+        """
+        filename = filename or self._filename
+        f = open(filename, "w")
+        cPickle.dump(self.data, f)
+        f.close()
+
+
+    def get_all_vms(self):
+        """
+        Return a list of all VM objects in this Env object.
+        """
+        return [o for o in self.values() if is_vm(o)]
+
+
+    def get_vm(self, name):
+        """
+        Return a VM object by its name.
+
+        @param name: VM name.
+        """
+        return self.get("vm__%s" % name)
+
+
+    def register_vm(self, name, vm):
+        """
+        Register a VM in this Env object.
+
+        @param name: VM name.
+        @param vm: VM object.
+        """
+        self["vm__%s" % name] = vm
+
+
+    def unregister_vm(self, name):
+        """
+        Remove a given VM.
+
+        @param name: VM name.
+        """
+        del self["vm__%s" % name]
+
+
+    def register_installer(self, installer):
+        """
+        Register a installer that was just run
+
+        The installer will be available for other tests, so that
+        information about the installed KVM modules and qemu-kvm can be used by
+        them.
+        """
+        self['last_installer'] = installer
+
+
+    def previous_installer(self):
+        """
+        Return the last installer that was registered
+        """
+        return self.get('last_installer')
+
+
+class Params(UserDict.IterableUserDict):
     """
-    Return a "sub-dict" corresponding to a specific object.
-
-    Operate on a copy of dict: for each key that ends with the suffix
-    "_" + name, strip the suffix from the key, and set the value of
-    the stripped key to that of the key. Return the resulting dict.
-
-    @param name: Suffix of the key we want to set the value.
+    A dict-like object passed to every test.
     """
-    suffix = "_" + name
-    new_dict = dict.copy()
-    for key in dict.keys():
-        if key.endswith(suffix):
-            new_key = key.split(suffix)[0]
-            new_dict[new_key] = dict[key]
-    return new_dict
+    def objects(self, key):
+        """
+        Return the names of objects defined using a given key.
+
+        @param key: The name of the key whose value lists the objects
+                (e.g. 'nics').
+        """
+        return self.get(key, "").split()
 
 
-def get_sub_dict_names(dict, keyword):
-    """
-    Return a list of "sub-dict" names that may be extracted with get_sub_dict.
+    def object_params(self, obj_name):
+        """
+        Return a dict-like object containing the parameters of an individual
+        object.
 
-    This function may be modified to change the behavior of all functions that
-    deal with multiple objects defined in dicts (e.g. VMs, images, NICs).
+        This method behaves as follows: the suffix '_' + obj_name is removed
+        from all key names that have it.  Other key names are left unchanged.
+        The values of keys with the suffix overwrite the values of their
+        suffixless versions.
 
-    @param keyword: A key in dict (e.g. "vms", "images", "nics").
-    """
-    names = dict.get(keyword)
-    if names:
-        return names.split()
-    else:
-        return []
+        @param obj_name: The name of the object (objects are listed by the
+                objects() method).
+        """
+        suffix = "_" + obj_name
+        new_dict = self.copy()
+        for key in self:
+            if key.endswith(suffix):
+                new_key = key.split(suffix)[0]
+                new_dict[new_key] = self[key]
+        return new_dict
 
 
 # Functions related to MAC/IP addresses
@@ -240,60 +318,6 @@ def verify_ip_address_ownership(ip, macs, timeout=10.0):
     return bool(regex.search(o))
 
 
-# Functions for working with the environment (a dict-like object)
-
-def is_vm(obj):
-    """
-    Tests whether a given object is a VM object.
-
-    @param obj: Python object (pretty much everything on python).
-    """
-    return obj.__class__.__name__ == "VM"
-
-
-def env_get_all_vms(env):
-    """
-    Return a list of all VM objects on a given environment.
-
-    @param env: Dictionary with environment items.
-    """
-    vms = []
-    for obj in env.values():
-        if is_vm(obj):
-            vms.append(obj)
-    return vms
-
-
-def env_get_vm(env, name):
-    """
-    Return a VM object by its name.
-
-    @param name: VM name.
-    """
-    return env.get("vm__%s" % name)
-
-
-def env_register_vm(env, name, vm):
-    """
-    Register a given VM in a given env.
-
-    @param env: Environment where we will register the VM.
-    @param name: VM name.
-    @param vm: VM object.
-    """
-    env["vm__%s" % name] = vm
-
-
-def env_unregister_vm(env, name):
-    """
-    Remove a given VM from a given env.
-
-    @param env: Environment where we will un-register the VM.
-    @param name: VM name.
-    """
-    del env["vm__%s" % name]
-
-
 # Utility functions for dealing with external processes
 
 def find_command(cmd):
@@ -403,8 +427,7 @@ def get_git_branch(repository, branch, srcdir, commit=None, lbranch=None):
     except error.CmdError:
         desc = "no tag found"
 
-    logging.info("Commit hash for %s is %s (%s)" % (repository, h.strip(),
-                                                    desc))
+    logging.info("Commit hash for %s is %s (%s)", repository, h.strip(), desc)
     return srcdir
 
 
@@ -421,7 +444,7 @@ def check_kvm_source_dir(source_dir):
     os.chdir(source_dir)
     has_qemu_dir = os.path.isdir('qemu')
     has_kvm_dir = os.path.isdir('kvm')
-    if has_qemu_dir and not has_kvm_dir:
+    if has_qemu_dir:
         logging.debug("qemu directory detected, source dir layout 1")
         return 1
     if has_kvm_dir and not has_qemu_dir:
@@ -431,8 +454,80 @@ def check_kvm_source_dir(source_dir):
         raise error.TestError("Unknown source dir layout, cannot proceed.")
 
 
-# The following are functions used for SSH, SCP and Telnet communication with
-# guests.
+# Functions and classes used for logging into guests and transferring files
+
+class LoginError(Exception):
+    def __init__(self, msg, output):
+        Exception.__init__(self, msg, output)
+        self.msg = msg
+        self.output = output
+
+    def __str__(self):
+        return "%s    (output: %r)" % (self.msg, self.output)
+
+
+class LoginAuthenticationError(LoginError):
+    pass
+
+
+class LoginTimeoutError(LoginError):
+    def __init__(self, output):
+        LoginError.__init__(self, "Login timeout expired", output)
+
+
+class LoginProcessTerminatedError(LoginError):
+    def __init__(self, status, output):
+        LoginError.__init__(self, None, output)
+        self.status = status
+
+    def __str__(self):
+        return ("Client process terminated    (status: %s,    output: %r)" %
+                (self.status, self.output))
+
+
+class LoginBadClientError(LoginError):
+    def __init__(self, client):
+        LoginError.__init__(self, None, None)
+        self.client = client
+
+    def __str__(self):
+        return "Unknown remote shell client: %r" % self.client
+
+
+class SCPError(Exception):
+    def __init__(self, msg, output):
+        Exception.__init__(self, msg, output)
+        self.msg = msg
+        self.output = output
+
+    def __str__(self):
+        return "%s    (output: %r)" % (self.msg, self.output)
+
+
+class SCPAuthenticationError(SCPError):
+    pass
+
+
+class SCPAuthenticationTimeoutError(SCPAuthenticationError):
+    def __init__(self, output):
+        SCPAuthenticationError.__init__(self, "Authentication timeout expired",
+                                        output)
+
+
+class SCPTransferTimeoutError(SCPError):
+    def __init__(self, output):
+        SCPError.__init__(self, "Transfer timeout expired", output)
+
+
+class SCPTransferFailedError(SCPError):
+    def __init__(self, status, output):
+        SCPError.__init__(self, None, output)
+        self.status = status
+
+    def __str__(self):
+        return ("SCP transfer failed    (status: %s,    output: %r)" %
+                (self.status, self.output))
+
 
 def _remote_login(session, username, password, prompt, timeout=10):
     """
@@ -442,116 +537,68 @@ def _remote_login(session, username, password, prompt, timeout=10):
 
     @brief: Log into a remote host (guest) using SSH or Telnet.
 
-    @param session: A kvm_expect or kvm_shell_session instance to operate on
+    @param session: An Expect or ShellSession instance to operate on
     @param username: The username to send in reply to a login prompt
     @param password: The password to send in reply to a password prompt
     @param prompt: The shell prompt that indicates a successful login
     @param timeout: The maximal time duration (in seconds) to wait for each
             step of the login procedure (i.e. the "Are you sure" prompt, the
             password prompt, the shell prompt, etc)
-
-    @return: True on success and False otherwise.
+    @raise LoginTimeoutError: If timeout expires
+    @raise LoginAuthenticationError: If authentication fails
+    @raise LoginProcessTerminatedError: If the client terminates during login
+    @raise LoginError: If some other error occurs
     """
     password_prompt_count = 0
     login_prompt_count = 0
 
     while True:
-        (match, text) = session.read_until_last_line_matches(
+        try:
+            match, text = session.read_until_last_line_matches(
                 [r"[Aa]re you sure", r"[Pp]assword:\s*$", r"[Ll]ogin:\s*$",
                  r"[Cc]onnection.*closed", r"[Cc]onnection.*refused",
                  r"[Pp]lease wait", prompt],
-                 timeout=timeout, internal_timeout=0.5)
-        if match == 0:  # "Are you sure you want to continue connecting"
-            logging.debug("Got 'Are you sure...'; sending 'yes'")
-            session.sendline("yes")
-            continue
-        elif match == 1:  # "password:"
-            if password_prompt_count == 0:
-                logging.debug("Got password prompt; sending '%s'" % password)
-                session.sendline(password)
-                password_prompt_count += 1
-                continue
-            else:
-                logging.debug("Got password prompt again")
-                return False
-        elif match == 2:  # "login:"
-            if login_prompt_count == 0:
-                logging.debug("Got username prompt; sending '%s'" % username)
-                session.sendline(username)
-                login_prompt_count += 1
-                continue
-            else:
-                logging.debug("Got username prompt again")
-                return False
-        elif match == 3:  # "Connection closed"
-            logging.debug("Got 'Connection closed'")
-            return False
-        elif match == 4:  # "Connection refused"
-            logging.debug("Got 'Connection refused'")
-            return False
-        elif match == 5:  # "Please wait"
-            logging.debug("Got 'Please wait'")
-            timeout = 30
-            continue
-        elif match == 6:  # prompt
-            logging.debug("Got shell prompt -- logged in")
-            return session
-        else:  # match == None
-            logging.debug("Timeout elapsed or process terminated")
-            return False
-
-
-def _remote_scp(session, password, transfer_timeout=600, login_timeout=10):
-    """
-    Transfer file(s) to a remote host (guest) using SCP.  Wait for questions
-    and provide answers.  If login_timeout expires while waiting for output
-    from the child (e.g. a password prompt), fail.  If transfer_timeout expires
-    while waiting for the transfer to complete, fail.
-
-    @brief: Transfer files using SCP, given a command line.
-
-    @param session: A kvm_expect or kvm_shell_session instance to operate on
-    @param password: The password to send in reply to a password prompt.
-    @param transfer_timeout: The time duration (in seconds) to wait for the
-            transfer to complete.
-    @param login_timeout: The maximal time duration (in seconds) to wait for
-            each step of the login procedure (i.e. the "Are you sure" prompt or
-            the password prompt)
-
-    @return: True if the transfer succeeds and False on failure.
-    """
-    password_prompt_count = 0
-    timeout = login_timeout
-
-    while True:
-        (match, text) = session.read_until_last_line_matches(
-                [r"[Aa]re you sure", r"[Pp]assword:\s*$", r"lost connection"],
                 timeout=timeout, internal_timeout=0.5)
-        if match == 0:  # "Are you sure you want to continue connecting"
-            logging.debug("Got 'Are you sure...'; sending 'yes'")
-            session.sendline("yes")
-            continue
-        elif match == 1:  # "password:"
-            if password_prompt_count == 0:
-                logging.debug("Got password prompt; sending '%s'" % password)
-                session.sendline(password)
-                password_prompt_count += 1
-                timeout = transfer_timeout
+            if match == 0:  # "Are you sure you want to continue connecting"
+                logging.debug("Got 'Are you sure...'; sending 'yes'")
+                session.sendline("yes")
                 continue
-            else:
-                logging.debug("Got password prompt again")
-                return False
-        elif match == 2:  # "lost connection"
-            logging.debug("Got 'lost connection'")
-            return False
-        else:  # match == None
-            if session.is_alive():
-                logging.debug("Timeout expired")
-                return False
-            else:
-                status = session.get_status()
-                logging.debug("SCP process terminated with status %s", status)
-                return status == 0
+            elif match == 1:  # "password:"
+                if password_prompt_count == 0:
+                    logging.debug("Got password prompt; sending '%s'", password)
+                    session.sendline(password)
+                    password_prompt_count += 1
+                    continue
+                else:
+                    raise LoginAuthenticationError("Got password prompt twice",
+                                                   text)
+            elif match == 2:  # "login:"
+                if login_prompt_count == 0 and password_prompt_count == 0:
+                    logging.debug("Got username prompt; sending '%s'", username)
+                    session.sendline(username)
+                    login_prompt_count += 1
+                    continue
+                else:
+                    if login_prompt_count > 0:
+                        msg = "Got username prompt twice"
+                    else:
+                        msg = "Got username prompt after password prompt"
+                    raise LoginAuthenticationError(msg, text)
+            elif match == 3:  # "Connection closed"
+                raise LoginError("Client said 'connection closed'", text)
+            elif match == 4:  # "Connection refused"
+                raise LoginError("Client said 'connection refused'", text)
+            elif match == 5:  # "Please wait"
+                logging.debug("Got 'Please wait'")
+                timeout = 30
+                continue
+            elif match == 6:  # prompt
+                logging.debug("Got shell prompt -- logged in")
+                break
+        except kvm_subprocess.ExpectTimeoutError, e:
+            raise LoginTimeoutError(e.output)
+        except kvm_subprocess.ExpectProcessTerminatedError, e:
+            raise LoginProcessTerminatedError(e.status, e.output)
 
 
 def remote_login(client, host, port, username, password, prompt, linesep="\n",
@@ -571,8 +618,9 @@ def remote_login(client, host, port, username, password, prompt, linesep="\n",
     @param timeout: The maximal time duration (in seconds) to wait for
             each step of the login procedure (i.e. the "Are you sure" prompt
             or the password prompt)
-
-    @return: kvm_shell_session object on success and None on failure.
+    @raise LoginBadClientError: If an unknown client is requested
+    @raise: Whatever _remote_login() raises
+    @return: A ShellSession object.
     """
     if client == "ssh":
         cmd = ("ssh -o UserKnownHostsFile=/dev/null "
@@ -583,19 +631,109 @@ def remote_login(client, host, port, username, password, prompt, linesep="\n",
     elif client == "nc":
         cmd = "nc %s %s" % (host, port)
     else:
-        logging.error("Unknown remote shell client: %s" % client)
-        return
+        raise LoginBadClientError(client)
 
-    logging.debug("Trying to login with command '%s'" % cmd)
-    session = kvm_subprocess.kvm_shell_session(cmd, linesep=linesep,
-                                               prompt=prompt)
-    if _remote_login(session, username, password, prompt, timeout):
-        if log_filename:
-            session.set_output_func(log_line)
-            session.set_output_params((log_filename,))
-        return session
-    else:
+    logging.debug("Trying to login with command '%s'", cmd)
+    session = kvm_subprocess.ShellSession(cmd, linesep=linesep, prompt=prompt)
+    try:
+        _remote_login(session, username, password, prompt, timeout)
+    except:
         session.close()
+        raise
+    if log_filename:
+        session.set_output_func(log_line)
+        session.set_output_params((log_filename,))
+    return session
+
+
+def wait_for_login(client, host, port, username, password, prompt, linesep="\n",
+                   log_filename=None, timeout=240, internal_timeout=10):
+    """
+    Make multiple attempts to log into a remote host (guest) until one succeeds
+    or timeout expires.
+
+    @param timeout: Total time duration to wait for a successful login
+    @param internal_timeout: The maximal time duration (in seconds) to wait for
+            each step of the login procedure (e.g. the "Are you sure" prompt
+            or the password prompt)
+    @see: remote_login()
+    @raise: Whatever remote_login() raises
+    @return: A ShellSession object.
+    """
+    logging.debug("Attempting to log into %s:%s using %s (timeout %ds)",
+                  host, port, client, timeout)
+    end_time = time.time() + timeout
+    while time.time() < end_time:
+        try:
+            return remote_login(client, host, port, username, password, prompt,
+                                linesep, log_filename, internal_timeout)
+        except LoginError, e:
+            logging.debug(e)
+        time.sleep(2)
+    # Timeout expired; try one more time but don't catch exceptions
+    return remote_login(client, host, port, username, password, prompt,
+                        linesep, log_filename, internal_timeout)
+
+
+def _remote_scp(session, password, transfer_timeout=600, login_timeout=10):
+    """
+    Transfer file(s) to a remote host (guest) using SCP.  Wait for questions
+    and provide answers.  If login_timeout expires while waiting for output
+    from the child (e.g. a password prompt), fail.  If transfer_timeout expires
+    while waiting for the transfer to complete, fail.
+
+    @brief: Transfer files using SCP, given a command line.
+
+    @param session: An Expect or ShellSession instance to operate on
+    @param password: The password to send in reply to a password prompt.
+    @param transfer_timeout: The time duration (in seconds) to wait for the
+            transfer to complete.
+    @param login_timeout: The maximal time duration (in seconds) to wait for
+            each step of the login procedure (i.e. the "Are you sure" prompt or
+            the password prompt)
+    @raise SCPAuthenticationError: If authentication fails
+    @raise SCPTransferTimeoutError: If the transfer fails to complete in time
+    @raise SCPTransferFailedError: If the process terminates with a nonzero
+            exit code
+    @raise SCPError: If some other error occurs
+    """
+    password_prompt_count = 0
+    timeout = login_timeout
+    authentication_done = False
+
+    while True:
+        try:
+            match, text = session.read_until_last_line_matches(
+                [r"[Aa]re you sure", r"[Pp]assword:\s*$", r"lost connection"],
+                timeout=timeout, internal_timeout=0.5)
+            if match == 0:  # "Are you sure you want to continue connecting"
+                logging.debug("Got 'Are you sure...'; sending 'yes'")
+                session.sendline("yes")
+                continue
+            elif match == 1:  # "password:"
+                if password_prompt_count == 0:
+                    logging.debug("Got password prompt; sending '%s'", password)
+                    session.sendline(password)
+                    password_prompt_count += 1
+                    timeout = transfer_timeout
+                    authentication_done = True
+                    continue
+                else:
+                    raise SCPAuthenticationError("Got password prompt twice",
+                                                 text)
+            elif match == 2:  # "lost connection"
+                raise SCPError("SCP client said 'lost connection'", text)
+        except kvm_subprocess.ExpectTimeoutError, e:
+            if authentication_done:
+                raise SCPTransferTimeoutError(e.output)
+            else:
+                raise SCPAuthenticationTimeoutError(e.output)
+        except kvm_subprocess.ExpectProcessTerminatedError, e:
+            if e.status == 0:
+                logging.debug("SCP process terminated with status 0")
+                break
+            else:
+                raise SCPTransferFailedError(e.status, e.output)
 
 
 def remote_scp(command, password, log_filename=None, transfer_timeout=600,
@@ -614,24 +752,21 @@ def remote_scp(command, password, log_filename=None, transfer_timeout=600,
     @param login_timeout: The maximal time duration (in seconds) to wait for
             each step of the login procedure (i.e. the "Are you sure" prompt
             or the password prompt)
-
-    @return: True if the transfer succeeds and False on failure.
+    @raise: Whatever _remote_scp() raises
     """
     logging.debug("Trying to SCP with command '%s', timeout %ss",
                   command, transfer_timeout)
-
     if log_filename:
         output_func = log_line
         output_params = (log_filename,)
     else:
         output_func = None
         output_params = ()
-
-    session = kvm_subprocess.kvm_expect(command,
-                                        output_func=output_func,
-                                        output_params=output_params)
+    session = kvm_subprocess.Expect(command,
+                                    output_func=output_func,
+                                    output_params=output_params)
     try:
-        return _remote_scp(session, password, transfer_timeout, login_timeout)
+        _remote_scp(session, password, transfer_timeout, login_timeout)
     finally:
         session.close()
 
@@ -639,7 +774,7 @@ def remote_scp(command, password, log_filename=None, transfer_timeout=600,
 def scp_to_remote(host, port, username, password, local_path, remote_path,
                   log_filename=None, timeout=600):
     """
-    Copy files to a remote host (guest).
+    Copy files to a remote host (guest) through scp.
 
     @param host: Hostname or IP address
     @param username: Username (if required)
@@ -649,13 +784,12 @@ def scp_to_remote(host, port, username, password, local_path, remote_path,
     @param log_filename: If specified, log all output to this file
     @param timeout: The time duration (in seconds) to wait for the transfer
             to complete.
-
-    @return: True on success and False on failure.
+    @raise: Whatever remote_scp() raises
     """
     command = ("scp -v -o UserKnownHostsFile=/dev/null "
                "-o PreferredAuthentications=password -r -P %s %s %s@%s:%s" %
                (port, local_path, username, host, remote_path))
-    return remote_scp(command, password, log_filename, timeout)
+    remote_scp(command, password, log_filename, timeout)
 
 
 def scp_from_remote(host, port, username, password, remote_path, local_path,
@@ -671,13 +805,70 @@ def scp_from_remote(host, port, username, password, remote_path, local_path,
     @param log_filename: If specified, log all output to this file
     @param timeout: The time duration (in seconds) to wait for the transfer
             to complete.
-
-    @return: True on success and False on failure.
+    @raise: Whatever remote_scp() raises
     """
     command = ("scp -v -o UserKnownHostsFile=/dev/null "
                "-o PreferredAuthentications=password -r -P %s %s@%s:%s %s" %
                (port, username, host, remote_path, local_path))
-    return remote_scp(command, password, log_filename, timeout)
+    remote_scp(command, password, log_filename, timeout)
+
+
+def copy_files_to(address, client, username, password, port, local_path,
+                  remote_path, log_filename=None, verbose=False, timeout=600):
+    """
+    Copy files to a remote host (guest) using the selected client.
+
+    @param client: Type of transfer client
+    @param username: Username (if required)
+    @param password: Password (if requried)
+    @param local_path: Path on the local machine where we are copying from
+    @param remote_path: Path on the remote machine where we are copying to
+    @param address: Address of remote host(guest)
+    @param log_filename: If specified, log all output to this file (SCP only)
+    @param verbose: If True, log some stats using logging.debug (RSS only)
+    @param timeout: The time duration (in seconds) to wait for the transfer to
+            complete.
+    @raise: Whatever remote_scp() raises
+    """
+    if client == "scp":
+        scp_to_remote(address, port, username, password, local_path,
+                      remote_path, log_filename, timeout)
+    elif client == "rss":
+        log_func = None
+        if verbose:
+            log_func = logging.debug
+        c = rss_file_transfer.FileUploadClient(address, port, log_func)
+        c.upload(local_path, remote_path, timeout)
+        c.close()
+
+
+def copy_files_from(address, client, username, password, port, remote_path,
+                    local_path, log_filename=None, verbose=False, timeout=600):
+    """
+    Copy files from a remote host (guest) using the selected client.
+
+    @param client: Type of transfer client
+    @param username: Username (if required)
+    @param password: Password (if requried)
+    @param remote_path: Path on the remote machine where we are copying from
+    @param local_path: Path on the local machine where we are copying to
+    @param address: Address of remote host(guest)
+    @param log_filename: If specified, log all output to this file (SCP only)
+    @param verbose: If True, log some stats using logging.debug (RSS only)
+    @param timeout: The time duration (in seconds) to wait for the transfer to
+    complete.
+    @raise: Whatever remote_scp() raises
+    """
+    if client == "scp":
+        scp_from_remote(address, port, username, password, remote_path,
+                        local_path, log_filename, timeout)
+    elif client == "rss":
+        log_func = None
+        if verbose:
+            log_func = logging.debug
+        c = rss_file_transfer.FileDownloadClient(address, port, log_func)
+        c.download(remote_path, local_path, timeout)
+        c.close()
 
 
 # The following are utility functions related to ports.
@@ -866,7 +1057,7 @@ def wait_for(func, timeout, first=0.0, step=1.0, text=None):
 
     while time.time() < end_time:
         if text:
-            logging.debug("%s (%f secs)" % (text, time.time() - start_time))
+            logging.debug("%s (%f secs)", text, (time.time() - start_time))
 
         output = func()
         if output:
@@ -976,6 +1167,93 @@ def get_vendor_from_pci_id(pci_id):
     """
     cmd = "lspci -n | awk '/%s/ {print $3}'" % pci_id
     return re.sub(":", " ", commands.getoutput(cmd))
+
+
+class Thread(threading.Thread):
+    """
+    Run a function in a background thread.
+    """
+    def __init__(self, target, args=(), kwargs={}):
+        """
+        Initialize the instance.
+
+        @param target: Function to run in the thread.
+        @param args: Arguments to pass to target.
+        @param kwargs: Keyword arguments to pass to target.
+        """
+        threading.Thread.__init__(self)
+        self._target = target
+        self._args = args
+        self._kwargs = kwargs
+
+
+    def run(self):
+        """
+        Run target (passed to the constructor).  No point in calling this
+        function directly.  Call start() to make this function run in a new
+        thread.
+        """
+        self._e = None
+        self._retval = None
+        try:
+            try:
+                self._retval = self._target(*self._args, **self._kwargs)
+            except:
+                self._e = sys.exc_info()
+                raise
+        finally:
+            # Avoid circular references (start() may be called only once so
+            # it's OK to delete these)
+            del self._target, self._args, self._kwargs
+
+
+    def join(self, timeout=None, suppress_exception=False):
+        """
+        Join the thread.  If target raised an exception, re-raise it.
+        Otherwise, return the value returned by target.
+
+        @param timeout: Timeout value to pass to threading.Thread.join().
+        @param suppress_exception: If True, don't re-raise the exception.
+        """
+        threading.Thread.join(self, timeout)
+        try:
+            if self._e:
+                if not suppress_exception:
+                    # Because the exception was raised in another thread, we
+                    # need to explicitly insert the current context into it
+                    s = error.exception_context(self._e[1])
+                    s = error.join_contexts(error.get_context(), s)
+                    error.set_exception_context(self._e[1], s)
+                    raise self._e[0], self._e[1], self._e[2]
+            else:
+                return self._retval
+        finally:
+            # Avoid circular references (join() may be called multiple times
+            # so we can't delete these)
+            self._e = None
+            self._retval = None
+
+
+def parallel(targets):
+    """
+    Run multiple functions in parallel.
+
+    @param targets: A sequence of tuples or functions.  If it's a sequence of
+            tuples, each tuple will be interpreted as (target, args, kwargs) or
+            (target, args) or (target,) depending on its length.  If it's a
+            sequence of functions, the functions will be called without
+            arguments.
+    @return: A list of the values returned by the functions called.
+    """
+    threads = []
+    for target in targets:
+        if isinstance(target, tuple) or isinstance(target, list):
+            t = Thread(*target)
+        else:
+            t = Thread(target)
+        threads.append(t)
+        t.start()
+    return [t.join() for t in threads]
 
 
 class KvmLoggingConfig(logging_config.LoggingConfig):
@@ -1176,8 +1454,8 @@ class PciAssignable(object):
         # Re-probe driver with proper number of VFs
         if re_probe:
             cmd = "modprobe %s %s" % (self.driver, self.driver_option)
-            logging.info("Loading the driver '%s' with option '%s'" %
-                                   (self.driver, self.driver_option))
+            logging.info("Loading the driver '%s' with option '%s'",
+                         self.driver, self.driver_option)
             s, o = commands.getstatusoutput(cmd)
             if s:
                 return False
@@ -1205,8 +1483,8 @@ class PciAssignable(object):
             if not full_id:
                 continue
             drv_path = os.path.join(base_dir, "devices/%s/driver" % full_id)
-            dev_prev_driver= os.path.realpath(os.path.join(drv_path,
-                                              os.readlink(drv_path)))
+            dev_prev_driver = os.path.realpath(os.path.join(drv_path,
+                                               os.readlink(drv_path)))
             self.dev_drivers[pci_id] = dev_prev_driver
 
             # Judge whether the device driver has been binded to stub
@@ -1347,7 +1625,7 @@ class KojiDownloader(object):
                              "provide an appropriate tag or build name.")
 
         if not build:
-            builds = self.session.listTagged(tag, latest=True,
+            builds = self.session.listTagged(tag, latest=True, inherit=True,
                                              package=src_package)
             if not builds:
                 raise ValueError("Tag %s has no builds of %s" % (tag,
@@ -1390,3 +1668,58 @@ class KojiDownloader(object):
                 rpm_paths.append(r)
 
         return rpm_paths
+
+
+def umount(src, mount_point, type):
+    """
+    Umount the src mounted in mount_point.
+
+    @src: mount source
+    @mount_point: mount point
+    @type: file system type
+    """
+
+    mount_string = "%s %s %s" % (src, mount_point, type)
+    if mount_string in file("/etc/mtab").read():
+        umount_cmd = "umount %s" % mount_point
+        try:
+            utils.system(umount_cmd)
+            return True
+        except error.CmdError:
+            return False
+    else:
+        logging.debug("%s is not mounted under %s", src, mount_point)
+        return True
+
+
+def mount(src, mount_point, type, perm="rw"):
+    """
+    Mount the src into mount_point of the host.
+
+    @src: mount source
+    @mount_point: mount point
+    @type: file system type
+    @perm: mount premission
+    """
+    umount(src, mount_point, type)
+    mount_string = "%s %s %s %s" % (src, mount_point, type, perm)
+
+    if mount_string in file("/etc/mtab").read():
+        logging.debug("%s is already mounted in %s with %s",
+                      src, mount_point, perm)
+        return True
+
+    mount_cmd = "mount -t %s %s %s -o %s" % (type, src, mount_point, perm)
+    try:
+        utils.system(mount_cmd)
+    except error.CmdError:
+        return False
+
+    logging.debug("Verify the mount through /etc/mtab")
+    if mount_string in file("/etc/mtab").read():
+        logging.debug("%s is successfully mounted", src)
+        return True
+    else:
+        logging.error("Can't find mounted NFS share - /etc/mtab contents \n%s",
+                      file("/etc/mtab").read())
+        return False
