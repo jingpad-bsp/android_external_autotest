@@ -48,6 +48,7 @@ class platform_StackProtector(test.test):
                " -wholename /mnt/stateful_partition -prune -o "
                # A couple of files known to be a false positive:
                " -wholename '/home/chronos/Safe Browsing Bloom*' -prune -o "
+               " -wholename '/home/chronos/*Media Cache*' -prune -o "
                # libc needs to be checked differently, skip here:
                " -wholename '%s' -prune -o "
                " -wholename '/usr/lib/gconv/libCNS.so' -prune -o"
