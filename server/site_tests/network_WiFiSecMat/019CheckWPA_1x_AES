@@ -29,21 +29,27 @@
                           "server_cert" : "/tmp/hostapd_server_cert",
                           "private_key" : "/tmp/hostapd_private_key",
                           "eap_user_file" : "/tmp/hostapd_eap_user_file"} ],
+
     [ "install_files",  { "system" : "client",
                           "files" :
-                            { "/tmp/pkg-client.pem" :
-                                site_eap_certs.client_cert_1 + "\n" +
+                            { "/tmp/pkg-client-cert.pem" :
+                                site_eap_certs.client_cert_1,
+                              "/tmp/pkg-client-key.pem" :
                                 site_eap_certs.client_private_key_1,
-                              "/tmp/pkg-client-other.pem" :
-                                site_eap_certs.client_cert_2 + "\n" +
+                              "/tmp/pkg-client-cert-other.pem" :
+                                site_eap_certs.client_cert_2,
+                              "/tmp/pkg-client-key-other.pem" :
                                 site_eap_certs.client_private_key_2,
                               "/tmp/ca-cert.pem" :
                                 site_eap_certs.ca_cert_1,
                               "/tmp/ca-cert-other.pem" :
                                 site_eap_certs.ca_cert_2} } ],
+
     [ "connect",	{ "security":"802_1x",
-                          "psk" : "EAP-TLS:chromeos:"
-			  "/tmp/pkg-client.pem:/tmp/ca-cert.pem"} ],
+                          "psk" : "EAP.Identity:chromeos"
+                          ":EAP.ClientCert:/tmp/pkg-client-cert.pem"
+                          ":EAP.PrivateKey:/tmp/pkg-client-key.pem"
+                          ":EAP.CACert:/tmp/ca-cert.pem"} ],
 
     [ "client_ping",    { "count":"10" } ],
     [ "disconnect" ],
@@ -52,24 +58,29 @@
     [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t1" } ],
     [ "!connect",       { "security":"802_1x",
-                          "psk" : "EAP-TLS:chromeos:"
-                          "/tmp/pkg-client.pem"},
+                          "psk" : "EAP.Identity:chromeos"
+                          ":EAP.ClientCert:/tmp/pkg-client-cert.pem"
+                          ":EAP.PrivateKey:/tmp/pkg-client-key.pem"},
                           "TLS: Certificate verification failed"],
 
     # Ensure authentication fails if server's cert doesn't match our CA cert
     [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t2" } ],
     [ "!connect",       { "security":"802_1x",
-                          "psk" : "EAP-TLS:chromeos:"
-                          "/tmp/pkg-client.pem:/tmp/ca-cert-other.pem"},
+                          "psk" : "EAP.Identity:chromeos"
+                          ":EAP.ClientCert:/tmp/pkg-client-cert.pem"
+                          ":EAP.PrivateKey:/tmp/pkg-client-key.pem"
+                          ":EAP.CACert:/tmp/ca-cert-other.pem"},
                           "TLS: Certificate verification failed"],
 
     # Try authenticating using the wrong client certiificate
     [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t3" } ],
     [ "!connect",       { "security":"802_1x",
-                          "psk" : "EAP-TLS:chromeos:"
-                          "/tmp/pkg-client-other.pem:/tmp/ca-cert.pem"},
+                          "psk" : "EAP.Identity:chromeos"
+                          ":EAP.ClientCert:/tmp/pkg-client-cert-other.pem"
+                          ":EAP.PrivateKey:/tmp/pkg-client-key-other.pem"
+                          ":EAP.CACert:/tmp/ca-cert.pem"},
                           "SSL: SSL3 alert: read "
                           "\(remote end reported an error\):fatal:unknown CA" ],
     [ "disconnect" ],

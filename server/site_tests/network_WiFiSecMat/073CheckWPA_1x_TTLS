@@ -9,7 +9,6 @@
 # do supplicant restarts to test.
 
 { "name":"Check1x_TTLS",
-  "skip_test":"TTLS functionality not yet implemented",
   "steps":[             # Channel [any]
     [ "create",         { "type":"hostap" } ],
     [ "install_files",  { "system" : "router",
@@ -39,26 +38,20 @@
                               "/tmp/ca-cert-other.pem" :
                                 site_eap_certs.ca_cert_2} } ],
     [ "connect",        { "security":"802_1x",
-                          "psk" : "EAP-TTLS:testuser-chapv2:password"} ],
-    [ "client_ping",    { "count":"10" } ],
-
-    [ "disconnect" ],
-
-    # Try with (correct) CA for server
-    [ "restart_supplicant" ],
-    [ "config",         { "ssid_suffix":"t1" } ],
-    [ "connect",        { "security":"802_1x",
-                          "psk" : "EAP-TTLS:testuser-chapv2:password:"
-                          "/tmp/ca-cert.pem"} ],
+                          "psk" : "EAP.Identity:testuser-chapv2"
+			  ":EAP.Password:password"
+                          ":EAP.CACert:/tmp/ca-cert.pem"} ],
     [ "client_ping",    { "count":"10" } ],
 
     [ "disconnect" ],
 
     # Try MD5 inner auth
     [ "restart_supplicant" ],
-    [ "config",         { "ssid_suffix":"t2" } ],
+    [ "config",         { "ssid_suffix":"t1" } ],
     [ "connect",        { "security":"802_1x",
-                          "psk" : "EAP-TTLS:testuser-md5:password"} ],
+                          "psk" : "EAP.Identity:testuser-md5"
+                          ":EAP.Password:password"
+                          ":EAP.CACert:/tmp/ca-cert.pem"} ],
     [ "client_ping",    { "count":"10" } ],
 
     [ "disconnect" ],
@@ -66,16 +59,18 @@
     #
     # Try authenticating using the wrong client password
     [ "restart_supplicant" ],
-    [ "config",         { "ssid_suffix":"t3" } ],
+    [ "config",         { "ssid_suffix":"t2" } ],
     [ "!connect",        { "security":"802_1x",
-                           "psk" : "EAP-TTLS:testuser-chapv2:wrongpassword"} ],
+                           "psk" : "EAP.Identity:testuser-chapv2"
+                           ":EAP.Password:wrongpassword"} ],
     #
     # Try authenticating with the right client password but wrong CA
      [ "restart_supplicant" ],
-     [ "config",         { "ssid_suffix":"t4" } ],
+     [ "config",         { "ssid_suffix":"t3" } ],
      [ "!connect",        { "security":"802_1x",
-                            "psk" : "EAP-TTLS:testuser-chapv2:password:"
-                            "/tmp/ca-cert-other.pem"} ],
+                            "psk" : "EAP.Identity:testuser-chapv2"
+                            ":EAP.Password:password"
+                            ":EAP.CACert:/tmp/ca-cert-other.pem"} ],
 
 
     [ "destroy" ],

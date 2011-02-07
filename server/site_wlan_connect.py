@@ -56,7 +56,7 @@ class ConnectStateHandler(StateHandler):
       props = svc.GetProperties()
       for key, val in self.connection_settings.items():
         if key != 'SSID' and props.get(key) != val:
-          if key in ('Passphrase', 'Identity', 'CertPath', 'AuthorityPath'):
+          if key == 'Passphrase' or key.startswith('EAP.'):
             try:
               svc.SetProperty(key, val)
             except dbus.exceptions.DBusException, e:
@@ -182,17 +182,8 @@ def main(argv):
 
   if security == '802_1x':
     cert_args = psk.split(':')
-    if cert_args[0] == 'EAP-TLS':
-      (connection_settings['Identity'],
-       connection_settings['CertPath']) = cert_args[1:3]
-      if len(cert_args) > 3:
-        connection_settings['AuthorityPath'] = cert_args[3]
-    elif (cert_args[0] == 'EAP-PEAP' or
-             cert_args[0] == 'EAP-TTLS'):
-      (connection_settings['Identity'],
-       connection_settings['Passphrase']) = cert_args[1:3]
-      if len(cert_args) > 3:
-        connection_settings['AuthorityPath'] = cert_args[3]
+    for i in xrange(0, len(cert_args), 2):
+      connection_settings[cert_args[i]] = cert_args[i+1]
   else:
     connection_settings['Passphrase'] = psk
 
