@@ -1,2 +1,3 @@
-org.chromium.SpeechSynthesizer
+org.chromium.LibCrosService
 org.chromium.PowerManager
+org.chromium.SpeechSynthesizer
