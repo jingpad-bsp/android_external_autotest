@@ -232,6 +232,8 @@ def main(argv):
   if config_start:
     config_time = end - config_start
     assoc_time = config_start - assoc_start
+    if assoc_time < 0.0:
+      assoc_time = 0.0
   else:
     config_time = 0.0
     assoc_time = end - assoc_start
