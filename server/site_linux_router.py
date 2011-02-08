@@ -158,6 +158,7 @@ class LinuxRouter(object):
         if self.apmode:
             # Construct the hostapd.conf file and start hostapd.
             conf = self.hostapd['conf']
+            tx_power_params = {}
             htcaps = set()
 
             conf['driver'] = params.get('hostapd_driver',
@@ -257,6 +258,8 @@ class LinuxRouter(object):
                     pass        # NB: meaningless for hostapd; ignore
                 elif k == '-ampdu':
                     pass        # TODO(sleffler) need hostapd support
+                elif k == 'txpower':
+                    tx_power_params['power'] = v
                 else:
                     conf[k] = v
 
@@ -301,6 +304,11 @@ class LinuxRouter(object):
                 self.router.run("%s link set %s up" %
                                 (self.cmd_ip, self.bridgeif))
                 self.hostapd['interface'] = conf['interface']
+            else:
+                tx_power_params['interface'] = conf['interface']
+
+            # Configure transmit power
+            self.set_txpower(tx_power_params)
 
             logging.info("AP configured.")
 
