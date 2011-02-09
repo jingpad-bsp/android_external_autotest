@@ -78,6 +78,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public ICheckBox getRunNonProfiledIteration();
         public ITextBox getKernel();
         public ITextBox getKernelCmdline();
+        public ITextBox getImageUrl();
         public HasText getViewLink();
         public HasCloseHandlers<DisclosurePanel> getControlFilePanelClose();
         public HasOpenHandlers<DisclosurePanel> getControlFilePanelOpen();
@@ -134,6 +135,10 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         JSONObject jobObject = cloneObject.get("job").isObject();
 
         display.getJobName().setText(jobObject.get("name").isString().stringValue());
+
+        if (jobObject.containsKey("image")) {
+            display.getImageUrl().setText(jobObject.get("image").isString().stringValue());
+        }
 
         String priority = jobObject.get("priority").isString().stringValue();
         display.getPriorityList().selectByName(priority);
@@ -357,6 +362,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         handleSkipVerify();
         display.getKernel().setEnabled(true);
         display.getKernelCmdline().setEnabled(true);
+        display.getImageUrl().setEnabled(true);
     }
 
     protected void disableInputs() {
@@ -364,6 +370,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         profilersPanel.setEnabled(false);
         display.getKernel().setEnabled(false);
         display.getKernelCmdline().setEnabled(false);
+        display.getImageUrl().setEnabled(false);
     }
 
     public void initialize() {
@@ -515,6 +522,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         display.getHostless().setValue(false);
         display.getKernel().setText("");
         display.getKernelCmdline().setText("");
+        display.getImageUrl().setText("");
         display.getTimeout().setText(Utils.jsonToString(repository.getData("job_timeout_default")));
         display.getMaxRuntime().setText(
                 Utils.jsonToString(repository.getData("job_max_runtime_hrs_default")));
@@ -590,6 +598,11 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 args.put("meta_hosts", Utils.stringsToJSON(hosts.metaHosts));
                 args.put("one_time_hosts",
                     Utils.stringsToJSON(hosts.oneTimeHosts));
+
+                String imageUrlString = display.getImageUrl().getText();
+                if (!imageUrlString.equals("")) {
+                    args.put("image", new JSONString(imageUrlString));
+                }
 
                 rpcProxy.rpcCall("create_job", args, new JsonRpcCallback() {
                     @Override

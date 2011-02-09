@@ -36,6 +36,16 @@ from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.client.common_lib import global_config
 
 
+def get_parameterized_autoupdate_image_url(job):
+    """Get the parameterized autoupdate image url from a parameterized job."""
+    known_test_obj = models.Test.smart_get('autoupdate_ParameterizedJob')
+    image_parameter = known_test_obj.testparameter_set.get(test=known_test_obj,
+                                                           name='image')        
+    para_set = job.parameterized_job.parameterizedjobparameter_set
+    job_test_para = para_set.get(test_parameter=image_parameter)
+    return job_test_para.parameter_value
+
+
 # labels
 
 def add_label(name, kernel_config=None, platform=None, only_if_needed=None):
@@ -542,7 +552,8 @@ def create_job(name, priority, control_file, control_type,
     # autoupdate_ParameterizedJob has a single parameter, the image parameter,
     # stored in the table afe_test_parameters.  We retrieve and set this
     # instance of the parameter to the OS image path.
-    image_parameter = known_test_obj.testparameter_set.get(id=1)
+    image_parameter = known_test_obj.testparameter_set.get(test=known_test_obj,
+                                                           name='image')
     known_parameterized_job.parameterizedjobparameter_set.create(
             test_parameter=image_parameter, parameter_value=image,
             parameter_type='string')
@@ -609,6 +620,8 @@ def get_jobs(not_yet_run=False, running=False, finished=False, **filter_data):
                                             for label in job.dependencies)
         job_dict['keyvals'] = dict((keyval.key, keyval.value)
                                    for keyval in job.keyvals)
+        if job.parameterized_job:
+            job_dict['image'] = get_parameterized_autoupdate_image_url(job)
         job_dicts.append(job_dict)
     return rpc_utils.prepare_for_serialization(job_dicts)
 
@@ -677,6 +690,9 @@ def get_info_for_clone(id, preserve_metahosts, queue_entry_filter_data=None):
         info['atomic_group_name'] = None
     info['hostless'] = job_info['hostless']
     info['drone_set'] = job.drone_set and job.drone_set.name
+
+    if job.parameterized_job:
+        info['job']['image'] = get_parameterized_autoupdate_image_url(job)
 
     return rpc_utils.prepare_for_serialization(info)
 
