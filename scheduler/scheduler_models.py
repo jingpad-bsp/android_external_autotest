@@ -571,7 +571,10 @@ class HostQueueEntry(DBObject):
 
         if complete:
             self._on_complete(status)
-            self._email_on_job_complete()
+            should_email_completed = ('completed' in _notify_email_statuses or
+                                      'all' in _notify_email_statuses)
+            if should_email_completed:
+                self._email_on_job_complete()
 
         should_email_status = (status.lower() in _notify_email_statuses or
                                'all' in _notify_email_statuses)
