@@ -24,7 +24,8 @@ class desktopui_UrlFetch(test.test):
 
         # Stop chrome from restarting and kill login manager.
         try:
-            orig_pid = utils.system_output('pgrep session_manager')
+            orig_pid = utils.system_output('pgrep %s' %
+                constants.SESSION_MANAGER)
             open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
         except IOError, e:
             logging.debug(e)
@@ -36,7 +37,8 @@ class desktopui_UrlFetch(test.test):
 
         clean_exit = False
         try:
-            new_pid = utils.system_output('pgrep session_manager')
+            new_pid = utils.system_output('pgrep %s' %
+                constants.SESSION_MANAGER)
             if orig_pid != new_pid:
                 raise error.TestFail(
                     'session_manager restarted when chrome was killed')
