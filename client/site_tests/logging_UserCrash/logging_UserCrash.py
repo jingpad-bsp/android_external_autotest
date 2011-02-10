@@ -538,7 +538,7 @@ class logging_UserCrash(crash_test.CrashTest):
                 raise error.TestFail('failed collection had no log')
             log_contents = utils.read_file(result['log'])
             logging.debug('Log contents were: ' + log_contents)
-            if not log_contents.startswith(failure_string):
+            if not failure_string in log_contents:
                 raise error.TestFail('Expected logged error '
                                      '\"%s\" was \"%s\"' %
                                      (failure_string, log_contents))
