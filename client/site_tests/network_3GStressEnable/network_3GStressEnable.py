@@ -33,13 +33,17 @@ class network_3GStressEnable(test.test):
         self.SetPowered(device, 0)
         time.sleep(settle)
 
-    def run_once(self, name='usb', cycles=10, min=1, max=20):
+    def run_once(self, name='usb', cycles=3, min=5, max=15):
         flim = flimflam.FlimFlam(dbus.SystemBus())
         device = flim.FindElementByNameSubstring('Device', name)
         if device is None:
             device = flim.FindElementByPropertySubstring('Device', 'Interface',
                                                          name)
-        self.SetPowered(device, 0)
+        service = flim.FindElementByNameSubstring('Service', 'cellular')
+        if service:
+            # If cellular's already up, take it down to start.
+	    service.SetProperty('AutoConnect', False)
+	    self.SetPowered(device, 0)
         for t in xrange(max, min, -1):
             for _ in xrange(cycles):
                 self.test(device, t / 10.0)
