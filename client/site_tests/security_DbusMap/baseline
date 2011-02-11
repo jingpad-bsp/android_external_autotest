@@ -1,0 +1,609 @@
+[
+  {
+    "Object_name": "fi.w1.wpa_supplicant1",
+    "interfaces": [
+      {
+        "interface": "fi.w1.wpa_supplicant1",
+        "methods": [
+          "CreateInterface",
+          "GetInterface",
+          "RemoveInterface"
+        ]
+      },
+      {
+        "interface": "fi.w1.wpa_supplicant1.BSS",
+        "methods": []
+      },
+      {
+        "interface": "fi.w1.wpa_supplicant1.Interface",
+        "methods": [
+          "AddBlob",
+          "AddNetwork",
+          "Disconnect",
+          "FlushBSS",
+          "GetBlob",
+          "RemoveAllNetworks",
+          "RemoveBlob",
+          "RemoveNetwork",
+          "Scan",
+          "SelectNetwork"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.bluez",
+    "interfaces": [
+      {
+        "interface": "org.bluez.Adapter",
+        "methods": [
+          "CancelDeviceCreation",
+          "CreateDevice",
+          "CreatePairedDevice",
+          "FindDevice",
+          "GetProperties",
+          "ListDevices",
+          "RegisterAgent",
+          "ReleaseSession",
+          "RemoveDevice",
+          "RequestSession",
+          "SetProperty",
+          "StartDiscovery",
+          "StopDiscovery",
+          "UnregisterAgent"
+        ]
+      },
+      {
+        "interface": "org.bluez.Manager",
+        "methods": [
+          "DefaultAdapter",
+          "FindAdapter",
+          "GetProperties",
+          "ListAdapters"
+        ]
+      },
+      {
+        "interface": "org.bluez.NetworkHub",
+        "methods": [
+          "GetProperties",
+          "SetProperty"
+        ]
+      },
+      {
+        "interface": "org.bluez.NetworkPeer",
+        "methods": [
+          "GetProperties",
+          "SetProperty"
+        ]
+      },
+      {
+        "interface": "org.bluez.NetworkRouter",
+        "methods": [
+          "GetProperties",
+          "SetProperty"
+        ]
+      },
+      {
+        "interface": "org.bluez.SerialProxyManager",
+        "methods": [
+          "CreateProxy",
+          "ListProxies",
+          "RemoveProxy"
+        ]
+      },
+      {
+        "interface": "org.bluez.Service",
+        "methods": [
+          "AddRecord",
+          "CancelAuthorization",
+          "RemoveRecord",
+          "RequestAuthorization",
+          "UpdateRecord"
+        ]
+      },
+      {
+        "interface": "org.bluez.TelephonyTest",
+        "methods": [
+          "BatteryLevel",
+          "CancelCall",
+          "IncomingCall",
+          "OutgoingCall",
+          "RegistrationStatus",
+          "RoamingStatus",
+          "SetSubscriberNumber",
+          "SignalStrength"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.Cashew",
+    "interfaces": [
+      {
+        "interface": "org.chromium.Cashew",
+        "methods": [
+          "GetDataPlans",
+          "IsAlive",
+          "RequestDataPlansUpdate"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.Cryptohome",
+    "interfaces": [
+      {
+        "interface": "org.chromium.CryptohomeInterface",
+        "methods": [
+          "AsyncCheckKey",
+          "AsyncMigrateKey",
+          "AsyncMount",
+          "AsyncMountGuest",
+          "AsyncRemove",
+          "AsyncRemoveTrackedSubdirectories",
+          "CheckKey",
+          "GetStatusString",
+          "GetSystemSalt",
+          "IsMounted",
+          "MigrateKey",
+          "Mount",
+          "MountGuest",
+          "Remove",
+          "RemoveTrackedSubdirectories",
+          "TpmCanAttemptOwnership",
+          "TpmClearStoredPassword",
+          "TpmGetPassword",
+          "TpmIsBeingOwned",
+          "TpmIsEnabled",
+          "TpmIsOwned",
+          "TpmIsReady",
+          "Unmount"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.ModemManager",
+    "interfaces": [
+      {
+        "interface": "org.chromium.ModemManager.Modem.Gobi",
+        "methods": [
+          "PowerCycle",
+          "RequestEvents",
+          "SetAutomaticTracking",
+          "SetCarrier",
+          "SoftReset"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ModemManager",
+        "methods": [
+          "EnumerateDevices"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ModemManager.Modem",
+        "methods": [
+          "Connect",
+          "Disconnect",
+          "Enable",
+          "FactoryReset",
+          "GetIP4Config",
+          "GetInfo"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ModemManager.Modem.Cdma",
+        "methods": [
+          "Activate",
+          "ActivateManual",
+          "ActivateManualDebug",
+          "GetEsn",
+          "GetRegistrationState",
+          "GetServingSystem",
+          "GetSignalQuality"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ModemManager.Modem.Simple",
+        "methods": [
+          "Connect",
+          "GetStatus"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.PowerManager",
+    "interfaces": []
+  },
+  {
+    "Object_name": "org.chromium.SessionManager",
+    "interfaces": [
+      {
+        "interface": "org.chromium.SessionManagerInterface",
+        "methods": [
+          "CheckWhitelist",
+          "EmitLoginPromptReady",
+          "EmitLoginPromptVisible",
+          "EnableChromeTesting",
+          "EnumerateWhitelisted",
+          "LockScreen",
+          "RestartEntd",
+          "RestartJob",
+          "RetrieveProperty",
+          "SetOwnerKey",
+          "StartSession",
+          "StopSession",
+          "StoreProperty",
+          "UnlockScreen",
+          "Unwhitelist",
+          "Whitelist"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.UpdateEngine",
+    "interfaces": [
+      {
+        "interface": "org.chromium.UpdateEngineInterface",
+        "methods": [
+          "AttemptUpdate",
+          "GetStatus",
+          "GetTrack",
+          "RebootIfNeeded",
+          "SetTrack"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.flimflam",
+    "interfaces": [
+      {
+        "interface": "org.chromium.flimflam.Device",
+        "methods": [
+          "AddIPConfig",
+          "GetProperties",
+          "ProposeScan",
+          "SetProperty"
+        ]
+      },
+      {
+        "interface": "org.chromium.flimflam.IPConfig",
+        "methods": [
+          "ClearProperty",
+          "GetProperties",
+          "MoveAfter",
+          "MoveBefore",
+          "Remove",
+          "SetProperty"
+        ]
+      },
+      {
+        "interface": "org.chromium.flimflam.Manager",
+        "methods": [
+          "ConfigureWifiService",
+          "CreateProfile",
+          "DisableTechnology",
+          "EnableTechnology",
+          "GetDebugMask",
+          "GetDebugTags",
+          "GetProperties",
+          "GetService",
+          "GetServiceOrder",
+          "GetState",
+          "GetWifiService",
+          "ListDebugTags",
+          "RegisterAgent",
+          "RemoveProfile",
+          "RequestScan",
+          "SetDebugMask",
+          "SetDebugTags",
+          "SetProperty",
+          "SetServiceOrder",
+          "UnregisterAgent"
+        ]
+      },
+      {
+        "interface": "org.chromium.flimflam.Network",
+        "methods": [
+          "GetProperties"
+        ]
+      },
+      {
+        "interface": "org.chromium.flimflam.Profile",
+        "methods": [
+          "DeleteEntry",
+          "GetEntry",
+          "GetProperties",
+          "SetProperty"
+        ]
+      },
+      {
+        "interface": "org.chromium.flimflam.Service",
+        "methods": [
+          "ActivateCellularModem",
+          "ClearProperty",
+          "Connect",
+          "Disconnect",
+          "GetProperties",
+          "MoveAfter",
+          "MoveBefore",
+          "Remove",
+          "SetProperty"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.ConsoleKit",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.ConsoleKit.Manager",
+        "methods": [
+          "CloseSession",
+          "GetCurrentSession",
+          "GetSeats",
+          "GetSessionForCookie",
+          "GetSessionForUnixProcess",
+          "GetSessions",
+          "GetSessionsForUnixUser",
+          "GetSessionsForUser",
+          "GetSystemIdleHint",
+          "GetSystemIdleSinceHint",
+          "OpenSession",
+          "OpenSessionWithParameters",
+          "Restart",
+          "Stop"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ConsoleKit.Seat",
+        "methods": [
+          "ActivateSession",
+          "CanActivateSessions",
+          "GetActiveSession",
+          "GetDevices",
+          "GetId",
+          "GetSessions"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ConsoleKit.Session",
+        "methods": [
+          "Activate",
+          "GetCreationTime",
+          "GetDisplayDevice",
+          "GetId",
+          "GetIdleHint",
+          "GetIdleSinceHint",
+          "GetLoginSessionId",
+          "GetRemoteHostName",
+          "GetSeatId",
+          "GetSessionType",
+          "GetUnixUser",
+          "GetUser",
+          "GetX11Display",
+          "GetX11DisplayDevice",
+          "IsActive",
+          "IsLocal",
+          "Lock",
+          "SetIdleHint",
+          "Unlock"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.DBus",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus",
+        "methods": [
+          "AddMatch",
+          "GetAdtAuditSessionData",
+          "GetConnectionSELinuxSecurityContext",
+          "GetConnectionUnixProcessID",
+          "GetConnectionUnixUser",
+          "GetId",
+          "GetNameOwner",
+          "Hello",
+          "ListActivatableNames",
+          "ListNames",
+          "ListQueuedOwners",
+          "NameHasOwner",
+          "ReleaseName",
+          "ReloadConfig",
+          "RemoveMatch",
+          "RequestName",
+          "StartServiceByName",
+          "UpdateActivationEnvironment"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.DeviceKit",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit",
+        "methods": [
+          "EnumerateByNativePath",
+          "EnumerateBySubsystem",
+          "InhibitShutdown",
+          "UninhibitShutdown"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.DeviceKit.Power",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Power",
+        "methods": [
+          "EnumerateDevices",
+          "Hibernate",
+          "Suspend"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Power.Device",
+        "methods": [
+          "GetHistory",
+          "GetStatistics",
+          "Refresh"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Power.QoS",
+        "methods": [
+          "CancelRequest",
+          "GetLatency",
+          "GetLatencyRequests",
+          "RequestLatency",
+          "SetMinimumLatency"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Power.Wakeups",
+        "methods": [
+          "GetData",
+          "GetTotal"
+        ]
+      }
+    ]
+  }
+]
