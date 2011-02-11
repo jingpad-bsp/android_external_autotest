@@ -30,9 +30,13 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             headers=self.headers,
             environ={'REQUEST_METHOD': 'POST',
                      'CONTENT_TYPE': self.headers['Content-Type']})
-        for field in form.keys():
-            field_item = form[field]
-            self.server._form_entries[field] = field_item.value
+        # You'd think form.keys() would just return [], like it does for empty
+        # python dicts; you'd be wrong. It raises TypeError if called when it
+        # has no keys.
+        if form:
+            for field in form.keys():
+                field_item = form[field]
+                self.server._form_entries[field] = field_item.value
         path = urlparse.urlparse(self.path)[2]
         if path in self.server._url_handlers:
             self.server._url_handlers[path](self, form)
@@ -55,18 +59,20 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.wfile.write('Request for path: %s\n' % self.path)
         self.wfile.write('Got form data:\n')
 
-        for field in form.keys():
-            field_item = form[field]
-            if field_item.filename:
-                # The field contains an uploaded file
-                upload = field_item.file.read()
-                self.wfile.write('\tUploaded %s (%d bytes)<br>' %
-                                 (field, len(upload)))
-                # Write submitted file to specified filename.
-                file(field_item.filename, 'w').write(upload)
-                del upload
-            else:
-                self.wfile.write('\t%s=%s<br>' % (field, form[field].value))
+        # See the note in do_POST about form.keys().
+        if form:
+            for field in form.keys():
+                field_item = form[field]
+                if field_item.filename:
+                    # The field contains an uploaded file
+                    upload = field_item.file.read()
+                    self.wfile.write('\tUploaded %s (%d bytes)<br>' %
+                                     (field, len(upload)))
+                    # Write submitted file to specified filename.
+                    file(field_item.filename, 'w').write(upload)
+                    del upload
+                else:
+                    self.wfile.write('\t%s=%s<br>' % (field, form[field].value))
 
 
     def translate_path(self, path):
