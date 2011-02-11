@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import site_backchannel, test, utils
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.cros import backchannel
 from autotest_lib.client.common_lib import error
 
 import logging, time
@@ -69,7 +70,7 @@ class network_3GFailedConnect(test.test):
             self.ConnectTo3GNetwork(config_timeout=15)
 
     def run_once(self, connect_count=4):
-        site_backchannel.setup()
+        backchannel.setup()
         self.flim = flimflam.FlimFlam()
         self.device_manager = flimflam.DeviceManager(self.flim)
         try:
@@ -79,4 +80,4 @@ class network_3GFailedConnect(test.test):
             try:
                 self.device_manager.RestoreDevices()
             finally:
-                site_backchannel.teardown()
+                backchannel.teardown()

@@ -3,9 +3,10 @@
 # found in the LICENSE file.
 
 import logging, os, shutil, time
-from autotest_lib.client.bin import site_backchannel, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, site_power_status
-from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd, login
+from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test
+from autotest_lib.client.cros import httpd, login
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -82,7 +83,7 @@ class power_LoadTest(cros_ui_test.UITest):
         # specified WiFi AP.
         if self._force_wifi:
             # If backchannel is already running, don't run it again.
-            if not site_backchannel.setup():
+            if not backchannel.setup():
                 raise error.TestError('Could not setup Backchannel network.')
 
             # Note: FlimFlam is flaky after Backchannel setup sometimes. It may
@@ -97,7 +98,7 @@ class power_LoadTest(cros_ui_test.UITest):
                                                       mode='managed')[0]:
                 raise error.TestError('Could not connect to WiFi network.')
 
-        if check_network and site_backchannel.is_network_iface_running('eth0'):
+        if check_network and backchannel.is_network_iface_running('eth0'):
             raise error.TestError(
                 'Ethernet interface is active. Please remove Ethernet cable')
 
@@ -243,7 +244,7 @@ class power_LoadTest(cros_ui_test.UITest):
             login.attempt_logout()
         # cleanup backchannel interface
         if self._force_wifi:
-            site_backchannel.teardown()
+            backchannel.teardown()
 
 
     def _percent_current_charge(self):

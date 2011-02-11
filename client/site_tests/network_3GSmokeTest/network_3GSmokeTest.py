@@ -2,8 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import site_backchannel, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import backchannel
 
 import logging, re, socket, string, time, urllib2
 import dbus, dbus.mainloop.glib, gobject
@@ -226,7 +227,7 @@ class network_3GSmokeTest(test.test):
               time.sleep(sleep_kludge)
 
     def run_once(self, connect_count=5, sleep_kludge=5):
-        site_backchannel.setup()
+        backchannel.setup()
         time.sleep(3)
         self.flim = flimflam.FlimFlam()
         self.device_manager = flimflam.DeviceManager(self.flim)
@@ -237,4 +238,4 @@ class network_3GSmokeTest(test.test):
             try:
                 self.device_manager.RestoreDevices()
             finally:
-                site_backchannel.teardown()
+                backchannel.teardown()

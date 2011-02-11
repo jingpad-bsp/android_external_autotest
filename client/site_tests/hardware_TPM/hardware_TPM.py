@@ -4,7 +4,9 @@
 
 import os
 
-from autotest_lib.client.bin import site_tpm, test, utils
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.cros import tpm
+
 
 class hardware_TPM(test.test):
     version = 1
@@ -16,4 +18,4 @@ class hardware_TPM(test.test):
         utils.make('all')
 
     def run_once(self, suite):
-        site_tpm.run_trousers_tests('%s/src/tests/%s' % (self.bindir, suite))
+        tpm.run_trousers_tests('%s/src/tests/%s' % (self.bindir, suite))
