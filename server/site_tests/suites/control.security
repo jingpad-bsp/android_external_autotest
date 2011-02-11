@@ -16,6 +16,7 @@ Security Functional test suite.
 
 # List of client tests with parameters
 TESTS = [
+  ('security_BundledCRXs', {}),
   ('security_DbusOwners', {}),
   ('security_NetworkListeners', {}),
   ('security_RendererSandbox', {}),
