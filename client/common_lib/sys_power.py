@@ -4,11 +4,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# NB: this code is downloaded for use by site_system_suspend.py;
+# beware of adding dependencies on client libraries such as utils
+
 """Provides utility methods for controlling powerd in ChromiumOS.
 """
 
 import os
-from autotest_lib.client.common_lib import utils
 
 SUSPEND_CMD='/usr/bin/powerd_suspend'
 
@@ -24,7 +26,7 @@ def suspend_to_ram():
     Suspend the system to RAM (S3)
     """
     if os.path.exists(SUSPEND_CMD):
-        utils.system(SUSPEND_CMD)
+        os.system(SUSPEND_CMD)
     else:
         set_power_state('mem')
 
