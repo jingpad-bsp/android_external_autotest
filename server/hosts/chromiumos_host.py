@@ -39,8 +39,3 @@ class ChromiumOSHost(base_classes.Host):
         self.reboot(timeout=60, wait=True)
         # Following the reboot, verify the correct version.
         updater.check_version()
-
-        # Clean up any old autotest directories which may be lying around.
-        for path in global_config.global_config.get_config_value(
-                'AUTOSERV', 'client_autodir_paths', type=list):
-            self.run('rm -rf ' + path)

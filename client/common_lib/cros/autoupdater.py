@@ -117,7 +117,11 @@ class ChromiumOSUpdater():
         # is testable after we run the autoupdater.
         statefuldev_url = self.update_url.replace('update', 'static/archive')
 
-        statefuldev_cmd = ' '.join([STATEFULDEV_UPDATER, statefuldev_url,
+        # --stateful_change=clean tells the updater to reset the stateful
+        # partition to factory state; giving us a clean slate for testing.
+        statefuldev_cmd = ' '.join([STATEFULDEV_UPDATER,
+                                    '--stateful_change=clean',
+                                    statefuldev_url,
                                     '2>&1'])
         logging.info(statefuldev_cmd)
         try:
