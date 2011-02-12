@@ -345,12 +345,6 @@ class LinuxRouter(object):
 
 
         self.hostapd['configured'] = False
-        # reset config state to default
-        self.hostapd['conf'] = {
-            'ssid': self.defssid,
-            'bridge': self.bridgeif,
-            'hw_mode': 'g'
-        }
 
 
     def get_ssid(self):
