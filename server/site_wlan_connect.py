@@ -101,6 +101,9 @@ class ConnectStateHandler(StateHandler):
           self.Debug('Service was already in progress (state=%s)' %
                      service.GetProperties().get('State'))
           connect_quirks['in_progress'] = 1
+        else:
+          print 'FAIL(acquire): DBus exception in Connect() %s' % e
+          ErrExit(2)
 
     self.service_handle = service
     return service

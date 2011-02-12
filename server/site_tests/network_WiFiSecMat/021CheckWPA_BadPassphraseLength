@@ -7,9 +7,9 @@
   "steps":[             # Channel [any]
     # Test passphrase that is too small by one
     [ "!connect",        { "security":"rsn", "psk":"0123456", "hidden":True },
-                           "org.chromium.flimflam.Error.InvalidArguments" ],
+                           "org.chromium.flimflam.Error.InvalidPassphrase" ],
     [ "!connect",        { "security":"wpa", "psk":"0123456", "hidden":True },
-                           "org.chromium.flimflam.Error.InvalidArguments" ],
+                           "org.chromium.flimflam.Error.InvalidPassphrase" ],
     # Test a textual passphrase that is too large by one
     [ "!connect",        { "security":"rsn", "hidden":True,
                            "psk":"x123456789"
@@ -19,7 +19,7 @@
                                  "0123456789"
                                  "0123456789"
                                  "0123" },
-                           "org.chromium.flimflam.Error.InvalidArguments" ],
+                           "org.chromium.flimflam.Error.InvalidPassphrase" ],
     [ "!connect",        { "security":"wpa", "hidden":True,
                            "psk":"x123456789"
                                  "0123456789"
@@ -28,7 +28,7 @@
                                  "0123456789"
                                  "0123456789"
                                  "0123" },
-                           "org.chromium.flimflam.Error.InvalidArguments" ],
+                           "org.chromium.flimflam.Error.InvalidPassphrase" ],
     # Test a hex-only passphrase that is too large by one
      [ "!connect",        { "security":"rsn", "hidden":True,
                            "psk":"0123456789"
@@ -38,7 +38,7 @@
                                  "0123456789"
                                  "0123456789"
                                  "01234" },
-                           "org.chromium.flimflam.Error.InvalidArguments" ],
+                           "org.chromium.flimflam.Error.InvalidPassphrase" ],
     [ "!connect",        { "security":"wpa", "hidden":True,
                            "psk":"0123456789"
                                  "0123456789"
@@ -47,6 +47,6 @@
                                  "0123456789"
                                  "0123456789"
                                  "01234" },
-                           "org.chromium.flimflam.Error.InvalidArguments" ],
+                           "org.chromium.flimflam.Error.InvalidPassphrase" ],
   ],
 }
