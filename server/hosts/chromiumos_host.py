@@ -36,6 +36,6 @@ class ChromiumOSHost(base_classes.Host):
                                                 update_url=update_url)
         updater.run_update()
         # Updater has returned, successfully, reboot the host.
-        self.reboot(timeout=60, wait=True)
+        self.reboot(timeout=120, wait=True)
         # Following the reboot, verify the correct version.
         updater.check_version()
