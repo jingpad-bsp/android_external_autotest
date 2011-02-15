@@ -19,16 +19,6 @@ BASE_URL = 'http://' + SERVER + '/'
 class network_3GSmokeTest(test.test):
     version = 1
 
-    def FindCellularService(self):
-        """Find the first dbus cellular service object."""
-
-        service = self.flim.FindElementByPropertySubstring('Service',
-                                                           'Type',
-                                                           'cellular')
-        if not service:
-            raise error.TestFail('Could not find cellular service.')
-        return service
-
     def ConnectTo3GNetwork(self, config_timeout):
         """Attempts to connect to a 3G network using FlimFlam.
 
@@ -39,7 +29,7 @@ class network_3GSmokeTest(test.test):
         error.TestFail if connection fails
         """
         logging.info('ConnectTo3GNetwork')
-        service = self.FindCellularService()
+        service = self.flim.FindCellularService()
 
         success, status = self.flim.ConnectService(
             service=service,
@@ -89,7 +79,7 @@ class network_3GSmokeTest(test.test):
               effect.  Raise if we time out.
         """
         logging.info('DisconnectFrom3GNetwork')
-        service = self.FindCellularService()
+        service = self.flim.FindCellularService()
 
         success, status = self.flim.DisconnectService(
             service=service,
@@ -100,9 +90,12 @@ class network_3GSmokeTest(test.test):
     def ResetAllModems(self):
         """Disable/Enable cycle all modems to ensure valid starting state."""
         manager = mm.ModemManager()
-        service = self.FindCellularService()
+        service = self.flim.FindCellularService()
+        if not service:
+            self.flim.EnableTechnology('cellular')
+            service = self.flim.FindCellularService()
         print 'ResetAllModems: service %s' % service
-        if service.GetProperties()['Favorite']:
+        if service and service.GetProperties()['Favorite']:
             service.SetProperty('AutoConnect', False)
         for path in manager.manager.EnumerateDevices():
             modem = manager.Modem(path)
@@ -210,7 +203,7 @@ class network_3GSmokeTest(test.test):
         for ii in xrange(connect_count):
             self.ConnectTo3GNetwork(config_timeout=120)
             self.CheckInterfaceForDestination(SERVER,
-                                              self.FindCellularService())
+                                              self.flim.FindCellularService())
 
             self.FetchUrl(label='3G', size=1<<16)
             self.DisconnectFrom3GNetwork(disconnect_timeout=60)
