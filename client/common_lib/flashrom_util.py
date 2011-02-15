@@ -68,6 +68,15 @@ DEFAULT_CHROMEOS_FMAP_CONVERSION = {
     "Firmware B Data": "FVMAINB",
     "RW VPD": "RW_VPD",
     "Log Volume": "FV_LOG",
+    # New layout in Chrome OS Main Processor Firmware Specification,
+    # used by all newer (>2011) platforms except Mario.
+    "BOOT_STUB": "FV_BSTUB",
+    "GBB": "FV_GBB",
+    "RECOVERY": "FVDEV",
+    "VBLOCK_A": "VBOOTA",
+    "VBLOCK_B": "VBOOTB",
+    "FW_MAIN_A": "FVMAIN",
+    "FW_MAIN_B": "FVMAINB",
 }
 
 # Default "skip" sections when verifying section data.
