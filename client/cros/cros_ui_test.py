@@ -32,6 +32,9 @@ class UITest(test.test):
     should make sure to invoke this class' version of those methods as well.
     The standard super(...) function cannot be used for this, since the base
     test class is not a 'new style' Python class.
+
+    Any crashes detected during the test run will automatically generate a test
+    failure exception, to disable this behavior set ignore_crashes = True.
     """
     version = 1
 
@@ -39,8 +42,7 @@ class UITest(test.test):
     username = None
     password = None
 
-    """Processes that we know crash and are willing to ignore."""
-    crash_blacklist = ['powerm']
+    ignore_crashes = False
 
     def __init__(self, job, bindir, outputdir):
         self._dns = {}  # for saving/restoring dns entries
@@ -288,16 +290,20 @@ class UITest(test.test):
             self._dnsServer.stop()
 
 
-    def __log_crashed_processes(self, processes):
-        """Runs through the log watched by |watcher| to see if a crash was
-        reported for any process names listed in |processes|.
+    def __check_for_crashes(self):
+        """Runs through logs collected since initialization to see if any crash
+        was reported. Crashes are recorded as INFO messages plus raised as a
+        error.TestFail exception.
         """
-        regex = re.compile(r'Received crash notification for (\w+).+ (sig \d+)',
-                           re.MULTILINE)
+        crashes = []
+        regex = re.compile('Received crash notification for (.+)', re.MULTILINE)
         for match in regex.finditer(self._log_reader.get_logs()):
-            if match.group(1) in processes:
-                self.job.record('INFO', self.tagged_testname,
-                                "%s crash" % m.group(1), m.group(2))
+            self.job.record('INFO', self.tagged_testname,
+                            'Crash detected: %s' % match.group(1))
+            crashes.append(match.group(1))
+
+        if crashes:
+            raise error.TestFail('Crash(es) detected: %s' % ', '.join(crashes))
 
 
     def cleanup(self):
@@ -333,7 +339,10 @@ class UITest(test.test):
                 logging.error(error)
 
         self.stop_authserver()
-        self.__log_crashed_processes(self.crash_blacklist)
+        # Make sure this is the last line as it will throw exceptions preventing
+        # subsequent cleanup code from running.
+        if not self.ignore_crashes:
+            self.__check_for_crashes()
 
 
     def get_auth_endpoint_misses(self):
