@@ -36,6 +36,11 @@ class ChromiumOSHost(base_classes.Host):
                                                 update_url=update_url)
         updater.run_update()
         # Updater has returned, successfully, reboot the host.
-        self.reboot(timeout=120, wait=True)
+        self.reboot(timeout=60, wait=True)
         # Following the reboot, verify the correct version.
         updater.check_version()
+
+        # Clean up any old autotest directories which may be lying around.
+        for path in global_config.global_config.get_config_value(
+                'AUTOSERV', 'client_autodir_paths', type=list):
+            self.run('rm -rf ' + path)
