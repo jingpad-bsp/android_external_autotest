@@ -22,9 +22,13 @@ class network_ConnmanCromoCrash(test.test):
                                proc.returncode))
         return str(out)
 
+    def veth(self, *args):
+        self.callproc('/usr/local/lib/flimflam/test/veth', *args)
+
     def run(self, test):
         oldpid = self.callproc('pgrep', 'flimflamd').replace("\n", ' ')
-        proc = subprocess.Popen(['%s/%s' % (self.srcdir, test)],
+        proc = subprocess.Popen(['/sbin/minijail', '--uid=210', '--gid=210',
+                                 '/usr/bin/env', 'python', '%s/%s' % (self.srcdir, test)],
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
         (out, err) = proc.communicate()
@@ -42,5 +46,21 @@ class network_ConnmanCromoCrash(test.test):
                                oldpid,newpid))
 
     def run_once(self):
-        for t in tests:
-            self.run(t)
+        cromo_was_running = True
+        try:
+            self.callproc('initctl', 'stop', 'cromo')
+        except RuntimeError:
+            cromo_was_running = False
+            # It's okay if cromo's not running beforehand.
+            pass
+        time.sleep(3)
+        try:
+            for t in tests:
+                try:
+                    self.veth('setup', 'pseudo-modem0', '172.16.1')
+                    self.run(t)
+                finally:
+                    self.veth('teardown', 'pseudo-modem0')
+        finally:
+            if cromo_was_running:
+                self.callproc('initctl', 'start', 'cromo')

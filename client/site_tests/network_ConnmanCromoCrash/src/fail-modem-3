@@ -4,7 +4,7 @@ import common
 import sys
 
 class FailModem(common.Modem):
-    def ConnectDone(self, ok, why):
+    def ConnectDone(self, old, new, why):
         raise common.RandomError
 
 common.setup()

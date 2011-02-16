@@ -5,11 +5,11 @@ import os
 import sys
 
 class CrashModem(common.Modem):
-    def ConnectDone(self, ok, why):
+    def ConnectDone(self, old, new, why):
         sys.exit(0)
 
 def setup():
-    os.system('/usr/lib/flimflam/test/connect-service cellular 2>/dev/null &')
+    os.system('/usr/local/lib/flimflam/test/connect-service cellular 2>/dev/null &')
     return 0
 
 common.setup(setup)
