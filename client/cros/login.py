@@ -11,6 +11,11 @@ from autotest_lib.client.common_lib import error
 
 _DEFAULT_TIMEOUT = 30
 
+# Log messages used to signal when we're in a logout situation. Used to detect
+# crashes by cros_ui_test.UITest.
+LOGOUT_ATTEMPT_MSG = 'cros/login.py: Attempting logout...'
+LOGOUT_COMPLETE_MSG = 'cros/login.py: Logout complete.'
+
 
 class TimeoutError(error.TestError):
     """Error raised when we time out while waiting on a condition."""
@@ -181,24 +186,31 @@ def attempt_logout(timeout=_DEFAULT_TIMEOUT):
     if not logged_in():
         raise UnexpectedCondition('Already logged out')
 
-    oldpid = __get_session_manager_pid()
+    # Log what we're about to do to /var/log/messages. Used to log crashes later
+    # in cleanup by cros_ui_test.UITest.
+    utils.system('logger "%s"' % LOGOUT_ATTEMPT_MSG)
 
-    # Mark /var/log/messages now; we'll run through all subsequent log messages
-    # if we couldn't TERM and restart the session manager.
+    try:
+      oldpid = __get_session_manager_pid()
 
-    log_reader = cros_logging.LogReader()
-    log_reader.set_start_by_current()
+      # Mark /var/log/messages now; we'll run through all subsequent log
+      # messages if we couldn't TERM and restart the session manager.
 
-    # Gracefully exiting the session manager causes the user's session to end.
-    utils.system('pkill -TERM -o ^%s$' % constants.SESSION_MANAGER)
+      log_reader = cros_logging.LogReader()
+      log_reader.set_start_by_current()
 
-    wait_for_condition(
-        condition=lambda: __session_manager_restarted(oldpid),
-        timeout_msg='Timed out waiting for logout',
-        timeout=timeout,
-        process='session_manager',
-        log_reader=log_reader,
-        crash_msg='session_manager crashed while shutting down.')
+      # Gracefully exiting the session manager causes the user's session to end.
+      utils.system('pkill -TERM -o ^%s$' % constants.SESSION_MANAGER)
+
+      wait_for_condition(
+          condition=lambda: __session_manager_restarted(oldpid),
+          timeout_msg='Timed out waiting for logout',
+          timeout=timeout,
+          process='session_manager',
+          log_reader=log_reader,
+          crash_msg='session_manager crashed while shutting down.')
+    finally:
+      utils.system('logger "%s"' % LOGOUT_COMPLETE_MSG)
 
 
 def wait_for_browser(timeout=_DEFAULT_TIMEOUT):
