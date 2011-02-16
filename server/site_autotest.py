@@ -10,3 +10,6 @@ class SiteAutotest(installable_object.InstallableObject):
         installable_object.InstallableObject.get(self, location)
         self.got = True
 
+
+class _SiteRun(object):
+    pass
