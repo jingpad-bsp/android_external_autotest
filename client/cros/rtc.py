@@ -34,4 +34,3 @@ def set_wake_alarm(alarm_time):
             raise
         write_wake_alarm('clear')
         write_wake_alarm(alarm_time)
-        

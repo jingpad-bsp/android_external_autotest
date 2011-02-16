@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import commands, logging, random, re, time, utils
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, rtc, sys_power
+import commands, logging, random, re, time
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import rtc, sys_power
+
 
 class power_Resume(test.test):
     version = 1

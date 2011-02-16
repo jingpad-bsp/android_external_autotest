@@ -1026,8 +1026,8 @@ class WiFiTest(object):
         """ Suspend the system """
 
         script_client_file = self.install_script('site_system_suspend.py',
-                                                 '../client/common_lib/rtc.py',
-                                                 '../client/common_lib/'
+                                                 '../client/cros/rtc.py',
+                                                 '../client/cros/'
                                                  'sys_power.py')
         result = self.client.run('python "%s" %d' %
             (script_client_file, int(params.get("suspend_time", 5))))
@@ -1037,8 +1037,8 @@ class WiFiTest(object):
         """ Suspend the system in the background """
 
         script_client_file = self.install_script('site_system_suspend.py',
-                                                 '../client/common_lib/rtc.py',
-                                                 '../client/common_lib/'
+                                                 '../client/cros/rtc.py',
+                                                 '../client/cros/'
                                                  'sys_power.py')
         cmd = ('python "%s" %d %s' %
                (script_client_file,

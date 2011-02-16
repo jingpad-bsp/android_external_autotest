@@ -4,9 +4,10 @@
 
 
 import os, random, subprocess, time
-import commands, logging, random, time, utils
-from autotest_lib.client.bin import site_utils, test
-from autotest_lib.client.common_lib import error, rtc, sys_power
+import commands, logging, random, time
+from autotest_lib.client.bin import utils, test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import rtc, sys_power
 
 
 MIN_SLEEP_INTERVAL = 5
@@ -59,9 +60,9 @@ class platform_SuspendStress(test.test):
     def run_once(self, auto_start=False, runtime=None):
         if auto_start:
             open(START_FILE, 'w').close()
-        site_utils.poll_for_condition(lambda: os.path.exists(START_FILE),
-                                      error.TestFail('startup not triggered.'),
-                                      timeout=30, sleep_interval=1)
+        utils.poll_for_condition(lambda: os.path.exists(START_FILE),
+                                 error.TestFail('startup not triggered.'),
+                                 timeout=30, sleep_interval=1)
         logging.debug('Found %s, starting power state cycle.' % START_FILE)
         if runtime:
             runtime = time.mktime(time.localtime()) + runtime
