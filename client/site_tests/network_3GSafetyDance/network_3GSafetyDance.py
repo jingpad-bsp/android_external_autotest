@@ -45,32 +45,37 @@ class network_3GSafetyDance(test.test):
 
     def connect(self):
         print 'Connect'
-        (success, status) = self.filterexns(lambda: 
-            self.flim.ConnectService(service = self.service,
-                                     config_timeout = 120))
-        if not success and not self.ignoring(status):
-            raise error.TestFail('Could not connect: %s' % status)
+        self.service = self.flim.FindCellularService(timeout=5)
+        if self.service:
+            (success, status) = self.filterexns(lambda:
+                self.flim.ConnectService(service = self.service,
+                                         config_timeout = 120))
+            if not success and not self.ignoring(status):
+                raise error.TestFail('Could not connect: %s' % status)
 
     def disconnect(self):
         print 'Disconnect'
-        (success, status) = self.filterexns(lambda:
-            self.flim.DisconnectService(service = self.service,
-                                        wait_timeout = 60))
-        if not success:
-            raise error.TestFail('Could not disconnect: %s' % status)
+        self.service = self.flim.FindCellularService(timeout=5)
+        if self.service:
+            (success, status) = self.filterexns(lambda:
+                self.flim.DisconnectService(service = self.service,
+                                            wait_timeout = 60))
+            if not success:
+                raise error.TestFail('Could not disconnect: %s' % status)
 
     def op(self):
         n = random.randint(0, len(self.ops) - 1)
         self.ops[n]()
-        time.sleep(random.randint(0, 20) / 10.0)
+        time.sleep(random.randint(5, 20) / 10.0)
 
-    def run_once(self, name='usb', ops=500, seed=None):
+    def run_once(self, name='usb', ops=30, seed=None):
         if not seed:
             seed = int(time.time())
         self.okerrors = [
             'org.chromium.flimflam.Error.InProgress',
             'org.chromium.flimflam.Error.AlreadyConnected',
-            'org.chromium.flimflam.Error.AlreadyEnabled'
+            'org.chromium.flimflam.Error.AlreadyEnabled',
+            'org.chromium.flimflam.Error.AlreadyDisabled'
         ]
         self.ops = [ self.enable,
                      self.disable,
@@ -78,9 +83,6 @@ class network_3GSafetyDance(test.test):
                      self.disconnect ]
         self.flim = flimflam.FlimFlam()
         self.manager = flimflam.DeviceManager(self.flim)
-        self.service = self.flim.FindElementByPropertySubstring('Service',
-                                                                'Type',
-                                                                'cellular')
         self.device = self.flim.FindElementByNameSubstring('Device', name)
         if not self.device:
             self.device = self.flim.FindElementByPropertySubstring('Device',
