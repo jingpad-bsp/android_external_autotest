@@ -34,6 +34,7 @@ def get_bios_ro_hash(file_source=None, exception_type=Exception):
     # hash_ro_list: RO section to be hashed
     hash_src = ''
     hash_ro_list = ['FV_BSTUB', 'FV_GBB', 'FVDEV']
+    hash_ro_section = 'RO_SECTION'
 
     flashrom = flashrom_util.FlashromUtility()
     flashrom.initialize(flashrom.TARGET_BIOS, target_file=file_source)
@@ -50,6 +51,11 @@ def get_bios_ro_hash(file_source=None, exception_type=Exception):
     # TODO(hungte) we can check that FMAP must reside in RO section, and the
     # BSTUB must be aligned to bottom of firmware.
     hash_src = hash_src + site_fmap.fmap_encode(fmap_obj)
+
+    # New firmware spec defined new "RO_SECTION" which includes all sections to
+    # be hashed. When that section exists, we should override hash_ro_list.
+    if hash_ro_section in flashrom.layout:
+        hash_ro_list = [hash_ro_section]
 
     for section in hash_ro_list:
         src = flashrom.read_section(section)
