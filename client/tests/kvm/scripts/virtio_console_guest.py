@@ -14,6 +14,7 @@ import fcntl, traceback, signal
 
 DEBUGPATH = "/sys/kernel/debug"
 SYSFSPATH = "/sys/class/virtio-ports/"
+DEVPATH = "/dev/virtio-ports/"
 
 exiting = False
 
@@ -53,15 +54,16 @@ class VirtioGuest:
         return out
 
 
-    def _get_port_status(self):
+    def _get_port_status(self, in_files=None):
         """
         Get info about ports from kernel debugfs.
 
+        @param in_files: Array of input files.
         @return: Ports dictionary of port properties
         """
         ports = {}
         not_present_msg = "FAIL: There's no virtio-ports dir in debugfs"
-        if (not os.path.ismount(DEBUGPATH)):
+        if not os.path.ismount(DEBUGPATH):
             os.system('mount -t debugfs none %s' % (DEBUGPATH))
         try:
             if not os.path.isdir('%s/virtio-ports' % (DEBUGPATH)):
@@ -70,6 +72,22 @@ class VirtioGuest:
             print not_present_msg
         else:
             viop_names = os.listdir('%s/virtio-ports' % (DEBUGPATH))
+            if in_files is not None:
+                dev_names = os.listdir('/dev')
+                rep = re.compile(r"vport[0-9]p[0-9]+")
+                dev_names = filter(lambda x: rep.match(x) is not None, dev_names)
+                if len(dev_names) != len(in_files):
+                    print ("FAIL: Not all ports were successfully initialized "
+                           "in /dev, only %d from %d." % (len(dev_names),
+                                                          len(in_files)))
+                    return
+
+                if len(viop_names) != len(in_files):
+                    print ("FAIL: Not all ports were successfuly initialized "
+                           "in debugfs, only %d from %d." % (len(viop_names),
+                                                             len(in_files)))
+                    return
+
             for name in viop_names:
                 open_db_file = "%s/virtio-ports/%s" % (DEBUGPATH, name)
                 f = open(open_db_file, 'r')
@@ -82,30 +100,36 @@ class VirtioGuest:
                         m = re.match("(\S+): (\S+)", line)
                         port[m.group(1)] = m.group(2)
 
-                    if (port['is_console'] == "yes"):
+                    if port['is_console'] == "yes":
                         port["path"] = "/dev/hvc%s" % (port["console_vtermno"])
                         # Console works like a serialport
                     else:
                         port["path"] = "/dev/%s" % name
 
-                    if (not os.path.exists(port['path'])):
+                    if not os.path.exists(port['path']):
                         print "FAIL: %s not exist" % port['path']
 
                     sysfspath = SYSFSPATH + name
-                    if (not os.path.isdir(sysfspath)):
+                    if not os.path.isdir(sysfspath):
                         print "FAIL: %s not exist" % (sysfspath)
 
                     info_name = sysfspath + "/name"
                     port_name = self._readfile(info_name).strip()
-                    if (port_name != port["name"]):
-                        print ("FAIL: Port info not match \n%s - %s\n%s - %s" %
+                    if port_name != port["name"]:
+                        print ("FAIL: Port info does not match "
+                               "\n%s - %s\n%s - %s" %
                                (info_name , port_name,
                                 "%s/virtio-ports/%s" % (DEBUGPATH, name),
                                 port["name"]))
+                    dev_ppath = DEVPATH + port_name
+                    if not os.path.exists(dev_ppath):
+                        print "FAIL: Symlink %s does not exist." % dev_ppath
+                    if not os.path.realpath(dev_ppath) != "/dev/name":
+                        print "FAIL: Symlink %s is not correct." % dev_ppath
                 except AttributeError:
-                    print ("In file " + open_db_file +
-                           " are bad data\n"+ "".join(file).strip())
-                    print ("FAIL: Fail file data.")
+                    print ("Bad data on file %s:\n%s. " %
+                           (open_db_file, "".join(file).strip()))
+                    print "FAIL: Bad data on file %s." % open_db_file
                     return
 
                 ports[port['name']] = port
@@ -114,18 +138,31 @@ class VirtioGuest:
         return ports
 
 
+    def check_zero_sym(self):
+        """
+        Check if port /dev/vport0p0 was created.
+        """
+        symlink = "/dev/vport0p0"
+        if os.path.exists(symlink):
+            print "PASS: Symlink %s exists." % symlink
+        else:
+            print "FAIL: Symlink %s does not exist." % symlink
+
+
     def init(self, in_files):
         """
         Init and check port properties.
         """
-        self.ports = self._get_port_status()
+        self.ports = self._get_port_status(in_files)
 
-        if self.ports == None:
+        if self.ports is None:
             return
         for item in in_files:
             if (item[1] != self.ports[item[0]]["is_console"]):
                 print self.ports
                 print "FAIL: Host console is not like console on guest side\n"
+                return
+
         print "PASS: Init and check virtioconsole files in system."
 
 
@@ -426,7 +463,7 @@ class VirtioGuest:
         return ret
 
 
-    def async(self, port, mode=True, exp_val = 0):
+    def async(self, port, mode=True, exp_val=0):
         """
         Set port function mode async/sync.
 
@@ -471,11 +508,11 @@ class VirtioGuest:
         """
         descriptor = None
         path = self.ports[file]["path"]
-        if path != None:
+        if path is not None:
             if path in self.files.keys():
                 descriptor = self.files[path]
                 del self.files[path]
-            if descriptor != None:
+            if descriptor is not None:
                 try:
                     os.close(descriptor)
                 except Exception, inst:
@@ -566,7 +603,7 @@ class VirtioGuest:
         print "PASS: Sender start"
 
 
-    def send(self, port, length=1, mode=True):
+    def send(self, port, length=1, mode=True, is_static=False):
         """
         Send a data of some length
 
@@ -577,14 +614,18 @@ class VirtioGuest:
         in_f = self._open([port])
 
         data = ""
-        while len(data) < length:
-            data += "%c" % random.randrange(255)
-        try:
-            writes = os.write(in_f[0], data)
-        except Exception, inst:
-            print inst
-        if not writes:
-            writes = 0
+        writes = 0
+
+        if not is_static:
+            while len(data) < length:
+                data += "%c" % random.randrange(255)
+            try:
+                writes = os.write(in_f[0], data)
+            except Exception, inst:
+                print inst
+        else:
+            while len(data) < 4096:
+                data += "%c" % random.randrange(255)
         if mode:
             while (writes < length):
                 try:
@@ -632,7 +673,7 @@ class VirtioGuest:
         buf = ""
         if ret[0]:
             buf = os.read(in_f[0], buffer)
-        print ("PASS: Rest in socket: ") + str(buf[10])
+        print ("PASS: Rest in socket: ") + str(buf[:10])
 
 
 def is_alive():
@@ -681,6 +722,7 @@ def worker(virt):
                             traceback.format_exception(exc_type,
                                                        exc_value,
                                                        exc_traceback))
+            print "FAIL: Guest command exception."
 
 
 def sigusr_handler(sig, frame):
@@ -704,9 +746,9 @@ def main():
         catch = virt.catching_signal()
         if catch:
             signal.signal(signal.SIGIO, virt)
-        elif catch == False:
+        elif catch is False:
             signal.signal(signal.SIGIO, signal.SIG_DFL)
-        if (catch != None):
+        if catch is not None:
             virt.use_config.set()
     print "PASS: guest_exit"
 
