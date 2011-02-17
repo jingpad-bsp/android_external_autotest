@@ -40,6 +40,7 @@ class desktopui_GmailLatency(test.test):
 
         # We could kill with signal 9 so that the session manager doesn't exit.
         # But this seems to leave the screen blank while the test is running.
+        # So do it this way (which means clean_exit is always False)
         login.nuke_process_by_name(name=constants.BROWSER)
 
         clean_exit = False
@@ -58,7 +59,6 @@ class desktopui_GmailLatency(test.test):
             params = ('--url="%s" --wait_js_expr="%s" --wait_js_timeout=%d' %
                         (url, js_expr, timeout))
             cros_ui.xsystem('./%s %s' % (url_fetch_test, params))
-            clean_exit = True
 
         except error.CmdError, e:
             logging.debug(e)
