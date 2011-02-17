@@ -4,9 +4,10 @@
 
 import logging
 import os
-from autotest_lib.client.common_lib import error, utils, site_verity
+from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.cros import verity_utils
 
-class platform_DMVerityCorruption(site_verity.VerityImageTest):
+class platform_DMVerityCorruption(verity_utils.VerityImageTest):
     version = 1
 
     def mod_zerofill_block(self, run_count, backing_path, block_size,
@@ -36,7 +37,7 @@ class platform_DMVerityCorruption(site_verity.VerityImageTest):
 
         # Repeat except each block in the hash tree data
         hash_blocks = (os.path.getsize(self.verity.hash_file) /
-                       site_verity.BLOCK_SIZE)
+                       verity_utils.BLOCK_SIZE)
         self.mod_and_test(self.mod_Afill_hash_block, hash_blocks, False)
 
         # TODO(wad) Repeat except one bit in each block
