@@ -9,25 +9,12 @@ This module provides a convenient way to detect, setup, and access to GPIO
 values on a Chrome OS compatible device.
 
 See help(Gpio) for more information.
-
-TODO(hungte) we need to handle the GPIO polarity in the future, or use the new
-chromeos_acpi kernel mode module interface when it's done.
 '''
 
 import os
 import shutil
 import sys
 import tempfile
-
-
-CHROMEOS_HWID_FILEPATH = '/sys/devices/platform/chromeos_acpi/HWID'
-CHROMEOS_FWID_FILEPATH = '/sys/devices/platform/chromeos_acpi/FWID'
-GPIO_ATTR_ACTIVE_LOW = 0x00
-GPIO_ATTR_ACTIVE_HIGH = 0x01
-GPIO_ATTR_ACTIVE_MASK = 0x01
-GPIO_NAME_DEVELOPER_SWITCH = 'developer_switch'
-GPIO_NAME_RECOVERY_BUTTON = 'recovery_button'
-GPIO_NAME_WRITE_PROTECT = 'write_protect'
 
 
 class Gpio(object):
@@ -38,83 +25,91 @@ class Gpio(object):
         gpio = Gpio()
         try:
             gpio.setup()
-            print gpio.read('developer_switch')
+            print gpio.read(gpio.DEVELOPER_SWITCH_CURRENT)
         except:
             print "gpio failed"
     '''
 
+    # GPIO property names (by "crossystem"):
+    DEVELOPER_SWITCH_CURRENT = 'devsw_cur'
+    RECOVERY_BUTTON_CURRENT = 'recoverysw_cur'
+    WRITE_PROTECT_CURRENT = 'wpsw_cur'
+
+    DEVELOPER_SWITCH_BOOT = 'devsw_boot'
+    RECOVERY_BUTTON_BOOT = 'recoverysw_boot'
+    WRITE_PROTECT_BOOT = 'wpsw_boot'
+
     def __init__(self, exception_type=IOError):
-        self._gpio_root = None
         self._exception_type = exception_type
-        self._override_attributes = {}
 
-    def setup(self, gpio_root=None):
+        # list of property conversions, usually str2int.
+        self._override_map = {
+                self.DEVELOPER_SWITCH_CURRENT: int,
+                self.DEVELOPER_SWITCH_BOOT: int,
+                self.RECOVERY_BUTTON_CURRENT: int,
+                self.RECOVERY_BUTTON_BOOT: int,
+                self.WRITE_PROTECT_CURRENT: int,
+                self.WRITE_PROTECT_BOOT: int,
+        }
+
+        # list of legacy (chromeos_acpi) property names.
+        self._legacy_map = {
+                'developer_switch': self.DEVELOPER_SWITCH_CURRENT,
+                'recovery_button': self.RECOVERY_BUTTON_CURRENT,
+                'write_protect': self.WRITE_PROTECT_CURRENT,
+        }
+
+    def setup(self):
         '''Configures system for processing GPIO.
-
-        Parameters:
-            gpio_root: (optional) folder for symlinks to GPIO virtual files.
 
         Returns:
             Raises an exception if gpio_setup execution failed.
         '''
-        if gpio_root:
-            # Re-create if the folder already exists, because the symlinks may
-            # be already changed.
-            if os.path.exists(gpio_root):
-                shutil.rmtree(gpio_root)
-            os.mkdir(gpio_root)
-        else:
-            gpio_root = tempfile.mkdtemp()
-
-        # The gpio_setup program detects GPIO devices files, and symlink them
-        # into the specified folder. Then we can read the properties as file to
-        # get the current GPIO value, ex $gpio_root/developer_switch.
-        if os.system("gpio_setup --symlink_root='%s'" % gpio_root) != 0:
-            raise self._exception_type('GPIO Setup Failed.')
-
-        self._gpio_root = gpio_root
-
-        # Customization by FWID
-        with open(CHROMEOS_FWID_FILEPATH, 'r') as fwid_file:
-            fwid = fwid_file.read()
-
-        # TODO(hungte) Mario BIOS has a wrong polarity issue for write_protect,
-        # at least up to 0038G6. Once it's fixed in some version, we need to fix
-        # the list (or by HWID).
-        if fwid.startswith('Mario.'):
-            self._override_attributes = {
-                GPIO_NAME_RECOVERY_BUTTON: GPIO_ATTR_ACTIVE_LOW,
-                GPIO_NAME_WRITE_PROTECT: GPIO_ATTR_ACTIVE_HIGH,
-            }
+        # This is the place to do any configuration / system detection.
+        # Currently "crossystem" handles everything so we don't need to do
+        # anything now.
+        pass
 
     def read(self, name):
-        '''Reads an integer value from GPIO.
+        '''Reads a GPIO property value.
+           Check "crossystem" command for the list of available property names.
 
         Parameters:
-            name: the name of GPIO property to read.
+            name: the name of property to read.
 
-        Returns: current value (as integer), or raise I/O exceptions.
+        Returns: current value, or raise exceptions.
         '''
-        assert self._gpio_root, "GPIO: not initialized."
-        gpio_path = os.path.join(self._gpio_root, name)
-        assert gpio_path, "GPIO: unknown property: %s" % name
-        with open(gpio_path) as f:
-            raw_value = int(f.read())
+        debug_title = "Gpio.read('%s'): " % name
 
-        # For newer version of OS, *.attr provides the polarity information of
-        # GPIO pins.  We use polarity = 1 (active high) as default value.
-        attr_path = gpio_path + '.attr'
-        attr = GPIO_ATTR_ACTIVE_HIGH
-        if name in self._override_attributes:
-            attr = self._override_attributes[name]
-        elif os.path.exists(attr_path):
-            with open(attr_path) as f:
-                attr = int(f.read())
+        # convert legacy names
+        if name in self._legacy_map:
+            name = self._legacy_map[name]
 
-        value = raw_value
-        # attributes: bit 0 = polarity (active high=1/low=0)
-        if (attr & GPIO_ATTR_ACTIVE_MASK) == GPIO_ATTR_ACTIVE_LOW:
-            value = int(not raw_value)
+        temp_fd, temp_file = tempfile.mkstemp()
+        os.close(temp_fd)
+        command = "crossystem %s 2>%s" % (name, temp_file)
+        pipe = os.popen(command, 'r')
+        value = pipe.read()
+        exit_status = pipe.close()
+        if exit_status:
+            with open(temp_file, 'r') as temp_handle:
+                debug_info = temp_handle.read()
+            value = value.strip()
+            debug_info = debug_info.strip()
+            if value:
+                debug_info = value + '\n' + debug_info
+            if debug_info:
+                debug_info = '\nInformation: ' + debug_info
+            raise self._exception_type(
+                    debug_title + "Command failed (%d): %s%s" %
+                    (exit_status, command, debug_info))
+        # convert values
+        if name in self._override_map:
+            try:
+                value = self._override_map[name](value)
+            except:
+                raise self._exception_type(debug_title +
+                                           'Conversion failed: %s' % value)
         return value
 
 
@@ -122,10 +117,10 @@ def main():
     gpio = Gpio()
     try:
         gpio.setup()
-        print ("developer switch status: %s" %
-               sys.read(GPIO_NAME_DEVELOPER_SWITCH))
-    except:
-        print "GPIO failed."
+        print ("developer switch current status: %s" %
+               gpio.read(gpio.DEVELOPER_SWITCH_CURRENT))
+    except Exception, e:
+        print "GPIO failed. %s" % e
         sys.exit(1)
 
 if __name__ == '__main__':
