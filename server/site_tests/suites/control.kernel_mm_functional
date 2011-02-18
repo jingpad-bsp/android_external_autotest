@@ -1,0 +1,34 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Kernel Memory Management Functional"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+This test suite runs automated tests that should all pass and that verify
+the kernel memory management.
+"""
+
+from autotest_lib.client.cros import cros_logging
+from autotest_lib.server import site_host_attributes
+
+# TODO: Add some tests
+TESTS = [
+]
+
+
+def run_tests(machine):
+  client = hosts.create_host(machine)
+  client_attributes = site_host_attributes.HostAttributes(machine)
+
+  client_at = autotest.Autotest(client)
+  for test, argv in TESTS:
+    client_at.run_test(test, **argv)
+
+
+job.parallel_on_machines(run_tests, machines)
