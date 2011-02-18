@@ -47,17 +47,20 @@ class DevRecTest(object):
                                          'direction' : 0,
                                          },
                               },
-        'recovery_button' : {'type' : 'button',
-                             'cx' : 475,
-                             'cy' : 375,
-                             'size' : 30,
-                             'arrow' : {'x' : 420,
-                                        'y' : 375,
-                                        'width' : 15,
-                                        'length' : 100,
-                                        'direction' : 270,
-                                        }
-                             },
+        # TODO(hungte) EC spec has changed the pressing recovery button should
+        # reboot the system in the future. We should re-design the test in the
+        # future.
+        #'recovery_button' : {'type' : 'button',
+        #                     'cx' : 475,
+        #                     'cy' : 375,
+        #                     'size' : 30,
+        #                     'arrow' : {'x' : 420,
+        #                                'y' : 375,
+        #                                'width' : 15,
+        #                                'length' : 100,
+        #                                'direction' : 270,
+        #                                }
+        #                     },
         }
 
     # How long DevRecTest allows in seconds until failing
@@ -255,7 +258,7 @@ class DevRecGpio:
             # <default> == 0 || 1
             # <state> == number counts down 0
             'developer_switch': [1, 2],
-            'recovery_button': [0, 2],
+            #'recovery_button': [0, 2],
         }
 
         self._gpio_list = self.table.keys()
