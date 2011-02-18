@@ -61,3 +61,28 @@ def save_vm_state(checkpoint):
         serial = open('/dev/ttyUSB0', 'w')
         serial.write("savevm %s\r\n" % checkpoint)
         logging.info('Done saving VM state "%s"' % checkpoint)
+
+
+def check_raw_dmesg(dmesg, message_level, whitelist):
+    """Checks dmesg for unexpected warnings.
+
+    This function parses dmesg for message with message_level <= message_level
+    which do not appear in the whitelist.
+
+    Arguments:
+      dmesg - string containing raw dmesg buffer
+      message_level - minimum message priority to check
+      whitelist - messages to ignore
+
+    Returns:
+      List of unexpected warnings
+    """
+
+    unexpected = []
+    for line in dmesg.splitlines():
+        if int(line[1]) <= message_level:
+            if not 'used greatest stack depth' in line:
+                stripped_line = line.split('] ', 1)[1]
+                if not stripped_line in whitelist:
+                    unexpected.append(stripped_line)
+    return unexpected
