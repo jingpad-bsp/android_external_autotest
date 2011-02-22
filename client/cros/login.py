@@ -11,6 +11,10 @@ from autotest_lib.client.common_lib import error
 
 _DEFAULT_TIMEOUT = 30
 
+# Priority increase to use when logging in to make sure we aren't descheduled at
+# inopportune times.
+_LOGIN_NICE = 20
+
 # Log messages used to signal when we're in a logout situation. Used to detect
 # crashes by cros_ui_test.UITest.
 LOGOUT_ATTEMPT_MSG = 'cros/login.py: Attempting logout...'
@@ -146,24 +150,28 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
 
-    ax = cros_ui.get_autox()
-    # navigate to login screen
-    ax.send_hotkey("Ctrl+Alt+L")
-    # escape out of any login screen menus (e.g., the network selection menu)
-    ax.send_hotkey("Escape")
-    time.sleep(0.5)
-    if (username):
-        # focus username
-        ax.send_hotkey("Alt+U")
-        ax.send_text(username)
-        # TODO(rginda): remove Tab after http://codereview.chromium.org/1390003
-        ax.send_hotkey("Tab")
-        # focus password
-        ax.send_hotkey("Alt+P")
-        ax.send_text(password)
-        ax.send_hotkey("Return")
-    else:
-        ax.send_hotkey("Alt+B")  # Browse without signing-in
+    # Up our priority so we don't get descheduled in the middle of sending key
+    # press and key release events.
+    utils.system('renice +%d -p %d' % (_LOGIN_NICE, os.getpid()))
+    try:
+      ax = cros_ui.get_autox()
+      # navigate to login screen
+      ax.send_hotkey("Ctrl+Alt+L")
+      # escape out of any login screen menus (e.g., the network selection menu)
+      ax.send_hotkey("Escape")
+      time.sleep(0.5)
+      if (username):
+          # focus username
+          ax.send_hotkey("Alt+U")
+          ax.send_text(username)
+          # focus password
+          ax.send_hotkey("Alt+P")
+          ax.send_text(password)
+          ax.send_hotkey("Return")
+      else:
+          ax.send_hotkey("Alt+B")  # Browse without signing-in
+    finally:
+      utils.system('renice -%d -p %d' % (_LOGIN_NICE, os.getpid()))
 
     wait_for_condition(condition=logged_in,
                        timeout_msg='Timed out waiting for login',
