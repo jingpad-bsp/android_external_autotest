@@ -3,16 +3,15 @@
 # found in the LICENSE file.
 
 { "name":"Perf24HT40",
-  "skip_test":"Temporarily busted due to openwrt problem",
   "steps":[             # Channel 6
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2437", "ht40":None, "puren":None } ],
     [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
-    [ "client_netperf", { "test":"UDP_STREAM" } ],
-    [ "server_netperf", { "test":"UDP_STREAM" } ],
-    [ "client_netperf", { "test":"TCP_STREAM" } ],
-    [ "server_netperf", { "test":"TCP_STREAM" } ],
+    [ "client_iperf",   { "udp":None, "bandwidth":"220m" } ],
+    [ "server_iperf",   { "udp":None, "bandwidth":"220m" } ],
+    [ "client_iperf",   { "tcp":None } ],
+    [ "server_iperf",   { "tcp":None } ],
     # XXX multiple streams
     # XXX mixed streams
     [ "destroy" ],

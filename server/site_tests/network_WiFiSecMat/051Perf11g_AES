@@ -10,10 +10,10 @@
                           "wpa_pairwise":"CCMP",
                           "wpa_passphrase":"chromeos" } ],
     [ "connect",        { "security":"wpa", "psk":"chromeos" } ],
-    [ "client_netperf", { "test":"UDP_STREAM" } ],
-    [ "server_netperf", { "test":"UDP_STREAM" } ],
-    [ "client_netperf", { "test":"TCP_STREAM" } ],
-    [ "server_netperf", { "test":"TCP_STREAM" } ],
+    [ "client_iperf",   { "udp":None } ],
+    [ "server_iperf",   { "udp":None } ],
+    [ "client_iperf",   { "tcp":None } ],
+    [ "server_iperf",   { "tcp":None } ],
     # XXX multiple streams
     # XXX mixed streams
     [ "destroy" ],

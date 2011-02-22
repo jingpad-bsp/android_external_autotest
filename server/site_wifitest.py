@@ -388,10 +388,11 @@ class WiFiTest(object):
                                 '([0-9\.]*) ([0-9]+) (\S+) (\w+) .*',
                                 result)
 
-        self.write_perf({'acquire_s': result_times.group(1),
-                         'select_s': result_times.group(2),
-                         'assoc_s': result_times.group(3),
-                         'config_s': result_times.group(4)})
+        self.write_perf({'acquire_s'    : result_times.group(1),
+                         'select_s'     : result_times.group(2),
+                         'assoc_s'      : result_times.group(3),
+                         'config_s'     : result_times.group(4),
+                         'frequency'    : result_times.group(5)})
         for k in ('already_connected', 'clear_error', 'fast_fail',
                   'get_prop', 'in_progress', 'lost_dbus', 'multiple_attempts'):
             if re.search(k, result) is not None:
@@ -725,6 +726,21 @@ class WiFiTest(object):
         if 'bandwidth' in params:
             client_args += " -b %s" % params['bandwidth']
             self.write_perf({'bandwidth':params['bandwidth']})
+        elif 'udp' in params:
+            bw = None
+            # Supply nominal channel bandwidth
+            if self.cur_phymode == '802.11b':
+                bw = '7m'
+            elif self.cur_phymode == '802.11a':
+                bw = '30m'              # assumes no bursting
+            elif self.cur_phymode == '802.11g':
+                bw = '30m'              # assumes no bursting
+            elif self.cur_phymode == '802.11n':
+                # TODO(sleffler) distinguish HT20/HT40 and # streams
+                bw = '110m'
+            if bw is not None:
+                client_args += " -b %s" % bw
+                self.write_perf({'bandwidth':bw})
 
         ip_rules = []
         if mode == 'server':

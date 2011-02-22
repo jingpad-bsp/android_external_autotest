@@ -5,15 +5,39 @@
 { "name":"Perf11g",
   "steps":[             # Channel 1
     [ "create",         { "type":"hostap" } ],
-    [ "config",         { "channel":"2412", "mode":"11g" } ],
-    [ "connect",        { "security":"none" } ],
+
+    [ "config",         { "channel":"2412", "mode":"11g"} ],
     [ "client_powersave_off" ],
-    [ "client_netperf", { "test":"UDP_STREAM" } ],
-    [ "server_netperf", { "test":"UDP_STREAM" } ],
-    [ "client_netperf", { "test":"TCP_STREAM" } ],
-    [ "server_netperf", { "test":"TCP_STREAM" } ],
+    [ "connect",        { "security":"none" } ],
+    [ "client_iperf",   { "udp":None } ],
+    [ "server_iperf",   { "udp":None } ],
+    [ "client_iperf",   { "tcp":None } ],
+    [ "server_iperf",   { "tcp":None } ],
     # XXX multiple streams
     # XXX mixed streams
+    [ "deconfig" ],
+
+    [ "config",         { "channel":"2437", "mode":"11g"} ],
+    [ "client_powersave_off" ],
+    [ "connect",        { "security":"none" } ],
+    [ "client_iperf",   { "udp":None } ],
+    [ "server_iperf",   { "udp":None } ],
+    [ "client_iperf",   { "tcp":None } ],
+    [ "server_iperf",   { "tcp":None } ],
+    # XXX multiple streams
+    # XXX mixed streams
+    [ "deconfig" ],
+
+    [ "config",         { "channel":"2462", "mode":"11g"} ],
+    [ "client_powersave_off" ],
+    [ "connect",        { "security":"none" } ],
+    [ "client_iperf",   { "udp":None } ],
+    [ "server_iperf",   { "udp":None } ],
+    [ "client_iperf",   { "tcp":None } ],
+    [ "server_iperf",   { "tcp":None } ],
+    # XXX multiple streams
+    # XXX mixed streams
+
     [ "destroy" ],
   ],
 }
