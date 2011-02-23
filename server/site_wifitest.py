@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import common, fnmatch, logging, os, re, string, threading, time
+import common, datetime, fnmatch, logging, os, re, string, threading, time
 
 from autotest_lib.server import autotest, hosts, subcommand
 from autotest_lib.server import site_bsd_router
@@ -146,6 +146,9 @@ class WiFiTest(object):
         # interface name on client
         self.client_wlanif = client.get('wlandev',
                                         self.__get_wlan_devs(self.client)[0])
+
+        # Synchronize time on all devices
+        self.time_sync([])
 
         # Find all repeated steps and create iterators for them
         self.iterated_steps = {}
@@ -1150,6 +1153,19 @@ class WiFiTest(object):
     def bgscan_enable(self, params):
         """ Enable wpa_supplicant bgscan """
         self.bgscan_set({'method' : 'bgscan'})
+
+
+    def time_sync(self, params):
+        for name in params or ['client', 'server', 'router']:
+            system = { 'client': self.client,
+                       'server': self.server,
+                       'router': self.router }.get(name)
+            if not system:
+                raise error.TestFail('time_sync: Must specify '
+                                     'router, client or server')
+            datefmt = '%m%d%H%M%Y.%S' if name == 'client' else '%Y%m%d%H%M.%S'
+            system.run('date -u %s' %
+                       datetime.datetime.utcnow().strftime(datefmt))
 
 
 class HelperThread(threading.Thread):
