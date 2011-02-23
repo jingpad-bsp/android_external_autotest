@@ -61,7 +61,7 @@ class kernel_BootMessagesServer(test.test):
     if unexpected:
       f = open(os.path.join(self.resultsdir, 'dmesg.err'), 'w')
       for line in unexpected:
-          logging.error('UNEXPECTED DMESG: %s' % stripped_line)
+          logging.error('UNEXPECTED DMESG: %s' % line)
           f.write('%s\n' % line)
       f.close()
       raise error.TestFail("Unexpected dmesg warnings and/or errors.")
