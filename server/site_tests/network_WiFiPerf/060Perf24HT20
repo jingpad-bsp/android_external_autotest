@@ -40,6 +40,7 @@
     [ "client_iperf",   { "udp":None, "bandwidth":"80m" } ],
     [ "server_iperf",   { "udp":None, "bandwidth":"80m" } ],
 
+    [ "disconnect" ],
     [ "deconfig" ],
 
     [ "config",         { "channel":"2437", "ht20":None, "puren":None } ],
@@ -74,6 +75,7 @@
     [ "client_iperf",   { "udp":None, "bandwidth":"80m" } ],
     [ "server_iperf",   { "udp":None, "bandwidth":"80m" } ],
 
+    [ "disconnect" ],
     [ "deconfig" ],
 
     [ "config",         { "channel":"2462", "ht20":None, "puren":None } ],

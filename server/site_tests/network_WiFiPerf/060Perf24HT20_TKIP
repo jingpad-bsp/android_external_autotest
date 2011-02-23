@@ -47,6 +47,7 @@
     # TODO(sleffler) multiple streams
     # TODO(sleffler) mixed streams
 
+    [ "disconnect" ],
     [ "deconfig" ],
 
     [ "config",         { "channel":"2437", "ht20":None, "puren":None,
@@ -87,6 +88,7 @@
     # TODO(sleffler) multiple streams
     # TODO(sleffler) mixed streams
 
+    [ "disconnect" ],
     [ "deconfig" ],
 
     [ "config",         { "channel":"2462", "ht20":None, "puren":None,
