@@ -32,7 +32,7 @@ class ConnectStateHandler(StateHandler):
     self.acquisition_time = None
     self.authentication_time = None
     self.configuration_time = None
-    self.frequency = None
+    self.frequency = 0
     self.hidden = hidden
     self.phymode = None
     self.security = None
@@ -123,10 +123,11 @@ class ConnectStateHandler(StateHandler):
     # If we entered the "configuration" state, mark that down
     if self.svc_state == 'configuration':
       self.configuration_time = time.time()
-      props = self.service_handle.GetProperties()
-      self.security = props.get('Security', None)
-      self.frequency = props.get('WiFi.Frequency', None)
-      self.phymode = props.get('WiFi.PhyMode', None)
+    # NB: do this on all changes in case configuration is skipped
+    props = self.service_handle.GetProperties()
+    self.security = props.get('Security', None)
+    self.frequency = props.get('WiFi.Frequency', 0)
+    self.phymode = props.get('WiFi.PhyMode', None)
 
   def Stage(self):
     if not self.wait_path:
