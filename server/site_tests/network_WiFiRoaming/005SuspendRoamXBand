@@ -26,7 +26,8 @@
 
     # Configure and connect to the second AP.
     [ "config",         { "channel":"5240", "mode":"11a",
-                          "ssid_suffix": 't2'} ],
+                          "ssid_suffix": 't2',
+                          "wpa":"0"} ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "deconfig" ],
