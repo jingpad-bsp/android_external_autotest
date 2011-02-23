@@ -6,15 +6,16 @@ from autotest_lib.client.bin import utils, package
 
 _DEFAULT_COMMANDS_TO_LOG_PER_TEST = []
 _DEFAULT_COMMANDS_TO_LOG_PER_BOOT = [
-    "lspci -vvn", "mount",  "uptime",
+    "lspci -vvn", "gcc --version", "ld --version", "mount", "hostname",
+    "uptime",
     ]
 _DEFAULT_COMMANDS_TO_LOG_BEFORE_ITERATION = []
 _DEFAULT_COMMANDS_TO_LOG_AFTER_ITERATION = []
 
 _DEFAULT_FILES_TO_LOG_PER_TEST = []
 _DEFAULT_FILES_TO_LOG_PER_BOOT = [
-    "/proc/meminfo", "/proc/slabinfo", "/proc/version", "/proc/cpuinfo",
-    "/proc/modules", "/proc/interrupts", "/proc/partitions",
+    "/proc/pci", "/proc/meminfo", "/proc/slabinfo", "/proc/version",
+    "/proc/cpuinfo", "/proc/modules", "/proc/interrupts", "/proc/partitions",
     ]
 _DEFAULT_FILES_TO_LOG_BEFORE_ITERATION = [
     "/proc/schedstat", "/proc/meminfo", "/proc/slabinfo", "/proc/interrupts"

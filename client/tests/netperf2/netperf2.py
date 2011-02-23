@@ -173,7 +173,7 @@ class netperf2(test.test):
             # first and last sample when recording results
             interval = max(1, test_time / 5)
             cmds.append('sleep %d && %s -P ALL %s 5' % (self.wait_time, mpstat,
-                                                            interval))
+                                                        interval))
 
             # Add the netperf commands
             for i in xrange(num_streams):

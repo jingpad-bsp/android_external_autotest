@@ -4,9 +4,9 @@
 This file contains the implementation of a host object for the local machine.
 """
 
-import glob, httplib, logging, os, platform, socket, urlparse
+import glob, os, platform
+from autotest_lib.client.common_lib import hosts, error
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error, hosts
 from autotest_lib.client.common_lib.cros import autoupdater
 
 

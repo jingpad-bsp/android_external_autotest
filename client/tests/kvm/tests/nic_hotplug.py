@@ -23,19 +23,21 @@ def run_nic_hotplug(test, params, env):
     vm = kvm_test_utils.get_living_vm(env, params.get("main_vm"))
     timeout = int(params.get("login_timeout", 360))
     guest_delay = int(params.get("guest_delay", 20))
-    session_serial = kvm_test_utils.wait_for_login(vm, timeout=timeout,
-                                                   serial=True)
+    session = kvm_test_utils.wait_for_login(vm, timeout=timeout)
+    romfile = params.get("romfile")
 
     # Modprobe the module if specified in config file
     module = params.get("modprobe_module")
     if module:
-        session_serial.get_command_output("modprobe %s" % module)
+        session.get_command_output("modprobe %s" % module)
 
     def netdev_add(vm):
         netdev_id = kvm_utils.generate_random_id()
-        attach_cmd = ("netdev_add tap,id=%s,script=%s" %
-                      (netdev_id, kvm_utils.get_path(vm.root_dir,
-                                                     params.get("nic_script"))))
+        attach_cmd = ("netdev_add tap,id=%s" % netdev_id)
+        nic_script = params.get("nic_script")
+        if nic_script:
+            attach_cmd += ",script=%s" % kvm_utils.get_path(vm.root_dir,
+                                                            nic_script)
         netdev_extra_params = params.get("netdev_extra_params")
         if netdev_extra_params:
             attach_cmd += ",%s" % netdev_extra_params
@@ -57,7 +59,7 @@ def run_nic_hotplug(test, params, env):
             logging.error(network)
             raise error.TestError("Fail to remove netdev %s" % n_id)
 
-    def nic_add(vm, model, netdev_id, mac):
+    def nic_add(vm, model, netdev_id, mac, rom=None):
         """
         Add a nic to virtual machine
 
@@ -65,6 +67,7 @@ def run_nic_hotplug(test, params, env):
         @model: nic model
         @netdev_id: id of netdev
         @mac: Mac address of new nic
+        @rom: Rom file
         """
         nic_id = kvm_utils.generate_random_id()
         if model == "virtio":
@@ -72,11 +75,13 @@ def run_nic_hotplug(test, params, env):
         device_add_cmd = "device_add %s,netdev=%s,mac=%s,id=%s" % (model,
                                                                    netdev_id,
                                                                    mac, nic_id)
+        if rom:
+            device_add_cmd += ",romfile=%s" % rom
         logging.info("Adding nic through %s", device_add_cmd)
         vm.monitor.cmd(device_add_cmd)
 
         qdev = vm.monitor.info("qtree")
-        if id not in qdev:
+        if not nic_id in qdev:
             logging.error(qdev)
             raise error.TestFail("Device %s was not plugged into qdev"
                                  "tree" % nic_id)
@@ -108,11 +113,11 @@ def run_nic_hotplug(test, params, env):
     if not mac:
         mac = "00:00:02:00:00:02"
     netdev_id = netdev_add(vm)
-    device_id = nic_add(vm, "virtio", netdev_id, mac)
+    device_id = nic_add(vm, "virtio", netdev_id, mac, romfile)
 
     if "Win" not in params.get("guest_name", ""):
-        session_serial.sendline("dhclient %s &" %
-                         kvm_test_utils.get_linux_ifname(session_serial, mac))
+        session.sendline("dhclient %s &" %
+                         kvm_test_utils.get_linux_ifname(session, mac))
 
     logging.info("Shutting down the primary link")
     vm.monitor.cmd("set_link %s down" % vm.netdev_id[0])

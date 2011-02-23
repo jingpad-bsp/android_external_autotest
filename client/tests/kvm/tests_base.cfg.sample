@@ -632,6 +632,7 @@ variants:
         type = ping
         counts = 100
         flood_minutes = 10
+        nics += ' nic2'
 
     - jumbo: install setup unattended_install.cdrom
         type = jumbo
@@ -647,14 +648,16 @@ variants:
     - nicdriver_unload:  install setup unattended_install.cdrom
         type = nicdriver_unload
         nic_mode = tap
-        file_size = 100
-        connect_time = 4
-        scp_timeout = 300
-        thread_num = 10
+        filesize = 100
+        transfer_timeout = 100
+        transfer_type = remote
+        sessions_num = 10
 
     - nic_promisc:  install setup unattended_install.cdrom
         type = nic_promisc
-        file_size = 1, 1460, 65000, 100000000
+        filesize = 400
+        transfer_timeout = 100
+        transfer_type = remote
 
     - multicast: install setup unattended_install.cdrom
         type = multicast
@@ -710,6 +713,8 @@ variants:
         transfer_timeout = 1000
         transfer_type = remote
         kill_vm = yes
+        # you can specify the parameters of bonding module here
+        # bonding_params = "mode=active-backup"
 
     - set_link:
         type = set_link
@@ -903,6 +908,7 @@ variants:
 variants:
     - @rtl8139:
         nic_model = rtl8139
+        no ethtool
         jumbo:
             mtu = 1500
     - e1000:
@@ -1691,6 +1697,10 @@ variants:
 
                     - 6.0.i386:
                         no setup
+                        nic_hotplug:
+                            modprobe_module =
+                        block_hotplug:
+                            modprobe_module =
                         image_name = rhel6-32
                         unattended_install:
                             unattended_file = unattended/RHEL-6-series.ks
@@ -1706,6 +1716,10 @@ variants:
 
                     - 6.0.x86_64:
                         no setup
+                        nic_hotplug:
+                            modprobe_module =
+                        block_hotplug:
+                            modprobe_module =
                         image_name = rhel6-64
                         unattended_install:
                             unattended_file = unattended/RHEL-6-series.ks
