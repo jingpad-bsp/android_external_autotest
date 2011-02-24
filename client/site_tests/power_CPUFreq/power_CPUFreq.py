@@ -16,6 +16,27 @@ class power_CPUFreq(test.test):
         if not dirs:
             raise error.TestFail('cpufreq not supported')
 
+        keyvals = {}
+        try:
+            # First attempt to set all frequencies on each core before going
+            # on to the next core.
+            self.test_cores_in_series(dirs)
+            # Record that it was the first test that passed.
+            keyvals['test_cores_in_series'] = 1
+        except error.TestFail as exception:
+            if str(exception) == 'Unable to set frequency':
+                # If test_cores_in_series fails, try to set each frequency for
+                # all cores before moving on to the next frequency.
+
+                self.test_cores_in_parallel(dirs)
+                # Record that it was the second test that passed.
+                keyvals['test_cores_in_parallel'] = 1
+            else:
+                raise exception
+
+        self.write_perf_keyval(keyvals);
+
+    def test_cores_in_series(self, dirs):
         for dir in dirs:
             cpu = cpufreq(dir)
 
@@ -43,6 +64,39 @@ class power_CPUFreq(test.test):
             # restore cpufreq state
             cpu.restore_state()
 
+    def test_cores_in_parallel(self, dirs):
+        cpus = [cpufreq(dir) for dir in dirs]
+        cpu0 = cpus[0]
+
+        # Use the first CPU's frequencies for all CPUs.  Assume that they are
+        # the same.
+        available_frequencies = cpu0.get_available_frequencies()
+        if len(available_frequencies) == 1:
+            raise error.TestFail('Not enough frequencies supported!')
+
+        for cpu in cpus:
+            if 'userspace' not in cpu.get_available_governors():
+                raise error.TestError('userspace governor not supported')
+
+            # save cpufreq state so that it can be restored at the end
+            # of the test
+            cpu.save_state()
+
+            # set cpufreq governor to userspace
+            cpu.set_governor('userspace')
+
+        # cycle through all available frequencies
+        for freq in available_frequencies:
+            for cpu in cpus:
+                cpu.set_frequency(freq)
+            for cpu in cpus:
+                if freq != cpu.get_current_frequency():
+                    cpu.restore_state()
+                    raise error.TestFail('Unable to set frequency')
+
+        for cpu in cpus:
+            # restore cpufreq state
+            cpu.restore_state()
 
 class cpufreq(object):
     def __init__(self, path):
@@ -75,7 +129,11 @@ class cpufreq(object):
     def restore_state(self):
         logging.info('restoring state:')
         for file in self.__save_files_list:
-            data = getattr(self, file)
+            # Sometimes a newline gets appended to a data string and it throws
+            # an error when being written to a sysfs file.  Call strip() to
+            # eliminateextra whitespace characters so it can be written cleanly
+            # to the file.
+            data = getattr(self, file).strip()
             logging.info(file + ': '  + data)
             self.__write_file(file, data)
 
