@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "Kernel Filesystem Functional"
+NAME = "Kernel Main Functional"
 TIME = "SHORT"
 TEST_CATEGORY = "Kernel Functional"
 TEST_CLASS = "suite"
@@ -16,7 +16,7 @@ and other miscellaneous attributes of the kernel.  """
 from autotest_lib.client.cros import cros_logging
 from autotest_lib.server import site_host_attributes
 
-# TODO: Add some tests
+# TODO: Add more tests
 TESTS = [
   ('scrashme', {}),
 ]
