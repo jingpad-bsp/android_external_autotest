@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,6 +10,19 @@ class login_LoginSuccess(cros_ui_test.UITest):
     version = 1
 
     def __creds_checker(self, handler, url_args):
+        """Validate credentials before responding positively to an auth attempt.
+
+        This method gets installed as the auth server's client_login_responder.
+        We double-check that the url_args['Email'] matches our username before
+        calling the auth server's default client_login_responder()
+        implementation.
+
+        @param handler: Passed on as handler to GoogleAuthServer's
+                client_login_responder() method.
+        @param url_args: The arguments to check.
+        @raises error.TestError: If the url_args email doesn't match our
+                username.
+        """
         logging.debug('checking %s == %s' % (self.username,
                                              url_args['Email'].value))
         if (self.username != url_args['Email'].value):
@@ -18,10 +31,21 @@ class login_LoginSuccess(cros_ui_test.UITest):
 
 
     def initialize(self, creds='$default'):
+        """Override superclass to provide a default value for the creds param.
+
+        This is important for our class, since a creds of None (AKA "browse
+        without signing in") don't make sense for a test that is checking that
+        authentication works properly.
+
+        @param creds: See cros_ui_test.UITest; For us, the default is
+                '$default'.
+        """
+        assert creds, "Must use non-Guest creds for login_LoginSuccess test."
         super(login_LoginSuccess, self).initialize(creds)
 
 
     def start_authserver(self):
+        """Override superclass to pass our creds checker to the auth server."""
         self._authServer = auth_server.GoogleAuthServer(
             cl_responder=self.__creds_checker)
         self._authServer.run()
