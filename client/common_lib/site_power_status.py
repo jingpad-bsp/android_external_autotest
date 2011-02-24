@@ -90,6 +90,10 @@ class BatteryStat(DevStat):
         self.voltage_min_design = self.voltage_min_design / 1000000
         self.voltage_now = self.voltage_now / 1000000
 
+        if self.charge_full > (self.charge_full_design * 1.5):
+            raise error.TestError('Unreasonable charge_full value')
+        if self.charge_now > (self.charge_full_design * 1.5):
+            raise error.TestError('Unreasonable charge_now value')
         self.energy =  self.voltage_now * self.charge_now
         self.energy_full = self.voltage_now * self.charge_full
         self.energy_full_design = self.voltage_now * self.charge_full_design
