@@ -270,7 +270,10 @@ class desktopui_IBusTest(cros_ui_test.UITest):
                           'int_list', 'double_list', 'string_list']:
             self.test_config(type_name)
 
-        self.test_check_unused_ibus_values()
+        # TODO: re-enable this test.
+        # Since the async changes to ibus, this has become less deterministic.
+        # It is temporarily disabled to make the console more useful.
+        # self.test_check_unused_ibus_values()
         self._ibus_job = None
         utils.system_output("kill -9 `pgrep ^ibus-daemon$`")
 
