@@ -21,6 +21,7 @@ from autotest_lib.server import site_host_attributes
 TESTS = [
   ('compilebench', {}),
   ('dbench', {}),
+  ('desktopui_FontCache', {}),
   ('desktopui_IBusTest', {}),
   ('desktopui_ImeTest', {}),
   ('desktopui_SunSpiderBench', {}),
@@ -136,4 +137,3 @@ job.parallel_on_machines(run_assigned_tests, machines)
 
 # Run server-side suites
 job.run_control('server/site_tests/suites/control.security')
-
