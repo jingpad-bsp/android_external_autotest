@@ -53,14 +53,11 @@ class security_BundledCRXs(test.test):
             for crx in diff:
                 logging.error('New/unexpected bundled crx %s' % crx)
 
-        # Or, things in baseline are missing from the system. We log missing
-        # CRX's as warnings instead of test failures because we autotest some
-        # builds where extensions aren't bundled. See chrome-os-partner:2414.
-        # TODO(jimhebert) make these warnings fatal after 2414 is resolved.
+        # Or, things in baseline are missing from the system:
         diff2 = baseline_set.difference(observed_set)
         if len(diff2) > 0:
             for crx in diff2:
-                logging.warning('Missing bundled crx %s' % crx)
+                logging.error('Missing bundled crx %s' % crx)
 
-        if len(diff):
+        if (len(diff) + len(diff2)) > 0:
             raise error.TestFail('Baseline mismatch')
