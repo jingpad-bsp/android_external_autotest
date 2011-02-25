@@ -1,0 +1,25 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "power_Servo"
+PURPOSE = "Example test to demonstrate usage of servo."
+CRITERIA = "This is a functional test."
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "power"
+TEST_TYPE = "client"
+
+DOC = """
+This is an example test for demonstrating usage of servo from autotest client
+tests.
+"""
+host = 'localhost'
+port = '8888'
+
+job.run_test('power_Servo', servo_host=host, servo_port=port, tag='set_gpio',
+             action='set_gpio', gpio_name='foo', gpio_value='0')
+
+job.run_test('power_Servo', servo_host=host, servo_port=port, tag='get_gpio',
+             action='get_gpio', gpio_name='foo', gpio_expected_value='0')
