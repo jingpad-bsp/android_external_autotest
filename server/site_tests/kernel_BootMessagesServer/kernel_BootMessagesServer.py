@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import logging, os, re
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -33,6 +33,18 @@ _WHITELIST = [
     "you have been warned.",
 ]
 
+""" Interesting fields from meminfo that we want to log
+    If you add fields here, you must add them to the constraints
+    in the control file
+"""
+_meminfo_fields = { 'MemFree'   : 'coldboot_memfree_mb',
+                    'AnonPages' : 'coldboot_anonpages_mb',
+                    'Buffers'   : 'coldboot_buffers_mb',
+                    'Cached'    : 'coldboot_cached_mb',
+                    'Active'    : 'coldboot_active_mb',
+                    'Inactive'  : 'coldboot_inactive_mb',
+                    }
+
 class kernel_BootMessagesServer(test.test):
     version = 1
 
@@ -46,6 +58,7 @@ class kernel_BootMessagesServer(test.test):
         self._client.run('dmesg -r', stdout_tee=f)
         f.close()
 
+        return utils.read_file(filename)
 
     def _reboot_machine(self):
         """Reboot the client machine.
@@ -56,6 +69,34 @@ class kernel_BootMessagesServer(test.test):
         self._client.wait_down()
         self._client.wait_up()
 
+    def _read_meminfo(self, filename):
+        """Fetch /proc/meminfo from client and return lines in the file
+
+        @param filename: The file to write 'cat /proc/meminfo' into.
+        """
+
+        f = open(filename, 'w')
+        self._client.run('cat /proc/meminfo', stdout_tee=f)
+        f.close()
+
+        return utils.read_file(filename)
+
+    def _parse_meminfo(self, meminfo, perf_vals):
+        """ Parse the contents of each line of meminfo
+            if the line matches one of the interesting keys
+            save it into perf_vals in terms of megabytes
+
+            @param filelines: list of lines in meminfo
+            @param perf_vals: dictionary of performance metrics
+        """
+
+        for line in meminfo.splitlines():
+            stuff = re.match('(.*):\s+(\d+)', line)
+            stat  = stuff.group(1)
+            if stat in _meminfo_fields:
+                value  = int(stuff.group(2))/ 1024
+                metric = _meminfo_fields[stat]
+                perf_vals[metric] = value
 
     def run_once(self, host=None):
         """Run the test.
@@ -66,10 +107,13 @@ class kernel_BootMessagesServer(test.test):
 
         self._client = host
         dmesg_filename = os.path.join(self.resultsdir, 'dmesg')
+        meminfo_filename = os.path.join(self.resultsdir, 'meminfo')
+        perf_vals = {}
 
         self._reboot_machine()
-        self._read_dmesg(dmesg_filename)
-        dmesg = utils.read_file(dmesg_filename)
+        meminfo = self._read_meminfo(meminfo_filename)
+        self._parse_meminfo(meminfo, perf_vals)
+        dmesg = self._read_dmesg(dmesg_filename)
         unexpected = utils.check_raw_dmesg(dmesg, _KERN_WARNING, _WHITELIST)
 
         if unexpected:
@@ -79,3 +123,5 @@ class kernel_BootMessagesServer(test.test):
                 f.write('%s\n' % line)
             f.close()
             raise error.TestFail("Unexpected dmesg warnings and/or errors.")
+
+        self.write_perf_keyval(perf_vals)
