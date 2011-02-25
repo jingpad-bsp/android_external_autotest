@@ -19,7 +19,16 @@ from autotest_lib.server import site_host_attributes
 
 # List of tests to be run.
 CLIENT_TESTS = [
-    ('scrashme', {}),
+    # Call every syscall sequentially with special value in a single
+    # register.  The special value will be rotated through each
+    # register parameter.
+    ('scrashme', { 'args_list': '--mode rotate' }),
+
+    # Pass # pointer to 'structs filled with 0xd5'.
+    ('scrashme', { 'args_list': '--mode rotate -SD5' }),
+
+    # Use zero as all regparms.
+    ('scrashme', { 'args_list': '--mode rotate -z' }),
 ]
 
 SERVER_TESTS = [
