@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -23,12 +23,12 @@ TESTS = [
 
 
 def run_tests(machine):
-  client = hosts.create_host(machine)
-  client_attributes = site_host_attributes.HostAttributes(machine)
+    client = hosts.create_host(machine)
+    client_attributes = site_host_attributes.HostAttributes(machine)
 
-  client_at = autotest.Autotest(client)
-  for test, argv in TESTS:
-    client_at.run_test(test, **argv)
+    client_at = autotest.Autotest(client)
+    for test, argv in TESTS:
+        client_at.run_test(test, **argv)
 
 
 job.parallel_on_machines(run_tests, machines)
