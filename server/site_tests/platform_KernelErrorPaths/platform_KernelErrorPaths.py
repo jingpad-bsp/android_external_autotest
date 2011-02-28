@@ -2,103 +2,80 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, shutil
-from autotest_lib.server import test, autotest
+import logging, os
+
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.crash_test import CrashTest as CrashTestDefs
+from autotest_lib.server import test
 
 class platform_KernelErrorPaths(test.test):
     version = 1
 
-    def breakme(self, command):
-        logging.info('KernelErrorPaths: causing %s on host %s' %
+    def breakme(self, text):
+        command = "echo %s > /proc/breakme" % text
+        logging.info("KernelErrorPaths: executing '%s' on %s" %
                      (command, self.client.hostname))
         try:
-            self.client.run("echo %s > /proc/breakme" % command)
+            # Simple sending text into /proc/breakme resets the target
+            # immediately, leaving files unsaved to disk and the master ssh
+            # connection wedged for a long time. The sequence below borrowed
+            # from logging_KernelCrashServer.py makes sure that the test
+            # proceeds smoothly.
+            self.client.run(
+                'sh -c "sync; sleep 1; %s" >/dev/null 2>&1 &' % command)
         except error.AutoservRunError, e:
-            # it is expected that this will cause a non-zero exit status
+            # It is expected that this will cause a non-zero exit status.
             pass
 
+    def configure_crash_reporting(self):
+        self._preserved_files = []
+        for f in (CrashTestDefs._PAUSE_FILE, CrashTestDefs._CONSENT_FILE):
+            result = self.client.run('ls -1 "%s"' % os.path.dirname(f))
+            if os.path.basename(f) in result.stdout.splitlines():
+                result = self.client.run('cat "%s"' % f)
+                self._preserved_files.append((f, result.stdout))
+            else:
+                self._preserved_files.append((f, None))
 
-    def test_bug(self):
-        """
-        Cause the target to log a kernel bug, and then check in the
-        messages to make sure it did.
-        """
-        # Clear the messages so we can compare.
-        self.client.run('dmesg -c')
-        # Cause the client to report a kernel BUG.
-        self.breakme('bug')
-        # Now get messages and check to make sure it's in there.
-        result = self.client.run('dmesg')
-        marker = "Kernel BUG at"
-        found = False
-        for line in result.stdout.split('\n'):
-            if line.find(marker) != -1:
-                found = True
-                break
-        if not found:
-            raise error.TestFail("Kernel BUG reporting not working.")
+        self.client.run('touch "%s"' % CrashTestDefs._PAUSE_FILE)
+        self.client.run(
+            'echo test-consent > "%s"' % CrashTestDefs._CONSENT_FILE)
 
-
-    def test_deadlock(self):
-        # Cause the target to go into a deadlock (have to run it twice).
-        self.breakme('deadlock')
-        self.breakme('deadlock')
-
-
-    def test_soft_lockup(self):
-        # Cause the target to go into an infinite loop.
-        self.breakme('softlockup')
-
-
-    def test_irq_lockup(self):
-        # Cause the target to go into a lockup with interrupts enabled.
-        self.breakme('irqlockup')
-
-
-    def test_no_irq_lockup(self):
-        # Cause the target to go into a lockup with interrupts disabled.
-        self.breakme('nmiwatchdog')
-
-
-    def test_null_dereference(self):
-        # Clear the messages so we can compare.
-        self.client.run('dmesg -c')
-        # Cause the target to dereference a null pointer.
-        self.breakme('nullptr')
-        # Now get messages and check to make sure it was noticed.
-        result = self.client.run('dmesg')
-        found = False
-        marker = "BUG: unable to handle kernel NULL pointer dereference"
-        for line in result.stdout.split('\n'):
-            if line.find(marker) != -1:
-                found = True
-                break
-        if not found:
-            raise error.TestFail("Kernel NULL pointer dereference detection "
-                                 "not working.")
-
-
-    def test_panic(self):
-        # Cause the target to panic.
-        self.breakme('panic')
-        if not self.client.wait_down(timeout=30):
-            raise error.TestFail("Kernel panic went unnoticed.")
-        if not self.client.wait_up(timeout=40):
-            raise error.TestFail("Kernel panic didn't cause successful reboot.")
-
+    def cleanup(self):
+        for f, text in self._preserved_files:
+            if text is None:
+                self.client.run('rm -f "%s"' % f)
+                continue
+            self.client.run('cat <<EOF >"%s"\n%s\nEOF\n' % (f, text))
+        test.test.cleanup(self)
 
     def run_once(self, host=None):
         self.client = host
+        self.configure_crash_reporting()
 
-        self.test_bug()
-        # TODO: Fill in the tests for these.
-        # self.test_deadlock()
-        # self.test_soft_lockup()
-        # self.test_irq_lockup()
-        # self.test_no_irq_lockup()
-        self.test_null_dereference()
-        # TODO(mbligh): crosbug.com/2269 - panic currently halts the
-        # DUT instead of rebooting it.  Commenting out until
-        # fixed.
-        #self.test_panic()
+        crash_log_dir = CrashTestDefs._SYSTEM_CRASH_DIR
+
+        # Each tuple consists of two strings: the 'breakme' string to send
+        # into /proc/breakme on the target, and the crash report string to
+        # look for in the crash dump after target restarts.
+        # TODO(vbendeb): add the following breakme strings after fixing kernel
+        # bugs:
+        # 'deadlock' (has to be sent twice), 'softlockup', 'irqlockup'
+        test_tuples = (
+            ('bug', 'kernel BUG at'),
+            ('nmiwatchdog', 'BUG: NMI Watchdog detected LOCKUP'),
+            ('nullptr',
+             'BUG: unable to handle kernel NULL pointer dereference at'),
+            ('panic', 'Kernel panic - not syncing:'),
+            )
+
+        for action, text in test_tuples:
+            # Delete crash results, if any
+            self.client.run('rm -f %s/*' % crash_log_dir)
+            boot_id = self.client.get_boot_id()
+            self.breakme(action)  # This should cause target reset.
+            self.client.wait_for_restart(timeout=25, old_boot_id=boot_id)
+            result = self.client.run('cat %s/kernel.*.kcrash' % crash_log_dir)
+            if text not in result.stdout:
+                raise error.TestFail(
+                    "No '%s' in the log after sending '%s'" % (text, action))
