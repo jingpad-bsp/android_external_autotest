@@ -11,6 +11,12 @@ TEST_TYPE = "server"
 
 DOC = """
 This test crashes the client and verifies the kernel crash was collected.
+
+Fails if any of the following conditions occur:
+  - kernel does not support crash dumping
+  - kernel crash dump doesn't appear after crash
+  - crash dump does not appear to be correct
+  - crash report is not sent properly
 """
 
 def run_it(machine):
