@@ -19,7 +19,6 @@ from autotest_lib.server import site_host_attributes
 
 # TODO: Add some tests
 TESTS = [
-    ('hardware_StorageFio', {'quicktest':'True'}),	# raw block device testing
 ]
 
 

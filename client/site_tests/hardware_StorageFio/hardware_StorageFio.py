@@ -171,7 +171,6 @@ class hardware_StorageFio(test.test):
         if quicktest:
             requirements = {
                 'quick_write': 'bw',
-                'quick_read': 'iops',
             }
         elif dev in ['', '/dev/sda', '/dev/mmcblk0', '/dev/mmcblk1']:
             requirements = {
