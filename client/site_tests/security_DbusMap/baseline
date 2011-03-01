@@ -203,6 +203,31 @@
     ]
   },
   {
+    "Object_name": "org.chromium.LibCrosService",
+    "interfaces": [
+      {
+        "interface": "org.chromium.LibCrosServiceInterface",
+        "methods": [
+          "ResolveNetworkProxy"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      }
+    ]
+  },
+  {
     "Object_name": "org.chromium.ModemManager",
     "interfaces": [
       {
@@ -243,7 +268,8 @@
           "Enable",
           "FactoryReset",
           "GetIP4Config",
-          "GetInfo"
+          "GetInfo",
+          "Reset"
         ]
       },
       {
@@ -376,6 +402,7 @@
           "GetService",
           "GetServiceOrder",
           "GetState",
+          "GetVPNService",
           "GetWifiService",
           "ListDebugTags",
           "RegisterAgent",
@@ -414,6 +441,7 @@
           "MoveAfter",
           "MoveBefore",
           "Remove",
+          "SetApn",
           "SetProperty"
         ]
       }
@@ -555,6 +583,74 @@
     ]
   },
   {
+    "Object_name": "org.freedesktop.DeviceKit.Disks",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Disks",
+        "methods": [
+          "DriveInhibitAllPolling",
+          "DriveSetAllSpindownTimeouts",
+          "DriveUninhibitAllPolling",
+          "DriveUnsetAllSpindownTimeouts",
+          "EnumerateDeviceFiles",
+          "EnumerateDevices",
+          "FindDeviceByDeviceFile",
+          "FindDeviceByMajorMinor",
+          "Inhibit",
+          "LinuxMdCreate",
+          "LinuxMdStart",
+          "Uninhibit"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Disks.Device",
+        "methods": [
+          "DriveAtaSmartInitiateSelftest",
+          "DriveAtaSmartRefreshData",
+          "DriveDetach",
+          "DriveEject",
+          "DriveInhibitPolling",
+          "DrivePollMedia",
+          "DriveSetSpindownTimeout",
+          "DriveUninhibitPolling",
+          "DriveUnsetSpindownTimeout",
+          "FilesystemCheck",
+          "FilesystemCreate",
+          "FilesystemListOpenFiles",
+          "FilesystemMount",
+          "FilesystemSetLabel",
+          "FilesystemUnmount",
+          "JobCancel",
+          "LinuxMdAddComponent",
+          "LinuxMdCheck",
+          "LinuxMdRemoveComponent",
+          "LinuxMdStop",
+          "LuksChangePassphrase",
+          "LuksLock",
+          "LuksUnlock",
+          "PartitionCreate",
+          "PartitionDelete",
+          "PartitionModify",
+          "PartitionTableCreate"
+        ]
+      }
+    ]
+  },
+  {
     "Object_name": "org.freedesktop.DeviceKit.Power",
     "interfaces": [
       {
@@ -602,6 +698,46 @@
         "methods": [
           "GetData",
           "GetTotal"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.PolicyKit1",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Peer",
+        "methods": [
+          "GetMachineId",
+          "Ping"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.PolicyKit1.Authority",
+        "methods": [
+          "AuthenticationAgentResponse",
+          "CancelCheckAuthorization",
+          "CheckAuthorization",
+          "EnumerateActions",
+          "EnumerateTemporaryAuthorizations",
+          "RegisterAuthenticationAgent",
+          "RevokeTemporaryAuthorizationById",
+          "RevokeTemporaryAuthorizations",
+          "UnregisterAuthenticationAgent"
         ]
       }
     ]

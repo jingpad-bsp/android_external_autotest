@@ -1,0 +1,313 @@
+[
+  {
+    "Object_name": "fi.w1.wpa_supplicant1",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.Cashew",
+    "interfaces": [
+      {
+        "interface": "org.chromium.Cashew",
+        "methods": [
+          "GetDataPlans",
+          "IsAlive",
+          "RequestDataPlansUpdate"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.LibCrosService",
+    "interfaces": [
+      {
+        "interface": "org.chromium.LibCrosServiceInterface",
+        "methods": [
+          "ResolveNetworkProxy"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.ModemManager",
+    "interfaces": [
+      {
+        "interface": "org.chromium.ModemManager.Modem.Gobi",
+        "methods": [
+          "PowerCycle",
+          "RequestEvents",
+          "SetAutomaticTracking",
+          "SetCarrier",
+          "SoftReset"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ModemManager",
+        "methods": [
+          "EnumerateDevices"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ModemManager.Modem",
+        "methods": [
+          "Connect",
+          "Disconnect",
+          "Enable",
+          "FactoryReset",
+          "GetIP4Config",
+          "GetInfo",
+          "Reset"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ModemManager.Modem.Cdma",
+        "methods": [
+          "Activate",
+          "ActivateManual",
+          "ActivateManualDebug",
+          "GetEsn",
+          "GetRegistrationState",
+          "GetServingSystem",
+          "GetSignalQuality"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.ModemManager.Modem.Simple",
+        "methods": [
+          "Connect",
+          "GetStatus"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.DeviceKit",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit",
+        "methods": [
+          "EnumerateByNativePath",
+          "EnumerateBySubsystem",
+          "InhibitShutdown",
+          "UninhibitShutdown"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.DeviceKit.Disks",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Disks",
+        "methods": [
+          "DriveInhibitAllPolling",
+          "DriveSetAllSpindownTimeouts",
+          "DriveUninhibitAllPolling",
+          "DriveUnsetAllSpindownTimeouts",
+          "EnumerateDeviceFiles",
+          "EnumerateDevices",
+          "FindDeviceByDeviceFile",
+          "FindDeviceByMajorMinor",
+          "Inhibit",
+          "LinuxMdCreate",
+          "LinuxMdStart",
+          "Uninhibit"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Disks.Device",
+        "methods": [
+          "DriveAtaSmartInitiateSelftest",
+          "DriveAtaSmartRefreshData",
+          "DriveDetach",
+          "DriveEject",
+          "DriveInhibitPolling",
+          "DrivePollMedia",
+          "DriveSetSpindownTimeout",
+          "DriveUninhibitPolling",
+          "DriveUnsetSpindownTimeout",
+          "FilesystemCheck",
+          "FilesystemCreate",
+          "FilesystemListOpenFiles",
+          "FilesystemMount",
+          "FilesystemSetLabel",
+          "FilesystemUnmount",
+          "JobCancel",
+          "LinuxMdAddComponent",
+          "LinuxMdCheck",
+          "LinuxMdRemoveComponent",
+          "LinuxMdStop",
+          "LuksChangePassphrase",
+          "LuksLock",
+          "LuksUnlock",
+          "PartitionCreate",
+          "PartitionDelete",
+          "PartitionModify",
+          "PartitionTableCreate"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.DeviceKit.Power",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Power",
+        "methods": [
+          "EnumerateDevices",
+          "Hibernate",
+          "Suspend"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Power.Device",
+        "methods": [
+          "GetHistory",
+          "GetStatistics",
+          "Refresh"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Power.QoS",
+        "methods": [
+          "CancelRequest",
+          "GetLatency",
+          "GetLatencyRequests",
+          "RequestLatency",
+          "SetMinimumLatency"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DeviceKit.Power.Wakeups",
+        "methods": [
+          "GetData",
+          "GetTotal"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.PolicyKit1",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Peer",
+        "methods": [
+          "GetMachineId",
+          "Ping"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.PolicyKit1.Authority",
+        "methods": [
+          "AuthenticationAgentResponse",
+          "CancelCheckAuthorization",
+          "CheckAuthorization",
+          "EnumerateActions",
+          "EnumerateTemporaryAuthorizations",
+          "RegisterAuthenticationAgent",
+          "RevokeTemporaryAuthorizationById",
+          "RevokeTemporaryAuthorizations",
+          "UnregisterAuthenticationAgent"
+        ]
+      }
+    ]
+  }
+]
