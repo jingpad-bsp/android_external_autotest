@@ -179,7 +179,9 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
                        process='chrome',
                        log_reader=log_reader,
                        crash_msg='Chrome crashed during login')
-    wait_for_ownership()  # Otherwise we SIGABRT keygen
+    if (username):
+        # We don't take ownership on Guest login; Otherwise we SIGABRT keygen
+        wait_for_ownership()
 
 
 def attempt_logout(timeout=_DEFAULT_TIMEOUT):
