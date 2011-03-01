@@ -291,7 +291,7 @@ class UITest(test.test):
     def __log_crashed_processes(self, processes):
         """Runs through the log watched by |watcher| to see if a crash was
         reported for any process names listed in |processes|. SIGABRT crashes in
-        chrome during logout are ignored.
+        chrome or supplied-chrome during logout are ignored.
         """
         logout_start_regex = re.compile(login.LOGOUT_ATTEMPT_MSG)
         crash_regex = re.compile(
@@ -308,7 +308,8 @@ class UITest(test.test):
                 match = crash_regex.search(line)
                 if (match and not match.group(1) in processes and
                     not (in_logout and
-                         match.group(1) == chromeos_constants.BROWSER and
+                         (match.group(1) == chromeos_constants.BROWSER or
+                          match.group(1) == 'supplied-chrome') and
                          match.group(2) == 'sig 6')):
                     self.job.record('INFO', self.tagged_testname,
                                     line[match.start():])
