@@ -4,7 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "Kernel Filesystem Performance"
-TIME = "SHORT"
+TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
@@ -21,6 +21,14 @@ from autotest_lib.server import site_host_attributes
 TESTS = [
   ('kernel_HdParm', {}),
   ('dbench', {}),
+# Bonnie: two results come out zero:
+#  randcreate_read_ksec
+#  randcreate_read_pctcp
+# Not enough space to run these tests
+  ('bonnie', {'extra_args':'-s512:256 -r0 -n128'}),
+  ('compilebench', {}),
+  ('iozone', {}),
+ # ('ddtest', {}),
 ]
 
 
