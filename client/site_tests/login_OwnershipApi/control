@@ -1,0 +1,20 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+TIME="SHORT"
+AUTHOR = "The Chromium OS Authors"
+DOC = """
+Tests to ensure that RestartJob ignores argv[0] and cannot be
+abused to launch arbitrary processes.
+"""
+NAME = "login_OwnershipApi"
+PURPOSE = "Validate Ownership DBus API"
+CRITERIA = """
+Fail if a call does not behave as expected
+"""
+TEST_CLASS = "login"
+TEST_CATEGORY = "Functional"
+TEST_TYPE = "client"
+
+job.run_test("login_OwnershipApi")
