@@ -40,9 +40,12 @@ class scrashme(test.test):
 
 
     def setup(self, tarball = 'scrashme-git-snapshot-03-18-2010.tar.bz2'):
+        diff_src = os.path.join(self.bindir, 'testfix.diff')
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
         os.chdir(self.srcdir)
+        if os.path.exists(diff_src):
+            utils.system('patch -i %s' % diff_src)
         utils.make()
 
 

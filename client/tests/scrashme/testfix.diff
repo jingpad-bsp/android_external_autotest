@@ -1,0 +1,29 @@
+*** scrashme.c	Mon Feb 28 16:40:35 2011
+--- scrashme.c.1	Mon Feb 28 16:39:15 2011
+***************
+*** 481,491 ****
+  	}
+  	(void)signal(SIGCHLD, SIG_IGN);
+  
+  	srand(seed);
+  
+! 	chroot("tmp");
+  }
+  
+  static void run_mode(void)
+  {
+  	int i;
+--- 481,493 ----
+  	}
+  	(void)signal(SIGCHLD, SIG_IGN);
+  
+  	srand(seed);
+  
+! 	if (chroot("tmp")) {
+! 		printf("chroot failed!\n");
+! 	}
+  }
+  
+  static void run_mode(void)
+  {
+  	int i;
