@@ -309,7 +309,7 @@ class UITest(test.test):
                 if (match and not match.group(1) in processes and
                     not (in_logout and
                          (match.group(1) == chromeos_constants.BROWSER or
-                          match.group(1) == 'supplied-chrome') and
+                          match.group(1) == 'supplied_chrome') and
                          match.group(2) == 'sig 6')):
                     self.job.record('INFO', self.tagged_testname,
                                     line[match.start():])
