@@ -15,8 +15,7 @@ def setup(tarball, topdir):
     os.chdir(srcdir)
     utils.system('patch -p1 < ../Makefile.patch')
     utils.system('patch -p0 < ../crc32c-intel.patch')
-    #TODO: regenerate arm patch
-    #utils.system('patch -p1 < ../arm.patch')
+    utils.system('patch -p1 < ../arm.patch')
 
     #TODO: Fix this in the makefile.
     autodir = os.environ['AUTODIR']
@@ -29,5 +28,5 @@ def setup(tarball, topdir):
 
 # src from http://brick.kernel.dk/snaps/
 pwd = os.getcwd()
-tarball = os.path.join(pwd, 'fio-1.44.tar.bz2')
+tarball = os.path.join(pwd, 'fio-1.50.2.tar.bz2')
 utils.update_version(pwd + '/src', True, version, setup, tarball, pwd)
