@@ -154,24 +154,24 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     # press and key release events.
     utils.system('renice +%d -p %d' % (_LOGIN_NICE, os.getpid()))
     try:
-      ax = cros_ui.get_autox()
-      # navigate to login screen
-      ax.send_hotkey("Ctrl+Alt+L")
-      # escape out of any login screen menus (e.g., the network selection menu)
-      ax.send_hotkey("Escape")
-      time.sleep(0.5)
-      if (username):
-          # focus username
-          ax.send_hotkey("Alt+U")
-          ax.send_text(username)
-          # focus password
-          ax.send_hotkey("Alt+P")
-          ax.send_text(password)
-          ax.send_hotkey("Return")
-      else:
-          ax.send_hotkey("Alt+B")  # Browse without signing-in
+        ax = cros_ui.get_autox()
+        # navigate to login screen
+        ax.send_hotkey("Ctrl+Alt+L")
+        # escape out of any login screen menus (e.g., the network select menu)
+        ax.send_hotkey("Escape")
+        time.sleep(0.5)
+        if (username):
+            # focus username
+            ax.send_hotkey("Alt+U")
+            ax.send_text(username)
+            # focus password
+            ax.send_hotkey("Alt+P")
+            ax.send_text(password)
+            ax.send_hotkey("Return")
+        else:
+            ax.send_hotkey("Alt+B")  # Browse without signing-in
     finally:
-      utils.system('renice -%d -p %d' % (_LOGIN_NICE, os.getpid()))
+        utils.system('renice -%d -p %d' % (_LOGIN_NICE, os.getpid()))
 
     wait_for_condition(condition=logged_in,
                        timeout_msg='Timed out waiting for login',
@@ -179,6 +179,7 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
                        process='chrome',
                        log_reader=log_reader,
                        crash_msg='Chrome crashed during login')
+    wait_for_ownership()  # Otherwise we SIGABRT keygen
 
 
 def attempt_logout(timeout=_DEFAULT_TIMEOUT):
