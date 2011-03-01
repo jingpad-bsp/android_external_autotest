@@ -55,10 +55,7 @@ TESTS = [
                                'error_string' : 'ServiceUnavailable'}),
   ('login_BadAuthentication', {'tag' : 'unknown',
                                'error_string' : 'Unknown'}),
-  ('login_CryptohomeUnmounted', {}),
-  ('login_CryptohomeIncognitoUnmounted', {}),
-  ('login_OwnershipNotRetaken', {}),
-  ('login_OwnershipTaken', {}),
+  ('login_OwnershipApi', {}),
   ('login_DBusCalls', {}),
 # TODO(kmixter): Fix log volume usage, or change test constraints. See http://crosbug.com/11350
 #  ('logging_LogVolume', {'constraints': ['bytes_unexpected <= 100000',
