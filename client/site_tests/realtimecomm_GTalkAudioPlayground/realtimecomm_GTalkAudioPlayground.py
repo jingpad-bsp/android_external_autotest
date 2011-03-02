@@ -6,7 +6,7 @@ import os, re, shutil, sys, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.cros import cros_ui, httpd
 
 WARMUP_TIME = 30
 SLEEP_DURATION = 90
@@ -20,6 +20,19 @@ class realtimecomm_GTalkAudioPlayground(test.test):
         self.job.setup_dep([self.dep])
 
 
+    def initialize(self):
+        self.dep_dir = os.path.join(self.autodir, 'deps', self.dep)
+
+        # Start local HTTP server to serve playground.
+        self._test_server = httpd.HTTPListener(
+            8001, docroot=os.path.join(self.dep_dir, 'src'))
+        self._test_server.run()
+
+
+    def cleanup(self):
+        self._test_server.stop()
+
+
     def run_verification(self):
         if not os.path.exists('/tmp/tmp.log'):
             raise error.TestFail('GTalk log file not exist!')
@@ -29,62 +42,39 @@ class realtimecomm_GTalkAudioPlayground(test.test):
 
 
     def run_once(self):
-        self.dep_dir = os.path.join(self.autodir, 'deps', self.dep)
         sys.path.append(self.dep_dir)
         import pgutil
 
         self.performance_results = {}
         pgutil.cleanup_playground(self.playground)
-        pgutil.setup_playground(os.path.join(self.dep_dir, 'src'),
-            self.playground, os.path.join(self.bindir, 'options'))
+        pgutil.setup_playground(
+            os.path.join(self.dep_dir, 'src'), self.playground,
+            os.path.join(self.bindir, 'options'))
 
-        # Launch Playground
-        path = os.path.join(self.playground,
-            'buzz/javascript/media/examples')
-        page = 'videoplayground.html'
-        para = 'callType=a'
-        playground_url = "%s/%s?%s" % (path, page, para)
-
-        # This approach no longer works .... :(
-        # utils.run('su chronos -c \'DISPLAY=:0 \
-        #     XAUTHORITY=/home/chronos/.Xauthority \
-        #     /opt/google/chrome/chrome \
-        #     --no-first-run %s\' &' % playground_url)
-
-        # This seems to be broken also.
-        # Using cros_ui.ChromeSession(local_page) doesn't work for local folder.
-        # However it works fine if login manually and open the page.
-        # So, might be a bug in autotest.
-        # session =  cros_ui.ChromeSession(playground_url)
-
-        # As a workaround, for now, have to use the remote server.
-        # TODO(zhurunz) Find a better way to do that.
-        session = cros_ui.ChromeSession('http://www.corp.google.com/~zhurunz/no_crawl/VideoPlayground/buzz/javascript/media/examples/videoplayground.html?callType=a')
-
-        # Collect ctime,stime for GoogleTalkPlugin
-        time.sleep(WARMUP_TIME)
-        gtalk_s = pgutil.get_utime_stime(pgutil.get_pids('GoogleTalkPlugin'))
-        pulse_s = pgutil.get_utime_stime(pgutil.get_pids('pulseaudio'))
-        time.sleep(SLEEP_DURATION)
-        gtalk_e = pgutil.get_utime_stime(pgutil.get_pids('GoogleTalkPlugin'))
-        pulse_e = pgutil.get_utime_stime(pgutil.get_pids('pulseaudio'))
-
-        self.performance_results['ctime_gtalk'] = \
-            pgutil.get_cpu_usage(SLEEP_DURATION, gtalk_e[0] - gtalk_s[0])
-        self.performance_results['stime_gtalk'] = \
-            pgutil.get_cpu_usage(SLEEP_DURATION, gtalk_e[1] - gtalk_s[1])
-        self.performance_results['ctime_pulse'] = \
-            pgutil.get_cpu_usage(SLEEP_DURATION, pulse_e[0] - pulse_s[0])
-        self.performance_results['stime_pulse'] = \
-            pgutil.get_cpu_usage(SLEEP_DURATION, pulse_e[1] - pulse_s[1])
-
-        # Verify log
         try:
+            # Launch Playground
+            session = cros_ui.ChromeSession(
+                'http://localhost:8001/buzz/javascript/media/examples/'
+                'videoplayground.html?callType=a')
+
+            # Collect ctime,stime for GoogleTalkPlugin
+            time.sleep(WARMUP_TIME)
+            gtalk_s = pgutil.get_utime_stime(
+                pgutil.get_pids('GoogleTalkPlugin'))
+            time.sleep(SLEEP_DURATION)
+            gtalk_e = pgutil.get_utime_stime(
+                pgutil.get_pids('GoogleTalkPlugin'))
+
+            self.performance_results['ctime_gtalk'] = \
+                pgutil.get_cpu_usage(SLEEP_DURATION, gtalk_e[0] - gtalk_s[0])
+            self.performance_results['stime_gtalk'] = \
+                pgutil.get_cpu_usage(SLEEP_DURA, gtalk_e[1] - gtalk_s[1])
+
+            # Verify log
             self.run_verification()
         finally:
+            session.close()
             pgutil.cleanup_playground(self.playground, True)
 
         # Report perf
         self.write_perf_keyval(self.performance_results)
-
-        session.close()
