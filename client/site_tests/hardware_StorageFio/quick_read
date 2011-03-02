@@ -2,10 +2,10 @@
 ; Use of this source code is governed by a BSD-style license that can be
 ; found in the LICENSE file.
 ;
-; A quick test of sequential write
+; A quick test of small random reads
 ;
 
-[quick_write]
+[quick_read]
 filename=${FILENAME}
 size=${FILESIZE}
 
@@ -13,11 +13,10 @@ time_based
 runtime=10
 
 ioengine=libaio
-iodepth=1
+iodepth=4
 direct=1
 
-readwrite=write
-verify=md5
+readwrite=randread
+norandommap
 
-bs=512k
-
+bs=4k
