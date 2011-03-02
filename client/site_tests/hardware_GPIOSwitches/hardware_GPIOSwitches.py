@@ -9,13 +9,14 @@ __author__ = 'nsanders@chromium.org (Nick Sanders)'
 import logging, os
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error, site_gpio
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import gpio
 
 class hardware_GPIOSwitches(test.test):
     version = 4
 
     def initialize(self):
-        self._gpio = site_gpio.Gpio(error.TestError)
+        self._gpio = gpio.Gpio(error.TestError)
 
     def gpio_read(self, name):
         try:

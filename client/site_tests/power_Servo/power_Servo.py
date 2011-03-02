@@ -3,7 +3,8 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_servo
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import servo
 
 
 class power_Servo(test.test):
@@ -14,7 +15,7 @@ class power_Servo(test.test):
             raise error.TestFail('servo_host or servo_port not specified')
 
         try:
-            self.servo = site_servo.Servo()
+            self.servo = servo.Servo()
             self.servo.initialize(servo_host=servo_host,
                                   servo_port=servo_port)
         except:

@@ -7,7 +7,7 @@ import os
 from autotest_lib.client.bin import factory, test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
-from autotest_lib.client.common_lib import site_gpio
+from autotest_lib.client.cros import gpio
 
 
 class hardware_EepromWriteProtect(test.test):
@@ -25,7 +25,7 @@ class hardware_EepromWriteProtect(test.test):
     def setup(self):
         """ autotest setup procedure """
         self.flashrom = flashrom_util.flashrom_util(verbose=self.verbose)
-        self.gpio = site_gpio.Gpio(error.TestError)
+        self.gpio = gpio.Gpio(error.TestError)
 
     def check_gpio_write_protection(self):
         try:

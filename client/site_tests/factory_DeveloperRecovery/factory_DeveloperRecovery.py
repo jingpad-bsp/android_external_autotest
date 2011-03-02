@@ -27,9 +27,8 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import site_gpio
 from autotest_lib.client.common_lib import utils
-
+from autotest_lib.client.cros import gpio
 
 class DevRecTest(object):
     gpio_info = {
@@ -301,7 +300,7 @@ class factory_DeveloperRecovery(test.test):
     preserve_srcdir = True
 
     def initialize(self):
-        self._gpio = site_gpio.Gpio(error.TestError)
+        self._gpio = gpio.Gpio(error.TestError)
         self._gpio.setup()
 
     def run_once(self, layout=None):

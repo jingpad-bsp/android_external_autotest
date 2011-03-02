@@ -9,7 +9,7 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import site_gpio
+from autotest_lib.client.cros import gpio
 
 
 GOOGLE_REQUIRED_TESTS = [ 'GRT_HWComponents', 'GRT_DevRec' ]
@@ -32,7 +32,7 @@ class factory_Verify(test.test):
             self.alert_bypassed("DEVELOPER SWITCH BUTTON")
             return
 
-        gpio = site_gpio.Gpio(error.TestFail)
+        gpio = gpio.Gpio(error.TestFail)
         gpio.setup()
         property_name = 'developer_switch'
         try:

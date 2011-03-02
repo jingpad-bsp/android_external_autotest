@@ -14,7 +14,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import flashrom_util
 from autotest_lib.client.common_lib import gbb_util
 from autotest_lib.client.common_lib import site_fmap
-from autotest_lib.client.common_lib import site_vblock
+from autotest_lib.client.cros import vblock
 
 
 class hardware_Components(test.test):
@@ -351,7 +351,7 @@ class hardware_Components(test.test):
             raise error.TestError('Cannot detect ChromeOS flashrom layout')
         for index, name in enumerate(section_names):
             data = flashrom.get_section(base_img, layout, name)
-            block = site_vblock.unpack_verification_block(data)
+            block = vblock.unpack_verification_block(data)
             ver = block['VbFirmwarePreambleHeader']['firmware_version']
             versions[index] = ver
         # we embed error reports in return value.

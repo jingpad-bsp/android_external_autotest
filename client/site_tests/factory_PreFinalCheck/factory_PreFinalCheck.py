@@ -12,7 +12,7 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import site_gpio
+from autotest_lib.client.cros import gpio
 
 
 # TODO(hungte) We may consider using real factory_Verify in the future.
@@ -20,7 +20,7 @@ class MiniVerifier(object):
     """ Simplified version of factory_Verify. """
 
     def __init__(self):
-        self._gpio = site_gpio.Gpio(error.TestError)
+        self._gpio = gpio.Gpio(error.TestError)
         self._gpio.setup()
 
     def set_test_info(self, status_file, test_list):
