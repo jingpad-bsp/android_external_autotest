@@ -23,7 +23,8 @@ TESTS = [
   ('dbench', {}),
   ('desktopui_FontCache', {}),
   ('desktopui_IBusTest', {}),
-  ('desktopui_ImeTest', {}),
+# TODO(dalecurtis): desktopui_ImeTest is broken; see http://crosbug.com/12646
+#  ('desktopui_ImeTest', {}),
   ('desktopui_SunSpiderBench', {}),
   ('desktopui_V8Bench', {}),
   ('desktopui_WindowManagerHotkeys', {}),
@@ -83,7 +84,8 @@ TESTS = [
   ('platform_SessionManagerTerm', {}),
   ('platform_StackProtector', {}),
   ('platform_TempFS', {}),
-  ('realtimecomm_GTalkAudioBench', {}),
+# TODO(dalecurtis): AudioBench does not work; see http://crosbug.com/12647
+#  ('realtimecomm_GTalkAudioBench', {}),
   ('unixbench', {}),
 # desktopui_UrlFetch has an undesired 'shutdown' command inside which will cause
 # consecutive test to be aborted unexpectly. Move it to the end of the test
