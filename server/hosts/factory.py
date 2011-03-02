@@ -13,7 +13,7 @@ SSH_ENGINE = global_config.global_config.get_config_value('AUTOSERV',
 _started_hostnames = set()
 
 def create_host(
-    hostname, auto_monitor=True, follow_paths=None, pattern_paths=None,
+    hostname, auto_monitor=False, follow_paths=None, pattern_paths=None,
     netconsole=False, **args):
     # by default assume we're using SSH support
     if SSH_ENGINE == 'paramiko':
