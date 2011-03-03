@@ -20,8 +20,8 @@ ${XAUTH} -q -f ${XAUTH_FILE} add ${DISPLAY} . ${MCOOKIE}
 
 /bin/sh -c "\
 trap '' USR1 TTOU TTIN
-exec /usr/bin/X11/X -nolisten tcp vt01 -auth ${XAUTH_FILE} \
--r -s 0 -p 0 -dpms 2> /dev/null" &
+exec /usr/bin/X -nolisten tcp vt01 -auth ${XAUTH_FILE} \
+-r -s 0 -p 0 -dpms 2> /var/log/factory.X.log" &
 
 while [ -z ${SERVER_READY} ]; do
   sleep .1
