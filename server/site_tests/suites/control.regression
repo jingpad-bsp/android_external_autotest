@@ -22,6 +22,7 @@ TESTS = [
   ('compilebench', {}),
   ('dbench', {}),
   ('desktopui_FontCache', {}),
+  ('desktopui_GTK2Config', {}),
   ('desktopui_IBusTest', {}),
 # TODO(dalecurtis): desktopui_ImeTest is broken; see http://crosbug.com/12646
 #  ('desktopui_ImeTest', {}),
