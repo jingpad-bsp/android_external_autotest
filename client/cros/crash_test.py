@@ -17,6 +17,7 @@ class CrashTest(test.test):
     _CRASH_SENDER_PATH = '/sbin/crash_sender'
     _CRASH_SENDER_RATE_DIR = '/var/lib/crash_sender'
     _CRASH_SENDER_RUN_PATH = '/var/run/crash_sender.pid'
+    _CRASH_TEST_IN_PROGRESS = '/tmp/crash-test-in-progress'
     _MOCK_CRASH_SENDING = '/tmp/mock-crash-sending'
     _PAUSE_FILE = '/var/lib/crash_sender_paused'
     _SYSTEM_CRASH_DIR = '/var/spool/crash'
@@ -79,6 +80,14 @@ class CrashTest(test.test):
             logging.info('Created ' + self._CONSENT_FILE)
         else:
             utils.system('rm -f "%s"' % (self._CONSENT_FILE))
+
+
+    def _set_crash_test_in_progress(self, in_progress):
+        if in_progress:
+            utils.open_write_close(self._CRASH_TEST_IN_PROGRESS, 'in-progress')
+            logging.info('Created ' + self._CRASH_TEST_IN_PROGRESS)
+        else:
+            utils.system('rm -f "%s"' % (self._CRASH_TEST_IN_PROGRESS))
 
 
     def _get_pushed_consent_file_path(self):
@@ -313,6 +322,7 @@ class CrashTest(test.test):
         self._leave_crash_sending = True
         self._automatic_consent_saving = True
         self.enable_crash_filtering('none')
+        self._set_crash_test_in_progress(True)
 
 
     def cleanup(self):
@@ -323,6 +333,7 @@ class CrashTest(test.test):
         if self._automatic_consent_saving:
             self._pop_consent()
         self.disable_crash_filtering()
+        self._set_crash_test_in_progress(False)
         test.test.cleanup(self)
 
 
