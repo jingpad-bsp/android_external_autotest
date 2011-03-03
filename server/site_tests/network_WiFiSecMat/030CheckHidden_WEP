@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Verify we can connect to a network with hidden SSID and WEP.
 { "name":"CheckHidden_WEP",
   "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"hostap" } ],
