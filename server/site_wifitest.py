@@ -167,16 +167,27 @@ class WiFiTest(object):
         self.firewall_cleanup({})
 
 
+    def __must_be_installed(self, host, cmd):
+        if not self.__is_installed(host, cmd):
+            # TODO(sleffler): temporary debugging
+            host.run("ls -a /usr/bin /usr/local/bin" % cmd, ignore_status=True)
+            raise error.TestFail('Unable to find %s on %s' % (cmd, host.ip))
+        return cmd
+
+
     def __client_discover_commands(self, client):
         self.client_cmd_netdump = client.get('cmd_netdump', 'tshark')
         self.client_cmd_ifconfig = client.get('cmd_ifconfig', 'ifconfig')
         self.client_cmd_iw = client.get('cmd_iw', 'iw')
-        self.client_cmd_netperf = client.get('cmd_netperf_client',
-                                             '/usr/local/bin/netperf')
-        self.client_cmd_netserv = client.get('cmd_netperf_server',
-                                             '/usr/local/sbin/netserver')
-        self.client_cmd_iperf = client.get('cmd_iperf_client',
-                                           '/usr/local/bin/iperf')
+        self.client_cmd_netperf = self.__must_be_installed(self.client,
+                                        client.get('cmd_netperf_client',
+                                            '/usr/local/bin/netperf'))
+        self.client_cmd_netserv = self.__must_be_installed(self.client,
+                                        client.get('cmd_netperf_server',
+                                            '/usr/local/sbin/netserver'))
+        self.client_cmd_iperf = self.__must_be_installed(self.client,
+                                        client.get('cmd_iperf_client',
+                                            '/usr/local/bin/iperf'))
         self.client_cmd_iptables = '/sbin/iptables'
         self.client_cmd_flimflam_lib = client.get('flimflam_lib',
                                                   '/usr/local/lib/flimflam')
@@ -197,12 +208,15 @@ class WiFiTest(object):
 
 
     def __server_discover_commands(self, server):
-        self.server_cmd_netperf = server.get('cmd_netperf_client',
-                                             '/usr/bin/netperf')
-        self.server_cmd_netserv = server.get('cmd_netperf_server',
-                                             '/usr/bin/netserver')
-        self.server_cmd_iperf = server.get('cmd_iperf_client',
-                                           '/usr/bin/iperf')
+        self.server_cmd_netperf = self.__must_be_installed(self.server,
+                                        server.get('cmd_netperf_client',
+                                            '/usr/bin/netperf'))
+        self.server_cmd_netserv = self.__must_be_installed(self.server,
+                                        server.get('cmd_netperf_server',
+                                            '/usr/bin/netserver'))
+        self.server_cmd_iperf = self.__must_be_installed(self.server,
+                                        server.get('cmd_iperf_client',
+                                            '/usr/bin/iperf'))
         # /usr/bin/ping is preferred, as it is likely to be iputils
         if self.__is_installed(self.server, '/usr/bin/ping'):
             self.server_ping_cmd = '/usr/bin/ping'
@@ -761,12 +775,6 @@ class WiFiTest(object):
             client = { 'host': self.client, 'cmd': self.client_cmd_iperf,
                        'target': self.server_wifi_ip }
 
-        # If appropriate apps are not installed, raise an error
-        if not self.__is_installed(client['host'], client['cmd']):
-            raise error.TestFail('Unable to find %s on client', client['cmd'])
-        if not self.__is_installed(server['host'], server['cmd']):
-            raise error.TestFail('Unable to find %s on server', server['cmd'])
-
         iperf_thread = HelperThread(server['host'],
             "%s -s %s" % (server['cmd'], iperf_args))
         iperf_thread.start()
@@ -897,12 +905,6 @@ class WiFiTest(object):
             server = { 'host': self.server, 'cmd': self.server_cmd_netserv }
             client = { 'host': self.client, 'cmd': self.client_cmd_netperf,
                        'target': self.server_wifi_ip }
-
-        # If appropriate apps are not installed, raise an error
-        if not self.__is_installed(client['host'], client['cmd']):
-            raise error.TestFail('Unable to find %s on client', client['cmd'])
-        if not self.__is_installed(server['host'], server['cmd']):
-            raise error.TestFail('Unable to find %s on server', server['cmd'])
 
         netperf_thread = HelperThread(server['host'],
             "%s -p %s" % (server['cmd'],  self.defnetperfport))
