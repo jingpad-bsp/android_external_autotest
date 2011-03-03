@@ -190,7 +190,7 @@ class WiFiTest(object):
             ifmatch = re.search("Interface (\S*)", line)
             if ifmatch is not None:
                 current_if = ifmatch.group(1)
-            elif 'type managed' in line and current_if:
+            elif ('type managed' in line or 'type IBSS' in line) and current_if:
                 ret.append(current_if)
         logging.info("Found wireless interfaces %s" % str(ret))
         return ret
@@ -377,6 +377,8 @@ class WiFiTest(object):
             flags.append('--debug')
         if params.get('hidden', False):
             flags.append('--hidden')
+        if 'mode' in params:
+            flags.append('--mode=%s' % params['mode'])
 
         result = self.client.run('python "%s" %s "%s" "%s" "%s" "%d" "%d"' %
             (script_client_file,

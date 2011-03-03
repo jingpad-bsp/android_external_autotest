@@ -165,6 +165,8 @@ def main(argv):
                     help='Report state changes and other debug info')
   parser.add_option('--find_timeout', dest='find_timeout', type='int',
                     default=10, help='This is a hidden network')
+  parser.add_option('--mode', dest='mode', default='managed',
+                    help='This is a hidden network')
   (options, args) = parser.parse_args(argv[1:])
 
   if len(argv) <= 4:
@@ -179,7 +181,7 @@ def main(argv):
 
   connection_settings = {
       'Type': 'wifi',
-      'Mode': 'managed',
+      'Mode': options.mode,
       'SSID': ssid,
       'Security': security
   }

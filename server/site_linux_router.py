@@ -85,7 +85,12 @@ class LinuxRouter(object):
                 'hw_mode': 'g'
             }
         }
-
+        self.station = {
+            'configured': False,
+            'conf': {
+                'ssid': defssid,
+            }
+        }
         # Kill hostapd if already running.
         self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
 
@@ -120,8 +125,9 @@ class LinuxRouter(object):
         # iw wants)
         #
         # map from bsd types to iw types
-        if params['type'] == "ap" or params['type'] == "hostap":
-            self.apmode = True
+        self.apmode = params['type'] in ("ap", "hostap")
+        if not self.apmode:
+            self.station['type'] = params['type']
         phytype = {
             "sta"       : "managed",
             "monitor"   : "monitor",
@@ -146,187 +152,264 @@ class LinuxRouter(object):
 
 
 
-    def config(self, params):
+    def hostap_config(self, params):
         """ Configure the AP per test requirements """
 
         multi_interface = 'multi_interface' in params
         if multi_interface:
             params.pop('multi_interface')
-        elif self.hostapd['configured']:
+        elif self.hostapd['configured'] or self.station['configured']:
             self.deconfig({})
 
-        if self.apmode:
-            # Construct the hostapd.conf file and start hostapd.
-            conf = self.hostapd['conf']
-            tx_power_params = {}
-            htcaps = set()
+        # Construct the hostapd.conf file and start hostapd.
+        conf = self.hostapd['conf']
+        tx_power_params = {}
+        htcaps = set()
 
-            conf['driver'] = params.get('hostapd_driver',
-                self.hostapd['driver'])
+        conf['driver'] = params.get('hostapd_driver',
+            self.hostapd['driver'])
 
-            for k, v in params.iteritems():
-                if k == 'ssid':
-                    conf['ssid'] = v
-                elif k == 'ssid_suffix':
-                    conf['ssid'] = self.defssid + v
-                elif k == 'channel':
-                    freq = int(v)
+        for k, v in params.iteritems():
+            if k == 'ssid':
+                conf['ssid'] = v
+            elif k == 'ssid_suffix':
+                conf['ssid'] = self.defssid + v
+            elif k == 'channel':
+                freq = int(v)
 
-                    # 2.4GHz
-                    if freq <= 2484:
-                        # Make sure hw_mode is set
-                        if conf.get('hw_mode') == 'a':
-                            conf['hw_mode'] = 'g'
-
-                        # Freq = 5 * chan + 2407, except channel 14
-                        if freq == 2484:
-                            conf['channel'] = 14
-                        else:
-                            conf['channel'] = (freq - 2407) / 5
-                    # 5GHz
-                    else:
-                        # Make sure hw_mode is set
-                        conf['hw_mode'] = 'a'
-                        # Freq = 5 * chan + 4000
-                        if freq < 5000:
-                            conf['channel'] = (freq - 4000) / 5
-                        # Freq = 5 * chan + 5000
-                        else:
-                            conf['channel'] = (freq - 5000) / 5
-
-                elif k == 'country':
-                    conf['country_code'] = v
-                elif k == 'dotd':
-                    conf['ieee80211d'] = 1
-                elif k == '-dotd':
-                    conf['ieee80211d'] = 0
-                elif k == 'mode':
-                    if v == '11a':
-                        conf['hw_mode'] = 'a'
-                    elif v == '11g':
+                # 2.4GHz
+                if freq <= 2484:
+                    # Make sure hw_mode is set
+                    if conf.get('hw_mode') == 'a':
                         conf['hw_mode'] = 'g'
-                    elif v == '11b':
-                        conf['hw_mode'] = 'b'
-                    elif v == '11n':
-                        conf['ieee80211n'] = 1
-                elif k == 'bintval':
-                    conf['beacon_int'] = v
-                elif k == 'dtimperiod':
-                    conf['dtim_period'] = v
-                elif k == 'rtsthreshold':
-                    conf['rts_threshold'] = v
-                elif k == 'fragthreshold':
-                    conf['fragm_threshold'] = v
-                elif k == 'shortpreamble':
-                    conf['preamble'] = 1
-                elif k == 'authmode':
-                    if v == "open":
-                        conf['auth_algs'] = 1
-                    elif v == "shared":
-                        conf['auth_algs'] = 2
-                elif k == 'hidessid':
-                    conf['ignore_broadcast_ssid'] = 1
-                elif k == 'wme':
-                    conf['wmm_enabled'] = 1
-                elif k == '-wme':
-                    conf['wmm_enabled'] = 0
-                elif k == 'deftxkey':
-                    conf['wep_default_key'] = v
-                elif k == 'ht20':
-                    htcaps.add('')  # NB: ensure 802.11n setup below
-                    conf['wmm_enabled'] = 1
-                elif k == 'ht40':
-                    htcaps.add('[HT40-]')
-                    htcaps.add('[HT40+]')
-                    conf['wmm_enabled'] = 1
-                elif k == 'shortgi':
-                    htcaps.add('[SHORT-GI-20]')
-                    htcaps.add('[SHORT-GI-40]')
-                elif k == 'pureg':
-                    pass        # TODO(sleffler) need hostapd support
-                elif k == 'puren':
-                    pass        # TODO(sleffler) need hostapd support
-                elif k == 'protmode':
-                    pass        # TODO(sleffler) need hostapd support
-                elif k == 'ht':
-                    htcaps.add('')  # NB: ensure 802.11n setup below
-                elif k == 'htprotmode':
-                    pass        # TODO(sleffler) need hostapd support
-                elif k == 'rifs':
-                    pass        # TODO(sleffler) need hostapd support
-                elif k == 'wepmode':
-                    pass        # NB: meaningless for hostapd; ignore
-                elif k == '-ampdu':
-                    pass        # TODO(sleffler) need hostapd support
-                elif k == 'txpower':
-                    tx_power_params['power'] = v
+
+                    # Freq = 5 * chan + 2407, except channel 14
+                    if freq == 2484:
+                        conf['channel'] = 14
+                    else:
+                        conf['channel'] = (freq - 2407) / 5
+                # 5GHz
                 else:
-                    conf[k] = v
+                    # Make sure hw_mode is set
+                    conf['hw_mode'] = 'a'
+                    # Freq = 5 * chan + 4000
+                    if freq < 5000:
+                        conf['channel'] = (freq - 4000) / 5
+                    # Freq = 5 * chan + 5000
+                    else:
+                        conf['channel'] = (freq - 5000) / 5
 
-            # Aggregate ht_capab.
-            if htcaps:
-                conf['ieee80211n'] = 1
-                conf['ht_capab'] = ''.join(htcaps)
-
-            # Figure out the correct interface.
-            if conf.get('hw_mode', 'b') == 'a':
-                conf['interface'] = self.wlanif5
+            elif k == 'country':
+                conf['country_code'] = v
+            elif k == 'dotd':
+                conf['ieee80211d'] = 1
+            elif k == '-dotd':
+                conf['ieee80211d'] = 0
+            elif k == 'mode':
+                if v == '11a':
+                    conf['hw_mode'] = 'a'
+                elif v == '11g':
+                    conf['hw_mode'] = 'g'
+                elif v == '11b':
+                    conf['hw_mode'] = 'b'
+                elif v == '11n':
+                    conf['ieee80211n'] = 1
+            elif k == 'bintval':
+                conf['beacon_int'] = v
+            elif k == 'dtimperiod':
+                conf['dtim_period'] = v
+            elif k == 'rtsthreshold':
+                conf['rts_threshold'] = v
+            elif k == 'fragthreshold':
+                conf['fragm_threshold'] = v
+            elif k == 'shortpreamble':
+                conf['preamble'] = 1
+            elif k == 'authmode':
+                if v == "open":
+                    conf['auth_algs'] = 1
+                elif v == "shared":
+                    conf['auth_algs'] = 2
+            elif k == 'hidessid':
+                conf['ignore_broadcast_ssid'] = 1
+            elif k == 'wme':
+                conf['wmm_enabled'] = 1
+            elif k == '-wme':
+                conf['wmm_enabled'] = 0
+            elif k == 'deftxkey':
+                conf['wep_default_key'] = v
+            elif k == 'ht20':
+                htcaps.add('')  # NB: ensure 802.11n setup below
+                conf['wmm_enabled'] = 1
+            elif k == 'ht40':
+                htcaps.add('[HT40-]')
+                htcaps.add('[HT40+]')
+                conf['wmm_enabled'] = 1
+            elif k == 'shortgi':
+                htcaps.add('[SHORT-GI-20]')
+                htcaps.add('[SHORT-GI-40]')
+            elif k == 'pureg':
+                pass        # TODO(sleffler) need hostapd support
+            elif k == 'puren':
+                pass        # TODO(sleffler) need hostapd support
+            elif k == 'protmode':
+                pass        # TODO(sleffler) need hostapd support
+            elif k == 'ht':
+                htcaps.add('')  # NB: ensure 802.11n setup below
+            elif k == 'htprotmode':
+                pass        # TODO(sleffler) need hostapd support
+            elif k == 'rifs':
+                pass        # TODO(sleffler) need hostapd support
+            elif k == 'wepmode':
+                pass        # NB: meaningless for hostapd; ignore
+            elif k == '-ampdu':
+                pass        # TODO(sleffler) need hostapd support
+            elif k == 'txpower':
+                tx_power_params['power'] = v
             else:
-                conf['interface'] = self.wlanif2
+                conf[k] = v
 
-            # Generate hostapd.conf.
-            self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
-                (self.hostapd['file'], '\n'.join(
-                "%s=%s" % kv for kv in conf.iteritems())))
+        # Aggregate ht_capab.
+        if htcaps:
+            conf['ieee80211n'] = 1
+            conf['ht_capab'] = ''.join(htcaps)
 
-            if not multi_interface:
-                logging.info("Initializing bridge...")
-                self.router.run("%s addbr %s" %
-                                (self.cmd_brctl, self.bridgeif))
-                self.router.run("%s setfd %s %d" %
-                                (self.cmd_brctl, self.bridgeif, 0))
-                self.router.run("%s stp %s %d" %
-                                (self.cmd_brctl, self.bridgeif, 0))
+        # Figure out the correct interface.
+        if conf.get('hw_mode', 'b') == 'a':
+            conf['interface'] = self.wlanif5
+        else:
+            conf['interface'] = self.wlanif2
 
-            # Run hostapd.
-            logging.info("Starting hostapd...")
-            self.router.run("%s -B %s" %
-                (self.cmd_hostapd, self.hostapd['file']))
+        # Generate hostapd.conf.
+        self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
+            (self.hostapd['file'], '\n'.join(
+            "%s=%s" % kv for kv in conf.iteritems())))
+
+        if not multi_interface:
+            logging.info("Initializing bridge...")
+            self.router.run("%s addbr %s" %
+                            (self.cmd_brctl, self.bridgeif))
+            self.router.run("%s setfd %s %d" %
+                            (self.cmd_brctl, self.bridgeif, 0))
+            self.router.run("%s stp %s %d" %
+                            (self.cmd_brctl, self.bridgeif, 0))
+
+        # Run hostapd.
+        logging.info("Starting hostapd...")
+        self.router.run("%s -B %s" %
+            (self.cmd_hostapd, self.hostapd['file']))
 
 
-            # Set up the bridge.
-            if not multi_interface:
-                logging.info("Setting up the bridge...")
-                self.router.run("%s addif %s %s" %
-                                (self.cmd_brctl, self.bridgeif, self.wiredif))
-                self.router.run("%s link set %s up" %
-                                (self.cmd_ip, self.wiredif))
-                self.router.run("%s link set %s up" %
-                                (self.cmd_ip, self.bridgeif))
-                self.hostapd['interface'] = conf['interface']
-            else:
-                tx_power_params['interface'] = conf['interface']
+        # Set up the bridge.
+        if not multi_interface:
+            logging.info("Setting up the bridge...")
+            self.router.run("%s addif %s %s" %
+                            (self.cmd_brctl, self.bridgeif, self.wiredif))
+            self.router.run("%s link set %s up" %
+                            (self.cmd_ip, self.wiredif))
+            self.router.run("%s link set %s up" %
+                            (self.cmd_ip, self.bridgeif))
+            self.hostapd['interface'] = conf['interface']
+        else:
+            tx_power_params['interface'] = conf['interface']
 
-            # Configure transmit power
-            self.set_txpower(tx_power_params)
+        # Configure transmit power
+        self.set_txpower(tx_power_params)
 
-            logging.info("AP configured.")
-
-#        else:
-#            # use iw to manually configure interface
+        logging.info("AP configured.")
 
         self.hostapd['configured'] = True
+
+
+    def station_config(self, params):
+        multi_interface = 'multi_interface' in params
+        if multi_interface:
+            params.pop('multi_interface')
+        elif self.station['configured'] or self.hostapd['configured']:
+            self.deconfig({})
+
+        interface = self.wlanif2
+        conf = self.station['conf']
+        for k, v in params.iteritems():
+            if k == 'ssid_suffix':
+                conf['ssid'] = self.defssid + v
+            elif k == 'channel':
+                freq = int(v)
+                if freq > 2484:
+                    interface = self.wlanif5
+            elif k == 'mode':
+                if v == '11a':
+                    interface = self.wlanif5
+            else:
+                conf[k] = v
+
+        if not multi_interface:
+            logging.info("Initializing bridge...")
+            self.router.run("%s addbr %s" %
+                            (self.cmd_brctl, self.bridgeif))
+            self.router.run("%s setfd %s %d" %
+                            (self.cmd_brctl, self.bridgeif, 0))
+            self.router.run("%s stp %s %d" %
+                            (self.cmd_brctl, self.bridgeif, 0))
+
+        # Run interface configuration commands
+        for k, v in conf.iteritems():
+            if k != 'ssid':
+                self.router.run("%s dev %s set %s %s" %
+                                (self.cmd_iw, interface, k, v))
+
+        # Connect the station
+        self.router.run("%s link set %s up" % (self.cmd_ip, interface))
+        connect_cmd = ('ibss join' if self.station['type'] == 'ibss'
+                       else 'connect')
+        self.router.run("%s dev %s %s %s %d" %
+                        (self.cmd_iw, interface, connect_cmd,
+                         conf['ssid'], freq))
+
+        # Add wireless interface to the bridge
+        self.router.run("%s addif %s %s" %
+                        (self.cmd_brctl, self.bridgeif, interface))
+        
+        # Add interface to the bridge.
+        # Bring up the bridge
+        if not multi_interface:
+            logging.info("Setting up the bridge...")
+            self.router.run("%s addif %s %s" %
+                            (self.cmd_brctl, self.bridgeif, self.wiredif))
+            self.router.run("%s link set %s up" %
+                            (self.cmd_ip, self.wiredif))
+            self.router.run("%s link set %s up" %
+                            (self.cmd_ip, self.bridgeif))
+
+        self.station['configured'] = True
+        self.station['interface'] = interface
+
+
+    def config(self, params):
+        if self.apmode:
+            self.hostap_config(params)
+        else:
+            self.station_config(params)
 
 
     def deconfig(self, params):
         """ De-configure the AP (will also bring wlan and the bridge down) """
 
-        if not self.hostapd['configured']:
+        if not self.hostapd['configured'] and not self.station['configured']:
             return
 
         # Taking down hostapd takes wlan0 and mon.wlan0 down.
-        self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
-#        self.router.run("rm -f %s" % self.hostapd['file'])
+        if self.hostapd['configured']:
+            self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
+#           self.router.run("rm -f %s" % self.hostapd['file'])
+        if self.station['configured']:
+            if self.station['type'] == 'ibss':
+                self.router.run("%s dev %s ibss leave" %
+                                (self.cmd_iw, self.station['interface']))
+            else:
+                self.router.run("%s dev %s disconnect" %
+                                (self.cmd_iw, self.station['interface']))
+            self.router.run("%s link set %s down" % (self.cmd_ip,
+                                                     self.station['interface']))
 
         # Try a couple times to remove the bridge; hostapd may still be exiting
         for attempt in range(3):
@@ -345,6 +428,7 @@ class LinuxRouter(object):
 
 
         self.hostapd['configured'] = False
+        self.station['configured'] = False
 
 
     def get_ssid(self):
