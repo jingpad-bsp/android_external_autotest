@@ -34,7 +34,7 @@ class logging_CrashServices(crash_test.CrashTest):
                     #"/sbin/udevd", # ignores all signals except INT, TERM, KILL
                     "/usr/sbin/update_engine",
                     "/sbin/wpa_supplicant",
-                    "/usr/bin/X11/X",
+                    "/usr/bin/X",
                     # this will log out, so it's last
                     "/sbin/session_manager"]
 
