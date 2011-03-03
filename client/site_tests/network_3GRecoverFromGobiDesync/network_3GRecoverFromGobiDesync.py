@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import site_backchannel, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 import logging, os, pty, re, socket, string, subprocess, sys, time, traceback
@@ -11,7 +11,6 @@ import dbus, dbus.mainloop.glib, glib, gobject
 
 from autotest_lib.client.cros import flimflam_test_path
 import mm
-
 
 # Preconditions for starting
 START_DEVICE_PRESENT = 'start_device_present'
@@ -204,6 +203,8 @@ class RegularOperationTest(GobiDesyncEventLoop):
     gobi_path = mm.PickOneModem(modem_manager, 'Gobi')
     gobi = modem_manager.GobiModem(gobi_path)
     simple = modem_manager.SimpleModem(gobi_path)
+
+    modem_manager.Modem(gobi_path).Enable(1)
 
     # This covers the case where the modem makes an API call that
     # returns a "we've lost sync" error that should cause a reboot
