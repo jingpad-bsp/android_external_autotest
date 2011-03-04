@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -111,16 +111,9 @@ class power_LoadTest(cros_ui_test.UITest):
         # can access it
         os.system('chmod -R 755 %s' % self.bindir)
 
-        # TODO (bleung) :
-        # The new external extension packed crx means we can't pass params by
-        # modifying params.js
-        # Possible solution :
-        # - modify extension to not start until we poke it from the browser.
-        #       then pass through URL.
-
-        # write test parameters to the power extension's params.js file
-        # self._ext_path = os.path.join(self.bindir, 'extension')
-        # self._write_ext_params()
+        # write test parameters to the params.js file to be read by the test
+        # extension.
+        self._write_ext_params()
 
         # copy external_extensions.json to known location
         self._json_path = os.path.join(self.bindir, '..')
@@ -245,7 +238,7 @@ class power_LoadTest(cros_ui_test.UITest):
         # cleanup backchannel interface
         if self._force_wifi:
             backchannel.teardown()
-
+        self._testServer.stop()
 
     def _percent_current_charge(self):
         return self._power_status.battery[0].charge_now * 100 / \
@@ -258,7 +251,7 @@ class power_LoadTest(cros_ui_test.UITest):
         for k in params_dict:
             data += template % (k, getattr(self, params_dict[k]))
 
-        filename = os.path.join(self._ext_path, 'params.js')
+        filename = os.path.join(self.bindir, 'params.js')
         utils.open_write_close(filename, data)
 
         logging.debug('filename ' + filename)

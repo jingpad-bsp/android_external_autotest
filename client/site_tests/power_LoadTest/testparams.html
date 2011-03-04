@@ -1,0 +1,52 @@
+<!---
+Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+--->
+
+<html>
+
+<body>
+Power Load Test Arguments :
+</body>
+
+<script src='params.js'>
+</script>
+
+<script>
+var data = "";
+
+function createDiv(id, data, hidden) {
+  var newdiv = document.createElement('div');
+  newdiv.setAttribute('id', id);
+  newdiv.innerText = data;
+  if (true == hidden)
+    newdiv.style.display = 'none';
+  document.body.appendChild(newdiv);
+}
+
+var customEvent = document.createEvent('Event');
+customEvent.initEvent('myCustomEvent', true, true);
+
+// Place customizable test arguments into divs
+createDiv('test_time_ms', test_time_ms, false);
+createDiv('should_scroll', should_scroll, false);
+createDiv('should_scroll_up', should_scroll_up, false);
+createDiv('scroll_loop', scroll_loop, false);
+createDiv('scroll_interval_ms', scroll_interval_ms, false);
+createDiv('scroll_by_pixels', scroll_by_pixels, false);
+createDiv('myCustomEventDiv', data, true);
+
+
+function fireCustomEvent(data) {
+  hiddenDiv2 = document.getElementById('myCustomEventDiv');
+  hiddenDiv2.innerText = data;
+  hiddenDiv2.dispatchEvent(customEvent);
+}
+
+data = "foo!";
+setTimeout(fireCustomEvent, 1000, data);
+
+</script>
+</html>
+

@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "id": "00023456789ABCDEF0123456789ABCDEF012CEEE",
-  "version": "1.0",
+  "version": "2.0",
   "name": "Power Test",
   "browser_action": {
     "default_icon": "skin/chrome_bug.png",
@@ -16,9 +16,13 @@
   "description": "GoogleTest",
   "content_scripts": [
     {
+      "matches": ["http://localhost/testparams.html"],
+      "js": ["testparams.js"]
+    },
+    {
       "matches": ["http://*/*", "https://*/*"],
       "js": ["ct.js"],
-      "run_at": "document_end", 
+      "run_at": "document_end",
       "all_frames": false
     }
   ]

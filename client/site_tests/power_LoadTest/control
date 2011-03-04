@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -25,16 +25,12 @@ before this test can be run:
 You are now ready to run the test.
 """
 
-# TODO (bleung): Find a way to do automatic Facebook and Gmail login in
-# perf test account.
-# TODO (bleung): Seconds variable is used here, but is not in power_LoadTest
-# because of the change to packed external extension. Change ext to take arg.
-
+# TODO (bleung): Find a way to do automatic Facebook login for test account.
 
 import time
 
 loop_time = 3600
-loop_count = 9
+loop_count = 11
 
 job.run_test('power_LoadTest', loop_time=loop_time, loop_count=loop_count,
               low_battery_threshold=3)
