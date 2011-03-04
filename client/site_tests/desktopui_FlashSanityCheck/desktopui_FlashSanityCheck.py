@@ -29,5 +29,6 @@ class desktopui_FlashSanityCheck(cros_ui_test.UITest):
         session.close()
 
         # Any better pattern matching?
-        if self._log_reader.can_find(' Received crash notification for '):
+        msg = ' Received crash notification for ' + constants.BROWSER
+        if self._log_reader.can_find(msg):
             raise error.TestFail('Browser crashed during test.')
