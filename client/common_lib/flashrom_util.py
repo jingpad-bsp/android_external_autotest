@@ -10,6 +10,7 @@ This module provides convenience routines to access Flash ROM (EEPROM).
    features like journaling-alike (log-based) changing.
 
 Original tool syntax:
+    (common) -p internal:bus=BUS (BUS: BIOS=spi, EC=lpc)
     (read ) flashrom -r <file>
     (write) flashrom -l <layout_fn> [-i <image_name> ...] -w <file>
 
@@ -99,10 +100,8 @@ DEFAULT_ARCH_TARGET_MAP = {
         # Detail information is defined in section #"10.1.50 GCS-General
         # Control and Status Register" of document "Intel NM10 Express
         # Chipsets".
-        "bios": 'iotools mmio_write32 0xfed1f410 ' +
-                '`iotools mmio_read32 0xfed1f410 |head -c 6`0460',
-        "ec":   'iotools mmio_write32 0xfed1f410 ' +
-                '`iotools mmio_read32 0xfed1f410 |head -c 6`0c60',
+        "bios": '-p internal:bus=spi',
+        "ec":   '-p internal:bus=lpc',
     },
 }
 
@@ -321,6 +320,7 @@ class flashrom_util(object):
     Attributes:
         tool_path:  file path to the tool 'flashrom'
         cmd_prefix: prefix of every shell cmd, ex: "PATH=.:$PATH;export PATH;"
+        cmd_current: combined by tool_path, cmd_prefix and selected target
         tmp_root:   a folder name for mkstemp (for temp of layout and images)
         verbose:    print debug and helpful messages
         keep_temp_files: boolean flag to control cleaning of temporary files
@@ -353,6 +353,8 @@ class flashrom_util(object):
         if isinstance(target_map, types.NoneType):
             # generate default target map
             self.target_map = self.detect_target_map()
+        # command for current target
+        self.cmd_current = '%s"%s"' % (self.cmd_prefix, self.tool_path)
 
     def _get_temp_filename(self, prefix):
         ''' (internal) Returns name of a temporary file in self.tmp_root '''
@@ -407,7 +409,7 @@ class flashrom_util(object):
 
     def get_size(self):
         """ Gets size of current flash ROM """
-        cmd = '%s"%s" --get-size' % (self.cmd_prefix, self.tool_path)
+        cmd = '%s --get-size' % (self.cmd_current)
         if self.verbose:
             print 'flashrom_util.get_size(): ', cmd
         output = utils.system_output(cmd, ignore_status=True)
@@ -492,8 +494,7 @@ class flashrom_util(object):
         Reads whole flash ROM data to a file.
         Returns True on success, otherwise False.
         '''
-        cmd = '%s"%s" -r "%s"' % (self.cmd_prefix, self.tool_path,
-                                  output_file)
+        cmd = '%s -r "%s"' % (self.cmd_current, output_file)
         if self.verbose:
             print 'flashrom_util.read_whole_to_file(): ', cmd
         return utils.system(cmd, ignore_status=True) == 0
@@ -537,9 +538,10 @@ class flashrom_util(object):
         tmpfn = self._get_temp_filename('wr_')
         open(tmpfn, 'wb').write(base_image)
 
-        cmd = '%s"%s" %s%s -w "%s"' % (
-                self.cmd_prefix, self.tool_path,
-                cmd_layout, cmd_list, tmpfn)
+        cmd = '%s %s%s -w "%s"' % (self.cmd_current,
+                                   cmd_layout,
+                                   cmd_list,
+                                   tmpfn)
 
         if self.verbose:
             print 'flashrom._write_flashrom(): ', cmd
@@ -584,12 +586,12 @@ class flashrom_util(object):
         # the value/status due to WP already enabled, so we can't rely on the
         # return value; the real status must be verified by --wp-status.
         addr = layout_map[section]
-        cmd = ('%s"%s" --wp-disable && '
-               '"%s" --wp-range 0x%06X 0x%06X && '
-               '"%s" --wp-enable' % (
-                       self.cmd_prefix, self.tool_path,
-                       self.tool_path, addr[0], addr[1] - addr[0] + 1,
-                       self.tool_path))
+        cmd = ('%s --wp-disable && '
+               '%s --wp-range 0x%06X 0x%06X && '
+               '%s --wp-enable' % (
+                       self.cmd_current,
+                       self.cmd_current, addr[0], addr[1] - addr[0] + 1,
+                       self.cmd_current))
         if self.verbose:
             print 'flashrom.enable_write_protect(): ', cmd
         # failure for non-zero
@@ -601,8 +603,8 @@ class flashrom_util(object):
         '''
         # syntax: flashrom --wp-range offset size
         #         flashrom --wp-disable
-        cmd = '%s"%s" --wp-disable && "%s" --wp-range 0 0' % (
-                self.cmd_prefix, self.tool_path, self.tool_path)
+        cmd = '%s --wp-disable && %s --wp-range 0 0' % (
+                self.cmd_current, self.cmd_current)
         if self.verbose:
             print 'flashrom.disable_write_protect(): ', cmd
         # failure for non-zero
@@ -616,8 +618,7 @@ class flashrom_util(object):
             raise TestError('INTERNAL ERROR: unknown section.')
         # syntax: flashrom --wp-status
         addr = layout_map[section]
-        cmd = '%s"%s" --wp-status | grep "^WP: "' % (
-                self.cmd_prefix, self.tool_path)
+        cmd = '%s --wp-status | grep "^WP: "' % (self.cmd_current)
         if self.verbose:
             print 'flashrom.verify_write_protect(): ', cmd
         results = utils.system_output(cmd, ignore_status=True).split('\n')
@@ -688,9 +689,11 @@ class flashrom_util(object):
         if self.verbose:
             print 'flashrom.select_target("%s"): %s' % (target,
                                                         self.target_map[target])
-        # failure for non-zero
-        return utils.system(self.cmd_prefix + self.target_map[target],
-                            ignore_status=True) == 0
+        # command for current target
+        self.cmd_current = '%s"%s" %s ' % (self.cmd_prefix,
+                                           self.tool_path,
+                                           self.target_map[target])
+        return True
 
     def select_bios_flashrom(self):
         ''' Directs all further accesses to BIOS flash ROM. '''
