@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dircache, logging, os, utils, time
+import dircache, logging, os, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 

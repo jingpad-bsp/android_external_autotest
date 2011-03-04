@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, threading, time, utils
+import logging, threading, time
+from autotest_lib.client.bin import utils
 
 class LocalDns(object):
     """a wrapper around miniFakeDns that handles managing running the server

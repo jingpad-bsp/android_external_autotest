@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import httplib, logging, os, socket, stat, time, utils
+import httplib, logging, os, socket, stat, time
 
 import common
 import constants as chromeos_constants, cryptohome, httpd
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 
