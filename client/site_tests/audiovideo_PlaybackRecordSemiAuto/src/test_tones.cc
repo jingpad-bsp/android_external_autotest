@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Simple playback test drivers.  Plays test tones using the native PulseAudio
+// Simple playback test drivers.  Plays test tones using the native Alsa
 // API allowing for configuration of volume, frequency, channels of output,
 // etc.  See the output of PrintUsage() for instructions on how to use.
 
@@ -15,11 +15,11 @@
 #include <set>
 
 #include "common.h"
-#include "pulse_client.h"
+#include "alsa_client.h"
 #include "tone_generators.h"
 
 using autotest_client::audio::ASharpMinorGenerator;
-using autotest_client::audio::PulseAudioClient;
+using autotest_client::audio::AlsaAudioClient;
 using autotest_client::audio::SampleFormat;
 using autotest_client::audio::SingleToneGenerator;
 using autotest_client::audio::TestConfig;
@@ -120,8 +120,8 @@ bool ParseOptions(int argc, char* argv[], TestConfig* config) {
   }
 
   // Avoid overly short tones.
-  if (config->tone_length_sec < 0.3) {
-    fprintf(stderr, "Tone length too short. Must be 0.3s or greater.\n");
+  if (config->tone_length_sec < 0.01) {
+    fprintf(stderr, "Tone length too short. Must be 0.01s or greater.\n");
     return false;
   }
 
@@ -188,8 +188,8 @@ void PrintConfig(FILE* out, const TestConfig& config) {
   fprintf(out, "\tFormat: %s\n", config.format.to_string());
   fprintf(out, "\tTone Length (sec): %0.2lf\n", config.tone_length_sec);
   fprintf(out, "\tSample Rate (HZ): %d\n", config.sample_rate);
-  fprintf(out, "\tStart Volume (?): %0.2lf\n", config.start_volume);
-  fprintf(out, "\tEnd Volume (?): %0.2lf\n", config.end_volume);
+  fprintf(out, "\tStart Volume (0-1.0): %0.2lf\n", config.start_volume);
+  fprintf(out, "\tEnd Volume (0-1.0): %0.2lf\n", config.end_volume);
   fprintf(out, "\tChannels: %d\n", config.channels);
 
   fprintf(out, "\tActive Channels: ");
@@ -212,9 +212,9 @@ int main(int argc, char* argv[]) {
 
   PrintConfig(stdout, config);
 
-  PulseAudioClient client("playback_test");
+  AlsaAudioClient client;
   if (!client.Init()) {
-    fprintf(stderr, "Unable to initialize PulseAudio: %d\n",
+    fprintf(stderr, "Unable to initialize Alsa: %d\n",
             client.last_error());
     return 1;
   }
@@ -222,12 +222,14 @@ int main(int argc, char* argv[]) {
   if (config.type == TestConfig::kASharpMinorScale) {
     ASharpMinorGenerator scale_generator(config.sample_rate,
                                          config.tone_length_sec);
+    scale_generator.SetVolumes(config.start_volume, config.end_volume);
     client.PlayTones(config.sample_rate, config.format, 
                      config.channels, config.active_channels,
                      &scale_generator);
   } else {
     SingleToneGenerator tone_generator(config.sample_rate,
                                        config.tone_length_sec);
+    tone_generator.SetVolumes(config.start_volume, config.end_volume);
     tone_generator.Reset(config.frequency);
     client.PlayTones(config.sample_rate, config.format,
                      config.channels, config.active_channels,

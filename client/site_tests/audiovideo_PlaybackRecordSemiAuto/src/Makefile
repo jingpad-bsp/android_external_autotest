@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-CXXFLAGS += -Wall -Werror -g $(shell pkg-config --cflags-only-other libpulse)
-INCLUDE_DIRS += $(shell pkg-config --cflags-only-I libpulse)
-LIB_DIRS += $(shell pkg-config --libs-only-L libpulse)
-LDFLAGS += $(shell pkg-config --libs-only-l libpulse)
+CXXFLAGS += -Wall -Werror -g $(shell pkg-config --cflags-only-other alsa)
+INCLUDE_DIRS += $(shell pkg-config --cflags-only-I alsa)
+LIB_DIRS += $(shell pkg-config --libs-only-L alsa)
+LDFLAGS += $(shell pkg-config --libs-only-l alsa)
 DEPDIR = .deps
 
-TEST_TONES_OBJS = pulse_client.o \
+TEST_TONES_OBJS = alsa_client.o \
                   test_tones.o \
                   tone_generators.o
 TEST_TONES_BIN = test_tones

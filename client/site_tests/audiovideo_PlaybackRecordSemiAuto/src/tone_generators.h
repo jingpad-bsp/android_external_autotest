@@ -79,6 +79,8 @@ class SingleToneGenerator : public FrameGenerator {
  public:
   SingleToneGenerator(int sample_rate, double length_sec);
   virtual ~SingleToneGenerator();
+
+  void SetVolumes(double start_vol, double end_vol);
   virtual void Reset(double frequency);
   virtual void GetFrames(SampleFormat format,
                          int channels,
@@ -97,6 +99,9 @@ class SingleToneGenerator : public FrameGenerator {
   int fade_frames_;
   double frequency_;
   int sample_rate_;
+  double cur_vol_;
+  double start_vol_;
+  double inc_vol_;
 };
 
 class ASharpMinorGenerator : public FrameGenerator {
@@ -104,6 +109,7 @@ class ASharpMinorGenerator : public FrameGenerator {
   ASharpMinorGenerator(int sample_rate, double tone_length_sec);
   virtual ~ASharpMinorGenerator();
 
+  void SetVolumes(double start_vol, double end_vol);
   virtual void Reset();
   virtual void GetFrames(SampleFormat format,
                          int channels,

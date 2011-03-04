@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -72,10 +72,10 @@ _DEVICE_SECTION_START = '''<tr><td><table class="device_section">
 <th>Name</th>
 <th>Index</th>
 <th>Channels</th>
-<th>Is Hardware</th>
-<th>Default Format</th>
-<th>Default Sample Rate</th>
-<th>Ports</th>
+<th>Format</th>
+<th>Sample Rates</th>
+<th>Sample Bits</th>
+<th>Controls</th>
 </tr>
 '''
 _DEVICE_SECTION_END = '</table></td></tr>'
@@ -83,10 +83,10 @@ _DEVICE_SECTION_ENTRY_TMPL = '''<tr>
 <td>%(name)s</td>
 <td>%(index)d</td>
 <td>%(channels)d</td>
-<td>%(is_hardware)d</td>
 <td>%(sample_format)s</td>
 <td>%(sample_rate)s</td>
-<td>%(ports)s</td>
+<td>%(sample_bits)s</td>
+<td>%(control_names)s</td>
 </tr>
 '''
 
@@ -94,7 +94,6 @@ _DEVICE_SECTION_ENTRY_PORT_START_TMPL = '''<tr>
 <td>%(name)s</td>
 <td>%(index)d</td>
 <td>%(channels)d</td>
-<td>%(is_hardware)d</td>
 <td>%(sample_format)s</td>
 <td>%(sample_rate)s</td>
 '''
@@ -111,7 +110,7 @@ _DEVICE_LIST_TEST = '''
 </tr></table></td></tr>
 '''
 
-_TEST_CONTROL_START = '<table><th>Test description</th><th>Invoke Link</th>'
+_TEST_CONTROL_START = '<table><th>Test descriptions</th><th>Invoke Link</th>'
 _TEST_CONTROL_END = '</table>'
 
 _TEST_CONTROL_ITEM = '''
@@ -122,8 +121,33 @@ _TEST_RESULT = '''<h1 class="completion">
 Test Result: <a href="%s">PASS</a> <a href="%s">FAIL</a>
 </h1>
 '''
+
 _TEST_COMPLETE = '''<h1 class="completion">
 End Test: <a href="done">DONE</a></h1>
+'''
+
+_INVALID_INSTRUCTIONS = '''<p>
+No test exists yet for this.
+'''
+
+_GENERIC_TEST_INFO = '''<p>
+<b>%(name)s</b> will be run on the <b>%(device)s</b> device.
+'''
+
+_MIXER_LIST_START = '<div class="mixer_table">'
+_MIXER_LIST_END = '</div>'
+_MIXER_SECTION_START  = '''<tr><td><table class="mixer_section">
+<tr>
+<th>Mixer Control</th>
+<th>Setting</th>
+</tr>
+'''
+
+_MIXER_SECTION_END = '</table></td></tr>'
+_MIXER_SECTION_ENTRY_TMPL = '''<tr>
+<td>%(name)s</td>
+<td>%(value)s</td>
+</tr>
 '''
 
 _VOLUME_INSTRUCTIONS = '''<p>
@@ -142,6 +166,13 @@ Playback will be on %(channels)d channels, and run for 5 seconds.
 After the whole test is completed, three quick 1000Hz pulses will be played.
 '''
 
+_VOLUME_TEST_DETAILS2 = '''<p>
+Playback will be on all channels, and run for 5 seconds.
+
+<p>
+After the whole test is completed, three quick 1000Hz pulses will be played.
+'''
+
 _PLAYBACK_INSTRUCTIONS = '''<p>
 This is a playback test.  For the hardware device listed below, the following
 tests sequence will be done once for evey channel configuration listed 
@@ -150,7 +181,7 @@ at the end of the page:
     <ol>
     <li>10 tone test for frequences (HZ): 30, 50, 100, 250, 500, 1000, 5000,
         10000, 15000, 20000
-    <li>14 test tones, following A# Harmonic Minor Scale, up and down.
+    <li>16 test tones, following A# Harmonic Minor Scale, up and down.
     </ol>
 </ol>
 
@@ -177,7 +208,7 @@ At maximum hardware input amplificaiton, for each channel of the device:
 <ol>
 <li>A short 1000Hz tone will be played to signal the start of recording.
 <li>A 500Hz tone will be played to signal the start of playback.
-<li>A 2 second sample will be recorded.
+<li>A 4 second sample will be recorded.
 </ol>
 
 <p>
@@ -198,33 +229,115 @@ reasonable clarity and volume for each non-muted setting.  The last test,
 with the input muted, should yield nothing at playback.
 '''
 
+# Names of mixer controls
+_CONTROL_MASTER = "'Master'"
+_CONTROL_HEADPHONE = "'Headphone'"
+_CONTROL_SPEAKER = "'Speaker'"
+_CONTROL_CAPTURE = "'Capture',0"
+_CONTROL_PCM = "'PCM'"
+
 # Names for various test webpages.
 _CONTROL_ENDPOINT = 'control'
 _LIST_ENDPOINT = 'list'
 _VOLUME_ENDPOINT = 'volume'
 _PLAYBACK_ENDPOINT = 'playback'
 _RECORD_ENDPOINT = 'record'
+_TEST_ENDPOINT = 'test'
+
+# Test names
+_VOLUME_TEST = 'volume'
+_TONES_TEST = 'tones'
+_RECORD_TEST = 'record'
 
 
 # Configuration for the test program invocation.
-_TONE_LENGTH_SEC = 0.3
+_TONE_LENGTH_SEC = 0.5
+_TONE_DEFAULT_VOLUME = 0.2
+_MIXER_DEFAULT_VOLUME = "90%"
+_VOLUME_TEST_VOLUME = 90
 
-_PACMD_PATH = '/usr/bin/pacmd'
-_PACAT_PATH = '/usr/bin/pacat'
+# Tests to perform, and mixer settings to use for the tests.  'X' denotes a
+# volume that will be varied by the (volume) test
 
-# Regexps for parsing device stanzas.
-_COUNT_RE = re.compile('>>> (\d+) (source|sink)\(s\) available.')
-_STANZA_START_RE = re.compile('  (\*| ) index: (\d+)')
-_NAME_RE = re.compile('\tname:\s+<(.+)>')
-_FLAGS_RE = re.compile('\tflags:\s+(.+)')
-_MAX_VOLUME_RE = re.compile('\tvolume steps:\s+(\d+)')
-_BASE_VOLUME_RE = re.compile('\tbase volume:\s+(\d+)%')
-_SAMPLE_SPEC_RE = re.compile('\tsample spec:\s+(\S+) (\d+)ch (\d+)Hz')
-_CHANNEL_MAP_RE = re.compile('\tchannel map:\s+(.+)')
-_TOP_LEVEL_RE = re.compile('\t\S')
-_PORTS_RE = re.compile('\tports:')
-_PORT_SPEC_RE = re.compile('\t\t(\S+): .* \(priority \d+\)')
-_ACTIVE_PORT_RE = re.compile('\tactive port: <(.+)>')
+_TESTS = [{'name': "Volume Test (Master)",
+           'device': "HDA Intel",
+           'mixer': [{'name':_CONTROL_HEADPHONE, 'value': "100% on"},
+                     {'name':_CONTROL_SPEAKER, 'value': "100% on"},
+                     {'name':_CONTROL_PCM, 'value':"100% on"}],
+           'active': _CONTROL_MASTER,
+           'test': _VOLUME_TEST},
+
+          {'name': 'Tones Test (Master)',
+           'device': 'HDA Intel',
+           'mixer': [{'name':_CONTROL_MASTER, 'value': _MIXER_DEFAULT_VOLUME},
+                     {'name':_CONTROL_HEADPHONE, 'value': "100% on"},
+                     {'name':_CONTROL_SPEAKER, 'value': "100% on"},
+                     {'name':_CONTROL_PCM, 'value':"100% on"}],
+           'test': _TONES_TEST},
+
+          {'name': 'Volume Test (Speakers Only)',
+           'device': 'HDA Intel',
+           'mixer': [{'name':_CONTROL_MASTER, 'value': "100% on"},
+                     {'name':_CONTROL_HEADPHONE, 'value': "0% off"},
+                     {'name':_CONTROL_PCM, 'value':"100% on"}],
+           'active': _CONTROL_SPEAKER,
+           'test': _VOLUME_TEST},
+
+          {'name': 'Tones Test (Speakers Only)',
+           'device': 'HDA Intel',
+           'mixer': [{'name':_CONTROL_MASTER, 'value': _MIXER_DEFAULT_VOLUME},
+                     {'name':_CONTROL_HEADPHONE, 'value': "0% off"},
+                     {'name':_CONTROL_SPEAKER, 'value': "100% on"},
+                     {'name':_CONTROL_PCM, 'value':"100% on"}],
+           'test': _TONES_TEST},
+
+          {'name': 'Volume Test (Headphones Only)',
+           'device': 'HDA Intel',
+           'mixer': [{'name':_CONTROL_MASTER, 'value': "100% on"},
+                     {'name':_CONTROL_SPEAKER, 'value': "0% off"},
+                     {'name':_CONTROL_PCM, 'value':"100% on"}],
+           'active': _CONTROL_HEADPHONE,
+           'test': _VOLUME_TEST},
+
+          {'name': 'Tones Test (Headphones Only)',
+           'device': 'HDA Intel',
+           'mixer': [{'name':_CONTROL_MASTER, 'value': _MIXER_DEFAULT_VOLUME},
+                     {'name':_CONTROL_SPEAKER, 'value': "0% off"},
+                     {'name':_CONTROL_HEADPHONE, 'value': "100% on"},
+                     {'name':_CONTROL_PCM, 'value':"100% on"}],
+           'test': _TONES_TEST},
+
+          {'name': 'Recording Test',
+           'device': 'HDA Intel',
+           'mixer': [{'name':_CONTROL_MASTER, 'value': _MIXER_DEFAULT_VOLUME},
+                     {'name':_CONTROL_SPEAKER, 'value': "100% on"},
+                     {'name':_CONTROL_HEADPHONE, 'value': "100% on"},
+                     {'name':_CONTROL_PCM, 'value':"100% on"}],
+           'record': _CONTROL_CAPTURE,
+           'test': _RECORD_TEST}
+         ]
+
+# Device regexp, adds '*' before and after device in _TESTS before comparing
+_DEVICE_RE_TEMPLATE_ = "(.*)%s(.*)"
+
+_USR_BIN_PATH = '/usr/bin/'
+_PROC_ASOUND_CARD = 'cat /proc/asound/card%d/codec#0'
+
+# Regexps for parsing 'aplay -l'
+_CARD_RE = re.compile('card (\d+):\s(.+)\s\[(.+)\],\s+(.+)\[(.+)\]')
+
+# Regexps for parsing 'amixer'
+_MIXER_CONTROL_RE = re.compile('Simple mixer control \'(.+)\',(\d+)')
+_MIXER_CAPS_RE = re.compile('\s+Capabilities:\s+(.+)')
+_MIXER_LIMITS_RE = re.compile('\s+Limits:\s*(.*) (\d+) - (\d+)')
+_MIXER_CHANNELS_RE = re.compile('(.+)channels:\s(.+)')
+_MIXER_CHANNEL_LIST_RE = re.compile('(.+) - (.+)')
+
+# Regexps for parsing Intel/codec#0 file
+_CODEC_RATES_RE = re.compile('\s+rates \[(.+)\]: (.+)')
+_CODEC_BITS_RE = re.compile('\s+bits \[(.+)\]: (.+)')
+_CODEC_FORMATS_RE = re.compile('\s+formats \[(.+)\]: (.+)')
+_CODEC_NODE_RE = re.compile('Node (.+) \[(.+)\]\s(.+)')
 
 class ToneThread(threading.Thread):
     """Wraps the running of test_tones in a thread."""
@@ -240,7 +353,7 @@ class ToneThread(threading.Thread):
 class VolumeChangeThread(threading.Thread):
     _WAKE_INTERVAL_SEC = 0.02
 
-    def __init__(self, audio, type, index, start_volume, end_volume, period):
+    def __init__(self, audio, start_volume, end_volume, period, control):
         """Changes the volume to end_volume over period seconds.
 
         Volume will be updated as max every 50ms, with a target of reaching max
@@ -248,20 +361,18 @@ class VolumeChangeThread(threading.Thread):
 
         Args:
             audio: An instance of the audio object.
-            type: Either "source" or "sink".
-            index: The index value of the specific source or sink to use.
             start_volume: An integer specifying the start volume.
             end_volume: An integer specifying the stop volume.
             period: The period, in seconds, over which to adjust the volume from
                     start_volume to end_volume.
+            control: Adjust volume of this control.
         """
         threading.Thread.__init__(self)
         self.audio = audio
-        self.type = type
-        self.index = index
         self.start_volume = start_volume
         self.end_volume = end_volume
         self.period = period
+        self.control = control
 
 
     def run(self):
@@ -269,13 +380,16 @@ class VolumeChangeThread(threading.Thread):
         start = time.time()
         end = start + self.period - 0.1  # Hit max volume 100ms before end.
         now = start
+        last_volume = 0
         while now < end:
             elapsed = now - start
             new_volume = int(self.start_volume + delta * elapsed / self.period)
-            self.audio.do_set_volume(self.type, self.index, new_volume)
+            if new_volume != last_volume:
+                self.audio.do_set_volume_alsa(self.control, new_volume)
+                last_volume = new_volume
             time.sleep(self._WAKE_INTERVAL_SEC)
             now = time.time()
-        self.audio.do_set_volume(self.type, self.index, self.end_volume)
+        self.audio.do_set_volume_alsa(self.control, self.end_volume)
 
 
 class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
@@ -286,19 +400,18 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
     def default_tone_config(self):
         return { 'type': 'tone',
                  'frequency': 1000,
-                 'tone_length_sec': 0.5,
+                 'tone_length_sec': _TONE_LENGTH_SEC,
+                 'tone_volume': _TONE_DEFAULT_VOLUME,
                  'channels': 2,
                  'active_channel': None
                  }
 
 
-    def pacmd(self, cmd):
+    def cmd(self, cmd):
         """
-        Wrap a shell command within the necessary environment setup to get
-        access to the PulseAudio daemon.
+        Wrap a shell command with the necessary permissions.
         """
         cmd = 'su chronos -c "%s"' % cmd
-        cmd = 'PULSE_RUNTIME_PATH=/var/run/pulse ' + cmd
         return cmd
 
 
@@ -309,6 +422,15 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
 
     def initialize(self, creds = '$default'):
+        id = 0
+        for test in _TESTS:
+            test['id'] = id
+            id = id + 1
+
+        self._pp = pprint.PrettyPrinter()
+        logging.info('Test Definitions:')
+        logging.info(self._pp.pformat(_TESTS))
+
         self._playback_devices = self.enumerate_playback_devices()
         self._record_devices = self.enumerate_record_devices()
         self._test_tones_path = os.path.join(self.srcdir, "test_tones")
@@ -316,7 +438,6 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                 os.access(self._test_tones_path, os.X_OK)):
             raise error.TestError(
                     '%s is not an executable' % self._test_tones_path)
-        self._pp = pprint.PrettyPrinter()
         logging.info(self._pp.pformat(self._playback_devices))
         logging.info(self._pp.pformat(self._record_devices))
 
@@ -332,9 +453,6 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
 
     def cleanup(self):
-        for device in self._playback_devices['info']:
-            if device['is_hardware']:
-                self.restore_playback_port(device)
         self._testServer.stop()
         cros_ui_test.UITest.cleanup(self)
 
@@ -347,14 +465,8 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                 '/%s' % _LIST_ENDPOINT,
                 lambda server, form, o=self: o.handle_list(server, form))
         self._testServer.add_url_handler(
-                '/%s' % _VOLUME_ENDPOINT,
-                lambda server, form, o=self: o.handle_volume(server, form))
-        self._testServer.add_url_handler(
-                '/%s' % _PLAYBACK_ENDPOINT,
-                lambda server, form, o=self: o.handle_playback(server, form))
-        self._testServer.add_url_handler(
-                '/%s' % _RECORD_ENDPOINT,
-                lambda server, form, o=self: o.handle_record(server, form))
+                '/%s' % _TEST_ENDPOINT,
+                lambda server, form, o=self: o.handle_test(server, form))
 
         latch = self._testServer.add_wait_url('/done')
         try:
@@ -401,13 +513,13 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
     def handle_list(self, server, args):
         """Handles the list test endpoint.
 
-        Prints out a list of all hardware devices found by pulseaudio.
+        Prints out a list of all playback and record hardware devices found.
         """
         self.wait_for_current_test()
 
         server.wfile.write(_HTML_HEADER_TMPL % _STATIC_CSS)
 
-        test_data = { 'test': _LIST_ENDPOINT, 'device': 0, 'port': 0 }
+        test_data = { 'test': _LIST_ENDPOINT, 'device': 0, 'num': 0 }
         server.wfile.write(
                 self.get_pass_fail_div(_CONTROL_ENDPOINT, test_data))
 
@@ -419,15 +531,13 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         server.wfile.write(_PLAYBACK_SECTION_LABEL)
         server.wfile.write(_DEVICE_SECTION_START)
         for device in self._playback_devices['info']:
-            if device['is_hardware']:
-                server.wfile.write(_DEVICE_SECTION_ENTRY_TMPL % device)
+            server.wfile.write(_DEVICE_SECTION_ENTRY_TMPL % device)
         server.wfile.write(_DEVICE_SECTION_END)
 
         server.wfile.write(_RECORD_SECTION_LABEL)
         server.wfile.write(_DEVICE_SECTION_START)
         for device in self._record_devices['info']:
-            if device['is_hardware']:
-                server.wfile.write(_DEVICE_SECTION_ENTRY_TMPL % device)
+            server.wfile.write(_DEVICE_SECTION_ENTRY_TMPL % device)
         server.wfile.write(_DEVICE_SECTION_END)
 
         server.wfile.write(_DEVICE_LIST_END)
@@ -436,111 +546,126 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         server.wfile.write(_HTML_FOOTER)
 
 
-    def handle_volume(self, server, args):
-        """Handles the volume test point.
+    def handle_test(self, server, args):
+        """Handles the generic 'test' point.
+
+        Uses the 'num' arg as the test number to run.
+        The device index is passed in the 'device' arg.
+        """
+        logging.info('Test configuration:')
+        logging.info(args)
+
+        found_test = None
+        for test in _TESTS:
+            if test['id'] == int(args['num'][0]):
+                found_test = test
+                break
+
+        logging.info('-- handle_test found:')
+        logging.info(self._pp.pformat(found_test))
+
+        if found_test is None:
+            return
+
+        self.wait_for_current_test()
+
+        device_index = int(args['device'][0])
+        if found_test['test'] == _VOLUME_TEST:
+            self.handle_volume_test(server, found_test, device_index)
+        elif found_test['test'] == _TONES_TEST:
+            self.handle_tones_test(server, found_test, device_index)
+        elif found_test['test'] == _RECORD_TEST:
+            self.handle_record_test(server, found_test, device_index)
+        else:
+            logging.error('Cannot find test %s' % (found_test['test']))
+            server.wfile.write(_INVALID_INSTRUCTIONS)
+
+
+    def handle_volume_test(self, server, test, device_idx):
+        """Handles volume calibration test
 
         Performs a volume calibration test on the device.  This is separated
         from the normal playback tests as a safety.  This test should be run
         before the playback test to make sure the test volume isn't dangerous
         to either listener or equipment.
         """
-        self.wait_for_current_test()
-
-        (device_num, port_num, device, port) = self.get_device_info(args, 
-                self._playback_devices)
-
         server.wfile.write(_HTML_HEADER_TMPL % _STATIC_CSS)
 
         test_data = {
-                'test': _VOLUME_ENDPOINT,
-                'device': device_num,
-                'port': port_num
+                'test': _TEST_ENDPOINT,
+                'device': device_idx,
+                'num': test['id']
                 }
         server.wfile.write(
                 self.get_pass_fail_div(_CONTROL_ENDPOINT, test_data))
 
         server.wfile.write(_VOLUME_INSTRUCTIONS)
+        server.wfile.write(_VOLUME_TEST_DETAILS2)
 
-        self.render_single_device_summary(server, device, port)
-
-        server.wfile.write(_VOLUME_TEST_DETAILS % device)
-        if device.has_key('channel_map'):
-            server.wfile.write('<p>Channels are: %s' %
-                    self._pp.pformat(device['channel_map']))
+        self.render_test_info(server, test)
 
         # End Page.
         server.wfile.write(_HTML_FOOTER)
 
         self._running_test = threading.Thread(
-                target=lambda d=device,p=port: self.do_volume_test(d,p))
+                target=lambda t=test,d=device_idx: self.do_volume_test(t, d))
         self._running_test.start()
 
 
-    def handle_playback(self, server, args):
-        """Handles the playback test endpoint.
+    def handle_tones_test(self, server, test, device_idx):
+        """Handles test tone generation test
 
-        Performs a playback test on the given device and port.
+        Generates test tones.  Mixer should be set up before running test to
+        hear if the mixer settings perform as expected.
         """
-        self.wait_for_current_test()
-
-        (device_num, port_num, device, port) = self.get_device_info(args, 
-                self._playback_devices)
-
         server.wfile.write(_HTML_HEADER_TMPL % _STATIC_CSS)
 
         test_data = {
-                'test': _PLAYBACK_ENDPOINT,
-                'device': device_num,
-                'port': port_num
+                'test': _TEST_ENDPOINT,
+                'device': device_idx,
+                'num': test['id']
                 }
         server.wfile.write(
                 self.get_pass_fail_div(_CONTROL_ENDPOINT, test_data))
 
         server.wfile.write(_PLAYBACK_INSTRUCTIONS)
+        self.render_test_info(server, test)
 
-        self.render_single_device_summary(server, device, port)
-        self.render_channel_test_order(server, device, port)
+        device = self.get_device_by_idx(device_idx, self._playback_devices)
+        self.render_channel_test_order(server, device)
 
         # End Page.
         server.wfile.write(_HTML_FOOTER)
 
-        self.wait_for_current_test()
         self._running_test = threading.Thread(
-                target=lambda d=device,p=port: self.do_playback_test(d,p))
+                target=lambda t=test,d=device_idx: self.do_playback_test(t, d))
         self._running_test.start()
 
 
-    def handle_record(self, server, args):
-        """Handles the playback test endpoint.
+    def handle_record_test(self, server, test, device_idx):
+        """Handles record and playback test
 
-        Performs a record test on the given device and port.
+        Display the record test page, then run the test.  A short sample is
+        recorded, then played back with various mixer settings.
         """
-        self.wait_for_current_test()
-
-        (device_num, port_num, device, port) = self.get_device_info(args, 
-                self._record_devices)
-
         server.wfile.write(_HTML_HEADER_TMPL % _STATIC_CSS)
 
         test_data = {
-                'test': _RECORD_ENDPOINT,
-                'device': device_num,
-                'port': port_num
+                'test': _TEST_ENDPOINT,
+                'device': device_idx,
+                'num': test['id']
                 }
         server.wfile.write(
                 self.get_pass_fail_div(_CONTROL_ENDPOINT, test_data))
 
         server.wfile.write(_RECORD_INSTRUCTIONS)
-
-        self.render_single_device_summary(server, device, port)
-        self.render_channel_test_order(server, device, port)
+        self.render_test_info(server, test)
 
         # End Page.
         server.wfile.write(_HTML_FOOTER)
 
-        self.wait_for_current_test()
         self._running_test = threading.Thread(
-                target=lambda d=device,p=port: self.do_record_test(d,p))
+                target=lambda t=test,d=device_idx: self.do_record_test(t, d))
         self._running_test.start()
 
 
@@ -548,24 +673,13 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         """Returns the expected number of tests to have been run."""
         expected_tests = 1  # For the device list test.
 
-        # There is a volume calibration test, and a test tone test for
-        # each port on a playback device.
         for device in self._playback_devices['info']:
-            if device['is_hardware']:
-                num_ports = len(device['ports'])
-                if num_ports > 0:
-                    expected_tests += 2 * num_ports
-                else:
-                    expected_tests += 2
+            for test in _TESTS:
+                regexp = re.compile(_DEVICE_RE_TEMPLATE_ % (test['device']))
+                m = regexp.match(device['name'])
+                if m is not None:
+                    expected_tests = expected_tests + 1
 
-        # There is a one record/playback test per record device.
-        for device in self._record_devices['info']:
-            if device['is_hardware']:
-                num_ports = len(device['ports'])
-                if num_ports > 0:
-                    expected_tests += num_ports
-                else:
-                    expected_tests += 1
         return expected_tests
 
 
@@ -584,31 +698,19 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
         server.wfile.write(_TEST_CONTROL_ITEM % (
             'Device List',
-            self.get_test_key(_LIST_ENDPOINT),
+            self.get_test_key(_LIST_ENDPOINT, 0, 0),
             _LIST_ENDPOINT))
 
-        for device_num in xrange(0, len(self._playback_devices['info'])):
-            device = self._playback_devices['info'][device_num]
-            if device['is_hardware']:
-                if len(device['ports']) > 0:
-                    for port_num in xrange(0, len(device['ports'])):
-                        server.wfile.write(
-                                self.get_volume_item(device_num, port_num))
-                        server.wfile.write(
-                                self.get_playback_item(device_num, port_num))
-                else:
-                    server.wfile.write(self.get_volume_item(device_num))
-                    server.wfile.write(self.get_playback_item(device_num))
+        # For each playback device found, display all matching tests
+        for device in self._playback_devices['info']:
+            # Treat the 'device' in _TESTS as a regexp we try to match.
+            for test in _TESTS:
+                regexp = re.compile(_DEVICE_RE_TEMPLATE_ % (test['device']))
+                m = regexp.match(device['name'])
+                if m is not None:
+                    server.wfile.write(self.get_testing_item(device['index'],
+                                                             test['id']))
 
-        for device_num in xrange(0, len(self._record_devices['info'])):
-            device = self._record_devices['info'][device_num]
-            if device['is_hardware']:
-                if len(device['ports']) > 0:
-                    for port_num in xrange(0, len(device['ports'])):
-                        server.wfile.write(
-                                self.get_record_item(device_num, port_num))
-                else:
-                    server.wfile.write(self.get_record_item(device_num))
         server.wfile.write(_TEST_CONTROL_END)
 
         # End Page.
@@ -624,54 +726,34 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         server.wfile.write(_DEVICE_SECTION_END)
         server.wfile.write(_DEVICE_LIST_END)
 
+    def render_test_info(self, server, test):
+        """Output in HTML a list of the test attributes"""
+        server.wfile.write(_GENERIC_TEST_INFO % test)
 
-    def render_channel_test_order(self, server, device, port):
+        server.wfile.write(_MIXER_LIST_START)
+        server.wfile.write(_MIXER_SECTION_START)
+        for control in test['mixer']:
+            server.wfile.write(_MIXER_SECTION_ENTRY_TMPL % control)
+        server.wfile.write(_MIXER_SECTION_END)
+        server.wfile.write(_MIXER_LIST_END)
+
+        if 'active' in test:
+            server.wfile.write('<p>Active Control: %s</p>' % (test['active']))
+        if 'record' in test:
+            server.wfile.write('<p>Record Control: %s</p>' % (test['record']))
+
+
+    def render_channel_test_order(self, server, device):
         """Output HTML a table with device channel ordering info."""
-        if port != None:
-            server.wfile.write('<p>Active port on device: %s' % port)
-        else:
-            server.wfile.write('<p>Use default (only) port.')
-
         server.wfile.write('<p>Channels will be tested in this order:<ol>')
         for channel in xrange(0, device['channels']):
-            if device.has_key('channel_map'):
+            if 'channel_map' in device:
                 server.wfile.write('<li>%s' % device['channel_map'][channel])
             else:
                 server.wfile.write('<li>%d' % channel)
 
         server.wfile.write('<li>All channels')
         server.wfile.write('</ol>')
-
-
-    def get_device_info(self, args, devices):
-        """Translate CGI parameters into a tuple of values.
-
-        Extracts the device, and port arugments from the the args dictionary.
-        Those are the device_num, and port_num indexes.  These indexes are
-        used to get information from the devices dictionary.  The extracted
-        values are returned in a 4-tuple.
-
-        If port_nume = None, then port_info is None.
-        If device_num = None, then the first device will be returned.
-
-        Returns:
-            (device_num, port_num, device_info, port_info)
-        """
-        device_val = args['device'][0]
-        port_val = args['port'][0]
-
-        device_num = 0  # Default to first device if none is given.
-        port_num = None
-        if device_val != 'None':
-          device_num =  int(device_val)
-        if port_val != 'None':
-          port_num =  int(port_val)
-
-        device = devices['info'][device_num]
-        port = None
-        if port_num is not None and port_num >= 0:
-            port = device['ports'][port_num]
-        return (device_num, port_num, device, port)
 
 
     def get_result_css(self, results):
@@ -697,7 +779,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
         key = self.get_test_key(args['test'][0],
                                 args['device'][0],
-                                args['port'][0])
+                                args['num'][0])
         self._results[key] = args['result'][0]
 
 
@@ -707,180 +789,202 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
             self._running_test.join()
 
 
-    def get_volume_item(self, device_num, port_num=None):
-        """Geneates HTML for a volume test invocation table entry."""
-        device = self._playback_devices['info'][device_num]
-        return self.get_test_item(_VOLUME_ENDPOINT, device, device_num,
-                                  port_num)
+    def get_testing_item(self, device_idx, test_id):
+        """Geneates HTML for a test invocation table entry."""
+        device = self._playback_devices['info'][device_idx]
 
-
-    def get_playback_item(self, device_num, port_num=None):
-        """Geneates HTML for a playback test invocation table entry."""
-        device = self._playback_devices['info'][device_num]
-        return self.get_test_item(_PLAYBACK_ENDPOINT, device, device_num,
-                                  port_num)
-
-
-    def get_record_item(self, device_num, port_num=None):
-        """Geneates HTML for a record test invocation table entry."""
-        device = self._record_devices['info'][device_num]
-        return self.get_test_item(_RECORD_ENDPOINT, device, device_num,
-                                  port_num)
-
-
-    def get_test_item(self, endpoint, device, device_num, port_num=None):
-        """Helper function to create test invokation table entries"""
-        args = { 'device': device_num, 'port': port_num }
-        if port_num is not None:
-            description = '%s on %s, port %s' % (
-                    endpoint, device['name'], device['ports'][port_num])
-        else:
-            description = '%s on %s, only port' % (
-                    endpoint, device['name'])
-        invoke_url = '%s?%s' % (endpoint, urllib.urlencode(args))
+        args = { 'device': device_idx, 'num': test_id}
+        description = '%s on %s' % (_TESTS[test_id]['name'], device['name'])
+        invoke_url = '%s?%s' % (_TEST_ENDPOINT, urllib.urlencode(args))
         return _TEST_CONTROL_ITEM % (description,
-                                     self.get_test_key(endpoint, device_num,
-                                                       port_num),
+                                     self.get_test_key(_TEST_ENDPOINT,
+                                                       device_idx,
+                                                       test_id),
                                      invoke_url)
 
 
-    def add_port(self, port_list, line):
-        """Helper function for parsing the the port field."""
-        m = _PORT_SPEC_RE.match(line)
-        if m is not None:
-            port_list.append(m.group(1))
+    def merge_proc_info_intel(self, current):
+        """Helper function for parsing /proc/asound/ info.  Since every card
+          has a different format for its info, we're only attempting Intel's
+          codec#0 format
+        """
+        cmd = _PROC_ASOUND_CARD % (current['index'])
+        info_list =  list_amixer_output = self.do_cmd(cmd)
+
+        found_rates = False
+        found_bits = False
+        found_formats = False
+        on_default = False
+
+        if info_list is not None:
+            for line in info_list.split('\n'):
+                if (line == 'Default PCM:'):
+                    on_default = True
+                if on_default:
+                    if not found_rates:
+                        m = _CODEC_RATES_RE.match(line)
+                        if m is not None:
+                            found_rates = True
+                            current['sample_rate'] = m.group(2)
+                    if not found_bits:
+                        m = _CODEC_BITS_RE.match(line)
+                        if m is not None:
+                            found_bits = True
+                            current['sample_bits'] = m.group(2)
+                    if not found_formats:
+                        m = _CODEC_FORMATS_RE.match(line)
+                        if m is not None:
+                            found_formats = True
+                            current['sample_format'] = m.group(2)
+                m = _CODEC_NODE_RE.match(line)
+                if m is not None:
+                    on_default = False
 
 
-    def merge_sinkinfo_line(self, current_sink, line):
-        """Helper function for parsing the lines in a sink description."""
-        m = _NAME_RE.match(line)
-        if m is not None:
-            current_sink['name'] = m.group(1)
-
-        m = _FLAGS_RE.match(line)
-        if m is not None:
-            flags = m.group(1)
-            current_sink['is_hardware'] = flags.find('HARDWARE') != -1
-            current_sink['can_mute'] = flags.find('HW_MUTE_CTRL') != -1
-
-        m = _MAX_VOLUME_RE.match(line)
-        if m is not None:
-            current_sink['max_volume'] = int(m.group(1))
-
-        m = _BASE_VOLUME_RE.match(line)
-        if m is not None:
-            current_sink['base_volume_percent'] = int(m.group(1))
-
-        m = _SAMPLE_SPEC_RE.match(line)
-        if m is not None:
-            current_sink['sample_format'] = m.group(1)
-            current_sink['channels'] = int(m.group(2))
-            current_sink['sample_rate'] = int(m.group(3))
-
-        m = _CHANNEL_MAP_RE.match(line)
-        if m is not None:
-            channel_map = []
-            for channel in m.group(1).split(','):
-                channel_map.append(channel)
-            current_sink['channel_map'] = channel_map
-        
-        m = _ACTIVE_PORT_RE.match(line)
-        if m is not None:
-            current_sink['active_port'] = m.group(1)
-
-
-    def parse_device_info(self, device_info_output):
-        """Parses the output of a pacmd list-sources or list-sinks call."""
+    def parse_device_info_alsa(self, device_info_output):
+        """Parses the output of an "aplay -l" or "arecord -l" call."""
         device_info = { 'info' : [] }
         current_device = None
         port_parsing_mode = False
         for line in device_info_output.split('\n'):
-            # Leave port_parsing_mode if we find a top-level attribute.
-            if port_parsing_mode and _TOP_LEVEL_RE.match(line) is not None:
-                port_parsing_mode = False
-
-            # Grab the number of devices.
-            m = _COUNT_RE.match(line)
-            if m is not None:
-                device_info['num_devices'] = int(m.group(1))
-
-            # Parse the device stanza.
-            m = _STANZA_START_RE.match(line)
+            m = _CARD_RE.match(line)
             if m is not None:
                 current_device = {}
-                current_device['index'] = int(m.group(2))
-                current_device['ports'] = []
-                device_info['info'].append(current_device)
+                current_device['index'] = int(m.group(1))
+                current_device['control_names'] = []
+                current_device['card'] = m.group(2)
+                current_device['name'] = '%s (%s) %s' % (m.group(2),
+                                                         m.group(3),
+                                                         m.group(5))
+                # Fake some capabilities for now,  These are filled in later
+                # with info from /proc/asound/
+                current_device['channels'] = 2
+                current_device['sample_rate'] = 'Unknown'
+                current_device['sample_format'] = 'Unknown'
+                current_device['sample_bits'] = 'Unknown'
 
-            if current_device is not None:
-                # Enter port_parsing_mode if we find the ports line.
-                if _PORTS_RE.match(line) is not None:
-                    port_parsing_mode = True
-                elif port_parsing_mode:
-                    self.add_port(current_device['ports'], line)
-                else:
-                    self.merge_sinkinfo_line(current_device, line)
+                if current_device['card'] == 'Intel':
+                    self.merge_proc_info_intel(current_device)
+
+                device_info['info'].append(current_device)
         return device_info
 
 
+    def merge_controls_alsa(self, device_info, mixer_output, direction):
+        """Helper function for parsing the lines from amixer output.
+           Look for 'pvolume' Capabilities, and insert mixer control name
+        """
+        device_info['controls'] = []
+        current_control = None
+        for line in mixer_output.split('\n'):
+            m = _MIXER_CONTROL_RE.match(line)
+            if m is not None:
+                if current_control is not None:
+                    if direction == current_control['direction']:
+                        device_info['control_names'].append(
+                            current_control['name'])
+                        device_info['controls'].append(current_control)
+                current_control = {}
+                current_control['name'] =  '\'%s\',%d' % (m.group(1),
+                                                          int(m.group(2)))
+            if current_control is not None:
+                m = _MIXER_CAPS_RE.match(line)
+                if m is not None:
+                    current_control['caps'] = m.group(1)
+
+                m = _MIXER_LIMITS_RE.match(line)
+                if m is not None:
+                    current_control['direction'] = m.group(1)
+                    current_control['min_volume'] = int(m.group(2))
+                    current_control['max_volume'] = int(m.group(3))
+
+                m = _MIXER_CHANNELS_RE.match(line)
+                if m is not None:
+                    current_control['channel_map'] = []
+                    channel_list = m.group(2)
+                    while (True):
+                        mm = _MIXER_CHANNEL_LIST_RE.match(channel_list)
+                        if mm is None:
+                            current_control['channel_map'].append(channel_list)
+                            break
+                        else:
+                            current_control['channel_map'].append(mm.group(1))
+                            channel_list = mm.group(2)
+
+        if current_control is not None:
+            if direction == current_control['direction']:
+                device_info['control_names'].append(current_control['name'])
+                device_info['controls'].append(current_control)
+
+
     def enumerate_playback_devices(self):
-        """Queries pulseaudio for all available sinks.
+        """Queries Alsa for all available controls (mixer elements).
 
         Retruns:
            A dictionary with the number of devices found, and the
-           parsed output of the pacmd call.
+           parsed output of the "aplay -l" call.
         """
-        list_sinks_output = self.do_pacmd('list-sinks')
-        device_info = self.parse_device_info(list_sinks_output)
-        if device_info['num_devices'] != len(device_info['info']): 
-            raise error.TestError('Expected %d devices, parsed %d' %
-                    (device_info['num_devices'], len(device_info['info'])))
+        list_aplay_output = self.do_cmd('aplay -l')
+
+        device_info = self.parse_device_info_alsa(list_aplay_output)
+
+        for device in device_info['info']:
+            cmd = 'amixer -c %d' % (device['index'])
+            list_amixer_output = self.do_cmd(cmd)
+            self.merge_controls_alsa(device, list_amixer_output, 'Playback')
         return device_info
 
 
     def enumerate_record_devices(self):
-        """Queries pulseaudio for all available sources.
+        """Queries Alsa for all available capture elements.
 
         Retruns:
            A dictionary with the number of devices found, and the
-           parsed output of the pacmd call.
+           parsed output of the "arecord -l" call.
         """
-        list_sources_output = self.do_pacmd('list-sources')
-        device_info = self.parse_device_info(list_sources_output)
-        if device_info['num_devices'] != len(device_info['info']): 
-            raise error.TestError('Expected %d devices, parsed %d' %
-                    (device_info['num_devices'], len(device_info['info'])))
+        list_arecord_output = self.do_cmd('arecord -l')
+        logging.info(list_arecord_output)
+
+        device_info = self.parse_device_info_alsa(list_arecord_output)
+
+        for device in device_info['info']:
+            cmd = 'amixer -c %d' % (device['index'])
+            list_amixer_input = self.do_cmd(cmd)
+            self.merge_controls_alsa(device, list_amixer_input, 'Capture')
         return device_info
 
 
-    def set_default_device_and_port(self, type, device, port):
-        """Sets the default source or sink for Pulseaudio.
-
-        Args:
-          type: Either 'sink' or 'source'
-          device: A dictionary with the parsed device information.
-          port: The name of the device port to use. Use None for the default.
-        """
-        self.do_pacmd('set-default-%s %d' % (type, device['index']))
-        logging.info(
-            '* Testing device %d (%s)' % (device['index'], device['name']))
-
-        if port is not None:
-            self.do_pacmd('set-%s-port %d %s' % (type, device['index'], port))
-            logging.info('-- setting port %s' % port)
-
-
-    def restore_playback_port(self, device):
-        """Restores the sink's active port to what it was before testing.
+    def set_active_control(self, device, control_name):
+        """Sets the active control, e.g. which control volume change affects
 
         Args:
           device: A dictionary with the parsed device information.
+          control_name: The name of the control port to use.
         """
-        if device['active_port'] is not None:
-            self.do_pacmd('set-sink-port %d %s' %
-                (device['index'], device['active_port']))
-            logging.info('Restoring device %d to port %s' %
-                (device['index'], device['active_port']))
+
+        logging.info('Setting active control to %s' % (control_name))
+
+        for control in device['controls']:
+            if control_name in control['name']:
+                device['active_control'] = control
+                break
+
+    def set_control_volumes(self, device, mixer):
+        """Sets all controls listed in mixer on device
+
+        Args:
+          device: Device dictionary
+          mixer: mixer list from _TESTS
+        """
+        logging.info('Setting mixer control values on %s' % (device['name']))
+        logging.info(self._pp.pformat(mixer))
+
+        for item in mixer:
+            logging.info('item in mixer:')
+            logging.info(self._pp.pformat(item))
+            control = self.find_control(item['name'], device)
+            if control is not None:
+                self.do_set_volume_alsa(control, item['value'])
 
 
     def do_signal_test_end(self):
@@ -889,95 +993,70 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         Playback is done on whatever the current default device is.
         """
         config = self.default_tone_config()
-        config['tone_length_sec'] = 0.3
+        config['tone_length_sec'] = 0.25
         self.play_tone(config, 1000)
         self.play_tone(config, 1000)
         self.play_tone(config, 1000)
 
 
-    def do_record_test(self, device, port):
-        """Performs a record test for the given device and port.
-
-        This sets the default playback device is set to whatever device
-        is returned first in enumerate_playback_devices().  The playback
-        device is set to use the default port (active port before running
-        tests), unmuted, and set to the test_volume.
-
-        For each channel on the given device and port, a sample is recorded
-        and played-back at max source volume. Then once again with all
-        channel enabled.
-
-        Next, a sample is taken at base volume (no amplification) if
-        that is available, and played back.
-
-        This is followed by a sample at 1/2 amplifcation, and again with
-        the record device muted.
+    def do_record_test(self, test, device_idx):
+        """Runs the record and playback test using test's configuration.
 
         Args:
-            device: device info dictionary gotten from
-                    enumerate_record devices()
-            port: String with the name of the port to use on the device.
-                  Can be None if the device does not have multiple ports.
+            test: An item from _TESTS
+            device_idx: index of device to run test on
         """
-        # Configure the playback device to something normal.
-        playback_device = self._playback_devices['info'][0]
-        playback_volume = self.get_test_volume(playback_device)
-        playback_port = None
-        if playback_device['active_port'] is not None:
-            self.restore_playback_port(playback_device)
-        elif len(playback_device['ports']):
-            playback_port = playback_device['ports'][0]
-        self.set_default_device_and_port('sink', playback_device,
-                                         playback_port)
-        self.do_set_mute('sink', playback_device['index'], False)
-        self.do_set_volume('sink', playback_device['index'], playback_volume)
+        logging.info('-- recording test')
 
-        # Set record device.
-        self.set_default_device_and_port('source', device, port)
+        device_play = self.get_device_by_idx(device_idx, self._playback_devices)
+        device_rec = self.get_device_by_idx(device_idx, self._record_devices)
 
-        # Set to max hardware amplification volume.
-        self.do_set_volume('source', device['index'], device['max_volume'])
-        self.do_set_mute('source', device['index'], False)
+        if device_play is None:
+            logging.error('Playback device not found')
+            return
+        if device_rec is None:
+            logging.error('Record device not found')
+            return
+
+        # Set playback volumes.
+        self.set_control_volumes(device_play, test['mixer'])
+
+        # Set to max hardware amplification record volume.
+        self.set_active_control(device_rec, test['record'])
+        if not 'active_control' in device_rec:
+            logging.error('No record control found')
+            return
+
+        control = device_rec['active_control']
+        self.do_set_volume_alsa(control, "100% cap")
 
         # Record from each channel, then from all channels.
-        for channel in xrange(0, device['channels']):
+        num_channels = len(device_rec['active_control']['channel_map'])
+        for channel in xrange(0, num_channels):
             logging.info('-- record max vol channel %s' %
-                device['channel_map'][channel])
-            self.record_playback_sample(device, channel)
+               control['channel_map'][channel])
+            self.record_playback_sample(device_rec, channel)
 
         # Try recording at max, un-amped, 50% amp, and mute volumes.
         logging.info('-- record max vol all channels')
-        self.record_playback_sample(device, None)
+        self.do_set_volume_alsa(control, "100% cap")
+        self.record_playback_sample(device_rec, None)
 
-        # If there's no base_volume_percent, then guess that
-        # half-amplication is just 1/2 the max_volume.
-        half_amp_volume = device['max_volume'] / 2.0
-        if device.has_key('base_volume_percent'):
-            base_volume = (device['max_volume'] *
-                           device['base_volume_percent'] / 100.0)
-            half_amp_volume = (base_volume + 
-                               (device['max_volume'] - base_volume) / 2)
-            logging.info('-- record unamplified all channels')
-            self.do_set_volume('source', device['index'], base_volume)
-            self.record_playback_sample(device, None)
-        else:
-            logging.info('[Driver does to export unamplified volume level. '
-                         'Skipping test.]')
+        half_amp_volume = control['max_volume'] / 2.0
 
         logging.info('-- record half-amp volume all channels')
-        self.do_set_volume('source', device['index'], half_amp_volume)
-        self.record_playback_sample(device, None)
+        self.do_set_volume_alsa(control, "%d cap" % (half_amp_volume))
+        self.record_playback_sample(device_rec, None)
 
         logging.info('-- record muted all channels')
-        if device['can_mute']:
-            self.do_set_mute('source', device['index'], True)
-            self.do_set_volume('source', device['index'], device['max_volume'])
-        else:
-            logging.info('[No hardware mute. Setting volume to 0.]')
-            self.do_set_volume('source', device['index'], 0)
-        self.record_playback_sample(device, None)
 
+        self.do_set_volume_alsa(control, "100% nocap")
+        self.record_playback_sample(device_rec, None)
+
+        # Reset mic to on and max level
+        self.do_set_volume_alsa(control, "100% cap")
         self.do_signal_test_end()
+
 
     # There is a lag between invocation of the recording process
     # and when it actually starts recording. A 4sec "duration" makes a
@@ -996,37 +1075,38 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         # Record a sample.
         try:
             tmpfile = os.path.join(self.tmpdir, os.tmpnam())
+
+            # Set the volume to max on given channel, zero for all others
             record_args = ''
             if channel is not None:
-                record_args = ('--channels 1 --channel-map %s' %
-                        device['channel_map'][channel])
-            cmd = '%s -r %s %s' % (_PACAT_PATH, record_args, tmpfile)
-            logging.info('running %s' % self.pacmd(cmd))
+                vol_arg = ''
+                num_channels = len(device['active_control']['channel_map'])
+                for chan in xrange(0, num_channels):
+                    if chan == channel:
+                        chan_vol = "100%"
+                    else:
+                        chan_vol = "0%"
+                    if len(vol_arg):
+                        vol_arg = "%s," % (vol_arg)
+                    vol_arg = "%s%s" % (vol_arg, chan_vol)
+                self.do_set_volume_alsa(device['active_control'], vol_arg)
 
+            cmd_rec = 'arecord -d %f -f cd %s' % (duration, tmpfile)
+
+            logging.info('running %s' % self.cmd(cmd_rec))
+
+            # Record the sample
             signal_config = self.default_tone_config()
-            signal_config['tone_length_sec'] = 0.3
+            signal_config['tone_length_sec'] = 0.25
             self.play_tone(signal_config, 1000)  # Signal record start.
             logging.info('Record now (%fs)' % duration)
-            job = utils.BgJob(self.pacmd(cmd))
-            time.sleep(duration)
-            # Recording job runs in background forever until nuked.
-            # Hence checking for error status is not useful,
-            # because it will always error out.
-            utils.nuke_subprocess(job.sp)
-
-            # Job should be dead already, so join with a very short timeout.
-            utils.join_bg_jobs([job], timeout=1)
-            result = job.result
-            if result.stdout:  # Don't check for stderr because job was nuked.
-                raise error.CmdError(
-                    cmd, result,
-                    'stdout: %s\nstderr: %s' % (result.stdout, result.stderr))
+            utils.system(self.cmd(cmd_rec))
 
             # Playback the sample.
             self.play_tone(signal_config, 500)  # Signal playback start.
-            cmd = '%s -p %s %s' % (_PACAT_PATH, record_args, tmpfile)
+            cmd_play = 'aplay %s' % (tmpfile)
             logging.info('Playing back sample')
-            utils.system(self.pacmd(cmd))
+            utils.system(self.cmd(cmd_play))
 
             # TODO(ajwong): Try analyzing the sample using sox stats.
             # Example command:
@@ -1047,48 +1127,73 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
             if os.path.isfile(tmpfile):
                 os.unlink(tmpfile)
 
+    def find_control(self, name, device):
+        """Return the control from the controls list for device
 
-    def do_volume_test(self, device, port):
+        Args:
+            name: name of control to find
+            device: device from devices dictionary
+        """
+        for control in device['controls']:
+            if name in control['name']:
+                return control
+        return None
+
+
+    def get_device_by_idx(self, index, devices):
+        """Return the device in the devices dictionary with the given index
+
+        Args:
+            index: index of device
+            devices: dictionary of devices from enumerate_playback_devices()
+        """
+        for device in devices['info']:
+            if device['index'] == index:
+                return device
+        return None
+
+
+    def do_volume_test(self, test, device_idx):
         """Runs a volume calibration test on the given device.
 
         Args:
-            device: device info dictionary gotten from
-                    enumerate_playback_devices()
-            port: String with the name of the port to use on the device.
-                  Can be None if the device does not have multiple ports.
+            test: An item from _TESTS
+            device_idx: index of device to run test on
         """
-        self.set_default_device_and_port('sink', device, port)
         logging.info('-- volume calibration all channels')
-        self.do_volume_calibration_test(device)
+
+        device = self.get_device_by_idx(device_idx, self._playback_devices)
+
+        if device is not None:
+            self.set_control_volumes(device, test['mixer'])
+            if 'active' in test:
+                self.set_active_control(device, test['active'])
+            self.do_volume_calibration_test(device)
 
 
-    def do_playback_test(self, device, port):
-        """Runs the full set test tones tests on the given device.
-
-        It does a sequence of tone test, followed by a scale test for each
-        channel individually, then again for all channels.
+    def do_playback_test(self, test, device_idx):
+        """Runs test tones the given device using test's configuration.
 
         Args:
-            device: device info dictionary gotten from
-                    enumerate_playback_devices()
-            port: String with the name of the port to use on the device.
-                  Can be None if the device does not have multiple ports.
+            test: An item from _TESTS
+            device_idx: index of device to run test on
         """
-        self.set_default_device_and_port('sink', device, port)
+        logging.info('-- tones playback test')
 
-        # TODO(ajwong): chord test sounds terrible. fix & readd.
-        for channel in xrange(0, device['channels']):
-            logging.info('-- playback channel %s' %
-                         device['channel_map'][channel])
-            self.do_tone_test(device, channel)
-            self.do_scale_test(device, channel)
+        device = self.get_device_by_idx(device_idx, self._playback_devices)
 
-        # Run it once for all channels enabled.
-        logging.info('-- playback all channels')
-        self.do_tone_test(device)
-        self.do_scale_test(device)
+        if device is not None:
+            self.set_control_volumes(device, test['mixer'])
+            for channel in xrange(0, device['channels']):
+                logging.info('-- playback channel %d' % (channel))
+                self.do_tone_test(channel)
+                self.do_scale_test(channel)
 
-        self.do_signal_test_end()
+            # Run it once for all channels enabled.
+            logging.info('-- playback all channels')
+            self.do_tone_test()
+            self.do_scale_test()
+            self.do_signal_test_end()
 
 
     def get_test_volume(self, device):
@@ -1098,11 +1203,10 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
             device: device info dictionary gotten from
                     enumerate_playback_devices()
         """
-        # TODO(ajwong): What is a good test volume? 50% of max default is
+        # TODO(ajwong): What is a good test volume? 80% of max default is
         # pretty arbitrary.
-        test_volume = device['max_volume'] / 2.0
-        if device.has_key('base_volume_percent'):
-            test_volume *= device['base_volume_percent'] / 100.0 
+        test_volume = (device['active_control']['max_volume'] *
+            _VOLUME_TEST_VOLUME / 100)
         return test_volume
 
 
@@ -1116,21 +1220,27 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
             device: device info dictionary gotten from
                     enumerate_playback_devices()
         """
+
+        if not 'active_control' in device:
+            logging.error('No active control set')
+            return
+
         config = self.default_tone_config()
         config['tone_length_sec'] = 5
 
-        # Silence the sink.
-        self.do_set_volume('sink', device['index'], 0)
+        # Silence and un-mute the active control.
+        self.do_set_volume_alsa(device['active_control'], 0)
+        self.do_set_mute_alsa(device['active_control'], 0)
 
         # TODO(ajwong): What is a good test volume? 50% of max default is
         # pretty arbitrary.
         test_volume = self.get_test_volume(device)
 
         tone_thread = ToneThread(self, config)
-        volume_change_thread = VolumeChangeThread(self, 'sink',
-                                                  device['index'],
-                                                  0, test_volume,
-                                                  config['tone_length_sec'])
+
+        volume_change_thread = VolumeChangeThread(self, 0, test_volume,
+                                                  config['tone_length_sec'],
+                                                  device['active_control'])
         volume_change_thread.start()
         tone_thread.start()
         tone_thread.join()
@@ -1139,57 +1249,52 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         self.do_signal_test_end()
 
 
-    def do_pacmd(self, command):
-        """Helper function for invoking pacmd."""
-        cmd = '%s %s' % (_PACMD_PATH, command)
-        logging.info(cmd)
-        return utils.system_output(self.pacmd(cmd), retain_output=True)
+    def do_cmd(self, command):
+        """Helper function for invoking a command."""
+        logging.info(command)
+        return utils.system_output(self.cmd(command), retain_output=True)
 
 
-    def do_set_volume(self, type, index, new_volume):
-        """Sets the volume for the device at index.
+    def do_set_volume_alsa(self, control, new_volume):
+        """Helper function for invoking 'amixer sset' command.
 
-        Args:
-            type: 'source' or 'sink'
-            index: integer index of the pulse audio source or sink.
-            new_volume: integer volume to set the new device to.
+        Args: control: control structure from device dictionary
+              new_volume: Either percentage, e.g. "50%" or actual value in range
+                          of control's min_volume to max_volume
         """
-        self.do_pacmd('set-%s-volume %d %d' % (type, index, new_volume))
+        if 'volume' in control['caps']:
+            result = self.do_cmd('amixer sset %s %s' % (control['name'],
+                                                        new_volume))
 
 
-    def do_set_mute(self, type, index, should_mute):
-        """Mutes the device at index.
-        Args:
-            type: 'source' or 'sink'
-            index: integer index of the pulse audio source or sink.
-            should_mute: boolean saying if the device should be muted.
+    def do_set_mute_alsa(self, control, mute):
+        """Helper function for invoking 'amixer sset' command.
+
+        Args: control: control structure from device dictionary
+              new_mute: Either 1 for mute or 0 for unmuted
         """
-        if should_mute:
-            mute_val = 1
-        else:
-            mute_val = 0
-        self.do_pacmd('set-%s-mute %d %d' % (type, index, mute_val))
+        if 'pswitch' in control['caps']:
+            enabled = ['on', 'off']
+            result = self.do_cmd('amixer sset %s %s' % (control['name'],
+                                                        enabled[mute]))
 
 
     def play_tone(self, base_config, frequency):
         """Convenience function to play a test tone at a given frequency.
 
         Args:
-            type: 'source' or 'sink'
-            index: integer index of the pulse audio source or sink.
-            new_volume: integer volume to set the new device to.
+            base_config: base tone configuration
+            frequency: new frequency to play tone at
         """
         config = copy.copy(base_config)
         config['frequency'] = frequency
         self.run_test_tones(config)
 
 
-    def do_tone_test(self, device, active_channel=None):
+    def do_tone_test(self, active_channel=None):
         """Plays 10 test tones from 30Hz to 20000Hz.
 
         Args:
-            device: device info dictionary, gotten from
-                    enumerate_playback_devices()
             active_channel: integer identifying the channel to output test on.
                             If None, all channels are active.
         """
@@ -1213,12 +1318,10 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         self.play_tone(config, 20000)
 
 
-    def do_scale_test(self, device, active_channel=None):
+    def do_scale_test(self, active_channel=None):
         """Plays the A# harmonic minor scale test on.
 
         Args:
-            device: device info description, gotten from
-                    enumerate_playback_devices()
             active_channel: integer identifying the channel to output test on.
                             If None, all channels are active.
         """
@@ -1226,35 +1329,6 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         config['active_channel'] = active_channel
         config['type'] = 'scale'
         self.run_test_tones(config)
-
-
-    def do_chord_test(self):
-        """Starts 4 threads to play 4 test tones in parallel."""
-        config = self.default_tone_config()
-        config['frequency'] = 466.16
-        tonic = ToneThread(self, config)
-
-        config = self.default_tone_config()
-        config['frequency'] = 554.37
-        mediant = ToneThread(self, config)
-
-        config = self.default_tone_config()
-        config['frequency'] = 698.46
-        dominant = ToneThread(self, config)
-
-        config = self.default_tone_config()
-        config['frequency'] = 932.33
-        supertonic = ToneThread(self, config)
-
-        tonic.start()
-        mediant.start()
-        dominant.start()
-        supertonic.start()
-
-        tonic.join()
-        mediant.join()
-        dominant.join()
-        supertonic.join()
 
 
     def run_test_tones(self, args):
@@ -1267,6 +1341,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                     type - 'scale' or 'tone'
                     frequency - float with frequency in Hz.
                     tone_length_sec - float with length of test tone in secs.
+                    tone_volume - float with volume to do tone (0 to 1.0)
                     channels - number of channels in output device.
 
                   Optional keys:
@@ -1274,9 +1349,14 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                                     None means playback on all channels.
         """
         args['exec'] = self._test_tones_path
+
+        if not 'tone_end_volume' in args:
+            args['tone_end_volume'] = args['tone_volume']
+
         cmd = ('%(exec)s '
                '-t %(type)s -h %(frequency)f -l %(tone_length_sec)f '
-               '-c %(channels)d' % args)
+               '-c %(channels)d -s %(tone_volume)f '
+               '-e %(tone_end_volume)f' % args)
         if args['active_channel'] is not None:
             cmd += ' -a %s' % args['active_channel']
         if args['type'] == 'tone':

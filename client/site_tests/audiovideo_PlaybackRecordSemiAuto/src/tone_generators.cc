@@ -58,10 +58,13 @@ SingleToneGenerator::SingleToneGenerator(int sample_rate, double length_sec)
       frames_wanted_(length_sec * sample_rate),
       fade_frames_(0),  // Calculated below.
       frequency_(0.0f),
-      sample_rate_(sample_rate) {
+      sample_rate_(sample_rate),
+      cur_vol_(1.0),
+      start_vol_(1.0),
+      inc_vol_(0.0) {
 
   // Use a 5ms fade.
-  const double kFadeTimeSec = 0.005;
+  const double kFadeTimeSec = 0.01;
 
   // Only fade if the fade won't take more than 1/2 the tone.
   if (length_sec > (kFadeTimeSec * 4)) {
@@ -72,9 +75,15 @@ SingleToneGenerator::SingleToneGenerator(int sample_rate, double length_sec)
 SingleToneGenerator::~SingleToneGenerator() {
 }
 
+void SingleToneGenerator::SetVolumes(double start_vol, double end_vol) {
+  cur_vol_ = start_vol_ = start_vol;
+  inc_vol_ = (end_vol - start_vol) / frames_wanted_;
+}
+
 void SingleToneGenerator::Reset(double frequency) {
   frequency_ = frequency;
   frames_generated_ = 0;
+  cur_vol_ = start_vol_;
 }
 
 void SingleToneGenerator::GetFrames(SampleFormat format,
@@ -93,7 +102,8 @@ void SingleToneGenerator::GetFrames(SampleFormat format,
 
     double frame_magnitude = 
         GetFadeMagnitude() *
-        tone_wave_.Next(sample_rate_, frequency_);
+        tone_wave_.Next(sample_rate_, frequency_) * cur_vol_;
+    cur_vol_ += inc_vol_;
     for (int c = 0; c < channels; ++c) {
       if (active_channels.find(c) != active_channels.end()) {
         cur = WriteSampleForFormat(cur, frame_magnitude, format);
@@ -141,6 +151,10 @@ ASharpMinorGenerator::ASharpMinorGenerator(int sample_rate,
 ASharpMinorGenerator::~ASharpMinorGenerator() {
 }
 
+void ASharpMinorGenerator::SetVolumes(double start_vol, double end_vol) {
+  tone_generator_.SetVolumes(start_vol, end_vol);
+}
+
 void ASharpMinorGenerator::Reset() {
   cur_note_ = 0;
   tone_generator_.Reset(kNoteFrequencies[cur_note_]);
@@ -165,7 +179,7 @@ void ASharpMinorGenerator::GetFrames(SampleFormat format,
 }
 
 bool ASharpMinorGenerator::HasMoreFrames() const {
-  return cur_note_ < kNumNotes || tone_generator_.HasMoreFrames();
+  return cur_note_ < kNumNotes - 1 || tone_generator_.HasMoreFrames();
 }
 
 }  // namespace audio
