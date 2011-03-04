@@ -26,6 +26,8 @@ control process).  """
 import imp
 import os
 import pprint
+import signal
+import traceback
 
 imp.load_source('common', job.autodir + '/bin/common.py')
 
@@ -43,14 +45,18 @@ TEST_LIST_PATH = job.autodir + '/site_tests/suite_Factory/test_list'
 
 from autotest_lib.client.bin.parallel import fork_waitfor as orig_fork_waitfor
 
-def new_fork_waitfor(tmp, pid):
+def factory_fork_waitfor(tmp, pid):
     factory.set_shared_data('active_test_data', (tmp, pid))
-    try:
-        orig_fork_waitfor(tmp, pid)
-    except os.error, e:
-        raise error.TestError('Test Interrupted (maybe keyboard shortcut)')
+    (pid, status) = os.waitpid(pid, 0)
+    parallel._check_for_subprocess_exception(tmp, pid)
+    if status == signal.SIGTERM:
+        raise error.TestError('Test TERMINATED (return code = %s),\n'
+                              'Maybe caused by hitting keyboard shotcut.' %
+                              status)
+    elif status:
+        raise error.TestError("Test FAILED with return code: %d" % (status))
 
-parallel.fork_waitfor = new_fork_waitfor
+parallel.fork_waitfor = factory_fork_waitfor
 
 
 # These definitions are expose these classes directly into this
@@ -145,6 +151,11 @@ def step_init(next_subtest_info=None):
         ui_notify_fd = ui_process.stdin
         ui_notify_obj = FactoryUINotifyObject(ui_notify_fd)
         main_loop(next_subtest_info, ui_notify_obj.notify)
+    except:
+        factory.log('suite_Factory failed with exception: ' +
+                    traceback.format_exc())
+        # To fix a broken status tree, force a step_init here.
+        job.next_step([step_init])
     finally:
         stop_process(ui_process, 'ui')
         stop_process(state_server_process, 'state server')

@@ -38,6 +38,7 @@ import common
 import factory
 import factory_state
 import factory_ui_lib as ful
+import utils
 
 from gtk import gdk
 from Xlib import X
@@ -258,6 +259,21 @@ def state_change_handler(fd, cb_condition, test_db, test_state, ui_state):
         factory.log('state_change_handler got exception: %s', repr(e))
     return True
 
+def kill_active_test(control_pid):
+    # Currently we kill the active test directly.
+    # If we want to use the old way - notify main control to kill it,
+    # then send USR1 to main control instead:
+    #   os.kill(control_pid, signal.SIGUSR1)
+    active_test_data = factory.get_shared_data('active_test_data')
+    if active_test_data is None:
+        return
+    factory.log('KILLING active test %s' % repr(active_test_data))
+    try:
+        utils.nuke_pid(active_test_data[1])
+        # To remove the dependency of utils, use kill:
+        # os.kill(active_test_data[1], signal.SIGTERM)
+    except OSError, e:
+        factory.log('Failed to kill test: ' + repr(e))
 
 def grab_shortcut_keys(kbd_shortcut_set, control_pid):
     disp = X_Display()
@@ -287,7 +303,7 @@ def grab_shortcut_keys(kbd_shortcut_set, control_pid):
                 keycode = xevent.detail
                 factory.set_shared_data('activated_kbd_shortcut',
                                         keycode_map[keycode])
-                os.kill(control_pid, signal.SIGUSR1)
+                kill_active_test(control_pid)
         return True
 
     gobject.io_add_watch(root.display, gobject.IO_IN, handle_xevent)
