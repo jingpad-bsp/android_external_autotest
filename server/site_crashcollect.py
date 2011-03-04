@@ -16,9 +16,13 @@ def generate_minidump_stacktrace(minidump_path):
     """
     symbol_dir = '%s/../../../lib/debug' % utils.get_server_dir()
     logging.info('symbol_dir: %s' % symbol_dir)
-    result = client_utils.run('minidump_stackwalk %s %s > %s.txt' %
-                              (minidump_path, symbol_dir, minidump_path))
-    return result.exit_status
+    try:
+        result = client_utils.run('minidump_stackwalk %s %s > %s.txt' %
+                                  (minidump_path, symbol_dir, minidump_path))
+        rc = result.exit_status
+    except client_utils.error.CmdError, err:
+        rc = err.result_obj.exit_status
+    return rc
 
 
 def find_and_generate_minidump_stacktraces(host):
@@ -41,8 +45,8 @@ def find_and_generate_minidump_stacktraces(host):
                 logging.info('Generated stack trace for dump %s' %
                              minidump)
             else:
-                logging.error('Failed to generate stack trace for ' \
-                              'dump %s (rc=%d)' % (minidump, rc))
+                logging.warn('Failed to generate stack trace for ' \
+                             'dump %s (rc=%d)' % (minidump, rc))
 
 
 def get_site_crashdumps(host, test_start_time):
