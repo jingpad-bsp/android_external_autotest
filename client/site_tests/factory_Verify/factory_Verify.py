@@ -32,11 +32,11 @@ class factory_Verify(test.test):
             self.alert_bypassed("DEVELOPER SWITCH BUTTON")
             return
 
-        gpio = gpio.Gpio(error.TestFail)
-        gpio.setup()
+        _gpio = gpio.Gpio(error.TestFail)
+        _gpio.setup()
         property_name = 'developer_switch'
         try:
-            status_val = gpio.read(property_name)
+            status_val = _gpio.read(property_name)
         except:
             raise error.TestFail('Cannot read GPIO value: %s' % property_name)
 
