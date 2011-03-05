@@ -4,14 +4,15 @@
 
 import logging, time
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_power_status
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import power_status
 
 
 class power_BatteryCharge(test.test):
     version = 1
 
     def initialize(self):
-        self.status = site_power_status.get_status()
+        self.status = power_status.get_status()
 
         if not self.on_ac():
             raise error.TestNAError(
