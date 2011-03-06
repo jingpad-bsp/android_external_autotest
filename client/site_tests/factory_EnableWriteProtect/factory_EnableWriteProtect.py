@@ -39,10 +39,16 @@ class factory_EnableWriteProtect(test.test):
                 'name': 'BIOS',
                 'layout': 'rw|ro',
                 'target': 'bios',
+                'trust_fmap': False,
             }, { # Embedded Controller
                 'name': 'EC',
                 'layout': 'ro|rw',
                 'target': 'ec',
+                'trust_fmap': True,
+                'fmap_conversion': {
+                        'EC_RO': 'ro',
+                        'EC_RW': 'rw',
+                },
             }, )
 
         # always restore system flashrom selection to this one
@@ -62,13 +68,36 @@ class factory_EnableWriteProtect(test.test):
                 raise error.TestError(
                         'Cannot get flash rom size.\n'
                         '無法取得快閃記憶體大小')
-            # do not trust current image when detecting layout.
-            layout = self.flashrom.detect_layout(conf['layout'],
-                                                 flashrom_size, None)
+            layout = None
+            if conf['trust_fmap']:
+                if self.verbose:
+                    print ' - Trying to use FMAP layout for %s' % conf['name']
+                image = self.flashrom.read_whole()
+                assert flashrom_size == len(image)
+                layout = flashrom_util.decode_fmap_layout(
+                        conf['fmap_conversion'], image)
+                if 'ro' not in layout:
+                    layout = None
+                else:
+                    if self.verbose:
+                        print ' - Using layout by FMAP in %s' % conf['name']
+
+            if not layout:
+                # do not trust current image when detecting layout.
+                layout = self.flashrom.detect_layout(conf['layout'],
+                                                     flashrom_size, None)
+                if self.verbose:
+                    print ' - Using hard-coded layout for %s' % conf['name']
             if not layout:
                 raise error.TestError(
                         'Cannot detect flash rom layout.\n'
                         '無法偵測快閃記憶體配置結構')
+
+            # verify if the layout is half of firmware.
+            if (layout['ro'][1] - layout['ro'][0] + 1) != (flashrom_size / 2):
+                raise error.TestError(
+                        'Invalid RO section in flash rom layout.\n'
+                        '快閃記憶體唯讀區段配置錯誤。')
 
             # enable write protection
             if self.verbose:

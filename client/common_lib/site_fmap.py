@@ -26,7 +26,8 @@ import sys
 # constants imported from lib/fmap.h
 FMAP_SIGNATURE = "__FMAP__"
 FMAP_VER_MAJOR = 1
-FMAP_VER_MINOR = 0
+FMAP_VER_MINOR_MIN = 0
+FMAP_VER_MINOR_MAX = 1
 FMAP_STRLEN = 32
 
 FMAP_FLAGS = {
@@ -67,8 +68,9 @@ def _fmap_decode_header(blob, offset):
 
   if header['signature'] != FMAP_SIGNATURE:
     raise struct.error('Invalid signature')
-  if header['ver_major'] != FMAP_VER_MAJOR or \
-     header['ver_minor'] != FMAP_VER_MINOR:
+  if (header['ver_major'] != FMAP_VER_MAJOR or
+      header['ver_minor'] < FMAP_VER_MINOR_MIN or
+      header['ver_minor'] > FMAP_VER_MINOR_MAX):
     raise struct.error('Incompatible version')
 
   # convert null-terminated names
