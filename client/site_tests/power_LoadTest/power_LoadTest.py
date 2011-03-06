@@ -4,9 +4,10 @@
 
 import logging, os, shutil, time
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, site_power_status
 from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test
-from autotest_lib.client.cros import httpd, login, power_status
+from autotest_lib.client.cros import httpd, login
+
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
@@ -63,7 +64,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._scroll_interval_ms = scroll_interval_ms
         self._scroll_by_pixels = scroll_by_pixels
         self._tmp_keyvals = {}
-        self._power_status = power_status.get_status()
+        self._power_status = site_power_status.get_status()
         self._json_path = None
         self._force_wifi = force_wifi
 
@@ -126,9 +127,9 @@ class power_LoadTest(cros_ui_test.UITest):
         self._testServer.run()
 
         # initialize various interesting power related stats
-        self._usb_stats = power_status.USBSuspendStats()
-        self._cpufreq_stats = power_status.CPUFreqStats()
-        self._cpuidle_stats = power_status.CPUIdleStats()
+        self._usb_stats = site_power_status.USBSuspendStats()
+        self._cpufreq_stats = site_power_status.CPUFreqStats()
+        self._cpuidle_stats = site_power_status.CPUIdleStats()
 
 
         self._usb_stats.refresh()

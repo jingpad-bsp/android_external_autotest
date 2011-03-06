@@ -3,9 +3,8 @@
 # found in the LICENSE file.
 
 import glob, logging, os, re
-from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_status
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error, site_power_status, utils
 
 class power_ARMSettings(test.test):
     version = 1
@@ -14,7 +13,7 @@ class power_ARMSettings(test.test):
         if not self._check_cpu_type():
             raise error.TestNAError('Unsupported CPU')
 
-        power_status = power_status.get_status()
+        power_status = site_power_status.get_status()
         if power_status.linepower[0].online:
             logging.info('AC Power is online')
             self._on_ac = True

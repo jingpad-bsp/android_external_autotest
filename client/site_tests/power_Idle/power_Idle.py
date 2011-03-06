@@ -3,9 +3,8 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, power_status
+from autotest_lib.client.common_lib import error, site_power_status, utils
+from autotest_lib.client.cros import cros_ui_test
 
 
 class power_Idle(cros_ui_test.UITest):
@@ -16,12 +15,12 @@ class power_Idle(cros_ui_test.UITest):
 
 
     def run_once(self, idle_time=120):
-        self.status = power_status.get_status()
+        self.status = site_power_status.get_status()
 
         # initialize various interesting power related stats
-        self._usb_stats = power_status.USBSuspendStats()
-        self._cpufreq_stats = power_status.CPUFreqStats()
-        self._cpuidle_stats = power_status.CPUIdleStats()
+        self._usb_stats = site_power_status.USBSuspendStats()
+        self._cpufreq_stats = site_power_status.CPUFreqStats()
+        self._cpuidle_stats = site_power_status.CPUIdleStats()
 
 
         time.sleep(idle_time)

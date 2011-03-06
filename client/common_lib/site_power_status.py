@@ -1,6 +1,6 @@
 import glob, logging, os, re, time
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.bin import utils as bin_utils
+from autotest_lib.client.common_lib import error, utils
 
 
 class DevStat(object):
@@ -263,7 +263,7 @@ class CPUIdleStats(object):
     # currently not factored out.
 
     def __init__(self):
-        self._num_cpus = utils.count_cpus()
+        self._num_cpus = bin_utils.count_cpus()
         self._time = time.time()
         self._stats = self._read_stats()
 
