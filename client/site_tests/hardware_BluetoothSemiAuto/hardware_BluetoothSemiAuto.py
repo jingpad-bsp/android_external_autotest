@@ -121,8 +121,10 @@ class hardware_BluetoothSemiAuto(cros_ui_test.UITest):
             question = 'Enter pin code "0000" on the BT keyboard '
             question += 'at least 5 secs after this page closes'
             dialog = cros_ui.Dialog(question=question, choices=[],
-                               checkboxes=[], textinputs=[], timeout=5)
-            dialog.get_entries()
+                               checkboxes=[], textinputs=[], timeout=3)
+            dialog.get_entries()  # Prompt user to enter pin after a timeout.
+            dialog.init(choices=[], timeout=1)
+            dialog.get_entries()  # Clear the page to indicate timeout start.
         self.mainloop.run()
         logging.debug('... mainloop ended.')
 

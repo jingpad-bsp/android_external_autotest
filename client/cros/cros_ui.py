@@ -5,7 +5,9 @@
 import logging, os, shutil
 import common
 import httpd
+
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 
 
 def xcommand(cmd):
@@ -162,8 +164,20 @@ class Dialog(object):
 
     def get_entries(self):
         # Run a HTTP server.
-        url = 'http://localhost:8000/'
-        http_server = httpd.HTTPListener(8000)
+        base_port = 8000
+        while base_port < 9000:
+            url = 'http://localhost:%d/' % base_port
+            try:
+                http_server = httpd.HTTPListener(base_port)
+                break
+            except httpd.socket.error:
+                # The socket must be still bound since last time.
+                base_port = base_port + 1
+                continue
+        else:
+            # This is unlikely to happen, but just in case.
+            raise error.TestError('Failed to start HTTP server.')
+
         http_server.run()
 
         # Assign the handlers.
