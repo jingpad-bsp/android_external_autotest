@@ -1,3 +1,7 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 # These certificate trees are for testing only in sealed containers
 # so it is okay that we have them checked into a GIT repository.
 # Nobody will ever use this information on the open air.
@@ -180,3 +184,9 @@ z8pUyZO91XwBDftd4pYjsmmy0+//QgDwTF/4fcMm1lXD4kGWvPFEJCh9/s4+tWFL
 ngMenlXhjeAi4oTd0jcCQBqIFwSDElqUqeqkMtlw14wEJH6XIk+0IVQndBEyb+JN
 Nl40AoKFULXtQNMl7pT8uMj4ScYvRHOKg4RjwO7J+qs=
 -----END RSA PRIVATE KEY-----"""
+dh1024_pem_key_1 = """-----BEGIN DH PARAMETERS-----
+MIGHAoGBAL/YrUzFuA5cPGzhXVqTvDugmPi9CpbWZx2+TCTKxZSjNiVJxcICSnql
+uZtkR3sOAiWn384E4ZQTBrYPUguOuFfbMTRooADhezaG9SXtrE9oeVy9avIO7xQK
+emZydO0bAsRV+eL0XkjGhSyhKoOvSIXaCbJUn7duEsfkICPRLWCrAgEC
+-----END DH PARAMETERS-----"""
+

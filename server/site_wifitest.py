@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,6 +7,7 @@ import common, datetime, fnmatch, logging, os, re, string, threading, time
 from autotest_lib.server import autotest, hosts, subcommand
 from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_linux_router
+from autotest_lib.server import site_linux_server
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_eap_certs
 from autotest_lib.server import test
@@ -54,6 +55,9 @@ class WiFiTest(object):
       server_iperf            run iperf on the server to the client
       client_netperf          run netperf on the client to the server
       server_netperf          run netperf on the server to the client
+      vpn_client_load_tunnel  load 'tun' device for VPN client
+      vpn_client_config       launch a VPN client to connect with the
+                              VPN server
 
     Steps that are done on the client or server machine are implemented in
     this class.  Steps that are done on the wifi router are implemented in
@@ -72,11 +76,20 @@ class WiFiTest(object):
         self.steps = steps
         self.perf_keyvals = {}
 
-        self.cur_frequency = None;
-        self.cur_phymode = None;
-        self.cur_security = None;
+        self.cur_frequency = None
+        self.cur_phymode   = None
+        self.cur_security  = None
+        self.vpn_kind      = None
 
         router = config['router']
+        #
+        # The server machine may be multi-homed or only on the wifi
+        # network.  When only on the wifi net we suppress server_*
+        # requests since we cannot initiate them from the control machine.
+        #
+        server = config['server']
+        # NB: server may not be reachable on the control network
+
         self.router = hosts.create_host(router['addr'])
         # NB: truncate SSID to 32 characters
         self.defssid = self.__get_defssid(router['addr'])[0:32]
@@ -116,13 +129,6 @@ class WiFiTest(object):
         self.client_wifi_device_path = None   # client's flimflam wifi path
         self.client_installed_scripts = {}
 
-        #
-        # The server machine may be multi-homed or only on the wifi
-        # network.  When only on the wifi net we suppress server_*
-        # requests since we cannot initiate them from the control machine.
-        #
-        server = config['server']
-        # NB: server may not be reachable on the control network
         if 'addr' in server:
             self.server = hosts.create_host(server['addr'])
             self.server_at = autotest.Autotest(self.server)
@@ -133,6 +139,10 @@ class WiFiTest(object):
             self.server = None
             # NB: wifi address must be set if not reachable from control
             self.server_wifi_ip = server['wifi_addr']
+
+        # hosting_server is a machine which hosts network services,
+        # such as VPN.
+        self.hosting_server = site_linux_server.LinuxServer(self.server, server)
 
         # potential bg thread for ping untilstop
         self.ping_thread = None
@@ -276,6 +286,8 @@ class WiFiTest(object):
             func = getattr(self, method, None)
             if func is None:
                 func = getattr(self.wifi, method, None)
+            if func is None:
+                func = getattr(self.hosting_server, method, None)
             if func is not None:
                 try:
                     func(params)
@@ -373,8 +385,11 @@ class WiFiTest(object):
             system = self.router
         elif systemname == 'client':
             system = self.client
+        elif systemname == 'server':
+            system = self.server
         else:
-            raise error.TestFail('install_files: Must specify router or client')
+            raise error.TestFail('install_files: Must specify router, '
+                                 'server or client')
 
         for name,contents in params.get('files', {}).iteritems():
             self.insert_file(system, name, contents)
@@ -1081,7 +1096,7 @@ class WiFiTest(object):
     def restart_supplicant(self, params):
         """ Restart wpa_supplicant.  Cert params are unfortunately "sticky". """
 
-        self.client.run("stop wpasupplicant; start wpasupplicant");
+        self.client.run("stop wpasupplicant; start wpasupplicant")
 
     def __list_profile(self):
         ret = []
@@ -1171,6 +1186,69 @@ class WiFiTest(object):
             system.run('date -u %s' %
                        datetime.datetime.utcnow().strftime(datefmt))
 
+    def vpn_client_load_tunnel(self, params):
+        """ Load the 'tun' device.
+
+            Necessary when the VPN Server is configured with 'dev tun'.
+        """
+        result = self.client.run('modprobe tun') # When server using tunnel.
+
+    def vpn_client_config(self, params):
+        """ Configure & launch the VPN client.
+
+            Parameters:
+
+              'kind'      : required
+                  Indicates the kind of VPN which is to be used.
+                  Valid values are:
+
+                    openvpn
+
+              'vpn-host-ip': optional
+                  Specifies the IP of the VPN server.  If not provided,
+                  defaults to 'self.server_wifi_ip'
+
+              'files'      : required
+                  A dict which contains a set of file names.
+
+                     'ca-certificate'     : path to CA certificate file
+                     'client-certificate' : path to client certificate file
+                     'client-key'         : path to client key file
+        """
+        self.vpn_client_kill({}) # Must be first.  Relies on self.vpn_kind.
+        self.vpn_kind = params.get('kind', None)
+        vpn_host_ip   = params.get('vpn-host-ip', self.server_wifi_ip)
+
+        # Must get 'ca_certificate', 'client-certificate' and 'client-key'.
+        cert_pathnames = params.get('files', {})
+
+        if self.vpn_kind is None:
+            raise error.TestFail('No VPN kind specified for this test.')
+        elif self.vpn_kind == 'openvpn':
+            # connect-vpn openvpn <name> <host> <domain> <cafile> <certfile>
+            result = self.client.run('%s/test/connect-vpn openvpn '
+                                     'vpn-name %s vpn-domain '
+                                     '%s '   # ca certificate
+                                     '%s '   # client certificate
+                                     '%s' %  # client key
+                                     (self.client_cmd_flimflam_lib,
+                                      vpn_host_ip,
+                                      cert_pathnames['ca-certificate'],
+                                      cert_pathnames['client-certificate'],
+                                      cert_pathnames['client-key']))
+        else:
+            raise error.TestFail('(internal error): No launch case '
+                                 'for VPN kind (%s)' % self.vpn_kind)
+
+    def vpn_client_kill(self, params):
+        """ Kill the VPN client if it's running. """
+        if self.vpn_kind is not None:
+            if self.vpn_kind == 'openvpn':
+                self.server.run("pkill openvpn")
+            else:
+                raise error.TestFail('(internal error): No kill case '
+                                     'for VPN kind (%s)' % self.vpn_kind)
+            self.vpn_kind = None
 
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
