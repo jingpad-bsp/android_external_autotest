@@ -67,6 +67,7 @@ TESTS = [
 #
 # TODO: Until ltp can pass on chromiumos
 #  ('ltp', {}),
+  ('network_ConnmanCromoCrash', {}),
   ('network_UdevRename', {}),
   ('platform_AccurateTime', {'constraints': ['seconds_offset < 60']}),
   ('platform_CleanShutdown', {}),
