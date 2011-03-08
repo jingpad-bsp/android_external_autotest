@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib import error
 
 
 _DEFAULT_TIMEOUT = 30
+_DEFAULT_OWNERSHIP_TIMEOUT = 60
 
 # Priority increase to use when logging in to make sure we aren't descheduled at
 # inopportune times.
@@ -329,7 +330,7 @@ def wait_for_initial_chrome_window(timeout=_DEFAULT_TIMEOUT):
         crash_msg='Chrome crashed before first tab rendered.')
 
 
-def wait_for_ownership(timeout=_DEFAULT_TIMEOUT):
+def wait_for_ownership(timeout=_DEFAULT_OWNERSHIP_TIMEOUT):
     log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
     wait_for_condition(
