@@ -44,5 +44,7 @@ class site_host_scheduler(BaseHostScheduler):
             host.ssh_ping(timeout=self._SSH_TIMEOUT)
         except error.AutoservError:
             return False
+        finally:
+            host.close()
 
         return True
