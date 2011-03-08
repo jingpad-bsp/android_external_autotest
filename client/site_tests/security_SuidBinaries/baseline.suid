@@ -14,7 +14,6 @@
 /usr/bin/Xorg
 /usr/bin/sudoedit
 /usr/bin/gpasswd
-/usr/bin/gobi-modem-reset
 /opt/google/chrome/chrome-sandbox
 /sbin/unix_chkpwd
 /bin/umount
