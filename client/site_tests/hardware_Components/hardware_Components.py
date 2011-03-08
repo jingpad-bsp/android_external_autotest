@@ -11,10 +11,7 @@ import re
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import flashrom_util
-from autotest_lib.client.common_lib import gbb_util
-from autotest_lib.client.common_lib import site_fmap
-from autotest_lib.client.cros import vblock
+from autotest_lib.client.cros import flashrom_util, gbb_util, vblock
 
 
 class hardware_Components(test.test):

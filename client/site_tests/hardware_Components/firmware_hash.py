@@ -14,12 +14,12 @@ import tempfile
 # This file may be shared by autotest framework and some command line tools
 # setting PYTHONPATH, so we need to try different importing paths here.
 try:
-    from autotest_lib.client.common_lib import flashrom_util
-    from autotest_lib.client.common_lib import site_fmap
+    from autotest_lib.client.cros import flashrom_util
+    from autotest_lib.client.cros import fmap
 except ImportError:
     # try to load from pre-defined PYTHONPATH
     import flashrom_util
-    import site_fmap
+    import fmap
 
 
 def get_bios_ro_hash(file_source=None, exception_type=Exception):
@@ -40,7 +40,7 @@ def get_bios_ro_hash(file_source=None, exception_type=Exception):
     flashrom.initialize(flashrom.TARGET_BIOS, target_file=file_source)
 
     image = flashrom.get_current_image()
-    fmap_obj = site_fmap.fmap_decode(image)
+    fmap_obj = fmap.fmap_decode(image)
     if not fmap_obj:
         raise exception_type('No FMAP structure in flashrom.')
 
@@ -50,7 +50,7 @@ def get_bios_ro_hash(file_source=None, exception_type=Exception):
     # trust FMAP here.
     # TODO(hungte) we can check that FMAP must reside in RO section, and the
     # BSTUB must be aligned to bottom of firmware.
-    hash_src = hash_src + site_fmap.fmap_encode(fmap_obj)
+    hash_src = hash_src + fmap.fmap_encode(fmap_obj)
 
     # New firmware spec defined new "RO_SECTION" which includes all sections to
     # be hashed. When that section exists, we should override hash_ro_list.

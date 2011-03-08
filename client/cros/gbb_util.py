@@ -11,9 +11,10 @@
 import os
 import tempfile
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import flashrom_util
-from autotest_lib.client.common_lib import utils
+import common
+import flashrom_util
 
 
 class GBBUtility(object):

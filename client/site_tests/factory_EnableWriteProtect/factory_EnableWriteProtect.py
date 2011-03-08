@@ -8,7 +8,7 @@ import os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import flashrom_util
+from autotest_lib.client.cros import flashrom_util
 
 
 class factory_EnableWriteProtect(test.test):

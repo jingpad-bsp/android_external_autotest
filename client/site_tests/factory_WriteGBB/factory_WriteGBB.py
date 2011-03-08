@@ -6,7 +6,7 @@ import glob, os
 
 from autotest_lib.client.bin import factory, test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import gbb_util
+from autotest_lib.client.cros import gbb_util
 
 
 class factory_WriteGBB(test.test):

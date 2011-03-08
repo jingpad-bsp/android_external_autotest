@@ -252,8 +252,8 @@ def decode_fmap_layout(conversion_map, image_blob):
     Returns: layout structure for flashrom_util, or empty for failure.
     """
     try:
-        import site_fmap
-        fmap_object = site_fmap.fmap_decode(image_blob)['areas']
+        import fmap
+        fmap_object = fmap.fmap_decode(image_blob)['areas']
     except:
         # print 'decode_fmap_layout: failed to decode from image blob'
         fmap_object = []

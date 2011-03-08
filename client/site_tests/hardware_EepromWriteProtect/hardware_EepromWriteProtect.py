@@ -6,8 +6,7 @@ import os
 
 from autotest_lib.client.bin import factory, test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import flashrom_util
-from autotest_lib.client.cros import gpio
+from autotest_lib.client.cros import flashrom_util, gpio
 
 
 class hardware_EepromWriteProtect(test.test):
