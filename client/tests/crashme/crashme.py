@@ -54,25 +54,23 @@ class crashme(test.test):
          The [VERBOSE] arg is optional. 0 is the least verbose, 5 the
          most.
 """
-version = 2
+    version = 2
 
-def initialize(self):
-    self.job.require_gcc()
+    def initialize(self):
+        self.job.require_gcc()
 
+    def setup(self, tarball = 'crashme_2.4.orig.tar.bz2'):
+        tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
+        utils.extract_tarball_to_dir(tarball, self.srcdir)
+        os.chdir(self.srcdir)
+        utils.system('patch -p 1 <../crashme_2.4-9.diff')
+        utils.make()
 
-def setup(self, tarball = 'crashme_2.4.orig.tar.bz2'):
-    tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
-    utils.extract_tarball_to_dir(tarball, self.srcdir)
-    os.chdir(self.srcdir)
-    utils.system('patch -p 1 <../crashme_2.4-9.diff')
-    utils.make()
+    def run_once(self, args_list=''):
+        if args_list:
+            args = args_list
+        else:
+            args = ''
 
-
-def run_once(self, args_list=''):
-    if args_list:
-        args = args_list
-    else:
-        args = ''
-
-    crashme_path = os.path.join(self.srcdir, 'crashme')
-    utils.system("%s %s" % (crashme_path, args))
+        crashme_path = os.path.join(self.srcdir, 'crashme')
+        utils.system("%s %s" % (crashme_path, args))

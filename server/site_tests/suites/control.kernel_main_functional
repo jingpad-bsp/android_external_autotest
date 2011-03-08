@@ -19,6 +19,14 @@ from autotest_lib.server import site_host_attributes
 
 # List of tests to be run.
 CLIENT_TESTS = [
+    # 4096: Bytes of random data.
+    # 151: Random seed.
+    # 1000: Number of loop execution attempts before
+    # exiting normally.
+    # 256: Number of vfork() subprocesses.
+    # 0: No verbosity. [0..5]
+    ('crashme', { 'args_list': '4096 151 1000 512 0' }),
+
     # Call every syscall sequentially with special value in a single
     # register.  The special value will be rotated through each
     # register parameter.
@@ -32,6 +40,9 @@ CLIENT_TESTS = [
 ]
 
 SERVER_TESTS = [
+    # See http://code.google.com/p/chromium-os/issues/detail?id=12710
+    # if you experience a 'green recovery device' screen while running
+    # the reboot test.
     ('platform_BootDevice', {'iterations': 100, 'tag': 'stress'}),
     ('platform_KernelErrorPaths', {'iterations': 10}),
 ]
