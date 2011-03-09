@@ -125,7 +125,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         ax.send_hotkey('Ctrl+l')
         time.sleep(1)
         # Navigate to the "Languages and Input" menu.
-        ax.send_text('chrome://settings/language#lang=%s,focus=%s\n' %
+        ax.send_text('chrome://settings/languages#lang=%s,focus=%s\n' %
                      ('en-US', 'xkb:us:altgr-intl:eng'))
         time.sleep(5)
 
@@ -153,7 +153,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         ax.send_hotkey('Ctrl+l')
         time.sleep(1)
         # Navigate to the "Languages and Input" menu.
-        ax.send_text('chrome://settings/language#focus=add,lang_add=%s\n' %
+        ax.send_text('chrome://settings/languages#focus=add,lang_add=%s\n' %
                      language)
         time.sleep(3)
         ax.send_text(' ')
@@ -164,7 +164,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         time.sleep(1)
         ax.send_hotkey('Ctrl+l')
         time.sleep(1)
-        ax.send_text('chrome://settings/language#lang=%s,focus=%s\n' %
+        ax.send_text('chrome://settings/languages#lang=%s,focus=%s\n' %
                      (language, engine))
         time.sleep(3)
 
@@ -192,7 +192,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         ax.send_hotkey('Ctrl+l')
         time.sleep(1)
         # Navigate to the "Languages and Input" menu.
-        ax.send_text('chrome://settings/language#lang=%s,focus=remove\n' %
+        ax.send_text('chrome://settings/languages#lang=%s,focus=remove\n' %
                      language)
         time.sleep(3)
 
