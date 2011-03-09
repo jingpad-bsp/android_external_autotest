@@ -284,8 +284,10 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         self.activate_engine(engine_name)
         self.test_engine_omnibox(language, engine_name, input_string,
                                  expected_string)
-        self.test_engine_form(language, engine_name, input_string,
-                              expected_string)
+        # TODO: Re-enable this test when we determine how to handle the timeout
+        # on localhost.
+        #self.test_engine_form(language, engine_name, input_string,
+        #                      expected_string)
         self.activate_engine('xkb:us::eng')
         self.stop_ime_language(language)
 
