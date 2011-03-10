@@ -88,6 +88,7 @@ TESTS = [
   ('platform_TempFS', {}),
 # TODO(dalecurtis): AudioBench does not work; see http://crosbug.com/12647
 #  ('realtimecomm_GTalkAudioBench', {}),
+  ('realtimecomm_GTalkunittest', {}),
   ('unixbench', {}),
 # desktopui_UrlFetch has an undesired 'shutdown' command inside which will cause
 # consecutive test to be aborted unexpectly. Move it to the end of the test
