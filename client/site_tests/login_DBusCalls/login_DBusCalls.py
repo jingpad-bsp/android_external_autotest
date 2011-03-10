@@ -7,6 +7,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants as chromeos_constants
 from autotest_lib.client.cros import cros_logging, cros_ui_test
+from autotest_lib.client.cros import login
 
 _SESSION_MANAGER_DEST='org.chromium.SessionManager'
 _SESSION_MANAGER_OBJECT='org.chromium.SessionManagerInterface'
@@ -68,5 +69,5 @@ class login_DBusCalls(cros_ui_test.UITest):
 
 
     def run_once(self):
-        self.login()
+        login.wait_for_cryptohome()
         self._test_restart_entd()
