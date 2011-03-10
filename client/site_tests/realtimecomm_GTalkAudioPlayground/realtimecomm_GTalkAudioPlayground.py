@@ -6,12 +6,12 @@ import os, re, shutil, sys, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, httpd
+from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
 
 WARMUP_TIME = 30
 SLEEP_DURATION = 90
 
-class realtimecomm_GTalkAudioPlayground(test.test):
+class realtimecomm_GTalkAudioPlayground(cros_ui_test.UITest):
     version = 1
     dep = 'realtimecomm_playground'
 
@@ -20,17 +20,19 @@ class realtimecomm_GTalkAudioPlayground(test.test):
         self.job.setup_dep([self.dep])
 
 
-    def initialize(self):
+    def initialize(self, creds='$default'):
         self.dep_dir = os.path.join(self.autodir, 'deps', self.dep)
 
         # Start local HTTP server to serve playground.
         self._test_server = httpd.HTTPListener(
             8001, docroot=os.path.join(self.dep_dir, 'src'))
         self._test_server.run()
+        super(realtimecomm_GTalkAudioPlayground, self).initialize(creds)
 
 
     def cleanup(self):
         self._test_server.stop()
+        super(realtimecomm_GTalkAudioPlayground, self).cleanup()
 
 
     def run_verification(self):
@@ -73,7 +75,6 @@ class realtimecomm_GTalkAudioPlayground(test.test):
             # Verify log
             self.run_verification()
         finally:
-            session.close()
             pgutil.cleanup_playground(self.playground, True)
 
         # Report perf

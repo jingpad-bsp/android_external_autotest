@@ -10,11 +10,11 @@ from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
 class desktopui_SunSpiderBench(cros_ui_test.UITest):
     version = 1
 
-    def initialize(self, creds = '$default'):
+    def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/sunspider-driver.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        cros_ui_test.UITest.initialize(self, creds)
+        super(desktopui_SunSpiderBench, self).initialize(creds)
 
 
     def setup(self, tarball = 'sunspider-0.9.tar.bz2'):
@@ -27,7 +27,7 @@ class desktopui_SunSpiderBench(cros_ui_test.UITest):
 
     def cleanup(self):
         self._testServer.stop()
-        cros_ui_test.UITest.cleanup(self)
+        super(desktopui_SunSpiderBench, self).cleanup()
 
 
     def run_once(self, timeout=180):
@@ -36,7 +36,6 @@ class desktopui_SunSpiderBench(cros_ui_test.UITest):
         session = cros_ui.ChromeSession(self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
-        session.close()
 
         if not latch.is_set():
             raise error.TestFail('Never received callback from browser.')

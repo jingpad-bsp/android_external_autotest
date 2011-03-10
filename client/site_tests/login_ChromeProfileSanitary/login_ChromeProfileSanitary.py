@@ -4,7 +4,7 @@
 
 import logging, os, stat, time, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants as chromeos_constants
+from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui, cros_ui_test, login, httpd
 
 def respond_with_cookies(handler, url_args):
@@ -25,14 +25,14 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
     def __wait_for_login_profile(self, timeout=10):
         start_time = time.time()
         while time.time() - start_time < timeout:
-            if os.path.exists(chromeos_constants.LOGIN_PROFILE + '/Cookies'):
+            if os.path.exists(constants.LOGIN_PROFILE + '/Cookies'):
                 break;
             time.sleep(1)
         else:
             raise error.TestError('Login Profile took too long to populate')
 
 
-    def initialize(self, creds='$default'):
+    def initialize(self):
         spec = 'http://localhost:8000'
         path = '/set_cookie'
         self._wait_path = '/test_over'
@@ -40,8 +40,7 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.add_url_handler('/set_cookie', respond_with_cookies)
         self._testServer.run()
-
-        cros_ui_test.UITest.initialize(self, creds)
+        super(login_ChromeProfileSanitary, self).initialize()
 
 
     def cleanup(self):
@@ -49,25 +48,22 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
         cros_ui_test.UITest.cleanup(self)
 
 
-    def run_once(self, timeout = 10):
+    def run_once(self, timeout=10):
         # Get Default/Cookies mtime.
-        cookies_info = os.stat(chromeos_constants.LOGIN_PROFILE + '/Cookies')
+        cookies_info = os.stat(constants.LOGIN_PROFILE + '/Cookies')
         cookies_mtime = cookies_info[stat.ST_MTIME]
 
         # Wait for chrome to show, then "crash" it.
         login.wait_for_initial_chrome_window()
-        login.nuke_process_by_name(chromeos_constants.BROWSER,
-                                        with_prejudice = True)
+        login.nuke_process_by_name(constants.BROWSER, with_prejudice=True)
+
         login.refresh_window_manager()
         login.wait_for_browser()
         login.wait_for_initial_chrome_window()
 
         # Navigate to site that leaves cookies.
         latch = self._testServer.add_wait_url(self._wait_path)
-        cookie_fetch_args = ("--user-data-dir=" +
-                             chromeos_constants.USER_DATA_DIR + ' ' +
-                             self._test_url)
-        session = cros_ui.ChromeSession(args=cookie_fetch_args, clean_state=False)
+        session = cros_ui.ChromeSession(args=self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
         if not latch.is_set():
@@ -78,8 +74,7 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
 
         # Check mtime of Default/Cookies.  If changed, KABLOOEY.
         self.__wait_for_login_profile()
-        cookies_info = os.stat(chromeos_constants.LOGIN_PROFILE + '/Cookies')
-        # TODO: Note that this currently (20100329) fails and will continue to
-        # do so until http://crosbug.com/1967 is fixed.
+        cookies_info = os.stat(constants.LOGIN_PROFILE + '/Cookies')
+
         if cookies_mtime != cookies_info[stat.ST_MTIME]:
             raise error.TestFail('Cookies in Default profile changed!')

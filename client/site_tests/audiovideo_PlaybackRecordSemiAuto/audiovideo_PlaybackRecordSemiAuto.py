@@ -449,12 +449,12 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         self._server_root = 'http://localhost:8000/'
         self._testServer = httpd.HTTPListener(port=8000, docroot=self.bindir)
         self._testServer.run()
-        cros_ui_test.UITest.initialize(self, creds)
+        super(audiovideo_PlaybackRecordSemiAuto, self).initialize(creds)
 
 
     def cleanup(self):
         self._testServer.stop()
-        cros_ui_test.UITest.cleanup(self)
+        super(audiovideo_PlaybackRecordSemiAuto, self).cleanup()
 
 
     def run_once(self, timeout=10000):
@@ -469,36 +469,33 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                 lambda server, form, o=self: o.handle_test(server, form))
 
         latch = self._testServer.add_wait_url('/done')
-        try:
-            session = cros_ui.ChromeSession(
-                    self._server_root + _CONTROL_ENDPOINT)
-            logging.debug('Chrome session started.')
 
-            latch.wait(timeout)
-            if not latch.is_set():
-                raise error.TestFail('Timeout.')
+        session = cros_ui.ChromeSession(self._server_root + _CONTROL_ENDPOINT)
+        logging.debug('Chrome session started.')
 
-            expected_num_tests = self.expected_num_tests()
-            finished_tests = len(self._results)
-            results = self._pp.pformat(self._results)
-            if finished_tests != expected_num_tests:
-                raise error.TestFail(
-                        'Expected %d test results, found %d. Results %s' % (
-                            expected_num_tests, finished_tests, results))
+        latch.wait(timeout)
+        if not latch.is_set():
+            raise error.TestFail('Timeout.')
 
-            logging.info('result = ' + results)
-            failed_tests = []
-            for key, value in self._results.items():
-                # TODO(ajwong):  YOU NEED TO MAKE THIS ITERATION CORRECT.
-                if value != 'pass':
-                    failed_tests.append((key, value))
+        expected_num_tests = self.expected_num_tests()
+        finished_tests = len(self._results)
+        results = self._pp.pformat(self._results)
+        if finished_tests != expected_num_tests:
+            raise error.TestFail(
+                'Expected %d test results, found %d. Results %s' % (
+                    expected_num_tests, finished_tests, results))
+
+        logging.info('result = ' + results)
+        failed_tests = []
+        for key, value in self._results.items():
+            # TODO(ajwong):  YOU NEED TO MAKE THIS ITERATION CORRECT.
+            if value != 'pass':
+                failed_tests.append((key, value))
 
             if len(failed_tests):
                 raise error.TestFail(
-                        'User indicated test failure(s). Failed: %s' %
-                        self._pp.pformat(failed_tests))
-        finally:
-            session.close()
+                    'User indicated test failure(s). Failed: %s' %
+                    self._pp.pformat(failed_tests))
 
 
     def get_pass_fail_div(self, endpoint, dict):

@@ -20,13 +20,9 @@ class desktopui_FlashSanityCheck(cros_ui_test.UITest):
         # the middle of the test.
         login.wait_for_initial_chrome_window()
         # TODO(sosa): Check in flash video that is a solid test.
-        session = cros_ui.ChromeSession(
-            '--user-data-dir=%s %s' % (constants.CRYPTOHOME_MOUNT_PT,
-                                       'http://www.youtube.com'),
-            clean_state=False, suid=True)
-        # Wait some time till the webpage got fully loaded.
+        session = cros_ui.ChromeSession(args='http://www.youtube.com')
+        # Wait some time till the webpage has (probably) fully loaded.
         time.sleep(time_to_wait)
-        session.close()
 
         # Any better pattern matching?
         msg = ' Received crash notification for ' + constants.BROWSER

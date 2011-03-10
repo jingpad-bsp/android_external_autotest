@@ -11,6 +11,7 @@ WHITELIST_DIR = '/var/lib/whitelist'
 
 # Rest of constants.
 BROWSER = 'chrome'
+BROWSER_EXE = '/opt/google/chrome/' + BROWSER
 
 CHROME_LOG_DIR = '/var/log/chrome'
 CHROME_WINDOW_MAPPED_MAGIC_FILE = \
@@ -32,7 +33,7 @@ CREDENTIALS = {
 # to change the way tests dependent on this value work.
 CRYPTOHOME_DEVICE_REGEX = r'^/home/\.shadow/.*/vault$'
 CRYPTOHOME_INCOGNITO = 'guestfs'
-CRYPTOHOME_MOUNT_PT = USER_DATA_DIR+'/user'
+CRYPTOHOME_MOUNT_PT = USER_DATA_DIR + '/user'
 
 CRYPTOHOMED_LOG = '/var/log/cryptohomed.log'
 
@@ -44,7 +45,7 @@ KEYGEN = 'keygen'
 
 LOGGED_IN_MAGIC_FILE = '/var/run/state/logged-in'
 
-LOGIN_PROFILE = USER_DATA_DIR+'/Default'
+LOGIN_PROFILE = USER_DATA_DIR + '/Default'
 LOGIN_SERVICE = 'gaia'
 LOGIN_ERROR = 'Error=BadAuthentication'
 LOGIN_PROMPT_READY_MAGIC_FILE = '/tmp/uptime-login-prompt-ready'

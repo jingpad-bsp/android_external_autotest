@@ -11,7 +11,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
     version = 1
 
 
-    def initialize(self, creds = '$default'):
+    def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/webgl-conformance-tests.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
@@ -45,7 +45,6 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         session = cros_ui.ChromeSession(' --enable-webgl %s' % self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
-        session.close()
 
         if not latch.is_set():
             raise error.TestFail('Never received callback from browser.')

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import os, shutil, time
+from autotest_lib.client.cros import constants
 from autotest_lib.client.bin import test, utils
 
 def get_pids(program_name):
@@ -12,7 +13,7 @@ def get_pids(program_name):
     @param program_name the name of the program
     @return list of pids
     """
-    pidlist = utils.system_output("pgrep -f \'%s\'" % program_name)
+    pidlist = utils.system_output("pgrep ^%s$" % program_name)
     return pidlist.splitlines()
 
 
@@ -66,8 +67,8 @@ def setup_playground(src, dst, optionfile):
     shutil.copytree(src, dst)
     utils.run('chown chronos %s -R' % dst)
 
-    dst_path= '/home/chronos/.config/'
-    opt_path= os.path.join(dst_path, 'google-googletalkplugin')
+    dst_path = constants.CRYPTOHOME_MOUNT_PT
+    opt_path = os.path.join(dst_path, 'google-googletalkplugin')
     dst_opt = os.path.join(opt_path, 'options')
     utils.run('mkdir -p \'%s\'' % opt_path)
     utils.run('cp -f %s \'%s\'' % (optionfile, dst_opt))
@@ -82,19 +83,7 @@ def cleanup_playground(playground, testdone=False):
     @param playground path
     @param testdone
     """
-    utils.run('pkill chrome', ignore_status=True)
-    time.sleep(10)
     utils.run('pkill GoogleTalkPlugin', ignore_status=True)
-    time.sleep(10)
     utils.run('rm -f /tmp/tmp.log', ignore_status=True)
     if testdone:
         shutil.rmtree(playground)
-
-    # Delete previous browser state if any
-    shutil.rmtree('/home/chronos/.config/chromium', ignore_errors=True)
-    shutil.rmtree('/home/chronos/.config/google-chrome', ignore_errors=True)
-
-    # Delete previous GTalk state if any
-    shutil.rmtree('/home/chronos/.config/google-googletalkplugin',
-        ignore_errors=True)
-

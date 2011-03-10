@@ -366,7 +366,7 @@ def refresh_window_manager(timeout=_DEFAULT_TIMEOUT):
         TimeoutError: window manager didn't start before timeout
     """
     os.unlink(constants.CHROME_WINDOW_MAPPED_MAGIC_FILE)
-    utils.system('initctl restart window-manager')
+    nuke_process_by_name(constants.WINDOW_MANAGER)
     wait_for_window_manager()
 
 

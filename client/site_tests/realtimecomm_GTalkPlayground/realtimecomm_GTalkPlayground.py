@@ -6,12 +6,12 @@ import os, re, shutil, sys, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, httpd
+from autotest_lib.client.cros import constants, cros_ui, cros_ui_test, httpd
 
 WARMUP_TIME = 60
 SLEEP_DURATION = 260
 
-class realtimecomm_GTalkPlayground(test.test):
+class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
     version = 1
     dep = 'realtimecomm_playground'
 
@@ -20,17 +20,19 @@ class realtimecomm_GTalkPlayground(test.test):
         self.job.setup_dep([self.dep])
 
 
-    def initialize(self):
+    def initialize(self, creds='$default'):
         self.dep_dir = os.path.join(self.autodir, 'deps', self.dep)
 
         # Start local HTTP server to serve playground.
         self._test_server = httpd.HTTPListener(
             8001, docroot=os.path.join(self.dep_dir, 'src'))
         self._test_server.run()
+        super(realtimecomm_GTalkPlayground, self).initialize(creds)
 
 
     def cleanup(self):
         self._test_server.stop()
+        super(realtimecomm_GTalkPlayground, self).cleanup()
 
 
     def run_verification(self):
@@ -99,11 +101,13 @@ class realtimecomm_GTalkPlayground(test.test):
             time.sleep(WARMUP_TIME)
             gtalk_s = pgutil.get_utime_stime(
                 pgutil.get_pids('GoogleTalkPlugin'))
-            chrome_s = pgutil.get_utime_stime(pgutil.get_pids('chrome/chrome'))
+            chrome_s = pgutil.get_utime_stime(
+                pgutil.get_pids(constants.BROWSER))
             time.sleep(SLEEP_DURATION)
             gtalk_e = pgutil.get_utime_stime(
                 pgutil.get_pids('GoogleTalkPlugin'))
-            chrome_e = pgutil.get_utime_stime(pgutil.get_pids('chrome/chrome'))
+            chrome_e = pgutil.get_utime_stime(
+                pgutil.get_pids(constants.BROWSER))
 
             self.performance_results['ctime_gtalk'] = \
                 pgutil.get_cpu_usage(SLEEP_DURATION, gtalk_e[0] - gtalk_s[0])
@@ -117,7 +121,6 @@ class realtimecomm_GTalkPlayground(test.test):
             # Verify log
             self.run_verification()
         finally:
-            session.close()
             pgutil.cleanup_playground(self.playground, True)
 
         # Report perf

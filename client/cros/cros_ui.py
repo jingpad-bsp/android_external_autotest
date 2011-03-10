@@ -4,11 +4,10 @@
 
 import logging, os, shutil
 import common
-import httpd
+import constants, httpd, login
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-
 
 def xcommand(cmd):
     """
@@ -60,39 +59,21 @@ def get_autox():
 
 class ChromeSession(object):
     """
-    A class to start and close Chrome sessions.
+    A class to open a tab within the running browser process.
     """
 
-    def __init__(self, args='', clean_state=True, suid=True):
-        self._clean_state = clean_state
-        self.start(args, suid=suid)
+    def __init__(self, args=''):
+        self.start(args)
 
 
-    def __del__(self):
-        self.close()
+    def start(self, args=''):
+        if not login.logged_in():
+            raise login.UnexpectedCondition("Not logged in!")
 
-
-    def start(self, args='', suid=True):
-        if self._clean_state:
-          for user in ('user/', ''):
-            for config_dir in ('google-chrome', 'chromium'):
-              # Delete previous browser state, if any.
-              shutil.rmtree('/home/chronos/%s.config/%s' % (user, config_dir),
-                            ignore_errors=True)
-
-        # Open a new browser window as a background job
-        cmd = '/opt/google/chrome/chrome --no-first-run ' + args
-        cmd = xcommand(cmd)
-        if suid:
-            cmd = 'su chronos -c \'%s\'' % cmd
-        self.job = utils.BgJob(cmd)
-
-
-    def close(self):
-        if self.job is not None:
-            utils.nuke_subprocess(self.job.sp)
-        self.job = None
-
+        # Open a new browser tab in the running chrome process.
+        cmd = '%s --no-first-run --user-data-dir=%s %s' % (
+            constants.BROWSER_EXE, constants.USER_DATA_DIR, args)
+        xsystem_as(cmd)
 
 
 _HTML_HEADER_ = '''

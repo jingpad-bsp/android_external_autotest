@@ -122,11 +122,16 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self._fire_event()
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    def __init__(self, server_address, HandlerClass):
+        HTTPServer.__init__(self, server_address, HandlerClass)
+
+
 class HTTPListener(object):
     # Point default docroot to a non-existent directory (instead of None) to
     # avoid exceptions when page content is served through handlers only.
     def __init__(self, port=0, docroot='/_', wait_urls={}, url_handlers={}):
-        self._server = HTTPServer(('', port), FormHandler)
+        self._server = ThreadedHTTPServer(('', port), FormHandler)
         self.config_server(self._server, docroot, wait_urls, url_handlers)
 
     def config_server(self, server, docroot, wait_urls, url_handlers):

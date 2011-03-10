@@ -14,7 +14,7 @@ class desktopui_V8Bench(cros_ui_test.UITest):
         self._test_url = 'http://localhost:8000/run.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        cros_ui_test.UITest.initialize(self, creds)
+        super(desktopui_V8Bench, self).initialize(creds)
 
 
     def setup(self, tarball='v8_v5.tar.bz2'):
@@ -27,7 +27,7 @@ class desktopui_V8Bench(cros_ui_test.UITest):
 
     def cleanup(self):
         self._testServer.stop()
-        cros_ui_test.UITest.cleanup(self)
+        super(desktopui_V8Bench, self).cleanup()
 
 
     def run_once(self, timeout=60):
@@ -36,7 +36,6 @@ class desktopui_V8Bench(cros_ui_test.UITest):
         session = cros_ui.ChromeSession(self._test_url)
         logging.debug('Chrome session started.')
         latch.wait(timeout)
-        session.close()
 
         if not latch.is_set():
             raise error.TestFail('Never received callback from browser.')
