@@ -17,7 +17,7 @@
     [ "disconnect" ],
     [ "deconfig" ],
 
-    # Test minimum SSID length 
+    # Test minimum SSID length
     [ "config",         { "ssid": "a" } ],
     [ "connect",        { "ssid":"a", "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
@@ -26,8 +26,8 @@
 
     # Test MAX+1 ssid length
     [ "!connect",        { "ssid":str("Max_Length_SSID"*8)[:33],
-                          "security":"none", "hidden":True },
-			  "org.chromium.flimflam.Error.InvalidNetworkName" ],
+                           "security":"none", "hidden":True },
+                           "org.chromium.flimflam.Error.InvalidNetworkName" ],
     [ "destroy" ],
   ],
 }
