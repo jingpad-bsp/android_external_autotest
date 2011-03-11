@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, shutil, subprocess, tempfile
+import logging, os, re, shutil, stat, subprocess, tempfile
 import common
 import constants, cros_ui, login
 from autotest_lib.client.bin import test, utils
@@ -20,6 +20,7 @@ class ChromeTestBase(test.test):
 
     def initialize(self):
         self.home_dir = tempfile.mkdtemp()
+        os.chmod(self.home_dir, stat.S_IROTH | stat.S_IWOTH |stat.S_IXOTH)
         dep = 'chrome_test'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
@@ -74,11 +75,12 @@ class ChromeTestBase(test.test):
 
     def run_chrome_test(self, test_to_run, extra_params=''):
         try:
+            os.chdir(self.home_dir)
             cmd = '%s/%s %s' % (self.test_binary_dir, test_to_run, extra_params)
             cmd = 'HOME=%s CR_SOURCE_ROOT=%s %s' % (self.home_dir,
                                                     self.cr_source_dir,
-                                                    cros_ui.xcommand(cmd))
-            utils.system(cmd)
+                                                    cmd)
+            cros_ui.xsystem_as(cmd)
         except error.CmdError, e:
             logging.debug(e)
             raise error.TestFail('%s failed!' % test_to_run)
