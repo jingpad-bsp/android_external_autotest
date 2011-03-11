@@ -229,10 +229,10 @@ class hardware_Components(test.test):
         # example output:
         #  Found chip "Winbond W25x10" (128 KB, SPI) at physical address ...
         parts = []
-        # Undo BBS register after call.
-        lines = utils.system_output('flashrom -V -p internal:bus=lpc; '
-                                    'flashrom -p internal:bus=spi',
+        lines = utils.system_output('flashrom -V -p internal:bus=lpc',
                                     ignore_status=True).split('\n')
+        # Undo BBS register after call.
+        utils.system('flashrom -p internal:bus=spi', ignore_status=True)
         for line in lines:
             match = re.search(r'Found chip "(.*)" .* at physical address ',
                               line)
