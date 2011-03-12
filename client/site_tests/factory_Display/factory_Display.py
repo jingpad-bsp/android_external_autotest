@@ -52,10 +52,50 @@ def pattern_cb_grid(widget, event, color=None):
                            gtk.gdk.LINE_SOLID,
                            gtk.gdk.CAP_BUTT,
                            gtk.gdk.JOIN_MITER)
-    for x in range(0, xmax, 20):
-        dr.draw_line(gc, x, 0, x, ymax)
-    for y in range(0, ymax, 20):
-        dr.draw_line(gc, 0, y, xmax, y)
+    for x in range(0, xmax - 1, 20):
+        dr.draw_line(gc, x, 0, x, ymax - 1)
+    for y in range(0, ymax - 1, 20):
+        dr.draw_line(gc, 0, y, xmax - 1, y)
+    dr.draw_line(gc, xmax - 1, 0, xmax - 1, ymax - 1)
+    dr.draw_line(gc, xmax - 1, ymax - 1, 0, ymax - 1)
+    return False
+
+
+def pattern_vgrad(widget, event, level, color=None):
+    dr = widget.window
+    xmax, ymax = dr.get_size()
+    gc = gtk.gdk.GC(dr)
+    red = green = blue = 0
+    for x in range(0, xmax - 1, xmax / level):
+        i = 65535 / xmax * x
+        if color == ful.RED:
+            red = i
+        elif color == ful.GREEN:
+            green = i
+        elif color == ful.BLUE:
+            blue = i
+        else:
+            red = green = blue = i
+        gc.set_rgb_fg_color(gtk.gdk.Color(red, green, blue))
+        dr.draw_rectangle(gc, True, x, 0, x + xmax / level, ymax)
+    return False
+
+
+def pattern_full_rect(widget, event):
+    dr = widget.window
+    xmax, ymax = dr.get_size()
+    gc = gtk.gdk.GC(dr)
+    gc.set_rgb_fg_color(ful.BLACK)
+    dr.draw_rectangle(gc, True, 0, 0, xmax, ymax)
+    gc.set_rgb_fg_color(ful.WHITE)
+    gc.set_line_attributes(1,
+                           gtk.gdk.LINE_SOLID,
+                           gtk.gdk.CAP_BUTT,
+                           gtk.gdk.JOIN_MITER)
+    dr.draw_line(gc, 0, 0, xmax - 1, 0)
+    dr.draw_line(gc, xmax - 1, 0, xmax - 1, ymax - 1)
+    dr.draw_line(gc, xmax - 1, ymax - 1, 0, ymax - 1)
+    dr.draw_line(gc, 0, ymax - 1, 0, 0)
     return False
 
 
@@ -64,7 +104,18 @@ _PATTERN_LIST = [
     ('solid green', lambda *x: pattern_cb_solid(*x, **{'color':ful.GREEN})),
     ('solid blue', lambda *x: pattern_cb_solid(*x, **{'color':ful.BLUE})),
     ('solid white', lambda *x: pattern_cb_solid(*x, **{'color':ful.WHITE})),
-    ('grid', lambda *x: pattern_cb_grid(*x, **{'color':ful.GREEN}))]
+    ('solid gray', lambda *x: pattern_cb_solid(*x,
+                   **{'color':gtk.gdk.Color(65535 / 2, 65525 / 2, 65535 / 2)})),
+    ('solid black', lambda *x: pattern_cb_solid(*x, **{'color':ful.BLACK})),
+    ('grid', lambda *x: pattern_cb_grid(*x, **{'color':ful.WHITE})),
+    ('rectangle', lambda *x: pattern_full_rect(*x)),
+    ('grad red', lambda *x: pattern_vgrad(*x, **{'level':16, 'color':ful.RED})),
+    ('grad green', lambda *x: pattern_vgrad(*x,
+                                            **{'level':16, 'color':ful.GREEN})),
+    ('grad blue', lambda *x: pattern_vgrad(*x,
+                                           **{'level':16, 'color':ful.BLUE})),
+    ('grad white', lambda *x: pattern_vgrad(*x,
+                                            **{'level':16, 'color':ful.WHITE}))]
 
 
 class factory_Display(test.test):
