@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -12,6 +12,18 @@ class platform_KernelErrorPaths(test.test):
     version = 1
 
     def breakme(self, text):
+        # This test is ensuring that the machine will reboot on any
+        # tyoe of kernel panic.  If the sysctls below are not set
+        # correctly, the machine will not reboot.  After verifying
+        # that the machine has the proper sysctl state, we make it
+        # reboot by writing to a /proc/breakme.
+        #
+        # 2011.03.09: ARM machines will currently fail due to
+        #             'preserved RAM' not being enabled.
+        self.client.run('sysctl kernel.panic|grep "kernel.panic = -1"');
+        self.client.run('sysctl kernel.panic_on_oops|'
+                        'grep kernel.panic_on_oops = 1');
+
         command = "echo %s > /proc/breakme" % text
         logging.info("KernelErrorPaths: executing '%s' on %s" %
                      (command, self.client.hostname))
