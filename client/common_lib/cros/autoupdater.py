@@ -11,7 +11,11 @@ import urlparse
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants as chromeos_constants
 
-STATEFULDEV_UPDATER = '/usr/local/bin/stateful_update'
+# TODO(dalecurtis): HACK to bootstrap stateful updater until crosbug.com/8960 is
+# fixed.
+LOCAL_STATEFULDEV_UPDATER = ('/home/chromeos-test/chromeos-src/chromeos/src'
+                             '/platform/dev/stateful_update')
+STATEFULDEV_UPDATER = '/tmp/stateful_update'
 UPDATER_BIN = '/usr/bin/update_engine_client'
 UPDATER_IDLE = 'UPDATE_STATUS_IDLE'
 UPDATER_NEED_REBOOT = 'UPDATE_STATUS_UPDATED_NEED_REBOOT'
@@ -117,8 +121,19 @@ class ChromiumOSUpdater():
         # is testable after we run the autoupdater.
         statefuldev_url = self.update_url.replace('update', 'static/archive')
 
-        statefuldev_cmd = ' '.join([STATEFULDEV_UPDATER, statefuldev_url,
-                                    '2>&1'])
+        # TODO(dalecurtis): HACK to bootstrap stateful updater until
+        # crosbug.com/8960 is fixed.
+        self.host.send_file(LOCAL_STATEFULDEV_UPDATER, STATEFULDEV_UPDATER,
+                            delete_dest=True)
+        statefuldev_cmd = [STATEFULDEV_UPDATER, statefuldev_url]
+
+        # TODO(dalecurtis): HACK necessary until R10 builds are out of testing.
+        if int(self.update_version.split('.')[1]) > 10:
+            statefuldev_cmd.append('--stateful_change=clean')
+
+        statefuldev_cmd.append('2>&1')
+        statefuldev_cmd = ' '.join(statefuldev_cmd)
+
         logging.info(statefuldev_cmd)
         try:
             self._run(statefuldev_cmd, timeout=600)
