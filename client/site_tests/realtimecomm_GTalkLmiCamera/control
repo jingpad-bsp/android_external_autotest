@@ -1,0 +1,20 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "realtimecomm_GTalkLmiCamera"
+PURPOSE = "Test camera using LMI lib."
+CRITERIA = """
+Fail if any of the measurement fail.
+"""
+TIME = "LONG"
+TEST_CATEGORY = "GTalk"
+TEST_CLASS = "realtimecomm"
+TEST_TYPE = "client"
+
+DOC = """
+This test camera using LMI lib.
+"""
+
+job.run_test('realtimecomm_GTalkLmiCamera')

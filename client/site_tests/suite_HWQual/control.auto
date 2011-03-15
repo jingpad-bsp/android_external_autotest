@@ -93,6 +93,12 @@ job.run_test('realtimecomm_GTalkAudioPlayground',
                  'ctime_gtalk + stime_gtalk < 30',
                  'ctime_pulse + stime_pulse < 20',
              ])
+job.run_test('realtimecomm_GTalkLmiCamera',
+             constraints=[
+                 'fps > 28'
+                 'latency < 1000',
+                 'jerkiness < 15',
+             ])
 
 # Communications
 job.run_test('network_DisableInterface',
