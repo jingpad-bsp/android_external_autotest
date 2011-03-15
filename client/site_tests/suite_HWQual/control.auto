@@ -95,7 +95,7 @@ job.run_test('realtimecomm_GTalkAudioPlayground',
              ])
 job.run_test('realtimecomm_GTalkLmiCamera',
              constraints=[
-                 'fps > 28'
+                 'fps > 28',
                  'latency < 1000',
                  'jerkiness < 15',
              ])
