@@ -27,6 +27,9 @@ CLIENT_TESTS = [
     # 0: No verbosity. [0..5]
     ('crashme', { 'args_list': '4096 151 1000 512 0' }),
 
+    # Check that TPM is present and started and we can talk to it.
+    ('kernel_TPMPing', {}),
+
     # Call every syscall sequentially with special value in a single
     # register.  The special value will be rotated through each
     # register parameter.
