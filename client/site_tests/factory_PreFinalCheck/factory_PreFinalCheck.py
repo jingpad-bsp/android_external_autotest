@@ -46,6 +46,17 @@ class MiniVerifier(object):
         """ Checks if hardware write protection pin is enabled """
         return self.read_gpio_uint("write_protect") == 1
 
+    def check_vboot_state(self):
+        data = utils.system_output("dev_debug_vboot | grep ' OK$'",
+                                   ignore_status=True)
+        # factory.log(data)
+        if (data.find('Verify firmware B') < 0 or
+            data.find('Test kernel_subkey_b') < 0 or
+            data.find('Test hd_kern_b.') < 0 or
+            data.find('Verify hd_kern_b.blob with kernel_subkey_b') < 0):
+            return False
+        return True
+
     def check_required_tests(self):
         """ Checks if all previous tests are passed """
         # NOTE the real 'required test' check in factory_Verify also checks
@@ -81,6 +92,8 @@ class factory_PreFinalCheck(test.test):
                              "停用開發者開關 (Developer Switch)"),
         'write_protect': ("Enable write protection pin\n"
                           "確認硬體寫入保護已開啟"),
+        'vboot_state': ("Keys for verified boot are matched\n"
+                        "驗證開機所需各金鑰符合磁碟映像內容"),
     }
 
     def run_verify(self, vector):
@@ -129,9 +142,13 @@ class factory_PreFinalCheck(test.test):
             if self.all_passed():
                 gtk.main_quit()
             else:
+                if self.last_check and (time.time() < self.last_check + 1):
+                    # ignore flooding events in 1 second
+                    return True
                 widget.handler_block(self.key_released_handler_id)
                 self.update_status()
                 widget.handler_unblock(self.key_released_handler_id)
+                self.last_check = time.time()
         return True
 
     def register_callback(self, window):
@@ -147,6 +164,7 @@ class factory_PreFinalCheck(test.test):
         # configure verifier
         self.verifier = MiniVerifier()
         self.verifier.set_test_info(status_file_path, test_list)
+        self.last_check = None
 
         self.COLOR_DISABLED = gtk.gdk.Color(0x7000, 0x7000, 0x7000)
         self.COLOR_PASSED = ful.LIGHT_GREEN
