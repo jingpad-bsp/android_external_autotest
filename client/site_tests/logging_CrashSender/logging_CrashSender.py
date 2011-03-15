@@ -254,7 +254,6 @@ class logging_CrashSender(crash_test.CrashTest):
         the job eventually runs the sender."""
         minidump = self._prepare_sender_one_crash(send_success=True,
                                                   reports_enabled=True,
-                                                  username='root',
                                                   report=None)
         if not os.path.exists(minidump):
             raise error.TestError('minidump not created')

@@ -10,6 +10,61 @@ from autotest_lib.client.common_lib import error
 
 
 class CrashTest(test.test):
+    """
+    This class deals with running crash tests, which are tests which crash a
+    user-space program (or the whole machine) and generate a core dump. We
+    want to check that the correct crash dump is available and can be
+    retrieved.
+
+    Chromium OS has a crash sender which checks for new crash data and sends
+    it to a server. This crash data is used to track software quality and find
+    bugs. The system crash sender normally is always running, but can be paused
+    by creating _PAUSE_FILE. When crash sender sees this, it pauses operation.
+
+    The pid of the system crash sender is stored in _CRASH_SENDER_RUN_PATH so
+    we can use this to kill the system crash sender for when we want to run
+    our own.
+
+    For testing purposes we sometimes want to run the crash sender manually.
+    In this case we can set 'OVERRIDE_PAUSE_SENDING=1' in the environment and
+    run the crash sender manually (as a child process).
+
+    Also for testing we sometimes want to mock out the crash sender, and just
+    have it pretend to succeed or fail. The _MOCK_CRASH_SENDING file is used
+    for this. If it doesn't exist, then the crash sender runs normally. If
+    it exists but is empty, the crash sender will succeed (but actually do
+    nothing). If the file contains something, then the crash sender will fail.
+
+    If the user consents to sending crash tests, then the _CONSENT_FILE will
+    exist in the home directory. This test needs to create this file for the
+    crash sending to work.
+
+    Crash reports are rate limited to a certain number of reports each 24
+    hours. If the maximum number has already been sent then reports are held
+    until later. This is administered by a directory _CRASH_SENDER_RATE_DIR
+    which contains one temporary file for each time a report is sent.
+
+    The class provides the ability to push a consent file. This disables
+    consent for this test but allows it to be popped back at later. This
+    makes nested tests easier. If _automatic_consent_saving is True (the
+    default) then consent will be pushed at the start and popped at the end.
+
+    Interesting variables:
+        _log_reader: the log reader used for reading log files
+        _leave_crash_sending: True to enable crash sending on exit from the
+            test, False to disable it. (Default True).
+        _automatic_consent_saving: True to push the consent at the start of
+            the test and pop it afterwards. (Default True).
+
+    Useful places to look for more information are:
+
+    chromeos/src/platform/crash-reporter/crash_sender
+        - sender script which crash crash reporter to create reports, then
+
+    chromeos/src/platform/crash-reporter/
+        - crash reporter program
+    """
+
 
     _CONSENT_FILE = '/home/chronos/Consent To Send Stats'
     _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
@@ -26,8 +81,14 @@ class CrashTest(test.test):
     def _set_system_sending(self, is_enabled):
         """Sets whether or not the system crash_sender is allowed to run.
 
+        This is done by creating or removing _PAUSE_FILE.
+
         crash_sender may still be allowed to run if _set_child_sending is
-        called with true and it is run as a child process."""
+        called with True and it is run as a child process.
+
+        Args:
+            is_enabled: True to enable crash_sender, False to disable it.
+        """
         if is_enabled:
             if os.path.exists(self._PAUSE_FILE):
                 os.remove(self._PAUSE_FILE)
@@ -36,7 +97,16 @@ class CrashTest(test.test):
 
 
     def _set_child_sending(self, is_enabled):
-        """Overrides crash sending enabling for child processes."""
+        """Overrides crash sending enabling for child processes.
+
+        When the system crash sender is disabled this test can manually run
+        the crash sender as a child process. Normally this would do nothing,
+        but this function sets up crash_sender to ignore its disabled status
+        and do its job.
+
+        Args:
+            is_enabled: True to enable crash sending for child processes.
+        """
         if is_enabled:
             os.environ['OVERRIDE_PAUSE_SENDING'] = "1"
         else:
@@ -44,15 +114,28 @@ class CrashTest(test.test):
 
 
     def _reset_rate_limiting(self):
+        """Reset the count of crash reports sent today.
+
+        This clears the contents of the rate limiting directory which has
+        the effect of reseting our count of crash reports sent.
+        """
         utils.system('rm -rf ' + self._CRASH_SENDER_RATE_DIR)
 
 
     def _clear_spooled_crashes(self):
+        """Clears system and user crash directories.
+
+        This will remove all crash reports which are waiting to be sent.
+        """
         utils.system('rm -rf ' + self._SYSTEM_CRASH_DIR)
         utils.system('rm -rf ' + self._USER_CRASH_DIR)
 
 
     def _kill_running_sender(self):
+        """Kill the the crash_sender process if running.
+
+        We use the PID file to find the process ID, then kill it with signal 9.
+        """
         if not os.path.exists(self._CRASH_SENDER_RUN_PATH):
             return
         running_pid = int(utils.read_file(self._CRASH_SENDER_RUN_PATH))
@@ -63,6 +146,16 @@ class CrashTest(test.test):
 
 
     def _set_sending_mock(self, mock_enabled, send_success=True):
+        """Enables / disables mocking of the sending process.
+
+        This uses the _MOCK_CRASH_SENDING file to achieve its aims. See notes
+        at the top.
+
+        Args:
+            mock_enabled: If True, mocking is enabled, else it is disabled.
+            send_success: If mock_enabled this is True for the mocking to
+                indicate success, False to indicate failure.
+        """
         if mock_enabled:
             if send_success:
                 data = ''
@@ -75,6 +168,14 @@ class CrashTest(test.test):
 
 
     def _set_consent(self, has_consent):
+        """Sets whether or not we have consent to send crash reports.
+
+        This creates or deletes the _CONSENT_FILE to control whether
+        crash_sender will consider that it has consent to send crash reports.
+
+        Args:
+            has_consent: True to indicate consent, False otherwise
+        """
         if has_consent:
             utils.open_write_close(self._CONSENT_FILE, 'test-consent')
             logging.info('Created ' + self._CONSENT_FILE)
@@ -91,16 +192,24 @@ class CrashTest(test.test):
 
 
     def _get_pushed_consent_file_path(self):
+        """Returns filename of the pushed consent file."""
         return os.path.join(self.bindir, 'pushed_consent')
 
 
     def _push_consent(self):
+        """Push the consent file, thus disabling consent.
+
+        The consent file can be created in the new test if required. Call
+        _pop_consent() to restore the original state.
+        """
         if os.path.exists(self._CONSENT_FILE):
             shutil.move(self._CONSENT_FILE,
                         self._get_pushed_consent_file_path())
 
 
     def _pop_consent(self):
+        """Pop the consent file, enabling/disabling consent as it was before
+        we pushed the consent."""
         self._set_consent(False)
         if os.path.exists(self._get_pushed_consent_file_path()):
             shutil.move(self._get_pushed_consent_file_path(),
@@ -108,6 +217,13 @@ class CrashTest(test.test):
 
 
     def _get_crash_dir(self, username):
+        """Returns full path to the crash directory for a given username
+
+        Args:
+            username: username to use:
+                'chronos': Returns user crash directory.
+                'root': Returns system crash directory.
+        """
         if username == 'chronos':
             return self._USER_CRASH_DIR
         else:
@@ -115,6 +231,7 @@ class CrashTest(test.test):
 
 
     def _initialize_crash_reporter(self):
+        """Start up the crash reporter."""
         utils.system('%s --init --nounclean_check' % self._CRASH_REPORTER_PATH)
         # Completely disable crash_reporter from generating crash dumps
         # while any tests are running, otherwise a crashy system can make
@@ -123,6 +240,15 @@ class CrashTest(test.test):
 
 
     def write_crash_dir_entry(self, name, contents):
+        """Writes an empty file to the system crash directory.
+
+        This writes a file to _SYSTEM_CRASH_DIR with the given name. This is
+        used to insert new crash dump files for testing purposes.
+
+        Args:
+            name: Name of file to write.
+            contents: String to write to the file.
+        """
         entry = os.path.join(self._SYSTEM_CRASH_DIR, name)
         if not os.path.exists(self._SYSTEM_CRASH_DIR):
             os.makedirs(self._SYSTEM_CRASH_DIR)
@@ -132,6 +258,16 @@ class CrashTest(test.test):
 
     def write_fake_meta(self, name, exec_name, payload, log=None,
                         complete=True):
+        """Writes a fake meta entry to the system crash directory.
+
+        Args:
+            name: Name of file to write.
+            exec_name: Value for exec_name item.
+            payload: Value for payload item.
+            log: Value for log item.
+            complete: True to close off the record, otherwise leave it
+                incomplete.
+        """
         last_line = ''
         if complete:
             last_line = 'done=1\n'
@@ -148,8 +284,19 @@ class CrashTest(test.test):
     def _prepare_sender_one_crash(self,
                                   send_success,
                                   reports_enabled,
-                                  username,
                                   report):
+        """Create metadata for a fake crash report.
+
+        This enabled mocking of the crash sender, then creates a fake
+        crash report for testing purposes.
+
+        Args:
+            send_success: True to make the crash_sender success, False to make
+                it fail.
+            reports_enabled: True to enable consent to that reports will be
+                sent.
+            report: Report to use for crash, if None we create one.
+        """
         self._set_sending_mock(mock_enabled=True, send_success=send_success)
         self._set_consent(reports_enabled)
         if report is None:
@@ -263,7 +410,6 @@ class CrashTest(test.test):
         """
         report = self._prepare_sender_one_crash(send_success,
                                                 reports_enabled,
-                                                username,
                                                 report)
         self._log_reader.set_start_by_current()
         script_output = utils.system_output(
@@ -300,6 +446,20 @@ class CrashTest(test.test):
 
 
     def _replace_crash_reporter_filter_in(self, new_parameter):
+        """Replaces the --filter_in= parameter of the crash reporter.
+
+        The kernel is set up to call the crash reporter with the core dump
+        as stdin when a process dies. This function adds a filter to the
+        command line used to call the crash reporter. This is used to ignore
+        crashes in which we have no interest.
+
+        This removes any --filter_in= parameter and optionally replaces it
+        with a new one.
+
+        Args:
+            new_parameter: This is parameter to add to the command line
+                instead of the --filter_in=... that was there.
+        """
         core_pattern = utils.read_file(self._CORE_PATTERN)[:-1]
         core_pattern = re.sub('--filter_in=\S*\s*', '',
                               core_pattern).rstrip()
@@ -309,14 +469,25 @@ class CrashTest(test.test):
 
 
     def enable_crash_filtering(self, name):
+        """Add a --filter_in argument to the kernel core dump cmdline.
+
+        Args:
+            name: Filter text to use. This is passed as a --filter_in
+                argument to the crash reporter.
+        """
         self._replace_crash_reporter_filter_in('--filter_in=' + name)
 
 
     def disable_crash_filtering(self):
+        """Remove the --filter_in argument from the kernel core dump cmdline.
+
+        Next time the crash reporter is invoked (due to a crash) it will not
+        receive a --filter_in paramter."""
         self._replace_crash_reporter_filter_in('')
 
 
     def initialize(self):
+        """Initalize the test."""
         test.test.initialize(self)
         self._log_reader = cros_logging.LogReader()
         self._leave_crash_sending = True
@@ -326,6 +497,16 @@ class CrashTest(test.test):
 
 
     def cleanup(self):
+        """Cleanup after the test.
+
+        We reset things back to the way we think they should be. This is
+        intended to allow the system to continue normal operation.
+
+        Some variables silently change the behavior:
+            _automatic_consent_saving: if True, we pop the consent file.
+            _leave_crash_sending: True to enable crash sending, False to
+                disable it
+        """
         self._reset_rate_limiting()
         self._clear_spooled_crashes()
         self._set_system_sending(self._leave_crash_sending)
@@ -345,10 +526,13 @@ class CrashTest(test.test):
         """Run crash tests defined in this class.
 
         Args:
-          test_names: array of test names
-          initialize_crash_reporter: should set up crash reporter for every run
-          must_run_all: should make sure every test in this class is mentioned
-            in test_names
+            test_names: Array of test names.
+            initialize_crash_reporter: Should set up crash reporter for every
+                run.
+            clear_spool_first: Clear all spooled user/system crashes before
+                starting the test.
+            must_run_all: Should make sure every test in this class is
+                mentioned in test_names.
         """
         if self._automatic_consent_saving:
             self._push_consent()
@@ -373,4 +557,6 @@ class CrashTest(test.test):
             self._reset_rate_limiting()
             if clear_spool_first:
                 self._clear_spooled_crashes()
+
+            # Call the test function
             getattr(self, '_test_' + test_name)()
