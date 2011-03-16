@@ -22,7 +22,17 @@ params_dict = {
 
 
 class power_LoadTest(cros_ui_test.UITest):
+    auto_login = False
     version = 2
+
+
+    def start_authserver(self):
+        """
+        Override cros_ui_test.UITest's start_authserver.
+        Do not use auth server and local dns for our test. We need to be
+        able to reach the web.
+        """
+        pass
 
 
     def ensure_login_complete(self):
@@ -67,6 +77,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._power_status = site_power_status.get_status()
         self._json_path = None
         self._force_wifi = force_wifi
+        self._testServer = None
 
         # verify that initial conditions are met:
         if self._power_status.linepower[0].online:
@@ -141,7 +152,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._wh_energy_start = self._power_status.battery[0].energy
 
         # from cros_ui_test.UITest.initialize, sans authserver & local dns.
-        (self.username, self.password) = self._UITest__resolve_creds(creds)
+        cros_ui_test.UITest.initialize(self, creds)
 
     def run_once(self):
 
@@ -154,7 +165,7 @@ class power_LoadTest(cros_ui_test.UITest):
             # the act of logging in will launch chrome with external extension.
             # NOTE: self.login() will log out the current session if it's
             # currently logged in.
-            self.login(self.username, self.password)
+            self.login()
 
             # stop powerd
             os.system('stop powerd')
@@ -239,7 +250,8 @@ class power_LoadTest(cros_ui_test.UITest):
         # cleanup backchannel interface
         if self._force_wifi:
             backchannel.teardown()
-        self._testServer.stop()
+        if self._testServer:
+            self._testServer.stop()
 
     def _percent_current_charge(self):
         return self._power_status.battery[0].charge_now * 100 / \
