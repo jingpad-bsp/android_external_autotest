@@ -29,6 +29,7 @@ class hardware_Components(test.test):
         'part_id_audio_codec',
         'part_id_cpu',
         'part_id_display_panel',
+        'part_id_dram',
         'part_id_embedded_controller',
         'part_id_ethernet',
         'part_id_flash_chip',
@@ -211,6 +212,20 @@ class hardware_Components(test.test):
             return self._not_present
 
 
+    def get_part_id_dram(self):
+        grep_cmd = 'grep i2c_dev /proc/modules'
+        i2c_loaded = (utils.system(grep_cmd, ignore_status=True) == 0)
+        if not i2c_loaded:
+            utils.system('modprobe -r i2c_dev')
+        cmd = ('mosys -l memory spd print geometry | '
+               'grep size_mb | cut -f2 -d"|"')
+        part_id = utils.system_output(cmd).strip()
+        if part_id != '':
+            return part_id
+        else:
+            return self._not_present
+
+
     def get_part_id_flash_chip(self):
         # example output:
         #  Found chip "Winbond W25x16" (2048 KB, FWH) at physical address 0xfe
@@ -224,6 +239,7 @@ class hardware_Components(test.test):
                 parts.append(match.group(1))
         part_id = ", ".join(parts)
         return part_id
+
 
     def get_part_id_ec_flash_chip(self):
         # example output:
@@ -240,6 +256,7 @@ class hardware_Components(test.test):
                 parts.append(match.group(1))
         part_id = ", ".join(parts)
         return part_id
+
 
     def get_part_id_hwqual(self):
         hwid_file = '/sys/devices/platform/chromeos_acpi/HWID'
@@ -436,7 +453,10 @@ class hardware_Components(test.test):
         for group in self._to_be_tested_cids_groups + [ self._not_test_cids ]:
             for cid in group:
                 if cid not in approved:
-                    raise error.TestFail('%s missing from database' % cid)
+                    # If we don't have any listing for this type
+                    # of part in HWID, it's not required.
+                    factory.log('Bypassing unlisted cid %s' % cid)
+                    approved[cid] = '*'
         return approved
 
 
