@@ -18,6 +18,7 @@ Security Functional test suite.
 TESTS = [
   ('security_DbusOwners', {}),
   ('security_NetworkListeners', {}),
+  ('security_ProfilePermissions', {}),
   ('security_RendererSandbox', {}),
   ('security_ReservedPrivileges', {}),
   ('security_RestartJob', {}),
