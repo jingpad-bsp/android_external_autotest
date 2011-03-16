@@ -8,11 +8,19 @@
           "CreateInterface",
           "GetInterface",
           "RemoveInterface"
+        ],
+        "signals": [
+          "InterfaceAdded",
+          "InterfaceRemoved",
+          "PropertiesChanged"
         ]
       },
       {
         "interface": "fi.w1.wpa_supplicant1.BSS",
-        "methods": []
+        "methods": [],
+        "signals": [
+          "PropertiesChanged"
+        ]
       },
       {
         "interface": "fi.w1.wpa_supplicant1.Interface",
@@ -27,13 +35,25 @@
           "RemoveNetwork",
           "Scan",
           "SelectNetwork"
+        ],
+        "signals": [
+          "ScanDone",
+          "BSSAdded",
+          "BSSRemoved",
+          "BlobAdded",
+          "BlobRemoved",
+          "NetworkAdded",
+          "NetworkRemoved",
+          "NetworkSelected",
+          "PropertiesChanged"
         ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -41,7 +61,8 @@
           "Get",
           "GetAll",
           "Set"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -65,6 +86,13 @@
           "StartDiscovery",
           "StopDiscovery",
           "UnregisterAgent"
+        ],
+        "signals": [
+          "PropertyChanged",
+          "DeviceCreated",
+          "DeviceRemoved",
+          "DeviceFound",
+          "DeviceDisappeared"
         ]
       },
       {
@@ -74,6 +102,12 @@
           "FindAdapter",
           "GetProperties",
           "ListAdapters"
+        ],
+        "signals": [
+          "PropertyChanged",
+          "AdapterAdded",
+          "AdapterRemoved",
+          "DefaultAdapterChanged"
         ]
       },
       {
@@ -81,6 +115,9 @@
         "methods": [
           "GetProperties",
           "SetProperty"
+        ],
+        "signals": [
+          "PropertyChanged"
         ]
       },
       {
@@ -88,6 +125,9 @@
         "methods": [
           "GetProperties",
           "SetProperty"
+        ],
+        "signals": [
+          "PropertyChanged"
         ]
       },
       {
@@ -95,6 +135,9 @@
         "methods": [
           "GetProperties",
           "SetProperty"
+        ],
+        "signals": [
+          "PropertyChanged"
         ]
       },
       {
@@ -103,6 +146,10 @@
           "CreateProxy",
           "ListProxies",
           "RemoveProxy"
+        ],
+        "signals": [
+          "ProxyCreated",
+          "ProxyRemoved"
         ]
       },
       {
@@ -113,7 +160,8 @@
           "RemoveRecord",
           "RequestAuthorization",
           "UpdateRecord"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.bluez.TelephonyTest",
@@ -126,13 +174,17 @@
           "RoamingStatus",
           "SetSubscriberNumber",
           "SignalStrength"
+        ],
+        "signals": [
+          "VoiceDial"
         ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -145,13 +197,17 @@
           "GetDataPlans",
           "IsAlive",
           "RequestDataPlansUpdate"
+        ],
+        "signals": [
+          "DataPlansUpdate"
         ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -184,13 +240,18 @@
           "TpmIsOwned",
           "TpmIsReady",
           "Unmount"
+        ],
+        "signals": [
+          "AsyncCallStatus",
+          "TpmInitStatus"
         ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -198,7 +259,8 @@
           "Get",
           "GetAll",
           "Set"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -209,13 +271,15 @@
         "interface": "org.chromium.LibCrosServiceInterface",
         "methods": [
           "ResolveNetworkProxy"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -223,7 +287,8 @@
           "Get",
           "GetAll",
           "Set"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -238,13 +303,17 @@
           "SetAutomaticTracking",
           "SetCarrier",
           "SoftReset"
+        ],
+        "signals": [
+          "DormancyStatus"
         ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -252,12 +321,17 @@
           "Get",
           "GetAll",
           "Set"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.ModemManager",
         "methods": [
           "EnumerateDevices"
+        ],
+        "signals": [
+          "DeviceAdded",
+          "DeviceRemoved"
         ]
       },
       {
@@ -270,6 +344,9 @@
           "GetIP4Config",
           "GetInfo",
           "Reset"
+        ],
+        "signals": [
+          "StateChanged"
         ]
       },
       {
@@ -282,6 +359,11 @@
           "GetRegistrationState",
           "GetServingSystem",
           "GetSignalQuality"
+        ],
+        "signals": [
+          "ActivationStateChanged",
+          "SignalQuality",
+          "RegistrationStateChanged"
         ]
       },
       {
@@ -289,7 +371,8 @@
         "methods": [
           "Connect",
           "GetStatus"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -319,13 +402,17 @@
           "UnlockScreen",
           "Unwhitelist",
           "Whitelist"
+        ],
+        "signals": [
+          "SessionStateChanged"
         ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -333,7 +420,8 @@
           "Get",
           "GetAll",
           "Set"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -348,13 +436,17 @@
           "GetTrack",
           "RebootIfNeeded",
           "SetTrack"
+        ],
+        "signals": [
+          "StatusUpdate"
         ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -362,7 +454,8 @@
           "Get",
           "GetAll",
           "Set"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -376,6 +469,9 @@
           "GetProperties",
           "ProposeScan",
           "SetProperty"
+        ],
+        "signals": [
+          "PropertyChanged"
         ]
       },
       {
@@ -387,6 +483,9 @@
           "MoveBefore",
           "Remove",
           "SetProperty"
+        ],
+        "signals": [
+          "PropertyChanged"
         ]
       },
       {
@@ -413,12 +512,19 @@
           "SetProperty",
           "SetServiceOrder",
           "UnregisterAgent"
+        ],
+        "signals": [
+          "PropertyChanged",
+          "StateChanged"
         ]
       },
       {
         "interface": "org.chromium.flimflam.Network",
         "methods": [
           "GetProperties"
+        ],
+        "signals": [
+          "PropertyChanged"
         ]
       },
       {
@@ -428,6 +534,9 @@
           "GetEntry",
           "GetProperties",
           "SetProperty"
+        ],
+        "signals": [
+          "PropertyChanged"
         ]
       },
       {
@@ -443,6 +552,9 @@
           "Remove",
           "SetApn",
           "SetProperty"
+        ],
+        "signals": [
+          "PropertyChanged"
         ]
       }
     ]
@@ -467,6 +579,11 @@
           "OpenSessionWithParameters",
           "Restart",
           "Stop"
+        ],
+        "signals": [
+          "SystemIdleHintChanged",
+          "SeatRemoved",
+          "SeatAdded"
         ]
       },
       {
@@ -478,6 +595,13 @@
           "GetDevices",
           "GetId",
           "GetSessions"
+        ],
+        "signals": [
+          "DeviceRemoved",
+          "DeviceAdded",
+          "SessionRemoved",
+          "SessionAdded",
+          "ActiveSessionChanged"
         ]
       },
       {
@@ -502,13 +626,20 @@
           "Lock",
           "SetIdleHint",
           "Unlock"
+        ],
+        "signals": [
+          "Unlock",
+          "Lock",
+          "IdleHintChanged",
+          "ActiveChanged"
         ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -516,7 +647,8 @@
           "Get",
           "GetAll",
           "Set"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -544,13 +676,19 @@
           "RequestName",
           "StartServiceByName",
           "UpdateActivationEnvironment"
+        ],
+        "signals": [
+          "NameOwnerChanged",
+          "NameLost",
+          "NameAcquired"
         ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       }
     ]
   },
@@ -561,7 +699,8 @@
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -569,7 +708,8 @@
           "Get",
           "GetAll",
           "Set"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DeviceKit",
@@ -578,74 +718,9 @@
           "EnumerateBySubsystem",
           "InhibitShutdown",
           "UninhibitShutdown"
-        ]
-      }
-    ]
-  },
-  {
-    "Object_name": "org.freedesktop.DeviceKit.Disks",
-    "interfaces": [
-      {
-        "interface": "org.freedesktop.DBus.Introspectable",
-        "methods": [
-          "Introspect"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.DBus.Properties",
-        "methods": [
-          "Get",
-          "GetAll",
-          "Set"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.DeviceKit.Disks",
-        "methods": [
-          "DriveInhibitAllPolling",
-          "DriveSetAllSpindownTimeouts",
-          "DriveUninhibitAllPolling",
-          "DriveUnsetAllSpindownTimeouts",
-          "EnumerateDeviceFiles",
-          "EnumerateDevices",
-          "FindDeviceByDeviceFile",
-          "FindDeviceByMajorMinor",
-          "Inhibit",
-          "LinuxMdCreate",
-          "LinuxMdStart",
-          "Uninhibit"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.DeviceKit.Disks.Device",
-        "methods": [
-          "DriveAtaSmartInitiateSelftest",
-          "DriveAtaSmartRefreshData",
-          "DriveDetach",
-          "DriveEject",
-          "DriveInhibitPolling",
-          "DrivePollMedia",
-          "DriveSetSpindownTimeout",
-          "DriveUninhibitPolling",
-          "DriveUnsetSpindownTimeout",
-          "FilesystemCheck",
-          "FilesystemCreate",
-          "FilesystemListOpenFiles",
-          "FilesystemMount",
-          "FilesystemSetLabel",
-          "FilesystemUnmount",
-          "JobCancel",
-          "LinuxMdAddComponent",
-          "LinuxMdCheck",
-          "LinuxMdRemoveComponent",
-          "LinuxMdStop",
-          "LuksChangePassphrase",
-          "LuksLock",
-          "LuksUnlock",
-          "PartitionCreate",
-          "PartitionDelete",
-          "PartitionModify",
-          "PartitionTableCreate"
+        ],
+        "signals": [
+          "DeviceEvent"
         ]
       }
     ]
@@ -657,7 +732,8 @@
         "interface": "org.freedesktop.DBus.Introspectable",
         "methods": [
           "Introspect"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -665,7 +741,8 @@
           "Get",
           "GetAll",
           "Set"
-        ]
+        ],
+        "signals": []
       },
       {
         "interface": "org.freedesktop.DeviceKit.Power",
@@ -673,6 +750,12 @@
           "EnumerateDevices",
           "Hibernate",
           "Suspend"
+        ],
+        "signals": [
+          "Changed",
+          "DeviceChanged",
+          "DeviceRemoved",
+          "DeviceAdded"
         ]
       },
       {
@@ -681,6 +764,9 @@
           "GetHistory",
           "GetStatistics",
           "Refresh"
+        ],
+        "signals": [
+          "Changed"
         ]
       },
       {
@@ -691,6 +777,10 @@
           "GetLatencyRequests",
           "RequestLatency",
           "SetMinimumLatency"
+        ],
+        "signals": [
+          "RequestsChanged",
+          "LatencyChanged"
         ]
       },
       {
@@ -698,46 +788,10 @@
         "methods": [
           "GetData",
           "GetTotal"
-        ]
-      }
-    ]
-  },
-  {
-    "Object_name": "org.freedesktop.PolicyKit1",
-    "interfaces": [
-      {
-        "interface": "org.freedesktop.DBus.Introspectable",
-        "methods": [
-          "Introspect"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.DBus.Peer",
-        "methods": [
-          "GetMachineId",
-          "Ping"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.DBus.Properties",
-        "methods": [
-          "Get",
-          "GetAll",
-          "Set"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.PolicyKit1.Authority",
-        "methods": [
-          "AuthenticationAgentResponse",
-          "CancelCheckAuthorization",
-          "CheckAuthorization",
-          "EnumerateActions",
-          "EnumerateTemporaryAuthorizations",
-          "RegisterAuthenticationAgent",
-          "RevokeTemporaryAuthorizationById",
-          "RevokeTemporaryAuthorizations",
-          "UnregisterAuthenticationAgent"
+        ],
+        "signals": [
+          "DataChanged",
+          "TotalChanged"
         ]
       }
     ]

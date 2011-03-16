@@ -158,6 +158,14 @@ class security_DbusMap(test.test):
 
 
     def add_member(self, dbus_list, dest, iface, member):
+        return self._add_surface(dbus_list, dest, iface, member, 'methods')
+
+
+    def add_signal(self, dbus_list, dest, iface, signal):
+        return self._add_surface(dbus_list, dest, iface, signal, 'siginals')
+
+
+    def _add_surface(self, dbus_list, dest, iface, member, slot):
         """
         This can add an entry for a member function to a given
         dbus list. It behaves somewhat like "mkdir -p" in that
@@ -183,12 +191,17 @@ class security_DbusMap(test.test):
                 iface_idx = i
         if iface_idx == -1:
             dbus_list[dest_idx]['interfaces'].append({'interface': iface,
+                                                      'signals': [],
                                                       'methods': []})
+
+        # Ensure the slot exists.
+        if not slot in dbus_list[dest_idx]['interfaces'][iface_idx]:
+            dbus_list[dest_idx]['interfaces'][iface_idx][slot] = []
 
         # Add member so long as it's not a duplicate.
         if not member in (
-            dbus_list[dest_idx]['interfaces'][iface_idx]['methods']):
-            dbus_list[dest_idx]['interfaces'][iface_idx]['methods'].append(
+            dbus_list[dest_idx]['interfaces'][iface_idx][slot]):
+            dbus_list[dest_idx]['interfaces'][iface_idx][slot].append(
                 member)
 
 
@@ -293,15 +306,20 @@ class security_DbusMap(test.test):
 
                 for interface in dbus_object['interfaces']:
                     if interface['interface'] in bl_interface_names:
-                        # This interface is in the baseline, check the methods.
-                        index = bl_interface_names.index(interface['interface'])
-                        bl_methods = set(bl_object_interfaces[index]['methods'])
-                        methods = set(interface['methods'])
-                        difference = methods.difference(bl_methods)
-                        if (len(difference) > 0):
-                            # This is a new method we need to track.
+                        # The interface was baselined, check methods/signals.
+                        diffslots = {}
+                        for slot in ['methods', 'signals']:
+                            index = bl_interface_names.index(
+                                interface['interface'])
+                            bl_methods = set(bl_object_interfaces[index][slot])
+                            methods = set(interface[slot])
+                            difference = methods.difference(bl_methods)
+                            diffslots[slot] = list(difference)
+                        if diffslots['methods'] or diffslots['signals']:
+                            # This is a new thing we need to track.
                             new_methods = {'interface':interface['interface'],
-                                           'methods':list(difference)}
+                                           'methods': diffslots['methods'],
+                                           'signals': diffslots['signals']}
                             new_object['interfaces'].append(new_methods)
                             new_items.append(new_object)
                     else:
@@ -350,16 +368,19 @@ class security_DbusMap(test.test):
             if ((child.nodeType == 1) and (child.localName == u'node')):
                 interfaces = child.getElementsByTagName('interface')
                 for interface in interfaces:
-                    # For storage we will have a dictionary with two keys.
-                    # TODO(jimhebert): Also get the signals out of here,
-                    # in addition to the methods.
+                    # First get the methods.
                     methods = interface.getElementsByTagName('method')
                     method_list = []
                     for method in methods:
                         method_list.append(method.getAttribute('name'))
-                    # Create the dictionary.
+                    # Repeat the process for signals.
+                    signals = interface.getElementsByTagName('signal')
+                    signal_list = []
+                    for signal in signals:
+                        signal_list.append(signal.getAttribute('name'))
+                    # Create the dictionary with both.
                     dictionary = {'interface':interface.getAttribute('name'),
-                                  'methods':method_list}
+                                  'methods':method_list, 'signals':signal_list}
                     if dictionary not in dbus_objects:
                         dbus_objects.append(dictionary)
                 nodes = child.getElementsByTagName('node')
@@ -416,6 +437,12 @@ class security_DbusMap(test.test):
                             self.add_member(user_observed,
                                             objdict['Object_name'],
                                             ifacedict['interface'], meth)
+                    # We don't do permission-checking on signals because
+                    # signals are allow-all by default. Just copy them over.
+                    for sig in ifacedict['signals']:
+                        self.add_signal(user_observed,
+                                        objdict['Object_name'],
+                                        ifacedict['interface'], sig)
             test_pass = test_pass and self.mutual_compare(user_observed,
                                                           user_baseline, user)
         if not test_pass:
