@@ -22,7 +22,7 @@ class platform_KernelErrorPaths(test.test):
         #             'preserved RAM' not being enabled.
         self.client.run('sysctl kernel.panic|grep "kernel.panic = -1"');
         self.client.run('sysctl kernel.panic_on_oops|'
-                        'grep kernel.panic_on_oops = 1');
+                        'grep "kernel.panic_on_oops = 1"');
 
         command = "echo %s > /proc/breakme" % text
         logging.info("KernelErrorPaths: executing '%s' on %s" %
