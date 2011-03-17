@@ -74,6 +74,7 @@ class platform_KernelErrorPaths(test.test):
         # bugs:
         # 'deadlock' (has to be sent twice), 'softlockup', 'irqlockup'
         test_tuples = (
+            ('softlockup', 'BUG: soft lockup'),
             ('bug', 'kernel BUG at'),
             ('nmiwatchdog', 'BUG: NMI Watchdog detected LOCKUP'),
             ('nullptr',
