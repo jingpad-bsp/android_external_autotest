@@ -56,6 +56,8 @@ class WiFiTest(object):
       client_netperf          run netperf on the client to the server
       server_netperf          run netperf on the server to the client
       vpn_client_load_tunnel  load 'tun' device for VPN client
+      vpn_client_kill         Kill the running VPN client.  Do nothing
+                              if not running.
       vpn_client_config       launch a VPN client to connect with the
                               VPN server
 
@@ -1214,6 +1216,12 @@ class WiFiTest(object):
                      'ca-certificate'     : path to CA certificate file
                      'client-certificate' : path to client certificate file
                      'client-key'         : path to client key file
+
+              'remote-cert-tls' : optional
+                    If provided, this option can be 'server', 'client' or
+                    'none'.
+                    If not specified, the default is 'none'.
+                    The value provided is passed directly to 'connect-vpn'.
         """
         self.vpn_client_kill({}) # Must be first.  Relies on self.vpn_kind.
         self.vpn_kind = params.get('kind', None)
@@ -1225,13 +1233,23 @@ class WiFiTest(object):
         if self.vpn_kind is None:
             raise error.TestFail('No VPN kind specified for this test.')
         elif self.vpn_kind == 'openvpn':
-            # connect-vpn openvpn <name> <host> <domain> <cafile> <certfile>
-            result = self.client.run('%s/test/connect-vpn openvpn '
-                                     'vpn-name %s vpn-domain '
+            remote_cert_tls_option = ""
+            remote_cert_tls        = params.get('remote-cert-tls', None)
+
+            if remote_cert_tls is not None:
+                remote_cert_tls_option = "--remote-cert-tls " + remote_cert_tls
+
+            # connect-vpn openvpn [options] <name> <host-ip> <domain> \
+            #                               <cafile> <certfile> <key-file>
+            result = self.client.run('%s/test/connect-vpn '
+                                     '--verbose '
+                                     '%s '
+                                     'openvpn vpn-name %s vpn-domain '
                                      '%s '   # ca certificate
                                      '%s '   # client certificate
                                      '%s' %  # client key
                                      (self.client_cmd_flimflam_lib,
+                                      remote_cert_tls_option,
                                       vpn_host_ip,
                                       cert_pathnames['ca-certificate'],
                                       cert_pathnames['client-certificate'],
@@ -1244,7 +1262,7 @@ class WiFiTest(object):
         """ Kill the VPN client if it's running. """
         if self.vpn_kind is not None:
             if self.vpn_kind == 'openvpn':
-                self.server.run("pkill openvpn")
+                self.client.run("pkill openvpn")
             else:
                 raise error.TestFail('(internal error): No kill case '
                                      'for VPN kind (%s)' % self.vpn_kind)
