@@ -18,12 +18,16 @@ Security Functional test suite.
 TESTS = [
   ('security_DbusOwners', {}),
   ('security_NetworkListeners', {}),
-  ('security_ProfilePermissions', {}),
+  ('security_ProfilePermissions', {'creds': '$default', 'tag': 'login'}),
+  #TODO(jimhebert) Uncomment this after chromium-os:13173 is fixed.
+  #('security_ProfilePermissions', {'creds': None, 'tag': 'BWSI'}),
   ('security_RendererSandbox', {}),
-  ('security_ReservedPrivileges', {}),
+  ('security_ReservedPrivileges', {'owner_type': 'user', 'tag': 'user'}),
+  ('security_ReservedPrivileges', {'owner_type': 'group', 'tag': 'group'}),
   ('security_RestartJob', {}),
   ('security_RootfsOwners', {}),
-  ('security_SuidBinaries', {}),
+  ('security_SuidBinaries', {'baseline': 'suid', 'tag': 'suid'}),
+  ('security_SuidBinaries', {'baseline': 'sgid', 'tag': 'sgid'}),
 ]
 
 # A dict which holds {machine: [(test, argv), (test, argv), ...]}
