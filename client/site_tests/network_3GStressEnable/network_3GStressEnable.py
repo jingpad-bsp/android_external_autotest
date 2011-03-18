@@ -42,8 +42,16 @@ class network_3GStressEnable(test.test):
         service = flim.FindElementByNameSubstring('Service', 'cellular')
         if service:
             # If cellular's already up, take it down to start.
-	    service.SetProperty('AutoConnect', False)
-	    self.SetPowered(device, 0)
+            try:
+                service.SetProperty('AutoConnect', False)
+            except dbus.exceptions.DBusException, error:
+                # If the device has never connected to the cellular service
+                # before, flimflam will raise InvalidService when attempting
+                # to change the AutoConnect property.
+                if error._dbus_error_name != 'org.chromium.flimflam.'\
+                                             'Error.InvalidService':
+                    raise error
+            self.SetPowered(device, 0)
         for t in xrange(max, min, -1):
             for _ in xrange(cycles):
                 self.test(device, t / 10.0)
