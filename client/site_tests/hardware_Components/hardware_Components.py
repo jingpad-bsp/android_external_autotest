@@ -269,7 +269,7 @@ class hardware_Components(test.test):
 
     def get_part_id_keyboard(self):
         # VPD value "initial_locale"="en-US" should be listed.
-        cmd = 'vpd -l | grep initial_locale | cut -f4 -d\'"\' '
+        cmd = 'vpd -i RO_VPD -l | grep \"keyboard_layout\" | cut -f4 -d\'"\' '
         part_id = utils.system_output(cmd).strip()
         if part_id != '':
             return part_id

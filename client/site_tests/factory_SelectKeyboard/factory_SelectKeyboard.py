@@ -22,20 +22,23 @@ from autotest_lib.client.common_lib import error
 
 # Mapping between menu choice and KB.
 kb_map = {
-  '1': 'en-US',
-  '2': 'en-GB',
-  'q': None,
+  '1': ('United States', 'en-US', 'xkb:us::eng'),
+  '2': ('United Kingdom', 'en-GB', 'xkb:gb:extd:eng'),
+  'q': ('None', None, None)
 }
 
 # Message to display.
 msg = ('Choose a keyboard:\n' +
-      "".join([ '%s) %s\n' % (i, kb_map[i]) for i in sorted(kb_map)]))
+      "".join([ '%s) %s - %s\n' % (i, kb_map[i][0], kb_map[i][1])
+                                   for i in sorted(kb_map)]))
 
 class factory_SelectKeyboard(test.test):
     version = 1
 
     def write_kb(self, kb):
-        cmd = 'vpd -s "initial_locale"="%s"' % kb
+        cmd = 'vpd -i RO_VPD -s "initial_locale"="%s"' % kb[1]
+        utils.system_output(cmd)
+        cmd = 'vpd -i RO_VPD -s "keyboard_layout"="%s"' % kb[2]
         utils.system_output(cmd)
 
     def key_release_callback(self, widget, event):

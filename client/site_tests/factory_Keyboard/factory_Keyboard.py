@@ -130,7 +130,10 @@ class factory_Keyboard(test.test):
     preserve_srcdir = True
 
     def get_layout_from_vpd(self):
-       """ vpd should contain "initial_locale"="en-US" or similar. """
+       """ vpd should contain
+          "initial_locale"="en-US"
+          "keyboard_layout"="xkb:us::eng"
+       or similar. """
        cmd = 'vpd -l | grep initial_locale | cut -f4 -d\'"\''
        layout = utils.system_output(cmd).strip()
        if layout != '':
