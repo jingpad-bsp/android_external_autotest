@@ -35,6 +35,7 @@ class hardware_Components(test.test):
         'part_id_flash_chip',
         'part_id_ec_flash_chip',
         'part_id_hwqual',
+        'part_id_keyboard',
         'part_id_storage',
         'part_id_tpm',
         'part_id_wireless',
@@ -266,6 +267,14 @@ class hardware_Components(test.test):
         else:
             return self._not_present
 
+    def get_part_id_keyboard(self):
+        # VPD value "initial_locale"="en-US" should be listed.
+        cmd = 'vpd -l | grep initial_locale | cut -f4 -d\'"\' '
+        part_id = utils.system_output(cmd).strip()
+        if part_id != '':
+            return part_id
+        else:
+            return self._not_present
 
     def get_part_id_storage(self):
         cmd = ('cd $(find /sys/devices -name sda)/../..; '
