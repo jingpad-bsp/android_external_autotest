@@ -4,7 +4,7 @@
 
 import logging, time
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import site_power_status
+from autotest_lib.client.cros import power_status
 
 
 class power_StatsCPUIdle(test.test):
@@ -12,7 +12,7 @@ class power_StatsCPUIdle(test.test):
 
 
     def run_once(self, test_time=60):
-        cpuidle_stats = site_power_status.CPUIdleStats()
+        cpuidle_stats = power_status.CPUIdleStats()
 
         # sleep for some time to allow the system to go into idle state
         time.sleep(test_time)

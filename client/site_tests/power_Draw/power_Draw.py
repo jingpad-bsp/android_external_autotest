@@ -4,7 +4,7 @@
 
 import logging, time
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import site_power_status
+from autotest_lib.client.cros import power_status
 
 
 class power_Draw(test.test):
@@ -12,7 +12,7 @@ class power_Draw(test.test):
 
 
     def run_once(self, seconds=200):
-        status = site_power_status.get_status()
+        status = power_status.get_status()
         if status.linepower[0].online:
             logging.warn('AC power is online -- '
                          'unable to monitor energy consumption')

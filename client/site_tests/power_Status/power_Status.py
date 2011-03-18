@@ -4,7 +4,7 @@
 
 import logging
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import site_power_status
+from autotest_lib.client.cros import power_status
 
 
 
@@ -13,6 +13,6 @@ class power_Status(test.test):
 
 
     def run_once(self):
-        status = site_power_status.get_status()
+        status = power_status.get_status()
         logging.info("battery_energy: %f" % status.battery[0].energy)
         logging.info("linepower_online: %s" % status.linepower[0].online)

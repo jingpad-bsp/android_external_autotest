@@ -17,8 +17,8 @@ This test enforces the following contraints:
  - Device should be plugged in to an AC outlet
  - In 4 hours, the battery charge should increase by at least 94% of maximum
 
-This test depends on site_power_status.py, which is included in
-client/common_lib/ in AutoTest. site_power_status.py has many status
+This test depends on power_status.py, which is included in
+client/cros/ in AutoTest. power_status.py has many status
 initialization and parsing routines for battery status.
 """
 

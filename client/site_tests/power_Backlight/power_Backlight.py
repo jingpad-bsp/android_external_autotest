@@ -4,8 +4,8 @@
 
 import logging, os, time
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error, site_power_status
-from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cros_ui, power_status
 
 class power_Backlight(test.test):
     version = 1
@@ -24,7 +24,7 @@ class power_Backlight(test.test):
         cros_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset dpms 0 0 0')
         cros_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset -dpms')
 
-        status = site_power_status.get_status()
+        status = power_status.get_status()
         if status.linepower[0].online:
             raise error.TestFail('Machine must be unplugged')
 

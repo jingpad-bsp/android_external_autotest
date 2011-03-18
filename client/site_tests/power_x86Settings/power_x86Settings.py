@@ -3,8 +3,10 @@
 # found in the LICENSE file.
 
 import glob, logging, os, re
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, site_power_status, utils
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import power_status
+
 
 # Specify registers to check.  The format needs to be:
 #   register offset : ('bits', 'expression')
@@ -43,8 +45,8 @@ class power_x86Settings(test.test):
         self._pci_read32_cmd = 'iotools pci_read32'
         self._mmio_read32_cmd = 'iotools mmio_read32'
 
-        power_status = site_power_status.get_status()
-        if power_status.linepower[0].online:
+        status = power_status.get_status()
+        if status.linepower[0].online:
             logging.info('AC Power is online')
             self._on_ac = True
         else:
