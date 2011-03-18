@@ -21,6 +21,7 @@ import logging
 import time
 import os
 import sys
+import utils
 
 from gtk import gdk
 
@@ -128,12 +129,28 @@ class factory_Keyboard(test.test):
     version = 1
     preserve_srcdir = True
 
+    def get_layout_from_vpd(self):
+       """ vpd should contain "initial_locale"="en-US" or similar. """
+       cmd = 'vpd -l | grep initial_locale | cut -f4 -d\'"\''
+       layout = utils.system_output(cmd).strip()
+       if layout != '':
+           return layout
+       return None
+
     def run_once(self, layout=None):
 
         factory.log('%s run_once' % self.__class__)
 
         os.chdir(self.srcdir)
 
+        # Autodetect from VPD.
+        if not layout:
+            layout = self.get_layout_from_vpd()
+        # Default to United States.
+        if not layout:
+            layout = 'en-US'
+
+        factory.log("Using keyboard layout %s" % layout)
         try:
             kbd_image = cairo.ImageSurface.create_from_png('%s.png' % layout)
             image_size = (kbd_image.get_width(), kbd_image.get_height())
