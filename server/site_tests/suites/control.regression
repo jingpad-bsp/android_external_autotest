@@ -90,10 +90,6 @@ TESTS = [
 #  ('realtimecomm_GTalkAudioBench', {}),
   ('realtimecomm_GTalkunittest', {}),
   ('unixbench', {}),
-# desktopui_UrlFetch has an undesired 'shutdown' command inside which will cause
-# consecutive test to be aborted unexpectly. Move it to the end of the test
-# loop.
-  ('desktopui_UrlFetch', {}),
 ]
 
 # A dict which holds {machine: [(test, argv), (test, argv), ...]}
