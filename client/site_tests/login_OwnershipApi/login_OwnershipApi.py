@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 import dbus
+import dbus.glib
+import gobject
 import logging
 import os
 import tempfile
@@ -18,6 +20,7 @@ class login_OwnershipApi(test.test):
 
     _testuser = 'cryptohometest@chromium.org'
     _testpass = 'testme'
+    _testpolicydata = 'hooberbloob'
 
     _tempdir = None
 
@@ -47,6 +50,16 @@ class login_OwnershipApi(test.test):
         return basename
 
 
+    def __log_and_stop(self, ret_code):
+        logging.info("exited %s" % ret_code)
+        self._loop.quit()
+
+
+    def __log_err_and_stop(self, e):
+        logging.debug(e)
+        self._loop.quit()
+
+
     def run_once(self):
         keyfile = ownership.generate_and_register_owner_keypair(self._testuser,
                                                                 self._testpass)
@@ -59,13 +72,27 @@ class login_OwnershipApi(test.test):
 
         sig = ownership.sign(keyfile, self._testuser)
         sm.Whitelist(self._testuser, dbus.ByteArray(sig))
-        sm.CheckWhitelist(self._testuser)
+        wl_sig = sm.CheckWhitelist(self._testuser, byte_arrays=True)
+        if sig != wl_sig:
+            raise error.TestFail("CheckWhitelist signature mismatch")
+
+        sm.StorePolicy(self._testpolicydata,
+                       reply_handler=self.__log_and_stop,
+                       error_handler=self.__log_err_and_stop)
+
         sm.Unwhitelist(self._testuser, dbus.ByteArray(sig))
         try:
             sm.CheckWhitelist(self._testuser)
             raise error.TestFail("Should not have found user in whitelist!")
         except dbus.DBusException as e:
             logging.debug(e)
+
+        self._loop = gobject.MainLoop()
+        self._loop.run()
+
+        retrieved_policy = sm.RetrievePolicy()
+        if retrieved_policy != self._testpolicydata:
+            raise error.TestFail('Policy should not be %s' % retrieved_policy)
 
 
     def cleanup(self):
