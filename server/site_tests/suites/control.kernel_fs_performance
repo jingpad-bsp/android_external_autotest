@@ -29,7 +29,7 @@ TESTS = [
   ('bonnie', {'extra_args':'-s512:256 -r0 -n128'}),
   ('compilebench', {}),
   ('iozone', {}),
- # ('ddtest', {}),
+  ('ddtest', {}),
 ]
 
 
