@@ -217,10 +217,14 @@ class hardware_Components(test.test):
         grep_cmd = 'grep i2c_dev /proc/modules'
         i2c_loaded = (utils.system(grep_cmd, ignore_status=True) == 0)
         if not i2c_loaded:
-            utils.system('modprobe -r i2c_dev')
+            utils.system('modprobe i2c_dev')
+
         cmd = ('mosys -l memory spd print geometry | '
                'grep size_mb | cut -f2 -d"|"')
         part_id = utils.system_output(cmd).strip()
+
+        if not i2c_loaded:
+            utils.system('modprobe -r i2c_dev')
         if part_id != '':
             return part_id
         else:
