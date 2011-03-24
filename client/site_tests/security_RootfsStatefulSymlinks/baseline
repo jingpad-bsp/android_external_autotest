@@ -1,0 +1,51 @@
+{
+  "/etc/chromium/policies": {
+    "can_dangle": true,
+    "destination": "/home/chronos/user/var/browser-policies",
+    "owner": "chronos",
+    "group": "chronos",
+    "mode": "0755"
+  },
+  "/etc/localtime": {
+    "can_dangle": false,
+    "destination": "/var/lib/timezone/localtime",
+    "owner": "root",
+    "group": "root",
+    "mode": "0644"
+  },
+  "/etc/opt/chrome/policies": {
+    "can_dangle": true,
+    "destination": "/home/chronos/user/var/browser-policies",
+    "owner": "chronos",
+    "group": "chronos",
+    "mode": "0755"
+  },
+  "/etc/resolv.conf": {
+    "can_dangle": false,
+    "destination": "/var/run/flimflam/resolv.conf",
+    "owner": "root",
+    "group": "root",
+    "mode": "0644"
+  },
+  "/usr/bin/python": {
+    "can_dangle": true,
+    "destination": "/usr/local/bin/python2.6",
+    "owner": "root",
+    "group": "root",
+    "mode": "0755"
+  },
+  "/usr/bin/python2": {
+    "can_dangle": true,
+    "destination": "/usr/local/bin/python2.6",
+    "owner": "root",
+    "group": "root",
+    "mode": "0755"
+  },
+  "/opt/google/chrome/extensions/external_extensions.json": {
+    "can_dangle": true,
+    "destination": "/usr/local/autotest/tests/external_extensions.json",
+    "owner": "root",
+    "group": "root",
+    "mode": "0755"
+  }
+}

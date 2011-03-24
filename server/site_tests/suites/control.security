@@ -26,6 +26,7 @@ TESTS = [
   ('security_ReservedPrivileges', {'owner_type': 'group', 'tag': 'group'}),
   ('security_RestartJob', {}),
   ('security_RootfsOwners', {}),
+  ('security_RootfsStatefulSymlinks', {}),
   ('security_SuidBinaries', {'baseline': 'suid', 'tag': 'suid'}),
   ('security_SuidBinaries', {'baseline': 'sgid', 'tag': 'sgid'}),
 ]
