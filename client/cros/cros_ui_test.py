@@ -299,7 +299,7 @@ class UITest(test.test):
         logout_complete_regex = re.compile(login.LOGOUT_COMPLETE_MSG)
 
         in_logout = False
-        for line in self._log_reader.get_logs().splitlines():
+        for line in self._log_reader.get_logs().split('\n'):
             if logout_start_regex.search(line):
                 in_logout = True
             elif logout_complete_regex.search(line):

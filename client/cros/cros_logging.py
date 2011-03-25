@@ -13,33 +13,12 @@ class LogReader(object):
     A class to read system log files.
     """
 
-    def __init__(self, filename='/var/log/messages', include_rotated_logs=True):
+    def __init__(self, filename='/var/log/messages'):
         self._start_line = 1
         self._filename = filename
-        self._include_rotated_logs = include_rotated_logs
         if not os.path.exists(CLEANUP_LOGS_PAUSED_FILE):
             raise error.TestError('LogReader created without ' +
                                   CLEANUP_LOGS_PAUSED_FILE)
-
-
-    def read_all_logs(self, start=1):
-        """Read all content from log files.
-
-        Genrator function.
-        Return an iterator on the content of files.
-        """
-        log_files = []
-        line_number = 1
-        if self._include_rotated_logs:
-            log_files.extend(utils.system_output('ls -tr1 %s.*' %
-                                                  self._filename).splitlines())
-        log_files.append(self._filename)
-        for log_file in log_files:
-            f = open(log_file)
-            for line in f:
-                if line_number >= start:
-                    yield line
-                line_number += 1
 
 
     def set_start_by_regexp(self, index, regexp):
@@ -49,16 +28,17 @@ class LogReader(object):
                 Negative numbers indicate matches since end of log.
         """
         regexp_compiled = re.compile(regexp)
+        file_handle = open(self._filename, 'r')
         starts = []
         line_number = 1
-        for line in self.read_all_logs():
+        for line in file_handle:
             if regexp_compiled.match(line):
                 starts.append(line_number)
             line_number += 1
         if index < -len(starts):
             self._start_line = 1
         elif index >= len(starts):
-            self._start_line = line_number
+            self.set_start_by_current()
         else:
             self._start_line = starts[index]
 
@@ -79,10 +59,8 @@ class LogReader(object):
         @param relative: line relative to current to start at.  1 means
                 to start the log after this line.
         """
-        count = relative
-        for line in self.read_all_logs(start=self._start_line):
-            count += 1
-        self._start_line = count
+        lines = utils.system_output('wc -l %s' % self._filename)
+        self._start_line = int(lines.split(' ')[0]) + relative
 
 
     def get_logs(self):
@@ -93,21 +71,15 @@ class LogReader(object):
 
         @return string of contents of file since start line.
         """
-        logs = []
-        for line in self.read_all_logs(start=self._start_line):
-            logs.append(line)
-        return '\n'.join(logs)
-
+        return utils.system_output('tail -n +%d %s' %
+                                   (self._start_line, self._filename))
 
     def can_find(self, string):
         """ Try to find string in the logs.
 
         @return boolean indicating if we found the string.
         """
-        for line in self.read_all_logs(start=self._start_line):
-            if string in line:
-                return True
-        return False
+        return string in self.get_logs()
 
 
 class LogRotationPauser(object):
