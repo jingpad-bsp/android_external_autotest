@@ -27,26 +27,13 @@ _REBOOT_SEQ_ITERATIONS = 2
 # Change this to the duration of SAT during run-in (suggested 10+ mins).
 _SAT_DURATION_SECS = 60
 
-# Change this to match your local log upload site.
-_LOG_UPLOAD_DESTINATION = {
-  'method': 'ftp',
-  'host': '*',  # change to hostname/IP of destination. '*' will bypass upload.
-  'port': 21,  # change this if you are using different port.
-  'user': 'anonymous',  # change this if you have a specific login id.
-  'passwd': '*',  # change this to password of the login id.
-  'initdir': '',  # change this if you want to assign the folder to store logs.
-  'timeout': 3*60,  # change this if you have a really poor slow network...
-  # 'gzip': False, # uncomment if you don't want the logs to be gzipped
-
-  # 'filename_pattern': '%(hash)s.log%(gz)s',
-  ## Uncomment and change the above filename_pattern if you want to customize
-  ## the filename to be upload. Supported variables are:
-  ##  hash: a SHA1 hash of log file
-  ##  gz: '.gz' if the 'gzip' param is True, otherwise empty string
-  ##  vpd_*: any values reported by 'mosys vpd' command
-  ## Examples: '%(vpd_product_serial_number)s.log%(gz)s'
-}
-
+# Change this to match your local report upload site.
+# You can use a FTP url like: ftp://user:pass@host:port/path/file
+# VPD variables NAME=VALUE can be used as %(vpd_NAME).
+# Ex: serial=123 => $(vpd_serial).log => 123.log
+_REPORT_UPLOAD_METHOD = 'none'  # WARNING: none is ONLY ALLOWED FOR DEBUGGING.
+# REPORT UPLOADING IS REQUIRED TO BE SET AT BUILD TIME.
+# REPORTS MUST BE PROVIDED TO GOOGLE, MACHINES WITHOUT LOGS CANNOT BE SUPPORTED.
 
 # -- END OF CUSTOMIZATION VARIABLES --------------------------------
 
@@ -107,13 +94,12 @@ TEST_LIST = [
                 label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
                 iterations=_REBOOT_SEQ_ITERATIONS)]),
 
-    #TODO(hungte) unlock keyboard when the layout image is ready
-    #OperatorTest(
-    #    label_en='keyboard',
-    #    label_zw='鍵盤',
-    #    autotest_name='factory_Keyboard',
-    #    kbd_shortcut='k',
-    #    dargs={'layout':'en_us'}),
+    OperatorTest(
+        label_en='keyboard',
+        label_zw='鍵盤',
+        autotest_name='factory_Keyboard',
+        kbd_shortcut='k',
+        dargs={'layout':'en_us'}),
 
     OperatorTest(
         label_en='touchpad',
@@ -121,14 +107,7 @@ TEST_LIST = [
         autotest_name='factory_Touchpad',
         kbd_shortcut='t'),
 
-    # XXX this is commented because LED controller is EC specific
-    #OperatorTest(
-    #    label_en='leds',
-    #    label_zw='機身側燈',
-    #    autotest_name='factory_Leds',
-    #    kbd_shortcut='l',
-    #    dargs={'led_ctl_path':
-    #             '/usr/local/autotest/site_tests/factory_Leds/src/ec_ctl'}),
+    # XXX led is removed because LED controller is EC specific
 
     OperatorTest(
         label_en='display',
@@ -136,14 +115,7 @@ TEST_LIST = [
         autotest_name='factory_Display',
         kbd_shortcut='m'),
 
-    # XXX this is commented because not every device has HDMI ports
-    #OperatorTest(
-    #    label_en='x-display',
-    #    label_zw='外接顯示',
-    #    autotest_name='factory_ExtDisplay',
-    #    kbd_shortcut='n',
-    #    dargs={'has_audio':True,
-    #           'audio_sample_path':'site_tests/suite_Factory/fhorn.wav'}),
+    # XXX x-display is removed because not every device has HDMI ports
 
     OperatorTest(
         label_en='camera',
@@ -191,73 +163,12 @@ TEST_LIST = [
     #    kbd_shortcut='w',
     #    dargs={'msg':'wifi test, one day...'}),
 
-    # XXX this is commented because light sensor controlling seems not portable
-    # for some devices
-    #OperatorTest(
-    #    label_en='light sensor',
-    #    label_zw='光感應器',
-    #    autotest_name='factory_LightSensor',
-    #    dargs={'lux_max':1000, 'lux_min':1},
-    #    kbd_shortcut='i'),
+    # XXX light sensor is removed because it's not portable
 
-    # XXX this is commented because only ChromeOS hardware design provides it.
-    # THIS IS A GOOGLE REQUIRED TEST.
-    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
-    #OperatorTest(
-    #    label_en='devrec',
-    #    label_zw='還原模式',
-    #    autotest_name='factory_DeveloperRecovery',
-    #    unique_name='GRT_DevRec',
-    #    kbd_shortcut='b',
-    #    dargs={'layout':'devrec'}),
+    # XXX devrec is removed because only ChromeOS hardware design provides it.
 
-    # XXX this is commented because only ChromeOS hardware have hw-qual-id
-    # THIS IS A GOOGLE REQUIRED TEST.
-    # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
-    #AutomatedSequence(
-    #    label_en='HWID',
-    #    label_zw='硬體代號',
-    #    subtest_tag_prefix='hwid',
-    #    kbd_shortcut='h',
-    #    subtest_list=[
+    # XXX hwid is removed because only ChromeOS devices gets hw-qual-id
 
-    #        # THIS IS A GOOGLE REQUIRED TEST.
-    #        # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
-    #        # Match HW-Qual-ID by setting ignored_cids.
-    #        AutomatedSubTest(
-    #            label_en='hw-qual-id matching',
-    #            label_zw='型號匹配',
-    #            autotest_name='hardware_Components',
-    #            unique_name='hw-qual-id-match',
-    #            dargs={'approved_dbs':'data_*/components*',
-    #                   'ignored_cids':[
-    #                       'hash_ro_firmware',
-    #                       'part_id_hwqual',
-    #                       'version_rw_firmware']}),
-
-    #        AutomatedSubTest(
-    #            label_en='gpio switch check',
-    #            label_zw='檢查 gpio 開關',
-    #            autotest_name='hardware_GPIOSwitches'),
-
-    #        AutomatedSubTest(
-    #            label_en='write GBB',
-    #            label_zw='寫入GBB',
-    #            autotest_name='factory_WriteGBB'),
-
-    #        AutomatedRebootSubTest(
-    #            label_en='reboot',
-    #            label_zw='重新開機',
-    #            iterations=1),
-
-    #        AutomatedSubTest(
-    #            label_en='component validation',
-    #            label_zw='元件驗證',
-    #            unique_name='GRT_HWComponents',
-    #            autotest_name='hardware_Components')]),
-
-    # XXX 'final verify' is hacked by 'pre flight' because only some Google
-    # Required Tests are skipped for non-ChromeOS devies.
     # THIS IS A GOOGLE REQUIRED TEST.
     # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
     AutomatedSequence(
@@ -266,41 +177,25 @@ TEST_LIST = [
         subtest_tag_prefix='finalize',
         kbd_shortcut='f',
         subtest_list=[
+            # The pre-flight is to help operators checking if everything is OK.
+            # You can remove the step if you want a fully automated process.
             AutomatedSubTest(
                 label_en='pre flight',
                 label_zw='就緒檢查',
-                unique_name=factory.FINAL_VERIFICATION_TEST_UNIQUE_NAME,
                 autotest_name='factory_PreFinalCheck'),
-    #        AutomatedSubTest(
-    #            label_en='final verification',
-    #            label_zw='最後驗證',
-    #            unique_name=factory.FINAL_VERIFICATION_TEST_UNIQUE_NAME,
-    #            autotest_name='factory_Verify',
-    #            dargs={
-    #                'check_and_enable_write_protect':True,
-    #            }),
-    #        AutomatedSubTest(
-    #            label_en='Log VPD Data',
-    #            label_zw='記錄產品資料 (VPD)',
-    #            autotest_name='factory_LogVpd'),
-    #        # NOTE: factory_Verify.dargs support following variables for
-    #        # temporary testing. You can add these settings to help internal
-    #        # test, but THESE ARE GOOGLE REQUIRED TESTS SO YOU SHOULD NOT
-    #        # DISABLE THEM IN PRODUCTION RELEASES.
-    #        #  - check_developer_switch: check for developer button switch
-    #        #  - check_required_tests: check if all required tests are passed
-    #        #  - check_and_enable_write_protect: enable and check flash ROM
-    #        #    write protection
+            # The finalize is required for every products.
+            # You can't remove this step.
             AutomatedSubTest(
-                label_en='upload log reports',
-                label_zw='上傳記錄',
-                autotest_name='factory_UploadLogs',
-                dargs={'destination':_LOG_UPLOAD_DESTINATION}),
-            AutomatedSubTest(
-                label_en='wipe',
-                label_zw='清除',
-                autotest_name='factory_Wipe',
-                dargs={'secure_wipe':_DO_FACTORY_SECURE_WIPE})]),
+                label_en='finalize',
+                label_zw='最終程序',
+                autotest_name='factory_Finalize',
+                dargs={
+                    # TODO(hungte) we may need a hack to bypass most checks.
+                    'check_required_tests': True,
+                    'check_and_enable_write_protect': False,
+                    'upload_method': _REPORT_UPLOAD_METHOD,
+                    'secure_wipe': _DO_FACTORY_SECURE_WIPE,
+                })]),
 
     InformationScreen(
         label_en='review',

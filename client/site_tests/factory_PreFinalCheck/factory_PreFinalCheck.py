@@ -12,55 +12,36 @@ from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import gpio
+from autotest_lib.client.cros import gooftools
 
 
 # TODO(hungte) We may consider using real factory_Verify in the future.
 class MiniVerifier(object):
     """ Simplified version of factory_Verify. """
 
-    def __init__(self):
-        self._gpio = gpio.Gpio(error.TestError)
-        self._gpio.setup()
-
     def set_test_info(self, status_file, test_list):
         """ Configures the test list map """
         self.status_file = status_file
         self.test_list = test_list
 
-    def read_gpio_uint(self, filename):
-        """ Reads an unsigned integer from given GPIO entry
-            Returns: >=0 for valid data, otherwise failure.
-        """
-        try:
-            status = self._gpio.read(filename)
-        except:
-            return -1
-        return status
-
     def check_developer_switch(self):
         """ Checks if developer switch button is disabled """
-        return self.read_gpio_uint("developer_switch") == 0
+        try:
+            gooftools.run('gooftool --verify_switch_dev')
+        except:
+            return False
+        return True
 
     def check_write_protect(self):
         """ Checks if hardware write protection pin is enabled """
-        return self.read_gpio_uint("write_protect") == 1
-
-    def check_vboot_state(self):
-        data = utils.system_output("dev_debug_vboot | grep ' OK$'",
-                                   ignore_status=True)
-        # factory.log(data)
-        if (data.find('Verify firmware B') < 0 or
-            data.find('Test kernel_subkey_b') < 0 or
-            data.find('Test hd_kern_b.') < 0 or
-            data.find('Verify hd_kern_b.blob with kernel_subkey_b') < 0):
+        try:
+            gooftools.run('gooftool --verify_switch_wp')
+        except:
             return False
         return True
 
     def check_required_tests(self):
         """ Checks if all previous tests are passed """
-        # NOTE the real 'required test' check in factory_Verify also checks
-        # "Google Required Tests", which is not verified here.
         db = factory.TestDatabase(self.test_list)
         status_map = factory.StatusMap(self.test_list, self.status_file, db)
         if status_map.filter_by_status(ful.FAILED):
@@ -69,7 +50,7 @@ class MiniVerifier(object):
 
 
 class factory_PreFinalCheck(test.test):
-    version = 2
+    version = 3
 
     # messages for localization
     MSG_START = ("Press SPACE to start checking for finalization.\n"
@@ -92,8 +73,6 @@ class factory_PreFinalCheck(test.test):
                              "停用開發者開關 (Developer Switch)"),
         'write_protect': ("Enable write protection pin\n"
                           "確認硬體寫入保護已開啟"),
-        'vboot_state': ("Keys for verified boot are matched\n"
-                        "驗證開機所需各金鑰符合磁碟映像內容"),
     }
 
     def run_verify(self, vector):

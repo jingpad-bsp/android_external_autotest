@@ -6,36 +6,18 @@ import glob, os
 
 from autotest_lib.client.bin import factory, test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import gbb_util
+from autotest_lib.client.cros import gooftools
 
 
 class factory_WriteGBB(test.test):
-    version = 3
+    """ Updates system firmware GBB data with probed HWID information. """
+    version = 4
 
     def run_once(self):
-        # More convenient to set the CWD to hardware_Components since a lot of
-        # values in the component list are based on that directory.
-        os.chdir(os.path.join(self.bindir, '../hardware_Components'))
-
         # If found the HwQual ID in shared_data, identify the component files.
-        id_hwqual = factory.get_shared_data('part_id_hwqual')
-        if id_hwqual:
-            id_hwqual = id_hwqual.replace(' ', '_')
-            component_file = 'data_*/components_%s' % id_hwqual
-        else:
+        probed_hwid = factory.get_shared_data('last_probed_hwid')
+        if not probed_hwid:
             raise error.TestError(
                     'You need to run this test from factory UI, and have ' +
                     'successfully completed the HWQual-ID matching test ')
-
-        component_files = glob.glob(component_file)
-        if len(component_files) != 1:
-            raise error.TestError(
-                'Unable to find the component file: %s' % component_file)
-        component_file = component_files[0]
-        components = eval(utils.read_file(component_file))
-
-        gbb = gbb_util.GBBUtility(temp_dir=self.resultsdir,
-                                  keep_temp_files=True)
-        gbb.set_bmpfv(utils.read_file(components['data_bitmap_fv'][0]))
-        gbb.set_hwid(components['part_id_hwqual'][0])
-        gbb.commit()
+        gooftools.run('gooftool --write_gbb="%s" --verbose' % probed_hwid)

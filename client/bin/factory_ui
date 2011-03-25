@@ -82,7 +82,7 @@ class Console:
         factory.log('xterm_coords = %s' % xterm_coords)
         xterm_opts = ('-bg black -fg lightgray -bw 0 -g %s' % xterm_coords)
         xterm_cmd = (('urxvt %s -e bash -c ' % xterm_opts).split() +
-                     ['tail -f %s | grep FACTORY' % factory.LOG_PATH])
+                     ['tail -f %s | grep "FACTORY\\|GFT"' % factory.LOG_PATH])
         factory.log('xterm_cmd = %s' % xterm_cmd)
         self._proc = subprocess.Popen(xterm_cmd)
 
