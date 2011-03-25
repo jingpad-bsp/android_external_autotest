@@ -6,6 +6,20 @@
     "group": "chronos",
     "mode": "0755"
   },
+  "/etc/ipsec.conf": {
+    "can_dangle": true,
+    "destination": "/mnt/stateful_partition/etc/ipsec.conf",
+    "owner": "ipsec",
+    "group": "ipsec",
+    "mode": "0644"
+  },
+  "/etc/ipsec.secrets": {
+    "can_dangle": true,
+    "destination": "/mnt/stateful_partition/etc/ipsec.secrets",
+    "owner": "ipsec",
+    "group": "ipsec",
+    "mode": "0600"
+  },
   "/etc/localtime": {
     "can_dangle": false,
     "destination": "/var/lib/timezone/localtime",
