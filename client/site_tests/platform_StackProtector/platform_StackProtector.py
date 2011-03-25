@@ -46,14 +46,15 @@ class platform_StackProtector(test.test):
                " -wholename /dev -prune -o "
                " -wholename /sys -prune -o "
                " -wholename /mnt/stateful_partition -prune -o "
-               # A couple of files known to be a false positive:
-               " -wholename '/home/chronos/*Safe Browsing Bloom*' -prune -o "
-               " -wholename '/home/chronos/*Media Cache*' -prune -o "
+               " -wholename /usr/local -prune -o "
+               # There are files in /home/chronos that cause false positives,
+               # and since that's noexec anyways, it should be skipped.
+               " -wholename '/home/chronos' -prune -o "
                # libc needs to be checked differently, skip here:
                " -wholename '%s' -prune -o "
-               " -wholename '/usr/lib/gconv/libCNS.so' -prune -o"
-               " -wholename '/lib/libgcc_s.so.1' -prune -o"
-               " -type f -size +511 -exec "
+               # The various gconv locale .so's don't count:
+               " -wholename '/usr/lib/gconv/*' -prune -o"
+               " -type f -size +511c -exec "
                "sh -c 'binutils/objdump -CR {} 2>&1 | "
                "egrep -q \"(stack_chk|Invalid|not recognized)\" || echo {}' ';'"
                )

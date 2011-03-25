@@ -84,7 +84,8 @@ TESTS = [
   ('platform_ProcessPrivileges', {}),
   ('platform_Rootdev', {}),
   ('platform_SessionManagerTerm', {}),
-  ('platform_StackProtector', {}),
+# TODO(jimhebert): Restore StackProtector after http://crosbug.com/13444
+#  ('platform_StackProtector', {}),
   ('platform_TempFS', {}),
 # TODO(dalecurtis): AudioBench does not work; see http://crosbug.com/12647
 #  ('realtimecomm_GTalkAudioBench', {}),
