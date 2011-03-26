@@ -89,6 +89,10 @@ TEST_LIST = [
                 label_zw='睡眠 / 喚醒',
                 autotest_name='power_Resume'),
 
+            AutomatedSubTest(
+                label_en='GPS hardware',
+                autotest_name='hardware_GPS'),
+
             AutomatedRebootSubTest(
                 label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
                 label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
