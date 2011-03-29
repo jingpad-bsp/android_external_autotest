@@ -185,7 +185,7 @@ class audiovideo_V4L2(test.test):
         # TODO(jiesun): test with different mandatory resultions that
         # the capture device must support without scaling by ourselves.
         required_resolutions = [
-            (320, 240, 30),  # SIF
+            (320, 240, 30),  # QVGA
             (352, 288, 30),  # CIF
             (640, 480, 30),  # VGA
             (176, 144, 30)]  # QCIF

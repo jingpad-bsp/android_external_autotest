@@ -47,12 +47,13 @@ class V4L2DeviceX11 : public V4L2Device {
                     GetActualWidth(), GetActualHeight());
 
       // Initialize the XImage to store the output of YUV -> RGBA conversion.
+      int size = GetActualWidth() * GetActualHeight() * 4;
       ximage_ = XCreateImage(xdisplay_,
                             DefaultVisual(xdisplay_, DefaultScreen(xdisplay_)),
                             DefaultDepth(xdisplay_, DefaultScreen(xdisplay_)),
                             ZPixmap,
                             0,
-                            static_cast<char*>(malloc(width * height * 4)),
+                            static_cast<char*>(malloc(size)),
                             GetActualWidth(),
                             GetActualHeight(),
                             32,

@@ -124,9 +124,18 @@ bool V4L2Device::InitDevice(uint32_t width,
     return false;
   }
 
-  if (fps > 0)
-    SetFrameRate(fps);
-  fps = GetFrameRate();
+  v4l2_capability cap;
+  if (!ProbeCaps(&cap))
+    return false;
+
+  if (cap.capabilities & V4L2_CAP_TIMEPERFRAME) {
+    if (fps > 0)
+      SetFrameRate(fps);
+    fps = GetFrameRate();
+  } else {
+    // TODO(jiesun): probably we should derive this from VIDIOC_G_STD
+    fps = 30;
+  }
 
   printf("actual format for capture %dx%d %c%c%c%c picture at %d fps\n",
          fmt.fmt.pix.width, fmt.fmt.pix.height,
