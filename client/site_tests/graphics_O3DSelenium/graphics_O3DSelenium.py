@@ -54,6 +54,20 @@ class graphics_O3DSelenium(cros_ui_test.UITest):
 
     def run_once(self, timeout=300):
         os.chdir(os.path.join(self.bindir, 'O3D', 'o3d'))
+        # Pick any of these that exists. We probably don't want a generic
+        # search for ANY java, and such is not even possible at this time
+        #(java-config -J).
+        java_paths = [
+            "/usr/local/lib/icedtea6/bin/java",
+            "/usr/local/opt/icedtea6-bin-1.6.2/bin/java",
+            "" ]
+        for java_bin in java_paths:
+          if os.path.exists(java_bin):
+            break
+        # Selenium main will hang forever if --java argument !exists; fail
+        # before that happens.
+        if java_bin == "":
+          raise error.TestFail('Missing java interpreter!')
         cmd = "python tests/selenium/main.py"
         cmd = cmd + " --referencedir=o3d_assets/tests/screenshots"
         cmd = cmd + " --product_dir=./"
@@ -61,7 +75,7 @@ class graphics_O3DSelenium(cros_ui_test.UITest):
         cmd = cmd + " --browserpath=../../chrome_wrapper"
         cmd = cmd + " --browser=*googlechrome"
         cmd = cmd + " --screenshotsdir=tests/selenium/screenshots_chrome"
-        cmd = cmd + " --java=/usr/local/lib/icedtea6/bin/java"
+        cmd = cmd + " --java=" + java_bin
         cmd = cros_ui.xcommand(cmd)
         result = utils.run(cmd, ignore_status = True)
 
