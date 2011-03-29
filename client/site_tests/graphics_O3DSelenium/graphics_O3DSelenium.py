@@ -82,16 +82,16 @@ class graphics_O3DSelenium(cros_ui_test.UITest):
         # Find out total tests.
         report = re.findall(r"([0-9]+) tests run.", result.stdout)
         if not report:
-            return error.TestFail('Output missing: total test number unknown!')
+            raise error.TestFail('Output missing: total test number unknown!')
         total = int(report[-1])
         # Find out failures.
         report = re.findall(r"([0-9]+) errors.", result.stdout)
         if not report:
-            return error.TestFail('Output missing: error number unknown!')
+            raise error.TestFail('Output missing: error number unknown!')
         failures = int(report[-1])
         report = re.findall(r"([0-9]+) failures.", result.stdout)
         if not report:
-            return error.TestFail('Output missing: failure number unknown!')
+            raise error.TestFail('Output missing: failure number unknown!')
         failures += int(report[-1])
         logging.info('RESULTS: %d out of %d tests failed!', failures, total)
 
