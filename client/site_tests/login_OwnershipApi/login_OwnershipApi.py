@@ -76,23 +76,12 @@ class login_OwnershipApi(test.test):
         if sig != wl_sig:
             raise error.TestFail("CheckWhitelist signature mismatch")
 
-        sm.StorePolicy(self._testpolicydata,
-                       reply_handler=self.__log_and_stop,
-                       error_handler=self.__log_err_and_stop)
-
         sm.Unwhitelist(self._testuser, dbus.ByteArray(sig))
         try:
             sm.CheckWhitelist(self._testuser)
             raise error.TestFail("Should not have found user in whitelist!")
         except dbus.DBusException as e:
             logging.debug(e)
-
-        self._loop = gobject.MainLoop()
-        self._loop.run()
-
-        retrieved_policy = sm.RetrievePolicy()
-        if retrieved_policy != self._testpolicydata:
-            raise error.TestFail('Policy should not be %s' % retrieved_policy)
 
 
     def cleanup(self):
