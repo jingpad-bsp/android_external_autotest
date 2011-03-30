@@ -7,6 +7,9 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import rtc, sys_power
 
+START_SUSPEND_MESSAGES = [ 'Freezing user space' ]
+END_SUSPEND_MESSAGES = [ 'Back to C!', 'Resume caused by' ]
+END_RESUME_MESSAGES = [ 'Restarting tasks' ]
 
 class power_Resume(test.test):
     version = 1
@@ -38,36 +41,39 @@ class power_Resume(test.test):
         logging.debug("Last message '%s' time = %f" % (msg, msg_time))
         return msg_time
 
+    def _get_last_msg_time_multiple(self, msgs):
+        time = -1
+        for msg in msgs:
+            try:
+                time = self._get_last_msg_time(msg)
+                break
+            except error.TestError as e:
+                logging.info("%s, trying next message" % str(e))
+
+        return time
 
     def _get_start_suspend_time(self):
-        return self._get_last_msg_time('Freezing user space')
+        time = self._get_last_msg_time_multiple(START_SUSPEND_MESSAGES)
+        if time == -1:
+            raise error.TestError("Could not find start suspend time message.")
+
+        return time
 
 
     def _get_end_suspend_time(self):
-        return self._get_last_msg_time('Back to C!')
+        time = self._get_last_msg_time_multiple(END_SUSPEND_MESSAGES)
+        if time == -1:
+            raise error.TestError("Could not find end suspend time message.")
+
+        return time
 
     def _get_end_resume_time(self):
-        return self._get_last_msg_time('Finishing wakeup.')
+        time = self._get_last_msg_time_multiple(END_RESUME_MESSAGES)
+        if time == -1:
+            raise error.TestError("Could not find end resume time message.")
 
+        return time
 
-    def _is_iface_up(self, name):
-        try:
-            out = utils.system_output('/sbin/ifconfig %s' % name,
-                                       retain_output=True)
-        except error.CmdError, e:
-            logging.info(e)
-            raise error.TestError('interface %s not found' % name)
-
-        match = re.search('UP', out, re.S)
-        return match
-
-
-    def _sanity_check_system(self):
-        time.sleep(3)
-
-        iface = 'wlan0'
-        if not self._is_iface_up(iface):
-            raise error.TestFail('%s failed to come up' % iface)
 
     def _get_hwclock_seconds(self):
         """
@@ -127,6 +133,3 @@ class power_Resume(test.test):
         results['seconds_system_resume_firmware'] = firmware_resume_time
         results['seconds_system_resume_kernel'] = kernel_resume_time
         self.write_perf_keyval(results)
-
-        # Finally, sanity check critical system components
-        self._sanity_check_system()
