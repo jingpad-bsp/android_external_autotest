@@ -10,6 +10,7 @@ from autotest_lib.client.cros import constants, cros_ui, cros_ui_test, httpd
 
 WARMUP_TIME = 60
 SLEEP_DURATION = 260
+GTALK_LOG_PATH = '/tmp/gtalkplugin.log'
 
 class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
     version = 1
@@ -20,14 +21,22 @@ class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
         self.job.setup_dep([self.dep])
 
 
-    def initialize(self, creds='$default'):
+    def initialize(self, creds=None):
         self.dep_dir = os.path.join(self.autodir, 'deps', self.dep)
 
         # Start local HTTP server to serve playground.
         self._test_server = httpd.HTTPListener(
-            8001, docroot=os.path.join(self.dep_dir, 'src'))
+            port=80, docroot=os.path.join(self.dep_dir, 'src'))
         self._test_server.run()
-        super(realtimecomm_GTalkPlayground, self).initialize(creds)
+
+        # We need the initialize call to use empty creds (a guest account)
+        # so that the auth service isn't started on port 80, preventing
+        # the server we are trying to run from binding to the same port.
+        super(realtimecomm_GTalkPlayground, self).initialize(creds=None)
+
+        # Since the DNS redirection is only activated implicitly when the
+        # auth service is used, start it up explicitly.
+        super(realtimecomm_GTalkPlayground, self).use_local_dns()
 
 
     def cleanup(self):
@@ -37,9 +46,9 @@ class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
 
     def run_verification(self):
         # TODO(zhurun): Add more checking and perf data collection.
-        if not os.path.exists('/tmp/tmp.log'):
+        if not os.path.exists(GTALK_LOG_PATH):
             raise error.TestFail('GTalk log file not exist!')
-        content = utils.read_file('/tmp/tmp.log')
+        content = utils.read_file(GTALK_LOG_PATH)
         if not "Found V4L2 capture" in content:
             raise error.TestFail('V4L2 not found!')
         if not "video state, recv=1 send=1" in content:
@@ -58,11 +67,15 @@ class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
         d = {}
         # We get a framerate report every 10 seconds for both streams.
         # We run for 5 mins, and should get around (5 * 60/10) * 2 = 60
-        # framerate reports for 2 streams.
-        # Ignore the first and last framerate since they are not accurate.
-        l = re.findall(r"Rendered framerate \((.*)\): (\d+\.?\d*) fps", log)
-        if len(l) < 57:
+        # framerate reports for 2 streams. Since this is an estimate,
+        # expect the frames to be at least 90% of that count.
+        expected_frame_count = (WARMUP_TIME + SLEEP_DURATION) / 10 * 2 * .9
+
+        l = re.findall(r'Rendered framerate \((.*)\): (\d+\.?\d*) fps', log)
+        if len(l) < expected_frame_count:
             raise error.TestFail('Error in Video duration!')
+
+        # Ignore the first and last framerate since they are not accurate.
         for i in range(1, len(l) - 1):
             if d.has_key(l[i][0]):
                 d[l[i][0]] = d[l[i][0]] + float(l[i][1])
@@ -93,8 +106,11 @@ class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
 
         try:
             # Launch Playground
+            # Though we are using talk.google.com, this will be redirected
+            # to localhost, via DNS redirection
             session = cros_ui.ChromeSession(
-                'http://localhost:8001/buzz/javascript/media/examples/'
+                'http://talk.google.com/'
+                'buzz/javascript/media/examples/'
                 'videoplayground.html?callType=v')
 
             # Collect ctime,stime for GoogleTalkPlugin

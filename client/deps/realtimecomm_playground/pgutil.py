@@ -10,10 +10,14 @@ def get_pids(program_name):
     """
     Collect a list of pids for all the instances of a program.
 
+    Note that pgrep can only match against the first 15 characters
+    of a process name, so the given program_name will be trimmed
+    appropriately.
+
     @param program_name the name of the program
     @return list of pids
     """
-    pidlist = utils.system_output("pgrep ^%s$" % program_name)
+    pidlist = utils.system_output("pgrep %s" % program_name[:15])
     return pidlist.splitlines()
 
 

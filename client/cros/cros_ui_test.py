@@ -121,7 +121,7 @@ class UITest(test.test):
 
     def start_authserver(self):
         """Spin up a local mock of the Google Accounts server, then spin up
-        a locak fake DNS server and tell the networking stack to use it.  This
+        a local fake DNS server and tell the networking stack to use it.  This
         will trick Chrome into talking to our mock when we login.
         Subclasses can override this method to change this behavior.
         """
