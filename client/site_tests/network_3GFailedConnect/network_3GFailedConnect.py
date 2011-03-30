@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -46,7 +46,7 @@ class network_3GFailedConnect(test.test):
 
     def ResetAllModems(self):
         """Disable/Enable cycle all modems to ensure valid starting state."""
-        manager = mm.ModemManager()
+
         service = self.flim.FindCellularService()
         if not service:
           raise error.TestFail('No cellular service available')
@@ -54,7 +54,7 @@ class network_3GFailedConnect(test.test):
         print 'ResetAllModems: service %s' % service
         if service.GetProperties()['Favorite']:
             service.SetProperty('AutoConnect', False)
-        for path in manager.manager.EnumerateDevices():
+        for manager, path in mm.EnumerateDevices():
             modem = manager.Modem(path)
             modem.Enable(False)
             modem.Enable(True)

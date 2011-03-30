@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -79,7 +79,7 @@ class GobiDesyncEventLoop(TestEventLoop):
     # add and remove
     # UDEV  [1296763045.687859] add      /devices/virtual/QCQMI/qcqmi0 (QCQMI)
     self.udev_qcqmi = re.compile(
-        r'UDEV.*\s(?P<action>\w+).*/devices/virtual/QCQMI/qcqmi')
+        r'UDEV.*\s(?P<action>\w+).*/QCQMI/qcqmi')
 
   def NameOwnerChanged(self, name, old, new):
     if name != 'org.chromium.ModemManager':
@@ -133,7 +133,7 @@ class GobiDesyncEventLoop(TestEventLoop):
 
     try:
       if (START_DEVICE_PRESENT in self.remaining_start_conditions and
-          mm.PickOneModem(mm.ModemManager(), 'Gobi')):
+          mm.PickOneModem('Gobi')):
         self.remaining_start_conditions.discard(START_DEVICE_PRESENT)
     except org.freedesktop.DBus.Error.NoReply:
       pass
@@ -198,9 +198,8 @@ class RegularOperationTest(GobiDesyncEventLoop):
 
   def StartTest(self):
     """Actually start the test."""
-    modem_manager = mm.ModemManager()
 
-    gobi_path = mm.PickOneModem(modem_manager, 'Gobi')
+    modem_manager, gobi_path = mm.PickOneModem('Gobi')
     gobi = modem_manager.GobiModem(gobi_path)
     simple = modem_manager.SimpleModem(gobi_path)
 
@@ -218,9 +217,8 @@ class ApiConnectTest(GobiDesyncEventLoop):
 
   def StartTest(self):
     """Actually start the test."""
-    modem_manager = mm.ModemManager()
 
-    gobi_path = mm.PickOneModem(modem_manager, 'Gobi')
+    modem_manager, gobi_path = mm.PickOneModem('Gobi')
     gobi = modem_manager.GobiModem(gobi_path)
 
     modem_manager.Modem(gobi_path).Enable(0)

@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -89,7 +89,6 @@ class network_3GSmokeTest(test.test):
 
     def ResetAllModems(self):
         """Disable/Enable cycle all modems to ensure valid starting state."""
-        manager = mm.ModemManager()
         service = self.flim.FindCellularService()
         if not service:
             self.flim.EnableTechnology('cellular')
@@ -97,7 +96,7 @@ class network_3GSmokeTest(test.test):
         print 'ResetAllModems: service %s' % service
         if service and service.GetProperties()['Favorite']:
             service.SetProperty('AutoConnect', False)
-        for path in manager.manager.EnumerateDevices():
+        for manager, path in mm.EnumerateDevices():
             modem = manager.Modem(path)
             modem.Enable(False)
             modem.Enable(True)
@@ -114,10 +113,10 @@ class network_3GSmokeTest(test.test):
         Returns: dictionary of information for each modem path.
         """
         results = {}
-        manager = mm.ModemManager()
 
-        print 'Devices: %s' % ', '.join(manager.manager.EnumerateDevices())
-        for path in manager.manager.EnumerateDevices():
+        devices = mm.EnumerateDevices()
+        print 'Devices: %s' % ', '.join([p for m, p in devices])
+        for manager, path in devices:
             modem = manager.Modem(path)
             props = manager.Properties(path)
             info = {}
