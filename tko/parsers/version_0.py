@@ -264,12 +264,12 @@ class status_line(object):
         # a non-matching part, treat it and the rest of the parts as the reason.
         optional_fields = {}
         while part_index < len(parts):
-          kv = re.search(r"^(\w+)=(.+)", parts[part_index])
-          if not kv:
-            break
+            kv = re.search(r"^(\w+)=(.+)", parts[part_index])
+            if not kv:
+              break
 
-          optional_fields[kv.group(1)] = kv.group(2)
-          part_index += 1
+            optional_fields[kv.group(1)] = kv.group(2)
+            part_index += 1
 
         reason = "\t".join(parts[part_index:])
 
