@@ -27,7 +27,7 @@ class MiniVerifier(object):
     def check_developer_switch(self):
         """ Checks if developer switch button is disabled """
         try:
-            gooftools.run('gooftool --verify_switch_dev')
+            gooftools.run('gooftool --verify_switch_dev --verose')
         except:
             return False
         return True
@@ -35,7 +35,7 @@ class MiniVerifier(object):
     def check_write_protect(self):
         """ Checks if hardware write protection pin is enabled """
         try:
-            gooftools.run('gooftool --verify_switch_wp')
+            gooftools.run('gooftool --verify_switch_wp --verose')
         except:
             return False
         return True

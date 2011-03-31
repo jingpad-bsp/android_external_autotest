@@ -23,8 +23,9 @@ FAILED = 'FAIL'
 UNTESTED = 'UNTESTED'
 
 LOG_PATH = '/var/log/factory.log'
+CONSOLE_LOG_PATH = '/var/log/factory_console.log'
 DATA_PREFIX = 'FACTORY_DATA:'
-FINAL_VERIFICATION_TEST_UNIQUE_NAME = 'factory_Verify'
+LAST_PROBED_HWID_NAME = 'last_probed_hwid'
 REVIEW_INFORMATION_TEST_UNIQUE_NAME = 'ReviewInformation'
 
 _state_instance = None

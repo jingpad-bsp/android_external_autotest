@@ -16,12 +16,19 @@ class hardware_Components(test.test):
     version = 3
 
     def run_once(self, approved_dbs='approved_components', do_probe=True):
+        # In probe mode, we have to find out the matching HWID, write that into
+        # shared data LAST_PROBED_HWID_NAME, and then let factory_WriteGBB to
+        # update system. factory_Finalize will verify if that's set correctly.
+        #
+        # In verify mode, we simply check if current system matches a hardware
+        # configuration in the databases.
 
         last_probed_hwid = None
         if not do_probe:
-            # verify, or trust previous probed.
+            # Verify, or trust previous probed HWID.
             try:
-                last_probed_hwid = factory.get_shared_data('last_probed_hwid')
+                last_probed_hwid = factory.get_shared_data(
+                        factory.LAST_PROBED_HWID_NAME)
             except Exception, e:
                 # hardware_Components may run without factory environment
                 factory.log('Failed getting shared data, ignored: %s' % repr(e))
@@ -48,38 +55,56 @@ class hardware_Components(test.test):
                                   approved_dbs)
 
         if do_probe:
-            probed_hwids = gooftools.run(
-                    'gooftool --probe --db_path "%s" --verbose' % approved_dbs)
+            command = 'gooftool --probe --db_path "%s" --verbose' % approved_dbs
             pattern = 'Probed: '
-            factory.log('probe result: ' + probed_hwids)
-            probed_hwids = [hwid.lstrip(pattern)
-                            for hwid in probed_hwids.splitlines()
-                            if hwid.startswith(pattern)]
-            if len(probed_hwids) < 1:
-                raise error.TestFail('No HWID matched.')
-            if len(probed_hwids) > 1:
-                raise error.TestError('Multiple HWIDs match current system: ' +
-                                      ','.join(probed_hwids))
-            factory.log('Set last_probed_hwid = %s' % probed_hwids[0])
+            # The output format is "Probed: PATH"
+        else:
+            command = ('gooftool --verify_hwid --db_path "%s" --verbose' %
+                       approved_dbs)
+            pattern = 'Verified: '
+            # The output format is "Verified: PATH (HWID)", not a pure path.
+
+        (stdout, stderr, result) = gooftools.run(command, ignore_status=True)
+
+        # Decode successfully matched results
+        hwids = [hwid.lstrip(pattern)
+                 for hwid in stdout.splitlines()
+                 if hwid.startswith(pattern)]
+
+        # Decode unmatched results
+        if stderr.find('Unmatched ') < 0:
+            unmatched = ''
+        else:
+            start = stderr.find('Unmatched ')
+            end = stderr.rfind('Current System:')
+            if end >= 0:
+                unmatched = stderr[start:end]
+            else:
+                unmatched = stderr[start:]
+            unmatched = '\n'.join([line for line in unmatched.splitlines()
+                                   # 'gft_hwcome'/'probe' are debug message.
+                                   if not (line.startswith('gft_hwcomp:') or
+                                           line.startswith('probe:') or
+                                           (not line))])
+        # Report the results
+        if len(hwids) < 1:
+            raise error.TestFail('\n'.join(('No HWID matched.', unmatched)))
+        if len(hwids) > 1:
+            raise error.TestError('Multiple HWIDs match current system: ' +
+                                  ','.join(hwids))
+        if result != 0:
+            raise error.TestFail('HWID matched (%s) with unknown error: %s'
+                                 % hwids[0], result)
+
+        # Set the factory state sharead data for factory_WriteGBB
+        if do_probe:
+            factory.log('Set factory state shared data %s = %s' %
+                        (factory.LAST_PROBED_HWID_NAME, hwids[0]))
             try:
-                factory.set_shared_data('last_probed_hwid', probed_hwids[0])
+                factory.set_shared_data(factory.LAST_PROBED_HWID_NAME,
+                                        hwids[0])
             except Exception, e:
                 # hardware_Components may run without factory environment
                 factory.log('Failed setting shared data, ignored: %s' %
                             repr(e))
-        else:
-            verified_hwids = gooftools.run(
-                    'gooftool --verify_hwid --db_path "%s" --verbose' %
-                    approved_dbs)
-            pattern = 'Verified: '
-            # The 'verified hwid' is in format "PATH (HWID)", so we can only use
-            # it for logging instead of using it directly like in probing.
-            verified_hwids = [hwid.lstrip(pattern)
-                              for hwid in verified_hwids.splitlines()
-                              if hwid.startswith(pattern)]
-            if len(probed_hwids) < 1:
-                raise error.TestFail('No HWID matched.')
-            if len(verified_hwids) > 1:
-                raise error.TestError('Multiple HWIDs match current system: ' +
-                                      ','.join(verified_hwids))
-            factory.log('Verified: HWID=%s' % verified_hwids[0])
+        factory.log('Exact Matched: HWID=%s' % hwids[0])

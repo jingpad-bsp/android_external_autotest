@@ -115,7 +115,6 @@ class factory_Finalize(test.test):
             args.append('--debug_dryrun_wpfw')
 
         cmd = ' '.join(args)
-        factory.log('factory_Finalize: Command = ' + cmd)
         gooftools.run(cmd)
 
         # TODO(hungte) use Reboot in test list to replace this?
