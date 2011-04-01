@@ -33,7 +33,7 @@ class network_3GStressEnable(test.test):
         self.SetPowered(device, 0)
         time.sleep(settle)
 
-    def run_once(self, name='usb', cycles=3, min=5, max=15):
+    def run_once(self, name='usb', cycles=3, min=15, max=25):
         flim = flimflam.FlimFlam(dbus.SystemBus())
         device = flim.FindElementByNameSubstring('Device', name)
         if device is None:
