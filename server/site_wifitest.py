@@ -9,6 +9,7 @@ from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_linux_server
 from autotest_lib.server import site_host_attributes
+from autotest_lib.server import site_host_route
 from autotest_lib.server import site_eap_certs
 from autotest_lib.server import test
 from autotest_lib.client.common_lib import error
@@ -154,6 +155,7 @@ class WiFiTest(object):
         self.__client_discover_commands(client)
         self.profile_save({})
         self.firewall_rules = []
+        self.host_route_args = {}
 
         # interface name on client
         self.client_wlanif = client.get('wlandev',
@@ -177,6 +179,7 @@ class WiFiTest(object):
         self.profile_cleanup({})
         self.client_netdump_stop({})
         self.firewall_cleanup({})
+        self.host_route_cleanup({})
 
 
     def __must_be_installed(self, host, cmd):
@@ -1230,6 +1233,11 @@ class WiFiTest(object):
         # Must get 'ca_certificate', 'client-certificate' and 'client-key'.
         cert_pathnames = params.get('files', {})
 
+        # Starting up the VPN client may cause the DUT's routing table (esp.
+        # the default route) to change.  Set up a host route backwards so
+        # we don't lose our control connection in that event.
+        __add_host_route(self.client)
+
         if self.vpn_kind is None:
             raise error.TestFail('No VPN kind specified for this test.')
         elif self.vpn_kind == 'openvpn':
@@ -1267,6 +1275,32 @@ class WiFiTest(object):
                 raise error.TestFail('(internal error): No kill case '
                                      'for VPN kind (%s)' % self.vpn_kind)
             self.vpn_kind = None
+
+        __del_host_route(self.client)
+
+    def __add_host_route(self, host):
+        # What is the local address we use to get to the test host?
+        local_ip = site_host_route.LocalHostRoute(host.ip).route_info["src"]
+
+        # How does the test host currently get to this local address?
+        host_route = site_host_route.RemoteHostRoute(host, local_ip).route_info
+
+        # Flatten the returned dict into a single string
+        route_args = " ".join(" ".join(x) for x in host_route.iteritems())
+
+        self.host_route_args[host.ip] = "%s %s" % (local_ip, route_args)
+        host.run("ip route add %s" % self.host_route_args[host.ip])
+
+    def __del_host_route(self, host):
+        if host.ip not in self.host_route_args:
+            return
+
+        host.run("ip route del %s" % self.host_route_args.pop(host.ip))
+
+    def host_route_cleanup(self, params):
+        for host in (self.client, self.server, self.router):
+            self.__del_host_route(host)
+
 
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
