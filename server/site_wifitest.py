@@ -153,7 +153,8 @@ class WiFiTest(object):
         # potential bg thread for client network monitoring
         self.client_netdump_thread = None
         self.__client_discover_commands(client)
-        self.profile_save({})
+        self.profile_create({'name':'test'})
+        self.profile_push({'name':'test'})
         self.firewall_rules = []
         self.host_route_args = {}
 
@@ -176,7 +177,8 @@ class WiFiTest(object):
         if params.get('force_disconnect'):
             self.disconnect({})
             self.wifi.destroy({})
-        self.profile_cleanup({})
+        self.profile_pop({'name':'test'})
+        self.profile_remove({'name':'test'})
         self.client_netdump_stop({})
         self.firewall_cleanup({})
         self.host_route_cleanup({})
@@ -1103,25 +1105,33 @@ class WiFiTest(object):
 
         self.client.run("stop wpasupplicant; start wpasupplicant")
 
-    def __list_profile(self):
-        ret = []
-        result = self.client.run('%s/test/list-entries' %
-                                 self.client_cmd_flimflam_lib)
-        for line in result.stdout.splitlines():
-            m = re.search('\[(wifi_.*)\]', line)
-            if m is not None:
-                ret.append(m.group(1))
-        return ret
 
-    def profile_save(self, params):
-        self.client_profile_list = self.__list_profile()
+    def profile_create(self, params):
+        """ Create a profile with the specified name """
+        self.client.run('%s/test/create-profile %s' %
+                        (self.client_cmd_flimflam_lib, params['name']))
 
-    def profile_cleanup(self, params):
-        exceptions = params.get('except', self.client_profile_list)
-        for entry in self.__list_profile():
-            if entry not in exceptions:
-                self.client.run('%s/test/delete-entry %s' %
-                                (self.client_cmd_flimflam_lib, entry))
+    def profile_remove(self, params):
+        """ Remove the specified profile """
+        self.client.run('%s/test/rm-profile %s' %
+                        (self.client_cmd_flimflam_lib, params['name']))
+
+    def profile_push(self, params):
+        """ Push the specified profile on the stack """
+        self.client.run('%s/test/push-profile %s' %
+                        (self.client_cmd_flimflam_lib, params['name']))
+
+    def profile_pop(self, params):
+        """ Pop the specified profile from the stack or any profile
+            if no name is specified.
+        """
+        if 'name' in params:
+            self.client.run('%s/test/pop-profile %s' %
+                            (self.client_cmd_flimflam_lib, params['name']))
+        else:
+            self.client.run('%s/test/pop-profile' %
+                            (self.client_cmd_flimflam_lib))
+
 
     def __get_wifi_device_path(self):
         if self.client_wifi_device_path:
