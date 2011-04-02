@@ -67,7 +67,9 @@ TESTS = [
 #
 # TODO: Until ltp can pass on chromiumos
 #  ('ltp', {}),
-  ('network_ConnmanCromoCrash', {}),
+# TODO(stanlyew): Re-open network_ConnmanCromoCrash when crosbug.com/13272
+#                 is fixed.
+#  ('network_ConnmanCromoCrash', {}),
   ('network_UdevRename', {}),
   ('platform_AccurateTime', {'constraints': ['seconds_offset < 60']}),
   ('platform_CleanShutdown', {}),
