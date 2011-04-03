@@ -13,12 +13,36 @@ class LogReader(object):
     A class to read system log files.
     """
 
-    def __init__(self, filename='/var/log/messages'):
+    def __init__(self, filename='/var/log/messages', include_rotated_logs=True):
         self._start_line = 1
         self._filename = filename
+        self._include_rotated_logs = include_rotated_logs
         if not os.path.exists(CLEANUP_LOGS_PAUSED_FILE):
             raise error.TestError('LogReader created without ' +
                                   CLEANUP_LOGS_PAUSED_FILE)
+
+
+    def read_all_logs(self, start=0):
+        """Read all content from log files.
+
+        Generator function.
+        Return an iterator on the content of files.
+        """
+        log_files = []
+        line_number = 1
+        if self._include_rotated_logs:
+            log_files.extend(utils.system_output(
+                'ls -tr1 %s.*' % self._filename,
+                ignore_status=True).splitlines())
+        log_files.append(self._filename)
+        logging.info(log_files)
+        for log_file in log_files:
+            f = open(log_file)
+            for line in f:
+                if line_number >= start:
+                    yield line
+                line_number += 1
+            f.close()
 
 
     def set_start_by_regexp(self, index, regexp):
@@ -28,17 +52,16 @@ class LogReader(object):
                 Negative numbers indicate matches since end of log.
         """
         regexp_compiled = re.compile(regexp)
-        file_handle = open(self._filename, 'r')
         starts = []
         line_number = 1
-        for line in file_handle:
+        for line in self.read_all_logs():
             if regexp_compiled.match(line):
                 starts.append(line_number)
             line_number += 1
         if index < -len(starts):
             self._start_line = 1
         elif index >= len(starts):
-            self.set_start_by_current()
+            self._start_line = line_number
         else:
             self._start_line = starts[index]
 
@@ -53,14 +76,16 @@ class LogReader(object):
                                         r'.*000\] Linux version \d')
 
 
-    def set_start_by_current(self, relative=1):
+    def set_start_by_current(self, relative=0):
         """ Set start of logs based on current last line.
 
         @param relative: line relative to current to start at.  1 means
                 to start the log after this line.
         """
-        lines = utils.system_output('wc -l %s' % self._filename)
-        self._start_line = int(lines.split(' ')[0]) + relative
+        count = self._start_line + relative
+        for line in self.read_all_logs(start=self._start_line):
+            count += 1
+        self._start_line = count
 
 
     def get_logs(self):
@@ -71,8 +96,11 @@ class LogReader(object):
 
         @return string of contents of file since start line.
         """
-        return utils.system_output('tail -n +%d %s' %
-                                   (self._start_line, self._filename))
+        logs = []
+        for line in self.read_all_logs(start=self._start_line):
+            logs.append(line)
+        return ''.join(logs)
+
 
     def can_find(self, string):
         """ Try to find string in the logs.
