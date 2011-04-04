@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, shutil
+import logging, os, shutil, platform
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -23,6 +23,21 @@ class realtimecomm_GTalkunittest(test.test):
         'xmpp_unittest',
     ]
 
+    # On ARM, skip:
+    #  call_unittest (doesn't build)
+    #  media_unittest  (doesn't build)
+    arm_unittests = [
+        'base_unittest',
+        'browserplugin_unittest',
+        'flash_unittest',
+        'flute_unittest',
+        'p2p_unittest',
+        'sound_unittest',
+        'tunnel_unittest',
+        'xmllite_unittest',
+        'xmpp_unittest',
+    ]
+
     def run_once(self):
         # Stop Google Talk Plugin.
         utils.run('pkill GoogleTalkPlugin', ignore_status=True)
@@ -36,8 +51,13 @@ class realtimecomm_GTalkunittest(test.test):
             'chown chronos /tmp/.google-talk-plugin-theuser.lock.testlock',
             ignore_status=True)
 
+        if "arm" in platform.machine().lower():
+          unit_tests_to_run = self.arm_unittests
+        else:
+          unit_tests_to_run = self.unittests
+
         # Run all unittests.
-        for test_exe in self.unittests:
+        for test_exe in unit_tests_to_run:
             if not os.path.exists(os.path.join(talk_path, test_exe)):
                 raise error.TestFail('Missing test binary %s. Make sure gtalk '
                                      'has been emerged.' % test_exe)
