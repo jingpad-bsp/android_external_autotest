@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import time
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
@@ -37,6 +38,15 @@ class ChromiumOSHost(base_classes.Host):
         updater.run_update()
         # Updater has returned, successfully, reboot the host.
         self.reboot(timeout=60, wait=True)
+
+        # sleep for 1 min till chromeos-setgoodkernel marks the current
+        # partition as 'working'. This is the only way to commit a good update
+        # on rootfs and prevent future rollback. Note this is only a temp
+        # solution and a formal fix is under discussion.
+        time.sleep(60)
+        # then do another reboot
+        self.reboot(timeout=60, wait=True)
+
         # Following the reboot, verify the correct version.
         updater.check_version()
 
