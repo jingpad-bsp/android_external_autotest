@@ -65,8 +65,8 @@ def pairgen():
 
     The caller is responsible for cleaning up these files.
     """
-    keyfile = scoped_tempfile.tempdir.name + 'private.key'
-    certfile = scoped_tempfile.tempdir.name + 'cert.pem'
+    keyfile = scoped_tempfile.tempdir.name + '/private.key'
+    certfile = scoped_tempfile.tempdir.name + '/cert.pem'
     cmd = '%s -x509 -subj %s -newkey rsa:2048 -nodes -keyout %s -out %s' % (
         OPENSSLREQ, '/CN=me', keyfile, certfile)
     system_output_on_fail(cmd)
@@ -164,4 +164,3 @@ def sign(pem_key_file, data):
     if not sig_data:
         raise error.TestFail('Empty signature!')
     return sig_data
-
