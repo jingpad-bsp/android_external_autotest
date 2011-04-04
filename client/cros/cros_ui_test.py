@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, re, shutil, socket, sys, time
+import dbus, logging, os, re, shutil, socket, sys
 import common
 import auth_server, constants as chromeos_constants, cryptohome, dns_server
-import cros_logging, cros_ui, login
+import cros_logging, cros_ui, login, ownership
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from dbus.mainloop.glib import DBusGMainLoop
@@ -36,10 +36,11 @@ class UITest(test.test):
     version = 1
 
     auto_login = True
+    fake_owner = True
     username = None
     password = None
 
-    """Processes that we know crash and are willing to ignore."""
+    # Processes that we know crash and are willing to ignore.
     crash_blacklist = []
 
     def __init__(self, job, bindir, outputdir):
@@ -64,8 +65,8 @@ class UITest(test.test):
     def __attempt_resolve(self, hostname, ip, expected=True):
         try:
             return (socket.gethostbyname(hostname) == ip) == expected
-        except socket.gaierror, error:
-            logging.error(error)
+        except socket.gaierror as err:
+            logging.error(err)
 
     def use_local_dns(self, dns_port=53):
         """Set all devices to use our in-process mock DNS server.
@@ -130,7 +131,7 @@ class UITest(test.test):
         self.use_local_dns()
 
 
-    def initialize(self, creds=None):
+    def initialize(self, creds=None, is_creating_owner=False):
         """Overridden from test.initialize() to log out and (maybe) log in.
 
         If self.auto_login is True, this will automatically log in using the
@@ -153,6 +154,7 @@ class UITest(test.test):
                 be a named set of credentials as defined by
                 chromeos_constants.CREDENTIALS, or a 'username:password' pair.
                 Defaults to None -- browse without signing-in.
+            is_creating_owner: If the test case is creating a new device owner.
 
         """
 
@@ -165,6 +167,13 @@ class UITest(test.test):
         if creds:
             self.start_authserver()
 
+        # Fake ownership unless the test is explicitly testing owner creation.
+        if not is_creating_owner and not os.access(
+            chromeos_constants.OWNER_KEY_FILE, os.F_OK):
+            logging.info('Owner credentials not found. Faking ownership...')
+            self.__fake_ownership()
+            self.fake_owner = True
+
         if login.logged_in():
             login.attempt_logout()
 
@@ -172,18 +181,35 @@ class UITest(test.test):
         # Ensure there's no stale cryptohome from previous tests.
         try:
             cryptohome.remove_vault(self.username)
-        except cryptohome.ChromiumOSError, error:
-            logging.error(error)
-        # Ensure there's no stale owner state from previous tests.
-        try:
-            os.unlink(chromeos_constants.OWNER_KEY_FILE)
-            os.unlink(chromeos_constants.SIGNED_PREFERENCES_FILE)
-        except (IOError, OSError) as error:
-            logging.info(error)
-        login.refresh_login_screen()
+        except cryptohome.ChromiumOSError as err:
+            logging.error(err)
 
+        if is_creating_owner:
+            logging.info('Erasing stale owner state.')
+            # Ensure there's no stale owner state from previous tests.
+            try:
+                os.unlink(chromeos_constants.OWNER_KEY_FILE)
+                os.unlink(chromeos_constants.SIGNED_PREFERENCES_FILE)
+            except (IOError, OSError) as err:
+                logging.info(err)
+
+        login.refresh_login_screen()
         if self.auto_login:
             self.login(self.username, self.password)
+            if is_creating_owner:
+                login.wait_for_ownership()
+
+    def __fake_ownership(self):
+        """Fake ownership by generating the necessary magic files."""
+        # Determine the module directory.
+        dirname = os.path.dirname(__file__)
+        mock_certfile = os.path.join(dirname, 'mock_owner_cert.pem')
+        mock_signedprefsfile = os.path.join(dirname, 'mock_owner.preferences')
+        utils.open_write_close(
+            chromeos_constants.OWNER_KEY_FILE,
+            ownership.cert_extract_pubkey_der(mock_certfile))
+        shutil.copy(mock_signedprefsfile,
+                    chromeos_constants.SIGNED_PREFERENCES_FILE)
 
 
     def __canonicalize(self, credential):
@@ -210,6 +236,13 @@ class UITest(test.test):
 
 
     def __resolve_creds(self, creds):
+        """Map credential identifier to username, password and type.
+        Args:
+          creds: credential identifier to resolve.
+
+        Returns:
+          A (username, password) tuple.
+        """
         if not creds:
             return [None, None]  # Browse without signing-in.
         if creds[0] == '$':
@@ -321,13 +354,14 @@ class UITest(test.test):
         logpath = chromeos_constants.CHROME_LOG_DIR
 
         try:
-            for file in os.listdir(logpath):
-                fullpath = os.path.join(logpath, file)
+            for filename in os.listdir(logpath):
+                fullpath = os.path.join(logpath, filename)
                 if os.path.isfile(fullpath):
-                    shutil.copy(fullpath, os.path.join(self.resultsdir, file))
+                    shutil.copy(fullpath, os.path.join(self.resultsdir,
+                                                       filename))
 
-        except (IOError, OSError) as error:
-            logging.error(error)
+        except (IOError, OSError) as err:
+            logging.error(err)
 
         if login.logged_in():
             try:
@@ -335,8 +369,8 @@ class UITest(test.test):
                     os.path.join(chromeos_constants.CRYPTOHOME_MOUNT_PT,
                                  'log', 'chrome'),
                     self.resultsdir+'/chrome_postlogin_log')
-            except (IOError, OSError) as error:
-                logging.error(error)
+            except (IOError, OSError) as err:
+                logging.error(err)
             self.logout()
 
         if os.path.isfile(chromeos_constants.CRYPTOHOMED_LOG):
@@ -344,8 +378,16 @@ class UITest(test.test):
                 base = os.path.basename(chromeos_constants.CRYPTOHOMED_LOG)
                 shutil.copy(chromeos_constants.CRYPTOHOMED_LOG,
                             os.path.join(self.resultsdir, base))
-            except (IOError, OSError) as error:
-                logging.error(error)
+            except (IOError, OSError) as err:
+                logging.error(err)
+
+        if self.fake_owner:
+            logging.info('Erasing fake owner state.')
+            try:
+                os.unlink(chromeos_constants.OWNER_KEY_FILE)
+                os.unlink(chromeos_constants.SIGNED_PREFERENCES_FILE)
+            except (IOError, OSError) as err:
+                logging.info(err)
 
         self.stop_authserver()
         self.__log_crashed_processes(self.crash_blacklist)

@@ -22,6 +22,7 @@ CLEANUP_LOGS_PAUSED_FILE = '/var/lib/cleanup_logs_paused'
 CLIENT_LOGIN_URL = '/accounts/ClientLogin'
 
 CREDENTIALS = {
+    '$mockowner': ['mockowner.test.account@gmail.com', 'perfsmurf'],
     '$default': ['performance.test.account@gmail.com', 'perfsmurf'],
     '$apps': ['performance.test.account@googleapps.com', 'perfsmurf'],
     '$backdoor': ['chronos@gmail.com', 'chronos'],
@@ -53,7 +54,7 @@ LOGIN_TRUST_ROOTS = '/etc/login_trust_root.pem'
 
 ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 
-OWNER_KEY_FILE = WHITELIST_DIR+'/owner.key'
+OWNER_KEY_FILE = WHITELIST_DIR + '/owner.key'
 
 SESSION_MANAGER = 'session_manager'
 SESSION_MANAGER_LOG = '/var/log/session_manager'

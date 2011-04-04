@@ -1,8 +1,8 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import errno, logging, os, re, signal, subprocess, time
+import errno, logging, os, re, shutil, signal, subprocess, time
 import common
 import constants, cros_logging, cros_ui, cryptohome
 from autotest_lib.client.bin import utils
@@ -127,7 +127,6 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
         username: str username for login
         password: str password for login
         timeout: float number of seconds to wait
-
     Raises:
         TimeoutError: login didn't complete before timeout
         UnexpectedCondition: login manager is not running, or user is already
@@ -147,8 +146,6 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
     log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
 
-    # Up our priority so we don't get descheduled in the middle of sending key
-    # press and key release events.
     ax = cros_ui.get_autox()
     # navigate to login screen
     ax.send_hotkey("Ctrl+Alt+L")
@@ -172,9 +169,6 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
                        process='chrome',
                        log_reader=log_reader,
                        crash_msg='Chrome crashed during login')
-    if (username):
-        # We don't take ownership on Guest login; Otherwise we SIGABRT keygen
-        wait_for_ownership()
 
 
 def attempt_logout(timeout=_DEFAULT_TIMEOUT):
@@ -393,8 +387,8 @@ def refresh_login_screen(timeout=_DEFAULT_TIMEOUT):
             if os.path.isfile(fullpath):
                 os.unlink(fullpath)
 
-    except (IOError, OSError) as error:
-        logging.error(error)
+    except (IOError, OSError) as err:
+        logging.error(err)
 
     # Restart the UI.
     nuke_login_manager()

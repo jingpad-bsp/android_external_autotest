@@ -1,0 +1,15 @@
+{
+   "properties": {
+      "cros": {
+         "device": {
+            "owner": {
+               "signature": "JxC2zgZ3ckiI74qDxgU1yXCEUP5XXLTQ+uA74j/V5Ss3ctbIZrxODtQjOTwW+sZSeGmwXWjY/Rc3Ki9ZEpkk4hmrgXjhmbYbODF/QdyMM/3Ar/J36K1/as7BEs0P9P6bLx8DzPtl8QsB5elOOIyaQsNSdl1QqyyuS5nzd/6CABz6DZs/ATCm8WyGQGqwmYIpLHj6j2uiJQvtLgDSqJvC4sSCnv3+CpSXTaQCAcvQ4xurhGu4SNGtSbgVpRnsmBK0whQX6BBobbdL5buz3a6pZ6rj+kYWpGeopGgL5rnGPtEAvS6U+Z5Vb45MCb8cCD4piOQI36spmiAwv951GQp1kQ==",
+	       "value": "mockowner.test.account@gmail.com"
+            }
+         }
+      }
+   },
+   "whitelist": {
+      "mockownertestaccount@gmail.com": "ZQWhrxC6DzJMOr+Nv93YMg/1Mcm3IHPEto3B8t65Wtm4s2U+XBaf6jO8fjYu5MV9H2pCc/yXJec4E5g0MiukOOeCrKmsN8sVv89zNyat/u0ciAfEEEVJh00I7fnrgyKksES9CE/M3YxinscO8UmL8Zy6Lz0V9YbllA1/uppyRv03L+z/avvv2lDiYbyK5W58Ku86luaxdFyuzTFvTDJCP55SDwYjw+ccbyjGW+Q0zyfKuj7+Iohq1UgsMTBt9YjeVz4XTfMbrezvugV+98FJJpyG07bM/bQ4Iysh2xvWPuYLL5pTpMHcEfo2G7wGRQPRHsI3sFLnimmMAWObrcOcbg==",
+   }
+}

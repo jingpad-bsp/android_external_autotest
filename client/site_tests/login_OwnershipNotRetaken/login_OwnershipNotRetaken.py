@@ -15,7 +15,8 @@ class login_OwnershipNotRetaken(cros_ui_test.UITest):
     _TEST_PASS = 'testme'
 
     def initialize(self, creds='$default'):
-        super(login_OwnershipNotRetaken, self).initialize(creds)
+        super(login_OwnershipNotRetaken, self).initialize(
+            creds, is_creating_owner=True)
 
 
     def run_once(self):
