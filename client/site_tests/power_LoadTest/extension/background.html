@@ -5,6 +5,19 @@ found in the LICENSE file.
 --->
 
 <html>
+
+<script>
+// Convert seconds to milliseconds
+function seconds(s) {
+    return s * 1000;
+}
+
+// Convert minutes to milliseconds
+function minutes(m) {
+    return seconds(m * 60);
+}
+</script>
+
 <script src='/urls.js'>
 </script>
 
@@ -48,6 +61,46 @@ function testListener(request, sender, sendResponse) {
   }
 }
 
+function parseTaskList(tasks_string) {
+  if (tasks_string == '')
+    return [];
+  var task_strings = tasks_string.split('+');
+  var task_list = [];
+  var time = 0;
+
+  // Parse each task.
+  for (var i in task_strings) {
+    // Extract task parameters.
+    var params = task_strings[i].split(';');
+    var cmd = params[0];
+    var urls = params[1].split(',');
+    var duration = seconds(parseInt(params[2]));
+    if (params.length > 3)
+      var delay = seconds(parseInt(params[3]));
+
+    if (cmd == 'window') {
+      task_list.push( { type: 'window',
+                        start: time,
+                        duration: duration,
+                        focus: true,
+                        tabs: urls } );
+    }
+    else if (cmd == 'cycle') {
+      task_list.push( { type: 'cycle',
+                        start: time,
+                        duration: duration,
+                        delay: delay,
+                        timeout: seconds(10),
+                        focus: true,
+                        urls: urls } );
+    }
+    // Increment the time to determine the start time of the next task.
+    time += duration;
+  }
+  return task_list;
+}
+
+var task_list = [];
 
 chrome.extension.onRequest.addListener(
   function paramsSetupListener(request, sender) {
@@ -56,7 +109,8 @@ chrome.extension.onRequest.addListener(
         undefined != request._should_scroll_up &&
         undefined != request._scroll_loop &&
         undefined != request._scroll_interval_ms &&
-        undefined != request._scroll_by_pixels) {
+        undefined != request._scroll_by_pixels &&
+        undefined != request._tasks) {
       // Update test parameters from content script.
       test_time_ms = request._test_time_ms;
       should_scroll = request._should_scroll;
@@ -64,6 +118,9 @@ chrome.extension.onRequest.addListener(
       scroll_loop = request._scroll_loop;
       scroll_interval_ms = request._scroll_interval_ms;
       scroll_by_pixels = request._scroll_by_pixels;
+      task_list = parseTaskList(request._tasks);
+      if (task_list.length != 0)
+        tasks = task_list;
       time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
       chrome.extension.onRequest.removeListener(paramsSetupListener);
       chrome.extension.onRequest.addListener(testListener);
@@ -88,10 +145,10 @@ function cycle_navigate(cycle) {
   var url = cycle.urls[cycle.idx];
   chrome.tabs.update(cycle.id, {'url': url, 'selected': true});
   cycle.idx = (cycle.idx + 1) % cycle.urls.length;
-  if (cycle.timeout < cycle.delay && cycle.timeout > 0) {
+  if (cycle.timeout < cycle.delay / time_ratio && cycle.timeout > 0) {
     cycle.timer = setTimeout(cycle_check_timeout, cycle.timeout, cycle);
   } else {
-    cycle.timer = setTimeout(cycle_navigate, cycle.delay, cycle);
+    cycle.timer = setTimeout(cycle_navigate, cycle.delay / time_ratio, cycle);
   }
 }
 
@@ -100,7 +157,8 @@ function cycle_check_timeout(cycle) {
     cycle.failed_loads++;
     cycle_navigate(cycle);
   } else {
-    cycle.timer = setTimeout(cycle_navigate, cycle.delay - cycle.timeout,
+    cycle.timer = setTimeout(cycle_navigate,
+                             cycle.delay / time_ratio - cycle.timeout,
                              cycle);
   }
 }

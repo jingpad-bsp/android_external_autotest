@@ -11,9 +11,10 @@ var ViewGDoc = ('http://docs.google.com/RawDocContents?action=fetch&' +
 var tasks = [
   {
     // Chrome browser window 1. This window remains open for the entire test.
-    'type': 'window',
+    type: 'window',
+    name: 'background',
     start: 0,
-    duration: 60 * 60 * 1000,
+    duration: minutes(2),
     tabs: [
      'http://www.cnn.com',
      'http://news.google.com',
@@ -27,9 +28,9 @@ var tasks = [
     type: 'cycle',
     name: 'web',
     start: 0,
-    duration: 36 * 60 * 1000,
-    delay: 60 * 1000, // A minute on each page
-    timeout: 10 * 1000,
+    duration: minutes(36),
+    delay: seconds(60), // A minute on each page
+    timeout: seconds(10),
     focus: true,
     urls: URLS,
   },
@@ -37,10 +38,10 @@ var tasks = [
     // After 36 minutes, actively read e-mail for 12 minutes
     type: 'cycle',
     name: 'email',
-    start: 36 * 60 * 1000 + 1 * 1000,
-    duration: 12 * 60 * 1000 - 1 * 1000,
-    delay: 5 * 60 * 1000, // 5 minutes between full gmail refresh
-    timeout: 10 * 1000,
+    start: minutes(36) + seconds(1),
+    duration: minutes(12) - seconds(1),
+    delay: minutes(5), // 5 minutes between full gmail refresh
+    timeout: seconds(10),
     focus: true,
     urls: [
        'http://gmail.com',
@@ -52,10 +53,10 @@ var tasks = [
     // 12 minutes
     type: 'cycle',
     name: 'audio',
-    start: 36 * 60 * 1000,
-    duration: 12 * 60 * 1000,
-    delay: 12 * 60 * 1000,
-    timeout: 10 * 1000,
+    start: minutes(36),
+    duration: minutes(12),
+    delay: minutes(12),
+    timeout: seconds(10),
     focus: false,
     urls: [
       'http://www.bbc.co.uk/worldservice/audioconsole/?stream=live',
@@ -67,10 +68,10 @@ var tasks = [
     // After 48 minutes, play with Google Docs for 6 minutes
     type: 'cycle',
     name: 'docs',
-    start: 48 * 60 * 1000,
-    duration: 6 * 60 * 1000,
-    delay: 60 * 1000, // A minute on each page
-    timeout: 10 * 1000,
+    start: minutes(48),
+    duration: minutes(6),
+    delay: minutes(1), // A minute on each page
+    timeout: seconds(10),
     focus: true,
     urls: [
        ViewGDoc + '0AaLGACl774zLZGRuYzlibWtfMXJzbmdoamcy',
@@ -81,8 +82,8 @@ var tasks = [
     // After 54 minutes, watch Google IO for 6 minutes
     type: 'window',
     name: 'video',
-    start: 54 * 60 * 1000,
-    duration: 6 * 60 * 1000,
+    start: minutes(54),
+    duration: minutes(6),
     focus: true,
     tabs: [
         'http://www.youtube.com/v/ecI_hCBGEIM&autoplay=1'

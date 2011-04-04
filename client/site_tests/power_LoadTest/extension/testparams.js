@@ -11,6 +11,7 @@ var should_scroll_up = false;
 var scroll_loop = false;
 var scroll_interval_ms = 0;
 var scroll_by_pixels = 0;
+var tasks = "";
 
 document.getElementById('myCustomEventDiv').addEventListener('myCustomEvent',
   function() {
@@ -22,6 +23,7 @@ document.getElementById('myCustomEventDiv').addEventListener('myCustomEvent',
     scroll_loop = document.getElementById('scroll_loop').innerText;
     scroll_interval_ms = document.getElementById('scroll_interval_ms').innerText;
     scroll_by_pixels = document.getElementById('scroll_by_pixels').innerText;
+    tasks = document.getElementById('tasks').innerText;
 
     // pass to background page via sendRequest.
     var request = { _test_time_ms : test_time_ms,
@@ -29,7 +31,8 @@ document.getElementById('myCustomEventDiv').addEventListener('myCustomEvent',
                     _should_scroll_up : should_scroll_up,
                     _scroll_loop : scroll_loop,
                     _scroll_interval_ms : scroll_interval_ms,
-                    _scroll_by_pixels : scroll_by_pixels
+                    _scroll_by_pixels : scroll_by_pixels,
+                    _tasks : tasks
                   }
     chrome.extension.sendRequest(request);
   }

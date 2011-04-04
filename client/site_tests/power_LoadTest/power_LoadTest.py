@@ -17,6 +17,7 @@ params_dict = {
     'scroll_loop': '_scroll_loop',
     'scroll_interval_ms': '_scroll_interval_ms',
     'scroll_by_pixels': '_scroll_by_pixels',
+    'tasks': '_tasks',
 }
 
 
@@ -49,7 +50,7 @@ class power_LoadTest(cros_ui_test.UITest):
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', low_battery_threshold=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
-                 wifi_pw=''):
+                 wifi_pw='', tasks=""):
 
         """
         percent_initial_charge_min: min battery charge at start of test
@@ -77,6 +78,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._json_path = None
         self._force_wifi = force_wifi
         self._testServer = None
+        self._tasks = '\'' + tasks + '\''
 
         # verify that initial conditions are met:
         if self._power_status.linepower[0].online:
