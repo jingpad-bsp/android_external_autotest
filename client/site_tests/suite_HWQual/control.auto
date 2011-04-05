@@ -89,10 +89,7 @@ job.run_test('realtimecomm_GTalkPlayground',
                  'fps_gtalk_up >= 20.0',
              ])
 job.run_test('realtimecomm_GTalkAudioPlayground',
-             constraints=[
-                 'ctime_gtalk + stime_gtalk < 30',
-                 'ctime_pulse + stime_pulse < 20',
-             ])
+             constraints=['ctime_gtalk + stime_gtalk < 30'])
 job.run_test('realtimecomm_GTalkLmiCamera',
              constraints=[
                  'fps > 28',
