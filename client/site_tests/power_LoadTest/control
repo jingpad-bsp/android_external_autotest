@@ -33,8 +33,11 @@ loop_time = 3600
 loop_count = 11
 
 # To specify a list of custom tasks, pass in the task parameter:
-#    tasks='<task0> + <task1> + <task2> + ...'
+#    tasks='<task00>&<task01>+<task10>&<task11>+<task20>&<task21>+...'
 #
+# Use '+' to link together tasks sequentially, and '&' to indicate tasks that
+# should be run in parallel.
+
 # Task format:
 # - Open a window with some tabs, keep them open for some time:
 #       window;<comma-delimited urls>;<duration>
@@ -42,19 +45,23 @@ loop_count = 11
 #   given delay on each site.
 #       cycle;<comma-delimited urls>;<duration>;<delay>
 #
-# Duration and delay are given in seconds.  The tasks are sequential.  So if
+# Duration and delay are given in seconds.  With sequential tasks, if
 # task0.duration=1800 and task1.duration=1200, task0 will run for 30 minutes,
 # followed by task1 for 20 minutes, for a total of 50 minutes.
 #
 # Example: Use the 'tasks' string below.  Pass 'tasks=tasks' as an argument into
 #          job.run_test().
 
-tasks='cycle;http://www.facebook.com,http://www.google.com,http://www.yahoo' + \
-      '.com;900;60 +' + \
+tasks='window;http://www.cnn.com,http://www.ebay.com,http://www.msn.com;900' + \
+      ' & ' + \
+      'cycle;http://www.facebook.com,http://www.google.com,http://www.yahoo' + \
+      '.com;900;60 + ' + \
       'window;http://www.bing.com,http://www.gmail.com,http://www.amazon.co' + \
-      'm,http://www.ask.com;600 +' + \
-      'cycle;http://www.youtube.com,http://www.microsoft.com;900;240 +' + \
-      'window;http://www.wikipedia.org;1200'
+      'm,http://www.ask.com;600 + ' + \
+      'cycle;http://www.youtube.com,http://www.microsoft.com;900;240 + ' + \
+      'window;http://www.wikipedia.org;1200 & ' + \
+      'window;http://www.alexa.com,http://www.intel.com,http://www.apple.co' + \
+      'm;1200'
 
 job.run_test('power_LoadTest', loop_time=loop_time, loop_count=loop_count,
               low_battery_threshold=3)

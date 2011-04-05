@@ -70,32 +70,42 @@ function parseTaskList(tasks_string) {
 
   // Parse each task.
   for (var i in task_strings) {
-    // Extract task parameters.
-    var params = task_strings[i].split(';');
-    var cmd = params[0];
-    var urls = params[1].split(',');
-    var duration = seconds(parseInt(params[2]));
-    if (params.length > 3)
-      var delay = seconds(parseInt(params[3]));
+    var task_strings_parallel = task_strings[i].split('&');
+    var max_duration = 0;
 
-    if (cmd == 'window') {
-      task_list.push( { type: 'window',
-                        start: time,
-                        duration: duration,
-                        focus: true,
-                        tabs: urls } );
-    }
-    else if (cmd == 'cycle') {
-      task_list.push( { type: 'cycle',
-                        start: time,
-                        duration: duration,
-                        delay: delay,
-                        timeout: seconds(10),
-                        focus: true,
-                        urls: urls } );
+    for (var j in task_strings_parallel) {
+      // Extract task parameters.
+      var params = task_strings_parallel[j].split(';');
+      var cmd = params[0];
+      var urls = params[1].split(',');
+      var duration = seconds(parseInt(params[2]));
+      if (duration > max_duration)
+        max_duration = duration;
+      if (params.length > 3)
+        var delay = seconds(parseInt(params[3]));
+
+      if (cmd == 'window') {
+        task_list.push( { type: 'window',
+                          start: time,
+                          duration: duration,
+                          focus: true,
+                          tabs: urls } );
+      }
+      else if (cmd == 'cycle') {
+        task_list.push( { type: 'cycle',
+                          start: time,
+                          duration: duration,
+                          delay: delay,
+                          timeout: seconds(10),
+                          focus: true,
+                          urls: urls } );
+      }
+      else {
+        console.log('Unrecognized command: ' + cmd);
+      }
     }
     // Increment the time to determine the start time of the next task.
-    time += duration;
+    time += max_duration;
   }
   return task_list;
 }

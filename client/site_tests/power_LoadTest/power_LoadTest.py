@@ -78,7 +78,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._json_path = None
         self._force_wifi = force_wifi
         self._testServer = None
-        self._tasks = '\'' + tasks + '\''
+        self._tasks = '\'' + tasks.replace(' ','') + '\''
 
         # verify that initial conditions are met:
         if self._power_status.linepower[0].online:
