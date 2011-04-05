@@ -8,12 +8,17 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 class platform_StackProtector(test.test):
-    version = 2
+    version = 3
+
+    def load_whitelist(self):
+        wfile = open(os.path.join(self.bindir, 'whitelist'))
+        whitelist = wfile.read().splitlines()
+        wfile.close()
+        return set(whitelist)
 
     # http://build.chromium.org/mirror/chromiumos/mirror/distfiles/
     # binutils-2.19.1.tar.bz2
     def setup(self, tarball="binutils-2.19.1.tar.bz2"):
-        # clean
         if os.path.exists(self.srcdir):
             utils.system("rm -rf %s" % self.srcdir)
 
@@ -60,10 +65,15 @@ class platform_StackProtector(test.test):
                )
         badfiles = utils.system_output(cmd % (rootdir, self.autodir, libc_glob))
 
-        # special case check for libc, needs different objdump flags
+        # Subtract any files that were on the whitelist.
+        seen = set(badfiles.splitlines())
+        diff = seen.difference(self.load_whitelist())
+
+        # Special case check for libc, needs different objdump flags.
         cmd = "binutils/objdump -D %s | egrep -q stack_chk || echo %s"
         libc_stack_chk = utils.system_output(cmd % (libc_glob, libc_glob))
 
-        if badfiles or libc_stack_chk:
+        if diff or libc_stack_chk:
+            diff.add(libc_stack_chk)
             raise error.TestFail("Missing -fstack-protector:\n"
-                                 + badfiles + libc_stack_chk)
+                                 + "\n".join(diff))
