@@ -16,7 +16,7 @@ class power_Resume(test.test):
     preserve_srcdir = True
 
 
-    def _get_last_msg_time(self, msg):
+    def _get_last_msg(self, msg):
         cmd = "grep -a '%s' /var/log/messages | tail -n 1" % msg
         # The order in which processes are un-frozen is indeterminate
         # and therfore this test may get resumed before the system has gotten
@@ -32,6 +32,10 @@ class power_Resume(test.test):
         if count == 5:
             raise error.TestError("Failed to find log message: " + msg)
 
+        return data
+
+    def _get_last_msg_time(self, msg):
+        data = self._get_last_msg(msg)
         match = re.search(r' \[\s*([0-9.]+)\] ', data)
         if match is None:
             raise error.TestError('Failed to find timestamp for log message: '
@@ -59,6 +63,8 @@ class power_Resume(test.test):
 
         return time
 
+    def _get_end_cpu_resume_time(self):
+        return self._get_last_msg_time('CPU[0-9]\+ is up')
 
     def _get_end_suspend_time(self):
         time = self._get_last_msg_time_multiple(END_SUSPEND_MESSAGES)
@@ -74,6 +80,15 @@ class power_Resume(test.test):
 
         return time
 
+    def _get_device_resume_time(self):
+        data = self._get_last_msg("PM: resume of devices complete after")
+        match = re.search(r'PM: resume of devices complete after ([0-9.]+)',
+                          data)
+        if match is None:
+            raise error.TestError('Failed to find device resume time on line: '
+                                  + data)
+        # convert from msec to sec
+        return float(match.group(1)) / 1000
 
     def _get_hwclock_seconds(self):
         """
@@ -119,11 +134,14 @@ class power_Resume(test.test):
         start_suspend_time = self._get_start_suspend_time()
         end_suspend_time = self._get_end_suspend_time()
         end_resume_time = self._get_end_resume_time()
+        end_cpu_resume_time = self._get_end_cpu_resume_time()
+        kernel_device_resume_time = self._get_device_resume_time()
 
         # Calculate the suspend/resume times
         total_resume_time = self._get_hwclock_seconds() - alarm_time
         suspend_time = end_suspend_time - start_suspend_time
         kernel_resume_time = end_resume_time - end_suspend_time
+        kernel_cpu_resume_time = end_cpu_resume_time - end_suspend_time
         firmware_resume_time = total_resume_time - kernel_resume_time
 
         # Prepare the results
@@ -132,4 +150,6 @@ class power_Resume(test.test):
         results['seconds_system_resume'] = total_resume_time
         results['seconds_system_resume_firmware'] = firmware_resume_time
         results['seconds_system_resume_kernel'] = kernel_resume_time
+        results['seconds_system_resume_kernel_cpu'] = kernel_cpu_resume_time
+        results['seconds_system_resume_kernel_dev'] = kernel_device_resume_time
         self.write_perf_keyval(results)
