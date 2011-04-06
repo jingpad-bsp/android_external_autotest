@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib import error, global_config
 
 class ChromeTestBase(test.test):
     home_dir = None
+    chrome_restart_disabled = False
 
     def setup(self):
         self.job.setup_dep(['chrome_test'])
@@ -17,8 +18,17 @@ class ChromeTestBase(test.test):
         if not os.path.exists(self.srcdir):
             os.mkdir(self.srcdir)
 
+    def nuke_chrome(self):
+        try:
+            open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
+            self.chrome_restart_disabled = True
+        except IOError, e:
+            logging.debug(e)
+            raise error.TestError('Failed to disable browser restarting.')
+        login.nuke_process_by_name(name=constants.BROWSER, with_prejudice=True)
 
-    def initialize(self):
+
+    def initialize(self, nuke_browser_norestart = True):
         self.home_dir = tempfile.mkdtemp()
         os.chmod(self.home_dir, stat.S_IROTH | stat.S_IWOTH |stat.S_IXOTH)
         dep = 'chrome_test'
@@ -26,12 +36,8 @@ class ChromeTestBase(test.test):
         self.job.install_pkg(dep, 'dep', dep_dir)
         self.cr_source_dir = '%s/test_src' % dep_dir
         self.test_binary_dir = '%s/out/Release' % self.cr_source_dir
-        try:
-            open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
-        except IOError, e:
-            logging.debug(e)
-            raise error.TestError('Failed to disable browser restarting.')
-        login.nuke_process_by_name(name=constants.BROWSER, with_prejudice=True)
+        if (nuke_browser_norestart):
+            self.nuke_chrome()
         try:
             setup_cmd = '/bin/sh %s/%s' % (self.test_binary_dir,
                                            'setup_test_links.sh')
@@ -93,8 +99,9 @@ class ChromeTestBase(test.test):
 
 
     def cleanup(self):
-        # Allow chrome to be restarted again.
-        os.unlink(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
+        if self.chrome_restart_disabled:
+            # Allow chrome to be restarted again.
+            os.unlink(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
         # Reset the UI.
         login.nuke_login_manager()
         login.refresh_login_screen()
