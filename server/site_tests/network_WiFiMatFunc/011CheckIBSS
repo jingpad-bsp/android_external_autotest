@@ -6,11 +6,12 @@
 { "name":"CheckIBSS",
   "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"ibss" } ],
-    [ "config",         { "channel":"2412", "mode":"11b" } ],
+    [ "config",         { "channel":"2412", "mode":"11b",
+                          "local_server": {} } ],
     # There's a delay before the IBSS service becomes ready
     [ "sleep",          { "time": "5" } ],
     [ "connect",        { "security":"none", "mode":"adhoc" } ],
-    [ "client_ping",    { "count":"10" } ],
+    # [ "client_ping",    { "count":"10" } ],
     [ "destroy" ],
   ],
 }

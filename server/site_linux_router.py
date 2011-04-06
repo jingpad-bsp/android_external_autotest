@@ -27,6 +27,7 @@ class LinuxRouter(object):
         self.cmd_ip = "/usr/sbin/ip"
         self.cmd_brctl = "/usr/sbin/brctl"
         self.cmd_hostapd = "/usr/sbin/hostapd"
+        self.cmd_dhcpd = "/usr/sbin/dhcpd"
 
         # Router host.
         self.router = host
@@ -89,8 +90,17 @@ class LinuxRouter(object):
             'configured': False,
             'conf': {
                 'ssid': defssid,
+            },
+            'local_server_state': None,
+            'local_server': {
+                'address': '192.168.3.254/24',
+                'dhcp_range': (1, 128),
+                'dhcpd_conf': '/tmp/dhcpd.conf',
+                'lease_file': '/tmp/dhcpd.leases'
             }
         }
+        self.station['local_server'].update(params.get('local_server', {}))
+
         # Kill hostapd if already running.
         self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
 
@@ -116,6 +126,7 @@ class LinuxRouter(object):
 
         # Place us in the US by default
         self.router.run("%s reg set US" % self.cmd_iw)
+
 
     def create(self, params):
         """ Create a wifi device of the specified type """
@@ -320,6 +331,26 @@ class LinuxRouter(object):
         self.hostapd['configured'] = True
 
 
+    def station_local_addr(self, idx):
+        """
+        Simple IPv4 calculator.  Takes host address in "IP/bits" notation
+        and returns netmask, broadcast address as well as integer offsets
+        into the address range.
+        """
+        addr_str,bits = self.station['local_server_state']['address'].split('/')
+        addr = map(int, addr_str.split('.'))
+        mask_bits = (-1 << (32-int(bits))) & 0xffffffff
+        mask = [(mask_bits >> s) & 0xff for s in range(24, -1, -8)]
+        if idx == 'netmask':
+            return '.'.join(map(str, mask))
+        elif idx == 'broadcast':
+            offset = [m ^ 0xff for m in mask]
+        else:
+            offset = [(idx >> s) & 0xff for s in range(24, -1, -8)]
+        return '.'.join(map(str, [(a & m) + o
+                                  for a, m, o in zip(addr, mask, offset)]))
+
+
     def station_config(self, params):
         multi_interface = 'multi_interface' in params
         if multi_interface:
@@ -327,6 +358,7 @@ class LinuxRouter(object):
         elif self.station['configured'] or self.hostapd['configured']:
             self.deconfig({})
 
+        local_server = params.pop('local_server', False)
         interface = self.wlanif2
         conf = self.station['conf']
         for k, v in params.iteritems():
@@ -365,20 +397,49 @@ class LinuxRouter(object):
                         (self.cmd_iw, interface, connect_cmd,
                          conf['ssid'], freq))
 
-        # Add wireless interface to the bridge
-        self.router.run("%s addif %s %s" %
-                        (self.cmd_brctl, self.bridgeif, interface))
-        
-        # Add interface to the bridge.
-        # Bring up the bridge
-        if not multi_interface:
-            logging.info("Setting up the bridge...")
+        if self.station['type'] != 'ibss':
+            # Add wireless interface to the bridge
             self.router.run("%s addif %s %s" %
-                            (self.cmd_brctl, self.bridgeif, self.wiredif))
+                            (self.cmd_brctl, self.bridgeif, interface))
+
+            # Add wired interface to the bridge, then bring up the bridge if
+            if not multi_interface:
+                logging.info("Setting up the bridge...")
+                self.router.run("%s addif %s %s" %
+                                (self.cmd_brctl, self.bridgeif, self.wiredif))
+                self.router.run("%s link set %s up" %
+                                (self.cmd_ip, self.wiredif))
+                self.router.run("%s link set %s up" %
+                                (self.cmd_ip, self.bridgeif))
+
+        if local_server is not False:
+            logging.info("Starting up local server...")
+            params = self.station['local_server'].copy()
+            params.update(local_server or {})
+            self.station['local_server_state'] = params
+            params['subnet'] = self.station_local_addr(0)
+            params['netmask'] = self.station_local_addr('netmask')
+            params['dhcp_range'] = ' '.join(map(self.station_local_addr,
+                                                params['dhcp_range']))
+
+            params['ip_params'] = ("%s broadcast %s dev %s" %
+                                   (params['address'],
+                                    self.station_local_addr('broadcast'),
+                                    interface))
+            self.router.run("%s addr add %s" %
+                            (self.cmd_ip, params['ip_params']))
             self.router.run("%s link set %s up" %
-                            (self.cmd_ip, self.wiredif))
-            self.router.run("%s link set %s up" %
-                            (self.cmd_ip, self.bridgeif))
+                            (self.cmd_ip, interface))
+
+            self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
+                (params['dhcpd_conf'],
+                 '\n'.join(('ddns-update-style none;',
+                            'subnet %(subnet)s netmask %(netmask)s {',
+                            '   range %(dhcp_range)s;', '}')) % params))
+            self.router.run("pkill dhcpd >/dev/null 2>&1", ignore_status=True)
+            self.router.run("%s -q -cf %s -lf %s %s" %
+                            (self.cmd_dhcpd, params['dhcpd_conf'],
+                             params['lease_file'], interface))
 
         self.station['configured'] = True
         self.station['interface'] = interface
@@ -410,6 +471,13 @@ class LinuxRouter(object):
                                 (self.cmd_iw, self.station['interface']))
             self.router.run("%s link set %s down" % (self.cmd_ip,
                                                      self.station['interface']))
+            if self.station['local_server_state']:
+                self.router.run("pkill dhcpd >/dev/null 2>&1",
+                                ignore_status=True)
+                self.router.run("%s addr del %s" %
+                                (self.cmd_ip, self.station
+                                 ['local_server_state']['ip_params']))
+                self.station['local_server_state'] = None
 
         # Try a couple times to remove the bridge; hostapd may still be exiting
         for attempt in range(3):
