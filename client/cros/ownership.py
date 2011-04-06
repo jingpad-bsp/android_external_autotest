@@ -47,6 +47,19 @@ def system_output_on_fail(cmd):
         raise
 
 
+def __unlink(filename):
+    try:
+        os.unlink(filename)
+    except (IOError, OSError) as error:
+        logging.info(error)
+
+
+def clear_ownership():
+    __unlink(constants.OWNER_KEY_FILE)
+    __unlink(constants.SIGNED_PREFERENCES_FILE)
+    __unlink(constants.SIGNED_POLICY_FILE)
+
+
 NSSDB = constants.CRYPTOHOME_MOUNT_PT + '/.pki/nssdb'
 PK12UTIL = 'nsspk12util'
 OPENSSLP12 = 'openssl pkcs12'
@@ -73,13 +86,26 @@ def pairgen():
     return (keyfile, certfile)
 
 
+def pairgen_as_data():
+    """Generates keypair, returns keys as data.
+
+    Generates a fresh owner keypair and then passes back the
+    PEM-formatted private key and the DER-encoded public key.
+    """
+    (keypath, certpath) = pairgen()
+    keyfile = scoped_tempfile(keypath)
+    certfile = scoped_tempfile(certpath)
+    return (utils.read_file(keyfile.name),
+            cert_extract_pubkey_der(certfile.name))
+
+
 def push_to_nss(keyfile, certfile, nssdb):
     """Takes a pre-generated key pair and pushes them to an NSS DB.
 
     Given paths to a private key and cert in PEM format, stores the pair
     in the provided nssdb.
     """
-    for_push = scoped_tempfile(scoped_tempfile.tempdir.name + 'for_push.p12')
+    for_push = scoped_tempfile(scoped_tempfile.tempdir.name + '/for_push.p12')
     cmd = '%s -export -in %s -inkey %s -out %s ' % (
         OPENSSLP12, certfile, keyfile, for_push.name)
     cmd += '-passin pass: -passout pass:'
@@ -109,7 +135,7 @@ def cert_extract_pubkey_der(pem):
     Pass in an X509 certificate in PEM format, and you'll get back the
     DER-formatted public key as a string.
     """
-    outfile = scoped_tempfile(scoped_tempfile.tempdir.name + 'pubkey.der')
+    outfile = scoped_tempfile(scoped_tempfile.tempdir.name + '/pubkey.der')
     cmd = '%s -in %s -pubkey -noout ' % (OPENSSLX509, pem)
     cmd += '| %s -outform DER -pubin -out %s' % (OPENSSLRSA,
                                                  outfile.name)
@@ -118,27 +144,31 @@ def cert_extract_pubkey_der(pem):
     return der
 
 
-def generate_and_register_owner_keypair(testuser, testpass):
-    """Generates keypair, registers with NSS, sets owner key, returns pkey.
+def generate_and_register_keypair(testuser, testpass):
+    """Generates keypair, registers with NSS, sets owner key, returns keypair.
 
     Generates a fresh owner keypair.  Registers keys with NSS,
     puts the owner public key in the right place, ensures that the
     session_manager picks it up, ensures the owner's home dir is
-    mounted, and then passes back paths to a file containing the
-    PEM-formatted private key.
+    mounted, and then passes back the PEM-formatted private key and the
+    DER-encoded public key.
     """
-    (keyfile, certfile) = generate_owner_creds()
-    utils.open_write_close(constants.OWNER_KEY_FILE,
-                           cert_extract_pubkey_der(certfile))
+    (keypath, certpath) = generate_owner_creds()
+    keyfile = scoped_tempfile(keypath)
+    certfile = scoped_tempfile(certpath)
+
+    pubkey = cert_extract_pubkey_der(certfile.name)
+    utils.open_write_close(constants.OWNER_KEY_FILE, pubkey)
+
     login.refresh_login_screen()
     cryptohome.mount_vault(testuser, testpass, create=False)
-    return keyfile
+    return (utils.read_file(keyfile.name), pubkey)
 
 
-def sign(pem_key_file, data):
-    """Signs |data| with key from |pem_key_file|, returns signature.
+def sign(pem_key, data):
+    """Signs |data| with key from |pem_key|, returns signature.
 
-    Using the PEM-formatted private key in |pem_key_file|, generates an
+    Using the PEM-formatted private key in |pem_key|, generates an
     RSA-with-SHA1 signature over |data| and returns the signature in
     a string.
     """
@@ -148,7 +178,10 @@ def sign(pem_key_file, data):
     data_file.fo.write(data)
     data_file.fo.seek(0)
 
-    cmd = '%s -sign %s' % (OPENSSLCRYPTO, pem_key_file)
+    pem_key_file = scoped_tempfile(scoped_tempfile.tempdir.name + '/pkey.pem')
+    utils.open_write_close(pem_key_file.name, pem_key)
+
+    cmd = '%s -sign %s' % (OPENSSLCRYPTO, pem_key_file.name)
     try:
         utils.run(cmd,
                   stdin=data_file.fo,

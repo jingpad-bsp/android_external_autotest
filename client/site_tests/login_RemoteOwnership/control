@@ -5,10 +5,11 @@
 TIME="SHORT"
 AUTHOR = "The Chromium OS Authors"
 DOC = """
-Tests to ensure that the Ownership API works for a local device owner.
+Tests to ensure that the Ownership API can be used, as an enterprise might,
+to set device policies.
 """
-NAME = "login_OwnershipApi"
-PURPOSE = "Validate Ownership DBus API"
+NAME = "login_RemoteOwnership"
+PURPOSE = "Validate that the Ownership DBus API works for device policies"
 CRITERIA = """
 Fail if a call does not behave as expected
 """
@@ -16,4 +17,4 @@ TEST_CLASS = "login"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
 
-job.run_test("login_OwnershipApi")
+job.run_test("login_RemoteOwnership")

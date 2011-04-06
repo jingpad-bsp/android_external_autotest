@@ -4,7 +4,7 @@
 
 import dbus, logging, os, re, shutil, socket, sys
 import common
-import auth_server, constants as chromeos_constants, cryptohome, dns_server
+import auth_server, constants, cryptohome, dns_server
 import cros_logging, cros_ui, login, ownership
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -86,7 +86,8 @@ class UITest(test.test):
                 servers = ipconfig.GetProperties().get('NameServers', None)
                 if servers != None:
                     self._dns[path] = ','.join(servers)
-                    logging.debug("Stored DNS for "  + interface)
+                    logging.debug("Stored %s for %s" % (self._dns[path],
+                                                        interface))
                 ipconfig.SetProperty('NameServers', '127.0.0.1')
                 logging.debug("Using local DNS for "  + interface)
 
@@ -152,7 +153,7 @@ class UITest(test.test):
         Args:
             creds: String specifying the credentials for this test case.  Can
                 be a named set of credentials as defined by
-                chromeos_constants.CREDENTIALS, or a 'username:password' pair.
+                constants.CREDENTIALS, or a 'username:password' pair.
                 Defaults to None -- browse without signing-in.
             is_creating_owner: If the test case is creating a new device owner.
 
@@ -169,7 +170,7 @@ class UITest(test.test):
 
         # Fake ownership unless the test is explicitly testing owner creation.
         if not is_creating_owner and not os.access(
-            chromeos_constants.OWNER_KEY_FILE, os.F_OK):
+            constants.OWNER_KEY_FILE, os.F_OK):
             logging.info('Owner credentials not found. Faking ownership...')
             self.__fake_ownership()
             self.fake_owner = True
@@ -186,12 +187,7 @@ class UITest(test.test):
 
         if is_creating_owner:
             logging.info('Erasing stale owner state.')
-            # Ensure there's no stale owner state from previous tests.
-            try:
-                os.unlink(chromeos_constants.OWNER_KEY_FILE)
-                os.unlink(chromeos_constants.SIGNED_PREFERENCES_FILE)
-            except (IOError, OSError) as err:
-                logging.info(err)
+            ownership.clear_ownership()
 
         login.refresh_login_screen()
         if self.auto_login:
@@ -206,10 +202,10 @@ class UITest(test.test):
         mock_certfile = os.path.join(dirname, 'mock_owner_cert.pem')
         mock_signedprefsfile = os.path.join(dirname, 'mock_owner.preferences')
         utils.open_write_close(
-            chromeos_constants.OWNER_KEY_FILE,
+            constants.OWNER_KEY_FILE,
             ownership.cert_extract_pubkey_der(mock_certfile))
         shutil.copy(mock_signedprefsfile,
-                    chromeos_constants.SIGNED_PREFERENCES_FILE)
+                    constants.SIGNED_PREFERENCES_FILE)
 
 
     def __canonicalize(self, credential):
@@ -230,7 +226,7 @@ class UITest(test.test):
 
         (name, domain) = parts
         name = name.partition('+')[0]
-        if (domain == chromeos_constants.SPECIAL_CASE_DOMAIN):
+        if (domain == constants.SPECIAL_CASE_DOMAIN):
             name = name.replace('.', '')
         return '@'.join([name, domain]).lower()
 
@@ -246,10 +242,10 @@ class UITest(test.test):
         if not creds:
             return [None, None]  # Browse without signing-in.
         if creds[0] == '$':
-            if creds not in chromeos_constants.CREDENTIALS:
+            if creds not in constants.CREDENTIALS:
                 raise error.TestFail('Unknown credentials: %s' % creds)
 
-            (name, passwd) = chromeos_constants.CREDENTIALS[creds]
+            (name, passwd) = constants.CREDENTIALS[creds]
             return [self.__canonicalize(name), passwd]
 
         (name, passwd) = creds.split(':')
@@ -341,7 +337,7 @@ class UITest(test.test):
                 match = crash_regex.search(line)
                 if (match and not match.group(1) in processes and
                     not (in_logout and
-                         (match.group(1) == chromeos_constants.BROWSER or
+                         (match.group(1) == constants.BROWSER or
                           match.group(1) == 'supplied_chrome') and
                          match.group(2) == 'sig 6')):
                     self.job.record('INFO', self.tagged_testname,
@@ -351,7 +347,7 @@ class UITest(test.test):
     def cleanup(self):
         """Overridden from test.cleanup() to log out when the test is complete.
         """
-        logpath = chromeos_constants.CHROME_LOG_DIR
+        logpath = constants.CHROME_LOG_DIR
 
         try:
             for filename in os.listdir(logpath):
@@ -366,28 +362,24 @@ class UITest(test.test):
         if login.logged_in():
             try:
                 shutil.copy(
-                    os.path.join(chromeos_constants.CRYPTOHOME_MOUNT_PT,
+                    os.path.join(constants.CRYPTOHOME_MOUNT_PT,
                                  'log', 'chrome'),
                     self.resultsdir+'/chrome_postlogin_log')
             except (IOError, OSError) as err:
                 logging.error(err)
             self.logout()
 
-        if os.path.isfile(chromeos_constants.CRYPTOHOMED_LOG):
+        if os.path.isfile(constants.CRYPTOHOMED_LOG):
             try:
-                base = os.path.basename(chromeos_constants.CRYPTOHOMED_LOG)
-                shutil.copy(chromeos_constants.CRYPTOHOMED_LOG,
+                base = os.path.basename(constants.CRYPTOHOMED_LOG)
+                shutil.copy(constants.CRYPTOHOMED_LOG,
                             os.path.join(self.resultsdir, base))
             except (IOError, OSError) as err:
                 logging.error(err)
 
         if self.fake_owner:
             logging.info('Erasing fake owner state.')
-            try:
-                os.unlink(chromeos_constants.OWNER_KEY_FILE)
-                os.unlink(chromeos_constants.SIGNED_PREFERENCES_FILE)
-            except (IOError, OSError) as err:
-                logging.info(err)
+            ownership.clear_ownership()
 
         self.stop_authserver()
         self.__log_crashed_processes(self.crash_blacklist)

@@ -7,21 +7,20 @@ import dbus.glib
 import gobject
 import logging
 import os
-import sys
 import tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import autotemp, error
 from autotest_lib.client.cros import constants, cros_ui, cryptohome, login
-from autotest_lib.client.cros import ownership
+from autotest_lib.client.cros import cros_ownership_test, ownership
 
 
-class login_OwnershipApi(test.test):
+class login_OwnershipApi(cros_ownership_test.OwnershipTest):
     version = 1
 
     _testuser = 'cryptohometest@chromium.org'
     _testpass = 'testme'
-    _poldata = 'hooberbloob'
+    _poldata = 'policydata'
 
     _tempdir = None
 
@@ -30,17 +29,8 @@ class login_OwnershipApi(test.test):
         utils.make('OUT_DIR=.')
 
 
-    def __unlink(self, filename):
-        try:
-            os.unlink(filename)
-        except (IOError, OSError) as error:
-            logging.info(error)
-
     def initialize(self):
-        self.__unlink(constants.OWNER_KEY_FILE)
-        self.__unlink(constants.SIGNED_PREFERENCES_FILE)
-        self.__unlink(constants.SIGNED_POLICY_FILE)
-        login.refresh_login_screen()
+        super(login_OwnershipApi, self).initialize()
         cryptohome.remove_vault(self._testuser)
         cryptohome.mount_vault(self._testuser, self._testpass, create=True)
         self._tempdir = autotemp.tempdir(unique_id=self.__class__.__name__)
@@ -50,7 +40,6 @@ class login_OwnershipApi(test.test):
                                               constants.KEYGEN,
                                               tmpname))
         os.unlink(tmpname)
-        super(login_OwnershipApi, self).initialize()
 
 
     def __generate_temp_filename(self):
@@ -60,47 +49,18 @@ class login_OwnershipApi(test.test):
         return basename
 
 
-    def __log_and_stop(self, ret_code):
-        logging.info("exited %s" % ret_code)
-        self._loop.quit()
-
-
-    def __log_err_and_stop(self, e):
-        logging.debug(e)
-        self._loop.quit()
-
-
     def run_once(self):
-        keyfile = ownership.generate_and_register_owner_keypair(self._testuser,
-                                                                self._testpass)
-        # Pull in protobuf definitions.
-        sys.path.append(self.srcdir)
-        from device_management_backend_pb2 import PolicyFetchResponse
-
-        # open DBus connection to session_manager
-        bus = dbus.SystemBus()
-        proxy = bus.get_object('org.chromium.SessionManager',
-                               '/org/chromium/SessionManager')
-        sm = dbus.Interface(proxy, 'org.chromium.SessionManagerInterface')
-
-        policy_proto = PolicyFetchResponse()
-        policy_proto.policy_data = self._poldata
-        policy_proto.policy_data_signature = ownership.sign(keyfile,
-                                                            self._poldata)
-        sm.StorePolicy(dbus.ByteArray(policy_proto.SerializeToString()),
-                       byte_arrays=True,
-                       reply_handler=self.__log_and_stop,
-                       error_handler=self.__log_err_and_stop)
-
-        self._loop = gobject.MainLoop()
-        self._loop.run()
-
-        retrieved_policy = sm.RetrievePolicy(byte_arrays=True)
-        if retrieved_policy != policy_proto.SerializeToString():
-            raise error.TestFail('Policy should not be %s' % retrieved_policy)
+        (pkey, pubkey) = ownership.generate_and_register_keypair(self._testuser,
+                                                                 self._testpass)
+        sm = self.connect_to_session_manager()
+        if not sm.StartSession(self._testuser, ''):
+            raise error.TestFail('Could not start session for owner')
+        self.push_policy(self.generate_policy(pkey, pubkey, self._poldata), sm)
+        if not sm.StopSession(''):
+            raise error.TestFail('Could not stop session for owner')
 
 
     def cleanup(self):
         cryptohome.unmount_vault()
-        self._tempdir.clean()
+        if self._tempdir: self._tempdir.clean()
         super(login_OwnershipApi, self).cleanup()
