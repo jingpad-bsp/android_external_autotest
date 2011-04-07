@@ -1186,7 +1186,7 @@ class WiFiTest(object):
 
     def bgscan_enable(self, params):
         """ Enable wpa_supplicant bgscan """
-        self.bgscan_set({'method' : 'bgscan'})
+        self.bgscan_set({'method' : 'default'})
 
 
     def time_sync(self, params):

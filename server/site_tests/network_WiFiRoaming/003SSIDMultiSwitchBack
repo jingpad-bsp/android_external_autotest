@@ -10,9 +10,19 @@
 
     [ "config",         { "channel":"2412", "mode":"11g", "pureg":None } ],
 
+    # TODO(pstew): This is a very arbitrary limit based on the testbed
+    # characteristics (expected signal and noise, as well as the range
+    # of transmit power from the AP).  We set the threshold here so that
+    # when we vary the transmit power on the AP, we will receive a
+    # "low signal" alert on the DUT.
+    [ "bgscan_set",     { "signal":"-40" }],
+
     # Connect to the first AP.
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
+
+    # Once the connection is up, restore the profile values to flimflam default
+    [ "bgscan_set",     { "signal":"default" }],
 
     # Create a second AP at the same time on the 5GHz radio, Channel 48
     [ "config",         { "channel":"5240", "ht40-":None, "puren":None,
