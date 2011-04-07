@@ -75,4 +75,14 @@ def run_tests(machine):
   log_pauser.end()
 
 
-job.parallel_on_machines(run_tests, machines)
+# TODO(pauldean): Remove redundant code once distribute_across_machines
+# has baked in the lab.  Remove run_tests function and
+# job.parallel_on_machines call.
+if len(machines) > 1:
+  TESTS += [
+    ('power_Resume', {}, [], ['has_resume_bug']),
+    ('platform_Shutdown', {}),
+  ]
+  job.distribute_across_machines(TESTS, machines)
+else:
+  job.parallel_on_machines(run_tests, machines)
