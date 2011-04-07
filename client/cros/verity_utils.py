@@ -19,7 +19,6 @@ ERROR_BEHAVIOR_NOTIFIER = 'notify'  # for platform specific behavior.
 
 # Default configuration for verity_image
 DEFAULT_TARGET_NAME = 'verity_image'
-DEFAULT_DEPTH = 1
 DEFAULT_ALG = 'sha1'
 DEFAULT_IMAGE_SIZE_IN_BLOCKS = 100
 DEFAULT_ERROR_BEHAVIOR = ERROR_BEHAVIOR_ERROR
@@ -46,7 +45,7 @@ class verity_image(object):
                  to make writing modifiers easier (e.g., mmap).
     """
     # Define the command template constants.
-    verity_cmd = 'verity create %d %s %s %d %s'
+    verity_cmd = 'verity create 0 %s %s %d %s'
     dd_cmd = 'dd if=/dev/zero of=%s bs=4096 count=0 seek=%d'
     mkfs_cmd = 'mkfs.ext3 -b 4096 -F %s'
     dmsetup_cmd = "dmsetup -r create autotest_%s --table '%s'"
@@ -81,7 +80,6 @@ class verity_image(object):
             self.hash_file = None
 
         self.alg = DEFAULT_ALG
-        self.depth = DEFAULT_DEPTH
         self.error_behavior = DEFAULT_ERROR_BEHAVIOR
         self.blocks = DEFAULT_IMAGE_SIZE_IN_BLOCKS
         self.file = None
@@ -116,8 +114,7 @@ class verity_image(object):
 
     def _hash_image(self):
         """runs verity over the image and saves the device mapper table"""
-        self.table = utils.system_output(self.verity_cmd % (self.depth,
-                                                            self.alg,
+        self.table = utils.system_output(self.verity_cmd % (self.alg,
                                                             self.file,
                                                             self.blocks,
                                                             self.hash_file))
@@ -147,7 +144,6 @@ class verity_image(object):
     def initialize(self,
                    tmpdir,
                    target_name,
-                   depth=DEFAULT_DEPTH,
                    alg=DEFAULT_ALG,
                    size_in_blocks=DEFAULT_IMAGE_SIZE_IN_BLOCKS,
                    error_behavior=DEFAULT_ERROR_BEHAVIOR):
@@ -169,7 +165,6 @@ class verity_image(object):
 
         # Set up the configurable bits.
         self.alg = alg
-        self.depth = depth
         self.error_behavior = error_behavior
         self.blocks = size_in_blocks
 
