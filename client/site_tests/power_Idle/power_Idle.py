@@ -15,7 +15,7 @@ class power_Idle(cros_ui_test.UITest):
         time.sleep(warmup_time)
 
 
-    def run_once(self, idle_time=120):
+    def run_once(self, idle_time=120, sleep=10):
         self.status = power_status.get_status()
 
         # initialize various interesting power related stats
@@ -24,7 +24,9 @@ class power_Idle(cros_ui_test.UITest):
         self._cpuidle_stats = power_status.CPUIdleStats()
 
 
-        time.sleep(idle_time)
+        for i in range(0, idle_time, sleep):
+            time.sleep(sleep)
+            self.status.refresh()
         self.status.refresh()
 
 
@@ -72,5 +74,7 @@ class power_Idle(cros_ui_test.UITest):
             keyvals['v_voltage_min_design'] = \
                                 self.status.battery[0].voltage_min_design
             keyvals['v_voltage_now'] = self.status.battery[0].voltage_now
+            keyvals['mc_min_temp'] = self.status.min_temp
+            keyvals['mc_max_temp'] = self.status.max_temp
 
         self.write_perf_keyval(keyvals)

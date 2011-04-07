@@ -11,7 +11,7 @@ class power_Draw(test.test):
     version = 1
 
 
-    def run_once(self, seconds=200):
+    def run_once(self, seconds=200, sleep=10):
         status = power_status.get_status()
         if status.linepower[0].online:
             logging.warn('AC power is online -- '
@@ -21,7 +21,9 @@ class power_Draw(test.test):
         start_energy = status.battery[0].energy
 
         # Let the test run
-        time.sleep(seconds)
+        for i in range(0, seconds, sleep):
+            time.sleep(sleep)
+            status.refresh()
 
         status.refresh()
         end_energy = status.battery[0].energy
@@ -36,4 +38,7 @@ class power_Draw(test.test):
         keyvals['wh_consumed_energy'] = consumed_energy
         keyvals['w_average_energy_rate'] = energy_rate
         keyvals['w_end_energy_rate'] = status.battery[0].energy_rate
+        keyvals['mc_min_temp'] = status.min_temp
+        keyvals['mc_max_temp'] = status.max_temp
+
         self.write_perf_keyval(keyvals)

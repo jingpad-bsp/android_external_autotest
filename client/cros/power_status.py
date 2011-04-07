@@ -41,6 +41,70 @@ class DevStat(object):
                 setattr(self, field, val)
 
 
+class ThermalStat(DevStat):
+    """
+    Thermal status.
+
+    Fields:
+    (All temperatures are in millidegrees Celsius.)
+
+    str   enabled:            Whether thermal zone is enabled
+    int   temp:               Current temperature
+    str   type:               Thermal zone type
+    int   num_trip_points:    Number of thermal trip points that activate
+                                cooling devices
+    int   num_points_tripped: Temperature is above this many trip points
+    str   trip_point_N_type:  Trip point #N's type
+    int   trip_point_N_temp:  Trip point #N's temperature value
+    int   cdevX_trip_point:   Trip point o cooling device #X (index)
+    """
+
+    MAX_TRIP_POINTS = 20
+
+    thermal_fields = {
+        'enabled':              ['enabled', str],
+        'temp':                 ['temp', int],
+        'type':                 ['type', str],
+        'num_points_tripped':   ['', '']
+        }
+    def __init__(self, path=None):
+        # Browse the thermal folder for trip point fields.
+        self.num_trip_points = 0
+
+        thermal_fields = glob.glob(path + '/*')
+        for file in thermal_fields:
+            field = file[len(path + '/'):]
+            if field.find('trip_point') != -1:
+                if field.find('temp'):
+                    field_type = int
+                else:
+                    field_type = str
+                self.thermal_fields[field] = [field, field_type]
+
+                # Count the number of trip points.
+                if field.find('_type') != -1:
+                    self.num_trip_points += 1
+
+        super(ThermalStat, self).__init__(self.thermal_fields, path)
+        self.update()
+
+    def update(self):
+        if not os.path.exists(self.path):
+            return
+
+        self.read_all_vals()
+        self.num_points_tripped = 0
+
+        for field in self.thermal_fields:
+            if field.find('trip_point_') != -1 and field.find('_temp') != -1 \
+                    and self.temp > self.read_val(field, int):
+               self.num_points_tripped += 1
+               logging.info('Temperature trip point #' + \
+                            field[len('trip_point_'):field.rfind('_temp')] + \
+                            ' tripped.')
+
+
+
 class BatteryStat(DevStat):
     """
     Battery status.
@@ -135,15 +199,18 @@ class SysStat(object):
     Fields:
 
     battery:   A list of BatteryStat objects.
-    linepower: A list of LineStat opbjects.
+    linepower: A list of LineStat objects.
     """
 
     def __init__(self):
         power_supply_path = '/sys/class/power_supply/*'
         self.battery = None
         self.linepower = None
+        self.thermal = None
         battery_path = None
         linepower_path = None
+        thermal_path = '/sys/class/thermal/thermal_zone*'
+
         power_supplies = glob.glob(power_supply_path)
         for path in power_supplies:
             type_path = os.path.join(path,'type')
@@ -159,7 +226,11 @@ class SysStat(object):
             self.linepower_path = linepower_path
         else:
             raise error.TestError('Battery or Linepower path not found')
+        self.thermal_path = glob.glob(thermal_path)[0]
 
+        self.min_temp = 999999999
+        self.max_temp = -999999999
+        self.temp_log = {}
 
     def refresh(self):
         """
@@ -168,6 +239,16 @@ class SysStat(object):
         """
         self.battery = [ BatteryStat(self.battery_path) ]
         self.linepower = [ LineStat(self.linepower_path) ]
+        self.thermal = [ ThermalStat(self.thermal_path) ]
+
+        try:
+            if self.thermal[0].temp < self.min_temp * 1000:
+                self.min_temp = float(self.thermal[0].temp) / 1000
+            if self.thermal[0].temp > self.max_temp * 1000:
+                self.max_temp = float(self.thermal[0].temp) / 1000
+            logging.info('Temperature reading: ' + self.thermal[0].temp)
+        except:
+            logging.error('Could not read temperature, skipping.')
 
 
 def get_status():
