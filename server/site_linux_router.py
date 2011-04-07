@@ -255,6 +255,9 @@ class LinuxRouter(object):
                 htcaps.add('[HT40-]')
                 htcaps.add('[HT40+]')
                 conf['wmm_enabled'] = 1
+            elif k in ('ht40+', 'ht40-'):
+                htcaps.add('[%s]' % k.upper())
+                conf['wmm_enabled'] = 1
             elif k == 'shortgi':
                 htcaps.add('[SHORT-GI-20]')
                 htcaps.add('[SHORT-GI-40]')

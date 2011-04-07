@@ -11,7 +11,7 @@
   "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
 
-    [ "config",         { "channel":"5240", "ht40":None, "puren":None } ],
+    [ "config",         { "channel":"5240", "ht40-":None, "puren":None } ],
     [ "connect",        { "security":"none" } ],
 
     [ "client_powersave_off" ],

@@ -15,7 +15,7 @@
     [ "client_ping",    { "count":"10" } ],
 
     # Create a second AP at the same time on the 5GHz radio, Channel 48
-    [ "config",         { "channel":"5240", "ht40":None, "puren":None,
+    [ "config",         { "channel":"5240", "ht40-":None, "puren":None,
                           "multi_interface":None } ],
 
     # Drop the transmit power of the first AP

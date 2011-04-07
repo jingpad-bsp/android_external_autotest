@@ -11,7 +11,7 @@
   "skip_test":"No way to configure TKIP w/ 802.11n on openwrt",
   "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
-    [ "config",         { "channel":"5240", "ht40":None, "puren":None,
+    [ "config",         { "channel":"5240", "ht40-":None, "puren":None,
                           "wpa":"1", "wpa_key_mgmt":"WPA-PSK",
                           "wpa_pairwise":"TKIP",
                           "wpa_passphrase":"chromeos" } ],
