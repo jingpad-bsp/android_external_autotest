@@ -242,11 +242,11 @@ class SysStat(object):
         self.thermal = [ ThermalStat(self.thermal_path) ]
 
         try:
-            if self.thermal[0].temp < self.min_temp * 1000:
-                self.min_temp = float(self.thermal[0].temp) / 1000
-            if self.thermal[0].temp > self.max_temp * 1000:
-                self.max_temp = float(self.thermal[0].temp) / 1000
-            logging.info('Temperature reading: ' + self.thermal[0].temp)
+            if self.thermal[0].temp < self.min_temp:
+                self.min_temp = self.thermal[0].temp
+            if self.thermal[0].temp > self.max_temp:
+                self.max_temp = self.thermal[0].temp
+            logging.info('Temperature reading: ' + str(self.thermal[0].temp))
         except:
             logging.error('Could not read temperature, skipping.')
 
