@@ -188,6 +188,7 @@ class UITest(test.test):
         if is_creating_owner:
             logging.info('Erasing stale owner state.')
             ownership.clear_ownership()
+            self.fake_owner = False
 
         login.refresh_login_screen()
         if self.auto_login:
