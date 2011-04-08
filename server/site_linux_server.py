@@ -11,10 +11,11 @@ class LinuxServer(object):
 
     """
 
-    def __init__(self, server, params):
-        self.server   = server    # Server host.
-        self.vpn_kind = None
-        self.conf     = {}
+    def __init__(self, server, wifi_ip):
+        self.server                      = server    # Server host.
+        self.vpn_kind                    = None
+        self.wifi_ip                     = wifi_ip
+        self.openvpn_config              = {}
 
     def vpn_server_config(self, params):
         """ Configure & launch the server side of the VPN.
@@ -29,6 +30,7 @@ class LinuxServer(object):
                        Valid values:
 
                           openvpn
+                          l2tpipsec (StrongSwan PSK or certificates)
 
                config: required
 
@@ -42,28 +44,91 @@ class LinuxServer(object):
           supported by the specified VPN kind.
         """
         self.vpn_server_kill({}) # Must be first.  Relies on self.vpn_kind.
-
         self.vpn_kind = params.get('kind', None)
-
-        # Read configuration information & create server configuration file.
-        #
-        #    As VPN kinds other than 'openvpn' are supported, and
-        #    since 'self.conf' is cummulative, perhaps there should be
-        #    a method which will clear 'self.conf'; different types of
-        #    VPN will likely not have the same configuration
-        #    parameters.  This is only really needed if a test is
-        #    written to switch between two differents kinds of VPN.
-        for k, v in params.get('config', {}).iteritems():
-            self.conf[k] = v
-        self.server.run("cat <<EOF >%s\n%s\nEOF\n" %
-                        ('/tmp/vpn-server.conf', '\n'.join(
-                    "%s %s" % kv for kv in self.conf.iteritems())))
 
         # Launch specified VPN server.
         if self.vpn_kind is None:
-            raise error.TestFail('No VPN kind specified for this test.');
+            raise error.TestFail('No VPN kind specified for this test.')
         elif self.vpn_kind == 'openvpn':
-            self.server.run("/usr/sbin/openvpn --config /tmp/vpn-server.conf &")
+            # Read config information & create server configuration file.
+            for k, v in params.get('config', {}).iteritems():
+                self.openvpn_config[k] = v
+            self.server.run("cat <<EOF >/tmp/vpn-server.conf\n%s\nEOF\n" %
+                            ('\n'.join( "%s %s" % kv for kv in
+                                        self.openvpn_config.iteritems())))
+            self.server.run("/usr/sbin/openvpn "
+                            "--config /tmp/vpn-server.conf &")
+        elif self.vpn_kind == 'l2tpipsec':
+
+            configs  = { "/etc/ipsec.conf" :
+                         "config setup\n"
+                         "  charonstart=no\n"
+                         "  plutostart=yes\n"
+                         "  plutodebug=%(@plutodebug@)s\n"
+                         "conn L2TP\n"
+                         "  keyexchange=ikev1\n"
+                         "  authby=psk\n"
+                         "  pfs=no\n"
+                         "  rekey=no\n"
+                         "  left=%(@local-listen-ip@)s\n"
+                         "  leftprotoport=17/1701\n"
+                         "  right=%%any\n"
+                         "  rightprotoport=17/%%any\n"
+                         "  auto=add\n",
+
+                         "/etc/ipsec.secrets" :
+                         "%(@ipsec-secrets@)s %%any : PSK \"password\"",
+
+                         "/etc/xl2tpd/xl2tpd.conf" :
+                         "[global]\n"
+                         "\n"
+                         "[lns default]\n"
+                         "  ip range = 192.168.1.128-192.168.1.254\n"
+                         "  local ip = 192.168.1.99\n"
+                         "  require chap = yes\n"
+                         "  refuse pap = yes\n"
+                         "  require authentication = yes\n"
+                         "  name = LinuxVPNserver\n"
+                         "  ppp debug = yes\n"
+                         "  pppoptfile = /etc/ppp/options.xl2tpd\n"
+                         "  length bit = yes\n",
+
+                         "/etc/xl2tpd/l2tp-secrets" :
+                         "*      them    l2tp-secret",
+
+                         "/etc/ppp/chap-secrets" :
+                         "chapuser        *       chapsecret      *",
+
+                         "/etc/ppp/options.xl2tpd" :
+                         "ipcp-accept-local\n"
+                         "ipcp-accept-remote\n"
+                         "noccp\n"
+                         "auth\n"
+                         "crtscts\n"
+                         "idle 1800\n"
+                         "mtu 1410\n"
+                         "mru 1410\n"
+                         "nodefaultroute\n"
+                         "debug\n"
+                         "lock\n"
+                         "proxyarp\n"
+                         "connect-delay 5000\n"
+                }
+
+            replacements = params.get("replacements", {})
+            # These two replacements must match up to the same
+            # adapter, or a connection will not be established.
+            replacements["@local-listen-ip@"] = "%defaultroute"
+            replacements["@ipsec-secrets@"]   = self.server.ip
+
+            for cfg, template in configs.iteritems():
+                contents = template % (replacements)
+                self.server.run("cat <<EOF >%s\n%s\nEOF\n" % (cfg, contents))
+
+            self.server.run("/usr/sbin/ipsec start")
+
+            # Restart xl2tpd to ensure use of newly-created config files.
+            self.server.run("sh /etc/init.d/xl2tpd restart")
         else:
             raise error.TestFail('(internal error): No config case '
                                  'for VPN kind (%s)' % self.vpn_kind)
@@ -73,7 +138,9 @@ class LinuxServer(object):
         if self.vpn_kind is not None:
             if self.vpn_kind == 'openvpn':
                 self.server.run("pkill /usr/sbin/openvpn")
+            elif self.vpn_kind == 'l2tpipsec':
+                self.server.run("/usr/sbin/ipsec stop")
             else:
                 raise error.TestFail('(internal error): No kill case '
                                      'for VPN kind (%s)' % self.vpn_kind)
-            self.vpn_kind = None;
+            self.vpn_kind = None

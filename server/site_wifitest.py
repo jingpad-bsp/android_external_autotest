@@ -143,8 +143,8 @@ class WiFiTest(object):
             # NB: wifi address must be set if not reachable from control
             self.server_wifi_ip = server['wifi_addr']
 
-        # hosting_server is a machine which hosts network services,
-        # such as VPN.
+        # The 'hosting_server' is a machine which hosts network
+        # services, such as OpenVPN or StrongSwan.
         self.hosting_server = site_linux_server.LinuxServer(self.server, server)
 
         # potential bg thread for ping untilstop
@@ -1238,27 +1238,25 @@ class WiFiTest(object):
         """
         self.vpn_client_kill({}) # Must be first.  Relies on self.vpn_kind.
         self.vpn_kind = params.get('kind', None)
-        vpn_host_ip   = params.get('vpn-host-ip', self.server_wifi_ip)
-
-        # Must get 'ca_certificate', 'client-certificate' and 'client-key'.
-        cert_pathnames = params.get('files', {})
 
         # Starting up the VPN client may cause the DUT's routing table (esp.
         # the default route) to change.  Set up a host route backwards so
         # we don't lose our control connection in that event.
-        __add_host_route(self.client)
+        self.__add_host_route(self.client)
 
         if self.vpn_kind is None:
             raise error.TestFail('No VPN kind specified for this test.')
         elif self.vpn_kind == 'openvpn':
+            # 'ca_certificate', 'client-certificate' and 'client-key'.
+            vpn_host_ip            = params.get('vpn-host-ip',
+                                                self.server_wifi_ip)
+            cert_pathnames         = params.get('files', {})
             remote_cert_tls_option = ""
             remote_cert_tls        = params.get('remote-cert-tls', None)
 
             if remote_cert_tls is not None:
                 remote_cert_tls_option = "--remote-cert-tls " + remote_cert_tls
 
-            # connect-vpn openvpn [options] <name> <host-ip> <domain> \
-            #                               <cafile> <certfile> <key-file>
             result = self.client.run('%s/test/connect-vpn '
                                      '--verbose '
                                      '%s '
@@ -1272,6 +1270,39 @@ class WiFiTest(object):
                                       cert_pathnames['ca-certificate'],
                                       cert_pathnames['client-certificate'],
                                       cert_pathnames['client-key']))
+        elif self.vpn_kind == 'l2tpipsec-psk':
+            # vpn_host_ip is self.server.ip because that is the
+            # adapter that ipsec listens on.
+            vpn_host_ip = params.get('vpn-host-ip', self.server.ip)
+            password    = params.get('password'  , None)
+            chapuser    = params.get('chapuser'  , None)
+            chapsecret  = params.get('chapsecret', None)
+            result = self.client.run('%s/test/connect-vpn '
+                                     '--verbose '
+                                     'l2tpipsec-psk vpn-name %s vpn-domain '
+                                     '%s '  # password
+                                     '%s '  # chapuser
+                                     '%s' % # chapsecret
+                                     (self.client_cmd_flimflam_lib,
+                                      vpn_host_ip,
+                                      password, chapuser, chapsecret))
+        elif self.vpn_kind == 'l2tpipsec-cert':
+            # 'ca_certificate', 'client-certificate' and 'client-key'.
+            cert_pathnames = params.get('files', {})
+            # vpn_host_ip is self.server.ip because that is the
+            # adapter that ipsec listens on.
+            vpn_host_ip = params.get('vpn-host-ip', self.server.ip)
+            result = self.client.run('%s/test/connect-vpn '
+                                     '--verbose '
+                                     'l2tpipsec-cert vpn-name %s vpn-domain '
+                                     '%s '   # ca certificate
+                                     '%s '   # client certificate
+                                     '%s' %  # client key
+                                     (self.client_cmd_flimflam_lib,
+                                      vpn_host_ip,
+                                      cert_pathnames['ca-certificate'],
+                                      cert_pathnames['client-certificate'],
+                                      cert_pathnames['client-key']))
         else:
             raise error.TestFail('(internal error): No launch case '
                                  'for VPN kind (%s)' % self.vpn_kind)
@@ -1281,12 +1312,15 @@ class WiFiTest(object):
         if self.vpn_kind is not None:
             if self.vpn_kind == 'openvpn':
                 self.client.run("pkill openvpn")
+            elif (self.vpn_kind == 'l2tpipsec-psk' or
+                  self.vpn_kind == 'l2tpipsec-cert'):
+                self.client.run("/usr/sbin/ipsec stop")
             else:
                 raise error.TestFail('(internal error): No kill case '
                                      'for VPN kind (%s)' % self.vpn_kind)
             self.vpn_kind = None
 
-        __del_host_route(self.client)
+        self.__del_host_route(self.client)
 
     def __add_host_route(self, host):
         # What is the local address we use to get to the test host?
@@ -1302,10 +1336,8 @@ class WiFiTest(object):
         host.run("ip route add %s" % self.host_route_args[host.ip])
 
     def __del_host_route(self, host):
-        if host.ip not in self.host_route_args:
-            return
-
-        host.run("ip route del %s" % self.host_route_args.pop(host.ip))
+        if host.ip in self.host_route_args:
+            host.run("ip route del %s" % self.host_route_args.pop(host.ip))
 
     def host_route_cleanup(self, params):
         for host in (self.client, self.server, self.router):
