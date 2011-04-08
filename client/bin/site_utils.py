@@ -2,12 +2,45 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, platform, time
+import logging, os, platform, re, tempfile, time
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 
 
 class TimeoutError(error.TestError):
     """Error raised when we time out when waiting on a condition."""
+
+
+class Crossystem(object):
+    """A wrapper for the crossystem utility."""
+
+    def __init__(self, client):
+        self.cros_system_data = {}
+        self._client = client
+
+    def init(self):
+        self.cros_system_data = {}
+        (_, fname) = tempfile.mkstemp()
+        f = open(fname, 'w')
+        self._client.run('crossystem', stdout_tee=f)
+        f.close()
+        text = utils.read_file(fname)
+        for line in text.splitlines():
+            assignment_string = line.split('#')[0]
+            if not assignment_string.count('='):
+                continue
+            (name, value) = assignment_string.split('=', 1)
+            self.cros_system_data[name.strip()] = value.strip()
+        os.remove(fname)
+
+    def __getattr__(self, name):
+        """
+        Retrieve a crosssystem attribute.
+
+        The call crossystemobject.name() will return the crossystem reported
+        string.
+        """
+        return lambda : self.cros_system_data[name]
 
 
 def poll_for_condition(
@@ -77,12 +110,12 @@ def check_raw_dmesg(dmesg, message_level, whitelist):
     Returns:
       List of unexpected warnings
     """
-
+    whitelist_re = re.compile(r'(%s)' % '|'.join(whitelist))
     unexpected = []
     for line in dmesg.splitlines():
         if int(line[1]) <= message_level:
-            if not 'used greatest stack depth' in line:
-                stripped_line = line.split('] ', 1)[1]
-                if not stripped_line in whitelist:
-                    unexpected.append(stripped_line)
+            stripped_line = line.split('] ', 1)[1]
+            if whitelist_re.search(stripped_line):
+                continue
+            unexpected.append(stripped_line)
     return unexpected

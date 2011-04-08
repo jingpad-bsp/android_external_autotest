@@ -10,28 +10,45 @@ from autotest_lib.server import test
 
 _KERN_WARNING = 4
 
-_WHITELIST = [
+_WHITELIST_COMMON = [
+    r"used greatest stack depth: \d+ bytes left",
     "Kernel-defined memdesc doesn't match the one from EFI!",
-    "Warning only 1919MB will be used.",
     "Use a HIGHMEM enabled kernel.",
-    "pnp 00:01: io resource (0x164e-0x164f) overlaps 0000:00:1c.0 "
-    "BAR 7 (0x1000-0x1fff), disabling",
-    "i915 0000:00:02.0: Invalid ROM contents",
-    "[drm:intel_init_bios] *ERROR* VBT signature missing",
-    "usb 1-2: config 1 has an invalid interface number: 1 but max is 0",
-    "usb 1-2: config 1 has no interface number 0",
-    "device-mapper: verity: Failed to acquire device 'ROOT_DEV': -1",
-    "device-mapper: table: 254:0: verity: Device lookup failed",
-    "dm: starting dm-0 (vroot) failed",
-    "EXT3-fs warning: maximal mount count reached, running e2fsck is "
-    "recommended",
+   "GPT: Use GNU Parted to correct GPT errors.",
+    r"GPT:\d+ != \d+",
+    "GPT:Alternate GPT header not at the end of the disk.",
+    "GPT:Primary header thinks Alt. header is not at the end of the disk.",
+    r"GPT:partition_entry_array_crc32 values don't match: 0x[\da-f]+ !="
+    " 0x[\da-f]+",
+    r"Warning only \d+MB will be used.",
+    "\[drm:intel_init_bios\] \*ERROR\* VBT signature missing",
     "i2c i2c-2: The new_device interface is still experimental and may change "
     "in a near future",
-    "industrialio: module is from the staging directory, "
-    "the quality is unknown, you have been warned.",
-    "tsl2563: module is from the staging directory, the quality is unknown, "
-    "you have been warned.",
+    "i915 0000:00:02.0: Invalid ROM contents",
+    "industrialio: module is from the staging directory, the quality is "
+    "unknown, you have been warned.",
+    "pnp 00:01: io resource \(0x164e-0x164f\) overlaps 0000:00:1c.0 "
+    "BAR 7 \(0x1000-0x1fff\), disabling",
+    r"sd \d:\d:\d:\d: \[sd[a-z]\] Assuming drive cache: write through",
+    "tsl[\da-z]+: module is from the staging directory, the quality is "
+    "unknown, you have been warned.",
 ]
+
+_WHITELIST_TARGETS = {
+    'Alex' : [
+        r"CE: hpet increasing min_delta_ns to \d+ nsec",
+        r"Measured \d+ cycles TSC warp between CPUs, turning off TSC clock.",
+        "pci 0000:01:00.0: BAR 6: no parent found for of device "
+        "\[0xffff0000-0xffffffff]",
+        "tsl258x 2-0029: taos_get_lux data not valid",
+        "usb 1-2: config 1 has an invalid interface number: 1 but max is 0",
+        "usb 1-2: config 1 has no interface number 0",
+        ],
+    'Mario' : [
+        "chromeos_acpi: failed to retrieve MLST \(5\)",
+        r"btusb_[a-z]{4}_complete: hci\d urb [\da-f]+ failed to resubmit \(1\)",
+        ]
+}
 
 """ Interesting fields from meminfo that we want to log
     If you add fields here, you must add them to the constraints
@@ -106,6 +123,12 @@ class kernel_BootMessagesServer(test.test):
         assert host is not None, "The host must be specified."
 
         self._client = host
+
+        # get the firmware identifier from Crossystem
+        cs = utils.Crossystem(self._client)
+        cs.init()
+        fwid = cs.fwid().split('.')[0]
+
         dmesg_filename = os.path.join(self.resultsdir, 'dmesg')
         meminfo_filename = os.path.join(self.resultsdir, 'meminfo')
         perf_vals = {}
@@ -114,7 +137,8 @@ class kernel_BootMessagesServer(test.test):
         meminfo = self._read_meminfo(meminfo_filename)
         self._parse_meminfo(meminfo, perf_vals)
         dmesg = self._read_dmesg(dmesg_filename)
-        unexpected = utils.check_raw_dmesg(dmesg, _KERN_WARNING, _WHITELIST)
+        unexpected = utils.check_raw_dmesg(
+            dmesg, _KERN_WARNING, _WHITELIST_COMMON + _WHITELIST_TARGETS[fwid])
 
         if unexpected:
             f = open(os.path.join(self.resultsdir, 'dmesg.err'), 'w')
