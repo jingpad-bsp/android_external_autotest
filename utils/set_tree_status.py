@@ -7,9 +7,10 @@
 # password protected authorization.
 #
 # Example usage:
-# ./set_tree_status.py "a quoted space separated message."
+# ./set_tree_status.py [options] "a quoted space separated message."
 
 import getpass
+import optparse
 import os
 import sys
 import urllib
@@ -30,12 +31,13 @@ def get_pwd():
     return getpass.getpass()
 
 
-def post_status(message):
-    status = get_status()
-    if 'tree is closed' in status.lower():
-        print >> sys.stderr, 'Tree is already closed for some other reason.'
-        print >> sys.stderr, status
-        return -1
+def post_status(force, message):
+    if not force:
+        status = get_status()
+        if 'tree is closed' in status.lower():
+            print >> sys.stderr, 'Tree is already closed for some other reason.'
+            print >> sys.stderr, status
+            return -1
     data = {
         'message': message,
         'username': getpass.getuser(),
@@ -46,8 +48,12 @@ def post_status(message):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print('Usage: set_tree_status.py "message"')
-        sys.exit(1)
-
-    sys.exit(post_status(sys.argv[1]))
+    parser = optparse.OptionParser("%prog [options] quoted_message")
+    parser.add_option('--noforce',
+                      dest='force', action='store_false',
+                      default=True,
+                      help='Dont force to close tree if it is already closed.')
+    options, args = parser.parse_args()
+    if not args:
+        print >> sys.stderr, 'missing tree close message.'
+    sys.exit(post_status(options.force, args[0]))
