@@ -108,6 +108,7 @@ class factory_Finalize(test.test):
                 '--finalize',
                 '--verbose',
                 '--db_path "%s"' % db_path,
+                '--wipe_method "%s"' % ('secure' if secure_wipe else 'fast'),
                 '--upload_method "%s"' % upload_method,
                 ]
         if not check_and_enable_write_protect:
