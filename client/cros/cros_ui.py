@@ -65,6 +65,14 @@ def get_autox():
     return autox.AutoX()
 
 
+def stop():
+    return utils.system("stop ui")
+
+
+def start():
+    return utils.system("start ui")
+
+
 class ChromeSession(object):
     """
     A class to open a tab within the running browser process.

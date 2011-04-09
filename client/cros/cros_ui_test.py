@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -168,16 +168,11 @@ class UITest(test.test):
         if creds:
             self.start_authserver()
 
-        # Fake ownership unless the test is explicitly testing owner creation.
-        if not is_creating_owner and not os.access(
-            constants.OWNER_KEY_FILE, os.F_OK):
-            logging.info('Owner credentials not found. Faking ownership...')
-            self.__fake_ownership()
-            self.fake_owner = True
-
         if login.logged_in():
             login.attempt_logout()
 
+        # The UI must be taken down to ensure that no stale state persists.
+        cros_ui.stop()
         (self.username, self.password) = self.__resolve_creds(creds)
         # Ensure there's no stale cryptohome from previous tests.
         try:
@@ -185,10 +180,16 @@ class UITest(test.test):
         except cryptohome.ChromiumOSError as err:
             logging.error(err)
 
-        if is_creating_owner:
+        # Fake ownership unless the test is explicitly testing owner creation.
+        if not is_creating_owner:
+            logging.info('Faking ownership...')
+            self.__fake_ownership()
+            self.fake_owner = True
+        else:
             logging.info('Erasing stale owner state.')
             ownership.clear_ownership()
             self.fake_owner = False
+        cros_ui.start()
 
         login.refresh_login_screen()
         if self.auto_login:
