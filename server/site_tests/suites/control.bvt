@@ -46,8 +46,9 @@ TESTS = [
   ('login_CryptohomeIncognitoUnmounted', {}),
   ('login_LoginSuccess', {'tag': 'default'}),
   ('login_LoginSuccess', {'creds': '$apps', 'tag': 'apps'}),
-  ('login_OwnershipNotRetaken', {}),
-  ('login_OwnershipTaken', {}),
+# TODO(cmasone): http://crosbug.com/14008
+#  ('login_OwnershipNotRetaken', {}),
+#  ('login_OwnershipTaken', {}),
   ('login_RemoteLogin', {}),
   ('network_DisableInterface', {'iface_name': 'wlan0',
                                 'tag': 'wlan0'}),

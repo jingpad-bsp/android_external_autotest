@@ -28,8 +28,9 @@ job.run_test('login_CryptohomeIncognitoUnmounted')
 job.run_test('login_CryptohomeUnmounted')
 job.run_test('login_LoginSuccess', tag='default')
 job.run_test('login_LoginSuccess', creds='$apps', tag='apps')
-job.run_test('login_OwnershipTaken')
-job.run_test('login_OwnershipNotRetaken')
+# http://crosbug.com/
+#job.run_test('login_OwnershipTaken')
+#job.run_test('login_OwnershipNotRetaken')
 job.run_test('platform_FilePerms')
 job.run_test('platform_OSLimits')
 
