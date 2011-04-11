@@ -326,7 +326,7 @@ class UITest(test.test):
         """
         logout_start_regex = re.compile(login.LOGOUT_ATTEMPT_MSG)
         crash_regex = re.compile(
-            'Received crash notification for (\w+).+ (sig \d+)')
+            'Received crash notification for ([-\w]+).+ (sig \d+)')
         logout_complete_regex = re.compile(login.LOGOUT_COMPLETE_MSG)
 
         in_logout = False

@@ -32,6 +32,7 @@ TESTS = [
   ('fsx', {}),
   ('graphics_GLAPICheck', {}),
   ('graphics_GLBench', {}),
+  ('graphics_Piglit', {}),
   ('graphics_SanAngeles', {'creds': '$backdoor'}),
   ('graphics_WindowManagerGraphicsCapture', {}),
   ('hackbench', {}),
