@@ -30,6 +30,8 @@ TESTS = [
   ('compilebench', {}),
   ('iozone', {}),
   ('ddtest', {}),
+  ('kernel_fs_Inplace', {'dir':'/tmp', 'scratch':'/tmp/.inplace'}),
+  ('kernel_fs_Inplace', {'dir':'/tmp', 'scratch':'/home/chronos/user/.ecrypt'}),
 ]
 
 
