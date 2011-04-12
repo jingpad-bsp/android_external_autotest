@@ -153,8 +153,13 @@ class WiFiTest(object):
         # potential bg thread for client network monitoring
         self.client_netdump_thread = None
         self.__client_discover_commands(client)
-        self.profile_create({'name':'test'})
-        self.profile_push({'name':'test'})
+
+        self.test_profile = {'name':'test'}
+        # cleanup in case a previous failure left the profile around
+        self.profile_remove(self.test_profile, ignore_status=True)
+        self.profile_create(self.test_profile)
+        self.profile_push(self.test_profile)
+
         self.firewall_rules = []
         self.host_route_args = {}
 
@@ -177,8 +182,8 @@ class WiFiTest(object):
         if params.get('force_disconnect'):
             self.disconnect({})
             self.wifi.destroy({})
-        self.profile_pop({'name':'test'})
-        self.profile_remove({'name':'test'})
+        self.profile_pop(self.test_profile)
+        self.profile_remove(self.test_profile)
         self.client_netdump_stop({})
         self.firewall_cleanup({})
         self.host_route_cleanup({})
@@ -1111,10 +1116,11 @@ class WiFiTest(object):
         self.client.run('%s/test/create-profile %s' %
                         (self.client_cmd_flimflam_lib, params['name']))
 
-    def profile_remove(self, params):
+    def profile_remove(self, params, ignore_status=False):
         """ Remove the specified profile """
         self.client.run('%s/test/rm-profile %s' %
-                        (self.client_cmd_flimflam_lib, params['name']))
+                        (self.client_cmd_flimflam_lib, params['name']),
+                         ignore_status=ignore_status)
 
     def profile_push(self, params):
         """ Push the specified profile on the stack """
