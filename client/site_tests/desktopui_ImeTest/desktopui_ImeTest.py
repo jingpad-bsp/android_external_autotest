@@ -155,7 +155,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         # Navigate to the "Languages and Input" menu.
         ax.send_text('chrome://settings/languages#focus=add,lang_add=%s\n' %
                      language)
-        time.sleep(3)
+        time.sleep(10)
         ax.send_text(' ')
         time.sleep(1)
         ax.send_hotkey('Ctrl+w')
@@ -166,7 +166,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         time.sleep(1)
         ax.send_text('chrome://settings/languages#lang=%s,focus=%s\n' %
                      (language, engine))
-        time.sleep(3)
+        time.sleep(10)
 
         # Toggle the checkbox.
         ax.send_text(' ')
@@ -178,7 +178,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         time.sleep(1)
 
 
-    def stop_ime_language(self, language):
+    def stop_ime_engine(self, language, engine):
         """
         Remove a language from Chrome's preferred list and disable all its IMEs.
 
@@ -191,10 +191,26 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         time.sleep(1)
         ax.send_hotkey('Ctrl+l')
         time.sleep(1)
+        ax.send_text('chrome://settings/languages#lang=%s,focus=%s\n' %
+                     (language, engine))
+        time.sleep(10)
+
+        # Toggle the checkbox.
+        ax.send_text(' ')
+        # The toggling can take longer than 1 sec.
+        time.sleep(2)
+        ax.send_hotkey('Ctrl+w')
+        time.sleep(1)
+
+        # Open the config dialog.
+        ax.send_hotkey('Ctrl+t')
+        time.sleep(1)
+        ax.send_hotkey('Ctrl+l')
+        time.sleep(1)
         # Navigate to the "Languages and Input" menu.
         ax.send_text('chrome://settings/languages#lang=%s,focus=remove\n' %
                      language)
-        time.sleep(3)
+        time.sleep(10)
 
         # Push the button
         ax.send_text(' ')
@@ -222,6 +238,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         while time.time() - start_time < 10:
             # Select all the text so that it can be accessed via the clipboard.
             ax.send_hotkey('Ctrl-a')
+            time.sleep(1)
 
             if clip.wait_is_text_available():
                 return str(clip.wait_for_text())
@@ -289,7 +306,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         #self.test_engine_form(language, engine_name, input_string,
         #                      expected_string)
         self.activate_engine('xkb:us::eng')
-        self.stop_ime_language(language)
+        self.stop_ime_engine(language, engine_name)
 
 
     def test_engine_omnibox(self, language, engine_name, input_string,
