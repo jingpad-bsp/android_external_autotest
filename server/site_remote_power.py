@@ -26,9 +26,13 @@ except:
 # powerswitch to turn the power to device1 on and off, and pass in the above
 # configuration to the CycladesACSRemotePowerSwitch class.
 if not remote_power_switch_machines:
-    settings = 'autotest_lib.frontend.settings'
-    os.environ['DJANGO_SETTINGS_MODULE'] = settings
-    from autotest_lib.frontend.afe import models
+    try:
+        settings = 'autotest_lib.frontend.settings'
+        os.environ['DJANGO_SETTINGS_MODULE'] = settings
+        from autotest_lib.frontend.afe import models
+        has_models = True
+    except ImportError, e:
+        has_models = False
 
 # factory function for choosing which remote power class to return
 
@@ -41,14 +45,14 @@ def ParseConfig(config):
         raise AssertionError
 
 def RemotePower(host):
-    if not remote_power_switch_machines:
+    if remote_power_switch_machines and host in remote_power_switch_machines:
+        return ParseConfig(remote_power_switch_machines[host])
+    elif has_models:
         host_obj = models.Host.valid_objects.get(hostname=host)
         for label in host_obj.labels.all():
             name = label.name
             if name.startswith("rps,"):
                 return ParseConfig(name)
-    elif host in remote_power_switch_machines:
-        return ParseConfig(remote_power_switch_machines[host])
 
     return None
 

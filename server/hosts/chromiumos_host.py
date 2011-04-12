@@ -6,6 +6,7 @@ import time
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
+from autotest_lib.server import site_remote_power
 from autotest_lib.server.hosts import base_classes
 
 
@@ -54,3 +55,11 @@ class ChromiumOSHost(base_classes.Host):
         for path in global_config.global_config.get_config_value(
                 'AUTOSERV', 'client_autodir_paths', type=list):
             self.run('rm -rf ' + path)
+
+
+    def cleanup(self):
+        """Special cleanup method to make sure hosts always get power back."""
+        super(ChromiumOSHost, self).cleanup()
+        remote_power = site_remote_power.RemotePower(self.hostname)
+        if remote_power:
+            remote_power.set_power_on()
