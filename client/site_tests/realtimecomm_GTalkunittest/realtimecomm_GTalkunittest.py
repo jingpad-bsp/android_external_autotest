@@ -26,11 +26,11 @@ class realtimecomm_GTalkunittest(test.test):
     # On ARM, skip:
     #  call_unittest (doesn't build)
     #  media_unittest  (doesn't build)
+    #  flute_unittest (doesn't build)
     arm_unittests = [
         'base_unittest',
         'browserplugin_unittest',
         'flash_unittest',
-        'flute_unittest',
         'p2p_unittest',
         'sound_unittest',
         'tunnel_unittest',
