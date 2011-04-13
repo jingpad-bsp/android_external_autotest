@@ -246,6 +246,20 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         return ""
 
 
+    def check_current_text(self, expected_string):
+      # Compares the current text to the expected text, and retires on failure.
+      # This makes the test a little more reliable if the system is
+      # under stress.
+      retries = 4
+      while retries > 0:
+        text = self.get_current_text()
+        if text == expected_string:
+          return text
+        retries = retries - 1
+
+      return text
+
+
     def test_ibus_start_process(self):
         # Check that enabling the IME launches ibus.
         self.toggle_ime_process()
@@ -322,7 +336,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
 
         ax.send_text(input_string)
 
-        text = self.get_current_text()
+        text = self.check_current_text(expected_string)
         if text != expected_string:
             self.log_error(
                 'test_engine %s in omnibox' % engine_name,
@@ -344,7 +358,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         self.activate_engine(engine_name)
 
         ax.send_text(input_string)
-        text = self.get_current_text()
+        text = self.check_current_text(expected_string)
         if text != expected_string:
             self.log_error(
                 'test_engine %s in form' % engine_name,
