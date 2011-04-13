@@ -80,7 +80,7 @@ class test_item(object):
 class machine_worker(threading.Thread):
     """Thread that runs tests on a remote host machine."""
 
-    def __init__(self, machine, work_dir, test_queue, queue_lock):
+    def __init__(self, server_job, machine, work_dir, test_queue, queue_lock):
         """Creates an instance of machine_worker to run tests on a remote host.
 
         Retrieves that host attributes for this machine and creates the set of
@@ -90,12 +90,14 @@ class machine_worker(threading.Thread):
         hostname and tko parser version into keyvals file.
 
         Args:
+            server_job: run tests for this server_job.
             machine: name of remote host.
             work_dir: directory server job is using.
             test_queue: queue of tests.
             queue_lock: lock protecting test_queue.
         """
         threading.Thread.__init__(self)
+        self._server_job = server_job
         self._test_queue = test_queue
         self._test_queue_lock = queue_lock
         self._tests_run = 0
@@ -153,15 +155,30 @@ class machine_worker(threading.Thread):
 
     def run_subcommand(self, active_test):
         """Use subcommand to fork process and execute test."""
-        sub_cmd = subcommand.subcommand(self.subcommand_wrapper, [active_test])
+        sub_cmd = subcommand.subcommand(self.subcommand_wrapper,
+                                        [active_test],
+                                        self._results_dir)
         sub_cmd.fork_start()
         sub_cmd.fork_waitfor()
 
     def subcommand_wrapper(self, active_test):
-        """Callback for subcommand to call into with the test parameter."""
+        """Callback for subcommand to call into with the test parameter.
+
+        When this function executes it has forked from the main process so it
+        is safe to modify state on the server_job object. These changes enable
+        continuous parsing which communicates results back to the database
+        while the server_job is running instead of only when the server_job is
+        complete.
+        """
+        self._server_job._parse_job += "/" + self._machine
+        self._server_job._using_parser = True
+        self._server_job.machines = [self._machine]
+        self._server_job.push_execution_context(self._machine)
+        self._server_job.init_parser()
         self._client_at.run_test(active_test.test_name,
                                  results_dir=self._results_dir,
                                  **active_test.test_args)
+        self._server_job.cleanup_parser()
 
     def run(self):
         """Executes tests on host machine.

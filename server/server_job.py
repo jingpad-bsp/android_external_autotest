@@ -481,7 +481,8 @@ class base_server_job(base_job.base_job):
         test_queue = Queue.Queue()
         test_queue_lock = threading.Lock()
 
-        machine_workers = [server_job_utils.machine_worker(machine,
+        machine_workers = [server_job_utils.machine_worker(self,
+                                                           machine,
                                                            self.resultdir,
                                                            test_queue,
                                                            test_queue_lock)
