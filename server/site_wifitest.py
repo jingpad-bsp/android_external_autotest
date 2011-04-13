@@ -420,6 +420,8 @@ class WiFiTest(object):
             flags.append('--hidden')
         if 'mode' in params:
             flags.append('--mode=%s' % params['mode'])
+        if params.get('nosave', False):
+            flags.append('--nosave')
 
         result = self.client.run('python "%s" %s "%s" "%s" "%s" "%d" "%d"' %
             (script_client_file,

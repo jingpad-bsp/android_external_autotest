@@ -25,6 +25,15 @@ FLIMFLAM_ERROR_UNKNOWNMETHOD = FLIMFLAM_ERROR + '.UnknownMethod'
 FLIMFLAM_ERROR_ALREADYCONNECTED = FLIMFLAM_ERROR + '.AlreadyConnected'
 connect_quirks = {}
 
+def convert_dbus_value(value):
+    if value.__class__ == dbus.Byte:
+        return int(value)
+    elif value.__class__ == dbus.Boolean:
+        return bool(value)
+    else:
+        return value
+
+
 class ConnectStateHandler(StateHandler):
   def __init__(self, dbus_bus, connection_settings, hidden, timeout,
                start_time=None, debug=False, scan_retry=8):
@@ -55,8 +64,9 @@ class ConnectStateHandler(StateHandler):
                            path_list=path_list):
       props = svc.GetProperties()
       for key, val in self.connection_settings.items():
-        if key != 'SSID' and props.get(key) != val:
-          if key == 'Passphrase' or key.startswith('EAP.'):
+        prop_val = convert_dbus_value(props.get(key))
+        if key != 'SSID' and  prop_val != val:
+          if key in ['Passphrase', 'SaveCredentials'] or key.startswith('EAP.'):
             try:
               svc.SetProperty(key, val)
             except dbus.exceptions.DBusException, e:
@@ -65,7 +75,7 @@ class ConnectStateHandler(StateHandler):
               return None
           else:
             self.Debug('Service key mismatch: %s %s != %s' %
-                       (key, val, str(props.get(key))))
+                       (key, val, str(prop_val)))
             break
       else:
         service = svc
@@ -167,6 +177,8 @@ def main(argv):
                     default=10, help='This is a hidden network')
   parser.add_option('--mode', dest='mode', default='managed',
                     help='This is a hidden network')
+  parser.add_option('--nosave', dest='save_creds', action='store_false',
+                    default=True, help='Do not save credentials')
   (options, args) = parser.parse_args(argv[1:])
 
   if len(argv) <= 4:
@@ -183,7 +195,8 @@ def main(argv):
       'Type': 'wifi',
       'Mode': options.mode,
       'SSID': ssid,
-      'Security': security
+      'Security': security,
+      'SaveCredentials' : options.save_creds
   }
 
   if security == '802_1x':
