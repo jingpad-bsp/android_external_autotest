@@ -119,3 +119,48 @@ def check_raw_dmesg(dmesg, message_level, whitelist):
                 continue
             unexpected.append(stripped_line)
     return unexpected
+
+def verify_mesg_set(mesg, regex, whitelist):
+    """Verifies that the exact set of messages are present in a text.
+
+    This function finds all strings in the text matching a certain regex, and
+    then verifies that all expected strings are present in the set, and no
+    unexpected strings are there.
+
+    Arguments:
+      mesg - the mutiline text to be scanned
+      regex - regular expression to match
+      whitelist - messages to find in the output, a list of strings
+          (potentially regexes) to look for in the filtered output. All these
+          strings must be there, and no other strings should be present in the
+          filtered output.
+
+    Returns:
+      string of inconsistent findings (i.e. an empty string on success).
+    """
+
+    rv = []
+
+    missing_strings = []
+    present_strings = []
+    for line in mesg.splitlines():
+        if not re.search(r'%s' % regex, line):
+            continue
+        present_strings.append(line.split('] ', 1)[1])
+
+    for string in whitelist:
+        for present_string in list(present_strings):
+            if re.search(r'^%s$' % string, present_string):
+                present_strings.remove(present_string)
+                break
+        else:
+            missing_strings.append(string)
+
+    if present_strings:
+        rv.append('unexpected strings:')
+        rv.extend(present_strings)
+    if missing_strings:
+        rv.append('missing strings:')
+        rv.extend(missing_strings)
+
+    return '\n'.join(rv)

@@ -32,6 +32,7 @@ _WHITELIST_COMMON = [
     r"sd \d:\d:\d:\d: \[sd[a-z]\] Assuming drive cache: write through",
     "tsl[\da-z]+: module is from the staging directory, the quality is "
     "unknown, you have been warned.",
+    "usb 1-2: unknown number of interfaces: 4",
 ]
 
 _WHITELIST_TARGETS = {
@@ -115,6 +116,41 @@ class kernel_BootMessagesServer(test.test):
                 metric = _meminfo_fields[stat]
                 perf_vals[metric] = value
 
+    def _check_acpi_output(self, text, fwid):
+        # This dictionary is the database of expected strings in dmesg output.
+        # The keys are platform names, the values are two tuples, the first
+        # element is the regex to filter the messages, the second element is a
+        # set of strings to be found in the filtered dmesg set.
+        message_db = {
+            'Alex' : (r'(chromeos_acpi:|ChromeOS )', (
+                    'chromeos_acpi: registering CHSW 0',
+                    'chromeos_acpi: registering VBNV 0',
+                    'chromeos_acpi: registering VBNV 1',
+                    r'chromeos_acpi: truncating buffer from \d+ to \d+',
+                    'chromeos_acpi: installed',
+                    'ChromeOS firmware detected')),
+
+            'Mario' : (r'(chromeos_acpi|ChromeOS )', (
+                    'chromeos_acpi: falling back to default list of methods',
+                    'chromeos_acpi: registering CHSW 0',
+                    'chromeos_acpi: registering CHNV 0',
+                    'chromeos_acpi: failed to retrieve MLST \(5\)',
+                    'chromeos_acpi: installed',
+                    'Legacy ChromeOS firmware detected'))
+            }
+
+        if fwid not in message_db:
+            msg = 'Unnown platform %s, acpi dmesg set not defined.' % fwid
+            logging.error(msg)
+            raise error.TestFail(msg)
+
+        rv = utils.verify_mesg_set(text,
+                                   message_db[fwid][0],
+                                   message_db[fwid][1])
+        if rv:
+            logging.error('ACPI mismatch\n%s:' % rv)
+            raise error.TestFail('ACPI dmesg mismatch')
+
     def run_once(self, host=None):
         """Run the test.
 
@@ -137,6 +173,12 @@ class kernel_BootMessagesServer(test.test):
         meminfo = self._read_meminfo(meminfo_filename)
         self._parse_meminfo(meminfo, perf_vals)
         dmesg = self._read_dmesg(dmesg_filename)
+
+        if fwid not in _WHITELIST_TARGETS:
+            msg = 'Unnown platform %s, whitelist dmesg set not defined.' % fwid
+            logging.error(msg)
+            raise error.TestFail(msg)
+
         unexpected = utils.check_raw_dmesg(
             dmesg, _KERN_WARNING, _WHITELIST_COMMON + _WHITELIST_TARGETS[fwid])
 
@@ -149,3 +191,5 @@ class kernel_BootMessagesServer(test.test):
             raise error.TestFail("Unexpected dmesg warnings and/or errors.")
 
         self.write_perf_keyval(perf_vals)
+
+        self._check_acpi_output(dmesg, fwid)
