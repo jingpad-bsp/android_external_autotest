@@ -45,6 +45,7 @@ else:
 URL_PREFIX = 'afe/server/'
 TKO_URL_PREFIX = 'new_tko/server/'
 PLANNER_URL_PREFIX = 'planner/server/'
+CROSCHART_URL_PREFIX = 'croschart/server/'
 
 # Local time zone for this installation. Choices can be found here:
 # http://www.postgresql.org/docs/8.1/static/datetime-keywords.html#DATETIME-TIMEZONE-SET-TABLE
@@ -103,13 +104,15 @@ TEMPLATE_DIRS = (
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
 
-    os.path.abspath(os.path.dirname(__file__) + '/templates')
+    os.path.abspath(os.path.dirname(__file__) + '/templates'),
+    os.path.abspath(os.path.dirname(__file__) + '/croschart/templates')
 )
 
 INSTALLED_APPS = (
     'frontend.afe',
     'frontend.tko',
     'frontend.planner',
+    'frontend.croschart',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

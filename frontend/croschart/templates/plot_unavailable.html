@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds a single plot on a single page for a zoomed-in view.
+{% endcomment %}
+{% block title %}ChromeOS Performance Chart{% endblock %}
+{% block html_block %}
+<center>
+({{ tpl_gviz_title }} - {{ tpl_perf_key }} data is unavailable.)
+</center>
+{% endblock %}

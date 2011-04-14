@@ -1,0 +1,133 @@
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template describes the overall page structure for the
+tables pages for the ChromeOS Test Dashboard.
+{% endcomment %}
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="en">
+  <head>
+    <meta http-equiv="refresh" content="600">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="pragma" content="no-cache">
+    <title>{% block title %}{% endblock %}</title>
+  </head>
+  <body>
+    <style type="text/css">
+      body, td, th {
+        font-family: Verdana, Geneva, sans-serif;
+        font-size: 0.9em;
+      }
+      .div_left {
+        clear:left;
+        float:left;
+        margin-left:auto;
+        margin-right:0pt;
+        width:45%;
+      }
+      .div_middle {
+        float:left;
+        width:8%;
+      }
+      .div_right {
+        float:left;
+        clear:right;
+        width:45%;
+      }
+      .div_full {
+        margin-left:auto;
+        margin-right:auto;
+        width:100%;
+      }
+      .div_testname {
+        -webkit-transform:rotate(270deg);
+        -moz-transform:rotate(270deg);
+        width:20px;
+        white-space:nowrap;
+        text-decoration:normal;
+      }
+      .legend {
+        padding:3px;
+        border:1px solid #c0c0c0;
+        width:5px;
+        font-weight:bold;
+      }
+      a img {
+        border-style: ridge;
+        width: 760px;
+      }
+      a { text-decoration: none; }
+      a.info{
+        position:relative; /*this is the key*/
+        z-index:1
+        color:#000;
+        font-weight:normal;
+      }
+      a.info:hover { z-index:25; }
+      a.info span { display: none }
+      a.info:hover span{ /*the span will display just on :hover state*/
+        display:block;
+        position:absolute;
+        top:1em; left:1em;
+        min-width: 200px;
+        overflow: visible;
+        background-color:#fff;
+        color:#000;
+        background: #FFFFAA; border: 1px solid #FFAD33;
+        text-align: left;
+        font-family: Verdana, Geneva, sans-serif;
+        font-size: 0.9em;
+        font-weight: normal;
+        padding: 0.2em 0 0.6em 0;
+        border-radius: 5px 5px;
+        -moz-border-radius: 5px;
+        -webkit-border-radius: 5px;
+        box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1);
+        -webkit-box-shadow: 5px 5px rgba(0, 0, 0, 0.1);
+        -moz-box-shadow: 5px 5px rgba(0, 0, 0, 0.1);
+      }
+      table {
+        background-color: #bbbbbb;
+        border-collapse:collapse;
+        border-spacing: 1px 1px 1px 1px;
+        margin-top:0px;
+        margin-bottom:50px;
+      }
+      table tr {
+        background-color: #e5e5c0;
+      }
+      table tr td, table tr th  {
+        border:1px solid #c0c0c0;
+      }
+      a.configs { text-decoration: underline; }
+
+      tbody tr * {padding: 4px;}
+
+      tbody th a {
+        color :#fff;
+        padding:1.0em 3.0em 0 0;
+        text-decoration:none;
+        }
+
+      tbody th a:hover {
+        background:none;
+        color:#000;
+        }
+
+      tbody td a {
+        padding: 0px;
+        text-decoration: none;
+        }
+
+      tbody td a:hover {
+        background:none;
+        color:#000;
+        }
+
+    </style>
+    {% block header_block %}{% endblock %}
+    {% block html_block %}{% endblock %}
+    {% block footer_block %}{% endblock %}
+  </body>
+</html>

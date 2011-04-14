@@ -750,5 +750,18 @@ class GwtIncubatorPackage(ExternalPackage):
         return True
 
 
+class GVizAPIPackage(ExternalPackage):
+    version = '1.7.0'
+    url_filename = 'gviz_api_py-%s.tar.gz' % version
+    local_filename = 'google-visualization-python.tar.gz'
+    urls = ('http://google-visualization-python.googlecode.com/files/%s' % (
+        url_filename),)
+    hex_sum = 'cd9a0fb4ca5c4f86c0d85756f501fd54ccf492d2'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_noegg)
+
+
 if __name__ == '__main__':
     sys.exit(main())

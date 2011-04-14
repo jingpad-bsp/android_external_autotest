@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds a page with multiple plots in frames.
+{% endcomment %}
+{% block header_block %}
+<h2><center>Chrome OS Performance Test Results</center></h2>
+<h3><center>{{ tpl_boards }} - {{ tpl_netbook }}</center></h3>
+<div>
+{% for test_name, test_key in tpl_charts %}
+  {% ifchanged %}
+  <a href="#{{ test_name }}">{{ test_name }}</a>
+  &nbsp;|&nbsp;
+  {% endifchanged %}
+{% endfor %}
+<i>last updated: {% now "D M H:i:s Y" %}</i>
+</div>
+{% endblock %}
+{% block html_block %}
+{% for test_name, test_key in tpl_charts %}
+{% ifchanged %}
+<hr><center><a name="{{ test_name }}"><strong>{{ test_name }}</strong></a><center>
+{% endifchanged %}
+<iframe width="{{ tpl_width|add:'20' }}"
+        height="{{ tpl_height|add:'20' }}"
+        frameborder="0"
+        src="/croschart/server/{{ tpl_boards }}/{{ tpl_netbook }}/{{ test_name }}/{{ test_key }}/{{ tpl_width }}/{{ tpl_height }}/">
+</iframe>
+{% endfor %}
+{% endblock %}
