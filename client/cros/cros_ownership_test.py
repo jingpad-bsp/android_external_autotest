@@ -36,10 +36,7 @@ class OwnershipTest(test.test):
         Connects to the session manager over the DBus system bus.  Returns
         appropriately configured DBus interface object.
         """
-        bus = dbus.SystemBus()
-        proxy = bus.get_object('org.chromium.SessionManager',
-                               '/org/chromium/SessionManager')
-        return dbus.Interface(proxy, 'org.chromium.SessionManagerInterface')
+        return ownership.connect_to_session_manager()
 
 
     def generate_policy(self, key, pubkey, policy, old_key=None):

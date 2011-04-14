@@ -2,11 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, tempfile
+import common
+import constants
+import cryptohome
+import dbus
+import logging
+import login
+import os
+import tempfile
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import autotemp, error
-import common
-import constants, cryptohome, login
 
 
 class scoped_tempfile(object):
@@ -58,6 +63,18 @@ def clear_ownership():
     __unlink(constants.OWNER_KEY_FILE)
     __unlink(constants.SIGNED_PREFERENCES_FILE)
     __unlink(constants.SIGNED_POLICY_FILE)
+
+
+def connect_to_session_manager():
+    """Create and return a DBus connection to session_manager.
+
+    Connects to the session manager over the DBus system bus.  Returns
+    appropriately configured DBus interface object.
+    """
+    bus = dbus.SystemBus()
+    proxy = bus.get_object('org.chromium.SessionManager',
+                           '/org/chromium/SessionManager')
+    return dbus.Interface(proxy, 'org.chromium.SessionManagerInterface')
 
 
 NSSDB = constants.CRYPTOHOME_MOUNT_PT + '/.pki/nssdb'

@@ -203,11 +203,14 @@ class UITest(test.test):
         dirname = os.path.dirname(__file__)
         mock_certfile = os.path.join(dirname, 'mock_owner_cert.pem')
         mock_signedprefsfile = os.path.join(dirname, 'mock_owner.preferences')
+        mock_signedpolicyfile = os.path.join(dirname, 'mock_owner.policy')
         utils.open_write_close(
             constants.OWNER_KEY_FILE,
             ownership.cert_extract_pubkey_der(mock_certfile))
         shutil.copy(mock_signedprefsfile,
                     constants.SIGNED_PREFERENCES_FILE)
+        shutil.copy(mock_signedpolicyfile,
+                    constants.SIGNED_POLICY_FILE)
 
 
     def __canonicalize(self, credential):
