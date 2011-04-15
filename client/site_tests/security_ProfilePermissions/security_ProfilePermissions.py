@@ -36,7 +36,8 @@ class security_ProfilePermissions(cros_ui_test.UITest):
                                                              oct(homemode)))
 
         # Writable by anyone else is bad, as is owned by anyone else.
-        cmd = 'find -L "%s" -perm /022 -o \\! -user chronos -ls' % homepath
+        cmd = 'find -L "%s" \\( -perm /022 -o \\! -user chronos \\) -ls'
+        cmd = cmd % homepath
         cmd_output = utils.system_output(cmd, ignore_status=True)
 
         if (cmd_output != '') :
