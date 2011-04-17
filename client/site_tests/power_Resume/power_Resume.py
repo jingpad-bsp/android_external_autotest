@@ -64,7 +64,13 @@ class power_Resume(test.test):
         return time
 
     def _get_end_cpu_resume_time(self):
-        return self._get_last_msg_time('CPU[0-9]\+ is up')
+        # systems with only one logical CPU won't have this message, return -1
+        try:
+            time = self._get_last_msg_time('CPU[0-9]\+ is up')
+        except error.TestError:
+            time = -1
+
+        return time
 
     def _get_end_suspend_time(self):
         time = self._get_last_msg_time_multiple(END_SUSPEND_MESSAGES)
@@ -141,7 +147,11 @@ class power_Resume(test.test):
         total_resume_time = self._get_hwclock_seconds() - alarm_time
         suspend_time = end_suspend_time - start_suspend_time
         kernel_resume_time = end_resume_time - end_suspend_time
-        kernel_cpu_resume_time = end_cpu_resume_time - end_suspend_time
+
+        kernel_cpu_resume_time = 0
+        if end_cpu_resume_time > 0:
+            kernel_cpu_resume_time = end_cpu_resume_time - end_suspend_time
+
         firmware_resume_time = total_resume_time - kernel_resume_time
 
         # Prepare the results
