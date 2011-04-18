@@ -55,7 +55,8 @@ def AddNetwork(ssid, passphrase="", encryption="none"):
   bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
   bus = dbus.SystemBus(mainloop=bus_loop)
   manager = dbus.Interface(
-      bus.get_object("org.chromium.flimflam", "/"), "org.chromium.flimflam.Manager")
+      bus.get_object("org.chromium.flimflam", "/"),
+      "org.chromium.flimflam.Manager")
 
   if passphrase == "":
     security = "none"
@@ -68,17 +69,19 @@ def AddNetwork(ssid, passphrase="", encryption="none"):
           "Security": security,
           "Passphrase": passphrase }));
   service = dbus.Interface(
-      bus.get_object("org.chromium.flimflam", path), "org.chromium.flimflam.Service") 
+      bus.get_object("org.chromium.flimflam", path),
+      "org.chromium.flimflam.Service")
 
   status = ""
   wait_count = 0
-  while status != "ready" and status != "failure" and wait_count < 30:
+  while status not in ["ready", "failure", "online", "portal"] and
+         wait_count < 30:
     properties = service.GetProperties()
     status = properties.get("State", None)
     time.sleep(.3)
     wait_count += 1
 
-  return status == "ready" 
+  return status in ["ready", "online", "portal"]
 
 def convert_ssid(ssid_list):
   """
