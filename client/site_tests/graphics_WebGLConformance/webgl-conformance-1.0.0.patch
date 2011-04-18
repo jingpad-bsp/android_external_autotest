@@ -1,0 +1,75 @@
+Common subdirectories: webgl-conformance-1.0.0.original/conformance and webgl-conformance-1.0.0/conformance
+Common subdirectories: webgl-conformance-1.0.0.original/extra and webgl-conformance-1.0.0/extra
+Common subdirectories: webgl-conformance-1.0.0.original/misc and webgl-conformance-1.0.0/misc
+Common subdirectories: webgl-conformance-1.0.0.original/resources and webgl-conformance-1.0.0/resources
+diff -c webgl-conformance-1.0.0.original/webgl-conformance-tests.html webgl-conformance-1.0.0/webgl-conformance-tests.html
+*** webgl-conformance-1.0.0.original/webgl-conformance-tests.html	Wed Apr 13 17:58:19 2011
+--- webgl-conformance-1.0.0/webgl-conformance-tests.html	Wed Apr 13 18:02:42 2011
+***************
+*** 208,213 ****
+--- 208,250 ----
+        this.currentPage = null;
+      }
+    };
++   
++   // send results to autotest graphics_WebGLConformance.py
++   Reporter.prototype.postFinalResults = function(summary) {
++     var xhr = new XMLHttpRequest();
++     xhr.open('POST', 'http://localhost:8000/WebGL/results', false);
++     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
++     xhr.onreadystatechange = function() {
++       if (xhr.readyState != 4) { return; }
++     }
++     msg = "";
++     var totalPages = 0;
++     var totalSuccessfulPages = 0;
++     var totalTests = 0;
++     var totalSuccessful = 0;
++     var totalTimeouts = 0;
++ 
++     for (var url in this.pagesByURL) {
++       var page = this.pagesByURL[url];
++       ++totalPages;
++       totalTests += page.totalTests;
++       totalSuccessful += page.totalSuccessful;
++       totalTimeouts += page.totalTimeouts;
++       pageFailures = page.totalTests - page.totalSuccessful;
++       if (pageFailures == 0) 
++         ++totalSuccessfulPages;
++       else
++         msg = msg + "&" + escape("failed_url:" + url) + "=" + pageFailures;
++     }
++     // pages or group counts (coarse)
++     msg = msg + "&gtotal=" + totalPages + "&gpass=" + totalSuccessfulPages;
++     // individual test counts (fine)
++     msg = msg + "&ttotal=" + totalTests + "&tpass=" + totalSuccessful;
++     msg = msg + "&ttimeout=" + totalTimeouts;
++     // copy of the text summary to store on the file system
++     msg = msg + "&summary=" + escape(summary);
++     xhr.send(msg);
++   }
+  
+    Reporter.prototype.displayFinalResults = function() {
+      var totalTests = 0;
+***************
+*** 262,267 ****
+--- 299,306 ----
+      while (r.firstChild) r.removeChild(r.firstChild);
+      r.appendChild(document.createTextNode(tx));
+      document.getElementById("showTextSummary").style.visibility = "visible";
++     // send results to autotest graphics_WebGLConformance
++     this.postFinalResults(tx);
+    };
+  
+    Reporter.prototype.reportFunc = function(type, msg, success) {
+***************
+*** 317,322 ****
+--- 356,363 ----
+      var elem = document.getElementById("nowebgl");
+      elem.style.display = "";
+    }
++   // automatically start for autotest graphics_WebGLConformance
++   testHarness.runTests();
+  }
+  </script>
+  </head>

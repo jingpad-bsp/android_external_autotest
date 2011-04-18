@@ -5,7 +5,7 @@
 # found in the LICENSE file.
 
 usage() {
-  echo "Usage: $0 <version-tag>"
+  echo "Usage: $0 <svn-version-tag>"
 }
 
 if [[ $# -lt 1 ]]; then
@@ -13,10 +13,10 @@ if [[ $# -lt 1 ]]; then
   exit 0
 fi
 
-PACKAGENAME=webgl-tests-${1}
+PACKAGENAME=webgl-conformance-1.0.0
 
 # source locations and revisions, taken from the original DEPS file
-WEBGL="https://cvs.khronos.org/svn/repos/registry/trunk/public/webgl/sdk/tests@11002"
+WEBGL="https://cvs.khronos.org/svn/repos/registry/trunk/public/webgl/sdk/tests@$1"
 WEBGLTO="WebGL"
 
 function update_mirror() {
