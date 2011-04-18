@@ -192,6 +192,12 @@ class machine_worker(threading.Thread):
             if active_test is None:
                 break
 
+            # Install autoest on host before running tests.  Do this before
+            # the subcommand fork so all future forks see that it has been
+            # installed on the host.
+            if not self._client_at.installed:
+                self._client_at.install()
+
             logging.info('%s running %s', self._machine, active_test)
             try:
                 self.run_subcommand(active_test)
