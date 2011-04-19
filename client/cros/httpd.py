@@ -11,10 +11,25 @@
    http://localhost:nnnn/?status="Browser started!"
 """
 
-import cgi, logging, os, posixpath, SimpleHTTPServer, socket
+import cgi, errno, logging, os, posixpath, SimpleHTTPServer, socket
 import socket, ssl, sys, threading, urllib, urlparse
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from SocketServer import BaseServer, ThreadingMixIn
+
+
+def _handle_http_errors(func):
+    """Decorator function for cleaner presentation of certain exceptions."""
+    def wrapper(self):
+        try:
+            func(self)
+        except IOError, e:
+            if e.errno == errno.EPIPE or e.errno == errno.ECONNRESET:
+                # Instead of dumping a stack trace, a single line is sufficient.
+                self.log_error(str(e))
+            else:
+                raise
+
+    return wrapper
 
 
 class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -24,6 +39,7 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     If the form submission is a file upload, the file will be written
     to disk with the name contained in the 'filename' field.
     """
+    @_handle_http_errors
     def do_POST(self):
         form = cgi.FieldStorage(
             fp=self.rfile,
@@ -104,6 +120,7 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             logging.debug('URL %s not in watch list' % self.path)
 
 
+    @_handle_http_errors
     def do_GET(self):
         form = cgi.FieldStorage(
             fp=self.rfile,
@@ -120,6 +137,11 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         else:
             SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
         self._fire_event()
+
+
+    @_handle_http_errors
+    def do_HEAD(self):
+        SimpleHTTPServer.SimpleHTTPRequestHandler.do_HEAD(self)
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -191,8 +213,8 @@ class SecureHTTPServer(ThreadingMixIn, HTTPServer):
 class SecureHTTPRequestHandler(FormHandler):
     def setup(self):
         self.connection = self.request
-        self.rfile = socket._fileobject(self.request, "rb", self.rbufsize)
-        self.wfile = socket._fileobject(self.request, "wb", self.wbufsize)
+        self.rfile = socket._fileobject(self.request, 'rb', self.rbufsize)
+        self.wfile = socket._fileobject(self.request, 'wb', self.wbufsize)
 
 
 class SecureHTTPListener(HTTPListener):
