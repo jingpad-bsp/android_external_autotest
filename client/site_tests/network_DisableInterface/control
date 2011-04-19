@@ -12,6 +12,4 @@ This test depends on the ifconfig utility to both disable and reenable a
 network interface.
 """
 
-job.run_test('network_DisableInterface', iface_name='wlan0', tag='wlan0')
-job.run_test('network_DisableInterface', iface_name='eth0', tag='eth0')
-job.run_test('network_DisableInterface', iface_name='hci0', tag='hci0')
+job.run_test('network_DisableInterface', iface_name='all', tag='all')
