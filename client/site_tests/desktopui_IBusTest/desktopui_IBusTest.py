@@ -31,7 +31,8 @@ class desktopui_IBusTest(cros_ui_test.UITest):
         out = self.run_ibusclient('list_engines')
         engine_names = out.splitlines()
         # We expect these engines to exist.
-        expected_engine_names = ['chewing', 'hangul', 'pinyin', 'm17n:ar:kbd']
+        expected_engine_names = ['mozc-chewing', 'hangul', 'pinyin',
+                                 'm17n:ar:kbd']
         for expected_engine_name in expected_engine_names:
             if not expected_engine_name in engine_names:
                 raise error.TestFail('Engine not found: ' +
@@ -66,7 +67,7 @@ class desktopui_IBusTest(cros_ui_test.UITest):
 
 
     def test_check_unused_ibus_values(self):
-        engine_list = ['hangul', 'pinyin', 'mozc', 'chewing']
+        engine_list = ['hangul', 'pinyin', 'mozc', 'mozc-chewing']
         expected_unread = set(['engine/PinyinCorrectPinyin_UEN_UN',
                                'engine/PinyinFuzzyPinyin_Z_ZH',
                                'engine/PinyinFuzzyPinyin_CH_C',
