@@ -388,8 +388,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         self.test_keyboard_shortcut()
         self.test_engine('ja', 'mozc', 'nihongo \n',
                          '\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
-        # TODO: re-enable this test when http://crosbug.com/14234 is fixed.
-        # self.test_engine('zh-TW', 'mozc-chewing', 'hol \n', '\xE6\x93\x8D')
+        self.test_engine('zh-TW', 'mozc-chewing', 'hol \n', '\xE6\x93\x8D')
         self.test_engine('ko', 'hangul', 'wl ', '\xEC\xA7\x80 ')
         self.test_engine('zh-CN', 'pinyin', 'nihao ',
                          '\xE4\xBD\xA0\xE5\xA5\xBD')
