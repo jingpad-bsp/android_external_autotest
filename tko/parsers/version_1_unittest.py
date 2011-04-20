@@ -135,12 +135,14 @@ class test_status_line(unittest.TestCase):
         self.assertEquals(line.reason, "needed last field")
         self.assertEquals(line.optional_fields, {})
 
-
-    def test_parse_line_fails_on_bad_optional_fields(self):
-        input_data = "GOOD\tfield1\tfield2\tfield3\tfield4"
-        self.assertRaises(AssertionError,
-                          version_1.status_line.parse_line,
-                          input_data)
+    # with dalecurtis' change
+    # http://git.chromium.org/gitweb/?p=autotest.git;a=commitdiff;h=e8dac7a116f39ab5a20c3dcb15bab4446fcfbb81
+    # this test becomes no longer valid.
+    # def test_parse_line_fails_on_bad_optional_fields(self):
+    #    input_data = "GOOD\tfield1\tfield2\tfield3\tfield4"
+    #    self.assertRaises(AssertionError,
+    #                      version_1.status_line.parse_line,
+    #                      input_data)
 
 
     def test_good_reboot_passes_success_test(self):

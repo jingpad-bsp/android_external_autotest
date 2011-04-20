@@ -176,7 +176,7 @@ class HumanMonitor(Monitor):
                                            "Output so far: %r" % o)
 
             # Save the output of 'help' for future use
-            self._help_str = self.cmd("help")
+            self._help_str = self.cmd("help", debug=False)
 
         except MonitorError, e:
             if suppress_exceptions:
@@ -228,18 +228,22 @@ class HumanMonitor(Monitor):
 
     # Public methods
 
-    def cmd(self, command, timeout=20):
+    def cmd(self, command, timeout=20, debug=True):
         """
         Send command to the monitor.
 
         @param command: Command to send to the monitor
         @param timeout: Time duration to wait for the (qemu) prompt to return
+        @param debug: Whether to print the commands being sent and responses
         @return: Output received from the monitor
         @raise MonitorLockError: Raised if the lock cannot be acquired
         @raise MonitorSocketError: Raised if a socket error occurs
         @raise MonitorProtocolError: Raised if the (qemu) prompt cannot be
                 found after sending the command
         """
+        if debug:
+            logging.debug("(monitor %s) Sending command '%s'",
+                          self.name, command)
         if not self._acquire_lock(20):
             raise MonitorLockError("Could not acquire exclusive lock to send "
                                    "monitor command '%s'" % command)
@@ -255,6 +259,12 @@ class HumanMonitor(Monitor):
             o = "\n".join(o.splitlines()[1:])
             # Report success/failure
             if s:
+                if debug and o:
+                    logging.debug("(monitor %s) "
+                                  "Response to '%s'", self.name,
+                                  command)
+                    for l in o.splitlines():
+                        logging.debug("(monitor %s)    %s", self.name, l)
                 return o
             else:
                 msg = ("Could not find (qemu) prompt after command '%s'. "
@@ -269,7 +279,7 @@ class HumanMonitor(Monitor):
         """
         Make sure the monitor is responsive by sending a command.
         """
-        self.cmd("info status")
+        self.cmd("info status", debug=False)
 
 
     # Command wrappers
@@ -300,14 +310,14 @@ class HumanMonitor(Monitor):
         return self.info(what)
 
 
-    def screendump(self, filename):
+    def screendump(self, filename, debug=True):
         """
         Request a screendump.
 
         @param filename: Location for the screendump
         @return: The command's output
         """
-        return self.cmd("screendump %s" % filename)
+        return self.cmd(command="screendump %s" % filename, debug=debug)
 
 
     def migrate(self, uri, full_copy=False, incremental_copy=False, wait=False):
@@ -514,7 +524,7 @@ class QMPMonitor(Monitor):
 
     # Public methods
 
-    def cmd(self, cmd, args=None, timeout=20):
+    def cmd(self, cmd, args=None, timeout=20, debug=True):
         """
         Send a QMP monitor command and return the response.
 
@@ -532,6 +542,9 @@ class QMPMonitor(Monitor):
                 (the exception's args are (cmd, args, data) where data is the
                 error data)
         """
+        if debug:
+            logging.debug("(monitor %s) Sending command '%s'",
+                          self.name, cmd)
         if not self._acquire_lock(20):
             raise MonitorLockError("Could not acquire exclusive lock to send "
                                    "QMP command '%s'" % cmd)
@@ -550,6 +563,12 @@ class QMPMonitor(Monitor):
                                            "response with an incorrect id"
                                            % cmd)
             if "return" in r:
+                if debug and r["return"]:
+                    logging.debug("(monitor %s) "
+                                  "Response to '%s'", self.name, cmd)
+                    o = str(r["return"])
+                    for l in o.splitlines():
+                        logging.debug("(monitor %s)    %s", self.name, l)
                 return r["return"]
             if "error" in r:
                 raise QMPCmdError(cmd, args, r["error"])
@@ -628,7 +647,7 @@ class QMPMonitor(Monitor):
         """
         Make sure the monitor is responsive by sending a command.
         """
-        self.cmd("query-status")
+        self.cmd(cmd="query-status", debug=False)
 
 
     def get_events(self):
@@ -706,7 +725,7 @@ class QMPMonitor(Monitor):
         return self.info(what)
 
 
-    def screendump(self, filename):
+    def screendump(self, filename, debug=True):
         """
         Request a screendump.
 
@@ -714,7 +733,7 @@ class QMPMonitor(Monitor):
         @return: The response to the command
         """
         args = {"filename": filename}
-        return self.cmd("screendump", args)
+        return self.cmd(cmd="screendump", args=args, debug=debug)
 
 
     def migrate(self, uri, full_copy=False, incremental_copy=False, wait=False):

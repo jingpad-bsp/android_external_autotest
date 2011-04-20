@@ -40,6 +40,10 @@ shell_port = 22
 display = vnc
 drive_index_cd1 = 1
 
+qxl = on
+qxl_dev_nr = 1
+spice = disable-ticketing
+
 # Monitor params
 monitor_type = human
 
@@ -93,6 +97,7 @@ variants:
 
     - unattended_install:
         type = unattended_install
+        start_vm = no
         kill_vm = yes
         kill_vm_gracefully = yes
         kill_vm_on_error = yes
@@ -113,15 +118,18 @@ variants:
                 redirs += " unattended_install"
             # Install guest from http/ftp url
             - url:
+                only Linux
                 medium = url
                 url = REPLACE_THIS_WITH_TREE_URL
             # Install guest from nfs nfs_server:nfs_dir
             - nfs:
+                only Linux
                 medium = nfs
                 nfs_server = REPLACE_THIS_WITH_NFS_SERVER
                 nfs_dir = REPLACE_THIS_WITH_NFS_DIRECTORY
             # Install guest with a remote kickstart
             - remote_ks:
+                only Linux
                 medium = url
                 extra_params = " --append ks=REPLACE_THIS_WITH_URL_OF_KS"
                 url = REPLACE_THIS_WITH_TREE_URL
@@ -170,6 +178,7 @@ variants:
                 iterations = 1
                 type = migration_with_file_transfer
             - with_autotest:
+                only Linux
                 type = autotest
                 migrate_background = yes
                 test_timeout = 1800
@@ -204,6 +213,7 @@ variants:
         kill_vm = yes
 
     - autotest:     install setup unattended_install.cdrom
+        only Linux
         type = autotest
         test_timeout = 1800
         variants:
@@ -243,9 +253,13 @@ variants:
                 test_control_file = rtc.control
             - iozone:
                 test_control_file = iozone.control
-
+            - flail:
+                test_control_file = flail.control
+            - systemtap:
+                test_control_file = systemtap.control
 
     - linux_s3:     install setup unattended_install.cdrom
+        only Linux
         type = linux_s3
 
     - timedrift:    install setup unattended_install.cdrom
@@ -329,6 +343,7 @@ variants:
         used_mem = 2560
 
     - guest_test:       install setup unattended_install.cdrom
+        only Windows
         type = guest_test
         login_timeout = 360
         test_timeout = 600
@@ -358,11 +373,13 @@ variants:
                         dst_rsc_path = "C:\powershell\stub\stub.ps1"
 
     - iozone_windows: unattended_install.cdrom
+        only Windows
         type = iozone_windows
         iozone_cmd = "D:\IOzone\iozone.exe -a"
         iozone_timeout = 3600
 
     - whql:         install setup unattended_install.cdrom
+        only Windows
         nic_mode = tap
         # Replace this with the address of an installed DTM server
         server_address = 10.20.30.40
@@ -594,6 +611,7 @@ variants:
 
     - enospc:
         type = enospc
+        start_vm = no
         images += " stg"
         drive_werror = stop
         drive_cache = none
@@ -614,6 +632,7 @@ variants:
         type = qmp_basic_rhel6
 
     - vlan:  install setup unattended_install.cdrom
+        only Linux
         type = vlan
         # subnet should not be used by host
         subnet = "192.168"
@@ -635,6 +654,7 @@ variants:
         nics += ' nic2'
 
     - jumbo: install setup unattended_install.cdrom
+        only Linux
         type = jumbo
 
     - file_transfer: install setup unattended_install.cdrom
@@ -646,6 +666,7 @@ variants:
                 transfer_type = remote
 
     - nicdriver_unload:  install setup unattended_install.cdrom
+        only Linux
         type = nicdriver_unload
         nic_mode = tap
         filesize = 100
@@ -654,12 +675,14 @@ variants:
         sessions_num = 10
 
     - nic_promisc:  install setup unattended_install.cdrom
+        only Linux
         type = nic_promisc
         filesize = 400
         transfer_timeout = 100
         transfer_type = remote
 
     - multicast: install setup unattended_install.cdrom
+        only Linux
         type = multicast
         nic_mode = tap
         mcast = 225.0.0.1
@@ -680,11 +703,14 @@ variants:
         pxe_timeout = 60
 
     - mac_change: install setup unattended_install.cdrom
+        only Linux
         type = mac_change
         kill_vm = yes
 
     - netperf: install setup unattended_install.cdrom
+        only Linux
         type = netperf
+        nics += ' nic2 nic3 nic4'
         nic_mode = tap
         netperf_files = netperf-2.4.5.tar.bz2 wait_before_data.patch
         packet_size = 1500
@@ -699,11 +725,13 @@ variants:
                 protocols = "TCP_RR TCP_CRR UDP_RR"
 
     - ethtool: install setup unattended_install.cdrom
+        only Linux
         type = ethtool
         filesize = 512
         nic_mode = tap
 
     - nic_bonding:
+        only Linux
         type = nic_bonding
         nics += ' nic2 nic3 nic4'
         image_snapshot = yes
@@ -728,7 +756,8 @@ variants:
         type = physical_resources_check
         catch_uuid_cmd = dmidecode | awk -F: '/UUID/ {print $2}'
 
-    - ksm_overcommit:
+    - ksm_overcommit: install setup unattended_install.cdrom
+        only Linux
         # Don't preprocess any vms as we need to change its params
         vms = ''
         image_snapshot = yes
@@ -751,21 +780,47 @@ variants:
                 ksm_mode = "parallel"
 
     - iofuzz:
+        only Linux
         type = iofuzz
 
     - virtio_console:
+        only Linux
         vms = ''
         type = virtio_console
+        # Default number of consoles
+        virtio_console_no_serialports = 0
+        virtio_console_no_consoles = 0
+
         # smoke params - $console_type:data_string
         # FIXME: test_smoke doesn't work with console yet (virtio_console bug)
         # "serialport;console:Custom data"
+        smoke_test = yes
         virtio_console_smoke = "serialport"
         # loopback params - '$source_console_type@buffer_length:$destination_console_type1@buffer_length:...:$loopback_buffer_length;...'
+        loopback_test = yes
         virtio_console_loopback = "serialport:serialport;serialport@1024:serialport@32:console@1024:console@8:16"
         # perf params - $console_type@buffer_length:$test_duration
         # FIXME: test_perf doesn't work with console yet (virtio_console bug)
         # virtio_console_perf = "serialport;serialport@1000000:120;console@1024:60"
+        perf_test = yes
         virtio_console_perf = "serialport;serialport@1000000:120"
+        # Enable destructive tests: "test_name  = yes"
+        # Disable test: change yes or delete key.
+        rmmod_test = yes
+        max_ports_test = yes
+        shutdown_test = yes
+
+        # Offline migration params - '$console_type:$no_migrations:$send-:$recv-$loopback-buffer_length'
+        migrate_offline_test = yes
+        virtio_console_migration_offline = "serialport:1:2048:2048:2048;serialport:5:4096:4096:4096"
+
+        # Online migration params - '$console_type:$no_migrations:$send-:$recv-$loopback-buffer_length'
+        migrate_online_test = yes
+        virtio_console_migration_online = "serialport:1:2048:2048:2048;serialport:5:4096:4096:4096"
+
+        hotplug_test = yes
+        hotplug_serial_test = yes
+        hotplug_console_test = no
 
     # This unit test module is for older branches of KVM that use the
     # kvmctl test harness (such as the code shipped with RHEL 5.x)
@@ -809,6 +864,7 @@ variants:
         take_regular_screendumps = no
 
     - ioquit:
+        only Linux
         type = ioquit
         background_cmd = "for i in 1 2 3 4; do (dd if=/dev/urandom of=/tmp/file bs=102400 count=10000000 &); done"
         check_cmd = ps -a |grep dd
@@ -857,13 +913,16 @@ variants:
                 image_name_snapshot2 = sn2
 
     - clock_getres: install setup unattended_install.cdrom
+        only Linux
         type = clock_getres
 
     - yum_update:    install setup unattended_install.cdrom
+        only Fedora, RHEL
         type = yum_update
         shell_prompt = "Is this ok"
 
     - kdump: unattended_install.cdrom
+        only Linux
         type = kdump
         # time waited for the completion of crash dump
         # crash_timeout = 360
@@ -945,7 +1004,6 @@ variants:
 variants:
     # Linux section
     - @Linux:
-        no autoit iozone_windows whql
         shutdown_command = shutdown -h now
         reboot_command = shutdown -r now
         status_test_command = echo $?
@@ -985,6 +1043,9 @@ variants:
         file_transfer:
             tmp_dir = /tmp/
             clean_cmd = rm -f
+        nicdriver_unload:
+            readlink_command = readlink -e
+            sys_path = "/sys/class/net/%s/device/driver"
 
         variants:
             - Fedora:
@@ -1478,6 +1539,7 @@ variants:
                     modprobe_module = acpiphp
                 block_hotplug:
                     modprobe_module = acpiphp
+                    no block_scsi
                 unattended_install:
                     boot_path = images/pxeboot
                     # You have to use ks=floppy if you want to use floppies to
@@ -1578,6 +1640,9 @@ variants:
                             cdrom_cd1 = isos/linux/RHEL-4.8-i386-DVD.iso
                             md5sum_cd1 = b024f0af5079539d3ef51f71fed0b194
                             md5sum_1m_cd1 = 969c197402b9058f28a278c1f807d15b
+                        nicdriver_unload:
+                            readlink_command = readlink -f
+                            sys_path = "/sys/class/net/%s/driver"
 
 
                     - 4.8.x86_64:
@@ -1593,6 +1658,9 @@ variants:
                             cdrom_cd1 = isos/linux/RHEL-4.8-x86_64-DVD.iso
                             md5sum_cd1 = 696bc877b0200cc942626673fcc3fc09
                             md5sum_1m_cd1 = b11ac0ef7fd345ad712966972db63886
+                        nicdriver_unload:
+                            readlink_command = readlink -f
+                            sys_path = "/sys/class/net/%s/driver"
 
 
                     - 5.3.i386:
@@ -1736,9 +1804,6 @@ variants:
 
     # Windows section
     - @Windows:
-        no autotest, linux_s3, vlan, ioquit, unattended_install.url, unattended_install.nfs, unattended_install.remote_ks
-        no jumbo, nicdriver_unload, nic_promisc, multicast, mac_change, ethtool, clock_getres
-
         shutdown_command = shutdown /s /f /t 0
         reboot_command = shutdown /r /f /t 0
         status_test_command = echo %errorlevel%

@@ -6,6 +6,7 @@ KVM test utility functions.
 
 import time, string, random, socket, os, signal, re, logging, commands, cPickle
 import fcntl, shelve, ConfigParser, rss_file_transfer, threading, sys, UserDict
+import inspect
 from autotest_lib.client.bin import utils, os_dep
 from autotest_lib.client.common_lib import error, logging_config
 import kvm_subprocess
@@ -675,7 +676,7 @@ def wait_for_login(client, host, port, username, password, prompt, linesep="\n",
                         linesep, log_filename, internal_timeout)
 
 
-def _remote_scp(session, password, transfer_timeout=600, login_timeout=10):
+def _remote_scp(session, password_list, transfer_timeout=600, login_timeout=10):
     """
     Transfer file(s) to a remote host (guest) using SCP.  Wait for questions
     and provide answers.  If login_timeout expires while waiting for output
@@ -685,7 +686,7 @@ def _remote_scp(session, password, transfer_timeout=600, login_timeout=10):
     @brief: Transfer files using SCP, given a command line.
 
     @param session: An Expect or ShellSession instance to operate on
-    @param password: The password to send in reply to a password prompt.
+    @param password_list: Password list to send in reply to the password prompt
     @param transfer_timeout: The time duration (in seconds) to wait for the
             transfer to complete.
     @param login_timeout: The maximal time duration (in seconds) to wait for
@@ -701,6 +702,8 @@ def _remote_scp(session, password, transfer_timeout=600, login_timeout=10):
     timeout = login_timeout
     authentication_done = False
 
+    scp_type = len(password_list)
+
     while True:
         try:
             match, text = session.read_until_last_line_matches(
@@ -712,8 +715,18 @@ def _remote_scp(session, password, transfer_timeout=600, login_timeout=10):
                 continue
             elif match == 1:  # "password:"
                 if password_prompt_count == 0:
-                    logging.debug("Got password prompt; sending '%s'", password)
-                    session.sendline(password)
+                    logging.debug("Got password prompt; sending '%s'" %
+                                   password_list[password_prompt_count])
+                    session.sendline(password_list[password_prompt_count])
+                    password_prompt_count += 1
+                    timeout = transfer_timeout
+                    if scp_type == 1:
+                        authentication_done = True
+                    continue
+                elif password_prompt_count == 1 and scp_type == 2:
+                    logging.debug("Got password prompt; sending '%s'" %
+                                   password_list[password_prompt_count])
+                    session.sendline(password_list[password_prompt_count])
                     password_prompt_count += 1
                     timeout = transfer_timeout
                     authentication_done = True
@@ -736,7 +749,7 @@ def _remote_scp(session, password, transfer_timeout=600, login_timeout=10):
                 raise SCPTransferFailedError(e.status, e.output)
 
 
-def remote_scp(command, password, log_filename=None, transfer_timeout=600,
+def remote_scp(command, password_list, log_filename=None, transfer_timeout=600,
                login_timeout=10):
     """
     Transfer file(s) to a remote host (guest) using SCP.
@@ -745,7 +758,7 @@ def remote_scp(command, password, log_filename=None, transfer_timeout=600,
 
     @param command: The command to execute
         (e.g. "scp -r foobar root@localhost:/tmp/").
-    @param password: The password to send in reply to a password prompt.
+    @param password_list: Password list to send in reply to a password prompt.
     @param log_filename: If specified, log all output to this file
     @param transfer_timeout: The time duration (in seconds) to wait for the
             transfer to complete.
@@ -766,7 +779,7 @@ def remote_scp(command, password, log_filename=None, transfer_timeout=600,
                                     output_func=output_func,
                                     output_params=output_params)
     try:
-        _remote_scp(session, password, transfer_timeout, login_timeout)
+        _remote_scp(session, password_list, transfer_timeout, login_timeout)
     finally:
         session.close()
 
@@ -789,7 +802,10 @@ def scp_to_remote(host, port, username, password, local_path, remote_path,
     command = ("scp -v -o UserKnownHostsFile=/dev/null "
                "-o PreferredAuthentications=password -r -P %s %s %s@%s:%s" %
                (port, local_path, username, host, remote_path))
-    remote_scp(command, password, log_filename, timeout)
+    password_list = []
+    password_list.append(password)
+    return remote_scp(command, password_list, log_filename, timeout)
+
 
 
 def scp_from_remote(host, port, username, password, remote_path, local_path,
@@ -810,7 +826,34 @@ def scp_from_remote(host, port, username, password, remote_path, local_path,
     command = ("scp -v -o UserKnownHostsFile=/dev/null "
                "-o PreferredAuthentications=password -r -P %s %s@%s:%s %s" %
                (port, username, host, remote_path, local_path))
-    remote_scp(command, password, log_filename, timeout)
+    password_list = []
+    password_list.append(password)
+    remote_scp(command, password_list, log_filename, timeout)
+
+
+def scp_between_remotes(src, dst, port, s_passwd, d_passwd, s_name, d_name,
+                        s_path, d_path, log_filename=None, timeout=600):
+    """
+    Copy files from a remote host (guest) to another remote host (guest).
+
+    @param src/dst: Hostname or IP address of src and dst
+    @param s_name/d_name: Username (if required)
+    @param s_passwd/d_passwd: Password (if required)
+    @param s_path/d_path: Path on the remote machine where we are copying
+                         from/to
+    @param log_filename: If specified, log all output to this file
+    @param timeout: The time duration (in seconds) to wait for the transfer
+            to complete.
+
+    @return: True on success and False on failure.
+    """
+    command = ("scp -v -o UserKnownHostsFile=/dev/null -o "
+               "PreferredAuthentications=password -r -P %s %s@%s:%s %s@%s:%s" %
+               (port, s_name, src, s_path, d_name, dst, d_path))
+    password_list = []
+    password_list.append(s_passwd)
+    password_list.append(d_passwd)
+    return remote_scp(command, password_list, log_filename, timeout)
 
 
 def copy_files_to(address, client, username, password, port, local_path,
@@ -1108,30 +1151,38 @@ def run_tests(parser, job):
             for test_name in status_dict.keys():
                 if not dep in test_name:
                     continue
-                if not status_dict[test_name]:
+                # So the only really non-fatal state is WARN,
+                # All the others make it not safe to proceed with dependency
+                # execution
+                if status_dict[test_name] not in ['GOOD', 'WARN']:
                     dependencies_satisfied = False
                     break
+        test_iterations = int(dict.get("iterations", 1))
+        test_tag = dict.get("shortname")
+
         if dependencies_satisfied:
-            test_iterations = int(dict.get("iterations", 1))
-            test_tag = dict.get("shortname")
             # Setting up profilers during test execution.
             profilers = dict.get("profilers", "").split()
             for profiler in profilers:
                 job.profilers.add(profiler)
-
             # We need only one execution, profiled, hence we're passing
             # the profile_only parameter to job.run_test().
-            current_status = job.run_test("kvm", params=dict, tag=test_tag,
-                                          iterations=test_iterations,
-                                          profile_only= bool(profilers) or None)
-
+            profile_only = bool(profilers) or None
+            current_status = job.run_test_detail("kvm", params=dict,
+                                                 tag=test_tag,
+                                                 iterations=test_iterations,
+                                                 profile_only=profile_only)
             for profiler in profilers:
                 job.profilers.delete(profiler)
-
-            if not current_status:
-                failed = True
         else:
-            current_status = False
+            # We will force the test to fail as TestNA during preprocessing
+            dict['dependency_failed'] = 'yes'
+            current_status = job.run_test_detail("kvm", params=dict,
+                                                 tag=test_tag,
+                                                 iterations=test_iterations)
+
+        if not current_status:
+            failed = True
         status_dict[dict.get("name")] = current_status
 
     return not failed
@@ -1147,6 +1198,19 @@ def create_report(report_dir, results_dir):
     reporter = os.path.join(report_dir, 'html_report.py')
     html_file = os.path.join(results_dir, 'results.html')
     os.system('%s -r %s -f %s -R' % (reporter, results_dir, html_file))
+
+
+def display_attributes(instance):
+    """
+    Inspects a given class instance attributes and displays them, convenient
+    for debugging.
+    """
+    logging.debug("Attributes set:")
+    for member in inspect.getmembers(instance):
+        name, value = member
+        attribute = getattr(instance, name)
+        if not (name.startswith("__") or callable(attribute) or not value):
+            logging.debug("    %s: %s", name, value)
 
 
 def get_full_pci_id(pci_id):
@@ -1535,142 +1599,597 @@ class PciAssignable(object):
             return
 
 
-class KojiDownloader(object):
+class KojiClient(object):
     """
-    Stablish a connection with the build system, either koji or brew.
+    Stablishes a connection with the build system, either koji or brew.
 
-    This class provides a convenience methods to retrieve packages hosted on
-    the build system.
+    This class provides convenience methods to retrieve information on packages
+    and the packages themselves hosted on the build system. Packages should be
+    specified in the KojiPgkSpec syntax.
     """
-    def __init__(self, cmd):
+
+    CMD_LOOKUP_ORDER = ['/usr/bin/brew', '/usr/bin/koji' ]
+
+    CONFIG_MAP = {'/usr/bin/brew': '/etc/brewkoji.conf',
+                  '/usr/bin/koji': '/etc/koji.conf'}
+
+
+    def __init__(self, cmd=None):
         """
         Verifies whether the system has koji or brew installed, then loads
         the configuration file that will be used to download the files.
 
-        @param cmd: Command name, either 'brew' or 'koji'. It is important
-                to figure out the appropriate configuration used by the
-                downloader.
-        @param dst_dir: Destination dir for the packages.
+        @type cmd: string
+        @param cmd: Optional command name, either 'brew' or 'koji'. If not
+                set, get_default_command() is used and to look for
+                one of them.
+        @raise: ValueError
         """
         if not KOJI_INSTALLED:
             raise ValueError('No koji/brew installed on the machine')
 
-        if os.path.isfile(cmd):
-            koji_cmd = cmd
+        # Instance variables used by many methods
+        self.command = None
+        self.config = None
+        self.config_options = {}
+        self.session = None
+
+        # Set koji command or get default
+        if cmd is None:
+            self.command = self.get_default_command()
         else:
-            koji_cmd = os_dep.command(cmd)
+            self.command = cmd
 
-        logging.debug("Found %s as the buildsystem interface", koji_cmd)
+        # Check koji command
+        if not self.is_command_valid():
+            raise ValueError('Koji command "%s" is not valid' % self.command)
 
-        config_map = {'/usr/bin/koji': '/etc/koji.conf',
-                      '/usr/bin/brew': '/etc/brewkoji.conf'}
+        # Assuming command is valid, set configuration file and read it
+        self.config = self.CONFIG_MAP[self.command]
+        self.read_config()
 
-        try:
-            config_file = config_map[koji_cmd]
-        except IndexError:
-            raise ValueError('Could not find config file for %s' % koji_cmd)
-
-        base_name = os.path.basename(koji_cmd)
-        if os.access(config_file, os.F_OK):
-            f = open(config_file)
-            config = ConfigParser.ConfigParser()
-            config.readfp(f)
-            f.close()
-        else:
-            raise IOError('Configuration file %s missing or with wrong '
-                          'permissions' % config_file)
-
-        if config.has_section(base_name):
-            self.koji_options = {}
-            session_options = {}
-            server = None
-            for name, value in config.items(base_name):
-                if name in ('user', 'password', 'debug_xmlrpc', 'debug'):
-                    session_options[name] = value
-                self.koji_options[name] = value
-            self.session = koji.ClientSession(self.koji_options['server'],
-                                              session_options)
-        else:
-            raise ValueError('Koji config file %s does not have a %s '
-                             'session' % (config_file, base_name))
+        # Setup koji session
+        server_url = self.config_options['server']
+        session_options = self.get_session_options()
+        self.session = koji.ClientSession(server_url,
+                                          session_options)
 
 
-    def get(self, src_package, dst_dir, rfilter=None, tag=None, build=None,
-            arch=None):
-        """
-        Download a list of packages from the build system.
+    def read_config(self, check_is_valid=True):
+        '''
+        Reads options from the Koji configuration file
 
-        This will download all packages originated from source package [package]
-        with given [tag] or [build] for the architecture reported by the
-        machine.
+        By default it checks if the koji configuration is valid
 
-        @param src_package: Source package name.
-        @param dst_dir: Destination directory for the downloaded packages.
-        @param rfilter: Regexp filter, only download the packages that match
-                that particular filter.
-        @param tag: Build system tag.
-        @param build: Build system ID.
-        @param arch: Package arch. Useful when you want to download noarch
-                packages.
+        @type check_valid: boolean
+        @param check_valid: whether to include a check on the configuration
+        @raises: ValueError
+        @returns: None
+        '''
+        if check_is_valid:
+            if not self.is_config_valid():
+                raise ValueError('Koji config "%s" is not valid' % self.config)
 
-        @return: List of paths with the downloaded rpm packages.
-        """
-        if build and build.isdigit():
-            build = int(build)
+        config = ConfigParser.ConfigParser()
+        config.read(self.config)
 
-        if tag and build:
-            logging.info("Both tag and build parameters provided, ignoring tag "
-                         "parameter...")
+        basename = os.path.basename(self.command)
+        for name, value in config.items(basename):
+            self.config_options[name] = value
 
-        if not tag and not build:
-            raise ValueError("Koji install selected but neither koji_tag "
-                             "nor koji_build parameters provided. Please "
-                             "provide an appropriate tag or build name.")
 
-        if not build:
-            builds = self.session.listTagged(tag, latest=True, inherit=True,
-                                             package=src_package)
-            if not builds:
-                raise ValueError("Tag %s has no builds of %s" % (tag,
-                                                                 src_package))
-            info = builds[0]
-        else:
-            info = self.session.getBuild(build)
+    def get_session_options(self):
+        '''
+        Filter only options necessary for setting up a cobbler client session
 
-        if info is None:
-            raise ValueError('No such brew/koji build: %s' % build)
+        @returns: only the options used for session setup
+        '''
+        session_options = {}
+        for name, value in self.config_options.items():
+            if name in ('user', 'password', 'debug_xmlrpc', 'debug'):
+                session_options[name] = value
+        return session_options
 
+
+    def is_command_valid(self):
+        '''
+        Checks if the currently set koji command is valid
+
+        @returns: True or False
+        '''
+        koji_command_ok = True
+
+        if not os.path.isfile(self.command):
+            logging.error('Koji command "%s" is not a regular file',
+                          self.command)
+            koji_command_ok = False
+
+        if not os.access(self.command, os.X_OK):
+            logging.warn('Koji command "%s" is not executable: this is '
+                         'not fatal but indicates an unexpected situation',
+                         self.command)
+
+        if not self.command in self.CONFIG_MAP.keys():
+            logging.error('Koji command "%s" does not have a configuration '
+                          'file associated to it', self.command)
+            koji_command_ok = False
+
+        return koji_command_ok
+
+
+    def is_config_valid(self):
+        '''
+        Checks if the currently set koji configuration is valid
+
+        @returns: True or False
+        '''
+        koji_config_ok = True
+
+        if not os.path.isfile(self.config):
+            logging.error('Koji config "%s" is not a regular file', self.config)
+            koji_config_ok = False
+
+        if not os.access(self.config, os.R_OK):
+            logging.error('Koji config "%s" is not readable', self.config)
+            koji_config_ok = False
+
+        config = ConfigParser.ConfigParser()
+        config.read(self.config)
+        basename = os.path.basename(self.command)
+        if not config.has_section(basename):
+            logging.error('Koji configuration file "%s" does not have a '
+                          'section "%s", named after the base name of the '
+                          'currently set koji command "%s"', self.config,
+                           basename, self.command)
+            koji_config_ok = False
+
+        return koji_config_ok
+
+
+    def get_default_command(self):
+        '''
+        Looks up for koji or brew "binaries" on the system
+
+        Systems with plain koji usually don't have a brew cmd, while systems
+        with koji, have *both* koji and brew utilities. So we look for brew
+        first, and if found, we consider that the system is configured for
+        brew. If not, we consider this is a system with plain koji.
+
+        @returns: either koji or brew command line executable path, or None
+        '''
+        koji_command = None
+        for command in self.CMD_LOOKUP_ORDER:
+            if os.path.isfile(command):
+                koji_command = command
+                break
+            else:
+                koji_command_basename = os.path.basename(koji_command)
+                try:
+                    koji_command = os_dep.command(koji_command_basename)
+                    break
+                except ValueError:
+                    pass
+        return koji_command
+
+
+    def get_pkg_info(self, pkg):
+        '''
+        Returns information from Koji on the package
+
+        @type pkg: KojiPkgSpec
+        @param pkg: information about the package, as a KojiPkgSpec instance
+
+        @returns: information from Koji about the specified package
+        '''
+        info = {}
+        if pkg.build is not None:
+            info = self.session.getBuild(int(pkg.build))
+        elif pkg.tag is not None and pkg.package is not None:
+            builds = self.session.listTagged(pkg.tag,
+                                             latest=True,
+                                             inherit=True,
+                                             package=pkg.package)
+            if builds:
+                info = builds[0]
+        return info
+
+
+    def is_pkg_valid(self, pkg):
+        '''
+        Checks if this package is altogether valid on Koji
+
+        This verifies if the build or tag specified in the package
+        specification actually exist on the Koji server
+
+        @returns: True or False
+        '''
+        valid = True
+        if not self.is_pkg_spec_build_valid(pkg):
+            valid = False
+        if not self.is_pkg_spec_tag_valid(pkg):
+            valid = False
+        return valid
+
+
+    def is_pkg_spec_build_valid(self, pkg):
+        '''
+        Checks if build is valid on Koji
+
+        @param pkg: a Pkg instance
+        '''
+        if pkg.build is not None:
+            info = self.session.getBuild(int(pkg.build))
+            if info:
+                return True
+        return False
+
+
+    def is_pkg_spec_tag_valid(self, pkg):
+        '''
+        Checks if tag is valid on Koji
+
+        @type pkg: KojiPkgSpec
+        @param pkg: a package specification
+        '''
+        if pkg.tag is not None:
+            tag = self.session.getTag(pkg.tag)
+            if tag:
+                return True
+        return False
+
+
+    def get_pkg_rpm_info(self, pkg, arch=None):
+        '''
+        Returns a list of infomation on the RPM packages found on koji
+
+        @type pkg: KojiPkgSpec
+        @param pkg: a package specification
+        @type arch: string
+        @param arch: packages built for this architecture, but also including
+                architecture independent (noarch) packages
+        '''
         if arch is None:
             arch = utils.get_arch()
+        rpms = []
+        info = self.get_pkg_info(pkg)
+        if info:
+            rpms = self.session.listRPMs(buildID=info['id'],
+                                         arches=[arch, 'noarch'])
+            if pkg.subpackages:
+                rpms = [d for d in rpms if d['name'] in pkg.subpackages]
+        return rpms
 
-        rpms = self.session.listRPMs(buildID=info['id'],
-                                     arches=arch)
-        if not rpms:
-            raise ValueError("No %s packages available for %s" %
-                             arch, koji.buildLabel(info))
 
-        rpm_paths = []
+    def get_pkg_rpm_names(self, pkg, arch=None):
+        '''
+        Gets the names for the RPM packages specified in pkg
+
+        @type pkg: KojiPkgSpec
+        @param pkg: a package specification
+        @type arch: string
+        @param arch: packages built for this architecture, but also including
+                architecture independent (noarch) packages
+        '''
+        if arch is None:
+            arch = utils.get_arch()
+        rpms = self.get_pkg_rpm_info(pkg, arch)
+        return [rpm['name'] for rpm in rpms]
+
+
+    def get_pkg_rpm_file_names(self, pkg, arch=None):
+        '''
+        Gets the file names for the RPM packages specified in pkg
+
+        @type pkg: KojiPkgSpec
+        @param pkg: a package specification
+        @type arch: string
+        @param arch: packages built for this architecture, but also including
+                architecture independent (noarch) packages
+        '''
+        if arch is None:
+            arch = utils.get_arch()
+        rpm_names = []
+        rpms = self.get_pkg_rpm_info(pkg, arch)
+        for rpm in rpms:
+            arch_rpm_name = koji.pathinfo.rpm(rpm)
+            rpm_name = os.path.basename(arch_rpm_name)
+            rpm_names.append(rpm_name)
+        return rpm_names
+
+
+    def get_pkg_urls(self, pkg, arch=None):
+        '''
+        Gets the urls for the packages specified in pkg
+
+        @type pkg: KojiPkgSpec
+        @param pkg: a package specification
+        @type arch: string
+        @param arch: packages built for this architecture, but also including
+                architecture independent (noarch) packages
+        '''
+        info = self.get_pkg_info(pkg)
+        rpms = self.get_pkg_rpm_info(pkg, arch)
+        rpm_urls = []
         for rpm in rpms:
             rpm_name = koji.pathinfo.rpm(rpm)
-            url = ("%s/%s/%s/%s/%s" % (self.koji_options['pkgurl'],
+            url = ("%s/%s/%s/%s/%s" % (self.config_options['pkgurl'],
                                        info['package_name'],
                                        info['version'], info['release'],
                                        rpm_name))
-            if rfilter:
-                filter_regexp = re.compile(rfilter, re.IGNORECASE)
-                if filter_regexp.match(os.path.basename(rpm_name)):
-                    download = True
-                else:
-                    download = False
+            rpm_urls.append(url)
+        return rpm_urls
+
+
+    def get_pkgs(self, pkg, dst_dir, arch=None):
+        '''
+        Download the packages
+
+        @type pkg: KojiPkgSpec
+        @param pkg: a package specification
+        @type dst_dir: string
+        @param dst_dir: the destination directory, where the downloaded
+                packages will be saved on
+        @type arch: string
+        @param arch: packages built for this architecture, but also including
+                architecture independent (noarch) packages
+        '''
+        rpm_urls = self.get_pkg_urls(pkg, arch)
+        for url in rpm_urls:
+            utils.get_file(url,
+                           os.path.join(dst_dir, os.path.basename(url)))
+
+
+DEFAULT_KOJI_TAG = None
+def set_default_koji_tag(tag):
+    '''
+    Sets the default tag that will be used
+    '''
+    global DEFAULT_KOJI_TAG
+    DEFAULT_KOJI_TAG = tag
+
+
+def get_default_koji_tag():
+    return DEFAULT_KOJI_TAG
+
+
+class KojiPkgSpec:
+    '''
+    A package specification syntax parser for Koji
+
+    This holds information on either tag or build, and packages to be fetched
+    from koji and possibly installed (features external do this class).
+
+    New objects can be created either by providing information in the textual
+    format or by using the actual parameters for tag, build, package and sub-
+    packages. The textual format is useful for command line interfaces and
+    configuration files, while using parameters is better for using this in
+    a programatic fashion.
+
+    The following sets of examples are interchangeable. Specifying all packages
+    part of build number 1000:
+
+        >>> from kvm_utils import KojiPkgSpec
+        >>> pkg = KojiPkgSpec('1000')
+
+        >>> pkg = KojiPkgSpec(build=1000)
+
+    Specifying only a subset of packages of build number 1000:
+
+        >>> pkg = KojiPkgSpec('1000:kernel,kernel-devel')
+
+        >>> pkg = KojiPkgSpec(build=1000,
+                              subpackages=['kernel', 'kernel-devel'])
+
+    Specifying the latest build for the 'kernel' package tagged with 'dist-f14':
+
+        >>> pkg = KojiPkgSpec('dist-f14:kernel')
+
+        >>> pkg = KojiPkgSpec(tag='dist-f14', package='kernel')
+
+    Specifying the 'kernel' package using the default tag:
+
+        >>> kvm_utils.set_default_koji_tag('dist-f14')
+        >>> pkg = KojiPkgSpec('kernel')
+
+        >>> pkg = KojiPkgSpec(package='kernel')
+
+    Specifying the 'kernel' package using the default tag:
+
+        >>> kvm_utils.set_default_koji_tag('dist-f14')
+        >>> pkg = KojiPkgSpec('kernel')
+
+        >>> pkg = KojiPkgSpec(package='kernel')
+
+    If you do not specify a default tag, and give a package name without an
+    explicit tag, your package specification is considered invalid:
+
+        >>> print kvm_utils.get_default_koji_tag()
+        None
+        >>> print kvm_utils.KojiPkgSpec('kernel').is_valid()
+        False
+
+        >>> print kvm_utils.KojiPkgSpec(package='kernel').is_valid()
+        False
+    '''
+
+    SEP = ':'
+
+    def __init__(self, text='', tag=None, build=None,
+                 package=None, subpackages=[]):
+        '''
+        Instantiates a new KojiPkgSpec object
+
+        @type text: string
+        @param text: a textual representation of a package on Koji that
+                will be parsed
+        @type tag: string
+        @param tag: a koji tag, example: Fedora-14-RELEASE
+                (see U{http://fedoraproject.org/wiki/Koji#Tags_and_Targets})
+        @type build: number
+        @param build: a koji build, example: 1001
+                (see U{http://fedoraproject.org/wiki/Koji#Koji_Architecture})
+        @type package: string
+        @param package: a koji package, example: python
+                (see U{http://fedoraproject.org/wiki/Koji#Koji_Architecture})
+        @type subpackages: list of strings
+        @param subpackages: a list of package names, usually a subset of
+                the RPM packages generated by a given build
+        '''
+
+        # Set to None to indicate 'not set' (and be able to use 'is')
+        self.tag = None
+        self.build = None
+        self.package = None
+        self.subpackages = []
+
+        self.default_tag = None
+
+        # Textual representation takes precedence (most common use case)
+        if text:
+            self.parse(text)
+        else:
+            self.tag = tag
+            self.build = build
+            self.package = package
+            self.subpackages = subpackages
+
+        # Set the default tag, if set, as a fallback
+        if not self.build and not self.tag:
+            default_tag = get_default_koji_tag()
+            if default_tag is not None:
+                self.tag = default_tag
+
+
+    def parse(self, text):
+        '''
+        Parses a textual representation of a package specification
+
+        @type text: string
+        @param text: textual representation of a package in koji
+        '''
+        parts = text.count(self.SEP) + 1
+        if parts == 1:
+            if text.isdigit():
+                self.build = text
             else:
-                download = True
+                self.package = text
+        elif parts == 2:
+            part1, part2 = text.split(self.SEP)
+            if part1.isdigit():
+                self.build = part1
+                self.subpackages = part2.split(',')
+            else:
+                self.tag = part1
+                self.package = part2
+        elif parts >= 3:
+            # Instead of erroring on more arguments, we simply ignore them
+            # This makes the parser suitable for future syntax additions, such
+            # as specifying the package architecture
+            part1, part2, part3 = text.split(self.SEP)[0:3]
+            self.tag = part1
+            self.package = part2
+            self.subpackages = part3.split(',')
 
-            if download:
-                r = utils.get_file(url,
-                                   os.path.join(dst_dir, os.path.basename(url)))
-                rpm_paths.append(r)
 
-        return rpm_paths
+    def _is_invalid_neither_tag_or_build(self):
+        '''
+        Checks if this package is invalid due to not having either a valid
+        tag or build set, that is, both are empty.
+
+        @returns: True if this is invalid and False if it's valid
+        '''
+        return (self.tag is None and self.build is None)
+
+
+    def _is_invalid_package_but_no_tag(self):
+        '''
+        Checks if this package is invalid due to having a package name set
+        but tag or build set, that is, both are empty.
+
+        @returns: True if this is invalid and False if it's valid
+        '''
+        return (self.package and not self.tag)
+
+
+    def _is_invalid_subpackages_but_no_main_package(self):
+        '''
+        Checks if this package is invalid due to having a tag set (this is Ok)
+        but specifying subpackage names without specifying the main package
+        name.
+
+        Specifying subpackages without a main package name is only valid when
+        a build is used instead of a tag.
+
+        @returns: True if this is invalid and False if it's valid
+        '''
+        return (self.tag and self.subpackages and not self.package)
+
+
+    def is_valid(self):
+        '''
+        Checks if this package specification is valid.
+
+        Being valid means that it has enough and not conflicting information.
+        It does not validate that the packages specified actually existe on
+        the Koji server.
+
+        @returns: True or False
+        '''
+        if self._is_invalid_neither_tag_or_build():
+            return False
+        elif self._is_invalid_package_but_no_tag():
+            return False
+        elif self._is_invalid_subpackages_but_no_main_package():
+            return False
+
+        return True
+
+
+    def describe_invalid(self):
+        '''
+        Describes why this is not valid, in a human friendly way
+        '''
+        if self._is_invalid_neither_tag_or_build():
+            return 'neither a tag or build are set, and of them should be set'
+        elif self._is_invalid_package_but_no_tag():
+            return 'package name specified but no tag is set'
+        elif self._is_invalid_subpackages_but_no_main_package():
+            return 'subpackages specified but no main package is set'
+
+        return 'unkwown reason, seems to be valid'
+
+
+    def describe(self):
+        '''
+        Describe this package specification, in a human friendly way
+
+        @returns: package specification description
+        '''
+        if self.is_valid():
+            description = ''
+            if not self.subpackages:
+                description += 'all subpackages from %s ' % self.package
+            else:
+                description += ('only subpackage(s) %s from package %s ' %
+                                (', '.join(self.subpackages), self.package))
+
+            if self.build:
+                description += 'from build %s' % self.build
+            elif self.tag:
+                description += 'tagged with %s' % self.tag
+            else:
+                raise ValueError, 'neither build or tag is set'
+
+            return description
+        else:
+            return ('Invalid package specification: %s' %
+                    self.describe_invalid())
+
+
+    def __repr__(self):
+        return ("<KojiPkgSpec tag=%s build=%s pkg=%s subpkgs=%s>" %
+                (self.tag, self.build, self.package,
+                 ", ".join(self.subpackages)))
 
 
 def umount(src, mount_point, type):
@@ -1726,3 +2245,73 @@ def mount(src, mount_point, type, perm="rw"):
         logging.error("Can't find mounted NFS share - /etc/mtab contents \n%s",
                       file("/etc/mtab").read())
         return False
+
+
+def install_host_kernel(job, params):
+    """
+    Install a host kernel, given the appropriate params.
+
+    @param job: Job object.
+    @param params: Dict with host kernel install params.
+    """
+    install_type = params.get('host_kernel_install_type')
+
+    rpm_url = params.get('host_kernel_rpm_url')
+
+    koji_cmd = params.get('host_kernel_koji_cmd')
+    koji_build = params.get('host_kernel_koji_build')
+    koji_tag = params.get('host_kernel_koji_tag')
+
+    git_repo = params.get('host_kernel_git_repo')
+    git_branch = params.get('host_kernel_git_branch')
+    git_commit = params.get('host_kernel_git_commit')
+    patch_list = params.get('host_kernel_patch_list')
+    if patch_list:
+        patch_list = patch_list.split()
+    kernel_config = params.get('host_kernel_config')
+
+    if install_type == 'rpm':
+        logging.info('Installing host kernel through rpm')
+        dst = os.path.join("/tmp", os.path.basename(rpm_url))
+        k = utils.get_file(rpm_url, dst)
+        host_kernel = job.kernel(k)
+        host_kernel.install(install_vmlinux=False)
+        host_kernel.boot()
+
+    elif install_type in ['koji', 'brew']:
+        k_deps = KojiPkgSpec(tag=koji_tag, package='kernel',
+                             subpackages=['kernel-devel', 'kernel-firmware'])
+        k = KojiPkgSpec(tag=koji_tag, package='kernel',
+                        subpackages=['kernel'])
+
+        c = KojiClient(koji_cmd)
+        logging.info('Fetching kernel dependencies (-devel, -firmware)')
+        c.get_pkgs(k_deps, job.tmpdir)
+        logging.info('Installing kernel dependencies (-devel, -firmware) '
+                     'through %s', install_type)
+        k_deps_rpm_file_names = [os.path.join(job.tmpdir, rpm_file_name) for
+                                 rpm_file_name in c.get_pkg_rpm_file_names(k_deps)]
+        utils.run('rpm -U --force %s' % " ".join(k_deps_rpm_file_names))
+
+        c.get_pkgs(k, job.tmpdir)
+        k_rpm = os.path.join(job.tmpdir,
+                             c.get_pkg_rpm_file_names(k)[0])
+        host_kernel = job.kernel(k_rpm)
+        host_kernel.install(install_vmlinux=False)
+        host_kernel.boot()
+
+    elif install_type == 'git':
+        logging.info('Chose to install host kernel through git, proceeding')
+        repodir = os.path.join("/tmp", 'kernel_src')
+        r = get_git_branch(git_repo, git_branch, repodir, git_commit)
+        host_kernel = job.kernel(r)
+        if patch_list:
+            host_kernel.patch(patch_list)
+        host_kernel.config(kernel_config)
+        host_kernel.build()
+        host_kernel.install()
+        host_kernel.boot()
+
+    else:
+        logging.info('Chose %s, using the current kernel for the host',
+                     install_type)

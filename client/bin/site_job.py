@@ -19,12 +19,12 @@ class site_job(base_client_job):
         base_client_job.__init__(self, *args, **kwargs)
 
 
-    def _runtest(self, url, tag, args, dargs):
+    def _runtest(self, url, timeout, tag, args, dargs):
         # this replaced base_client_job._runtest, which is called by
         # base_client_job.runtest.group_func (see job.py)
         try:
             self.last_error = None
-            base_client_job._runtest(self, url, tag, args, dargs)
+            base_client_job._runtest(self, url, timeout,tag, args, dargs)
         except error.TestBaseException, detail:
             self.last_error = detail
             raise

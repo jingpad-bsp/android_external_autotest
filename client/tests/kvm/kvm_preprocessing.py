@@ -85,7 +85,7 @@ def preprocess_vm(test, params, env, name):
     scrdump_filename = os.path.join(test.debugdir, "pre_%s.ppm" % name)
     try:
         if vm.monitor:
-            vm.monitor.screendump(scrdump_filename)
+            vm.monitor.screendump(scrdump_filename, debug=False)
     except kvm_monitor.MonitorError, e:
         logging.warn(e)
 
@@ -121,7 +121,7 @@ def postprocess_vm(test, params, env, name):
     scrdump_filename = os.path.join(test.debugdir, "post_%s.ppm" % name)
     try:
         if vm.monitor:
-            vm.monitor.screendump(scrdump_filename)
+            vm.monitor.screendump(scrdump_filename, debug=False)
     except kvm_monitor.MonitorError, e:
         logging.warn(e)
 
@@ -194,7 +194,6 @@ def preprocess(test, params, env):
     @param env: The environment (a dict-like object).
     """
     error.context("preprocessing")
-
     # Start tcpdump if it isn't already running
     if "address_cache" not in env:
         env["address_cache"] = {}
@@ -257,14 +256,6 @@ def preprocess(test, params, env):
     if params.get("setup_hugepages") == "yes":
         h = test_setup.HugePageConfig(params)
         h.setup()
-
-    if params.get("type") == "unattended_install":
-        u = test_setup.UnattendedInstallConfig(test, params)
-        u.setup()
-
-    if params.get("type") == "enospc":
-        e = test_setup.EnospcConfig(test, params)
-        e.setup()
 
     # Execute any pre_commands
     if params.get("pre_command"):
@@ -366,10 +357,6 @@ def postprocess(test, params, env):
         h = test_setup.HugePageConfig(params)
         h.cleanup()
 
-    if params.get("type") == "enospc":
-        e = test_setup.EnospcConfig(test, params)
-        e.cleanup()
-
     # Execute any post_commands
     if params.get("post_command"):
         process_command(test, params, env, params.get("post_command"),
@@ -427,7 +414,7 @@ def _take_screendumps(test, params, env):
             if not vm.is_alive():
                 continue
             try:
-                vm.monitor.screendump(temp_filename)
+                vm.monitor.screendump(filename=temp_filename, debug=False)
             except kvm_monitor.MonitorError, e:
                 logging.warn(e)
                 continue

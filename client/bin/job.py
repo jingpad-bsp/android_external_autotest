@@ -193,7 +193,8 @@ class base_client_job(base_job.base_job):
             message = '\n'.join([entry.message] + entry.extra_message_lines)
             rendered_entry = self._logger.render_entry(entry)
             self.harness.test_status_detail(entry.status_code, entry.subdir,
-                                            entry.operation, message, msg_tag)
+                                            entry.operation, message, msg_tag,
+                                            entry.fields)
             self.harness.test_status(rendered_entry, msg_tag)
             # send the entry to stdout, if it's enabled
             logging.info(rendered_entry)
@@ -515,11 +516,17 @@ class base_client_job(base_job.base_job):
                 logging.info('Dependency %s successfuly built', dep)
 
 
-    def _runtest(self, url, tag, args, dargs):
+    def _runtest(self, url, tag, timeout, args, dargs):
         try:
             l = lambda : test.runtest(self, url, tag, args, dargs)
             pid = parallel.fork_start(self.resultdir, l)
-            parallel.fork_waitfor(self.resultdir, pid)
+
+            if timeout:
+                logging.debug('Waiting for pid %d for %d seconds', pid, timeout)
+                parallel.fork_waitfor_timed(self.resultdir, pid, timeout)
+            else:
+                parallel.fork_waitfor(self.resultdir, pid)
+
         except error.TestBaseException:
             # These are already classified with an error type (exit_status)
             raise
@@ -530,6 +537,46 @@ class base_client_job(base_job.base_job):
             # of phase into a TestError(TestBaseException) subclass that
             # reports them with their full stack trace.
             raise error.UnhandledTestError(e)
+
+
+    def _run_test_base(self, url, *args, **dargs):
+        """
+        Prepares arguments and run functions to run_test and run_test_detail.
+
+        @param url A url that identifies the test to run.
+        @param tag An optional keyword argument that will be added to the
+            test and subdir name.
+        @param subdir_tag An optional keyword argument that will be added
+            to the subdir name.
+
+        @returns:
+                subdir: Test subdirectory
+                testname: Test name
+                group_func: Actual test run function
+                timeout: Test timeout
+        """
+        group, testname = self.pkgmgr.get_package_name(url, 'test')
+        testname, subdir, tag = self._build_tagged_test_name(testname, dargs)
+        outputdir = self._make_test_outputdir(subdir)
+
+        timeout = dargs.pop('timeout', None)
+        if timeout:
+            logging.debug('Test has timeout: %d sec.', timeout)
+
+        def log_warning(reason):
+            self.record("WARN", subdir, testname, reason)
+        @disk_usage_monitor.watch(log_warning, "/", self._max_disk_usage_rate)
+        def group_func():
+            try:
+                self._runtest(url, tag, timeout, args, dargs)
+            except error.TestBaseException, detail:
+                # The error is already classified, record it properly.
+                self.record(detail.exit_status, subdir, testname, str(detail))
+                raise
+            else:
+                self.record('GOOD', subdir, testname, 'completed successfully')
+
+        return (subdir, testname, group_func, timeout)
 
 
     @_run_test_complete_on_exit
@@ -545,25 +592,11 @@ class base_client_job(base_job.base_job):
 
         @returns True if the test passes, False otherwise.
         """
-        group, testname = self.pkgmgr.get_package_name(url, 'test')
-        testname, subdir, tag = self._build_tagged_test_name(testname, dargs)
-        outputdir = self._make_test_outputdir(subdir)
-
-        def log_warning(reason):
-            self.record("WARN", subdir, testname, reason)
-        @disk_usage_monitor.watch(log_warning, "/", self._max_disk_usage_rate)
-        def group_func():
-            try:
-                self._runtest(url, tag, args, dargs)
-            except error.TestBaseException, detail:
-                # The error is already classified, record it properly.
-                self.record(detail.exit_status, subdir, testname, str(detail))
-                raise
-            else:
-                self.record('GOOD', subdir, testname, 'completed successfully')
-
+        (subdir, testname, group_func, timeout) = self._run_test_base(url,
+                                                                      *args,
+                                                                      **dargs)
         try:
-            self._rungroup(subdir, testname, group_func)
+            self._rungroup(subdir, testname, group_func, timeout)
             return True
         except error.TestBaseException:
             return False
@@ -574,7 +607,31 @@ class base_client_job(base_job.base_job):
         # UnhandledTestError that is caught above.
 
 
-    def _rungroup(self, subdir, testname, function, *args, **dargs):
+    @_run_test_complete_on_exit
+    def run_test_detail(self, url, *args, **dargs):
+        """
+        Summon a test object and run it, returning test status.
+
+        @param url A url that identifies the test to run.
+        @param tag An optional keyword argument that will be added to the
+            test and subdir name.
+        @param subdir_tag An optional keyword argument that will be added
+            to the subdir name.
+
+        @returns Test status
+        @see: client/common_lib/error.py, exit_status
+        """
+        (subdir, testname, group_func, timeout) = self._run_test_base(url,
+                                                                      *args,
+                                                                      **dargs)
+        try:
+            self._rungroup(subdir, testname, group_func, timeout)
+            return 'GOOD'
+        except error.TestBaseException, detail:
+            return detail.exit_status
+
+
+    def _rungroup(self, subdir, testname, function, timeout, *args, **dargs):
         """\
         subdir:
                 name of the group
@@ -589,7 +646,13 @@ class base_client_job(base_job.base_job):
         """
 
         try:
-            self.record('START', subdir, testname)
+            optional_fields = None
+            if timeout:
+                optional_fields = {}
+                optional_fields['timeout'] = timeout
+            self.record('START', subdir, testname,
+                        optional_fields=optional_fields)
+
             self._state.set('client', 'unexpected_reboot', (subdir, testname))
             try:
                 result = function(*args, **dargs)
@@ -633,7 +696,7 @@ class base_client_job(base_job.base_job):
 
         try:
             return self._rungroup(subdir=None, testname=name,
-                                  function=function, **dargs)
+                                  function=function, timeout=None, **dargs)
         except (SystemExit, error.TestBaseException):
             raise
         # If there was a different exception, turn it into a TestError.

@@ -504,8 +504,9 @@ class test_base_job(unittest.TestCase):
         self.job.pkgmgr.get_package_name.expect_call(
             testname, 'test').and_return(("", testname))
         os.path.exists.expect_call(outputdir).and_return(False)
-        self.job.record.expect_call("START", testname, testname)
-        self.job._runtest.expect_call(testname, "", (), {}).and_raises(
+        self.job.record.expect_call("START", testname, testname,
+                                    optional_fields=None)
+        self.job._runtest.expect_call(testname, "", None, (), {}).and_raises(
             unhandled_error)
         self.job.record.expect_call("ERROR", testname, testname,
                                     first_line_comparator(str(real_error)))
@@ -538,8 +539,9 @@ class test_base_job(unittest.TestCase):
         self.job.pkgmgr.get_package_name.expect_call(
             testname, 'test').and_return(("", testname))
         os.path.exists.expect_call(outputdir).and_return(False)
-        self.job.record.expect_call("START", testname, testname)
-        self.job._runtest.expect_call(testname, "", (), {}).and_raises(
+        self.job.record.expect_call("START", testname, testname,
+                                    optional_fields=None)
+        self.job._runtest.expect_call(testname, "", None, (), {}).and_raises(
             unhandled_error)
         self.job.record.expect_call("ERROR", testname, testname, reason)
         self.job.record.expect_call("END ERROR", testname, testname)
@@ -711,6 +713,42 @@ class test_base_job(unittest.TestCase):
             parsed_args = job.base_client_job._parse_args(t)
             expected_args = test_set[t]
             self.assertEqual(parsed_args, expected_args)
+
+
+    def test_run_test_timeout_parameter_is_propagated(self):
+        self.construct_job(True)
+
+        # set up stubs
+        self.god.stub_function(self.job.pkgmgr, 'get_package_name')
+        self.god.stub_function(self.job, "_runtest")
+
+        # create an unhandled error object
+        #class MyError(error.TestError):
+        #    pass
+        #real_error = MyError("this is the real error message")
+        #unhandled_error = error.UnhandledTestError(real_error)
+
+        # set up the recording
+        testname = "test"
+        outputdir = os.path.join(self.job.resultdir, testname)
+        self.job.pkgmgr.get_package_name.expect_call(
+            testname, 'test').and_return(("", testname))
+        os.path.exists.expect_call(outputdir).and_return(False)
+        timeout = 60
+        optional_fields = {}
+        optional_fields['timeout'] = timeout
+        self.job.record.expect_call("START", testname, testname,
+                                    optional_fields=optional_fields)
+        self.job._runtest.expect_call(testname, "", timeout, (), {})
+        self.job.record.expect_call("GOOD", testname, testname,
+                                    "completed successfully")
+        self.job.record.expect_call("END GOOD", testname, testname)
+        self.job.harness.run_test_complete.expect_call()
+        utils.drop_caches.expect_call()
+
+        # run and check
+        self.job.run_test(testname, timeout=timeout)
+        self.god.check_playback()
 
 
 if __name__ == "__main__":

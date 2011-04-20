@@ -105,6 +105,15 @@ class VMDeadError(VMError):
                 (self.status, self.output))
 
 
+class VMDeadKernelCrashError(VMError):
+    def __init__(self, kernel_crash):
+        VMError.__init__(self, kernel_crash)
+        self.kernel_crash = kernel_crash
+
+    def __str__(self):
+        return ("VM is dead due to a kernel crash:\n%s" % self.kernel_crash)
+
+
 class VMAddressError(VMError):
     pass
 
@@ -285,10 +294,31 @@ def check_image(params, root_dir):
             except error.CmdError:
                 logging.error("Error getting info from image %s",
                               image_filename)
-            try:
-                utils.system("%s check %s" % (qemu_img_cmd, image_filename))
-            except error.CmdError:
+
+            cmd_result = utils.run("%s check %s" %
+                                   (qemu_img_cmd, image_filename),
+                                   ignore_status=True)
+            # Error check, large chances of a non-fatal problem.
+            # There are chances that bad data was skipped though
+            if cmd_result.exit_status == 1:
+                for e_line in cmd_result.stdout.splitlines():
+                    logging.error("[stdout] %s", e_line)
+                for e_line in cmd_result.stderr.splitlines():
+                    logging.error("[stderr] %s", e_line)
+                raise error.TestWarn("qemu-img check error. Some bad data in "
+                                     "the image may have gone unnoticed")
+            # Exit status 2 is data corruption for sure, so fail the test
+            elif cmd_result.exit_status == 2:
+                for e_line in cmd_result.stdout.splitlines():
+                    logging.error("[stdout] %s", e_line)
+                for e_line in cmd_result.stderr.splitlines():
+                    logging.error("[stderr] %s", e_line)
                 raise VMImageCheckError(image_filename)
+            # Leaked clusters, they are known to be harmless to data integrity
+            elif cmd_result.exit_status == 3:
+                raise error.TestWarn("Leaked clusters were noticed during "
+                                     "image check. No data integrity problem "
+                                     "was found though.")
 
     else:
         if not os.path.exists(image_filename):
@@ -335,6 +365,7 @@ class VM:
                 if not glob.glob("/tmp/*%s" % self.instance):
                     break
 
+        self.spice_port = 8000
         self.name = name
         self.params = params
         self.root_dir = root_dir
@@ -553,6 +584,26 @@ class VM:
         def add_pcidevice(help, host):
             return " -pcidevice host='%s'" % host
 
+        def add_spice(help, port, param):
+            if has_option(help,"spice"):
+                return " -spice port=%s,%s" % (port, param)
+            else:
+                return ""
+
+        def add_qxl_vga(help, qxl, vga, qxl_dev_nr=None):
+            str = ""
+            if has_option(help, "qxl"):
+                if qxl and qxl_dev_nr is not None:
+                    str += " -qxl %s" % qxl_dev_nr
+                if has_option(help, "vga") and vga and vga != "qxl":
+                    str += " -vga %s" % vga
+            elif has_option(help, "vga"):
+                if qxl:
+                    str += " -vga qxl"
+                elif vga:
+                    str += " -vga %s" % vga
+            return str
+
         def add_kernel(help, filename):
             return " -kernel '%s'" % filename
 
@@ -720,6 +771,19 @@ class VM:
             qemu_cmd += add_sdl(help)
         elif params.get("display") == "nographic":
             qemu_cmd += add_nographic(help)
+        elif params.get("display") == "spice":
+            qemu_cmd += add_spice(help, self.spice_port, params.get("spice"))
+
+        qxl = ""
+        vga = ""
+        if params.get("qxl"):
+            qxl = params.get("qxl")
+        if params.get("vga"):
+            vga = params.get("vga")
+        if qxl or vga:
+            if params.get("display") == "spice":
+                qxl_dev_nr = params.get("qxl_dev_nr", None)
+                qemu_cmd += add_qxl_vga(help, qxl, vga, qxl_dev_nr)
 
         if params.get("uuid") == "random":
             qemu_cmd += add_uuid(help, vm.uuid)
@@ -844,6 +908,10 @@ class VM:
             # Find available VNC port, if needed
             if params.get("display") == "vnc":
                 self.vnc_port = kvm_utils.find_free_port(5900, 6100)
+
+            # Find available spice port
+            if params.get("spice"):
+                self.spice_port = kvm_utils.find_free_port(8000, 8100)
 
             # Find random UUID if specified 'uuid = random' in config file
             if params.get("uuid") == "random":
@@ -1118,6 +1186,20 @@ class VM:
         Return True if the qemu process is dead.
         """
         return not self.process or not self.process.is_alive()
+
+
+    def verify_kernel_crash(self):
+        """
+        Find kernel crash message on the VM serial console.
+
+        @raise: VMDeadKernelCrashError, in case a kernel crash message was
+                found.
+        """
+        data = self.serial_console.get_output()
+        match = re.search(r"BUG:.*---\[ end trace .* \]---", data,
+                          re.DOTALL|re.MULTILINE)
+        if match is not None:
+            raise VMDeadKernelCrashError(match.group(0))
 
 
     def get_params(self):
@@ -1596,6 +1678,7 @@ class VM:
             if local:
                 time.sleep(1)
                 self.verify_alive()
+                self.verify_kernel_crash()
 
             if local and stable_check:
                 try:

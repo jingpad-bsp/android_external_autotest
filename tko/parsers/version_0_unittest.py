@@ -287,6 +287,15 @@ class test_status_line(unittest.TestCase):
         self.assertEquals(line.optional_fields, {"field1": "val1",
                                                  "field2": "val2"})
 
+    # with dalecurtis' change
+    # http://git.chromium.org/gitweb/?p=autotest.git;a=commitdiff;h=e8dac7a116f39ab5a20c3dcb15bab4446fcfbb81
+    # this test becomes no longer valid.
+    # def test_parse_line_fails_on_bad_optional_fields(self):
+    #    input_data = "GOOD\tfield1\tfield2\tfield3\tfield4"
+    #    self.assertRaises(AssertionError,
+    #                      version_0.status_line.parse_line,
+    #                      input_data)
+
 
 if __name__ == "__main__":
     unittest.main()
