@@ -4,6 +4,7 @@
 
 import logging, time
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.cros import power_status
 
 
@@ -17,6 +18,14 @@ class power_Draw(test.test):
             logging.warn('AC power is online -- '
                          'unable to monitor energy consumption')
             return
+
+        # If powerd is running, stop it, so that it cannot interfere with the
+        # backlight adjustments in this test.
+        if utils.system_output('status powerd').find('start/running') != -1:
+            powerd_running = True
+            utils.system_output('stop powerd')
+        else:
+            powerd_running = False
 
         start_energy = status.battery[0].energy
 
@@ -42,3 +51,7 @@ class power_Draw(test.test):
         keyvals['mc_max_temp'] = status.max_temp
 
         self.write_perf_keyval(keyvals)
+
+        # Restore powerd if it was originally running.
+        if powerd_running:
+            utils.system_output('start powerd');

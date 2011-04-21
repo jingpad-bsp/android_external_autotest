@@ -16,6 +16,14 @@ class power_Idle(cros_ui_test.UITest):
 
 
     def run_once(self, idle_time=120, sleep=10):
+        # If powerd is running, stop it, so that it cannot interfere with the
+        # backlight adjustments in this test.
+        if utils.system_output('status powerd').find('start/running') != -1:
+            powerd_running = True
+            utils.system_output('stop powerd')
+        else:
+            powerd_running = False
+
         self.status = power_status.get_status()
 
         # initialize various interesting power related stats
@@ -29,6 +37,9 @@ class power_Idle(cros_ui_test.UITest):
             self.status.refresh()
         self.status.refresh()
 
+        # Restore powerd if it was originally running.
+        if powerd_running:
+            utils.system_output('start powerd');
 
     def postprocess_iteration(self):
         keyvals = {}
