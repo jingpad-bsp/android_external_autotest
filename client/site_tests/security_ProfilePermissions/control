@@ -17,6 +17,4 @@ TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
 
 job.run_test("security_ProfilePermissions", creds='$default', tag='login')
-#TODO(jimhebert) Uncomment this after chromium-os:13173 is fixed.
-#job.run_test("security_ProfilePermissions", creds=None, tag='BWSI')
-
+job.run_test("security_ProfilePermissions", creds=None, tag='BWSI')
