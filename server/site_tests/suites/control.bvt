@@ -49,8 +49,8 @@ TESTS = [
   ('login_OwnershipNotRetaken', {}),
   ('login_OwnershipTaken', {}),
   ('login_RemoteLogin', {}),
-  ('network_DisableInterface', {'iface_name': 'wlan0',
-                                'tag': 'wlan0'}),
+  ('network_DisableInterface', {'iface_name': 'wifi_only',
+                                'tag': 'wifi_only'}),
   ('network_Ping', {}),
 ]
 

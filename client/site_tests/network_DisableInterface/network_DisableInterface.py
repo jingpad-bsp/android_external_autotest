@@ -1,4 +1,4 @@
-import logging, re, utils
+import logging, re, utils, os
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
@@ -14,19 +14,25 @@ class network_DisableInterface(test.test):
             self._ifconfig = 'hciconfig'
             utils.system('%s %s up' % (self._ifconfig, iface_name))
 
-        # Allow 'all' keyword  - builds a list to test
+        # 'all' keyword  - use "/sys/class/net" to generate list of DUT
+        # 'wifi_only' keyword  - use "iw list" to generate list of DUT
+        # Client test suites can use 'all'. Server test suites can not.
         if iface_name == 'all':
-            ifaces = utils.system_output('ls /sys/class/net/')
-            for nic in ifaces.split():
-                if nic != 'lo' and not nic.startswith('sit'):
-                    self.test_one_nic(nic)
+            ifaces = os.listdir('/sys/class/net/')
+        elif iface_name == 'wifi_only':
+            ifaces = [ nic.strip() for nic in os.listdir('/sys/class/net/')
+                if os.path.exists('/sys/class/net/' + nic + '/phy80211') ]
         else:
-            self.test_one_nic(iface_name)
+            ifaces = [ iface_name ]
+
+        for nic in ifaces:
+            if nic != 'lo' and not nic.startswith('sit'):
+                self.test_one_nic(nic)
 
 
     def test_one_nic(self, iface_name='wlan0'):
 
-        forced_up=False
+        forced_up = False
 
         # bring up the interface if its not already up
         if not self.is_iface_up(iface_name):
