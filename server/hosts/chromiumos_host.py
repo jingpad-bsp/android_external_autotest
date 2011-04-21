@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -31,7 +31,7 @@ class ChromiumOSHost(base_classes.Host):
         # TODO(seano): Once front-end changes are in, Kill this entire
         # cmdline flag; It doesn't match the Autotest workflow.
         if parser.options.image:
-            update_url=parser.options.image
+            update_url = parser.options.image
         elif not update_url:
             return False
         updater = autoupdater.ChromiumOSUpdater(host=self,
@@ -63,3 +63,29 @@ class ChromiumOSHost(base_classes.Host):
         remote_power = site_remote_power.RemotePower(self.hostname)
         if remote_power:
             remote_power.set_power_on()
+
+
+    def verify(self):
+        """Override to ensure only our version of verify_software() is run."""
+        self.verify_hardware()
+        self.verify_connectivity()
+        self.__verify_software()
+
+
+    def __verify_software(self):
+        """Ensure the stateful partition has space for Autotest and updates.
+
+        Similar to what is done by AbstractSSH, except instead of checking the
+        Autotest installation path, just check the stateful partition.
+
+        Checking the stateful partition is preferable in case it has been wiped,
+        resulting in an Autotest installation path which doesn't exist and isn't
+        writable. We still want to pass verify in this state since the partition
+        will be recovered with the next install.
+        """
+        super(ChromiumOSHost, self).verify_software()
+        self.check_diskspace(
+            '/mnt/stateful_partition',
+            global_config.global_config.get_config_value(
+                'SERVER', 'gb_diskspace_required', type=int,
+                default=20))
