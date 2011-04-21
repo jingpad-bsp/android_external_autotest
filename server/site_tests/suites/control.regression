@@ -124,10 +124,9 @@ def run_assigned_tests(machine):
   if not client_attributes.has_resume_bug:
     client_at.run_test('power_Resume')
 
-# TODO(msb): re-enable KernelErrorPaths, see http://crosbug.com/7679
-# job.run_test("platform_KernelErrorPaths", host=client)
+  job.run_test('platform_KernelErrorPaths', host=client)
   if client_attributes.has_chromeos_firmware:
-    job.run_test("logging_KernelCrashServer", host=client)
+    job.run_test('logging_KernelCrashServer', host=client)
 
   # This test stops tcsd which is known to cause issues with cryptohome and
   # possibly other services. Specifically, cros_ui_test based tests will fail;
