@@ -38,10 +38,9 @@ class network_WiFiCaps(test.test):
         return self.__parse_iwcap(iwcap.stdout)
 
     def run_once(self):
-        phy = utils.system_output("iw list | grep Wiphy |"
-                                  " awk {'NR==1; print $2'}")
+        phy = utils.system_output("iw list | awk '/^WiPhy/ {print $2}'")
         if not phy or 'phy' not in phy:
-            raise error.TestFail('Physical interface for wlan0 not found')
+            raise error.TestFail('WiFi Physical interface not found')
 
         requiredCaps = {
             'sta'    : 'true',        # station mode
