@@ -77,14 +77,26 @@ def __get_mount_parts(expected_mountpt=chromeos_constants.CRYPTOHOME_MOUNT_PT,
     return mount_line.split()
 
 
-def is_mounted(device=chromeos_constants.CRYPTOHOME_DEVICE_REGEX,
-               expected_mountpt=chromeos_constants.CRYPTOHOME_MOUNT_PT,
-               allow_fail=False):
+def current_mounted_vault(device=chromeos_constants.CRYPTOHOME_DEVICE_REGEX,
+                          expected_mountpt=
+                          chromeos_constants.CRYPTOHOME_MOUNT_PT,
+                          allow_fail=False):
     mount_line = utils.system_output(
         'grep %s /proc/$(pgrep cryptohomed)/mounts' % expected_mountpt,
         ignore_status=allow_fail)
     mount_parts = mount_line.split()
-    return len(mount_parts) > 0 and re.match(device, mount_parts[0])
+    if len(mount_parts) > 0 and re.match(device, mount_parts[0]):
+        return mount_parts[0]
+    else:
+        return None
+
+
+def is_mounted(device=chromeos_constants.CRYPTOHOME_DEVICE_REGEX,
+               expected_mountpt=chromeos_constants.CRYPTOHOME_MOUNT_PT,
+               allow_fail=False):
+    return None != current_mounted_vault(device=device,
+                                         expected_mountpt=expected_mountpt,
+                                         allow_fail=allow_fail)
 
 
 def is_mounted_on_tmpfs(device = chromeos_constants.CRYPTOHOME_INCOGNITO,
