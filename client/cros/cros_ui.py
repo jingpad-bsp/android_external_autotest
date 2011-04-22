@@ -65,12 +65,12 @@ def get_autox():
     return autox.AutoX()
 
 
-def stop():
+def stop(allow_fail=False):
     return utils.system("stop ui")
 
 
-def start():
-    return utils.system("start ui")
+def start(allow_fail=False):
+    return utils.system("start ui", ignore_status=allow_fail)
 
 
 class ChromeSession(object):

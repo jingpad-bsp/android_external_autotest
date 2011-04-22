@@ -18,10 +18,6 @@ from autotest_lib.client.cros import cros_ownership_test, ownership
 class login_OwnershipApi(cros_ownership_test.OwnershipTest):
     version = 1
 
-    _testuser = 'cryptohometest@chromium.org'
-    _testpass = 'testme'
-    _poldata = 'policydata'
-
     _tempdir = None
 
     def setup(self):
@@ -31,15 +27,21 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
 
     def initialize(self):
         super(login_OwnershipApi, self).initialize()
+        cros_ui.stop()
         cryptohome.remove_vault(self._testuser)
         cryptohome.mount_vault(self._testuser, self._testpass, create=True)
-        self._tempdir = autotemp.tempdir(unique_id=self.__class__.__name__)
         # to prime nssdb.
+        self._tempdir = autotemp.tempdir(unique_id=self.__class__.__name__)
         tmpname = self.__generate_temp_filename()
-        cros_ui.xsystem_as('HOME=%s %s %s' % (constants.CRYPTOHOME_MOUNT_PT,
-                                              constants.KEYGEN,
-                                              tmpname))
+        utils.system_output(cros_ui.xcommand_as('HOME=%s %s %s' %
+                                                (constants.CRYPTOHOME_MOUNT_PT,
+                                                 constants.KEYGEN,
+                                                 tmpname)))
         os.unlink(tmpname)
+
+        self.use_known_ownerkeys()
+        cros_ui.start()
+        login.wait_for_browser()
 
 
     def __generate_temp_filename(self):
@@ -50,12 +52,26 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
 
 
     def run_once(self):
-        (pkey, pubkey) = ownership.generate_and_register_keypair(self._testuser,
-                                                                 self._testpass)
+        pkey = self.known_privkey()
+        pubkey = self.known_pubkey()
         sm = self.connect_to_session_manager()
         if not sm.StartSession(self._testuser, ''):
             raise error.TestFail('Could not start session for owner')
-        self.push_policy(self.generate_policy(pkey, pubkey, self._poldata), sm)
+
+        poldata = self.build_policy_data(owner=self._testuser,
+                                         guests=False,
+                                         new_users=True,
+                                         roaming=True,
+                                         whitelist=(self._testuser, 'a@b.c'),
+                                         proxies={ 'proxy_mode': 'direct' })
+
+        policy_string = self.generate_policy(pkey, pubkey, poldata)
+        self.push_policy(policy_string, sm)
+        retrieved_policy = self.get_policy(sm)
+
+        if retrieved_policy != policy_string:
+            raise error.TestFail('Policy should not be %s' % retrieved_policy)
+
         if not sm.StopSession(''):
             raise error.TestFail('Could not stop session for owner')
 
@@ -63,4 +79,5 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
     def cleanup(self):
         cryptohome.unmount_vault()
         if self._tempdir: self._tempdir.clean()
+        cros_ui.start(allow_fail=True)
         super(login_OwnershipApi, self).cleanup()

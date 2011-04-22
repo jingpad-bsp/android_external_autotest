@@ -57,7 +57,6 @@ TESTS = [
                                'error_string' : 'ServiceUnavailable'}),
   ('login_BadAuthentication', {'tag' : 'unknown',
                                'error_string' : 'Unknown'}),
-  ('login_OwnershipApi', {}),
   ('login_OwnershipNotRetaken', {}),
   ('login_OwnershipTaken', {}),
   ('login_RemoteOwnership', {}),

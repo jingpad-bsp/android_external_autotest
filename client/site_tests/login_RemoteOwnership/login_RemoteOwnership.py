@@ -29,7 +29,8 @@ class login_RemoteOwnership(cros_ownership_test.OwnershipTest):
         sm = self.connect_to_session_manager()
 
         # Initial policy setup.
-        (priv, pub) = ownership.pairgen_as_data()
+        priv = self.known_privkey()
+        pub = self.known_pubkey()
         self.push_policy(self.generate_policy(priv, pub, self._poldata), sm)
 
         # Force re-key the device
