@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib import error
 
 
 _DEFAULT_TIMEOUT = 30
-_DEFAULT_OWNERSHIP_TIMEOUT = 60
+_DEFAULT_OWNERSHIP_TIMEOUT = 300  # Ownership is an inherently random process.
 
 # Log messages used to signal when we're in a logout situation. Used to detect
 # crashes by cros_ui_test.UITest.

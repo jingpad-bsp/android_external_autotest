@@ -58,6 +58,9 @@ TESTS = [
   ('login_BadAuthentication', {'tag' : 'unknown',
                                'error_string' : 'Unknown'}),
   ('login_OwnershipApi', {}),
+  ('login_OwnershipNotRetaken', {}),
+  ('login_OwnershipTaken', {}),
+  ('login_RemoteOwnership', {}),
   ('login_DBusCalls', {}),
 # TODO(kmixter): Fix log volume usage, or change test constraints. See http://crosbug.com/11350
 #  ('logging_LogVolume', {'constraints': ['bytes_unexpected <= 100000',
