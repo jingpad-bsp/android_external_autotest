@@ -32,7 +32,6 @@ TESTS = [
   ('fsx', {}),
   ('graphics_GLAPICheck', {}),
   ('graphics_GLBench', {}),
-  ('graphics_Piglit', {}),
   ('graphics_SanAngeles', {'creds': '$backdoor'}),
   ('graphics_WindowManagerGraphicsCapture', {}),
   ('hackbench', {}),
@@ -130,14 +129,23 @@ def run_assigned_tests(machine):
   if client_attributes.has_chromeos_firmware:
     job.run_test('logging_KernelCrashServer', host=client)
 
+  #-----------------------------------------------------------------------------
+  # Tests which leave the system in a strange state below. Don't add anything to
+  # this section unless you know what you're doing.
+  #-----------------------------------------------------------------------------
+
   # This test stops tcsd which is known to cause issues with cryptohome and
   # possibly other services. Specifically, cros_ui_test based tests will fail;
   # so always run it last. See http://crosbug.com/14265
   if client_attributes.has_chromeos_firmware:
     client_at.run_test('hardware_TPMCheck')
 
+  # graphics_Piglit can crash many of the UI processes, so schedule it last and
+  # make sure the machine is in a fresh state before starting.
+  client_at.reboot()
+  client_at.run_test('graphics_Piglit')
 
-# Run server-side suites.
+# Run security suite.
 job.run_control('server/site_tests/suites/control.security')
 
 # Some of the tests in the main regression suite must be run last to prevent
