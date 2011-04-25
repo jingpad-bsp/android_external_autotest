@@ -1,0 +1,5 @@
+/home/autotest/tests/logging_UserCrash/src/crasher_nobreakpad
+/sbin/insmod.static
+/usr/bin/cgpt
+/usr/sbin/iotools
+/usr/sbin/vpd

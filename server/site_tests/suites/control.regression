@@ -89,6 +89,7 @@ TESTS = [
   ('platform_SessionManagerTerm', {}),
   ('platform_StackProtector', {}),
   ('platform_TempFS', {}),
+  ('platform_ToolchainOptions', {}),
 # TODO(dalecurtis): AudioBench does not work; see http://crosbug.com/12647
 #  ('realtimecomm_GTalkAudioBench', {}),
   ('realtimecomm_GTalkunittest', {}),
