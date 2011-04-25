@@ -89,7 +89,7 @@ class UITest(test.test):
                     logging.debug("Stored %s for %s" % (self._dns[path],
                                                         interface))
                 ipconfig.SetProperty('NameServers', '127.0.0.1')
-                logging.debug("Using local DNS for "  + interface)
+                logging.debug("Using local DNS for " + interface)
 
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
@@ -109,7 +109,7 @@ class UITest(test.test):
                 if path in self._dns:
                     ipconfig = self._flim.GetObjectInterface('IPConfig', path)
                     ipconfig.SetProperty('NameServers', self._dns[path])
-                    logging.debug("Reverted DNS for "  + interface)
+                    logging.debug("Reverted DNS for " + interface)
                 else:
                     logging.debug("No stored DNS for " + interface)
 
@@ -369,7 +369,11 @@ class UITest(test.test):
                 shutil.copy(
                     os.path.join(constants.CRYPTOHOME_MOUNT_PT,
                                  'log', 'chrome'),
-                    self.resultsdir+'/chrome_postlogin_log')
+                    os.path.join(self.resultsdir, 'chrome_postlogin_log'))
+                # Retrieve any cores left by crashes during testing.
+                shutil.copytree(
+                    os.path.join(constants.CRYPTOHOME_MOUNT_PT, 'crash'),
+                    os.path.join(self.resultsdir, 'crashes'))
             except (IOError, OSError) as err:
                 logging.error(err)
             self.logout()
