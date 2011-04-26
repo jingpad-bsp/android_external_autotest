@@ -65,7 +65,6 @@ job.run_test('hardware_Resolution')
 job.run_test('graphics_GLAPICheck')
 job.run_test('graphics_GLBench',
              constraints=[
-                 'mtri_sec_triangle_setup >= 10',
                  'mpixels_sec_fill_solid >= 190',
                  'mpixels_sec_fill_tex_nearest >= 190',
                  'mpixels_sec_fill_tex_bilinear >= 190',
