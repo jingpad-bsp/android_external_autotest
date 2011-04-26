@@ -7,7 +7,7 @@ Copyright Martin J. Bligh, Andy Whitcroft 2007
 """
 
 import getpass, os, sys, re, stat, tempfile, time, select, subprocess, platform
-import Queue, threading
+import multiprocessing
 import traceback, shutil, warnings, fcntl, pickle, logging, itertools, errno
 from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import base_job
@@ -462,7 +462,8 @@ class base_server_job(base_job.base_job):
         return success_machines
 
 
-    def distribute_across_machines(self, tests, machines):
+    def distribute_across_machines(self, tests, machines,
+                                   continuous_parsing=False):
         """Run each test in tests once using machines.
 
         Instead of running each test on each machine like parallel_on_machines,
@@ -473,19 +474,21 @@ class base_server_job(base_job.base_job):
 
         Args:
             tests: List of tests to run.
-            machines: list of machines to use.
+            machines: List of machines to use.
+            continuous_parsing: Bool, if true parse job while running.
         """
         # The Queue is thread safe, but since a machine may have to search
         # through the queue to find a valid test the lock provides exclusive
         # queue access for more than just the get call.
-        test_queue = Queue.Queue()
-        test_queue_lock = threading.Lock()
+        test_queue = multiprocessing.JoinableQueue()
+        test_queue_lock = multiprocessing.Lock()
 
         machine_workers = [server_job_utils.machine_worker(self,
                                                            machine,
                                                            self.resultdir,
                                                            test_queue,
-                                                           test_queue_lock)
+                                                           test_queue_lock,
+                                                           continuous_parsing)
                            for machine in machines]
 
         # To (potentially) speed up searching for valid tests create a list of
