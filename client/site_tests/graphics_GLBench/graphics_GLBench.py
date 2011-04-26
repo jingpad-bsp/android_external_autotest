@@ -4,110 +4,172 @@
 
 import logging
 import os
-import re
 import pprint
+import urllib2
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 
-def md5_file(filename):
-    try:
-        return utils.system_output('md5sum ' + filename).split()[0]
-    except error.CmdError:
-        return None
+# to run this test manually on a test target
+# ssh root@machine
+# cd /usr/local/autotest/deps/glbench
+# stop ui
+# X :1 & sleep 1; DISPLAY=:1 ./glbench [-save [-oudir=<dir>]]
+# start ui
+
+
+def ReferenceImageExists(images_file, images_url, imagename):
+  # check imagename in index file first
+  found = False
+  if imagename in images_file:
+    return True
+  # check if image can be found on web server
+  url = images_url + imagename
+  try:
+    urllib2.urlopen(urllib2.Request(url))
+    found = True
+  except:
+    found = False
+  return found
 
 
 class graphics_GLBench(test.test):
   version = 1
   preserve_srcdir = True
 
-  def setup(self):
-      self.job.setup_dep(['glbench'])
+  reference_images_file = 'deps/glbench/glbench_reference_images.txt'
+  knownbad_images_file = 'deps/glbench/glbench_knownbad_images.txt'
 
+  reference_images_url = ('http://commondatastorage.googleapis.com/'
+                          'chromeos-localmirror/distfiles/'
+                          'glbench_reference_images/')
+  knownbad_images_url = ('http://commondatastorage.googleapis.com/'
+                         'chromeos-localmirror/distfiles/'
+                         'glbench_knownbad_images/')
+
+  # TODO(ihf) not sure these are still needed
+  # These tests do not draw anything, they can only be used to check
+  # performance.
+  no_checksum_tests = set(['1280x768_fps_no_fill_compositing',
+                           'mpixels_sec_pixel_read',
+                           'mpixels_sec_pixel_read_2',
+                           'mpixels_sec_pixel_read_3',
+                           'mvtx_sec_attribute_fetch_shader',
+                           'mvtx_sec_attribute_fetch_shader_2_attr',
+                           'mvtx_sec_attribute_fetch_shader_4_attr',
+                           'mvtx_sec_attribute_fetch_shader_8_attr',
+                           'us_swap_swap'])
+
+  def setup(self):
+    self.job.setup_dep(['glbench'])
 
   def run_once(self, options=''):
-      dep = 'glbench'
-      dep_dir = os.path.join(self.autodir, 'deps', dep)
-      self.job.install_pkg(dep, 'dep', dep_dir)
+    dep = 'glbench'
+    dep_dir = os.path.join(self.autodir, 'deps', dep)
+    self.job.install_pkg(dep, 'dep', dep_dir)
 
-      # These tests do not draw anything, they can only be used to check
-      # performance.
-      no_checksum_tests = set(['1280x768_fps_no_fill_compositing',
-                               'mpixels_sec_pixel_read',
-                               'mpixels_sec_pixel_read_2',
-                               'mpixels_sec_pixel_read_3',
-                               'mvtx_sec_attribute_fetch_shader',
-                               'mvtx_sec_attribute_fetch_shader_2_attr',
-                               'mvtx_sec_attribute_fetch_shader_4_attr',
-                               'mvtx_sec_attribute_fetch_shader_8_attr',
-                               'us_swap_swap'])
+    # Run the test, saving is optional and helps with debugging
+    # and reference image management. If unknown images are
+    # encountered one can take them from the outdir and copy
+    # them (after verification) into the reference image dir.
+    exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
+    outdir = self.outputdir
+    options += ' -save -outdir=' + outdir
 
-      checksum_table = {}
-      checksums_filename = os.path.join(self.autodir,
-                                        'deps/glbench/src/checksums')
-      # checksums file is a comma separate list of tuples:
-      # (board_1, {test1:checksum1, test2:checksum2}),
-      # (board_2, {test1:checksum1, test2:checksum2}),
-      # etc.
-      checksums = eval('dict([' + utils.read_file(checksums_filename) + '])')
+    cmd = 'X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!' % (exefile, options)
+    try:
+      stopui = utils.system_output('stop ui')
+      summary = utils.system_output(cmd, retain_output=True)
+    finally:
+      startui = utils.system_output('start ui')
 
-      exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
+    # write a copy of stdout to help debug failures
+    results_path = os.path.join(self.outputdir, 'summary.txt')
+    f = open(results_path, 'w+')
+    f.write('# [stop ui] ' + stopui + '\n')
+    f.write('# -------------------------------------------------\n')
+    f.write('# [' + cmd + ']\n')
+    f.write(summary)
+    f.write('\n# -------------------------------------------------\n')
+    f.write('# [start ui] ' + startui + '\n')
+    f.write('# [graphics_GLBench.py postprocessing]\n')
 
-      options += ' -save'
-      out_dir = os.path.join(self.autodir, 'deps/glbench/src/out')
+    # Analyze the output. Sample:
+    ## board_id: NVIDIA Corporation - Quadro FX 380/PCI/SSE2
+    ## Running: ../glbench -save -outdir=img
+    #us_swap_swap = 221.36 [us_swap_swap.pixmd5-20dbc...f9c700d2f.png]
+    results = summary.splitlines()
+    if not results:
+      f.close()
+      raise error.TestFail('No output from test. Check /tmp/' +
+                           'run_remote_tests.../graphics_GLBench/summary.txt' +
+                           ' for details. [' + stopui + '][' + startui + ']')
+    # analyze summary header
+    if results[0].startswith('# board_id: '):
+      board_id = results[0].split('board_id:', 1)[1].strip()
+      del results[0]
 
-      cmd = "X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!" % (exefile, options)
-      try:
-          utils.system("stop ui")
-          results = utils.system_output(cmd, retain_output=True).splitlines()
-      finally:
-          utils.system("start ui")
+    # initialize reference images index for lookup
+    reference_imagenames = os.path.join(self.autodir,
+                                        self.reference_images_file)
+    g = open(reference_imagenames, 'r')
+    reference_imagenames = g.read()
+    g.close()
+    knownbad_imagenames = os.path.join(self.autodir,
+                                       self.knownbad_images_file)
+    g = open(knownbad_imagenames, 'r')
+    knownbad_imagenames = g.read()
+    g.close()
 
-      if results[0].startswith('# board_id: '):
-          board_id = results[0].split('board_id:', 1)[1].strip()
-          del results[0]
-          logging.info("Running on: %s", board_id)
-          checksum_table = checksums.get(board_id, {})
+    # analyze individual test results in summary
+    keyvals = {}
+    failed_tests = {}
+    for line in results:
+      if line.strip().startswith('#'):
+        continue
+      keyval, remainder = line.split('[')
+      key, val = keyval.split('=')
+      testname = key.strip()
+      testrating = float(val)
+      imagefile = remainder.split(']')[0]
+      # TODO(ihf) move here the check for valid test rating numbers
+
+      # classify result image
+      if ReferenceImageExists(knownbad_imagenames,
+                              self.knownbad_images_url,
+                              imagefile):
+        # we already know the image looks bad and have filed a bug
+        # so don't throw an exception and remind there is a problem
+        keyvals[testname] = float('nan')
+        f.write('# knownbad ' + imagefile + ' (setting perf as nan)\n')
       else:
-          checksum_table = {}
-
-      keyvals = {}
-      failed_tests = {}
-      missing_checksum_tests = {}
-      for keyval in results:
-          if keyval.strip().startswith('#'):
-              continue
-          key, val = keyval.split(':')
-          testname = key.strip()
-          test_checksum = md5_file(os.path.join(out_dir, testname))
-
-          if testname in checksum_table:
-              if checksum_table[testname] == test_checksum:
-                  keyvals[testname] = float(val)
-              else:
-                  keyvals[testname] = float('nan')
-                  failed_tests[testname] = test_checksum
+        if ReferenceImageExists(reference_imagenames,
+                                self.reference_images_url,
+                                imagefile):
+          # known good reference images
+          keyvals[testname] = testrating
+        else:
+          if testname in self.no_checksum_tests:
+            # TODO(ihf) these really should not write any images
+            keyvals[testname] = testrating
           else:
-              keyvals[testname] = float(val)
-              if testname not in no_checksum_tests:
-                logging.info('No checksum found for test %s', testname)
-                missing_checksum_tests[testname] = test_checksum
+            # completely unknown images
+            keyvals[testname] = float('nan')
+            failed_tests[testname] = imagefile
+            f.write('# unknown ' + imagefile + '\n')
+    f.close()
+    self.write_perf_keyval(keyvals)
 
-      self.write_perf_keyval(keyvals)
-
-      if checksum_table:
-          if failed_tests or missing_checksum_tests:
-              messages = []
-              if failed_tests:
-                  messages.append("Incorrect checksums for: %s" %
-                                  ', '.join(failed_tests))
-              if missing_checksum_tests:
-                  messages.append("Missing checksums for: %s" %
-                                  ', '.join(missing_checksum_tests))
-              raise error.TestFail('; '.join(messages))
-      else:
-          logging.info("Checksums are missing for: %s.", board_id)
-          logging.info("Please verify that the output images are correct " +
-                       "and append the following to the checksums file:\n" +
-                       pprint.pformat((board_id, missing_checksum_tests)) + ',')
-          raise error.TestFail("Checksums are missing for: %s." % board_id)
+    # raise exception
+    if failed_tests:
+      logging.info('GLBench board_id: %s', board_id)
+      logging.info('Some images are not matching their reference in %s or %s.',
+                   self.reference_images_file,
+                   self.reference_images_url)
+      logging.info('Please verify that the output images are correct '
+                   'and if so copy them to the reference directory:\n' +
+                   pprint.pformat((board_id, failed_tests)) + ',')
+      raise error.TestFail('Some images are not matching their '
+                           'references. Check /tmp/'
+                           'run_remote_tests.../graphics_GLBench/summary.txt'
+                           ' for details.')
