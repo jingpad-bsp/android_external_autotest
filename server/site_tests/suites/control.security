@@ -19,8 +19,7 @@ TESTS = [
   ('security_DbusOwners', {}),
   ('security_NetworkListeners', {}),
   ('security_ProfilePermissions', {'creds': '$default', 'tag': 'login'}),
-  #TODO(jimhebert) Uncomment this after chromium-os:13173 is fixed.
-  #('security_ProfilePermissions', {'creds': None, 'tag': 'BWSI'}),
+  ('security_ProfilePermissions', {'creds': None, 'tag': 'BWSI'}),
   ('security_RendererSandbox', {}),
   ('security_ReservedPrivileges', {'owner_type': 'user', 'tag': 'user'}),
   ('security_ReservedPrivileges', {'owner_type': 'group', 'tag': 'group'}),
