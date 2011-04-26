@@ -160,5 +160,6 @@ class OwnershipTest(test.test):
 
 
     def cleanup(self):
+        login.wait_for_browser()  # Ensure login manager is there before nuking.
         login.nuke_login_manager()
         super(OwnershipTest, self).cleanup()
