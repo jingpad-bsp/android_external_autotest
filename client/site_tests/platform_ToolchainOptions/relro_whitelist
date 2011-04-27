@@ -16,6 +16,7 @@
 /opt/Synaptics/bin/synxorg
 /opt/Synaptics/lib/libsyntpapi.so
 /opt/Synaptics/lib/libwx_gtk2u-2.8.so.0.5.0
+/opt/google/chrome/pepper/libWVDecryptDecode.so
 /opt/google/chrome/plugins/libgcflashplayer.so
 /opt/google/o3d/lib/libCg.so
 /opt/google/o3d/lib/libCgGL.so
