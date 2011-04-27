@@ -142,7 +142,7 @@ def run_assigned_tests(machine):
 
   # graphics_Piglit can crash many of the UI processes, so schedule it last and
   # make sure the machine is in a fresh state before starting.
-  client_at.reboot()
+  client.reboot()
   client_at.run_test('graphics_Piglit')
 
 # Run security suite.
