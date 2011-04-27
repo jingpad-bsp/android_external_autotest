@@ -1,6 +1,5 @@
 /usr/libexec/polkit-grant-helper-pam
 /usr/libexec/polkit-set-default-helper
-/usr/libexec/polkit-agent-helper-1
 /usr/libexec/polkit-resolve-exe-helper
 /usr/libexec/dbus-daemon-launch-helper
 /usr/lib/misc/ssh-keysign
