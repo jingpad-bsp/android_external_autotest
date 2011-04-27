@@ -75,7 +75,6 @@ TESTS = [
   ('platform_AccurateTime', {'constraints': ['seconds_offset < 60']}),
   ('platform_CleanShutdown', {}),
   ('platform_DaemonsRespawn', {}),
-  ('platform_DiskIterate', {}),
   ('platform_FileNum', {}),
   ('platform_FileSize', {}),
   ('platform_KernelVersion', {}),
