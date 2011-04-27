@@ -111,9 +111,17 @@ class power_LoadTest(cros_ui_test.UITest):
                                                       mode='managed')[0]:
                 raise error.TestError('Could not connect to WiFi network.')
 
-        if check_network and backchannel.is_network_iface_running('eth0'):
-            raise error.TestError(
-                'Ethernet interface is active. Please remove Ethernet cable')
+        # Find all wired ethernet interfaces.
+        # TODO: combine this with code in network_DisableInterface, in a common
+        # library somewhere.
+        ifaces = [ nic.strip() for nic in os.listdir('/sys/class/net/')
+            if ((not os.path.exists('/sys/class/net/' + nic + '/phy80211'))
+                and nic.find('eth') != -1) ]
+        logging.debug(str(ifaces))
+        for iface in ifaces:
+          if check_network and backchannel.is_network_iface_running(iface):
+              raise error.TestError(
+                  'Ethernet interface is active. Please remove Ethernet cable')
 
         # record the max backlight level
         cmd = 'backlight-tool --get_max_brightness'
