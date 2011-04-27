@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -177,19 +177,18 @@ class Dialog(object):
 
         http_server.run()
 
-        # Assign the handlers.
-        http_server.add_url_handler('/',
-            lambda server, form, o=self: o.return_html(server, form))
-        http_server.add_url_handler('/answer',
-            lambda server, form, o=self: o.return_html(server, form))
-
         try:
+            # Assign the handlers.
+            http_server.add_url_handler('/',
+                lambda server, form, o=self: o.return_html(server, form))
+            http_server.add_url_handler('/answer',
+                lambda server, form, o=self: o.return_html(server, form))
+
             # Start a Chrome session to load the page.
             session = ChromeSession(url)
             latch = http_server.add_wait_url('/answer')
             latch.wait(self._timeout)
         finally:
-            session.close()
             http_server.stop()
 
         # Return None if timeout.
