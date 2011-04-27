@@ -23,9 +23,9 @@ class platform_DMVerityCorruption(verity_utils.VerityImageTest):
         logging.info('mod_Afill_hash_block(%d, %s, %d, %d)' % (
                      run_count, backing_path, block_size, block_count))
         with open(backing_path, 'wb') as dev:
-          dev.seek(block_count * block_size, os.SEEK_CUR)
-          dev.seek(run_count * 4096, os.SEEK_CUR)
-          dev.write('A' * 4096)
+          dev.seek(block_count * block_size, os.SEEK_SET)
+          dev.seek(run_count * block_size, os.SEEK_CUR)
+          dev.write('A' * block_size)
 
     def run_once(self):
         # Ensure that basic verification is working.
@@ -39,5 +39,3 @@ class platform_DMVerityCorruption(verity_utils.VerityImageTest):
         hash_blocks = (os.path.getsize(self.verity.hash_file) /
                        verity_utils.BLOCK_SIZE)
         self.mod_and_test(self.mod_Afill_hash_block, hash_blocks, False)
-
-        # TODO(wad) Repeat except one bit in each block

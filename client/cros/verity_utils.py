@@ -259,4 +259,3 @@ class VerityImageTest(test.test):
                     '%s: verity.verifiable() not as expected (%s)' %
                     (modifier.__name__, expected))
             tries += 1
-
