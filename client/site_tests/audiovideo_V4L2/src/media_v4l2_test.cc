@@ -122,30 +122,107 @@ class V4L2DeviceX11 : public V4L2Device {
   void ConvertYUVToRGB32(uint8_t* in, uint8_t* out, int32_t ifmt,
                          int32_t width, int32_t height,
                          int32_t istride, int32_t ostride) {
-    if (ifmt == v4l2_fourcc('Y', 'U', 'Y', 'V')) {
+    if ((ifmt == v4l2_fourcc('Y', 'U', 'Y', 'V')) ||
+        (ifmt == v4l2_fourcc('Y', 'V', 'Y', 'U')) ||
+        (ifmt == v4l2_fourcc('U', 'Y', 'V', 'Y')) ||
+        (ifmt == v4l2_fourcc('V', 'Y', 'U', 'Y'))) {
+
+      int y0_offset;
+      int y1_offset;
+      int u_offset;
+      int v_offset;
+
+      if (ifmt == v4l2_fourcc('Y', 'U', 'Y', 'V')) {
+        y0_offset = 0;
+        y1_offset = 2;
+        u_offset = 1;
+        v_offset = 3;
+      } else if (ifmt == v4l2_fourcc('Y', 'V', 'Y', 'U')) {
+        y0_offset = 0;
+        y1_offset = 2;
+        u_offset = 3;
+        v_offset = 1;
+      } else if (ifmt == v4l2_fourcc('U', 'Y', 'V', 'Y')) {
+        y0_offset = 1;
+        y1_offset = 3;
+        u_offset = 0;
+        v_offset = 2;
+      } else if (ifmt == v4l2_fourcc('V', 'Y', 'U', 'Y')) {
+        y0_offset = 1;
+        y1_offset = 3;
+        u_offset = 2;
+        v_offset = 0;
+      } else {
+        CHECK(0);
+      }
+
       for (int32_t i = 0; i < height; ++i) {
         for (int32_t j = 0; j < width * 2; j += 4) {
-           int32_t y0 = in[j];
-           int32_t y1 = in[j + 2];
-           int32_t u = in[j + 1] - 128;
-           int32_t v = in[j + 3] - 128;
+          int32_t y0 = in[j + y0_offset];
+          int32_t y1 = in[j + y1_offset];
+          int32_t u = in[j + u_offset] - 128;
+          int32_t v = in[j + v_offset] - 128;
 
-           int32_t r = (298 * y0 + 409 * v + 128) >> 8;
-           int32_t g = (298 * y0 - 100 * u - 208 * v + 128) >> 8;
-           int32_t b = (298 * y0 + 516 * u + 128) >> 8;
-           out[j * 2 + 0] = clip(b, 0, 255);
-           out[j * 2 + 1] = clip(g, 0, 255);
-           out[j * 2 + 2] = clip(r, 0, 255);
-           out[j * 2 + 3] = 255;
-           r = (298 * y1 + 409 * v + 128) >> 8;
-           g = (298 * y1 - 100 * u - 208 * v + 128) >> 8;
-           b = (298 * y1 + 516 * u + 128) >> 8;
-           out[j * 2 + 4] = clip(b, 0, 255);
-           out[j * 2 + 5] = clip(g, 0, 255);
-           out[j * 2 + 6] = clip(r, 0, 255);
-           out[j * 2 + 7] = 255;
+          int32_t r = (298 * y0 + 409 * v + 128) >> 8;
+          int32_t g = (298 * y0 - 100 * u - 208 * v + 128) >> 8;
+          int32_t b = (298 * y0 + 516 * u + 128) >> 8;
+
+          out[j * 2 + 0] = clip(b, 0, 255);
+          out[j * 2 + 1] = clip(g, 0, 255);
+          out[j * 2 + 2] = clip(r, 0, 255);
+          out[j * 2 + 3] = 255;
+
+          r = (298 * y1 + 409 * v + 128) >> 8;
+          g = (298 * y1 - 100 * u - 208 * v + 128) >> 8;
+          b = (298 * y1 + 516 * u + 128) >> 8;
+
+          out[j * 2 + 4] = clip(b, 0, 255);
+          out[j * 2 + 5] = clip(g, 0, 255);
+          out[j * 2 + 6] = clip(r, 0, 255);
+          out[j * 2 + 7] = 255;
         }
         in += istride;
+        out += ostride;
+      }
+    } else if ((ifmt == v4l2_fourcc('Y', 'U', '1', '2')) ||
+               (ifmt == v4l2_fourcc('Y', 'V', '1', '2'))) {
+      // Can't use bytes_per_line for this.  While bytes_per_line is width*1.5,
+      // the rest of this part of code is using line stride as the
+      // y-plane's line stride, which should just be the width of the image.
+      istride = width;
+
+      uint8_t* y_plane = in;
+      uint8_t* u_plane = in + height * istride;
+      // assumption. stride for uv is half of the y stride.
+      uint8_t* v_plane = u_plane + height * istride / 4;
+
+      // YU12 is identical to YV12 except that the U and V planes are swapped.
+      if (ifmt == v4l2_fourcc('Y', 'V', '1', '2')) {
+        uint8_t* temp = u_plane;
+        u_plane = v_plane;
+        v_plane = temp;
+      }
+
+      for (int32_t i = 0; i < height; ++i) {
+        for (int32_t j = 0; j < width; ++j) {
+          int32_t y = y_plane[j];
+          int32_t u = u_plane[j >> 1] - 128;
+          int32_t v = v_plane[j >> 1] - 128;
+
+          int32_t r = (298 * y + 409 * v + 128) >> 8;
+          int32_t g = (298 * y - 100 * u - 208 * v + 128) >> 8;
+          int32_t b = (298 * y + 516 * u + 128) >> 8;
+
+          out[j * 4 + 0] = clip(b, 0, 255);
+          out[j * 4 + 1] = clip(g, 0, 255);
+          out[j * 4 + 2] = clip(r, 0, 255);
+          out[j * 4 + 3] = 255;
+        }
+        y_plane += istride;
+        if (i & 1) {
+          u_plane += istride >> 1;
+          v_plane += istride >> 1;
+        }
         out += ostride;
       }
     } else {
