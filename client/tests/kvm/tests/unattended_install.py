@@ -1,7 +1,7 @@
 import logging, time, socket, re, os, shutil, tempfile, glob, ConfigParser
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
-import kvm_vm, kvm_utils
+from autotest_lib.client.virt import virt_vm, virt_utils
 
 
 @error.context_aware
@@ -376,7 +376,7 @@ class UnattendedInstallConfig(object):
                 # SUSE autoyast install
                 dest_fname = "autoinst.xml"
                 if self.cdrom_unattended:
-                    boot_disk = CdromDisk(self.cdrom_unattended)
+                    boot_disk = CdromDisk(self.cdrom_unattended, self.tmpdir)
                 elif self.floppy:
                     boot_disk = FloppyDisk(self.floppy, self.qemu_img_binary,
                                            self.tmpdir)
@@ -479,7 +479,7 @@ class UnattendedInstallConfig(object):
         Uses an appropriate strategy according to each install model.
         """
         logging.info("Starting unattended install setup")
-        kvm_utils.display_attributes(self)
+        virt_utils.display_attributes(self)
 
         if self.unattended_file and (self.floppy or self.cdrom_unattended):
             self.setup_boot_disk()
@@ -526,15 +526,23 @@ def run_unattended_install(test, params, env):
 
     start_time = time.time()
     while (time.time() - start_time) < install_timeout:
-        vm.verify_alive()
-        vm.verify_kernel_crash()
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            client.connect((vm.get_address(), port))
-            if client.recv(1024) == "done":
+            vm.verify_alive()
+        except virt_vm.VMDeadError, e:
+            if params.get("wait_no_ack", "no") == "yes":
                 break
-        except (socket.error, kvm_vm.VMAddressError):
-            pass
+            else:
+                raise e
+        vm.verify_kernel_crash()
+        if params.get("wait_no_ack", "no") == "no":
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                client.connect((vm.get_address(), port))
+                if client.recv(1024) == "done":
+                    break
+            except (socket.error, virt_vm.VMAddressError):
+                pass
+
         if migrate_background:
             # Drop the params which may break the migration
             # Better method is to use dnsmasq to do the
@@ -549,7 +557,8 @@ def run_unattended_install(test, params, env):
             vm.migrate(timeout=mig_timeout, protocol=mig_protocol)
         else:
             time.sleep(1)
-        client.close()
+        if params.get("wait_no_ack", "no") == "no":
+            client.close()
     else:
         raise error.TestFail("Timeout elapsed while waiting for install to "
                              "finish")
@@ -558,7 +567,9 @@ def run_unattended_install(test, params, env):
     logging.info("Guest reported successful installation after %d s (%d min)",
                  time_elapsed, time_elapsed/60)
 
-    if post_install_delay:
-        logging.debug("Post install delay specified, waiting %s s...",
-                      post_install_delay)
-        time.sleep(post_install_delay)
+    if params.get("shutdown_cleanly", "yes") == "yes":
+        shutdown_cleanly_timeout = int(params.get("shutdown_cleanly_timeout",
+                                                  120))
+        logging.info("Wait for guest to shudown cleanly...")
+        if virt_utils.wait_for(vm.is_dead, shutdown_cleanly_timeout, 1, 1):
+            logging.info("Guest managed to shutdown cleanly")
