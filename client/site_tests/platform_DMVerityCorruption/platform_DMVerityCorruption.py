@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -16,7 +16,7 @@ class platform_DMVerityCorruption(verity_utils.VerityImageTest):
                      run_count, backing_path, block_size, block_count))
         dd_cmd = 'dd if=/dev/zero of=%s bs=%d seek=%d count=1'
         run_count = run_count % block_count
-        utils.system(dd_cmd % (backing_path, block_size, run_count))
+        verity_utils.system(dd_cmd % (backing_path, block_size, run_count))
 
     def mod_Afill_hash_block(self, run_count, backing_path, block_size,
                              block_count):

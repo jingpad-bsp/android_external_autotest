@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,7 +7,7 @@ import mmap
 import os
 import time
 from autotest_lib.client.bin import os_dep, test
-from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.common_lib import error, logging_manager, utils
 
 """ a wrapper for using verity/dm-verity with a test backing store """
 
@@ -24,6 +24,17 @@ DEFAULT_IMAGE_SIZE_IN_BLOCKS = 100
 DEFAULT_ERROR_BEHAVIOR = ERROR_BEHAVIOR_ERROR
 # TODO(wad) make this configurable when dm-verity doesn't hard-code 4096.
 BLOCK_SIZE = 4096
+
+def system(command, timeout=None):
+    """Delegate to utils.system to run |command|, logs stderr only on fail.
+
+    Runs |command|, captures stdout and stderr.  Logs stdout to the DEBUG
+    log no matter what, logs stderr only if the command actually fails.
+    Will time the command out after |timeout|.
+    """
+    utils.run(command, timeout=timeout, ignore_status=False,
+              stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS,
+              stderr_is_expected=True)
 
 class verity_image(object):
     """ a helper for creating dm-verity targets for testing.
@@ -59,16 +70,16 @@ class verity_image(object):
         logging.info("verity_image is being reset")
 
         if self.mountpoint is not None:
-            utils.system('umount %s' % self.mountpoint)
+            system('umount %s' % self.mountpoint)
             self.mountpoint = None
 
         if self.device is not None:
             time.sleep(1)  # give it time to settle
-            utils.system('dmsetup remove %s' % self.device)
+            system('dmsetup remove %s' % self.device)
             self.device = None
 
         if self.loop is not None:
-            utils.system('losetup -d %s' % self.loop)
+            system('losetup -d %s' % self.loop)
             self.loop = None
 
         if self.file is not None:
@@ -102,12 +113,12 @@ class verity_image(object):
     def _create_image(self):
         """Creates a dummy file."""
         # TODO(wad) replace with python
-        utils.system(self.dd_cmd % (self.file, self.blocks))
+        utils.system_output(self.dd_cmd % (self.file, self.blocks))
 
     def _create_fs(self, copy_files):
         """sets up ext3 on the image"""
         self.has_fs = True
-        utils.system(self.mkfs_cmd % self.file)
+        system(self.mkfs_cmd % self.file)
         if type(copy_files) is list:
           for file in copy_files:
               pass  # TODO(wad)
@@ -124,13 +135,14 @@ class verity_image(object):
         logging.info("table is %s" % self.table)
 
     def _append_hash(self):
-        # TODO(wad) use native python file I/O
-        utils.system('cat %s >> %s' % (self.hash_file, self.file))
+        f = open(self.file, 'ab')
+        f.write(utils.read_file(self.hash_file))
+        f.close()
 
     def _setup_loop(self):
         # Setup a loop device
         self.loop = utils.system_output('losetup -f')
-        utils.system('losetup %s %s' % (self.loop, self.file))
+        system('losetup %s %s' % (self.loop, self.file))
 
     def _setup_target(self):
         # Update the table with the loop dev
@@ -138,7 +150,7 @@ class verity_image(object):
         self.table = self.table.replace('ROOT_DEV', self.loop)
         self.table = self.table.replace('ERROR_BEHAVIOR', self.error_behavior)
 
-        utils.system(self.dmsetup_cmd % (self.target_name, self.table))
+        system(self.dmsetup_cmd % (self.target_name, self.table))
         self.device = "/dev/mapper/autotest_%s" % self.target_name
 
     def initialize(self,
@@ -207,9 +219,9 @@ class verity_image(object):
            when being walked completely or False if it does."""
         try:
             if self.has_fs is True:
-                utils.system('dumpe2fs %s' % self.device)
+                system('dumpe2fs %s' % self.device)
             # TODO(wad) replace with mmap.mmap-based access
-            utils.system('dd if=%s of=/dev/null bs=4096' % self.device)
+            system('dd if=%s of=/dev/null bs=4096' % self.device)
             return True
         except error.CmdError, e:
             return False
