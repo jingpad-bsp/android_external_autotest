@@ -40,6 +40,6 @@ class network_3GLoadFirmware(test.test):
 		self.force_reload()
 		result = self.client.run('dmesg')
 		for line in result.stdout.split('\n'):
-			if line.find('QCUSBNet2k') != -1:
+			if line.find('gobi') != -1:
 				return
 		error.TestFail("Firmware didn't reload after boot.")
