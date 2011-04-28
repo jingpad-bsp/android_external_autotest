@@ -72,7 +72,7 @@ class PyAutoTest(test.test):
     # From chrome_test.ChromeTestBase.initialize(self)
     def SetupDeps(self):
         """Set up the directory paths we care about"""
-        dep = 'pyauto_test'
+        dep = 'pyauto_dep'
         self.dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', self.dep_dir)
 
@@ -110,7 +110,7 @@ class PyAutoTest(test.test):
 
         # Import the pyauto module
         sys.path.append(os.path.join(os.path.dirname(__file__),
-            os.pardir, 'deps', 'pyauto_test', 'pyautolib'))
+            os.pardir, 'deps', 'pyauto_dep', 'pyautolib'))
         try:
             import pyauto
         except ImportError:
