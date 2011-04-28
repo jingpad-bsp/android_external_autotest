@@ -851,8 +851,8 @@ class WiFiTest(object):
             [  3]  0.0-10.0 sec  2.09 GBytes  1.79 Gbits/sec
             """
             tcp_tokens = lines[6].split()
-            if len(tcp_tokens) >= 6:
-                self.write_perf({'throughput':float(tcp_tokens[6])})
+            if len(tcp_tokens) >= 6 and tcp_tokens[-1].endswith('bits/sec'):
+                self.write_perf({'throughput':float(tcp_tokens[-2])})
         elif test in ['UDP', 'UDP_NODELAY']:
             """Parses the following and returns a touple containing throughput
             and the number of errors.
@@ -872,10 +872,15 @@ class WiFiTest(object):
             """
             # NB: no ID line on openwrt so use "last line"
             udp_tokens = lines[-1].replace('/', ' ').split()
-            if len(udp_tokens) >= 13:
-                self.write_perf({'throughput':float(udp_tokens[6]),
-                                 'jitter':float(udp_tokens[9]),
-                                 'lost':float(udp_tokens[13].strip('()%'))})
+            # Find the column named "MBytes"
+            mb_col = [col for col,data in enumerate(udp_tokens)
+                      if data == 'MBytes']
+            if len(mb_col) > 0 and len(udp_tokens) >= mb_col[0] + 9:
+                # Make a sublist starting after the column named "MBytes"
+                stat_tokens = udp_tokens[mb_col[0]+1:]
+                self.write_perf({'throughput':float(stat_tokens[0]),
+                                 'jitter':float(stat_tokens[3]),
+                                 'lost':float(stat_tokens[7].strip('()%'))})
         else:
             raise error.TestError('Unhandled test')
 
