@@ -201,14 +201,12 @@ class UITest(test.test):
         """Fake ownership by generating the necessary magic files."""
         # Determine the module directory.
         dirname = os.path.dirname(__file__)
-        mock_certfile = os.path.join(dirname, 'mock_owner_cert.pem')
-        mock_signedprefsfile = os.path.join(dirname, 'mock_owner.preferences')
-        mock_signedpolicyfile = os.path.join(dirname, 'mock_owner.policy')
+        mock_certfile = os.path.join(dirname, constants.MOCK_OWNER_CERT)
+        mock_signedpolicyfile = os.path.join(dirname,
+                                             constants.MOCK_OWNER_POLICY)
         utils.open_write_close(
             constants.OWNER_KEY_FILE,
             ownership.cert_extract_pubkey_der(mock_certfile))
-        shutil.copy(mock_signedprefsfile,
-                    constants.SIGNED_PREFERENCES_FILE)
         shutil.copy(mock_signedpolicyfile,
                     constants.SIGNED_POLICY_FILE)
 
@@ -309,6 +307,29 @@ class UITest(test.test):
         sessions.
         """
         return cros_ui.get_autox()
+
+
+    def validate_basic_policy(self, basic_policy):
+        # Pull in protobuf definitions.
+        sys.path.append(self.srcdir)
+        from device_management_backend_pb2 import PolicyFetchResponse
+        from device_management_backend_pb2 import PolicyData
+        from chrome_device_policy_pb2 import ChromeDeviceSettingsProto
+        from chrome_device_policy_pb2 import UserWhitelistProto
+
+        response_proto = PolicyFetchResponse()
+        response_proto.ParseFromString(basic_policy)
+        ownership.assert_has_policy_data(response_proto)
+
+        poldata = PolicyData()
+        poldata.ParseFromString(response_proto.policy_data)
+        ownership.assert_has_device_settings(poldata)
+        ownership.assert_username(poldata, self.username)
+
+        polval = ChromeDeviceSettingsProto()
+        polval.ParseFromString(poldata.policy_value)
+        ownership.assert_new_users(polval, True)
+        ownership.assert_users_on_whitelist(polval, (self.username,))
 
 
     def stop_authserver(self):

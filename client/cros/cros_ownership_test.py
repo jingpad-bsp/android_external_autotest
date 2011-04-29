@@ -43,33 +43,55 @@ class OwnershipTest(test.test):
         return ownership.connect_to_session_manager()
 
 
-    def use_known_ownerkeys(self):
-        """Sets the system up to use a well-known keypair for owner operations.
+    def compare_policy_response(self, policy_response,
+                                owner=None, guests=None, new_users=None,
+                                roaming=None, whitelist=None, proxies=None):
+        """Check the contents of |policy_response| against given args.
 
-        Assuming the appropriate cryptohome is already mounted, configures the
-        device to accept policies signed with the checked-in 'mock' owner key.
+        Deserializes |policy_response| into a PolicyFetchResponse protobuf,
+        with an embedded (serialized) PolicyData protobuf that embeds a
+        (serialized) ChromeDeviceSettingsProto, and checks to see if this
+        protobuf turducken contains the information passed in.
+
+        @param policy_response: string serialization of a PolicyData protobuf.
+        @param owner: string representing the owner's name/account.
+        @param guests: boolean indicating whether guests should be allowed.
+        @param new_users: boolean indicating if user pods are on login screen.
+        @param roaming: boolean indicating whether data roaming is enabled.
+        @param whitelist: list of accounts that are allowed to log in.
+        @param proxies: dictionary - { 'proxy_mode': <string> }
+
+        @return True if |policy_response| has all the provided data, else False.
         """
-        dirname = os.path.dirname(__file__)
-        mock_keyfile = os.path.join(dirname, 'mock_owner_private.key')
-        mock_certfile = os.path.join(dirname, 'mock_owner_cert.pem')
-        ownership.push_to_nss(mock_keyfile, mock_certfile, ownership.NSSDB)
-        utils.open_write_close(constants.OWNER_KEY_FILE,
-                               ownership.cert_extract_pubkey_der(mock_certfile))
+        # Pull in protobuf definitions.
+        sys.path.append(self.srcdir)
+        from device_management_backend_pb2 import PolicyFetchResponse
+        from device_management_backend_pb2 import PolicyData
+        from chrome_device_policy_pb2 import ChromeDeviceSettingsProto
+        from chrome_device_policy_pb2 import AllowNewUsersProto
+        from chrome_device_policy_pb2 import GuestModeEnabledProto
+        from chrome_device_policy_pb2 import ShowUserNamesOnSigninProto
+        from chrome_device_policy_pb2 import DataRoamingEnabledProto
+        from chrome_device_policy_pb2 import DeviceProxySettingsProto
 
+        response_proto = PolicyFetchResponse()
+        response_proto.ParseFromString(policy_response)
+        ownership.assert_has_policy_data(response_proto)
 
-    def known_privkey(self):
-        """Returns the mock owner private key in PEM format.
-        """
-        dirname = os.path.dirname(__file__)
-        return utils.read_file(os.path.join(dirname, 'mock_owner_private.key'))
+        data_proto = PolicyData()
+        data_proto.ParseFromString(response_proto.policy_data)
+        ownership.assert_has_device_settings(data_proto)
+        if owner != None: ownership.assert_username(data_proto, owner)
 
-
-    def known_pubkey(self):
-        """Returns the mock owner public key in DER format.
-        """
-        dirname = os.path.dirname(__file__)
-        return ownership.cert_extract_pubkey_der(
-            os.path.join(dirname, 'mock_owner_cert.pem'))
+        settings = ChromeDeviceSettingsProto()
+        settings.ParseFromString(data_proto.policy_value)
+        if guests != None: ownership.assert_guest_setting(settings, guests)
+        if new_users != None: ownership.assert_show_users(settings, new_users)
+        if roaming != None: ownership.assert_roaming(settings, roaming)
+        if whitelist:
+            ownership.assert_new_users(settings, False)
+            ownership.assert_users_on_whitelist(settings, whitelist)
+        if proxies != None: ownership.assert_proxy_settings(settings, proxies)
 
 
     def build_policy_data(self, owner=None, guests=None, new_users=None,
@@ -99,7 +121,7 @@ class OwnershipTest(test.test):
         from chrome_device_policy_pb2 import DeviceProxySettingsProto
 
         data_proto = PolicyData()
-        data_proto.policy_type = 'google/chromeos/device'
+        data_proto.policy_type = ownership.POLICY_TYPE
         if owner != None: data_proto.username = owner
 
         settings = ChromeDeviceSettingsProto()
@@ -109,6 +131,8 @@ class OwnershipTest(test.test):
             settings.show_user_names.show_user_names = new_users
         if roaming != None:
             settings.data_roaming_enabled.data_roaming_enabled = roaming
+        if whitelist:
+            settings.allow_new_users.allow_new_users = False
         for user in whitelist:
             settings.user_whitelist.user_whitelist.append(user)
         if proxies != None:

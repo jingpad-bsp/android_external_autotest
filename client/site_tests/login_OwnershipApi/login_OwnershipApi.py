@@ -39,7 +39,7 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
                                                  tmpname)))
         os.unlink(tmpname)
 
-        self.use_known_ownerkeys()
+        ownership.use_known_ownerkeys()
         cros_ui.start()
         login.wait_for_browser()
 
@@ -52,8 +52,8 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
 
 
     def run_once(self):
-        pkey = self.known_privkey()
-        pubkey = self.known_pubkey()
+        pkey = ownership.known_privkey()
+        pubkey = ownership.known_pubkey()
         sm = self.connect_to_session_manager()
         if not sm.StartSession(self._testuser, ''):
             raise error.TestFail('Could not start session for owner')
@@ -68,10 +68,25 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
         policy_string = self.generate_policy(pkey, pubkey, poldata)
         self.push_policy(policy_string, sm)
         retrieved_policy = self.get_policy(sm)
-
-        if retrieved_policy != policy_string:
-            raise error.TestFail('Policy should not be %s' % retrieved_policy)
-
+        if retrieved_policy is None: raise error.TestFail('Policy not found')
+        self.compare_policy_response(retrieved_policy,
+                                     owner=self._testuser,
+                                     guests=False,
+                                     new_users=True,
+                                     roaming=True,
+                                     whitelist=(self._testuser, 'a@b.c'),
+                                     proxies={ 'proxy_mode': 'direct' })
+        try:
+            # Sanity check against an incorrect policy
+            self.compare_policy_response(retrieved_policy,
+                                         owner=self._testuser,
+                                         guests=True,
+                                         whitelist=(self._testuser, 'a@b.c'),
+                                         proxies={ 'proxy_mode': 'direct' })
+        except ownership.OwnershipError:
+            pass
+        else:
+            raise error.TestFail('Did not detect bad policy')
         if not sm.StopSession(''):
             raise error.TestFail('Could not stop session for owner')
 

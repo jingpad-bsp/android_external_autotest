@@ -10,7 +10,6 @@ from autotest_lib.client.common_lib import error
 
 
 _DEFAULT_TIMEOUT = 30
-_DEFAULT_OWNERSHIP_TIMEOUT = 300  # Ownership is an inherently random process.
 
 # Log messages used to signal when we're in a logout situation. Used to detect
 # crashes by cros_ui_test.UITest.
@@ -316,7 +315,7 @@ def wait_for_initial_chrome_window(timeout=_DEFAULT_TIMEOUT):
         crash_msg='Chrome crashed before first tab rendered.')
 
 
-def wait_for_ownership(timeout=_DEFAULT_OWNERSHIP_TIMEOUT):
+def wait_for_ownership(timeout=constants.DEFAULT_OWNERSHIP_TIMEOUT):
     log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
     wait_for_condition(

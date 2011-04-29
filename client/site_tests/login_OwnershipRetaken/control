@@ -1,0 +1,24 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "login_OwnershipRetaken"
+PURPOSE = "Ensure that ownership is re-taken upon loss of owner's cryptohome."
+CRITERIA = """
+This test will succeed as long as a test account that is pre-configured as the
+device owner is able to log in, generate and register a new 'Owner' keypair.
+"""
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "login"
+TEST_TYPE = "client"
+
+DOC = """
+This test will succeed as long as a test account that is pre-configured as the
+device owner is able to log in, generate and register a new 'Owner' keypair.
+"""
+
+job.run_test('login_OwnershipRetaken')
+
+

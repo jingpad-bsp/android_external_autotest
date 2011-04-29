@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -39,6 +39,7 @@ CRYPTOHOME_MOUNT_PT = USER_DATA_DIR + '/user'
 CRYPTOHOMED_LOG = '/var/log/cryptohomed.log'
 
 DISABLE_BROWSER_RESTART_MAGIC_FILE = '/tmp/disable_chrome_restart'
+DEFAULT_OWNERSHIP_TIMEOUT = 300  # Ownership is an inherently random process.
 
 FLIMFLAM_TEST_PATH = '/usr/lib/flimflam/test/'
 
@@ -52,13 +53,16 @@ LOGIN_ERROR = 'Error=BadAuthentication'
 LOGIN_PROMPT_READY_MAGIC_FILE = '/tmp/uptime-login-prompt-ready'
 LOGIN_TRUST_ROOTS = '/etc/login_trust_root.pem'
 
+MOCK_OWNER_CERT = 'mock_owner_cert.pem'
+MOCK_OWNER_KEY = 'mock_owner_private.key'
+MOCK_OWNER_POLICY = 'mock_owner.policy'
+
 ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 
 OWNER_KEY_FILE = WHITELIST_DIR + '/owner.key'
 
 SESSION_MANAGER = 'session_manager'
 SESSION_MANAGER_LOG = '/var/log/session_manager'
-SIGNED_PREFERENCES_FILE = WHITELIST_DIR + '/preferences'
 SIGNED_POLICY_FILE = WHITELIST_DIR + '/policy'
 SPECIAL_CASE_DOMAIN = 'gmail.com'
 
