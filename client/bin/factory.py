@@ -23,7 +23,7 @@ FAILED = 'FAIL'
 UNTESTED = 'UNTESTED'
 
 LOG_PATH = '/var/log/factory.log'
-CONSOLE_LOG_PATH = '/var/log/factory_console.log'
+CONSOLE_LOG_PATH = '/tmp/factory_console.log'
 DATA_PREFIX = 'FACTORY_DATA:'
 LAST_PROBED_HWID_NAME = 'last_probed_hwid'
 REVIEW_INFORMATION_TEST_UNIQUE_NAME = 'ReviewInformation'
