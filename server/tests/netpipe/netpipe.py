@@ -38,9 +38,11 @@ class netpipe(test.test):
                                           buffer, upper_bound, variance)
 
         server_command = subcommand.subcommand(server_at.run,
-                                    [server_control_file, server.hostname])
+                                    [server_control_file, server.hostname],
+                                    subdir='server')
         client_command = subcommand.subcommand(client_at.run,
-                                    [client_control_file, client.hostname])
+                                    [client_control_file, client.hostname],
+                                    subdir='client')
 
         subcommand.parallel([server_command, client_command])
 
