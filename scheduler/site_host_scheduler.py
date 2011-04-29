@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 import random
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, utils
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler.host_scheduler import BaseHostScheduler
-from autotest_lib.server import hosts
+from autotest_lib.server.hosts import abstract_ssh
 
 
 class site_host_scheduler(BaseHostScheduler):
@@ -29,22 +29,22 @@ class site_host_scheduler(BaseHostScheduler):
         return set(hosts)
 
 
-    def is_host_usable(self, host_id):
-        """Override method to add an SSH check for host usability.
+    def is_host_eligible_for_job(self, host_id, queue_entry):
+        """Override method to add an SSH check for host eligibility.
 
         We don't want to schedule against any hosts which are not reachable.
         """
-        if not super(site_host_scheduler, self).is_host_usable(host_id):
+        if not super(site_host_scheduler, self).is_host_eligible_for_job(
+                host_id, queue_entry):
             return False
 
         host_data = scheduler_models.Host(id=host_id)
-        host = hosts.SSHHost(host_data.hostname)
-
         try:
-            host.ssh_ping(timeout=self._SSH_TIMEOUT)
-        except error.AutoservError:
+            utils.run(
+                '%s %s "true"' % (abstract_ssh.make_ssh_command(
+                    connect_timeout=self._SSH_TIMEOUT), host_data.hostname),
+                timeout=self._SSH_TIMEOUT)
+        except:
             return False
-        finally:
-            host.close()
 
         return True
