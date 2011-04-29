@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -16,6 +16,8 @@ Security Functional test suite.
 
 # List of client tests with parameters
 TESTS = [
+  ('platform_DMVerityCorruption', {}),
+  ('platform_DMVerityBitCorruption', {}),
   ('security_DbusOwners', {}),
   ('security_NetworkListeners', {}),
   ('security_ProfilePermissions', {'creds': '$default', 'tag': 'login'}),
