@@ -57,6 +57,7 @@ TESTS = [
   ('login_BadAuthentication', {'tag' : 'unknown',
                                'error_string' : 'Unknown'}),
   ('login_OwnershipNotRetaken', {}),
+  ('login_OwnershipRetaken', {}),
   ('login_OwnershipTaken', {}),
   ('login_RemoteOwnership', {}),
   ('login_DBusCalls', {}),
