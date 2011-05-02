@@ -111,6 +111,10 @@ class PyAutoTest(test.test):
         # Import the pyauto module
         sys.path.append(os.path.join(os.path.dirname(__file__),
             os.pardir, 'deps', 'pyauto_dep', 'pyautolib'))
+        sys.path.append(os.path.join(os.path.dirname(__file__),
+            os.pardir, 'deps', 'pyauto_dep', 'bin'))
+        sys.path.append(os.path.join(os.path.dirname(__file__),
+            os.pardir, 'deps', 'pyauto_dep', 'third_party'))
         try:
             import pyauto
         except ImportError:
