@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import time
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
@@ -12,11 +12,18 @@ from autotest_lib.server.hosts import base_classes
 
 parser = autoserv_parser.autoserv_parser
 
+# Time to wait for new kernel to be marked successful.
+_KERNEL_UPDATE_TIMEOUT = 60
+
 
 class ChromiumOSHost(base_classes.Host):
     """ChromiumOSHost is a special subclass of SSHHost that supports
     additional install methods.
     """
+    # Force updating of the host, even if it's already up to date.
+    force_update = True
+
+
     def __initialize(self, hostname, *args, **dargs):
         """
         Construct a ChromiumOSHost object
@@ -28,28 +35,49 @@ class ChromiumOSHost(base_classes.Host):
 
 
     def machine_install(self, update_url=None):
-        # TODO(seano): Once front-end changes are in, Kill this entire
-        # cmdline flag; It doesn't match the Autotest workflow.
         if parser.options.image:
             update_url = parser.options.image
         elif not update_url:
-            return False
-        updater = autoupdater.ChromiumOSUpdater(host=self,
-                                                update_url=update_url)
-        updater.run_update()
-        # Updater has returned, successfully, reboot the host.
-        self.reboot(timeout=60, wait=True)
+            raise autoupdater.ChromiumOSError(
+                'Update failed. No update URL provided.')
 
-        # sleep for 1 min till chromeos-setgoodkernel marks the current
-        # partition as 'working'. This is the only way to commit a good update
-        # on rootfs and prevent future rollback. Note this is only a temp
-        # solution and a formal fix is under discussion.
-        time.sleep(60)
-        # then do another reboot
-        self.reboot(timeout=60, wait=True)
+        # Attempt to update the system.
+        updater = autoupdater.ChromiumOSUpdater(update_url, host=self)
+        if updater.run_update(self.force_update):
+            # Figure out active and inactive kernel.
+            active_kernel, inactive_kernel = updater.get_kernel_state()
 
-        # Following the reboot, verify the correct version.
-        updater.check_version()
+            # Ensure inactive kernel has higher priority than active.
+            if (updater.get_kernel_priority(inactive_kernel)
+                    < updater.get_kernel_priority(active_kernel)):
+                raise autoupdater.ChromiumOSError(
+                    'Update failed. The priority of the inactive kernel'
+                    ' partition is less than that of the active kernel'
+                    ' partition.')
+
+            # Updater has returned, successfully, reboot the host.
+            self.reboot(timeout=60, wait=True)
+
+            # Following the reboot, verify the correct version.
+            updater.check_version()
+
+            # Figure out newly active kernel.
+            new_active_kernel, _ = updater.get_kernel_state()
+
+            # Ensure that previously inactive kernel is now the active kernel.
+            if new_active_kernel != inactive_kernel:
+                raise autoupdater.ChromiumOSError(
+                    'Update failed. New kernel partition is not active after'
+                    ' boot.')
+
+            # Wait until tries == 0 and success, or until timeout.
+            utils.poll_for_condition(
+                lambda: (updater.get_kernel_tries(new_active_kernel) == 0 and
+                         updater.get_kernel_success(new_active_kernel)),
+                exception=autoupdater.ChromiumOSError(
+                    'Update failed. Timed out waiting for system to mark new'
+                    ' kernel as successful.'),
+                timeout=_KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
 
         # Clean up any old autotest directories which may be lying around.
         for path in global_config.global_config.get_config_value(
