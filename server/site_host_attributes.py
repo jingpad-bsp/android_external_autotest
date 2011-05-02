@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, utils
+import hashlib, logging, os, utils
 
 # Host attributes are specified a strings with the format:
 #   <key>{,<value>}?
@@ -64,6 +64,7 @@ _DEFAULT_ATTRIBUTES = [
     'has_chromeos_firmware,True',
     'has_resume_bug,False',
     'has_ssd,True',
+    'netbook_01b7cc72,False',
     ]
 
 
@@ -93,9 +94,14 @@ class HostAttributes(object):
     def _add_attributes(self, attributes):
         for attribute in attributes:
             splitnames = attribute.split(',')
-            value = ','.join(splitnames[1:])
             if len(splitnames) == 1:
-                continue
+                if 'netbook_' in attribute:
+                    # Hash board names to prevent any accidental leaks.
+                    splitnames = [ 'netbook_' + hashlib.sha256(
+                        attribute.split('netbook_')[1]).hexdigest()[:8], 'True']
+                else:
+                    continue
+            value = ','.join(splitnames[1:])
             if value == 'True':
                 value = True
             elif value == 'False':
