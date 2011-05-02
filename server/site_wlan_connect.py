@@ -63,21 +63,24 @@ class ConnectStateHandler(StateHandler):
     for svc in FindObjects('Service', 'SSID', self.service_name,
                            path_list=path_list):
       props = svc.GetProperties()
+      set_props = {}
       for key, val in self.connection_settings.items():
         prop_val = convert_dbus_value(props.get(key))
         if key != 'SSID' and  prop_val != val:
           if key in ['Passphrase', 'SaveCredentials'] or key.startswith('EAP.'):
-            try:
-              svc.SetProperty(key, val)
-            except dbus.exceptions.DBusException, e:
-              self.failure = ('SetProperty: DBus exception %s for set of %s' %
-                              (e, key))
-              return None
+            set_props[key] = val
           else:
             self.Debug('Service key mismatch: %s %s != %s' %
                        (key, val, str(prop_val)))
             break
       else:
+        for key, val in set_props.iteritems():
+          try:
+            svc.SetProperty(key, val)
+          except dbus.exceptions.DBusException, e:
+            self.failure = ('SetProperty: DBus exception %s for set of %s' %
+                            (e, key))
+            return None
         service = svc
         if self.scan_timeout is not None:
           gobject.source_remove(self.scan_timeout)
