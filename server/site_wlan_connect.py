@@ -49,7 +49,7 @@ class ConnectStateHandler(StateHandler):
     self.scan_timeout = None
     self.scan_retry = scan_retry
     StateHandler.__init__(self, dbus_bus,
-                          [(connection_settings['SSID'], 'ready')],
+                          [(connection_settings['SSID'], 'State', 'ready')],
                           timeout, None, timeout, debug)
     if start_time:
       self.run_start_time = start_time

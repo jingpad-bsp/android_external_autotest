@@ -38,7 +38,7 @@
     [ "wait_service",   { "run_timeout":20,       # Timeout connection in 20 seconds
                           "debug":True,       # Print out all state transitions
                           "states":[
-                             (None, '+ready')  # Wait for the "current AP" (as
+                             (None, 'ready')  # Wait for the "current AP" (as
                           ] } ],              # read of the AP -- "t1" above)
                                               # service to transition to "ready"
     [ "client_ping",    { "count":"10" } ],

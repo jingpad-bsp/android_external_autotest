@@ -181,7 +181,7 @@ class StateHandler(object):
   def StateChangeCallback(self, attr, value, **kwargs):
     """State change callback handle: did we enter the desired state?"""
 
-    if str(attr) != 'State':
+    if str(attr) != self.wait_attr:
       if str(attr) == 'Strength':
         value = int(value)
       self.Debug('Received signal (%s=%s)' % (str(attr), str(value)))
@@ -199,8 +199,8 @@ class StateHandler(object):
       return
 
     self.svc_state = state
-    self.Debug('Service %s changed state: %s' %
-               (repr(self.service_name), state))
+    self.Debug('Service %s %s changed to \'%s\'' %
+               (repr(self.service_name), attr, state))
 
     if state == self.wait_state:
       self.results.append('%.3f' % (time.time() - self.step_start_time))
@@ -251,7 +251,7 @@ class StateHandler(object):
     if not self.state_list:
       return False
 
-    self.service_name, self.wait_state = self.state_list.pop(0)
+    self.service_name, self.wait_attr, self.wait_state = self.state_list.pop(0)
     if self.wait_state.startswith('+'):
       self.wait_state = self.wait_state[1:]
       self.waitchange = True
@@ -302,7 +302,7 @@ class StateHandler(object):
     """Setup a callback for state changes on our service."""
 
     # Are we already in the desired state?
-    self.svc_state = svc.GetProperties().get('State')
+    self.svc_state = svc.GetProperties().get(self.wait_attr)
     self.wait_path = svc.object_path
 
     self.StateChanged()
@@ -371,9 +371,13 @@ def main(argv):
     name, sep, desired_state = arg.partition('=')
     if sep != '=' or not desired_state:
       parser.error('Invalid argument %s; arguments should be of the form '
-                   '"SSID=STATE..."' % arg)
+                   '"SSID=[ATTRIBUTE:]STATE..."' % arg)
 
-    state_list.append((name, desired_state))
+    attribute, sep, desired_value = desired_state.partition(':')
+    if sep == ':':
+      state_list.append((name, attribute, desired_value))
+    else:
+      state_list.append((name, 'State', desired_state))
 
   handler = StateHandler(bus, state_list, options.run_timeout,
                          options.step_timeout, options.svc_timeout,
