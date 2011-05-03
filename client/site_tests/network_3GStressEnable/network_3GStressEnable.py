@@ -21,11 +21,11 @@ class network_3GStressEnable(test.test):
     def SetPowered(self, device, state):
         try:
             device.SetProperty('Powered', dbus.Boolean(state))
-        except dbus.exceptions.DBusException, error:
-            if error._dbus_error_name in network_3GStressEnable.okerrors:
+        except dbus.exceptions.DBusException, err:
+            if err._dbus_error_name in network_3GStressEnable.okerrors:
                 return
             else:
-                raise error
+                raise error.TestFailed(err)
 
     def test(self, device, settle):
         self.SetPowered(device, 1)
@@ -53,5 +53,8 @@ class network_3GStressEnable(test.test):
                     raise error
             self.SetPowered(device, 0)
         for t in xrange(max, min, -1):
-            for _ in xrange(cycles):
+            for n in xrange(cycles):
+                # deciseconds are an awesome unit.
+                print 'Cycle %d: %f seconds delay.' % (n, t / 10.0)
                 self.test(device, t / 10.0)
+        print 'Done.'
