@@ -3,4 +3,4 @@ def install(machine):
     host.machine_install()
 
 
-job.parallel_simple(install, machines, log=False)
+job.parallel_simple(install, machines)
