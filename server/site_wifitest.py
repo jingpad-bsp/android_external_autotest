@@ -854,7 +854,7 @@ class WiFiTest(object):
             if len(tcp_tokens) >= 6 and tcp_tokens[-1].endswith('bits/sec'):
                 self.write_perf({'throughput':float(tcp_tokens[-2])})
         elif test in ['UDP', 'UDP_NODELAY']:
-            """Parses the following and returns a touple containing throughput
+            """Parses the following and returns a tuple containing throughput
             and the number of errors.
 
             ------------------------------------------------------------
@@ -869,12 +869,15 @@ class WiFiTest(object):
             [  3] Server Report:
             [ ID] Interval       Transfer     Bandwidth       Jitter   Lost/Total Datagrams
             [  3]  0.0-10.0 sec  1.25 MBytes  1.05 Mbits/sec  0.032 ms    1/  894 (0.11%)
+            [  3]  0.0-15.0 sec  14060 datagrams received out-of-order
             """
-            # NB: no ID line on openwrt so use "last line"
-            udp_tokens = lines[-1].replace('/', ' ').split()
-            # Find the column named "MBytes"
+            # Search for the last row containing the word 'Bytes'
+            mb_row = [row for row,data in enumerate(lines)
+                      if 'Bytes' in data][-1]
+            udp_tokens = lines[mb_row].replace('/', ' ').split()
+            # Find the column ending with "...Bytes"
             mb_col = [col for col,data in enumerate(udp_tokens)
-                      if data == 'MBytes']
+                      if data.endswith('Bytes')]
             if len(mb_col) > 0 and len(udp_tokens) >= mb_col[0] + 9:
                 # Make a sublist starting after the column named "MBytes"
                 stat_tokens = udp_tokens[mb_col[0]+1:]
