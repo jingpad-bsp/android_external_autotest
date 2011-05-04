@@ -9,6 +9,9 @@ class base_host_attributes(object):
     def __init__(self, host):
         pass
 
+    def get_attributes(self):
+        return []
+
 
 site_host_attributes = utils.import_site_class(
     __file__, "autotest_lib.server.site_host_attributes",
@@ -16,5 +19,4 @@ site_host_attributes = utils.import_site_class(
 
 
 class host_attributes(site_host_attributes):
-    def __init__(self, host):
-        super(host_attributes, self).__init__(host)
+    pass

@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""
-Utility classes used by server_job.distribute_across_machines().
+"""Utility classes used by server_job.distribute_across_machines().
 
-test_item: extends the basic test tuple to add include/exclude attributes.
+test_item: extends the basic test tuple to add include/exclude attributes and
+    pre/post actions.
 
 machine_worker: is a thread that manages running tests on a host.  It
     verifies test are valid for a host using the test attributes from test_item
@@ -22,14 +22,15 @@ class test_item(object):
     """Adds machine verification logic to the basic test tuple.
 
     Tests can either be tuples of the existing form ('testName', {args}) or the
-    extended for of ('testname', {args}, ['include'], ['exclude']) where include
-    and exclude are lists of attributes. A machine must have all the attributes
-    in include and must not have any of the attributes in exclude to be valid
-    for the test.
+    extended form ('testname', {args}, ['include'], ['exclude'], ['actions'])
+    where include and exclude are lists of attributes and actions is a list of
+    strings. A machine must have all the attributes in include and must not
+    have any of the attributes in exclude to be valid for the test. Actions
+    strings can include 'reboot_before' and 'reboot_after'.
     """
 
     def __init__(self, test_name, test_args, include_attribs=None,
-                 exclude_attribs=None):
+                 exclude_attribs=None, pre_post_actions=None):
         """Creates an instance of test_item.
 
         Args:
@@ -37,6 +38,7 @@ class test_item(object):
             test_args: dictionary, arguments to pass into test.
             include_attribs: attributes a machine must have to run test.
             exclude_attribs: attributes preventing a machine from running test.
+            pre_post_actions: reboot before/after running the test.
         """
         self.test_name = test_name
         self.test_args = test_args
@@ -46,6 +48,9 @@ class test_item(object):
         self.exc_set = None
         if exclude_attribs is not None:
             self.exc_set = set(exclude_attribs)
+        self.pre_post = []
+        if pre_post_actions is not None:
+            self.pre_post = pre_post_actions
 
     def __str__(self):
         """Return an info string of this test."""
@@ -53,6 +58,7 @@ class test_item(object):
         msg = '%s(%s)' % (self.test_name, params)
         if self.inc_set: msg += ' include=%s' % [s for s in self.inc_set]
         if self.exc_set: msg += ' exclude=%s' % [s for s in self.exc_set]
+        if self.pre_post: msg += ' actions=%s' % self.pre_post
         return msg
 
     def validate(self, machine_attributes):
@@ -75,6 +81,23 @@ class test_item(object):
         if self.exc_set is not None:
             if self.exc_set & machine_attributes: return False
         return True
+
+    def run_test(self, client_at, work_dir='.'):
+        """Runs the test on the client using autotest.
+
+        Args:
+            client_at: Autotest instance for this host.
+            work_dir: Directory to use for results and log files.
+        """
+        if 'reboot_before' in self.pre_post:
+            client_at.host.reboot()
+
+        client_at.run_test(self.test_name,
+                           results_dir=work_dir,
+                           **self.test_args)
+
+        if 'reboot_after' in self.pre_post:
+            client_at.host.reboot()
 
 
 class machine_worker(threading.Thread):
@@ -108,8 +131,7 @@ class machine_worker(threading.Thread):
         self._host = hosts.create_host(self._machine)
         self._client_at = autotest.Autotest(self._host)
         client_attributes = host_attributes.host_attributes(machine)
-        self.attribute_set = set([key for key, value in
-                                  client_attributes.__dict__.items() if value])
+        self.attribute_set = set(client_attributes.get_attributes())
         self._results_dir = os.path.join(work_dir, self._machine)
         if not os.path.exists(self._results_dir):
             os.makedirs(self._results_dir)
@@ -191,9 +213,7 @@ class machine_worker(threading.Thread):
 
             logging.info('%s running %s', self._machine, active_test)
             try:
-                self._client_at.run_test(active_test.test_name,
-                                         results_dir=self._results_dir,
-                                         **active_test.test_args)
+                active_test.run_test(self._client_at, self._results_dir)
             except (error.AutoservError, error.AutotestError):
                 logging.exception('Error running test "%s".', active_test)
             except Exception:

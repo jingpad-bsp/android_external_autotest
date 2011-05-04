@@ -1,3 +1,6 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 """
 The main job wrapper for the server side.
 
@@ -14,6 +17,7 @@ from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error, log, utils, packages
 from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.server import test, subcommand, profilers, server_job_utils
+from autotest_lib.server import gtest_runner
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.tko import db as tko_db, status_lib, utils as tko_utils
 
@@ -563,6 +567,7 @@ class base_server_job(base_job.base_job):
             control_file_dir = self.resultdir
 
         self.aborted = False
+        namespace['gtest_runner'] = gtest_runner.gtest_runner()
         namespace['machines'] = machines
         namespace['args'] = self.args
         namespace['job'] = self
