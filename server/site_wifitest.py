@@ -177,9 +177,11 @@ class WiFiTest(object):
             if step_names.count(step_name) > 1:
                 self.iterated_steps[step_name] = 0
 
+        self.run_options = config['run_options']
+
     def cleanup(self, params):
         """ Cleanup state: disconnect client and destroy ap """
-        if params.get('force_disconnect'):
+        if 'no_cleanup_disconnect' not in self.run_options:
             self.disconnect({})
             self.wifi.destroy({})
         self.profile_pop(self.test_profile)
@@ -328,7 +330,7 @@ class WiFiTest(object):
             else:
                 logging.error("%s: Step '%s' unknown; abort test",
                     self.name, method)
-                self.cleanup({'force_disconnect':True})
+                self.cleanup({})
                 break
         else:
             # If all steps ran successfully perform the normal cleanup steps
@@ -1443,6 +1445,7 @@ def run_test_dir(test_name, job, args, machine):
     test_pat = opts.get('test_pat', '[0-9]*')
     router_addr = opts.get('router_addr', None)
     server_addr = opts.get('server_addr', None)
+    run_options = opts.get('run_options', '').split(',')
 
     config = read_wifi_testbed_config(
         os.path.join(job.configdir, config_file),
@@ -1451,6 +1454,7 @@ def run_test_dir(test_name, job, args, machine):
         server_addr = server_addr)
     server = config['server']
     router = config['router']
+    config['run_options'] = run_options
 
     logging.info("Client %s, Server %s, AP %s" % \
         (machine, server.get('addr', 'N/A'), router['addr']))
@@ -1478,7 +1482,7 @@ class test(test.test):
   def run_once(self, testcase, config):
     name = testcase['name']
     try:
-      if 'skip_test' in testcase:
+      if 'skip_test' in testcase and 'no_skip' not in config['run_options']:
         logging.info("%s: SKIP: %s", name, testcase['skip_test'])
       else:
         wt = WiFiTest(name, testcase['steps'], config)

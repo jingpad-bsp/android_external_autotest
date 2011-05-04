@@ -79,6 +79,8 @@ class LinuxRouter(object):
         self.hostapd = {
             'configured': False,
             'file': "/tmp/hostapd-test.conf",
+            'log': "/tmp/hostapd-test.log",
+            'log_count': 0,
             'driver': "nl80211",
             'conf': {
                 'ssid': defssid,
@@ -309,8 +311,8 @@ class LinuxRouter(object):
 
         # Run hostapd.
         logging.info("Starting hostapd...")
-        self.router.run("%s -B %s" %
-            (self.cmd_hostapd, self.hostapd['file']))
+        self.router.run("%s -dd %s > %s &" %
+            (self.cmd_hostapd, self.hostapd['file'], self.hostapd['log']))
 
 
         # Set up the bridge.
@@ -465,6 +467,10 @@ class LinuxRouter(object):
         if self.hostapd['configured']:
             self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
 #           self.router.run("rm -f %s" % self.hostapd['file'])
+            self.router.get_file(self.hostapd['log'],
+                                 'debug/hostapd_router_%d.log' %
+                                 self.hostapd['log_count'])
+            self.hostapd['log_count'] += 1
         if self.station['configured']:
             if self.station['type'] == 'ibss':
                 self.router.run("%s dev %s ibss leave" %
