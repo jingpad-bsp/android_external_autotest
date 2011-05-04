@@ -392,9 +392,10 @@ class UITest(test.test):
                                  'log', 'chrome'),
                     os.path.join(self.resultsdir, 'chrome_postlogin_log'))
                 # Retrieve any cores left by crashes during testing.
-                shutil.copytree(
-                    os.path.join(constants.CRYPTOHOME_MOUNT_PT, 'crash'),
-                    os.path.join(self.resultsdir, 'crashes'))
+                crash_dir = os.path.join(constants.CRYPTOHOME_MOUNT_PT, 'crash')
+                if os.path.isdir(crash_dir):
+                    shutil.copytree(
+                        crash_dir, os.path.join(self.resultsdir, 'crashes'))
             except (IOError, OSError) as err:
                 logging.error(err)
             self.logout()
