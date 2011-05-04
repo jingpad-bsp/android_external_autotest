@@ -9,7 +9,6 @@ import socket
 import urlparse
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants as chromeos_constants
 
 # TODO(dalecurtis): HACK to bootstrap stateful updater until crosbug.com/8960 is
 # fixed.
@@ -34,7 +33,11 @@ def url_to_version(update_url):
 
 
 class ChromiumOSUpdater():
-    def __init__(self, host=None, update_url=None):
+    KERNEL_A = {'name': 'KERN-A', 'kernel': 2, 'root': 3}
+    KERNEL_B = {'name': 'KERN-B', 'kernel': 4, 'root': 5}
+
+
+    def __init__(self, update_url, host=None):
         self.host = host
         self.update_url = update_url
         self.update_version = url_to_version(update_url)
@@ -65,8 +68,41 @@ class ChromiumOSUpdater():
         return self.host.run(cmd, *args, **kwargs)
 
 
-    def rootdev(self):
-        return self._run('rootdev').stdout.strip()
+    def rootdev(self, options=''):
+        return self._run('rootdev %s' % options).stdout.strip()
+
+
+    def get_kernel_state(self):
+        """Returns the (<active>, <inactive>) kernel state as a pair."""
+        active_root = int(re.findall('\d+\Z', self.rootdev('-s'))[0])
+        if active_root == self.KERNEL_A['root']:
+            return self.KERNEL_A, self.KERNEL_B
+        elif active_root == self.KERNEL_B['root']:
+            return self.KERNEL_B, self.KERNEL_A
+        else:
+            raise ChromiumOSError('Encountered unknown root partition: %s',
+                                  active_root)
+
+
+    def _cgpt(self, flag, kernel, dev='$(rootdev -s -d)'):
+        """Return numeric cgpt value for the specified flag, kernel, device. """
+        return int(self._run('cgpt show -n -i %d %s %s' % (
+            kernel['kernel'], flag, dev)).stdout.strip())
+
+
+    def get_kernel_priority(self, kernel):
+        """Return numeric priority for the specified kernel."""
+        return self._cgpt('-P', kernel)
+
+
+    def get_kernel_success(self, kernel):
+        """Return boolean success flag for the specified kernel."""
+        return self._cgpt('-S', kernel) != 0
+
+
+    def get_kernel_tries(self, kernel):
+        """Return tries count for the specified kernel."""
+        return self._cgpt('-T', kernel)
 
 
     def revert_boot_partition(self):
@@ -75,8 +111,10 @@ class ChromiumOSUpdater():
         return self._run('/postinst %s 2>&1' % part)
 
 
-    def run_update(self):
-        if not self.update_url:
+    def run_update(self, force_update):
+        booted_version = self.get_booted_version()
+        if booted_version in self.update_version and not force_update:
+            logging.info('System is already up to date. Skipping update.')
             return False
 
         # Check that devserver is accepting connections (from autoserv's host)
@@ -147,10 +185,15 @@ class ChromiumOSUpdater():
         return True
 
 
-    def check_version(self):
+    def get_booted_version(self):
         booted_version = self.get_build_id()
         if not booted_version:
             booted_version = self.get_dev_build_id()
+        return booted_version
+
+
+    def check_version(self):
+        booted_version = self.get_booted_version()
         if not booted_version in self.update_version:
             logging.error('Expected Chromium OS version: %s.'
                           'Found Chromium OS %s',
