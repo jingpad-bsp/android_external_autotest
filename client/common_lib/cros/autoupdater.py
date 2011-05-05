@@ -6,6 +6,7 @@ import httplib
 import logging
 import re
 import socket
+import time
 import urlparse
 
 from autotest_lib.client.common_lib import error
@@ -130,6 +131,8 @@ class ChromiumOSUpdater():
                                                     self.host.hostname))
         # Reset update_engine's state & check that update_engine is idle.
         self.reset_update_engine()
+        # TODO(dalecurtis): Hack! Remove once http://crosbug.com/14954 fixed.
+        time.sleep(120)
 
         # Run autoupdate command. This tells the autoupdate process on
         # the host to look for an update at a specific URL and version
