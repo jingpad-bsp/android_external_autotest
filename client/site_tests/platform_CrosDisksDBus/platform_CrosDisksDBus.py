@@ -16,6 +16,8 @@ class platform_CrosDisksDBus(test.test):
             ('DeviceFile', dbus.String),
             ('DeviceIsDrive', dbus.Boolean),
             ('DeviceIsMediaAvailable', dbus.Boolean),
+            ('DeviceIsOnBootDevice', dbus.Boolean),
+            ('DeviceIsVirtual', dbus.Boolean),
             ('DeviceIsMounted', dbus.Boolean),
             ('DeviceIsOpticalDisc', dbus.Boolean),
             ('DeviceIsReadOnly', dbus.Boolean),
@@ -75,18 +77,50 @@ class platform_CrosDisksDBus(test.test):
         if not is_alive:
             raise error.TestFail("Unable to talk to the disk daemon")
 
-    def test_enumerate_device_files(self):
-        # Check if EnumerateDeviceFiles method returns a list of devices.
-        devices = self.cros_disks.EnumerateDeviceFiles()
+    def test_enumerate_devices(self):
+        # Check if EnumerateDevices method returns a list of devices.
+        devices = self.cros_disks.EnumerateDevices()
         for device in devices:
             if not device or not isinstance(device, dbus.String):
                 raise error.TestFail(
-                        "device returned by EnumerateDeviceFiles "
+                        "device returned by EnumerateDevices "
                         "should be a non-empty string")
+
+    def test_enumerate_auto_mountable_devices(self):
+        # Check if EnumerateAutoMountableDevices method returns a list
+        # of devices.
+        devices = self.cros_disks.EnumerateAutoMountableDevices()
+        for device in devices:
+            if not device or not isinstance(device, dbus.String):
+                raise error.TestFail(
+                        "device returned by EnumerateAutoMountableDevices "
+                        "should be a non-empty string")
+
+    def test_enumerate_auto_mountable_devices_are_not_on_boot_device(self):
+        # Make sure EnumerateAutoMountableDevices method does not return
+        # any device that is on the boot device.
+        devices = self.cros_disks.EnumerateAutoMountableDevices()
+        for device in devices:
+            properties = self.cros_disks.GetDeviceProperties(device)
+            if properties['DeviceIsOnBootDevice']:
+                raise error.TestFail(
+                        "device returned by EnumerateAutoMountableDevices "
+                        "should not be on boot device")
+
+    def test_enumerate_auto_mountable_devices_are_not_virtual(self):
+        # Make sure EnumerateAutoMountableDevices method does not return
+        # any device that is virtual.
+        devices = self.cros_disks.EnumerateAutoMountableDevices()
+        for device in devices:
+            properties = self.cros_disks.GetDeviceProperties(device)
+            if properties['DeviceIsVirtual']:
+                raise error.TestFail(
+                        "device returned by EnumerateAutoMountableDevices "
+                        "should not be virtual")
 
     def test_get_device_properties(self):
         # Check if GetDeviceProperties method returns valid properties.
-        devices = self.cros_disks.EnumerateDeviceFiles()
+        devices = self.cros_disks.EnumerateDevices()
         for device in devices:
             properties = self.cros_disks.GetDeviceProperties(device)
             self.validate_disk_properties(properties)
@@ -119,8 +153,11 @@ class platform_CrosDisksDBus(test.test):
                                '/org/chromium/CrosDisks')
         self.cros_disks = dbus.Interface(proxy, 'org.chromium.CrosDisks')
         self.test_is_alive()
-        self.test_enumerate_device_files()
+        self.test_enumerate_devices()
+        self.test_enumerate_auto_mountable_devices()
         self.test_get_device_properties()
         self.test_get_device_properties_of_nonexistent_device()
+        self.test_enumerate_auto_mountable_devices_are_not_on_boot_device()
+        self.test_enumerate_auto_mountable_devices_are_not_virtual()
         self.test_mount_nonexistent_device()
         self.test_unmount_nonexistent_device()
