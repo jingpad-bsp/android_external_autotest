@@ -132,12 +132,15 @@ class machine_worker(threading.Thread):
         self._client_at = autotest.Autotest(self._host)
         client_attributes = host_attributes.host_attributes(machine)
         self.attribute_set = set(client_attributes.get_attributes())
-        self._results_dir = os.path.join(work_dir, self._machine)
-        if not os.path.exists(self._results_dir):
-            os.makedirs(self._results_dir)
-        machine_data = {'hostname': self._machine,
-                        'status_version': str(1)}
-        utils.write_keyval(self._results_dir, machine_data)
+        self._results_dir = work_dir
+        # Only create machine subdir when running a multi-machine job.
+        if not self._machine in work_dir:
+            self._results_dir = os.path.join(work_dir, self._machine)
+            if not os.path.exists(self._results_dir):
+                os.makedirs(self._results_dir)
+            machine_data = {'hostname': self._machine,
+                            'status_version': str(1)}
+            utils.write_keyval(self._results_dir, machine_data)
 
     def __str__(self):
         attributes = [a for a in self.attribute_set]
