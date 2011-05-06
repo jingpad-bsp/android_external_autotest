@@ -80,21 +80,32 @@ class graphics_GLBench(test.test):
     options += ' -save -outdir=' + outdir
 
     cmd = 'X :1 & sleep 1; DISPLAY=:1 %s %s; kill $!' % (exefile, options)
+
+    # If UI is running, we must stop it and restore later.
+    need_restart_ui = False
+    status_output = utils.system_output('initctl status ui')
+    # If chrome is running, result will be similar to:
+    #   ui start/running, process 11895
+    logging.info('initctl status ui returns: %s', status_output)
+    need_restart_ui = status_output.startswith('ui start')
+
+    if need_restart_ui:
+      utils.system('initctl stop ui', ignore_status=True)
+
     try:
-      stopui = utils.system_output('stop ui')
       summary = utils.system_output(cmd, retain_output=True)
     finally:
-      startui = utils.system_output('start ui')
+      if need_restart_ui:
+        utils.system('initctl start ui')
 
     # write a copy of stdout to help debug failures
     results_path = os.path.join(self.outputdir, 'summary.txt')
     f = open(results_path, 'w+')
-    f.write('# [stop ui] ' + stopui + '\n')
-    f.write('# -------------------------------------------------\n')
+    f.write('# need ui restart: %s\n' % need_restart_ui)
+    f.write('# ---------------------------------------------------\n')
     f.write('# [' + cmd + ']\n')
     f.write(summary)
     f.write('\n# -------------------------------------------------\n')
-    f.write('# [start ui] ' + startui + '\n')
     f.write('# [graphics_GLBench.py postprocessing]\n')
 
     # Analyze the output. Sample:
@@ -106,7 +117,7 @@ class graphics_GLBench(test.test):
       f.close()
       raise error.TestFail('No output from test. Check /tmp/' +
                            'run_remote_tests.../graphics_GLBench/summary.txt' +
-                           ' for details. [' + stopui + '][' + startui + ']')
+                           ' for details.')
     # analyze summary header
     if results[0].startswith('# board_id: '):
       board_id = results[0].split('board_id:', 1)[1].strip()
