@@ -13,6 +13,13 @@
     "group": "ipsec",
     "mode": "0644"
   },
+  "/etc/ipsec.d/cacerts/cacert.der": {
+    "can_dangle": true,
+    "destination": "/mnt/stateful_partition/etc/cacert.der",
+    "owner": "ipsec",
+    "group": "ipsec",
+    "mode": "0644"
+  },
   "/etc/ipsec.secrets": {
     "can_dangle": true,
     "destination": "/mnt/stateful_partition/etc/ipsec.secrets",
