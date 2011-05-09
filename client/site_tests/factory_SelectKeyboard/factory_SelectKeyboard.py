@@ -89,7 +89,7 @@ class factory_SelectKeyboard(test.test):
 
     def write_kb(self, kb):
         cmd = ('vpd -i RO_VPD -s "initial_locale"="%s" '
-               '-s "keyboard_layout"="%s"' % (kb[0], kb[1]))
+               '-s "keyboard_layout"="%s"' % (kb[1], kb[0]))
         utils.system_output(cmd)
 
     def key_release_callback(self, widget, event):
