@@ -38,7 +38,7 @@ from autotest_lib.client.bin import parallel
 FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
 FACTORY_STATE_SERVER_PATH = job.autodir + '/bin/factory_state.py'
 STATUS_FILE_PATH = job.autodir + '/results/default/status'
-TEST_LIST_PATH = job.autodir + '/site_tests/suite_Factory/test_list'
+DEFAULT_TEST_LIST_PATH = job.autodir + '/site_tests/suite_Factory/test_list'
 
 
 # Hack to grab the pid for forked tests.
@@ -71,13 +71,22 @@ AutomatedSubTest = factory.AutomatedSubTest
 AutomatedRebootSubTest = factory.AutomatedRebootSubTest
 
 
-# This exec defines TEST_LIST in global scope.
-execfile(TEST_LIST_PATH)
-
-
 # Hack to work around autotest's obsession with GRUB.
 job.bootloader.set_default = lambda x: None
 job.bootloader.boot_once = lambda x: None
+
+
+def find_test_list():
+    test_list = DEFAULT_TEST_LIST_PATH
+    if os.path.exists(test_list):
+        return test_list
+    # try platform specific list
+    test_list = ('%s.%s' % (DEFAULT_TEST_LIST_PATH,
+                            os.popen("crossystem arch").read().strip()))
+    if os.path.exists(test_list):
+        factory.log('Using platform-specific test list: ' + test_list)
+        return test_list
+    factory.log('ERROR: Cannot find any test list.')
 
 def start_state_server():
   state_proc_args = [FACTORY_STATE_SERVER_PATH]
@@ -88,7 +97,7 @@ def start_state_server():
   return sp
 
 def start_ui():
-  ui_proc_args = [FACTORY_UI_PATH, TEST_LIST_PATH,
+  ui_proc_args = [FACTORY_UI_PATH, find_test_list(),
                   STATUS_FILE_PATH, str(os.getpid())]
   factory.log('starting ui %s' % repr(ui_proc_args))
   sp = subprocess.Popen(ui_proc_args, stdin=subprocess.PIPE,
@@ -228,3 +237,7 @@ def main_loop(next_subtest_info, notify_callback):
         else:
             shortcut_target = control_state.run_test(test)
         test = shortcut_target or find_next_test_to_run(status_map, test_db)
+
+
+# This exec defines TEST_LIST in global scope.
+execfile(find_test_list())

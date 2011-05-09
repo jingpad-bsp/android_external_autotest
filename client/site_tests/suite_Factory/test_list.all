@@ -91,6 +91,7 @@ TEST_LIST = [
 
             AutomatedSubTest(
                 label_en='GPS hardware',
+                label_zw='GPS 硬體',
                 autotest_name='hardware_GPS'),
 
             AutomatedRebootSubTest(
@@ -98,12 +99,20 @@ TEST_LIST = [
                 label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
                 iterations=_REBOOT_SEQ_ITERATIONS)]),
 
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
+    # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
+    OperatorTest(
+        label_en='kb select',
+        label_zw='鍵盤語系',
+        autotest_name='factory_SelectKeyboard',
+        kbd_shortcut='j'),
+
     OperatorTest(
         label_en='keyboard',
         label_zw='鍵盤',
         autotest_name='factory_Keyboard',
-        kbd_shortcut='k',
-        dargs={'layout':'en_us'}),
+        kbd_shortcut='k'),
 
     OperatorTest(
         label_en='touchpad',

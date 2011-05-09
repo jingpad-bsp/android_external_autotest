@@ -5,5 +5,5 @@
 # found in the LICENSE file.
 
 # Set the test list for x86 generic (non-ChromeOS device).
-mv test_list.x86 test_list
+mv -f test_list.x86 test_list
 
