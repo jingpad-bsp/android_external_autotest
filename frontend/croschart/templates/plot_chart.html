@@ -1,58 +1,21 @@
-{% extends "base.html" %}
+{% extends "plot_chart_base.html" %}
 {% comment %}
 
 Copyright 2010 Google Inc. All Rights Reserved.
 
-This template builds a single plot on a single page for a zoomed-in view.
+This template implements chart point click-through to the data.
 {% endcomment %}
-{% block title %}ChromeOS Performance Chart{% endblock %}
-{% block html_block %}
-<!--Load the AJAX API-->
-<script type="text/javascript" src="https://www.google.com/jsapi"></script>
-<script type="text/javascript">
-  // Load the Visualization API and the piechart package.
-  google.load('visualization', '1', {'packages':['corechart']});
-
-  // Set a callback to run when the Google Visualization API is loaded.
-  google.setOnLoadCallback(drawCharts);
-
-  // Callback that creates and populates a data table,
-  // instantiates the charts, passes in the data and
-  // draws them.
-  function drawCharts() {
-    var chart = new google.visualization.LineChart(
-        document.getElementById('{{ tpl_gviz_id }}'));
-    var json_data = new google.visualization.DataTable(
-        {% autoescape off %}{{ tpl_gviz_js }}{% endautoescape %}, 0.5);
+    {% block add_listener %}
     google.visualization.events.addListener(chart, 'select', function(){
-      var build_tags = [
-      {% for job_tag in tpl_job_tags %}
-      '{{ job_tag }}'{% if not forloop.last %},{% endif %}
-      {% endfor %}
-      ];
-      window.open(
-          'http://cautotest/results/' +
-          build_tags[chart.getSelection()[0].row] +
-          '/' + '{{ tpl_gviz_title }}' +
-          '/results/keyval')
+    var build_tags = [
+    {% for job_tag in tpl_chart.job_tags %}
+    '{{ job_tag }}'{% if not forloop.last %},{% endif %}
+    {% endfor %}
+    ];
+    window.open(
+        'http://cautotest/results/' +
+        build_tags[chart.getSelection()[0].row] +
+        '/' + '{{ tpl_chart.test_name }}' +
+        '/results/keyval');
       });
-    chart.draw(
-        json_data,
-        {colors: ['{{ tpl_colors|random }}'],
-         hAxis: {
-            slantedText: true,
-            slantedTextAngle: 90,
-            textStyle: {fontSize: 10}},
-         height: {{ tpl_height }},
-         is3D: true,
-         pointSize: 3,
-         legend: 'none',
-         title: '{{ tpl_gviz_title }} - {{ tpl_perf_key }}',
-         titlePosition: 'out',
-         width: {{ tpl_width }}});
-  }
-</script>
-<center>
-<span id="{{ tpl_gviz_id }}"></span>
-</center>
-{% endblock %}
+    {% endblock %}

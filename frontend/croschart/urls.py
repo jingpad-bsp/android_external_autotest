@@ -5,36 +5,12 @@
 from django.conf.urls import defaults
 import common
 
+
+COMMON_URL = r'[\w\-.=&]+'
+
+# Order is important. chartdiff and chartreport must come before chart.
 urlpatterns = defaults.patterns(
-    '',
-    (r'^(?P<boards>[\w\-&]*)/'
-      '(?P<netbook>[\w\-]*)/'
-      '(?P<from_build>0\.\d{1,3}\.\d{1,3}\.\d{1,3})/'
-      '(?P<to_build>0\.\d{1,3}\.\d{1,3}\.\d{1,3})/'
-      '(?P<test_name>[\w\-\.]+)/'
-      '(?P<test_key>[\w\-\.]+)/'
-      '(?P<width>[\d]+)/'
-      '(?P<height>[\d]+)/$',
-      'frontend.croschart.views.PlotChartFromBuilds'),
-    (r'^(?P<boards>[\w\-&]+)/'
-      '(?P<netbook>[\w\-]+)/'
-      '(?P<test_name>[\w\-\.]+)/'
-      '(?P<test_key>[\w\-\.]+)/'
-      '(?P<width>[\d]+)/'
-      '(?P<height>[\d]+)/$',
-      'frontend.croschart.views.PlotChartInterval'),
-    (r'^charts/'
-      '(?P<boards>[\w\-&]+)/'
-      '(?P<netbook>[\w\-]+)/'
-      '(?P<from_build>0\.\d{1,3}\.\d{1,3}\.\d{1,3})/'
-      '(?P<to_build>0\.\d{1,3}\.\d{1,3}\.\d{1,3})/'
-      '(?P<test_key_names>[\w\-,&\.]+)/'
-      '(?P<width>[\d]+)/'
-      '(?P<height>[\d]+)/$',
-      'frontend.croschart.views.FrameChartsTestsKeys'),
-    (r'^charts/'
-      '(?P<boards>[\w\-&]+)/'
-      '(?P<netbook>[\w\-]+)/'
-      '(?P<width>[\d]+)/'
-      '(?P<height>[\d]+)/$',
-      'frontend.croschart.views.FrameChartsBoardNetbook'))
+    'frontend.croschart.views',
+    (r'^chartdiff?%s$' % COMMON_URL, 'PlotChartDiff'),
+    (r'^chartreport?%s$' % COMMON_URL, 'PlotChartReport'),
+    (r'^chart?%s$' % COMMON_URL, 'PlotChart'))

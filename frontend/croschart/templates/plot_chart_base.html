@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds a single plot on a single page for a zoomed-in view.
+{% endcomment %}
+{% block title %}ChromeOS Performance Chart{% endblock %}
+{% block html_block %}
+<!--Load the AJAX API-->
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+  // Load the Visualization API and the piechart package.
+  google.load('visualization', '1', {'packages':['corechart']});
+
+  // Set a callback to run when the Google Visualization API is loaded.
+  google.setOnLoadCallback(drawCharts);
+
+  // Callback that creates and populates a data table,
+  // instantiates the charts, passes in the data and
+  // draws them.
+  function drawCharts() {
+    var chart = new google.visualization.LineChart(
+        document.getElementById('{{ tpl_chart.test_name }}-{{ tpl_chart.test_key }}'));
+    var json_data = new google.visualization.DataTable(
+        {% autoescape off %}{{ tpl_chart.gviz_data_table }}{% endautoescape %}, 0.5);
+    {% block add_listener %}{% endblock %}
+    chart.draw(
+        json_data,
+        {colors: ['{{ tpl_colors|random }}'],
+         hAxis: {
+            slantedText: true,
+            slantedTextAngle: 90,
+            textStyle: {fontSize: 10}},
+         height: {{ tpl_params.height|default:480 }},
+         is3D: true,
+         pointSize: 3,
+         legend: 'none',
+         title: '{{ tpl_chart.test_name }} - {{ tpl_chart.test_key }}',
+         titlePosition: 'out',
+         width: {{ tpl_params.width|default:640 }}});
+  }
+</script>
+<center>
+<span id="{{ tpl_chart.test_name }}-{{ tpl_chart.test_key }}"></span>
+</center>
+{% block add_iframe %}{% endblock %}
+{% endblock %}

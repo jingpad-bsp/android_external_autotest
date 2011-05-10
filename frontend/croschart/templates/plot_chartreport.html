@@ -7,8 +7,9 @@ This template builds a page with multiple plots in frames.
 {% endcomment %}
 {% block header_block %}
 <h2><center>Chrome OS Performance Test Results</center></h2>
-<h3><center>{{ tpl_boards }} - {{ tpl_netbook }}</center></h3>
+<h3><center>{{ tpl_params.board }} - {{ tpl_params.system }}</center></h3>
 <div>
+<center>
 {% for test_name, test_key in tpl_charts %}
   {% ifchanged %}
   <a href="#{{ test_name }}">{{ test_name }}</a>
@@ -16,6 +17,7 @@ This template builds a page with multiple plots in frames.
   {% endifchanged %}
 {% endfor %}
 <i>last updated: {% now "D M H:i:s Y" %}</i>
+</center>
 </div>
 {% endblock %}
 {% block html_block %}
@@ -23,10 +25,12 @@ This template builds a page with multiple plots in frames.
 {% ifchanged %}
 <hr><center><a name="{{ test_name }}"><strong>{{ test_name }}</strong></a><center>
 {% endifchanged %}
-<iframe width="{{ tpl_width|add:'20' }}"
-        height="{{ tpl_height|add:'20' }}"
+<iframe width="{{ tpl_params.width|default:'640'|add:'20' }}"
+        height="{{ tpl_params.height|default:'480'|add:'20' }}"
         frameborder="0"
-        src="/croschart/server/{{ tpl_boards }}/{{ tpl_netbook }}/{{ test_name }}/{{ test_key }}/{{ tpl_width }}/{{ tpl_height }}/">
+        {% autoescape off %}
+        src="/croschart/server/chart?testkey={{ test_name }},{{ test_key }}&{{ tpl_chart_url }}">
+        {% endautoescape %}
 </iframe>
 {% endfor %}
 {% endblock %}

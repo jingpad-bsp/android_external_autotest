@@ -1,79 +1,84 @@
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import os
 
-import django.http
+"""Entry point for django urls code to invoke views."""
+
+import datetime
+
+from django.http import HttpResponse
 from django.shortcuts import render_to_response
-import gviz_api
-import simplejson
 
-from autotest_lib.frontend.croschart import models
+import autotest_lib.frontend.croschart.validators as validators
+import autotest_lib.frontend.croschart.chartmodels as chartmodels
+import autotest_lib.frontend.croschart.chartviews as chartviews
+import autotest_lib.frontend.croschart.reportviews as reportviews
+
+from autotest_lib.frontend.croschart.charterrors import ChartInputError
 
 
-class ChartException(Exception):
-    pass
+VLISTS = {
+    'chart': {
+        'from_build': [validators.CrosChartValidator,
+                       validators.BuildRangeValidator],
+        'from_date': [validators.CrosChartValidator,
+                      validators.DateRangeValidator],
+        'interval': [validators.CrosChartValidator,
+                     validators.IntervalRangeValidator]},
+    'chartreport': {
+        'from_build': [validators.CrosReportValidator,
+                       validators.BuildRangeValidator],
+        'from_date': [validators.CrosReportValidator,
+                      validators.DateRangeValidator],
+        'interval': [validators.CrosReportValidator,
+                     validators.IntervalRangeValidator]}}
 
 
-def CommonPlotChart(boards, netbook, from_build, to_build,
-                    test_name, test_key, width, height, interval=None):
+def ValidateParameters(request, vlist):
+  """Returns a list of appropriate validators."""
+  # Catches when no interval supplied.
+  for range_key in vlist.keys() + [None]:
+    if request.GET.get(range_key, None):
+      break
+  if not range_key:
+    raise ChartInputError('One interval-type parameter must be supplied.')
+  validators.Validate(request, vlist[range_key])
+  if range_key == 'interval':
+    salt = datetime.date.isoformat(datetime.date.today())
+  else:
+    salt = None
+  return salt
+
+
+def PlotChart(request):
+  """Plot the requested chart from /chart?..."""
   try:
-    tpl_gviz_id = '%s-%s' % (test_name, test_key)
-    tpl_gviz_title = test_name
-    tpl_perf_key = test_key
-    tpl_width = width
-    tpl_height = height
-    gviz_data, tpl_job_tags = models.GetChartData(boards, netbook,
-                                                  from_build, to_build,
-                                                  test_name, test_key, interval)
-    if not gviz_data:
-      raise ChartException
-    # Use gviz_api to create efficient data tables.
-    data_table = gviz_api.DataTable({
-        'build': ('string', 'Build'),
-        tpl_perf_key: ('number', tpl_perf_key)})
-    data_table.LoadData(gviz_data)
-    tpl_gviz_js = data_table.ToJSon(['build', tpl_perf_key])
-    tpl_colors = ['red', 'blue', 'green', 'black']
-    return render_to_response('plot_chart.html', locals())
-  except:
-    return render_to_response('plot_unavailable.html', locals())
+    salt = ValidateParameters(request, VLISTS['chart'])
+    return chartviews.PlotChart(
+        request, 'plot_chart.html',
+        chartmodels.GetRangedOneKeyByBuildLinechartData, salt)
+  except ChartInputError as e:
+    tpl_hostname = request.get_host()
+    return render_to_response('plot_syntax.html', locals())
 
 
-# Responds to restful request.
-def PlotChartFromBuilds(request, boards, netbook, from_build, to_build,
-                        test_name, test_key, width, height):
-  return CommonPlotChart(boards, netbook, from_build, to_build,
-                         test_name, test_key, width, height)
+def PlotChartDiff(request):
+  """Plot the requested chart from /chartdiff?... and a split diff view."""
+  try:
+    salt = ValidateParameters(request, VLISTS['chart'])
+    return chartviews.PlotChart(
+        request, 'plot_chartdiff.html',
+        chartmodels.GetRangedOneKeyByBuildLinechartData, salt)
+  except ChartInputError as e:
+    tpl_hostname = request.get_host()
+    return render_to_response('plot_syntax.html', locals())
 
 
-def PlotChartInterval(
-    request, boards, netbook, test_name, test_key, width, height):
-  from_build = to_build = None
-  interval = '2 WEEK'
-  return CommonPlotChart(boards, netbook, from_build, to_build,
-                         test_name, test_key, width, height, interval)
-
-
-def CommonFrameCharts(tpl_boards, tpl_netbook, tpl_width, tpl_height):
-  tpl_charts = simplejson.load(open(
-      os.path.join(
-          os.path.abspath(os.path.dirname(__file__)),
-          'croschart_defaults.json')))
-  return render_to_response('charts.html', locals())
-
-
-def FrameChartsBoardNetbook(request, boards, netbook, width, height):
-  return CommonFrameCharts(boards, netbook, width, height)
-
-
-def FrameChartsTestsKeys(request, boards, netbook, from_build, to_build,
-                         test_key_names, width, height):
-  tpl_width = width
-  tpl_height = height
-  tpl_boards = boards
-  tpl_netbook = netbook
-  tpl_from_build = from_build
-  tpl_to_build = to_build
-  tpl_charts = [c.split(',') for c in test_key_names.split('&')]
-  return render_to_response('charts.html', locals())
+def PlotChartReport(request):
+  """Plot the requested report from /report?..."""
+  try:
+    ValidateParameters(request, VLISTS['chartreport'])
+    return reportviews.PlotReport(request, 'plot_chartreport.html')
+  except ChartInputError as e:
+    tpl_hostname = request.get_host()
+    return render_to_response('plot_syntax.html', locals())

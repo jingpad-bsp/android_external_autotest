@@ -8,6 +8,9 @@ This template builds a single plot on a single page for a zoomed-in view.
 {% block title %}ChromeOS Performance Chart{% endblock %}
 {% block html_block %}
 <center>
-({{ tpl_gviz_title }} - {{ tpl_perf_key }} data is unavailable.)
+{% if e.msg %}
+<b>{{ e.msg }}</b><br>
+{% endif %}
+({{ tpl_params.testkey }}: data is unavailable.)
 </center>
 {% endblock %}

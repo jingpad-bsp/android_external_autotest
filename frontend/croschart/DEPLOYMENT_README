@@ -1,0 +1,13 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+Dynamic Charts deployment notes:
+-When running under apache, the common apache user must have access to the
+ classes and cache files of dynamic chart.
+-Create a croschart directory:
+   mkdir ./croschart && chmod 755 ./croschart
+-Create a writable croschart/.cache directory:
+   mkdir ./croschart/.cache && chmod 777 ./croschart/.cache
+-The files under croschart (including template files) must be world-readable.
+   find ./croschart -type f -exec chmod 644 {} \;

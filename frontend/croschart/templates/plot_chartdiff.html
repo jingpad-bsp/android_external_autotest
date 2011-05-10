@@ -1,0 +1,26 @@
+{% extends "plot_chart_base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template implements an iframe diff-view with click-to-change the diff.
+{% endcomment %}
+    {% block add_listener %}
+    diff_url = 'http://chromeos-images/diff';
+    document.getElementById('diff_iframe').src=diff_url + '/report' +
+        '?from=' + json_data.getValue(0, 0).split('-', 1) +
+        '&to=' + json_data.getValue(json_data.getNumberOfRows()-1, 0).split(
+            '-', 1);
+    google.visualization.events.addListener(chart, 'select', function(){
+    if (chart.getSelection()[0].row > 0) {
+      document.getElementById('diff_iframe').src=diff_url + '/report' +
+          '?from=' + json_data.getValue(chart.getSelection()[0].row-1, 0).split(
+              '-', 1) +
+          '&to=' + json_data.getValue(chart.getSelection()[0].row, 0).split(
+              '-', 1);
+      }
+      });
+    {% endblock %}
+{% block add_iframe %}
+<iframe id="diff_iframe" width="100%" height="50%" frameborder="0"></iframe>
+{% endblock %}

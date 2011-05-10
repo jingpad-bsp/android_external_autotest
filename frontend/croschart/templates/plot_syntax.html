@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template spells out the chart syntax.
+{% endcomment %}
+{% block title %}ChromeOS Performance Chart{% endblock %}
+{% block html_block %}
+<hr>
+There was a croschart url formatting error.<br>
+{% if e.msg %}
+<b>{{ e.msg }}</b><br>
+{% endif %}
+<hr>
+Possible url choices include:<br>
+<tt>
+<br>
+http://{{ tpl_hostname }}/croschart/server/<b>chart</b>?<i>query_parameters</i>/<br>
+http://{{ tpl_hostname }}/croschart/server/<b>chartdiff</b>?<i>query_parameters</i>/<br>
+http://{{ tpl_hostname }}/croschart/server/<b>chartreport</b>?<i>query_parameters</i>/<br>
+http://{{ tpl_hostname }}/croschart/server/<b>releasereport</b>?<i>query_parameters</i>/<br>
+</tt>
+<hr>
+Query parameters are expressed as <tt>?parameter1=value1&amp;parameter2=value2.</tt><br>
+<br>
+<b>The required query parameters are:</b>
+<ul>
+<li>board: 1 board. Multiple boards may be supplied: <tt>?board=board1&board=board2</tt>
+</li>
+<li>system: 1 specific system name.</li>
+<li>testkey: 1 (for chart) or more (for report) pairs to show.
+(e.g. <tt>?testkey=test1,key1&testkey=test2,key2</tt>).
+</li>
+</ul>
+<b>One interval-type (from_build/to_build or interval or from_date/to_date) is required:</b>
+<ul>
+<li>from_build: build number with format 12.0.100.0.</li>
+<li>to_build: build number with format 12.0.103.0.</li>
+<li>interval: interval expression with format '2 DAY', '2 WEEK' or '2 MONTH'.</li>
+<li>from_date: date with format 2011-04-01.</li>
+<li>to_date: date with format 2011-04-02.</li>
+</ul>
+<b>The following optional parameters are available:</b>
+<ul>
+<li>width: chart width in pixels.</li>
+<li>height: chart height in pixels.</li>
+</ul>
+<br>
+The following may be included for only <b>chart</b> requests:
+<ul>
+<li>updatecache: True to update the cached copy from the db.</li>
+</ul>
+<hr>
+{% endblock %}
