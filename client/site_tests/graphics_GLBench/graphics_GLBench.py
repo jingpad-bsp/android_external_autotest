@@ -19,8 +19,11 @@ from autotest_lib.client.common_lib import error, utils
 
 
 def ReferenceImageExists(images_file, images_url, imagename):
-  # check imagename in index file first
   found = False
+  # special case, the empty string does not match anything
+  if not imagename:
+    return False
+  # check imagename in index file first
   if imagename in images_file:
     return True
   # check if image can be found on web server
@@ -140,8 +143,8 @@ class graphics_GLBench(test.test):
                               imagefile):
         # we already know the image looks bad and have filed a bug
         # so don't throw an exception and remind there is a problem
-        keyvals[testname] = float('nan')
-        f.write('# knownbad ' + imagefile + ' (setting perf as nan)\n')
+        keyvals[testname] = -1.0
+        f.write('# knownbad ' + imagefile + ' (setting perf as -1.0)\n')
       else:
         if ReferenceImageExists(reference_imagenames,
                                 self.reference_images_url,
@@ -154,9 +157,9 @@ class graphics_GLBench(test.test):
             keyvals[testname] = testrating
           else:
             # completely unknown images
-            keyvals[testname] = float('nan')
+            keyvals[testname] = -2.0
             failed_tests[testname] = imagefile
-            f.write('# unknown ' + imagefile + '\n')
+            f.write('# unknown ' + imagefile + ' (setting perf as -2.0)\n')
     f.close()
     self.write_perf_keyval(keyvals)
 
