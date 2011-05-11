@@ -20,9 +20,6 @@ from autotest_lib.client.common_lib import error, utils
 
 def ReferenceImageExists(images_file, images_url, imagename):
   found = False
-  # special case, the empty string does not match anything
-  if not imagename:
-    return False
   # check imagename in index file first
   if imagename in images_file:
     return True
@@ -155,7 +152,7 @@ class graphics_GLBench(test.test):
         # we already know the image looks bad and have filed a bug
         # so don't throw an exception and remind there is a problem
         keyvals[testname] = -1.0
-        f.write('# knownbad ' + imagefile + ' (setting perf as -1.0)\n')
+        f.write('# knownbad [' + imagefile + '] (setting perf as -1.0)\n')
       else:
         if ReferenceImageExists(reference_imagenames,
                                 self.reference_images_url,
@@ -170,7 +167,7 @@ class graphics_GLBench(test.test):
             # completely unknown images
             keyvals[testname] = -2.0
             failed_tests[testname] = imagefile
-            f.write('# unknown ' + imagefile + ' (setting perf as -2.0)\n')
+            f.write('# unknown [' + imagefile + '] (setting perf as -2.0)\n')
     f.close()
     self.write_perf_keyval(keyvals)
 
