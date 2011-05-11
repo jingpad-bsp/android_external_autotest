@@ -24,6 +24,7 @@ TESTS = [
   ('platform_KernelVersion', {}),
   ('platform_OSLimits', {}),
   ('platform_PartitionCheck', {}),
+  ('platform_ToolchainOptions', {}),
   ('build_RootFilesystemSize', {}),
   ('desktopui_ChromeFirstRender', {}),
   ('desktopui_FlashSanityCheck', {}),
