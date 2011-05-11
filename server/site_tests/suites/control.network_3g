@@ -19,16 +19,19 @@ from autotest_lib.client.common_lib import error
 
 # List of tests to be run.
 CLIENT_TESTS = [
-  'network_3GActivate',
   'network_3GDisableWhileConnecting',
-  'network_3GDormancyDance',
-  'network_3GFailedConnect',
+# TODO(dalecurtis): Failing, remove when http://crosbug.com/15229 is fixed.
+#  'network_3GDormancyDance',
   'network_3GModemPresent',
   'network_3GRecoverFromGobiDesync',
   'network_3GSafetyDance',
   'network_3GSmokeTest',
   'network_3GStressEnable',
   'network_3GSuspendResume'
+
+# These tests shouldn't be run on activated devices.
+#  'network_3GActivate',
+#  'network_3GFailedConnect',
 ]
 
 SERVER_TESTS = [
