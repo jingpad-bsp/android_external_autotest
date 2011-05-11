@@ -52,20 +52,7 @@ TESTS = [
                                 'tag': 'wifi_only'}),
   ('network_Ping', {}),
   ('power_Resume', {}, [], ['has_resume_bug']),
+  ('platform_Shutdown', {}, [], [], ['reboot_before']),
 ]
 
-
-def run_special_tests(machine):
-  client = hosts.create_host(machine)
-  client_at = autotest.Autotest(client)
-
-  # Disable log rotation while shutting down just in case
-  # platform_Shutdown needs to find logs.
-  log_pauser = cros_logging.LogRotationPauser(client)
-  log_pauser.begin()
-  client.reboot()
-  client_at.run_test('platform_Shutdown')
-  log_pauser.end()
-
 job.distribute_across_machines(TESTS, machines)
-job.parallel_on_machines(run_special_tests, machines[:1])
