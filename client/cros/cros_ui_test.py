@@ -387,15 +387,12 @@ class UITest(test.test):
 
         if login.logged_in():
             try:
-                shutil.copy(
-                    os.path.join(constants.CRYPTOHOME_MOUNT_PT,
-                                 'log', 'chrome'),
-                    os.path.join(self.resultsdir, 'chrome_postlogin_log'))
-                # Retrieve any cores left by crashes during testing.
-                crash_dir = os.path.join(constants.CRYPTOHOME_MOUNT_PT, 'crash')
-                if os.path.isdir(crash_dir):
-                    shutil.copytree(
-                        crash_dir, os.path.join(self.resultsdir, 'crashes'))
+                # Recover dirs from cryptohome in case another test run wipes.
+                for dir in constants.CRYPTOHOME_DIRS_TO_RECOVER:
+                    dir_path = os.path.join(constants.CRYPTOHOME_MOUNT_PT, dir)
+                    if os.path.isdir(dir_path):
+                        shutil.copytree(
+                            dir_path, os.path.join(self.resultsdir, dir))
             except (IOError, OSError) as err:
                 logging.error(err)
             self.logout()
