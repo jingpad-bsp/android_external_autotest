@@ -11,6 +11,7 @@
 
 
 import cairo
+import glob
 import gobject
 import gtk
 import pango
@@ -44,10 +45,9 @@ def find_root_dev():
 
 
 def find_all_storage_dev():
-    lssys = utils.run('ls -d /sys/block/sd*')
-    devices = lssys.stdout.rsplit('\n')
-    new_devices = set(os.path.basename(d.rstrip()) for d in devices if d)
-    return new_devices
+    return set([os.path.basename(device)
+                for device in (glob.glob('/sys/block/sd[a-z]') +
+                               glob.glob('/sys/block/mmcblk[0-9]'))])
 
 
 class factory_ExternalStorage(test.test):
@@ -68,7 +68,7 @@ class factory_ExternalStorage(test.test):
                 self._devices = new_devices
                 factory.log('found new devs : %s' % diff)
                 self._target_device = diff.pop()
-                devpath = '/dev/%s' % self._target_device
+                devpath = os.path.join('/dev', self._target_device)
                 self._prompt.set_text(_TESTING_FMT_STR(devpath))
                 self._image = self.testing_image
                 self._pictogram.queue_draw()
