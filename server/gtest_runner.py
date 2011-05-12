@@ -96,15 +96,25 @@ class gtest_runner(object):
            message: Reason test failed, will be put in status.log file.
            error_lines: Additional failure info, will be put in ERROR log.
         """
-        self._host.record('START', None, failed_test)
-        self._host.record('INFO', None, 'FAILED: ' + failed_test)
-        self._host.record('END FAIL', None, failed_test, message)
+        # Create a test name subdirectory to hold the test status.log file.
+        test_dir = os.path.join(self._results_dir, failed_test)
+        if not os.path.exists(test_dir):
+            try:
+                os.makedirs(test_dir)
+            except OSError:
+                logging.exception('Failed to created test directory: %s',
+                                  test_dir)
+
+        # Record failure into the global job and test specific status files.
+        self._host.record('START', failed_test, failed_test)
+        self._host.record('INFO', failed_test, 'FAILED: ' + failed_test)
+        self._host.record('END FAIL', failed_test, failed_test, message)
 
         # If we have additional information on the failure, create an error log
         # file for this test in the location a normal autotest would have left
         # it so the frontend knows where to find it.
         if error_lines is not None:
-            fail_log_dir = os.path.join(self._results_dir, failed_test, 'debug')
+            fail_log_dir = os.path.join(test_dir, 'debug')
             fail_log_path = os.path.join(fail_log_dir, failed_test + '.ERROR')
 
             if not os.path.exists(fail_log_dir):
