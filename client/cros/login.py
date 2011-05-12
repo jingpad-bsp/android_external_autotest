@@ -4,7 +4,7 @@
 
 import errno, logging, os, re, shutil, signal, subprocess, time
 import common
-import constants, cros_logging, cros_ui, cryptohome
+import constants, cros_logging, cros_ui, cryptohome, ownership
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
@@ -188,24 +188,24 @@ def attempt_logout(timeout=_DEFAULT_TIMEOUT):
     utils.system('logger "%s"' % LOGOUT_ATTEMPT_MSG)
 
     try:
-      oldpid = __get_session_manager_pid()
+        oldpid = __get_session_manager_pid()
 
-      # Mark /var/log/messages now; we'll run through all subsequent log
-      # messages if we couldn't TERM and restart the session manager.
+        # Mark /var/log/messages now; we'll run through all subsequent log
+        # messages if we couldn't TERM and restart the session manager.
 
-      log_reader = cros_logging.LogReader()
-      log_reader.set_start_by_current()
+        log_reader = cros_logging.LogReader()
+        log_reader.set_start_by_current()
 
-      # Gracefully exiting the session manager causes the user's session to end.
-      utils.system('pkill -TERM -o ^%s$' % constants.SESSION_MANAGER)
+        # Gracefully exiting session manager causes the user's session to end.
+        ownership.connect_to_session_manager().StopSession('')
 
-      wait_for_condition(
-          condition=lambda: __session_manager_restarted(oldpid),
-          timeout_msg='Timed out waiting for logout',
-          timeout=timeout,
-          process='session_manager',
-          log_reader=log_reader,
-          crash_msg='session_manager crashed while shutting down.')
+        wait_for_condition(
+            condition=lambda: __session_manager_restarted(oldpid),
+            timeout_msg='Timed out waiting for logout',
+            timeout=timeout,
+            process='session_manager',
+            log_reader=log_reader,
+            crash_msg='session_manager crashed while shutting down.')
     finally:
       utils.system('logger "%s"' % LOGOUT_COMPLETE_MSG)
 
