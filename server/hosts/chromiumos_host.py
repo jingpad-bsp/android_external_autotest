@@ -70,14 +70,17 @@ class ChromiumOSHost(base_classes.Host):
                     'Update failed. New kernel partition is not active after'
                     ' boot.')
 
-            # Wait until tries == 0 and success, or until timeout.
-            utils.poll_for_condition(
-                lambda: (updater.get_kernel_tries(new_active_kernel) == 0 and
-                         updater.get_kernel_success(new_active_kernel)),
-                exception=autoupdater.ChromiumOSError(
-                    'Update failed. Timed out waiting for system to mark new'
-                    ' kernel as successful.'),
-                timeout=_KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
+            # TODO(dalecurtis): Hack! Disable AU partition checks on ARM until
+            # http://crosbug.com/15167 is fixed.
+            if not 'ARM' in self.run('cat /proc/cpuinfo').stdout.strip():
+                # Wait until tries == 0 and success, or until timeout.
+                utils.poll_for_condition(
+                    lambda: (updater.get_kernel_tries(new_active_kernel) == 0
+                             and updater.get_kernel_success(new_active_kernel)),
+                    exception=autoupdater.ChromiumOSError(
+                        'Update failed. Timed out waiting for system to mark'
+                        ' new kernel as successful.'),
+                    timeout=_KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
 
             # TODO(dalecurtis): Hack for R12 builds to make sure BVT runs of
             # platform_Shutdown pass correctly.
