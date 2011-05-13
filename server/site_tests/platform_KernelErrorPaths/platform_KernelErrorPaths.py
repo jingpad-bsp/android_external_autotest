@@ -76,6 +76,7 @@ class platform_KernelErrorPaths(test.test):
         test_tuples = (
             ('softlockup', 'BUG: soft lockup'),
             ('bug', 'kernel BUG at'),
+            ('hungtask', 'hung_task: blocked tasks'),
             ('nmiwatchdog', 'BUG: NMI Watchdog detected LOCKUP'),
             ('nullptr',
              'BUG: unable to handle kernel NULL pointer dereference at'),
