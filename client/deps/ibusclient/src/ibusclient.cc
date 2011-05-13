@@ -218,6 +218,10 @@ void GetConfigAndPrintResult(
           printf("FAIL (list type mismatch)\n");
           return;
         }
+        if (!match) {
+          printf("FAIL (value mismatch)\n");
+          return;
+        }
         g_variant_unref(element);
         element = g_variant_iter_next_value(&iter);
       }
