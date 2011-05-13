@@ -1,3 +1,14 @@
+Alias /images "/usr/local/autotest/images/"
+<Directory /usr/local/autotest/images/>
+    Options Indexes FollowSymLinks MultiViews
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+    <FilesMatch "\.log$">
+        ForceType "text/plain; authoritative=true"
+    </FilesMatch>
+</Directory>
+
 Alias /results "/usr/local/autotest/results/"
 <Directory /usr/local/autotest/results/>
     Options Indexes FollowSymLinks MultiViews

@@ -5,9 +5,11 @@
 Dynamic Charts deployment notes:
 -When running under apache, the common apache user must have access to the
  classes and cache files of dynamic chart.
--Create a croschart directory:
-   mkdir ./croschart && chmod 755 ./croschart
--Create a writable croschart/.cache directory:
-   mkdir ./croschart/.cache && chmod 777 ./croschart/.cache
+-Create an autotest/frontend/croschart directory:
+   mkdir autotest/frontend/croschart && chmod 755 autotest/frontend/croschart
+-Create a writable autotest/frontend/croschart/.cache directory:
+   mkdir croschart/.cache && chmod 777 croschart/.cache
 -The files under croschart (including template files) must be world-readable.
    find ./croschart -type f -exec chmod 644 {} \;
+-Create an autotest/images directory:
+  mkdir autotest/images && chmod 755 autotest/images

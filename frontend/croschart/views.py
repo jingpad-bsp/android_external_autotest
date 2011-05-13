@@ -31,7 +31,10 @@ VLISTS = {
         'from_date': [validators.CrosReportValidator,
                       validators.DateRangeValidator],
         'interval': [validators.CrosReportValidator,
-                     validators.IntervalRangeValidator]}}
+                     validators.IntervalRangeValidator]},
+    'releasereport': {
+        'from_build': [validators.CrosReportValidator,
+                       validators.BuildRangeValidator]}}
 
 
 def ValidateParameters(request, vlist):
@@ -79,6 +82,18 @@ def PlotChartReport(request):
   try:
     ValidateParameters(request, VLISTS['chartreport'])
     return reportviews.PlotReport(request, 'plot_chartreport.html')
+  except ChartInputError as e:
+    tpl_hostname = request.get_host()
+    return render_to_response('plot_syntax.html', locals())
+
+
+def PlotReleaseReport(request):
+  """Plot the requested report from /releasereport?..."""
+  try:
+    salt = ValidateParameters(request, VLISTS['releasereport'])
+    return chartviews.PlotChart(
+        request, 'plot_releasereport.html',
+        chartmodels.GetReleaseReportData, salt)
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())

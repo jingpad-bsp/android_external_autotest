@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds a report comparing a new build to an older build.
+{% endcomment %}
+{% block title %}ChromeOS Release Report{% endblock %}
+{% block html_block %}
+<!--Load the AJAX API-->
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+  // Load the Visualization API and the piechart package.
+  google.load('visualization', '1', {'packages':['table']});
+
+  // Set a callback to run when the Google Visualization API is loaded.
+  google.setOnLoadCallback(drawCharts);
+
+  // Callback that creates and populates a data table,
+  // instantiates the charts, passes in the data and
+  // draws them.
+  function drawCharts() {
+    var table = new google.visualization.Table(
+        document.getElementById('releasetable'));
+    var json_data = new google.visualization.DataTable(
+        {% autoescape off %}{{ tpl_chart.gviz_data_table }}{% endautoescape %}, 0.5);
+    diff_url = 'http://chromeos-images/diff/report' +
+        '?from=' + json_data.getColumnLabel(2).split('-')[3] +
+        '&to=' + json_data.getColumnLabel(3).split('-')[3];
+    document.getElementById('diff_iframe').src=diff_url;
+    table.draw(json_data,
+               {allowHtml: true, showRowNumber: true, sortColumn: 0});
+  }
+</script>
+<center>
+<h2>Chrome OS Release Report</h2>
+<span id="releasetable"></span>
+</center>
+<hr>
+Links:
+[<a href="http://goto/chromeos-dash" target="_blank">BVT Stats</a>]
+&nbsp;
+[<a href="http://chromeos-images/diff" target="_blank">Diff Stats</a>]
+&nbsp;
+[<a href="http://chromeos-images" target="_blank">Image Stats</a>]
+<hr>
+<iframe id="diff_iframe" width="100%" height="50%" frameborder="0"></iframe>
+{% endblock %}
