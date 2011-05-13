@@ -13,6 +13,7 @@
 
 #include "base/file_path.h"
 #include "base/file_util.h"
+#include "base/string_split.h"
 #include "base/string_util.h"
 
 // Reads the current log level from /proc/sys/kernel/printk
@@ -24,7 +25,7 @@ bool GetCurrentLogLevel(std::string* log_level) {
   }
 
   std::vector<std::string> levels;
-  SplitString(level, '\t', &levels);
+  base::SplitString(level, '\t', &levels);
   if (levels.size() != 4) {
     return false;
   }
