@@ -51,9 +51,9 @@ TEST_LIST = [
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
     OperatorTest(
-        label_en='kb select',
-        label_zw='鍵盤語系',
-        autotest_name='factory_SelectKeyboard',
+        label_en='region',
+        label_zw='地區語系',
+        autotest_name='factory_SelectRegion',
         kbd_shortcut='j'),
 
     # THIS IS A GOOGLE REQUIRED TEST.
