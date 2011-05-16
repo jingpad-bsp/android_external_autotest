@@ -22,7 +22,9 @@ def setup(topdir):
     shutil.rmtree(dst_path, ignore_errors=True)
     if re.search('x86', sysroot.lower()):
         utils.extract_tarball_to_dir(tarball_path, dst_path)
-        # patch in a single config file for now
+        # patch in files now
+        shutil.copyfile(os.path.join(srcdir, 'CMakeLists.txt'),
+                        os.path.join(dst_path, 'CMakeLists.txt'))
         shutil.copyfile(os.path.join(srcdir, 'cros-driver.tests'),
                         os.path.join(dst_path, 'tests/cros-driver.tests'))
         os.chdir(dst_path)
