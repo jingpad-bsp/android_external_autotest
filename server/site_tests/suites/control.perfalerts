@@ -21,6 +21,10 @@ Ideally these are run for each build in order to make blame easier.
 def run_assigned_tests(machine):
   client = hosts.create_host(machine)
 
+  # Always make sure the host has a fresh install; avoid double fresh install.
+  if not client.has_just_updated():
+      client.machine_install(force_update=True)
+
   job.run_test(
       "platform_BootPerfServer", host=client, iterations=100)
 

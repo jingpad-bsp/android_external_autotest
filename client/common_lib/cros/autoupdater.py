@@ -167,6 +167,10 @@ class ChromiumOSUpdater():
             logging.info('System is already up to date. Skipping update.')
             return False
 
+        logging.info(
+            'Updating from version %s to %s.', booted_version,
+            self.update_version)
+
         # Check that Dev Server is accepting connections (from autoserv's host).
         # If we can't talk to it, the machine host probably can't either.
         auserver_host = urlparse.urlparse(self.update_url)[1]

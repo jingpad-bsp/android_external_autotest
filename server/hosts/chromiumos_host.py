@@ -15,15 +15,14 @@ parser = autoserv_parser.autoserv_parser
 # Time to wait for new kernel to be marked successful.
 _KERNEL_UPDATE_TIMEOUT = 60
 
+# Ephemeral file to indicate that an update has just occurred.
+_JUST_UPDATED_FLAG = '/tmp/just_updated'
+
 
 class ChromiumOSHost(base_classes.Host):
     """ChromiumOSHost is a special subclass of SSHHost that supports
     additional install methods.
     """
-    # Force updating of the host, even if it's already up to date.
-    force_update = True
-
-
     def __initialize(self, hostname, *args, **dargs):
         """
         Construct a ChromiumOSHost object
@@ -34,7 +33,7 @@ class ChromiumOSHost(base_classes.Host):
         super(ChromiumOSHost, self)._initialize(hostname, *args, **dargs)
 
 
-    def machine_install(self, update_url=None):
+    def machine_install(self, update_url=None, force_update=False):
         if parser.options.image:
             update_url = parser.options.image
         elif not update_url:
@@ -43,7 +42,7 @@ class ChromiumOSHost(base_classes.Host):
 
         # Attempt to update the system.
         updater = autoupdater.ChromiumOSUpdater(update_url, host=self)
-        if updater.run_update(self.force_update):
+        if updater.run_update(force_update):
             # Figure out active and inactive kernel.
             active_kernel, inactive_kernel = updater.get_kernel_state()
 
@@ -91,6 +90,18 @@ class ChromiumOSHost(base_classes.Host):
         for path in global_config.global_config.get_config_value(
                 'AUTOSERV', 'client_autodir_paths', type=list):
             self.run('rm -rf ' + path)
+
+        # Mark host as recently updated. Hosts are rebooted at the end of every
+        # test cycle which will remove the file.
+        self.run('touch %s' % _JUST_UPDATED_FLAG)
+
+
+    def has_just_updated(self):
+        """Indicates whether the host was updated within this boot."""
+        # Check for the existence of the just updated flag file.
+        return self.run(
+            '[ -f %s ] && echo T || echo F'
+            % _JUST_UPDATED_FLAG).stdout.strip() == 'T'
 
 
     def cleanup(self):
