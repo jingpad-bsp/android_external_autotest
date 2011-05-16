@@ -128,31 +128,47 @@ class power_Resume(test.test):
         # Safe enough number, can tweek if necessary
         time_to_sleep = 10
 
-        # Set the alarm
-        alarm_time = rtc.get_seconds() + time_to_sleep
-        logging.debug('alarm_time = %d', alarm_time)
-        rtc.set_wake_alarm(alarm_time)
+        # Keep trying the suspend/resume several times to get all positive
+        # time readings.
+        max_num_attempts = 5
+        for retry_count in range(max_num_attempts):
+            # Set the alarm
+            alarm_time = rtc.get_seconds() + time_to_sleep
+            logging.debug('alarm_time = %d', alarm_time)
+            rtc.set_wake_alarm(alarm_time)
 
-        # Suspend the system to RAM
-        sys_power.suspend_to_ram()
+            # Suspend the system to RAM
+            sys_power.suspend_to_ram()
 
-        # Get suspend and resume times from /var/log/messages
-        start_suspend_time = self._get_start_suspend_time()
-        end_suspend_time = self._get_end_suspend_time()
-        end_resume_time = self._get_end_resume_time()
-        end_cpu_resume_time = self._get_end_cpu_resume_time()
-        kernel_device_resume_time = self._get_device_resume_time()
+            # Get suspend and resume times from /var/log/messages
+            start_suspend_time = self._get_start_suspend_time()
+            end_suspend_time = self._get_end_suspend_time()
+            end_resume_time = self._get_end_resume_time()
+            end_cpu_resume_time = self._get_end_cpu_resume_time()
+            kernel_device_resume_time = self._get_device_resume_time()
 
-        # Calculate the suspend/resume times
-        total_resume_time = self._get_hwclock_seconds() - alarm_time
-        suspend_time = end_suspend_time - start_suspend_time
-        kernel_resume_time = end_resume_time - end_suspend_time
+            # Calculate the suspend/resume times
+            total_resume_time = self._get_hwclock_seconds() - alarm_time
+            suspend_time = end_suspend_time - start_suspend_time
+            kernel_resume_time = end_resume_time - end_suspend_time
 
-        kernel_cpu_resume_time = 0
-        if end_cpu_resume_time > 0:
-            kernel_cpu_resume_time = end_cpu_resume_time - end_suspend_time
+            kernel_cpu_resume_time = 0
+            if end_cpu_resume_time > 0:
+                kernel_cpu_resume_time = end_cpu_resume_time - end_suspend_time
 
-        firmware_resume_time = total_resume_time - kernel_resume_time
+            firmware_resume_time = total_resume_time - kernel_resume_time
+
+            # If the values all came out to be nonnegative, it means success, so
+            # exit the retry loop.
+            if suspend_time >= 0 and total_resume_time >= 0 and \
+               firmware_resume_time >= 0:
+                break
+
+            # Flag an error if the max attempts have been reached without a set
+            # of successful result values.
+            if retry_count >= max_num_attempts - 1:
+                raise error.TestError( \
+                    "Negative time results, exceeded max retries.")
 
         # Prepare the results
         results = {}
@@ -162,4 +178,5 @@ class power_Resume(test.test):
         results['seconds_system_resume_kernel'] = kernel_resume_time
         results['seconds_system_resume_kernel_cpu'] = kernel_cpu_resume_time
         results['seconds_system_resume_kernel_dev'] = kernel_device_resume_time
+        results['num_retry_attempts'] = retry_count
         self.write_perf_keyval(results)
