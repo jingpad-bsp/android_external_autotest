@@ -170,6 +170,7 @@ class ConnectStateHandler(StateHandler):
       elif state == 'inactive' or state == 'disconnected':
         self.authentication_time = None
 
+
 def ErrExit(code):
   try:
     handler.service_handle.Disconnect()
@@ -177,6 +178,12 @@ def ErrExit(code):
     pass
   DumpLogs(logs)
   sys.exit(code)
+
+
+def split_psk(settings, psk):
+  cert_args = psk.split(':')
+  for i in xrange(0, len(cert_args), 2):
+    settings[cert_args[i]] = cert_args[i+1]
 
 
 def main(argv):
@@ -213,9 +220,10 @@ def main(argv):
   }
 
   if security == '802_1x':
-    cert_args = psk.split(':')
-    for i in xrange(0, len(cert_args), 2):
-      connection_settings[cert_args[i]] = cert_args[i+1]
+    split_psk(connection_settings, psk)
+  elif security == '802_1x_wep':
+    split_psk(connection_settings, psk)
+    connection_settings['Security'] = 'wep'
   else:
     connection_settings['Passphrase'] = psk
 

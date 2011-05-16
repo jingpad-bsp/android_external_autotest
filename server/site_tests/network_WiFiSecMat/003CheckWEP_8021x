@@ -1,0 +1,57 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# 802.1x authentication with dynamic WEP.
+
+{ "name":"WEP_8021x",
+  "steps":[             # Channel [any]
+    [ "create",         { "type":"hostap" } ],
+    [ "install_files",  { "system" : "router",
+                          "files" :
+                            { "/tmp/hostapd_ca_cert" :
+                                site_eap_certs.ca_cert_1,
+                              "/tmp/hostapd_server_cert" :
+                                site_eap_certs.server_cert_1,
+                              "/tmp/hostapd_private_key" :
+                                site_eap_certs.server_private_key_1,
+                              "/tmp/hostapd_eap_user_file" :
+                                "* TLS"} } ],
+    [ "config",         { "channel":"2412", "mode":"11g",
+                          "wep_key_len_broadcast":"13",
+                          "wep_key_len_unicast":"13",
+                          "wep_rekey_period":"20",
+                          "ieee8021x":"1",
+                          "eap_server" : "1",
+                          "ca_cert" : "/tmp/hostapd_ca_cert",
+                          "server_cert" : "/tmp/hostapd_server_cert",
+                          "private_key" : "/tmp/hostapd_private_key",
+                          "eap_user_file" : "/tmp/hostapd_eap_user_file"} ],
+    [ "install_files",  { "system" : "client",
+                          "files" :
+                            { "/tmp/pkg-client-cert.pem" :
+                                site_eap_certs.client_cert_1,
+                              "/tmp/pkg-client-key.pem" :
+                                site_eap_certs.client_private_key_1,
+                              "/tmp/pkg-client-cert-other.pem" :
+                                site_eap_certs.client_cert_2,
+                              "/tmp/pkg-client-key-other.pem" :
+                                site_eap_certs.client_private_key_2,
+                              "/tmp/ca-cert.pem" :
+                                site_eap_certs.ca_cert_1,
+                              "/tmp/ca-cert-other.pem" :
+                                site_eap_certs.ca_cert_2} } ],
+
+    [ "connect",        { "security":"802_1x_wep",
+                          "psk" : "EAP.KeyMgmt:IEEE8021X"
+                          ":EAP.Identity:chromeos"
+                          ":EAP.ClientCert:/tmp/pkg-client-cert.pem"
+                          ":EAP.PrivateKey:/tmp/pkg-client-key.pem"
+                          ":EAP.CACert:/tmp/ca-cert.pem"} ],
+
+    [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
+
+    [ "destroy" ],
+  ],
+}
