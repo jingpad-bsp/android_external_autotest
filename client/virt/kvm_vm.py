@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """
 Utility classes and functions to handle Virtual Machine creation using qemu.
 
@@ -405,6 +404,7 @@ class VM(virt_vm.BaseVM):
                 device_id = vm.device_id[vlan]
             except IndexError:
                 netdev_id = None
+                device_id = None
             # Handle the '-net nic' part
             try:
                 mac = vm.get_mac_address(vlan)
