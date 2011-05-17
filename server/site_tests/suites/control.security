@@ -13,7 +13,6 @@ DOC = """
 Security Functional test suite.
 """
 
-
 # List of client tests with parameters
 TESTS = [
   ('platform_DMVerityCorruption', {}),
@@ -33,25 +32,6 @@ TESTS = [
   ('security_SuidBinaries', {'baseline': 'sgid', 'tag': 'sgid'}),
 ]
 
-# A dict which holds {machine: [(test, argv), (test, argv), ...]}
-test_dict = {}
-
-# Assign tests with its argv to machines in a round-robin way.
-index = 0
-for test_with_argv in TESTS:
-  m_index = index % len(machines)
-  test_list = test_dict.setdefault(machines[m_index], [])
-  test_list.append(test_with_argv)
-  index += 1
-
-
-def run_assigned_tests(machine):
-  client = hosts.create_host(machine)
-  client_at = autotest.Autotest(client)
-  test_list = test_dict[machine]
-  for test, argv in test_list:
-    client_at.run_test(test, **argv)
-
 # Kick off client tests
-job.parallel_on_machines(run_assigned_tests, machines)
+job.distribute_across_machines(TESTS, machines)
 
