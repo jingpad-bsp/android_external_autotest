@@ -57,7 +57,7 @@ class hardware_StorageFio(test.test):
                 self.__filesize = 1024 * blocks
                 break
         else:
-            if device[:-1] in ['sda', 'mmcblk0p', 'mmcblk1p']:
+            if device.startswith(utils.system_output('rootdev -s -d')):
                 raise error.TestError(
                     'Unable to determine free partitions size')
             else:
@@ -145,7 +145,7 @@ class hardware_StorageFio(test.test):
 
 
     def initialize(self, dev='', filesize=1024*1024*1024):
-        if dev in ['', '/dev/sda', '/dev/mmcblk0', '/dev/mmcblk1']:
+        if dev in ['', utils.system_output('rootdev -s -d')]:
             self.__find_free_root_partition()
         else:
             # Use the first partition of the external drive
@@ -173,7 +173,7 @@ class hardware_StorageFio(test.test):
                 'quick_write': 'bw',
                 'quick_read': 'iops',
             }
-        elif dev in ['', '/dev/sda', '/dev/mmcblk0', '/dev/mmcblk1']:
+        elif dev in ['', utils.system_output('rootdev -s -d')]:
             requirements = {
                 'surfing': 'iops',
                 'boot': 'bw',

@@ -28,7 +28,12 @@ from autotest_lib.client.common_lib import error
 _STATE_WAIT_INSERT = 1
 _STATE_WAIT_REMOVE = 2
 
-_INSERT_FMT_STR = lambda t: 'insert %s drive...\n插入%s存儲...' % (t, t)
+_INSERT_FMT_STR = lambda t: (
+    '\n'.join(['insert %s drive...' % t,
+               'WARNING: DATA ON INSERTED MEDIA WILL BE LOST!\n',
+               '插入%s存儲...' % t,
+               '注意: 插入裝置上的資料將會被清除!',
+               ]))
 _REMOVE_FMT_STR = lambda t: 'remove %s drive...\n提取%s存儲...' % (t, t)
 _TESTING_FMT_STR = lambda t:'testing %s...\n%s 檢查當中...' % (t, t)
 _ERR_TOO_MANY_REMOVE_FMT_STR = \
