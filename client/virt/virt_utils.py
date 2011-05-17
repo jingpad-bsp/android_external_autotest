@@ -557,7 +557,7 @@ def _remote_login(session, username, password, prompt, timeout=10):
             match, text = session.read_until_last_line_matches(
                 [r"[Aa]re you sure", r"[Pp]assword:\s*$", r"[Ll]ogin:\s*$",
                  r"[Cc]onnection.*closed", r"[Cc]onnection.*refused",
-                 r"[Pp]lease wait", r"[Ww]arning", prompt],
+                 r"[Pp]lease wait", prompt],
                 timeout=timeout, internal_timeout=0.5)
             if match == 0:  # "Are you sure you want to continue connecting"
                 logging.debug("Got 'Are you sure...'; sending 'yes'")
@@ -592,10 +592,7 @@ def _remote_login(session, username, password, prompt, timeout=10):
                 logging.debug("Got 'Please wait'")
                 timeout = 30
                 continue
-            elif match == 6:  # "Warning added RSA"
-                logging.debug("Got 'Warning added RSA to known host list")
-                continue
-            elif match == 7:  # prompt
+            elif match == 6:  # prompt
                 logging.debug("Got shell prompt -- logged in")
                 break
         except aexpect.ExpectTimeoutError, e:
@@ -1170,8 +1167,7 @@ def run_tests(parser, job):
             # We need only one execution, profiled, hence we're passing
             # the profile_only parameter to job.run_test().
             profile_only = bool(profilers) or None
-            current_status = job.run_test_detail(dict.get("vm_type"),
-                                                 params=dict,
+            current_status = job.run_test_detail("kvm", params=dict,
                                                  tag=test_tag,
                                                  iterations=test_iterations,
                                                  profile_only=profile_only)
@@ -1180,8 +1176,7 @@ def run_tests(parser, job):
         else:
             # We will force the test to fail as TestNA during preprocessing
             dict['dependency_failed'] = 'yes'
-            current_status = job.run_test_detail(dict.get("vm_type"),
-                                                 params=dict,
+            current_status = job.run_test_detail("kvm", params=dict,
                                                  tag=test_tag,
                                                  iterations=test_iterations)
 
@@ -1190,6 +1185,18 @@ def run_tests(parser, job):
         status_dict[dict.get("name")] = current_status
 
     return not failed
+
+
+def create_report(report_dir, results_dir):
+    """
+    Creates a neatly arranged HTML results report in the results dir.
+
+    @param report_dir: Directory where the report script is located.
+    @param results_dir: Directory where the results will be output.
+    """
+    reporter = os.path.join(report_dir, 'html_report.py')
+    html_file = os.path.join(results_dir, 'results.html')
+    os.system('%s -r %s -f %s -R' % (reporter, results_dir, html_file))
 
 
 def display_attributes(instance):

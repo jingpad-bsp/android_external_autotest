@@ -1,10 +1,9 @@
 from django import http
-from autotest_lib.frontend.shared import query_lib, resource_lib, exceptions
+from autotest_lib.frontend.shared import query_lib, resource_lib
 from autotest_lib.frontend.afe import control_file, models, rpc_utils
 from autotest_lib.frontend.afe import model_attributes
 from autotest_lib.frontend import thread_local
 from autotest_lib.client.common_lib import host_protections
-
 
 class EntryWithInvalid(resource_lib.InstanceEntry):
     def put(self):
@@ -320,7 +319,7 @@ class Host(EntryWithInvalid):
         if 'platform' in input_dict:
             label = self.resolve_link(input_dict['platform']) .instance
             if not label.platform:
-                raise exceptions.BadRequest('Label %s is not a platform' % label.name)
+                raise BadRequest('Label %s is not a platform' % label.name)
             for label in self.instance.labels.filter(platform=True):
                 self.instance.labels.remove(label)
             self.instance.labels.add(label)
@@ -780,7 +779,7 @@ class QueueEntry(resource_lib.InstanceEntry):
     def update(self, input_dict):
         if 'aborted' in input_dict:
             if input_dict['aborted'] != True:
-                raise exceptions.BadRequest('"aborted" can only be set to true')
+                raise BadRequest('"aborted" can only be set to true')
             query = models.HostQueueEntry.objects.filter(pk=self.instance.pk)
             models.AclGroup.check_abort_permissions(query)
             rpc_utils.check_abort_synchronous_jobs(query)

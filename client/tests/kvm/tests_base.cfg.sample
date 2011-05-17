@@ -233,11 +233,11 @@ variants:
                 test_control_file = stress.control
             - disktest:
                 test_control_file = disktest.control
-            - ctcs:
+            - ctcs2:
                 # If you think this is too lengthy, please change the cerberus
                 # control file and set this timeout appropriately.
                 test_timeout = 3900
-                test_control_file = ctcs.control
+                test_control_file = cerberus.control
             - npb:
                 test_control_file = npb.control
             - hackbench:
