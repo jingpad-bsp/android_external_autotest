@@ -53,8 +53,10 @@ class gtest_runner(object):
         if self._gtest.validate(attribute_set):
             logging.info('%s %s Running %s', self._host,
                          [a for a in attribute_set], self._gtest)
-            self._gtest.run_test(client_autotest, self._results_dir)
-            self.parse()
+            try:
+                self._gtest.run_test(client_autotest, self._results_dir)
+            finally:
+                self.parse()
         else:
             self.record_failed_test(self._gtest.test_name,
                                     'No machines found for: ' + self._gtest)
