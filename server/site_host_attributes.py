@@ -68,6 +68,7 @@ _DEFAULT_ATTRIBUTES = [
     'has_resume_bug,False',
     'has_ssd,True',
     'netbook_01b7cc72,False',
+    'netbook_67d1c8eb,False'
     ]
 
 

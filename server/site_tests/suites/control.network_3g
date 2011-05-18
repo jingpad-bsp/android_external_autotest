@@ -19,39 +19,40 @@ from autotest_lib.client.common_lib import error
 
 # List of tests to be run.
 CLIENT_TESTS = [
-  'network_3GDisableWhileConnecting',
+    'network_3GDisableWhileConnecting',
 # TODO(dalecurtis): Failing, remove when http://crosbug.com/15229 is fixed.
-#  'network_3GDormancyDance',
-  'network_3GModemPresent',
-  'network_3GRecoverFromGobiDesync',
-  'network_3GSafetyDance',
-  'network_3GSmokeTest',
-  'network_3GStressEnable',
-  'network_3GSuspendResume'
+#    'network_3GDormancyDance',
+    'network_3GModemPresent',
+    'network_3GSafetyDance',
+    'network_3GSmokeTest',
+    'network_3GStressEnable',
+    'network_3GSuspendResume'
 
 # These tests shouldn't be run on activated devices.
-#  'network_3GActivate',
-#  'network_3GFailedConnect',
+#    'network_3GActivate',
+#    'network_3GFailedConnect',
 ]
 
 SERVER_TESTS = [
-  'network_3GLoadFirmware',
+    'network_3GLoadFirmware'
 ]
 
+
 def run_tests(machine):
-  client = hosts.create_host(machine)
-  client_attributes = site_host_attributes.HostAttributes(machine)
-  client_at = autotest.Autotest(client)
+    client = hosts.create_host(machine)
+    client_attributes = site_host_attributes.HostAttributes(machine)
+    client_at = autotest.Autotest(client)
 
-  if not client_attributes.has_3g:
-    raise error.TestNAError(
-      "Machine does not have a 3G module or is not labeled as having one.")
+    for test in CLIENT_TESTS:
+        client_at.run_test(test)
 
-  for test in CLIENT_TESTS:
-      client_at.run_test(test)
+    # TODO(dalecurtis): Fails on Cr-48, remove when crosbug.com/15487 is fixed.
+    if not client_attributes.netbook_67d1c8eb:
+        client_at.run_test('network_3GRecoverFromGobiDesync')
 
-  for test in SERVER_TESTS:
-      job.run_test(test, host=client)
+
+    for test in SERVER_TESTS:
+        job.run_test(test, host=client)
+
 
 job.parallel_on_machines(run_tests, machines)
-
