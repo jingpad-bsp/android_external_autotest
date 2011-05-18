@@ -4,7 +4,7 @@
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import backchannel
+from autotest_lib.client.cros import backchannel, network
 
 import logging, re, socket, string, time, urllib2
 import dbus, dbus.mainloop.glib, gobject
@@ -86,20 +86,6 @@ class network_3GSmokeTest(test.test):
             wait_timeout=disconnect_timeout)
         if not success:
             raise error.TestFail('Could not disconnect: %s.' % status)
-
-    def ResetAllModems(self):
-        """Disable/Enable cycle all modems to ensure valid starting state."""
-        service = self.flim.FindCellularService()
-        if not service:
-            self.flim.EnableTechnology('cellular')
-            service = self.flim.FindCellularService()
-        print 'ResetAllModems: service %s' % service
-        if service and service.GetProperties()['Favorite']:
-            service.SetProperty('AutoConnect', False)
-        for manager, path in mm.EnumerateDevices():
-            modem = manager.Modem(path)
-            modem.Enable(False)
-            modem.Enable(True)
 
     def GetModemInfo(self):
         """Find all modems attached and return an dictionary of information.
@@ -187,7 +173,7 @@ class network_3GSmokeTest(test.test):
         self.bus = dbus.SystemBus(mainloop=bus_loop)
 
         # Get to a good starting state
-        self.ResetAllModems()
+        network.ResetAllModems(self.flim)
 
         # Wait for the modem to pick up a network after being reenabled. If we
         # don't wait here, GetModemInfo() (below) might fail partway through

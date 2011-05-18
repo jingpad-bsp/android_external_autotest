@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import test
-import os, subprocess, time
+import logging, os, subprocess, time
 
 tests = [ 'crash-mm-0', 'crash-modem-0', 'crash-modem-1', 'crash-modem-2',
           'crash-modem-3', 'crash-modem-4', 'crash-modem-5', 'crash-modem-6',
@@ -60,6 +60,7 @@ class network_ConnmanCromoCrash(test.test):
         time.sleep(3)
         try:
             for t in tests:
+                logging.info('Running %s' % t)
                 try:
                     self.veth('setup', 'pseudo-modem0', '172.16.1')
                     self.run(t)
