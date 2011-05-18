@@ -19,7 +19,8 @@ from autotest_lib.server import site_host_attributes
 
 # TODO: Add some tests
 TESTS = [
-  ('hardware_StorageFio', {} ),
+# TODO(dalecurtis): Locking up machines. Remove when crosbug.com/15485 fixed.
+#  ('hardware_StorageFio', {} ),
   ('kernel_HdParm', {}),
   ('dbench', {}),
 # Bonnie: two results come out zero:

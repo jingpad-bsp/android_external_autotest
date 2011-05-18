@@ -19,7 +19,8 @@ from autotest_lib.server import site_host_attributes
 
 # TODO: Add some tests
 TESTS = [
-    ('hardware_StorageFio', {'quicktest':'True'}),	# raw block device testing
+# TODO(dalecurtis): Locking up machines. Remove when crosbug.com/15485 fixed.
+#    ('hardware_StorageFio', {'quicktest':'True'}), # raw block device testing
 ]
 
 
