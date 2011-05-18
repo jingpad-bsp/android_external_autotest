@@ -179,11 +179,23 @@ class power_x86Settings(test.test):
         path = '/sys/module/snd_hda_intel/parameters/power_save'
         out = utils.read_one_line(path)
         logging.debug('Audio: %s = %s', path, out)
+        power_save_timeout = int(out)
 
-        # Make sure that power_save parameter is set to a non-zero value
-        if int(out):
+        # Make sure that power_save timeout parameter is zero if on AC.
+        if self._on_ac:
+            if power_save_timeout == 0:
+                return 0
+            else:
+                logging.debug('Audio: On AC power but power_save = %d', \
+                                                            power_save_timeout)
+                return 1
+
+        # Make sure that power_save timeout parameter is non-zero if on battery.
+        elif power_save_timeout > 0:
             return 0
 
+        logging.debug('Audio: On battery power but power_save = %d', \
+                                                            power_save_timeout)
         return 1
 
 
