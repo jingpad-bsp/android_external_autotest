@@ -8,7 +8,8 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import rtc, sys_power
 
 START_SUSPEND_MESSAGES = [ 'Freezing user space' ]
-END_SUSPEND_MESSAGES = [ 'Back to C!', 'Resume caused by' ]
+END_SUSPEND_MESSAGES = [ 'Back to C!', 'Entering suspend state' ]
+START_RESUME_MESSAGES = [ 'Back to C!', 'Suspended for' ]
 END_RESUME_MESSAGES = [ 'Restarting tasks' ]
 
 class power_Resume(test.test):
@@ -79,6 +80,13 @@ class power_Resume(test.test):
 
         return time
 
+    def _get_start_resume_time(self):
+        time = self._get_last_msg_time_multiple(START_RESUME_MESSAGES)
+        if time == -1:
+            raise error.TestError("Could not find start resume time message.")
+
+        return time
+
     def _get_end_resume_time(self):
         time = self._get_last_msg_time_multiple(END_RESUME_MESSAGES)
         if time == -1:
@@ -143,6 +151,7 @@ class power_Resume(test.test):
             # Get suspend and resume times from /var/log/messages
             start_suspend_time = self._get_start_suspend_time()
             end_suspend_time = self._get_end_suspend_time()
+            start_resume_time = self._get_start_resume_time()
             end_resume_time = self._get_end_resume_time()
             end_cpu_resume_time = self._get_end_cpu_resume_time()
             kernel_device_resume_time = self._get_device_resume_time()
@@ -150,11 +159,11 @@ class power_Resume(test.test):
             # Calculate the suspend/resume times
             total_resume_time = self._get_hwclock_seconds() - alarm_time
             suspend_time = end_suspend_time - start_suspend_time
-            kernel_resume_time = end_resume_time - end_suspend_time
+            kernel_resume_time = end_resume_time - start_resume_time
 
             kernel_cpu_resume_time = 0
             if end_cpu_resume_time > 0:
-                kernel_cpu_resume_time = end_cpu_resume_time - end_suspend_time
+                kernel_cpu_resume_time = end_cpu_resume_time - start_resume_time
 
             firmware_resume_time = total_resume_time - kernel_resume_time
 
