@@ -12,20 +12,48 @@ class ToolchainOptionSet:
     def __init__(self, description, bad_files, whitelist_file):
         self.description = description
         self.bad_set = set(bad_files.splitlines())
-        self.whitelist_file = whitelist_file
-        self.process_whitelist()
+        self.whitelist_set = set([])
+        self.process_whitelist_with_private(whitelist_file)
 
 
-    def process_whitelist(self):
-        if not os.path.isfile(self.whitelist_file):
-            self.whitelist_set = set([])
+    def process_whitelist_with_private(self, whitelist_file):
+        whitelist_files = [whitelist_file]
+        private_file = os.path.join(os.path.dirname(whitelist_file),
+                                    "private_" +
+                                    os.path.basename(whitelist_file))
+        whitelist_files.append(private_file)
+        self.process_whitelists(whitelist_files)
+
+
+    def process_whitelist(self, whitelist_file):
+        if not os.path.isfile(whitelist_file):
+            self.whitelist_set = self.whitelist_set.union(set([]))
         else:
-            f = open(self.whitelist_file)
+            f = open(whitelist_file)
             whitelist = f.read().splitlines()
             f.close()
-            self.whitelist_set = set(whitelist)
+            self.whitelist_set = self.whitelist_set.union(set(whitelist))
         self.filtered_set = self.bad_set.difference(self.whitelist_set)
         self.new_passes = self.whitelist_set.difference(self.bad_set)
+
+
+    def process_whitelists(self, whitelist_files):
+        for whitelist_file in whitelist_files:
+            self.process_whitelist(whitelist_file)
+
+
+    def get_fail_summary_message(self):
+        m = "Test %s " % self.description
+        m += "%d failures\n" % len(self.filtered_set)
+        return m
+
+
+    def get_fail_message(self):
+        m = self.get_fail_summary_message()
+        sorted_list = list(self.filtered_set)
+        sorted_list.sort()
+        m += "FAILED:\n%s\n\n" % "\n".join(sorted_list)
+        return m
 
 
     def __str__(self):
@@ -57,18 +85,19 @@ class platform_ToolchainOptions(test.test):
 
     def get_cmd(self, test_cmd, find_options=""):
         base_cmd = ("find '%s' -wholename %s -prune -o "
-               " -wholename /proc -prune -o "
-               " -wholename /dev -prune -o "
-               " -wholename /sys -prune -o "
-               " -wholename /mnt/stateful_partition -prune -o "
-               " -wholename /usr/local -prune -o "
-               # There are files in /home/chronos that cause false positives,
-               # and since that's noexec anyways, it should be skipped.
-               " -wholename '/home/chronos' -prune -o "
-               " %s "
-               " -type f -executable -exec "
-               "sh -c 'file {} | grep -q ELF && "
-               "(%s || echo {})' ';'")
+                    " -wholename /proc -prune -o "
+                    " -wholename /dev -prune -o "
+                    " -wholename /sys -prune -o "
+                    " -wholename /mnt/stateful_partition -prune -o "
+                    " -wholename /usr/local -prune -o "
+                    # There are files in /home/chronos that cause false
+                    # positives, and since that's noexec anyways, it should
+                    # be skipped.
+                    " -wholename '/home/chronos' -prune -o "
+                    " %s "
+                    " -type f -executable -exec "
+                    "sh -c 'file {} | grep -q ELF && "
+                    "(%s || echo {})' ';'")
         rootdir = "/"
         cmd = base_cmd % (rootdir, self.autodir, find_options, test_cmd)
         return cmd
@@ -94,7 +123,7 @@ class platform_ToolchainOptions(test.test):
         full_cmd = self.get_cmd(cmd)
         bad_files = utils.system_output(full_cmd)
         cso = ToolchainOptionSet(description, bad_files, whitelist_file)
-        cso.process_whitelist()
+        cso.process_whitelist_with_private(whitelist_file)
         return cso
 
 
@@ -159,14 +188,19 @@ class platform_ToolchainOptions(test.test):
                                                   pie_cmd,
                                                   pie_whitelist))
 
+        fail_msg = ""
+        fail_summary_msg = ""
         full_msg = "Test results:"
         num_fails = 0
         for cos in option_sets:
             if len(cos.filtered_set):
                 num_fails += 1
-            msg = str(cos)
-            full_msg = "%s\n\n%s" % (full_msg, msg)
+                fail_msg += cos.get_fail_message() + "\n"
+                fail_summary_msg += cos.get_fail_summary_message() + "\n"
+            full_msg += str(cos) + "\n\n"
 
+        logging.error(fail_msg)
+        logging.debug(full_msg)
         if num_fails:
-            raise error.TestFail(full_msg)
+            raise error.TestFail(fail_summary_msg)
 

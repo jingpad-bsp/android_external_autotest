@@ -20,6 +20,7 @@
 /lib/librt-2.10.1.so
 /lib/libthread_db-1.0.so
 /lib/libutil-2.10.1.so
+/opt/Qualcomm/QDLService2k/QDLService2kAcer
 /sbin/capsh
 /sbin/ctrlaltdel
 /sbin/findfs

@@ -1,7 +1,10 @@
+/opt/Qualcomm/QDLService2k/QDLService2kAcerTest
+/opt/Qualcomm/QDLService2k/QDLService2kAcer
 /opt/google/chrome/pepper/libpepflashplayer.so
 /opt/google/chrome/plugins/libgcflashplayer.so
 /opt/google/o3d/lib/libCg.so
 /opt/google/o3d/lib/libCgGL.so
+/opt/netscape/plugins/libflashplayer.so
 /sbin/insmod.static
 /usr/bin/Xorg
 /usr/bin/cgpt
@@ -18,6 +21,8 @@
 /usr/lib/xorg/modules/extensions/libextmod.so
 /usr/lib/xorg/modules/extensions/librecord.so
 /usr/lib/xorg/modules/input/evdev_drv.so
+/usr/lib/xorg/modules/input/kbd_drv.so
+/usr/lib/xorg/modules/input/mouse_drv.so
 /usr/lib/xorg/modules/input/synaptics_drv.so
 /usr/lib/xorg/modules/libexa.so
 /usr/lib/xorg/modules/libfb.so
