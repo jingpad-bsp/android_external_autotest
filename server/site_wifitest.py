@@ -180,6 +180,16 @@ class WiFiTest(object):
 
         self.run_options = config['run_options']
 
+        self.command_hooks = {}
+
+        if 'server_capture_all' in self.run_options:
+            self.__add_hook('config', self.hosting_server.start_capture)
+        if 'router_capture_all' in self.run_options:
+            self.__add_hook('config', self.wifi.start_capture)
+        if 'router_capture_all' in self.run_options:
+            self.__add_hook('config', self.netdump_start)
+
+
     def cleanup(self, params):
         """ Cleanup state: disconnect client and destroy ap """
         if 'no_cleanup_disconnect' not in self.run_options:
@@ -190,6 +200,8 @@ class WiFiTest(object):
         self.client_netdump_stop({})
         self.firewall_cleanup({})
         self.host_route_cleanup({})
+        self.wifi.stop_capture({})
+        self.hosting_server.stop_capture({})
 
 
     def __must_be_installed(self, host, cmd):
@@ -257,6 +269,27 @@ class WiFiTest(object):
         return re.sub('[^a-zA-Z0-9_]', '_', "%s_%s" % (self.name, ipaddr))
 
 
+    def __add_hook(self, hook, fn):
+        if hook not in self.command_hooks:
+            self.command_hooks[hook] = []
+
+        self.command_hooks[hook].append(fn)
+
+
+    def __run_hooks(self, hook, params):
+        if hook not in self.command_hooks:
+            return
+
+        for fn in self.command_hooks[hook]:
+            if getattr(fn, 'im_class', None):
+                hook_name = "%s.%s" % (fn.im_class.__name__, fn.__name__)
+            else:
+                hook_name = fn.__name__
+            logging.info("%s: hook '%s' for method '%s' params %s", self.name,
+                         hook_name, hook, params)
+            fn(params)
+
+
     def run(self):
         """
         Run a WiFi test.  Each step is interpreted as a method either
@@ -289,6 +322,8 @@ class WiFiTest(object):
                 self.iterated_steps[method] += 1
             else:
                 self.prefix = method
+
+            self.__run_hooks(method, params)
 
             if expect_failure is True:
                 logging.info("%s: step '%s' (expect failure)  params %s",

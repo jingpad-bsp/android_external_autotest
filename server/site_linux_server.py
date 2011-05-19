@@ -4,14 +4,17 @@
 
 import logging, re, time
 from autotest_lib.client.common_lib import error
+from autotest_lib.server import site_linux_system
 
-class LinuxServer(object):
+class LinuxServer(site_linux_system.LinuxSystem):
     """
     Linux Server: A machine which hosts network services.
 
     """
 
     def __init__(self, server, wifi_ip):
+        site_linux_system.LinuxSystem.__init__(self, server, {}, "server")
+
         self.server                      = server    # Server host.
         self.vpn_kind                    = None
         self.wifi_ip                     = wifi_ip

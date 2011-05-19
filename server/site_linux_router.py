@@ -4,12 +4,13 @@
 
 import logging, re, time
 from autotest_lib.client.common_lib import error
+from autotest_lib.server import site_linux_system
 
 def isLinuxRouter(router):
     router_uname = router.run('uname').stdout
     return re.search('Linux', router_uname)
 
-class LinuxRouter(object):
+class LinuxRouter(site_linux_system.LinuxSystem):
     """
     Linux/mac80211-style WiFi Router support for WiFiTest class.
 
@@ -22,55 +23,15 @@ class LinuxRouter(object):
 
 
     def __init__(self, host, params, defssid):
-        # Command locations.
-        self.cmd_iw = "/usr/sbin/iw"
-        self.cmd_ip = "/usr/sbin/ip"
+        site_linux_system.LinuxSystem.__init__(self, host, params, "router")
+
+        self.bridgeif = params.get('bridgedev', "br-lan")
+        self.wiredif = params.get('wiredev', "eth0")
         self.cmd_brctl = "/usr/sbin/brctl"
         self.cmd_hostapd = "/usr/sbin/hostapd"
-        self.cmd_dhcpd = "/usr/sbin/dhcpd"
 
         # Router host.
         self.router = host
-
-        # Network interfaces.
-        self.bridgeif = params.get('bridgedev', "br-lan")
-        self.wiredif = params.get('wiredev', "eth0")
-        self.wlanif2 = "wlan2"
-        self.wlanif5 = "wlan5"
-
-        # Parse the output of 'iw phy' and find a device for each frequency
-        if "phydev2" not in params:
-            output = self.router.run("%s list" % self.cmd_iw).stdout
-            re_wiphy = re.compile("Wiphy (.*)")
-            re_mhz = re.compile("(\d+) MHz")
-            in_phy = False
-            self.phydev2 = None
-            self.phydev5 = None
-            for line in output.splitlines():
-                match_wiphy = re_wiphy.match(line)
-                if match_wiphy:
-                    in_phy = True
-                    widevname = match_wiphy.group(1)
-                elif in_phy:
-                    if line[0] == '\t':
-                        match_mhz = re_mhz.search(line)
-                        if match_mhz:
-                            mhz = int(match_mhz.group(1))
-                            if self.phydev2 is None and \
-                                    mhz in range(2402,2472,5):
-                                self.phydev2 = widevname
-                            elif self.phydev5 is None and \
-                                    mhz in range(5100,6000,20):
-                                self.phydev5 = widevname
-                            if None not in (self.phydev2, self.phydev5):
-                                break
-                    else:
-                        in_phy = False
-            else:
-                raise error.TestFail("No Wireless NIC detected on the device")
-        else:
-            self.phydev2 = params['phydev2']
-            self.phydev5 = params.get('phydev5', self.phydev2)
 
 
         # hostapd configuration persists throughout the test, subsequent
@@ -116,16 +77,6 @@ class LinuxRouter(object):
                 self.router.run("%s link set %s down" % (self.cmd_ip, device))
                 self.router.run("%s delbr %s" % (self.cmd_brctl, device))
 
-        # Remove all wifi devices.
-        output = self.router.run("%s dev" % self.cmd_iw).stdout
-        test = re.compile("[\s]*Interface (.*)")
-        for line in output.splitlines():
-            m = test.match(line)
-            if m:
-                device = m.group(1)
-                self.router.run("%s link set %s down" % (self.cmd_ip, device))
-                self.router.run("%s dev %s del" % (self.cmd_iw, device))
-
         # Place us in the US by default
         self.router.run("%s reg set US" % self.cmd_iw)
 
@@ -141,7 +92,7 @@ class LinuxRouter(object):
         self.apmode = params['type'] in ("ap", "hostap")
         if not self.apmode:
             self.station['type'] = params['type']
-        phytype = {
+        self.phytype = {
             "sta"       : "managed",
             "monitor"   : "monitor",
             "adhoc"     : "adhoc",
@@ -151,11 +102,6 @@ class LinuxRouter(object):
             "mesh"      : "mesh",
             "wds"       : "wds",
         }[params['type']]
-
-        self.router.run("%s phy %s interface add %s type %s" %
-            (self.cmd_iw, self.phydev2, self.wlanif2, phytype))
-        self.router.run("%s phy %s interface add %s type %s" %
-            (self.cmd_iw, self.phydev5, self.wlanif5, phytype))
 
 
     def destroy(self, params):
@@ -189,6 +135,7 @@ class LinuxRouter(object):
                 conf['ssid'] = self.defssid + v
             elif k == 'channel':
                 freq = int(v)
+                self.hostapd['frequency'] = freq
 
                 # 2.4GHz
                 if freq <= 2484:
@@ -290,10 +237,9 @@ class LinuxRouter(object):
             conf['ht_capab'] = ''.join(htcaps)
 
         # Figure out the correct interface.
-        if conf.get('hw_mode', 'b') == 'a':
-            conf['interface'] = self.wlanif5
-        else:
-            conf['interface'] = self.wlanif2
+        conf['interface'] = self._get_wlanif(self.hostapd['frequency'],
+                                             self.phytype,
+                                             mode=conf.get('hw_mode', 'b'))
 
         # Generate hostapd.conf.
         self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
@@ -364,7 +310,7 @@ class LinuxRouter(object):
             self.deconfig({})
 
         local_server = params.pop('local_server', False)
-        interface = self.wlanif2
+        mode = None
         conf = self.station['conf']
         for k, v in params.iteritems():
             if k == 'ssid_suffix':
@@ -372,12 +318,14 @@ class LinuxRouter(object):
             elif k == 'channel':
                 freq = int(v)
                 if freq > 2484:
-                    interface = self.wlanif5
+                    mode = 'a'
             elif k == 'mode':
                 if v == '11a':
-                    interface = self.wlanif5
+                    mode = 'a'
             else:
                 conf[k] = v
+
+        interface = self._get_wlanif(freq, self.phytype, mode)
 
         if not multi_interface:
             logging.info("Initializing bridge...")

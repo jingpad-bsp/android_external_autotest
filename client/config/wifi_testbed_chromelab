@@ -17,8 +17,7 @@
   # configurable wifi/router that can reached by ssh
   "router"      : {
     # "addr" will get filled in on the command line
-    "phydev2"	: "phy0",
-    "phydev5"	: "phy1",
-    "wiredev"	: "eth0",
+    # "phydevN" isn't necessary since test suite finds best radio per-frequency
+    "wiredev"   : "eth0"
   }
 }
