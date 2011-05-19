@@ -9,6 +9,8 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import pexpect
 
 
+DEFAULT_BASELINE = 'baseline'
+
 FINGERPRINT_RE = re.compile(r'Fingerprint \(SHA1\):\n\s+(\b[:\w]+)\b')
 NSS_ISSUER_RE = re.compile(r'Object Token:(.+\b)\s+[CGA]*,[CGA]*,[CGA]*\n')
 
@@ -22,13 +24,13 @@ OPENSSL_CERT_DIR = '/usr/share/ca-certificates/chromeos'
 class security_RootCA(test.test):
     version = 1
 
-    def get_baseline_sets(self):
+    def get_baseline_sets(self, baseline_file):
         """Returns a dictionary of sets. The keys are the names of
            the ssl components and the values are the sets of fingerprints
            we expect to find in that component's Root CA list.
         """
         baselines = {'nss': set([]), 'openssl': set([])}
-        baseline_file = open(os.path.join(self.bindir, 'baseline'))
+        baseline_file = open(os.path.join(self.bindir, baseline_file))
         for line in baseline_file:
             (lib, fingerprint) = line.rstrip().split()
             if lib == 'both':
@@ -107,9 +109,23 @@ class security_RootCA(test.test):
         return set(certdict)
 
 
-    def run_once(self):
-        """Enforce exact-matches (no extra, no missing) for the installed
-           Root CA's vs their baselines. Cover both nss and openssl.
+    def run_once(self, opts=None):
+        """Entry point for command line (run_remote_test) use. Accepts 2
+           optional args, e.g. run_remote_test --args="relaxed baseline=foo".
+           Parses the args array and invokes the main test method.
+        """
+        args = {'baseline': DEFAULT_BASELINE}
+        if opts:
+            args.update(dict([[k, v] for (k, e, v) in
+                              [x.partition('=') for x in opts]]))
+
+        self.verify_rootcas(baseline_file=args['baseline'],
+                            exact_match=('relaxed' not in args))
+
+
+    def verify_rootcas(self, baseline_file=DEFAULT_BASELINE, exact_match=True):
+        """Verify installed Root CA's all appear on a specified whitelist.
+           Covers both nss and openssl.
         """
         testfail = False
 
@@ -117,20 +133,21 @@ class security_RootCA(test.test):
         seen = {}
         seen['nss'] = self.get_nss_certs()
         seen['openssl'] = self.get_openssl_certs()
-        expected = self.get_baseline_sets()
+        expected = self.get_baseline_sets(baseline_file)
 
         for lib in seen.keys():
             missing = expected[lib].difference(seen[lib])
             unexpected = seen[lib].difference(expected[lib])
-            if missing or unexpected:
+            if unexpected or (missing and exact_match):
                 testfail = True
                 logging.error('Results for %s' % lib)
-                logging.error('Missing')
-                for i in missing:
-                    logging.error(i)
                 logging.error('Unexpected')
                 for i in unexpected:
                     logging.error(i)
+                if exact_match:
+                    logging.error('Missing')
+                    for i in missing:
+                        logging.error(i)
 
         if testfail:
             raise error.TestFail('Root CA Baseline mismatches')

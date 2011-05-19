@@ -16,5 +16,5 @@ TEST_CLASS = 'security'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'
 
-job.run_test('security_RootCA')
+job.run_test('security_RootCA', opts=args)
 
