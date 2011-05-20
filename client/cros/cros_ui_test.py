@@ -63,6 +63,7 @@ class UITest(test.test):
             path='/')
 
     def __attempt_resolve(self, hostname, ip, expected=True):
+        logging.debug("Attempting to resolve %s to %s" % (hostname, ip))
         try:
             host = socket.gethostbyname(hostname)
             logging.debug("Resolve attempt for %s got %s" % (hostname, host))
@@ -96,8 +97,7 @@ class UITest(test.test):
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
             login.TimeoutError('Timed out waiting for DNS changes.'),
-            timeout=10,
-            sleep_interval=1)
+            timeout=10)
 
 
     def revert_dns(self):
