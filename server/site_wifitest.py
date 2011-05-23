@@ -1416,50 +1416,17 @@ class WiFiTest(object):
 
     def log_time_diff(self, params):
         log_file = self.client_logfile
-        # TODO(pstew): Handle events that span more than one rotated logfile
-        # Find last occurrence of the "from" expression
-        from_result = self.client.run("grep -n '%s' %s | tail -1" %
-                                      (params['from'], log_file),
-                                      ignore_status=True).stdout
-        if not from_result:
-            logging.info("Unable to find %s in %s" % (params['from'], log_file))
+
+        time_diff = self.install_script('site_log_time_diff.py')
+        result = self.client.run("python '%s' --from='%s' --to='%s'" %
+                                      (time_diff, params['from'], params['to']))
+
+        if '-' in result.stdout:
+            logging.info("Unable to find timespan")
             return
 
-        # Start from this line and search rest of log for "to" expression
-        from_line, sep, from_result = from_result.partition(':')
-        num_lines = self.client.run("wc -l %s" % log_file).stdout
-        tail_lines = int(num_lines.split(' ')[0]) - int(from_line)
-        to_result = self.client.run("tail -%d %s | grep '%s' | head -1" %
-                                    (tail_lines, log_file, params['to']),
-                                    ignore_status=True).stdout
-        if not to_result:
-            logging.info("Unable to find %s in %s" % (params['to'], log_file))
-            return
-
-        # Kernel timestamps are more precise than syslog timestamps
-        from_match = re.search("kernel:\s*\[\s*([0-9.]*)", from_result)
-        to_match = re.search("kernel:\s*\[\s*([0-9.]*)", to_result)
-        if from_match and to_match:
-            logging.info("Using kernel timestamp %s %s" %
-                         (from_match.group(1), to_match.group(1)))
-            from_time = float(from_match.group(1))
-            to_time = float(to_match.group(1))
-        else:
-            # Times end up being like 2011-05-13T07:38:05.238129-07:00 ...
-            logging.info("Using syslog timestamp %s %s" %
-                         (from_result.split(' ')[0], to_result.split(' ')[0]))
-            date, sep, fraction = from_result.split(' ')[0].partition('.')
-            from_time = time.mktime(time.strptime(date, "%Y-%m-%dT%H:%M:%S"))
-            from_time += float("0.%s" % fraction.split('-')[0])
-            date, sep, fraction = to_result.split(' ')[0].partition('.')
-            to_time = time.mktime(time.strptime(date, "%Y-%m-%dT%H:%M:%S"))
-            to_time += float("0.%s" % fraction.split('-')[0])
-        logging.info("%f - %f" % (to_time, from_time))
-        logging.info("Time difference was %f" % (to_time - from_time))
         if "perf" in params:
-            self.write_perf({params['perf']:(to_time - from_time)})
-
-        return
+            self.write_perf({params['perf']:float(result.stdout)})
 
 
 class HelperThread(threading.Thread):

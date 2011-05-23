@@ -40,9 +40,9 @@
     # Pull some time differences out of the logs
     [ "log_time_diff",  { "from":"Back to C", "to":"Reason: 7",
                           "perf":"deauth" } ],
-    [ "log_time_diff",  { "from":"Reason: 7", "to":": associated",
-                          "perf":"reassoc" } ],
-    [ "log_time_diff",  { "from":": associated", "to":"COMPLETED",
+    [ "log_time_diff",  { "from":"Back to C", "to":": associated",
+                          "perf":"reassociated" } ],
+    [ "log_time_diff",  { "from":"Back to C", "to":" -> COMPLETED",
                           "perf":"reconnect" } ],
     [ "destroy" ],
 
