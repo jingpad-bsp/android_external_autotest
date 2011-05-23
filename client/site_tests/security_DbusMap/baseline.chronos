@@ -5,25 +5,23 @@
       {
         "interface": "fi.w1.wpa_supplicant1",
         "methods": [],
-        "siginals": [
+        "signals": [
           "InterfaceAdded",
           "InterfaceRemoved",
           "PropertiesChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "fi.w1.wpa_supplicant1.BSS",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertiesChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "fi.w1.wpa_supplicant1.Interface",
         "methods": [],
-        "siginals": [
+        "signals": [
           "ScanDone",
           "BSSAdded",
           "BSSRemoved",
@@ -33,8 +31,7 @@
           "NetworkRemoved",
           "NetworkSelected",
           "PropertiesChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.DBus.Properties",
@@ -53,66 +50,59 @@
       {
         "interface": "org.bluez.Adapter",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged",
           "DeviceCreated",
           "DeviceRemoved",
           "DeviceFound",
           "DeviceDisappeared"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.bluez.Manager",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged",
           "AdapterAdded",
           "AdapterRemoved",
           "DefaultAdapterChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.bluez.NetworkHub",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.bluez.NetworkPeer",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.bluez.NetworkRouter",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.bluez.SerialProxyManager",
         "methods": [],
-        "siginals": [
+        "signals": [
           "ProxyCreated",
           "ProxyRemoved"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.bluez.TelephonyTest",
         "methods": [],
-        "siginals": [
+        "signals": [
           "VoiceDial"
-        ],
-        "signals": []
+        ]
       }
     ]
   },
@@ -126,10 +116,9 @@
           "IsAlive",
           "RequestDataPlansUpdate"
         ],
-        "siginals": [
+        "signals": [
           "DataPlansUpdate"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
@@ -146,11 +135,10 @@
       {
         "interface": "org.chromium.CryptohomeInterface",
         "methods": [],
-        "siginals": [
+        "signals": [
           "AsyncCallStatus",
           "TpmInitStatus"
-        ],
-        "signals": []
+        ]
       }
     ]
   },
@@ -194,10 +182,9 @@
           "SetCarrier",
           "SoftReset"
         ],
-        "siginals": [
+        "signals": [
           "DormancyStatus"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.DBus.Introspectable",
@@ -220,11 +207,10 @@
         "methods": [
           "EnumerateDevices"
         ],
-        "siginals": [
+        "signals": [
           "DeviceAdded",
           "DeviceRemoved"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.ModemManager.Modem",
@@ -237,10 +223,9 @@
           "GetInfo",
           "Reset"
         ],
-        "siginals": [
+        "signals": [
           "StateChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.ModemManager.Modem.Cdma",
@@ -253,12 +238,11 @@
           "GetServingSystem",
           "GetSignalQuality"
         ],
-        "siginals": [
+        "signals": [
           "ActivationStateChanged",
           "SignalQuality",
           "RegistrationStateChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.ModemManager.Modem.Simple",
@@ -276,10 +260,9 @@
       {
         "interface": "org.chromium.SessionManagerInterface",
         "methods": [],
-        "siginals": [
+        "signals": [
           "SessionStateChanged"
-        ],
-        "signals": []
+        ]
       }
     ]
   },
@@ -289,10 +272,9 @@
       {
         "interface": "org.chromium.UpdateEngineInterface",
         "methods": [],
-        "siginals": [
+        "signals": [
           "StatusUpdate"
-        ],
-        "signals": []
+        ]
       }
     ]
   },
@@ -302,51 +284,45 @@
       {
         "interface": "org.chromium.flimflam.Device",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.chromium.flimflam.IPConfig",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.chromium.flimflam.Manager",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged",
           "StateChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.chromium.flimflam.Network",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.chromium.flimflam.Profile",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.chromium.flimflam.Service",
         "methods": [],
-        "siginals": [
+        "signals": [
           "PropertyChanged"
-        ],
-        "signals": []
+        ]
       }
     ]
   },
@@ -356,35 +332,32 @@
       {
         "interface": "org.freedesktop.ConsoleKit.Manager",
         "methods": [],
-        "siginals": [
+        "signals": [
           "SystemIdleHintChanged",
           "SeatRemoved",
           "SeatAdded"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.ConsoleKit.Seat",
         "methods": [],
-        "siginals": [
+        "signals": [
           "DeviceRemoved",
           "DeviceAdded",
           "SessionRemoved",
           "SessionAdded",
           "ActiveSessionChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.ConsoleKit.Session",
         "methods": [],
-        "siginals": [
+        "signals": [
           "Unlock",
           "Lock",
           "IdleHintChanged",
           "ActiveChanged"
-        ],
-        "signals": []
+        ]
       }
     ]
   },
@@ -394,12 +367,11 @@
       {
         "interface": "org.freedesktop.DBus",
         "methods": [],
-        "siginals": [
+        "signals": [
           "NameOwnerChanged",
           "NameLost",
           "NameAcquired"
-        ],
-        "signals": []
+        ]
       }
     ]
   },
@@ -430,10 +402,9 @@
           "InhibitShutdown",
           "UninhibitShutdown"
         ],
-        "siginals": [
+        "signals": [
           "DeviceEvent"
-        ],
-        "signals": []
+        ]
       }
     ]
   },
@@ -463,13 +434,12 @@
           "Hibernate",
           "Suspend"
         ],
-        "siginals": [
+        "signals": [
           "Changed",
           "DeviceChanged",
           "DeviceRemoved",
           "DeviceAdded"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.DeviceKit.Power.Device",
@@ -478,10 +448,9 @@
           "GetStatistics",
           "Refresh"
         ],
-        "siginals": [
+        "signals": [
           "Changed"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.DeviceKit.Power.QoS",
@@ -492,11 +461,10 @@
           "RequestLatency",
           "SetMinimumLatency"
         ],
-        "siginals": [
+        "signals": [
           "RequestsChanged",
           "LatencyChanged"
-        ],
-        "signals": []
+        ]
       },
       {
         "interface": "org.freedesktop.DeviceKit.Power.Wakeups",
@@ -504,11 +472,10 @@
           "GetData",
           "GetTotal"
         ],
-        "siginals": [
+        "signals": [
           "DataChanged",
           "TotalChanged"
-        ],
-        "signals": []
+        ]
       }
     ]
   }

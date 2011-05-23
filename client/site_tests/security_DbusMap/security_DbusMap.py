@@ -162,7 +162,7 @@ class security_DbusMap(test.test):
 
 
     def add_signal(self, dbus_list, dest, iface, signal):
-        return self._add_surface(dbus_list, dest, iface, signal, 'siginals')
+        return self._add_surface(dbus_list, dest, iface, signal, 'signals')
 
 
     def _add_surface(self, dbus_list, dest, iface, member, slot):
