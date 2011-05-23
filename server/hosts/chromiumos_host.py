@@ -86,14 +86,14 @@ class ChromiumOSHost(base_classes.Host):
             if int(updater.update_version.split('.')[1]) == 12:
                 self.reboot(timeout=60, wait=True)
 
+            # Mark host as recently updated. Hosts are rebooted at the end of
+            # every test cycle which will remove the file.
+            self.run('touch %s' % _JUST_UPDATED_FLAG)
+
         # Clean up any old autotest directories which may be lying around.
         for path in global_config.global_config.get_config_value(
                 'AUTOSERV', 'client_autodir_paths', type=list):
             self.run('rm -rf ' + path)
-
-        # Mark host as recently updated. Hosts are rebooted at the end of every
-        # test cycle which will remove the file.
-        self.run('touch %s' % _JUST_UPDATED_FLAG)
 
 
     def has_just_updated(self):
