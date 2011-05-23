@@ -53,11 +53,11 @@ def pattern_cb_grid(widget, event, color=None):
                            gtk.gdk.CAP_BUTT,
                            gtk.gdk.JOIN_MITER)
     for x in range(0, xmax - 1, 20):
-        dr.draw_line(gc, x, 0, x, ymax - 1)
+        dr.draw_line(gc, x, 0, x, ymax)
     for y in range(0, ymax - 1, 20):
-        dr.draw_line(gc, 0, y, xmax - 1, y)
-    dr.draw_line(gc, xmax - 1, 0, xmax - 1, ymax - 1)
-    dr.draw_line(gc, xmax - 1, ymax - 1, 0, ymax - 1)
+        dr.draw_line(gc, 0, y, xmax, y)
+    dr.draw_line(gc, xmax - 1, 0, xmax - 1, ymax)
+    dr.draw_line(gc, xmax, ymax - 1, 0, ymax - 1)
     return False
 
 
@@ -92,10 +92,10 @@ def pattern_full_rect(widget, event):
                            gtk.gdk.LINE_SOLID,
                            gtk.gdk.CAP_BUTT,
                            gtk.gdk.JOIN_MITER)
-    dr.draw_line(gc, 0, 0, xmax - 1, 0)
-    dr.draw_line(gc, xmax - 1, 0, xmax - 1, ymax - 1)
-    dr.draw_line(gc, xmax - 1, ymax - 1, 0, ymax - 1)
-    dr.draw_line(gc, 0, ymax - 1, 0, 0)
+    dr.draw_line(gc, 0, 0, xmax, 0)
+    dr.draw_line(gc, xmax - 1, 0, xmax - 1, ymax)
+    dr.draw_line(gc, xmax, ymax - 1, 0, ymax - 1)
+    dr.draw_line(gc, 0, ymax, 0, 0)
     return False
 
 
