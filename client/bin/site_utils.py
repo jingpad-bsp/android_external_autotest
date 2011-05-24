@@ -164,3 +164,26 @@ def verify_mesg_set(mesg, regex, whitelist):
         rv.extend(missing_strings)
 
     return '\n'.join(rv)
+
+
+def target_is_x86_pie():
+    """Returns whether the toolchain produces an x86 PIE (position independent
+    executable) by default.
+
+    Arguments:
+      None
+
+    Returns:
+      True if the target toolchain produces an x86 PIE by default.
+      False otherwise.
+    """
+
+
+    command = "echo \"int main(){return 0;}\" | ${CC} -o /tmp/a.out -xc -"
+    command += "&& file /tmp/a.out"
+    result = utils.system_output(command, retain_output=True,
+                                 ignore_status=True)
+    if re.search("80\d86", result) and re.search("shared object", result):
+        return True
+    else:
+        return False

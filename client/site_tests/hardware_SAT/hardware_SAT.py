@@ -10,19 +10,6 @@ from autotest_lib.client.common_lib import error
 class hardware_SAT(test.test):
     version = 1
 
-    def target_is_x86_pie(self):
-        result = utils.system_output('${CC} -dumpmachine', retain_output=True,
-                                     ignore_status=True)
-        x86_pattern = re.compile(r"^i.86.*")
-        if not x86_pattern.match(result):
-          return False
-        result = utils.system_output('${CC} -dumpspecs', retain_output=True,
-                                     ignore_status=True)
-        if result.find('!nopie:') == -1:
-          return False
-        return True
-
-
     # http://code.google.com/p/stressapptest/ 
     def setup(self, tarball='stressapptest-1.0.3_autoconf.tar.gz'):
         # clean
@@ -37,7 +24,7 @@ class hardware_SAT(test.test):
         cflags = '-I' + self.autodir + '/deps/libaio/include'
         # Add paths to libaio files.
         var_flags = 'LDFLAGS="' + ldflags + '"'
-        if self.target_is_x86_pie():
+        if utils.target_is_x86_pie():
             var_flags += ' CXXFLAGS="-nopie ' + cflags + '"'
             var_flags += ' CFLAGS="-nopie ' + cflags + '"'
         else:

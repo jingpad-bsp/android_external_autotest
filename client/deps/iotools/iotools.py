@@ -10,26 +10,13 @@ from autotest_lib.client.bin import utils
 
 version = 1
 
-def target_is_x86_pie():
-    result = utils.system_output('${CC} -dumpmachine', retain_output=True,
-                                 ignore_status=True)
-    x86_pattern = re.compile(r"^i.86.*")
-    if not x86_pattern.match(result):
-        return False
-    result = utils.system_output('${CC} -dumpspecs', retain_output=True,
-                                 ignore_status=True)
-    if result.find('!nopie:') == -1:
-        return False
-    return True
-
-
 def setup(tarball, topdir):
     srcdir = os.path.join(topdir, 'src')
     utils.extract_tarball_to_dir(tarball, srcdir)
     # 'Add' arm support.
     os.chdir(srcdir)
     utils.system('patch -p0 < ../iotools.arm.patch')
-    if target_is_x86_pie():
+    if utils.target_is_x86_pie():
         utils.system('patch -p0 < ../iotools.nopie.patch')
 
     utils.system('CROSS_COMPILE=${CTARGET_default}- make')
