@@ -83,7 +83,7 @@ class ChromiumOSHost(base_classes.Host):
 
             # TODO(dalecurtis): Hack for R12 builds to make sure BVT runs of
             # platform_Shutdown pass correctly.
-            if int(updater.update_version.split('.')[1]) == 12:
+            if updater.update_version.startswith('0.12'):
                 self.reboot(timeout=60, wait=True)
 
             # Mark host as recently updated. Hosts are rebooted at the end of

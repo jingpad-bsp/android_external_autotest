@@ -162,7 +162,7 @@ class ChromiumOSUpdater():
 
 
     def run_update(self, force_update):
-        booted_version = self.get_booted_version()
+        booted_version = self.get_build_id()
         if booted_version in self.update_version and not force_update:
             logging.info('System is already up to date. Skipping update.')
             return False
@@ -193,15 +193,8 @@ class ChromiumOSUpdater():
         return True
 
 
-    def get_booted_version(self):
-        booted_version = self.get_build_id()
-        if not booted_version:
-            booted_version = self.get_dev_build_id()
-        return booted_version
-
-
     def check_version(self):
-        booted_version = self.get_booted_version()
+        booted_version = self.get_build_id()
         if not booted_version in self.update_version:
             logging.error('Expected Chromium OS version: %s.'
                           'Found Chromium OS %s',
@@ -213,24 +206,6 @@ class ChromiumOSUpdater():
 
 
     def get_build_id(self):
-        """Turns the CHROMEOS_RELEASE_DESCRIPTION into a string that
-        matches the build ID."""
-        version = self._run('grep CHROMEOS_RELEASE_DESCRIPTION'
-                            ' /etc/lsb-release').stdout
-        build_re = (r'CHROMEOS_RELEASE_DESCRIPTION='
-                    '(\d+\.\d+\.\d+\.\d+) \(\w+ \w+ (\w+)(.*)\)')
-        version_match = re.match(build_re, version)
-        if version_match:
-            version, build_id, builder = version_match.groups()
-            build_match = re.match(r'.*: (\d+)', builder)
-            if build_match:
-                builder_num = '-b%s' % build_match.group(1)
-            else:
-                builder_num = ''
-            return '%s-r%s%s' % (version, build_id, builder_num)
-
-
-    def get_dev_build_id(self):
         """Pulls the CHROMEOS_RELEASE_VERSION string from /etc/lsb-release."""
         return self._run('grep CHROMEOS_RELEASE_VERSION'
                          ' /etc/lsb-release').stdout.split('=')[1].strip()
