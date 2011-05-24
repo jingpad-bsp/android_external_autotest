@@ -21,10 +21,11 @@ class graphics_Piglit(cros_ui_test.UITest):
     # hard wiring the cros-driver.test config file until we
     # need to parameterize this test for short/extended testing
     def run_once(self):
-        # TODO(IHF) WAR due to pageflip issue
+        # TODO(IHF) WARs due to pageflip/memory issue, crosbug 15675
         self.crash_blacklist.append('chromeos-wm')
-        self.crash_blacklist.append('supplied_X')
+        self.crash_blacklist.append('glx-multithread')
         self.crash_blacklist.append('glx-window-life')
+        self.crash_blacklist.append('supplied_X')
         # expected crashes inside of piglit need to be listed for UITest
         self.crash_blacklist.append('attribute0')
         self.crash_blacklist.append('cashewd')
