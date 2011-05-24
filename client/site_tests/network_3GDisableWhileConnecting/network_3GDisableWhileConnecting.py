@@ -165,6 +165,7 @@ class DisableTester(GenericTesterMainLoop):
     enabled = self.enabled()
     logging.info('Modem enabled: %s', enabled)
     self.assert_(enabled == 0)
+    network.ClearGobiModemFaultInjection()
 
 
 class FlimflamDisableTester(DisableTester):
@@ -205,7 +206,6 @@ class FlimflamDisableTester(DisableTester):
 
   def synchronous_set_powered(self, device, value, timeout_s=10):
     try:
-      logging.info('synchronous_set_powered: value = %s' % value)
       device.SetProperty('Powered', value)
     except dbus.exceptions.DBusException, e:
       if e._dbus_error_name != 'org.chromium.flimflam.Error.InProgress':
@@ -310,6 +310,10 @@ class ModemDisableTester(DisableTester):
       # connect
       self.gobi_modem.InjectFault('AsyncConnectSleepMs', sleep_ms)
 
+      if 'connect_fails_with_error_sending_qmi_request' in self.test_args:
+        logging.info('Injecting QMI failure')
+        self.gobi_modem.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
+
     self.modem.Enable(False)
     self.modem.Enable(True)
 
@@ -343,12 +347,16 @@ class ModemDisableTester(DisableTester):
 class network_3GDisableWhileConnecting(test.test):
   version = 1
   def run_once(self, **kwargs):
-    logging.info('setting main loop')
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    self.main_loop = gobject.MainLoop()
+    try:
+      dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+      self.main_loop = gobject.MainLoop()
 
-    flimflam = FlimflamDisableTester(self, self.main_loop, **kwargs)
-    flimflam.run(**kwargs)
+      logging.info('Flimflam-level test')
+      flimflam = FlimflamDisableTester(self, self.main_loop, **kwargs)
+      flimflam.run(**kwargs)
 
-    modem = ModemDisableTester(self, self.main_loop, **kwargs)
-    modem.run(**kwargs)
+      logging.info('Modem-level test')
+      modem = ModemDisableTester(self, self.main_loop, **kwargs)
+      modem.run(**kwargs)
+    finally:
+      network.ClearGobiModemFaultInjection()

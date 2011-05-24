@@ -22,3 +22,15 @@ def ResetAllModems(flim):
         modem = manager.Modem(path)
         modem.Enable(False)
         modem.Enable(True)
+
+def ClearGobiModemFaultInjection():
+    """If there's a gobi present, try to clear its fault-injection state."""
+    try:
+        modem_manager, gobi_path = mm.PickOneModem('Gobi')
+    except ValueError:
+        # Didn't find a gobi
+        pass
+
+    gobi = modem_manager.GobiModem(gobi_path)
+    if gobi:
+        gobi.InjectFault('ClearFaults',1);

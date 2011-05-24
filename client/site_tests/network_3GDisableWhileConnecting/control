@@ -25,6 +25,14 @@ job.run_test('network_3GDisableWhileConnecting',
              timeout_s=20,
              async_connect_sleep_ms=0,
              disable_delay_per_iteration_ms=0,
+             iterations=1,
+             tag='qmi_failure',
+             connect_fails_with_error_sending_qmi_request=1)
+
+job.run_test('network_3GDisableWhileConnecting',
+             timeout_s=20,
+             async_connect_sleep_ms=0,
+             disable_delay_per_iteration_ms=0,
              iterations=ITERATIONS_PER_TEST,
              tag='instant_disable')
 
@@ -32,14 +40,12 @@ job.run_test('network_3GDisableWhileConnecting',
 # (often?) the case that the disable arrives before the connect.
 # There's no good way to track what actually gets sent first, so we
 # sleep.
-
 job.run_test('network_3GDisableWhileConnecting',
              timeout_s=20,
              async_connect_sleep_ms=0,
              disable_delay_per_iteration_ms=int(1000.0 / ITERATIONS_PER_TEST),
              iterations=ITERATIONS_PER_TEST,
              tag='disable_delay_ramp')
-
 
 # Similarly, we can't be sure what the relative timings of the
 # completion of the session starter thread and arrival of the disable

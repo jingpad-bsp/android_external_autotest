@@ -4,6 +4,7 @@
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import network
 
 import logging, os, pty, re, socket, string, subprocess, sys, time, traceback
 import urllib2
@@ -186,6 +187,7 @@ class GobiDesyncEventLoop(TestEventLoop):
       logging.info('Waiting for: ' + str(self.remaining_events))
       context.iteration()
 
+    network.ClearGobiModemFaultInjection()
     self.KillSubprocesses()
     if self.to_raise:
       raise self.to_raise
@@ -193,31 +195,54 @@ class GobiDesyncEventLoop(TestEventLoop):
 
 
 class RegularOperationTest(GobiDesyncEventLoop):
+  """This covers the case where the modem makes an API call that
+     returns a "we've lost sync" error that should cause a reboot."""
+
   def __init__(self, bus):
     super(RegularOperationTest, self).__init__(bus)
 
   def StartTest(self):
-    """Actually start the test."""
-
     modem_manager, gobi_path = mm.PickOneModem('Gobi')
     gobi = modem_manager.GobiModem(gobi_path)
     simple = modem_manager.SimpleModem(gobi_path)
 
     modem_manager.Modem(gobi_path).Enable(1)
 
-    # This covers the case where the modem makes an API call that
-    # returns a "we've lost sync" error that should cause a reboot
     gobi.InjectFault('SdkError', 12)
     _ = simple.GetStatus()
 
 
+class DataConnectTest(GobiDesyncEventLoop):
+  """Test the special-case code path where we receive an error from
+     StartDataSession.  If we're not also disabling at the same time,
+     this should behave the same as other desync errors."""
+
+  def __init__(self, bus):
+    super(DataConnectTest, self).__init__(bus)
+
+  def ignore(self, *args, **kwargs):
+    logging.info('ignoring')
+    pass
+
+  def StartTest(self):
+    modem_manager, gobi_path = mm.PickOneModem('Gobi')
+    gobi = modem_manager.GobiModem(gobi_path)
+    simple = modem_manager.SimpleModem(gobi_path)
+
+    modem_manager.Modem(gobi_path).Enable(1)
+
+    gobi.InjectFault('AsyncConnectSleepMs', 1000)
+    gobi.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
+    simple.Connect({},
+                   reply_handler=self.ignore,
+                   error_handler=self.ignore)
+
 class ApiConnectTest(GobiDesyncEventLoop):
+  """Test the special-case code on errors connecting to the API. """
   def __init__(self, bus):
     super(ApiConnectTest, self).__init__(bus)
 
   def StartTest(self):
-    """Actually start the test."""
-
     modem_manager, gobi_path = mm.PickOneModem('Gobi')
     gobi = modem_manager.GobiModem(gobi_path)
 
@@ -234,16 +259,20 @@ class ApiConnectTest(GobiDesyncEventLoop):
       raise error.TestFail('Enable returned when it should have crashed')
 
 
-
 class network_3GRecoverFromGobiDesync(test.test):
   version = 1
 
   def run_once(self, cycles=1, min=1, max=20):
     bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     self.bus = dbus.SystemBus(mainloop=bus_loop)
+    try:
+      logging.info('Testing failure during DataConnect')
+      DataConnectTest(self.bus).Wait(60)
 
-    logging.info('Testing failure while in regular operation')
-    RegularOperationTest(self.bus).Wait(60)
+      logging.info('Testing failure while in regular operation')
+      RegularOperationTest(self.bus).Wait(60)
 
-    logging.info('Testing failure during device initialization')
-    ApiConnectTest(self.bus).Wait(60)
+      logging.info('Testing failure during device initialization')
+      ApiConnectTest(self.bus).Wait(60)
+    finally:
+      network.ClearGobiModemFaultInjection()
