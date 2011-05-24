@@ -244,7 +244,9 @@ class security_DbusMap(test.test):
         """
         file_handle = open(file_path, 'w')
         my_json = json.dumps(dbus_list, sort_keys=True, indent=2)
-        file_handle.write(my_json)
+        # The json dumper has a trailing whitespace problem, and lacks
+        # a final newline. Fix both here.
+        file_handle.write(my_json.replace(', \n',',\n') + '\n')
         file_handle.close()
 
 
@@ -420,6 +422,13 @@ class security_DbusMap(test.test):
         baseline = self.load_baseline()
         test_pass = self.mutual_compare(dbus_list, baseline)
 
+        # Dump the complete observed dataset to disk. In the somewhat
+        # typical case, that we will want to rev the baseline to
+        # match current reality, these files are easily copied and
+        # checked in as a new baseline.
+        observed_data_path = os.path.join(self.outputdir, 'observed')
+        self.write_dbus_data_to_disk(dbus_list, observed_data_path)
+
         # Figure out which of the observed API's are callable by specific users
         # whose attack surface we are particularly sensitive to:
         dbus_cfg = self.load_dbus_config_doms()
@@ -443,11 +452,12 @@ class security_DbusMap(test.test):
                         self.add_signal(user_observed,
                                         objdict['Object_name'],
                                         ifacedict['interface'], sig)
+            self.write_dbus_data_to_disk(user_observed,
+                                         '%s.%s' % (observed_data_path, user))
             test_pass = test_pass and self.mutual_compare(user_observed,
                                                           user_baseline, user)
         if not test_pass:
             raise error.TestFail('Baseline mismatch(es)')
-
 
 
     def run_once(self):

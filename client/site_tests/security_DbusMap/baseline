@@ -67,128 +67,6 @@
     ]
   },
   {
-    "Object_name": "org.bluez",
-    "interfaces": [
-      {
-        "interface": "org.bluez.Adapter",
-        "methods": [
-          "CancelDeviceCreation",
-          "CreateDevice",
-          "CreatePairedDevice",
-          "FindDevice",
-          "GetProperties",
-          "ListDevices",
-          "RegisterAgent",
-          "ReleaseSession",
-          "RemoveDevice",
-          "RequestSession",
-          "SetProperty",
-          "StartDiscovery",
-          "StopDiscovery",
-          "UnregisterAgent"
-        ],
-        "signals": [
-          "PropertyChanged",
-          "DeviceCreated",
-          "DeviceRemoved",
-          "DeviceFound",
-          "DeviceDisappeared"
-        ]
-      },
-      {
-        "interface": "org.bluez.Manager",
-        "methods": [
-          "DefaultAdapter",
-          "FindAdapter",
-          "GetProperties",
-          "ListAdapters"
-        ],
-        "signals": [
-          "PropertyChanged",
-          "AdapterAdded",
-          "AdapterRemoved",
-          "DefaultAdapterChanged"
-        ]
-      },
-      {
-        "interface": "org.bluez.NetworkHub",
-        "methods": [
-          "GetProperties",
-          "SetProperty"
-        ],
-        "signals": [
-          "PropertyChanged"
-        ]
-      },
-      {
-        "interface": "org.bluez.NetworkPeer",
-        "methods": [
-          "GetProperties",
-          "SetProperty"
-        ],
-        "signals": [
-          "PropertyChanged"
-        ]
-      },
-      {
-        "interface": "org.bluez.NetworkRouter",
-        "methods": [
-          "GetProperties",
-          "SetProperty"
-        ],
-        "signals": [
-          "PropertyChanged"
-        ]
-      },
-      {
-        "interface": "org.bluez.SerialProxyManager",
-        "methods": [
-          "CreateProxy",
-          "ListProxies",
-          "RemoveProxy"
-        ],
-        "signals": [
-          "ProxyCreated",
-          "ProxyRemoved"
-        ]
-      },
-      {
-        "interface": "org.bluez.Service",
-        "methods": [
-          "AddRecord",
-          "CancelAuthorization",
-          "RemoveRecord",
-          "RequestAuthorization",
-          "UpdateRecord"
-        ],
-        "signals": []
-      },
-      {
-        "interface": "org.bluez.TelephonyTest",
-        "methods": [
-          "BatteryLevel",
-          "CancelCall",
-          "IncomingCall",
-          "OutgoingCall",
-          "RegistrationStatus",
-          "RoamingStatus",
-          "SetSubscriberNumber",
-          "SignalStrength"
-        ],
-        "signals": [
-          "VoiceDial"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.DBus.Introspectable",
-        "methods": [
-          "Introspect"
-        ],
-        "signals": []
-      }
-    ]
-  },
-  {
     "Object_name": "org.chromium.Cashew",
     "interfaces": [
       {
@@ -212,24 +90,66 @@
     ]
   },
   {
+    "Object_name": "org.chromium.CrosDisks",
+    "interfaces": [
+      {
+        "interface": "org.chromium.CrosDisks",
+        "methods": [
+          "EnumerateAutoMountableDevices",
+          "EnumerateDevices",
+          "FilesystemMount",
+          "FilesystemUnmount",
+          "GetDeviceProperties",
+          "IsAlive"
+        ],
+        "signals": [
+          "DeviceAdded",
+          "DeviceRemoved",
+          "DeviceChanged"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ],
+        "signals": []
+      }
+    ]
+  },
+  {
     "Object_name": "org.chromium.Cryptohome",
     "interfaces": [
       {
         "interface": "org.chromium.CryptohomeInterface",
         "methods": [
           "AsyncCheckKey",
+          "AsyncDoAutomaticFreeDiskSpaceControl",
           "AsyncMigrateKey",
           "AsyncMount",
           "AsyncMountGuest",
           "AsyncRemove",
           "AsyncRemoveTrackedSubdirectories",
+          "AsyncSetOwnerUser",
+          "AsyncUpdateCurrentUserActivityTimestamp",
           "CheckKey",
+          "DoAutomaticFreeDiskSpaceControl",
           "GetStatusString",
           "GetSystemSalt",
+          "InstallAttributesCount",
+          "InstallAttributesFinalize",
+          "InstallAttributesGet",
+          "InstallAttributesIsFirstInstall",
+          "InstallAttributesIsInvalid",
+          "InstallAttributesIsReady",
+          "InstallAttributesIsSecure",
+          "InstallAttributesSet",
           "IsMounted",
           "MigrateKey",
           "Mount",
           "MountGuest",
+          "Pkcs11GetTpmTokenInfo",
+          "Pkcs11IsTpmTokenReady",
           "Remove",
           "RemoveTrackedSubdirectories",
           "TpmCanAttemptOwnership",
@@ -298,6 +218,7 @@
       {
         "interface": "org.chromium.ModemManager.Modem.Gobi",
         "methods": [
+          "InjectFault",
           "PowerCycle",
           "RequestEvents",
           "SetAutomaticTracking",
@@ -378,7 +299,32 @@
   },
   {
     "Object_name": "org.chromium.PowerManager",
-    "interfaces": []
+    "interfaces": [
+      {
+        "interface": "org.chromium.PowerManager",
+        "methods": [
+          "DecreaseScreenBrightness",
+          "IncreaseScreenBrightness"
+        ],
+        "signals": []
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ],
+        "signals": []
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ],
+        "signals": []
+      }
+    ]
   },
   {
     "Object_name": "org.chromium.SessionManager",
@@ -394,10 +340,12 @@
           "LockScreen",
           "RestartEntd",
           "RestartJob",
+          "RetrievePolicy",
           "RetrieveProperty",
           "SetOwnerKey",
           "StartSession",
           "StopSession",
+          "StorePolicy",
           "StoreProperty",
           "UnlockScreen",
           "Unwhitelist",
@@ -466,9 +414,15 @@
         "interface": "org.chromium.flimflam.Device",
         "methods": [
           "AddIPConfig",
+          "ChangePin",
+          "ClearProperty",
+          "EnterPin",
           "GetProperties",
           "ProposeScan",
-          "SetProperty"
+          "Register",
+          "RequirePin",
+          "SetProperty",
+          "UnblockPin"
         ],
         "signals": [
           "PropertyChanged"
@@ -504,6 +458,9 @@
           "GetVPNService",
           "GetWifiService",
           "ListDebugTags",
+          "PopAnyProfile",
+          "PopProfile",
+          "PushProfile",
           "RegisterAgent",
           "RemoveProfile",
           "RequestScan",
@@ -550,105 +507,11 @@
           "MoveAfter",
           "MoveBefore",
           "Remove",
-          "SetApn",
           "SetProperty"
         ],
         "signals": [
           "PropertyChanged"
         ]
-      }
-    ]
-  },
-  {
-    "Object_name": "org.freedesktop.ConsoleKit",
-    "interfaces": [
-      {
-        "interface": "org.freedesktop.ConsoleKit.Manager",
-        "methods": [
-          "CloseSession",
-          "GetCurrentSession",
-          "GetSeats",
-          "GetSessionForCookie",
-          "GetSessionForUnixProcess",
-          "GetSessions",
-          "GetSessionsForUnixUser",
-          "GetSessionsForUser",
-          "GetSystemIdleHint",
-          "GetSystemIdleSinceHint",
-          "OpenSession",
-          "OpenSessionWithParameters",
-          "Restart",
-          "Stop"
-        ],
-        "signals": [
-          "SystemIdleHintChanged",
-          "SeatRemoved",
-          "SeatAdded"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.ConsoleKit.Seat",
-        "methods": [
-          "ActivateSession",
-          "CanActivateSessions",
-          "GetActiveSession",
-          "GetDevices",
-          "GetId",
-          "GetSessions"
-        ],
-        "signals": [
-          "DeviceRemoved",
-          "DeviceAdded",
-          "SessionRemoved",
-          "SessionAdded",
-          "ActiveSessionChanged"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.ConsoleKit.Session",
-        "methods": [
-          "Activate",
-          "GetCreationTime",
-          "GetDisplayDevice",
-          "GetId",
-          "GetIdleHint",
-          "GetIdleSinceHint",
-          "GetLoginSessionId",
-          "GetRemoteHostName",
-          "GetSeatId",
-          "GetSessionType",
-          "GetUnixUser",
-          "GetUser",
-          "GetX11Display",
-          "GetX11DisplayDevice",
-          "IsActive",
-          "IsLocal",
-          "Lock",
-          "SetIdleHint",
-          "Unlock"
-        ],
-        "signals": [
-          "Unlock",
-          "Lock",
-          "IdleHintChanged",
-          "ActiveChanged"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.DBus.Introspectable",
-        "methods": [
-          "Introspect"
-        ],
-        "signals": []
-      },
-      {
-        "interface": "org.freedesktop.DBus.Properties",
-        "methods": [
-          "Get",
-          "GetAll",
-          "Set"
-        ],
-        "signals": []
       }
     ]
   },
@@ -792,6 +655,37 @@
         "signals": [
           "DataChanged",
           "TotalChanged"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.ModemManager",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ],
+        "signals": []
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ],
+        "signals": []
+      },
+      {
+        "interface": "org.freedesktop.ModemManager",
+        "methods": [
+          "EnumerateDevices"
+        ],
+        "signals": [
+          "DeviceRemoved",
+          "DeviceAdded"
         ]
       }
     ]

@@ -45,68 +45,6 @@
     ]
   },
   {
-    "Object_name": "org.bluez",
-    "interfaces": [
-      {
-        "interface": "org.bluez.Adapter",
-        "methods": [],
-        "signals": [
-          "PropertyChanged",
-          "DeviceCreated",
-          "DeviceRemoved",
-          "DeviceFound",
-          "DeviceDisappeared"
-        ]
-      },
-      {
-        "interface": "org.bluez.Manager",
-        "methods": [],
-        "signals": [
-          "PropertyChanged",
-          "AdapterAdded",
-          "AdapterRemoved",
-          "DefaultAdapterChanged"
-        ]
-      },
-      {
-        "interface": "org.bluez.NetworkHub",
-        "methods": [],
-        "signals": [
-          "PropertyChanged"
-        ]
-      },
-      {
-        "interface": "org.bluez.NetworkPeer",
-        "methods": [],
-        "signals": [
-          "PropertyChanged"
-        ]
-      },
-      {
-        "interface": "org.bluez.NetworkRouter",
-        "methods": [],
-        "signals": [
-          "PropertyChanged"
-        ]
-      },
-      {
-        "interface": "org.bluez.SerialProxyManager",
-        "methods": [],
-        "signals": [
-          "ProxyCreated",
-          "ProxyRemoved"
-        ]
-      },
-      {
-        "interface": "org.bluez.TelephonyTest",
-        "methods": [],
-        "signals": [
-          "VoiceDial"
-        ]
-      }
-    ]
-  },
-  {
     "Object_name": "org.chromium.Cashew",
     "interfaces": [
       {
@@ -118,6 +56,34 @@
         ],
         "signals": [
           "DataPlansUpdate"
+        ]
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ],
+        "signals": []
+      }
+    ]
+  },
+  {
+    "Object_name": "org.chromium.CrosDisks",
+    "interfaces": [
+      {
+        "interface": "org.chromium.CrosDisks",
+        "methods": [
+          "EnumerateAutoMountableDevices",
+          "EnumerateDevices",
+          "FilesystemMount",
+          "FilesystemUnmount",
+          "GetDeviceProperties",
+          "IsAlive"
+        ],
+        "signals": [
+          "DeviceAdded",
+          "DeviceRemoved",
+          "DeviceChanged"
         ]
       },
       {
@@ -176,6 +142,7 @@
       {
         "interface": "org.chromium.ModemManager.Modem.Gobi",
         "methods": [
+          "InjectFault",
           "PowerCycle",
           "RequestEvents",
           "SetAutomaticTracking",
@@ -255,6 +222,35 @@
     ]
   },
   {
+    "Object_name": "org.chromium.PowerManager",
+    "interfaces": [
+      {
+        "interface": "org.chromium.PowerManager",
+        "methods": [
+          "DecreaseScreenBrightness",
+          "IncreaseScreenBrightness"
+        ],
+        "signals": []
+      },
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ],
+        "signals": []
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ],
+        "signals": []
+      }
+    ]
+  },
+  {
     "Object_name": "org.chromium.SessionManager",
     "interfaces": [
       {
@@ -322,41 +318,6 @@
         "methods": [],
         "signals": [
           "PropertyChanged"
-        ]
-      }
-    ]
-  },
-  {
-    "Object_name": "org.freedesktop.ConsoleKit",
-    "interfaces": [
-      {
-        "interface": "org.freedesktop.ConsoleKit.Manager",
-        "methods": [],
-        "signals": [
-          "SystemIdleHintChanged",
-          "SeatRemoved",
-          "SeatAdded"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.ConsoleKit.Seat",
-        "methods": [],
-        "signals": [
-          "DeviceRemoved",
-          "DeviceAdded",
-          "SessionRemoved",
-          "SessionAdded",
-          "ActiveSessionChanged"
-        ]
-      },
-      {
-        "interface": "org.freedesktop.ConsoleKit.Session",
-        "methods": [],
-        "signals": [
-          "Unlock",
-          "Lock",
-          "IdleHintChanged",
-          "ActiveChanged"
         ]
       }
     ]
@@ -475,6 +436,37 @@
         "signals": [
           "DataChanged",
           "TotalChanged"
+        ]
+      }
+    ]
+  },
+  {
+    "Object_name": "org.freedesktop.ModemManager",
+    "interfaces": [
+      {
+        "interface": "org.freedesktop.DBus.Introspectable",
+        "methods": [
+          "Introspect"
+        ],
+        "signals": []
+      },
+      {
+        "interface": "org.freedesktop.DBus.Properties",
+        "methods": [
+          "Get",
+          "GetAll",
+          "Set"
+        ],
+        "signals": []
+      },
+      {
+        "interface": "org.freedesktop.ModemManager",
+        "methods": [
+          "EnumerateDevices"
+        ],
+        "signals": [
+          "DeviceRemoved",
+          "DeviceAdded"
         ]
       }
     ]
