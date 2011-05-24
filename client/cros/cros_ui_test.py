@@ -95,7 +95,7 @@ class UITest(test.test):
                 logging.debug("Using local DNS for " + interface)
 
         utils.poll_for_condition(
-            lambda: self.__attempt_resolve('www.google.com', '127.0.0.1'),
+            lambda: self.__attempt_resolve('www.google.com.', '127.0.0.1'),
             login.TimeoutError('Timed out waiting for DNS changes.'),
             timeout=10)
 
@@ -117,7 +117,7 @@ class UITest(test.test):
                     logging.debug("No stored DNS for " + interface)
 
         utils.poll_for_condition(
-            lambda: self.__attempt_resolve('www.google.com',
+            lambda: self.__attempt_resolve('www.google.com.',
                                            '127.0.0.1',
                                            expected=False),
             login.TimeoutError('Timed out waiting to revert DNS.'),
