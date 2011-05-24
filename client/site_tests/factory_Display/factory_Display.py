@@ -61,23 +61,27 @@ def pattern_cb_grid(widget, event, color=None):
     return False
 
 
-def pattern_vgrad(widget, event, level, color=None):
+def pattern_vgrad(widget, event, level_list, color=None):
     dr = widget.window
     xmax, ymax = dr.get_size()
     gc = gtk.gdk.GC(dr)
     red = green = blue = 0
-    for x in range(0, xmax - 1, xmax / level):
-        i = 65535 / xmax * x
-        if color == ful.RED:
-            red = i
-        elif color == ful.GREEN:
-            green = i
-        elif color == ful.BLUE:
-            blue = i
-        else:
-            red = green = blue = i
-        gc.set_rgb_fg_color(gtk.gdk.Color(red, green, blue))
-        dr.draw_rectangle(gc, True, x, 0, x + xmax / level, ymax)
+    num_levels = len(level_list)
+    for i, level in enumerate(level_list):
+        ystart = (ymax * i) / num_levels
+        yend = ((ymax * (i+1)) / num_levels)
+        for x in range(0, xmax - 1, xmax / level):
+            i = 65535 / xmax * x
+            if color == ful.RED:
+                red = i
+            elif color == ful.GREEN:
+                green = i
+            elif color == ful.BLUE:
+                blue = i
+            else:
+                red = green = blue = i
+            gc.set_rgb_fg_color(gtk.gdk.Color(red, green, blue))
+            dr.draw_rectangle(gc, True, x, ystart, x + xmax / level, yend)
     return False
 
 
@@ -98,6 +102,7 @@ def pattern_full_rect(widget, event):
     dr.draw_line(gc, 0, ymax, 0, 0)
     return False
 
+_GRAD_LEVELS = [ 16, 64, 256 ]
 
 _PATTERN_LIST = [
     ('solid red', lambda *x: pattern_cb_solid(*x, **{'color':ful.RED})),
@@ -109,13 +114,17 @@ _PATTERN_LIST = [
     ('solid black', lambda *x: pattern_cb_solid(*x, **{'color':ful.BLACK})),
     ('grid', lambda *x: pattern_cb_grid(*x, **{'color':ful.WHITE})),
     ('rectangle', lambda *x: pattern_full_rect(*x)),
-    ('grad red', lambda *x: pattern_vgrad(*x, **{'level':16, 'color':ful.RED})),
+    ('grad red', lambda *x: pattern_vgrad(*x, **{'level_list':_GRAD_LEVELS,
+                                                 'color':ful.RED})),
     ('grad green', lambda *x: pattern_vgrad(*x,
-                                            **{'level':16, 'color':ful.GREEN})),
+                                            **{'level_list':_GRAD_LEVELS,
+                                               'color':ful.GREEN})),
     ('grad blue', lambda *x: pattern_vgrad(*x,
-                                           **{'level':16, 'color':ful.BLUE})),
+                                           **{'level_list':_GRAD_LEVELS,
+                                              'color':ful.BLUE})),
     ('grad white', lambda *x: pattern_vgrad(*x,
-                                            **{'level':16, 'color':ful.WHITE}))]
+                                            **{'level_list':_GRAD_LEVELS,
+                                               'color':ful.WHITE}))]
 
 
 class factory_Display(test.test):
