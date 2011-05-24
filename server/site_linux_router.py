@@ -29,6 +29,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.wiredif = params.get('wiredev', "eth0")
         self.cmd_brctl = "/usr/sbin/brctl"
         self.cmd_hostapd = "/usr/sbin/hostapd"
+        self.cmd_hostapd_cli = "/usr/sbin/hostapd_cli"
 
         # Router host.
         self.router = host
@@ -46,7 +47,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             'conf': {
                 'ssid': defssid,
                 'bridge': self.bridgeif,
-                'hw_mode': 'g'
+                'hw_mode': 'g',
+                'ctrl_interface': '/tmp/hostapd-test.control'
             }
         }
         self.station = {
@@ -465,3 +467,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                         (self.cmd_iw, params.get('interface',
                                                  self.hostapd['interface']),
                          params.get('power', 'auto')))
+
+
+    def deauth(self, params):
+        self.router.run('%s -p%s deauthenticate %s' %
+                        (self.cmd_hostapd_cli,
+                         self.hostapd['conf']['ctrl_interface'],
+                         params['client']))

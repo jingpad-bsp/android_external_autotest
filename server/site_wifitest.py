@@ -167,6 +167,8 @@ class WiFiTest(object):
         # interface name on client
         self.client_wlanif = client.get('wlandev',
                                         self.__get_wlan_devs(self.client)[0])
+        self.client.wlan_mac = self.__get_interface_mac(self.client,
+                                                        self.client_wlanif)
 
         # Synchronize time on all devices
         self.time_sync([])
@@ -225,6 +227,9 @@ class WiFiTest(object):
         self.client_cmd_iperf = self.__must_be_installed(self.client,
                                         client.get('cmd_iperf_client',
                                             '/usr/local/bin/iperf'))
+        self.client_cmd_ip = self.__must_be_installed(self.client,
+                                        client.get('cmd_ip',
+                                            '/usr/local/sbin/ip'))
         self.client_cmd_iptables = '/sbin/iptables'
         self.client_cmd_flimflam_lib = client.get('flimflam_lib',
                                                   '/usr/local/lib/flimflam')
@@ -242,6 +247,14 @@ class WiFiTest(object):
                 ret.append(current_if)
         logging.info("Found wireless interfaces %s" % str(ret))
         return ret
+
+
+    def __get_interface_mac(self, host, ifname):
+        result = host.run("%s link show %s" % (self.client_cmd_ip, ifname))
+        macmatch = re.search("link/ether (\S*)", result.stdout)
+        if macmatch is not None:
+            return macmatch.group(1)
+        return None
 
 
     def __server_discover_commands(self, server):
@@ -1427,6 +1440,9 @@ class WiFiTest(object):
 
         if "perf" in params:
             self.write_perf({params['perf']:float(result.stdout)})
+
+    def client_deauth(self, params):
+        self.wifi.deauth({'client': self.client.wlan_mac})
 
 
 class HelperThread(threading.Thread):

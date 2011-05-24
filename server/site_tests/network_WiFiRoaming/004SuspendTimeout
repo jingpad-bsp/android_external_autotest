@@ -19,12 +19,19 @@
     [ "client_ping",    { "count":"10" } ],
 
     # Put the system to sleep for 20 seconds
-    [ "client_suspend", { "suspend_time": "20" } ],
+    [ "client_suspend_bg", { "suspend_time": "20" } ],
 
-    # The AP should have given up on the DUT. If the DUT realizes this
-    # (what we're testing), then it can reassociate and this will
-    # succeed. If it doesn't realze it, we'll assume we're still
-    # associated and the ping will fail.
+    # Wait for DUT to go to sleep
+    [ "sleep",          { "time":"15" } ],
+
+    # Deauth the DUT while it sleeps
+    [ "client_deauth",  { } ],
+
+    # Wait for DUT to wake up
+    [ "client_suspend_end",  { } ],
+
+    # If the DUT realizes that it has been deauthed, then it should
+    # reassociate quickly and the ping below should succeeed.
     [ "client_ping",    { "count":"10" } ],
 
     # Pull some time differences out of the logs
