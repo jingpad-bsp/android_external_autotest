@@ -21,28 +21,34 @@ This template builds a single plot on a single page for a zoomed-in view.
   // draws them.
   function drawCharts() {
     var chart = new google.visualization.LineChart(
-        document.getElementById('{{ tpl_chart.test_name }}-{{ tpl_chart.test_key }}'));
+        document.getElementById('{{ tpl_chart.test_name }}'));
     var json_data = new google.visualization.DataTable(
         {% autoescape off %}{{ tpl_chart.gviz_data_table }}{% endautoescape %}, 0.5);
     {% block add_listener %}{% endblock %}
     chart.draw(
         json_data,
-        {colors: ['{{ tpl_colors|random }}'],
-         hAxis: {
+        {hAxis: {
             slantedText: true,
             slantedTextAngle: 90,
             textStyle: {fontSize: 10}},
-         height: {{ tpl_params.height|default:480 }},
+         height: {{ tpl_params.height|default:600 }},
+         interpolateNulls: true,
          is3D: true,
          pointSize: 3,
+    {% ifequal tpl_chart.test_keys|length 1 %}
+         colors: ['{{ tpl_colors|random }}'],
          legend: 'none',
-         title: '{{ tpl_chart.test_name }} - {{ tpl_chart.test_key }}',
+         title: '{{ tpl_chart.test_name }} - {{ tpl_chart.test_keys.0 }}',
+    {% else %}
+         legendTextStyle: {fontSize: 10},
+         title: '{{ tpl_chart.test_name }}',
+    {% endifequal %}
          titlePosition: 'out',
-         width: {{ tpl_params.width|default:640 }}});
+         width: {{ tpl_params.width|default:800 }}});
   }
 </script>
 <center>
-<span id="{{ tpl_chart.test_name }}-{{ tpl_chart.test_key }}"></span>
+<span id="{{ tpl_chart.test_name }}"></span>
 </center>
 {% block add_iframe %}{% endblock %}
 {% endblock %}

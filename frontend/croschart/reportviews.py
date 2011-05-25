@@ -22,6 +22,7 @@ import simplejson
 
 from django.shortcuts import render_to_response
 
+import autotest_lib.frontend.croschart.chartutils as chartutils
 from autotest_lib.frontend.croschart.charterrors import ChartInputError
 
 
@@ -45,10 +46,10 @@ def PlotReport(request, template_file):
   test_key_tuples = request.GET.getlist('testkey')
   if test_key_tuples:
     for t in test_key_tuples:
-      test_name, test_key = t.split(FIELD_SEPARATOR)
-      if not test_key:
+      test_name, test_keys = chartutils.GetTestNameKeys(t)
+      if not test_keys:
         raise ChartInputError('testkey must be a test,key pair.')
-      tpl_charts.append((test_name, test_key))
+      tpl_charts.append((test_name, FIELD_SEPARATOR.join(test_keys)))
   else:
     tpl_charts = simplejson.load(open(os.path.join(
         os.path.abspath(os.path.dirname(__file__)),

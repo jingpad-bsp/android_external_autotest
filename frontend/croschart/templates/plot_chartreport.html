@@ -10,7 +10,7 @@ This template builds a page with multiple plots in frames.
 <h3><center>{{ tpl_params.board }} - {{ tpl_params.system }}</center></h3>
 <div>
 <center>
-{% for test_name, test_key in tpl_charts %}
+{% for test_name, test_keys in tpl_charts %}
   {% ifchanged %}
   <a href="#{{ test_name }}">{{ test_name }}</a>
   &nbsp;|&nbsp;
@@ -21,15 +21,15 @@ This template builds a page with multiple plots in frames.
 </div>
 {% endblock %}
 {% block html_block %}
-{% for test_name, test_key in tpl_charts %}
+{% for test_name, test_keys in tpl_charts %}
 {% ifchanged %}
 <hr><center><a name="{{ test_name }}"><strong>{{ test_name }}</strong></a><center>
 {% endifchanged %}
-<iframe width="{{ tpl_params.width|default:'640'|add:'20' }}"
-        height="{{ tpl_params.height|default:'480'|add:'20' }}"
+<iframe width="{{ tpl_params.width|default:'800'|add:'20' }}"
+        height="{{ tpl_params.height|default:'600'|add:'20' }}"
         frameborder="0"
         {% autoescape off %}
-        src="/croschart/server/chart?testkey={{ test_name }},{{ test_key }}&{{ tpl_chart_url }}">
+        src="/croschart/server/chart?testkey={{ test_name }},{{ test_keys }}&{{ tpl_chart_url }}">
         {% endautoescape %}
 </iframe>
 {% endfor %}

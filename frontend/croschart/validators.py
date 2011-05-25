@@ -25,7 +25,7 @@ BUILD_PATTERN = re.compile('([\d]+\.[\d]+\.[\d]+\.[\d]+$)')
 DATE_PATTERN = re.compile('([\d]{4}-[\d]{1,2}-[\d]{1,2}$)')
 DIM_PATTERN = re.compile('([\d]+$)')
 INTERVAL_PATTERN = re.compile('([\d]+\,(?i)(day|week|month)$)')
-TESTKEY_PATTERN = re.compile('([\w\.]+,[\w\.]+$)')
+TESTKEY_PATTERN = re.compile('([\w\.]+,[\w\.\,]+$)')
 
 
 def Validate(request, validator_list):

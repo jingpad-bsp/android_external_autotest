@@ -13,7 +13,7 @@
    3. Data retrieval entry points that are called from views.
 
    Data entry points at this time include:
-   -GetRangedOneKeyByBuildLinechartData(): produce a value by builds data table.
+   -GetRangedKeyByBuildLinechartData(): produce a value by builds data table.
    -GetMultiTestKeyReleaseTableData(): produce a values by 2builds data table.
 """
 
@@ -24,6 +24,7 @@ import simplejson
 
 from autotest_lib.frontend.afe import readonly_connection
 
+import autotest_lib.frontend.croschart.chartutils as chartutils
 from autotest_lib.frontend.croschart.charterrors import ChartDBError
 from autotest_lib.frontend.croschart.charterrors import ChartInputError
 
@@ -52,13 +53,13 @@ WHERE job_name REGEXP %(job_name)s
   AND NOT ISNULL(test_finished_time)
   AND NOT ISNULL(job_finished_time)"""
 
-CHART_SELECT_KEYS = 'job_name, job_tag, iteration_value'
+CHART_SELECT_KEYS = 'job_name, job_tag, iteration_key, iteration_value'
 RELEASE_SELECT_KEYS = """
 job_name, job_tag, test_name, iteration_key, iteration_value"""
 
 CHART_QUERY_KEYS = """
   AND test_name = '%(test_name)s'
-  AND iteration_key = '%(test_key)s'"""
+  AND iteration_key in ('%(test_keys)s')"""
 
 RELEASEREPORT_QUERY_KEYS = """
   AND test_name in ('%(test_names)s')
@@ -81,14 +82,14 @@ def GetBaseQueryParts(request):
 
   boards = '|'.join(request.GET.getlist('board'))
   platform = 'netbook_%s' % request.GET.get('system').upper()
-  test_name, test_key = request.GET.get('testkey').split(FIELD_SEPARATOR)
+  test_name, test_keys = chartutils.GetTestNameKeys(request.GET.get('testkey'))
 
   query_parameters = {}
   query_parameters['select_keys'] = CHART_SELECT_KEYS
   query_parameters['job_name'] = (COMMON_REGEXP % boards)
   query_parameters['platform'] = platform
   query_parameters['test_name'] = test_name
-  query_parameters['test_key'] = test_key
+  query_parameters['test_keys'] = "','".join(test_keys)
 
   return query, query_parameters
 
@@ -175,11 +176,11 @@ def GetReleaseQueryParts(request):
         os.path.abspath(os.path.dirname(__file__)),
         'crosrelease_defaults.json')))
   for t in test_key_tuples:
-    test_name, test_key = t.split(FIELD_SEPARATOR)
-    if not test_key:
+    test_name, test_key = chartutils.GetTestNameKeys(t)
+    if not test_key or len(test_key) > 1:
       raise ChartInputError('testkey must be a test,key pair.')
     test_names.add(test_name)
-    test_keys.add(test_key)
+    test_keys.add(test_key[0])
 
   from_build = request.GET.get('from_build')
   to_build = request.GET.get('to_build')
@@ -263,49 +264,60 @@ def BuildNumberCmp(build_number1, build_number2):
 
 ###############################################################################
 # Models
-def GetOneKeyByBuildLinechartData(test_key, query, query_order=DEFAULT_ORDER):
+def GetKeysByBuildLinechartData(test_name, test_keys, query,
+                                query_order=DEFAULT_ORDER):
   """Prepare and run the db query and massage the results."""
 
-  def AggregateBuilds(test_key, data_list):
+  def AggregateBuilds(test_keys, data_list):
     """Groups and averages data by build and extracts job_tags."""
+    # raw_dict
+    #   build
+    #     test_key: values
     raw_dict = {}  # unsummarized data
     builds_inorder = []  # summarized data
-    job_tags = []  # for click-through to data
-    # Organize the returned data by build.
-    # Keep the builds in date order and check build name format.
-    for build, tag, test_value in data_list:
+    job_tags = []
+
+    # Aggregate all the data values by test_name, test_key, build.
+    for build, tag, test_key, test_value in data_list:
       build = AbbreviateBuild(build)
       if not build in raw_dict:
         builds_inorder.append({'build': build})
         job_tags.append(tag)
-      value_list = raw_dict.setdefault(build, [])
+      key_dict = raw_dict.setdefault(build, {})
+      value_list = key_dict.setdefault(test_key, [])
       value_list.append(test_value)
-    if not builds_inorder:
+    if not raw_dict:
       raise ChartDBError('No data returned')
-    # Now avg data by build and key. This is the format used by gviz.
-    for build_dict in builds_inorder:
-      value_list = raw_dict[build_dict['build']]
-      build_dict[test_key] = round(sum(value_list, 0.0) / len(value_list), 2)
+    # Now calculate averages.
+    for data_dict in builds_inorder:
+      build_dict = raw_dict[data_dict['build']]
+      for test_key, value_list in build_dict.iteritems():
+        avg = round(sum(value_list, 0.0) / len(value_list), 2)
+        data_dict[test_key] = avg
     return job_tags, builds_inorder
 
-  def ToGVizJsonTable(test_key, builds_inorder):
+  def ToGVizJsonTable(test_keys, table_data):
     """Massage data into gviz data table in proper order."""
     # Now format for gviz table.
-    gviz_data_table = gviz_api.DataTable({'build': ('string', 'Build'),
-                                          test_key: ('number', test_key)})
-    gviz_data_table.LoadData(builds_inorder)
-    gviz_data_table = gviz_data_table.ToJSon(['build', test_key])
+    description = {'build': ('string', 'Build')}
+    keys_in_order = ['build']
+    for test_key in test_keys:
+      description[test_key] = ('number', test_key)
+      keys_in_order.append(test_key)
+    gviz_data_table = gviz_api.DataTable(description)
+    gviz_data_table.LoadData(table_data)
+    gviz_data_table = gviz_data_table.ToJSon(keys_in_order)
     return gviz_data_table
 
   # Now massage the returned data into a gviz data table.
   cursor = readonly_connection.connection().cursor()
   cursor.execute('%s %s' % (query, query_order))
-  job_tags, build_data = AggregateBuilds(test_key, cursor.fetchall())
-  gviz_data_table = ToGVizJsonTable(test_key, build_data)
+  job_tags, build_data = AggregateBuilds(test_keys, cursor.fetchall())
+  gviz_data_table = ToGVizJsonTable(test_keys, build_data)
   return {'gviz_data_table': gviz_data_table, 'job_tags': job_tags}
 
 
-def GetRangedOneKeyByBuildLinechartData(request):
+def GetRangedKeyByBuildLinechartData(request):
   """Assemble the proper query and order."""
 
   ranged_queries = {'from_build': GetBuildRangedChartQuery,
@@ -319,10 +331,11 @@ def GetRangedOneKeyByBuildLinechartData(request):
   if not range_key:
     raise ChartInputError('One interval-type parameter must be supplied.')
   query_list.append(ranged_queries[range_key](request))
-  test_name, test_key = request.GET.get('testkey').split(FIELD_SEPARATOR)
-  data_dict = GetOneKeyByBuildLinechartData(test_key, ' '.join(query_list))
+  test_name, test_keys = chartutils.GetTestNameKeys(request.GET.get('testkey'))
+  data_dict = GetKeysByBuildLinechartData(test_name, test_keys,
+                                          ' '.join(query_list))
   # Added for chart labeling.
-  data_dict.update({'test_name': test_name, 'test_key': test_key})
+  data_dict.update({'test_name': test_name, 'test_keys': test_keys})
   return data_dict
 
 
@@ -377,9 +390,15 @@ def GetMultiTestKeyReleaseTableData(query, query_order=RELEASE_ORDER,
 
   def AggregateBuilds(lowhigh, data_list):
     """Groups and averages data by build and extracts job_tags."""
+    # Aggregate all the data values.
+    # raw_dict
+    #   test_name
+    #     test_key
+    #       build
+    #         'tag'
+    #         'values'
     raw_dict = {}  # unsummarized data
     builds = set()
-    # Aggregate all the data values by test_name, test_key, build.
     for build, tag, test_name, test_key, test_value in data_list:
       key_dict = raw_dict.setdefault(test_name, {})
       build_dict = key_dict.setdefault(test_key, {})
@@ -394,7 +413,7 @@ def GetMultiTestKeyReleaseTableData(query, query_order=RELEASE_ORDER,
     if len(builds) < 2:
       raise ChartDBError(
           'Release report expected 2 builds and found %s builds.' % len(builds))
-    # Now append summary dict entries of the data for gviz.
+    # Now calculate averages, diff and acquire indicators.
     builds = sorted(builds, cmp=BuildNumberCmp)
     build_data = []
     for test_name, key_dict in raw_dict.iteritems():

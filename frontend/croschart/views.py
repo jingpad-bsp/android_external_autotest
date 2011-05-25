@@ -59,7 +59,7 @@ def PlotChart(request):
     salt = ValidateParameters(request, VLISTS['chart'])
     return chartviews.PlotChart(
         request, 'plot_chart.html',
-        chartmodels.GetRangedOneKeyByBuildLinechartData, salt)
+        chartmodels.GetRangedKeyByBuildLinechartData, salt)
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())
@@ -71,7 +71,7 @@ def PlotChartDiff(request):
     salt = ValidateParameters(request, VLISTS['chart'])
     return chartviews.PlotChart(
         request, 'plot_chartdiff.html',
-        chartmodels.GetRangedOneKeyByBuildLinechartData, salt)
+        chartmodels.GetRangedKeyByBuildLinechartData, salt)
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())
