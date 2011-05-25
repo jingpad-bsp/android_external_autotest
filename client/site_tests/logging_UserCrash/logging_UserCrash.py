@@ -170,6 +170,11 @@ class logging_UserCrash(crash_test.CrashTest):
                              crasher_path=None):
         """Runs the crasher process.
 
+        Will wait up to 5 seconds for crash_reporter to report the crash.
+        crash_reporter_caught will be marked as true when the "Received crash
+        notification message..." appears. While associated logs are likely to be
+        available at this point, the function does not guarantee this.
+
         Args:
           username: runs as given user
           extra_args: additional parameters to pass to crasher process
@@ -181,7 +186,7 @@ class logging_UserCrash(crash_test.CrashTest):
             crash_reporter_caught: did crash_reporter catch a segv
             output: stderr/stdout output of the crasher process
         """
-        if crasher_path is None: crasher_path=self._crasher_path
+        if crasher_path is None: crasher_path = self._crasher_path
         self.enable_crash_filtering(os.path.basename(crasher_path))
 
         if username != 'root':
@@ -225,11 +230,18 @@ class logging_UserCrash(crash_test.CrashTest):
                                  ignore_status=True) != 0,
             timeout=10,
             exception=error.TestError(
-              'Timeout waiting for crash_reporter to finish: ' +
-              self._log_reader.get_logs()))
+                'Timeout waiting for crash_reporter to finish: ' +
+                self._log_reader.get_logs()))
 
         logging.debug('crash_reporter_caught message: ' + expected_message)
-        is_caught = self._log_reader.can_find(expected_message)
+        is_caught = False
+        try:
+            utils.poll_for_condition(
+                lambda: self._log_reader.can_find(expected_message),
+                timeout=5)
+            is_caught = True
+        except utils.TimeoutError:
+            pass
 
         result = {'crashed': crasher.returncode == expected_result,
                   'crash_reporter_caught': is_caught,
@@ -311,7 +323,7 @@ class logging_UserCrash(crash_test.CrashTest):
                                          crasher_path=None):
         self._log_reader.set_start_by_current()
 
-        if crasher_path is None: crasher_path=self._crasher_path
+        if crasher_path is None: crasher_path = self._crasher_path
         result = self._run_crasher_process(username, cause_crash=cause_crash,
                                            consent=consent,
                                            crasher_path=crasher_path)
@@ -674,8 +686,8 @@ class logging_UserCrash(crash_test.CrashTest):
         # Run the test once without re-initializing
         # to catch problems with the default crash reporting setup
         self.run_crash_tests(['reporter_startup'],
-                              initialize_crash_reporter = False,
-                              must_run_all = False)
+                              initialize_crash_reporter=False,
+                              must_run_all=False)
 
         self.run_crash_tests(['reporter_startup',
                               'reporter_shutdown',
@@ -692,4 +704,4 @@ class logging_UserCrash(crash_test.CrashTest):
                               'crash_log_infinite_recursion',
                               'core_file_persists_in_debug',
                               'core_file_removed_in_production'],
-                              initialize_crash_reporter = True)
+                              initialize_crash_reporter=True)
