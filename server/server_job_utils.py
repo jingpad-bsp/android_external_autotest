@@ -92,12 +92,12 @@ class test_item(object):
         if 'reboot_before' in self.pre_post:
             client_at.host.reboot()
 
-        client_at.run_test(self.test_name,
-                           results_dir=work_dir,
-                           **self.test_args)
-
-        if 'reboot_after' in self.pre_post:
-            client_at.host.reboot()
+        try:
+            client_at.run_test(self.test_name, results_dir=work_dir,
+                               **self.test_args)
+        finally:
+            if 'reboot_after' in self.pre_post:
+                client_at.host.reboot()
 
 
 class machine_worker(threading.Thread):
@@ -217,8 +217,10 @@ class machine_worker(threading.Thread):
             logging.info('%s running %s', self._machine, active_test)
             try:
                 active_test.run_test(self._client_at, self._results_dir)
-            except (error.AutoservError, error.AutotestError):
-                logging.exception('Error running test "%s".', active_test)
+            except error.AutoservError:
+                logging.exception('Autoserv error running "%s".', active_test)
+            except error.AutotestError:
+                logging.exception('Autotest error running  "%s".', active_test)
             except Exception:
                 logging.exception('Exception running test "%s".', active_test)
                 raise
