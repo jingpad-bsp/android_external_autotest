@@ -135,6 +135,11 @@ class platform_ToolchainOptions(test.test):
 
         For missing compiler options, print the files.
         """
+
+        # arm arch doesn't have hardened.
+        if utils.get_cpu_arch() == "arm":
+          return
+
         option_sets = []
 
         libc_glob = "/lib/libc-[0-9]*"
