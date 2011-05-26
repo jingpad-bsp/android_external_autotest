@@ -155,18 +155,15 @@ class WiFiTest(object):
         self.client_netdump_thread = None
         self.__client_discover_commands(client)
 
-        self.test_profile = {'name':'test'}
-        # cleanup in case a previous failure left the profile around
-        self.profile_remove(self.test_profile, ignore_status=True)
-        self.profile_create(self.test_profile)
-        self.profile_push(self.test_profile)
-
         self.firewall_rules = []
         self.host_route_args = {}
 
         # interface name on client
-        self.client_wlanif = client.get('wlandev',
-                                        self.__get_wlan_devs(self.client)[0])
+        devs = self.__get_wlan_devs(self.client)
+        if len(devs) == 0:
+            raise error.TestFail('No wlan devices found on %s' %
+                (client['addr'])
+        self.client_wlanif = client.get('wlandev', devs[0])
         self.client.wlan_mac = self.__get_interface_mac(self.client,
                                                         self.client_wlanif)
 
@@ -190,6 +187,14 @@ class WiFiTest(object):
             self.__add_hook('config', self.wifi.start_capture)
         if 'router_capture_all' in self.run_options:
             self.__add_hook('config', self.netdump_start)
+
+        # NB: do last so code above doesn't need to cleanup on failure
+        self.test_profile = {'name':'test'}
+        # cleanup in case a previous failure left the profile around
+        self.profile_pop(self.test_profile, ignore_status=True)
+        self.profile_remove(self.test_profile, ignore_status=True)
+        self.profile_create(self.test_profile)
+        self.profile_push(self.test_profile)
 
 
     def cleanup(self, params):
@@ -1205,16 +1210,18 @@ class WiFiTest(object):
         self.client.run('%s/test/push-profile %s' %
                         (self.client_cmd_flimflam_lib, params['name']))
 
-    def profile_pop(self, params):
+    def profile_pop(self, params, ignore_status=False):
         """ Pop the specified profile from the stack or any profile
             if no name is specified.
         """
         if 'name' in params:
             self.client.run('%s/test/pop-profile %s' %
-                            (self.client_cmd_flimflam_lib, params['name']))
+                            (self.client_cmd_flimflam_lib, params['name']),
+                            ignore_status=ignore_status)
         else:
             self.client.run('%s/test/pop-profile' %
-                            (self.client_cmd_flimflam_lib))
+                            (self.client_cmd_flimflam_lib),
+                            ignore_status=ignore_status)
 
 
     def __get_wifi_device_path(self):
