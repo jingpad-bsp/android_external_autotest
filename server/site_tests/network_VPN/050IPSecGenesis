@@ -26,7 +26,7 @@
     # kills any previously running server.
     #
     [ "vpn_server_config", {
-                "kind" : "l2tpipsec",
+                "kind" : "l2tpipsec-psk",
                 "replacements" : { "@plutodebug@" : "all" }}],
 
     #  Launch the VPN Client.

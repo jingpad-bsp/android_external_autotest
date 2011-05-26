@@ -1372,6 +1372,8 @@ class WiFiTest(object):
                   Indicates the kind of VPN which is to be used.
                   Valid values are:
 
+                    l2tpipsec-cert
+                    l2tpipsec-psk
                     openvpn
 
               'vpn-host-ip': optional
@@ -1442,22 +1444,88 @@ class WiFiTest(object):
                                       vpn_host_ip,
                                       password, chapuser, chapsecret))
         elif self.vpn_kind == 'l2tpipsec-cert':
+            label = 'vpn'
+            nss_dir = '/home/chronos/user/.pki/nssdb'
+            ca_nickname = 'test_nickname'
+            libopencryptoki_path = '/usr/lib/opencryptoki/libopencryptoki.so.0'
+            slot_id = '07'
+            user_pin = '111111'
+
             # 'ca_certificate', 'client-certificate' and 'client-key'.
             cert_pathnames = params.get('files', {})
+            der_pathnames = dict(
+                [[k, v + '.der'] for k, v in cert_pathnames.items()])
+
+            # Set up dummy certificate database.
+            self.client.run('cryptohome --action=unmount')
+            self.client.run('rm -rf %s' % nss_dir)
+            self.client.run('mkdir -p %s' % nss_dir)
+            # Create an empty database with no password.
+            self.client.run('echo "\n\n" | nsscertutil '
+                            '-N '
+                            '-d sql:%s' % nss_dir)
+            self.client.run('nsscertutil '
+                            '-A '
+                            ' -t P,, '
+                            ' -n %s '
+                            ' -i %s '
+                            ' -d sql:%s' %
+                            (ca_nickname,
+                             cert_pathnames['ca-certificate'],
+                             nss_dir))
+
+            # Set up pkcs11.
+            self.client.run('rm -rf /home/chronos/user/.tpm')
+            self.client.run('cryptohome --action=pkcs11_init')
+            self.client.run('openssl '
+                            'x509 '
+                            '-in %s '
+                            '-out %s '
+                            '-outform DER' %
+                            (cert_pathnames['client-certificate'],
+                             der_pathnames['client-certificate']))
+            self.client.run('openssl '
+                            'rsa '
+                            '-in %s '
+                            '-out %s '
+                            '-outform DER' %
+                            (cert_pathnames['client-key'],
+                             der_pathnames['client-key']))
+            self.__store_pkcs11_resource(libopencryptoki_path,
+                                         user_pin,
+                                         slot_id,
+                                         label,
+                                         der_pathnames['client-certificate'],
+                                         'cert')
+            self.__store_pkcs11_resource(libopencryptoki_path,
+                                         user_pin,
+                                         slot_id,
+                                         label,
+                                         der_pathnames['client-key'],
+                                         'privkey')
+
             # vpn_host_ip is self.server.ip because that is the
             # adapter that ipsec listens on.
             vpn_host_ip = params.get('vpn-host-ip', self.server.ip)
+            chapuser    = params.get('chapuser'  , None)
+            chapsecret  = params.get('chapsecret', None)
             result = self.client.run('%s/test/connect-vpn '
                                      '--verbose '
                                      'l2tpipsec-cert vpn-name %s vpn-domain '
-                                     '%s '   # ca certificate
-                                     '%s '   # client certificate
-                                     '%s' %  # client key
+                                     '%s '   # CACertNSS
+                                     '0 '    # ClientCertSlot
+                                     '%s '   # ClientCertID
+                                     '%s '   # PIN
+                                     '%s '   # chapuser
+                                     '%s' %  # chapsecret
                                      (self.client_cmd_flimflam_lib,
                                       vpn_host_ip,
-                                      cert_pathnames['ca-certificate'],
-                                      cert_pathnames['client-certificate'],
-                                      cert_pathnames['client-key']))
+                                      ca_nickname,
+                                      slot_id,
+                                      user_pin,
+                                      chapuser,
+                                      chapsecret))
+            self.client.run('pkill pkcsslotd')
         else:
             raise error.TestFail('(internal error): No launch case '
                                  'for VPN kind (%s)' % self.vpn_kind)
@@ -1467,8 +1535,7 @@ class WiFiTest(object):
         if self.vpn_kind is not None:
             if self.vpn_kind == 'openvpn':
                 self.client.run("pkill openvpn")
-            elif (self.vpn_kind == 'l2tpipsec-psk' or
-                  self.vpn_kind == 'l2tpipsec-cert'):
+            elif self.vpn_kind in ('l2tpipsec-psk', 'l2tpipsec-cert'):
                 self.client.run("/usr/sbin/ipsec stop")
             else:
                 raise error.TestFail('(internal error): No kill case '
@@ -1515,7 +1582,6 @@ class WiFiTest(object):
     def client_deauth(self, params):
         self.wifi.deauth({'client': self.client.wlan_mac})
 
-
     def client_reboot(self, params):
         self.client_installed_scripts = {}
         self.client.reboot()
@@ -1523,6 +1589,22 @@ class WiFiTest(object):
         self.profile_remove(self.test_profile, ignore_status=True)
         self.profile_create(self.test_profile)
         self.profile_push(self.test_profile)
+
+    def __store_pkcs11_resource(self, libopencryptoki_path, user_pin, slot_id,
+                                label, der_file_path, resource_type):
+        self.client.run('pkcs11-tool '
+                        '--module=%s '
+                        '--pin %s '
+                        '--id %s '
+                        '--label %s '
+                        '--write-object %s '
+                        '--type %s' %
+                        (libopencryptoki_path,
+                         user_pin,
+                         slot_id,
+                         label,
+                         der_file_path,
+                         resource_type))
 
 
 class HelperThread(threading.Thread):

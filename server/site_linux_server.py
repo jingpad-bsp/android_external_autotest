@@ -61,62 +61,88 @@ class LinuxServer(site_linux_system.LinuxSystem):
                                         self.openvpn_config.iteritems())))
             self.server.run("/usr/sbin/openvpn "
                             "--config /tmp/vpn-server.conf &")
-        elif self.vpn_kind == 'l2tpipsec':
+        elif self.vpn_kind in ('l2tpipsec-psk', 'l2tpipsec-cert'):
+            configs = {
+                "/etc/xl2tpd/xl2tpd.conf" :
+                "[global]\n"
+                "\n"
+                "[lns default]\n"
+                "  ip range = 192.168.1.128-192.168.1.254\n"
+                "  local ip = 192.168.1.99\n"
+                "  require chap = yes\n"
+                "  refuse pap = yes\n"
+                "  require authentication = yes\n"
+                "  name = LinuxVPNserver\n"
+                "  ppp debug = yes\n"
+                "  pppoptfile = /etc/ppp/options.xl2tpd\n"
+                "  length bit = yes\n",
 
-            configs  = { "/etc/ipsec.conf" :
-                         "config setup\n"
-                         "  charonstart=no\n"
-                         "  plutostart=yes\n"
-                         "  plutodebug=%(@plutodebug@)s\n"
-                         "conn L2TP\n"
-                         "  keyexchange=ikev1\n"
-                         "  authby=psk\n"
-                         "  pfs=no\n"
-                         "  rekey=no\n"
-                         "  left=%(@local-listen-ip@)s\n"
-                         "  leftprotoport=17/1701\n"
-                         "  right=%%any\n"
-                         "  rightprotoport=17/%%any\n"
-                         "  auto=add\n",
+                "/etc/xl2tpd/l2tp-secrets" :
+                "*      them    l2tp-secret",
 
-                         "/etc/ipsec.secrets" :
-                         "%(@ipsec-secrets@)s %%any : PSK \"password\"",
+                "/etc/ppp/chap-secrets" :
+                "chapuser        *       chapsecret      *",
 
-                         "/etc/xl2tpd/xl2tpd.conf" :
-                         "[global]\n"
-                         "\n"
-                         "[lns default]\n"
-                         "  ip range = 192.168.1.128-192.168.1.254\n"
-                         "  local ip = 192.168.1.99\n"
-                         "  require chap = yes\n"
-                         "  refuse pap = yes\n"
-                         "  require authentication = yes\n"
-                         "  name = LinuxVPNserver\n"
-                         "  ppp debug = yes\n"
-                         "  pppoptfile = /etc/ppp/options.xl2tpd\n"
-                         "  length bit = yes\n",
+                "/etc/ppp/options.xl2tpd" :
+                "ipcp-accept-local\n"
+                "ipcp-accept-remote\n"
+                "noccp\n"
+                "auth\n"
+                "crtscts\n"
+                "idle 1800\n"
+                "mtu 1410\n"
+                "mru 1410\n"
+                "nodefaultroute\n"
+                "debug\n"
+                "lock\n"
+                "proxyarp\n"
+                "connect-delay 5000\n"
+            }
+            config_choices = {
+              'l2tpipsec-psk': {
+                  "/etc/ipsec.conf" :
+                  "config setup\n"
+                  "  charonstart=no\n"
+                  "  plutostart=yes\n"
+                  "  plutodebug=%(@plutodebug@)s\n"
+                  "conn L2TP\n"
+                  "  keyexchange=ikev1\n"
+                  "  authby=psk\n"
+                  "  pfs=no\n"
+                  "  rekey=no\n"
+                  "  left=%(@local-listen-ip@)s\n"
+                  "  leftprotoport=17/1701\n"
+                  "  right=%%any\n"
+                  "  rightprotoport=17/%%any\n"
+                  "  auto=add\n",
 
-                         "/etc/xl2tpd/l2tp-secrets" :
-                         "*      them    l2tp-secret",
+                  "/etc/ipsec.secrets" :
+                  "%(@ipsec-secrets@)s %%any : PSK \"password\"",
+                },
+                'l2tpipsec-cert': {
+                    "/etc/ipsec.conf" :
+                    "config setup\n"
+                    "  charonstart=no\n"
+                    "  plutostart=yes\n"
+                    "  plutodebug=%(@plutodebug@)s\n"
+                    "conn L2TP\n"
+                    "  keyexchange=ikev1\n"
+                    "  left=%(@local-listen-ip@)s\n"
+                    "  leftcert=server.crt\n"
+                    "  leftid=\"C=US, ST=California, L=Mountain View, "
+                    "CN=chromelab-wifi-testbed-server.mtv.google.com\"\n"
+                    "  leftprotoport=17/1701\n"
+                    "  right=%%any\n"
+                    "  rightca=\"C=US, ST=California, L=Mountain View, "
+                    "CN=chromelab-wifi-testbed-root.mtv.google.com\"\n"
+                    "  rightprotoport=17/%%any\n"
+                    "  auto=add\n"
+                    "  pfs=no\n",
 
-                         "/etc/ppp/chap-secrets" :
-                         "chapuser        *       chapsecret      *",
-
-                         "/etc/ppp/options.xl2tpd" :
-                         "ipcp-accept-local\n"
-                         "ipcp-accept-remote\n"
-                         "noccp\n"
-                         "auth\n"
-                         "crtscts\n"
-                         "idle 1800\n"
-                         "mtu 1410\n"
-                         "mru 1410\n"
-                         "nodefaultroute\n"
-                         "debug\n"
-                         "lock\n"
-                         "proxyarp\n"
-                         "connect-delay 5000\n"
-                }
+                    "/etc/ipsec.secrets" : ": RSA server.key \"\"\n",
+                },
+            }
+            configs.update(config_choices[self.vpn_kind])
 
             replacements = params.get("replacements", {})
             # These two replacements must match up to the same
@@ -141,7 +167,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
         if self.vpn_kind is not None:
             if self.vpn_kind == 'openvpn':
                 self.server.run("pkill /usr/sbin/openvpn")
-            elif self.vpn_kind == 'l2tpipsec':
+            elif self.vpn_kind in ('l2tpipsec-psk', 'l2tpipsec-cert'):
                 self.server.run("/usr/sbin/ipsec stop")
             else:
                 raise error.TestFail('(internal error): No kill case '
