@@ -299,6 +299,8 @@ class power_LoadTest(cros_ui_test.UITest):
                     % self._power_status.battery[0].charge_now)
                 logging.debug('w_energy_rate %f' \
                     % self._power_status.battery[0].energy_rate)
+                logging.debug('v_voltage_now %f' \
+                    % self._power_status.battery[0].voltage_now)
 
             low_battery = (self._percent_current_charge() <
                            self._low_battery_threshold)
