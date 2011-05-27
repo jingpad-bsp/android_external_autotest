@@ -88,7 +88,21 @@ class network_3GSafetyDance(test.test):
             self.device = self.flim.FindElementByPropertySubstring('Device',
                                                                    'Interface',
                                                                    name)
+
+        # Ensure that auto connect is turned off so that flimflam does
+        # not interfere with running the test
+        self.enable()
+        service = self.flim.FindCellularService(timeout=5)
+        service.SetProperty("AutoConnect", dbus.Boolean(0))
+
         logging.info('Seed: %d' % seed)
         random.seed(seed)
-        for _ in xrange(ops):
-            self.op()
+        try:
+            for _ in xrange(ops):
+                self.op()
+        finally:
+            # Re-enable auto connect
+            self.enable()
+            service = self.flim.FindCellularService(timeout=5)
+            if service:
+                service.SetProperty("AutoConnect", dbus.Boolean(1))
