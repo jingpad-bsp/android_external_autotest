@@ -16,7 +16,12 @@ listed here must be capable of running in a virtual machine.
 
 job.run_test('build_RootFilesystemSize')
 job.run_test('desktopui_ChromeFirstRender')
-job.run_test('desktopui_FlashSanityCheck')
+
+# desktopui_FlashSanityCheck is taken out temporarily because it causes
+# Chrome GPU process to crash on VM. See http://crosbug.com/15860.
+# It will be put back once that gets fixed.
+# job.run_test('desktopui_FlashSanityCheck')
+
 job.run_test('desktopui_KillRestart', binary='^chrome$', tag='chrome')
 job.run_test('desktopui_KillRestart', binary='^session_manager$', tag='session')
 job.run_test('logging_CrashSender')
