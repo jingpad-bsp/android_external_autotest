@@ -88,7 +88,7 @@ CHROMEOS_LOCALE_DATABASE = {
     'ia': ('Interlingua', ''),
     'id': ('Indonesian', ''),
     'is': ('Icelandic', ''),
-    'it': ('Italian', ''),
+    'it': ('Italian', 'Europe/Rome'),
     'it-CH': ('Italian (Switzerland)', 'Europe/Zurich'),
     'it-IT': ('Italian (Italy)', 'Europe/Rome'),
     'ja': ('Japanese (Japan)', 'Asia/Tokyo'),
@@ -306,8 +306,8 @@ DEFAULT_REGION_LIST = (
   (None, ),
   ('en-US', 'xkb:us::eng',),
   ('en-GB', 'xkb:gb:extd:eng',),
-  ('fr-FR', 'xkb:fr::fra',),
-  ('de-DE', 'xkb:de::ger',),
+  ('fr',    'xkb:fr::fra',),
+  ('de',    'xkb:de::ger',),
   ('en-US', 'xkb:us:intl:eng', None, '+(International)'),
 
   # Other regions.
@@ -331,7 +331,7 @@ DEFAULT_REGION_LIST = (
   ('hr',    'xkb:hr::scr',),
   ('hu',    'xkb:hu::hun',),
   ('he',    'xkb:il::heb',),
-  ('it-IT', 'xkb:it::ita',),
+  ('it',    'xkb:it::ita',),
   ('ja',    'xkb:jp::jpn',),
   ('ko',    'xkb:kr:kr104:kor', None, '+(101/104 key Compatible)'),
   ('lt',    'xkb:lt::lit',),
