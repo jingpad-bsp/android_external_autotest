@@ -55,7 +55,7 @@ class network_WiFiSmokeTest(test.test):
                 logging.info("FAIL(assoc): ssid %s assoc %3.1f secs props %s",
                     ssid, assoc_time, properties)
                 return 3
-            if status in ["configuration", "ready", "portal", "online"]:
+            if status == "configuration" or status == "ready":
                 break
             time.sleep(.5)
             assoc_time += .5
@@ -69,8 +69,7 @@ class network_WiFiSmokeTest(test.test):
 
         # wait another config_timeout seconds to get an ip address
         config_time = 0
-        connected_states = ["ready", "portal", "online"]
-        if status not in connected_states:
+        if status != "ready":
             while config_time < config_timeout:
                 properties = service.GetProperties()
                 status = properties.get("State", None)
@@ -78,7 +77,7 @@ class network_WiFiSmokeTest(test.test):
                     logging.info("FAIL(config): ssid %s assoc %3.1f config "
 		        "%3.1f secs", ssid, assoc_time, config_time)
                     return 5
-                if status in connected_states:
+                if status == "ready":
                     break
                 time.sleep(.5)
                 config_time += .5

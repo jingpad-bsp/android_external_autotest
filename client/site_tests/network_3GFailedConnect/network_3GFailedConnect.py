@@ -37,7 +37,7 @@ class network_3GFailedConnect(test.test):
 
         state = self.flim.WaitForServiceState(
             service=service,
-            expected_states=["ready", "portal", "online", "failure"],
+            expected_states=["ready", "failure"],
             timeout=config_timeout)[0]
 
         if state != "failure":
