@@ -1,0 +1,76 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Power per-build tests"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+This test suite runs automated power tests that should all pass. These
+tests are run on every build and thefore each test should be short
+and not take more than 5 minutes to run.
+"""
+
+from autotest_lib.server import site_host_attributes
+from autotest_lib.server import site_remote_power
+
+# Tests that should run both on AC and battery power
+TESTS = [
+    'power_CPUFreq',
+    'power_CPUIdle',
+    'power_ProbeDriver',
+    'power_StatsCPUFreq',
+    'power_StatsCPUIdle',
+    'power_StatsUSB',
+    'power_SuspendResume',
+    'power_x86Settings'
+]
+
+# Tests that should run only on battery power
+BATTERY_TESTS = [
+    'power_Backlight',
+    'power_Draw',
+    'power_Idle',
+    ]
+
+
+def _iterate_tests(machine, on_ac=True):
+    client = hosts.create_host(machine)
+    client_attributes = site_host_attributes.HostAttributes(machine)
+    client_at = autotest.Autotest(client)
+
+    tag = 'AC_OFFLINE'
+    if on_ac:
+        tag = 'AC_ONLINE'
+
+    for test in TESTS:
+        client_at.run_test(test, tag=tag)
+
+    if not on_ac:
+        for test in BATTERY_TESTS:
+            client_at.run_test(test, tag=tag)
+
+    if not client_attributes.has_resume_bug:
+        client_at.run_test('power_Resume', tag=tag)
+
+
+def _run_client_test(machine):
+    remote_power = site_remote_power.RemotePower(machine)
+    if remote_power:
+        remote_power.set_power_on()
+
+    _iterate_tests(machine, on_ac=True)
+
+    if remote_power:
+        remote_power.set_power_off()
+        try:
+            _iterate_tests(machine, on_ac=False)
+        finally:
+            remote_power.set_power_on()
+
+
+job.parallel_on_machines(_run_client_test, machines)
