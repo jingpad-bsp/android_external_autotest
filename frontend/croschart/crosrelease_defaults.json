@@ -1,9 +1,8 @@
 {
-  "platform_BootPerfServer,seconds_kernel_to_startup": "lowisgood",
+  "platform_BootPerfServer,seconds_kernel_to_login": "lowisgood",
   "platform_BootPerfServer,seconds_power_on_to_login": "lowisgood",
   "platform_BootPerfServer,seconds_reboot_time": "lowisgood",
   "platform_BootPerfServer,seconds_shutdown_time": "lowisgood",
-  "platform_BootPerfServer,rdbytes_kernel_to_login": "lowisgood",
   "platform_BootPerfServer,seconds_firmware_boot": "lowisgood",
   "desktopui_ChromeFirstRender,seconds_chrome_first_tab": "lowisgood",
   "build_RootFilesystemSize,bytes_rootfs_prod": "lowisgood",
