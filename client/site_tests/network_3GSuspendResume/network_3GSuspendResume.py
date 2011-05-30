@@ -62,6 +62,17 @@ class network_3GSuspendResume(test.test):
         rtc.set_wake_alarm(alarm_time)
         sys_power.suspend_to_ram()
 
+        # Race condition hack alert: Before we added this sleep, this
+        # test was very sensitive to the relative timing of the test
+        # and modem resumption.  There is a window where flimflam has
+        # not yet learned that the old modem has gone away (it doesn't
+        # find this out until seconds after we resume) and the test is
+        # running.  If the test finds and attempts to use the old
+        # modem, those operations will fail.  There's no good
+        # hardware-independent way to see the modem go away and come
+        # back, so instead we sleep
+        time.sleep(4)
+
     # __get_cellular_device is a hack wrapper around the FindCellularDevice
     # that verifies that GetProperties can be called before proceeding.
     # There appears to be an issue after suspend/resume where GetProperties
@@ -150,6 +161,7 @@ class network_3GSuspendResume(test.test):
         if not self.get_powered(device) == 1:
             raise error.TestFail('Failed to execute scenario '
                                  '%s' % function_name)
+        logging.info('Scenario complete: %s' % function_name)
         if not self.cellular_service_available():
             raise error.TestFail('Cellular service is not available at end '
                                  'of %s' % function_name)
