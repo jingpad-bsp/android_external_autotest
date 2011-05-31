@@ -161,8 +161,7 @@ class WiFiTest(object):
         # interface name on client
         devs = self.__get_wlan_devs(self.client)
         if len(devs) == 0:
-            raise error.TestFail('No wlan devices found on %s' %
-                (client['addr'])
+            raise error.TestFail('No wlan devices found on %s' % client['addr'])
         self.client_wlanif = client.get('wlandev', devs[0])
         self.client.wlan_mac = self.__get_interface_mac(self.client,
                                                         self.client_wlanif)
