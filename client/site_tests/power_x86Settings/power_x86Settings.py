@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, os, re
+import glob, logging, os, re, commands
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import power_status
@@ -86,6 +86,10 @@ class power_x86Settings(test.test):
         fail_count = self._verify_audio_power_settings()
         if fail_count:
             failures += 'audio_failures(%d) ' % fail_count
+
+        fail_count = self._verify_filesystem_power_settings()
+        if fail_count:
+            failures += 'filesystem_failures(%d) ' % fail_count
 
         if failures:
             raise error.TestFail(failures)
@@ -197,6 +201,35 @@ class power_x86Settings(test.test):
         logging.debug('Audio: On battery power but power_save = %d', \
                                                             power_save_timeout)
         return 1
+
+
+    def _verify_filesystem_power_settings(self):
+        mount_output = commands.getoutput('mount | fgrep commit=').split('\n')
+        if len(mount_output) == 0:
+            logging.debug('No file system entries with commit intervals found.')
+            return 1
+
+        errors = 0
+        # Parse for 'commit' param
+        for line in mount_output:
+            try:
+                commit = int(re.search(r'(commit=)([0-9]*)', line).group(2))
+            except:
+                logging.debug('Error reading commit value from \'%s\'', line)
+                errors += 1
+                continue
+
+            # Check for the correct commit interval.
+            if self._on_ac and commit != 5:
+                logging.debug('File System: On AC power but commit = %d', \
+                              commit)
+                errors += 1
+            elif not self._on_ac and commit != 600:
+                logging.debug('File System: On battery power but commit = %d', \
+                              commit)
+                errors += 1
+
+        return errors
 
 
     def _verify_pcie_aspm(self):
