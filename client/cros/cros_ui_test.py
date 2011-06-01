@@ -47,10 +47,12 @@ class UITest(test.test):
         self._dns = {}  # for saving/restoring dns entries
         test.test.__init__(self, job, bindir, outputdir)
 
+
     def xsystem(self, cmd, timeout=None, ignore_status=False):
         """Convenience wrapper around cros_ui.xsystem, to save you an import.
         """
         return cros_ui.xsystem(cmd, timeout, ignore_status)
+
 
     def listen_to_signal(self, callback, signal, interface):
         """Listens to the given |signal| that is sent to power manager.
@@ -62,14 +64,23 @@ class UITest(test.test):
             bus_name=None,
             path='/')
 
+
+    def __get_host_by_name(self, hostname):
+        hosts = socket.getaddrinfo(hostname, 80, socket.AF_INET)
+        (fam, socktype, proto, canonname, (host, port)) = hosts[0]
+        return host
+
+
     def __attempt_resolve(self, hostname, ip, expected=True):
         logging.debug("Attempting to resolve %s to %s" % (hostname, ip))
+        utils.system("route -n")
         try:
-            host = socket.gethostbyname(hostname)
+            host = self.__get_host_by_name(hostname)
             logging.debug("Resolve attempt for %s got %s" % (hostname, host))
             return (host == ip) == expected
         except socket.gaierror as err:
             logging.error(err)
+
 
     def use_local_dns(self, dns_port=53):
         """Set all devices to use our in-process mock DNS server.
@@ -121,7 +132,7 @@ class UITest(test.test):
                                            '127.0.0.1',
                                            expected=False),
             login.TimeoutError('Timed out waiting to revert DNS.'),
-            10)
+            timeout=10)
 
 
     def start_authserver(self):
