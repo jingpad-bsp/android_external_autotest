@@ -84,8 +84,9 @@ TESTS = [
   ('realtimecomm_GTalkAudioBench', {}),
   ('realtimecomm_GTalkunittest', {}),
   ('hardware_SsdDetection', {}, ['has_ssd']),
-  ('network_DisableInterface', {'iface_name' : 'hci0',
-                                'tag' : 'hci0'}, ['has_bluetooth']),
+# TODO(dalecurtis): Re-enable if we ever have any platforms with Bluetooth.
+#  ('network_DisableInterface', {'iface_name' : 'hci0',
+#                                'tag' : 'hci0'}, ['has_bluetooth']),
   ('network_WiFiCaps', {}, ['has_80211n']),
   ('power_Resume', {}, [], ['has_resume_bug']),
 # TODO(dalecurtis): Kernel tests disabled for all platforms until the following
