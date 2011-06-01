@@ -1279,6 +1279,11 @@ class WiFiTest(object):
         self.bgscan_set({'method' : 'default'})
 
 
+    def scan(self, params):
+        self.client.run("%s dev %s scan" %
+                        (self.client_cmd_iw, self.client_wlanif))
+
+
     def time_sync(self, params):
         for name in params or ['client', 'server', 'router']:
             system = { 'client': self.client,

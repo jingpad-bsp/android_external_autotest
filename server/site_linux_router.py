@@ -415,6 +415,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Taking down hostapd takes wlan0 and mon.wlan0 down.
         if self.hostapd['configured']:
+            if 'silent' in params:
+                # Deconfigure without notifying DUT.  Remove the monitor
+                # interface hostapd uses to send beacon and DEAUTH packets
+                self._remove_interfaces()
+
             self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
 #           self.router.run("rm -f %s" % self.hostapd['file'])
             self.router.get_file(self.hostapd['log'],

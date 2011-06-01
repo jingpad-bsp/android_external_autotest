@@ -34,7 +34,6 @@ class LinuxSystem(object):
 
         # Network interfaces.
         self.frequency_support = {}
-        self.wlanifs = {}
 
         # Parse the output of 'iw phy' and find a device for each frequency
         output = host.run("%s list" % self.cmd_iw).stdout
@@ -57,15 +56,20 @@ class LinuxSystem(object):
         self.phydev2 = params.get('phydev2', None)
         self.phydev5 = params.get('phydev5', None)
 
+        self._remove_interfaces()
+
+
+    def _remove_interfaces(self):
+        self.wlanifs = {}
         # Remove all wifi devices.
-        output = host.run("%s dev" % self.cmd_iw).stdout
+        output = self.host.run("%s dev" % self.cmd_iw).stdout
         test = re.compile("[\s]*Interface (.*)")
         for line in output.splitlines():
             m = test.match(line)
             if m:
                 device = m.group(1)
-                host.run("%s link set %s down" % (self.cmd_ip, device))
-                host.run("%s dev %s del" % (self.cmd_iw, device))
+                self.host.run("%s link set %s down" % (self.cmd_ip, device))
+                self.host.run("%s dev %s del" % (self.cmd_iw, device))
 
 
     def start_capture(self, params):
