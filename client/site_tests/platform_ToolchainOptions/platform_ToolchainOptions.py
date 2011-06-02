@@ -7,6 +7,7 @@ import os
 import logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from optparse import OptionParser
 
 class ToolchainOptionSet:
     def __init__(self, description, bad_files, whitelist_file):
@@ -127,7 +128,7 @@ class platform_ToolchainOptions(test.test):
         return cso
 
 
-    def run_once(self, rootdir="/"):
+    def run_once(self, rootdir="/", args=[]):
         """
         Do a find for all the ELF files on the system.
         For each one, test for compiler options that should have been used
@@ -136,62 +137,76 @@ class platform_ToolchainOptions(test.test):
         For missing compiler options, print the files.
         """
 
-        # arm arch doesn't have hardened.
-        if utils.get_cpu_arch() == "arm":
-          return
+        parser = OptionParser()
+        parser.add_option('--hardfp',
+                          dest='enable_hardfp',
+                          default=False,
+                          action='store_true',
+                          help='Whether to check for hardfp binaries.')
+        (options, args) = parser.parse_args(args)
 
         option_sets = []
 
         libc_glob = "/lib/libc-[0-9]*"
         os.chdir(self.srcdir)
 
-        fstack_cmd = ("binutils/objdump -CR {} 2>&1 | "
-                      "egrep -q \"(stack_chk|Invalid|not recognized)\"")
-        fstack_find_options = ((" -wholename '%s' -prune -o "
-                                # The various gconv locale .so's don't count:
-                                " -wholename '/usr/lib/gconv/*' -prune -o") %
-                                libc_glob)
-        full_cmd = self.get_cmd(fstack_cmd, fstack_find_options)
-        fstack_badfiles = utils.system_output(full_cmd)
+        # arm arch doesn't have hardened.
+        if utils.get_cpu_arch() != "arm":
+            fstack_cmd = ("binutils/objdump -CR {} 2>&1 | "
+                          "egrep -q \"(stack_chk|Invalid|not recognized)\"")
+            fstack_find_options = ((" -wholename '%s' -prune -o "
+                                    # gconv locale .so's don't count:
+                                    " -wholename '/usr/lib/gconv/*' -prune -o")
+                                   % libc_glob)
+            full_cmd = self.get_cmd(fstack_cmd, fstack_find_options)
+            fstack_badfiles = utils.system_output(full_cmd)
 
-        # special case check for libc, needs different objdump flags
-        cmd = "binutils/objdump -D %s | egrep -q stack_chk || echo %s"
-        fstack_libc_badfiles = utils.system_output(cmd % (libc_glob, libc_glob))
+            # special case check for libc, needs different objdump flags
+            cmd = "binutils/objdump -D %s | egrep -q stack_chk || echo %s"
+            fstack_libc_badfiles = utils.system_output(cmd % (libc_glob,
+                                                              libc_glob))
 
-        fstack_all_badfiles = ("%s\n%s" %
-                               (fstack_badfiles, fstack_libc_badfiles))
-        fstack_whitelist = os.path.join(self.bindir, "fstack_whitelist")
-        cos = ToolchainOptionSet("-fstack-protector-all",
-                                 fstack_all_badfiles,
-                                 fstack_whitelist)
-        option_sets.append(cos)
+            fstack_all_badfiles = ("%s\n%s" %
+                                   (fstack_badfiles, fstack_libc_badfiles))
+            fstack_whitelist = os.path.join(self.bindir, "fstack_whitelist")
+            cos = ToolchainOptionSet("-fstack-protector-all",
+                                     fstack_all_badfiles,
+                                     fstack_whitelist)
+            option_sets.append(cos)
 
-        fortify_cmd = ("binutils/readelf -s {} 2>&1 | "
-                       "egrep -q \"__.*_chk\"")
-        fortify_whitelist = os.path.join(self.bindir, "fortify_whitelist")
-        option_sets.append(self.create_and_filter("-D_FORTIFY_SOURCE=2",
-                                                  fortify_cmd,
-                                                  fortify_whitelist))
+            fortify_cmd = ("binutils/readelf -s {} 2>&1 | "
+                           "egrep -q \"__.*_chk\"")
+            fortify_whitelist = os.path.join(self.bindir, "fortify_whitelist")
+            option_sets.append(self.create_and_filter("-D_FORTIFY_SOURCE=2",
+                                                      fortify_cmd,
+                                                      fortify_whitelist))
 
-        now_cmd = ("binutils/readelf -d {} 2>&1 | "
-                   "egrep -q \"BIND_NOW\"")
-        now_whitelist = os.path.join(self.bindir, "now_whitelist")
-        option_sets.append(self.create_and_filter("-Wl,-z,now",
-                                                  now_cmd,
-                                                  now_whitelist))
-        relro_cmd = ("binutils/readelf -l {} 2>&1 | "
-                     "egrep -q \"GNU_RELRO\"")
-        relro_whitelist = os.path.join(self.bindir, "relro_whitelist")
-        option_sets.append(self.create_and_filter("-Wl,-z,relro",
-                                                  relro_cmd,
-                                                  relro_whitelist))
+            now_cmd = ("binutils/readelf -d {} 2>&1 | "
+                       "egrep -q \"BIND_NOW\"")
+            now_whitelist = os.path.join(self.bindir, "now_whitelist")
+            option_sets.append(self.create_and_filter("-Wl,-z,now",
+                                                      now_cmd,
+                                                      now_whitelist))
+            relro_cmd = ("binutils/readelf -l {} 2>&1 | "
+                         "egrep -q \"GNU_RELRO\"")
+            relro_whitelist = os.path.join(self.bindir, "relro_whitelist")
+            option_sets.append(self.create_and_filter("-Wl,-z,relro",
+                                                      relro_cmd,
+                                                      relro_whitelist))
 
-        pie_cmd = ("binutils/readelf -l {} 2>&1 | "
-               "egrep -q \"Elf file type is DYN\"")
-        pie_whitelist = os.path.join(self.bindir, "pie_whitelist")
-        option_sets.append(self.create_and_filter("-fPIE",
-                                                  pie_cmd,
-                                                  pie_whitelist))
+            pie_cmd = ("binutils/readelf -l {} 2>&1 | "
+                   "egrep -q \"Elf file type is DYN\"")
+            pie_whitelist = os.path.join(self.bindir, "pie_whitelist")
+            option_sets.append(self.create_and_filter("-fPIE",
+                                                      pie_cmd,
+                                                      pie_whitelist))
+
+        if options.enable_hardfp and utils.get_cpu_arch() == 'arm':
+            hardfp_cmd = ("binutils/readelf -A {} 2>&1 | "
+                          "egrep -q \"Tag_ABI_VFP_args: VFP registers\"")
+            hardfp_whitelist = os.path.join(self.bindir, "hardfp_whitelist")
+            option_sets.append(self.create_and_filter("hardfp", hardfp_cmd,
+                                                      hardfp_whitelist))
 
         fail_msg = ""
         fail_summary_msg = ""

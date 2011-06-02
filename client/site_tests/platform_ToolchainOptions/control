@@ -24,4 +24,4 @@ TEST_CLASS = "platform"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
 
-job.run_test("platform_ToolchainOptions")
+job.run_test("platform_ToolchainOptions", args=args)
