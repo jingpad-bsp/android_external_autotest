@@ -333,7 +333,11 @@ def nuke_login_manager():
 
 
 def nuke_process_by_name(name, with_prejudice=False):
-    pid = int(utils.system_output('pgrep -o ^%s$' % name).split()[0])
+    try:
+        pid = int(utils.system_output('pgrep -o ^%s$' % name).split()[0])
+    except e:
+        logging.error(e)
+        return
     if with_prejudice:
         utils.nuke_pid(pid, [signal.SIGKILL])
     else:
