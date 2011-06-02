@@ -79,7 +79,7 @@ class UITest(test.test):
         try:
             host = utils.system_output("ping -c 1 -w 1 -q %s" % hostname,
                                        ignore_status=True, timeout=2)
-        except e:
+        except Exception as e:
             logging.warning(e)
             return None
         return re.match("PING [^ ]+ \((.+)\) 56.*", host).group(1)
@@ -90,7 +90,7 @@ class UITest(test.test):
         try:
             host = self.__get_host_by_name(hostname)
             logging.debug("Resolve attempt for %s got %s" % (hostname, host))
-            return (host == ip) == expected
+            return host and (host == ip) == expected
         except socket.gaierror as err:
             logging.error(err)
 
