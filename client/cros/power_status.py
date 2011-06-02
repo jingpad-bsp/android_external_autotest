@@ -1,3 +1,7 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 import glob, logging, os, re, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -41,9 +45,9 @@ class DevStat(object):
                 setattr(self, field, val)
 
 
-class ThermalStat(DevStat):
+class ThermalStatACPI(DevStat):
     """
-    Thermal status.
+    ACPI-based thermal status.
 
     Fields:
     (All temperatures are in millidegrees Celsius.)
@@ -85,7 +89,7 @@ class ThermalStat(DevStat):
                 if field.find('_type') != -1:
                     self.num_trip_points += 1
 
-        super(ThermalStat, self).__init__(self.thermal_fields, path)
+        super(ThermalStatACPI, self).__init__(self.thermal_fields, path)
         self.update()
 
     def update(self):
@@ -104,6 +108,41 @@ class ThermalStat(DevStat):
                             ' tripped.')
 
 
+class ThermalStatHwmon(DevStat):
+    """
+    hwmon-based thermal status.
+
+    Fields:
+    int   temperature:        Current temperature in degrees Celsius
+    """
+
+    thermal_fields = {
+        'temp':                 ['temperature', int],
+        }
+    def __init__(self, path=None):
+        super(ThermalStatHwmon, self).__init__(self.thermal_fields, path)
+        self.update()
+
+    def update(self):
+        if not os.path.exists(self.path):
+            return
+
+        self.read_all_vals()
+
+    def read_val(self,  file_name, field_type):
+        try:
+            path = os.path.join(self.path, file_name)
+            f = open(path, 'r')
+            out = f.readline()
+            val = field_type(out)
+
+            # Convert degrees Celcius to millidegrees Celcius.
+            if file_name == 'temperature':
+                val = val * 1000
+            return val
+
+        except:
+            return field_type(0)
 
 class BatteryStat(DevStat):
     """
@@ -209,7 +248,11 @@ class SysStat(object):
         self.thermal = None
         battery_path = None
         linepower_path = None
-        thermal_path = '/sys/class/thermal/thermal_zone*'
+        thermal_path_acpi = '/sys/class/thermal/thermal_zone*'
+        thermal_path_hwmon = '/sys/class/hwmon/hwmon*/device'
+        # Look for these types of thermal sysfs paths, in the listed order.
+        thermal_stat_types = { thermal_path_acpi:     ThermalStatACPI,
+                               thermal_path_hwmon:    ThermalStatHwmon }
 
         power_supplies = glob.glob(power_supply_path)
         for path in power_supplies:
@@ -226,7 +269,17 @@ class SysStat(object):
             self.linepower_path = linepower_path
         else:
             raise error.TestError('Battery or Linepower path not found')
-        self.thermal_path = glob.glob(thermal_path)[0]
+
+        for thermal_path, thermal_type in thermal_stat_types.items():
+            try:
+                self.thermal_path = glob.glob(thermal_path)[0]
+                self.thermal_type = thermal_type;
+                logging.debug('Using %s for thermal info.' % self.thermal_path)
+                break;
+            except:
+                logging.debug('Could not find thermal path %s, skipping.' %
+                              thermal_path)
+                continue
 
         self.min_temp = 999999999
         self.max_temp = -999999999
@@ -239,7 +292,8 @@ class SysStat(object):
         """
         self.battery = [ BatteryStat(self.battery_path) ]
         self.linepower = [ LineStat(self.linepower_path) ]
-        self.thermal = [ ThermalStat(self.thermal_path) ]
+        if self.thermal_path != None:
+            self.thermal = [ self.thermal_type(self.thermal_path) ]
 
         try:
             if self.thermal[0].temp < self.min_temp:
