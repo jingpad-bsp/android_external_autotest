@@ -66,14 +66,23 @@ class UITest(test.test):
 
 
     def __get_host_by_name(self, hostname):
-        hosts = socket.getaddrinfo(hostname, 80, socket.AF_INET)
-        (fam, socktype, proto, canonname, (host, port)) = hosts[0]
-        return host
+        """Resolve the dotted-quad IPv4 address of |hostname|
+
+        This used to use suave python code, like this:
+            hosts = socket.getaddrinfo(hostname, 80, socket.AF_INET)
+            (fam, socktype, proto, canonname, (host, port)) = hosts[0]
+            return host
+
+        But that hangs sometimes, and we don't understand why.  So, use clunky
+        ping + regexps.
+        """
+        host = utils.system_output("ping -c 1 -w 1 -q %s" % hostname,
+                                   ignore_status=True, timeout=2)
+        return re.match("PING [^ ]+ \((.+)\) 56.*", host).group(1)
 
 
     def __attempt_resolve(self, hostname, ip, expected=True):
         logging.debug("Attempting to resolve %s to %s" % (hostname, ip))
-        utils.system("route -n")
         try:
             host = self.__get_host_by_name(hostname)
             logging.debug("Resolve attempt for %s got %s" % (hostname, host))
