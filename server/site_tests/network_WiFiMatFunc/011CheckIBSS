@@ -11,7 +11,7 @@
     # There's a delay before the IBSS service becomes ready
     [ "sleep",          { "time": "5" } ],
     [ "connect",        { "security":"none", "mode":"adhoc" } ],
-    # [ "client_ping",    { "count":"10" } ],
+    [ "client_ping",    { "count":"10", "dest":"router" } ],
     [ "destroy" ],
   ],
 }

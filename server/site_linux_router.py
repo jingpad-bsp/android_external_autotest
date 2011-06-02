@@ -34,7 +34,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # Router host.
         self.router = host
 
-
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
         self.defssid = defssid
@@ -294,7 +293,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         addr = map(int, addr_str.split('.'))
         mask_bits = (-1 << (32-int(bits))) & 0xffffffff
         mask = [(mask_bits >> s) & 0xff for s in range(24, -1, -8)]
-        if idx == 'netmask':
+        if idx == 'local':
+            return addr_str
+        elif idx == 'netmask':
             return '.'.join(map(str, mask))
         elif idx == 'broadcast':
             offset = [m ^ 0xff for m in mask]
@@ -405,6 +406,13 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.hostap_config(params)
         else:
             self.station_config(params)
+
+
+    def get_wifi_ip(self):
+        if self.apmode:
+            raise error.TestFail("In AP mode, router has no IP address")
+        else:
+            self.station_local_addr('local')
 
 
     def deconfig(self, params):

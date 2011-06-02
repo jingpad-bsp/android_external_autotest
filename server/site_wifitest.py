@@ -762,7 +762,17 @@ class WiFiTest(object):
 
     def client_ping(self, params):
         """ Ping the server from the client """
-        ping_ip = params.get('ping_ip', self.server_wifi_ip)
+        if 'ping_ip' in params:
+            ping_ip = params['ping_ip']
+        else:
+            ping_dest = params.get('dest', 'server')
+            if ping_dest == 'server':
+                ping_ip = self.server_wifi_ip
+            elif ping_dest == 'router':
+                ping_ip = self.wifi.get_wifi_ip()
+            else:
+                raise error.TestFail('Unknown ping destination "%s"' %
+                                     ping_dest)
         count = params.get('count', self.defpingcount)
         # set timeout for 3s / ping packet
         result = self.client.run("ping %s %s" % \
