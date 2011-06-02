@@ -76,8 +76,12 @@ class UITest(test.test):
         But that hangs sometimes, and we don't understand why.  So, use clunky
         ping + regexps.
         """
-        host = utils.system_output("ping -c 1 -w 1 -q %s" % hostname,
-                                   ignore_status=True, timeout=2)
+        try:
+            host = utils.system_output("ping -c 1 -w 1 -q %s" % hostname,
+                                       ignore_status=True, timeout=2)
+        except e:
+            logging.warning(e)
+            return None
         return re.match("PING [^ ]+ \((.+)\) 56.*", host).group(1)
 
 
