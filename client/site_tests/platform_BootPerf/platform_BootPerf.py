@@ -167,7 +167,10 @@ class platform_BootPerf(test.test):
         # we want the keyvals to report bytes so that downstream
         # consumers don't have to ask "How big is a sector?".
         for resultname, filename in diskstat_files:
-            results[resultname] = 512 * self.__parse_diskstat(filename)
+            try:
+                results[resultname] = 512 * self.__parse_diskstat(filename)
+            except:
+                pass
 
         self.__parse_firmware_boot_time(results)
         self.__parse_syslog(results, last_boot_was_reboot)
