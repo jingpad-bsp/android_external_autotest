@@ -14,7 +14,7 @@ class perf(profiler.profiler):
     version = 1
 
     def initialize(self, events=["cycles","instructions"], trace=False,
-                   delete_data=True, do_report=True, call_graph=True):
+                   delete_data=False, do_report=False, call_graph=False):
         self.delete_data = delete_data
         self.do_report = do_report
         self.call_graph = call_graph
