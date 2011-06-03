@@ -13,7 +13,7 @@ from autotest_lib.client.bin import profiler, os_dep, utils
 class perf(profiler.profiler):
     version = 1
 
-    def initialize(self, events=["cycles","instructions"], trace=False,
+    def initialize(self, events=["cycles"], trace=False,
                    delete_data=False, do_report=False, call_graph=False):
         self.delete_data = delete_data
         self.do_report = do_report
