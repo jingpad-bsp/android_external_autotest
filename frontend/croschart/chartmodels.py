@@ -187,7 +187,7 @@ def GetReleaseQueryParts(request):
 
   query_parameters = {}
   query_parameters['select_keys'] = RELEASE_SELECT_KEYS
-  query_parameters['job_name'] = "'(%s)-(%s|%s).*'" % (
+  query_parameters['job_name'] = "'(%s)-(%s|%s)-.*'" % (
       '|'.join(boards), from_build, to_build)
   query_parameters['platform'] = platform
   query_parameters['test_names'] = "','".join(test_names)
