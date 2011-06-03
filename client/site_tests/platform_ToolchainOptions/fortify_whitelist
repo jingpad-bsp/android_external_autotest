@@ -25,7 +25,9 @@
 /opt/google/o3d/lib/libCg.so
 /opt/google/o3d/lib/libCgGL.so
 /sbin/insmod.static
+/sbin/ldconfig
 /usr/bin/cgpt
+/usr/bin/getent
 /usr/lib/gconv/ANSI_X3.110.so
 /usr/lib/gconv/ARMSCII-8.so
 /usr/lib/gconv/ASMO_449.so
@@ -274,5 +276,8 @@
 /usr/lib/gconv/libJISX0213.so
 /usr/lib/gconv/libKSC.so
 /usr/lib/libiptc.so.0.0.0
+/usr/sbin/iconvconfig
 /usr/sbin/iotools
+/usr/sbin/nscd
+/usr/sbin/rpcinfo
 /usr/sbin/vpd

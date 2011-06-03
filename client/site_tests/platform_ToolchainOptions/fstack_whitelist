@@ -27,12 +27,16 @@
 /sbin/setcap
 /usr/bin/ck-launch-session
 /usr/bin/dbus-uuidgen
+/usr/bin/getent
 /usr/bin/gpspipe
 /usr/bin/rev
 /usr/bin/scriptreplay
 /usr/bin/setmetamode
 /usr/bin/setsid
 /usr/lib/libiptc.so.0.0.0
+/usr/sbin/iconvconfig
 /usr/sbin/ldattach
 /usr/sbin/mklost+found
+/usr/sbin/nscd
+/usr/sbin/rpcinfo
 /usr/sbin/rtcwake

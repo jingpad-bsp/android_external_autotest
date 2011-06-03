@@ -1,11 +1,12 @@
-/opt/Qualcomm/QDLService2k/QDLService2kAcerTest
 /opt/Qualcomm/QDLService2k/QDLService2kAcer
+/opt/Qualcomm/QDLService2k/QDLService2kAcerTest
 /opt/google/chrome/pepper/libpepflashplayer.so
 /opt/google/chrome/plugins/libgcflashplayer.so
 /opt/google/o3d/lib/libCg.so
 /opt/google/o3d/lib/libCgGL.so
 /opt/netscape/plugins/libflashplayer.so
 /sbin/insmod.static
+/sbin/ldconfig
 /usr/bin/Xorg
 /usr/bin/cgpt
 /usr/bin/cvt

@@ -1,6 +1,11 @@
 /home/autotest/tests/logging_UserCrash/src/crasher_nobreakpad
 /opt/Qualcomm/QDLService2k/QDLService2kAcer
 /sbin/insmod.static
+/sbin/ldconfig
 /usr/bin/cgpt
+/usr/bin/getent
+/usr/sbin/iconvconfig
 /usr/sbin/iotools
+/usr/sbin/nscd
+/usr/sbin/rpcinfo
 /usr/sbin/vpd

@@ -1,6 +1,5 @@
 /home/autotest/tests/logging_UserCrash/src/crasher_nobreakpad
 /lib/libuuid.so.1.3.0
-/opt/netscape/plugins/libflashplayer.so
 /opt/Qualcomm/QDLService2k/QDLService2kAcer
 /opt/Qualcomm/QDLService2k/QDLService2kDell
 /opt/Qualcomm/QDLService2k/QDLService2kHP
@@ -21,6 +20,7 @@
 /opt/google/chrome/plugins/libgcflashplayer.so
 /opt/google/o3d/lib/libCg.so
 /opt/google/o3d/lib/libCgGL.so
+/opt/netscape/plugins/libflashplayer.so
 /sbin/insmod.static
 /usr/bin/cgpt
 /usr/lib/cromo/plugins/madison.so

@@ -36,6 +36,7 @@ job.run_test('login_LoginSuccess', creds='$apps', tag='apps')
 job.run_test('login_OwnershipApi')
 job.run_test('platform_FilePerms')
 job.run_test('platform_OSLimits')
+job.run_test('platform_ToolchainOptions')
 
 ###  Local Variables:
 ###  mode: python
