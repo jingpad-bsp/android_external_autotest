@@ -117,7 +117,7 @@ class platform_ToolchainOptions(test.test):
         os.chdir(self.srcdir)
         utils.system("patch -p1 < ../binutils-2.19-arm.patch");
         utils.configure()
-        utils.make()
+        utils.make(extra="CFLAGS+=\"-w\"")
 
 
     def create_and_filter(self, description, cmd, whitelist_file):
