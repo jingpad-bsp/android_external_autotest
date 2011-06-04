@@ -335,7 +335,7 @@ def nuke_login_manager():
 def nuke_process_by_name(name, with_prejudice=False):
     try:
         pid = int(utils.system_output('pgrep -o ^%s$' % name).split()[0])
-    except e:
+    except Exception as e:
         logging.error(e)
         return
     if with_prejudice:
