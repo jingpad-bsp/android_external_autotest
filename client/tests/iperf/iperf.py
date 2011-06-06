@@ -20,7 +20,6 @@ class iperf(test.test):
         os.chdir(self.srcdir)
         utils.configure()
         utils.make()
-        utils.system('sync')
 
 
     def initialize(self):

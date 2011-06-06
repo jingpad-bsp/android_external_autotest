@@ -23,7 +23,6 @@ class network_netperf2(test.test):
         utils.system('patch -p0 < ../fix_netperf_build.patch')
         utils.configure()
         utils.make()
-        utils.system('sync')
 
         self.job.setup_dep(['sysstat'])
 
