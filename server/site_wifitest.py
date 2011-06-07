@@ -1516,6 +1516,15 @@ class WiFiTest(object):
         self.wifi.deauth({'client': self.client.wlan_mac})
 
 
+    def client_reboot(self, params):
+        self.client_installed_scripts = {}
+        self.client.reboot()
+        self.profile_pop(self.test_profile, ignore_status=True)
+        self.profile_remove(self.test_profile, ignore_status=True)
+        self.profile_create(self.test_profile)
+        self.profile_push(self.test_profile)
+
+
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
     def __init__(self, client, cmd):
