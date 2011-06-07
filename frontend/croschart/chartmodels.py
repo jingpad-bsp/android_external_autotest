@@ -32,6 +32,7 @@ import gviz_api
 
 
 FIELD_SEPARATOR = ','
+BUILD_PART_SEPARATOR = ' '
 BUILD_PATTERN = re.compile(
     '([\w\-]+-r[c0-9]+)-([\d]+\.[\d]+\.[\d]+\.[\d]+)-(r[\w]{8})-(b[\d]+)')
 COMMON_REGEXP = "'(%s).*'"
@@ -207,50 +208,45 @@ def GetReleaseQuery(request):
 
 ###############################################################################
 # Helpers
-def AbbreviateBuild(build, with_board=False):
+def AbbreviateBuild(build, chrome_versions, with_board=False):
   """Condense full build string for x-axis representation."""
   m = re.match(BUILD_PATTERN, build)
   if not m or m.lastindex < 4:
     logging.warning('Skipping poorly formatted build: %s.', build)
     return build
+  chrome_version = ''
+  if chrome_versions and m.group(2) in chrome_versions:
+    chrome_version = '%s%s' % (chrome_versions[m.group(2)],
+                               BUILD_PART_SEPARATOR)
   if with_board:
-    new_build = '%s-%s-%s' % (m.group(1), m.group(2), m.group(4))
+    new_build = '%s%s%s%s-%s' % (m.group(1), BUILD_PART_SEPARATOR,
+                                 chrome_version, m.group(2), m.group(4))
   else:
-    new_build = '%s-%s' % (m.group(2), m.group(4))
+    new_build = '%s%s-%s' % (chrome_version, m.group(2), m.group(4))
+
   return new_build
 
 
 def BuildNumberCmp(build_number1, build_number2):
   """Compare build numbers and return in ascending order."""
   # 3 different build formats:
-  #1. xxx-yyy-r13-0.12.133.0-b1
-  #2. ttt_sss-rc-0.12.133.0-b1
+  #1. xxx-yyy-r13_0.12.133.0-b1
+  #2. ttt_sss-rc_0.12.133.0-b1
   #3. 0.12.133.0-b1
-  build1_split = build_number1.split('-')
-  build2_split = build_number2.split('-')
-  if len(build1_split) > 5:
-    return cmp(build_number1, build_number2)
-  if len(build1_split) > 3:
-    if len(build1_split) == 4:
-      board1, release1, build1, b1 = build1_split
-      board2, release2, build2, b2 = build2_split
-      platform1 = platform2 = ''
-    else:
-      platform1, board1, release1, build1, b1 = build1_split
-      platform2, board2, release2, build2, b2 = build2_split
+  def GetPureBuild(build):
+    """This code coordinated with AbbreviateBuilds()."""
+    divided = build.split(BUILD_PART_SEPARATOR)
+    dlen = len(divided)
+    if dlen > 3:
+      raise ChartDBError('Unexpected build format: %s' % build)
+    # Get only the w.x.y.z part.
+    return divided[dlen-1].split('-')
 
-    if (platform1, board1, release1) != (platform2, board2, release2):
-      if platform1 != platform2:
-        return cmp(platform1, platform2)
-      if board1 != board2:
-        return cmp(board1, board2)
-      if release1 != release2:
-        return cmp(int(release1[1:]), int(release2[1:]))
-  else:
-    build1, b1 = build1_split
-    build2, b2 = build2_split
+  build1, b1 = GetPureBuild(build_number1)
+  build2, b2 = GetPureBuild(build_number2)
 
   if build1 != build2:
+    # Compare each part of the build.
     major1 = build1.split('.')
     major2 = build2.split('.')
     major_len = min([len(major1), len(major2)])
@@ -259,16 +255,28 @@ def BuildNumberCmp(build_number1, build_number2):
         return cmp(int(major1[i]), int(major2[i]))
     return cmp(build1, build2)
   else:
+    # Compare the buildbot sequence numbers only.
     return cmp(int(b1[1:]), int(b2[1:]))
+
+
+def GetChromeVersions(request):
+  """Get Chrome-ChromeOS version map if requested."""
+  chrome_versions = None
+  chrome_version_flag = request.GET.get('chromeversion', 'true')
+  if chrome_version_flag and chrome_version_flag.lower() == 'true':
+    chrome_versions = simplejson.load(open(os.path.join(
+        os.path.abspath(os.path.dirname(__file__)),
+        'chromeos-chrome-version.json')))
+  return chrome_versions
 
 
 ###############################################################################
 # Models
-def GetKeysByBuildLinechartData(test_name, test_keys, query,
+def GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions, query,
                                 query_order=DEFAULT_ORDER):
   """Prepare and run the db query and massage the results."""
 
-  def AggregateBuilds(test_keys, data_list):
+  def AggregateBuilds(test_keys, chrome_versions, data_list):
     """Groups and averages data by build and extracts job_tags."""
     # raw_dict
     #   build
@@ -279,7 +287,7 @@ def GetKeysByBuildLinechartData(test_name, test_keys, query,
 
     # Aggregate all the data values by test_name, test_key, build.
     for build, tag, test_key, test_value in data_list:
-      build = AbbreviateBuild(build)
+      build = AbbreviateBuild(build, chrome_versions)
       if not build in raw_dict:
         builds_inorder.append({'build': build})
         job_tags.append(tag)
@@ -312,7 +320,8 @@ def GetKeysByBuildLinechartData(test_name, test_keys, query,
   # Now massage the returned data into a gviz data table.
   cursor = readonly_connection.connection().cursor()
   cursor.execute('%s %s' % (query, query_order))
-  job_tags, build_data = AggregateBuilds(test_keys, cursor.fetchall())
+  job_tags, build_data = AggregateBuilds(test_keys, chrome_versions,
+                                         cursor.fetchall())
   gviz_data_table = ToGVizJsonTable(test_keys, build_data)
   return {'gviz_data_table': gviz_data_table, 'job_tags': job_tags}
 
@@ -332,15 +341,16 @@ def GetRangedKeyByBuildLinechartData(request):
     raise ChartInputError('One interval-type parameter must be supplied.')
   query_list.append(ranged_queries[range_key](request))
   test_name, test_keys = chartutils.GetTestNameKeys(request.GET.get('testkey'))
-  data_dict = GetKeysByBuildLinechartData(test_name, test_keys,
+  chrome_versions = GetChromeVersions(request)
+  data_dict = GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions,
                                           ' '.join(query_list))
   # Added for chart labeling.
   data_dict.update({'test_name': test_name, 'test_keys': test_keys})
   return data_dict
 
 
-def GetMultiTestKeyReleaseTableData(query, query_order=RELEASE_ORDER,
-                                    extra=None):
+def GetMultiTestKeyReleaseTableData(chrome_versions, query,
+                                    query_order=RELEASE_ORDER, extra=None):
   """Prepare and run the db query and massage the results."""
 
   def GetHighlights(test_name, test_key, lowhigh, diff):
@@ -379,7 +389,6 @@ def GetMultiTestKeyReleaseTableData(query, query_order=RELEASE_ORDER,
     highlights['diff'] = diff_template % (fg_color, diff, diff_indicator)
     return highlights
 
-
   def CalculateDiff(diff_list):
     """Produce a diff string."""
     if len(diff_list) < 2:
@@ -388,7 +397,7 @@ def GetMultiTestKeyReleaseTableData(query, query_order=RELEASE_ORDER,
         diff_list[0] - diff_list[1],
         round((diff_list[0] - diff_list[1]) / diff_list[0] * 100))
 
-  def AggregateBuilds(lowhigh, data_list):
+  def AggregateBuilds(lowhigh, chrome_versions, data_list):
     """Groups and averages data by build and extracts job_tags."""
     # Aggregate all the data values.
     # raw_dict
@@ -402,7 +411,7 @@ def GetMultiTestKeyReleaseTableData(query, query_order=RELEASE_ORDER,
     for build, tag, test_name, test_key, test_value in data_list:
       key_dict = raw_dict.setdefault(test_name, {})
       build_dict = key_dict.setdefault(test_key, {})
-      build = AbbreviateBuild(build=build, with_board=True)
+      build = AbbreviateBuild(build, chrome_versions, with_board=True)
       job_dict = build_dict.setdefault(build, {})
       job_dict.setdefault('tag', tag)
       value_list = job_dict.setdefault('values', [])
@@ -456,7 +465,8 @@ def GetMultiTestKeyReleaseTableData(query, query_order=RELEASE_ORDER,
   # Now massage the returned data into a gviz data table.
   cursor = readonly_connection.connection().cursor()
   cursor.execute('%s %s' % (query, query_order))
-  builds, build_data = AggregateBuilds(lowhigh=extra.get('lowhigh', None),
+  builds, build_data = AggregateBuilds(extra.get('lowhigh', None),
+                                       chrome_versions,
                                        data_list=cursor.fetchall())
   gviz_data_table = ToGVizJsonTable(builds, build_data)
   return {'gviz_data_table': gviz_data_table}
@@ -466,6 +476,7 @@ def GetReleaseReportData(request):
   """Prepare and run the db query and massage the results."""
 
   query, parameters = GetReleaseQueryParts(request)
-  data_dict = GetMultiTestKeyReleaseTableData(
+  chrome_versions = GetChromeVersions(request)
+  data_dict = GetMultiTestKeyReleaseTableData(chrome_versions,
       query=query % parameters, extra=parameters)
   return data_dict

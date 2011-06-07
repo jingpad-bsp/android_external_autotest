@@ -53,18 +53,21 @@ class CrosChartValidator(object):
   """Common parameter expectations for Chrome OS charts."""
 
   required = ['board', 'system', 'testkey']
-  supported = required + ['width', 'height', 'updatecache']
+  supported = required + ['width', 'height', 'chromeversion', 'updatecache']
   match_patterns = {'testkey': TESTKEY_PATTERN, 'width': DIM_PATTERN,
-                    'height': DIM_PATTERN, 'updatecache': BOOL_PATTERN}
+                    'height': DIM_PATTERN, 'chromeversion': BOOL_PATTERN,
+                    'updatecache': BOOL_PATTERN}
 
 
 class CrosReportValidator(object):
   """Common parameter expectations for Chrome OS reports."""
 
   required = ['board', 'system']
-  supported = required + ['testkey', 'width', 'height', 'updatecache']
+  supported = required + ['testkey', 'width', 'height', 'chromeversion',
+                          'updatecache']
   match_patterns = {'testkey': TESTKEY_PATTERN, 'width': DIM_PATTERN,
-                    'height': DIM_PATTERN, 'updatecache': BOOL_PATTERN}
+                    'height': DIM_PATTERN, 'chromeversion': BOOL_PATTERN,
+                    'updatecache': BOOL_PATTERN}
 
 
 class BuildRangeValidator(object):

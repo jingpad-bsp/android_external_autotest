@@ -27,7 +27,8 @@ This template builds a single plot on a single page for a zoomed-in view.
     {% block add_listener %}{% endblock %}
     chart.draw(
         json_data,
-        {hAxis: {
+        {chartArea: {top:6},
+         hAxis: {
             slantedText: true,
             slantedTextAngle: 90,
             textStyle: {fontSize: 10}},
@@ -38,16 +39,23 @@ This template builds a single plot on a single page for a zoomed-in view.
     {% ifequal tpl_chart.test_keys|length 1 %}
          colors: ['{{ tpl_colors|random }}'],
          legend: 'none',
-         title: '{{ tpl_chart.test_name }} - {{ tpl_chart.test_keys.0 }}',
     {% else %}
          legendTextStyle: {fontSize: 10},
-         title: '{{ tpl_chart.test_name }}',
     {% endifequal %}
-         titlePosition: 'out',
          width: {{ tpl_params.width|default:800 }}});
   }
 </script>
 <center>
+<h4>
+  <a href = "{{ tpl_path }}" target="_blank">
+  {% ifequal tpl_chart.test_keys|length 1 %}
+  {{ tpl_chart.test_name }} - {{ tpl_chart.test_keys.0 }}
+  {% else %}
+  {{ tpl_chart.test_name }}
+  {% endifequal %}
+  </a>
+</h4>
+{% block subtitle_block %}{% endblock %}
 <span id="{{ tpl_chart.test_name }}"></span>
 </center>
 {% block add_iframe %}{% endblock %}

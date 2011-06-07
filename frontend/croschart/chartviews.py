@@ -83,6 +83,15 @@ def PlotChart(request, template_file, chart_data_fn, salt=None):
   def GenerateChart(request, template_file, chart_data_fn):
     """Read chart data from the DB and generate new chart html."""
     try:
+      # Need to remove updatecache from the url string so that
+      # future invocations without it match this retrieval.
+      if UPDATECACHE in request.GET:
+        qd = request.GET.copy()
+        del qd[UPDATECACHE]
+        tpl_path = '%s?%s' % (request.path, qd.urlencode())
+      else:
+        tpl_path = request.get_full_path()
+      tpl_diffpath = tpl_path.replace('chart?', 'chartdiff?')
       tpl_params = request.GET
       tpl_chart = chart_data_fn(request)
       tpl_colors = ['red', 'blue', 'green', 'black']

@@ -7,18 +7,21 @@ This template implements an iframe diff-view with click-to-change the diff.
 {% endcomment %}
     {% block add_listener %}
     diff_url = 'http://chromeos-images/diff';
+    from_vers = json_data.getValue(0, 0).split(' ', 2);
+    from_ver = from_vers[Math.min(from_vers.length, 2)-1];
+    to_vers = json_data.getValue(json_data.getNumberOfRows()-1, 0).split(' ', 2);
+    to_ver = to_vers[Math.min(to_vers.length, 2)-1];
     document.getElementById('diff_iframe').src=diff_url + '/report' +
-        '?from=' + json_data.getValue(0, 0).split('-', 1) +
-        '&to=' + json_data.getValue(json_data.getNumberOfRows()-1, 0).split(
-            '-', 1);
+        '?from=' + from_ver.split('-', 1) + '&to=' + to_ver.split( '-', 1);
     google.visualization.events.addListener(chart, 'select', function(){
-    if (chart.getSelection()[0].row > 0) {
-      document.getElementById('diff_iframe').src=diff_url + '/report' +
-          '?from=' + json_data.getValue(chart.getSelection()[0].row-1, 0).split(
-              '-', 1) +
-          '&to=' + json_data.getValue(chart.getSelection()[0].row, 0).split(
-              '-', 1);
-      }
+      if (chart.getSelection()[0].row > 0) {
+        from_vers = json_data.getValue(chart.getSelection()[0].row-1, 0).split(' ', 2);
+        from_ver = from_vers[Math.min(from_vers.length, 2)-1];
+        to_vers = json_data.getValue(chart.getSelection()[0].row, 0).split(' ', 2);
+        to_ver = to_vers[Math.min(to_vers.length, 2)-1];
+        document.getElementById('diff_iframe').src=diff_url + '/report' +
+            '?from=' + from_ver.split('-', 1) + '&to=' + to_ver.split('-', 1);
+        }
       });
     {% endblock %}
 {% block add_iframe %}
