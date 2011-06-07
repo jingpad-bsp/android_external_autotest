@@ -411,8 +411,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     def get_wifi_ip(self):
         if self.apmode:
             raise error.TestFail("In AP mode, router has no IP address")
-        else:
-            self.station_local_addr('local')
+        return self.station_local_addr('local')
 
 
     def deconfig(self, params):
