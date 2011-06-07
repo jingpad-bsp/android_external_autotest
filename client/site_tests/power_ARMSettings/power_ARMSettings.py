@@ -113,13 +113,10 @@ class power_ARMSettings(test.test):
                 errors += 1
                 continue
 
+
             # Check for the correct commit interval.
-            if self._on_ac and commit != 5:
-                logging.debug('File System: On AC power but commit = %d', \
-                              commit)
-                errors += 1
-            elif not self._on_ac and commit != 600:
-                logging.debug('File System: On battery power but commit = %d', \
+            if commit != 600:
+                logging.debug('File System: Incorrect commit interval %d', \
                               commit)
                 errors += 1
 
