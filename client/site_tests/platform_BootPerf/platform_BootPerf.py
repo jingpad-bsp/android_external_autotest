@@ -5,6 +5,7 @@
 import datetime
 import fnmatch
 import logging
+import math
 import os
 import re
 import shutil
@@ -14,7 +15,6 @@ from autotest_lib.client.common_lib import error
 
 class platform_BootPerf(test.test):
     version = 2
-
 
     def __copy_timestamp_files(self):
         tmpdir = '/tmp'
@@ -58,8 +58,38 @@ class platform_BootPerf(test.test):
             data = utils.read_one_line('/tmp/firmware-boot-time')
         except IOError:
             return
+        # TODO: Remove seconds_firmware_boot once the harness starts accepting
+        # seconds_power_on_to_kernel
         results['seconds_firmware_boot'] = float(data)
+        results['seconds_power_on_to_kernel'] = float(data)
 
+
+    def __parse_vboot_times(self, results):
+        # Obtain the CPU frequency
+        freq_file_path = '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq'
+        try:
+            hertz = int(utils.read_one_line(freq_file_path)) * 1000.0
+        except IOError:
+            logging.info('Test is unable to read "%s", no calculating the '
+                         'vboot times.' % freq_file_path)
+            return
+        try:
+            out = utils.system_output('crossystem')
+        except error.CmdError:
+            logging.info('Unable to run crossystem, not calculating the vboot '
+                         'times.')
+            return
+        # Parse the crossystem output, we are looking for vdat_timers
+        items = out.splitlines()
+        for item in items:
+            times_re = re.compile(r'LF=(\d+),(\d+) LK=(\d+),(\d+)')
+            match = re.findall(times_re, item)
+            if (match):
+                times = map(lambda s: round(float(s) / hertz, 2), match[0])
+                results['seconds_power_on_to_lf_start'] = times[0]
+                results['seconds_power_on_to_lf_end'] = times[1]
+                results['seconds_power_on_to_lk_start'] = times[2]
+                results['seconds_power_on_to_lk_end'] = times[3]
 
     # Find the reboot/shutdown time if the last boot was a reboot.
     def __parse_syslog(self, results, last_boot_was_reboot):
@@ -69,7 +99,6 @@ class platform_BootPerf(test.test):
             file_handle = open(logfile, 'r')
         except:
             raise error.TestFail('Test is unable to read "%s"' % logfile)
-        mhz = 0
         startups_found = 0
         last_shutdown_time = None
         kernel_start_time = None
@@ -79,10 +108,10 @@ class platform_BootPerf(test.test):
             datetime_re + r'.*(klog|tty2) main process.*killed by TERM')
         startup_re = re.compile(datetime_re + r'.*000\] Linux version \d')
         mhz_re = re.compile(r'Detected (\d+\.\d+) MHz processor.')
+        mhz = 0
         for line in file_handle.readlines():
             match = startup_re.match(line)
             if match is not None:
-                mhz = 0
                 datetime_args = tuple([int(x) for x in match.groups()[:7]])
                 kernel_start_time = datetime.datetime(*datetime_args)
                 startups_found += 1
@@ -172,8 +201,9 @@ class platform_BootPerf(test.test):
             except:
                 pass
 
-        self.__parse_firmware_boot_time(results)
         self.__parse_syslog(results, last_boot_was_reboot)
+        self.__parse_firmware_boot_time(results)
+        self.__parse_vboot_times(results)
 
         if ('seconds_firmware_boot' in results and
             'seconds_kernel_to_login' in results):
