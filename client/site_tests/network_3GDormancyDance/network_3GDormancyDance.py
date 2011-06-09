@@ -19,11 +19,21 @@ class network_3GDormancyDance(test.test):
         if self.opsleft == 0:
             self.mainloop.quit()
 
-    def RequestDormancyEvents(self):
-        c = self.bus.get_object('org.chromium.ModemManager',
-                                '/org/chromium/ModemManager/Gobi/0')
-        c.RequestEvents('+dormancy',
-                        dbus_interface='org.chromium.ModemManager.Modem.Gobi')
+    def FindModemPath(self):
+        cromo = self.bus.get_object('org.chromium.ModemManager',
+                                    '/org/chromium/ModemManager'),
+        modems = cromo.EnumerateDevices(
+            dbus_interface='org.freedesktop.ModemManager')
+        for modem_path in modems:
+            if modem_path.index('/org/chromium/ModemManager/Gobi') == 0:
+                return modem_path
+        return None
+
+    def RequestDormancyEvents(self, modem_path):
+        modem = dbus.Interface(
+            self.bus.get_object('org.chromium.ModemManager', modem_path),
+            dbus_interface='org.chromium.ModemManager.Modem.Gobi')
+        modem.RequestEvents('+dormancy')
 
     def enable(self):
         print 'Enable'
@@ -70,7 +80,11 @@ class network_3GDormancyDance(test.test):
         self.opsleft = ops
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus()
-        self.RequestDormancyEvents()
+        modem_path = self.FindModemPath()
+        print 'Modem: %s' % (modem_path,)
+        if not modem_path:
+            raise error.TestFail('No Gobi modem found.')
+        self.RequestDormancyEvents(modem_path)
         self.flim = flimflam.FlimFlam()
         self.manager = flimflam.DeviceManager(self.flim)
         self.service = self.flim.FindElementByPropertySubstring('Service',
