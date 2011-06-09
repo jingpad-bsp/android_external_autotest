@@ -2,7 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import common, datetime, fnmatch, logging, os, re, string, threading, time
+import common
+import datetime
+import fnmatch
+import logging
+import os
+import re
+import string
+import threading
+import time
+import traceback
 
 from autotest_lib.server import autotest, hosts, subcommand
 from autotest_lib.server import site_bsd_router
@@ -379,6 +388,7 @@ class WiFiTest(object):
                     logging.error("%s: Step '%s' failed: %s; abort test",
                         self.name, method, str(e))
                     self.cleanup({})
+                    traceback.print_exc()
                     raise e
             else:
                 logging.error("%s: Step '%s' unknown; abort test",
