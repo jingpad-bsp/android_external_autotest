@@ -1,7 +1,3 @@
-/usr/libexec/polkit-read-auth-helper
-/usr/libexec/polkit-revoke-helper
-/usr/libexec/polkit-explicit-grant-helper
 /usr/sbin/ssmtp
-/usr/libexec/polkit-grant-helper
 /usr/bin/crontab
 /usr/bin/write
