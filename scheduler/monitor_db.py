@@ -246,8 +246,6 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
         if not job:
             job = queue_entry.job
         autoserv_argv += ['-u', job.owner, '-l', job.name]
-        if job.is_image_update_job():
-            autoserv_argv += ['--image', job.update_image_path]
     if verbose:
         autoserv_argv.append('--verbose')
     return autoserv_argv + extra_args
@@ -269,7 +267,7 @@ class Dispatcher(object):
         self._seconds_between_garbage_stats = 60 * (
                 global_config.global_config.get_config_value(
                         scheduler_config.CONFIG_SECTION,
-                        'gc_stats_interval_mins', type=int, default=6*60))
+                        'gc_stats_interval_mins', type=int, default=6 * 60))
 
 
     def initialize(self, recover_hosts=True):
@@ -607,7 +605,7 @@ class Dispatcher(object):
 
     def _reverify_hosts_where(self, where,
                               print_message='Reverifying host %s'):
-        full_where='locked = 0 AND invalid = 0 AND ' + where
+        full_where = 'locked = 0 AND invalid = 0 AND ' + where
         for host in scheduler_models.Host.fetch(where=full_where):
             if self.host_has_agent(host):
                 # host has already been recovered in some way
@@ -1732,6 +1730,9 @@ class AbstractQueueTask(AgentTask, TaskWithJobKeyvals):
 
         if not self.job.is_server_job():
             params.append('-c')
+
+        if self.job.is_image_update_job():
+            params += ['--image', self.job.update_image_path]
 
         return params
 
