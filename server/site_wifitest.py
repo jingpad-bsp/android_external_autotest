@@ -139,6 +139,7 @@ class WiFiTest(object):
         self.client_at = autotest.Autotest(self.client)
         self.client_wifi_ip = None            # client's IP address on wifi net
         self.client_wifi_device_path = None   # client's flimflam wifi path
+        self.client_signal_info = {}
         self.client_installed_scripts = {}
         self.client_logfile = client.get("logfile", "/var/log/messages")
 
@@ -1274,6 +1275,33 @@ class WiFiTest(object):
                             (self.client_cmd_flimflam_lib, wifi))
 
 
+    def client_get_signal(self, params):
+        result = self.client.run('%s dev %s link; '
+                                 '%s dev %s station dump; '
+                                 '%s dev %s survey dump' %
+                                 ((self.client_cmd_iw, self.client_wlanif) * 3))
+        current_frequency = None
+        link_frequency = None
+        signal_info = {}
+        signal_values = ( 'frequency', 'signal', 'signal avg', 'noise' )
+        for line in result.stdout.splitlines():
+            m = re.match('\s*(\S.*):\s*(\S*)', line)
+            if m is None:
+                continue
+            var, val = m.groups()
+            if var == 'freq':
+                link_frequency = val
+            elif var == 'frequency':
+                current_frequency = val
+            if (var in signal_values and
+                (current_frequency == None or
+                 current_frequency == link_frequency)):
+                signal_info[var] = val
+
+        self.client_signal_info = signal_info
+        logging.info('Signal Info: %s\n' % repr(signal_info))
+
+
     def bgscan_set(self, params):
         """ Control wpa_supplicant bgscan """
         opts = ""
@@ -1282,7 +1310,19 @@ class WiFiTest(object):
         if params.get('long_interval', None):
             opts += " BgscanInterval=%s" % params['long_interval']
         if params.get('signal', None):
-            opts += " BgscanSignalThreshold=%s" % params['signal']
+            signal = params['signal']
+            if signal == 'auto':
+                if 'signal avg' not in self.client_signal_info:
+                    raise error.TestError('No signal info')
+                else:
+                    signal = int(self.client_signal_info['signal avg'])
+                    if 'offset' in params:
+                        signal += int(params['offset'])
+                    if 'noise' in self.client_signal_info:
+                        # Compensate for real noise vs standard estimate
+                        signal -= 95 + int(self.client_signal_info['noise'])
+                logging.info('Auto signal: %s\n' % repr(signal))
+            opts += " BgscanSignalThreshold=%s" % signal
         if params.get('method', None):
             opts += " BgscanMethod=%s" % params['method']
         self.client.run('%s/test/set-bgscan %s' %
