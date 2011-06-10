@@ -42,12 +42,23 @@ class test_item(object):
         """
         self.test_name = test_name
         self.test_args = test_args
+
+        # Remove host parameter if present. Autotest defaults to the client
+        # host so warn if host set to any other value.
+        if 'host' in self.test_args:
+            if self.test_args['host'] != 'client':
+                logging.error('Unsupported test parameter host=%s.',
+                              self.test_args['host'])
+            del self.test_args['host']
+
         self.inc_set = None
         if include_attribs is not None:
             self.inc_set = set(include_attribs)
+
         self.exc_set = None
         if exclude_attribs is not None:
             self.exc_set = set(exclude_attribs)
+
         self.pre_post = []
         if pre_post_actions is not None:
             self.pre_post = pre_post_actions
@@ -56,9 +67,12 @@ class test_item(object):
         """Return an info string of this test."""
         params = ['%s=%s' % (k, v) for k, v in self.test_args.items()]
         msg = '%s(%s)' % (self.test_name, params)
-        if self.inc_set: msg += ' include=%s' % [s for s in self.inc_set]
-        if self.exc_set: msg += ' exclude=%s' % [s for s in self.exc_set]
-        if self.pre_post: msg += ' actions=%s' % self.pre_post
+        if self.inc_set:
+            msg += ' include=%s' % [s for s in self.inc_set]
+        if self.exc_set:
+            msg += ' exclude=%s' % [s for s in self.exc_set]
+        if self.pre_post:
+            msg += ' actions=%s' % self.pre_post
         return msg
 
     def validate(self, machine_attributes):
@@ -77,9 +91,11 @@ class test_item(object):
             True/False if the machine is valid for this test.
         """
         if self.inc_set is not None:
-            if not self.inc_set <= machine_attributes: return False
+            if not self.inc_set <= machine_attributes:
+                return False
         if self.exc_set is not None:
-            if self.exc_set & machine_attributes: return False
+            if self.exc_set & machine_attributes:
+                return False
         return True
 
     def run_test(self, client_at, work_dir='.'):
