@@ -14,7 +14,7 @@ from autotest_lib.client.cros import constants, cros_ui_test, cryptohome, login
 
 class security_ProfilePermissions(cros_ui_test.UITest):
     version = 2
-    _HOMEDIR_MODE = 0700
+    _HOMEDIR_MODE = 0710
 
     def check_owner_mode(self, path, expected_owner, expected_mode):
         """
@@ -44,17 +44,34 @@ class security_ProfilePermissions(cros_ui_test.UITest):
         homepath = constants.CRYPTOHOME_MOUNT_PT
         homemode = stat.S_IMODE(os.stat(homepath)[stat.ST_MODE])
 
-        if homemode != self._HOMEDIR_MODE:
+        # TODO(jimhebert) homedir mode check excluded from BWSI right now.
+        # Once crosbug.com/16425 is fixed, remove the is_mounted() check.
+        if cryptohome.is_mounted() and homemode != self._HOMEDIR_MODE:
             passes.append(False)
             logging.error('%s permissions were %s' % (homepath, oct(homemode)))
 
-        # Writable by anyone else is bad, as is owned by anyone else.
-        cmd = 'find -L "%s" \\( -perm /022 -o \\! -user chronos \\) -ls'
-        cmd %= homepath
-        cmd_output = utils.system_output(cmd, ignore_status=True)
-        if cmd_output:
-            passes.append(False)
-            logging.error(cmd_output)
+        # An array of shell commands, each representing a test that
+        # passes if it emits no output. The first test is the main one.
+        # In general, writable by anyone else is bad, as is owned by
+        # anyone else. Any exceptions to that are pruned out of the
+        # first test and checked individually by subsequent tests.
+        cmds = [
+            ('find -L "%s" -path "%s/flimflam" -prune -o '
+             ' -path "%s/.tpm" -prune -o '
+             ' \\( -perm /022 -o \\! -user chronos \\) -ls') %
+            (homepath, homepath, homepath),
+            'find -L "%s/flimflam" \\( -perm /077 -o \\! -user root \\) -ls' %
+            homepath,
+            # TODO(jimhebert) Uncomment after crosbug.com/16425 is fixed.
+            #('find -L "%s/.tpm" \\( -perm /007 -o \\! -user chronos '
+            # ' -o \\! -group pkcs11 \\) -ls') % homepath,
+        ]
+
+        for cmd in cmds:
+            cmd_output = utils.system_output(cmd, ignore_status=True)
+            if cmd_output:
+                passes.append(False)
+                logging.error(cmd_output)
 
         # This next section only applies if we have a real vault mounted
         # (ie, not a BWSI tmpfs).
@@ -63,7 +80,8 @@ class security_ProfilePermissions(cros_ui_test.UITest):
             # supporting directory structure.
             vaultpath = cryptohome.current_mounted_vault()
 
-            passes.append(self.check_owner_mode(vaultpath, "chronos", 0700))
+            passes.append(self.check_owner_mode(vaultpath, "chronos",
+                                                self._HOMEDIR_MODE))
             passes.append(self.check_owner_mode(vaultpath + "/../master.0",
                                                 "root", 0600))
             passes.append(self.check_owner_mode(vaultpath + "/../",
