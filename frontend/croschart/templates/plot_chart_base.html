@@ -51,7 +51,7 @@ This template builds a single plot on a single page for a zoomed-in view.
   {% ifequal tpl_chart.test_keys|length 1 %}
   {{ tpl_chart.test_name }} - {{ tpl_chart.test_keys.0 }}
   {% else %}
-  {{ tpl_chart.test_name }}
+  {{ tpl_chart.chart_title }}
   {% endifequal %}
   </a>
 </h4>

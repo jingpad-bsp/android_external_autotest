@@ -17,10 +17,10 @@
    -GetMultiTestKeyReleaseTableData(): produce a values by 2builds data table.
 """
 
+import json
 import logging
 import os
 import re
-import simplejson
 
 from autotest_lib.frontend.afe import readonly_connection
 
@@ -173,7 +173,7 @@ def GetReleaseQueryParts(request):
   for t in request.GET.getlist('testkey'):
     test_key_tuples[t] = ''
   if not test_key_tuples:
-    test_key_tuples = simplejson.load(open(os.path.join(
+    test_key_tuples = json.load(open(os.path.join(
         os.path.abspath(os.path.dirname(__file__)),
         'crosrelease_defaults.json')))
   for t in test_key_tuples:
@@ -216,28 +216,28 @@ def AbbreviateBuild(build, chrome_versions, with_board=False):
     return build
   chrome_version = ''
   if chrome_versions and m.group(2) in chrome_versions:
-    chrome_version = '%s%s' % (chrome_versions[m.group(2)],
-                               BUILD_PART_SEPARATOR)
+    chrome_version = '%s(%s)' % (BUILD_PART_SEPARATOR,
+                                 chrome_versions[m.group(2)])
   if with_board:
-    new_build = '%s%s%s%s-%s' % (m.group(1), BUILD_PART_SEPARATOR,
-                                 chrome_version, m.group(2), m.group(4))
+    new_build = '%s%s%s-%s%s' % (m.group(1), BUILD_PART_SEPARATOR,
+                                 m.group(2), m.group(4), chrome_version)
   else:
-    new_build = '%s%s-%s' % (chrome_version, m.group(2), m.group(4))
+    new_build = '%s-%s%s' % (m.group(2), m.group(4), chrome_version)
 
   return new_build
 
 
 def BuildNumberCmp(build_number1, build_number2):
   """Compare build numbers and return in ascending order."""
-  # 3 different build formats:
-  #1. xxx-yyy-r13_0.12.133.0-b1
-  #2. ttt_sss-rc_0.12.133.0-b1
-  #3. 0.12.133.0-b1
+  # 6 different build patterns:
+  #1. xxx-yyy-r13 0.12.133.0-b1 [(chrome version)]
+  #2. ttt_sss-rc 0.12.133.0-b1 [(chrome version)]
+  #3. 0.12.133.0-b1 [(chrome version)]
   def GetPureBuild(build):
     """This code coordinated with AbbreviateBuilds()."""
-    divided = build.split(BUILD_PART_SEPARATOR)
+    divided = build.split('(')[0].strip().split(BUILD_PART_SEPARATOR)
     dlen = len(divided)
-    if dlen > 3:
+    if dlen > 2:
       raise ChartDBError('Unexpected build format: %s' % build)
     # Get only the w.x.y.z part.
     return divided[dlen-1].split('-')
@@ -264,9 +264,10 @@ def GetChromeVersions(request):
   chrome_versions = None
   chrome_version_flag = request.GET.get('chromeversion', 'true')
   if chrome_version_flag and chrome_version_flag.lower() == 'true':
-    chrome_versions = simplejson.load(open(os.path.join(
-        os.path.abspath(os.path.dirname(__file__)),
-        'chromeos-chrome-version.json')))
+    map_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                            'chromeos-chrome-version.json')
+    if os.path.exists(map_file):
+      chrome_versions = json.load(open(map_file))
   return chrome_versions
 
 
@@ -304,14 +305,14 @@ def GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions, query,
         data_dict[test_key] = avg
     return job_tags, builds_inorder
 
-  def ToGVizJsonTable(test_keys, table_data):
+  def ToGVizJsonTable(test_keys, new_test_keys, table_data):
     """Massage data into gviz data table in proper order."""
     # Now format for gviz table.
     description = {'build': ('string', 'Build')}
     keys_in_order = ['build']
-    for test_key in test_keys:
-      description[test_key] = ('number', test_key)
-      keys_in_order.append(test_key)
+    for i in xrange(len(test_keys)):
+      description[test_keys[i]] = ('number', new_test_keys[i])
+      keys_in_order.append(test_keys[i])
     gviz_data_table = gviz_api.DataTable(description)
     gviz_data_table.LoadData(table_data)
     gviz_data_table = gviz_data_table.ToJSon(keys_in_order)
@@ -322,8 +323,12 @@ def GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions, query,
   cursor.execute('%s %s' % (query, query_order))
   job_tags, build_data = AggregateBuilds(test_keys, chrome_versions,
                                          cursor.fetchall())
-  gviz_data_table = ToGVizJsonTable(test_keys, build_data)
-  return {'gviz_data_table': gviz_data_table, 'job_tags': job_tags}
+  new_test_name, new_test_keys = chartutils.AbridgeCommonKeyPrefix(test_name,
+                                                                   test_keys)
+  gviz_data_table = ToGVizJsonTable(test_keys, new_test_keys, build_data)
+  return {'test_name': test_name, 'test_keys': new_test_keys,
+          'chart_title': new_test_name, 'gviz_data_table': gviz_data_table,
+          'job_tags': job_tags}
 
 
 def GetRangedKeyByBuildLinechartData(request):
@@ -340,12 +345,10 @@ def GetRangedKeyByBuildLinechartData(request):
   if not range_key:
     raise ChartInputError('One interval-type parameter must be supplied.')
   query_list.append(ranged_queries[range_key](request))
-  test_name, test_keys = chartutils.GetTestNameKeys(request.GET.get('testkey'))
   chrome_versions = GetChromeVersions(request)
+  test_name, test_keys = chartutils.GetTestNameKeys(request.GET.get('testkey'))
   data_dict = GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions,
                                           ' '.join(query_list))
-  # Added for chart labeling.
-  data_dict.update({'test_name': test_name, 'test_keys': test_keys})
   return data_dict
 
 

@@ -17,8 +17,8 @@
 """
 
 
+import json
 import os
-import simplejson
 
 from django.shortcuts import render_to_response
 
@@ -51,7 +51,7 @@ def PlotReport(request, template_file):
         raise ChartInputError('testkey must be a test,key pair.')
       tpl_charts.append((test_name, FIELD_SEPARATOR.join(test_keys)))
   else:
-    tpl_charts = simplejson.load(open(os.path.join(
+    tpl_charts = json.load(open(os.path.join(
         os.path.abspath(os.path.dirname(__file__)),
         'croschart_defaults.json')))
   # Generate a page of iframes.

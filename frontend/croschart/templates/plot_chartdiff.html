@@ -6,21 +6,24 @@ Copyright 2010 Google Inc. All Rights Reserved.
 This template implements an iframe diff-view with click-to-change the diff.
 {% endcomment %}
     {% block add_listener %}
+    function chromeos_version(full_version){
+      vers = full_version.split('(', 1)[0].replace(/\s*$/, "").split(' ', 2);
+      return vers[Math.min(vers.length, 2) - 1].split('-', 1);
+    }
     diff_url = 'http://chromeos-images/diff';
-    from_vers = json_data.getValue(0, 0).split(' ', 2);
-    from_ver = from_vers[Math.min(from_vers.length, 2)-1];
-    to_vers = json_data.getValue(json_data.getNumberOfRows()-1, 0).split(' ', 2);
-    to_ver = to_vers[Math.min(to_vers.length, 2)-1];
+    from_ver = chromeos_version(json_data.getValue(0, 0));
+    to_ver = chromeos_version(json_data.getValue(
+        json_data.getNumberOfRows() - 1, 0));
     document.getElementById('diff_iframe').src=diff_url + '/report' +
-        '?from=' + from_ver.split('-', 1) + '&to=' + to_ver.split( '-', 1);
+        '?from=' + from_ver + '&to=' + to_ver;
     google.visualization.events.addListener(chart, 'select', function(){
       if (chart.getSelection()[0].row > 0) {
-        from_vers = json_data.getValue(chart.getSelection()[0].row-1, 0).split(' ', 2);
-        from_ver = from_vers[Math.min(from_vers.length, 2)-1];
-        to_vers = json_data.getValue(chart.getSelection()[0].row, 0).split(' ', 2);
-        to_ver = to_vers[Math.min(to_vers.length, 2)-1];
+        from_ver = chromeos_version(json_data.getValue(
+            chart.getSelection()[0].row-1, 0));
+        to_ver = chromeos_version(json_data.getValue(
+            chart.getSelection()[0].row, 0));
         document.getElementById('diff_iframe').src=diff_url + '/report' +
-            '?from=' + from_ver.split('-', 1) + '&to=' + to_ver.split('-', 1);
+            '?from=' + from_ver + '&to=' + to_ver;
         }
       });
     {% endblock %}
