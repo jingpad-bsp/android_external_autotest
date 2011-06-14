@@ -61,14 +61,11 @@ except ImportError, e:
 
 
 _DEFAULT_ATTRIBUTES = [
-    'has_3g,False',
     'has_80211n,True',
-    'has_bluetooth,True',
+    'has_bluetooth,False',
     'has_chromeos_firmware,True',
     'has_resume_bug,False',
-    'has_ssd,True',
-    'netbook_01b7cc72,False',
-    'netbook_67d1c8eb,False'
+    'has_ssd,True'
     ]
 
 

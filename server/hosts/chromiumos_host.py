@@ -6,6 +6,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
+from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_remote_power
 from autotest_lib.server.hosts import base_classes
 
@@ -69,14 +70,16 @@ class ChromiumOSHost(base_classes.Host):
                     'Update failed. New kernel partition is not active after'
                     ' boot.')
 
-            # Wait until tries == 0 and success, or until timeout.
-            utils.poll_for_condition(
-                lambda: (updater.get_kernel_tries(new_active_kernel) == 0
-                         and updater.get_kernel_success(new_active_kernel)),
-                exception=autoupdater.ChromiumOSError(
-                    'Update failed. Timed out waiting for system to mark'
-                    ' new kernel as successful.'),
-                timeout=_KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
+            host_attributes = site_host_attributes.HostAttributes(self.hostname)
+            if host_attributes.has_chromeos_firmware:
+                # Wait until tries == 0 and success, or until timeout.
+                utils.poll_for_condition(
+                    lambda: (updater.get_kernel_tries(new_active_kernel) == 0
+                             and updater.get_kernel_success(new_active_kernel)),
+                    exception=autoupdater.ChromiumOSError(
+                        'Update failed. Timed out waiting for system to mark'
+                        ' new kernel as successful.'),
+                    timeout=_KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
 
             # TODO(dalecurtis): Hack for R12 builds to make sure BVT runs of
             # platform_Shutdown pass correctly.
