@@ -10,14 +10,12 @@ Copyright Martin J. Bligh, Andy Whitcroft 2007
 """
 
 import getpass, os, sys, re, stat, tempfile, time, select, subprocess, platform
-import multiprocessing
 import traceback, shutil, warnings, fcntl, pickle, logging, itertools, errno
 from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error, log, utils, packages
 from autotest_lib.client.common_lib import logging_manager
-from autotest_lib.server import test, subcommand, profilers, server_job_utils
-from autotest_lib.server import gtest_runner
+from autotest_lib.server import test, subcommand, profilers
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.tko import db as tko_db, status_lib, utils as tko_utils
 
@@ -45,12 +43,6 @@ REPAIR_CONTROL_FILE = _control_segment_path('repair')
 # by default provide a stub that generates no site data
 def _get_site_job_data_dummy(job):
     return {}
-
-
-# load up site-specific code for generating site-specific job data
-get_site_job_data = utils.import_site_function(__file__,
-    "autotest_lib.server.site_server_job", "get_site_job_data",
-    _get_site_job_data_dummy)
 
 
 class status_indenter(base_job.status_indenter):
@@ -466,75 +458,6 @@ class base_server_job(base_job.base_job):
         return success_machines
 
 
-    def distribute_across_machines(self, tests, machines,
-                                   continuous_parsing=False):
-        """Run each test in tests once using machines.
-
-        Instead of running each test on each machine like parallel_on_machines,
-        run each test once across all machines. Put another way, the total
-        number of tests run by parallel_on_machines is len(tests) *
-        len(machines). The number of tests run by distribute_across_machines is
-        len(tests).
-
-        Args:
-            tests: List of tests to run.
-            machines: List of machines to use.
-            continuous_parsing: Bool, if true parse job while running.
-        """
-        # The Queue is thread safe, but since a machine may have to search
-        # through the queue to find a valid test the lock provides exclusive
-        # queue access for more than just the get call.
-        test_queue = multiprocessing.JoinableQueue()
-        test_queue_lock = multiprocessing.Lock()
-
-        machine_workers = [server_job_utils.machine_worker(self,
-                                                           machine,
-                                                           self.resultdir,
-                                                           test_queue,
-                                                           test_queue_lock,
-                                                           continuous_parsing)
-                           for machine in machines]
-
-        # To (potentially) speed up searching for valid tests create a list of
-        # unique attribute sets present in the machines for this job. If sets
-        # were hashable we could just use a dictionary for fast verification.
-        # This at least reduces the search space from the number of machines to
-        # the number of unique machines.
-        unique_machine_attributes = []
-        for mw in machine_workers:
-            if not mw.attribute_set in unique_machine_attributes:
-                unique_machine_attributes.append(mw.attribute_set)
-
-        # Only queue tests which are valid on at least one machine.  Record
-        # skipped tests in the status.log file using record_skipped_test().
-        for test_entry in tests:
-            ti = server_job_utils.test_item(*test_entry)
-            machine_found = False
-            for ma in unique_machine_attributes:
-                if ti.validate(ma):
-                    test_queue.put(ti)
-                    machine_found = True
-                    break
-            if not machine_found:
-                self.record_skipped_test(ti)
-
-        # Run valid tests and wait for completion.
-        for worker in machine_workers:
-            worker.start()
-        test_queue.join()
-
-
-    def record_skipped_test(self, skipped_test, message=None):
-        """Insert a failure record into status.log for this test."""
-        msg = message
-        if msg is None:
-            msg = 'No valid machines found for test %s.' % skipped_test
-        logging.info(msg)
-        self.record('START', None, skipped_test.test_name)
-        self.record('INFO', None, skipped_test.test_name, msg)
-        self.record('END TEST_NA', None, skipped_test.test_name, msg)
-
-
     _USE_TEMP_DIR = object()
     def run(self, cleanup=False, install_before=False, install_after=False,
             collect_crashdumps=True, namespace={}, control=None,
@@ -567,7 +490,6 @@ class base_server_job(base_job.base_job):
             control_file_dir = self.resultdir
 
         self.aborted = False
-        namespace['gtest_runner'] = gtest_runner.gtest_runner()
         namespace['machines'] = machines
         namespace['args'] = self.args
         namespace['job'] = self
@@ -1183,14 +1105,6 @@ class base_server_job(base_job.base_job):
                 host.clear_known_hosts()
 
 
-site_server_job = utils.import_site_class(
-    __file__, "autotest_lib.server.site_server_job", "site_server_job",
-    base_server_job)
-
-class server_job(site_server_job):
-    pass
-
-
 class warning_manager(object):
     """Class for controlling warning logs. Manages the enabling and disabling
     of warnings."""
@@ -1222,3 +1136,18 @@ class warning_manager(object):
         intervals = self.disabled_warnings.get(warning_type, [])
         if intervals and intervals[-1][1] is None:
             intervals[-1] = (intervals[-1][0], int(current_time_func()))
+
+
+# load up site-specific code for generating site-specific job data
+get_site_job_data = utils.import_site_function(__file__,
+    "autotest_lib.server.site_server_job", "get_site_job_data",
+    _get_site_job_data_dummy)
+
+
+site_server_job = utils.import_site_class(
+    __file__, "autotest_lib.server.site_server_job", "site_server_job",
+    base_server_job)
+
+
+class server_job(site_server_job):
+    pass

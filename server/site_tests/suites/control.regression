@@ -85,19 +85,21 @@ TESTS = [
 # ('platform_ToolchainOptions', {}),
   ('realtimecomm_GTalkAudioBench', {}),
   ('realtimecomm_GTalkunittest', {}),
-  ('hardware_SsdDetection', {}, ['has_ssd']),
+  ('hardware_SsdDetection', {}, {'include': ['has_ssd']}),
 # TODO(dalecurtis): Re-enable if we ever have any platforms with Bluetooth.
 #  ('network_DisableInterface', {'iface_name' : 'hci0',
 #                                'tag' : 'hci0'}, ['has_bluetooth']),
-  ('network_WiFiCaps', {}, ['has_80211n']),
-  ('power_Resume', {}, [], ['has_resume_bug']),
+  ('network_WiFiCaps', {}, {'include': ['has_80211n']}),
+  ('power_Resume', {}, {'exclude': ['has_resume_bug']}),
 # TODO(dalecurtis): Kernel tests disabled for all platforms until the following
 # bugs are fixed:  and http://crosbug.com/14497
 #
 #  # Disable Kernel crash tests until http://crosbug.com/14497 is fixed.
-#  ('platform_KernelErrorPaths',  {'host': 'client'}, [], [], ['server_job']),
-  ('logging_KernelCrashServer',  {'host': 'client'}, ['has_chromeos_firmware'],
-                                 [], ['server_job']),
+#  ('platform_KernelErrorPaths', {'host': 'client'},
+#                                {'attributes': ['server_job']})),
+  ('logging_KernelCrashServer', {'host': 'client'},
+                                {'include': ['has_chromeos_firmware'],
+                                 'attributes': ['server_job']}),
   # Some of the tests in the main regression suite must be run last to prevent
   # cross-test issues. Always add new suites above this line.
   #-----------------------------------------------------------------------------
@@ -107,7 +109,7 @@ TESTS = [
   # This test stops tcsd which is known to cause issues with cryptohome and
   # possibly other services. Specifically, cros_ui_test based tests will fail;
   # so always run it last. See http://crosbug.com/14265
-  ('hardware_TPMCheck', {}, ['has_chromeos_firmware']),
+  ('hardware_TPMCheck', {}, {'include': ['has_chromeos_firmware']}),
 ]
 
 job.distribute_across_machines(TESTS, machines)

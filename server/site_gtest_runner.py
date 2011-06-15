@@ -12,7 +12,7 @@ gtest_parser: understands the output of a gtest run.
 
 import logging, os, re
 from autotest_lib.server import autotest, hosts, host_attributes
-from autotest_lib.server import server_job_utils
+from autotest_lib.server import site_server_job_utils
 
 
 class gtest_runner(object):
@@ -42,7 +42,7 @@ class gtest_runner(object):
             work_dir: Local directory to run tests in.
 
         """
-        self._gtest = server_job_utils.test_item(*gtest_entry)
+        self._gtest = site_server_job_utils.test_item(*gtest_entry)
         self._host = hosts.create_host(machine)
         self._results_dir = work_dir
 
@@ -67,11 +67,14 @@ class gtest_runner(object):
         Uses gtest_parser to pull the test results out of the gtest log file.
         Then creates entries  in status.log file for each test.
         """
-        parser = gtest_parser()
-
         # Find gtest log files from the autotest client run.
         log_path = os.path.join(self._results_dir, self._gtest.test_name,
                                 'debug', self._gtest.test_name + '.DEBUG')
+        if not os.path.exists(log_path):
+            logging.error('gtest log file "%s" is missing.', log_path)
+            return
+
+        parser = gtest_parser()
 
         # Read the log file line-by-line, passing each line into the parser.
         with open(log_path, 'r') as log_file:
@@ -83,11 +86,11 @@ class gtest_runner(object):
         # Record each failed test.
         for failed in parser.FailedTests():
             fail_description = parser.FailureDescription(failed)
-            if len(fail_description) > 1:
-                self.record_failed_test(failed, fail_description[1].strip(),
-                                        ''.join(fail_description[1:]))
+            if fail_description:
+                self.record_failed_test(failed, fail_description[0].strip(),
+                                        ''.join(fail_description))
             else:
-                self.record_failed_test(failed, '')
+                self.record_failed_test(failed, 'NO ERROR LINES FOUND.')
 
         # Finally record each successful test.
         for passed in parser.PassedTests():
@@ -283,7 +286,7 @@ class gtest_parser(object):
             List of test name, and failure string.
         """
         test_status = self._test_status.get(test, ('', []))
-        return ["%s: " % test] + test_status[1]
+        return test_status[1]
 
     def SuppressionHashes(self):
         """Returns list of suppression hashes found in the log."""

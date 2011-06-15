@@ -52,8 +52,8 @@ TESTS = [
   ('network_DisableInterface', {'iface_name': 'wifi_only',
                                 'tag': 'wifi_only'}),
   ('network_Ping', {}),
-  ('power_Resume', {}, [], ['has_resume_bug']),
-  ('platform_Shutdown', {}, [], [], ['reboot_before']),
+  ('power_Resume', {}, {'exclude': ['has_resume_bug']}),
+  ('platform_Shutdown', {}, {'attributes': ['reboot_before']}),
 ]
 
 job.distribute_across_machines(TESTS, machines)

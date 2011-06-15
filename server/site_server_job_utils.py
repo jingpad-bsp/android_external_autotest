@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Utility classes used by server_job.distribute_across_machines().
+"""Utility classes used by site_server_job.distribute_across_machines().
 
 test_item: extends the basic test tuple to add include/exclude attributes and
     pre/post actions.
@@ -13,54 +13,40 @@ machine_worker: is a thread that manages running tests on a host.  It
 """
 
 
-import logging, os, Queue, threading
+import logging, os, Queue
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.server import autotest, hosts, host_attributes, subcommand
+from autotest_lib.server import autotest, hosts, host_attributes
 
 
 class test_item(object):
     """Adds machine verification logic to the basic test tuple.
 
     Tests can either be tuples of the existing form ('testName', {args}) or the
-    extended form ('testname', {args}, ['include'], ['exclude'], ['attribs'])
-    where include and exclude are lists of attributes and actions is a list of
-    strings. A machine must have all the attributes in include and must not
-    have any of the attributes in exclude to be valid for the test. Attribs
-    strings can include 'reboot_before', 'reboot_after', and 'server_job'
+    extended form ('testname', {args}, {'include': [], 'exclude': [],
+    'attributes': []}) where include and exclude are lists of host attribute
+    labels and attributes is a list of strings. A machine must have all the
+    labels in include and must not have any of the labels in exclude to be valid
+    for the test. Attributes strings can include reboot_before, reboot_after,
+    and server_job.
     """
 
-    def __init__(self, test_name, test_args, include_attribs=None,
-                 exclude_attribs=None, test_attribs=None):
+    def __init__(self, test_name, test_args, test_attribs={}):
         """Creates an instance of test_item.
 
         Args:
             test_name: string, name of test to execute.
             test_args: dictionary, arguments to pass into test.
-            include_attribs: attributes a machine must have to run test.
-            exclude_attribs: attributes preventing a machine from running test.
-            test_attribs: reboot before/after, run as server job.
+            test_attribs: Dictionary of test attributes. Valid keys are:
+              include - labels a machine must have to run a test.
+              exclude - labels preventing a machine from running a test.
+              attributes - reboot before/after test, run test as server job.
         """
         self.test_name = test_name
         self.test_args = test_args
 
-        # Remove host parameter if present. Autotest defaults to the client
-        # host so warn if host set to any other value.
-        if 'host' in self.test_args:
-            if self.test_args['host'] != 'client':
-                logging.error('Unsupported test parameter host=%s.',
-                              self.test_args['host'])
-
-        self.inc_set = None
-        if include_attribs is not None:
-            self.inc_set = set(include_attribs)
-
-        self.exc_set = None
-        if exclude_attribs is not None:
-            self.exc_set = set(exclude_attribs)
-
-        self.test_attribs = []
-        if test_attribs is not None:
-            self.test_attribs = test_attribs
+        self.inc_set = set(test_attribs.get('include', []))
+        self.exc_set = set(test_attribs.get('exclude', []))
+        self.attributes = test_attribs.get('attributes', [])
 
     def __str__(self):
         """Return an info string of this test."""
@@ -70,8 +56,8 @@ class test_item(object):
             msg += ' include=%s' % [s for s in self.inc_set]
         if self.exc_set:
             msg += ' exclude=%s' % [s for s in self.exc_set]
-        if self.test_attribs:
-            msg += ' attributes=%s' % self.test_attribs
+        if self.attributes:
+            msg += ' attributes=%s' % self.attributes
         return msg
 
     def validate(self, machine_attributes):
@@ -103,12 +89,13 @@ class test_item(object):
         Args:
             client_at: Autotest instance for this host.
             work_dir: Directory to use for results and log files.
+            server_job: Server_Job instance to use to runs server tests.
         """
-        if 'reboot_before' in self.test_attribs:
+        if 'reboot_before' in self.attributes:
             client_at.host.reboot()
 
         try:
-            if 'server_job' in self.test_attribs:
+            if 'server_job' in self.attributes:
                 if 'host' in self.test_args:
                     self.test_args['host'] = client_at.host
                 if server_job is not None:
@@ -121,12 +108,12 @@ class test_item(object):
                 client_at.run_test(self.test_name, results_dir=work_dir,
                                    **self.test_args)
         finally:
-            if 'reboot_after' in self.test_attribs:
+            if 'reboot_after' in self.attributes:
                 client_at.host.reboot()
 
 
-class machine_worker(threading.Thread):
-    """Thread that runs tests on a remote host machine."""
+class machine_worker(object):
+    """Worker that runs tests on a remote host machine."""
 
     def __init__(self, server_job, machine, work_dir, test_queue, queue_lock,
                  continuous_parsing=False):
@@ -146,7 +133,6 @@ class machine_worker(threading.Thread):
             queue_lock: lock protecting test_queue.
             continuous_parsing: bool, enable continuous parsing.
         """
-        threading.Thread.__init__(self)
         self._server_job = server_job
         self._test_queue = test_queue
         self._test_queue_lock = queue_lock
@@ -158,14 +144,11 @@ class machine_worker(threading.Thread):
         client_attributes = host_attributes.host_attributes(machine)
         self.attribute_set = set(client_attributes.get_attributes())
         self._results_dir = work_dir
-        # Only create machine subdir when running a multi-machine job.
-        if not self._machine in work_dir:
-            self._results_dir = os.path.join(work_dir, self._machine)
-            if not os.path.exists(self._results_dir):
-                os.makedirs(self._results_dir)
-            machine_data = {'hostname': self._machine,
-                            'status_version': str(1)}
-            utils.write_keyval(self._results_dir, machine_data)
+        if not os.path.exists(self._results_dir):
+            os.makedirs(self._results_dir)
+        machine_data = {'hostname': self._machine,
+                        'status_version': str(1)}
+        utils.write_keyval(self._results_dir, machine_data)
 
     def __str__(self):
         attributes = [a for a in self.attribute_set]
@@ -207,21 +190,6 @@ class machine_worker(threading.Thread):
         return good_test
 
     def run(self):
-        """Use subcommand to fork process and execute tests.
-
-        The forked processes prevents log files from simultaneous tests
-        interweaving with each other. Logging doesn't communicate host autotest
-        to client autotest, it communicates host module to client autotest.  So
-        different server side autotest instances share the same module and
-        require split processes to have clean logging.
-        """
-        sub_cmd = subcommand.subcommand(self._run,
-                                        [],
-                                        self._results_dir)
-        sub_cmd.fork_start()
-        sub_cmd.fork_waitfor()
-
-    def _run(self):
         """Executes tests on the host machine.
 
         If continuous parsing was requested, start the parser before running
