@@ -42,23 +42,14 @@ class platform_KernelErrorPaths(test.test):
     def configure_crash_reporting(self):
         self._preserved_files = []
         for f in (CrashTestDefs._PAUSE_FILE, CrashTestDefs._CONSENT_FILE):
-            result = self.client.run('ls -1 "%s"' % os.path.dirname(f))
-            if os.path.basename(f) in result.stdout.splitlines():
-                result = self.client.run('cat "%s"' % f)
-                self._preserved_files.append((f, result.stdout))
-            else:
-                self._preserved_files.append((f, None))
-
-        self.client.run('touch "%s"' % CrashTestDefs._PAUSE_FILE)
-        self.client.run(
-            'echo test-consent > "%s"' % CrashTestDefs._CONSENT_FILE)
+            if not os.path.exists(f):
+                self.client.run('touch "%s"' % f)
+                self.client.run('chown chronos "%s"' % f)
+                self._preserved_files.append(f)
 
     def cleanup(self):
-        for f, text in self._preserved_files:
-            if text is None:
-                self.client.run('rm -f "%s"' % f)
-                continue
-            self.client.run('cat <<EOF >"%s"\n%s\nEOF\n' % (f, text))
+        for f in self._preserved_files:
+            self.client.run('rm -f "%s"' % f)
         test.test.cleanup(self)
 
     def run_once(self, host=None):
