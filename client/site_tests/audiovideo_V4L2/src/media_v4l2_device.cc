@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #define CHECK(a) assert(a)
 #define MAJOR(dev) (((uint32_t)(dev)) >> 8)
