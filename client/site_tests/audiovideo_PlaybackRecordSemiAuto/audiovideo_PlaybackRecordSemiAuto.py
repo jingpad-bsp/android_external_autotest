@@ -71,6 +71,8 @@ _DEVICE_SECTION_START = '''<tr><td><table class="device_section">
 <tr>
 <th>Name</th>
 <th>Index</th>
+<th>Card</th>
+<th>Device</th>
 <th>Channels</th>
 <th>Format</th>
 <th>Sample Rates</th>
@@ -81,7 +83,9 @@ _DEVICE_SECTION_START = '''<tr><td><table class="device_section">
 _DEVICE_SECTION_END = '</table></td></tr>'
 _DEVICE_SECTION_ENTRY_TMPL = '''<tr>
 <td>%(name)s</td>
-<td>%(index)d</td>
+<td>%(list_index)d</td>
+<td>%(card_index)d</td>
+<td>%(device_index)d</td>
 <td>%(channels)d</td>
 <td>%(sample_format)s</td>
 <td>%(sample_rate)s</td>
@@ -324,7 +328,7 @@ _USR_BIN_PATH = '/usr/bin/'
 _PROC_ASOUND_CARD = 'cat /proc/asound/card%d/codec#0'
 
 # Regexps for parsing 'aplay -l'
-_CARD_RE = re.compile('card (\d+):\s(.+)\s\[(.+)\],\s+(.+)\[(.+)\]')
+_CARD_RE = re.compile('card (\d+):\s(.+)\s\[(.+)\],\s+device\s(.+):.+\[(.+)\]')
 
 # Regexps for parsing 'amixer'
 _MIXER_CONTROL_RE = re.compile('Simple mixer control \'(.+)\',(\d+)')
@@ -707,8 +711,9 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                 regexp = re.compile(_DEVICE_RE_TEMPLATE_ % (test['device']))
                 m = regexp.match(device['name'])
                 if m is not None:
-                    server.wfile.write(self.get_testing_item(device['index'],
-                                                             test['id']))
+                    server.wfile.write(self.get_testing_item(
+                            device['list_index'],
+                            test['id']))
 
         server.wfile.write(_TEST_CONTROL_END)
 
@@ -807,7 +812,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
           has a different format for its info, we're only attempting Intel's
           codec#0 format
         """
-        cmd = _PROC_ASOUND_CARD % (current['index'])
+        cmd = _PROC_ASOUND_CARD % (current['card_index'])
         info_list =  list_amixer_output = self.do_cmd(cmd)
 
         found_rates = False
@@ -845,11 +850,15 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         device_info = { 'info' : [] }
         current_device = None
         port_parsing_mode = False
+        list_index = 0
         for line in device_info_output.split('\n'):
             m = _CARD_RE.match(line)
             if m is not None:
                 current_device = {}
-                current_device['index'] = int(m.group(1))
+                current_device['list_index'] = list_index
+                list_index = list_index + 1
+                current_device['card_index'] = int(m.group(1))
+                current_device['device_index'] = int(m.group(4))
                 current_device['control_names'] = []
                 current_device['card'] = m.group(2)
                 current_device['name'] = '%s (%s) %s' % (m.group(2),
@@ -929,7 +938,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         device_info = self.parse_device_info_alsa(list_aplay_output)
 
         for device in device_info['info']:
-            cmd = 'amixer -c %d' % (device['index'])
+            cmd = 'amixer -c %d' % (device['card_index'])
             list_amixer_output = self.do_cmd(cmd)
             self.merge_controls_alsa(device, list_amixer_output, 'Playback')
         return device_info
@@ -948,7 +957,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         device_info = self.parse_device_info_alsa(list_arecord_output)
 
         for device in device_info['info']:
-            cmd = 'amixer -c %d' % (device['index'])
+            cmd = 'amixer -c %d' % (device['card_index'])
             list_amixer_input = self.do_cmd(cmd)
             self.merge_controls_alsa(device, list_amixer_input, 'Capture')
         return device_info
@@ -1148,7 +1157,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
             devices: dictionary of devices from enumerate_playback_devices()
         """
         for device in devices['info']:
-            if device['index'] == index:
+            if device['list_index'] == index:
                 return device
         return None
 
