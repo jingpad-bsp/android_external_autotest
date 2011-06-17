@@ -884,6 +884,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                 current_control = {}
                 current_control['name'] =  '\'%s\',%d' % (m.group(1),
                                                           int(m.group(2)))
+                current_control['direction'] = 'Invalid'
             if current_control is not None:
                 m = _MIXER_CAPS_RE.match(line)
                 if m is not None:
