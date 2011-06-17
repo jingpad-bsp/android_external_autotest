@@ -22,15 +22,15 @@ class test_item(object):
     """Adds machine verification logic to the basic test tuple.
 
     Tests can either be tuples of the existing form ('testName', {args}) or the
-    extended form ('testname', {args}, ['include'], ['exclude'], ['actions'])
+    extended form ('testname', {args}, ['include'], ['exclude'], ['attribs'])
     where include and exclude are lists of attributes and actions is a list of
     strings. A machine must have all the attributes in include and must not
-    have any of the attributes in exclude to be valid for the test. Actions
-    strings can include 'reboot_before' and 'reboot_after'.
+    have any of the attributes in exclude to be valid for the test. Attribs
+    strings can include 'reboot_before', 'reboot_after', and 'server_job'
     """
 
     def __init__(self, test_name, test_args, include_attribs=None,
-                 exclude_attribs=None, pre_post_actions=None):
+                 exclude_attribs=None, test_attribs=None):
         """Creates an instance of test_item.
 
         Args:
@@ -38,7 +38,7 @@ class test_item(object):
             test_args: dictionary, arguments to pass into test.
             include_attribs: attributes a machine must have to run test.
             exclude_attribs: attributes preventing a machine from running test.
-            pre_post_actions: reboot before/after running the test.
+            test_attribs: reboot before/after, run as server job.
         """
         self.test_name = test_name
         self.test_args = test_args
@@ -49,7 +49,6 @@ class test_item(object):
             if self.test_args['host'] != 'client':
                 logging.error('Unsupported test parameter host=%s.',
                               self.test_args['host'])
-            del self.test_args['host']
 
         self.inc_set = None
         if include_attribs is not None:
@@ -59,9 +58,9 @@ class test_item(object):
         if exclude_attribs is not None:
             self.exc_set = set(exclude_attribs)
 
-        self.pre_post = []
-        if pre_post_actions is not None:
-            self.pre_post = pre_post_actions
+        self.test_attribs = []
+        if test_attribs is not None:
+            self.test_attribs = test_attribs
 
     def __str__(self):
         """Return an info string of this test."""
@@ -71,8 +70,8 @@ class test_item(object):
             msg += ' include=%s' % [s for s in self.inc_set]
         if self.exc_set:
             msg += ' exclude=%s' % [s for s in self.exc_set]
-        if self.pre_post:
-            msg += ' actions=%s' % self.pre_post
+        if self.test_attribs:
+            msg += ' attributes=%s' % self.test_attribs
         return msg
 
     def validate(self, machine_attributes):
@@ -98,21 +97,31 @@ class test_item(object):
                 return False
         return True
 
-    def run_test(self, client_at, work_dir='.'):
+    def run_test(self, client_at, work_dir='.', server_job=None):
         """Runs the test on the client using autotest.
 
         Args:
             client_at: Autotest instance for this host.
             work_dir: Directory to use for results and log files.
         """
-        if 'reboot_before' in self.pre_post:
+        if 'reboot_before' in self.test_attribs:
             client_at.host.reboot()
 
         try:
-            client_at.run_test(self.test_name, results_dir=work_dir,
-                               **self.test_args)
+            if 'server_job' in self.test_attribs:
+                if 'host' in self.test_args:
+                    self.test_args['host'] = client_at.host
+                if server_job is not None:
+                    logging.info('Running Server_Job=%s', self.test_name)
+                    server_job.run_test(self.test_name, **self.test_args)
+                else:
+                    logging.error('No Server_Job instance provided for test '
+                                  '%s.', self.test_name)
+            else:
+                client_at.run_test(self.test_name, results_dir=work_dir,
+                                   **self.test_args)
         finally:
-            if 'reboot_after' in self.pre_post:
+            if 'reboot_after' in self.test_attribs:
                 client_at.host.reboot()
 
 
@@ -232,7 +241,8 @@ class machine_worker(threading.Thread):
 
             logging.info('%s running %s', self._machine, active_test)
             try:
-                active_test.run_test(self._client_at, self._results_dir)
+                active_test.run_test(self._client_at, self._results_dir,
+                                     self._server_job)
             except error.AutoservError:
                 logging.exception('Autoserv error running "%s".', active_test)
             except error.AutotestError:
