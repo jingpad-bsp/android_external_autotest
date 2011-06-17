@@ -1,11 +1,11 @@
 [
   ["platform_BootPerfServer",
    "seconds_kernel_to_startup,seconds_kernel_to_startup_done,seconds_kernel_to_x_started,seconds_kernel_to_chrome_exec,seconds_kernel_to_chrome_main,seconds_kernel_to_login,seconds_kernel_to_network"],
+  ["platform_BootPerfServer", "seconds_firmware_boot,seconds_power_on_to_lf_start,seconds_power_on_to_lf_end,seconds_power_on_to_lk_start,seconds_power_on_to_lk_end,seconds_power_on_to_kernel"],
   ["platform_BootPerfServer", "seconds_power_on_to_login"],
   ["platform_BootPerfServer", "seconds_reboot_time,seconds_shutdown_time"],
   ["platform_BootPerfServer",
    "rdbytes_kernel_to_startup,rdbytes_kernel_to_startup_done,rdbytes_kernel_to_x_started,rdbytes_kernel_to_chrome_exec,rdbytes_kernel_to_chrome_main,rdbytes_kernel_to_login"],
-  ["platform_BootPerfServer", "seconds_firmware_boot"],
   ["desktopui_ChromeFirstRender", "seconds_chrome_first_tab"],
   ["build_RootFilesystemSize", "bytes_rootfs_prod"],
   ["build_RootFilesystemSize", "bytes_rootfs_test"],
