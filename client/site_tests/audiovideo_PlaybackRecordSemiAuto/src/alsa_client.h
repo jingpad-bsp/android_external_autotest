@@ -28,6 +28,7 @@ class AlsaAudioClient {
   };
 
   AlsaAudioClient();
+  AlsaAudioClient(const std::string &playback_device);
   virtual ~AlsaAudioClient();
 
   virtual bool Init();
@@ -43,6 +44,7 @@ class AlsaAudioClient {
   virtual int last_error() const { return last_error_; }
 
  private:
+  static const unsigned kDefaultLatencyMs = 50;
 
   // Callback signaling completion of flushing of a stream.
   static void StreamFlushed(int success, void* userdata);
@@ -55,6 +57,9 @@ class AlsaAudioClient {
 
   // The last error reported by Alsa. Useful for debugging.
   int last_error_;
+
+  // The playback device to open.
+  std::string playback_device_;
 };
 
 }  // namespace audio

@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include <set>
+#include <string>
 
 #include "common.h"
 #include "alsa_client.h"
@@ -26,6 +27,7 @@ using autotest_client::audio::TestConfig;
 
 static struct option long_options[] = {
   {"test-type", 1, NULL, 't'},
+  {"alsa-device", 1, NULL, 'd'},
   {"tone-length", 1, NULL, 'l'},
   {"frequency", 1, NULL, 'h'},
   {"format", 1, NULL, 'f'},
@@ -69,12 +71,16 @@ SampleFormat ParseFormat(const char* arg) {
 bool ParseOptions(int argc, char* argv[], TestConfig* config) {
   int opt = 0;
   int optindex = -1;
-  while ((opt = getopt_long(argc, argv, "t:l:f:h:r:s:e:c:a:",
+  while ((opt = getopt_long(argc, argv, "t:d:l:f:h:r:s:e:c:a:",
                             long_options,
                             &optindex)) != -1) {
     switch (opt) {
       case 't':
         config->type = ParseTestType(optarg);
+        break;
+
+      case 'd':
+        config->alsa_device = std::string(optarg);
         break;
 
       case 'l':
@@ -140,6 +146,9 @@ void PrintUsage(FILE* out, const char* name) {
 
   fprintf(out, "Usage: %s [options]\n", name);
   fprintf(out, "\t-t, --test-type: \"scale\" or \"tone\"\n");
+  fprintf(out, "\t-d, --alsa-device: "
+               "Name of alsa device to use (def %s).\n",
+               default_config.alsa_device.c_str());
   fprintf(out,
           "\t-l, --tone-length: "
           "Decimal value of tone length in secs (def %0.2lf).\n",
@@ -185,6 +194,7 @@ void PrintConfig(FILE* out, const TestConfig& config) {
     fprintf(out, "\tFrequency: %0.2lf\n", config.frequency);
   }
 
+  fprintf(out, "\tAlsa Device: %s\n", config.alsa_device.c_str());
   fprintf(out, "\tFormat: %s\n", config.format.to_string());
   fprintf(out, "\tTone Length (sec): %0.2lf\n", config.tone_length_sec);
   fprintf(out, "\tSample Rate (HZ): %d\n", config.sample_rate);
@@ -212,7 +222,7 @@ int main(int argc, char* argv[]) {
 
   PrintConfig(stdout, config);
 
-  AlsaAudioClient client;
+  AlsaAudioClient client(config.alsa_device);
   if (!client.Init()) {
     fprintf(stderr, "Unable to initialize Alsa: %d\n",
             client.last_error());

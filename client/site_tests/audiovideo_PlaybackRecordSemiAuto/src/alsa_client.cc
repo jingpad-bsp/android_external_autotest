@@ -56,9 +56,18 @@ static int SampleFormatToFrameBytes(SampleFormat format, int channels) {
 
 AlsaAudioClient::AlsaAudioClient()
     : pcm_out_handle_(NULL),
-      latency_ms_(50),
+      latency_ms_(kDefaultLatencyMs),
       state_(kCreated),
-      last_error_(0) {
+      last_error_(0),
+      playback_device_("default") {
+}
+
+AlsaAudioClient::AlsaAudioClient(const std::string &playback_device)
+    : pcm_out_handle_(NULL),
+      latency_ms_(kDefaultLatencyMs),
+      state_(kCreated),
+      last_error_(0),
+      playback_device_(playback_device) {
 }
 
 AlsaAudioClient::~AlsaAudioClient() {
@@ -68,7 +77,7 @@ AlsaAudioClient::~AlsaAudioClient() {
 
 bool AlsaAudioClient::Init() {
   if ((last_error_ = snd_pcm_open(&pcm_out_handle_,
-                                  "default",
+                                  playback_device_.c_str(),
                                   SND_PCM_STREAM_PLAYBACK,
                                   0)) < 0) {
     return false;

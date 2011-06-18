@@ -8,6 +8,7 @@
 #include <assert.h>
 
 #include <set>
+#include <string>
 
 namespace autotest_client {
 namespace audio {
@@ -77,6 +78,7 @@ struct TestConfig {
 
   TestConfig() 
       : type(kInvalid),
+        alsa_device("default"),
         format(SampleFormat::kPcmS16),
         tone_length_sec(0.3f),
         frequency(440.0f),  // Middle-A
@@ -87,6 +89,7 @@ struct TestConfig {
   }
 
   TestType type;
+  std::string alsa_device;
   SampleFormat format;
   double tone_length_sec;
   double frequency;
