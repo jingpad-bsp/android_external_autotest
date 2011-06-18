@@ -407,7 +407,8 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                  'tone_length_sec': _TONE_LENGTH_SEC,
                  'tone_volume': _TONE_DEFAULT_VOLUME,
                  'channels': 2,
-                 'active_channel': None
+                 'active_channel': None,
+                 'alsa_device': 'default'
                  }
 
 
@@ -1190,18 +1191,20 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         logging.info('-- tones playback test')
 
         device = self.get_device_by_idx(device_idx, self._playback_devices)
+        alsa_device = ('plughw:%d,%d' % (device['card_index'],
+                                         device['device_index']))
 
         if device is not None:
             self.set_control_volumes(device, test['mixer'])
             for channel in xrange(0, device['channels']):
                 logging.info('-- playback channel %d' % (channel))
-                self.do_tone_test(channel)
-                self.do_scale_test(channel)
+                self.do_tone_test(alsa_device, channel)
+                self.do_scale_test(alsa_device, channel)
 
             # Run it once for all channels enabled.
             logging.info('-- playback all channels')
-            self.do_tone_test()
-            self.do_scale_test()
+            self.do_tone_test(alsa_device)
+            self.do_scale_test(alsa_device)
             self.do_signal_test_end()
 
 
@@ -1244,6 +1247,11 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         # TODO(ajwong): What is a good test volume? 50% of max default is
         # pretty arbitrary.
         test_volume = self.get_test_volume(device)
+
+        # Set the alsa device to use to play the tones.
+        alsa_device = ('plughw:%d,%d' % (device['card_index'],
+                                         device['device_index']))
+        config['alsa_device'] = alsa_device
 
         tone_thread = ToneThread(self, config)
 
@@ -1300,7 +1308,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         self.run_test_tones(config)
 
 
-    def do_tone_test(self, active_channel=None):
+    def do_tone_test(self, alsa_device, active_channel=None):
         """Plays 10 test tones from 30Hz to 20000Hz.
 
         Args:
@@ -1309,6 +1317,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         """
         config = self.default_tone_config()
         config['active_channel'] = active_channel
+        config['alsa_device'] = alsa_device;
 
         # Play the low-tones.
         self.play_tone(config, 30)
@@ -1327,7 +1336,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         self.play_tone(config, 20000)
 
 
-    def do_scale_test(self, active_channel=None):
+    def do_scale_test(self, alsa_device, active_channel=None):
         """Plays the A# harmonic minor scale test on.
 
         Args:
@@ -1336,6 +1345,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         """
         config = self.default_tone_config()
         config['active_channel'] = active_channel
+        config['alsa_device'] = alsa_device;
         config['type'] = 'scale'
         self.run_test_tones(config)
 
@@ -1368,6 +1378,8 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                '-e %(tone_end_volume)f' % args)
         if args['active_channel'] is not None:
             cmd += ' -a %s' % args['active_channel']
+        if args['alsa_device'] is not None:
+            cmd += ' -d %s' % args['alsa_device']
         if args['type'] == 'tone':
             logging.info('[tone %dHz]' % args['frequency'])
         elif args['type'] == 'scale':
