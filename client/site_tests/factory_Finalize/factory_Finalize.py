@@ -99,15 +99,9 @@ class factory_Finalize(test.test):
         # solve upload file names
         upload_method = self.normalize_upload_method(upload_method)
 
-        # build parameters
-        db_path = os.path.join(self.bindir,
-                               '..',
-                               'hardware_Components',
-                               'data_*/components*')
         args = ['gooftool',
                 '--finalize',
                 '--verbose',
-                '--db_path "%s"' % db_path,
                 '--wipe_method "%s"' % ('secure' if secure_wipe else 'fast'),
                 '--upload_method "%s"' % upload_method,
                 ]

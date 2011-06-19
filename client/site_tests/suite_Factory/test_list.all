@@ -218,9 +218,8 @@ TEST_LIST = [
             AutomatedSubTest(
                 label_en='hw-qual-id matching',
                 label_zw='型號匹配',
-                autotest_name='hardware_Components',
-                unique_name='hw-qual-id-match',
-                dargs={'approved_dbs':'data_*/components*'}),
+                autotest_name='factory_ProbeHWID',
+                unique_name='hw-qual-id-match'),
 
             AutomatedSubTest(
                 label_en='write GBB',
