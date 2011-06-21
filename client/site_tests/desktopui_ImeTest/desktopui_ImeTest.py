@@ -86,7 +86,9 @@ class desktopui_ImeTest(cros_ui_test.UITest):
 
     # TODO: Get rid of this function.
     def run_ibusclient(self, options):
-        cmd = cros_ui.xcommand_as('%s %s' % (self.exefile, options), 'chronos')
+        cmd = cros_ui.xcommand_as(
+            'IBUS_ADDRESS_FILE=/tmp/.ibus-socket/ibus-socket-file %s %s' %
+            (self.exefile, options), 'chronos')
         return utils.system_output(cmd, retain_output=True)
 
 
