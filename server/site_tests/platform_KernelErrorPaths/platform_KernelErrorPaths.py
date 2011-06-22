@@ -68,7 +68,7 @@ class platform_KernelErrorPaths(test.test):
             ('softlockup', 'BUG: soft lockup', 25),
             ('bug', 'kernel BUG at', 10),
             ('hungtask', 'hung_task: blocked tasks', 250),
-            ('nmiwatchdog', 'BUG: NMI Watchdog detected LOCKUP', 15),
+            ('nmiwatchdog', 'Watchdog detected hard LOCKUP', 15),
             ('nullptr',
              'BUG: unable to handle kernel NULL pointer dereference at', 10),
             ('panic', 'Kernel panic - not syncing:', 10),
