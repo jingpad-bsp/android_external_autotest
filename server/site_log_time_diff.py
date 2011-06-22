@@ -48,7 +48,7 @@ class StampParser(object):
         # Lines end up like 2011-05-13T07:38:05.238129-07:00 ...
         date, sep, fraction = syslog_time.partition('.')
         int_time = time.mktime(time.strptime(date, '%Y-%m-%dT%H:%M:%S'))
-        return float('%d.%s' % (int_time, fraction.split('-')[0]))
+        return float('%d.%s' % (int_time, re.split('[+-]', fraction)[0]))
 
     def results(self):
         if not self.start_line or not self.end_line:
