@@ -65,21 +65,22 @@ class platform_KernelErrorPaths(test.test):
         # bugs:
         # 'deadlock' (has to be sent twice), 'softlockup', 'irqlockup'
         test_tuples = (
-            ('softlockup', 'BUG: soft lockup'),
-            ('bug', 'kernel BUG at'),
-            ('hungtask', 'hung_task: blocked tasks'),
-            ('nmiwatchdog', 'BUG: NMI Watchdog detected LOCKUP'),
+            ('softlockup', 'BUG: soft lockup', 25),
+            ('bug', 'kernel BUG at', 10),
+            ('hungtask', 'hung_task: blocked tasks', 250),
+            ('nmiwatchdog', 'BUG: NMI Watchdog detected LOCKUP', 15),
             ('nullptr',
-             'BUG: unable to handle kernel NULL pointer dereference at'),
-            ('panic', 'Kernel panic - not syncing:'),
+             'BUG: unable to handle kernel NULL pointer dereference at', 10),
+            ('panic', 'Kernel panic - not syncing:', 10),
             )
 
-        for action, text in test_tuples:
+        for action, text, timeout in test_tuples:
             # Delete crash results, if any
             self.client.run('rm -f %s/*' % crash_log_dir)
             boot_id = self.client.get_boot_id()
             self.breakme(action)  # This should cause target reset.
-            self.client.wait_for_restart(timeout=25, old_boot_id=boot_id)
+            self.client.wait_for_restart(down_timeout=timeout,
+                                         old_boot_id=boot_id)
             result = self.client.run('cat %s/kernel.*.kcrash' % crash_log_dir)
             if text not in result.stdout:
                 raise error.TestFail(
