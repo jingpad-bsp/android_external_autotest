@@ -83,8 +83,11 @@ class gtest_runner(object):
         # Record each failed test.
         for failed in parser.FailedTests():
             fail_description = parser.FailureDescription(failed)
-            self.record_failed_test(failed, fail_description[1].strip(),
-                                    ''.join(fail_description[1:]))
+            if len(fail_description) > 1:
+                self.record_failed_test(failed, fail_description[1].strip(),
+                                        ''.join(fail_description[1:]))
+            else:
+                self.record_failed_test(failed, '')
 
         # Finally record each successful test.
         for passed in parser.PassedTests():
@@ -198,6 +201,12 @@ class gtest_parser(object):
 
         self._master_name_re = re.compile('\[Running for master: "([^"]*)"')
         self.master_name = ''
+
+        self._error_logging_start_re = re.compile('=' * 70)
+        self._error_logging_test_name_re = re.compile(
+            '[FAIL|ERROR]: ' + test_name_regexp)
+        self._error_logging_end_re = re.compile('-' * 70)
+        self._error_logging_first_dash_found = False
 
     def _TestsByStatus(self, status, include_fails, include_flaky):
         """Returns list of tests with the given status.
@@ -420,6 +429,37 @@ class gtest_parser(object):
                 self._current_suppression)
             self._current_suppression_hash = ''
             self._current_suppression = []
+            return
+
+        # Is it the start of a test summary error message?
+        results = self._error_logging_test_name_re.search(line)
+        if results:
+            test_name = results.group(1)
+            self._test_status[test_name] = ('failed', ['Output not found.'])
+            self._current_test = test_name
+            self._failure_description = []
+            self._error_logging_first_dash_found = False
+            return
+
+        # Is it the start of the next test summary signaling the end
+        # of the previous message?
+        results = self._error_logging_start_re.search(line)
+        if results and self._current_test:
+            self._test_status[self._current_test] = ('failed',
+                                                     self._failure_description)
+            self._failure_description = []
+            self._current_test = ''
+            return
+
+        # Is it the end of the extra test failure summaries?
+        results = self._error_logging_end_re.search(line)
+        if results and self._current_test:
+            if self._error_logging_first_dash_found:
+                self._test_status[self._current_test] = (
+                    'failed', self._failure_description)
+                self._failure_description = []
+                self._current_test = ''
+            self._error_logging_first_dash_found = True
             return
 
         # Random line: if we're in a suppression, collect it. Suppressions are
