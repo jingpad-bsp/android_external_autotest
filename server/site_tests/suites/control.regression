@@ -93,9 +93,9 @@ TESTS = [
 # bugs are fixed:  and http://crosbug.com/14497
 #
 #  # Disable Kernel crash tests until http://crosbug.com/14497 is fixed.
-#  ('platform_KernelErrorPaths', {}, [], [], ['server_job']),
-  ('logging_KernelCrashServer', {}, ['has_chromeos_firmware'], [],
-                                    ['server_job']),
+#  ('platform_KernelErrorPaths',  {'host': 'client'}, [], [], ['server_job']),
+  ('logging_KernelCrashServer',  {'host': 'client'}, ['has_chromeos_firmware'],
+                                 [], ['server_job']),
   # Some of the tests in the main regression suite must be run last to prevent
   # cross-test issues. Always add new suites above this line.
   #-----------------------------------------------------------------------------
