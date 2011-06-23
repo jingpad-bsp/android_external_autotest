@@ -4,8 +4,12 @@ import os
 import common
 from autotest_lib.client.common_lib import global_config
 
-DEBUG = True
-TEMPLATE_DEBUG = DEBUG
+c = global_config.global_config
+_section = 'AUTOTEST_WEB'
+
+DEBUG = c.get_config_value(_section, "sql_debug_mode", type=bool, default=False)
+TEMPLATE_DEBUG = c.get_config_value(_section, "template_debug_mode", type=bool,
+                                    default=False)
 
 FULL_ADMIN = False
 
@@ -15,13 +19,12 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-DATABASE_ENGINE = 'mysql'      # 'postgresql_psycopg2', 'postgresql',
+DATABASE_ENGINE = 'autotest_lib.frontend.db.backends.afe'
+                               # 'postgresql_psycopg2', 'postgresql',
                                # 'mysql', 'sqlite3' or 'ado_mssql'.
 DATABASE_PORT = ''             # Set to empty string for default.
                                # Not used with sqlite3.
 
-c = global_config.global_config
-_section = 'AUTOTEST_WEB'
 DATABASE_HOST = c.get_config_value(_section, "host")
 # Or path to database file if using sqlite3.
 DATABASE_NAME = c.get_config_value(_section, "database")
@@ -44,7 +47,6 @@ else:
 # and you need this app to coexist with others
 URL_PREFIX = 'afe/server/'
 TKO_URL_PREFIX = 'new_tko/server/'
-PLANNER_URL_PREFIX = 'planner/server/'
 CROSCHART_URL_PREFIX = 'croschart/server/'
 
 # Local time zone for this installation. Choices can be found here:
@@ -111,7 +113,6 @@ TEMPLATE_DIRS = (
 INSTALLED_APPS = (
     'frontend.afe',
     'frontend.tko',
-    'frontend.planner',
     'frontend.croschart',
     'django.contrib.admin',
     'django.contrib.auth',

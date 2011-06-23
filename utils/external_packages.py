@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Please keep this code python 2.4 compatible and stand alone.
 
 import logging, os, shutil, sys, tempfile, time, urllib2
@@ -111,7 +109,10 @@ class ExternalPackage(object):
         self.installed_version = self._get_installed_version_from_module(module)
         logging.info('imported %s version %s.', self.module_name,
                      self.installed_version)
-        return self.version > self.installed_version
+        if hasattr(self, 'minimum_version'):
+            return self.minimum_version > self.installed_version
+        else:
+            return self.version > self.installed_version
 
 
     def _get_installed_version_from_module(self, module):
@@ -478,6 +479,9 @@ class SetuptoolsPackage(ExternalPackage):
     # For all known setuptools releases a string compare works for the
     # version string.  Hopefully they never release a 0.10.  (Their own
     # version comparison code would break if they did.)
+    # Any system with setuptools > 0.6 is fine. If none installed, then
+    # try to install the latest found on the upstream.
+    minimum_version = '0.6'
     version = '0.6c11'
     urls = ('http://pypi.python.org/packages/source/s/setuptools/'
             'setuptools-%s.tar.gz' % (version,),)
@@ -552,10 +556,10 @@ class MySQLdbPackage(ExternalPackage):
 
 
 class DjangoPackage(ExternalPackage):
-    version = '1.1.1'
+    version = '1.3'
     local_filename = 'Django-%s.tar.gz' % version
     urls = ('http://www.djangoproject.com/download/%s/tarball/' % version,)
-    hex_sum = '441c54f0e90730bf4a55432b64519169b1e6ef20'
+    hex_sum = 'f8814d5e1412bb932318db5130260da5bf053ff7'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -680,10 +684,10 @@ class Httplib2Package(ExternalPackage):
 class GwtPackage(ExternalPackage):
     """Fetch and extract a local copy of GWT used to build the frontend."""
 
-    version = '2.0.3'
+    version = '2.3.0'
     local_filename = 'gwt-%s.zip' % version
     urls = ('http://google-web-toolkit.googlecode.com/files/' + local_filename,)
-    hex_sum = '1dabd25a02b9299f6fa84c51c97210a3373a663e'
+    hex_sum = 'd51fce9166e6b31349659ffca89baf93e39bc84b'
     name = 'gwt'
     about_filename = 'about.txt'
     module_name = None  # Not a Python module.
@@ -721,35 +725,6 @@ class GwtPackage(ExternalPackage):
         return True
 
 
-# This requires GWT to already be installed, so it must be declared after
-# GwtPackage
-class GwtIncubatorPackage(ExternalPackage):
-    version = '20100204-r1747'
-    local_filename = 'gwt-incubator-%s.jar' % version
-    symlink_name = 'gwt-incubator.jar'
-    urls = ('http://google-web-toolkit-incubator.googlecode.com/files/'
-            + local_filename,)
-    hex_sum = '0c9495634f0627d0b4de0d78a50a3aefebf67f8c'
-    module_name = None  # Not a Python module
-
-
-    def is_needed(self, install_dir):
-        gwt_dir = os.path.join(install_dir, GwtPackage.name)
-        return not os.path.exists(os.path.join(gwt_dir, self.local_filename))
-
-
-    def _build_and_install(self, install_dir):
-        dest = os.path.join(install_dir, GwtPackage.name, self.local_filename)
-        shutil.copyfile(self.verified_package, dest)
-
-        symlink_path = os.path.join(
-                install_dir, GwtPackage.name, self.symlink_name)
-        if os.path.exists(symlink_path):
-            os.remove(symlink_path)
-        os.symlink(dest, symlink_path)
-        return True
-
-
 class GVizAPIPackage(ExternalPackage):
     version = '1.7.0'
     url_filename = 'gviz_api_py-%s.tar.gz' % version
@@ -761,7 +736,3 @@ class GVizAPIPackage(ExternalPackage):
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
                         ExternalPackage._build_and_install_current_dir_noegg)
-
-
-if __name__ == '__main__':
-    sys.exit(main())

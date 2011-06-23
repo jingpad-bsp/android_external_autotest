@@ -44,7 +44,6 @@ def init_test(testdir):
         hostname = None
         user = None
         log = True
-        tap_report = False
     return client_setup_job.init_test(options, testdir)
 
 

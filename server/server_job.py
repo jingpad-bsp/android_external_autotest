@@ -748,8 +748,7 @@ class base_server_job(base_job.base_job):
         else:
             kernel = get_kernel_func()
             self.record('END GOOD', None, 'reboot',
-                        optional_fields={"kernel": kernel},
-                        status='completed successfully')
+                        optional_fields={"kernel": kernel})
 
 
     def run_control(self, path):

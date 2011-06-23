@@ -7,8 +7,6 @@ This file contains the implementation of a host object for the local machine.
 import glob, os, platform
 from autotest_lib.client.common_lib import hosts, error
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib.cros import autoupdater
-
 
 class LocalHost(hosts.Host):
     def _initialize(self, hostname=None, bootloader=None, *args, **dargs):
@@ -53,17 +51,6 @@ class LocalHost(hosts.Host):
         Get a list of files on a remote host given a glob pattern path.
         """
         return glob.glob(path_glob)
-
-
-    def machine_install(self, update_url=None):
-        if not update_url:
-            return False
-
-        updater = autoupdater.ChromiumOSUpdater(host=self,
-                                                update_url=update_url)
-        # Updater has returned, successfully, reboot the host and
-        # validate the installation from the calling script.
-        return updater.run_update()
 
 
     def symlink_closure(self, paths):

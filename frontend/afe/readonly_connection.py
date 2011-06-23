@@ -89,7 +89,7 @@ class ReadOnlyConnection(object):
 
     def close(self):
         if self._connection is not None:
-            assert django_db.connection != self._connection
+            assert django_db.connection.connection != self._connection
             self._connection.close()
             self._connection = None
 

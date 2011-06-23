@@ -32,9 +32,10 @@ class LoggingConfig(object):
         fmt='%(asctime)s %(levelname)-5.5s| %(message)s',
         datefmt='%H:%M:%S')
 
-    def __init__(self):
+    def __init__(self, use_console=True):
         self.logger = logging.getLogger()
         self.global_level = logging.DEBUG
+        self.use_console = use_console
 
 
     @classmethod
@@ -94,6 +95,7 @@ class LoggingConfig(object):
     def _clear_all_handlers(self):
         for handler in list(self.logger.handlers):
             self.logger.removeHandler(handler)
+            handler.close()
 
 
     def configure_logging(self, use_console=True, verbose=False):

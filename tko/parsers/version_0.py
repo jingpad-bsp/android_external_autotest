@@ -251,7 +251,13 @@ class status_line(object):
     def parse_line(cls, line):
         if not status_line.is_status_line(line):
             return None
-        indent, line = re.search(r"^(\t*)(.*)$", line, flags=re.DOTALL).groups()
+        match = re.search(r"^(\t*)(.*)$", line, flags=re.DOTALL)
+        if not match:
+            # A more useful error message than:
+            #  AttributeError: 'NoneType' object has no attribute 'groups'
+            # to help us debug WTF happens on occasion here.
+            raise RuntimeError("line %r could not be parsed." % line)
+        indent, line = match.groups()
         indent = len(indent)
 
         # split the line into the fixed and optional fields
@@ -264,11 +270,11 @@ class status_line(object):
         # a non-matching part, treat it and the rest of the parts as the reason.
         optional_fields = {}
         while part_index < len(parts):
-            kv = re.search(r"^(\w+)=(.+)", parts[part_index])
-            if not kv:
-              break
+            kv = parts[part_index].split('=', 1)
+            if len(kv) < 2:
+                break
 
-            optional_fields[kv.group(1)] = kv.group(2)
+            optional_fields[kv[0]] = kv[1]
             part_index += 1
 
         reason = "\t".join(parts[part_index:])

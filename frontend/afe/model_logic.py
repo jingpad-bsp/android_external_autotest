@@ -124,21 +124,6 @@ class ExtendedManager(dbmodels.Manager):
             self._custom_joins.append(join_dict)
 
 
-        def get_from_clause(self):
-            from_, params = (super(ExtendedManager.CustomQuery, self)
-                             .get_from_clause())
-
-            for join_dict in self._custom_joins:
-                from_.append('%s %s AS %s ON (%s)'
-                             % (join_dict['join_type'],
-                                _quote_name(join_dict['table']),
-                                _quote_name(join_dict['alias']),
-                                join_dict['condition']))
-                params.extend(join_dict['condition_values'])
-
-            return from_, params
-
-
         @classmethod
         def convert_query(self, query_set):
             """
@@ -163,7 +148,7 @@ class ExtendedManager(dbmodels.Manager):
             self._values = values
 
 
-        def as_sql(self, qn=None):
+        def as_sql(self, qn=None, connection=None):
             return self._clause, self._values
 
 
@@ -237,11 +222,13 @@ class ExtendedManager(dbmodels.Manager):
         info['lhs_column'] = field.rel.get_related_field().column
         rhs_where = join_to_query.query.where
         rhs_where.relabel_aliases({rhs_table: alias})
-        initial_clause, values = rhs_where.as_sql()
-        all_clauses = (initial_clause,) + join_to_query.query.extra_where
-        info['where_clause'] = ' AND '.join('(%s)' % clause
-                                            for clause in all_clauses)
-        values += join_to_query.query.extra_params
+        compiler = join_to_query.query.get_compiler(using=join_to_query.db)
+        initial_clause, values = compiler.as_sql()
+        all_clauses = (initial_clause,)
+        if hasattr(join_to_query.query, 'extra_where'):
+            all_clauses += join_to_query.query.extra_where
+        info['where_clause'] = (
+                    ' AND '.join('(%s)' % clause for clause in all_clauses))
         info['values'] = values
         return info
 
@@ -364,7 +351,8 @@ class ExtendedManager(dbmodels.Manager):
 
 
     def _custom_select_query(self, query_set, selects):
-        sql, params = query_set.query.as_sql()
+        compiler = query_set.query.get_compiler(using=query_set.db)
+        sql, params = compiler.as_sql()
         from_ = sql[sql.find(' FROM'):]
 
         if query_set.query.distinct:
@@ -711,7 +699,7 @@ class ModelExtensions(object):
         return data
 
 
-    def validate_unique(self):
+    def _validate_unique(self):
         """\
         Validate that unique fields are unique.  Django manipulators do
         this too, but they're a huge pain to use manually.  Trust me.
@@ -772,7 +760,7 @@ class ModelExtensions(object):
 
     def do_validate(self):
         errors = self._validate()
-        unique_errors = self.validate_unique()
+        unique_errors = self._validate_unique()
         for field_name, error in unique_errors.iteritems():
             errors.setdefault(field_name, error)
         if errors:
@@ -1074,6 +1062,7 @@ class ModelWithInvalid(ModelExtensions):
 
 
     def delete(self):
+        self.invalid = self.invalid
         assert not self.invalid
         self.invalid = True
         self.save()
@@ -1110,7 +1099,7 @@ class ModelWithAttributes(object):
         is a dict of args to pass to attribute_model.objects.get() to get an
         instance of the given attribute on this object.
         """
-        raise NotImplemented
+        raise NotImplementedError
 
 
     def set_attribute(self, attribute, value):

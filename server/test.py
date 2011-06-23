@@ -90,8 +90,9 @@ class _sysinfo_logger(object):
             self.host = hosts.create_host(self.job.machines[0],
                                           auto_monitor=False)
             try:
+                tmp_dir = self.host.get_tmp_dir(parent="/tmp/sysinfo")
                 self.autotest = autotest.Autotest(self.host)
-                self.autotest.install()
+                self.autotest.install(autodir=tmp_dir)
                 self.outputdir = self.host.get_tmp_dir()
             except:
                 # if installation fails roll back the host

@@ -76,7 +76,6 @@ def fork_waitfor(tmp, pid):
     if status:
         raise error.TestError("Test subprocess failed rc=%d" % (status))
 
-
 def fork_waitfor_timed(tmp, pid, timeout):
     """
     Waits for pid until it terminates or timeout expires.
@@ -104,7 +103,6 @@ def fork_waitfor_timed(tmp, pid, timeout):
 
     if status:
         raise error.TestError("Test subprocess failed rc=%d" % (status))
-
 
 def fork_nuke_subprocess(tmp, pid):
     utils.nuke_pid(pid)

@@ -7,7 +7,7 @@ Utility classes and functions to handle Virtual Machine creation using qemu.
 import time, os, logging, fcntl, re, commands, glob
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
-import virt_utils, virt_vm, kvm_monitor, aexpect
+import virt_utils, virt_vm, virt_test_setup, kvm_monitor, aexpect
 
 
 class VM(virt_vm.BaseVM):
@@ -41,6 +41,7 @@ class VM(virt_vm.BaseVM):
             self.pci_assignable = None
             self.netdev_id = []
             self.device_id = []
+            self.tapfds = []
             self.uuid = None
 
 
@@ -82,6 +83,15 @@ class VM(virt_vm.BaseVM):
         return not self.process or not self.process.is_alive()
 
 
+    def verify_status(self, status):
+        """
+        Check VM status
+
+        @param status: Optional VM status, 'running' or 'paused'
+        @raise VMStatusError: If the VM status is not same as parameter
+        """
+        if not self.monitor.verify_status(status):
+            raise virt_vm.VMStatusError("VM status is unexpected")
 
 
     def clone(self, name=None, params=None, root_dir=None, address_cache=None,
@@ -178,16 +188,47 @@ class VM(virt_vm.BaseVM):
         def add_smp(help, smp):
             return " -smp %s" % smp
 
-        def add_cdrom(help, filename, index=None):
+        def add_cdrom(help, filename, index=None, format=None):
             if has_option(help, "drive"):
+                name = None;
+                dev = "";
+                if format == "ahci":
+                    name = "ahci%s" % index
+                    dev += " -device ide-drive,bus=ahci.%s,drive=%s" % (index, name)
+                    format = "none"
+                    index = None
+                if format == "usb2":
+                    name = "usb2.%s" % index
+                    dev += " -device usb-storage,bus=ehci.0,drive=%s" % name
+                    dev += ",port=%d" % (int(index) + 1)
+                    format = "none"
+                    index = None
                 cmd = " -drive file='%s',media=cdrom" % filename
-                if index is not None: cmd += ",index=%s" % index
-                return cmd
+                if index is not None:
+                    cmd += ",index=%s" % index
+                if format:
+                    cmd += ",if=%s" % format
+                if name:
+                    cmd += ",id=%s" % name
+                return cmd + dev
             else:
                 return " -cdrom '%s'" % filename
 
         def add_drive(help, filename, index=None, format=None, cache=None,
                       werror=None, serial=None, snapshot=False, boot=False):
+            name = None;
+            dev = "";
+            if format == "ahci":
+                name = "ahci%s" % index
+                dev += " -device ide-drive,bus=ahci.%s,drive=%s" % (index, name)
+                format = "none"
+                index = None
+            if format == "usb2":
+                name = "usb2.%s" % index
+                dev += " -device usb-storage,bus=ehci.0,drive=%s" % name
+                dev += ",port=%d" % (int(index) + 1)
+                format = "none"
+                index = None
             cmd = " -drive file='%s'" % filename
             if index is not None:
                 cmd += ",index=%s" % index
@@ -203,7 +244,9 @@ class VM(virt_vm.BaseVM):
                 cmd += ",snapshot=on"
             if boot:
                 cmd += ",boot=on"
-            return cmd
+            if name:
+                cmd += ",id=%s" % name
+            return cmd + dev
 
         def add_nic(help, vlan, model=None, mac=None, device_id=None, netdev_id=None,
                     nic_extra_params=None):
@@ -231,19 +274,17 @@ class VM(virt_vm.BaseVM):
                 cmd += ",id='%s'" % device_id
             return cmd
 
-        def add_net(help, vlan, mode, ifname=None, script=None,
-                    downscript=None, tftp=None, bootfile=None, hostfwd=[],
-                    netdev_id=None, netdev_extra_params=None):
+        def add_net(help, vlan, mode, ifname=None, tftp=None, bootfile=None,
+                    hostfwd=[], netdev_id=None, netdev_extra_params=None,
+                    tapfd=None):
             if has_option(help, "netdev"):
                 cmd = " -netdev %s,id=%s" % (mode, netdev_id)
                 if netdev_extra_params:
                     cmd += ",%s" % netdev_extra_params
             else:
                 cmd = " -net %s,vlan=%d" % (mode, vlan)
-            if mode == "tap":
-                if ifname: cmd += ",ifname='%s'" % ifname
-                if script: cmd += ",script='%s'" % script
-                cmd += ",downscript='%s'" % (downscript or "no")
+            if mode == "tap" and tapfd:
+                cmd += ",fd=%d" % tapfd
             elif mode == "user":
                 if tftp and "[,tftp=" in help:
                     cmd += ",tftp='%s'" % tftp
@@ -323,7 +364,7 @@ class VM(virt_vm.BaseVM):
             return " -initrd '%s'" % filename
 
         def add_kernel_cmdline(help, cmdline):
-            return " -append %s" % cmdline
+            return " -append '%s'" % cmdline
 
         def add_testdev(help, filename):
             return (" -chardev file,id=testlog,path=%s"
@@ -344,6 +385,9 @@ class VM(virt_vm.BaseVM):
         if root_dir is None:
             root_dir = self.root_dir
 
+        have_ahci = False
+        have_usb2 = False
+
         # Clone this VM using the new params
         vm = self.clone(name, params, root_dir, copy_state=True)
 
@@ -359,10 +403,19 @@ class VM(virt_vm.BaseVM):
         # Set the X11 display parameter if requested
         if params.get("x11_display"):
             qemu_cmd += "DISPLAY=%s " % params.get("x11_display")
+        # Update LD_LIBRARY_PATH for built libraries (libspice-server)
+        library_path = os.path.join(self.root_dir, 'build', 'lib')
+        if os.path.isdir(library_path):
+            library_path = os.path.abspath(library_path)
+            qemu_cmd += "LD_LIBRARY_PATH=%s " % library_path
         # Add the qemu binary
         qemu_cmd += qemu_binary
         # Add the VM's name
         qemu_cmd += add_name(help, name)
+        # no automagic devices please
+        if has_option(help,"nodefaults"):
+            qemu_cmd += " -nodefaults"
+            qemu_cmd += " -vga std"
         # Add monitors
         for monitor_name in params.objects("monitors"):
             monitor_params = params.object_params(monitor_name)
@@ -379,6 +432,12 @@ class VM(virt_vm.BaseVM):
             image_params = params.object_params(image_name)
             if image_params.get("boot_drive") == "no":
                 continue
+            if image_params.get("drive_format") == "ahci" and not have_ahci:
+                qemu_cmd += " -device ahci,id=ahci"
+                have_ahci = True
+            if image_params.get("drive_format") == "usb2" and not have_usb2:
+                qemu_cmd += " -device usb-ehci,id=ehci"
+                have_usb2 = True
             qemu_cmd += add_drive(help,
                              virt_vm.get_image_filename(image_params, root_dir),
                                   image_params.get("drive_index"),
@@ -413,20 +472,22 @@ class VM(virt_vm.BaseVM):
             qemu_cmd += add_nic(help, vlan, nic_params.get("nic_model"), mac,
                                 device_id, netdev_id, nic_params.get("nic_extra_params"))
             # Handle the '-net tap' or '-net user' or '-netdev' part
-            script = nic_params.get("nic_script")
-            downscript = nic_params.get("nic_downscript")
             tftp = nic_params.get("tftp")
-            if script:
-                script = virt_utils.get_path(root_dir, script)
-            if downscript:
-                downscript = virt_utils.get_path(root_dir, downscript)
             if tftp:
                 tftp = virt_utils.get_path(root_dir, tftp)
-            qemu_cmd += add_net(help, vlan, nic_params.get("nic_mode", "user"),
-                                vm.get_ifname(vlan),
-                                script, downscript, tftp,
+            if nic_params.get("nic_mode") == "tap":
+                try:
+                    tapfd = vm.tapfds[vlan]
+                except:
+                    tapfd = None
+            else:
+                tapfd = None
+            qemu_cmd += add_net(help, vlan,
+                                nic_params.get("nic_mode", "user"),
+                                vm.get_ifname(vlan), tftp,
                                 nic_params.get("bootp"), redirs, netdev_id,
-                                nic_params.get("netdev_extra_params"))
+                                nic_params.get("netdev_extra_params"),
+                                tapfd)
             # Proceed to next NIC
             vlan += 1
 
@@ -441,9 +502,16 @@ class VM(virt_vm.BaseVM):
         for cdrom in params.objects("cdroms"):
             cdrom_params = params.object_params(cdrom)
             iso = cdrom_params.get("cdrom")
+            if cdrom_params.get("cd_format") == "ahci" and not have_ahci:
+                qemu_cmd += " -device ahci,id=ahci"
+                have_ahci = True
+            if cdrom_params.get("cd_format") == "usb2" and not have_usb2:
+                qemu_cmd += " -device usb-ehci,id=ehci"
+                have_usb2 = True
             if iso:
                 qemu_cmd += add_cdrom(help, virt_utils.get_path(root_dir, iso),
-                                      cdrom_params.get("drive_index"))
+                                      cdrom_params.get("drive_index"),
+                                      cdrom_params.get("cd_format"))
 
         # We may want to add {floppy_otps} parameter for -fda
         # {fat:floppy:}/path/. However vvfat is not usually recommended.
@@ -549,6 +617,10 @@ class VM(virt_vm.BaseVM):
         @raise VMBadPATypeError: If an unsupported PCI assignment type is
                 requested
         @raise VMPAError: If no PCI assignable devices could be assigned
+        @raise TAPCreationError: If fail to create tap fd
+        @raise BRAddIfError: If fail to add a tap to a bridge
+        @raise TAPBringUpError: If fail to bring up a tap
+        @raise PrivateBridgeError: If fail to bring the private bridge
         """
         error.context("creating '%s'" % self.name)
         self.destroy(free_mac_addresses=False)
@@ -612,12 +684,24 @@ class VM(virt_vm.BaseVM):
                 guest_port = int(redir_params.get("guest_port"))
                 self.redirs[guest_port] = host_ports[i]
 
-            # Generate netdev/device IDs for all NICs
+            # Generate netdev IDs for all NICs and create TAP fd
             self.netdev_id = []
-            self.device_id = []
+            self.tapfds = []
+            vlan = 0
             for nic in params.objects("nics"):
                 self.netdev_id.append(virt_utils.generate_random_id())
                 self.device_id.append(virt_utils.generate_random_id())
+                nic_params = params.object_params(nic)
+                if nic_params.get("nic_mode") == "tap":
+                    ifname = self.get_ifname(vlan)
+                    brname = nic_params.get("bridge")
+                    if brname == "private":
+                        brname = virt_test_setup.PrivateBridgeConfig().brname
+                    tapfd = virt_utils.open_tap("/dev/net/tun", ifname)
+                    virt_utils.add_to_bridge(ifname, brname)
+                    virt_utils.bring_up_ifname(ifname)
+                    self.tapfds.append(tapfd)
+                vlan += 1
 
             # Find available VNC port, if needed
             if params.get("display") == "vnc":
@@ -701,6 +785,12 @@ class VM(virt_vm.BaseVM):
             logging.info("Running qemu command:\n%s", qemu_command)
             self.process = aexpect.run_bg(qemu_command, None,
                                                  logging.info, "(qemu) ")
+            for tapfd in self.tapfds:
+                try:
+                    os.close(tapfd)
+                # File descriptor is already closed
+                except OSError:
+                    pass
 
             # Make sure the process was started successfully
             if not self.process.is_alive():

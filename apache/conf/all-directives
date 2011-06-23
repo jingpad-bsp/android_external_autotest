@@ -2,6 +2,7 @@
 # This does not include stuff like proxy-directives and some of the files here
 # include other directive files.
 
+Include "/usr/local/autotest/apache/conf/cgi-directives"
 Include "/usr/local/autotest/apache/conf/gwt-directives"
 Include "/usr/local/autotest/apache/conf/django-directives"
 Include "/usr/local/autotest/apache/conf/afe-directives"
@@ -9,6 +10,4 @@ Include "/usr/local/autotest/apache/conf/tko-directives"
 Include "/usr/local/autotest/apache/conf/new-tko-directives"
 Include "/usr/local/autotest/apache/conf/embedded-tko-directives"
 Include "/usr/local/autotest/apache/conf/embedded-spreadsheet-directives"
-Include "/usr/local/autotest/apache/conf/planner-directives"
-Include "/usr/local/autotest/apache/conf/dash-directives"
 Include "/usr/local/autotest/apache/conf/site-directives"

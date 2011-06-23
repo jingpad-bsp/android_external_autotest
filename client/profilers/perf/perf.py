@@ -13,11 +13,7 @@ from autotest_lib.client.bin import profiler, os_dep, utils
 class perf(profiler.profiler):
     version = 1
 
-    def initialize(self, events=["cycles"], trace=False,
-                   delete_data=False, do_report=False, call_graph=False):
-        self.delete_data = delete_data
-        self.do_report = do_report
-        self.call_graph = call_graph
+    def initialize(self, events=["cycles","instructions"], trace=False):
         if type(events) == str:
             self.events = [events]
         else:
@@ -41,7 +37,7 @@ class perf(profiler.profiler):
         self.logfile = os.path.join(test.profdir, "perf")
         cmd = ("exec %s record -a -o %s" %
                (self.perf_bin, self.logfile))
-        if "parent" in self.sort_keys and self.call_graph:
+        if "parent" in self.sort_keys:
             cmd += " -g"
         if self.trace:
             cmd += " -R"
@@ -57,29 +53,27 @@ class perf(profiler.profiler):
 
 
     def report(self, test):
-        if self.do_report:
-            for key in self.sort_keys:
-                reportfile = os.path.join(test.profdir, '%s.comm' % key)
-                cmd = ("%s report -i %s --sort %s,dso" % (self.perf_bin,
-                                                          self.logfile,
-                                                          key))
-                outfile = open(reportfile, 'w')
-                p = subprocess.Popen(cmd, shell=True, stdout=outfile,
-                                     stderr=subprocess.STDOUT)
-                p.wait()
+        for key in self.sort_keys:
+            reportfile = os.path.join(test.profdir, '%s.comm' % key)
+            cmd = ("%s report -i %s --sort %s,dso" % (self.perf_bin,
+                                                      self.logfile,
+                                                      key))
+            outfile = open(reportfile, 'w')
+            p = subprocess.Popen(cmd, shell=True, stdout=outfile,
+                                 stderr=subprocess.STDOUT)
+            p.wait()
 
-            if self.trace:
-                tracefile = os.path.join(test.profdir, 'trace')
-                cmd = ("%s script -i %s" % (self.perf_bin, self.logfile,))
+        if self.trace:
+            tracefile = os.path.join(test.profdir, 'trace')
+            cmd = ("%s script -i %s" % (self.perf_bin, self.logfile,))
 
-                outfile = open(tracefile, 'w')
-                p = subprocess.Popen(cmd, shell=True, stdout=outfile,
-                                     stderr=subprocess.STDOUT)
-                p.wait()
+            outfile = open(tracefile, 'w')
+            p = subprocess.Popen(cmd, shell=True, stdout=outfile,
+                                 stderr=subprocess.STDOUT)
+            p.wait()
 
-        # The perf data file is large. Delete it by default, but the user might want it.
-        if self.delete_data:
-            perf_log_size = os.stat(self.logfile)[stat.ST_SIZE]
-            logging.info('Removing %s after generating reports (saving %s bytes).',
-                         self.logfile, perf_log_size)
-            os.unlink(self.logfile)
+        # The raw detailed perf output is HUGE.  We cannot store it by default.
+        perf_log_size = os.stat(self.logfile)[stat.ST_SIZE]
+        logging.info('Removing %s after generating reports (saving %s bytes).',
+                     self.logfile, perf_log_size)
+        os.unlink(self.logfile)
