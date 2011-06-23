@@ -416,9 +416,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
 
     def setup(self):
-        os.chdir(self.srcdir)
-        utils.make('clean')
-        utils.make()
+        self.job.setup_dep(['test_tones'])
 
 
     def initialize(self, creds = '$default'):
@@ -431,9 +429,13 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         logging.info('Test Definitions:')
         logging.info(self._pp.pformat(_TESTS))
 
+        dep = 'test_tones'
+        dep_dir = os.path.join(self.autodir, 'deps', dep)
+        self.job.install_pkg(dep, 'dep', dep_dir)
+
         self._playback_devices = self.enumerate_playback_devices()
         self._record_devices = self.enumerate_record_devices()
-        self._test_tones_path = os.path.join(self.srcdir, "test_tones")
+        self._test_tones_path = os.path.join(dep_dir, 'src', dep)
         if not (os.path.exists(self._test_tones_path) and
                 os.access(self._test_tones_path, os.X_OK)):
             raise error.TestError(
