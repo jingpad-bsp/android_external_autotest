@@ -77,12 +77,16 @@ class Servo:
 
     def lid_open(self):
         """Simulate opening the lid."""
-        self.set('lid_open', 'yes')
+        self.set_nocheck('lid_open', 'yes')
 
 
     def lid_close(self):
-        """Simulate closing the lid."""
-        self.set('lid_open', 'no')
+        """Simulate closing the lid.
+
+        Waits 6 seconds to ensure the device is fully asleep before returning.
+        """
+        self.set_nocheck('lid_open', 'no')
+        time.sleep(6)
 
 
     def ctrl_d(self, secs=0.5):
@@ -141,9 +145,15 @@ class Servo:
         self.set('pwr_button', 'release')
         time.sleep(1)
         self.power_normal_press()
-        time.sleep(8)
+        self.pass_devmode()
+
+
+    def pass_devmode(self):
+        """Pass through boot screens in dev-mode."""
+        time.sleep(10)
         self.ctrl_d()
-        time.sleep(15)
+        time.sleep(17)
+
 
     def _init_seq_cold_reset_devmode(self):
         """Cold reset, init device, and boot in dev-mode."""

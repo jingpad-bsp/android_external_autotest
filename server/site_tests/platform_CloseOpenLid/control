@@ -1,0 +1,27 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "platform_CloseOpenLid"
+PURPOSE = "Servo based ChromeOS functional tests."
+CRITERIA = "This test will fail if ChromesOS does not respond to a ping."
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "server"
+
+DOC = """
+This test uses servo to simulate lid close and open events. Device state is
+verified by pinging."""
+servo_port = 9999
+servo_xml_config = 'servo.xml'
+
+def run_closeopenlid(machine):
+    global servo_port
+    global servo_xml_config
+    host = hosts.create_host(machine)
+    job.run_test("platform_CloseOpenLid", host=host, servo_port=servo_port,
+                 xml_config=servo_xml_config)
+
+parallel_simple(run_closeopenlid, machines)
