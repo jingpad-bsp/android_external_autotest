@@ -24,9 +24,7 @@ def run_longpresspower(machine):
     global servo_port
     global servo_xml_config
     host = hosts.create_host(machine)
-    port = servo_port
-    servo_port += 1
-    job.run_test("platform_LongPressPower", host=host, servo_port=port,
+    job.run_test("platform_LongPressPower", host=host, servo_port=servo_port,
                  xml_config=servo_xml_config)
 
 parallel_simple(run_longpresspower, machines)
