@@ -24,6 +24,7 @@ from gtk import gdk
 from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin.input.input_device import *
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.error import CmdError
@@ -277,6 +278,65 @@ class SynClient:
         factory.log('killing SynClient ...')
         self._proc.kill()
         factory.log('dead')
+
+
+class EvdevClient:
+
+    def __init__(self, test, device):
+        self._test = test
+        self.ev = InputEvent()
+        self.device = device
+        gobject.io_add_watch(device.f, gobject.IO_IN, self.recv)
+
+        self._xmin = device.get_x_min()
+        self._xmax = device.get_x_max()
+        self._ymin = device.get_y_min()
+        self._ymax = device.get_y_max()
+        self._zmin = device.get_pressure_min()
+        self._zmax = device.get_pressure_max()
+
+        factory.log('x:(%d : %d), y:(%d : %d), z:(%d, %d)' %
+                    (self._xmin, self._xmax, self._ymin, self._ymax,
+                     self._zmin, self._zmax))
+
+    def _to_percent(self, val, _min, _max):
+        bound = sorted([_min, float(val), _max])[1]
+        return (bound - _min) / (_max - _min)
+
+    def recv(self, src, cond):
+        try:
+            self.ev.read(src)
+        except:
+            raise error.TestError('Error reading events from %s' %
+                                  self.device.path)
+        if not self.device.process_event(self.ev):
+            return True
+
+        f = self.device.get_num_fingers()
+        if f == 0:
+           return True
+
+        x = self.device.get_x()
+        y = self.device.get_y()
+        z = self.device.get_pressure()
+        l = self.device.get_left()
+        r = self.device.get_right()
+
+        # Convert raw coordinate to % of range.
+        x_pct = self._to_percent(x, self._xmin, self._xmax)
+        y_pct = self._to_percent(y, self._ymin, self._ymax)
+        z_pct = self._to_percent(z, self._zmin, self._zmax)
+
+        factory.log('x=%f y=%f z=%f f=%d l=%d r=%d' %
+                    (x_pct, y_pct, z_pct, f, l, r))
+
+        self._test.device_event(x_pct, y_pct, z_pct, f, l, r)
+        return True
+
+    def quit(self):
+        if self.device and self.device.f and not self.device.f.closed:
+            factory.log('Closing %s...' % self.device.path)
+            self.device.f.close()
 
 
 class factory_Touchpad(test.test):
