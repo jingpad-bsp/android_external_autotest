@@ -91,12 +91,8 @@ TESTS = [
 #                                'tag' : 'hci0'}, ['has_bluetooth']),
   ('network_WiFiCaps', {}, {'include': ['has_80211n']}),
   ('power_Resume', {}, {'exclude': ['has_resume_bug']}),
-# TODO(dalecurtis): Kernel tests disabled for all platforms until the following
-# bugs are fixed:  and http://crosbug.com/14497
-#
-#  # Disable Kernel crash tests until http://crosbug.com/14497 is fixed.
-#  ('platform_KernelErrorPaths', {'host': 'client'},
-#                                {'attributes': ['server_job']})),
+  ('platform_KernelErrorPaths', {'host': 'client'},
+                                {'attributes': ['server_job']}),
   ('logging_KernelCrashServer', {'host': 'client'},
                                 {'include': ['has_chromeos_firmware'],
                                  'attributes': ['server_job']}),
