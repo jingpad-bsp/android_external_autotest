@@ -238,29 +238,6 @@ class UITest(test.test):
                     constants.SIGNED_POLICY_FILE)
 
 
-    def __canonicalize(self, credential):
-        """Perform basic canonicalization of |email_address|
-
-        Perform basic canonicalization of |email_address|, taking
-        into account that gmail does not consider '.' or caps inside a
-        username to matter.  It also ignores everything after a '+'.
-        For example, c.masone+abc@gmail.com == cMaSone@gmail.com, per
-        http://mail.google.com/support/bin/answer.py?hl=en&ctx=mail&answer=10313
-        """
-        if not credential:
-          return None
-
-        parts = credential.split('@')
-        if len(parts) != 2:
-          raise error.TestError("Malformed email: " + credential)
-
-        (name, domain) = parts
-        name = name.partition('+')[0]
-        if (domain == constants.SPECIAL_CASE_DOMAIN):
-            name = name.replace('.', '')
-        return '@'.join([name, domain]).lower()
-
-
     def __resolve_creds(self, creds):
         """Map credential identifier to username, password and type.
         Args:
@@ -276,10 +253,10 @@ class UITest(test.test):
                 raise error.TestFail('Unknown credentials: %s' % creds)
 
             (name, passwd) = constants.CREDENTIALS[creds]
-            return [self.__canonicalize(name), passwd]
+            return [cryptohome.canonicalize(name), passwd]
 
         (name, passwd) = creds.split(':')
-        return [self.__canonicalize(name), passwd]
+        return [cryptohome.canonicalize(name), passwd]
 
 
     def ensure_login_complete(self):

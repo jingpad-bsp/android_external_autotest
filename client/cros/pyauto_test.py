@@ -2,23 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Base class for running PyAuto tests.
+"""Base class for using Chrome PyAuto Automation in autotest tests.
 
 This class takes care of getting the automation framework ready for work.
 
-Things this class handles:
-- Restart Chrome with appropriate flags
-- Set up an suid python for running pyauto
-- Start up PyUITestSuite
-- Log in to default account
-
-After the test completes this class shuts chrome down and restarts things
-as they were before.
+Things this class does:
+  - Enable automation and restart chrome with appropriate flags
+  - Log in to default account
 
 The PyAuto framework must be installed on the machine for this to work,
-under .../autotest/deps/chrome_test/test_src/chrome/pyautolib'. This is
-built by the Chrome ebuild.
-
+under .../autotest/deps/pyauto_dep/test_src/chrome/pyautolib'. This is
+built by the chromeos-chrome ebuild.
 """
 
 import logging
@@ -29,8 +23,9 @@ import stat
 import subprocess
 import sys
 import tempfile
+
 from autotest_lib.client.bin import test
-from autotest_lib.client.cros import constants, login
+from autotest_lib.client.cros import constants, cryptohome, login
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
 
@@ -40,7 +35,17 @@ class PyAutoTest(test.test):
 
     Inherit this class to make calls to the PyUITest framework.
 
-    For example:
+    Each test begins with a clean browser profile. (ie clean local /home/chronos).
+    For each test:
+      - /home/chronos is cleared before firing up chrome
+      - the default test user's cryptohome vault is cleared
+      - login as default test user
+    Beware however that:
+      - chrome sync is still enabled, so the browser might fetch data/prefs over
+        the air.
+      - Settings not stored in /home/chronos might persist across tests
+
+    Sample test:
         from autotest_lib.client.cros import pyauto_test
 
         class desktopui_UrlFetch(pyauto_test.PyAutoTest):
@@ -48,102 +53,101 @@ class PyAutoTest(test.test):
 
             def run_once(self):
                 self.pyauto.NavigateToURL('http://www.google.com')
+                self.assertEqual('Google', self.pyauto.GetActiveTabTitle)
 
+    This test will login (with the default test account), then navigate to
+    Google and verify its title.
     """
     def __init__(self, job, bindir, outputdir):
         test.test.__init__(self, job, bindir, outputdir)
-        self.pyauto = None
 
-    # from ChromeTestBase.initilize()
-    def QuitChrome(self):
+        self._dep = 'pyauto_dep'
+        self._dep_dir = os.path.join(self.autodir, 'deps', self._dep)
+        self._test_binary_dir = '%s/test_src/out/Release' % self._dep_dir
+
+
+    def SetupDeps(self):
+        """Set up deps needed for running pyauto."""
+        self.job.install_pkg(self._dep, 'dep', self._dep_dir)
         try:
-            open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
-        except IOError, e:
-            logging.debug(e)
-            raise error.TestError('Failed to disable browser restarting.')
-        login.nuke_process_by_name(name=constants.BROWSER, with_prejudice=True)
-        try:
-            setup_cmd = '/bin/sh %s/%s' % (self.test_binary_dir,
+            setup_cmd = '/bin/sh %s/%s' % (self._test_binary_dir,
                                            'setup_test_links.sh')
             utils.system(setup_cmd)  # this might raise an exception
         except error.CmdError, e:
             raise error.TestError(e)
+        self._SetupSuidPython()
 
-    # From chrome_test.ChromeTestBase.initialize(self)
-    def SetupDeps(self):
-        """Set up the directory paths we care about"""
-        dep = 'pyauto_dep'
-        self.dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', self.dep_dir)
 
-        # We use this strange directory because pyauto.py expects it
-        self.test_binary_dir = '%s/bin' % self.dep_dir
+    def _SetupSuidPython(self):
+        """Setup suid python which can enable chrome testing interface.
 
-    # From desktopui_PyAutoFunctionalTests.initialize()
-    def SetupPython(self):
-        # Setup suid python binary which can enable Chrome testing interface
-        suid_python = os.path.join(self.test_binary_dir, 'python')
+        This is required when running pyauto as non-privileged user (chronos).
+        """
+        suid_python = os.path.join(self._test_binary_dir, 'suid-python')
         py_path = subprocess.Popen(['which', 'python'],
                                    stdout=subprocess.PIPE).communicate()[0]
         py_path = py_path.strip()
         assert os.path.exists(py_path), 'Could not find python'
         if os.path.islink(py_path):
-          linkto = os.readlink(py_path)
-          py_path = os.path.join(os.path.dirname(py_path), linkto)
+            linkto = os.readlink(py_path)
+            py_path = os.path.join(os.path.dirname(py_path), linkto)
         shutil.copy(py_path, suid_python)
         os.chown(suid_python, 0, 0)
         os.chmod(suid_python, 04755)
 
-    # From desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
+
     def initialize(self):
         assert os.geteuid() == 0, 'Need superuser privileges'
+
+        # Ensure there's no stale cryptohome from previous tests
+        creds = constants.CREDENTIALS['$default']
+        username = cryptohome.canonicalize(creds[0])
+        cryptohome.remove_vault(username)
+
+        # Reset the UI.
+        login.nuke_login_manager()
+        login.refresh_login_screen()
+
         self.SetupDeps()
 
-        # This is needed because Chrome runs as chronos and so the automation
-        # framework should run as the same uid.
-        subprocess.check_call(['chown', '-R', 'chronos', self.test_binary_dir])
+        # Import the pyauto module
+        # This can be done only after pyauto_dep dependency has been installed.
+        pyautolib_dir = os.path.join(
+            os.path.dirname(__file__), os.pardir, 'deps', 'pyauto_dep',
+            'test_src', 'chrome', 'test', 'pyautolib')
+        assert os.path.isdir(pyautolib_dir), '%s missing.' % pyautolib_dir
+        sys.path.append(pyautolib_dir)
+        import pyauto
 
-        self.QuitChrome()
-        self.SetupPython()
+        # PyUITest is setup to use the python unittest framework.
+        # Adapt it to use in the context of autotest.
+        class PyUITestInAutotest(pyauto.PyUITest):
+          def runTest(self):
+            # unittest framework expects runTest.
+            pass
 
         parser = OptionParser()
-
-        # Import the pyauto module
-        sys.path.append(os.path.join(os.path.dirname(__file__),
-            os.pardir, 'deps', 'pyauto_dep', 'pyautolib'))
-        sys.path.append(os.path.join(os.path.dirname(__file__),
-            os.pardir, 'deps', 'pyauto_dep', 'bin'))
-        sys.path.append(os.path.join(os.path.dirname(__file__),
-            os.pardir, 'deps', 'pyauto_dep', 'third_party'))
-        try:
-            import pyauto
-        except ImportError:
-            print >>sys.stderr, 'Cannot import pyauto from %s' % sys.path
-            raise
-
-        self.pyauto = pyauto.PyUITest()
-
         pyauto._OPTIONS, args = parser.parse_args([])
         pyauto._OPTIONS.channel_id = ''
         pyauto._OPTIONS.no_http_server = True
 
-        suite_args = []
-        self.pyauto_suite = pyauto.PyUITestSuite(suite_args)
-
-        self.pyauto.setUp()
+        self.pyauto_suite = pyauto.PyUITestSuite([])
+        self.pyauto = PyUITestInAutotest()
 
         # Enable chrome testing interface and log in to default account
+        self.pyauto.setUp()  # connects to pyauto automation
         self.LoginToDefaultAccount()
 
-    # These should perhaps move to a cros utilities library
+
     def LoginToDefaultAccount(self):
-        """Login to ChromeOS using default testing account."""
+        """Login to ChromeOS using $default testing account."""
         creds = constants.CREDENTIALS['$default']
-        username = creds[0]
+        username = cryptohome.canonicalize(creds[0])
         passwd = creds[1]
         self.pyauto.Login(username, passwd)
         assert self.pyauto.GetLoginInfo()['is_logged_in']
         logging.info('Logged in as %s' % username)
+
 
     def cleanup(self):
         """Clean up after running the test.
@@ -151,11 +155,8 @@ class PyAutoTest(test.test):
         We restart chrome and restart the login manager
         """
         self.pyauto.tearDown()
-        del self.pyauto_suite
         del self.pyauto
-
-        # Allow chrome to be restarted again.
-        os.unlink(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
+        del self.pyauto_suite
 
         # Reset the UI.
         login.nuke_login_manager()

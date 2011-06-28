@@ -16,8 +16,6 @@ TEST_TYPE = "client"
 DOC = """
 This test opens a new browser to the given URL and waits for the specified
 cookie to be saved.
-TODO(sosa@chromium.org) - Must find way to bring over tests from image (add
-to chromium buildbot, etc).  UrlFetchTest is from ~chromium/src/chrome/test
 """
 
 job.run_test('desktopui_UrlFetch')

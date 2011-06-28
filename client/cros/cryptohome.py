@@ -106,3 +106,26 @@ def is_mounted_on_tmpfs(device = chromeos_constants.CRYPTOHOME_INCOGNITO,
     mount_parts = __get_mount_parts(device, allow_fail)
     return (len(mount_parts) > 2 and device == mount_parts[0] and
             'tmpfs' == mount_parts[2])
+
+
+def canonicalize(credential):
+    """Perform basic canonicalization of |email_address|
+
+    Perform basic canonicalization of |email_address|, taking
+    into account that gmail does not consider '.' or caps inside a
+    username to matter.  It also ignores everything after a '+'.
+    For example, c.masone+abc@gmail.com == cMaSone@gmail.com, per
+    http://mail.google.com/support/bin/answer.py?hl=en&ctx=mail&answer=10313
+    """
+    if not credential:
+      return None
+
+    parts = credential.split('@')
+    if len(parts) != 2:
+      raise error.TestError('Malformed email: ' + credential)
+
+    (name, domain) = parts
+    name = name.partition('+')[0]
+    if (domain == chromeos_constants.SPECIAL_CASE_DOMAIN):
+        name = name.replace('.', '')
+    return '@'.join([name, domain]).lower()

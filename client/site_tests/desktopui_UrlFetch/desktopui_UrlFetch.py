@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import pyauto_test
 
 
@@ -9,13 +10,15 @@ class desktopui_UrlFetch(pyauto_test.PyAutoTest):
     version = 1
 
     def run_once(self):
-        url = 'http://www.youtube.com'
-        cookie_expected = 'VISITOR_INFO1_LIVE2'
+        url = 'http://dev.chromium.org'
+        import pyauto
+
+        assert not self.pyauto.GetCookie(pyauto.GURL(url))
 
         self.pyauto.NavigateToURL(url)
-        if self.pyauto.GetActiveTabTitle().split()[0] != 'YouTube':
-            raise error.TestError('Unexpected web site title for YouTube')
+        if self.pyauto.GetActiveTabTitle() != 'The Chromium Projects':
+            raise error.TestError('Unexpected web site title.')
 
-        cookie = self.pyauto.GetCookie(self.pyauto.GURL(url))
-        if cookie != cookie_expected:
-            raise error.TestError('Unexpected cookie from YouTube')
+        cookie = self.pyauto.GetCookie(pyauto.GURL(url))
+        if not cookie:
+            raise error.TestError('Expected cookie for %s' % url)
