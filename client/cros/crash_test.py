@@ -178,6 +178,7 @@ class CrashTest(test.test):
         """
         if has_consent:
             utils.open_write_close(self._CONSENT_FILE, 'test-consent')
+            utils.system('chown chronos:chronos "%s"' % (self._CONSENT_FILE))
             logging.info('Created ' + self._CONSENT_FILE)
         else:
             utils.system('rm -f "%s"' % (self._CONSENT_FILE))

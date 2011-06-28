@@ -43,6 +43,7 @@ class logging_KernelCrashServer(test.test):
         """Crash the host after setting the consent as given."""
         if consent:
             self._host.run('echo test-consent > "%s"' % _CONSENT_FILE)
+            self._host.run('chown chronos:chronos "%s"' % _CONSENT_FILE)
         else:
             self._host.run('rm -f "%s"' % _CONSENT_FILE)
         logging.info('KernelCrashServer: crashing %s' % self._host.hostname)
