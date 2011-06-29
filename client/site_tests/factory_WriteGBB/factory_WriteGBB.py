@@ -14,8 +14,8 @@ class factory_WriteGBB(test.test):
     version = 4
 
     def run_once(self):
-        # We trust previous execution result of HWQual ID probing test: by
-        # hardware_Components(do_probe=True).
+        # We trust previous execution result of HWQual ID probing test
+        # (factory_ProbeHWID).
         # If the value was incorrect, it will be detected in the finalization
         # stage (factory_Finalize, gooftool --finalize => --verify_hwid).
         probed_hwid = factory.get_shared_data(factory.LAST_PROBED_HWID_NAME)

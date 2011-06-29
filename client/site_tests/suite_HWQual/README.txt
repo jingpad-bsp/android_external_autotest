@@ -125,14 +125,6 @@ Automated and Semi-Automated Test Runs
                   -c client/site_tests/suite_HWQual/control.external_drives
 
 
-- Run the approved components test by first following the manual
-  instructions specified in the control file (control.components) and
-  then executing:
-
-  $ ./server/autoserv -r results.components -m <DUT_IP> \
-                  -c client/site_tests/suite_HWQual/control.components
-
-
 - Run the system suspend/resume stability test:
 
   $ ./server/autoserv -r results.suspend_resume -m <DUT_IP> \
