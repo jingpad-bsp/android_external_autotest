@@ -33,18 +33,6 @@ class desktopui_WindowManagerFocusNewWindows(cros_ui_test.UITest):
                 lambda: info.is_focused,
                 desc='Waiting for window 0x%x to be focused' % id)
 
-            # get_geometry() returns a tuple, so we need to construct a tuple to
-            # compare against it.
-            fullscreen_dimensions = \
-                tuple([0, 0] + list(self.autox.get_screen_size()))
-            self.autox.await_condition(
-                lambda: info.get_geometry() == fullscreen_dimensions,
-                desc='Waiting for window 0x%x to fill the screen' % id)
-
-            self.autox.await_condition(
-                lambda: self.autox.get_top_window_id_at_point(200, 200) == id,
-                desc='Waiting for window 0x%x to be on top' % id)
-
         except self.autox.ConditionTimeoutError as exception:
             raise error.TestFail(
                 'Timed out on condition: %s' % exception.__str__())
