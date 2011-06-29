@@ -55,8 +55,8 @@ class Servo:
 
 
     def power_normal_press(self):
-        """Simulate a normal (1 sec) power button press."""
-        self.power_key(1)
+        """Simulate a normal (2 sec) power button press."""
+        self.power_key(2)
 
 
     def power_short_press(self):
@@ -70,7 +70,7 @@ class Servo:
         Args:
           secs: Time in seconds to simulate the keypress.
         """
-        self.set('pwr_button', 'press')
+        self.set_nocheck('pwr_button', 'press')
         time.sleep(secs)
         self.set('pwr_button', 'release')
 
@@ -140,6 +140,26 @@ class Servo:
         self.set_nocheck('kbd_en', 'off')
 
 
+    def enable_recovery_mode(self):
+        """Enable recovery mode on device."""
+        self.set('rec_mode', 'on')
+
+
+    def disable_recovery_mode(self):
+        """Disable recovery mode on device."""
+        self.set('rec_mode', 'off')
+
+
+    def enable_development_mode(self):
+        """Enable development mode on device."""
+        self.set('dev_mode', 'on')
+
+
+    def disable_development_mode(self):
+        """Disable development mode on device."""
+        self.set('dev_mode', 'off')
+
+
     def boot_devmode(self):
         """Boot a dev-mode device that is powered off."""
         self.set('pwr_button', 'release')
@@ -155,12 +175,24 @@ class Servo:
         time.sleep(17)
 
 
-    def _init_seq_cold_reset_devmode(self):
-        """Cold reset, init device, and boot in dev-mode."""
-        self._cold_reset()
-        self._init_seq()
-        self.set('dev_mode', 'on')
-        self.boot_devmode()
+    def cold_reset(self):
+        """Perform a cold reset of the EC.
+
+        Has the side effect of shutting off the device.
+        """
+        self.set('cold_reset', 'on')
+        time.sleep(2)
+        self.set('cold_reset', 'off')
+
+
+    def warm_reset(self):
+        """Perform a warm reset of the device.
+
+        Has the side effect of restarting the device.
+        """
+        self.set('warm_reset', 'on')
+        time.sleep(2)
+        self.set('warm_reset', 'off')
 
 
     def get(self, gpio_name):
@@ -180,6 +212,14 @@ class Servo:
         """Set the value of a gpio using Servod."""
         assert gpio_name and gpio_value
         self._server.set(gpio_name, gpio_value)
+
+
+    def _init_seq_cold_reset_devmode(self):
+        """Cold reset, init device, and boot in dev-mode."""
+        self.cold_reset()
+        self._init_seq()
+        self.set('dev_mode', 'on')
+        self.boot_devmode()
 
 
     def __del__(self):
@@ -221,16 +261,6 @@ class Servo:
         self.set('servo_dut_tx', 'off')
         self.set('lid_open', 'yes')
         self.set('rec_mode', 'off')
-
-
-    def _cold_reset(self):
-        """Perform a cold reset of the EC.
-
-        Has the side effect of shutting off the device.
-        """
-        self.set('cold_reset', 'on')
-        time.sleep(2)
-        self.set('cold_reset', 'off')
 
 
     def _connect_servod(self, servo_port=''):
