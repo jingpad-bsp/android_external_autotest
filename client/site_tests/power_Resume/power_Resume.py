@@ -110,7 +110,8 @@ class power_Resume(test.test):
         """
         count = 0
         while count < 5:
-            hwclock_output = utils.read_file('/tmp/hwclock-on-resume')
+            hwclock_output = utils.read_file('/var/run/power_manager/'+
+                                             'hwclock-on-resume')
             logging.debug('hwclock_output: ' + hwclock_output)
             match = re.search(
                     r'= ([0-9]+) seconds since .+ (-?[0-9.]+) seconds$',
@@ -120,7 +121,7 @@ class power_Resume(test.test):
                 logging.debug('hwclock seconds = %f' % seconds)
                 return seconds
 
-            # /tmp/hwclock-on-resume file doesn't contain valid data. Retry
+            # hwclock-on-resume file doesn't contain valid data. Retry
             count += 1
             time.sleep(1)
 
