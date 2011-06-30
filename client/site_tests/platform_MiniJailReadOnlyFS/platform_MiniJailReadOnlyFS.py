@@ -29,7 +29,7 @@ class platform_MiniJailReadOnlyFS(test.test):
         # Check that --add-readonly-mounts works
         check_cmd = (os.path.join(self.bindir, 'platform_MiniJailReadOnlyFS') +
               ' --procIsReadOnly')
-        cmd = ('/sbin/minijail --add-read-only-mounts -- ' + check_cmd)
+        cmd = ('/sbin/minijail --add-readonly-mounts -- ' + check_cmd)
         result = self.__run_cmd(cmd)
         succeed_pattern = re.compile(r"SUCCEED: (.+)")
         success = succeed_pattern.findall(result)

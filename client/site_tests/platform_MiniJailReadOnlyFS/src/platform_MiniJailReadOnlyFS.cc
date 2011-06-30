@@ -36,9 +36,11 @@ bool GetCurrentLogLevel(std::string* log_level) {
 
 // Writes a log level to /proc/sys/kernel/printk
 bool SetCurrentLogLevel(const std::string& log_level) {
-  return file_util::WriteFile(FilePath("/proc/sys/kernel/printk"),
+  int v = file_util::WriteFile(FilePath("/proc/sys/kernel/printk"),
                               log_level.c_str(),
                               log_level.length());
+  printf("INFO: SetCurrentLogLevel(%s) -> %d\n", log_level.c_str(), v);
+  return v > 0;
 }
 
 // Attempts to open /proc/sys/kernel/printk for write.  A jailed process with
