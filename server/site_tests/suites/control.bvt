@@ -22,6 +22,7 @@ TESTS = [
   ('platform_KernelVersion', {}),
   ('platform_OSLimits', {}),
   ('platform_PartitionCheck', {}),
+  ('platform_RootPartitionsNotMounted', {}),
 # TODO(jrbarnette) Currently, this test is broken because of a
 # dependency on the 'file' command.
 # ('platform_ToolchainOptions', {}),
