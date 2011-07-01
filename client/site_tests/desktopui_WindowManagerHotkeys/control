@@ -14,7 +14,7 @@ TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
-Test that some window manager hotkeys are functional.
+Test that a window manager hotkey is functional.
 """
 
 job.run_test('desktopui_WindowManagerHotkeys')
