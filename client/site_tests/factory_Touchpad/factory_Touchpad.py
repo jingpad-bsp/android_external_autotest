@@ -19,6 +19,7 @@ import sys
 import subprocess
 
 from cmath import pi
+from glob import glob
 from gtk import gdk
 
 from autotest_lib.client.bin import factory
@@ -373,10 +374,23 @@ class factory_Touchpad(test.test):
         test_widget.pack_start(drawing_area, False, False)
         test_widget.pack_start(countdown_widget, False, False)
 
-        synclient = SynClient(test)
+        # Detect an evdev compatible touchpad device.
+        # TODO(djkurtz): Use gudev to detect touchpad
+        for evdev in glob('/dev/input/event*'):
+            device = InputDevice(evdev)
+            if device.is_touchpad():
+                break
+        else:
+            device = None
+
+        if device:
+            factory.log('Using %s,  device %s' % (device.name, device.path))
+            touchpad = EvdevClient(test, device)
+        else:
+            touchpad = SynClient(test)
 
         ful.run_test_widget(self.job, test_widget,
-            cleanup_callback=synclient.quit)
+            cleanup_callback=touchpad.quit)
 
         missing = test.calc_missing_string()
         if missing:
