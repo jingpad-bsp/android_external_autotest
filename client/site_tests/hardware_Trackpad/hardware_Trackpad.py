@@ -7,10 +7,12 @@
 import glob
 import logging
 import os
+import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from trackpad_util import read_trackpad_test_conf
+from trackpad_device import TrackpadDevice
+from trackpad_util import read_trackpad_test_conf, get_prefix
 from Xcapture import Xcapture
 from Xcheck import Xcheck
 
@@ -39,80 +41,6 @@ Note: it is not required to use mutex to protect the global tdata for two
 tdata = TrackpadData()
 
 
-class TrackpadDevice():
-    ''' A trackpad device used to play back the device packets.
-    The device file is usually '/dev/input/event*'.
-    '''
-    PLAYBACK_PROGRAM = 'evemu-play'
-
-    def __init__(self, local_path):
-        # Query which trackpad driver is used in xorg
-        TOUCHPAD_CONF = ('/etc/X11/xorg.conf.d/touchpad.conf',
-                         '/etc/X11/xorg.conf')
-        TOUCHPAD_DRIVERS = ('synaptics', 'multitouch', 'cmt')
-        conf_file_exist = False
-        self.trackpad_driver = None
-        for conf_file in TOUCHPAD_CONF:
-            if os.path.exists(conf_file):
-                conf_file_exist = True
-                with open(conf_file) as f:
-                    for line in f.read().splitlines():
-                        if line.lstrip().startswith('Driver'):
-                            driver = line.split()[1].strip('"')
-                            if driver in TOUCHPAD_DRIVERS:
-                                self.trackpad_driver = driver
-                                break
-                if self.trackpad_driver is not None:
-                    break
-        if not conf_file_exist:
-            raise error.TestError('Xorg configuration files do not exist: %s' %
-                                  str(TOUCHPAD_CONF))
-        if self.trackpad_driver is None:
-            raise error.TestError('Cannot find driver in %s.' %
-                                  str(TOUCHPAD_CONF))
-        logging.info('Trackpad driver "%s" is found.' % self.trackpad_driver)
-
-        # Ungrab the device if the driver is synaptics and is grabbed
-        self.grab_value = -1
-        display_environ = 'DISPLAY=:0 XAUTHORITY=~chronos/.Xauthority '
-        synclient_list_cmd = display_environ + 'synclient -l'
-        self.grab_device = display_environ + 'synclient GrabEventDevice=%d'
-        if self.trackpad_driver == 'synaptics':
-            synclient_settings = utils.system_output(synclient_list_cmd)
-            for line in synclient_settings.splitlines():
-                if line.lstrip().startswith('GrabEventDevice'):
-                    self.grab_value = int(line.split('=')[1].strip())
-                    break
-            logging.info('GrabEventDevice=%d.' % self.grab_value)
-            if self.grab_value == -1:
-                err_msg = 'Cannot find GrabEventDevice setting in "%s".'
-                raise error.TestError(err_msg % synclient_list_cmd)
-            # Ungrab the device only if it has been grabbed.
-            elif self.grab_value == 1:
-                try:
-                    utils.system(self.grab_device % 0)
-                except:
-                    raise error.TestError('Fail to execute: %s' % ungrab_cmd)
-                logging.info('The synaptics device file is ungrabbed now.')
-
-        self.trackpad_device_file = read_trackpad_test_conf(
-                                    'trackpad_device_file', local_path)
-
-    def playback(self, packet_data_file):
-        play_cmd = '%s %s < %s' % (TrackpadDevice.PLAYBACK_PROGRAM,
-                                   self.trackpad_device_file, packet_data_file)
-        utils.system(play_cmd)
-
-    def __del__(self):
-        # Grab the device again only if it was originally grabbed.
-        if self.trackpad_driver == 'synaptics' and self.grab_value == 1:
-            try:
-                utils.system(self.grab_device % 1)
-            except:
-                raise error.TestError('Fail to execute: %s' % grab_cmd)
-            logging.info('The synaptics device file is grabbed successfully.')
-
-
 class hardware_Trackpad(test.test):
     ''' Play back device packets through the trackpad device. Capture the
     resultant X events. Analyze whether the X events meet the criteria
@@ -126,7 +54,7 @@ class hardware_Trackpad(test.test):
         tdata.chrome_request = 0
         tdata.report_finished = False
 
-        # Get functionality_list, and gesture_files_path from configuration file
+        # Get functionality_list, and gesture_files_path from config file
         local_path = self.autodir + '/tests/hardware_Trackpad'
         functionality_list = read_trackpad_test_conf('functionality_list',
                                                      local_path)
@@ -149,10 +77,10 @@ class hardware_Trackpad(test.test):
         self.tp_device = TrackpadDevice(local_path)
 
         # Start X events capture
-        self.xcapture = Xcapture(error)
+        self.xcapture = Xcapture(error, local_path)
 
         # Initialize X events Check
-        self.xcheck = Xcheck()
+        self.xcheck = Xcheck(self.tp_device)
 
         # Processing every functionality in functionality_list
         # An example functionality is 'any_finger_click'
@@ -163,7 +91,7 @@ class hardware_Trackpad(test.test):
 
             logging.info('\n')
             logging.info('Functionality: %s  (Area: %s)' %
-                         (tdata.func.name, tdata.func.area))
+                         (tdata.func.name, tdata.func.area[1]))
             tdata.num_files_tested[tdata.func.name] = 0
 
             # Some cases of specifying gesture files in the configuration file:
@@ -197,6 +125,9 @@ class hardware_Trackpad(test.test):
                 if group_name == '*':
                     group_name = tdata.func.name + '*'
 
+                tdata.prefix = get_prefix(tdata.func)
+                if tdata.prefix is not None:
+                    group_name = tdata.prefix + '-' + group_name
                 group_path = os.path.join(gesture_files_path, group_name)
                 gesture_file_group = glob.glob(group_path)
 
@@ -207,7 +138,12 @@ class hardware_Trackpad(test.test):
                     # determine the test criteria for the file. Otherwise,
                     # a warning message is shown.
                     tdata.file_basename = os.path.basename(gesture_file)
-                    if not tdata.file_basename.startswith(tdata.func.name):
+                    start_flag0 = tdata.file_basename.startswith(
+                                  tdata.func.name)
+                    start_flag1 = tdata.file_basename.split('-')[1].startswith(
+                                  tdata.func.name)
+                    if (tdata.prefix is None and not start_flag0) or \
+                       (tdata.prefix is not None and not start_flag1):
                         warn_msg = 'The gesture file does not start with ' + \
                                    'correct functionality: %s'
                         logging.warning(warn_msg % gesture_file)
@@ -221,6 +157,9 @@ class hardware_Trackpad(test.test):
                     # Start X events capture
                     self.xcapture.start(tdata.file_basename)
 
+                    # Wait a little while for xev
+                    time.sleep(0.5)
+
                     # Play back the gesture file
                     self.tp_device.playback(gesture_file_path)
 
@@ -231,8 +170,7 @@ class hardware_Trackpad(test.test):
                     self.xcapture.stop()
 
                     # Check X events
-                    tdata.result = self.xcheck.run(tdata.func.name,
-                                                   tdata.file_basename,
+                    tdata.result = self.xcheck.run(tdata.func, tdata,
                                                    self.xcapture.read())
 
                     # Update statistics
@@ -244,15 +182,16 @@ class hardware_Trackpad(test.test):
 
         # Logging test summary
         logging.info('\n')
-        logging.info('*** Total number of failed / tested files: (%d / %d) ***'\
+        logging.info('*** Total number of failed / tested files: (%d / %d) ***'
                      % (tdata.tot_fail_count, tdata.tot_num_files_tested))
         for tp_func in functionality_list:
             func = tp_func.name
-            logging.info('    %s: (%d / %d) failed.' %
-                  (func, tdata.fail_count[func], tdata.num_files_tested[func]))
+            func_msg = '    {0:<25}: {1:3d} / {2:3d} failed.'
+            logging.info(func_msg.format(func, tdata.fail_count[func],
+                                         tdata.num_files_tested[func]))
         logging.info('\n')
 
         # Raise error.TestFail if there is any test failed.
         if tdata.tot_fail_count > 0:
-            fail_str = 'Total number of failed files: %d' % tdata.tot_fail_count
-            raise error.TestFail(fail_str)
+            fail_str = 'Total number of failed files: %d'
+            raise error.TestFail(fail_str % tdata.tot_fail_count)
