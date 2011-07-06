@@ -10,12 +10,53 @@ replayed later to test trackpad drivers.
 
 import getopt
 import os
+import re
 import subprocess
 import sys
+import termios
 import time
+import tty
+import types
+
+import mini_color
 import trackpad_util
 
 from trackpad_util import read_trackpad_test_conf
+
+
+def _getch():
+    ''' Get a single character '''
+    fin = sys.stdin
+    old_attrs = termios.tcgetattr(fin)
+    tty.setraw(fin.fileno())
+    try:
+        ch = fin.read(1)
+    except ValueError:
+        ch = ''
+    finally:
+        termios.tcsetattr(fin, termios.TCSADRAIN, old_attrs)
+    return ch
+
+
+def _check_program_existence(program):
+    return os.system('which %s > /dev/null 2>&1' % program) == 0
+
+
+def _system_output(command):
+    ''' Execute a system command and return its output '''
+    import tempfile
+    tmp = tempfile.TemporaryFile()
+    command_list = command.split()
+    # Check if the program exits
+    if _check_program_existence(command_list[0]):
+        print 'Warning: "%s" does not exist in $PATH' % program
+        subprocess.Popen(command_list, stdout=tmp).wait()
+        tmp.seek(0)
+        output = tmp.read()
+        tmp.close()
+        return output
+    else:
+        return None
 
 
 class Record:
@@ -26,14 +67,44 @@ class Record:
         self.opt_func_list = opt_func_list
         self.tester_name = tester
         self.filename_attr = read_trackpad_test_conf('filename_attr', '.')
+        with open('/etc/lsb-release') as f:
+            self.system_model = self._get_model(f.read())
         self.functionality_list = \
-                read_trackpad_test_conf('functionality_list', '.')
+                           read_trackpad_test_conf('functionality_list', '.')
+        self.func_dict = dict((func.name, func)
+                              for func in self.functionality_list)
+        self.display = trackpad_util.Display()
+        self.display.calc_center()
 
-    def _create_file_name(self, func_name, subname):
+    def _get_model(self, context):
+        ''' Extract model name from the context '''
+        model = 'unknown_model'
+        if context is not None:
+            for line in context.splitlines():
+                if line.startswith('CHROMEOS_RELEASE_BOARD'):
+                    board_str = line.split('=')[1]
+                    if '-' in board_str:
+                        model = board_str.split('-')[1]
+                    elif '_' in board_str:
+                        model = board_str.split('_')[1]
+                    else:
+                        model = board_str
+                    break
+        print 'Model name: %s' % model
+        return model
+
+    def _create_file_name(self, func, subname):
         ''' Create the file name based on filename_attr
 
-        func_name: the functionality name of the gesture data file
-        subname: the subname of the functionality
+        func: an object describing the functionality
+          func.name: the functionality name of the gesture data file
+          func.area: the area of this functionality
+
+        subname: an individual subname of the functionality.
+              It could look as simple as a tuple of strings
+                    ('up', 'down'),
+              or it could look more complicated as a tuple of tuples
+                    (('physical', 'tap'), ('left', 'right'), ('0', '90', '180'))
 
         File name composition:
         (1) The file name must start with a functionality with optional subname.
@@ -50,7 +121,7 @@ class Record:
             in filename_attr in the configuration file:
                 ['ext': None],
 
-        An example file name for two_finger_scroll with subname=down and
+        An example file name for two_finger_scroll with subname='down' and
             filename_attr = [
                 ['model', 'alex'],
                 ['firmware_version', None],
@@ -61,24 +132,45 @@ class Record:
         in the configuration file looks as:
         two_finger_scroll.down-alex-XXX-john-20110407_185746.dat
         '''
-        full_func_name = '.'.join([func_name, subname]) if subname \
-                                                        else func_name
+        if subname is not None:
+            if isinstance(subname, tuple):
+                name_list = list(subname)
+                name_list.insert(0, func.name)
+            else:
+                name_list = [func.name, subname]
+            full_func_name = '.'.join(name_list)
+        else:
+            full_func_name = func.name
+
         file_name = full_func_name
         time_format = '%Y%m%d_%H%M%S'
         for attr in self.filename_attr:
+            # Add prefix as appropriate
+            if attr[0] == 'prefix':
+                prefix = trackpad_util.get_prefix(func)
+                if prefix is not None:
+                    file_name = '-'.join([prefix, file_name])
+                continue
             # Add timestamp just before file extension
             if attr[0] == 'ext':
                 # Express the time in UTC
                 file_name = '-'.join([file_name, time.strftime(time_format,
                                                                time.gmtime())])
+            # Add the tester name
             if attr[0] == 'tester':
                 attr[1] = self.tester_name
+            # Add the model name
+            if attr[0] == 'model' and attr[1] == 'DEFAULT':
+                attr[1] = self.system_model
+            # Now, add any other attribute
             if attr[1] is not None:
                 sep = '.' if attr[0] == 'ext' else '-'
                 file_name = sep.join([file_name, attr[1]])
+
         return (file_name, full_func_name)
 
-    def _terminate_record(self):
+    def _terminate(self):
+        ''' Terminate the recording process '''
         self.rec_proc.terminate()
         self.rec_proc.wait()
         self.rec_f.close()
@@ -89,35 +181,44 @@ class Record:
         func_name: the functionality name of the gesture data file
         subname: the subname of the functionality
         gesture_files_path: the path to save gesture data files
+        record_program: the device event recording program
 
-        Return True for continuing, and False to break in record_all()
+        Return True for continuing, and False to break the loop in record_all()
         '''
-        for func in self.functionality_list:
-            if func_name == func.name:
-                prompt = func.prompt
-                subprompt = func.subprompt[subname]
-        full_prompt = prompt % subprompt
+        func = self.func_dict[func_name]
+        prompt = func.prompt
+        if isinstance(subname, tuple):
+            subprompt = reduce(lambda s1, s2: s1 + s2,
+                               tuple(func.subprompt[s] for s in subname))
+        else:
+            subprompt = func.subprompt[subname]
 
-        func_msg = '  [%s]:\n%s%s'
+        color_prompt = mini_color.string(prompt, '{', '}', 'green')
+        color_prompt = color_prompt.format(*subprompt)
+
+        func_msg = '  <%s>:\n%s%s'
+        color_func_msg = mini_color.string(func_msg, '<', '>', 'blue')
+
         prefix_space = '        '
-        timeout_msg = '(Recording terminates if not touching for 10 seconds.)'
         prompt_choice = prefix_space + 'Enter your choice: '
 
         prompt_msg = '''
         Press 's' to save this file and record next gesture,
-              'r' to save this file and record another file for this gesture.
+              'a' to save this file and record another file for this gesture.
               'd' to delete and record again,
               'q' to save this file and exit, or
               'x' to discard this file and exit.'''
 
         while True:
-            (file_name, full_func_name) = self._create_file_name(func_name,
-                                                                 subname)
+            self.display.move_cursor_to_center()
+            (file_name, full_func_name) = self._create_file_name(func, subname)
             file_path = os.path.join(gesture_files_path, file_name)
-            print func_msg % (full_func_name, prefix_space, full_prompt)
-            print prefix_space + timeout_msg
+            print color_func_msg % (full_func_name, prefix_space, color_prompt)
             self.rec_f = open(file_path, 'w')
-            record_cmd = '%s %s' % (record_program, self.trackpad_device_file)
+            # -1 in the following record_cmd means that the recording program
+            # does not terminate until it receives SIGINT or SIGTERM.
+            record_cmd = '%s %s -1' % (record_program,
+                                       self.trackpad_device_file)
             self.rec_proc = subprocess.Popen(record_cmd.split(),
                                              stdout=self.rec_f)
             print prompt_msg
@@ -127,27 +228,29 @@ class Record:
 
             # Keep prompting the user until a valid choice is entered.
             while True:
-                choice = raw_input(prompt_choice).lower()
+                print prompt_choice,
+                choice = _getch().lower()
+                print choice
                 if choice == 's':
                     print saved_msg
-                    self._terminate_record()
+                    self._terminate()
                     return True
-                elif choice == 'r':
+                elif choice == 'a':
                     print saved_msg
-                    self._terminate_record()
+                    self._terminate()
                     break
                 elif choice == 'd':
-                    self._terminate_record()
+                    self._terminate()
                     if os.path.exists(file_path):
                         os.remove(file_path)
                         print deleted_msg
                     break
                 elif choice == 'q':
                     print saved_msg
-                    self._terminate_record()
+                    self._terminate()
                     return False
                 elif choice == 'x':
-                    self._terminate_record()
+                    self._terminate()
                     if os.path.exists(file_path):
                         os.remove(file_path)
                         print deleted_msg
@@ -158,6 +261,27 @@ class Record:
     def record_all(self):
         ''' Record all gestures specified in self.opt_func_list '''
 
+        def _span(seq1, seq2):
+            ''' Span seq1 on seq2
+
+                where seq can be a tuple of string, or a tuple of tuples
+                E.g., seq1 = (('a', 'b'), 'c')
+                      seq2 = ('1', ('2', '3'))
+                      res = (('a', 'b', '1'), ('a', 'b', '2', '3'),
+                             ('c', '1'), ('c', '2', '3'))
+                E.g., seq1 = ('a', 'b')
+                      seq2 = ('1', '2', '3')
+                      res  = (('a', '1'), ('a', '2'), ('a', '3'),
+                              ('b', '1'), ('b', '2'), ('b', '3'))
+                E.g., seq1 = (('a', 'b'), ('c', 'd'))
+                      seq2 = ('1', '2', '3')
+                      res  = (('a', 'b', '1'), ('a', 'b', '2'), ('a', 'b', '3'),
+                              ('c', 'd', '1'), ('c', 'd', '2'), ('c', 'd', '3'))
+            '''
+            to_list = lambda s: list(s) if isinstance(s, tuple) else [s]
+            return tuple(tuple(to_list(s1) + to_list(s2)) for s1 in seq1
+                                                          for s2 in seq2)
+
         # Get the gesture files path. Create the path if not existent.
         gesture_files_path = read_trackpad_test_conf('gesture_files_path', '.')
         if not os.path.exists(gesture_files_path):
@@ -166,15 +290,11 @@ class Record:
 
         # Check whether the record program exists
         record_program = trackpad_util.record_program
-        ret = os.system('which %s > /dev/null' % record_program)
-        if ret != 0:
-            print 'Error: The record program %s does not exist' \
-                  ' in your $PATH.' % record_program
+        if not _check_program_existence(record_program):
+            print 'Warning: "%s" does not exist in $PATH' % program
             sys.exit(1)
 
         print 'Gesture files will be stored in %s \n' % gesture_files_path
-        print 'Note: The record program for each gesture file terminates'
-        print '      if there is no finger on the trackpad for 10 seconds.\n'
         print 'Begin recording ...\n'
 
         # Iterate through every functionality to record gesture files.
@@ -183,7 +303,14 @@ class Record:
                 continued = self._record(func_name, None, gesture_files_path,
                                          record_program)
             else:
-                for sub in subname:
+                # If subname is a sequence of sequence, it looks like
+                # (('click', 'tap'), ('l0', 'l1', 'l2', 'r0', 'r1', 'r2')), or
+                # (('click', 'tap'), ('left', 'right'), ('0', '1', '2'))
+                # Otherwise, subname is a one-level sequence and looks like
+                # ('up', 'down')
+                span_subname = reduce(_span, subname) \
+                               if isinstance(subname[0], tuple) else subname
+                for sub in span_subname:
                     continued = self._record(func_name, sub, gesture_files_path,
                                              record_program)
                     if not continued:
@@ -268,45 +395,21 @@ def _verify_file_existence(filename):
 
 def _get_trackpad_device_file(trackpad_device_file):
     ''' Get and verify trackpad device file
-        Priority 1: if there is a command line option specifying the device
-                    file and the device file exists
-        Priority 2: if trackpad_device_file in the configuration file is
-                    defined and the file exists
-        Priority 3: if the trackpad device file cannot be determined above,
-                    using the hard coded one in trackpad_util
-
+        Priority 1: if there is a command line option of the device file
+                    and the device file exists
+        Priority 2: Get the device file from trackpad_util module
     '''
-    # Determine trackpad device file
-    # Verify the existence of the device file in the option
-    trackpad_device_file = _verify_file_existence(trackpad_device_file)
+    # Verify the existence of the device file in the command line option
+    trackpad_device_file = trackpad_util.file_exists(trackpad_device_file)
 
-    # Read and verify the existence of the configured device file
-    config_dev = read_trackpad_test_conf('trackpad_device_file', '.')
-    trackpad_device_file_configured = _verify_file_existence(config_dev)
-
-    # Read and verify the existence of the hard coded device file
-    hard_dev = trackpad_util.trackpad_device_file_hardcoded
-    trackpad_device_file_hardcoded = _verify_file_existence(hard_dev)
-
-    trackpad_test_conf = trackpad_util.trackpad_test_conf
     if trackpad_device_file is not None:
-        msg = 'The device file %s on command line is used.'
-        print msg % trackpad_device_file
-    elif trackpad_device_file_configured is not None:
-        trackpad_device_file = trackpad_device_file_configured
-        msg = 'The device file %s in %s is used.'
-        print msg % (trackpad_device_file_configured, trackpad_test_conf)
-    elif trackpad_device_file_hardcoded is not None:
-        trackpad_device_file = trackpad_device_file_hardcoded
-        warn_msg1 = 'Warning: Please update the device file in %s \n'
-        warn_msg2 = 'The default device %s hard coded in trackpad_util is used.'
-        print warn_msg1 % trackpad_test_conf
-        print warn_msg2 % trackpad_device_file_hardcoded
+        msg = 'The device file on command line: %s' % trackpad_device_file
     else:
-        err_msg = 'Error: the device file (%s) is not available'
-        print err_msg % trackpad_device_file
-        sys.exit(1)
+        trackpad_device_file, msg = trackpad_util.get_trackpad_device_file()
 
+    print msg
+    if trackpad_device_file is None:
+        sys.exit(1)
     return trackpad_device_file
 
 
@@ -379,8 +482,7 @@ def _get_tester(tester):
         name_msg = 'Please enter your name to be shown in a gesture file name: '
         for attr in filename_attr:
             if attr[0] == 'tester':
-                tester = raw_input(name_msg) if attr[1] is None \
-                                                  else attr[1]
+                tester = raw_input(name_msg) if attr[1] is None else attr[1]
                 break
     return tester
 

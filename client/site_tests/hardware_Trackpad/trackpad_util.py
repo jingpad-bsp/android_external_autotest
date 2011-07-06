@@ -5,18 +5,13 @@
 ''' Trackpad utility program for reading test configuration data '''
 
 import os
+import re
 
 
 record_program = 'evemu-record'
 trackpad_test_conf = 'trackpad_test.conf'
 trackpad_device_file_hardcoded = '/dev/input/event6'
-
-# The following global variables are read by execfile the configuration file
-gesture_files_path = None
-trackpad_device_file = None
-area = None
-functionality_list = None
-filename_attr = None
+conf_file_executed = False
 
 
 class TrackpadTestFunctionality:
@@ -52,6 +47,46 @@ class TrackpadTestFunctionality:
         self.files = files
 
 
+class Display:
+    ''' A simple class to handle display environment and set cursor position '''
+    DISP_STR = ':0'
+    XAUTH_STR = '/home/chronos/.Xauthority'
+
+    def __init__(self):
+        self._setup_display()
+
+    def _setup_display(self):
+        import Xlib
+        import Xlib.display
+        self.set_environ()
+        self.disp = Xlib.display.Display(Display.DISP_STR)
+        self.screen = self.disp.screen()
+        self.root = self.screen.root
+        self.calc_center()
+
+    def get_environ(self):
+        ''' Get DISPLAY and XAUTHORITY '''
+        disp_str = 'DISPLAY=%s' % Display.DISP_STR
+        xauth_str = 'XAUTHORITY=%s' % Display.XAUTH_STR
+        display_environ = ' '.join([disp_str, xauth_str])
+        return display_environ
+
+    def set_environ(self):
+        ''' Set DISPLAY and XAUTHORITY '''
+        os.environ['DISPLAY'] = Display.DISP_STR
+        os.environ['XAUTHORITY'] = Display.XAUTH_STR
+
+    def calc_center(self):
+        ''' Calculate the center of the screen '''
+        self.center = (self.screen.width_in_pixels / 2,
+                       self.screen.height_in_pixels / 2)
+
+    def move_cursor_to_center(self):
+        ''' Move the cursor to the center of the screen '''
+        self.root.warp_pointer(*self.center)
+        self.disp.sync()
+
+
 def read_trackpad_test_conf(target_name, path):
     ''' Read target item from the configuration file
 
@@ -64,9 +99,88 @@ def read_trackpad_test_conf(target_name, path):
     global space. Next time this function is called, a variable can be returned
     immediately without parsing the configuration file again.
     '''
-    target = eval(target_name)
-    if target is None:
+    global conf_file_executed
+    if not conf_file_executed:
         trackpad_test_conf_path = os.path.join(path, trackpad_test_conf)
         execfile(trackpad_test_conf_path, globals())
-        target = eval(target_name)
-    return target
+        conf_file_executed = True
+    return eval(target_name)
+
+
+def get_prefix(func):
+    ''' Get the prefix string in filename attributes '''
+    attrs = read_trackpad_test_conf('filename_attr', '.')
+    for attr in attrs:
+        if attr[0] == 'prefix':
+            return func.area[0] if attr[1] == 'DEFAULT' else attr[1]
+
+
+def file_exists(filename):
+    ''' Verify the existence of a file '''
+    return filename if filename is not None and os.path.exists(filename) \
+                    else None
+
+
+def _probe_trackpad_device_file():
+    ''' Probe trackpad device file in /proc/bus/input/devices '''
+    device_info = '/proc/bus/input/devices'
+    trackpad_str = ['trackpad', 'touchpad']
+    if not os.path.exists(device_info):
+        return None
+    with open(device_info) as f:
+        device_str = f.read()
+    device_iter = iter(device_str.splitlines())
+    trackpad_pattern = re.compile('name=.+t(rack|ouch)pad', re.I)
+    event_pattern = re.compile('handlers=.*event(\d+)', re.I)
+    found_trackpad = False
+    trackpad_device_file = None
+    while True:
+        line = next(device_iter, None)
+        if line is None:
+            break
+        if not found_trackpad and trackpad_pattern.search(line) is not None:
+            found_trackpad = True
+        elif found_trackpad:
+            res = event_pattern.search(line)
+            if res is not None:
+                event_no = int(res.group(1))
+                file_str = '/dev/input/event%d' % event_no
+                trackpad_device_file = file_exists(file_str)
+                break
+    return trackpad_device_file
+
+
+def get_trackpad_device_file():
+    ''' Get and verify trackpad device file
+
+        Priority 1: Probe the trackpad device in the system. If the probed
+                    trackpad device file exists
+        Priority 2: if trackpad_device_file in the configuration file is
+                    defined and the file exists
+        Priority 3: if the trackpad device file cannot be determined above,
+                    using the hard coded one in trackpad_util
+    '''
+    # Probe the trackpad device file in the system
+    file_probed = _probe_trackpad_device_file()
+
+    # Read and verify the existence of the configured device file
+    config_dev = read_trackpad_test_conf('trackpad_device_file', '.')
+    file_config = file_exists(config_dev)
+
+    # Read and verify the existence of the hard coded device file
+    hard_dev = trackpad_device_file_hardcoded
+    file_hardcoded = file_exists(hard_dev)
+
+    if file_probed is not None:
+        trackpad_device_file = file_probed
+        msg = 'Probed device file: %s' % file_probed
+    elif file_config is not None:
+        trackpad_device_file = file_config
+        msg = 'The device file in %s: %s' % (trackpad_test_conf, file_config)
+    elif file_hardcoded is not None:
+        trackpad_device_file = file_hardcoded
+        warn_msg = 'The device hard coded in trackpad_util: %s' % file_hardcoded
+    else:
+        trackpad_device_file = None
+        msg = 'The trackpad device file is not available!'
+    return (trackpad_device_file, msg)
