@@ -24,6 +24,15 @@ class platform_MiniJailUidGid(test.test):
                                      ignore_status=True)
         return result
 
+    def test_jail(self, jailargs, testargs, message):
+        check_cmd = (os.path.join(self.bindir, 'platform_MiniJailUidGid') +
+                     ' ' + testargs)
+        cmd = ('/sbin/minijail %s -- %s' % (jailargs, check_cmd))
+        result = self.__run_cmd(cmd)
+        succeed_pattern = re.compile(r"SUCCEED: (.+)")
+        success = succeed_pattern.findall(result)
+        if len(success) == 0:
+          raise error.TestFail(message)
 
     def run_once(self):
         # Check that --uid [number] works
@@ -32,21 +41,8 @@ class platform_MiniJailUidGid(test.test):
         # be owned by root but read/execute by anyone
         self.__run_cmd(('chown -R root:root ' + self.bindir));
         self.__run_cmd(('chmod 755 ' + self.bindir));
-        check_cmd = (os.path.join(self.bindir, 'platform_MiniJailUidGid') +
-              ' --checkUid=1000')
-        cmd = ('/sbin/minijail --uid=1000 -- ' + check_cmd)
-        result = self.__run_cmd(cmd)
-        succeed_pattern = re.compile(r"SUCCEED: (.+)")
-        success = succeed_pattern.findall(result)
-        if len(success) == 0:
-          raise error.TestFail('Set user id failed.')
 
-        # Check that --gid [number] works
-        check_cmd = (os.path.join(self.bindir, 'platform_MiniJailUidGid') +
-              ' --checkGid=1000')
-        cmd = ('/sbin/minijail --gid=1000 -- ' + check_cmd)
-        result = self.__run_cmd(cmd)
-        succeed_pattern = re.compile(r"SUCCEED: (.+)")
-        success = succeed_pattern.findall(result)
-        if len(success) == 0:
-          raise error.TestFail('Set group id failed.')
+        self.test_jail('--uid=1000', '--checkUid=1000', '--uid=int failed.')
+        self.test_jail('--gid=1000', '--checkGid=1000', '--gid=int failed.')
+        self.test_jail('--uid=chronos', '--checkUid=1000', '--uid=str failed.')
+        self.test_jail('--gid=chronos', '--checkGid=1000', '--gid=str failed.')
