@@ -35,7 +35,7 @@ class ChromiumOSHost(base_classes.Host):
 
 
     def machine_install(self, update_url=None, force_update=False):
-        if parser.options.image:
+        if not update_url and parser.options.image:
             update_url = parser.options.image
         elif not update_url:
             raise autoupdater.ChromiumOSError(

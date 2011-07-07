@@ -1,0 +1,36 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Auto Update Smoke Test"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+This is a special control file used by the autoupdate (AU) test scheduler. It
+requires a target update URL be provided in order to run.
+
+The test relies on Autotest to image the machine to the proper base image prior
+to execution. The target machine is then imaged to the target version and a
+basic smoke test is run to verify functionality.
+"""
+
+
+# suite_Smoke client control file.
+CLIENT_CONTROL = 'client/site_tests/suite_Smoke/control'
+
+
+def run_client_test(machine):
+  client = hosts.create_host(machine)
+  client.machine_install(force_update=True, update_url='%(update_url)s')
+
+  # Copy global state and replace job token with client Autotest instance.
+  temp_globals = dict(globals())
+  temp_globals['job'] = autotest.Autotest(client)
+  execfile(os.path.join(job.autodir, CLIENT_CONTROL), temp_globals)
+
+
+job.parallel_on_machines(run_client_test, machines)
