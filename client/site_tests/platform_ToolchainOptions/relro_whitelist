@@ -24,6 +24,7 @@
 /sbin/insmod.static
 /usr/bin/cgpt
 /usr/lib/cromo/plugins/madison.so
+/usr/lib/libGL.so.1.2
 /usr/lib/libQCWWAN2k.so
 /usr/lib/opengl/xorg-x11/extensions/libglx.so
 /usr/lib/opengl/xorg-x11/lib/libGL.so.1.2

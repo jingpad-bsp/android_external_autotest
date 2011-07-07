@@ -1,5 +1,6 @@
 /opt/Qualcomm/QDLService2k/QDLService2kAcer
 /opt/Qualcomm/QDLService2k/QDLService2kAcerTest
+/opt/Synaptics/bin/synreflash
 /opt/google/chrome/pepper/libpepflashplayer.so
 /opt/google/chrome/plugins/libgcflashplayer.so
 /opt/google/o3d/lib/libCg.so
