@@ -291,7 +291,7 @@ class Record:
         # Check whether the record program exists
         record_program = trackpad_util.record_program
         if not _check_program_existence(record_program):
-            print 'Warning: "%s" does not exist in $PATH' % program
+            print 'Warning: "%s" does not exist in $PATH' % record_program
             sys.exit(1)
 
         print 'Gesture files will be stored in %s \n' % gesture_files_path

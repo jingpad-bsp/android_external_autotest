@@ -5,6 +5,7 @@
 ''' A module verifying whether X events satisfy specified criteria '''
 
 import logging
+import math
 import os
 import re
 import time
@@ -153,23 +154,42 @@ class Xcheck:
 
     def _calc_distance(self, x0, y0, x1, y1):
         ''' A simple Manhattan distance '''
-        return abs(x1 - x0) + abs(y1 - y0)
+        delta_x = abs(x1 - x0)
+        delta_y = abs(y1 - y0)
+        dist = round(math.sqrt(delta_x * delta_x + delta_y * delta_y))
+        return [dist, [delta_x, delta_y]]
 
     def _parse_button_and_motion(self):
         ''' Parse button events and motion events
 
         The variable seg_move accumulates the motions of the contiguous events
         segmented by some boundary events such as Button events and other
-        NOP events. A NOP (no operation) event is a fake X event which is
+        NOP events.
+        A NOP (no operation) event is a fake X event which is
         used to indicate the occurrence of some related device events.
         '''
+
+        # Define some functions for seg_move
+        def _reset_seg_move():
+            return [0, [0, 0]]
+
+        def _append_motion_event(seg_move):
+            self.event_seq.append(('Motion', (seg_move[0],
+                                              ('Motion_x', seg_move[1][0]),
+                                              ('Motion_y', seg_move[1][1]))))
+
+        def _add_seg_move(seg_move, move):
+            list_add = lambda list1, list2: map(sum, zip(list1, list2))
+            return [seg_move[0] + move[0], list_add(seg_move[1], move[1])]
+
         self.count_buttons = self.xbutton.init_button_struct(0)
         self.count_buttons_press = self.xbutton.init_button_struct(0)
         self.count_buttons_release = self.xbutton.init_button_struct(0)
         self.button_states = self.xbutton.init_button_struct('ButtonRelease')
-        pre_x = pre_y = None
+
+        pre_xy = [None, None]
         self.event_seq = []
-        seg_move = 0
+        seg_move = _reset_seg_move()
         self.sum_move = 0
 
         indent1 = ' ' * 8
@@ -185,25 +205,25 @@ class Xcheck:
             if event_name != 'NOP':
                 event_dict = line[1]
                 if event_dict.has_key('coord'):
-                    event_coord = eval(event_dict['coord'])
+                    event_coord = list(eval(event_dict['coord']))
                 if event_dict.has_key('button'):
                     event_button = eval(event_dict['button'])
 
             if event_name == 'EnterNotify':
-                if (pre_x, pre_y) == (None, None):
-                    pre_x, pre_y = event_coord
+                if pre_xy == [None, None]:
+                    pre_xy = event_coord
             elif event_name == 'MotionNotify':
-                if (pre_x, pre_y) == (None, None):
-                    pre_x, pre_y = event_coord
+                if pre_xy == [None, None]:
+                    pre_xy = event_coord
                 else:
-                    cur_x, cur_y = event_coord
-                    move = self._calc_distance(pre_x, pre_y, cur_x, cur_y)
-                    pre_x, pre_y = cur_x, cur_y
-                    seg_move += move
-                    self.sum_move += move
+                    cur_xy = event_coord
+                    move = self._calc_distance(*(pre_xy + cur_xy))
+                    pre_xy = cur_xy
+                    seg_move = _add_seg_move(seg_move, move)
+                    self.sum_move += move[0]
             elif event_name.startswith('Button'):
-                self.event_seq.append(('Motion', seg_move))
-                seg_move = 0
+                _append_motion_event(seg_move)
+                seg_move = _reset_seg_move()
                 button_label = self.xbutton.get_label(event_button)
                 self.event_seq.append((event_name, button_label))
                 prev_button_state = self.button_states[event_button]
@@ -219,11 +239,11 @@ class Xcheck:
                 logging.info(log_msg[precede_flag].format(event_name) %
                              event_button)
             elif event_name == 'NOP':
-                self.event_seq.append(('Motion', seg_move))
+                _append_motion_event(seg_move)
+                seg_move = _reset_seg_move()
                 self.event_seq.append(('NOP', line[1]))
-                seg_move = 0
 
-        self.event_seq.append(('Motion', seg_move))
+        _append_motion_event(seg_move)
 
         # Convert dictionary to tuple
         self.button_states = tuple(self.button_states.values())
@@ -252,7 +272,7 @@ class Xcheck:
         return lambda seq1, seq2: reduce(and_, map(lambda op, s1, s2:
                                                    op(s1, s2), ops, seq1, seq2))
 
-    def _get_button_criteria(self, button):
+    def _button_criteria(self, button):
         ''' Convert the key of the button tuple from label to index '''
         crit_button_count = [0,] * len(self.button_labels)
         if button is not None:
@@ -279,6 +299,14 @@ class Xcheck:
                     if event_time > lifted_time:
                         self.xevent_data.insert(index, ('NOP', nop_str))
                         break
+
+    def _get_direction(self):
+        directions = ['left', 'right', 'up', 'down']
+        file_name = self.gesture_file_name.split('-')[self.func_name_pos]
+        for d in directions:
+            if d in file_name:
+                return d
+        return None
 
     ''' _verify_xxx()
     Generic verification methods for various functionalities / areas
@@ -320,7 +348,7 @@ class Xcheck:
         # Extract scroll direction, i.e., 'up' or 'down', from the file name
         # We do not support scrolling 'left' or 'right' at this time.
         pos = self.func_name_pos
-        direction = self.gesture_file_name.split('-')[pos].split('.')[-1]
+        direction = self._get_direction()
 
         # Derive the device event playback time when the 2nd finger touches
         dev_event_time = self.dev.get_2nd_finger_touch_time(direction)
@@ -359,9 +387,13 @@ class Xcheck:
                          ('Motion', '>=', 20),
                          ('ButtonRelease', 'Button Left'))
         '''
-        op = {'>=': ge, '<=': le, '==': eq, '=': eq, '>': gt, '<': lt,
-              '!=': ne, '~=': ne, 'not': ne, 'is not': ne}
+        op_dict = {'>=': ge, '<=': le, '==': eq, '=': eq, '>': gt, '<': lt,
+                   '!=': ne, '~=': ne, 'not': ne, 'is not': ne}
+        op_le = op_dict['<=']
+        axis_dict = {'left': 'x', 'right': 'x', 'up': 'y', 'down': 'y',
+                     None: ''}
         self.seq_flag = True
+        crit_move_ratio = self.criteria.get('move_ratio', 0)
         index = -1
         for e in self.event_seq:
             e_type, e_value = e
@@ -374,12 +406,49 @@ class Xcheck:
             crit_e = crit_sequence[index]
             crit_e_type = crit_e[0]
 
-            if e_type == 'Motion':
-                if crit_e_type == 'Motion':
-                    # Check if the motion matches the criteria
-                    if not op[crit_e[1]](e_value, crit_e[2]):
-                        fail_msg = 'Motion %d does not satisfy %s'
-                        fail_para = (e_value, str(crit_e))
+            if e_type.startswith('Motion'):
+                motion_val = e_value[0]
+                motion_x_val = e_value[1][1]
+                motion_y_val = e_value[2][1]
+                if crit_e_type.startswith('Motion'):
+                    crit_e_op = crit_e[1]
+                    crit_e_val = crit_e[2]
+                    op = op_dict[crit_e_op]
+                    if crit_e_type == 'Motion':
+                        crit_check = op(motion_val, crit_e_val)
+                        if not crit_check:
+                            fail_msg = '%s %s does not satisfy %s. '
+                            fail_para = (crit_e_type, str(e_value), str(crit_e))
+                            break
+                    elif crit_e_type == 'Motion_x_or_y':
+                        axis = axis_dict[self._get_direction()]
+                        motion_axis_dict = {'x': {'this':  motion_x_val,
+                                                  'other': motion_y_val},
+                                            'y': {'this':  motion_y_val,
+                                                  'other': motion_x_val}}
+                        motion_axis_val = motion_axis_dict[axis]['this']
+                        motion_other_val = motion_axis_dict[axis]['other']
+
+                        check_this_axis = op(motion_axis_val, crit_e_val)
+                        # If the criteria requests that one axis move more
+                        # than a threshold value, the other axis should move
+                        # much less. This is to confirm that the movement is
+                        # in the right direction.
+                        other_axis_cond = crit_e_op == '>=' or crit_e_op == '>'
+                        bound_other_axis = motion_axis_val * crit_move_ratio
+                        check_other_axis = (not other_axis_cond or
+                                    op_le(motion_other_val, bound_other_axis))
+                        crit_check = check_this_axis and check_other_axis
+                        if not crit_check:
+                            fail_msg = '%s %s does not satisfy %s. ' \
+                                       'Check motion for this axis = %s. ' \
+                                       'Check motion for the other axis = %s'
+                            fail_para = (crit_e_type, str(e_value), str(crit_e),
+                                         check_this_axis, check_other_axis)
+                            break
+                    else:
+                        fail_msg = '%s does not conform to the format.'
+                        fail_para = crit_e_type
                         break
                 else:
                     # No motion allowed
@@ -422,43 +491,21 @@ class Xcheck:
     in the same area.
     '''
 
-    def _verify_area_click(self):
-        ''' A general verification method for the area: 1 finger point & click
-
-        This function is invoked for several functionalities in the same area.
-        Criteria:
-        1. The sum of movement is less than or equal to crit_max_movement
-        2. The number of clicks is as specified.
-        '''
-        crit_max_movement = self.criteria['max_movement']
-        crit_button_count = self._get_button_criteria(self.criteria['button'])
-
+    def _verify_all_criteria(self):
+        ''' A general verification method for all criteria '''
         self._parse_button_and_motion()
-        self._verify_motion(le, crit_max_movement)
-        self._verify_button(eq, crit_button_count)
-        self._get_result()
-
-    def _verify_area_select(self):
-        ''' A general verification method for the area: click & select/drag
-
-        This function is invoked for several functionalities in the same area.
-        Criteria:
-        (1) The observed event sequnce should conform to the specified
-            sequence in the criteria.
-        (2) Optional: a delay time may be specified for the timing constraint
-            between a device event and a corresponding X event.
-        '''
-        self._parse_button_and_motion()
-
-        if self.criteria.has_key('movement'):
-            self._verify_motion(ge, self.criteria['movement'])
+        if self.criteria.has_key('max_movement'):
+            crit_max_movement = self.criteria['max_movement']
+            self._verify_motion(le, crit_max_movement)
         if self.criteria.has_key('button'):
-            self._verify_button(eq, self._get_button_criteria(
-                                                      self.criteria['button']))
+            crit_button_count = self._button_criteria(self.criteria['button'])
+            self._verify_button(eq, crit_button_count)
         if self.criteria.has_key('delay'):
-            self._verify_select_delay(self.criteria['delay'])
+            crit_delay = self.criteria['delay']
+            self._verify_select_delay(crit_delay)
         if self.criteria.has_key('sequence'):
-            self._verify_select_sequence(self.criteria['sequence'])
+            crit_sequence = self.criteria['sequence']
+            self._verify_select_sequence(crit_sequence)
         self._get_result()
 
     ''' _check_xxx()
@@ -466,66 +513,94 @@ class Xcheck:
     which is executed by run() automatically.
     '''
 
+    ''' area 0: 1 finger point & click '''
+
     def _check_any_finger_click(self):
         ''' Any finger, including thumb, can click '''
-        self._verify_area_click()
+        self._verify_all_criteria()
 
     def _check_any_angle_click(self):
         ''' Finger can be oriented at any angle relative to trackpad '''
-        self._verify_area_click()
+        self._verify_all_criteria()
 
     def _check_any_location_click(self):
         ''' Click can occur at any location on trackpad (no hot zones) '''
-        self._verify_area_click()
+        self._verify_all_criteria()
 
     def _check_no_min_width_click(self):
         ''' First finger should not have any minimum width defined for it
         (i.e., point and/or click with finger tip. E.g., click with fingernail)
         '''
-        self._verify_area_click()
+        self._verify_all_criteria()
 
     def _check_no_cursor_wobble(self):
         ''' No cursor wobble, creep, or jumping (or jump back) during clicking
         '''
-        self._verify_area_click()
+        self._verify_all_criteria()
 
     def _check_drum_roll(self):
         ''' Drum roll: One finger (including thumb) touches trackpad followed
         shortly (<500ms) by a second finger touching trackpad should not result
         in cursor jumping
         '''
-        self._verify_area_click()
+        self._verify_all_criteria()
+
+    ''' area 1: Click & select/drag '''
 
     def _check_single_finger_select(self):
         ''' (Single finger) Finger physical click or tap & a half, then finger -
         remaining in contact with trackpad - drags along surface of trackpad
         '''
-        self._verify_area_select()
+        self._verify_all_criteria()
 
     def _check_single_finger_lifted(self):
         ''' (Single finger) If finger leaves trackpad for only 800ms-1s
         (Synaptics UX should know value), select/drag should continue
         '''
-        self._verify_area_select()
+        self._verify_all_criteria()
 
     def _check_two_fingers_select(self):
         ''' (Two fingers) 1st finger click or tap & a half, 2nd finger's
         movement selects/drags
         '''
-        self._verify_area_select()
+        self._verify_all_criteria()
 
     def _check_two_fingers_lifted(self):
         ''' (Two fingers) Continues to drag when second finger is lifted then
         placed again
         '''
         self._insert_nop('2nd Finger Lifted')
-        self._verify_area_select()
+        self._verify_all_criteria()
 
     def _check_two_fingers_no_delay(self):
         ''' (Two fingers) Drag should be immediate (no delay between movement
         of finger and movement of selection/drag)
         '''
-        self._verify_area_select()
+        self._verify_all_criteria()
+
+    ''' area 2: 2 finger alternate/right click '''
+
+    def _check_x_seconds_interval(self):
+        ''' 1st use case: 1st finger touches trackpad, X seconds pass, 2nd
+        finger touches trackpad, physical click = right click, where X is any
+        number of seconds
+        '''
+        self._verify_all_criteria()
+
+    def _check_roll_case(self):
+        ''' 2nd use case ("roll case"): If first finger generates a click and
+        second finger "rolls on" within 300ms of first finger click (again,
+        rely on Synaptics UX to know value), an alternate/right click results
+        '''
+        self._verify_all_criteria()
+
+    def _check_one_finger_tracking(self):
+        ''' 1 finger tracking, never leaves trackpad, 2f arrives and there is
+        a click. right click results.
+        '''
+        self._verify_all_criteria()
+
+    ''' area 3: 2 finger scroll '''
 
     def _check_two_finger_scroll(self):
         ''' Vertical scroll, reflecting movement of finger(s)
@@ -541,7 +616,7 @@ class Xcheck:
         '''
         # Extract scroll direction, i.e., 'up' or 'down', from the file name
         pos = self.func_name_pos
-        direction = self.gesture_file_name.split('-')[pos].split('.')[1]
+        direction = self._get_direction()
 
         # Get criteria for max movement and wheel up/down
         crit_max_movement = self.criteria['max_movement']
@@ -550,12 +625,12 @@ class Xcheck:
             button_label = self.xbutton.get_label(self.xbutton.Wheel_Up)
             ops[self.xbutton.get_index(button_label)] = ge
             crit_up = self.criteria['button'][0]
-            crit_button_count = self._get_button_criteria(crit_up)
+            crit_button_count = self._button_criteria(crit_up)
         elif direction == 'down':
             button_label = self.xbutton.get_label(self.xbutton.Wheel_Down)
             ops[self.xbutton.get_index(button_label)] = ge
             crit_down = self.criteria['button'][1]
-            crit_button_count = self._get_button_criteria(crit_down)
+            crit_button_count = self._button_criteria(crit_down)
         else:
             msg = '      scroll direction in the file name is not correct: (%s)'
             logging.info(msg % direction)
@@ -566,6 +641,10 @@ class Xcheck:
         self._verify_motion(le, crit_max_movement)
         self._verify_button(self._compare(tuple(ops)), crit_button_count)
         self._get_result()
+
+    ''' area 4: Palm/thumb detection '''
+
+    ''' parse and run below '''
 
     def _extract_prop(self, event_name, line, prop_key):
         ''' Extract property from X events '''

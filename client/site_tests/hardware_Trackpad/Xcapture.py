@@ -7,6 +7,7 @@
 import logging
 import os
 import subprocess
+import tempfile
 import time
 
 from trackpad_util import Display, read_trackpad_test_conf
@@ -30,42 +31,53 @@ class Xcapture:
         # Create the directory if not existent.
         if not os.path.exists(self.xcapture_dir):
             try:
-                os.makedir(self.xcapture_dir)
+                os.mkdir(self.xcapture_dir)
             except OSError:
                 err_msg = 'Fail to make directory: %s' % self.xcapture_dir
                 raise self.error.TestError(err_msg)
         logging.info('X events will be saved in %s' % self.xcapture_dir)
         logging.info('X events capture program: %s' % self.xcapture_cmd)
 
-    def start(self, filename):
-        ''' Start capture program '''
-        self.xcapture_file = os.path.join(self.xcapture_dir, filename) + '.xev'
-        self.display.move_cursor_to_center()
+        # Create a tmp file to capture the X events for all gesture files
+        self.fd_all = tempfile.NamedTemporaryFile()
+        self.xcapture_file_all = self.fd_all.name
 
-        # Open the temporary file to save X events
+        # Launch the capture process
+        self._launch(self.fd_all)
+
+    def _open_file(self, filename):
         try:
-            self.fd = open(self.xcapture_file, 'w+')
+            fd = open(filename, 'w+')
         except:
             err_msg = 'Cannot open file to save X events: %s'
-            raise self.error.TestError(err_msg % self.xcapture_file)
+            raise self.error.TestError(err_msg % filename)
+        return fd
 
-        # Start the capture program
+    def _launch(self, fd):
+        ''' Launch the capture program '''
         try:
-            self.proc = subprocess.Popen(self.xcapture_cmd.split(),
-                                          stdout=self.fd)
+            self.proc = subprocess.Popen(self.xcapture_cmd.split(), stdout=fd)
         except:
             err_msg = 'Cannot start capture program: %s' % self.xcapture_cmd
             raise self.error.TestError(err_msg)
 
+    def start(self, filename):
+        ''' Start capture program '''
+        self.display.move_cursor_to_center()
+        self.xcapture_file = os.path.join(self.xcapture_dir, filename) + '.xev'
+        self.fd = self._open_file(self.xcapture_file)
+
     def wait(self):
         ''' Wait until timeout or max_post_replay_time expires.
         The wait loop is terminated if either of the conditions is true:
-        (1) there are no more X events coming in before timeout; or
-        (2) the duration of X event emission after the completion of playback,
-            typically observed in coasting, exceeds max_post_replay_time.
-            In this case, the X events keep coming in for a while. We need to
-            interrupt it after max_post_replay_time expires so that the
-            waiting will not last forever due to a possible driver bug.
+        (Cond 1) Normal timeout: there are no more X events coming in
+                 before timeout; or
+        (Cond 2) Endless xevents: the duration of X event emission after the
+                 completion of playback, typically observed in coasting,
+                 exceeds max_post_replay_time. In this case, the X events
+                 keep coming in for a while. We need to interrupt it after
+                 max_post_replay_time expires so that the waiting will not
+                 last forever due to a possible driver bug.
         '''
         timeout_str = 'xcapture_timeout'
         max_time_str = 'xcapture_max_post_replay_time'
@@ -74,22 +86,22 @@ class Xcapture:
         max_post_replay_time = read_trackpad_test_conf(max_time_str, conf_path)
         interval = timeout / 10.0
 
-        with open(self.xcapture_file) as fd:
-            start_time = time.time()
-            latest_event_time = start_time
-            while True:
+        with open(self.xcapture_file_all) as fd_all:
+            now = latest_event_time = start_time = time.time()
+            # Cond2: keep looping while cond2 does not occur
+            while (now - start_time <= max_post_replay_time):
                 time.sleep(interval)
                 now = time.time()
-                content = fd.read()
-                if content != '':
+                if fd_all.read() != '':
                     latest_event_time = now
-                else:
-                    if now - latest_event_time > timeout:
-                        break
-                if now - start_time > max_post_replay_time:
-                    max_warn = 'max_post_replay_time (%d seconds) expires'
-                    logging.info(max_warn % max_post_replay_time)
-                    break
+                # Cond1: if cond1_normal_timeout occurs, exit the loop
+                if (now - latest_event_time > timeout):
+                    return True
+            else:
+                # Cond2 occurs
+                max_warn = 'Warning: max_post_replay_time (%d seconds) expires'
+                logging.info(max_warn % max_post_replay_time)
+                return False
 
     def read(self):
         ''' Read packet data from the device file '''
@@ -97,16 +109,28 @@ class Xcapture:
             return fd.readlines()
 
     def stop(self):
-        ''' Close the device file and terminate the X capturing program '''
-        if self.fd is not None:
-            # Flush the X event file
+        ''' Make a copy of the X events and close the file '''
+        fd_is_open = self.fd is not None and not self.fd.closed
+        fd_all_is_open = self.fd_all is not None and not self.fd_all.closed
+        if fd_is_open:
+            if fd_all_is_open:
+                # Make a copy of the X events for this gesture file
+                self.fd_all.seek(os.SEEK_SET)
+                self.fd.write(self.fd_all.read())
+                # Truncate xcapture_file_all
+                self.fd_all.seek(os.SEEK_SET)
+                self.fd_all.truncate()
+            # Close the X event capture file for this gesture file
             self.fd.flush()
             os.fsync(self.fd.fileno())
-            # Close the X event file
             self.fd.close()
             self.fd = None
 
-        # terminate xcapture subprocess
+    def terminate(self):
+        ''' Terminate the X capture subprocess '''
+        if self.fd_all is not None and not self.fd_all.closed:
+            self.fd_all.close()
+            self.fd_all = None
         self.proc.terminate()
         self.proc.kill()
         self.proc.wait()

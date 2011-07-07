@@ -157,21 +157,19 @@ class hardware_Trackpad(test.test):
                     # Start X events capture
                     self.xcapture.start(tdata.file_basename)
 
-                    # Wait a little while for xev
-                    time.sleep(0.5)
-
                     # Play back the gesture file
                     self.tp_device.playback(gesture_file_path)
 
                     # Wait until there are no more incoming X events.
-                    self.xcapture.wait()
+                    normal_timeout_flag = self.xcapture.wait()
 
                     # Stop X events capture
                     self.xcapture.stop()
 
                     # Check X events
                     tdata.result = self.xcheck.run(tdata.func, tdata,
-                                                   self.xcapture.read())
+                                                   self.xcapture.read()) and \
+                                   normal_timeout_flag
 
                     # Update statistics
                     tdata.num_files_tested[tdata.func.name] += 1
@@ -179,6 +177,9 @@ class hardware_Trackpad(test.test):
                     if not tdata.result:
                         tdata.fail_count[tdata.func.name] += 1
                         tdata.tot_fail_count += 1
+
+        # Terminate X event capture process
+        self.xcapture.terminate()
 
         # Logging test summary
         logging.info('\n')
