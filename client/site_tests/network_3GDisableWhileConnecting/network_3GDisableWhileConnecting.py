@@ -11,110 +11,11 @@ import functools, logging, pprint, time, traceback, sys
 import dbus, dbus.mainloop.glib, glib, gobject
 
 from autotest_lib.client.cros import flimflam_test_path
+from autotest_lib.client.cros.mainloop import GenericTesterMainLoop
+from autotest_lib.client.cros.mainloop import ExceptionForward
 import mm, flimflam
 
 import os
-
-# TODO(rochberg): Take another shot at fixing glib to allow this
-# behavior when desired
-def ExceptionForward(func):
-  """Decorator that allows methods to pass exceptions across a glib mainloop.
-
-  This must be around any function that is called by the main loop:
-  dbus callbacks and glib callbacks like add_idle.
-  """
-  def wrapper(self, *args, **kwargs):
-    try:
-      return func(self, *args, **kwargs)
-    except Exception, e:
-      logging.warning('Saving exception: %s' % e)
-      logging.warning(''.join(traceback.format_exception(*sys.exc_info())))
-      self._forwarded_exception = e
-      self.main_loop.quit()
-      return False
-  return wrapper
-
-
-# TODO(rochberg):  Extract this into a client.cros module
-class GenericTesterMainLoop(object):
-  """Runs a glib mainloop until it times out or all requirements are satisfied.
-
-  Also contains DBus utilities for this sort of test.  See
-  named_dbus_error_handler and dispatch_property_changed."""
-
-  def __init__(self, test, main_loop, **test_args):
-    self._forwarded_exception = None
-    self.test = test
-    self.main_loop = main_loop
-    self.test_args = test_args
-    self.property_changed_actions = {}
-
-  def assert_(self, arg):
-    self.test.assert_(self, arg)
-
-  @ExceptionForward
-  def timeout_main_loop(self):
-    logging.error('Requirements unsatisfied upon timeout: %s' %
-                    self.remaining_requirements)
-    raise error.TestFail('Main loop timed out')
-
-  def requirement_completed(self, requirement, warn_if_already_completed=True):
-    """Record that a requirement was completed.  Exit if all are."""
-    should_log = True
-    try:
-      self.remaining_requirements.remove(requirement)
-    except KeyError:
-      if warn_if_already_completed:
-        logging.warning('requirement %s was not present to be completed',
-                        requirement)
-      else:
-        should_log = False
-
-    if not self.remaining_requirements:
-      logging.info('All requirements satisfied')
-      self.main_loop.quit()
-    else:
-      if should_log:
-        logging.info('Requirement %s satisfied.  Remaining: %s' %
-                     (requirement, self.remaining_requirements))
-
-  def perform_one_test(self):
-    """Subclasses override this function to do their testing."""
-    raise Exception('perform_one_test must be overridden')
-
-  def build_error_handler(self, name):
-    """Returns a closure that fails the test with the specified name."""
-    @ExceptionForward
-    def to_return(self, e):
-      raise error.TestFail('Dbus call %s failed: %s' % (name, e))
-    # Bind the returned handler function to this object
-    return to_return.__get__(self, GenericTesterMainLoop)
-
-  @ExceptionForward
-  def dispatch_property_changed(self, property, *args, **kwargs):
-    action = self.property_changed_actions.pop(property, None)
-    if action:
-      logging.info('Property_changed dispatching %s' % property)
-      action(property, *args, **kwargs)
-
-  @ExceptionForward
-  def ignore_handler(*ignored_args, **ignored_kwargs):
-    pass
-
-  def after_main_loop(self):
-    """Children can override this to clean up after the main loop."""
-    pass
-
-  def run(self, **kwargs):
-    self.test_args = kwargs
-    gobject.timeout_add(int(self.test_args.get('timeout_s', 10) * 1000),
-                        self.timeout_main_loop)
-    gobject.idle_add(self.perform_one_test)
-
-    self.main_loop.run()
-    if self._forwarded_exception:
-      raise self._forwarded_exception
-    self.after_main_loop()
 
 class DisableTester(GenericTesterMainLoop):
   def __init__(self, *args, **kwargs):
@@ -124,9 +25,9 @@ class DisableTester(GenericTesterMainLoop):
   def perform_one_test(self):
     self.configure()
     disable_delay_ms = (
-        self.test_args.get('delay_before_disable_ms', 0) +
+        self.test_kwargs.get('delay_before_disable_ms', 0) +
         self.test.iteration *
-        self.test_args.get('disable_delay_per_iteration_ms', 0))
+        self.test_kwargs.get('disable_delay_per_iteration_ms', 0))
     gobject.timeout_add(disable_delay_ms, self.start_disable)
     self.start_test()
 
@@ -151,7 +52,7 @@ class DisableTester(GenericTesterMainLoop):
   def disable_success_handler(self):
     disable_elapsed = time.time() - self.disable_start
     self.assert_(disable_elapsed <
-                 1.0 + self.test_args.get('async_connect_sleep_ms', 0))
+                 1.0 + self.test_kwargs.get('async_connect_sleep_ms', 0))
     self.requirement_completed('disable')
 
   @ExceptionForward
@@ -292,7 +193,7 @@ class ModemDisableTester(DisableTester):
   def start_test(self):
     self.remaining_requirements = set(['connect', 'disable', 'get_status'])
 
-    self.status_delay_ms = self.test_args.get('status_delay_ms', 200)
+    self.status_delay_ms = self.test_kwargs.get('status_delay_ms', 200)
     gobject.timeout_add(self.status_delay_ms, self.start_get_status)
 
     self.start_connect()
@@ -304,13 +205,13 @@ class ModemDisableTester(DisableTester):
     self.gobi_modem = self.modem_manager.GobiModem(self.modem_path)
 
     if self.gobi_modem:
-      sleep_ms = self.test_args.get('async_connect_sleep_ms', 0)
+      sleep_ms = self.test_kwargs.get('async_connect_sleep_ms', 0)
 
       # Tell the modem manager to sleep this long before completing a
       # connect
       self.gobi_modem.InjectFault('AsyncConnectSleepMs', sleep_ms)
 
-      if 'connect_fails_with_error_sending_qmi_request' in self.test_args:
+      if 'connect_fails_with_error_sending_qmi_request' in self.test_kwargs:
         logging.info('Injecting QMI failure')
         self.gobi_modem.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
 
@@ -352,11 +253,11 @@ class network_3GDisableWhileConnecting(test.test):
       self.main_loop = gobject.MainLoop()
 
       logging.info('Flimflam-level test')
-      flimflam = FlimflamDisableTester(self, self.main_loop, **kwargs)
+      flimflam = FlimflamDisableTester(self, self.main_loop)
       flimflam.run(**kwargs)
 
       logging.info('Modem-level test')
-      modem = ModemDisableTester(self, self.main_loop, **kwargs)
+      modem = ModemDisableTester(self, self.main_loop)
       modem.run(**kwargs)
     finally:
       network.ClearGobiModemFaultInjection()
