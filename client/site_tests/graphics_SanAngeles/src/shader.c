@@ -31,7 +31,7 @@ static void printShaderLog(GLuint shader)
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogSize);
     infoLog = malloc(infoLogSize);
     glGetShaderInfoLog(shader, infoLogSize, &infoWritten, infoLog);
-    fprintf(stderr, "glCompileShader failed: %s\n", infoLog);
+    fprintf(stderr, "Error: glCompileShader failed: %s\n", infoLog);
     free(infoLog);
 }
 

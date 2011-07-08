@@ -1,4 +1,4 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui, cros_ui_test
 
 class graphics_SanAngeles(cros_ui_test.UITest):
-    version = 1
+    version = 2
     preserve_srcdir = True
 
 
@@ -30,17 +30,21 @@ class graphics_SanAngeles(cros_ui_test.UITest):
         elif os.path.isfile(cmd_gles_s):
             cmd = cmd_gles_s
         else:
-            raise error.TestFail('Fail to locate SanAngles Observation exe.'
-                                 'Test setup error.')
+            raise error.TestFail('Failed to locate SanAngeles executable (' +
+                                 cmd + '). Test setup error.')
 
         cmd = cros_ui.xcommand(cmd)
         result = utils.run(cmd, ignore_status = True)
 
-        report = re.findall(r"frame_rate = ([0-9.]+)", result.stdout)
-        if len(result.stderr) > 0 or not report:
-            raise error.TestFail('Fail to complete San Angeles Observation' +
-                                 result.stderr)
+        report = re.findall(r'frame_rate = ([0-9.]+)', result.stdout)
+        if not report:
+            raise error.TestFail('Could not find frame_rate in stdout (' +
+                                 result.stdout + ') ' + result.stderr)
+
         frame_rate = float(report[0])
         logging.info('frame_rate = %.1f' % frame_rate)
         self.write_perf_keyval(
             {'frames_per_sec_rate_san_angeles': frame_rate})
+        if 'error' in result.stderr.lower():
+            raise error.TestFail('Error on stderr while running SanAngeles: ' +
+                                 result.stderr + ' (' + report[0] + ')')

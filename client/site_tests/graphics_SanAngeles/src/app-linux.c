@@ -95,7 +95,7 @@ static void checkGLErrors()
 {
     GLenum error = glGetError();
     if (error != GL_NO_ERROR)
-        fprintf(stderr, "GL Error: 0x%04x\n", (int)error);
+        fprintf(stderr, "Error: GL error code 0x%04x\n", (int)error);
 }
 
 #ifdef SAN_ANGELES_OBSERVATION_GLES
@@ -105,7 +105,7 @@ static void checkEGLErrors()
     EGLint error = eglGetError();
     // GLESonGL seems to be returning 0 when there is no errors?
     if (error && error != EGL_SUCCESS)
-        fprintf(stderr, "EGL Error: 0x%04x\n", (int)error);
+        fprintf(stderr, "Error: EGL error code 0x%04x\n", (int)error);
 }
 
 // Initializes and opens both X11 display and OpenGL ES.
@@ -139,7 +139,7 @@ static int initGraphics()
     sDisplay = XOpenDisplay(NULL);
     if (sDisplay == NULL)
     {
-        fprintf(stderr, "XOpenDisplay failed\n");
+        fprintf(stderr, "Error: XOpenDisplay failed\n");
         return 0;
     }
     int screen = XDefaultScreen(sDisplay);
@@ -150,7 +150,7 @@ static int initGraphics()
     XMatchVisualInfo(sDisplay, screen, depth, TrueColor, vi);
     if (vi == NULL)
     {
-        fprintf(stderr, "XMatchVisualInfo failed\n");
+        fprintf(stderr, "Error: XMatchVisualInfo failed\n");
         return 0;
     }
 
@@ -177,14 +177,14 @@ static int initGraphics()
     success = eglInitialize(sEglDisplay, &majorVersion, &minorVersion);
     if (success == EGL_FALSE)
     {
-        fprintf(stderr, "eglInitialize failed\n");
+        fprintf(stderr, "Error: eglInitialize failed\n");
         checkEGLErrors();
         return 0;
     }
     success = eglBindAPI(EGL_OPENGL_ES_API);
     if (success == EGL_FALSE)
     {
-        fprintf(stderr, "eglInitialize failed\n");
+        fprintf(stderr, "Error: eglInitialize failed\n");
         checkEGLErrors();
         return 0;
     }
@@ -192,7 +192,7 @@ static int initGraphics()
                               &sEglConfig, 1, &numConfigs);
     if (success == EGL_FALSE || numConfigs != 1)
     {
-        fprintf(stderr, "eglChooseConfig failed\n");
+        fprintf(stderr, "Error: eglChooseConfig failed\n");
         checkEGLErrors();
         return 0;
     }
@@ -200,7 +200,7 @@ static int initGraphics()
                                    contextAttribs);
     if (sEglContext == EGL_NO_CONTEXT)
     {
-        fprintf(stderr, "eglCreateContext failed\n");
+        fprintf(stderr, "Error: eglCreateContext failed\n");
         checkEGLErrors();
         return 0;
     }
@@ -208,7 +208,7 @@ static int initGraphics()
                                          (NativeWindowType)sWindow, NULL);
     if (sEglSurface == EGL_NO_SURFACE)
     {
-        fprintf(stderr, "eglCreateWindowSurface failed\n");
+        fprintf(stderr, "Error: eglCreateWindowSurface failed\n");
         checkEGLErrors();
         return 0;
     }
@@ -216,7 +216,7 @@ static int initGraphics()
                              sEglSurface, sEglContext);
     if (success == EGL_FALSE)
     {
-        fprintf(stderr, "eglMakeCurrent failed\n");
+        fprintf(stderr, "Error: eglMakeCurrent failed\n");
         checkEGLErrors();
         return 0;
     }
@@ -242,7 +242,7 @@ static int initGraphics()
     sDisplay = XOpenDisplay(NULL);
     if(sDisplay == NULL)
     {
-        fprintf(stderr, "XOpenDisplay failed\n");
+        fprintf(stderr, "Error: XOpenDisplay failed\n");
         return 0;
     }
     Window root_window = DefaultRootWindow(sDisplay);
@@ -254,7 +254,7 @@ static int initGraphics()
     XVisualInfo *vi = glXChooseVisual(sDisplay, 0, att);
     if (vi == NULL)
     {
-        fprintf(stderr, "glXChooseVisual failed\n");
+        fprintf(stderr, "Error: glXChooseVisual failed\n");
         return 0;
     }
 
@@ -322,13 +322,13 @@ int main(int argc, char *argv[])
 
     if (!initGraphics())
     {
-        fprintf(stderr, "Graphics initialization failed.\n");
+        fprintf(stderr, "Error: Graphics initialization failed.\n");
         return EXIT_FAILURE;
     }
 
     if (!appInit())
     {
-        fprintf(stderr, "Application initialization failed.\n");
+        fprintf(stderr, "Error: Application initialization failed.\n");
         return EXIT_FAILURE;
     }
 

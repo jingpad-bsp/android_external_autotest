@@ -85,13 +85,13 @@ typedef struct {
      */
     GLfloat *vertexArray;
     GLint vertexArraySize;
-    GLint vertexArrayOffset;
+    GLintptrARB vertexArrayOffset;
     GLubyte *colorArray;
     GLint colorArraySize;
-    GLint colorArrayOffset;
+    GLintptrARB colorArrayOffset;
     GLfloat *normalArray;
     GLint normalArraySize;
-    GLint normalArrayOffset;
+    GLintptrARB normalArrayOffset;
     GLint vertexComponents;
     GLsizei count;
 #ifdef SAN_ANGELES_OBSERVATION_GLES
@@ -269,15 +269,15 @@ static void drawGLObject(GLOBJECT *object)
         assert(0);
     }
     glVertexAttribPointer(loc_pos, object->vertexComponents, GL_FLOAT,
-                          GL_FALSE, 0, (void *)object->vertexArrayOffset);
+                          GL_FALSE, 0, (GLvoid *)object->vertexArrayOffset);
     glEnableVertexAttribArray(loc_pos);
     glVertexAttribPointer(loc_colorIn, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0,
-                          (void *)object->colorArrayOffset);
+                          (GLvoid *)object->colorArrayOffset);
     glEnableVertexAttribArray(loc_colorIn);
     if (object->normalArraySize > 0)
     {
         glVertexAttribPointer(loc_normal, 3, GL_FLOAT, GL_FALSE, 0,
-                              (void *)object->normalArrayOffset);
+                              (GLvoid *)object->normalArrayOffset);
         glEnableVertexAttribArray(loc_normal);
     }
     glDrawArrays(GL_TRIANGLES, 0, object->count);
@@ -288,11 +288,11 @@ static void drawGLObject(GLOBJECT *object)
     glDisableVertexAttribArray(loc_pos);
 #else  // !SAN_ANGELES_OBSERVATION_GLES
     glVertexPointer(object->vertexComponents, GL_FLOAT, 0,
-                    (void *)object->vertexArrayOffset);
-    glColorPointer(4, GL_UNSIGNED_BYTE, 0, (void *)object->colorArrayOffset);
+                    (GLvoid *)object->vertexArrayOffset);
+    glColorPointer(4, GL_UNSIGNED_BYTE, 0, (GLvoid *)object->colorArrayOffset);
     if (object->normalArraySize > 0)
     {
-        glNormalPointer(GL_FLOAT, 0, (void *)object->normalArrayOffset);
+        glNormalPointer(GL_FLOAT, 0, (GLvoid *)object->normalArrayOffset);
         glEnableClientState(GL_NORMAL_ARRAY);
     }
     else
@@ -599,7 +599,7 @@ static void drawFadeQuad()
         bindShaderProgram(sShaderFade.program);
         glUniform1f(sShaderFade.minFade, fadeColor);
         glVertexAttribPointer(sShaderFade.pos, 2, GL_FLOAT, GL_FALSE, 0,
-                              (void *)sFadeQuad->vertexArrayOffset);
+                              (GLvoid *)sFadeQuad->vertexArrayOffset);
         glEnableVertexAttribArray(sShaderFade.pos);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDisableVertexAttribArray(sShaderFade.pos);
@@ -616,7 +616,7 @@ static void drawFadeQuad()
 
         glDisableClientState(GL_COLOR_ARRAY);
         glDisableClientState(GL_NORMAL_ARRAY);
-        glVertexPointer(2, GL_FLOAT, 0, (void *)sFadeQuad->vertexArrayOffset);
+        glVertexPointer(2, GL_FLOAT, 0, (GLvoid *)sFadeQuad->vertexArrayOffset);
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -649,7 +649,7 @@ int appInit()
 #ifdef SAN_ANGELES_OBSERVATION_GLES
     if (initShaderPrograms() == 0)
     {
-        fprintf(stderr, "initShaderPrograms failed\n");
+        fprintf(stderr, "Error: initShaderPrograms failed\n");
         return 0;
     }
 #else  // !SAN_ANGELES_OBSERVATION_GLES
