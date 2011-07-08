@@ -9,7 +9,7 @@ import dbus, dbus.mainloop.glib, gobject
 import glib
 
 from autotest_lib.client.cros import flimflam_test_path
-import flimflam
+import flimflam, mm
 
 class network_3GDormancyDance(test.test):
     version = 1
@@ -20,13 +20,13 @@ class network_3GDormancyDance(test.test):
             self.mainloop.quit()
 
     def FindModemPath(self):
-        cromo = self.bus.get_object('org.chromium.ModemManager',
-                                    '/org/chromium/ModemManager'),
-        modems = cromo.EnumerateDevices(
-            dbus_interface='org.freedesktop.ModemManager')
-        for modem_path in modems:
-            if modem_path.index('/org/chromium/ModemManager/Gobi') == 0:
-                return modem_path
+        for modem in mm.EnumerateDevices():
+            (obj, path) = modem
+            try:
+                if path.index('/org/chromium/ModemManager/Gobi') == 0:
+                    return path
+            except ValueError:
+                pass
         return None
 
     def RequestDormancyEvents(self, modem_path):
