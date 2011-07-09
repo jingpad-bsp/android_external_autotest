@@ -1,0 +1,83 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+
+# DESCRIPTION :
+#
+# This is a factory test to test the audio.  Operator will test both record and
+# playback for headset and built-in audio.  Recordings are played back for
+# confirmation.  An additional pre-recorded sample is played to confirm speakers
+# operate independently
+
+
+import gtk
+import logging
+import os
+import pango
+import re
+import sys
+import subprocess
+
+from autotest_lib.client.bin import factory
+from autotest_lib.client.bin import factory_ui_lib as ful
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
+
+from gtk import gdk
+
+_MESSAGE_STR = ('Audio is now looping back.\n' +
+                'Press Return if test passed.\n' +
+                'Press Tab if it failed.\n')
+
+class factory_AudioInternalLoopback(test.test):
+    version = 1
+
+    def setup(self):
+        self.job.setup_dep(['audioloop'])
+
+    def start_audioloop(self, indev, outdev):
+        cmdargs = ['/usr/local/autotest/deps/audioloop/src/looptest',
+                   '-i', indev, '-o', outdev]
+        self._process = subprocess.Popen(cmdargs)
+
+    def stop_audioloop(self):
+        self._process.kill()
+
+    def key_release_callback(self, widget, event):
+        if event.keyval == gtk.keysyms.Return:
+            gtk.main_quit()
+        if event.keyval == gtk.keysyms.Tab:
+            self._test_failed = True
+            gtk.main_quit()
+        return True
+
+    def register_callbacks(self, window):
+        window.connect('key-release-event', self.key_release_callback)
+        window.add_events(gdk.KEY_RELEASE_MASK)
+
+    def run_once(self, indev='1', outdev='1'):
+
+        factory.log('%s run_once' % self.__class__)
+
+        label = ful.make_label(_MESSAGE_STR)
+
+        self._test_failed = False
+
+        self.start_audioloop(indev, outdev)
+
+        test_widget = gtk.EventBox()
+        test_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
+        test_widget.add(label)
+
+        ful.run_test_widget(self.job, test_widget,
+            window_registration_callback=self.register_callbacks)
+
+        self.stop_audioloop()
+
+        if self._test_failed:
+            raise error.TestFail('Test Failed')
+
+        factory.log('%s run_once finished' % repr(self.__class__))
