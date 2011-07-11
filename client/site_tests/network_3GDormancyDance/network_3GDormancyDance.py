@@ -56,7 +56,8 @@ class network_3GDormancyDance(test.test):
         self.flim.DisconnectService(service=self.service, wait_timeout=60)
 
     def PropertyChanged(self, *args, **kwargs):
-        print 'PropertyChanged: %s %s' % (args, kwargs)
+        if args[0] in ['Powered', 'Connected']:
+            print 'PropertyChanged: %s %s' % (args, kwargs)
         if args[0] == 'Powered':
             if not args[1]:
                 self.enable()
