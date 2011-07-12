@@ -130,33 +130,26 @@ class platform_RootPartitionsNotMounted(test.test):
         return utils.run('%s -s -d' % self._ROOTDEV_PATH).stdout.strip('\n')
 
     def run_once(self):
-        # TODO(benchan): Change all logging.warning to error.TestNAError
-        # once we have tried this test on all hardware platforms.
         if os.geteuid() != 0:
-            logging.warning('This test needs to be run under root')
-            return
+            raise error.TestNAError('This test needs to be run under root')
 
         for path in [self._ROOTDEV_PATH, self._UDEVADM_PATH]:
-          if not os.path.isfile(path):
-              logging.warning('%s not found' % path)
-              return
+            if not os.path.isfile(path):
+                raise error.TestNAError('%s not found' % path)
 
         root_device = self.get_root_device()
         if not root_device:
-            logging.warning('Could not find the root device')
-            return
+            raise error.TestNAError('Could not find the root device')
         logging.debug('Root device: %s' % root_device)
 
         root_partitions = self.get_root_partitions(root_device)
         if not root_partitions:
-            logging.warning('Could not find any root partition')
-            return
+            raise error.TestNAError('Could not find any root partition')
         logging.debug('Root partitions: %s' % ', '.join(root_partitions))
 
         processes = self.get_process_list([self._UPDATE_ENGINE_PATH])
         if not processes:
-            logging.warning('Could not find any process')
-            return
+            raise error.TestNAError('Could not find any process')
         logging.debug('Active processes: %s' % ', '.join(processes))
 
         for process in processes:
