@@ -85,13 +85,13 @@ typedef struct {
      */
     GLfloat *vertexArray;
     GLint vertexArraySize;
-    GLintptrARB vertexArrayOffset;
+    GLintptr vertexArrayOffset;
     GLubyte *colorArray;
     GLint colorArraySize;
-    GLintptrARB colorArrayOffset;
+    GLintptr colorArrayOffset;
     GLfloat *normalArray;
     GLint normalArraySize;
-    GLintptrARB normalArrayOffset;
+    GLintptr normalArrayOffset;
     GLint vertexComponents;
     GLsizei count;
 #ifdef SAN_ANGELES_OBSERVATION_GLES
