@@ -37,6 +37,16 @@ class network_3GSmokeTest(test.test):
         if not success:
             raise error.TestFail('Could not connect: %s.' % status)
 
+        connected_states = ['portal', 'online']
+        state = self.flim.WaitForServiceState(service=service,
+                                              expected_states=connected_states,
+                                              timeout=15,
+                                              ignore_failure=True)[0]
+        if not state in connected_states:
+            raise error.TestFail('Still in state %s' % state)
+
+        return state
+
     def FetchUrl(self, url_pattern=
                  BASE_URL + 'download?size=%d',
                  size=10,
@@ -186,11 +196,19 @@ class network_3GSmokeTest(test.test):
         modem_info = self.GetModemInfo()
 
         for ii in xrange(connect_count):
-            self.ConnectTo3GNetwork(config_timeout=120)
+            state = self.ConnectTo3GNetwork(config_timeout=120)
             self.CheckInterfaceForDestination(SERVER,
                                               self.flim.FindCellularService())
 
-            self.FetchUrl(label='3G', size=1<<16)
+            if state == 'portal':
+                kwargs = dict(
+                    url_pattern=('https://quickaccess.verizonwireless.com/'
+                                 'images_b2c/shared/nav/'
+                                 'vz_logo_quickaccess.jpg?foo=%d'),
+                    size=4476)
+            else:
+                kwargs = dict(size=1<<16)
+            self.FetchUrl(label='3G', **kwargs)
             self.DisconnectFrom3GNetwork(disconnect_timeout=60)
 
             # Verify that we can still get information for all the modems
