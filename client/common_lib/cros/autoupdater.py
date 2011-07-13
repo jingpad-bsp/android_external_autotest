@@ -18,6 +18,7 @@ UPDATER_BIN = '/usr/bin/update_engine_client'
 UPDATER_IDLE = 'UPDATE_STATUS_IDLE'
 UPDATER_NEED_REBOOT = 'UPDATE_STATUS_UPDATED_NEED_REBOOT'
 UPDATED_MARKER = '/var/run/update_engine_autoupdate_completed'
+UPDATER_LOGS = '/var/log/messages /var/log/update_engine'
 
 
 class ChromiumOSError(error.InstallError):
@@ -183,14 +184,23 @@ class ChromiumOSUpdater():
         logging.info(
             'Installing from %s to: %s', self.update_url, self.host.hostname)
 
-        logging.info('Updating root partition...')
-        self._update_root()
+        try:
+            logging.info('Updating root partition...')
+            self._update_root()
 
-        logging.info('Updating stateful partition...')
-        self._update_stateful()
+            logging.info('Updating stateful partition...')
+            self._update_stateful()
 
-        logging.info('Update complete.')
-        return True
+            logging.info('Update complete.')
+            return True
+        except:
+            # Collect update engine logs in the event of failure.
+            if self.host.job:
+                logging.info('Collecting update engine logs...')
+                self.host.get_file(
+                    UPDATER_LOGS, self.host.job.sysinfo.sysinfodir,
+                    preserve_perm=False)
+            raise
 
 
     def check_version(self):
