@@ -167,5 +167,22 @@ class network_3GSuspendResume(test.test):
                                  'of %s' % function_name)
 
     def run_once(self):
-        for t in network_3GSuspendResume.scenarios:
-            self.run_scenario(t)
+        # Run all scenarios twice, first with autoconnect off, then with
+        # autoconnect on
+        for autoconnect in [False, True]:
+
+            device = self.__get_cellular_device()
+            if not device:
+                raise error.TestFail('Cannot find cellular device')
+            self.set_powered(device, 1)
+
+            flim = flimflam.FlimFlam(dbus.SystemBus())
+            service = flim.FindCellularService(30)
+            if not service:
+                raise error.TestFail('Cannot find cellular service')
+
+            service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
+
+            logging.info('Running scenarios with autoconnect %s' % autoconnect)
+            for t in network_3GSuspendResume.scenarios:
+                self.run_scenario(t)
