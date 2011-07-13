@@ -30,7 +30,7 @@ class test_item(object):
     and server_job.
     """
 
-    def __init__(self, test_name, test_args, test_attribs={}):
+    def __init__(self, test_name, test_args, test_attribs=None):
         """Creates an instance of test_item.
 
         Args:
@@ -44,6 +44,8 @@ class test_item(object):
         self.test_name = test_name
         self.test_args = test_args
 
+        if test_attribs is None:
+            test_attribs = {}
         self.inc_set = set(test_attribs.get('include', []))
         self.exc_set = set(test_attribs.get('exclude', []))
         self.attributes = test_attribs.get('attributes', [])

@@ -117,6 +117,17 @@ class site_server_job(base_server_job):
         # Only queue tests which are valid on at least one machine.  Record
         # skipped tests in the status.log file using record_skipped_test().
         for test_entry in tests:
+            # Check if it's an old style test entry.
+            if len(test_entry) > 2 and not isinstance(test_entry[2], dict):
+                test_attribs = {'include': test_entry[2]}
+                if len(test_entry) > 3:
+                    test_attribs['exclude'] = test_entry[3]
+                if len(test_entry) > 4:
+                    test_attribs['attributes'] = test_entry[4]
+
+                test_entry = list(test_entry[:2])
+                test_entry.append(test_attribs)
+
             ti = site_server_job_utils.test_item(*test_entry)
             machine_found = False
             for ma in unique_machine_attributes:
