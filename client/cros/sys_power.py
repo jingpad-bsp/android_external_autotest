@@ -13,6 +13,8 @@
 import os
 
 SUSPEND_CMD='/usr/bin/powerd_suspend'
+REQUEST_SUSPEND_CMD = ('/usr/bin/dbus-send --system /'
+                       'org.chromium.PowerManager.RequestSuspend')
 
 def set_state(state):
     """
@@ -43,3 +45,10 @@ def standby():
     """
     set_power_state('standby')
 
+def request_suspend():
+    """
+    Requests that powerd suspend the machine using the same path as if
+    the users had requested a suspend.  This will disconnect the
+    modem, lock the screen, etc.
+    """
+    os.system(REQUEST_SUSPEND_CMD)

@@ -34,7 +34,11 @@ class network_3GSuspendResume(test.test):
         ],
         'stress': [
             'scenario_suspend_3g_random',
+        ],
+        'autoconnect': [
+            'scenario_autoconnect',
         ]
+
     }
 
     modem_status_outputs = [
@@ -47,8 +51,7 @@ class network_3GSuspendResume(test.test):
     # This function returns True when cellular service is available.  Otherwise,
     # if the timeout period has been hit, it returns false.
     def cellular_service_available(self, timeout=60):
-        flim = flimflam.FlimFlam(dbus.SystemBus())
-        service = flim.FindCellularService(timeout)
+        service = self.flim.FindCellularService(timeout)
         if service:
             logging.info('Cellular service is available.')
             return service
@@ -63,7 +66,7 @@ class network_3GSuspendResume(test.test):
         return False
 
     def get_powered(self, device):
-        properties = device.GetProperties()
+        properties = device.GetProperties(utf8_strings=True)
         logging.debug(properties)
         logging.info('Power state of cellular device is %s.',
                      ['off', 'on'][properties['Powered']])
@@ -85,7 +88,13 @@ class network_3GSuspendResume(test.test):
         alarm_time = rtc.get_seconds() + duration
         logging.info('Suspending machine for: %d.\n' % duration)
         rtc.set_wake_alarm(alarm_time)
-        sys_power.suspend_to_ram()
+        sys_power.request_suspend()
+        # it is expected that the following sleep starts before the
+        # suspend, because the request_suspend interface is NOT
+        # synchronous.  This means the sleep should wake immediately
+        # after resume.
+        time.sleep(duration)
+        logging.info('Machine resumed')
 
         # Race condition hack alert: Before we added this sleep, this
         # test was very sensitive to the relative timing of the test
@@ -104,14 +113,13 @@ class network_3GSuspendResume(test.test):
     # returns with UnknownMethod called until some time later.
     def __get_cellular_device(self, timeout=30):
         start_time = time.time()
-        flim = flimflam.FlimFlam(dbus.SystemBus())
-        device = flim.FindCellularDevice(timeout)
+        device = self.flim.FindCellularDevice(timeout)
 
         properties = None
         timeout = start_time + timeout
         while properties is None and time.time() < timeout:
             try:
-                properties = device.GetProperties()
+                properties = device.GetProperties(utf8_strings=True)
             except:
                 properties = None
 
@@ -177,6 +185,37 @@ class network_3GSuspendResume(test.test):
         device = self.__get_cellular_device()
         self.set_powered(device, 1)
 
+    # This verifies that autoconnect works.
+    def scenario_autoconnect(self):
+        device = self.__get_cellular_device()
+        self.set_powered(device, 1)
+        service = self.flim.FindCellularService(30)
+        if not service:
+            raise error.TestError('Unable to find cellular service')
+
+        props = service.GetProperties(utf8_strings=True)
+        if props['AutoConnect']:
+            expected_states = ['ready', 'online', 'portal']
+        else:
+            expected_states = ['idle']
+
+        for _ in xrange(5):
+            self.suspend_resume(10)
+
+            # wait for the device to come back
+            device = self.__get_cellular_device()
+
+            # verify the service state is correct
+            service = self.flim.FindCellularService(30)
+            if not service:
+                raise error.TestFail('Cannot find cellular service')
+
+            state, _ = self.flim.WaitForServiceState(service,
+                                                     expected_states, 30)
+            if not state in expected_states:
+                raise error.TestFail('Cellular state %s not in %s as expected'
+                                     % (state, ', '.join(expected_states)))
+
     # Returns 1 if modem_status returned output within duration.
     # otherwise, returns 0
     def get_modem_status(self, duration=60):
@@ -226,24 +265,24 @@ class network_3GSuspendResume(test.test):
         #     raise error.TestFail('Cellular service was not connectable at '
         #                          'the end of %s' % function_name)
 
-    def run_once(self, scenarios='all'):
+    def run_once(self, scenario_group='all'):
         # Replace the test type with the list of tests
-        if scenarios not in network_3GSuspendResume.scenarios.keys():
-            scenarios = 'all'
-        logging.info('Running scenario: %s' % scenarios)
-        scenarios = network_3GSuspendResume.scenarios[scenarios]
+        if scenario_group not in network_3GSuspendResume.scenarios.keys():
+            scenario_group = 'all'
+        logging.info('Running scenario group: %s' % scenario_group)
+        scenarios = network_3GSuspendResume.scenarios[scenario_group]
 
         # Run all scenarios twice, first with autoconnect off, then with
         # autoconnect on
         for autoconnect in [False, True]:
 
+            self.flim = flimflam.FlimFlam(dbus.SystemBus())
             device = self.__get_cellular_device()
             if not device:
                 raise error.TestFail('Cannot find cellular device.')
             self.set_powered(device, 1)
 
-            flim = flimflam.FlimFlam(dbus.SystemBus())
-            service = flim.FindCellularService(30)
+            service = self.flim.FindCellularService(30)
             if not service:
                 raise error.TestFail('Cannot find cellular service.')
 
