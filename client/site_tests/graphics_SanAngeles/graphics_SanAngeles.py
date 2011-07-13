@@ -6,7 +6,7 @@ import logging, os, re
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, cros_ui_test
+from autotest_lib.client.cros import cros_ui, cros_ui_test, login
 
 class graphics_SanAngeles(cros_ui_test.UITest):
     version = 2
@@ -33,6 +33,8 @@ class graphics_SanAngeles(cros_ui_test.UITest):
             raise error.TestFail('Failed to locate SanAngeles executable (' +
                                  cmd + '). Test setup error.')
 
+        # Make sure SanAngeles comes up second and is in the foreground.
+        login.wait_for_initial_chrome_window()
         cmd = cros_ui.xcommand(cmd)
         result = utils.run(cmd, ignore_status = True)
 
