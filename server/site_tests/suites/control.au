@@ -18,6 +18,8 @@ to execution. The target machine is then imaged to the target version and a
 basic smoke test is run to verify functionality.
 """
 
+# Autoupdate test name.
+AUTOUPDATE_TEST_NAME = 'autoupdate'
 
 # suite_Smoke client control file.
 CLIENT_CONTROL = 'client/site_tests/suite_Smoke/control'
@@ -25,12 +27,20 @@ CLIENT_CONTROL = 'client/site_tests/suite_Smoke/control'
 
 def run_client_test(machine):
   client = hosts.create_host(machine)
-  client.machine_install(force_update=True, update_url='%(update_url)s')
 
-  # Copy global state and replace job token with client Autotest instance.
-  temp_globals = dict(globals())
-  temp_globals['job'] = autotest.Autotest(client)
-  execfile(os.path.join(job.autodir, CLIENT_CONTROL), temp_globals)
+  try:
+    client.machine_install(force_update=True, update_url='%(update_url)s')
+  except Exception, e:
+    # Exceptions don't work in server job control files so record a failure for
+    # the 'autoupdate' test with the exception message. Recording the failure in
+    # this way allows us to easily generate emails for the failure later.
+    job.record('FAIL', '', AUTOUPDATE_TEST_NAME, str(e))
+    raise
+
+  job.record('GOOD', '', AUTOUPDATE_TEST_NAME)
+
+  # Execute client control file.
+  autotest.Autotest(client).run(os.path.join(job.autodir, CLIENT_CONTROL))
 
 
 job.parallel_on_machines(run_client_test, machines)

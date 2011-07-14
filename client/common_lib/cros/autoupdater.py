@@ -27,9 +27,12 @@ class ChromiumOSError(error.InstallError):
 
 
 def url_to_version(update_url):
-    # The ChromiumOS updater respects the last element in the path as
-    # the requested version. Parse it out.
-    return urlparse.urlparse(update_url).path.split('/')[-1]
+    # The Chrome OS version is generally the last element in the URL. The only
+    # exception is delta update URLs, which are rooted under the version; e.g.,
+    # http://.../update/.../0.14.755.0/au/0.14.754.0. In this case we want to
+    # strip off the au section of the path before reading the version.
+    return re.sub(
+        '/au/.*', '', urlparse.urlparse(update_url).path).split('/')[-1]
 
 
 class ChromiumOSUpdater():
