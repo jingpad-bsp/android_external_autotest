@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import time
 import dbus
+import logging
+from random import randint
+import time
+import utils
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -24,10 +26,22 @@ class network_3GSuspendResume(test.test):
         'org.chromium.flimflam.Error.InProgress',
     ]
 
-    scenarios = [
-        'scenario_suspend_3g_enabled',
-        'scenario_suspend_3g_disabled',
-        'scenario_suspend_3g_disabled_twice'
+    scenarios = {
+        'all': [
+            'scenario_suspend_3g_enabled',
+            'scenario_suspend_3g_disabled',
+            'scenario_suspend_3g_disabled_twice',
+        ],
+        'stress': [
+            'scenario_suspend_3g_random',
+        ]
+    }
+
+    modem_status_outputs = [
+        'org.chromium.ModemManager',
+        'meid',
+        'Manufacturer',
+        'MasterDevice'
     ]
 
     # This function returns True when cellular service is available.  Otherwise,
@@ -36,15 +50,22 @@ class network_3GSuspendResume(test.test):
         flim = flimflam.FlimFlam(dbus.SystemBus())
         service = flim.FindCellularService(timeout)
         if service:
-            logging.info('Cellular service is available')
+            logging.info('Cellular service is available.')
+            return service
+        logging.info('Cellular service is not available.')
+        return None
+
+    def connect_service(self, service):
+        flim = flimflam.FlimFlam(dbus.SystemBus())
+        (success, reason) = flim.ConnectService(service)
+        if success:
             return True
-        logging.info('Cellular service is not available')
         return False
 
     def get_powered(self, device):
         properties = device.GetProperties()
         logging.debug(properties)
-        logging.info('Power state of cellular device is %s ',
+        logging.info('Power state of cellular device is %s.',
                      ['off', 'on'][properties['Powered']])
         return properties['Powered']
 
@@ -54,11 +75,15 @@ class network_3GSuspendResume(test.test):
         except dbus.exceptions.DBusException, e:
             if e._dbus_error_name not in network_3GSuspendResume.okerrors:
                 raise e
+        # Sometimes if we disable the modem then immediately enable the modem
+        # we hit a condition where the modem seems to ignore the enable command
+        # and keep the modem disabled.  This is to prevent that from happening.
+        time.sleep(4)
         return self.get_powered(device) == state
 
     def suspend_resume(self, duration=10):
         alarm_time = rtc.get_seconds() + duration
-        logging.info('Suspending machine for: %d\n' % duration)
+        logging.info('Suspending machine for: %d.\n' % duration)
         rtc.set_wake_alarm(alarm_time)
         sys_power.suspend_to_ram()
 
@@ -91,7 +116,8 @@ class network_3GSuspendResume(test.test):
                 properties = None
 
             time.sleep(1)
-
+        if not device:
+            raise error.TestError('Cellular device not found.')
         return device
 
     # The suspend_3g_enabled test suspends, then resumes the machine while
@@ -100,7 +126,7 @@ class network_3GSuspendResume(test.test):
         device = self.__get_cellular_device()
         self.set_powered(device, 1)
         if not self.cellular_service_available():
-            raise error.TestError('Unable to find cellular service')
+            raise error.TestError('Unable to find cellular service.')
         self.suspend_resume(20)
 
     # The suspend_3g_disabled test suspends, then resumes the machine while
@@ -115,7 +141,7 @@ class network_3GSuspendResume(test.test):
         device = self.__get_cellular_device()
         if self.get_powered(device) != 0:
             raise error.TestError('Device is not in same state it was prior'
-                                  'to Suspend/Resume')
+                                  'to Suspend/Resume.')
 
         # Turn on the device to make sure we can bring it back up.
         self.set_powered(device, 1)
@@ -136,10 +162,35 @@ class network_3GSuspendResume(test.test):
             device = self.__get_cellular_device()
             if self.get_powered(device) != 0:
                 raise error.TestError('Device is not in same state it was prior'
-                                      'to Suspend/Resume')
+                                      'to Suspend/Resume.')
 
         # Turn on the device to make sure we can bring it back up.
         self.set_powered(device, 1)
+
+    # This test randomly enables or disables the modem.  This
+    # is mainly used for stress tests as it does not check the power state of
+    # the modem before and after suspend/resume.
+    def scenario_suspend_3g_random(self):
+        device = self.__get_cellular_device()
+        self.set_powered(device, randint(0,1))
+        self.suspend_resume(randint(20, 40))
+        device = self.__get_cellular_device()
+        self.set_powered(device, 1)
+
+    # Returns 1 if modem_status returned output within duration.
+    # otherwise, returns 0
+    def get_modem_status(self, duration=60):
+        time_end = time.time() + duration
+        timeout = 30
+        while time.time() < time_end:
+            status = utils.system_output('modem status', timeout=timeout)
+            if reduce(lambda x, y: x & (y in status),
+                      network_3GSuspendResume.modem_status_outputs,
+                      True):
+                break
+        else:
+            return 0
+        return 1
 
     # This is the wrapper around the running of each scenario with
     # initialization steps and final checks.
@@ -150,7 +201,7 @@ class network_3GSuspendResume(test.test):
         self.set_powered(device, 0)
 
         function = getattr(self, function_name)
-        logging.info('Running scenario %s' % function_name)
+        logging.info('Running %s' % function_name)
         function()
 
         # By the end of each test, the cellular device should be up.
@@ -159,30 +210,45 @@ class network_3GSuspendResume(test.test):
         device = self.__get_cellular_device()
 
         if not self.get_powered(device) == 1:
-            raise error.TestFail('Failed to execute scenario '
-                                 '%s' % function_name)
-        logging.info('Scenario complete: %s' % function_name)
-        if not self.cellular_service_available():
-            raise error.TestFail('Cellular service is not available at end '
-                                 'of %s' % function_name)
+            raise error.TestFail('Failed to execute %s.  Modem '
+                             'is not powered on after test.'% function_name)
 
-    def run_once(self):
+        logging.info('Scenario complete: %s.' % function_name)
+
+        if not self.get_modem_status():
+            raise error.TestFail('Failed to get modem_status after %s.'
+                              % function_name)
+        service = self.cellular_service_available()
+        if not service:
+            raise error.TestFail('Could not find cellular service at the end '
+                                 'of test %s.' % function_name)
+        # if not self.connect_service(service):
+        #     raise error.TestFail('Cellular service was not connectable at '
+        #                          'the end of %s' % function_name)
+
+    def run_once(self, scenarios='all'):
+        # Replace the test type with the list of tests
+        if scenarios not in network_3GSuspendResume.scenarios.keys():
+            scenarios = 'all'
+        logging.info('Running scenario: %s' % scenarios)
+        scenarios = network_3GSuspendResume.scenarios[scenarios]
+
         # Run all scenarios twice, first with autoconnect off, then with
         # autoconnect on
         for autoconnect in [False, True]:
 
             device = self.__get_cellular_device()
             if not device:
-                raise error.TestFail('Cannot find cellular device')
+                raise error.TestFail('Cannot find cellular device.')
             self.set_powered(device, 1)
 
             flim = flimflam.FlimFlam(dbus.SystemBus())
             service = flim.FindCellularService(30)
             if not service:
-                raise error.TestFail('Cannot find cellular service')
+                raise error.TestFail('Cannot find cellular service.')
 
             service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
 
-            logging.info('Running scenarios with autoconnect %s' % autoconnect)
-            for t in network_3GSuspendResume.scenarios:
+            logging.info('Running scenarios with autoconnect %s.' % autoconnect)
+            for t in scenarios:
                 self.run_scenario(t)
