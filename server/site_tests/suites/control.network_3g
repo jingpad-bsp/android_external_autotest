@@ -19,6 +19,7 @@ from autotest_lib.client.common_lib import error
 
 # List of tests to be run.
 CLIENT_TESTS = [
+    'network_GobiUncleanDisconnect',
     'network_3GDisableWhileConnecting',
 # TODO(dalecurtis): Failing, remove when http://crosbug.com/15229 is fixed.
 #    'network_3GDormancyDance',
