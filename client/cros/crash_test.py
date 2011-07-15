@@ -67,6 +67,8 @@ class CrashTest(test.test):
 
 
     _CONSENT_FILE = '/home/chronos/Consent To Send Stats'
+    _POLICY_FILE = '/var/lib/whitelist/policy'
+    _OWNER_KEY_FILE = '/var/lib/whitelist/owner.key'
     _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
     _CRASH_REPORTER_PATH = '/sbin/crash_reporter'
     _CRASH_SENDER_PATH = '/sbin/crash_sender'
@@ -172,6 +174,7 @@ class CrashTest(test.test):
 
         This creates or deletes the _CONSENT_FILE to control whether
         crash_sender will consider that it has consent to send crash reports.
+        It also copies a policy blob with the proper policy setting.
 
         Args:
             has_consent: True to indicate consent, False otherwise
@@ -180,8 +183,15 @@ class CrashTest(test.test):
             utils.open_write_close(self._CONSENT_FILE, 'test-consent')
             utils.system('chown chronos:chronos "%s"' % (self._CONSENT_FILE))
             logging.info('Created ' + self._CONSENT_FILE)
+            shutil.copy('/usr/local/autotest/cros/mock_metrics_on.policy',
+                        self._POLICY_FILE)
         else:
             utils.system('rm -f "%s"' % (self._CONSENT_FILE))
+            shutil.copy('/usr/local/autotest/cros/mock_metrics_off.policy',
+                        self._POLICY_FILE)
+        """Both policy blobs are signed with the same key."""
+        shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
+                    self._OWNER_KEY_FILE)
 
 
     def _set_crash_test_in_progress(self, in_progress):
@@ -197,24 +207,51 @@ class CrashTest(test.test):
         return os.path.join(self.bindir, 'pushed_consent')
 
 
+    def _get_pushed_policy_file_path(self):
+        """Returns filename of the pushed policy file."""
+        return os.path.join(self.bindir, 'pushed_policy')
+
+
+    def _get_pushed_owner_key_file_path(self):
+        """Returns filename of the pushed owner.key file."""
+        return os.path.join(self.bindir, 'pushed_owner_key')
+
+
     def _push_consent(self):
         """Push the consent file, thus disabling consent.
 
-        The consent file can be created in the new test if required. Call
+        The consent files can be created in the new test if required. Call
         _pop_consent() to restore the original state.
         """
         if os.path.exists(self._CONSENT_FILE):
             shutil.move(self._CONSENT_FILE,
                         self._get_pushed_consent_file_path())
+        if os.path.exists(self._POLICY_FILE):
+            shutil.move(self._POLICY_FILE,
+                        self._get_pushed_policy_file_path())
+        if os.path.exists(self._OWNER_KEY_FILE):
+            shutil.move(self._OWNER_KEY_FILE,
+                        self._get_pushed_owner_key_file_path())
 
 
     def _pop_consent(self):
-        """Pop the consent file, enabling/disabling consent as it was before
+        """Pop the consent files, enabling/disabling consent as it was before
         we pushed the consent."""
-        self._set_consent(False)
         if os.path.exists(self._get_pushed_consent_file_path()):
             shutil.move(self._get_pushed_consent_file_path(),
                         self._CONSENT_FILE)
+        else:
+            utils.system('rm -f "%s"' % self._CONSENT_FILE)
+        if os.path.exists(self._get_pushed_policy_file_path()):
+            shutil.move(self._get_pushed_policy_file_path(),
+                        self._POLICY_FILE)
+        else:
+            utils.system('rm -f "%s"' % self._POLICY_FILE)
+        if os.path.exists(self._get_pushed_owner_key_file_path()):
+            shutil.move(self._get_pushed_owner_key_file_path(),
+                        self._OWNER_KEY_FILE)
+        else:
+            utils.system('rm -f "%s"' % self._OWNER_KEY_FILE)
 
 
     def _get_crash_dir(self, username):
