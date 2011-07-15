@@ -80,9 +80,11 @@ class login_OwnershipRetaken(cros_ownership_test.OwnershipTest):
         policy_string = self.generate_policy(pkey, pubkey, poldata)
         self.push_policy(policy_string, sm)
 
-
         # wait for new-owner-key signal, property-changed signal.
-        login.wait_for_ownership()
+        utils.poll_for_condition(condition=lambda: self.__received_signals(),
+                                 desc='Initial policy push complete.',
+                                 timeout=constants.DEFAULT_OWNERSHIP_TIMEOUT)
+        self.__reset_signal_state()
 
         # grab key, ensure that it's the same as the known key.
         if (utils.read_file(constants.OWNER_KEY_FILE) != pubkey):
