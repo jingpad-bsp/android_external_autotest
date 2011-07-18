@@ -44,7 +44,6 @@ class UITest(test.test):
     crash_blacklist = []
 
     def __init__(self, job, bindir, outputdir):
-        self._dns = {}  # for saving/restoring dns entries
         test.test.__init__(self, job, bindir, outputdir)
 
 
@@ -109,12 +108,6 @@ class UITest(test.test):
             logging.debug("Considering " + interface)
             for path in properties['IPConfigs']:
                 ipconfig = self._flim.GetObjectInterface('IPConfig', path)
-
-                servers = ipconfig.GetProperties().get('NameServers', None)
-                if servers != None:
-                    self._dns[path] = ','.join(servers)
-                    logging.debug("Stored %s for %s" % (self._dns[path],
-                                                        interface))
                 ipconfig.SetProperty('NameServers', '127.0.0.1')
                 logging.debug("Using local DNS for " + interface)
 
@@ -128,18 +121,7 @@ class UITest(test.test):
         """Clear the custom DNS setting for all devices and force them to use
         DHCP to pull the network's real settings again.
         """
-        for device in self._flim.GetObjectList('Device'):
-            properties = device.GetProperties()
-            interface = properties['Interface']
-            logging.debug("Considering " + interface)
-            for path in properties['IPConfigs']:
-                if path in self._dns:
-                    ipconfig = self._flim.GetObjectInterface('IPConfig', path)
-                    ipconfig.SetProperty('NameServers', self._dns[path])
-                    logging.debug("Reverted DNS for " + interface)
-                else:
-                    logging.debug("No stored DNS for " + interface)
-
+        utils.system('restart %s' % constants.NETWORK_MANAGER);
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.',
                                            '127.0.0.1',

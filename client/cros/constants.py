@@ -60,6 +60,8 @@ MOCK_OWNER_CERT = 'mock_owner_cert.pem'
 MOCK_OWNER_KEY = 'mock_owner_private.key'
 MOCK_OWNER_POLICY = 'mock_owner.policy'
 
+NETWORK_MANAGER = 'flimflam'
+
 ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 
 OWNER_KEY_FILE = WHITELIST_DIR + '/owner.key'
