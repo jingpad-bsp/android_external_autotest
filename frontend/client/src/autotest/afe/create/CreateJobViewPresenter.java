@@ -157,7 +157,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         if (display.getHostless().getValue()) {
             hostSelector.setEnabled(false);
         }
-
         if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
             if (cloneObject.get("drone_set").isNull() == null) {
                 display.getDroneSet().selectByName(Utils.jsonToString(cloneObject.get("drone_set")));

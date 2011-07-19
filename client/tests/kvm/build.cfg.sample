@@ -16,28 +16,9 @@ variants:
         load_modules = no
         # Save the results of this build on test.resultsdir?
         save_results = no
+        # Preserve the source code directory between tests?
+        preserve_srcdir = yes
         variants:
-            - release:
-                install_mode = release
-                ## Install from a kvm release. You can optionally specify
-                ## a release tag. If you omit it, the build test will get
-                ## the latest release tag available at that moment.
-                # release_tag = 84
-                release_dir = http://downloads.sourceforge.net/project/kvm/
-                release_listing = http://sourceforge.net/projects/kvm/files/
-                # In some cases, you might want to provide a ROM dir, so ROM
-                # files can be copied from there to your source based install
-                # path_to_rom_images = /usr/share/kvm
-            - snapshot:
-                install_mode = snapshot
-                ## Install from a kvm snapshot location. You can optionally
-                ## specify a snapshot date. If you omit it, the test will get
-                ## yesterday's snapshot.
-                # snapshot_date = 20090712
-                snapshot_dir = http://foo.org/kvm-snapshots/
-                # In some cases, you might want to provide a ROM dir, so ROM
-                # files can be copied from there to your source based install
-                # path_to_rom_images = /usr/share/kvm
             - localtar:
                 install_mode = localtar
                 ## Install from tarball located on the host's filesystem.
@@ -55,19 +36,8 @@ variants:
             - git:
                 install_mode = git
                 ## Install KVM from git repositories.
-                ## If you provide only "git_repo" and "user_git_repo", the
-                ## build test will assume it will perform all build from the
-                ## userspace dir, building modules trough 
-                ## make -C kernel LINUX=%s sync. As of today (07-13-2009)
-                ## upstream needs 3 git repos:
-                ## * git_repo (linux sources)
-                ## * user_git_repo (qemu sources)
-                ## * kmod_repo" to build KVM userspace + kernel modules.
-                # git_repo = git://git.kernel.org/pub/scm/linux/kernel/git/avi/kvm.git
-                # kernel_branch = kernel_branch_name
-                # kernel_lbranch = kernel_lbranch_name
-                # kernel_commit = kernel_commit_name
-                # kernel_patches = ['http://foo.com/patch1', 'http://foo.com/patch2']
+                ## This now only concerns the userspace component, and it assumes
+                ## the kernel modules are shipped with the linux kernel.
                 user_git_repo = git://git.kernel.org/pub/scm/virt/kvm/qemu-kvm.git
                 # user_branch = user_branch_name
                 # user_lbranch = user_lbranch_name
@@ -75,11 +45,6 @@ variants:
                 # user_patches = ['http://foo.com/patch1', 'http://foo.com/patch2']
                 ## This is how you pass extra params to the userspace configure script
                 # extra_configure_options = '--enable-spice --disable-werror'
-                # kmod_repo = git://git.kernel.org/pub/scm/virt/kvm/kvm-kmod.git
-                # kmod_branch = kmod_branch_name
-                # kmod_lbranch = kmod_lbranch_name
-                # kmod_commit = kmod_commit_name
-                # kmod_patches = ['http://foo.com/patch1', 'http://foo.com/patch2']
                 # spice_repo = git://anongit.freedesktop.org/spice/spice
                 # spice_branch = master
                 # spice_lbranch = master

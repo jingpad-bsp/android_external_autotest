@@ -18,8 +18,10 @@ class iperf(test.test):
         self.job.setup_dep(['sysstat'])
 
         os.chdir(self.srcdir)
+
         utils.configure()
         utils.make()
+        utils.system('sync')
 
 
     def initialize(self):

@@ -267,7 +267,7 @@ class Dispatcher(object):
         self._seconds_between_garbage_stats = 60 * (
                 global_config.global_config.get_config_value(
                         scheduler_config.CONFIG_SECTION,
-                        'gc_stats_interval_mins', type=int, default=6 * 60))
+                        'gc_stats_interval_mins', type=int, default=6*60))
 
 
     def initialize(self, recover_hosts=True):
@@ -605,7 +605,7 @@ class Dispatcher(object):
 
     def _reverify_hosts_where(self, where,
                               print_message='Reverifying host %s'):
-        full_where = 'locked = 0 AND invalid = 0 AND ' + where
+        full_where='locked = 0 AND invalid = 0 AND ' + where
         for host in scheduler_models.Host.fetch(where=full_where):
             if self.host_has_agent(host):
                 # host has already been recovered in some way
