@@ -21,6 +21,8 @@ DOC = """
     Verify that 3g can be enabled under all suspend/resume situations.
 """
 
-job.run_test('network_3GSuspendResume')
-
-job.run_test('network_3GSuspendResume', scenario_group='autoconnect')
+# Run all scenarios twice, first with autoconnect off, then with it on
+job.run_test('network_3GSuspendResume',
+                autoconnect=False, tag='autoconnect_off')
+job.run_test('network_3GSuspendResume',
+                autoconnect=True, tag='autoconnect_on')

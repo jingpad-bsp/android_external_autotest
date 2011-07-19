@@ -31,14 +31,11 @@ class network_3GSuspendResume(test.test):
             'scenario_suspend_3g_enabled',
             'scenario_suspend_3g_disabled',
             'scenario_suspend_3g_disabled_twice',
+            'scenario_autoconnect',
         ],
         'stress': [
             'scenario_suspend_3g_random',
         ],
-        'autoconnect': [
-            'scenario_autoconnect',
-        ]
-
     }
 
     modem_status_outputs = [
@@ -265,29 +262,25 @@ class network_3GSuspendResume(test.test):
         #     raise error.TestFail('Cellular service was not connectable at '
         #                          'the end of %s' % function_name)
 
-    def run_once(self, scenario_group='all'):
+    def run_once(self, scenario_group='all', autoconnect=False):
         # Replace the test type with the list of tests
         if scenario_group not in network_3GSuspendResume.scenarios.keys():
             scenario_group = 'all'
         logging.info('Running scenario group: %s' % scenario_group)
         scenarios = network_3GSuspendResume.scenarios[scenario_group]
 
-        # Run all scenarios twice, first with autoconnect off, then with
-        # autoconnect on
-        for autoconnect in [False, True]:
+        self.flim = flimflam.FlimFlam(dbus.SystemBus())
+        device = self.__get_cellular_device()
+        if not device:
+            raise error.TestFail('Cannot find cellular device.')
+        self.set_powered(device, 1)
 
-            self.flim = flimflam.FlimFlam(dbus.SystemBus())
-            device = self.__get_cellular_device()
-            if not device:
-                raise error.TestFail('Cannot find cellular device.')
-            self.set_powered(device, 1)
+        service = self.flim.FindCellularService(30)
+        if not service:
+            raise error.TestFail('Cannot find cellular service.')
 
-            service = self.flim.FindCellularService(30)
-            if not service:
-                raise error.TestFail('Cannot find cellular service.')
+        service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
 
-            service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
-
-            logging.info('Running scenarios with autoconnect %s.' % autoconnect)
-            for t in scenarios:
-                self.run_scenario(t)
+        logging.info('Running scenarios with autoconnect %s.' % autoconnect)
+        for t in scenarios:
+            self.run_scenario(t)
