@@ -20,11 +20,11 @@ from autotest_lib.server import site_host_attributes
 # List of tests to be run.
 CLIENT_TESTS = [
     # 4096: Bytes of random data.
-    # 151: Random seed.
+    # 151 : Random seed.
     # 1000: Number of loop execution attempts before
-    # exiting normally.
-    # 64: Number of vfork() subprocesses.
-    # 0: No verbosity. [0..5]
+    #       exiting normally.
+    # 64  : Number of vfork() subprocesses.
+    # 0   : No verbosity. [0..5]
     ('crashme', { 'args_list': '4096 151 1000 64 0' }),
 
     # Check that TPM is present and started and we can talk to it.
@@ -40,6 +40,8 @@ CLIENT_TESTS = [
 
     # Use zero as all regparms.
     ('scrashme', { 'args_list': '--mode rotate -z' }),
+
+    ('sound_infrastructure', {}),
 ]
 
 SERVER_TESTS = [
