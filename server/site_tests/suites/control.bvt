@@ -33,7 +33,6 @@ TESTS = [
                              'tag': 'chrome'}),
   ('desktopui_KillRestart', {'binary': '^session_manager$',
                              'tag': 'session'}),
-  ('desktopui_UrlFetch', {}),
   ('desktopui_WindowManagerFocusNewWindows', {}),
 # TODO(ericli): reenable it after screen locker is enabled.
 # http://code.google.com/p/chromium-os/issues/detail?id=7758
