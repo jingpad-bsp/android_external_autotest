@@ -41,8 +41,8 @@ NO_DIFF = 'n/a'
 ###############################################################################
 # Queries: These are designed as stateless functions with static relationships.
 #          e.g. GetBuildRangedChartQuery() depends on
-#               GetBaseQuery() for efficiency.
-COMMON_QUERY_TEMPLATE = """
+#               GetBasePerfQuery() for efficiency.
+COMMON_PERF_QUERY_TEMPLATE = """
 SELECT %(select_keys)s
 FROM tko_perf_view_2
 WHERE job_name REGEXP %(job_name)s
@@ -76,10 +76,28 @@ DEFAULT_ORDER = 'ORDER BY test_started_time'
 # Release data sorted here.
 RELEASE_ORDER = ''
 
+TEST_QUERY_TEMPLATE = """
+SELECT * FROM
+(SELECT name as test_name, test_class, test_type, path, author, test_category,
+       '' as platform, 0 as run_count, 0.0 as avg_test_time
+FROM afe_autotests
+UNION
+SELECT test_name, '' as test_class, '' as test_type, '' as path, '' as author,
+       '' as test_category, platform, COUNT(*) as run_count,
+       ROUND(AVG(TIME_TO_SEC(TIMEDIFF(test_finished_time, test_started_time))))
+       as avg_test_time
+FROM tko_test_view_2
+WHERE NOT test_name REGEXP '(CLIENT|SERVER)_JOB.*'
+  AND NOT test_name REGEXP 'boot\.[0-9]'
+  AND NOT ISNULL(test_started_time)
+  AND NOT ISNULL(test_finished_time)
+  %s
+GROUP BY test_name, subdir, platform) AS q"""
 
-def GetBaseQueryParts(request):
+
+def GetBasePerfQueryParts(request):
   """Fully populates and returns a base query string."""
-  query = COMMON_QUERY_TEMPLATE + CHART_QUERY_KEYS
+  query = COMMON_PERF_QUERY_TEMPLATE + CHART_QUERY_KEYS
 
   boards = '|'.join(request.GET.getlist('board'))
   platform = 'netbook_%s' % request.GET.get('system').upper()
@@ -95,9 +113,9 @@ def GetBaseQueryParts(request):
   return query, query_parameters
 
 
-def GetBaseQuery(request):
+def GetBasePerfQuery(request):
   """Produce the assembled query."""
-  query, parameters = GetBaseQueryParts(request)
+  query, parameters = GetBasePerfQueryParts(request)
   return query % parameters
 
 
@@ -109,7 +127,7 @@ def GetBuildRangedChartQuery(request):
   from_build = request.GET.get('from_build')
   to_build = request.GET.get('to_build')
 
-  base_query, base_query_parameters = GetBaseQueryParts(request)
+  base_query, base_query_parameters = GetBasePerfQueryParts(request)
   min_parameters = base_query_parameters.copy()
   min_parameters['select_keys'] = (
       'IFNULL(MIN(test_started_time), DATE_SUB(NOW(), INTERVAL 1 DAY))')
@@ -163,7 +181,7 @@ def GetIntervalRangedChartQuery(request):
 
 def GetReleaseQueryParts(request):
   """Fully populates and returns a base query string."""
-  query = COMMON_QUERY_TEMPLATE + RELEASEREPORT_QUERY_KEYS
+  query = COMMON_PERF_QUERY_TEMPLATE + RELEASEREPORT_QUERY_KEYS
 
   boards = request.GET.getlist('board')
   platform = 'netbook_%s' % request.GET.get('system').upper()
@@ -204,6 +222,12 @@ def GetReleaseQuery(request):
   """Produce the assembled query."""
   query, parameters = GetReleaseQueryParts(request)
   return query % parameters
+
+
+def GetBaseTestQuery(request):
+  """Test query is simple with no parameters."""
+  query = TEST_QUERY_TEMPLATE
+  return query
 
 
 ###############################################################################
@@ -318,7 +342,6 @@ def GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions, query,
     gviz_data_table = gviz_data_table.ToJSon(keys_in_order)
     return gviz_data_table
 
-  # Now massage the returned data into a gviz data table.
   cursor = readonly_connection.connection().cursor()
   cursor.execute('%s %s' % (query, query_order))
   job_tags, build_data = AggregateBuilds(test_keys, chrome_versions,
@@ -333,12 +356,10 @@ def GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions, query,
 
 def GetRangedKeyByBuildLinechartData(request):
   """Assemble the proper query and order."""
-
   ranged_queries = {'from_build': GetBuildRangedChartQuery,
                     'from_date': GetDateRangedChartQuery,
                     'interval': GetIntervalRangedChartQuery}
-
-  query_list = [GetBaseQuery(request)]
+  query_list = [GetBasePerfQuery(request)]
   for range_key in ['from_build', 'from_date', 'interval', None]:
     if request.GET.get(range_key, None):
       break
@@ -482,4 +503,80 @@ def GetReleaseReportData(request):
   chrome_versions = GetChromeVersions(request)
   data_dict = GetMultiTestKeyReleaseTableData(chrome_versions,
       query=query % parameters, extra=parameters)
+  return data_dict
+
+
+def GetTestReportData(query):
+  """Prepare and run the db query and massage the results."""
+
+  def AggregateTests(data_list):
+    """Groups multiple row data by test name and platform."""
+    raw_dict = {}
+    test_attributes = set()
+    platform_attributes = set()
+    for (test_name, test_class, test_type, path, author, test_category,
+         platform, run_count, avg_test_time) in data_list:
+      if test_name.find(':') > -1:
+        continue
+      test_dict = raw_dict.setdefault(test_name, {'test_name': test_name,
+                                                  'run_count': 0})
+      if test_class:
+        test_dict.setdefault('test_class', test_class)
+        test_attributes.add('test_class')
+      if test_type:
+        test_dict.setdefault('test_type', test_type)
+        test_attributes.add('test_type')
+      if path:
+        test_dict.setdefault('path', path)
+        test_attributes.add('path')
+      if author:
+        test_dict.setdefault('author', author)
+        test_attributes.add('author')
+      if test_category:
+        test_dict.setdefault('test_category', test_category)
+        test_attributes.add('test_category')
+      if platform and run_count:
+        test_dict['run_count'] += int(run_count)
+        test_dict.setdefault('%s-run_count' % platform[8:], run_count)
+        platform_attributes.add('%s-run_count' % platform[8:])
+      if platform and avg_test_time:
+        test_dict.setdefault('%s-avg_test_time' % platform[8:], avg_test_time)
+        platform_attributes.add('%s-avg_test_time' % platform[8:])
+    if not raw_dict:
+      raise ChartDBError('No data returned')
+    return (raw_dict.values(),
+            sorted(list(test_attributes)) + sorted(list(platform_attributes)))
+
+  def ToGVizJsonTable(table_data, test_attributes):
+    """Massage data into gviz data table in proper order."""
+    # Now format for gviz table.
+    description = {'test_name': ('string', 'Name'),
+                   'run_count': ('number', '#Run')}
+    keys_in_order = ['test_name', 'run_count']
+    for a in test_attributes:
+      description[a] = ('string', a)
+      keys_in_order.append(a)
+    gviz_data_table = gviz_api.DataTable(description)
+    gviz_data_table.LoadData(table_data)
+    gviz_data_table = gviz_data_table.ToJSon(keys_in_order)
+    return gviz_data_table
+
+  cursor = readonly_connection.connection().cursor()
+  cursor.execute(query)
+  test_data, test_attributes = AggregateTests(cursor.fetchall())
+  gviz_data_table = ToGVizJsonTable(test_data, test_attributes)
+  return {'gviz_data_table': gviz_data_table}
+
+
+def GetRangedTestReportData(request):
+  """Prepare and run the db query and massage the results."""
+  ranged_queries = {'from_date': GetDateRangedChartQuery,
+                    'interval': GetIntervalRangedChartQuery}
+  for range_key in ['from_date', 'interval', None]:
+    if request.GET.get(range_key, None):
+      break
+  if not range_key:
+    raise ChartInputError('One interval-type parameter must be supplied.')
+  query = GetBaseTestQuery(request) % (ranged_queries[range_key](request))
+  data_dict = GetTestReportData(query)
   return data_dict

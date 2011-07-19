@@ -14,4 +14,5 @@ urlpatterns = defaults.patterns(
     (r'^chartdiff?%s$' % COMMON_URL, 'PlotChartDiff'),
     (r'^chartreport?%s$' % COMMON_URL, 'PlotChartReport'),
     (r'^chart?%s$' % COMMON_URL, 'PlotChart'),
-    (r'^releasereport?%s$' % COMMON_URL, 'PlotReleaseReport'))
+    (r'^releasereport?%s$' % COMMON_URL, 'PlotReleaseReport'),
+    (r'^testreport?%s$' % COMMON_URL, 'PlotTestReport'))
