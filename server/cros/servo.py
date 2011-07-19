@@ -26,6 +26,18 @@ class Servo:
     _server = None
     _servod = None
 
+    # Power button press delays in seconds.
+    LONG_DELAY = 8
+    SHORT_DELAY = 0.1
+    NORMAL_TRANSITION_DELAY = 1.2
+
+    # Delays to deal with computer transitions.
+    SLEEP_DELAY = 6
+    BOOT_DELAY = 10
+
+    # Servo-specific delays.
+    MAX_SERVO_STARTUP_DELAY = 10
+    SERVO_SEND_SIGNAL_DELAY = 0.5
 
     def __init__(self, servo_port, xml_config='servo.xml', servo_vid=None,
                  servo_pid=None, servo_serial=None, cold_reset=False):
@@ -50,30 +62,35 @@ class Servo:
         # connect to servod
         assert servo_port
 
+        self._do_cold_reset = cold_reset
+
         self._connect_servod(servo_port)
-        if cold_reset:
+
+
+    def initialize_dut(self):
+        """Initializes a dut for testing purposes."""
+        if self._do_cold_reset:
             self._init_seq_cold_reset_devmode()
         else:
             self._init_seq()
 
 
-
     def power_long_press(self):
-        """Simulate a long (8 sec) power button press."""
-        self.power_key(8)
+        """Simulate a long power button press."""
+        self.power_key(Servo.LONG_DELAY)
 
 
     def power_normal_press(self):
-        """Simulate a normal (2 sec) power button press."""
-        self.power_key(2)
+        """Simulate a normal power button press."""
+        self.power_key()
 
 
     def power_short_press(self):
-        """Simulate a short (0.1 sec) power button press."""
-        self.power_key(0.1)
+        """Simulate a short power button press."""
+        self.power_key(Servo.SHORT_DELAY)
 
 
-    def power_key(self, secs=1):
+    def power_key(self, secs=NORMAL_TRANSITION_DELAY):
         """Simulate a power button press.
 
         Args:
@@ -95,57 +112,42 @@ class Servo:
         Waits 6 seconds to ensure the device is fully asleep before returning.
         """
         self.set_nocheck('lid_open', 'no')
-        time.sleep(6)
+        time.sleep(Servo.SLEEP_DELAY)
 
 
-    def ctrl_d(self, secs=0.5):
-        """Simulate Ctrl-d simultaneous button presses.
-
-        Args:
-          secs: Time in seconds to simulate the keypress.
-        """
+    def ctrl_d(self):
+        """Simulate Ctrl-d simultaneous button presses."""
         self.set_nocheck('kbd_en', 'on')
         self.set_nocheck('kbd_m1', 'r2_c2')
         self.set_nocheck('kbd_m2', 'r1_c1')
-        time.sleep(secs)
+        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
         self.set_nocheck('kbd_en', 'off')
 
 
-    def enter_key(self, secs=0.5):
-        """Simulate Enter key button press.
-
-        Args:
-          secs: Time in seconds to simulate the keypress.
-        """
+    def enter_key(self):
+        """Simulate Enter key button press."""
         self.set_nocheck('kbd_en', 'on')
         self.set_nocheck('kbd_m1', 'r3_c2')
-        time.sleep(secs)
+        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
         self.set_nocheck('kbd_en', 'off')
 
 
-    def refresh_key(self, secs=0.5):
-        """Simulate Refresh key (F3) button press.
-
-        Args:
-          secs: Time in seconds to simulate the keypress.
-        """
+    def refresh_key(self):
+        """Simulate Refresh key (F3) button press."""
         self.set_nocheck('kbd_en', 'on')
         self.set_nocheck('kbd_m2', 'r2_c1')
-        time.sleep(secs)
+        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
         self.set_nocheck('kbd_en', 'off')
 
 
-    def imaginary_key(self, secs=0.5):
+    def imaginary_key(self):
         """Simulate imaginary key button press.
 
         Maps to a key that doesn't physically exist.
-
-        Args:
-          secs: Time in seconds to simulate the keypress.
         """
         self.set_nocheck('kbd_en', 'on')
         self.set_nocheck('kbd_m2', 'r3_c1')
-        time.sleep(secs)
+        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
         self.set_nocheck('kbd_en', 'off')
 
 
@@ -171,17 +173,15 @@ class Servo:
 
     def boot_devmode(self):
         """Boot a dev-mode device that is powered off."""
-        self.set('pwr_button', 'release')
-        time.sleep(1)
         self.power_normal_press()
         self.pass_devmode()
 
 
     def pass_devmode(self):
         """Pass through boot screens in dev-mode."""
-        time.sleep(10)
+        time.sleep(Servo.BOOT_DELAY)
         self.ctrl_d()
-        time.sleep(17)
+        time.sleep(Servo.BOOT_DELAY)
 
 
     def cold_reset(self):
@@ -190,7 +190,7 @@ class Servo:
         Has the side effect of shutting off the device.
         """
         self.set('cold_reset', 'on')
-        time.sleep(2)
+        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
         self.set('cold_reset', 'off')
 
 
@@ -200,7 +200,7 @@ class Servo:
         Has the side effect of restarting the device.
         """
         self.set('warm_reset', 'on')
-        time.sleep(2)
+        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
         self.set('warm_reset', 'off')
 
 
@@ -212,14 +212,15 @@ class Servo:
 
     def set(self, gpio_name, gpio_value):
         """Set and check the value of a gpio using Servod."""
-        assert gpio_name and gpio_value
-        self._server.set(gpio_name, gpio_value)
-        assert gpio_value == self.get(gpio_name)
+        self.set_nocheck(gpio_name, gpio_value)
+        assert gpio_value == self.get(gpio_name), \
+            'Servo failed to set %s to %s' % (gpio_name, gpio_value)
 
 
     def set_nocheck(self, gpio_name, gpio_value):
         """Set the value of a gpio using Servod."""
         assert gpio_name and gpio_value
+        logging.info('Setting %s to %s' % (gpio_name, gpio_value))
         self._server.set(gpio_name, gpio_value)
 
 
@@ -268,8 +269,8 @@ class Servo:
         self._servod = subprocess.Popen(cmdlist, 0, None, None, None,
                                         subprocess.PIPE)
         # wait for servod to initialize
-        timeout = 10
-        while ("Listening" not in self._servod.stderr.readline() and
+        timeout = Servo.MAX_SERVO_STARTUP_DELAY
+        while ('Listening' not in self._servod.stderr.readline() and
                self._servod.returncode is None and timeout > 0):
             time.sleep(1)
             timeout -= 1

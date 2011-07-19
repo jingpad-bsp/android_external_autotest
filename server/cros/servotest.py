@@ -4,7 +4,8 @@
 
 import subprocess
 
-from autotest_lib.server import test, autotest
+from autotest_lib.client.common_lib import error
+from autotest_lib.server import test
 import autotest_lib.server.cros.servo
 
 class ServoTest(test.test):
@@ -20,11 +21,18 @@ class ServoTest(test.test):
     def initialize(self, host, servo_port, xml_config='servo.xml',
                    servo_vid=None, servo_pid=None, servo_serial=None):
         """Create a Servo object."""
-        self.servo = autotest_lib.server.cros.servo.Servo(servo_port,
-                                                          xml_config,
-                                                          servo_vid,
-                                                          servo_pid,
-                                                          servo_serial)
+        self.servo = autotest_lib.server.cros.servo.Servo(
+                servo_port, xml_config, servo_vid, servo_pid, servo_serial)
+
+        # Initializes dut, may raise AssertionError if pre-defined gpio
+        # sequence to set GPIO's fail.  Autotest does not handle exception
+        # throwing in initialize and will cause a test to hang.
+        try:
+            self.servo.initialize_dut()
+        except AssertionError as e:
+            del self.servo
+            raise error.TestFail(e)
+
         self._ip = host.ip
 
 
@@ -51,4 +59,4 @@ class ServoTest(test.test):
 
     def cleanup(self):
         """Delete the Servo object."""
-        del self.servo
+        if self.servo: del self.servo
