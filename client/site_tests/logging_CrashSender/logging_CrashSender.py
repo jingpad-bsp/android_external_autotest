@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -245,31 +245,6 @@ class logging_CrashSender(crash_test.CrashTest):
             raise error.TestFail('Missing payload case handled wrong')
 
 
-    def _test_cron_runs(self):
-        """Test sender runs successfully as part of the hourly cron job.
-
-        Assuming we've run test_sender_simple which shows that a minidump
-        gets removed as part of sending, we run the cron job (which is
-        asynchronous) and wait for that file to be removed to just verify
-        the job eventually runs the sender."""
-        minidump = self._prepare_sender_one_crash(send_success=True,
-                                                  reports_enabled=True,
-                                                  report=None)
-        if not os.path.exists(minidump):
-            raise error.TestError('minidump not created')
-        self._log_reader.set_start_by_current()
-        utils.system(_CRASH_SENDER_CRON_PATH)
-        self.wait_for_sender_completion()
-        if os.path.exists(minidump):
-            raise error.TestFail('minidump was not removed')
-        crash_sender_log = self._log_reader.get_logs()
-        logging.debug('Contents of crash sender log: ' + crash_sender_log)
-        result = self._parse_sender_output(crash_sender_log)
-        logging.debug('Result of crash send: %s' % result)
-        if not result['send_attempt'] or not result['send_success']:
-            raise error.TestFail('Cron simple run test failed')
-
-
     def run_once(self):
         self.run_crash_tests([
             'sender_simple_minidump',
@@ -283,5 +258,4 @@ class logging_CrashSender(crash_test.CrashTest):
             'sender_send_fails',
             'sender_orphaned_files',
             'sender_incomplete_metadata',
-            'sender_missing_payload',
-            'cron_runs'])
+            'sender_missing_payload']);
