@@ -3,9 +3,9 @@
 
 Copyright 2011 Google Inc. All Rights Reserved.
 
-This template builds a report showing Autotest test execution status.
+This template builds a report showing Autotest LabTest execution status.
 {% endcomment %}
-{% block title %}ChromeOS Test Report{% endblock %}
+{% block title %}ChromeOS LabTest Report{% endblock %}
 {% block html_block %}
 <!--Load the AJAX API-->
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -21,7 +21,7 @@ This template builds a report showing Autotest test execution status.
   // draws them.
   function drawCharts() {
     var table = new google.visualization.Table(
-        document.getElementById('testtable'));
+        document.getElementById('labtesttable'));
     var json_data = new google.visualization.DataTable(
         {% autoescape off %}
         {{ tpl_chart.gviz_data_table }}
@@ -30,18 +30,22 @@ This template builds a report showing Autotest test execution status.
                {allowHtml: true,
                 showRowNumber: true,
                 sortAscending: false,
-                sortColumn: 1});
+                sortColumn: 2});
     google.visualization.events.addListener(table, 'select', function(){
     var selection = table.getSelection();
-    alert('Try typing ' + json_data.getFormattedValue(selection[0].row, 0) +
-          ' in the Search box in the upper-left of the testdocs page.');
-    window.open('http://cautotest/results/dashboard/testdocs');
+    var job_name = json_data.getFormattedValue(selection[0].row, 0);
+    window.open('http://cautotest/new_tko/#tab_id=spreadsheet_view&' +
+                'row=job_name&column=test_name&content=&show_incomplete=true&' +
+                'show_only_latest=false&condition=job_name+%253D+%2527' +
+                job_name + '%2527+and+not+test_name+regexp+%2527' +
+                '(CLIENT%257CSERVER)_JOB.*%2527+and+not+test_name+regexp+' +
+                '%2527boot%255C..*%2527');
     });
   }
 </script>
 <center>
-<h2>Chrome OS Test Report</h2>
-<span id="testtable"></span>
+<h2>Chrome OS LabTest Report</h2>
+<span id="labtesttable"></span>
 </center>
 <hr>
 {% endblock %}

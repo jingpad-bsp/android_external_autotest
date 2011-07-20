@@ -14,7 +14,10 @@
 
    Data entry points at this time include:
    -GetRangedKeyByBuildLinechartData(): produce a value by builds data table.
-   -GetMultiTestKeyReleaseTableData(): produce a values by 2builds data table.
+   -GetMultiTestKeyReleaseTableData(): produce a values by builds data table.
+   -GetReleaseReportData(): produce perf stats comparison data table.
+   -GetRangedTestReportData(): produce a tests by #executed data table.
+   -GetRangedLabTestReportData(): produce labtest execution data table.
 """
 
 import json
@@ -93,6 +96,20 @@ WHERE NOT test_name REGEXP '(CLIENT|SERVER)_JOB.*'
   AND NOT ISNULL(test_finished_time)
   %s
 GROUP BY test_name, subdir, platform) AS q"""
+
+LABTEST_QUERY_TEMPLATE = """
+SELECT job_name, job_owner,
+       STR_TO_DATE(CONCAT(YEARWEEK(test_started_time), ' Sunday'), '%%X%%V %%W'),
+       COUNT(*) AS test_count
+FROM tko_test_view_2
+WHERE job_owner != 'chromeos-test'
+  AND NOT test_name REGEXP '(CLIENT|SERVER)_JOB.*'
+  AND NOT test_name REGEXP 'boot\.[0-9]'
+  AND NOT ISNULL(test_started_time)
+  AND NOT ISNULL(test_finished_time)
+  AND job_owner = LEFT(job_name, LENGTH(job_owner))
+  %s
+GROUP BY job_name, job_owner, YEARWEEK(test_started_time)"""
 
 
 def GetBasePerfQueryParts(request):
@@ -227,6 +244,12 @@ def GetReleaseQuery(request):
 def GetBaseTestQuery(request):
   """Test query is simple with no parameters."""
   query = TEST_QUERY_TEMPLATE
+  return query
+
+
+def GetBaseLabTestQuery(request):
+  """Test query is simple with no parameters."""
+  query = LABTEST_QUERY_TEMPLATE
   return query
 
 
@@ -579,4 +602,53 @@ def GetRangedTestReportData(request):
     raise ChartInputError('One interval-type parameter must be supplied.')
   query = GetBaseTestQuery(request) % (ranged_queries[range_key](request))
   data_dict = GetTestReportData(query)
+  return data_dict
+
+
+def GetLabTestReportData(query):
+  """Prepare and run the db query and massage the results."""
+
+  def AggregateTests(data_list):
+    """Groups multiple row data by test name and platform."""
+    raw_data = []
+    for job_name, job_owner, week_date, test_count in data_list:
+      raw_data.append({'job_name': job_name,
+                       'job_owner': job_owner,
+                       'week_date': week_date,
+                       'test_count': test_count})
+    if not raw_data:
+      raise ChartDBError('No data returned')
+    return raw_data
+
+  def ToGVizJsonTable(table_data):
+    """Massage data into gviz data table in proper order."""
+    # Now format for gviz table.
+    description = {'job_name': ('string', 'Job'),
+                   'job_owner': ('string', 'Owner'),
+                   'week_date': ('string', 'Week'),
+                   'test_count': ('number', '#Tests')}
+    keys_in_order = ['job_name', 'job_owner', 'week_date', 'test_count']
+    gviz_data_table = gviz_api.DataTable(description)
+    gviz_data_table.LoadData(table_data)
+    gviz_data_table = gviz_data_table.ToJSon(keys_in_order)
+    return gviz_data_table
+
+  cursor = readonly_connection.connection().cursor()
+  cursor.execute(query)
+  test_data = AggregateTests(cursor.fetchall())
+  gviz_data_table = ToGVizJsonTable(test_data)
+  return {'gviz_data_table': gviz_data_table}
+
+
+def GetRangedLabTestReportData(request):
+  """Prepare and run the db query and massage the results."""
+  ranged_queries = {'from_date': GetDateRangedChartQuery,
+                    'interval': GetIntervalRangedChartQuery}
+  for range_key in ['from_date', 'interval', None]:
+    if request.GET.get(range_key, None):
+      break
+  if not range_key:
+    raise ChartInputError('One interval-type parameter must be supplied.')
+  query = GetBaseLabTestQuery(request) % (ranged_queries[range_key](request))
+  data_dict = GetLabTestReportData(query)
   return data_dict

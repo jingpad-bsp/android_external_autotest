@@ -112,3 +112,15 @@ def PlotTestReport(request):
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())
+
+
+def PlotLabTestReport(request):
+  """Plot the requested report from /labtestreport?..."""
+  try:
+    salt = ValidateParameters(request, VLISTS['testreport'])
+    return chartviews.PlotChart(
+        request, 'plot_labtestreport.html',
+        chartmodels.GetRangedLabTestReportData, salt)
+  except ChartInputError as e:
+    tpl_hostname = request.get_host()
+    return render_to_response('plot_syntax.html', locals())
