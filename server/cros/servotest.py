@@ -17,10 +17,14 @@ class ServoTest(test.test):
     _ip = None
 
 
-    def initialize(self, host, servo_port, xml_config='servo.xml'):
+    def initialize(self, host, servo_port, xml_config='servo.xml',
+                   servo_vid=None, servo_pid=None, servo_serial=None):
         """Create a Servo object."""
         self.servo = autotest_lib.server.cros.servo.Servo(servo_port,
-                                                          xml_config)
+                                                          xml_config,
+                                                          servo_vid,
+                                                          servo_pid,
+                                                          servo_serial)
         self._ip = host.ip
 
 

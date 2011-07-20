@@ -6,6 +6,7 @@
 # prompt, such as within the Chromium OS development chroot.
 
 
+import logging
 import time
 import xmlrpclib
 import subprocess
@@ -26,17 +27,25 @@ class Servo:
     _servod = None
 
 
-    def __init__(self, servo_port, xml_config='servo.xml', cold_reset=False):
+    def __init__(self, servo_port, xml_config='servo.xml', servo_vid=None,
+                 servo_pid=None, servo_serial=None, cold_reset=False):
         """Sets up the servo communication infrastructure.
 
         Args:
           servo_port: Port the servod process should listen on.
           xml_config: Configuration XML file for servod.
+          servo_vid: USB vendor id of servo.
+          servo_pid: USB product id of servo.
+          servo_serial: USB serial id in device descriptor to host to
+            distinguish and control multiple servos.  Note servo's EEPROM must
+            be programmed to use this feature.
           cold_reset: If True, cold reset device and boot during init,
                       otherwise perform init with device running.
         """
         # launch servod
-        self._launch_servod(servo_port, xml_config)
+        self._launch_servod(servo_port, xml_config, servo_vid, servo_pid,
+                            servo_serial)
+
 
         # connect to servod
         assert servo_port
@@ -234,18 +243,30 @@ class Servo:
             assert subprocess.call(['sudo', 'kill', str(self._servod.pid)])
 
 
-    def _launch_servod(self, servo_port, xml_config='servo.xml'):
+    def _launch_servod(self, servo_port, xml_config, servo_vid, servo_pid,
+                       servo_serial):
         """Launch the servod process.
 
         Args:
           servo_port: Port to start servod listening on.
           xml_config: XML configuration file for servod.
+          servo_vid: USB vendor id of servo.
+          servo_pid: USB product id of servo.
+          servo_serial: USB serial id in device descriptor to host to
+            distinguish and control multiple servos.  Note servo's EEPROM must
+            be programmed to use this feature.
         """
-        self._servod = subprocess.Popen(['sudo', 'servod', '-c',
-                                         str(xml_config),
-                                         '--host=localhost',
-                                         '--port=' + str(servo_port)],
-                                        0, None, None, None, subprocess.PIPE)
+        cmdlist = ['sudo', 'servod', '-c', str(xml_config), '--host=localhost',
+                   '--port=' + str(servo_port)]
+        if servo_vid is not None:
+          cmdlist.append('--vendor=%s' % str(servo_vid))
+        if servo_pid is not None:
+          cmdlist.append('--product=%s' % str(servo_pid))
+        if servo_serial is not None:
+          cmdlist.append('--serialname=%s' % str(servo_serial))
+        logging.info('starting servod w/ cmd :: %s' % ' '.join(cmdlist))
+        self._servod = subprocess.Popen(cmdlist, 0, None, None, None,
+                                        subprocess.PIPE)
         # wait for servod to initialize
         timeout = 10
         while ("Listening" not in self._servod.stderr.readline() and

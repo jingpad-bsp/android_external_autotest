@@ -19,12 +19,20 @@ to validate behavior.
 """
 servo_port = 9999
 servo_xml_config = 'servo.xml'
+servo_vid = None
+servo_pid = None
+servo_serial = None
 
 def run_longpresspower(machine):
     global servo_port
     global servo_xml_config
+    global servo_vid
+    global servo_pid
+    global servo_serial
+
     host = hosts.create_host(machine)
     job.run_test("platform_LongPressPower", host=host, servo_port=servo_port,
-                 xml_config=servo_xml_config)
+                 xml_config=servo_xml_config, servo_vid=servo_vid,
+                 servo_pid=servo_pid, servo_serial=servo_serial)
 
 parallel_simple(run_longpresspower, machines)
