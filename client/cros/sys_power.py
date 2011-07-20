@@ -13,7 +13,7 @@
 import os
 
 SUSPEND_CMD='/usr/bin/powerd_suspend'
-REQUEST_SUSPEND_CMD = ('/usr/bin/dbus-send --system /'
+REQUEST_SUSPEND_CMD = ('/usr/bin/dbus-send --system / '
                        'org.chromium.PowerManager.RequestSuspend')
 
 def set_state(state):
