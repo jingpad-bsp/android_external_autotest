@@ -80,6 +80,7 @@ class platform_KernelErrorPaths(test.test):
             boot_id = self.client.get_boot_id()
             self.breakme(action)  # This should cause target reset.
             self.client.wait_for_restart(down_timeout=timeout,
+                                         down_warning=timeout,
                                          old_boot_id=boot_id)
             result = self.client.run('cat %s/kernel.*.kcrash' % crash_log_dir)
             if text not in result.stdout:
