@@ -10,14 +10,17 @@ class desktopui_UrlFetch(pyauto_test.PyAutoTest):
     version = 1
 
     def run_once(self):
-        url = 'http://dev.chromium.org'
+        url = 'http://www.noaa.gov/'
+        title = 'NOAA - National Oceanic and Atmospheric Administration'
         import pyauto
 
         assert not self.pyauto.GetCookie(pyauto.GURL(url))
 
         self.pyauto.NavigateToURL(url)
-        if self.pyauto.GetActiveTabTitle() != 'The Chromium Projects':
-            raise error.TestError('Unexpected web site title.')
+        tab_title = self.pyauto.GetActiveTabTitle()
+        if tab_title != title:
+            raise error.TestError('Unexpected web site title.  Expected: %s\n'
+                                  'Returned: %s' % (title, tab_title))
 
         cookie = self.pyauto.GetCookie(pyauto.GURL(url))
         if not cookie:
