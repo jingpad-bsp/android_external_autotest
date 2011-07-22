@@ -56,17 +56,21 @@ class network_3GDormancyDance(test.test):
         self.flim.DisconnectService(service=self.service, wait_timeout=60)
 
     def PropertyChanged(self, *args, **kwargs):
-        if args[0] in ['Powered', 'Connected']:
+        if args[0] in ['Powered', 'Connected', 'Services']:
             print 'PropertyChanged: %s %s' % (args, kwargs)
         if args[0] == 'Powered':
             if not args[1]:
                 self.enable()
             else:
-                self.connect()
+                print 'Waiting for service...'
         if args[0] == 'Connected':
             if not args[1]:
                 self.disable()
-
+        if args[0] == 'Services':
+            old_service = self.service
+            self.FindService()
+            if self.service and not old_service:
+                self.connect()
 
     def DormancyStatus(self, *args, **kwargs):
         print 'DormancyStatus: %s %s' % (args, kwargs)
@@ -76,6 +80,11 @@ class network_3GDormancyDance(test.test):
     def begin(self):
         print 'Setup...'
         self.disable()
+
+    def FindService(self):
+        self.service = self.flim.FindElementByPropertySubstring('Service',
+                                                                'Type',
+                                                                'cellular')
 
     def run_once(self, name='usb', ops=5000, seed=None):
         self.opsleft = ops
@@ -88,9 +97,7 @@ class network_3GDormancyDance(test.test):
         self.RequestDormancyEvents(modem_path)
         self.flim = flimflam.FlimFlam()
         self.manager = flimflam.DeviceManager(self.flim)
-        self.service = self.flim.FindElementByPropertySubstring('Service',
-                                                                'Type',
-                                                                'cellular')
+        self.FindService()
         self.device = self.flim.FindElementByNameSubstring('Device', name)
         if not self.device:
             self.device = self.flim.FindElementByPropertySubstring('Device',
