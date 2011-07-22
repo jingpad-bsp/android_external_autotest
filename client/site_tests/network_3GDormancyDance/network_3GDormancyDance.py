@@ -79,7 +79,11 @@ class network_3GDormancyDance(test.test):
 
     def begin(self):
         print 'Setup...'
-        self.disable()
+        self.FindService()
+        if self.service:
+            self.disable()
+        else:
+            self.enable()
 
     def FindService(self):
         self.service = self.flim.FindElementByPropertySubstring('Service',
@@ -97,7 +101,6 @@ class network_3GDormancyDance(test.test):
         self.RequestDormancyEvents(modem_path)
         self.flim = flimflam.FlimFlam()
         self.manager = flimflam.DeviceManager(self.flim)
-        self.FindService()
         self.device = self.flim.FindElementByNameSubstring('Device', name)
         if not self.device:
             self.device = self.flim.FindElementByPropertySubstring('Device',
