@@ -11,6 +11,8 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cros_ui
+
 from trackpad_device import TrackpadDevice
 from trackpad_util import read_trackpad_test_conf, get_prefix
 from Xcapture import Xcapture
@@ -76,8 +78,11 @@ class hardware_Trackpad(test.test):
         # Start Trackpad Input Device
         self.tp_device = TrackpadDevice(local_path)
 
+        # Get an instance of AutoX to handle X related issues
+        autox = cros_ui.get_autox()
+
         # Start X events capture
-        self.xcapture = Xcapture(error, local_path)
+        self.xcapture = Xcapture(error, local_path, autox)
 
         # Initialize X events Check
         self.xcheck = Xcheck(self.tp_device)
