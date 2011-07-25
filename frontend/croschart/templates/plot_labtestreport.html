@@ -11,7 +11,7 @@ This template builds a report showing Autotest LabTest execution status.
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 <script type="text/javascript">
   // Load the Visualization API and the table package.
-  google.load('visualization', '1', {'packages':['table']});
+  google.load('visualization', '1', {'packages':['corechart', 'table']});
 
   // Set a callback to run when the Google Visualization API is loaded.
   google.setOnLoadCallback(drawCharts);
@@ -20,20 +20,33 @@ This template builds a report showing Autotest LabTest execution status.
   // instantiates the charts, passes in the data and
   // draws them.
   function drawCharts() {
-    var table = new google.visualization.Table(
-        document.getElementById('labtesttable'));
-    var json_data = new google.visualization.DataTable(
+    var users_table = new google.visualization.BarChart(
+        document.getElementById('labtestusers'));
+    var users_json_data = new google.visualization.DataTable(
         {% autoescape off %}
-        {{ tpl_chart.gviz_data_table }}
+        {{ tpl_chart.gviz_data_table.users }}
         {% endautoescape %}, 0.5);
-    table.draw(json_data,
-               {allowHtml: true,
-                showRowNumber: true,
-                sortAscending: false,
-                sortColumn: 2});
-    google.visualization.events.addListener(table, 'select', function(){
-    var selection = table.getSelection();
-    var job_name = json_data.getFormattedValue(selection[0].row, 0);
+    users_table.draw(users_json_data,
+                     {chartArea: {top:5,
+                                  height:"90%"},
+                      width: 1200,
+                      height: 800,
+                      hAxis: {'title': '#Tests'},
+                      vAxis: {'title': 'Owner'}});
+    var jobs_table = new google.visualization.Table(
+        document.getElementById('labtestjobs'));
+    var jobs_json_data = new google.visualization.DataTable(
+        {% autoescape off %}
+        {{ tpl_chart.gviz_data_table.jobs }}
+        {% endautoescape %}, 0.5);
+    jobs_table.draw(jobs_json_data,
+                    {allowHtml: true,
+                     showRowNumber: true,
+                     sortAscending: false,
+                     sortColumn: 2});
+    google.visualization.events.addListener(jobs_table, 'select', function(){
+    var selection = jobs_table.getSelection();
+    var job_name = jobs_json_data.getFormattedValue(selection[0].row, 0);
     window.open('http://cautotest/new_tko/#tab_id=spreadsheet_view&' +
                 'row=job_name&column=test_name&content=&show_incomplete=true&' +
                 'show_only_latest=false&condition=job_name+%253D+%2527' +
@@ -45,7 +58,18 @@ This template builds a report showing Autotest LabTest execution status.
 </script>
 <center>
 <h2>Chrome OS LabTest Report</h2>
-<span id="labtesttable"></span>
+<table>
+<tr>
+<td>
+  <span id="labtestusers"></span>
+</td>
+</tr>
+<tr>
+<td>
+  <span id="labtestjobs"></span>
+</td>
+</tr>
+</table>
 </center>
 <hr>
 {% endblock %}

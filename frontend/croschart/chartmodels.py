@@ -37,7 +37,7 @@ import gviz_api
 FIELD_SEPARATOR = ','
 BUILD_PART_SEPARATOR = ' '
 BUILD_PATTERN = re.compile(
-    '([\w\-]+-r[c0-9]+)-([\d]+\.[\d]+\.[\d]+\.[\d]+)-(r[\w]{8})-(b[\d]+)')
+    '([\w\-]+-r[c0-9]+)-([\d]+\.[\d]+\.[\d]+\.[\d]+)-([ar][\w]*)-(b[\d]+)')
 COMMON_REGEXP = "'(%s).*'"
 NO_DIFF = 'n/a'
 
@@ -260,7 +260,7 @@ def AbbreviateBuild(build, chrome_versions, with_board=False):
   m = re.match(BUILD_PATTERN, build)
   if not m or m.lastindex < 4:
     logging.warning('Skipping poorly formatted build: %s.', build)
-    return build
+    return None
   chrome_version = ''
   if chrome_versions and m.group(2) in chrome_versions:
     chrome_version = '%s(%s)' % (BUILD_PART_SEPARATOR,
@@ -318,6 +318,16 @@ def GetChromeVersions(request):
   return chrome_versions
 
 
+def GetKernelTeam():
+  """Get Kernel team if requested."""
+  kernel_team = None
+  team_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                          'kernel-team.json')
+  if os.path.exists(team_file):
+    kernel_team = json.load(open(team_file))
+  return kernel_team
+
+
 ###############################################################################
 # Models
 def GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions, query,
@@ -336,6 +346,8 @@ def GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions, query,
     # Aggregate all the data values by test_name, test_key, build.
     for build, tag, test_key, test_value in data_list:
       build = AbbreviateBuild(build, chrome_versions)
+      if not build:
+        continue
       if not build in raw_dict:
         builds_inorder.append({'build': build})
         job_tags.append(tag)
@@ -459,6 +471,8 @@ def GetMultiTestKeyReleaseTableData(chrome_versions, query,
       key_dict = raw_dict.setdefault(test_name, {})
       build_dict = key_dict.setdefault(test_key, {})
       build = AbbreviateBuild(build, chrome_versions, with_board=True)
+      if not build:
+        continue
       job_dict = build_dict.setdefault(build, {})
       job_dict.setdefault('tag', tag)
       value_list = job_dict.setdefault('values', [])
@@ -611,32 +625,51 @@ def GetLabTestReportData(query):
   def AggregateTests(data_list):
     """Groups multiple row data by test name and platform."""
     raw_data = []
+    user_data = {}
     for job_name, job_owner, week_date, test_count in data_list:
       raw_data.append({'job_name': job_name,
                        'job_owner': job_owner,
                        'week_date': week_date,
                        'test_count': test_count})
+      if not job_owner in user_data:
+        user_data[job_owner] = {'job_owner': job_owner,
+                                'test_count': test_count}
+      else:
+        user_data[job_owner]['test_count'] += test_count
     if not raw_data:
       raise ChartDBError('No data returned')
-    return raw_data
+    # Add zero-values for members not found.
+    kernel_team = GetKernelTeam()
+    if kernel_team:
+      for k in kernel_team:
+        if not k in user_data:
+          user_data[k] = {'job_owner': k, 'test_count': 0}
+    return raw_data, sorted(user_data.values())
 
-  def ToGVizJsonTable(table_data):
+  def ToGVizJsonTable(table_data, user_table_data):
     """Massage data into gviz data table in proper order."""
-    # Now format for gviz table.
+    # Now format for gviz tables: jobs and users.
     description = {'job_name': ('string', 'Job'),
                    'job_owner': ('string', 'Owner'),
                    'week_date': ('string', 'Week'),
                    'test_count': ('number', '#Tests')}
     keys_in_order = ['job_name', 'job_owner', 'week_date', 'test_count']
-    gviz_data_table = gviz_api.DataTable(description)
-    gviz_data_table.LoadData(table_data)
-    gviz_data_table = gviz_data_table.ToJSon(keys_in_order)
-    return gviz_data_table
+    gviz_data_table_jobs = gviz_api.DataTable(description)
+    gviz_data_table_jobs.LoadData(table_data)
+    gviz_data_table_jobs = gviz_data_table_jobs.ToJSon(keys_in_order)
+
+    description = {'job_owner': ('string', 'Owner'),
+                   'test_count': ('number', '#Tests')}
+    keys_in_order = ['job_owner', 'test_count']
+    gviz_data_table_users = gviz_api.DataTable(description)
+    gviz_data_table_users.LoadData(user_table_data)
+    gviz_data_table_users = gviz_data_table_users.ToJSon(keys_in_order)
+    return {'jobs': gviz_data_table_jobs, 'users': gviz_data_table_users}
 
   cursor = readonly_connection.connection().cursor()
   cursor.execute(query)
-  test_data = AggregateTests(cursor.fetchall())
-  gviz_data_table = ToGVizJsonTable(test_data)
+  test_data, user_data = AggregateTests(cursor.fetchall())
+  gviz_data_table = ToGVizJsonTable(test_data, user_data)
   return {'gviz_data_table': gviz_data_table}
 
 
