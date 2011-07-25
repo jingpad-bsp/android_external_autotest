@@ -10,8 +10,6 @@ import subprocess
 import tempfile
 import time
 
-import autox
-
 from trackpad_util import Display, read_trackpad_test_conf
 
 
@@ -26,6 +24,7 @@ class Xcapture:
         self.xcapture_dir = '/tmp/xevent'
         self.fd = None
         self.proc = None
+        self.xcapture_cmd = 'xev'
         self.error = error
         self.conf_path = conf_path
 
@@ -36,49 +35,15 @@ class Xcapture:
             except OSError:
                 err_msg = 'Fail to make directory: %s' % self.xcapture_dir
                 raise self.error.TestError(err_msg)
-
-        # Create a popup window with override-redirect so that we can
-        # manipulate its geometry.
-        # win_x, win_y: the coordinates of the popup window
-        # win_width, win_height: the width and height of the popup window
-        self.win_x = 0
-        self.win_y = 0
-        self.win_width = self.display.screen.width_in_pixels
-        self.win_height = self.display.screen.height_in_pixels
-        win_geometry = (self.win_x, self.win_y, self.win_width, self.win_height)
-
-        self.ax = autox.AutoX()
-        # Create the popup window
-        self.popup_win = self.ax.create_and_map_window(x=self.win_x,
-                                                       y=self.win_y,
-                                                       width=self.win_width,
-                                                       height=self.win_height,
-                                                       title='Xcapture_Popup',
-                                                       override_redirect=True)
-        popup_info = self.ax.get_window_info(self.popup_win.id)
-        # Check that the popup window appears in the required position.
-        # The default timeout of await_condition is 10 seconds, which looks
-        # reasonable here too.
-        try:
-            self.ax.await_condition(
-                    lambda: popup_info.get_geometry() == win_geometry,
-                    desc='Check window 0x%x\'s geometry' % self.popup_win.id)
-        except self.autox.ConditionTimeoutError as exception:
-            raise error.TestFail('Timed out on condition: %s' %
-                                 exception.__str__())
+        logging.info('X events will be saved in %s' % self.xcapture_dir)
+        logging.info('X events capture program: %s' % self.xcapture_cmd)
 
         # Create a tmp file to capture the X events for all gesture files
         self.fd_all = tempfile.NamedTemporaryFile()
         self.xcapture_file_all = self.fd_all.name
 
         # Launch the capture process
-        self.xcapture_cmd = 'xev -id 0x%x' % int(self.popup_win.id)
         self._launch(self.fd_all)
-
-        logging.info('X events will be saved in %s' % self.xcapture_dir)
-        logging.info('X events capture program: %s' % self.xcapture_cmd)
-        logging.info('X events capture program geometry: %dx%d+%d+%d' %
-                     (self.win_width, self.win_height, self.win_x, self.win_y))
 
     def _open_file(self, filename):
         try:
@@ -162,15 +127,10 @@ class Xcapture:
             self.fd = None
 
     def terminate(self):
-        ''' Terminate the X capture subprocess and destroy the popup window '''
-        # Terminate the X capture subprocess
+        ''' Terminate the X capture subprocess '''
         if self.fd_all is not None and not self.fd_all.closed:
             self.fd_all.close()
             self.fd_all = None
         self.proc.terminate()
         self.proc.kill()
         self.proc.wait()
-
-        # Destroy the popup window
-        self.popup_win.destroy()
-        self.ax.sync()
