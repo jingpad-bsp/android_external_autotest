@@ -130,6 +130,7 @@ class PyAutoTest(test.test):
         pyauto._OPTIONS, args = parser.parse_args([])
         pyauto._OPTIONS.channel_id = ''
         pyauto._OPTIONS.no_http_server = True
+        pyauto._OPTIONS.remote_host = None
 
         self.pyauto_suite = pyauto.PyUITestSuite([])
         self.pyauto = PyUITestInAutotest()
