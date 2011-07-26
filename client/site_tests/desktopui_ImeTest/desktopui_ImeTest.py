@@ -393,7 +393,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         self.test_engine('ja', 'mozc', 'nihongo \n',
                          '\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
         self.test_engine('zh-TW', 'mozc-chewing', 'hol \n', '\xE6\x93\x8D')
-        self.test_engine('ko', 'hangul', 'wl ', '\xEC\xA7\x80 ')
+        self.test_engine('ko', 'mozc-hangul', 'wl ', '\xEC\xA7\x80 ')
         self.test_engine('zh-CN', 'pinyin', 'nihao ',
                          '\xE4\xBD\xA0\xE5\xA5\xBD')
         self.test_engine('zh-TW', 'm17n:zh:quick', 'aa ', '\xE9\x96\x93')
