@@ -39,6 +39,17 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     If the form submission is a file upload, the file will be written
     to disk with the name contained in the 'filename' field.
     """
+    # Override the default logging methods to use the logging module directly.
+    def log_error(self, format, *args):
+        logging.warning("(httpd error) %s - - [%s] %s\n" %
+                     (self.address_string(), self.log_date_time_string(),
+                      format%args))
+
+    def log_message(self, format, *args):
+        logging.debug("%s - - [%s] %s\n" %
+                     (self.address_string(), self.log_date_time_string(),
+                      format%args))
+
     @_handle_http_errors
     def do_POST(self):
         form = cgi.FieldStorage(
@@ -215,6 +226,17 @@ class SecureHTTPRequestHandler(FormHandler):
         self.connection = self.request
         self.rfile = socket._fileobject(self.request, 'rb', self.rbufsize)
         self.wfile = socket._fileobject(self.request, 'wb', self.wbufsize)
+
+    # Override the default logging methods to use the logging module directly.
+    def log_error(self, format, *args):
+        logging.warning("(httpd error) %s - - [%s] %s\n" %
+                     (self.address_string(), self.log_date_time_string(),
+                      format%args))
+
+    def log_message(self, format, *args):
+        logging.debug("%s - - [%s] %s\n" %
+                     (self.address_string(), self.log_date_time_string(),
+                      format%args))
 
 
 class SecureHTTPListener(HTTPListener):
