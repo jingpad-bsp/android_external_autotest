@@ -13,6 +13,7 @@ WHITELIST_DIR = '/var/lib/whitelist'
 BROWSER = 'chrome'
 BROWSER_EXE = '/opt/google/chrome/' + BROWSER
 
+CHROME_CORE_MAGIC_FILE = '/mnt/stateful_partition/etc/collect_chrome_crashes'
 CHROME_LOG_DIR = '/var/log/chrome'
 CHROME_WINDOW_MAPPED_MAGIC_FILE = \
     '/var/run/state/windowmanager/initial-chrome-window-mapped'

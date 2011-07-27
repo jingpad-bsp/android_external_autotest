@@ -180,6 +180,9 @@ class UITest(test.test):
         if login.logged_in():
             login.attempt_logout()
 
+        # We yearn for Chrome coredumps...
+        open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
+
         # The UI must be taken down to ensure that no stale state persists.
         cros_ui.stop()
         (self.username, self.password) = self.__resolve_creds(creds)
@@ -397,6 +400,9 @@ class UITest(test.test):
 
         self.stop_authserver()
         self.__log_crashed_processes(self.crash_blacklist)
+
+        if os.path.isfile(constants.CHROME_CORE_MAGIC_FILE):
+            os.unlink(constants.CHROME_CORE_MAGIC_FILE)
 
 
     def get_auth_endpoint_misses(self):
