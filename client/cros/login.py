@@ -89,12 +89,6 @@ def __session_manager_restarted(oldpid):
     return False
 
 
-def logged_in():
-    # this file is created when the session_manager emits start-user-session
-    # and removed when the session_manager emits stop-user-session
-    return os.path.exists(constants.LOGGED_IN_MAGIC_FILE)
-
-
 def process_crashed(process, log_reader):
     """Checks the log watched by |log_reader| to see if a crash was reported
     for |process|.
@@ -118,110 +112,6 @@ def wait_for_condition(condition, timeout_msg, timeout, process, log_reader,
             raise CrashError(crash_msg)
         else:
             raise e
-
-
-def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
-    """Attempt to log in.
-
-    Args:
-        username: str username for login
-        password: str password for login
-        timeout: float number of seconds to wait
-    Raises:
-        TimeoutError: login didn't complete before timeout
-        UnexpectedCondition: login manager is not running, or user is already
-            logged in.
-    """
-    logging.info("Attempting to login using autox.py and (%s, %s)" %
-                 (username, password))
-
-    if not __get_session_manager_pid():
-        msg = 'Session manager is not running'
-        logging.error(msg)
-        raise UnexpectedCondition(msg)
-
-    if logged_in():
-        msg = 'Already logged in'
-        logging.error(msg)
-        raise UnexpectedCondition(msg)
-
-    # Mark /var/log/messages now; we'll run through all subsequent log messages
-    # if we couldn't log in to see if the browser crashed.
-    log_reader = cros_logging.LogReader()
-    log_reader.set_start_by_current()
-
-    ax = cros_ui.get_autox()
-    # navigate to login screen
-    ax.send_hotkey("Ctrl+Alt+L")
-    # escape out of any login screen menus (e.g., the network select menu)
-    ax.send_hotkey("Escape")
-    time.sleep(0.5)
-    if (username):
-        # focus username
-        ax.send_hotkey("Alt+U")
-        ax.send_text(username)
-        # focus password
-        ax.send_hotkey("Alt+P")
-        ax.send_text(password)
-        ax.send_hotkey("Return")
-    else:
-        ax.send_hotkey("Alt+B")  # Browse without signing-in
-
-    wait_for_condition(condition=logged_in,
-                       timeout_msg='Timed out waiting for login',
-                       timeout=timeout,
-                       process='chrome',
-                       log_reader=log_reader,
-                       crash_msg='Chrome crashed during login')
-
-
-def attempt_logout(timeout=_DEFAULT_TIMEOUT):
-    """Attempt to log out by killing Chrome.
-
-    Args:
-        timeout: float number of seconds to wait
-
-    Raises:
-        TimeoutError: logout didn't complete before timeout
-        UnexpectedCondition: user is not logged in
-    """
-    if not logged_in():
-        msg = 'Already logged out'
-        logging.error(msg)
-        raise UnexpectedCondition(msg)
-
-    # We've seen a steady stream of crashes within Chrome and chromeos-wm when
-    # the UI job is stopped while those processes are still getting initialized
-    # (a situation which doesn't seem to happen in production).  We wait for the
-    # window manager to report that the first Chrome window has shown up before
-    # tearing things down to reduce the likelihood of problems.
-    wait_for_initial_chrome_window()
-
-    # Log what we're about to do to /var/log/messages. Used to log crashes later
-    # in cleanup by cros_ui_test.UITest.
-    utils.system('logger "%s"' % LOGOUT_ATTEMPT_MSG)
-
-    try:
-        oldpid = __get_session_manager_pid()
-
-        # Mark /var/log/messages now; we'll run through all subsequent log
-        # messages if we couldn't TERM and restart the session manager.
-
-        log_reader = cros_logging.LogReader()
-        log_reader.set_start_by_current()
-
-        # Gracefully exiting session manager causes the user's session to end.
-        ownership.connect_to_session_manager().StopSession('')
-
-        wait_for_condition(
-            condition=lambda: __session_manager_restarted(oldpid),
-            timeout_msg='Timed out waiting for logout',
-            timeout=timeout,
-            process='session_manager',
-            log_reader=log_reader,
-            crash_msg='session_manager crashed while shutting down.')
-    finally:
-      utils.system('logger "%s"' % LOGOUT_COMPLETE_MSG)
 
 
 def wait_for_browser(timeout=_DEFAULT_TIMEOUT):
@@ -371,46 +261,3 @@ def refresh_window_manager(timeout=_DEFAULT_TIMEOUT):
     os.unlink(constants.CHROME_WINDOW_MAPPED_MAGIC_FILE)
     nuke_process_by_name(constants.WINDOW_MANAGER)
     wait_for_window_manager()
-
-
-def refresh_login_screen(timeout=_DEFAULT_TIMEOUT):
-    """Clear any runtime state that chrome has built up at the login screen.
-
-    Args:
-        timeout: float number of seconds to wait
-
-    Raises:
-        UnexpectedCondition: called while already logged in
-        TimeoutError: chrome didn't start before timeout
-    """
-    if logged_in():
-        raise UnexpectedCondition('Already logged in')
-    wait_for_browser()
-    wait_for_login_prompt()
-    oldpid = __get_session_manager_pid()
-
-    # Clear breadcrumb that shows we've emitted login-prompt-ready.
-    try:
-        os.unlink(constants.LOGIN_PROMPT_READY_MAGIC_FILE)
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise e
-
-    # Clear old log files.
-    logpath = constants.CHROME_LOG_DIR
-    try:
-        for file in os.listdir(logpath):
-            fullpath = os.path.join(logpath, file)
-            if os.path.isfile(fullpath):
-                os.unlink(fullpath)
-
-    except (IOError, OSError) as err:
-        logging.error(err)
-
-    # Restart the UI.
-    nuke_login_manager()
-    utils.poll_for_condition(
-        lambda: __session_manager_restarted(oldpid),
-        TimeoutError('Timed out waiting for logout'),
-        timeout)
-    wait_for_login_prompt()

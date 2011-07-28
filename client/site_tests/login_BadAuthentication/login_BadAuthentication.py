@@ -31,10 +31,10 @@ class login_BadAuthentication(cros_ui_test.UITest):
 
     def run_once(self, error_string='BadAuthentication'):
         self._errorString = "Error=" + error_string
-        # TODO(cmasone): find better way to determine login has failed.
+        # TODO(cmasone): find better way to determine login has failed (webui).
         try:
             self.login(self.username, self.password)
-        except login.TimeoutError:
+        except error.TestError:
             pass
         else:
             raise error.TestFail('Should not have logged in')

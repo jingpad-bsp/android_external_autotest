@@ -5,13 +5,13 @@
 import logging, os, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, login
+from autotest_lib.client.cros import cros_ui, cros_ui_test, login
 
 class desktopui_WindowManagerFocusNewWindows(cros_ui_test.UITest):
     version = 1
 
 
-    def initialize(self, creds = '$default'):
+    def initialize(self, creds='$default'):
         cros_ui_test.UITest.initialize(self, creds)
 
 
@@ -42,7 +42,7 @@ class desktopui_WindowManagerFocusNewWindows(cros_ui_test.UITest):
         # the middle of the test.
         login.wait_for_initial_chrome_window()
 
-        self.autox = self.get_autox()
+        self.autox = cros_ui.get_autox()
 
         # Create a window and check that we switch to it.
         win = self.autox.create_and_map_window(

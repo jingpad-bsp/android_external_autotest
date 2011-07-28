@@ -21,22 +21,14 @@ class login_OwnershipNotRetaken(cros_ui_test.UITest):
 
     def run_once(self):
         login.wait_for_ownership()
-        login.attempt_logout()
+        self.logout()
         key = open(constants.OWNER_KEY_FILE, 'rb')
         hash = hashlib.md5(key.read())
         key.close()
         mtime = os.stat(constants.OWNER_KEY_FILE).st_mtime
-        login.refresh_login_screen()
-        login.attempt_login(self._TEST_USER, self._TEST_PASS)
-        try:
-            utils.poll_for_condition(
-                lambda: os.stat(constants.OWNER_KEY_FILE).st_mtime > mtime,
-                login.TimeoutError(''),
-                20)
-            # If we DIDN'T time out...badness!
+        self.login(self._TEST_USER, self._TEST_PASS)
+        if os.stat(constants.OWNER_KEY_FILE).st_mtime > mtime:
             raise error.TestFail("Owner key was touched on second login!")
-        except login.TimeoutError, e:
-            pass
 
         # Sanity check.
         key2 = open(constants.OWNER_KEY_FILE, 'rb')

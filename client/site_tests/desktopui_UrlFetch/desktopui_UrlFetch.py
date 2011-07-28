@@ -19,7 +19,7 @@ class desktopui_UrlFetch(pyauto_test.PyAutoTest):
         self.pyauto.NavigateToURL(url)
         tab_title = self.pyauto.GetActiveTabTitle()
         if tab_title != title:
-            raise error.TestError('Unexpected web site title.  Expected: %s\n'
+            raise error.TestError('Unexpected web site title.  Expected: %s. '
                                   'Returned: %s' % (title, tab_title))
 
         cookie = self.pyauto.GetCookie(pyauto.GURL(url))

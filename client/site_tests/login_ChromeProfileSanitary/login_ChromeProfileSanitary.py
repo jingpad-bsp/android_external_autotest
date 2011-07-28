@@ -63,8 +63,7 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
 
         # Navigate to site that leaves cookies.
         latch = self._testServer.add_wait_url(self._wait_path)
-        session = cros_ui.ChromeSession(args=self._test_url)
-        logging.debug('Chrome session started.')
+        self.pyauto.NavigateToURL(self._test_url)
         latch.wait(timeout)
         if not latch.is_set():
             raise error.TestError('Never received callback from browser.')

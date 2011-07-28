@@ -34,7 +34,7 @@ class PyAutoTest(test.test):
 
     Inherit this class to make calls to the PyUITest framework.
 
-    Each test begins with a clean browser profile. (ie clean local /home/chronos).
+    Each test begins with a clean browser profile. (ie clean /home/chronos).
     For each test:
       - /home/chronos is cleared before firing up chrome
       - the default test user's cryptohome vault is cleared
@@ -60,14 +60,26 @@ class PyAutoTest(test.test):
     def __init__(self, job, bindir, outputdir):
         test.test.__init__(self, job, bindir, outputdir)
 
-        self._dep = 'pyauto_dep'
-        self._dep_dir = os.path.join(self.autodir, 'deps', self._dep)
-        self._test_binary_dir = '%s/test_src/out/Release' % self._dep_dir
+        self._pyauto_dep = 'pyauto_dep'
+        self._pyauto_dep_dir = os.path.join(self.autodir, 'deps',
+                                            self._pyauto_dep)
+        self._test_binary_dir = os.path.join(
+            self._pyauto_dep_dir, 'test_src', 'out', 'Release')
 
 
     def SetupDeps(self):
         """Set up deps needed for running pyauto."""
-        self.job.install_pkg(self._dep, 'dep', self._dep_dir)
+        self.job.install_pkg(self._pyauto_dep, 'dep', self._pyauto_dep_dir)
+        # Make pyauto importable.
+        # This can be done only after pyauto_dep dependency has been installed.
+        pyautolib_dir = os.path.join(
+            os.path.dirname(__file__), os.pardir, 'deps', 'pyauto_dep',
+            'test_src', 'chrome', 'test', 'pyautolib')
+        if not os.path.isdir(pyautolib_dir):
+            raise error.TestError('%s missing.' % pyautolib_dir)
+        sys.path.append(pyautolib_dir)
+
+        # Create symlinks to chrome
         try:
             setup_cmd = '/bin/sh %s/%s' % (self._test_binary_dir,
                                            'setup_test_links.sh')
@@ -95,7 +107,13 @@ class PyAutoTest(test.test):
         os.chmod(suid_python, 04755)
 
 
-    def initialize(self, auto_login=True):
+    def initialize(self, auto_login=True, extra_chrome_flags=[]):
+        """Initialize.
+
+        Args:
+            auto_login: should we auto login using $default account?
+            extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
+        """
         assert os.geteuid() == 0, 'Need superuser privileges'
 
         # Ensure there's no stale cryptohome from previous tests
@@ -105,25 +123,19 @@ class PyAutoTest(test.test):
 
         # Reset the UI.
         login.nuke_login_manager()
-        login.refresh_login_screen()
 
         self.SetupDeps()
-
-        # Import the pyauto module
-        # This can be done only after pyauto_dep dependency has been installed.
-        pyautolib_dir = os.path.join(
-            os.path.dirname(__file__), os.pardir, 'deps', 'pyauto_dep',
-            'test_src', 'chrome', 'test', 'pyautolib')
-        assert os.path.isdir(pyautolib_dir), '%s missing.' % pyautolib_dir
-        sys.path.append(pyautolib_dir)
         import pyauto
 
-        # PyUITest is setup to use the python unittest framework.
-        # Adapt it to use in the context of autotest.
         class PyUITestInAutotest(pyauto.PyUITest):
-          def runTest(self):
-            # unittest framework expects runTest.
-            pass
+            """Adaptation of PyUITest for use in Autotest."""
+            def runTest(self):
+                # unittest framework expects runTest.
+                pass
+
+            def ExtraChromeFlags(self):
+                args = pyauto.PyUITest.ExtraChromeFlags(self)
+                return args + extra_chrome_flags
 
         parser = OptionParser()
         pyauto._OPTIONS, args = parser.parse_args([])
@@ -145,8 +157,10 @@ class PyAutoTest(test.test):
         creds = constants.CREDENTIALS['$default']
         username = cryptohome.canonicalize(creds[0])
         passwd = creds[1]
-        self.pyauto.Login(username, passwd)
-        assert self.pyauto.GetLoginInfo()['is_logged_in']
+        err_mesg = self.pyauto.Login(username, passwd)
+        if err_mesg or not self.pyauto.GetLoginInfo()['is_logged_in']:
+             raise error.TestError(
+                 'Error during Login(%s): %s' % (username, err_mesg))
         logging.info('Logged in as %s' % username)
 
 
@@ -161,6 +175,5 @@ class PyAutoTest(test.test):
 
         # Reset the UI.
         login.nuke_login_manager()
-        login.refresh_login_screen()
 
         test.test.cleanup(self)

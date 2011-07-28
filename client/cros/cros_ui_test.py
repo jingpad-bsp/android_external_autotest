@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, re, shutil, socket, sys, time
+import dbus, logging, os, re, shutil, socket, subprocess, sys, time
 import common
 import auth_server, constants, cryptohome, dns_server
-import cros_logging, cros_ui, login, ownership
-from autotest_lib.client.bin import test, utils
+import cros_logging, cros_ui, login, ownership, pyauto_test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from dbus.mainloop.glib import DBusGMainLoop
 
@@ -14,7 +14,7 @@ from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
 
-class UITest(test.test):
+class UITest(pyauto_test.PyAutoTest):
     """Base class for tests that drive some portion of the user interface.
 
     By default subclasses will use the default remote credentials before
@@ -44,7 +44,7 @@ class UITest(test.test):
     crash_blacklist = []
 
     def __init__(self, job, bindir, outputdir):
-        test.test.__init__(self, job, bindir, outputdir)
+        pyauto_test.PyAutoTest.__init__(self, job, bindir, outputdir)
 
 
     def xsystem(self, cmd, timeout=None, ignore_status=False):
@@ -130,7 +130,7 @@ class UITest(test.test):
                 ipconfig = self._flim.GetObjectInterface('IPConfig', path)
                 ipconfig.ClearProperty('NameServers')
                 logging.debug('Clearing local DNS for ' + interface)
-        utils.system('restart %s' % constants.NETWORK_MANAGER);
+        utils.system('restart %s' % constants.NETWORK_MANAGER)
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.',
                                            '127.0.0.1',
@@ -150,7 +150,19 @@ class UITest(test.test):
         self.use_local_dns()
 
 
-    def initialize(self, creds=None, is_creating_owner=False):
+    def stop_authserver(self):
+        """Tears down fake dns and fake Google Accounts server.  If your
+        subclass does not create these objects, you will want to override this
+        method as well.
+        """
+        if hasattr(self, '_authServer'):
+            self.revert_dns()
+            self._authServer.stop()
+            self._dnsServer.stop()
+
+
+    def initialize(self, creds=None, is_creating_owner=False,
+                   extra_chrome_flags=[]):
         """Overridden from test.initialize() to log out and (maybe) log in.
 
         If self.auto_login is True, this will automatically log in using the
@@ -174,9 +186,9 @@ class UITest(test.test):
                 constants.CREDENTIALS, or a 'username:password' pair.
                 Defaults to None -- browse without signing-in.
             is_creating_owner: If the test case is creating a new device owner.
+            extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
 
         """
-
         # Mark /var/log/messages now; we'll run through all subsequent
         # log messages at the end of the test and log info about processes that
         # crashed.
@@ -185,9 +197,6 @@ class UITest(test.test):
 
         if creds:
             self.start_authserver()
-
-        if login.logged_in():
-            self.logout()
 
         # We yearn for Chrome coredumps...
         open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
@@ -210,13 +219,17 @@ class UITest(test.test):
             logging.info('Erasing stale owner state.')
             ownership.clear_ownership()
             self.fake_owner = False
-        cros_ui.start()
 
-        login.refresh_login_screen()
+        cros_ui.start()
+        login.wait_for_browser()
+
+        pyauto_test.PyAutoTest.initialize(self, auto_login=False,
+                                          extra_chrome_flags=extra_chrome_flags)
         if self.auto_login:
             self.login(self.username, self.password)
             if is_creating_owner:
                 login.wait_for_ownership()
+
 
     def __fake_ownership(self):
         """Fake ownership by generating the necessary magic files."""
@@ -253,39 +266,49 @@ class UITest(test.test):
         return [cryptohome.canonicalize(name), passwd]
 
 
-    def ensure_login_complete(self):
-        """Wait for authentication to complete.  If you want a different
-        termination condition, override this method.
-        """
-        if hasattr(self, '_authServer'):
-            self._authServer.wait_for_client_login()
-
-
     def login(self, username=None, password=None):
         """Log in with a set of credentials.
-
-        Args:
-            username: String representing the username to log in as, defaults
-                to self.username.
-            password: String representing the password to log in with, defaults
-                to self.password.
 
         This method is called from UITest.initialize(), so you won't need it
         unless your testcase has cause to log in multiple times.  This
         DOES NOT affect self.username or self.password.
 
-        Forces a log out if the test is already logged in.
+        If username and self.username are not defined, logs in as guest.
+
+        Forces a log out if already logged in.
+        Blocks until login is complete.
+
+        TODO(nirnimesh): Does NOT work with webui login
+                         crosbug.com/18271
+
+        Args:
+            username: username to log in as, defaults to self.username.
+            password: password to log in with, defaults to self.password.
 
         Raises:
-            Exceptions raised by login.attempt_login
+            error.TestError, if login has an error
         """
-        if login.logged_in():
+        if self.logged_in():
             self.logout()
-            login.refresh_login_screen()
 
-        login.attempt_login(username or self.username,
-                            password or self.password)
-        self.ensure_login_complete()
+        uname = username or self.username
+        passwd = password or self.password
+
+        if uname:  # Regular login
+            login_error = self.pyauto.Login(username=uname, password=passwd)
+            if login_error:
+                raise error.TestError('Error during login (%s, %s): %s.' % (
+                                      uname, passwd, login_error))
+            logging.info('Logged in as %s.' % uname)
+        else:  # Login as guest
+            self.pyauto.LoginAsGuest()
+            logging.info('Logged in as guest.')
+        if not self.logged_in():
+            raise error.TestError('Not logged in')
+
+
+    def logged_in(self):
+        return self.pyauto.GetLoginInfo()['is_logged_in']
 
 
     def logout(self):
@@ -294,6 +317,8 @@ class UITest(test.test):
         This method is called from UITest.cleanup(), so you won't need it
         unless your testcase needs to test functionality while logged out.
         """
+        if not self.logged_in():
+            return
         try:
             # Recover dirs from cryptohome in case another test run wipes.
             for dir in constants.CRYPTOHOME_DIRS_TO_RECOVER:
@@ -305,17 +330,7 @@ class UITest(test.test):
                     shutil.copytree(src=dir_path, dst=target, symlinks=True)
         except (IOError, OSError, shutil.Error) as err:
             logging.error(err)
-        login.attempt_logout()
-
-
-    def get_autox(self):
-        """Return a new autox instance.
-
-        Explicitly cache this in your testcase if you want to reuse the
-        object, but beware that logging out will invalidate any existing
-        sessions.
-        """
-        return cros_ui.get_autox()
+        self.pyauto.Logout()
 
 
     def validate_basic_policy(self, basic_policy):
@@ -339,17 +354,6 @@ class UITest(test.test):
         polval.ParseFromString(poldata.policy_value)
         ownership.assert_new_users(polval, True)
         ownership.assert_users_on_whitelist(polval, (self.username,))
-
-
-    def stop_authserver(self):
-        """Tears down fake dns and fake Google Accounts server.  If your
-        subclass does not create these objects, you will want to override this
-        method as well.
-        """
-        if hasattr(self, '_authServer'):
-            self.revert_dns()
-            self._authServer.stop()
-            self._dnsServer.stop()
 
 
     def __log_crashed_processes(self, processes):
@@ -380,22 +384,22 @@ class UITest(test.test):
 
 
     def cleanup(self):
-        """Overridden from test.cleanup() to log out when the test is complete.
+        """Overridden from pyauto_test.cleanup() to log out and restart
+           session_manager when the test is complete.
         """
         logpath = constants.CHROME_LOG_DIR
-
         try:
             for filename in os.listdir(logpath):
                 fullpath = os.path.join(logpath, filename)
                 if os.path.isfile(fullpath):
                     shutil.copy(fullpath, os.path.join(self.resultsdir,
                                                        filename))
-
         except (IOError, OSError) as err:
             logging.error(err)
 
-        if login.logged_in():
+        if self.logged_in():
             self.logout()
+        pyauto_test.PyAutoTest.cleanup(self)
 
         if os.path.isfile(constants.CRYPTOHOMED_LOG):
             try:

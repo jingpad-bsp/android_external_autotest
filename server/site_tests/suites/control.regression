@@ -20,7 +20,9 @@ TESTS = [
   ('desktopui_FontCache', {}),
   ('desktopui_GTK2Config', {}),
   ('desktopui_IBusTest', {}),
-  ('desktopui_ImeTest', {}),
+# Convert to using pyauto calls
+# crosbug.com/18884
+#  ('desktopui_ImeTest', {}),
   ('desktopui_SunSpiderBench', {}),
   ('desktopui_V8Bench', {}),
   ('desktopui_WindowManagerHotkeys', {}),

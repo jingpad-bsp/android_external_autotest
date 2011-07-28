@@ -477,8 +477,11 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
         latch = self._testServer.add_wait_url('/done')
 
-        session = cros_ui.ChromeSession(self._server_root + _CONTROL_ENDPOINT)
-        logging.debug('Chrome session started.')
+        # Temporarily increment pyauto timeout
+        pyauto_timeout_changer = self.pyauto.ActionTimeoutChanger(
+            self.pyauto, timeout * 1000)
+        self.pyauto.NavigateToURL(self._server_root + _CONTROL_ENDPOINT)
+        del pyauto_timeout_changer
 
         latch.wait(timeout)
         if not latch.is_set():

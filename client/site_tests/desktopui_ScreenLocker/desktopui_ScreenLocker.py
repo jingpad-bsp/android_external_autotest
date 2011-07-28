@@ -2,80 +2,35 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
-import gobject
-import os
-import time
-
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test
 
-from dbus.mainloop.glib import DBusGMainLoop
 
 class desktopui_ScreenLocker(cros_ui_test.UITest):
     version = 1
-    _POWER_MANAGER_INTERFACE = 'org.chromium.PowerManager'
 
-    def locked(self):
-        self._locked = True
 
-    def unlocked(self):
-        self._locked = False
+    def initialize(self, creds='$default'):
+        cros_ui_test.UITest.initialize(self, creds)
 
-    def process_event(self):
-        """Process dbus events"""
-        context = gobject.MainLoop().get_context()
-        while context.iteration(False):
-            pass
 
     def is_screen_locked(self):
-        self.process_event()
-        return self._locked
+        return self.pyauto.GetLoginInfo()['is_screen_locked']
 
-    def is_screen_unlocked(self):
-        self.process_event()
-        return self._locked == False
 
     def run_once(self):
-        self._locked = False
-        self.listen_to_signal(lambda: self.locked(),
-                              'ScreenIsLocked',
-                              self._POWER_MANAGER_INTERFACE)
-        self.listen_to_signal(lambda: self.unlocked(),
-                              'ScreenIsUnlocked',
-                              self._POWER_MANAGER_INTERFACE)
-        # wait 2 seconds to make sure chrome registers
-        # the accelerator.
-        time.sleep(5);
+        self.pyauto.LockScreen()
 
-        ax = self.get_autox()
-        ax.send_hotkey('Ctrl-Alt-l')
-
-        utils.poll_for_condition(
-            condition=lambda: self.is_screen_locked(),
-            desc='screenlocker lock')
+        if not self.is_screen_locked():
+            error.TestFail('screenlocker not locked')
 
         # send an incorrect password
-        ax.send_text('_boguspassword_')
-        ax.send_hotkey('Return')
-
+        error = self.pyauto.UnlockScreen('_boguspassword_')
         # verify that the screen unlock attempt failed
-        try:
-          utils.poll_for_condition(
-              condition=lambda: self.is_screen_unlocked(),
-              desc='screen unlock',
-              timeout=5)
-        except error.TestError:
-            pass
-        else:
-            raise error.TestFail('screen locker unlocked with bogus password.')
+        if not error or not self.is_screen_locked():
+            raise error.TestFail('unlocked with bogus password: %s' % error)
 
         # send the correct password
-        ax.send_text(self.password)
-        ax.send_hotkey('Return')
-
-        # wait for screen to unlock
-        utils.poll_for_condition(
-            condition=lambda: self.is_screen_unlocked(),
-            desc='screenlocker unlock')
+        error = self.pyauto.UnlockScreen(self.password)
+        if error or self.is_screen_locked():
+            raise error.TestFail('could not unlock screensaver: %s' % error)

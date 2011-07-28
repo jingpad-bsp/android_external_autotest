@@ -121,7 +121,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
 
 
     def toggle_ime_process(self):
-        ax = self.get_autox()
+        ax = cros_ui.get_autox()
 
         # Open the config dialog.
         ax.send_hotkey('Ctrl+t')
@@ -149,7 +149,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         @param language Language ID of the IME.
         @param engine Name of the engine to enable.
         """
-        ax = self.get_autox()
+        ax = cros_ui.get_autox()
 
         # Open the config dialog.
         ax.send_hotkey('Ctrl+t')
@@ -188,7 +188,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
 
         @param language Language ID of the language to remove.
         """
-        ax = self.get_autox()
+        ax = cros_ui.get_autox()
 
         # Open the config dialog.
         ax.send_hotkey('Ctrl+t')
@@ -229,7 +229,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         # Because there can be a slight delay between entering text and the
         # output from the ime being received, we need to sleep here.
         time.sleep(1)
-        ax = self.get_autox()
+        ax = cros_ui.get_autox()
 
         # The DISPLAY environment variable isn't set, so we have to manually get
         # the proper display.
@@ -297,7 +297,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
             self.log_error('test_keyboard_shortcut',
                            'Initial engine is %s, expected %s' %
                            (current_engine, expected_initial_engine))
-        ax = self.get_autox()
+        ax = cros_ui.get_autox()
         ax.send_hotkey('Ctrl-l')
         # If we don't sleep here sometimes the following keys are not received
         time.sleep(1)
@@ -329,7 +329,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
 
     def test_engine_omnibox(self, language, engine_name, input_string,
                             expected_string):
-        ax = self.get_autox()
+        ax = cros_ui.get_autox()
 
         # Focus on the omnibox so that we can enter text.
         ax.send_hotkey('Ctrl-l')
@@ -352,7 +352,7 @@ class desktopui_ImeTest(cros_ui_test.UITest):
 
     def test_engine_form(self, language, engine_name, input_string,
                          expected_string):
-        ax = self.get_autox()
+        ax = cros_ui.get_autox()
         # Go to the page containing the form.
         self.activate_engine('xkb:us::eng')
         ax.send_hotkey("Ctrl+l")

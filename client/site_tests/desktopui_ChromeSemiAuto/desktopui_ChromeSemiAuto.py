@@ -26,8 +26,11 @@ class desktopui_ChromeSemiAuto(cros_ui_test.UITest):
     def run_once(self, timeout=60):
         latch = self._testServer.add_wait_url('/interaction/test')
 
-        session = cros_ui.ChromeSession(self._test_url)
-        logging.debug('Chrome session started.')
+        # Temporarily increment pyauto timeout
+        pyauto_timeout_changer = self.pyauto.ActionTimeoutChanger(
+            self.pyauto, timeout * 1000)
+        self.pyauto.NavigateToURL(self._test_url)
+        del pyauto_timeout_changer
         latch.wait(timeout)
 
         if not latch.is_set():

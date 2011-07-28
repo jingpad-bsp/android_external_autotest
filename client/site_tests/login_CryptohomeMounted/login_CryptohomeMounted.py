@@ -4,7 +4,7 @@
 
 import os
 from autotest_lib.client.cros import constants
-from autotest_lib.client.cros import cros_ui_test, cryptohome, login
+from autotest_lib.client.cros import cros_ui, cros_ui_test, cryptohome, login
 
 TEST_USER = 'cryptohome_test@chromium.org'
 TEST_PASS = 'testme'

@@ -83,10 +83,7 @@ class ChromeSession(object):
 
 
     def start(self, args=''):
-        if not login.logged_in():
-            raise login.UnexpectedCondition("Not logged in!")
 
-        # Open a new browser tab in the running chrome process.
         cmd = '%s --no-first-run --user-data-dir=%s %s' % (
             constants.BROWSER_EXE, constants.USER_DATA_DIR, args)
         xsystem_as(cmd)

@@ -2,10 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, time
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_logging, cros_ui
-from autotest_lib.client.cros import cros_ui_test, login, httpd
+from autotest_lib.client.cros import constants, cros_logging
+from autotest_lib.client.cros import cros_ui_test, httpd
 
 
 class desktopui_FlashSanityCheck(cros_ui_test.UITest):
@@ -22,12 +21,16 @@ class desktopui_FlashSanityCheck(cros_ui_test.UITest):
         self._log_reader = cros_logging.LogReader()
         self._log_reader.set_start_by_current()
 
-        # Make sure that we don't have the initial browser window popping up in
-        # the middle of the test.
-        login.wait_for_initial_chrome_window()
-        session = cros_ui.ChromeSession(args=self._test_url)
-        # TODO(nirnimesh) use pyauto to accurately wait.
-        time.sleep(time_to_wait)
+        # Ensure that the swf got pulled
+        latch = self._testServer.add_wait_url('/Trivial.swf')
+        self.pyauto.NavigateToURL(self._test_url)
+        latch.wait(time_to_wait)
+
+        child_processes = self.pyauto.GetBrowserInfo()['child_processes']
+        flash_processes = [x for x in child_processes if
+                           x['name'] == 'Shockwave Flash']
+        if not flash_processes:
+            raise error.TestFail('No flash process found.')
 
         # Any better pattern matching?
         msg = ' Received crash notification for ' + constants.BROWSER

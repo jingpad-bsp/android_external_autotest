@@ -30,7 +30,6 @@ class OwnershipTest(test.test):
 
     def initialize(self):
         ownership.clear_ownership()
-        login.refresh_login_screen()
         super(OwnershipTest, self).initialize()
 
 

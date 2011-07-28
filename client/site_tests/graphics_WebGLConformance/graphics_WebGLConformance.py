@@ -54,7 +54,8 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         self._test_url = 'http://localhost:8000/webgl-conformance-tests.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        cros_ui_test.UITest.initialize(self, creds)
+        cros_ui_test.UITest.initialize(self, creds,
+                                       extra_chrome_flags=['--enable-webgl'])
 
     def setup(self, tarball='webgl-conformance-1.0.0.tar.bz2'):
         shutil.rmtree(self.srcdir, ignore_errors=True)
@@ -79,8 +80,13 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         self.crash_blacklist.append('chromium')
 
         latch = self._testServer.add_wait_url('/WebGL/results')
-        cros_ui.ChromeSession(' --enable-webgl %s' % self._test_url)
-        logging.debug('Chrome session started.')
+        # Loading the url might take longer than pyauto automation timeout.
+        # Temporarily increment pyauto timeout.
+        pyauto_timeout_changer = self.pyauto.ActionTimeoutChanger(
+            self.pyauto, timeout * 1000)
+        logging.info('Going to %s' % self._test_url)
+        self.pyauto.NavigateToURL(self._test_url)
+        del pyauto_timeout_changer
         latch.wait(timeout)
 
         if not latch.is_set():
