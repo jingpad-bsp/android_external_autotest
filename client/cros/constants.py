@@ -66,6 +66,8 @@ ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 
 OWNER_KEY_FILE = WHITELIST_DIR + '/owner.key'
 
+PORTAL_CHECK_URL = '/generate_204'
+
 SESSION_MANAGER = 'session_manager'
 SESSION_MANAGER_LOG = '/var/log/session_manager'
 SIGNED_POLICY_FILE = WHITELIST_DIR + '/policy'

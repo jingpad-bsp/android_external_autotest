@@ -5,7 +5,7 @@
 import httplib, logging, os, socket, stat, time
 
 import common
-import constants as chromeos_constants, cryptohome, httpd
+import constants, cryptohome, httpd
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
@@ -31,9 +31,9 @@ class GoogleAuthServer(object):
                  cl_responder=None,
                  it_responder=None,
                  ta_responder=None):
-        self._client_login = chromeos_constants.CLIENT_LOGIN_URL
-        self._issue_token = chromeos_constants.ISSUE_AUTH_TOKEN_URL
-        self._token_auth = chromeos_constants.TOKEN_AUTH_URL
+        self._client_login = constants.CLIENT_LOGIN_URL
+        self._issue_token = constants.ISSUE_AUTH_TOKEN_URL
+        self._token_auth = constants.TOKEN_AUTH_URL
         self._test_over = '/webhp'
 
         self._testServer = httpd.SecureHTTPListener(port=ssl_port,
@@ -52,6 +52,8 @@ class GoogleAuthServer(object):
         self._testServer.add_url_handler(self._client_login, cl_responder)
         self._testServer.add_url_handler(self._issue_token, it_responder)
         self._testServer.add_url_handler(self._token_auth, ta_responder)
+        self._testServer.add_url_handler(constants.PORTAL_CHECK_URL,
+                                         self.portal_check_responder)
 
         self._client_latch = self._testServer.add_wait_url(self._client_login)
         self._issue_latch = self._testServer.add_wait_url(self._issue_token)
@@ -103,7 +105,7 @@ class GoogleAuthServer(object):
 
 
     def client_login_responder(self, handler, url_args):
-        logging.info(url_args)
+        logging.debug(url_args)
         handler.send_response(httplib.OK)
         handler.end_headers()
         handler.wfile.write('SID=%s\n' % self.sid)
@@ -111,11 +113,11 @@ class GoogleAuthServer(object):
 
 
     def issue_token_responder(self, handler, url_args):
-        logging.info(url_args)
-        if url_args['service'].value != chromeos_constants.LOGIN_SERVICE:
+        logging.debug(url_args)
+        if url_args['service'].value != constants.LOGIN_SERVICE:
             handler.send_response(httplib.FORBIDDEN)
             handler.end_headers()
-            handler.wfile.write(chromeos_constants.LOGIN_ERROR)
+            handler.wfile.write(constants.LOGIN_ERROR)
             return
 
         if not (self.sid == url_args['SID'].value and
@@ -127,13 +129,19 @@ class GoogleAuthServer(object):
 
 
     def token_auth_responder(self, handler, url_args):
-        logging.info(url_args)
+        logging.debug(url_args)
         if not self.token == url_args['auth'][0]:
             raise error.TestError('TokenAuth called with incorrect args')
         if not 'continue' in url_args:
             raise error.TestError('TokenAuth called with no continue param')
         handler.send_response(httplib.SEE_OTHER)
         handler.send_header('Location', url_args['continue'][0])
+        handler.end_headers()
+
+
+    def portal_check_responder(self, handler, url_args):
+        logging.debug(url_args)
+        handler.send_response(httplib.NO_CONTENT)
         handler.end_headers()
 
 
