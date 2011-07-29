@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, os, re, time
+import glob, logging, math, os, re, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
@@ -189,7 +189,7 @@ class BatteryStat(DevStat):
         self.charge_full = self.charge_full / 1000000
         self.charge_full_design = self.charge_full_design / 1000000
         self.charge_now = self.charge_now / 1000000
-        self.current_now = self.current_now / 1000000
+        self.current_now = math.fabs(self.current_now) / 1000000
         self.voltage_min_design = self.voltage_min_design / 1000000
         self.voltage_now = self.voltage_now / 1000000
 
