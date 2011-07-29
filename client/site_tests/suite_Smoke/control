@@ -24,8 +24,6 @@ job.run_test('desktopui_ChromeFirstRender')
 
 job.run_test('desktopui_KillRestart', binary='^chrome$', tag='chrome')
 job.run_test('desktopui_KillRestart', binary='^session_manager$', tag='session')
-job.run_test('logging_CrashSender')
-job.run_test('logging_UserCrash')
 job.run_test('login_BadAuthentication')
 job.run_test('login_CryptohomeIncognitoMounted')
 job.run_test('login_CryptohomeMounted')
