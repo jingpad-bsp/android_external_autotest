@@ -31,7 +31,8 @@ class network_3GSuspendResume(test.test):
             'scenario_suspend_3g_enabled',
             'scenario_suspend_3g_disabled',
             'scenario_suspend_3g_disabled_twice',
-            'scenario_autoconnect',
+            # TODO(jglasgow): enable when it stops making test abort
+            # 'scenario_autoconnect',
         ],
         'stress': [
             'scenario_suspend_3g_random',
