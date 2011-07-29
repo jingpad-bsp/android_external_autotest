@@ -35,7 +35,6 @@ class LogReader(object):
                 'ls -tr1 %s.*' % self._filename,
                 ignore_status=True).splitlines())
         log_files.append(self._filename)
-        logging.info(log_files)
         for log_file in log_files:
             f = open(log_file)
             for line in f:
