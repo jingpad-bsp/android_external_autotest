@@ -109,5 +109,5 @@ class platform_GCC(test.test):
         if len(error_messages) != 0:
             raise error.TestFail('\n'.join(error_messages))
 
+    def cleanup(self):
         utils.system(os.path.join(self.bindir, 'dejagnu_cleanup_remote'))
-
