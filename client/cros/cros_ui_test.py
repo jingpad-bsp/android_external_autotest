@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, re, shutil, socket, sys
+import dbus, logging, os, re, shutil, socket, sys, time
 import common
 import auth_server, constants, cryptohome, dns_server
 import cros_logging, cros_ui, login, ownership
@@ -285,6 +285,16 @@ class UITest(test.test):
         This method is called from UITest.cleanup(), so you won't need it
         unless your testcase needs to test functionality while logged out.
         """
+        try:
+            # Recover dirs from cryptohome in case another test run wipes.
+            for dir in constants.CRYPTOHOME_DIRS_TO_RECOVER:
+                dir_path = os.path.join(constants.CRYPTOHOME_MOUNT_PT, dir)
+                if os.path.isdir(dir_path):
+                    shutil.copytree(
+                        dir_path, os.path.join(self.resultsdir,
+                                               "%s-%f" % (dir, time.time())))
+        except (IOError, OSError) as err:
+            logging.error(err)
         login.attempt_logout()
 
 
@@ -375,15 +385,6 @@ class UITest(test.test):
             logging.error(err)
 
         if login.logged_in():
-            try:
-                # Recover dirs from cryptohome in case another test run wipes.
-                for dir in constants.CRYPTOHOME_DIRS_TO_RECOVER:
-                    dir_path = os.path.join(constants.CRYPTOHOME_MOUNT_PT, dir)
-                    if os.path.isdir(dir_path):
-                        shutil.copytree(
-                            dir_path, os.path.join(self.resultsdir, dir))
-            except (IOError, OSError) as err:
-                logging.error(err)
             self.logout()
 
         if os.path.isfile(constants.CRYPTOHOMED_LOG):

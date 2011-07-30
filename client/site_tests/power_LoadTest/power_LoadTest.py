@@ -257,7 +257,7 @@ class power_LoadTest(cros_ui_test.UITest):
         # re-enable powerd
         os.system('start powerd')
         if login.logged_in():
-            login.attempt_logout()
+            self.logout()
         # cleanup backchannel interface
         if self._force_wifi:
             backchannel.teardown()
