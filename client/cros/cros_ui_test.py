@@ -178,7 +178,7 @@ class UITest(test.test):
             self.start_authserver()
 
         if login.logged_in():
-            login.attempt_logout()
+            self.logout()
 
         # We yearn for Chrome coredumps...
         open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
@@ -271,7 +271,7 @@ class UITest(test.test):
             Exceptions raised by login.attempt_login
         """
         if login.logged_in():
-            login.attempt_logout(timeout=login._DEFAULT_TIMEOUT)
+            self.logout()
             login.refresh_login_screen()
 
         login.attempt_login(username or self.username,
@@ -290,9 +290,10 @@ class UITest(test.test):
             for dir in constants.CRYPTOHOME_DIRS_TO_RECOVER:
                 dir_path = os.path.join(constants.CRYPTOHOME_MOUNT_PT, dir)
                 if os.path.isdir(dir_path):
-                    shutil.copytree(
-                        dir_path, os.path.join(self.resultsdir,
-                                               "%s-%f" % (dir, time.time())))
+                    target = os.path.join(self.resultsdir,
+                                          '%s-%f' % (dir, time.time()))
+                    logging.debug('Saving %s to %s.', dir_path, target)
+                    shutil.copytree(dir_path, target)
         except (IOError, OSError) as err:
             logging.error(err)
         login.attempt_logout()
