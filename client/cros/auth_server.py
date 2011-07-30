@@ -52,8 +52,6 @@ class GoogleAuthServer(object):
         self._testServer.add_url_handler(self._client_login, cl_responder)
         self._testServer.add_url_handler(self._issue_token, it_responder)
         self._testServer.add_url_handler(self._token_auth, ta_responder)
-        self._testServer.add_url_handler(constants.PORTAL_CHECK_URL,
-                                         self.portal_check_responder)
 
         self._client_latch = self._testServer.add_wait_url(self._client_login)
         self._issue_latch = self._testServer.add_wait_url(self._issue_token)
@@ -62,6 +60,8 @@ class GoogleAuthServer(object):
         self._testHttpServer = httpd.HTTPListener(port=port)
         self._testHttpServer.add_url_handler(self._test_over,
                                              self.__test_over_responder)
+        self._testHttpServer.add_url_handler(constants.PORTAL_CHECK_URL,
+                                             self.portal_check_responder)
         self._over_latch = self._testHttpServer.add_wait_url(self._test_over)
 
 
@@ -140,7 +140,7 @@ class GoogleAuthServer(object):
 
 
     def portal_check_responder(self, handler, url_args):
-        logging.debug(url_args)
+        logging.debug('Handling captive portal check')
         handler.send_response(httplib.NO_CONTENT)
         handler.end_headers()
 

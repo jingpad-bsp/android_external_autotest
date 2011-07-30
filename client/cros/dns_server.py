@@ -12,7 +12,7 @@ class LocalDns(object):
 
     def __init__(self, fake_ip="127.0.0.1", local_port=53):
         import miniFakeDns  # So we don't need to install it in the chroot.
-        self._dns = miniFakeDns.DNSServer(fake_ip="127.0.0.1", port=local_port)
+        self._dns = miniFakeDns.DNSServer(fake_ip=fake_ip, port=local_port)
         self._stopper = threading.Event()
         self._thread = threading.Thread(target=self._dns.run,
                                         args=(self._stopper,))

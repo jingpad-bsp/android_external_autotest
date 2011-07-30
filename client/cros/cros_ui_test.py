@@ -97,7 +97,8 @@ class UITest(test.test):
     def use_local_dns(self, dns_port=53):
         """Set all devices to use our in-process mock DNS server.
         """
-        self._dnsServer = dns_server.LocalDns(local_port=dns_port)
+        self._dnsServer = dns_server.LocalDns(fake_ip='127.0.0.1',
+                                              local_port=dns_port)
         self._dnsServer.run()
         self._bus_loop = DBusGMainLoop(set_as_default=True)
         self._system_bus = dbus.SystemBus(mainloop=self._bus_loop)
