@@ -39,22 +39,42 @@ class platform_KernelErrorPaths(test.test):
             # It is expected that this will cause a non-zero exit status.
             pass
 
-    def configure_crash_reporting(self):
-        self._preserved_files = []
-        for f in (CrashTestDefs._PAUSE_FILE, CrashTestDefs._CONSENT_FILE):
-            if not os.path.exists(f):
-                self.client.run('touch "%s"' % f)
-                self.client.run('chown chronos "%s"' % f)
-                self._preserved_files.append(f)
+    def _exists_on_client(self, f):
+        return self.client.run('ls "%s"' % f,
+                               ignore_status=True).exit_status == 0
+
+    def _enable_consent(self):
+        """ Enable consent so that crashes get stored in /var/spool/crash. """
+        self._consent_files = [
+            (CrashTestDefs._PAUSE_FILE, None, 'chronos'),
+            (CrashTestDefs._CONSENT_FILE, None, 'chronos'),
+            (CrashTestDefs._POLICY_FILE, 'mock_metrics_on.policy', 'root'),
+            (CrashTestDefs._OWNER_KEY_FILE, 'mock_metrics_owner.key', 'root'),
+            ]
+        for dst, src, owner in self._consent_files:
+            if self._exists_on_client(dst):
+                self.client.run('mv "%s" "%s.autotest_backup"' % (dst, dst))
+            if src:
+                full_src = os.path.join(self.autodir, 'client/cros', src)
+                self.client.send_file(full_src, dst)
+            else:
+                self.client.run('touch "%s"' % dst)
+            self.client.run('chown "%s" "%s"' % (owner, dst))
+
+    def _restore_consent_files(self):
+        """ Restore consent files to their previous values. """
+        for f, _, _ in self._consent_files:
+            self.client.run('rm -f "%s"' % f)
+            if self._exists_on_client('%s.autotest_backup' % f):
+                self.client.run('mv "%s.autotest_backup" "%s"' % (f, f))
 
     def cleanup(self):
-        for f in self._preserved_files:
-            self.client.run('rm -f "%s"' % f)
+        self._restore_consent_files()
         test.test.cleanup(self)
 
     def run_once(self, host=None):
         self.client = host
-        self.configure_crash_reporting()
+        self._enable_consent()
 
         crash_log_dir = CrashTestDefs._SYSTEM_CRASH_DIR
 
