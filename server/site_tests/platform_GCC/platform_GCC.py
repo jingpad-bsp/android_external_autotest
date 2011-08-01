@@ -13,6 +13,7 @@ class platform_GCC(test.test):
 
     TEST_STATUSES = ('PASS', 'FAIL', 'UNRESOLVED', 'UNTESTED', 'UNSUPPORTED',
                      'XFAIL', 'KFAIL', 'XPASS', 'KPASS')
+    TARBALL = '/usr/local/dejagnu/gcc/tests.tar.gz'
 
     def parse_log(self, log):
         results = {}
@@ -75,7 +76,20 @@ class platform_GCC(test.test):
                      (os.path.join(self.bindir, 'dejagnu_init_remote'),
                       self.client.ip))
 
-        gcc_dir = glob.glob(options.gcc_dir)[0]
+        gcc_dirs = glob.glob(options.gcc_dir)
+        if len(gcc_dirs) == 0:
+            # If there is no directory present, try untarring the tarball
+            # installed by the gcc package.
+            logging.info('No gcc directory found, attempting to untar from %s'
+                         % self.TARBALL)
+            os.chdir('/')
+            os.system('tar -xzf %s' % self.TARBALL)
+            gcc_dirs = glob.glob(options.gcc_dir)
+            if len(gcc_dirs) == 0:
+                raise error.TestFail('No gcc directory to test was found')
+
+        gcc_dir = gcc_dirs[0]
+
         logging.info('Testing gcc in the following directory: %s' % gcc_dir)
         exp_file = os.path.join(self.bindir, 'site.exp')
         client_hostname = str(self.client.ip)
