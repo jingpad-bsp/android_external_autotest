@@ -38,8 +38,9 @@ TESTS = [
 # http://code.google.com/p/chromium-os/issues/detail?id=7758
 #  ('desktopui_ScreenLocker', {}),
   ('graphics_WindowManagerGraphicsCapture', {}),
-  ('logging_CrashSender', {}),
-  ('logging_UserCrash', {}),
+# TODO(mkrebs): Re-enable once http://crosbug.com/18413 is fixed.
+#  ('logging_CrashSender', {}),
+#  ('logging_UserCrash', {}),
   ('login_BadAuthentication', {}),
   ('login_CryptohomeIncognitoMounted', {}),
   ('login_CryptohomeMounted', {}),
