@@ -98,7 +98,7 @@ class KbdShortcutDatabase:
         assert(None not in self._kbd_shortcut_map)
         delta = set(test_list) - set(self._kbd_shortcut_map.values())
         for test in delta:
-            collision = kbd_shortcut_map[test.kbd_shortcut]
+            collision = self._kbd_shortcut_map[test.kbd_shortcut]
             log('ERROR: tests %s and %s both have kbd_shortcut %s' %
                 (test_db.get_unique_id_str(test),
                  test_db.get_unique_id_str(collision),

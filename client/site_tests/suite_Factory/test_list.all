@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -19,7 +19,11 @@
 # You can tune these settings to fit your factory process.
 
 # Change this to False if you want and allow fast wipe (insecure).
-_DO_FACTORY_SECURE_WIPE = True
+_DO_FACTORY_SECURE_WIPE = False
+
+# Change this to enable firmware writeprotect on finalize.
+# THIS IS REQUIRED TO BE TRUE FOR SHIPPING DEVICES.
+_ENABLE_FW_WP = False # WARNING: False is ONLY ALLOWED FOR DEBUGGING.
 
 # Change this to the number of reboots you want during run-in.
 _REBOOT_SEQ_ITERATIONS = 2
@@ -66,9 +70,9 @@ TEST_LIST = [
     #           '/site_tests/factory_ScriptWrapper/dummy.sh'}),
 
     AutomatedSequence(
-        label_en='run-in',
-        label_zw='燒機測試',
-        subtest_tag_prefix='runin',
+        label_en='memory',
+        label_zw='壓力測試',
+        subtest_tag_prefix='memoryrunin',
         kbd_shortcut='r',
         subtest_list=[
 
@@ -78,26 +82,51 @@ TEST_LIST = [
                 autotest_name='hardware_SAT',
                 dargs={'seconds': _SAT_DURATION_SECS},
                 drop_caches=True),
+        ]),
+
+    AutomatedSequence(
+        label_en='graphics',
+        label_zw='圖型',
+        subtest_tag_prefix='graphicsrunin',
+        kbd_shortcut='3',
+        subtest_list=[
 
             AutomatedSubTest(
                 label_en='graphics',
                 label_zw='圖型',
                 autotest_name='graphics_GLBench'),
+        ]),
+
+    AutomatedSequence(
+        label_en='restart',
+        label_zw='燒機測試',
+        subtest_tag_prefix='restartrunin',
+        kbd_shortcut='p',
+        subtest_list=[
 
             AutomatedSubTest(
                 label_en='sleep / wake',
                 label_zw='睡眠 / 喚醒',
                 autotest_name='power_Resume'),
 
+            AutomatedRebootSubTest(
+                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
+                label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
+                iterations=_REBOOT_SEQ_ITERATIONS),
+        ]),
+
+    AutomatedSequence(
+        label_en='gps',
+        label_zw='GPS 硬體',
+        subtest_tag_prefix='gpspresence',
+        kbd_shortcut='g',
+        subtest_list=[
+
             AutomatedSubTest(
                 label_en='GPS hardware',
                 label_zw='GPS 硬體',
                 autotest_name='hardware_GPS'),
-
-            AutomatedRebootSubTest(
-                label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
-                label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
-                iterations=_REBOOT_SEQ_ITERATIONS)]),
+        ]),
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
@@ -119,14 +148,6 @@ TEST_LIST = [
         label_zw='觸控板',
         autotest_name='factory_Touchpad',
         kbd_shortcut='t'),
-
-    OperatorTest(
-        label_en='leds',
-        label_zw='機身側燈',
-        autotest_name='factory_Leds',
-        kbd_shortcut='l',
-        dargs={'led_ctl_path':
-                 '/usr/local/autotest/site_tests/factory_Leds/src/ec_ctl'}),
 
     OperatorTest(
         label_en='display',
@@ -166,27 +187,6 @@ TEST_LIST = [
         autotest_name='factory_ExternalStorage',
         kbd_shortcut='d',
         dargs={'media':'SD'}),
-
-    # OperatorTest(
-    #    label_en='bluetooth',
-    #    label_zw='藍芽',
-    #    autotest_name='factory_Dummy',
-    #    kbd_shortcut='o',
-    #    dargs={'msg':'bluetooth test, one day...'}),
-
-    # OperatorTest(
-    #    label_en='3g',
-    #    label_zw='3G上網',
-    #    autotest_name='factory_Dummy',
-    #    kbd_shortcut='g',
-    #    dargs={'msg':'3g test, one day...'}),
-
-    # OperatorTest(
-    #    label_en='wifi',
-    #    label_zw='無線上網',
-    #    autotest_name='factory_Dummy',
-    #    kbd_shortcut='w',
-    #    dargs={'msg':'wifi test, one day...'}),
 
     OperatorTest(
         label_en='light sensor',
@@ -257,7 +257,7 @@ TEST_LIST = [
                 autotest_name='factory_Finalize',
                 dargs={
                     'check_required_tests': True,
-                    'check_and_enable_write_protect': True,
+                    'check_and_enable_write_protect': _ENABLE_FW_WP,
                     'upload_method': _REPORT_UPLOAD_METHOD,
                     'secure_wipe': _DO_FACTORY_SECURE_WIPE,
                 })]),
