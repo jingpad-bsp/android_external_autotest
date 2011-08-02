@@ -1,4 +1,3 @@
-/usr/libexec/polkit-agent-helper-1
 /usr/libexec/dbus-daemon-launch-helper
 /usr/lib/misc/ssh-keysign
 /usr/sbin/pppd
@@ -8,7 +7,6 @@
 /usr/bin/chfn
 /usr/bin/expiry
 /usr/bin/fusermount
-/usr/bin/pkexec
 /usr/bin/sudo
 /usr/bin/Xorg
 /usr/bin/sudoedit
