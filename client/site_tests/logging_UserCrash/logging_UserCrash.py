@@ -653,13 +653,6 @@ class logging_UserCrash(crash_test.CrashTest):
                                  expected_core_files)
 
 
-    def _test_core_file_persists_in_debug(self):
-        """Test that a core file persists for development/test builds."""
-        if not os.path.exists(_LEAVE_CORE_PATH):
-            raise error.TestFail('%s does not exist' % _LEAVE_CORE_PATH)
-        self._check_core_file_persisting(True)
-
-
     def _test_core_file_removed_in_production(self):
         """Test that core files do not stick around for production builds."""
         # Avoid remounting / rw by instead creating a tmpfs in /root and
@@ -702,6 +695,5 @@ class logging_UserCrash(crash_test.CrashTest):
                               'internal_directory_failure',
                               'crash_logs_creation',
                               'crash_log_infinite_recursion',
-                              'core_file_persists_in_debug',
                               'core_file_removed_in_production'],
                               initialize_crash_reporter=True)
