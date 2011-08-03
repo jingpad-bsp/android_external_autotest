@@ -120,37 +120,35 @@ class XButton:
                                   self.button_labels))
 
 
-class Xcheck:
-    ''' Check whether X events observe test criteria '''
-    RESULT_STR = {True : 'Pass', False : 'Fail'}
+class XEvent:
+    ''' A class for X event parsing '''
 
-    def __init__(self, dev):
-        self.dev = dev
-        self.xevent_data = None
-        self.xbutton = XButton()
-        self.button_labels = self.xbutton.get_supported_buttons()
-        # Create a dictionary to look up button label
-        #        e.g., {1: 'Button Left', ...}
-        self.button_dict = dict(map(lambda b:
-                                    (self.xbutton.get_value(b), b),
-                                    self.button_labels))
-        self._get_boot_time()
+    def __init__(self, xbutton):
+        self.xbutton = xbutton
+        # Declare the format to extract information from X event structures
+        self.raw_format_dict = {
+            'Motion_coord'  : '{6}',
+            'Motion_time'   : '{5}',
+            'Motion_tv'     : '{7}',
+            'Button_coord'  : '{6}',
+            'Button_button' : '{3}',
+            'Button_time'   : '{5}',
+            'Button_tv'     : '{7}',
+        }
 
-    def _get_boot_time(self):
-        ''' Get the system boot up time
+    def _extract_prop(self, event_name, line, prop_key):
+        ''' Extract property from X events '''
+        if line is None:
+            logging.warn('      X event format may not be correct.')
+            return None
 
-        Boot time can be used to convert the elapsed time since booting up
-        to that since Epoch.
-        '''
-        stat_cmd = 'cat /proc/stat'
-        stat = utils.system_output(stat_cmd)
-        boot_time_tuple = tuple(int(line.split()[1])
-                                for line in stat.splitlines()
-                                if line.startswith('btime'))
-        if len(boot_time_tuple) == 0:
-            raise error.TestError('Fail to extract boot time by "%s"' %
-                                  stat_cmd)
-        self.boot_time = boot_time_tuple[0]
+        event_format_str = self.raw_format_dict[event_name]
+        try:
+            prop_val = event_format_str.format(*line.strip().split()).strip(',')
+        except IndexError, err:
+            logging.warn('      %s in X event data.' % str(err))
+            return None
+        return (prop_key, prop_val)
 
     def _calc_distance(self, x0, y0, x1, y1):
         ''' A simple Manhattan distance '''
@@ -159,8 +157,71 @@ class Xcheck:
         dist = round(math.sqrt(delta_x * delta_x + delta_y * delta_y))
         return [dist, [delta_x, delta_y]]
 
-    def _parse_button_and_motion(self):
-        ''' Parse button events and motion events
+    def parse_raw_string(self, xevent_str):
+        ''' Parse X raw event string
+
+        The event information of a single X event may span across multiple
+        lines. This function extracts the important event information of
+        an event into a dictionary so that it is easier to process in
+        subsequent stages.
+
+        For example:
+        A MotionNotify event looks like:
+            MotionNotify event, serial 25, synthetic NO, window 0xa00001,
+                root 0xab, subw 0x0, time 925196, (750,395), root:(750,395),
+                state 0x0, is_hint 0, same_screen YES
+
+        A ButtonPress event looks like:
+            ButtonPress event, serial 25, synthetic NO, window 0xa00001,
+                root 0xab, subw 0x0, time 1098904, (770,422), root:(770,422),
+                state 0x0, button 1, same_screen YES
+
+        The property extracted for the MotionNotify event looks like:
+            ['MotionNotify', {'coord': (150,200), 'time': ...]
+
+        The property extracted for the ButtonPress event looks like:
+            ['ButtonPress', {'coord': (150,200), 'button': 5}, 'time': ...]
+        '''
+
+        if len(xevent_str) == 0:
+            logging.warn('    No X events were captured.')
+            return False
+
+        xevent_iter = iter(xevent_str)
+        self.xevent_data = []
+        while True:
+            line = next(xevent_iter, None)
+            if line is None:
+                break
+            line_words = line.split()
+            if len(line_words) == 0:
+                continue
+            event_name = line_words[0]
+
+            # Extract event information for important event types
+            if event_name == 'MotionNotify' or event_name == 'EnterNotify':
+                line1 = next(xevent_iter, None)
+                line2 = next(xevent_iter, None)
+                prop_coord = self._extract_prop('Motion_coord', line1, 'coord')
+                prop_time = self._extract_prop('Motion_time', line1, 'time')
+                if prop_coord is not None and prop_time is not None:
+                    event_dict = dict([prop_coord, prop_time])
+                    self.xevent_data.append([event_name, event_dict])
+            elif line.startswith('Button'):
+                line1 = next(xevent_iter, None)
+                line2 = next(xevent_iter, None)
+                prop_coord = self._extract_prop('Button_coord', line1, 'coord')
+                prop_time = self._extract_prop('Button_time', line1, 'time')
+                prop_button = self._extract_prop('Button_button', line2,
+                                                 'button')
+                if (prop_coord is not None and prop_button is not None
+                                           and prop_time is not None):
+                    event_dict = dict([prop_coord, prop_button, prop_time])
+                    self.xevent_data.append([event_name, event_dict])
+        return True
+
+    def parse_button_and_motion(self):
+        ''' Parse X button events and motion events
 
         The variable seg_move accumulates the motions of the contiguous events
         segmented by some boundary events such as Button events and other
@@ -174,9 +235,9 @@ class Xcheck:
             return [0, [0, 0]]
 
         def _append_motion_event(seg_move):
-            self.event_seq.append(('Motion', (seg_move[0],
-                                              ('Motion_x', seg_move[1][0]),
-                                              ('Motion_y', seg_move[1][1]))))
+            self.xevent_seq.append(('Motion', (seg_move[0],
+                                               ('Motion_x', seg_move[1][0]),
+                                               ('Motion_y', seg_move[1][1]))))
 
         def _add_seg_move(seg_move, move):
             list_add = lambda list1, list2: map(sum, zip(list1, list2))
@@ -188,7 +249,7 @@ class Xcheck:
         self.button_states = self.xbutton.init_button_struct('ButtonRelease')
 
         pre_xy = [None, None]
-        self.event_seq = []
+        self.xevent_seq = []
         seg_move = _reset_seg_move()
         self.sum_move = 0
 
@@ -225,7 +286,7 @@ class Xcheck:
                 _append_motion_event(seg_move)
                 seg_move = _reset_seg_move()
                 button_label = self.xbutton.get_label(event_button)
-                self.event_seq.append((event_name, button_label))
+                self.xevent_seq.append((event_name, button_label))
                 prev_button_state = self.button_states[event_button]
                 self.button_states[event_button] = event_name
                 # A ButtonRelease should precede ButtonPress
@@ -241,13 +302,46 @@ class Xcheck:
             elif event_name == 'NOP':
                 _append_motion_event(seg_move)
                 seg_move = _reset_seg_move()
-                self.event_seq.append(('NOP', line[1]))
+                self.xevent_seq.append(('NOP', line[1]))
 
         _append_motion_event(seg_move)
 
         # Convert dictionary to tuple
         self.button_states = tuple(self.button_states.values())
         self.count_buttons= tuple(self.count_buttons.values())
+
+
+class Xcheck:
+    ''' Check whether X events observe test criteria '''
+    RESULT_STR = {True : 'Pass', False : 'Fail'}
+
+    def __init__(self, dev):
+        self.dev = dev
+        self.xbutton = XButton()
+        self.button_labels = self.xbutton.get_supported_buttons()
+        # Create a dictionary to look up button label
+        #        e.g., {1: 'Button Left', ...}
+        self.button_dict = dict(map(lambda b:
+                                    (self.xbutton.get_value(b), b),
+                                    self.button_labels))
+        self._get_boot_time()
+        self.xevent = XEvent(self.xbutton)
+
+    def _get_boot_time(self):
+        ''' Get the system boot up time
+
+        Boot time can be used to convert the elapsed time since booting up
+        to that since Epoch.
+        '''
+        stat_cmd = 'cat /proc/stat'
+        stat = utils.system_output(stat_cmd)
+        boot_time_tuple = tuple(int(line.split()[1])
+                                for line in stat.splitlines()
+                                if line.startswith('btime'))
+        if len(boot_time_tuple) == 0:
+            raise error.TestError('Fail to extract boot time by "%s"' %
+                                  stat_cmd)
+        self.boot_time = boot_time_tuple[0]
 
     def _set_flags(self):
         ''' Set all flags to True before invoking check function '''
@@ -291,13 +385,13 @@ class Xcheck:
         if lifted_time is None:
             logging.warn('Cannot get time for %s.' % nop_str)
         else:
-            for index, line in enumerate(self.xevent_data):
+            for index, line in enumerate(self.xevent.xevent_data):
                 event_name = line[0]
                 event_dict = line[1]
                 if event_name == 'MotionNotify':
                     event_time = float(event_dict['time'])
                     if event_time > lifted_time:
-                        self.xevent_data.insert(index, ('NOP', nop_str))
+                        self.xevent.xevent_data.insert(index, ('NOP', nop_str))
                         break
 
     def _get_direction(self):
@@ -314,15 +408,16 @@ class Xcheck:
 
     def _verify_motion(self, compare, crit_max_movement):
         ''' Verify if the observed motions satisfy the criteria '''
-        self.motion_flag = compare(self.sum_move, crit_max_movement)
+        self.motion_flag = compare(self.xevent.sum_move, crit_max_movement)
         logging.info('        Verify motion: (%s)' %
                      Xcheck.RESULT_STR[self.motion_flag])
-        logging.info('              Total movement = %d' % self.sum_move)
+        logging.info('              Total movement = %d' % self.xevent.sum_move)
 
     def _verify_button(self, compare, crit_button_count):
         ''' Verify if the observed buttons satisfy the criteria '''
-        count_flag = compare(self.count_buttons, crit_button_count)
-        state_flags = map(lambda s: s == 'ButtonRelease', self.button_states)
+        count_flag = compare(self.xevent.count_buttons, crit_button_count)
+        state_flags = map(lambda s: s == 'ButtonRelease',
+                          self.xevent.button_states)
         state_flag = reduce(and_, state_flags)
         self.button_flag = state_flag and count_flag
 
@@ -331,8 +426,9 @@ class Xcheck:
         button_msg_details = '              %s %d times'
         count_flag = False
         for idx, b in enumerate(self.button_labels):
-            if self.count_buttons[idx] > 0:
-                logging.info(button_msg_details % (b, self.count_buttons[idx]))
+            if self.xevent.count_buttons[idx] > 0:
+                logging.info(button_msg_details %
+                             (b, self.xevent.count_buttons[idx]))
                 count_flag = True
         if not count_flag:
             logging.info('              No Button events detected.')
@@ -356,7 +452,7 @@ class Xcheck:
         # Derive the motion event time of the 2nd finger
         found_ButtonPress = False
         event_time = None
-        for line in self.xevent_data:
+        for line in self.xevent.xevent_data:
             event_name = line[0]
             event_dict = line[1]
             if not found_ButtonPress and event_name == 'ButtonPress':
@@ -395,7 +491,7 @@ class Xcheck:
         self.seq_flag = True
         crit_move_ratio = self.criteria.get('move_ratio', 0)
         index = -1
-        for e in self.event_seq:
+        for e in self.xevent.xevent_seq:
             e_type, e_value = e
             fail_msg = None
             index += 1
@@ -481,7 +577,7 @@ class Xcheck:
         logging.info('        Verify select sequence: (%s)' %
                      Xcheck.RESULT_STR[self.seq_flag])
         logging.info('              Detected event sequence')
-        for e in self.event_seq:
+        for e in self.xevent.xevent_seq:
             logging.info('                      ' + str(e))
         if not self.seq_flag:
             logging.info('              ' + fail_msg % fail_para)
@@ -493,7 +589,7 @@ class Xcheck:
 
     def _verify_all_criteria(self):
         ''' A general verification method for all criteria '''
-        self._parse_button_and_motion()
+        self.xevent.parse_button_and_motion()
         if self.criteria.has_key('max_movement'):
             crit_max_movement = self.criteria['max_movement']
             self._verify_motion(le, crit_max_movement)
@@ -637,103 +733,13 @@ class Xcheck:
             self.result = False
             return
 
-        self._parse_button_and_motion()
+        self.xevent.parse_button_and_motion()
         self._verify_motion(le, crit_max_movement)
         self._verify_button(self._compare(tuple(ops)), crit_button_count)
         self._get_result()
 
     ''' area 4: Palm/thumb detection '''
 
-    ''' parse and run below '''
-
-    def _extract_prop(self, event_name, line, prop_key):
-        ''' Extract property from X events '''
-        if line is None:
-            logging.warn('      X event format may not be correct.')
-            return None
-
-        # Declare the format to extract information from X event structures
-        format_dict = {
-            'Motion_coord'  : '{6}',
-            'Motion_time'   : '{5}',
-            'Motion_tv'     : '{7}',
-            'Button_coord'  : '{6}',
-            'Button_button' : '{3}',
-            'Button_time'   : '{5}',
-            'Button_tv'     : '{7}',
-        }
-        event_format_str = format_dict[event_name]
-
-        try:
-            prop_val = event_format_str.format(*line.strip().split()).strip(',')
-        except IndexError, err:
-            logging.warn('      %s in X event data.' % str(err))
-            return None
-        return (prop_key, prop_val)
-
-    def _parse(self, xevent_str):
-        ''' Parse all X events
-
-        The event information of a single X event may span across multiple
-        lines. This function extracts the important event information of
-        an event into a dictionary so that it is easier to process in
-        subsequent stages.
-
-        For example:
-        A MotionNotify event looks like:
-            MotionNotify event, serial 25, synthetic NO, window 0xa00001,
-                root 0xab, subw 0x0, time 925196, (750,395), root:(750,395),
-                state 0x0, is_hint 0, same_screen YES
-
-        A ButtonPress event looks like:
-            ButtonPress event, serial 25, synthetic NO, window 0xa00001,
-                root 0xab, subw 0x0, time 1098904, (770,422), root:(770,422),
-                state 0x0, button 1, same_screen YES
-
-        The property extracted for the MotionNotify event looks like:
-            ['MotionNotify', {'coord': (150,200), 'time': ...]
-
-        The property extracted for the ButtonPress event looks like:
-            ['ButtonPress', {'coord': (150,200), 'button': 5}, 'time': ...]
-        '''
-
-        if len(xevent_str) == 0:
-            logging.warn('    No X events were captured.')
-            return False
-
-        xevent_iter = iter(xevent_str)
-        self.xevent_data = []
-        while True:
-            line = next(xevent_iter, None)
-            if line is None:
-                break
-            line_words = line.split()
-            if len(line_words) > 0:
-                event_name = line_words[0]
-            else:
-                continue
-
-            # Extract event information for important event types
-            if event_name == 'MotionNotify' or event_name == 'EnterNotify':
-                line1 = next(xevent_iter, None)
-                line2 = next(xevent_iter, None)
-                prop_coord = self._extract_prop('Motion_coord', line1, 'coord')
-                prop_time = self._extract_prop('Motion_time', line1, 'time')
-                if prop_coord is not None and prop_time is not None:
-                    event_dict = dict([prop_coord, prop_time])
-                    self.xevent_data.append([event_name, event_dict])
-            elif line.startswith('Button'):
-                line1 = next(xevent_iter, None)
-                line2 = next(xevent_iter, None)
-                prop_coord = self._extract_prop('Button_coord', line1, 'coord')
-                prop_time = self._extract_prop('Button_time', line1, 'time')
-                prop_button = self._extract_prop('Button_button', line2,
-                                                 'button')
-                if (prop_coord is not None and prop_button is not None
-                                           and prop_time is not None):
-                    event_dict = dict([prop_coord, prop_button, prop_time])
-                    self.xevent_data.append([event_name, event_dict])
-        return True
 
     def run(self, tp_func, tp_data,  xevent_str):
         ''' Parse the x events and invoke a proper check function
@@ -742,7 +748,7 @@ class Xcheck:
         For example, tp_func.name == 'no_cursor_wobble' will result in the
         invocation of self._check_no_cursor_wobble()
         '''
-        parse_result = self._parse(xevent_str)
+        parse_result = self.xevent.parse_raw_string(xevent_str)
         self.gesture_file_name = tp_data.file_basename
         self.func_name_pos = 0 if tp_data.prefix is None else 1
         self.criteria = tp_func.criteria
