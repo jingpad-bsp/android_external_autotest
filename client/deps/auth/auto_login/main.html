@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<style>
+html, body {
+  height: 100%;
+  width: 100%;
+}
+
+iframe {
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  margin: 0px;
+}
+</style>
+<script>
+function $(id) {
+  return document.getElementById(id);
+}
+
+function getQueryParam(key, defaultVal) {
+  if (!defaultVal) defaultVal = "";
+  key = key.replace(/[\[]/,"\\\[").replace(/[\]]/, "\\\]");
+  var regex = new RegExp("[\\?&]" + key + "=([^&#]*)");
+  var qs = regex.exec(window.location.href);
+  if (qs == null)
+    return defaultVal;
+  else
+    return qs[1];
+}
+
+function TestAuthenticator() {
+};
+
+TestAuthenticator.getInstance = function() {
+  if (!TestAuthenticator.instance_) {
+    TestAuthenticator.instance_ = new TestAuthenticator();
+  }
+  return TestAuthenticator.instance_;
+}
+
+TestAuthenticator.prototype = {
+  testEmail_: null,
+  testPassword_: null,
+  email_: null,
+  password_: null,
+  attemptToken_: null,
+  frameLoaded_: false,
+
+  GAIA_PAGE_ORIGIN: 'https://www.google.com',
+  GAIA_PAGE_PATH: '/accounts/ServiceLogin?btmpl=chromeos' +
+      '&skipvpage=true&sarp=1' +
+      '&continue=chrome-extension://mfffpogegjflfpflabcdkioaeobkgjik/' +
+      'success.html',
+  THIS_EXTENSION_ORIGIN: 'chrome-extension://mfffpogegjflfpflabcdkioaeobkgjik',
+  PARENT_PAGE: 'chrome://oobe/',
+
+  initialize: function() {
+    this.frameLoaded_ = false;
+    this.testEmail_ = getQueryParam('test_email', 'performance.test.account@gmail.com');
+    this.testPassword_ = getQueryParam('test_password', 'perfsmurf');
+    console.log('### TestAuthenticator.initialize');
+    window.addEventListener('offline', this.onOffline.bind(this), false);
+    window.addEventListener('online', this.onOnline.bind(this), false);
+    window.addEventListener('message', this.onMessage.bind(this), false);
+    document.addEventListener('DOMContentLoaded', this.onPageLoad.bind(this));
+  },
+
+  isGaiaMessage_: function(msg) {
+    return msg.origin == this.GAIA_PAGE_ORIGIN;
+  },
+
+  isInternalMessage_: function(msg) {
+    return msg.origin == this.THIS_EXTENSION_ORIGIN;
+  },
+
+  getFrameUrl_: function() {
+    return this.GAIA_PAGE_ORIGIN + this.GAIA_PAGE_PATH +
+        '&test_email=' + this.testEmail_ + '&test_pwd=' +
+        this.testPassword_;
+  },
+
+  clearFrame_: function() {
+    var frame = $('gaia-frame');
+    frame.contentWindow.location.href = 'about:blank';
+  },
+
+  loadFrame_: function() {
+    console.log('Loading GAIA frame');
+    var frame = $('gaia-frame');
+    var self = this;
+    frame.addEventListener('load', function(e) {
+      console.log('### TestAuthenticator.loadFrame_: Frame loaded.');
+      self.frameLoaded_ = true;
+    });
+    console.log('### TestAuthenticator.loadFrame_: loading ' +
+        this.getFrameUrl_());
+    frame.contentWindow.location.href = this.getFrameUrl_();
+  },
+
+  onPageLoad: function(e) {
+    console.log('#### TestAuthenticator.onPageLoad: navigator.onLine = ' +
+                navigator.onLine);
+    if (navigator.onLine || true) {
+      console.log('#### TestAuthenticator.onPageLoad: loading frame...');
+      this.loadFrame_();
+    }
+  },
+
+  onOffline: function(e) {
+    if (this.frameLoaded_) {
+      console.log('#### TestAuthenticator.onOffline: went offline, cancel auth...');
+      this.clearFrame_();
+      this.frameLoaded_ = false;
+    }
+  },
+
+  onOnline: function(e) {
+    if (!frameLoaded_) {
+      // console.log('#### TestAuthenticator.onOnline: parent should reload the frame...');
+      this.loadFrame_();
+    }
+  },
+
+  onMessage: function(e) {
+    var msg = e.data;
+    // console.log('#### TestAuthenticator.onMessage: ' + JSON.stringify(msg));
+    if (msg.method == 'attemptLogin' && this.isGaiaMessage_(e)) {
+      this.email_ = msg.email;
+      this.password_ = msg.password;
+      this.attemptToken_ = msg.attemptToken;
+    } else if (msg.method == 'clearOldAttempts' && this.isGaiaMessage_(e)) {
+      this.email_ = null;
+      this.password_ = null;
+      this.attemptToken_ = null;
+    } else if (msg.method == 'confirmLogin' && this.isInternalMessage_(e)) {
+      if (this.attemptToken_ == msg.attemptToken) {
+        var msg = {
+          'method': 'completeLogin',
+          'email': this.email_,
+          'password': this.password_
+        };
+        window.parent.postMessage(msg, this.PARENT_PAGE);
+      } else {
+      console.log('#### TestAuthenticator.onMessage: unexpected attemptToken!?');
+      }
+    } else {
+      console.log('#### TestAuthenticator.onMessage: unknown message + origin!?');
+    }
+  }
+};
+
+console.log('#### main.html start');
+TestAuthenticator.getInstance().initialize();
+</script>
+<body><iframe id="gaia-frame" src="about:blank"
+  frameborder="0"></iframe></body></html>
+
