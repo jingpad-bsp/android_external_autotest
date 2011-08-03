@@ -180,18 +180,26 @@ class CrashTest(test.test):
             has_consent: True to indicate consent, False otherwise
         """
         if has_consent:
+            # Create policy file that enables metrics/consent.
+            shutil.copy('/usr/local/autotest/cros/mock_metrics_on.policy',
+                        self._POLICY_FILE)
+            shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
+                        self._OWNER_KEY_FILE)
+            # Create deprecated consent file.  This is created *after* the
+            # policy file in order to avoid a race condition where chrome
+            # might remove the consent file if the policy's not set yet.
+            # See crosbug.com/18413.
             utils.open_write_close(self._CONSENT_FILE, 'test-consent')
             utils.system('chown chronos:chronos "%s"' % (self._CONSENT_FILE))
             logging.info('Created ' + self._CONSENT_FILE)
-            shutil.copy('/usr/local/autotest/cros/mock_metrics_on.policy',
-                        self._POLICY_FILE)
         else:
-            utils.system('rm -f "%s"' % (self._CONSENT_FILE))
+            # Create policy file that disables metrics/consent.
             shutil.copy('/usr/local/autotest/cros/mock_metrics_off.policy',
                         self._POLICY_FILE)
-        """Both policy blobs are signed with the same key."""
-        shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
-                    self._OWNER_KEY_FILE)
+            shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
+                        self._OWNER_KEY_FILE)
+            # Remove deprecated consent file.
+            utils.system('rm -f "%s"' % (self._CONSENT_FILE))
 
 
     def _set_crash_test_in_progress(self, in_progress):
