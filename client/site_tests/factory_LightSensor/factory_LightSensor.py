@@ -33,13 +33,12 @@ _SUBTEST_LIST = ['Light sensor dark', 'Light sensor light']
 _SUBTEST_CFG = {'Light sensor dark':{'min':4},
                 'Light sensor light':{'max':1000}}
 
-class tsl2563():
+class iio_generic():
     '''
-    Object to interface to ambient light sensor tsl2563
+    Object to interface to ambient light sensor over iio.
     '''
-    PARAMS = {'rd':'/sys/class/iio/device0/lux',
-              'init': \
-                  'echo tsl2563 0x29 > /sys/class/i2c-adapter/i2c-2/new_device',
+    PARAMS = {'rd':'/sys/bus/iio/devices/device0/illuminance0_input',
+              'init': '',
               'min':0,
               'max':math.pow(2,16),
               # in seconds
@@ -176,7 +175,7 @@ class factory_LightSensor(test.test):
 
         factory.log('%s run_once' % self.__class__)
 
-        self._als = tsl2563()
+        self._als = iio_generic()
         self._deadline = time.time() + timeout
 
         self._subtest_queue = [x for x in reversed(_SUBTEST_LIST)]
