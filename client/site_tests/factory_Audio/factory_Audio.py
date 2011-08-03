@@ -104,7 +104,8 @@ class factory_Audio(test.test):
         if (event.keyval == gtk.keysyms.space and self._subtest_widget is None):
             # Start subtest.
             self.audio_subtest_widget(name)
-        else:
+        # Make sure we are not already recording. We can get repeated events.
+        elif self._active == False:
             self.close_bgjob(name)
             cmd = None
             if event.keyval == ord('r'):
@@ -116,6 +117,7 @@ class factory_Audio(test.test):
                 # Playback canned audio.
                 cmd = 'aplay %s' % self._audio_sample_path
             if cmd:
+                self._active = True
                 self._bg_job = utils.BgJob(cmd, stderr_level=logging.DEBUG)
                 factory.log("cmd: " + cmd)
         self._test_widget.queue_draw()
@@ -136,8 +138,12 @@ class factory_Audio(test.test):
             cmd = 'aplay rec.wav'
             self._bg_job = utils.BgJob(cmd, stderr_level=logging.DEBUG)
             factory.log("cmd: " + cmd)
+            # Clear active recording state.
+            self._active = False
         elif event.keyval == ord('p'):
             self.close_bgjob(name)
+            # Clear active playing state.
+            self._active = False
         self._test_widget.queue_draw()
         return True
 
@@ -191,6 +197,10 @@ class factory_Audio(test.test):
 
         self._sample_queue = [x for x in reversed(_SAMPLE_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n in _SAMPLE_LIST)
+        # Ensure that we don't try to handle multiple overlapping
+        # keypress actions. Make a note of when we are currently busy
+        # and refuse events during that time.
+        self._active = False
 
         prompt_label = ful.make_label(_LABEL_START_STR, alignment=(0.5, 0.5))
 
