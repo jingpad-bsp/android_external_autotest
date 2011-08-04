@@ -188,13 +188,26 @@ class hardware_Trackpad(test.test):
 
         # Logging test summary
         logging.info('\n')
-        logging.info('*** Total number of failed / tested files: (%d / %d) ***'
-                     % (tdata.tot_fail_count, tdata.tot_num_files_tested))
+        tot_pass_count = tdata.tot_num_files_tested - tdata.tot_fail_count
+        logging.info('*** Total number of (passed / tested) files: (%d / %d) '
+                     '***' % (tot_pass_count, tdata.tot_num_files_tested))
+        area_name = None
         for tp_func in functionality_list:
-            func = tp_func.name
-            func_msg = '    {0:<25}: {1:3d} / {2:3d} failed.'
-            logging.info(func_msg.format(func, tdata.fail_count[func],
-                                         tdata.num_files_tested[func]))
+            func_name = tp_func.name
+            if tp_func.area[0] != area_name:
+                area_name = tp_func.area[0]
+                logging.info('  Area: %s' % area_name)
+            test_count = tdata.num_files_tested[func_name]
+            fail_count = tdata.fail_count[func_name]
+            pass_count = test_count - fail_count
+            if test_count > 0:
+                pass_rate_str = '%3.0f%%' % (100.0 * pass_count / test_count)
+                count_str = '(%d / %d)' % (pass_count, test_count)
+            else:
+                pass_rate_str = ' '
+                count_str = ' '
+            func_msg = '      {0:<25}: {1:4s}  {2:9s} passed.'
+            logging.info(func_msg.format(func_name, pass_rate_str, count_str))
         logging.info('\n')
 
         # Raise error.TestFail if there is any test failed.
