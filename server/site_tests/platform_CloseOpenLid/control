@@ -32,6 +32,7 @@ def run_closeopenlid(machine):
     host = hosts.create_host(machine)
     job.run_test("platform_CloseOpenLid", host=host, servo_port=servo_port,
                  xml_config=servo_xml_config, servo_vid=servo_vid,
-                 servo_pid=servo_pid, servo_serial=servo_serial)
+                 servo_pid=servo_pid, servo_serial=servo_serial,
+                 disable_sysinfo=True)
 
 parallel_simple(run_closeopenlid, machines)
