@@ -22,7 +22,7 @@ YUYV2RGB_shift = numpy.array([0., -128., 0., -128.], dtype="f")
 
 class Device(object):
     def __init__(self, fn):
-        self.fd = os.open(fn, os.O_RDONLY | os.O_NONBLOCK)
+        self.fd = os.open(fn, os.O_RDWR | os.O_NONBLOCK)
         self.cap = VIDIOC_QUERYCAP(self.fd)
 
     def __del__(self):
@@ -130,7 +130,7 @@ class Device(object):
 
             m = mmap.mmap(
                 self.fd, buf.length,
-                prot=mmap.PROT_READ,
+                prot=(mmap.PROT_READ | mmap.PROT_WRITE),
                 flags=mmap.MAP_SHARED,
                 offset=buf.m.offset)
             self.mmapbuffers.append(m)
@@ -175,8 +175,10 @@ class Device(object):
         for s in self.mmapbuffers:
             s.close()
         del self.mmapbuffers
-        req = v4l2_requestbuffers()
-        req.count = 0
-        req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
-        req.memory = V4L2_MEMORY_MMAP
-        VIDIOC_REQBUFS(self.fd, req)
+        # Nvidia driver crashes on this recommended action.
+        # crosbug.com/p/5295
+        # req = v4l2_requestbuffers()
+        # req.count = 0
+        # req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
+        # req.memory = V4L2_MEMORY_MMAP
+        # VIDIOC_REQBUFS(self.fd, req)

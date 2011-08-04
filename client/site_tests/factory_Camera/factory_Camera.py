@@ -113,7 +113,7 @@ class factory_Camera(test.test):
         w.add_events(gdk.KEY_RELEASE_MASK)
 
     def run_once(self,
-                 led_rounds=5):
+                 led_rounds=1):
         '''Run the camera test
 
         Parameter
