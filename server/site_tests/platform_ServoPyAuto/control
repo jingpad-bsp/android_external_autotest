@@ -1,0 +1,40 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Test expects to be run on a jailbroken device in developer mode.
+
+AUTHOR = "Chrome OS Team"
+NAME = "platform_ServoPyAuto"
+PURPOSE = "Servo and PyAuto based ChromeOS functional test."
+CRITERIA = "Fails if login is not persistent across a lid-close induced sleep."
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "server"
+
+DOC = """
+This test uses PyAuto to login and Servo to close the lid switch. Servo is used
+to wake the device by opening the lid switch. PyAuto is used to verify that the
+user is still logged in.
+"""
+servo_port = 9999
+servo_xml_config = 'servo.xml'
+servo_vid = None
+servo_pid = None
+servo_serial = None
+
+def run_servopyauto(machine):
+    global servo_port
+    global servo_xml_config
+    global servo_vid
+    global servo_pid
+    global servo_serial
+
+    host = hosts.create_host(machine)
+    job.run_test("platform_ServoPyAuto", host=host, servo_port=servo_port,
+                 xml_config=servo_xml_config, servo_vid=servo_vid,
+                 servo_pid=servo_pid, servo_serial=servo_serial,
+                 use_pyauto=True, disable_sysinfo=True)
+
+parallel_simple(run_servopyauto, machines)

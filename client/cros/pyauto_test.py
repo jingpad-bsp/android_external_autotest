@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -24,10 +24,9 @@ import subprocess
 import sys
 import tempfile
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.cros import constants, cryptohome, login
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.bin import utils
+from autotest_lib.client.cros import constants, cryptohome, login
 
 
 class PyAutoTest(test.test):
@@ -96,7 +95,7 @@ class PyAutoTest(test.test):
         os.chmod(suid_python, 04755)
 
 
-    def initialize(self):
+    def initialize(self, auto_login=True):
         assert os.geteuid() == 0, 'Need superuser privileges'
 
         # Ensure there's no stale cryptohome from previous tests
@@ -137,7 +136,8 @@ class PyAutoTest(test.test):
 
         # Enable chrome testing interface and log in to default account
         self.pyauto.setUp()  # connects to pyauto automation
-        self.LoginToDefaultAccount()
+        if auto_login:
+            self.LoginToDefaultAccount()
 
 
     def LoginToDefaultAccount(self):
