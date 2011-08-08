@@ -302,8 +302,8 @@ class UITest(test.test):
                     target = os.path.join(self.resultsdir,
                                           '%s-%f' % (dir, time.time()))
                     logging.debug('Saving %s to %s.', dir_path, target)
-                    shutil.copytree(dir_path, target)
-        except (IOError, OSError) as err:
+                    shutil.copytree(src=dir_path, dst=target, symlinks=True)
+        except (IOError, OSError, shutil.Error) as err:
             logging.error(err)
         login.attempt_logout()
 
