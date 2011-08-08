@@ -63,13 +63,14 @@ class network_3GDormancyDance(test.test):
                 self.enable()
             else:
                 print 'Waiting for service...'
+                self.waiting_for_service = True
         if args[0] == 'Connected':
             if not args[1]:
                 self.disable()
         if args[0] == 'Services':
-            old_service = self.service
             self.FindService()
-            if self.service and not old_service:
+            if self.waiting_for_service and self.service:
+                self.waiting_for_service = False
                 self.connect()
 
     def DormancyStatus(self, *args, **kwargs):
@@ -89,6 +90,7 @@ class network_3GDormancyDance(test.test):
         self.service = self.flim.FindElementByPropertySubstring('Service',
                                                                 'Type',
                                                                 'cellular')
+        print 'Service: %s' % (self.service,)
 
     def run_once(self, name='usb', ops=5000, seed=None):
         self.opsleft = ops
@@ -102,6 +104,7 @@ class network_3GDormancyDance(test.test):
         self.flim = flimflam.FlimFlam()
         self.manager = flimflam.DeviceManager(self.flim)
         self.device = self.flim.FindElementByNameSubstring('Device', name)
+        self.waiting_for_service = False
         if not self.device:
             self.device = self.flim.FindElementByPropertySubstring('Device',
                                                                    'Interface',
