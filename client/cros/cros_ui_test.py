@@ -106,11 +106,11 @@ class UITest(test.test):
         for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
             interface = properties['Interface']
-            logging.debug("Considering " + interface)
+            logging.debug('Considering ' + interface)
             for path in properties['IPConfigs']:
                 ipconfig = self._flim.GetObjectInterface('IPConfig', path)
                 ipconfig.SetProperty('NameServers', '127.0.0.1')
-                logging.debug("Using local DNS for " + interface)
+                logging.debug('Using local DNS for ' + interface)
 
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.', '127.0.0.1'),
@@ -122,6 +122,14 @@ class UITest(test.test):
         """Clear the custom DNS setting for all devices and force them to use
         DHCP to pull the network's real settings again.
         """
+        for device in self._flim.GetObjectList('Device'):
+            properties = device.GetProperties()
+            interface = properties['Interface']
+            logging.debug('Considering ' + interface)
+            for path in properties['IPConfigs']:
+                ipconfig = self._flim.GetObjectInterface('IPConfig', path)
+                ipconfig.ClearProperty('NameServers')
+                logging.debug('Clearing local DNS for ' + interface)
         utils.system('restart %s' % constants.NETWORK_MANAGER);
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.',
