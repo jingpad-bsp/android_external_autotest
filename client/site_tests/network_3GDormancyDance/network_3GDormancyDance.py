@@ -85,6 +85,8 @@ class network_3GDormancyDance(test.test):
     def DormancyStatus(self, *args, **kwargs):
         if args[0]:
             self.HandleDormant()
+        else:
+            self.HandleAwake()
 
     def FindService(self):
         self.service = self.flim.FindElementByPropertySubstring('Service',
@@ -125,9 +127,13 @@ class network_3GDormancyDance(test.test):
 
     def HandleDormant(self):
         if self.state != State.WAITING:
-            raise error.TestFail('Dormant while not in state Waiting')
+            print 'Dormant while not in state Waiting; ignoring.'
+            return
         print 'Dormant'
         self.disconnect()
+
+    def HandleAwake(self):
+        print 'Awake'
 
     def HandleDisconnected(self):
         if self.state != State.DISCONNECTING:
@@ -140,6 +146,8 @@ class network_3GDormancyDance(test.test):
         connected = False
         powered = False
 
+        device_props = self.device.GetProperties(utf8_strings = True)
+
         self.FindService()
         if self.service:
             service_props = self.service.GetProperties(utf8_strings = True)
@@ -149,7 +157,6 @@ class network_3GDormancyDance(test.test):
         else:
             print 'Service does not exist.'
 
-        device_props = self.device.GetProperties(utf8_strings = True)
         if device_props['Powered']:
             print 'Device is powered.'
             powered = True
@@ -168,7 +175,7 @@ class network_3GDormancyDance(test.test):
         else:
             raise error.TestFail('Service online but device unpowered!')
 
-    def run_once(self, name='usb', ops=500, seed=None):
+    def run_once(self, name='usb', ops=5000, seed=None):
         self.opsleft = ops
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus()
