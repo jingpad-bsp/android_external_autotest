@@ -15,10 +15,10 @@ class LinuxSystem(object):
     """
     def __init__(self, host, params, role):
         # Command locations.
-        self.cmd_iw = "/usr/sbin/iw"
-        self.cmd_ip = "/usr/sbin/ip"
-        self.cmd_dhcpd = "/usr/sbin/dhcpd"
-        self.cmd_tcpdump = "/usr/sbin/tcpdump"
+        self.cmd_iw = params.get("cmd_iw", "/usr/sbin/iw")
+        self.cmd_ip = params.get("cmd_ip", "/usr/sbin/ip")
+        self.cmd_dhcpd = params.get("cmd_dhcpd", "/usr/sbin/dhcpd")
+        self.cmd_tcpdump = params.get("cmd_tcpdump", "/usr/sbin/tcpdump")
 
         self.capture_file = "/tmp/dump.cap"
         self.capture_logfile = "/tmp/dump.log"
@@ -33,7 +33,7 @@ class LinuxSystem(object):
         setattr(self, '%s_netdump_stop' % role, self.stop_capture)
 
         # Network interfaces.
-        self.frequency_support = {}
+        self.phy_for_frequency = {}
 
         # Parse the output of 'iw phy' and find a device for each frequency
         output = host.run("%s list" % self.cmd_iw).stdout
@@ -44,19 +44,17 @@ class LinuxSystem(object):
             match_wiphy = re_wiphy.match(line)
             if match_wiphy:
                 in_phy = True
-                widevname = match_wiphy.group(1)
+                wiphyname = match_wiphy.group(1)
             elif in_phy:
                 if line[0] == '\t':
                     match_mhz = re_mhz.search(line)
                     if match_mhz:
                         mhz = int(match_mhz.group(1))
-                        self.frequency_support[mhz] = widevname
+                        self.phy_for_frequency[mhz] = wiphyname
                 else:
                     in_phy = False
         self.phydev2 = params.get('phydev2', None)
         self.phydev5 = params.get('phydev5', None)
-
-        self._remove_interfaces()
 
 
     def _remove_interfaces(self):
@@ -131,8 +129,8 @@ class LinuxSystem(object):
             phy = self.phydev2
         elif mode == 'a' and self.phydev5 is not None:
             phy = self.phydev5
-        elif frequency in self.frequency_support:
-            phy = self.frequency_support[frequency]
+        elif frequency in self.phy_for_frequency:
+            phy = self.phy_for_frequency[frequency]
         else:
             raise error.TestFail("Unable to find phy for frequency %d mode %s" %
                                  (frequency, mode))

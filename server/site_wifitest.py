@@ -16,6 +16,8 @@ import traceback
 from autotest_lib.server import autotest, hosts, subcommand
 from autotest_lib.server import site_bsd_router
 from autotest_lib.server import site_linux_router
+from autotest_lib.server import site_linux_bridge_router
+from autotest_lib.server import site_linux_vm_router
 from autotest_lib.server import site_linux_server
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_host_route
@@ -124,8 +126,12 @@ class WiFiTest(object):
             else:
                  raise error.TestFail('Unable to autodetect router type')
         if router['type'] == 'linux':
-            self.wifi = site_linux_router.LinuxRouter(self.router, router,
-                self.defssid)
+            if config['router']['addr'] == config['client']['addr']:
+                self.wifi = site_linux_vm_router.LinuxVMRouter(
+                    self.router, router, self.defssid)
+            else:
+                self.wifi = site_linux_bridge_router.LinuxBridgeRouter(
+                    self.router, router, self.defssid)
         elif router['type'] == 'bsd':
             self.wifi = site_bsd_router.BSDRouter(self.router, router,
                 self.defssid)
@@ -226,7 +232,7 @@ class WiFiTest(object):
     def __must_be_installed(self, host, cmd):
         if not self.__is_installed(host, cmd):
             # TODO(sleffler): temporary debugging
-            host.run("ls -a /usr/bin /usr/local/bin" % cmd, ignore_status=True)
+            host.run("ls -a /usr{/local,}/bin/%s" % cmd, ignore_status=True)
             raise error.TestFail('Unable to find %s on %s' % (cmd, host.ip))
         return cmd
 
@@ -250,7 +256,7 @@ class WiFiTest(object):
         self.client_cmd_iptables = '/sbin/iptables'
         self.client_cmd_flimflam_lib = client.get('flimflam_lib',
                                                   '/usr/local/lib/flimflam')
-
+        self.client_cmd_ping = client.get('cmd_ping', 'ping')
 
     def __get_wlan_devs(self, host):
         ret = []
@@ -784,18 +790,26 @@ class WiFiTest(object):
         if 'ping_ip' in params:
             ping_ip = params['ping_ip']
         else:
-            ping_dest = params.get('dest', 'server')
+            if 'dest' in params:
+                ping_dest = params['dest']
+            else:
+                if self.wifi.has_local_server():
+                    ping_dest = 'router'
+                else:
+                    ping_dest = 'server'
+
             if ping_dest == 'server':
                 ping_ip = self.server_wifi_ip
             elif ping_dest == 'router':
-                ping_ip = self.wifi.get_wifi_ip()
+                ping_ip = self.wifi.get_wifi_ip(params.get('ap', 0))
             else:
                 raise error.TestFail('Unknown ping destination "%s"' %
                                      ping_dest)
         count = params.get('count', self.defpingcount)
         # set timeout for 3s / ping packet
-        result = self.client.run("ping %s %s" % \
-            (self.__ping_args(params), ping_ip), timeout=3*int(count))
+        result = self.client.run("%s %s %s" % (
+            self.client_cmd_ping, self.__ping_args(params), ping_ip),
+                                 timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
         self.write_perf(stats)
@@ -805,14 +819,15 @@ class WiFiTest(object):
     def client_ping_bg(self, params):
         """ Ping the server from the client """
         ping_ip = params.get('ping_ip', self.server_wifi_ip)
-        cmd = "ping %s %s" % (self.__ping_args(params), ping_ip)
+        cmd = "%s %s %s" % \
+            (self.client_cmd_ping, self.__ping_args(params), ping_ip)
         self.ping_thread = HelperThread(self.client, cmd)
         self.ping_thread.start()
 
 
     def client_ping_bg_stop(self, params):
         if self.ping_thread is not None:
-            self.client.run("pkill ping")
+            self.client.run("pkill %s", os.path.basename(self.client_cmd_ping))
             self.ping_thread.join()
             self.ping_thread = None
 
@@ -1357,12 +1372,11 @@ class WiFiTest(object):
             system = { 'client': self.client,
                        'server': self.server,
                        'router': self.router }.get(name)
-            if not system:
-                raise error.TestFail('time_sync: Must specify '
-                                     'router, client or server')
-            datefmt = '%m%d%H%M%Y.%S' if name == 'client' else '%Y%m%d%H%M.%S'
-            system.run('date -u %s' %
-                       datetime.datetime.utcnow().strftime(datefmt))
+            epoch_seconds = time.time()
+            busybox_format = '%Y%m%d%H%M.%S'
+            busybox_date = datetime.datetime.utcnow().strftime(busybox_format)
+            system.run('date -u --set=@%s 2>/dev/null || date -u %s' % \
+                (epoch_seconds, busybox_date))
 
     def vpn_client_load_tunnel(self, params):
         """ Load the 'tun' device.

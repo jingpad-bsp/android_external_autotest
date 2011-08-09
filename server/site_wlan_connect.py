@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 """Connect to a WiFi service and report the amount of time it took
 
 This script initiates a connection to a WiFi service and reports
@@ -70,12 +74,14 @@ class ConnectStateHandler(StateHandler):
           if key in ['Passphrase', 'SaveCredentials'] or key.startswith('EAP.'):
             set_props[key] = val
           else:
-            self.Debug('Service key mismatch: %s %s != %s' %
-                       (key, val, str(prop_val)))
+            self.Debug(
+                'Service key mismatch: %s (desired "%s" != available "%s")' %
+                (key, val, str(prop_val)))
             break
       else:
         for key, val in set_props.iteritems():
           try:
+            self.Debug('Setting property %s to %s' % (key, val))
             svc.SetProperty(key, val)
           except dbus.exceptions.DBusException, e:
             self.failure = ('SetProperty: DBus exception %s for set of %s' %
@@ -117,6 +123,9 @@ class ConnectStateHandler(StateHandler):
         else:
           print 'FAIL(acquire): DBus exception in Connect() %s' % e
           ErrExit(2)
+    else:
+      self.Debug("skipping Connect call, service is in %s state" %
+                 service.GetProperties()['State'])
 
     self.service_handle = service
     return service
