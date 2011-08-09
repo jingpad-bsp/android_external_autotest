@@ -1,18 +1,13 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import logging
-import os
-import shutil
-import sys
-import time
-from autotest_lib.server import test, autotest
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
-import autotest_lib.server.cros.servotest
 
-class platform_ServoPyAuto(autotest_lib.server.cros.servotest.ServoTest):
+from autotest_lib.server.cros.servotest import ServoTest
+
+
+class platform_ServoPyAuto(ServoTest):
     """
     A simple test demonstrating the synchronous use of Servo and PyAuto.
 
