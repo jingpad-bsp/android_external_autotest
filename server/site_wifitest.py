@@ -709,6 +709,11 @@ class WiFiTest(object):
         raise NotImplemented("client_check_event_countermeasures")
 
 
+    def client_check_frequency(self, params):
+        """ Verify current frequency """
+        self.__client_check_iw_link("freq", params[0])
+
+
     def sleep(self, params):
         time.sleep(float(params['time']))
 
