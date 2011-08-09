@@ -23,14 +23,15 @@ class platform_BootPerfServer(test.test):
         # Collect the performance metrics by running a client side test
         logging.info('BootPerfServer: start client test')
         client_at = autotest.Autotest(self.client)
-        client_at.run_test(self.client_test, last_boot_was_reboot=True)
+        client_at.run_test(
+            self.client_test, last_boot_was_reboot=True, disable_sysinfo=True)
 
         # In the client results directory are a 'keyval' file, and
         # various raw bootstat data files.  First promote the client
         # test 'keyval' as our own.
         logging.info('BootPerfServer: gather client results')
-        client_results_dir = os.path.join(self.outputdir,
-            self.client_test, "results")
+        client_results_dir = os.path.join(
+            self.outputdir, self.client_test, "results")
         src = os.path.join(client_results_dir, "keyval")
         dst = os.path.join(self.resultsdir, "keyval")
         if os.path.exists(src):

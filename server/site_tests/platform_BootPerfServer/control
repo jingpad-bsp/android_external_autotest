@@ -16,6 +16,7 @@ to collect boot performance metrics.
 
 def run_bootperf(machine):
     host = hosts.create_host(machine)
-    job.run_test("platform_BootPerfServer", host=host, iterations=10)
+    job.run_test("platform_BootPerfServer", host=host, iterations=10,
+                 disable_sysinfo=True)
 
 parallel_simple(run_bootperf, machines)
