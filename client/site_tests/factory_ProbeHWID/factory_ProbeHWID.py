@@ -45,17 +45,18 @@ class factory_ProbeHWID(test.test):
 
         start = stderr.find(str_unmatched)
         if start < 0:
-            unmatched = ''
-            end = stderr.rfind(str_current)
-            if end >= 0:
-                unmatched = stderr[start:end]
-            else:
-                unmatched = stderr[start:]
-            unmatched = '\n'.join([line for line in unmatched.splitlines()
-                                   # 'gft_hwcomp' or 'probe' are debug message.
-                                   if not (line.startswith('gft_hwcomp:') or
-                                           line.startswith('probe:') or
-                                           (not line))])
+            start = 0
+        end = stderr.rfind(str_current)
+        if end < 0:
+            unmatched = stderr[start:]
+        else:
+            unmatched = stderr[start:end]
+        # TODO(hungte) Sort and find best match candidate
+        unmatched = '\n'.join([line for line in unmatched.splitlines()
+                               # 'gft_hwcomp' or 'probe' are debug message.
+                               if not (line.startswith('gft_hwcomp:') or
+                                       line.startswith('probe:') or
+                                       (not line))])
         # Report the results
         if len(hwids) < 1:
             raise error.TestFail('\n'.join(('No HWID matched.', unmatched)))
@@ -149,7 +150,11 @@ class factory_ProbeHWID(test.test):
         elif hwid_file:
             factory.log('Selected: %s' % ', '.join(data).replace('\n', ' '))
 
-        self.update_hwid(hwid_file)
+        try:
+            self.update_hwid(hwid_file)
+        except Exception, e:
+            self._fail_msg = '%s' % e
+
         gtk.main_quit()
         return True
 
@@ -170,6 +175,7 @@ class factory_ProbeHWID(test.test):
 
     def run_once(self, autodetect=True):
         factory.log('%s run_once' % self.__class__)
+        self._fail_msg = None
 
         if autodetect:
             self.update_hwid(self.HWID_AUTODETECT)
@@ -197,3 +203,5 @@ class factory_ProbeHWID(test.test):
                     window_registration_callback=self.register_callbacks)
 
         factory.log('%s run_once finished' % repr(self.__class__))
+        if self._fail_msg:
+            raise error.TestFail(self._fail_msg)
