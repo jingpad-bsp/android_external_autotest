@@ -11,7 +11,7 @@ from autotest_lib.server import test
 class platform_KernelErrorPaths(test.test):
     version = 1
 
-    def breakme(self, text):
+    def breakme(self, text, cpu):
         # This test is ensuring that the machine will reboot on any
         # tyoe of kernel panic.  If the sysctls below are not set
         # correctly, the machine will not reboot.  After verifying
@@ -24,7 +24,13 @@ class platform_KernelErrorPaths(test.test):
         self.client.run('sysctl kernel.panic_on_oops|'
                         'grep "kernel.panic_on_oops = 1"');
 
-        command = "echo %s > /proc/breakme" % text
+        if cpu != None:
+            # Run on a specific CPU using taskset
+            command = "echo %s | taskset -c %d tee /proc/breakme" % (text, cpu)
+        else:
+            # Run normally
+            command = "echo %s > /proc/breakme" % text
+
         logging.info("KernelErrorPaths: executing '%s' on %s" %
                      (command, self.client.hostname))
         try:
@@ -81,32 +87,53 @@ class platform_KernelErrorPaths(test.test):
         # Each tuple consists of two strings: the 'breakme' string to send
         # into /proc/breakme on the target, and the crash report string to
         # look for in the crash dump after target restarts.
+        # The third component is the timeout and the forth is whether we run
+        # the tests on all CPUs or not. Some tests take less to run than other
+        # (null pointer and panic) so it would be best if we would run them on
+        # all the CPUS as it wouldn't add that much time to the total.
         # TODO(vbendeb): add the following breakme strings after fixing kernel
         # bugs:
         # 'deadlock' (has to be sent twice), 'softlockup', 'irqlockup'
         test_tuples = (
-            ('softlockup', 'BUG: soft lockup', 25),
-            ('bug', 'kernel BUG at', 10),
-            ('hungtask', 'hung_task: blocked tasks', 250),
-            ('nmiwatchdog', 'Watchdog detected hard LOCKUP', 15),
+            ('softlockup', 'BUG: soft lockup', 25, False),
+            ('bug', 'kernel BUG at', 10, False),
+            ('hungtask', 'hung_task: blocked tasks', 250, False),
+            ('nmiwatchdog', 'Watchdog detected hard LOCKUP', 15, False),
             ('nullptr',
-             'BUG: unable to handle kernel NULL pointer dereference at', 10),
-            ('panic', 'Kernel panic - not syncing:', 10),
+             'BUG: unable to handle kernel NULL pointer dereference at', 10,
+             True),
+            ('panic', 'Kernel panic - not syncing:', 10, True),
             )
 
-        for action, text, timeout in test_tuples:
-            # Delete crash results, if any
-            self.client.run('rm -f %s/*' % crash_log_dir)
-            boot_id = self.client.get_boot_id()
-            self.breakme(action)  # This should cause target reset.
-            self.client.wait_for_restart(
-                down_timeout=timeout,
-                down_warning=timeout,
-                old_boot_id=boot_id,
-                # Double the default reboot timeout as some targets take longer
-                # than normal before ssh is available again.
-                timeout=self.client.DEFAULT_REBOOT_TIMEOUT * 4)
-            result = self.client.run('cat %s/kernel.*.kcrash' % crash_log_dir)
-            if text not in result.stdout:
-                raise error.TestFail(
-                    "No '%s' in the log after sending '%s'" % (text, action))
+        # Find out how many cpus we have
+        client_no_cpus = int(
+            self.client.run('cat /proc/cpuinfo | grep processor | wc -l')
+                            .stdout.strip())
+        no_cpus = 1
+
+        for action, text, timeout, all_cpu in test_tuples:
+            if not all_cpu:
+                no_cpus = 1
+            else:
+                no_cpus = client_no_cpus
+            for cpu in range(no_cpus):
+                # Always run on at least one cpu
+                # Delete crash results, if any
+                self.client.run('rm -f %s/*' % crash_log_dir)
+                boot_id = self.client.get_boot_id()
+                # This should cause target reset.
+                # Run on a specific cpu if we're running on all of them,
+                # otherwise run normally
+                if all_cpu :
+                    self.breakme(action, cpu)
+                else:
+                    self.breakme(action, None)
+                self.client.wait_for_restart(down_timeout=timeout,
+                                             down_warning=timeout,
+                                             old_boot_id=boot_id)
+                result = self.client.run('cat %s/kernel.*.kcrash' %
+                                         crash_log_dir)
+                if text not in result.stdout:
+                    raise error.TestFail(
+                        "No '%s' in the log after sending '%s' on cpu %d"
+                        % (text, action, cpu))
