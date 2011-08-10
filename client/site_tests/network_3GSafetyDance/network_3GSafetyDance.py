@@ -93,7 +93,38 @@ class network_3GSafetyDance(test.test):
         # not interfere with running the test
         self.enable()
         service = self.flim.FindCellularService(timeout=5)
-        service.SetProperty("AutoConnect", dbus.Boolean(0))
+
+        props = service.GetProperties()
+        favorite = props['Favorite']
+        autoconnect = props['AutoConnect']
+        print 'Favorite = %s, AutoConnect = %s' % (favorite, autoconnect)
+
+        if not favorite:
+            print 'Enabling Favorite by connecting to service.'
+            self.enable()
+            self.connect()
+
+            props = service.GetProperties()
+            favorite = props['Favorite']
+            autoconnect = props['AutoConnect']
+            print 'Favorite = %s, AutoConnect = %s' % (favorite, autoconnect)
+
+        had_autoconnect = autoconnect
+
+        if autoconnect:
+            print 'Disabling AutoConnect.'
+            self.service.SetProperty('AutoConnect', dbus.Boolean(0))
+
+            props = service.GetProperties()
+            favorite = props['Favorite']
+            autoconnect = props['AutoConnect']
+            print 'Favorite = %s, AutoConnect = %s' % (favorite, autoconnect)
+
+        if not favorite:
+            raise error.TestFail('Favorite=False, but we want it to be True')
+
+        if autoconnect:
+            raise error.TestFail('AutoConnect=True, but we want it to be False')
 
         logging.info('Seed: %d' % seed)
         random.seed(seed)
@@ -103,6 +134,8 @@ class network_3GSafetyDance(test.test):
         finally:
             # Re-enable auto connect
             self.enable()
-            service = self.flim.FindCellularService(timeout=5)
-            if service:
-                service.SetProperty("AutoConnect", dbus.Boolean(1))
+            if had_autoconnect:
+                service = self.flim.FindCellularService(timeout=5)
+                if service:
+                    print 'Re-enabling AutoConnect.'
+                    service.SetProperty("AutoConnect", dbus.Boolean(1))
