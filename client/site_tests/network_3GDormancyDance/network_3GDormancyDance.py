@@ -9,6 +9,8 @@ import dbus, dbus.mainloop.glib, gobject
 import glib
 
 from autotest_lib.client.cros import flimflam_test_path
+from autotest_lib.client.cros.mainloop import ExceptionForwardingMainLoop
+from autotest_lib.client.cros.mainloop import ExceptionForward
 import flimflam, mm
 
 class State:
@@ -19,55 +21,44 @@ class State:
     DISCONNECTING = 4
     DISABLING = 5
 
-class network_3GDormancyDance(test.test):
-    version = 1
+class DormancyTester(ExceptionForwardingMainLoop):
+    def __init__(self, loops, flim, device, *args, **kwargs):
+        self.loopsleft = loops
+        self.flim = flim
+        self.device = device
+        super(DormancyTester, self).__init__(*args, **kwargs)
 
     def countdown(self):
-        self.opsleft -= 1
-        print 'Countdown: %d' % (self.opsleft,)
-        if self.opsleft == 0:
-            self.mainloop.quit()
+        self.loopsleft -= 1
+        print 'Countdown: %d' % (self.loopsleft,)
+        if self.loopsleft == 0:
+            self.quit()
 
-    def FindModemPath(self):
-        for modem in mm.EnumerateDevices():
-            (obj, path) = modem
-            try:
-                if path.index('/org/chromium/ModemManager/Gobi') == 0:
-                    return path
-            except ValueError:
-                pass
-        return None
-
-    def RequestDormancyEvents(self, modem_path):
-        modem = dbus.Interface(
-            self.bus.get_object('org.chromium.ModemManager', modem_path),
-            dbus_interface='org.chromium.ModemManager.Modem.Gobi')
-        modem.RequestEvents('+dormancy')
-
+    @ExceptionForward
     def enable(self):
         print 'Enabling...'
-        self.countdown()
         self.state = State.ENABLING
         self.flim.EnableTechnology('cellular')
 
+    @ExceptionForward
     def disable(self):
         print 'Disabling...'
-        self.countdown()
         self.state = State.DISABLING
         self.flim.DisableTechnology('cellular')
 
+    @ExceptionForward
     def connect(self):
         print 'Connecting...'
-        self.countdown()
         self.state = State.CONNECTING
         self.flim.ConnectService(service=self.service, config_timeout=120)
 
+    @ExceptionForward
     def disconnect(self):
         print 'Disconnecting...'
-        self.countdown()
         self.state = State.DISCONNECTING
         self.flim.DisconnectService(service=self.service, wait_timeout=60)
 
+    @ExceptionForward
     def PropertyChanged(self, *args, **kwargs):
         if args[0] == 'Powered':
             if not args[1]:
@@ -82,6 +73,7 @@ class network_3GDormancyDance(test.test):
         elif args[0] == 'Services':
             self.CheckService()
 
+    @ExceptionForward
     def DormancyStatus(self, *args, **kwargs):
         if args[0]:
             self.HandleDormant()
@@ -102,6 +94,7 @@ class network_3GDormancyDance(test.test):
         if self.state != State.DISABLING:
             raise error.TestFail('Disabled while not in state Disabling')
         print 'Disabled'
+        self.countdown()
         self.enable()
 
     def HandleEnabled(self):
@@ -142,7 +135,7 @@ class network_3GDormancyDance(test.test):
         print 'Disconnected'
         self.disable()
 
-    def begin(self):
+    def idle(self):
         connected = False
         powered = False
 
@@ -175,10 +168,38 @@ class network_3GDormancyDance(test.test):
         else:
             raise error.TestFail('Service online but device unpowered!')
 
-    def run_once(self, name='usb', ops=5000, seed=None):
-        self.opsleft = ops
+
+
+class network_3GDormancyDance(test.test):
+    version = 1
+
+    def FindModemPath(self):
+        for modem in mm.EnumerateDevices():
+            (obj, path) = modem
+            try:
+                if path.index('/org/chromium/ModemManager/Gobi') == 0:
+                    return path
+            except ValueError:
+                pass
+        return None
+
+    def RequestDormancyEvents(self, modem_path):
+        modem = dbus.Interface(
+            self.bus.get_object('org.chromium.ModemManager', modem_path),
+            dbus_interface='org.chromium.ModemManager.Modem.Gobi')
+        modem.RequestEvents('+dormancy')
+
+    def PropertyChanged(self, *args, **kwargs):
+        self.tester.PropertyChanged(*args, **kwargs)
+
+    def DormancyStatus(self, *args, **kwargs):
+        self.tester.DormancyStatus(*args, **kwargs)
+
+    def run_once(self, name='usb', loops=20, seed=None):
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus()
+
+        main_loop = gobject.MainLoop()
 
         modem_path = self.FindModemPath()
         if not modem_path:
@@ -186,18 +207,17 @@ class network_3GDormancyDance(test.test):
         print 'Modem: %s' % (modem_path,)
         self.RequestDormancyEvents(modem_path)
 
-        self.flim = flimflam.FlimFlam()
-        self.manager = flimflam.DeviceManager(self.flim)
-        self.device = self.flim.FindElementByNameSubstring('Device', name)
+        flim = flimflam.FlimFlam()
+        device = flim.FindElementByNameSubstring('Device', name)
 
-        if not self.device:
-            self.device = self.flim.FindElementByPropertySubstring('Device',
-                                                                   'Interface',
-                                                                   name)
+        if not device:
+            device = flim.FindElementByPropertySubstring('Device',
+                                                         'Interface',
+                                                          name)
         self.bus.add_signal_receiver(self.PropertyChanged,
                                      signal_name='PropertyChanged')
         self.bus.add_signal_receiver(self.DormancyStatus,
                                      signal_name='DormancyStatus')
-        self.mainloop = gobject.MainLoop()
-        glib.idle_add(self.begin)
-        self.mainloop.run()
+        self.tester = DormancyTester(main_loop=main_loop,
+                                     loops=loops, flim=flim, device=device)
+        self.tester.run()
