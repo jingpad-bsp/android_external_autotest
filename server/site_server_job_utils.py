@@ -197,12 +197,12 @@ class machine_worker(object):
         If continuous parsing was requested, start the parser before running
         tests.
         """
-        # Modify self.resultdir so that it points to the results directory for
+        # Modify job.resultdir so that it points to the results directory for
         # the machine we're working on. Required so that server jobs will write
         # to the proper location.
         self._server_job.machines = [self._machine]
         self._server_job.push_execution_context(self._machine)
-        os.chdir(self.resultdir)
+        os.chdir(self._server_job.resultdir)
         if self._continuous_parsing:
             self._server_job._parse_job += "/" + self._machine
             self._server_job._using_parser = True
