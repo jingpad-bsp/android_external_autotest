@@ -21,8 +21,7 @@ from autotest_lib.client.common_lib import error
 CLIENT_TESTS = [
     'network_GobiUncleanDisconnect',
     'network_3GDisableWhileConnecting',
-# TODO(dalecurtis): Renable once http://crosbug.com/17848 is fixed.
-#    'network_3GDormancyDance',
+    'network_3GDormancyDance',
     'network_3GModemPresent',
     'network_3GRecoverFromGobiDesync',
     'network_3GSafetyDance',
