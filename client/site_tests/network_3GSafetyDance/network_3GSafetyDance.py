@@ -113,7 +113,7 @@ class network_3GSafetyDance(test.test):
 
         if autoconnect:
             print 'Disabling AutoConnect.'
-            self.service.SetProperty('AutoConnect', dbus.Boolean(0))
+            service.SetProperty('AutoConnect', dbus.Boolean(0))
 
             props = service.GetProperties()
             favorite = props['Favorite']
