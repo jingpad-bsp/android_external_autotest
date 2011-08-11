@@ -20,7 +20,7 @@ class platform_CloseOpenLid(autotest_lib.server.cros.servotest.ServoTest):
         self.assert_pingfail()
         self.servo.lid_open()
         self.servo.pass_devmode()
-        self.assert_ping()
+        self.wait_for_client()
 
         # pwr_button and open lid
         self.servo.power_long_press()
@@ -28,4 +28,4 @@ class platform_CloseOpenLid(autotest_lib.server.cros.servotest.ServoTest):
         self.servo.lid_close()
         self.servo.lid_open()
         self.servo.pass_devmode()
-        self.assert_ping()
+        self.wait_for_client()

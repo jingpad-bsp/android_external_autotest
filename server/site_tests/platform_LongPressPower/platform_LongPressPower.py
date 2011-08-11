@@ -20,4 +20,4 @@ class platform_LongPressPower(autotest_lib.server.cros.servotest.ServoTest):
         self.assert_pingfail()
         # ensure host boots
         self.servo.boot_devmode()
-        self.assert_ping()
+        self.wait_for_client()
