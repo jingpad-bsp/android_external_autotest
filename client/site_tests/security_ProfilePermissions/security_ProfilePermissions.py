@@ -42,16 +42,14 @@ class security_ProfilePermissions(cros_ui_test.UITest):
         login.wait_for_initial_chrome_window()
 
         homepath = "/home/chronos"
+        passes.append(self.check_owner_mode(homepath, "chronos", 0755))
 
         user_mountpt = constants.CRYPTOHOME_MOUNT_PT
-        homemode = stat.S_IMODE(os.stat(user_mountpt)[stat.ST_MODE])
-
         # TODO(jimhebert) homedir mode check excluded from BWSI right now.
         # Once crosbug.com/16425 is fixed, remove the is_mounted() check.
-        if cryptohome.is_mounted() and homemode != self._HOMEDIR_MODE:
-            passes.append(False)
-            logging.error('%s permissions were %s' %
-                          (user_mountpt, oct(homemode)))
+        if cryptohome.is_mounted():
+            passes.append(self.check_owner_mode(user_mountpt, "chronos",
+                                                self._HOMEDIR_MODE))
 
         # An array of shell commands, each representing a test that
         # passes if it emits no output. The first test is the main one.
@@ -59,11 +57,9 @@ class security_ProfilePermissions(cros_ui_test.UITest):
         # anyone else. Any exceptions to that are pruned out of the
         # first test and checked individually by subsequent tests.
         cmds = [
-            ('find -L "%s" '
+            ('find -L "%s" -path "%s" -o '
              # Avoid false-positives on SingletonLock, SingletonCookie, etc.
              ' \\( -name "Singleton*" -a -type l \\) -o '
-             # TODO(jimhebert) remove prev_stats line after crosbug.com/16610.
-             ' -path "%s/prev_stats" -prune -o '
              ' -path "%s/flimflam" -prune -o '
              ' -path "%s/.tpm" -prune -o '
              ' \\( -perm /022 -o \\! -user chronos \\) -ls') %
