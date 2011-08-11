@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, time
+import logging, os, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test, login
@@ -47,11 +47,13 @@ class desktopui_WindowManagerFocusNewWindows(cros_ui_test.UITest):
         # Create a window and check that we switch to it.
         win = self.autox.create_and_map_window(
             width=200, height=200, title='test')
+        logging.info('Created first window 0x%x' % win.id)
         info = self.autox.get_window_info(win.id)
         self.__check_active_window(win.id, info)
 
         # Create a second window.
         win2 = self.autox.create_and_map_window(
             width=200, height=200, title='test 2')
+        logging.info('Created second window 0x%x' % win2.id)
         info2 = self.autox.get_window_info(win2.id)
         self.__check_active_window(win2.id, info2)
