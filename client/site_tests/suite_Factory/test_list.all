@@ -138,6 +138,12 @@ TEST_LIST = [
         kbd_shortcut='j'),
 
     OperatorTest(
+        label_en='serial no',
+        label_zw='',
+        autotest_name='factory_SetSN',
+        kbd_shortcut='6'),
+
+    OperatorTest(
         label_en='keyboard',
         label_zw='鍵盤',
         autotest_name='factory_Keyboard',

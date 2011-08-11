@@ -56,6 +56,12 @@ TEST_LIST = [
         autotest_name='factory_SelectRegion',
         kbd_shortcut='j'),
 
+    OperatorTest(
+        label_en='serial no',
+        label_zw='',
+        autotest_name='factory_SetSN',
+        kbd_shortcut='6'),
+
     # THIS IS A GOOGLE REQUIRED TEST.
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
