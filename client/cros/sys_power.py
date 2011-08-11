@@ -28,7 +28,7 @@ def suspend_to_ram():
     Suspend the system to RAM (S3)
     """
     if os.path.exists(SUSPEND_CMD):
-        os.system(SUSPEND_CMD)
+        os.system(SUSPEND_CMD + ' --test')
     else:
         set_power_state('mem')
 
