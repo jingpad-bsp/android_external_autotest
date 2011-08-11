@@ -6,6 +6,7 @@ Copyright 2010 Google Inc. All Rights Reserved.
 This template builds a report comparing a new build to an older build.
 {% endcomment %}
 {% block title %}ChromeOS Release Report{% endblock %}
+{% block body_block_header %}<body style="width:99%; height:100%;">{% endblock %}
 {% block html_block %}
 <!--Load the AJAX API-->
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -19,14 +20,19 @@ This template builds a report comparing a new build to an older build.
   // Callback that creates and populates a data table,
   // instantiates the charts, passes in the data and
   // draws them.
+  function chromeos_version(full_version){
+    vers = full_version.split('(', 1)[0].replace(/\s*$/, "").split(' ', 2);
+    return vers[Math.min(vers.length, 2) - 1].split('-', 1);
+  }
   function drawCharts() {
     var table = new google.visualization.Table(
         document.getElementById('releasetable'));
     var json_data = new google.visualization.DataTable(
         {% autoescape off %}{{ tpl_chart.gviz_data_table }}{% endautoescape %}, 0.5);
+    from_ver = chromeos_version(json_data.getColumnLabel(2));
+    to_ver = chromeos_version(json_data.getColumnLabel(3));
     diff_url = 'http://chromeos-images/diff/report' +
-        '?from=' + json_data.getColumnLabel(2).split('-')[3] +
-        '&to=' + json_data.getColumnLabel(3).split('-')[3];
+        '?from=' + from_ver + '&to=' + to_ver;
     document.getElementById('diff_iframe').src=diff_url;
     table.draw(json_data,
                {allowHtml: true, showRowNumber: true, sortColumn: 0});

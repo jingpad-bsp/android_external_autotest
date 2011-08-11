@@ -8,10 +8,36 @@
 """
 
 
+import json
+import logging
 import os
+import re
 
 
 FIELD_SEPARATOR = ','
+BUILD_PART_SEPARATOR = ' '
+
+BUILD_PATTERN = re.compile(
+    '([\w\-]+-r[c0-9]+)-([\d]+\.[\d]+\.[\d]+\.[\d]+)-([ar][\w]*)-(b[\d]+)')
+
+
+def AbbreviateBuild(build, chrome_versions, with_board=False):
+  """Condense full build string for x-axis representation."""
+  m = re.match(BUILD_PATTERN, build)
+  if not m or m.lastindex < 4:
+    logging.warning('Skipping poorly formatted build: %s.', build)
+    return None
+  chrome_version = ''
+  if chrome_versions and m.group(2) in chrome_versions:
+    chrome_version = '%s(%s)' % (BUILD_PART_SEPARATOR,
+                                 chrome_versions[m.group(2)])
+  if with_board:
+    new_build = '%s%s%s-%s%s' % (m.group(1), BUILD_PART_SEPARATOR,
+                                 m.group(2), m.group(4), chrome_version)
+  else:
+    new_build = '%s-%s%s' % (m.group(2), m.group(4), chrome_version)
+
+  return new_build
 
 
 def AbridgeCommonKeyPrefix(test_name, test_keys):
@@ -26,6 +52,18 @@ def AbridgeCommonKeyPrefix(test_name, test_keys):
       for test_key in test_keys:
         new_test_keys.append(test_key[prefix_len:])
   return test_name, new_test_keys
+
+
+def GetChromeVersions(request):
+  """Get Chrome-ChromeOS version map if requested."""
+  chrome_versions = None
+  chrome_version_flag = request.GET.get('chromeversion', 'true')
+  if chrome_version_flag and chrome_version_flag.lower() == 'true':
+    map_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                            'chromeos-chrome-version.json')
+    if os.path.exists(map_file):
+      chrome_versions = json.load(open(map_file))
+  return chrome_versions
 
 
 def GetTestNameKeys(testkey):

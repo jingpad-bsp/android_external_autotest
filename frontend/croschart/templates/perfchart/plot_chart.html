@@ -5,6 +5,7 @@ Copyright 2010 Google Inc. All Rights Reserved.
 
 This template implements chart point click-through to the data.
 {% endcomment %}
+{% block body_block_header %}<body>{% endblock %}
     {% block add_listener %}
     google.visualization.events.addListener(chart, 'select', function(){
     var build_tags = [

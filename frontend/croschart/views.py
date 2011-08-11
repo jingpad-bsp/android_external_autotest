@@ -10,8 +10,11 @@ from django.http import HttpResponse
 from django.shortcuts import render_to_response
 
 import autotest_lib.frontend.croschart.validators as validators
-import autotest_lib.frontend.croschart.chartmodels as chartmodels
 import autotest_lib.frontend.croschart.chartviews as chartviews
+import autotest_lib.frontend.croschart.labtest.models as labtest_models
+import autotest_lib.frontend.croschart.perfchart.models as perfchart_models
+import autotest_lib.frontend.croschart.releasereport.models as release_models
+import autotest_lib.frontend.croschart.testreport.models as testreport_models
 import autotest_lib.frontend.croschart.reportviews as reportviews
 
 from autotest_lib.frontend.croschart.charterrors import ChartInputError
@@ -61,8 +64,8 @@ def PlotChart(request):
   try:
     salt = ValidateParameters(request, VLISTS['chart'])
     return chartviews.PlotChart(
-        request, 'plot_chart.html',
-        chartmodels.GetRangedKeyByBuildLinechartData, salt)
+        request, 'perfchart/plot_chart.html',
+        perfchart_models.GetRangedKeyByBuildLinechartData, salt)
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())
@@ -73,8 +76,8 @@ def PlotChartDiff(request):
   try:
     salt = ValidateParameters(request, VLISTS['chart'])
     return chartviews.PlotChart(
-        request, 'plot_chartdiff.html',
-        chartmodels.GetRangedKeyByBuildLinechartData, salt)
+        request, 'perfchart/plot_chartdiff.html',
+        perfchart_models.GetRangedKeyByBuildLinechartData, salt)
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())
@@ -84,7 +87,7 @@ def PlotChartReport(request):
   """Plot the requested report from /report?..."""
   try:
     ValidateParameters(request, VLISTS['chartreport'])
-    return reportviews.PlotReport(request, 'plot_chartreport.html')
+    return reportviews.PlotReport(request, 'chartreport/plot_chartreport.html')
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())
@@ -95,8 +98,8 @@ def PlotReleaseReport(request):
   try:
     salt = ValidateParameters(request, VLISTS['releasereport'])
     return chartviews.PlotChart(
-        request, 'plot_releasereport.html',
-        chartmodels.GetReleaseReportData, salt)
+        request, 'releasereport/plot_releasereport.html',
+        release_models.GetReleaseReportData, salt)
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())
@@ -107,8 +110,8 @@ def PlotTestReport(request):
   try:
     salt = ValidateParameters(request, VLISTS['testreport'])
     return chartviews.PlotChart(
-        request, 'plot_testreport.html',
-        chartmodels.GetRangedTestReportData, salt)
+        request, 'testreport/plot_testreport.html',
+        testreport_models.GetRangedTestReportData, salt)
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())
@@ -119,8 +122,8 @@ def PlotLabTestReport(request):
   try:
     salt = ValidateParameters(request, VLISTS['testreport'])
     return chartviews.PlotChart(
-        request, 'plot_labtestreport.html',
-        chartmodels.GetRangedLabTestReportData, salt)
+        request, 'labtest/plot_labtestreport.html',
+        labtest_models.GetRangedLabTestReportData, salt)
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())

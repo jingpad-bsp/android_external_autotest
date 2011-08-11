@@ -5,7 +5,7 @@ Copyright 2010 Google Inc. All Rights Reserved.
 This template describes the overall page structure for the
 tables pages for the ChromeOS Test Dashboard.
 {% endcomment %}
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<!doctype html>
 <html lang="en">
   <head>
     <meta http-equiv="refresh" content="600">
@@ -13,7 +13,7 @@ tables pages for the ChromeOS Test Dashboard.
     <meta http-equiv="pragma" content="no-cache">
     <title>{% block title %}{% endblock %}</title>
   </head>
-  <body>
+  {% block body_block_header %}{% endblock %}
     <style type="text/css">
       body, td, th {
         font-family: Verdana, Geneva, sans-serif;
