@@ -98,9 +98,9 @@ class ServoTest(test.test):
         pyauto_cmd = \
             'python /usr/local/autotest/cros/servo_pyauto.py --no-http-server'
         logging.info('Client command: %s' % pyauto_cmd)
-        self._remote_pyauto = subprocess.Popen(['ssh -n root@%s \'%s\'' %
-                                                (self._client.ip, pyauto_cmd)],
-                                               shell=True)
+        self._remote_pyauto = subprocess.Popen([
+            'ssh -o "StrictHostKeyChecking no" -n root@%s \'%s\'' %
+            (self._client.ip, pyauto_cmd)], shell=True)
         logging.info('Connecting to client PyAuto RPC server...')
         remote = 'http://localhost:%s' % self._rpc_port
         self.pyauto = xmlrpclib.ServerProxy(remote, allow_none=True)
@@ -158,7 +158,7 @@ class ServoTest(test.test):
     def _kill_remote_pyauto(self):
         """Ensure the remote PyAuto and local ssh process are terminated."""
         kill_cmd = 'pkill -f servo_pyauto'
-        subprocess.call(['ssh -n root@%s \'%s\'' %
+        subprocess.call(['ssh -n -o "StrictHostKeyChecking no" root@%s \'%s\'' %
                          (self._client.ip, kill_cmd)],
                         shell=True)
         if self._remote_pyauto and self._remote_pyauto.poll() is None:
