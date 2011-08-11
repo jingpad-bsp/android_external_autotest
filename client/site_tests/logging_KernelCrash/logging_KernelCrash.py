@@ -72,7 +72,8 @@ class logging_KernelCrash(crash_test.CrashTest):
         if not os.path.exists(kcrash_report):
             raise error.TestFail('Crash report %s gone' % kcrash_report)
         report_contents = utils.read_file(kcrash_report)
-        if not 'kernel BUG at fs/proc/breakme.c' in report_contents:
+        if re.search(r'kernel BUG at .*fs/proc/breakme.c',
+                     report_contents) == None:
             raise error.TestFail('Crash report has unexpected contents')
 
         if not os.path.exists(_KCRASH_FILE):

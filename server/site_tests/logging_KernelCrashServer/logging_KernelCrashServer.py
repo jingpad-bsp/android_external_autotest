@@ -5,6 +5,7 @@
 import logging, os, shutil, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging
+from autotest_lib.client.cros.crash_test import CrashTest as CrashTestDefs
 from autotest_lib.server import autotest, site_host_attributes, test
 
 _CONSENT_FILE = '/home/chronos/Consent To Send Stats'
@@ -20,6 +21,35 @@ class logging_KernelCrashServer(test.test):
         self._host.run('rm -f "%s"; cp "%s" "%s" 2>/dev/null; true' %
                        (dest, source, dest))
 
+    def _exists_on_client(self, f):
+        return self._host.run('ls "%s"' % f,
+                               ignore_status=True).exit_status == 0
+
+    # Taken from KernelErrorPaths, which duplicates it, but is up to date
+    def _enable_consent(self):
+        """ Enable consent so that crashes get stored in /var/spool/crash. """
+        self._consent_files = [
+            (CrashTestDefs._PAUSE_FILE, None, 'chronos'),
+            (CrashTestDefs._CONSENT_FILE, None, 'chronos'),
+            (CrashTestDefs._POLICY_FILE, 'mock_metrics_on.policy', 'root'),
+            (CrashTestDefs._OWNER_KEY_FILE, 'mock_metrics_owner.key', 'root'),
+            ]
+        for dst, src, owner in self._consent_files:
+            if self._exists_on_client(dst):
+                self._host.run('mv "%s" "%s.autotest_backup"' % (dst, dst))
+            if src:
+                full_src = os.path.join(self.autodir, 'client/cros', src)
+                self._host.send_file(full_src, dst)
+            else:
+                self._host.run('touch "%s"' % dst)
+            self._host.run('chown "%s" "%s"' % (owner, dst))
+
+    def _restore_consent_files(self):
+        """ Restore consent files to their previous values. """
+        for f, _, _ in self._consent_files:
+            self._host.run('rm -f "%s"' % f)
+            if self._exists_on_client('%s.autotest_backup' % f):
+                self._host.run('mv "%s.autotest_backup" "%s"' % (f, f))
 
     def cleanup(self):
         self._exact_copy(_STOWED_CONSENT_FILE, _CONSENT_FILE)
@@ -42,10 +72,9 @@ class logging_KernelCrashServer(test.test):
     def _crash_it(self, consent):
         """Crash the host after setting the consent as given."""
         if consent:
-            self._host.run('echo test-consent > "%s"' % _CONSENT_FILE)
-            self._host.run('chown chronos:chronos "%s"' % _CONSENT_FILE)
+            self._enable_consent()
         else:
-            self._host.run('rm -f "%s"' % _CONSENT_FILE)
+            self._restore_consent_files()
         logging.info('KernelCrashServer: crashing %s' % self._host.hostname)
         boot_id = self._host.get_boot_id()
         self._host.run(
