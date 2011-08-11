@@ -183,6 +183,13 @@ def attempt_logout(timeout=_DEFAULT_TIMEOUT):
     if not logged_in():
         raise UnexpectedCondition('Already logged out')
 
+    # We've seen a steady stream of crashes within Chrome and chromeos-wm when
+    # the UI job is stopped while those processes are still getting initialized
+    # (a situation which doesn't seem to happen in production).  We wait for the
+    # window manager to report that the first Chrome window has shown up before
+    # tearing things down to reduce the likelihood of problems.
+    wait_for_initial_chrome_window()
+
     # Log what we're about to do to /var/log/messages. Used to log crashes later
     # in cleanup by cros_ui_test.UITest.
     utils.system('logger "%s"' % LOGOUT_ATTEMPT_MSG)
