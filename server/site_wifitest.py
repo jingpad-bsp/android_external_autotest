@@ -70,6 +70,9 @@ class WiFiTest(object):
                               if not running.
       vpn_client_config       launch a VPN client to connect with the
                               VPN server
+      client_reboot           reboots the client and waits for it to come back.
+                              The amount of time to wait can be specified by a
+                              'timeout' parameter, in seconds.
 
     Steps that are done on the client or server machine are implemented in
     this class.  Steps that are done on the wifi router are implemented in
@@ -1584,7 +1587,15 @@ class WiFiTest(object):
 
     def client_reboot(self, params):
         self.client_installed_scripts = {}
-        self.client.reboot()
+
+        if 'timeout' not in params:
+            logging.info("Using default reboot timeout")
+            self.client.reboot()
+        else:
+            reboot_timeout = float(params['timeout'])
+            logging.info("Reboot timeout is %f seconds", reboot_timeout)
+            self.client.reboot(timeout=reboot_timeout)
+
         self.profile_pop(self.test_profile, ignore_status=True)
         self.profile_remove(self.test_profile, ignore_status=True)
         self.profile_create(self.test_profile)

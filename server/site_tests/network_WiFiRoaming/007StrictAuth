@@ -13,7 +13,7 @@
     [ "connect",        { "security":"none" } ],
     # Reboot the client.  This will cause the AP to still think the client
     # is authenticated, while the client loses record of this state.
-    [ "client_reboot" ],
+    [ "client_reboot",  { "timeout":"180"} ],
     # Try to connect again.  The strict-mode AP will DEAUTH initially, and
     # then accept the connection.
     [ "connect",        { "security":"none" } ],
