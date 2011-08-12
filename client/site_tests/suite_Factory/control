@@ -39,7 +39,6 @@ FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
 FACTORY_STATE_SERVER_PATH = job.autodir + '/bin/factory_state.py'
 STATUS_FILE_PATH = job.autodir + '/results/default/status'
 DEFAULT_TEST_LIST_PATH = job.autodir + '/site_tests/suite_Factory/test_list'
-FACTORY_REBOOT_FLAG_PATH = job.autodir + '/factory_reboot'
 
 
 # Hack to grab the pid for forked tests.
@@ -121,8 +120,6 @@ def stop_process(process, caption):
 
 def step_reboot_seq(next_subtest_info, total_iterations, i=0):
     if i < total_iterations:
-        with open(FACTORY_REBOOT_FLAG_PATH, 'w') as reboot_flag:
-            reboot_flag.write('%d / %d' % (i, total_iterations))
         job.next_step_prepend([step_reboot_seq, next_subtest_info,
                                total_iterations, i + 1])
         factory.log('rebooting (iteration %d of %d)' % (i, total_iterations))
