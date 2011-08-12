@@ -29,4 +29,6 @@ del profile.tests['glean']['exactRGBA']
 # IHF: this test hangs testing
 del profile.tests['general']['longprim']
 del profile.tests['glx']['glx-make-glxdrawable-current']
-del profile.tests['glean']
+#del profile.tests['glean']
+del profile.tests['shaders']['glsl-texcoord-array']
+

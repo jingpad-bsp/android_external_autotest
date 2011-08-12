@@ -8,11 +8,11 @@ import logging, os, re, shutil
 from autotest_lib.client.bin import test, utils
 
 # changing this version number will force a delete of piglit/ and remake
-version = 1
+version = 2
 
 # TODO(ihf) piglit only builds on x86, Tegra2 only supports GLES
 def setup(topdir):
-    sysroot = os.environ['SYSROOT']
+    sysroot = os.environ.get("SYSROOT", "")
     logging.debug('INFO: piglit sysroot = %s' % sysroot)
     tarball = 'piglit.tar.gz'
     srcdir = os.path.join(topdir, 'src')
@@ -23,8 +23,8 @@ def setup(topdir):
     if re.search('x86', sysroot.lower()):
         utils.extract_tarball_to_dir(tarball_path, dst_path)
         # patch in files now
-        shutil.copyfile(os.path.join(srcdir, 'CMakeLists.txt'),
-                        os.path.join(dst_path, 'CMakeLists.txt'))
+        utils.system('patch -p0 < ' +
+                     os.path.join(srcdir, 'CMakeLists_GLES.patch'))
         shutil.copyfile(os.path.join(srcdir, 'cros-driver.tests'),
                         os.path.join(dst_path, 'tests/cros-driver.tests'))
         os.chdir(dst_path)

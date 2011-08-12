@@ -12,7 +12,7 @@ from autotest_lib.client.cros import cros_ui, cros_ui_test, login
 
 # most graphics tests need the auto_login feature of UITest
 class graphics_Piglit(cros_ui_test.UITest):
-    version = 1
+    version = 2
     preserve_srcdir = True
 
     def setup(self):
@@ -21,19 +21,6 @@ class graphics_Piglit(cros_ui_test.UITest):
     # hard wiring the cros-driver.test config file until we
     # need to parameterize this test for short/extended testing
     def run_once(self):
-        # TODO(IHF) WARs due to pageflip/memory issue, crosbug 15675
-        self.crash_blacklist.append('chromeos-wm')
-        self.crash_blacklist.append('glx-multithread')
-        self.crash_blacklist.append('glx-window-life')
-        self.crash_blacklist.append('supplied_X')
-        # expected crashes inside of piglit need to be listed for UITest
-        self.crash_blacklist.append('attribute0')
-        self.crash_blacklist.append('cashewd')
-        self.crash_blacklist.append('fbo-depth-sample-compare')
-        self.crash_blacklist.append('getuniform-01')
-        self.crash_blacklist.append('glsl-bug-22603')
-        self.crash_blacklist.append('glsl-fs-color-matrix')
-        self.crash_blacklist.append('glsl-fs-discard-02')
         self.crash_blacklist.append('glslparsertest')
         self.crash_blacklist.append('shader_runner')
 
@@ -58,7 +45,7 @@ class graphics_Piglit(cros_ui_test.UITest):
             logging.info('Calling %s' % cmd)
             utils.run(cmd)
             # count number of pass, fail, warn and skip in the test summary
-            summary_path = os.path.join(results_path, 'summary')
+            summary_path = os.path.join(results_path, 'main')
             f = open(summary_path, 'r')
             summary = f.read()
             f.close()
@@ -66,31 +53,21 @@ class graphics_Piglit(cros_ui_test.UITest):
             return error.TestError('test runs only on x86 (needs OpenGL)')
 
         # get passed
-        report = re.findall(r'\nresult: pass', summary)
+        report = re.findall(r'"result": "pass",', summary)
         if not report:
             return error.TestFail('Output missing: pass number unknown!')
         passed = len(report)
         # get failed
-        report = re.findall(r'\nresult: fail', summary)
+        report = re.findall(r'"result": "fail",', summary)
         if not report:
             return error.TestFail('Output missing: fail number unknown!')
         failed = len(report)
-        # get warned
-        report = re.findall(r'\nresult: warn', summary)
-        if not report:
-            return error.TestFail('Output missing: warn number unknown!')
-        warned = len(report)
-        # get skipped
-        report = re.findall(r'\nresult: skip', summary)
-        if not report:
-            return error.TestFail('Output missing: skip number unknown!')
-        skipped = len(report)
+        warned = 0
+        skipped = 0
 
         # doesn't seem to send it to the host console
         logging.info('Piglit: %d pass', passed)
         logging.info('Piglit: %d fail', failed)
-        logging.info('Piglit: %d warn', warned)
-        logging.info('Piglit: %d skip', skipped)
 
         # output numbers for plotting by harness
         keyvals = {}
