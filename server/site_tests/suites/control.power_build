@@ -26,7 +26,7 @@ TESTS = [
     'power_StatsCPUFreq',
     'power_StatsCPUIdle',
     'power_StatsUSB',
-    'power_SuspendResume',
+    'power_Resume',
     'power_x86Settings'
 ]
 
