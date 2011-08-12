@@ -37,6 +37,12 @@ class XButton:
         self.xinput_dev_cmd = ' '.join([self.display_environ,
                                         'xinput --list --long %s'])
         self.trackpad_dev_id = self._get_trackpad_dev_id()
+        self.button_labels = None
+        self.get_supported_buttons()
+        self.wheel_label_dict = {'up': self.get_label(XButton.Wheel_Up),
+                                 'down': self.get_label(XButton.Wheel_Down),
+                                 'left': self.get_label(XButton.Wheel_Left),
+                                 'right': self.get_label(XButton.Wheel_Right),}
 
     def _get_trackpad_dev_id(self):
         trackpad_dev_id = None
@@ -61,6 +67,9 @@ class XButton:
         Button 0 Button 1 Button 2 Button 3 Button 4 Button 5 Button 6
         Button 7
         '''
+        if self.button_labels is not None:
+            return self.button_labels
+
         DEFAULT_BUTTON_LABELS = (
                 'Button Left', 'Button Middle', 'Button Right',
                 'Button Wheel Up', 'Button Wheel Down',
@@ -326,6 +335,8 @@ class Xcheck:
                                     self.button_labels))
         self._get_boot_time()
         self.xevent = XEvent(self.xbutton)
+        self.op_dict = {'>=': ge, '<=': le, '==': eq, '=': eq, '>': gt,
+                        '<': lt, '!=': ne, '~=': ne, 'not': ne, 'is not': ne}
 
     def _get_boot_time(self):
         ''' Get the system boot up time
@@ -366,14 +377,29 @@ class Xcheck:
         return lambda seq1, seq2: reduce(and_, map(lambda op, s1, s2:
                                                    op(s1, s2), ops, seq1, seq2))
 
-    def _button_criteria(self, button):
-        ''' Convert the key of the button tuple from label to index '''
-        crit_button_count = [0,] * len(self.button_labels)
-        if button is not None:
-            button_label, button_value = button
+    def _motion_criteria(self, motion_crit):
+        ''' Extract motion operator and value '''
+        if motion_crit is None:
+            return (None, None)
+        motion_op = self.op_dict[motion_crit[1]]
+        motion_value = motion_crit[2]
+        return (motion_op, motion_value)
+
+    def _button_criteria(self, button_crit):
+        ''' Create a list of button criteria
+
+        button_crit: the criteria of a single specified button
+        TODO(josephsih): support a list of button criteria to make it flexible.
+        '''
+        len_button_labels = len(self.button_labels)
+        values = [0] * len_button_labels
+        ops = [eq] * len_button_labels
+        if button_crit is not None:
+            button_label, button_op, button_value = button_crit
             button_index = self.xbutton.get_index(button_label)
-            crit_button_count[button_index] = button_value
-        return tuple(crit_button_count)
+            values[button_index] = button_value
+            ops[button_index] = self.op_dict[button_op]
+        return (ops, values)
 
     def _insert_nop(self, nop_str):
         ''' Insert a 'NOP' fake event into the xevent_data
@@ -402,23 +428,49 @@ class Xcheck:
                 return d
         return None
 
+    def _get_button_crit_per_direction(self):
+        ''' Use the direction in gesture file name to get correct button label
+
+        Extract scroll direction, e.g., 'up' or 'down', from the gesture file
+        name. Use the scroll direction to derive the correct button label.
+        E.g., for direction = 'up':
+              'Button Wheel' in config file is replaced by 'Button Wheel Up'
+        '''
+        direction = self._get_direction()
+        button_label = self.xbutton.wheel_label_dict[direction]
+        button_crit = list(self.criteria['button'])
+        button_crit[0] = button_label
+        return button_crit
+
     ''' _verify_xxx()
     Generic verification methods for various functionalities / areas
     '''
 
-    def _verify_motion(self, compare, crit_max_movement):
+    def _verify_motion(self, compare, crit_tot_move_val):
         ''' Verify if the observed motions satisfy the criteria '''
-        self.motion_flag = compare(self.xevent.sum_move, crit_max_movement)
+        self.motion_flag = compare(self.xevent.sum_move, crit_tot_move_val)
         logging.info('        Verify motion: (%s)' %
                      Xcheck.RESULT_STR[self.motion_flag])
         logging.info('              Total movement = %d' % self.xevent.sum_move)
 
     def _verify_button(self, compare, crit_button_count):
-        ''' Verify if the observed buttons satisfy the criteria '''
+        ''' Verify if the observed buttons satisfy the criteria
+
+        Example of computing count_flag:
+            compare =              (  eq,  ge,    eq, ...)
+            xevent.count_buttons = (   0,   3,     0, ...)
+            crit_button_count =    (   0,   1,     0, ...)
+            result list =          [True, True, True, ...]
+            count_flag =           True   (which is the AND of the result_list)
+        '''
+        # Compare if all parsed button counts meet the criteria
         count_flag = compare(self.xevent.count_buttons, crit_button_count)
+
+        # An X Button must end with a ButtonRelease
         state_flags = map(lambda s: s == 'ButtonRelease',
                           self.xevent.button_states)
         state_flag = reduce(and_, state_flags)
+
         self.button_flag = state_flag and count_flag
 
         logging.info('        Verify button: (%s)' %
@@ -483,9 +535,7 @@ class Xcheck:
                          ('Motion', '>=', 20),
                          ('ButtonRelease', 'Button Left'))
         '''
-        op_dict = {'>=': ge, '<=': le, '==': eq, '=': eq, '>': gt, '<': lt,
-                   '!=': ne, '~=': ne, 'not': ne, 'is not': ne}
-        op_le = op_dict['<=']
+        op_le = self.op_dict['<=']
         axis_dict = {'left': 'x', 'right': 'x', 'up': 'y', 'down': 'y',
                      None: ''}
         self.seq_flag = True
@@ -509,7 +559,7 @@ class Xcheck:
                 if crit_e_type.startswith('Motion'):
                     crit_e_op = crit_e[1]
                     crit_e_val = crit_e[2]
-                    op = op_dict[crit_e_op]
+                    op = self.op_dict[crit_e_op]
                     if crit_e_type == 'Motion':
                         crit_check = op(motion_val, crit_e_val)
                         if not crit_check:
@@ -587,15 +637,20 @@ class Xcheck:
     in the same area.
     '''
 
-    def _verify_all_criteria(self):
+    def _verify_all_criteria(self, button_crit=None):
         ''' A general verification method for all criteria '''
         self.xevent.parse_button_and_motion()
-        if self.criteria.has_key('max_movement'):
-            crit_max_movement = self.criteria['max_movement']
-            self._verify_motion(le, crit_max_movement)
+        if self.criteria.has_key('total_movement'):
+            crit_tot_move_op, crit_tot_move_val = \
+                    self._motion_criteria(self.criteria['total_movement'])
+            self._verify_motion(crit_tot_move_op, crit_tot_move_val)
         if self.criteria.has_key('button'):
-            crit_button_count = self._button_criteria(self.criteria['button'])
-            self._verify_button(eq, crit_button_count)
+            if button_crit is None:
+                button_crit = self.criteria['button']
+            crit_button_op, crit_button_count = \
+                    self._button_criteria(button_crit)
+            comp_ops = self._compare(tuple(crit_button_op))
+            self._verify_button(comp_ops, crit_button_count)
         if self.criteria.has_key('delay'):
             crit_delay = self.criteria['delay']
             self._verify_select_delay(crit_delay)
@@ -700,46 +755,12 @@ class Xcheck:
 
     def _check_two_finger_scroll(self):
         ''' Vertical scroll, reflecting movement of finger(s)
-
-        Criteria:
-        1. sum of movement is less than crit_max_movement
-        2. if subname in the file name is up:
-               A number of button 4 (Wheel Up) events should be observed
-               without other button events.
-           elif subname in the file name is down:
-               A number of button 5 (Wheel Down) events should be observed
-               without other button events.
         '''
-        # Extract scroll direction, i.e., 'up' or 'down', from the file name
-        pos = self.func_name_pos
-        direction = self._get_direction()
+        button_crit = self._get_button_crit_per_direction()
+        self._verify_all_criteria(button_crit=button_crit)
 
-        # Get criteria for max movement and wheel up/down
-        crit_max_movement = self.criteria['max_movement']
-        ops = [eq,] * len(self.button_labels)
-        if direction == 'up':
-            button_label = self.xbutton.get_label(self.xbutton.Wheel_Up)
-            ops[self.xbutton.get_index(button_label)] = ge
-            crit_up = self.criteria['button'][0]
-            crit_button_count = self._button_criteria(crit_up)
-        elif direction == 'down':
-            button_label = self.xbutton.get_label(self.xbutton.Wheel_Down)
-            ops[self.xbutton.get_index(button_label)] = ge
-            crit_down = self.criteria['button'][1]
-            crit_button_count = self._button_criteria(crit_down)
-        else:
-            msg = '      scroll direction in the file name is not correct: (%s)'
-            logging.info(msg % direction)
-            self.result = False
-            return
-
-        self.xevent.parse_button_and_motion()
-        self._verify_motion(le, crit_max_movement)
-        self._verify_button(self._compare(tuple(ops)), crit_button_count)
-        self._get_result()
 
     ''' area 4: Palm/thumb detection '''
-
 
     def run(self, tp_func, tp_data,  xevent_str):
         ''' Parse the x events and invoke a proper check function
