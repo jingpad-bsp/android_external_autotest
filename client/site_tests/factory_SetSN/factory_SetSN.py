@@ -43,6 +43,15 @@ class factory_SetSN(test.test):
         factory.log(' sn is %s' % serial_number)
         self.writing = True
 
+        # Hide entry
+        entry.hide()
+        gtk.main_iteration(False)
+
+        # Update label
+        self.label.set_text('Writing serial number: %s\n'
+                            'Please wait... (may take >10s)' % serial_number)
+        gtk.main_iteration(False)
+
         self.write_vpd(serial_number)
         gtk.main_quit()
 
