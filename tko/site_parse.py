@@ -25,14 +25,52 @@ import os, json, sys
 
 import common
 from autotest_lib.tko import parse, utils as tko_utils
+from autotest_lib.tko.parsers import version_0
 from autotest_lib.client.common_lib import global_config, utils
 
 
 # Name of the report file to produce upon completion.
 _JSON_REPORT_FILE = 'results.json'
 
-# Number of log lines to include with each test.
-_LOG_LIMIT = 25
+# Number of log lines to include from error log with each test results.
+_ERROR_LOG_LIMIT = 10
+
+# Status information is generally more useful than error log, so provide a lot.
+_STATUS_LOG_LIMIT = 50
+
+
+def parse_reason(path):
+    """Process status.log or status and return a test-name: reason dict."""
+    status_log = os.path.join(path, 'status.log')
+    if not os.path.exists(status_log):
+        status_log = os.path.join(path, 'status')
+    if not os.path.exists(status_log):
+        return
+
+    reasons = {}
+    last_test = None
+    for line in open(status_log).readlines():
+        try:
+            # Since we just want the status line parser, it's okay to use the
+            # version_0 parser directly; all other parsers extend it.
+            status = version_0.status_line.parse_line(line)
+        except:
+            status = None
+
+        # Assemble multi-line reasons into a single reason.
+        if not status and last_test:
+            reasons[last_test] += line
+
+        # Skip non-lines, empty lines, and successful tests.
+        if not status or not status.reason.strip() or status.status == 'GOOD':
+            continue
+
+        # Update last_test name, so we know which reason to append multi-line
+        # reasons to.
+        last_test = status.testname
+        reasons[last_test] = status.reason
+
+    return reasons
 
 
 def main():
@@ -74,23 +112,45 @@ def main():
     # it. The Emailer will fill in the blanks using Database data later.
     filtered_results = {}
     for test in results:
+        result_log = ''
         test_name = os.path.basename(test)
-        log = os.path.join(test, 'debug', '%s.ERROR' % test_name)
+        error = os.path.join(test, 'debug', '%s.ERROR' % test_name)
 
-        # If a log doesn't exist, we don't care about this test.
-        if not os.path.exists(log):
+        # If the error log doesn't exist, we don't care about this test.
+        if not os.path.isfile(error):
             continue
 
-        # Pull out only the last _LOG_LIMIT lines of the file.
-        short_log = utils.system_output('tail -n %d %s' % (_LOG_LIMIT, log))
+        # Parse failure reason for this test.
+        for t, r in parse_reason(test).iteritems():
+            # Server tests may have subtests which will each have their own
+            # reason, so display the test name for the subtest in that case.
+            if t != test_name:
+                result_log += '%s: ' % t
+            result_log += '%s\n\n' % r.strip()
+
+        # Trim results_log to last _STATUS_LOG_LIMIT lines.
+        short_result_log = '\n'.join(
+            result_log.splitlines()[-1 * _STATUS_LOG_LIMIT:]).strip()
 
         # Let the reader know we've trimmed the log.
-        if len(short_log.splitlines()) == _LOG_LIMIT:
+        if short_result_log != result_log.strip():
+            short_result_log = (
+                '[...displaying only the last %d status log lines...]\n%s' % (
+                    _STATUS_LOG_LIMIT, short_result_log))
+
+        # Pull out only the last _LOG_LIMIT lines of the file.
+        short_log = utils.system_output('tail -n %d %s' % (
+            _ERROR_LOG_LIMIT, error))
+
+        # Let the reader know we've trimmed the log.
+        if len(short_log.splitlines()) == _ERROR_LOG_LIMIT:
             short_log = (
-                '[...displaying only the last 25 log lines...]\n' + short_log)
+                '[...displaying only the last %d error log lines...]\n%s' % (
+                    _ERROR_LOG_LIMIT, short_log))
 
         filtered_results[test_name] = results[test]
-        filtered_results[test_name]['log'] = short_log
+        filtered_results[test_name]['log'] = '%s\n\n%s' % (
+            short_result_log, short_log)
 
     # Generate JSON dump of results. Store in results dir.
     json_file = open(os.path.join(results_dir, _JSON_REPORT_FILE), 'w')
