@@ -8,9 +8,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import crash_test
 
 
-_KCRASH_FILE = '/sys/kernel/debug/preserved/kcrash'
-
-
 class logging_KernelCrash(crash_test.CrashTest):
     version = 1
 
@@ -39,9 +36,6 @@ class logging_KernelCrash(crash_test.CrashTest):
 
     def _test_reporter_kcrash_storage(self):
         """Test that crash_reporter has properly stored the kcrash report."""
-        if not self._log_reader.can_find('Cleared kernel crash diagnostics'):
-            raise error.TestFail('Could not find clearing message')
-
         announce_match = re.search(
             r'Received .* from kernel \(signature ([^\)]+)\) \(([^\)]+)\)',
             self._log_reader.get_logs())
@@ -75,12 +69,6 @@ class logging_KernelCrash(crash_test.CrashTest):
         if re.search(r'kernel BUG at .*fs/proc/breakme.c',
                      report_contents) == None:
             raise error.TestFail('Crash report has unexpected contents')
-
-        if not os.path.exists(_KCRASH_FILE):
-            raise error.TestFail('Could not find %s' % _KCRASH_FILE)
-        kcrash_file_contents = utils.read_file(_KCRASH_FILE)
-        if kcrash_file_contents != '':
-            raise error.TestFail('%s was not properly cleared' % _KCRASH_FILE)
 
 
     def _test_sender_send_kcrash(self):
