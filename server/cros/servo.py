@@ -171,6 +171,28 @@ class Servo:
         self.set('dev_mode', 'off')
 
 
+    def enable_usb_hub(self):
+        """Enable Servo's USB/ethernet hub.
+
+        This is equivalent to plugging in the USB devices attached to Servo.
+        Requires that the USB out on the servo board is connected to a USB
+        in port on the target device. Servo's USB ports are labeled DUT_HUB_USB1
+        and DUT_HUB_USB2. Servo's ethernet port is also connected to this hub.
+        Servo's USB port DUT_HUB_IN is the output of the hub.
+        """
+        self.set('dut_hub_pwren', 'on')
+        self.set('dut_hub_sel', 'dut_sees_hub')
+        self.set('dut_hub_on', 'yes')
+
+
+    def disable_usb_hub(self):
+        """Disable Servo's USB/ethernet hub.
+
+        This is equivalent to unplugging the USB devices attached to Servo.
+        """
+        self.set('dut_hub_on', 'no')
+
+
     def boot_devmode(self):
         """Boot a dev-mode device that is powered off."""
         self.power_normal_press()
