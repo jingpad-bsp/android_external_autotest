@@ -4,7 +4,7 @@
 import logging, random, re, sgmllib, threading, time, urllib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.servotest import ServoTest
+from autotest_lib.server.cros import servo_test
 
 SLEEP_DEFAULT_SEED = 1
 SLEEP_DEFAULT_SECS = { 'on': {'min': 3, 'max': 6},
@@ -154,7 +154,7 @@ class LidThread(threading.Thread):
                                     self._sleep_secs['off']['max']))
 
 
-class platform_LidStress(ServoTest):
+class platform_LidStress(servo_test.ServoTest):
     """Uses servo to repeatedly close & open lid while surfing."""
     version = 1
 

@@ -4,10 +4,10 @@
 
 import logging
 
-from autotest_lib.server.cros.servotest import ServoTest
+from autotest_lib.server.cros import servo_test
 
 
-class platform_ServoPyAuto(ServoTest):
+class platform_ServoPyAuto(servo_test.ServoTest):
     """
     A simple test demonstrating the synchronous use of Servo and PyAuto.
 

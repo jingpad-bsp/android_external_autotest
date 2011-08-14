@@ -1,0 +1,38 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "InstallRecoveryImage"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Install"
+TEST_CLASS = "platform"
+TEST_TYPE = "server"
+
+DOC = """
+This test installs a specified recovery image onto a servo-connected DUT.
+This is useful for testing the recovery process and imaging servo-connected
+Devices under Test (DUTs).
+Here is the command to install a recovery image;
+run_remote_tests --args='image=<recovery_image_path_on_host>'
+                 --remote=<IP addres>
+                 --board=<board name>
+                 platform_InstallRecoveryImage
+"""
+from autotest_lib.client.common_lib import error
+
+# Convert autoserv args to a dictionary.
+opts = dict([[k, v] for (k, _, v) in [x.partition('=') for x in args]])
+
+def run_install_recovery_image(machine):
+    # TODO(sosa): Grabbing the and usb location is hardcoded.
+    # Implement automatic detection of usb insertion rather than hard-code.
+    image = opts.get('image')
+    usb = opts.get('usb', '/dev/sdc')
+
+    # Setup the client machine.
+    host = hosts.create_host(machine)
+    job.run_test("platform_InstallRecoveryImage", host=host, cmdline_args=args,
+                 use_pyauto=False, disable_sysinfo=True, image=image, usb=usb)
+
+parallel_simple(run_install_recovery_image, machines)

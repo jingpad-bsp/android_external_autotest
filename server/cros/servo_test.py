@@ -9,9 +9,8 @@ import time
 import xmlrpclib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import autotest, site_host_attributes, test
-import autotest_lib.server.cros.servo
-
+from autotest_lib.server import autotest, site_host_attributes, test, utils
+from autotest_lib.server.cros import servo
 
 class ServoTest(test.test):
     """AutoTest test class that creates and destroys a servo object.
@@ -98,7 +97,7 @@ class ServoTest(test.test):
         self._remote_infos['pyauto']['used'] = use_pyauto
         self._remote_infos['faft']['used'] = use_faft
 
-        self.servo = autotest_lib.server.cros.servo.Servo(
+        self.servo = servo.Servo(
             args['servo_host'], args['servo_port'], args['xml_config'],
             args['servo_vid'], args['servo_pid'], args['servo_serial'])
         # Initializes dut, may raise AssertionError if pre-defined gpio
@@ -118,6 +117,58 @@ class ServoTest(test.test):
                 self._autotest_client.run_test(info['client_test'])
                 self.launch_client(info)
 
+    def install_recovery_image(self, image_path=None, usb_mount_point=None):
+        """Install the recovery image specied by the path onto the DUT.
+
+        This method uses google recovery mode to install a recovery image
+        onto a DUT through the use of a USB stick that is mounted on a servo
+        board specified by the usb_mount_point.  If no image path is specified
+        we use the recovery image already on the usb image.
+
+        Args:
+            image_path: Path on the host to the recovery image.
+            usb_mount_point:  When servo_sees_usbkey is enabled, which dev
+                              e.g. /dev/sdb will the usb key show up as.
+        """
+        # Set up Servo's usb mux.
+        self.servo.set('prtctl4_pwren', 'on')
+        self.servo.enable_usb_hub(host=True)
+        if image_path and usb_mount_point:
+          logging.info('Installing recovery image onto usb stick.  '
+                       'This takes a while ...')
+          utils.system(' '.join(
+                           ['sudo', 'dd', 'if=%s' % image_path,
+                            'of=%s' % usb_mount_point, 'bs=4M']))
+
+        # Turn the device off.
+        self.servo.power_normal_press()
+        time.sleep(servo.Servo.SLEEP_DELAY)
+
+        # Boot in recovery mode.
+        try:
+            self.servo.enable_recovery_mode()
+            self.servo.power_normal_press()
+            time.sleep(servo.Servo.BOOT_DELAY)
+
+            # Enable recovery installation.
+            self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+            logging.info('Running the recovery process on the DUT. '
+                         'Waiting %d seconds for recovery to complete ...',
+                         servo.Servo.RECOVERY_INSTALL_DELAY)
+            time.sleep(servo.Servo.RECOVERY_INSTALL_DELAY)
+
+            # Go back into normal mode and reboot.
+            # Machine automatically reboots after the usb key is removed.
+            self.servo.disable_recovery_mode()
+            logging.info('Removing the usb key from the DUT.')
+            self.servo.disable_usb_hub()
+            time.sleep(servo.Servo.BOOT_DELAY)
+        except:
+            # In case anything went wrong we want to make sure to do a clean
+            # reset.
+            self.servo.disable_recovery_mode()
+            self.servo.warm_reset()
+            raise
 
     def assert_ping(self):
         """Ping to assert that the device is up."""

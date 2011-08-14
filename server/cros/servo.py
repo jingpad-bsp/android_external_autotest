@@ -34,6 +34,7 @@ class Servo:
     # Delays to deal with computer transitions.
     SLEEP_DELAY = 6
     BOOT_DELAY = 10
+    RECOVERY_INSTALL_DELAY = 300
 
     # Servo-specific delays.
     MAX_SERVO_STARTUP_DELAY = 10
@@ -191,18 +192,24 @@ class Servo:
         """Disable development mode on device."""
         self.set('dev_mode', 'off')
 
-
-    def enable_usb_hub(self):
+    def enable_usb_hub(self, host=False):
         """Enable Servo's USB/ethernet hub.
 
-        This is equivalent to plugging in the USB devices attached to Servo.
-        Requires that the USB out on the servo board is connected to a USB
-        in port on the target device. Servo's USB ports are labeled DUT_HUB_USB1
-        and DUT_HUB_USB2. Servo's ethernet port is also connected to this hub.
-        Servo's USB port DUT_HUB_IN is the output of the hub.
+        This is equivalent to plugging in the USB devices attached to Servo to
+        the host (if |host| is True) or dut (if |host| is False).
+        For host=False, requires that the USB out on the servo board is
+        connected to a USB in port on the target device. Servo's USB ports are
+        labeled DUT_HUB_USB1 and DUT_HUB_USB2. Servo's ethernet port is also
+        connected to this hub. Servo's USB port DUT_HUB_IN is the output of the
+        hub.
         """
         self.set('dut_hub_pwren', 'on')
-        self.set('dut_hub_sel', 'dut_sees_hub')
+        if host:
+          self.set('usb_mux_oe1', 'on')
+          self.set('usb_mux_sel1', 'servo_sees_usbkey')
+        else:
+          self.set('dut_hub_sel', 'dut_sees_hub')
+
         self.set('dut_hub_on', 'yes')
 
 
@@ -230,11 +237,11 @@ class Servo:
     def cold_reset(self):
         """Perform a cold reset of the EC.
 
-        Has the side effect of shutting off the device.
+        Has the side effect of shutting off the device.  Device is guaranteed
+        to be off at the end of this call.
         """
         self.set('cold_reset', 'on')
         time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
-        self.set('cold_reset', 'off')
 
 
     def warm_reset(self):

@@ -4,9 +4,9 @@
 
 import time
 
-import autotest_lib.server.cros.servotest
+from autotest_lib.server.cros import servo_test
 
-class platform_LongPressPower(autotest_lib.server.cros.servotest.ServoTest):
+class platform_LongPressPower(servo_test.ServoTest):
     """Uses servo pwr_button gpio to power the host off and back on.
     """
     version = 1

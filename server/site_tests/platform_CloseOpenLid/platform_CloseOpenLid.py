@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import autotest_lib.server.cros.servotest
+from autotest_lib.server.cros import servo_test
 
-class platform_CloseOpenLid(autotest_lib.server.cros.servotest.ServoTest):
+class platform_CloseOpenLid(servo_test.ServoTest):
     """Uses servo to send the host to sleep and wake back up.
 
     Uses pwr_button and lid_open gpios in various combinations.
