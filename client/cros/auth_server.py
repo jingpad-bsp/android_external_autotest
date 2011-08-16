@@ -19,6 +19,18 @@ class GoogleAuthServer(object):
     sid = '1234'
     lsid = '5678'
     token = 'aaaa'
+
+    __service_login_html = """
+<HTML><BODY onload='gaia.chromeOSLogin.clearOldAttempts();'>
+  <SCRIPT type='text/javascript' src='http://localhost/service_login.js'>
+  </SCRIPT>
+  <FORM>
+    <INPUT TYPE=text id="Email">
+    <INPUT TYPE=text id="Passwd">
+    <INPUT TYPE=text id="continue" value=%(continue)s>
+  </FORM>
+</BODY></HTML>
+    """
     __issue_auth_token_miss_count = 0
     __token_auth_miss_count = 0
 
@@ -30,7 +42,9 @@ class GoogleAuthServer(object):
                  port=80,
                  cl_responder=None,
                  it_responder=None,
+                 sl_responder=None,
                  ta_responder=None):
+        self._service_login = constants.SERVICE_LOGIN_URL
         self._client_login = constants.CLIENT_LOGIN_URL
         self._issue_token = constants.ISSUE_AUTH_TOKEN_URL
         self._token_auth = constants.TOKEN_AUTH_URL
@@ -46,9 +60,12 @@ class GoogleAuthServer(object):
             cl_responder = self.client_login_responder
         if it_responder is None:
             it_responder = self.issue_token_responder
+        if sl_responder is None:
+            sl_responder = self.service_login_responder
         if ta_responder is None:
             ta_responder = self.token_auth_responder
 
+        self._testServer.add_url_handler(self._service_login, sl_responder)
         self._testServer.add_url_handler(self._client_login, cl_responder)
         self._testServer.add_url_handler(self._issue_token, it_responder)
         self._testServer.add_url_handler(self._token_auth, ta_responder)
@@ -57,7 +74,9 @@ class GoogleAuthServer(object):
         self._issue_latch = self._testServer.add_wait_url(self._issue_token)
 
 
-        self._testHttpServer = httpd.HTTPListener(port=port)
+        self._testHttpServer = httpd.HTTPListener(
+            docroot=os.path.dirname(__file__),
+            port=port)
         self._testHttpServer.add_url_handler(self._test_over,
                                              self.__test_over_responder)
         self._testHttpServer.add_url_handler(constants.PORTAL_CHECK_URL,
@@ -126,6 +145,14 @@ class GoogleAuthServer(object):
         handler.send_response(httplib.OK)
         handler.end_headers()
         handler.wfile.write(self.token)
+
+
+    def service_login_responder(self, handler, url_args):
+        logging.debug(url_args)
+        handler.send_response(httplib.OK)
+        handler.end_headers()
+        handler.wfile.write(self.__service_login_html % {
+            'continue': url_args['continue'][0] })
 
 
     def token_auth_responder(self, handler, url_args):
