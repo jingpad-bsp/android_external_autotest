@@ -114,6 +114,7 @@ def wait_for_condition(condition, timeout_msg, timeout, process, log_reader,
     except TimeoutError, e:
         # We could fail faster if necessary, but it'd be more complicated.
         if process_crashed(process, log_reader):
+            logging.error(crash_msg)
             raise CrashError(crash_msg)
         else:
             raise e
@@ -135,10 +136,14 @@ def attempt_login(username, password, timeout=_DEFAULT_TIMEOUT):
                  (username, password))
 
     if not __get_session_manager_pid():
-        raise UnexpectedCondition("Session manager is not running")
+        msg = 'Session manager is not running'
+        logging.error(msg)
+        raise UnexpectedCondition(msg)
 
     if logged_in():
-        raise UnexpectedCondition("Already logged in")
+        msg = 'Already logged in'
+        logging.error(msg)
+        raise UnexpectedCondition(msg)
 
     # Mark /var/log/messages now; we'll run through all subsequent log messages
     # if we couldn't log in to see if the browser crashed.
@@ -181,7 +186,9 @@ def attempt_logout(timeout=_DEFAULT_TIMEOUT):
         UnexpectedCondition: user is not logged in
     """
     if not logged_in():
-        raise UnexpectedCondition('Already logged out')
+        msg = 'Already logged out'
+        logging.error(msg)
+        raise UnexpectedCondition(msg)
 
     # We've seen a steady stream of crashes within Chrome and chromeos-wm when
     # the UI job is stopped while those processes are still getting initialized

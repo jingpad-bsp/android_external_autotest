@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -62,12 +62,14 @@ def poll_for_condition(
             return
         if time.time() + sleep_interval - start_time > timeout:
             if exception:
+                logging.error(exception)
                 raise exception
 
             if desc:
                 desc = 'Timed out waiting for condition: %s' % desc
             else:
                 desc = 'Timed out waiting for unnamed condition'
+            logging.error(desc)
             raise TimeoutError, desc
 
         time.sleep(sleep_interval)
