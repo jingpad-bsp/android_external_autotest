@@ -548,7 +548,7 @@ class Xcheck:
                         break
 
     def _get_direction(self):
-        directions = ['left', 'right', 'up', 'down']
+        directions = ['up', 'down', 'left', 'right']
         file_name = self.gesture_file_name.split('-')[self.func_name_pos]
         for d in directions:
             if d in file_name:
@@ -768,20 +768,37 @@ class Xcheck:
                      None: ''}
         self.seq_flag = True
         crit_move_ratio = self.criteria.get('move_ratio', 0)
+
+        if '*' in crit_sequence:
+            work_crit_sequence = list(crit_sequence)
+            work_crit_sequence.reverse()
+            work_xevent_seq = list(self.xevent.xevent_seq)
+            work_xevent_seq.reverse()
+        else:
+            work_crit_sequence = crit_sequence
+            work_xevent_seq = self.xevent.xevent_seq
+
         index = -1
-        for e in self.xevent.xevent_seq:
+        crit_e_type = None
+        for e in work_xevent_seq:
             e_type = e[0]
             e_value = e[1]
             fail_msg = None
-            index += 1
-            if index >= len(crit_sequence):
+            if crit_e_type != '*':
+                index += 1
+            if index >= len(work_crit_sequence):
                 fail_msg = 'Event (%s, %s) is extra compared to the criteria.'
                 fail_para = (e_type, str(e_value))
                 break
-            crit_e = crit_sequence[index]
+            crit_e = work_crit_sequence[index]
             crit_e_type = crit_e[0]
 
-            if e_type.startswith('Motion'):
+            if crit_e_type == 'Button Wheel':
+                crit_e_type = self._get_button_wheel_label_per_direction()
+
+            if crit_e_type == '*':
+                pass
+            elif e_type.startswith('Motion'):
                 motion_val = e_value[0]
                 motion_x_val = e_value[1][1]
                 motion_y_val = e_value[2][1]
@@ -840,6 +857,14 @@ class Xcheck:
                     break
             elif e_type == crit_e_type == 'NOP':
                 pass
+            elif e_type.startswith('Button Wheel') and e_type == crit_e_type:
+                op_str = crit_e[1]
+                comp_op = self.op_dict[op_str]
+                crit_button_count = crit_e[2]
+                if not comp_op(e_value, crit_button_count):
+                    fail_msg = '%s count %d does not satisfy "%s" %d.'
+                    fail_para = (e_type, e_value, op_str, crit_button_count)
+                    break
             else:
                 fail_msg = 'Event %s does not match criteria %s.'
                 fail_para = (e_type, crit_e_type)
@@ -991,6 +1016,13 @@ class Xcheck:
         button_crit = self._get_button_crit_per_direction()
         self._insert_nop('Two Finger Touch')
         self._verify_all_criteria(button_crit=button_crit)
+
+    def _check_regardless_prior_state(self):
+        ''' Scroll occurs whenever the requirements are met, regardless of
+        prior state (e.g. single finger movement, right click, click & drag,
+        three finger contact with trackpad)
+        '''
+        self._verify_all_criteria()
 
     def _check_two_finger_scroll(self):
         ''' Vertical scroll, reflecting movement of finger(s)
