@@ -20,12 +20,14 @@ class factory_ProbeHWID(test.test):
     SELECTION_PER_PAGE = 10
     HWID_AUTODETECT = None
 
-    def probe_hwid(self):
+    def probe_hwid(self, components_file=None):
         """ Finds out the matching HWID by detection.
             This function must not use any GUI resources.
         """
         command = 'gooftool --probe --verbose'
         pattern = 'Probed: '
+        if components_file:
+            command += ' --db_path "%s"' % components_file
 
         (stdout, stderr, result) = gooftools.run(command, ignore_status=True)
 
@@ -37,26 +39,48 @@ class factory_ProbeHWID(test.test):
         # Decode unmatched results.
         # Sample output:
         #  Unmatched for /usr/local/share/chromeos-hwid/components_BLAHBLAH:
-        #  { 'part_id_3g': ['Actual: XXX', 'Expected: YYY']}
-        #  Current System:
-        #  { 'part_id_xxx': ['yyy'] },
+        #  { 'part_id_3g': ['Actual: XXX', 'Expected: YYY'],
+        #    'part_xxx': ['Actual: Something very long',
+        #                 'Expected: Some other things']}
+        #  Current System[:] (v*):
+        #  { 'part_id_xxx': ['yyy'] }
         str_unmatched = 'Unmatched '
-        str_current = 'Current System:'
+        str_current = 'Current System'
+        unmatched_list = []
+        item = []
+        for data in stderr.splitlines():
+            data = data.strip()
+            if ((not data) or
+                data.startswith('gft_hwcomp') or
+                data.startswith('probe:')):
+                # Strip empty lines, or debug messages (starting with
+                # "gft_hwcomp" or "probe"
+                continue
+            elif data.startswith(str_unmatched):
+                # Found a new item. Finalize previous one and start a new entry
+                if item:
+                    unmatched_list.append(item)
+                item = [data]
+            elif data.startswith(str_current):
+                # Found end mark.
+                break
+            elif item:
+                # Join unclosed items (normal items should end with "],")
+                if item[-1].endswith("',"):
+                    item[-1] += data
+                else:
+                    item.append(data.strip())
 
-        start = stderr.find(str_unmatched)
-        if start < 0:
-            start = 0
-        end = stderr.rfind(str_current)
-        if end < 0:
-            unmatched = stderr[start:]
-        else:
-            unmatched = stderr[start:end]
-        # TODO(hungte) Sort and find best match candidate
-        unmatched = '\n'.join([line for line in unmatched.splitlines()
-                               # 'gft_hwcomp' or 'probe' are debug message.
-                               if not (line.startswith('gft_hwcomp:') or
-                                       line.startswith('probe:') or
-                                       (not line))])
+        # Finalize remaining items
+        if item:
+            unmatched_list.append(item)
+
+        # Sort for best match candidates
+        unmatched_list.sort(key=len)
+
+        # Build output messages
+        unmatched = '\n'.join(['\n'.join(item) for item in unmatched_list])
+
         # Report the results
         if len(hwids) < 1:
             raise error.TestFail('\n'.join(('No HWID matched.', unmatched)))
@@ -82,6 +106,8 @@ class factory_ProbeHWID(test.test):
         """
         if path_to_file == self.HWID_AUTODETECT:
             path_to_file = self.probe_hwid()
+        else:
+            path_to_file = self.probe_hwid(path_to_file)
         # Set the factory state sharead data for factory_WriteGBB
         factory.log('Set factory state shared data %s = %s' %
                     (factory.LAST_PROBED_HWID_NAME, path_to_file))
@@ -149,6 +175,11 @@ class factory_ProbeHWID(test.test):
             gtk.main_iteration(False)  # try to update screen
         elif hwid_file:
             factory.log('Selected: %s' % ', '.join(data).replace('\n', ' '))
+            self.label.set_text('Checking selected HWID...\n %s\n'
+                                'Please wait... (may take >30s)' %
+                                os.path.basename(hwid_file))
+            self.writing = True
+            gtk.main_iteration(False)  # try to update screen
 
         try:
             self.update_hwid(hwid_file)
