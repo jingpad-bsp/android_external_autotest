@@ -27,6 +27,7 @@ TESTS = [
 # Produces gtest-style output
 GTESTS = [
     ('desktopui_PyAutoLoginTests', {}),
+    ('desktopui_PyAutoPerfTests', {}),
 ]
 
 
