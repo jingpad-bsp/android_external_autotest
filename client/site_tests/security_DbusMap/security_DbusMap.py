@@ -165,6 +165,10 @@ class security_DbusMap(test.test):
         return self._add_surface(dbus_list, dest, iface, signal, 'signals')
 
 
+    def add_property(self, dbus_list, dest, iface, signal):
+        return self._add_surface(dbus_list, dest, iface, signal, 'properties')
+
+
     def _add_surface(self, dbus_list, dest, iface, member, slot):
         """
         This can add an entry for a member function to a given
@@ -192,6 +196,7 @@ class security_DbusMap(test.test):
         if iface_idx == -1:
             dbus_list[dest_idx]['interfaces'].append({'interface': iface,
                                                       'signals': [],
+                                                      'properties': [],
                                                       'methods': []})
 
         # Ensure the slot exists.
@@ -275,6 +280,8 @@ class security_DbusMap(test.test):
             dbus_object['interfaces'].sort(key=lambda x: x['interface'])
             for interface in dbus_object['interfaces']:
                 interface['methods'].sort()
+                interface['signals'].sort()
+                interface['properties'].sort()
 
 
     def compare_dbus_trees(self, current, baseline):
@@ -308,20 +315,23 @@ class security_DbusMap(test.test):
 
                 for interface in dbus_object['interfaces']:
                     if interface['interface'] in bl_interface_names:
-                        # The interface was baselined, check methods/signals.
+                        # The interface was baselined, check everything.
                         diffslots = {}
-                        for slot in ['methods', 'signals']:
+                        for slot in ['methods', 'signals', 'properties']:
                             index = bl_interface_names.index(
                                 interface['interface'])
                             bl_methods = set(bl_object_interfaces[index][slot])
                             methods = set(interface[slot])
                             difference = methods.difference(bl_methods)
                             diffslots[slot] = list(difference)
-                        if diffslots['methods'] or diffslots['signals']:
+                        if (diffslots['methods'] or diffslots['signals'] or
+                            diffslots['properties']):
                             # This is a new thing we need to track.
                             new_methods = {'interface':interface['interface'],
                                            'methods': diffslots['methods'],
-                                           'signals': diffslots['signals']}
+                                           'signals': diffslots['signals'],
+                                           'properties': diffslots['properties']
+                                           }
                             new_object['interfaces'].append(new_methods)
                             new_items.append(new_object)
                     else:
@@ -370,6 +380,7 @@ class security_DbusMap(test.test):
             if ((child.nodeType == 1) and (child.localName == u'node')):
                 interfaces = child.getElementsByTagName('interface')
                 for interface in interfaces:
+                    interface_name = interface.getAttribute('name')
                     # First get the methods.
                     methods = interface.getElementsByTagName('method')
                     method_list = []
@@ -380,9 +391,20 @@ class security_DbusMap(test.test):
                     signal_list = []
                     for signal in signals:
                         signal_list.append(signal.getAttribute('name'))
-                    # Create the dictionary with both.
-                    dictionary = {'interface':interface.getAttribute('name'),
-                                  'methods':method_list, 'signals':signal_list}
+                    # Properties have to be discovered via API call.
+                    prop_list = []
+                    try:
+                        prop_iface = dbus.Interface(remote_object,
+                            'org.freedesktop.DBus.Properties')
+                        prop_list = prop_iface.GetAll(interface_name).keys()
+                    except dbus.exceptions.DBusException:
+                        # Many daemons do not support this interface,
+                        # which means they have no properties.
+                        pass
+                    # Create the dictionary with all the above.
+                    dictionary = {'interface':interface_name,
+                                  'methods':method_list, 'signals':signal_list,
+                                  'properties':prop_list}
                     if dictionary not in dbus_objects:
                         dbus_objects.append(dictionary)
                 nodes = child.getElementsByTagName('node')
@@ -419,15 +441,16 @@ class security_DbusMap(test.test):
                     continue
                 dbus_list.append(self.walk_object(bus, i, '/', []))
 
-        baseline = self.load_baseline()
-        test_pass = self.mutual_compare(dbus_list, baseline)
-
         # Dump the complete observed dataset to disk. In the somewhat
         # typical case, that we will want to rev the baseline to
         # match current reality, these files are easily copied and
         # checked in as a new baseline.
+        self.sort_dbus_tree(dbus_list)
         observed_data_path = os.path.join(self.outputdir, 'observed')
         self.write_dbus_data_to_disk(dbus_list, observed_data_path)
+
+        baseline = self.load_baseline()
+        test_pass = self.mutual_compare(dbus_list, baseline)
 
         # Figure out which of the observed API's are callable by specific users
         # whose attack surface we are particularly sensitive to:
@@ -442,7 +465,8 @@ class security_DbusMap(test.test):
                     for meth in ifacedict['methods']:
                         if (self.check_policies(dbus_cfg,
                                                 objdict['Object_name'],
-                                                ifacedict['interface'], meth)):
+                                                ifacedict['interface'], meth,
+                                                user=user)):
                             self.add_member(user_observed,
                                             objdict['Object_name'],
                                             ifacedict['interface'], meth)
@@ -452,6 +476,27 @@ class security_DbusMap(test.test):
                         self.add_signal(user_observed,
                                         objdict['Object_name'],
                                         ifacedict['interface'], sig)
+                    # A property might be readable, or even writable, to
+                    # a given user if they can reach the Get/Set interface
+                    access = []
+                    if (self.check_policies(dbus_cfg, objdict['Object_name'],
+                                            'org.freedesktop.DBus.Properties',
+                                            'Set', user=user)):
+                        access.append('Set')
+                    if (self.check_policies(dbus_cfg, objdict['Object_name'],
+                                            'org.freedesktop.DBus.Properties',
+                                            'Get', user=user) or
+                        self.check_policies(dbus_cfg, objdict['Object_name'],
+                                            'org.freedesktop.DBus.Properties',
+                                            'GetAll', user=user)):
+                        access.append('Get')
+                    access = ','.join(access)
+                    for prop in ifacedict['properties']:
+                        self.add_property(user_observed,
+                                          objdict['Object_name'],
+                                          ifacedict['interface'],
+                                          '%s (%s)' % (prop, access))
+
             self.write_dbus_data_to_disk(user_observed,
                                          '%s.%s' % (observed_data_path, user))
             test_pass = test_pass and self.mutual_compare(user_observed,
