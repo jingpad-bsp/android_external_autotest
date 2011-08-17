@@ -54,6 +54,8 @@ TESTS = [
   ('network_Ping', {}),
   ('power_Resume', {}, {'exclude': ['has_resume_bug']}),
   ('platform_Shutdown', {}, {'attributes': ['reboot_before']}),
+  ('security_ProfilePermissions', {'creds': '$default', 'tag': 'login'}),
+  ('security_ProfilePermissions', {'creds': None, 'tag': 'BWSI'}),
 ]
 
 job.distribute_across_machines(TESTS, machines)
