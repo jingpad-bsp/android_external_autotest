@@ -22,7 +22,7 @@ class GoogleAuthServer(object):
 
     __service_login_html = """
 <HTML><BODY onload='gaia.chromeOSLogin.clearOldAttempts();'>
-  <SCRIPT type='text/javascript' src='http://localhost/service_login.js'>
+  <SCRIPT type='text/javascript' src='../service_login.js'>
   </SCRIPT>
   <FORM>
     <INPUT TYPE=text id="Email">
@@ -50,9 +50,11 @@ class GoogleAuthServer(object):
         self._token_auth = constants.TOKEN_AUTH_URL
         self._test_over = '/webhp'
 
-        self._testServer = httpd.SecureHTTPListener(port=ssl_port,
-                                                    cert_path=cert_path,
-                                                    key_path=key_path)
+        self._testServer = httpd.SecureHTTPListener(
+            port=ssl_port,
+            docroot=os.path.dirname(__file__),
+            cert_path=cert_path,
+            key_path=key_path)
         sa = self._testServer.getsockname()
         logging.info('Serving HTTPS on %s, port %s' % (sa[0], sa[1]))
 
@@ -74,9 +76,7 @@ class GoogleAuthServer(object):
         self._issue_latch = self._testServer.add_wait_url(self._issue_token)
 
 
-        self._testHttpServer = httpd.HTTPListener(
-            docroot=os.path.dirname(__file__),
-            port=port)
+        self._testHttpServer = httpd.HTTPListener(port=port)
         self._testHttpServer.add_url_handler(self._test_over,
                                              self.__test_over_responder)
         self._testHttpServer.add_url_handler(constants.PORTAL_CHECK_URL,
