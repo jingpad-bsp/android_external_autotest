@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,46 +8,27 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
 
 class graphics_WebGLConformance(cros_ui_test.UITest):
-    version = 1
+    version = 2
 
     # TODO(ihf) not all tests are passing now, maintain this
     # list was assembled on mario but should be a superset
     # of all failing configurations
     waived_tests = {
-        'conformance/canvas-test.html' : 1,
-        'conformance/context-lost-restored.html' : 2,
-        'conformance/copy-tex-image-and-sub-image-2d.html' : 34,
-        'conformance/draw-arrays-out-of-bounds.html' : 36,
-        'conformance/error-reporting.html' : 6,
-        'conformance/gl-clear.html' : 4,
-        'conformance/gl-drawelements.html' : 1,
-        'conformance/gl-enable-vertex-attrib.html' : 1,
+        'conformance/context-lost.html' : 2,
+        'conformance/origin-clean-conformance.html' : 4,
+        'conformance/more/conformance/quickCheckAPI.html' : 1,
+        'conformance/more/functions/texSubImage2DHTML.html' : 1,
+        'conformance/shaders/glsl-features/../../glsl-features.html?feature=sign-frag-vec4&reffs=shaders/glsl-features/sign-vec4-ref.frag&testfs=shaders/glsl-features/sign-vec4.frag' : 1,
+        'conformance/framebuffer-object-attachment.html' : 24,
+        'conformance/texture-npot-video.html' : 1,
+        'conformance/more/functions/texImage2DHTML.html' : 1,
+        'conformance/oes-standard-derivatives.html' : 16,
+        'conformance/texture-npot.html' : 1,
+        'conformance/tex-image-and-sub-image-2d-with-video.html' : 1,
         'conformance/gl-object-get-calls.html' : 2,
-        'conformance/gl-teximage.html' : 46,
-        'conformance/gl-uniform-arrays.html' : 2,
-        'conformance/gl-uniform-bool.html' : 1,
-        'conformance/gl-uniformmatrix4fv.html' : 1,
-        'conformance/gl-unknown-uniform.html' : 1,
-        'conformance/glsl-conformance.html' : 1,
         'conformance/more/conformance/webGLArrays.html' : 1,
-        'conformance/more/functions/copyTexSubImage2D.html' : 1,
-        'conformance/more/functions/readPixelsBadArgs.html' : 1,
-        'conformance/more/glsl/arrayOutOfBounds.html' : 1,
         'conformance/point-size.html' : 1,
-        'conformance/premultiplyalpha-test.html' : 10,
-        'conformance/read-pixels-pack-alignment.html' : 2,
-        'conformance/read-pixels-test.html' : 28,
-        'conformance/tex-image-and-sub-image-2d-with-array-buffer-view.html'
-                                            : 192,
-        'conformance/tex-image-and-sub-image-2d-with-image-data.html' : 16,
-        'conformance/tex-image-and-sub-image-2d-with-image.html' : 8,
-        'conformance/tex-image-and-sub-image-2d-with-video.html' : 8,
-        'conformance/tex-image-with-format-and-type.html' : 12,
-        'conformance/texture-active-bind.html' : 4,
-        'conformance/texture-complete.html' : 1,
-        'conformance/texture-formats-test.html' : 4,
-        'conformance/texture-npot.html' : 12,
-        'conformance/triangle.html' : 1
+        'conformance/more/functions/readPixelsBadArgs.html' : 1,
       }
 
     def initialize(self, creds='$default'):
@@ -57,7 +38,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         cros_ui_test.UITest.initialize(self, creds,
                                        extra_chrome_flags=['--enable-webgl'])
 
-    def setup(self, tarball='webgl-conformance-1.0.0.tar.bz2'):
+    def setup(self, tarball='webgl-conformance-1.0.1.tar.bz2'):
         shutil.rmtree(self.srcdir, ignore_errors=True)
         tarball_path = os.path.join(self.bindir, tarball)
         if not os.path.exists(self.srcdir):
@@ -66,9 +47,10 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
                     'http://commondatastorage.googleapis.com/'
                     'chromeos-localmirror/distfiles/' + tarball,
                     tarball_path)
+            os.mkdir(self.srcdir)
             utils.extract_tarball_to_dir(tarball_path, self.srcdir)
         os.chdir(self.srcdir)
-        utils.system('patch -p1 < ../webgl-conformance-1.0.0.patch')
+        utils.system('patch -p2 < ../webgl-conformance-1.0.1.patch')
 
     def cleanup(self):
         self._testServer.stop()
@@ -78,6 +60,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         # TODO(ihf) remove when stable. for now we have to expect crashes
         self.crash_blacklist.append('chrome')
         self.crash_blacklist.append('chromium')
+        self.crash_blacklist.append('supplied_chrome')
 
         latch = self._testServer.add_wait_url('/WebGL/results')
         # Loading the url might take longer than pyauto automation timeout.
@@ -147,8 +130,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         f.close()
 
         # if we saw failures that were not waived raise an error now
-        # TODO(ihf) remove < 5000 when things become more stable
-        if failTestRun and tests_pass < 5000:
+        if failTestRun and tests_fail > 53:
             raise error.TestFail('Results: saw failures without waivers. ')
 
 

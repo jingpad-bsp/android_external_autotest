@@ -1,17 +1,17 @@
-Common subdirectories: webgl-conformance-1.0.0.original/conformance and webgl-conformance-1.0.0/conformance
-Common subdirectories: webgl-conformance-1.0.0.original/extra and webgl-conformance-1.0.0/extra
-Common subdirectories: webgl-conformance-1.0.0.original/misc and webgl-conformance-1.0.0/misc
-Common subdirectories: webgl-conformance-1.0.0.original/resources and webgl-conformance-1.0.0/resources
-diff -c webgl-conformance-1.0.0.original/webgl-conformance-tests.html webgl-conformance-1.0.0/webgl-conformance-tests.html
-*** webgl-conformance-1.0.0.original/webgl-conformance-tests.html	Wed Apr 13 17:58:19 2011
---- webgl-conformance-1.0.0/webgl-conformance-tests.html	Wed Apr 13 18:02:42 2011
+Only in src/WebGL: WebGL
+Common subdirectories: scripts/WebGL/conformance and src/WebGL/conformance
+Common subdirectories: scripts/WebGL/extra and src/WebGL/extra
+Common subdirectories: scripts/WebGL/misc and src/WebGL/misc
+Common subdirectories: scripts/WebGL/resources and src/WebGL/resources
+diff -c scripts/WebGL/webgl-conformance-tests.html src/WebGL/webgl-conformance-tests.html
+*** scripts/WebGL/webgl-conformance-tests.html	Wed Aug 17 03:22:13 2011
+--- src/WebGL/webgl-conformance-tests.html	Wed Aug 17 20:40:19 2011
 ***************
-*** 208,213 ****
---- 208,250 ----
-        this.currentPage = null;
+*** 227,232 ****
+--- 227,268 ----
       }
     };
-+   
+  
 +   // send results to autotest graphics_WebGLConformance.py
 +   Reporter.prototype.postFinalResults = function(summary) {
 +     var xhr = new XMLHttpRequest();
@@ -48,23 +48,28 @@ diff -c webgl-conformance-1.0.0.original/webgl-conformance-tests.html webgl-conf
 +     msg = msg + "&summary=" + escape(summary);
 +     xhr.send(msg);
 +   }
-  
-    Reporter.prototype.displayFinalResults = function() {
-      var totalTests = 0;
+    Reporter.prototype.displayFinalResults = function(msg, success) {
+      if (success) {
+        var totalTests = 0;
 ***************
-*** 262,267 ****
---- 299,306 ----
-      while (r.firstChild) r.removeChild(r.firstChild);
-      r.appendChild(document.createTextNode(tx));
-      document.getElementById("showTextSummary").style.visibility = "visible";
-+     // send results to autotest graphics_WebGLConformance
-+     this.postFinalResults(tx);
+*** 281,289 ****
+--- 317,329 ----
+        while (r.firstChild) r.removeChild(r.firstChild);
+        r.appendChild(document.createTextNode(tx));
+        document.getElementById("showTextSummary").style.visibility = "visible";
++       // send results to autotest graphics_WebGLConformance
++       this.postFinalResults(tx);
+      } else {
+        var e = document.getElementById("error");
+        e.innerHTML = msg;
++       // send results to autotest graphics_WebGLConformance
++       this.postFinalResults("Error: " + msg);
+      }
     };
   
-    Reporter.prototype.reportFunc = function(type, msg, success) {
 ***************
-*** 317,322 ****
---- 356,363 ----
+*** 340,345 ****
+--- 380,387 ----
       var elem = document.getElementById("nowebgl");
       elem.style.display = "";
     }

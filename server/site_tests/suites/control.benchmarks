@@ -31,13 +31,14 @@ TESTS = [
   ('dbench', {}),               # Runtime 0:15
   ('disktest', {}),             # Runtime 0:05
   ('graphics_GLBench', {}),     # Runtime 0:05
+  ('graphics_WebGLConformance', {}),  # Runtime 0:05
   #-----------------------------------------------------------------------------
   # Tests which leave the system in a strange state below. Don't add anything to
   # this section unless you know what you're doing.
   #-----------------------------------------------------------------------------
   # graphics_Piglit can crash many of the UI processes, so schedule it last and
   # make sure the machine is in a fresh state before starting.
-  ('graphics_Piglit', {}, [], [], ['reboot_before']),  # Runtime 0:15
+  ('graphics_Piglit', {}, [], [], ['reboot_before']),  # Runtime 0:21
 ]
 
 job.distribute_across_machines(TESTS, machines, continuous_parsing=True)

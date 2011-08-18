@@ -1,13 +1,13 @@
 WebGL conformance test
 
-- current version is 1.0.0 released 04/06/2011 at revision 14463
+- current version is 1.0.0 released 08/17/2011 at revision 15328
   https://cvs.khronos.org/svn/repos/registry/trunk/public/webgl/sdk/tests/
 
 To update test binaries:
 
-0) find revision number on page above (here 14463)
+0) find revision number on page above (here 15328)
 1) cd scripts
-2) ./make_tarball 14463
+2) ./make_tarball 15328
 3) update revision number in graphics_WebGLConformance.py (tarball and patch)
 4) rename patch version and check if it is still working, otherwise manual three way merge
 5) copy webgl-conformance-1.0.0.tar.bz2 to production location so it appears at
