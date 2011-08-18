@@ -21,15 +21,26 @@ class GoogleAuthServer(object):
     token = 'aaaa'
 
     __service_login_html = """
-<HTML><BODY onload='gaia.chromeOSLogin.clearOldAttempts();'>
-  <SCRIPT type='text/javascript' src='../service_login.js'>
-  </SCRIPT>
-  <FORM>
-    <INPUT TYPE=text id="Email">
-    <INPUT TYPE=text id="Passwd">
-    <INPUT TYPE=text id="continue" value=%(continue)s>
+<HTML>
+<HEAD>
+<SCRIPT type='text/javascript' src='../service_login.js'>
+submitAndGo = function() {
+  gaia.chromeOSLogin.onAttemptedLogin(document.getElementById("Email"),
+                                      document.getElementById("Passwd"),
+                                      document.getElementById("continue"));
+  return true;
+}
+</SCRIPT>
+</HEAD>
+<BODY onload='gaia.chromeOSLogin.clearOldAttempts();'>
+  <FORM action=%(form_url)s method=POST onsubmit='return submitAndGo()'>
+    <INPUT TYPE=text id="Email" name="Email">
+    <INPUT TYPE=text id="Passwd" name="Passwd">
+    <INPUT TYPE=hidden id="continue" name="continue" value=%(continue)s>
+    <INPUT TYPE=Submit>
   </FORM>
-</BODY></HTML>
+</BODY>
+</HTML>
     """
     __issue_auth_token_miss_count = 0
     __token_auth_miss_count = 0
@@ -42,9 +53,11 @@ class GoogleAuthServer(object):
                  port=80,
                  cl_responder=None,
                  it_responder=None,
-                 sl_responder=None,
+                 pl_responder=None,
                  ta_responder=None):
         self._service_login = constants.SERVICE_LOGIN_URL
+        self._process_login = constants.PROCESS_LOGIN_URL
+
         self._client_login = constants.CLIENT_LOGIN_URL
         self._issue_token = constants.ISSUE_AUTH_TOKEN_URL
         self._token_auth = constants.TOKEN_AUTH_URL
@@ -62,12 +75,15 @@ class GoogleAuthServer(object):
             cl_responder = self.client_login_responder
         if it_responder is None:
             it_responder = self.issue_token_responder
-        if sl_responder is None:
-            sl_responder = self.service_login_responder
+        if pl_responder is None:
+            pl_responder = self.process_login_responder
         if ta_responder is None:
             ta_responder = self.token_auth_responder
 
-        self._testServer.add_url_handler(self._service_login, sl_responder)
+        self._testServer.add_url_handler(self._service_login,
+                                         self.__service_login_responder)
+        self._testServer.add_url_handler(self._process_login, pl_responder)
+
         self._testServer.add_url_handler(self._client_login, cl_responder)
         self._testServer.add_url_handler(self._issue_token, it_responder)
         self._testServer.add_url_handler(self._token_auth, ta_responder)
@@ -147,11 +163,27 @@ class GoogleAuthServer(object):
         handler.wfile.write(self.token)
 
 
-    def service_login_responder(self, handler, url_args):
+    def process_login_responder(self, handler, url_args):
         logging.debug(url_args)
+        if not 'continue' in url_args:
+            handler.send_response(httplib.FORBIDDEN)
+            handler.end_headers()
+            raise error.TestError('ServiceLogin did not pass a continue param')
+        handler.send_response(httplib.SEE_OTHER)
+        handler.send_header('Location', url_args['continue'].value)
+        handler.end_headers()
+
+
+    def __service_login_responder(self, handler, url_args):
+        logging.debug(url_args)
+        if not 'continue' in url_args:
+            handler.send_response(httplib.FORBIDDEN)
+            handler.end_headers()
+            raise error.TestError('ServiceLogin called with no continue param')
         handler.send_response(httplib.OK)
         handler.end_headers()
         handler.wfile.write(self.__service_login_html % {
+            'form_url': self._process_login,
             'continue': url_args['continue'][0] })
 
 

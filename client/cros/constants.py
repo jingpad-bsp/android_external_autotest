@@ -68,6 +68,7 @@ ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 OWNER_KEY_FILE = WHITELIST_DIR + '/owner.key'
 
 PORTAL_CHECK_URL = '/generate_204'
+PROCESS_LOGIN_URL = '/accounts/ProcessServiceLogin'
 
 SERVICE_LOGIN_URL = '/accounts/ServiceLogin'
 SESSION_MANAGER = 'session_manager'
