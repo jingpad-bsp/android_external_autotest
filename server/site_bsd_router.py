@@ -102,6 +102,11 @@ class BSDRouter(object):
                 ignore_status=True)
 
 
+    def cleanup(self, params):
+        """ Clean up any resources in use """
+        # For BSD, this is a no-op
+        pass
+
     def __get_args(self, params):
         #
         # Convert test parameters to ifconfig arguments.  These

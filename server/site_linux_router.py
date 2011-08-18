@@ -97,9 +97,13 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # For linux, this is the same as deconfig.
         self.deconfig(params)
 
-
     def has_local_server(self):
         return bool(self.local_servers)
+
+    def cleanup(self, params):
+        """ Clean up any resources in use """
+        # For linux, this is a no-op
+        pass
 
     def hostap_config(self, params):
         """ Configure the AP per test requirements """

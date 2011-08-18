@@ -15,6 +15,7 @@ import traceback
 
 from autotest_lib.server import autotest, hosts, subcommand
 from autotest_lib.server import site_bsd_router
+from autotest_lib.server import site_cisco_router
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_linux_bridge_router
 from autotest_lib.server import site_linux_vm_router
@@ -107,9 +108,13 @@ class WiFiTest(object):
         server = config['server']
         # NB: server may not be reachable on the control network
 
-        self.router = hosts.create_host(router['addr'])
-        # NB: truncate SSID to 32 characters
-        self.defssid = self.__get_defssid(router['addr'])[0:32]
+        if not router['addr'].startswith('cisco'):
+            self.router = hosts.SSHHost(router['addr'])
+            # NB: truncate SSID to 32 characters
+            self.defssid = self.__get_defssid(router['addr'])[0:32]
+        else:
+            # NB: router address isn't unique enough
+            self.defssid = self.__get_defssid(server['addr'])[0:32]
 
         defaults = config.get('defaults', {})
         self.deftimeout = defaults.get('timeout', 30)
@@ -119,7 +124,10 @@ class WiFiTest(object):
         self.defnetperfport = str(defaults.get('netperf_port', 12865))
         if 'type' not in router:
             # auto-detect router type
-            if site_linux_router.isLinuxRouter(self.router):
+            if router['addr'].startswith('cisco:'):
+                router['addr'] = router['addr'][6:]
+                router['type'] = 'cisco'
+            elif site_linux_router.isLinuxRouter(self.router):
                 router['type'] = 'linux'
             elif site_bsd_router.isBSDRouter(self.router):
                 router['type'] = 'bsd'
@@ -135,6 +143,10 @@ class WiFiTest(object):
         elif router['type'] == 'bsd':
             self.wifi = site_bsd_router.BSDRouter(self.router, router,
                 self.defssid)
+        elif router['type'] == 'cisco':
+            self.wifi = site_cisco_router.CiscoRouter(server['addr'], router,
+                self.defssid, router['addr'])
+            self.router = self.wifi.get_proxy()
         else:
             raise error.TestFail('Unsupported router')
 
@@ -153,7 +165,7 @@ class WiFiTest(object):
         self.client_logfile = client.get("logfile", "/var/log/messages")
 
         if 'addr' in server:
-            self.server = hosts.create_host(server['addr'])
+            self.server = hosts.SSHHost(server['addr'])
             self.server_at = autotest.Autotest(self.server)
             # if not specified assume the same as the control address
             self.server_wifi_ip = server.get('wifi_addr', self.server.ip)
@@ -220,6 +232,8 @@ class WiFiTest(object):
         if 'no_cleanup_disconnect' not in self.run_options:
             self.disconnect({})
             self.wifi.destroy({})
+
+        self.wifi.cleanup({})
         self.profile_pop(self.test_profile)
         self.profile_remove(self.test_profile)
         self.client_netdump_stop({})
