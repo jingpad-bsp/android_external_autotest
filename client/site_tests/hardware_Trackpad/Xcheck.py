@@ -604,25 +604,32 @@ class Xcheck:
     Generic verification methods for various functionalities / areas
     '''
 
-    def _verify_motion(self, compare, crit_tot_move_val):
+    def _verify_motion(self, crit_tot_movement):
         ''' Verify if the observed motions satisfy the criteria '''
-        self.motion_flag = compare(self.xevent.sum_move, crit_tot_move_val)
+        op, val = self._motion_criteria(crit_tot_movement)
+        self.motion_flag = op(self.xevent.sum_move, val)
         logging.info('        Verify motion: (%s)' %
                      Xcheck.RESULT_STR[self.motion_flag])
         logging.info('              Total movement = %d' % self.xevent.sum_move)
 
-    def _verify_button(self, compare, crit_button_count):
+    def _verify_button(self, crit_button):
         ''' Verify if the observed buttons satisfy the criteria
 
         Example of computing count_flag:
             compare =              (  eq,  ge,    eq, ...)
             xevent.count_buttons = (   0,   3,     0, ...)
-            crit_button_count =    (   0,   1,     0, ...)
+            crit_count =           (   0,   1,     0, ...)
             result list =          [True, True, True, ...]
             count_flag =           True   (which is the AND of the result_list)
         '''
+
+        if crit_button is not None and crit_button[0] == 'Button Wheel':
+            crit_button = self._get_button_crit_per_direction()
+        op, crit_count = self._button_criteria(crit_button)
+        compare = self._compare(tuple(op))
+
         # Compare if all parsed button counts meet the criteria
-        count_flag = compare(self.xevent.count_buttons, crit_button_count)
+        count_flag = compare(self.xevent.count_buttons, crit_count)
 
         # An X Button must end with a ButtonRelease
         state_flags = map(lambda s: s == 'ButtonRelease',
@@ -911,152 +918,35 @@ class Xcheck:
         if not self.seq_flag:
             logging.info('              ' + fail_msg % fail_para)
 
-    ''' _verify_area_xxx()
-    The following methods are generally used for the group of functionalities
-    in the same area.
-    '''
+    def _verify_all_criteria(self):
+        ''' A general verification method for all criteria
 
-    def _verify_all_criteria(self, button_crit=None):
-        ''' A general verification method for all criteria '''
+        This is the core method invoked for every functionality. What to check
+        is based on the criteria specified for the functionality in the
+        config file.
+        '''
+        # A dictionary mapping criterion to its verification method
+        criteria_method = {'total_movement': self._verify_motion,
+                           'button': self._verify_button,
+                           'delay': self._verify_select_delay,
+                           'wheel_speed': self._verify_wheel_speed,
+                           'sequence': self._verify_select_sequence,
+         }
+
+        # Insert NOP based on criteria
+        self._insert_nop_per_criteria(criteria_method)
+
+        # Parse X button and motion events and aggregate the results.
         self.xevent.parse_button_and_motion()
-        if self.criteria.has_key('total_movement'):
-            crit_tot_move_op, crit_tot_move_val = \
-                    self._motion_criteria(self.criteria['total_movement'])
-            self._verify_motion(crit_tot_move_op, crit_tot_move_val)
-        if self.criteria.has_key('button'):
-            if button_crit is None:
-                button_crit = self.criteria['button']
-            crit_button_op, crit_button_count = \
-                    self._button_criteria(button_crit)
-            comp_ops = self._compare(tuple(crit_button_op))
-            self._verify_button(comp_ops, crit_button_count)
-        if self.criteria.has_key('delay'):
-            crit_delay = self.criteria['delay']
-            self._verify_select_delay(crit_delay)
-        if self.criteria.has_key('wheel_speed'):
-            crit_wheel_speed = self.criteria['wheel_speed']
-            self._verify_wheel_speed(crit_wheel_speed)
-        if self.criteria.has_key('sequence'):
-            crit_sequence = self.criteria['sequence']
-            self._verify_select_sequence(crit_sequence)
+
+        # Check those criteria specified in the config file.
+        for c in criteria_method:
+            if self.criteria.has_key(c):
+                crit_item = self.criteria[c]
+                criteria_method[c](crit_item)
+
+        # AND all results of various criteria.
         self._get_result()
-
-    ''' _check_xxx()
-    For each functionality xxx, there is a corresponding _check_xxx() method
-    which is executed by run() automatically.
-    '''
-
-    ''' area 0: 1 finger point & click '''
-
-    def _check_any_finger_click(self):
-        ''' Any finger, including thumb, can click '''
-        self._verify_all_criteria()
-
-    def _check_any_angle_click(self):
-        ''' Finger can be oriented at any angle relative to trackpad '''
-        self._verify_all_criteria()
-
-    def _check_any_location_click(self):
-        ''' Click can occur at any location on trackpad (no hot zones) '''
-        self._verify_all_criteria()
-
-    def _check_no_min_width_click(self):
-        ''' First finger should not have any minimum width defined for it
-        (i.e., point and/or click with finger tip. E.g., click with fingernail)
-        '''
-        self._verify_all_criteria()
-
-    def _check_no_cursor_wobble(self):
-        ''' No cursor wobble, creep, or jumping (or jump back) during clicking
-        '''
-        self._verify_all_criteria()
-
-    def _check_drum_roll(self):
-        ''' Drum roll: One finger (including thumb) touches trackpad followed
-        shortly (<500ms) by a second finger touching trackpad should not result
-        in cursor jumping
-        '''
-        self._verify_all_criteria()
-
-    ''' area 1: Click & select/drag '''
-
-    def _check_single_finger_select(self):
-        ''' (Single finger) Finger physical click or tap & a half, then finger -
-        remaining in contact with trackpad - drags along surface of trackpad
-        '''
-        self._verify_all_criteria()
-
-    def _check_single_finger_lifted(self):
-        ''' (Single finger) If finger leaves trackpad for only 800ms-1s
-        (Synaptics UX should know value), select/drag should continue
-        '''
-        self._verify_all_criteria()
-
-    def _check_two_fingers_select(self):
-        ''' (Two fingers) 1st finger click or tap & a half, 2nd finger's
-        movement selects/drags
-        '''
-        self._verify_all_criteria()
-
-    def _check_two_fingers_lifted(self):
-        ''' (Two fingers) Continues to drag when second finger is lifted then
-        placed again
-        '''
-        self._insert_nop('2nd Finger Lifted')
-        self._verify_all_criteria()
-
-    def _check_two_fingers_no_delay(self):
-        ''' (Two fingers) Drag should be immediate (no delay between movement
-        of finger and movement of selection/drag)
-        '''
-        self._verify_all_criteria()
-
-    ''' area 2: 2 finger alternate/right click '''
-
-    def _check_x_seconds_interval(self):
-        ''' 1st use case: 1st finger touches trackpad, X seconds pass, 2nd
-        finger touches trackpad, physical click = right click, where X is any
-        number of seconds
-        '''
-        self._verify_all_criteria()
-
-    def _check_roll_case(self):
-        ''' 2nd use case ("roll case"): If first finger generates a click and
-        second finger "rolls on" within 300ms of first finger click (again,
-        rely on Synaptics UX to know value), an alternate/right click results
-        '''
-        self._verify_all_criteria()
-
-    def _check_one_finger_tracking(self):
-        ''' 1 finger tracking, never leaves trackpad, 2f arrives and there is
-        a click. right click results.
-        '''
-        self._verify_all_criteria()
-
-    ''' area 3: 2 finger scroll '''
-
-    def _check_reflect_vertical(self):
-        ''' Vertical scroll, reflecting movement of finger(s)
-        '''
-        button_crit = self._get_button_crit_per_direction()
-        self._insert_nop('Two Finger Touch')
-        self._verify_all_criteria(button_crit=button_crit)
-
-    def _check_regardless_prior_state(self):
-        ''' Scroll occurs whenever the requirements are met, regardless of
-        prior state (e.g. single finger movement, right click, click & drag,
-        three finger contact with trackpad)
-        '''
-        self._verify_all_criteria()
-
-    def _check_two_finger_scroll(self):
-        ''' Vertical scroll, reflecting movement of finger(s)
-        '''
-        button_crit = self._get_button_crit_per_direction()
-        self._verify_all_criteria(button_crit=button_crit)
-
-
-    ''' area 4: Palm/thumb detection '''
 
     def run(self, tp_func, tp_data,  xevent_str):
         ''' Parse the x events and invoke a proper check function
@@ -1070,9 +960,8 @@ class Xcheck:
         self.func_name_pos = 0 if tp_data.prefix is None else 1
         self.criteria = tp_func.criteria
         if parse_result:
-            check_function = eval('self._check_' + tp_func.name)
             self._set_flags()
-            check_function()
+            self._verify_all_criteria()
             return self.result
         else:
             return False
