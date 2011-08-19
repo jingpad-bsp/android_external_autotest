@@ -244,11 +244,17 @@ class XEvent:
     def parse_button_and_motion(self):
         ''' Parse X button events and motion events
 
+        This method parses original X button events and motion events from
+        self.xevent_data, and saves the aggregated results in self.xevent_seq
+
         The variable seg_move accumulates the motions of the contiguous events
         segmented by some boundary events such as Button events and other
         NOP events.
-        A NOP (no operation) event is a fake X event which is
-        used to indicate the occurrence of some related device events.
+
+        A NOP (no operation) event is a fake X event which is used to indicate
+        the occurrence of some important trackpad device events. It can be
+        use to compute the latency between a device event and a resultant X
+        event. It can also be used to partition X events into groups.
         '''
 
         # Define some functions for seg_move
@@ -546,6 +552,25 @@ class Xcheck:
                         self.xevent.xevent_data.insert(insert_index, nop_data)
                         begin_index = insert_index + 1
                         break
+
+    def _insert_nop_per_criteria(self, criteria_method):
+        ''' Insert NOP based on criteria '''
+        for c in criteria_method:
+            if self.criteria.has_key(c):
+                if c == 'wheel_speed':
+                    # There are a couple of times of two-finger scrolling.
+                    # Insert NOP between them in self.xevent_seq
+                    self._insert_nop('Two Finger Touch')
+                elif c == 'sequence':
+                    crit_sequence = self.criteria[c]
+                    # Insert NOP in self.xevent_seq if NOP is specified
+                    # in sequence criteria.
+                    # Example of crit_sequence below:
+                    #     ('NOP', 'Single Finger Lifted')
+                    #     ('NOP', '2nd Finger Lifted')
+                    for s in crit_sequence:
+                        if s[0] == 'NOP':
+                            self._insert_nop(s[1])
 
     def _get_direction(self):
         directions = ['up', 'down', 'left', 'right']
