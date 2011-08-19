@@ -188,9 +188,13 @@ class CrashTest(test.test):
             # Create deprecated consent file.  This is created *after* the
             # policy file in order to avoid a race condition where chrome
             # might remove the consent file if the policy's not set yet.
+            # We create it as a temp file first in order to make the creation
+            # of the consent file, owned by chronos, atomic.
             # See crosbug.com/18413.
-            utils.open_write_close(self._CONSENT_FILE, 'test-consent')
-            utils.system('chown chronos:chronos "%s"' % (self._CONSENT_FILE))
+            temp_file = self._CONSENT_FILE + '.tmp';
+            utils.open_write_close(temp_file, 'test-consent')
+            utils.system('chown chronos:chronos "%s"' % (temp_file))
+            shutil.move(temp_file, self._CONSENT_FILE)
             logging.info('Created ' + self._CONSENT_FILE)
         else:
             # Create policy file that disables metrics/consent.
