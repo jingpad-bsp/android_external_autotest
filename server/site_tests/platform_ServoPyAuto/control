@@ -18,23 +18,10 @@ This test uses PyAuto to login and Servo to close the lid switch. Servo is used
 to wake the device by opening the lid switch. PyAuto is used to verify that the
 user is still logged in.
 """
-servo_port = 9999
-servo_xml_config = 'servo.xml'
-servo_vid = None
-servo_pid = None
-servo_serial = None
 
 def run_servopyauto(machine):
-    global servo_port
-    global servo_xml_config
-    global servo_vid
-    global servo_pid
-    global servo_serial
-
     host = hosts.create_host(machine)
-    job.run_test("platform_ServoPyAuto", host=host, servo_port=servo_port,
-                 xml_config=servo_xml_config, servo_vid=servo_vid,
-                 servo_pid=servo_pid, servo_serial=servo_serial,
+    job.run_test("platform_ServoPyAuto", host=host, cmdline_args=args,
                  use_pyauto=True, disable_sysinfo=True)
 
 parallel_simple(run_servopyauto, machines)

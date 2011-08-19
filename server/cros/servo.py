@@ -5,12 +5,10 @@
 # Expects to be run in an environment with sudo and no interactive password
 # prompt, such as within the Chromium OS development chroot.
 
-
 import logging
 import time
 import xmlrpclib
 import subprocess
-
 
 class Servo:
     """Manages control of a Servo board.
@@ -39,11 +37,13 @@ class Servo:
     MAX_SERVO_STARTUP_DELAY = 10
     SERVO_SEND_SIGNAL_DELAY = 0.5
 
-    def __init__(self, servo_port, xml_config='servo.xml', servo_vid=None,
-                 servo_pid=None, servo_serial=None, cold_reset=False):
+    def __init__(self, servo_host, servo_port, xml_config='servo.xml',
+                 servo_vid=None, servo_pid=None, servo_serial=None,
+                 cold_reset=False):
         """Sets up the servo communication infrastructure.
 
         Args:
+          servo_host: Host the servod process should listen on.
           servo_port: Port the servod process should listen on.
           xml_config: Configuration XML file for servod.
           servo_vid: USB vendor id of servo.
@@ -55,16 +55,18 @@ class Servo:
                       otherwise perform init with device running.
         """
         # launch servod
-        self._launch_servod(servo_port, xml_config, servo_vid, servo_pid,
-                            servo_serial)
+        self._servod = None
+        self._launch_servod(servo_host, servo_port, xml_config, servo_vid,
+                            servo_pid, servo_serial)
 
 
         # connect to servod
+        assert servo_host
         assert servo_port
 
         self._do_cold_reset = cold_reset
 
-        self._connect_servod(servo_port)
+        self._connect_servod(servo_host, servo_port)
 
 
     def initialize_dut(self):
@@ -256,7 +258,9 @@ class Servo:
 
     def __del__(self):
         """Kill the Servod process."""
-        assert self._servod
+        if not self._servod:
+            return
+
         # kill servod one way or another
         try:
             # won't work without superuser privileges
@@ -266,11 +270,12 @@ class Servo:
             assert subprocess.call(['sudo', 'kill', str(self._servod.pid)])
 
 
-    def _launch_servod(self, servo_port, xml_config, servo_vid, servo_pid,
-                       servo_serial):
+    def _launch_servod(self, servo_host, servo_port, xml_config, servo_vid,
+                       servo_pid, servo_serial):
         """Launch the servod process.
 
         Args:
+          servo_host: Host to start servod listening on.
           servo_port: Port to start servod listening on.
           xml_config: XML configuration file for servod.
           servo_vid: USB vendor id of servo.
@@ -279,14 +284,23 @@ class Servo:
             distinguish and control multiple servos.  Note servo's EEPROM must
             be programmed to use this feature.
         """
-        cmdlist = ['sudo', 'servod', '-c', str(xml_config), '--host=localhost',
-                   '--port=' + str(servo_port)]
+        # TODO(tbroch) In case where servo h/w is not connected to the host
+        # running the autotest server, servod will need to be launched by
+        # another means (udev likely).  For now we can assume servo_host ==
+        # localhost as one hueristic way of determining this.
+        if servo_host != 'localhost':
+            logging.warn('servod should already be running on host = %s',
+                         servo_host)
+            return
+
+        cmdlist = ['sudo', 'servod', '-c', str(xml_config), '--host=' +
+                   str(servo_host), '--port=' + str(servo_port)]
         if servo_vid is not None:
-          cmdlist.append('--vendor=%s' % str(servo_vid))
+            cmdlist.append('--vendor=%s' % str(servo_vid))
         if servo_pid is not None:
-          cmdlist.append('--product=%s' % str(servo_pid))
+            cmdlist.append('--product=%s' % str(servo_pid))
         if servo_serial is not None:
-          cmdlist.append('--serialname=%s' % str(servo_serial))
+            cmdlist.append('--serialname=%s' % str(servo_serial))
         logging.info('starting servod w/ cmd :: %s' % ' '.join(cmdlist))
         self._servod = subprocess.Popen(cmdlist, 0, None, None, None,
                                         subprocess.PIPE)
@@ -307,11 +321,20 @@ class Servo:
         self.set('rec_mode', 'off')
 
 
-    def _connect_servod(self, servo_port=''):
+    def _connect_servod(self, servo_host, servo_port):
         """Connect to the Servod process with XMLRPC.
 
         Args:
           servo_port: Port the Servod process is listening on.
         """
-        remote = 'http://localhost:%s' % servo_port
-        self._server = xmlrpclib.ServerProxy(remote)
+        remote = 'http://%s:%s' % (servo_host, servo_port)
+        try:
+            self._server = xmlrpclib.ServerProxy(remote)
+        except Exception:
+            logging.error('Unable to connect to servod')
+            raise
+        try:
+            self._server.echo("ping-test")
+        except Exception:
+            logging.error('Unable to ping servod')
+            raise

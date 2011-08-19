@@ -3,12 +3,13 @@
 # found in the LICENSE file.
 
 import logging
+import re
 import subprocess
 import time
 import xmlrpclib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import test, autotest
+from autotest_lib.server import autotest, site_host_attributes, test
 import autotest_lib.server.cros.servo
 
 
@@ -35,17 +36,34 @@ class ServoTest(test.test):
     _rpc_port = 9988
 
 
-    def initialize(self, host, servo_port, xml_config='servo.xml',
-                   servo_vid=None, servo_pid=None, servo_serial=None,
-                   use_pyauto=False):
+    def initialize(self, host, cmdline_args, use_pyauto=False):
         """Create a Servo object and install the PyAuto dependency.
 
         If use_pyauto is True the PyAuto dependency is installed on the client
         and a remote PyAuto server is launched and connected.
-        """
-        self.servo = autotest_lib.server.cros.servo.Servo(
-                servo_port, xml_config, servo_vid, servo_pid, servo_serial)
 
+        """
+        # Assign default arguments for servo invocation.
+        args = {
+            'servo_host': 'localhost', 'servo_port': 9999,
+            'xml_config': 'servo.xml', 'servo_vid': None, 'servo_pid': None,
+            'servo_serial': None, 'use_pyauto': False}
+
+        # Parse arguments from AFE and override servo defaults above.
+        client_attributes = site_host_attributes.HostAttributes(host.hostname)
+        if hasattr(site_host_attributes, 'servo_serial'):
+            args['servo_serial'] = client_attributes.servo_serial
+
+        # Parse arguments from command line and override previous AFE or servo
+        # defaults
+        for arg in cmdline_args:
+            match = re.search("^(\w+)=(.+)", arg)
+            if match:
+                args[match.group(1)] = match.group(2)
+
+        self.servo = autotest_lib.server.cros.servo.Servo(
+            args['servo_host'], args['servo_port'], args['xml_config'],
+            args['servo_vid'], args['servo_pid'], args['servo_serial'])
         # Initializes dut, may raise AssertionError if pre-defined gpio
         # sequence to set GPIO's fail.  Autotest does not handle exception
         # throwing in initialize and will cause a test to hang.
