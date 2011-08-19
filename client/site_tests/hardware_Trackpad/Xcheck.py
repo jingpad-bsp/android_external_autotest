@@ -129,6 +129,14 @@ class XButton:
                                   self.button_labels))
 
 
+    def is_button_wheel(self, button_label):
+        '''  Is this button a wheel button? '''
+        return button_label in ['Button Wheel Up',
+                                'Button Wheel Down',
+                                'Button Horiz Wheel Left',
+                                'Button Horiz Wheel Right']
+
+
 class XEvent:
     ''' A class for X event parsing '''
 
@@ -241,34 +249,87 @@ class XEvent:
 
         # Define some functions for seg_move
         def _reset_seg_move():
+            ''' Reset seg_move in x+y, x, and y to 0 '''
             return [0, [0, 0]]
 
-        def _append_motion_event(seg_move):
-            self.xevent_seq.append(('Motion', (seg_move[0],
-                                               ('Motion_x', seg_move[1][0]),
-                                               ('Motion_y', seg_move[1][1]))))
+        def _reset_time_interval(begin_time=None):
+            ''' Reset time interval '''
+            return [begin_time, None]
 
         def _add_seg_move(seg_move, move):
+            ''' Accumulate seg_move in x+y, x, and y respectively '''
             list_add = lambda list1, list2: map(sum, zip(list1, list2))
             return [seg_move[0] + move[0], list_add(seg_move[1], move[1])]
 
+        def _append_event(event):
+            ''' Append the event into xevent_seq '''
+            self.xevent_seq.append(event)
+            indent = ' ' * 14
+            logging.info(indent + str(event))
+
+        def _append_motion(pre_event_name, seg_move, seg_move_time):
+            ''' Append Motion events '''
+
+            # Insert Motion events in the beginning and end of the xevent_seq
+            begin_or_end_flag = self.motion_begin_flag or self.motion_end_flag
+            self.motion_begin_flag = self.motion_end_flag = False
+
+            if pre_event_name == 'MotionNotify' or begin_or_end_flag:
+                event = ('Motion', (seg_move[0], ('Motion_x', seg_move[1][0]),
+                                                 ('Motion_y', seg_move[1][1])),
+                                   seg_move_time)
+                _append_event(event)
+
+        def _append_button(event_name, button_label, event_time):
+            ''' Append non-wheel Buttons
+
+            Typically, they include Button Left, Button Middle, Button Right,
+            and other non-wheel buttons etc.
+
+            TODO(josephsih): creating a event class, with more formalized,
+            named members (name, details, time). Or, using a dict, ('name': ,
+            'details':, 'time':).
+            '''
+            if not self.xbutton.is_button_wheel(button_label):
+                event = (event_name, button_label, event_time)
+                _append_event(event)
+
+        def _append_button_wheel(button_label, event_button, button_time):
+            ''' Append Button Wheel count '''
+            if self.xbutton.is_button_wheel(button_label):
+                count = self.seg_count_buttons[event_button]
+                count = int(count) if count == int(count) else count
+                event = (button_label, count, button_time)
+                _append_event(event)
+
+        def _append_NOP(event_name, event_description, event_time):
+            ''' Append NOP event '''
+            if event_name == 'NOP':
+                event = (event_name, event_description, event_time)
+                _append_event(event)
+
         self.count_buttons = self.xbutton.init_button_struct(0)
+        self.seg_count_buttons = self.xbutton.init_button_struct(0)
         self.count_buttons_press = self.xbutton.init_button_struct(0)
         self.count_buttons_release = self.xbutton.init_button_struct(0)
         self.button_states = self.xbutton.init_button_struct('ButtonRelease')
 
         pre_xy = [None, None]
+        button_label = pre_button_label = None
+        event_name = pre_event_name = None
+        event_button = pre_event_button = None
         self.xevent_seq = []
         seg_move = _reset_seg_move()
+        seg_move_time = _reset_time_interval()
+        button_time = _reset_time_interval()
         self.sum_move = 0
+        self.motion_begin_flag = True
+        self.motion_end_flag = False
 
-        indent1 = ' ' * 8
-        indent2 = ' ' * 14
-        log_msg = {True:  indent2 + '{0}   (button %d)',
-                   False: indent2 + '{0} mis-matched  (button %d)'}
+        indent = ' ' * 8
         precede_state = {'ButtonPress': 'ButtonRelease',
                          'ButtonRelease': 'ButtonPress',}
-        logging.info(indent1 + 'X button events detected:')
+        logging.info(indent + 'X events detected:')
 
         for line in self.xevent_data:
             event_name = line[0]
@@ -278,10 +339,19 @@ class XEvent:
                     event_coord = list(eval(event_dict['coord']))
                 if event_dict.has_key('button'):
                     event_button = eval(event_dict['button'])
+                if event_dict.has_key('time'):
+                    event_time = eval(event_dict['time'])
 
             if event_name == 'EnterNotify':
                 if pre_xy == [None, None]:
                     pre_xy = event_coord
+                    seg_move_time[0] = event_time
+                self.seg_count_buttons = self.xbutton.init_button_struct(0)
+                if seg_move_time[0] is None:
+                    seg_move_time = [event_time, event_time]
+                else:
+                    seg_move_time[1] = event_time
+
             elif event_name == 'MotionNotify':
                 if pre_xy == [None, None]:
                     pre_xy = event_coord
@@ -291,29 +361,58 @@ class XEvent:
                     pre_xy = cur_xy
                     seg_move = _add_seg_move(seg_move, move)
                     self.sum_move += move[0]
+                if seg_move_time[0] is None:
+                    seg_move_time = [event_time, event_time]
+                else:
+                    seg_move_time[1] = event_time
+
             elif event_name.startswith('Button'):
-                _append_motion_event(seg_move)
+                _append_motion(pre_event_name, seg_move, seg_move_time)
                 seg_move = _reset_seg_move()
+                seg_move_time = _reset_time_interval()
                 button_label = self.xbutton.get_label(event_button)
-                self.xevent_seq.append((event_name, button_label))
-                prev_button_state = self.button_states[event_button]
+                pre_button_state = self.button_states[event_button]
                 self.button_states[event_button] = event_name
+
+                # Append button events except button wheel events
+                _append_button(event_name, button_label, event_time)
+
+                if button_label == pre_button_label:
+                    button_time[1] = event_time
+                else:
+                    # Append Button Wheel count when event button is changed
+                    _append_button_wheel(pre_button_label, pre_event_button,
+                                         button_time)
+                    self.seg_count_buttons = self.xbutton.init_button_struct(0)
+                    button_time = _reset_time_interval(begin_time=event_time)
+
                 # A ButtonRelease should precede ButtonPress
                 # A ButtonPress should precede ButtonRelease
-                precede_flag = prev_button_state == precede_state[event_name]
+                precede_flag = pre_button_state == precede_state[event_name]
                 if event_name == 'ButtonPress':
                     self.count_buttons_press[event_button] += 1
                 elif event_name == 'ButtonRelease':
                     self.count_buttons_release[event_button] += 1
-                    self.count_buttons[event_button] += precede_flag
-                logging.info(log_msg[precede_flag].format(event_name) %
-                             event_button)
+                self.count_buttons[event_button] += 0.5
+                self.seg_count_buttons[event_button] += 0.5
+                pre_button_label = button_label
+                pre_event_button = event_button
             elif event_name == 'NOP':
-                _append_motion_event(seg_move)
+                _append_button_wheel(pre_button_label, pre_event_button,
+                                     button_time)
+                pre_button_label = None
+                self.seg_count_buttons = self.xbutton.init_button_struct(0)
+                button_time = _reset_time_interval()
+                _append_motion(pre_event_name, seg_move, seg_move_time)
                 seg_move = _reset_seg_move()
-                self.xevent_seq.append(('NOP', line[1]))
+                seg_move_time = _reset_time_interval()
+                _append_NOP('NOP', line[1], line[2])
+            pre_event_name = event_name
 
-        _append_motion_event(seg_move)
+        # Append aggregated button wheel events and motion events
+        _append_button_wheel(button_label, event_button, button_time)
+        self.motion_end_flag = True
+        _append_motion(pre_event_name, seg_move, seg_move_time)
 
         # Convert dictionary to tuple
         self.button_states = tuple(self.button_states.values())
