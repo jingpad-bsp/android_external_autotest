@@ -174,6 +174,6 @@ class PyAutoTest(test.test):
         del self.pyauto_suite
 
         # Reset the UI.
-        login.nuke_login_manager()
+        login.restart_session_manager()
 
         test.test.cleanup(self)

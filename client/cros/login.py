@@ -11,10 +11,10 @@ from autotest_lib.client.common_lib import error
 
 _DEFAULT_TIMEOUT = 65  # longer because we may be crash dumping now.
 
-# Log messages used to signal when we're in a logout situation. Used to detect
+# Log messages used to signal when we're restarting UI. Used to detect
 # crashes by cros_ui_test.UITest.
-LOGOUT_ATTEMPT_MSG = 'cros/login.py: Attempting logout...'
-LOGOUT_COMPLETE_MSG = 'cros/login.py: Logout complete.'
+UI_RESTART_ATTEMPT_MSG = 'cros/login.py: Attempting StopSession...'
+UI_RESTART_COMPLETE_MSG = 'cros/login.py: StopSession complete.'
 
 
 class TimeoutError(error.TestError):
@@ -261,3 +261,29 @@ def refresh_window_manager(timeout=_DEFAULT_TIMEOUT):
     os.unlink(constants.CHROME_WINDOW_MAPPED_MAGIC_FILE)
     nuke_process_by_name(constants.WINDOW_MANAGER)
     wait_for_window_manager()
+
+
+def restart_session_manager():
+    """Send StopSession dbus call to cause session_manager restart."""
+
+    # Log what we're about to do to /var/log/messages. Used to log crashes later
+    # in cleanup by cros_ui_test.UITest.
+    utils.system('logger "%s"' % UI_RESTART_ATTEMPT_MSG)
+
+    try:
+        oldpid = __get_session_manager_pid()
+
+        log_reader = cros_logging.LogReader()
+        log_reader.set_start_by_current()
+
+        # Gracefully exiting session manager causes the user's session to end.
+        ownership.connect_to_session_manager().StopSession('')
+        wait_for_condition(
+            condition=lambda: __session_manager_restarted(oldpid),
+            timeout_msg='Timed out waiting for session_manager restart',
+            timeout=_DEFAULT_TIMEOUT,
+            process='session_manager',
+            log_reader=log_reader,
+            crash_msg='session_manager crashed while restarting.')
+    finally:
+        utils.system('logger "%s"' % UI_RESTART_COMPLETE_MSG)

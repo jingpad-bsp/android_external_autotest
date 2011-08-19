@@ -319,8 +319,13 @@ class UITest(pyauto_test.PyAutoTest):
         """
         if not self.logged_in():
             return
+        self._save_logs_from_cryptohome()
+        self.pyauto.Logout()
+
+
+    def _save_logs_from_cryptohome(self):
+        """Recover dirs from cryptohome in case another test run wipes."""
         try:
-            # Recover dirs from cryptohome in case another test run wipes.
             for dir in constants.CRYPTOHOME_DIRS_TO_RECOVER:
                 dir_path = os.path.join(constants.CRYPTOHOME_MOUNT_PT, dir)
                 if os.path.isdir(dir_path):
@@ -330,7 +335,6 @@ class UITest(pyauto_test.PyAutoTest):
                     shutil.copytree(src=dir_path, dst=target, symlinks=True)
         except (IOError, OSError, shutil.Error) as err:
             logging.error(err)
-        self.pyauto.Logout()
 
 
     def validate_basic_policy(self, basic_policy):
@@ -359,23 +363,23 @@ class UITest(pyauto_test.PyAutoTest):
     def __log_crashed_processes(self, processes):
         """Runs through the log watched by |watcher| to see if a crash was
         reported for any process names listed in |processes|. SIGABRT crashes in
-        chrome or supplied-chrome during logout are ignored.
+        chrome or supplied-chrome during ui restart are ignored.
         """
-        logout_start_regex = re.compile(login.LOGOUT_ATTEMPT_MSG)
+        ui_restart_begin_regex = re.compile(login.UI_RESTART_ATTEMPT_MSG)
         crash_regex = re.compile(
             'Received crash notification for ([-\w]+).+ (sig \d+)')
-        logout_complete_regex = re.compile(login.LOGOUT_COMPLETE_MSG)
+        ui_restart_end_regex = re.compile(login.UI_RESTART_COMPLETE_MSG)
 
-        in_logout = False
+        in_restart = False
         for line in self._log_reader.get_logs().splitlines():
-            if logout_start_regex.search(line):
-                in_logout = True
-            elif logout_complete_regex.search(line):
-                in_logout = False
+            if ui_restart_begin_regex.search(line):
+                in_restart = True
+            elif ui_restart_end_regex.search(line):
+                in_restart = False
             else:
                 match = crash_regex.search(line)
                 if (match and not match.group(1) in processes and
-                    not (in_logout and
+                    not (in_restart and
                          (match.group(1) == constants.BROWSER or
                           match.group(1) == 'supplied_chrome') and
                          match.group(2) == 'sig 6')):
@@ -397,8 +401,7 @@ class UITest(pyauto_test.PyAutoTest):
         except (IOError, OSError) as err:
             logging.error(err)
 
-        if self.logged_in():
-            self.logout()
+        self._save_logs_from_cryptohome()
         pyauto_test.PyAutoTest.cleanup(self)
 
         if os.path.isfile(constants.CRYPTOHOMED_LOG):
