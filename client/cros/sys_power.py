@@ -11,10 +11,13 @@
 """
 
 import os
+import upstart
+
 
 SUSPEND_CMD='/usr/bin/powerd_suspend'
 REQUEST_SUSPEND_CMD = ('/usr/bin/dbus-send --system / '
                        'org.chromium.PowerManager.RequestSuspend')
+
 
 def set_state(state):
     """
@@ -39,11 +42,13 @@ def suspend_to_disk():
     """
     set_power_state('disk')
 
+
 def standby():
     """
     Power-on suspend (S1)
     """
     set_power_state('standby')
+
 
 def request_suspend():
     """
@@ -51,4 +56,7 @@ def request_suspend():
     the users had requested a suspend.  This will disconnect the
     modem, lock the screen, etc.
     """
+    for service_name in ['powerd', 'powerm']:
+        upstart.ensure_running(service_name)
+
     os.system(REQUEST_SUSPEND_CMD)

@@ -31,8 +31,7 @@ class network_3GSuspendResume(test.test):
             'scenario_suspend_3g_enabled',
             'scenario_suspend_3g_disabled',
             'scenario_suspend_3g_disabled_twice',
-            # TODO(jglasgow): enable when it stops making test abort
-            # 'scenario_autoconnect',
+            'scenario_autoconnect',
         ],
         'stress': [
             'scenario_suspend_3g_random',
@@ -198,7 +197,8 @@ class network_3GSuspendResume(test.test):
             expected_states = ['idle']
 
         for _ in xrange(5):
-            self.suspend_resume(10)
+            # Must wait at least 20 seconds to ensure that the suspend occurs
+            self.suspend_resume(20)
 
             # wait for the device to come back
             device = self.__get_cellular_device()
