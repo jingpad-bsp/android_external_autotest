@@ -128,6 +128,10 @@ class XButton:
         return dict(map(lambda b: (self.get_value(b), value),
                                   self.button_labels))
 
+    def init_button_struct_with_time(self, value, time):
+        ''' Initialize a button dictionary with time to the given values. '''
+        return dict(map(lambda b: (self.get_value(b), [value, list(time)]),
+                                  self.button_labels))
 
     def is_button_wheel(self, button_label):
         '''  Is this button a wheel button? '''
@@ -506,17 +510,41 @@ class Xcheck:
         NOP is not an X event. It is inserted to indicate the occurrence of
         related device events.
         '''
-        lifted_time = self.dev.get_2nd_finger_lifted_time()
-        if lifted_time is None:
+        event_dict = {
+                '2nd Finger Lifted': (self.dev.get_2nd_finger_lifted_time,
+                                      'Motion'),
+                'Two Finger Touch': (self.dev.get_two_finger_touch_time_list,
+                                     ''),
+        }
+
+        result = event_dict.get(nop_str, None)
+        if result is None:
+            logging.warn('There is no device event method for %s.' % nop_str)
+            return
+
+        # TODO(josephsih): Using a class here with named method and property
+        # instead of a list would be better.
+        dev_event_time = result[0]()
+        matching_xevent_name = result[1]
+        if dev_event_time is None:
             logging.warn('Cannot get time for %s.' % nop_str)
-        else:
-            for index, line in enumerate(self.xevent.xevent_data):
-                event_name = line[0]
-                event_dict = line[1]
-                if event_name == 'MotionNotify':
-                    event_time = float(event_dict['time'])
-                    if event_time > lifted_time:
-                        self.xevent.xevent_data.insert(index, ('NOP', nop_str))
+            return
+
+        if not isinstance(dev_event_time, list):
+            dev_event_time = [dev_event_time]
+
+        begin_index = 0
+        for devent_time in dev_event_time:
+            for index, line in enumerate(self.xevent.xevent_data[begin_index:]):
+                xevent_name = line[0]
+                xevent_dict = line[1]
+                if xevent_name.startswith(matching_xevent_name):
+                    xevent_time = float(xevent_dict['time'])
+                    if xevent_time > devent_time:
+                        insert_index = begin_index + index
+                        nop_data = ('NOP', nop_str, devent_time)
+                        self.xevent.xevent_data.insert(insert_index, nop_data)
+                        begin_index = insert_index + 1
                         break
 
     def _get_direction(self):
@@ -527,7 +555,7 @@ class Xcheck:
                 return d
         return None
 
-    def _get_button_crit_per_direction(self):
+    def _get_button_wheel_label_per_direction(self):
         ''' Use the direction in gesture file name to get correct button label
 
         Extract scroll direction, e.g., 'up' or 'down', from the gesture file
@@ -537,8 +565,14 @@ class Xcheck:
         '''
         direction = self._get_direction()
         button_label = self.xbutton.wheel_label_dict[direction]
+        return button_label
+
+    def _get_button_crit_per_direction(self):
+        ''' Use the direction in gesture file name to get correct button label
+            in button criteria
+        '''
         button_crit = list(self.criteria['button'])
-        button_crit[0] = button_label
+        button_crit[0] = self._get_button_wheel_label_per_direction()
         return button_crit
 
     ''' _verify_xxx()
@@ -623,6 +657,101 @@ class Xcheck:
         logging.info('              Delay time = %s (criteria = %f)' %
                      (str(delay), crit_delay))
 
+    def _verify_wheel_speed(self, crit_wheel_speed):
+        ''' Verify if the observed button wheel speed satisfies the criteria
+
+        xevent_seq for two-finger scrolling looks like:
+            ('Motion', (0, ('Motion_x', 0), ('Motion_y', 0)))
+            ('NOP', 'Two Finger Touch')
+            ('Button Wheel Down', 62)
+            ('Button Horiz Wheel Right', 1)
+            ('Button Wheel Down', 65)
+            ('Button Horiz Wheel Right', 1)
+            ('Button Wheel Down', 32)
+            ('Button Horiz Wheel Right', 1)
+            ('Button Wheel Down', 35)
+            ('Button Horiz Wheel Right', 2)
+            ('Button Wheel Down', 15)
+            ('NOP', 'Two Finger Touch')
+            ('Button Wheel Down', 185)
+            ('NOP', 'Two Finger Touch')
+            ('Motion', (22.0, ('Motion_x', 11), ('Motion_y', 19)))
+            ('Button Wheel Down', 68)
+            ('Motion', (0, ('Motion_x', 0), ('Motion_y', 0)))
+
+        Need to accumulate the button counts partitioned by NOP (two finger
+        touching event). The Button Wheel event count derived in this way
+        should satisfy the wheel speed criteria.
+        '''
+
+        # Aggregate button counts partitioned by 'NOP'
+        button_count_list = []
+        init_time = [None, None]
+        rounds = 0
+        for line in self.xevent.xevent_seq:
+            event_name, event_count, event_time = line
+            if event_name == 'NOP':
+                button_count = self.xbutton.init_button_struct_with_time(0,
+                               init_time)
+                button_count_list.append(button_count)
+                rounds += 1
+            elif rounds > 0:
+                if event_name.startswith('Button'):
+                    button_value = self.xbutton.get_value(event_name)
+                    count = button_count_list[rounds-1][button_value][0]
+                    if count == 0:
+                        button_count_list[rounds-1][button_value][1] = \
+                                event_time
+                    else:
+                        button_count_list[rounds-1][button_value][1][1] = \
+                                event_time[1]
+                    # TODO(josephsih): It is hard to follow this code; It would
+                    # be better if this used an associative array ['event']
+                    # ['count'], dictionary or class instead of just [0] and
+                    # [1].
+                    button_count_list[rounds-1][button_value][0] += event_count
+
+        speed =[0] * rounds
+        # Calculate button wheel speed
+        for i, button_count in enumerate(button_count_list):
+            speed[i] = self.xbutton.init_button_struct(0)
+            for k, v in button_count.iteritems():
+                if v[0] > 0:
+                    time_list = button_count[k][1]
+                    time_interval = (time_list[1] - time_list[0]) / 1000.0
+                    speed[i][k] = (button_count[k][0] / time_interval) \
+                                  if time_interval != 0 else 1
+
+        # Verify if the target button satisfies wheel speed criteria
+        button_label = self._get_button_wheel_label_per_direction()
+        self.wheel_speed_flag = True
+        if rounds <= 1:
+            self.wheel_speed_flag = False
+        else:
+            target_button_value = self.xbutton.get_value(button_label)
+            comp_op = self.op_dict[crit_wheel_speed[1]]
+            multiplier = crit_wheel_speed[2]
+            for r in range(1, rounds):
+                if not comp_op(speed[r][target_button_value],
+                               speed[r-1][target_button_value] * multiplier):
+                    self.wheel_speed_flag = False
+                    break
+
+        prefix_space0 = ' ' * 8
+        prefix_space1 = ' ' * 10
+        prefix_space2 = ' ' * 14
+        msg_title = prefix_space0 + 'Verify wheel speed: (%s)'
+        msg_round = prefix_space1 + 'Round %d of two-finger scroll:'
+        msg_speed = '{0:<25s}: {1:7.2f} times/sec ({2:4} times in [{3} {4}])'
+        msg_details = prefix_space2 + msg_speed
+        logging.info(msg_title % Xcheck.RESULT_STR[self.wheel_speed_flag])
+        for i, button_count in enumerate(button_count_list):
+            logging.info(msg_round % i)
+            for k, v in button_count.iteritems():
+                if v[0] > 0:
+                    logging.info(msg_details.format(self.xbutton.get_label(k),
+                                 speed[i][k], v[0], str(v[1][0]), str(v[1][1])))
+
     def _verify_select_sequence(self, crit_sequence):
         ''' Verify event sequence against criteria sequence
 
@@ -641,7 +770,8 @@ class Xcheck:
         crit_move_ratio = self.criteria.get('move_ratio', 0)
         index = -1
         for e in self.xevent.xevent_seq:
-            e_type, e_value = e
+            e_type = e[0]
+            e_value = e[1]
             fail_msg = None
             index += 1
             if index >= len(crit_sequence):
@@ -753,6 +883,9 @@ class Xcheck:
         if self.criteria.has_key('delay'):
             crit_delay = self.criteria['delay']
             self._verify_select_delay(crit_delay)
+        if self.criteria.has_key('wheel_speed'):
+            crit_wheel_speed = self.criteria['wheel_speed']
+            self._verify_wheel_speed(crit_wheel_speed)
         if self.criteria.has_key('sequence'):
             crit_sequence = self.criteria['sequence']
             self._verify_select_sequence(crit_sequence)
@@ -851,6 +984,13 @@ class Xcheck:
         self._verify_all_criteria()
 
     ''' area 3: 2 finger scroll '''
+
+    def _check_reflect_vertical(self):
+        ''' Vertical scroll, reflecting movement of finger(s)
+        '''
+        button_crit = self._get_button_crit_per_direction()
+        self._insert_nop('Two Finger Touch')
+        self._verify_all_criteria(button_crit=button_crit)
 
     def _check_two_finger_scroll(self):
         ''' Vertical scroll, reflecting movement of finger(s)

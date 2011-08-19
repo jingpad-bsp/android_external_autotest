@@ -67,6 +67,8 @@ class TrackpadDevice:
         self.second_finger_on_MTB = self._finger_i_on_MTB(2)
         self.finger_off_MTB = '%s %s -1' % (self.EV_ABS,
                                             self.ABS_MT_TRACKING_ID)
+        self.two_finger_on_MTB = '%s %s 1' % (self.EV_KEY,
+                                              self.BTN_TOOL_DOUBLETAP)
 
     def _extract_playback_time(self, line):
         ''' Extract the actual event playback time from the line '''
@@ -102,6 +104,18 @@ class TrackpadDevice:
         ev_seq_MTB = [self.second_finger_on_MTB, self.finger_off_MTB,
                       self.second_finger_on_MTB]
         return self._find_event_time(ev_seq_MTB)
+
+    def get_two_finger_touch_time_list(self):
+        ''' Derive all device playback times when two fingers touch the pad '''
+        with open(TrackpadDevice.DEVICE_TIME_FILE) as f:
+            time_file = f.read().splitlines()
+
+        ev = self.two_finger_on_MTB
+        touch_time_list = []
+        for line in time_file:
+            if ev in line:
+                touch_time_list.append(self._extract_playback_time(line))
+        return touch_time_list
 
     def _get_trackpad_driver(self):
         ''' Query which trackpad driver is used in xorg '''
