@@ -298,7 +298,7 @@ def generate_and_register_keypair(testuser, testpass):
     pubkey = cert_extract_pubkey_der(certfile.name)
     utils.open_write_close(constants.OWNER_KEY_FILE, pubkey)
 
-    login.refresh_login_screen()
+    login.nuke_login_manager()
     cryptohome.mount_vault(testuser, testpass, create=False)
     return (utils.read_file(keyfile.name), pubkey)
 

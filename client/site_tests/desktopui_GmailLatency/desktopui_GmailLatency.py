@@ -72,4 +72,3 @@ class desktopui_GmailLatency(test.test):
             # Reset the UI but only if we need to (avoid double reset).
             if not clean_exit:
                 login.nuke_login_manager()
-                login.refresh_login_screen()

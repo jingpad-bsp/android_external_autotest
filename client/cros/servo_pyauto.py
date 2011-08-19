@@ -70,7 +70,6 @@ class RemotePyAuto(pyauto.PyUITest):
         self.tearDown()
         #reset UI
         login.nuke_login_manager()
-        login.refresh_login_screen()
 
 
 if __name__ == '__main__':

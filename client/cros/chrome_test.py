@@ -104,7 +104,6 @@ class ChromeTestBase(test.test):
             os.unlink(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
         # Reset the UI.
         login.nuke_login_manager()
-        login.refresh_login_screen()
         if self.home_dir:
             shutil.rmtree(self.home_dir, ignore_errors=True)
         test.test.cleanup(self)
