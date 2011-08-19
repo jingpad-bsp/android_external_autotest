@@ -1,7 +1,11 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 import dbus, dbus.mainloop.glib, gobject, sys, time
 
 ssid         = sys.argv[1]
-wait_timeout = sys.argv[2]
+wait_timeout = int(sys.argv[2])
 
 bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus(mainloop=bus_loop)
