@@ -111,10 +111,9 @@
       {
         "interface": "org.chromium.Cashew",
         "methods": [
-          "GetByteUsageData",
           "GetDataPlans",
           "IsAlive",
-          "ReportBytesUsed",
+          "RequestCellularUsageInfo",
           "RequestDataPlansUpdate"
         ],
         "properties": [],
@@ -441,7 +440,9 @@
           "RetrieveSessionState",
           "SetOwnerKey",
           "StartSession",
+          "StartSessionService",
           "StopSession",
+          "StopSessionService",
           "StorePolicy",
           "StoreProperty",
           "UnlockScreen",

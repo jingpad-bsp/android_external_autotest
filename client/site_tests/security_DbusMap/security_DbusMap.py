@@ -16,7 +16,7 @@ class security_DbusMap(test.test):
     version = 2
 
     def check_policies(self, config_doms, dest, iface, member,
-                       user='chronos', at_console=True):
+                       user='chronos', at_console=None):
         """
         Given 1 or more xml.dom's representing dbus configuration
         data, determine if the <destination, interface, member>
@@ -26,7 +26,15 @@ class security_DbusMap(test.test):
         Returns True if permitted, False otherwise.
         See also http://dbus.freedesktop.org/doc/busconfig.dtd
         """
-        # D-Bus is a default-deny, "last matching rule wins" system
+        # In the default case, if the caller doesn't specify
+        # "at_console," employ this cros-specific heuristic:
+        if user == 'chronos' and at_console == None:
+            at_console = True
+
+        # crosbug.com/19490 - This loop implements a default-deny,
+        # "last matching rule wins" parse. This is not quite what
+        # dbus-daemon itself does, though close for many typical configs.
+        # TODO(jimhebert) fix crosbug.com/19490.
         allow = False
         for dom in config_doms:
             for buscfg in dom.getElementsByTagName('busconfig'):
@@ -58,11 +66,19 @@ class security_DbusMap(test.test):
 
         # TODO(jimhebert) group='...' is not currently used by any
         # Chrome OS dbus policies but could be in the future so
-        # we should add a check for it in this if-block:
+        # we should add a check for it in this if-block. Fix this
+        # as part of crosbug.com/19490.
         if ((policy.getAttribute('context') != 'default') and
             (policy.getAttribute('user') != user) and
             (policy.getAttribute('at_console') != 'true')):
             # In this case, the entire <policy> block does not apply
+            return None
+
+        # Alternatively, if this IS a at_console policy, but the
+        # situation being checked is not an "at_console" situation,
+        # then that's another way the policy would also not apply.
+        if (policy.getAttribute('at_console') == 'true' and not
+            at_console):
             return None
 
         # If the <policy> applies, try to find <allow> or <deny>
@@ -490,12 +506,13 @@ class security_DbusMap(test.test):
                                             'org.freedesktop.DBus.Properties',
                                             'GetAll', user=user)):
                         access.append('Get')
-                    access = ','.join(access)
-                    for prop in ifacedict['properties']:
-                        self.add_property(user_observed,
-                                          objdict['Object_name'],
-                                          ifacedict['interface'],
-                                          '%s (%s)' % (prop, access))
+                    if access:
+                        access = ','.join(access)
+                        for prop in ifacedict['properties']:
+                            self.add_property(user_observed,
+                                              objdict['Object_name'],
+                                              ifacedict['interface'],
+                                              '%s (%s)' % (prop, access))
 
             self.write_dbus_data_to_disk(user_observed,
                                          '%s.%s' % (observed_data_path, user))
