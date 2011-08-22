@@ -34,18 +34,32 @@ class ExceptionForwardingMainLoop(object):
   glib callbacks like add_idle) must be wrapped in the
   @ExceptionForward decorator."""
 
-  def __init__(self, main_loop):
+  def __init__(self, main_loop, timeout_s=-1):
     self._forwarded_exception = None
     self.main_loop = main_loop
+    if timeout_s == -1:
+      logging.warn('ExceptionForwardingMainLoop: No timeout specified.')
+      logging.warn('(Specify timeout_s=0 explicitly for no timeout.)')
+    self.timeout_s = timeout_s
 
   def idle(self):
     raise Exception('idle must be overridden')
+
+  def timeout(self):
+    pass
+
+  @ExceptionForward
+  def _timeout(self):
+    self.timeout()
+    raise error.TestFail('main loop timed out')
 
   def quit(self):
     self.main_loop.quit()
 
   def run(self):
     gobject.idle_add(self.idle)
+    if self.timeout_s > 0:
+      gobject.timeout_add(self.timeout_s * 1000, self._timeout)
     self.main_loop.run()
     if self._forwarded_exception:
       raise self._forwarded_exception
@@ -54,8 +68,8 @@ class GenericTesterMainLoop(ExceptionForwardingMainLoop):
   """Runs a glib mainloop until it times out or all requirements are
   satisfied."""
 
-  def __init__(self, test, main_loop):
-    super(GenericTesterMainLoop, self).__init__(main_loop)
+  def __init__(self, test, main_loop, **kwargs):
+    super(GenericTesterMainLoop, self).__init__(main_loop, **kwargs)
     self.test = test
     self.property_changed_actions = {}
 
@@ -102,11 +116,9 @@ class GenericTesterMainLoop(ExceptionForwardingMainLoop):
         logging.info('Requirement %s satisfied.  Remaining: %s' %
                      (requirement, self.remaining_requirements))
 
-  @ExceptionForward
-  def timeout_main_loop(self):
+  def timeout(self):
     logging.error('Requirements unsatisfied upon timeout: %s' %
                     self.remaining_requirements)
-    raise error.TestFail('Main loop timed out')
 
   @ExceptionForward
   def dispatch_property_changed(self, property, *args, **kwargs):
@@ -121,7 +133,5 @@ class GenericTesterMainLoop(ExceptionForwardingMainLoop):
   def run(self, *args, **kwargs):
     self.test_args = args
     self.test_kwargs = kwargs
-    gobject.timeout_add(int(self.test_kwargs.get('timeout_s', 10) * 1000),
-                        self.timeout_main_loop)
     ExceptionForwardingMainLoop.run(self)
     self.after_main_loop()
