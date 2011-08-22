@@ -1516,8 +1516,9 @@ class WiFiTest(object):
 
             # Set up pkcs11.
             self.client.run('rm -rf /home/chronos/user/.tpm')
-            self.client.run('cryptohome --action=tpm_take_ownership')
-            self.client.run('cryptohome --action=tpm_wait_ownership')
+            self.client.run('cryptohome --action=force_pkcs11_init')
+            # TODO(gauravsh): pkcs11_init shouldn't be needed after
+            # force_pkcs11_init.
             self.client.run('cryptohome --action=pkcs11_init')
             self.client.run('openssl '
                             'x509 '
