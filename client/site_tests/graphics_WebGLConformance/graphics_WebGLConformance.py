@@ -73,7 +73,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         latch.wait(timeout)
 
         if not latch.is_set():
-            raise error.TestFail('Timeout after ' + timeout +
+            raise error.TestFail('Timeout after ' + str(timeout) +
                   ' seconds - never received callback from browser.')
 
         # receive data from webgl-conformance-tests.html::postFinalResults
