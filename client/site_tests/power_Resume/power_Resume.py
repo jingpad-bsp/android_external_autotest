@@ -8,8 +8,10 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import rtc, sys_power
 
 START_SUSPEND_MESSAGES = [ 'Freezing user space' ]
-END_SUSPEND_MESSAGES = [ 'Back to C!', 'Entering suspend state' ]
-START_RESUME_MESSAGES = [ 'Back to C!', 'Suspended for' ]
+END_SUSPEND_MESSAGES = [ 'Back to C!', 'Low-level resume complete',
+                         'Entering suspend state' ]
+START_RESUME_MESSAGES = [ 'Back to C!', 'Low-level resume complete',
+                          'Suspended for' ]
 END_RESUME_MESSAGES = [ 'Restarting tasks' ]
 
 class power_Resume(test.test):
