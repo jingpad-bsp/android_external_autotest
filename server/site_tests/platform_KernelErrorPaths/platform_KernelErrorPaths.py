@@ -105,7 +105,7 @@ class platform_KernelErrorPaths(test.test):
                 old_boot_id=boot_id,
                 # Double the default reboot timeout as some targets take longer
                 # than normal before ssh is available again.
-                timeout=self.client.DEFAULT_REBOOT_TIMEOUT * 2)
+                timeout=self.client.DEFAULT_REBOOT_TIMEOUT * 4)
             result = self.client.run('cat %s/kernel.*.kcrash' % crash_log_dir)
             if text not in result.stdout:
                 raise error.TestFail(
