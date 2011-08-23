@@ -24,6 +24,8 @@ job.run_test('desktopui_ChromeFirstRender')
 
 job.run_test('desktopui_KillRestart', binary='^chrome$', tag='chrome')
 job.run_test('desktopui_KillRestart', binary='^session_manager$', tag='session')
+job.run_test('desktopui_ScreenLocker')
+job.run_test('desktopui_WindowManagerFocusNewWindows')
 job.run_test('logging_CrashSender')
 job.run_test('logging_UserCrash')
 job.run_test('login_BadAuthentication')
@@ -36,6 +38,8 @@ job.run_test('login_LoginSuccess', creds='$apps', tag='apps')
 job.run_test('login_OwnershipApi')
 job.run_test('platform_FilePerms')
 job.run_test('platform_OSLimits')
+job.run_test('security_ProfilePermissions', creds='$default', tag='login')
+job.run_test('security_ProfilePermissions', creds=None, tag='BWSI')
 
 ###  Local Variables:
 ###  mode: python
