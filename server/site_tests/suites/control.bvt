@@ -28,6 +28,7 @@ TESTS = [
 # ('platform_ToolchainOptions', {}),
   ('build_RootFilesystemSize', {}),
   ('desktopui_ChromeFirstRender', {}),
+  ('desktopui_UrlFetch', {'live': False, 'tag': 'not-live'}),
   ('desktopui_FlashSanityCheck', {}),
   ('desktopui_KillRestart', {'binary': '^chrome$',
                              'tag': 'chrome'}),
