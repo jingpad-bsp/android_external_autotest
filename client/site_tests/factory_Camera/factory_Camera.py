@@ -87,14 +87,14 @@ class factory_Camera(test.test):
                     (event.keyval, gdk.keyval_name(event.keyval)))
         if event.keyval == KEY_GOOD or event.keyval == KEY_BAD:
             if self.stage == 0:
-                self.dev.capture_mmap_stop()
+                self.capture_stop()
                 if event.keyval == KEY_BAD:
                     gtk.main_quit()
                 self.img.hide()
                 self.label.set_text(MESSAGE_STR2)
             else:
                 if self.ledstats & 1:
-                    self.dev.capture_mmap_stop()
+                    self.capture_stop()
                 if bool(self.ledstats & 1) != (event.keyval == KEY_GOOD):
                     self.ledfail = True
                 self.ledstats >>= 1
@@ -103,7 +103,7 @@ class factory_Camera(test.test):
                 gtk.main_quit()
             self.stage += 1
             if self.ledstats & 1:
-                self.dev.capture_mmap_start()
+                self.capture_start()
             self.label.hide()
             glib.timeout_add(1000, lambda *x: self.label.show())
         return True
@@ -111,6 +111,16 @@ class factory_Camera(test.test):
     def register_callbacks(self, w):
         w.connect('key-release-event', self.key_release_callback)
         w.add_events(gdk.KEY_RELEASE_MASK)
+
+    def capture_start(self):
+        self.dev.capture_mmap_start()
+        self.gio_tag = glib.io_add_watch(self.dev.fd, glib.IO_IN,
+            lambda *x:self.dev.capture_mmap_shot(self.render) or True,
+            priority=glib.PRIORITY_LOW)
+
+    def capture_stop(self):
+        glib.source_remove(self.gio_tag)
+        self.dev.capture_mmap_stop()
 
     def run_once(self,
                  led_rounds=1):
@@ -154,9 +164,6 @@ class factory_Camera(test.test):
         if not dev.cap.capabilities & v4l2.V4L2_CAP_STREAMING:
             raise ValueError('%s does not support streaming I/O'
                              % (DEVICE_NAME, ))
-        glib.io_add_watch(dev.fd, glib.IO_IN,
-            lambda *x:dev.capture_mmap_shot(self.render) or True,
-            priority=glib.PRIORITY_LOW)
 
         frame_size = self.get_best_frame_size(dev, v4l2.V4L2_PIX_FMT_YUYV,
             PREFERRED_WIDTH, PREFERRED_HEIGHT)
@@ -173,7 +180,7 @@ class factory_Camera(test.test):
         self.img.show()
 
         dev.capture_mmap_prepare(PREFERRED_BUFFER_COUNT, 2)
-        dev.capture_mmap_start()
+        self.capture_start()
 
         ful.run_test_widget(self.job, test_widget,
             window_registration_callback=self.register_callbacks)
