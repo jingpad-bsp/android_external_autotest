@@ -46,24 +46,21 @@ class DevRecTest(object):
                                          'direction' : 0,
                                          },
                               },
-        # TODO(hungte) EC spec has changed the pressing recovery button should
-        # reboot the system in the future. We should re-design the test in the
-        # future.
-        #'recovery_button' : {'type' : 'button',
-        #                     'cx' : 475,
-        #                     'cy' : 375,
-        #                     'size' : 30,
-        #                     'arrow' : {'x' : 420,
-        #                                'y' : 375,
-        #                                'width' : 15,
-        #                                'length' : 100,
-        #                                'direction' : 270,
-        #                                }
-        #                     },
+        'recovery_button' : {'type' : 'button',
+                             'cx' : 475,
+                             'cy' : 375,
+                             'size' : 30,
+                             'arrow' : {'x' : 420,
+                                        'y' : 375,
+                                        'width' : 15,
+                                        'length' : 100,
+                                        'direction' : 270,
+                                        }
+                             },
         }
 
     # How long DevRecTest allows in seconds until failing
-    timeout = 20
+    timeout = 90
     # How long to display the success message in seconds before exit.
     pass_msg_timeout = 2
 
@@ -77,6 +74,7 @@ class DevRecTest(object):
         self._successful = set()
         self._deadline = None
         self._success = None
+        self._error_message = 'Test was unsuccessful'
         self.gpios = DevRecGpio(gpio)
 
     def show_arrow(self, context, cx, cy, headx, heady, awidth, length,
@@ -183,7 +181,7 @@ class DevRecTest(object):
         context.set_font_size(.05)
 
         if gpio_state > 0 and self._deadline:
-            dtext = "%s %s now [ %d ] " % \
+            dtext = "%s %s now [ %d ]" % \
                 (text[gpio_state], name, (self._deadline - int(time.time())))
         else:
             dtext = "%s with %s" % (text[gpio_state], name)
@@ -192,6 +190,13 @@ class DevRecTest(object):
         context.move_to(0.5 - (width / 2) - x_bearing,
                         0.5 - (height / 2) - y_bearing)
         context.show_text(dtext)
+
+        dtext = "Press Q to fail."
+        x_bearing, y_bearing, width, height = context.text_extents(dtext)[:4]
+        context.move_to(0.08 - x_bearing,
+                        0.9 - (height / 2) - y_bearing)
+        context.show_text(dtext)
+
         context.restore()
         return True
 
@@ -222,17 +227,32 @@ class DevRecTest(object):
 
     def timer_event(self, window):
         if self._success:
-            sys.exit(0)
+            gtk.main_quit()
         if not self._deadline:
             # Ignore timer events with no countdown in progress.
             return True
         if self.time_expired():
             if self._success is None:
                 self._success = False
-                sys.exit(1)
+                self._error_message = ('Timeout occured before test pass ' +
+                    '(%s)' % self.gpios.cur_gpio())
+                gtk.main_quit()
 
         window.queue_draw()
         return True
+
+    def key_release_callback(self, widget, event):
+        if event.keyval == ord('Q') or event.keyval == ord('q'):
+            self._success = False
+            self._error_message = ('User exited before test pass ' +
+                '(%s)' % self.gpios.cur_gpio())
+            gtk.main_quit()
+
+        return True
+
+    def register_callbacks(self, window):
+        window.connect('key-release-event', self.key_release_callback)
+        window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
 
 class DevRecGpio:
@@ -257,7 +277,7 @@ class DevRecGpio:
             # <default> == 0 || 1
             # <state> == number counts down 0
             'developer_switch': [1, 2],
-            #'recovery_button': [0, 2],
+            'recovery_button': [0, 2],
         }
 
         self._gpio_list = self.table.keys()
@@ -321,6 +341,10 @@ class factory_DeveloperRecovery(test.test):
 
         test.start_countdown(test.timeout)
 
-        ful.run_test_widget(self.job, drawing_area)
+        ful.run_test_widget(self.job, drawing_area,
+            window_registration_callback=test.register_callbacks)
+
+        if not test._success:
+            raise error.TestFail(test._error_message)
 
         factory.log('%s run_once finished' % self.__class__)
