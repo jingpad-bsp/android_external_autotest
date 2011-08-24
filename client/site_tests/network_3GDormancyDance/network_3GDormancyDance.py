@@ -26,8 +26,8 @@ class DormancyTester(ExceptionForwardingMainLoop):
         self.loopsleft = loops
         self.flim = flim
         self.device = device
-        super(DormancyTester, self).
-            __init__(*args, timeout_s=20 * loops + 20, **kwargs)
+        super(DormancyTester, self).__init__(
+                *args, timeout_s=20 * loops + 20, **kwargs)
 
     def countdown(self):
         self.loopsleft -= 1
