@@ -164,7 +164,45 @@
     "interfaces": [
       {
         "interface": "org.chromium.CryptohomeInterface",
-        "methods": [],
+        "methods": [
+          "AsyncCheckKey",
+          "AsyncDoAutomaticFreeDiskSpaceControl",
+          "AsyncMigrateKey",
+          "AsyncMount",
+          "AsyncMountGuest",
+          "AsyncRemove",
+          "AsyncRemoveTrackedSubdirectories",
+          "AsyncSetOwnerUser",
+          "AsyncUpdateCurrentUserActivityTimestamp",
+          "CheckKey",
+          "DoAutomaticFreeDiskSpaceControl",
+          "GetStatusString",
+          "GetSystemSalt",
+          "InstallAttributesCount",
+          "InstallAttributesFinalize",
+          "InstallAttributesGet",
+          "InstallAttributesIsFirstInstall",
+          "InstallAttributesIsInvalid",
+          "InstallAttributesIsReady",
+          "InstallAttributesIsSecure",
+          "InstallAttributesSet",
+          "IsMounted",
+          "MigrateKey",
+          "Mount",
+          "MountGuest",
+          "Pkcs11GetTpmTokenInfo",
+          "Pkcs11IsTpmTokenReady",
+          "Remove",
+          "RemoveTrackedSubdirectories",
+          "TpmCanAttemptOwnership",
+          "TpmClearStoredPassword",
+          "TpmGetPassword",
+          "TpmIsBeingOwned",
+          "TpmIsEnabled",
+          "TpmIsOwned",
+          "TpmIsReady",
+          "Unmount"
+        ],
         "properties": [],
         "signals": [
           "AsyncCallStatus",
@@ -326,7 +364,26 @@
     "interfaces": [
       {
         "interface": "org.chromium.SessionManagerInterface",
-        "methods": [],
+        "methods": [
+          "CheckWhitelist",
+          "EmitLoginPromptReady",
+          "EmitLoginPromptVisible",
+          "EnumerateWhitelisted",
+          "LockScreen",
+          "RestartEntd",
+          "RestartJob",
+          "RetrievePolicy",
+          "RetrieveProperty",
+          "RetrieveSessionState",
+          "SetOwnerKey",
+          "StartSession",
+          "StopSession",
+          "StorePolicy",
+          "StoreProperty",
+          "UnlockScreen",
+          "Unwhitelist",
+          "Whitelist"
+        ],
         "properties": [],
         "signals": [
           "SessionStateChanged"
@@ -339,7 +396,13 @@
     "interfaces": [
       {
         "interface": "org.chromium.UpdateEngineInterface",
-        "methods": [],
+        "methods": [
+          "AttemptUpdate",
+          "GetStatus",
+          "GetTrack",
+          "RebootIfNeeded",
+          "SetTrack"
+        ],
         "properties": [],
         "signals": [
           "StatusUpdate"
@@ -352,7 +415,18 @@
     "interfaces": [
       {
         "interface": "org.chromium.flimflam.Device",
-        "methods": [],
+        "methods": [
+          "AddIPConfig",
+          "ChangePin",
+          "ClearProperty",
+          "EnterPin",
+          "GetProperties",
+          "ProposeScan",
+          "Register",
+          "RequirePin",
+          "SetProperty",
+          "UnblockPin"
+        ],
         "properties": [],
         "signals": [
           "PropertyChanged"
@@ -360,7 +434,14 @@
       },
       {
         "interface": "org.chromium.flimflam.IPConfig",
-        "methods": [],
+        "methods": [
+          "ClearProperty",
+          "GetProperties",
+          "MoveAfter",
+          "MoveBefore",
+          "Remove",
+          "SetProperty"
+        ],
         "properties": [],
         "signals": [
           "PropertyChanged"
@@ -368,7 +449,32 @@
       },
       {
         "interface": "org.chromium.flimflam.Manager",
-        "methods": [],
+        "methods": [
+          "ConfigureWifiService",
+          "CreateProfile",
+          "DisableTechnology",
+          "EnableTechnology",
+          "GetDebugMask",
+          "GetDebugTags",
+          "GetProperties",
+          "GetService",
+          "GetServiceOrder",
+          "GetState",
+          "GetVPNService",
+          "GetWifiService",
+          "ListDebugTags",
+          "PopAnyProfile",
+          "PopProfile",
+          "PushProfile",
+          "RegisterAgent",
+          "RemoveProfile",
+          "RequestScan",
+          "SetDebugMask",
+          "SetDebugTags",
+          "SetProperty",
+          "SetServiceOrder",
+          "UnregisterAgent"
+        ],
         "properties": [],
         "signals": [
           "PropertyChanged",
@@ -377,7 +483,9 @@
       },
       {
         "interface": "org.chromium.flimflam.Network",
-        "methods": [],
+        "methods": [
+          "GetProperties"
+        ],
         "properties": [],
         "signals": [
           "PropertyChanged"
@@ -385,7 +493,12 @@
       },
       {
         "interface": "org.chromium.flimflam.Profile",
-        "methods": [],
+        "methods": [
+          "DeleteEntry",
+          "GetEntry",
+          "GetProperties",
+          "SetProperty"
+        ],
         "properties": [],
         "signals": [
           "PropertyChanged"
@@ -393,7 +506,17 @@
       },
       {
         "interface": "org.chromium.flimflam.Service",
-        "methods": [],
+        "methods": [
+          "ActivateCellularModem",
+          "ClearProperty",
+          "Connect",
+          "Disconnect",
+          "GetProperties",
+          "MoveAfter",
+          "MoveBefore",
+          "Remove",
+          "SetProperty"
+        ],
         "properties": [],
         "signals": [
           "PropertyChanged"

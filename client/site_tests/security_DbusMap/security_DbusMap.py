@@ -15,6 +15,50 @@ from autotest_lib.client.cros import constants, login
 class security_DbusMap(test.test):
     version = 2
 
+    def policy_sort_priority(self, policy):
+        """
+        Given a DOMElement representing one <policy> block from a dbus
+        configuraiton file, return a number suitable for determining
+        the order in which this policy would be applied by dbus-daemon.
+        For example, by returning:
+        0 for 'default' policies
+        1 for 'group' policies
+        2 for 'user' policies
+        ... these numbers can be used as a sort-key for sorting
+        an array of policies into the order they would be evaluated by
+        dbus-daemon.
+        """
+        # As derived from dbus-daemon(1) manpage
+        if policy.getAttribute('context') == 'default':
+            return 0
+        if policy.getAttribute('goup') != '':
+            return 1
+        if policy.getAttribute('user') != '':
+            return 2
+        if policy.getAttribute('at_console') == 'true':
+            return 3
+        if policy.getAttribute('at_console') == 'false':
+            return 4
+        if policy.getAttribute('context') == 'mandatory':
+            return 5
+
+
+    def sort_policies(self, policies):
+        """
+        Given an array of DOMElements representing <policy> blocks,
+        return a sorted copy of the array. Sorting is determined by
+        the order in which dbus-daemon(1) would consider the rules.
+        This is a stable sort, so in cases where dbus would employ
+        "last rule wins," position in the input list will be honored.
+        """
+        # Use decorate-sort-undecorate to minimize calls to
+        # policy_sort_priority(). See http://wiki.python.org/moin/HowTo/Sorting
+        decorated = [(self.policy_sort_priority(policy), i, policy) for
+                     i, policy in enumerate(policies)]
+        decorated.sort()
+        return [policy for _,_,policy in decorated]
+
+
     def check_policies(self, config_doms, dest, iface, member,
                        user='chronos', at_console=None):
         """
@@ -31,14 +75,14 @@ class security_DbusMap(test.test):
         if user == 'chronos' and at_console == None:
             at_console = True
 
-        # crosbug.com/19490 - This loop implements a default-deny,
-        # "last matching rule wins" parse. This is not quite what
-        # dbus-daemon itself does, though close for many typical configs.
-        # TODO(jimhebert) fix crosbug.com/19490.
+        # Apply the policies iteratively, in the same order
+        # that dbus-daemon(1) would consider them.
         allow = False
         for dom in config_doms:
             for buscfg in dom.getElementsByTagName('busconfig'):
-                for policy in buscfg.getElementsByTagName('policy'):
+                policies = self.sort_policies(
+                    buscfg.getElementsByTagName('policy'))
+                for policy in policies:
                     ruling = self.check_one_policy(policy, dest, iface,
                                                    member, user, at_console)
                     if ruling is not None:
@@ -66,8 +110,7 @@ class security_DbusMap(test.test):
 
         # TODO(jimhebert) group='...' is not currently used by any
         # Chrome OS dbus policies but could be in the future so
-        # we should add a check for it in this if-block. Fix this
-        # as part of crosbug.com/19490.
+        # we should add a check for it in this if-block.
         if ((policy.getAttribute('context') != 'default') and
             (policy.getAttribute('user') != user) and
             (policy.getAttribute('at_console') != 'true')):
