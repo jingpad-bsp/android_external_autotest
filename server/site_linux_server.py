@@ -105,6 +105,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
                   "  charonstart=no\n"
                   "  plutostart=yes\n"
                   "  plutodebug=%(@plutodebug@)s\n"
+                  "  plutostderrlog=/var/log/pluto.log\n"
                   "conn L2TP\n"
                   "  keyexchange=ikev1\n"
                   "  authby=psk\n"
@@ -125,6 +126,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
                     "  charonstart=no\n"
                     "  plutostart=yes\n"
                     "  plutodebug=%(@plutodebug@)s\n"
+                    "  plutostderrlog=/var/log/pluto.log\n"
                     "conn L2TP\n"
                     "  keyexchange=ikev1\n"
                     "  left=%(@local-listen-ip@)s\n"
@@ -154,7 +156,7 @@ class LinuxServer(site_linux_system.LinuxSystem):
                 contents = template % (replacements)
                 self.server.run("cat <<EOF >%s\n%s\nEOF\n" % (cfg, contents))
 
-            self.server.run("/usr/sbin/ipsec start")
+            self.server.run("/usr/sbin/ipsec restart")
 
             # Restart xl2tpd to ensure use of newly-created config files.
             self.server.run("sh /etc/init.d/xl2tpd restart")
