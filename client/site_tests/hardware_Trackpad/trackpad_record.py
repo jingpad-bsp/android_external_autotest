@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -190,11 +191,16 @@ class Record:
         if isinstance(subname, tuple):
             subprompt = reduce(lambda s1, s2: s1 + s2,
                                tuple(func.subprompt[s] for s in subname))
+        elif subname is None:
+            subprompt = None
         else:
             subprompt = func.subprompt[subname]
 
-        color_prompt = mini_color.string(prompt, '{', '}', 'green')
-        color_prompt = color_prompt.format(*subprompt)
+        if subprompt is None:
+            color_prompt = prompt
+        else:
+            color_prompt = mini_color.string(prompt, '{', '}', 'green')
+            color_prompt = color_prompt.format(*subprompt)
 
         func_msg = '  <%s>:\n%s%s'
         color_func_msg = mini_color.string(func_msg, '<', '>', 'blue')
