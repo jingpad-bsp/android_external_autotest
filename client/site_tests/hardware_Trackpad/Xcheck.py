@@ -100,42 +100,30 @@ class Xcheck:
         NOP is not an X event. It is inserted to indicate the occurrence of
         related device events.
         '''
-        event_dict = {
-                '2nd Finger Lifted': (self.dev.get_2nd_finger_lifted_time,
-                                      'Motion'),
-                'Two Finger Touch': (self.dev.get_two_finger_touch_time_list,
-                                     ''),
-        }
+        if nop_str == 'Two Finger Touch':
+            dev_event_time = self.dev.get_two_finger_touch_time_list()
+        else:
+            dev_event_time = self.dev.get_finger_time(nop_str)
 
-        result = event_dict.get(nop_str, None)
-        if result is None:
-            logging.warn('There is no device event method for %s.' % nop_str)
-            return
-
-        # TODO(josephsih): Using a class here with named method and property
-        # instead of a list would be better.
-        dev_event_time = result[0]()
-        matching_xevent_name = result[1]
         if dev_event_time is None:
             logging.warn('Cannot get time for %s.' % nop_str)
             return
 
-        if not isinstance(dev_event_time, list):
-            dev_event_time = [dev_event_time]
-
+        # Insert NOP event into xevent data
         begin_index = 0
         for devent_time in dev_event_time:
             for index, line in enumerate(self.xevent.xevent_data[begin_index:]):
                 xevent_name = line[0]
                 xevent_dict = line[1]
-                if xevent_name.startswith(matching_xevent_name):
-                    xevent_time = float(xevent_dict['time'])
-                    if xevent_time > devent_time:
-                        insert_index = begin_index + index
-                        nop_data = ('NOP', nop_str, devent_time)
-                        self.xevent.xevent_data.insert(insert_index, nop_data)
-                        begin_index = insert_index + 1
-                        break
+                if xevent_name == 'NOP':
+                    continue
+                xevent_time = float(xevent_dict.get('time', 0))
+                if xevent_time > devent_time:
+                    insert_index = begin_index + index
+                    nop_data = ('NOP', nop_str, devent_time)
+                    self.xevent.xevent_data.insert(insert_index, nop_data)
+                    begin_index = insert_index + 1
+                    break
 
     def _insert_nop_per_criteria(self, criteria_method):
         ''' Insert NOP based on criteria '''
@@ -150,7 +138,7 @@ class Xcheck:
                     # Insert NOP in self.xevent_seq if NOP is specified
                     # in sequence criteria.
                     # Example of crit_sequence below:
-                    #     ('NOP', 'Single Finger Lifted')
+                    #     ('NOP', '1st Finger Lifted')
                     #     ('NOP', '2nd Finger Lifted')
                     for s in crit_sequence:
                         if s[0] == 'NOP':

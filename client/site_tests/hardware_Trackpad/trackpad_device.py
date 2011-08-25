@@ -59,7 +59,9 @@ class TrackpadDevice:
         # Event codes
         self.ABS_MT_SLOT = ev_format % ABS_MT_SLOT
         self.ABS_MT_TRACKING_ID = ev_format % ABS_MT_TRACKING_ID
+        self.BTN_TOOL_FINGER = ev_format % BTN_TOOL_FINGER
         self.BTN_TOOL_DOUBLETAP = ev_format % BTN_TOOL_DOUBLETAP
+        self.BTN_TOOL_TRIPLETAP = ev_format % BTN_TOOL_TRIPLETAP
 
         # MTA: not supported at this time
 
@@ -67,8 +69,19 @@ class TrackpadDevice:
         self.second_finger_on_MTB = self._finger_i_on_MTB(2)
         self.finger_off_MTB = '%s %s -1' % (self.EV_ABS,
                                             self.ABS_MT_TRACKING_ID)
-        self.two_finger_on_MTB = '%s %s 1' % (self.EV_KEY,
-                                              self.BTN_TOOL_DOUBLETAP)
+
+        finger_MTB = '{0} %s {1}'
+        finger_on_MTB = finger_MTB.format(self.EV_KEY, 1)
+        finger_off_MTB = finger_MTB.format(self.EV_KEY, 0)
+
+        self.dev_event = {
+            '1st Finger Landed': finger_on_MTB  % self.BTN_TOOL_FINGER,
+            '1st Finger Lifted': finger_off_MTB % self.BTN_TOOL_FINGER,
+            '2nd Finger Landed': finger_on_MTB  % self.BTN_TOOL_DOUBLETAP,
+            '2nd Finger Lifted': finger_off_MTB % self.BTN_TOOL_DOUBLETAP,
+            '3rd Finger Landed': finger_on_MTB  % self.BTN_TOOL_TRIPLETAP,
+            '3rd Finger Lifted': finger_off_MTB % self.BTN_TOOL_TRIPLETAP,
+        }
 
     def _extract_playback_time(self, line):
         ''' Extract the actual event playback time from the line '''
@@ -93,6 +106,11 @@ class TrackpadDevice:
                 ev = ev_seq.pop(0)
         return None
 
+    def get_finger_time(self, ev_str):
+        ''' Derive the device playback time when the 2nd finger touches '''
+        ev_seq_MTB = [self.dev_event[ev_str]]
+        return [self._find_event_time(ev_seq_MTB)]
+
     def get_2nd_finger_touch_time(self, direction):
         ''' Derive the device playback time when the 2nd finger touches '''
         self.motion_code = '%s %s' % (self.EV_ABS, self.ev_code_dict[direction])
@@ -101,8 +119,7 @@ class TrackpadDevice:
 
     def get_2nd_finger_lifted_time(self):
         ''' Derive the device playback time when the 2nd finger is lifted '''
-        ev_seq_MTB = [self.second_finger_on_MTB, self.finger_off_MTB,
-                      self.second_finger_on_MTB]
+        ev_seq_MTB = [self.second_finger_on_MTB, self.finger_off_MTB]
         return self._find_event_time(ev_seq_MTB)
 
     def get_two_finger_touch_time_list(self):
@@ -110,7 +127,7 @@ class TrackpadDevice:
         with open(TrackpadDevice.DEVICE_TIME_FILE) as f:
             time_file = f.read().splitlines()
 
-        ev = self.two_finger_on_MTB
+        ev = self.dev_event['2nd Finger Landed']
         touch_time_list = []
         for line in time_file:
             if ev in line:
