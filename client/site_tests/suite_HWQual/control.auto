@@ -46,13 +46,12 @@ job.run_test('hardware_MemoryTotalSize')
 job.run_test('hardware_MemoryThroughput', num_iteration=2500, test_list='21')
 
 # Storage
-# TODO(dalecurtis): Locking up machines. Remove when crosbug.com/15485 fixed.
-#job.run_test('hardware_StorageFio',
-#             constraints=[
-#                 'bytes_per_sec_seq_read >= 20 * 1024 * 1024',
-#                 'bytes_per_sec_seq_write >= 15 * 1024 * 1024',
-#                 'iops_4k_write >= 10',
-#             ])
+job.run_test('hardware_StorageFio',
+             constraints=[
+                 'bytes_per_sec_seq_read >= 20 * 1024 * 1024',
+                 'bytes_per_sec_seq_write >= 15 * 1024 * 1024',
+                 'iops_4k_write >= 10',
+             ])
 job.run_test('hardware_DiskSize',
              constraints=['gb_main_disk_size >= 8'])
 job.run_test('hardware_SsdDetection')

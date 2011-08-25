@@ -25,8 +25,7 @@ work on quicker tests while the longest running tests are running.
 """
 TESTS = [
   ('unixbench', {}),            # Runtime 1:00
-# TODO(dalecurtis): Locking up machines. Remove when crosbug.com/15485 fixed.
-#  ('hardware_StorageFio', {}),  # Runtime 1:00
+  ('hardware_StorageFio', {}),  # Runtime 1:00
   ('compilebench', {}),         # Runtime 0:35
   ('dbench', {}),               # Runtime 0:15
   ('disktest', {}),             # Runtime 0:05
