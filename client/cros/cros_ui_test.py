@@ -103,6 +103,11 @@ class UITest(pyauto_test.PyAutoTest):
         self._bus_loop = DBusGMainLoop(set_as_default=True)
         self._system_bus = dbus.SystemBus(mainloop=self._bus_loop)
         self._flim = flimflam.FlimFlam(self._system_bus)
+        # Turn off captive portal checking, until we fix
+        # http://code.google.com/p/chromium-os/issues/detail?id=19640
+        self.check_portal_list = self._flim.GetCheckPortalList()
+        self._flim.SetCheckPortalList('')
+        # Set all devices to use locally-running DNS server.
         for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
             interface = properties['Interface']
@@ -122,6 +127,9 @@ class UITest(pyauto_test.PyAutoTest):
         """Clear the custom DNS setting for all devices and force them to use
         DHCP to pull the network's real settings again.
         """
+        # Set captive portal checking to whatever it was at the start.
+        self._flim.SetCheckPortalList(self.check_portal_list)
+        # Clear all DNS settings and restart flimflam.
         for device in self._flim.GetObjectList('Device'):
             properties = device.GetProperties()
             interface = properties['Interface']
