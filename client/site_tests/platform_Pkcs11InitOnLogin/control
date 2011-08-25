@@ -1,0 +1,18 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chromium OS Authors"
+NAME = "platform_Pkcs11InitOnLogin"
+PURPOSE = "Tests PKCS#11 initialization on login"
+CRITERIA = "Fails if initialization fails during login."
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+DOC = """
+This tests if PKCS#11 initialization succeeds during login.
+"""
+
+job.run_test('platform_Pkcs11InitOnLogin')

@@ -82,3 +82,5 @@ UI_LOG = '/var/log/ui/ui.LATEST'
 UPDATE_ENGINE_LOG = '/var/log/update_engine.log'
 
 WINDOW_MANAGER = 'chromeos-wm'
+
+PKCS11_INIT_MAGIC_FILE = '/home/chronos/user/.tpm/.isinitialized'
