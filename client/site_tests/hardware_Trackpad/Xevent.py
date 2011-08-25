@@ -306,8 +306,9 @@ class XEvent:
             if self.xbutton.is_button_wheel(button_label):
                 count = self.seg_count_buttons[event_button]
                 count = int(count) if count == int(count) else count
-                event = (button_label, count, button_time)
-                _append_event(event)
+                if count > 0:
+                    event = (button_label, count, button_time)
+                    _append_event(event)
 
         def _append_NOP(event_name, event_description, event_time):
             ''' Append NOP event '''
