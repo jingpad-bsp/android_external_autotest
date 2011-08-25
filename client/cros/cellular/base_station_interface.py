@@ -40,8 +40,8 @@ class BaseStationInterface(object):
     """
     raise NotImplementedError()
 
-  def GetUeStatus(self):
-    """Gets the status of the UE."""
+  def GetUeDataStatus(self):
+    """Gets the data call status of the UE."""
     raise NotImplementedError()
 
   def PrepareForStatusChange(self):

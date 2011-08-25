@@ -7,27 +7,44 @@
 DEFAULT_TIMEOUT = 10
 
 
-class Technology(object):
-  GPRS = 1
-  EGPRS = 2
-  WCDMA = 3
-  UTRAN = WCDMA
-  HSDPA = 4
-  HDUPA = 5
-  HSDUPA = 6
-  HSPA_PLUS = 7
+def Enum(items):
+  """Build an class with a member for each item, with value set to the name.
 
-  CDMA_2000 = 8
-  EVDO_1x = 9
+  Arguments:
+    members: A list of items for the enum.  They must be valid python
+     identifiers
+"""
+  class output:
+    pass
 
-  LTE = 10
+  for item in items:
+    setattr(output, item, item)
 
-class UeStatus(object):
-  NONE = 0
-  IDLE = 1
-  ATTACHING = 2
-  DETACHING = 3
-  ACTIVE = 4
+  return output
+
+
+Technology = Enum([
+    'GPRS',
+    'EGPRS',
+    'WCDMA',
+    'HSDPA',
+    'HDUPA',
+    'HSDUPA',
+    'HSPA_PLUS',
+    'CDMA_2000',
+    'EVDO_1x',
+    'LTE'
+    ])
+
+
+UeStatus = Enum([
+    'NONE',
+    'IDLE',
+    'ATTACHING',
+    'DETACHING',
+    'ACTIVATING',
+    'ACTIVE',
+    ])
 
 
 class Power(object):

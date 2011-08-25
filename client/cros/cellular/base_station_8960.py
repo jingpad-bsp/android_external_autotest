@@ -41,6 +41,25 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
                         ConfigDictionaries.TECHNOLOGY_TO_FORMAT[technology])
     self.c.SendStanza(
         ConfigDictionaries.TECHNOLOGY_TO_CONFIG_STANZA.get(technology, []))
+    self.technology = technology
+
+  def SetPlmn(self, mcc, mnc):
+    # Doing this appears to set the WCDMa versions as well
+    self.c.SendStanza([
+        'CALL:MCCode %s' % mcc,
+        'CALL:MNCode %s' % mnc,])
+
+  def SetPower(self, dbm=cellular.Power.DEFAULT):
+    if dbm <= cellular.Power.OFF :
+      self.c.SendStanza([
+          'CALL:CELL:POWer:STATe off',])
+    else:
+      self.c.SendStanza([
+          'CALL:CELL:POWer %s' % dbm,])
+
+  def GetUeDataStatus(self):
+    status = self.c.Query('CALL:STATus:DATa?')
+    return ConfigDictionaries.CALL_STATUS_DATA_TO_STATUS[status]
 
 
 def _Parse(command_sequence):
@@ -143,7 +162,6 @@ class ConfigDictionaries(object):
       cellular.Technology.EGPRS: 'GSM/GPRS',
 
       cellular.Technology.WCDMA: 'WCDMA',
-      cellular.Technology.UTRAN: 'WCDMA',
       cellular.Technology.HSDPA: 'WCDMA',
       cellular.Technology.HDUPA: 'WCDMA',
       cellular.Technology.HSDUPA: 'WCDMA',
@@ -161,4 +179,14 @@ class ConfigDictionaries(object):
 
   TECHNOLOGY_TO_CONFIG_STANZA = {
       cellular.Technology.HSPA_PLUS: ConfigStanzas.CAT_14,
+      }
+
+#  http://wireless.agilent.com/rfcomms/refdocs/wcdma/wcdma_gen_call_proc_status.html#CJADGAHG
+  CALL_STATUS_DATA_TO_STATUS = {
+      'IDLE': cellular.UeStatus.IDLE,
+      'ATTG': cellular.UeStatus.ATTACHING,
+      'DET': cellular.UeStatus.DETACHING,
+      'OFF': cellular.UeStatus.NONE,
+      'PDPAG': cellular.UeStatus.ACTIVATING,
+      'PDP': cellular.UeStatus.ACTIVE,
       }
