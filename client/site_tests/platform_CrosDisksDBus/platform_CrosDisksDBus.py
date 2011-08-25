@@ -133,20 +133,6 @@ class platform_CrosDisksDBus(test.test):
         raise error.TestFail(
             "GetDeviceProperties of a nonexistent device should fail")
 
-    def test_mount_nonexistent_device(self):
-        try:
-            path = self.cros_disks.FilesystemMount('/nonexistent', '', [])
-        except dbus.DBusException:
-            return
-        raise error.TestFail("Mounting a nonexistent device should fail")
-
-    def test_unmount_nonexistent_device(self):
-        try:
-            self.cros_disks.FilesystemUnmount('/nonexistent', [])
-        except dbus.DBusException:
-            return
-        raise error.TestFail("Unmounting a nonexistent device should fail")
-
     def run_once(self):
         bus = dbus.SystemBus()
         proxy = bus.get_object('org.chromium.CrosDisks',
@@ -159,5 +145,3 @@ class platform_CrosDisksDBus(test.test):
         self.test_get_device_properties_of_nonexistent_device()
         self.test_enumerate_auto_mountable_devices_are_not_on_boot_device()
         self.test_enumerate_auto_mountable_devices_are_not_virtual()
-        self.test_mount_nonexistent_device()
-        self.test_unmount_nonexistent_device()
