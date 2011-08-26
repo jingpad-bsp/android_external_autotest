@@ -18,5 +18,4 @@ This test opens a new browser to the given URL and waits for the specified
 cookie to be saved.
 """
 
-job.run_test('desktopui_UrlFetch', live=True, tag='live')
-job.run_test('desktopui_UrlFetch', live=False, tag='not-live')
+job.run_test('desktopui_UrlFetch')
