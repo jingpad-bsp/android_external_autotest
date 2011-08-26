@@ -215,15 +215,18 @@ class sound_infrastructure(test.test):
             'controls': [
                 "numid=1,iface=MIXER,name='Master Playback Volume'",
                 "numid=2,iface=MIXER,name='Master Playback Switch'",
-                "numid=3,iface=MIXER,name='Capture Volume'",
-                "numid=4,iface=MIXER,name='Capture Switch'",
-                "numid=5,iface=MIXER,name='Mic Boost Volume'",
-                "numid=6,iface=MIXER,name='IEC958 Playback Con Mask'",
-                "numid=7,iface=MIXER,name='IEC958 Playback Pro Mask'",
-                "numid=8,iface=MIXER,name='IEC958 Playback Default'",
-                "numid=9,iface=MIXER,name='IEC958 Playback Switch'",
-                "numid=10,iface=MIXER,name='IEC958 Default PCM Playback Switch'",
-                "numid=11,iface=MIXER,name='PCM Playback Volume'",
+                "numid=3,iface=MIXER,name='Speaker Playback Switch'",
+                "numid=4,iface=MIXER,name='Headphone Playback Switch'",
+                "numid=5,iface=MIXER,name='Capture Volume'",
+                "numid=6,iface=MIXER,name='Capture Switch'",
+                "numid=7,iface=MIXER,name='Mic Boost Volume'",
+                "numid=8,iface=MIXER,name='IEC958 Playback Con Mask'",
+                "numid=9,iface=MIXER,name='IEC958 Playback Pro Mask'",
+                "numid=10,iface=MIXER,name='IEC958 Playback Default'",
+                "numid=11,iface=MIXER,name='IEC958 Playback Switch'",
+                "numid=12,iface=MIXER,name='IEC958 Default PCM Playback"+\
+                  " Switch'",
+                "numid=13,iface=MIXER,name='PCM Playback Volume'",
                 ],
             'files': [
                 "/dev/snd/by-path",
@@ -461,4 +464,3 @@ class sound_infrastructure(test.test):
             self.validate_codec(self.codec_info[codec])
         else:
             raise error.TestError("No test info for codec '%s'." % (codec))
-
