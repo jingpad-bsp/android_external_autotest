@@ -366,7 +366,7 @@ class sound_infrastructure(test.test):
                 "numid=4,iface=MIXER,name='Headphone Playback Switch'",
                 "numid=5,iface=MIXER,name='Mic Playback Volume'",
                 "numid=6,iface=MIXER,name='Mic Playback Switch'",
-                "numid=7,iface=MIXER,name='Mic Boost'",
+                "numid=7,iface=MIXER,name='Mic Boost Volume'",
                 "numid=8,iface=MIXER,name='Capture Switch'",
                 "numid=9,iface=MIXER,name='Capture Switch',index=1",
                 "numid=10,iface=MIXER,name='Capture Volume'",
