@@ -97,6 +97,16 @@ def hide_cursor(gdk_window):
     gdk_window.set_cursor(cursor)
 
 
+def calc_scale(wanted_x, wanted_y):
+    (widget_size_x, widget_size_y) = factory.get_shared_data('test_widget_size')
+    scale_x = (0.9 * widget_size_x) / wanted_x
+    scale_y = (0.9 * widget_size_y) / wanted_y
+    scale = scale_y if scale_y < scale_x else scale_x
+    scale = 1 if scale > 1 else scale
+    factory.log('scale: %s' % scale)
+    return scale
+
+
 def run_test_widget(job, test_widget,
                     invisible_cursor=True,
                     window_registration_callback=None,

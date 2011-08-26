@@ -33,9 +33,10 @@ from autotest_lib.client.common_lib import error
 
 class KeyboardTest:
 
-    def __init__(self, kbd_image, bindings):
+    def __init__(self, kbd_image, bindings, scale):
         self._kbd_image = kbd_image
         self._bindings = bindings
+        self._scale = scale
         self._pressed_keys = set()
         self._deadline = None
         self.successful_keys = set()
@@ -64,6 +65,7 @@ class KeyboardTest:
         context = widget.window.cairo_create()
 
         # Show keyboard image as the background.
+        context.scale(self._scale, self._scale)
         context.set_source_surface(self._kbd_image, 0, 0)
         context.paint()
 
@@ -168,10 +170,14 @@ class factory_Keyboard(test.test):
             raise error.TestNAError('Error while opening %s: %s [Errno %d]' %
                                     (e.filename, e.strerror, e.errno))
 
-        test = KeyboardTest(kbd_image, bindings)
+        scale = ful.calc_scale(*image_size)
+
+        test = KeyboardTest(kbd_image, bindings, scale)
+
+        scaled_image_size = (image_size[0] * scale, image_size[1] * scale)
 
         drawing_area = gtk.DrawingArea()
-        drawing_area.set_size_request(*image_size)
+        drawing_area.set_size_request(*scaled_image_size)
         drawing_area.connect('expose_event', test.expose_event)
         drawing_area.add_events(gdk.EXPOSURE_MASK)
 

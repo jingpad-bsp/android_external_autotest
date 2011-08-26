@@ -149,8 +149,8 @@ def main():
     kbd_image_size = (kbd_image.get_width(), kbd_image.get_height())
 
     bindings = {}
-    if len(sys.argv) == 2 and os.path.exists(sys.argv[2]):
-        f = open('sys.argv[2]' % layout, 'r')
+    if len(sys.argv) == 3 and os.path.exists(sys.argv[2]):
+        f = open(sys.argv[2], 'r')
         bindings = eval(f.read())
         f.close()
 
