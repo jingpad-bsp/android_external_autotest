@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "platform_CrosDisksDBus"
-PURPOSE = "Verify that cros-disks d-bus API is running correctly"
+NAME = "platform_CrosDisksFilesystem"
+PURPOSE = "Verify that cros-disks can mount supported filesystems correctly"
 
 CRITERIA = """
 """
@@ -14,7 +14,7 @@ TEST_CLASS = "platform"
 TEST_TYPE = "client"
 
 DOC = """
-Exercises the cros-disks d-bus API
+Calls cros-disks to mount supported filesystems
 """
 
-job.run_test('platform_CrosDisksDBus', timeout_s=20)
+job.run_test('platform_CrosDisksFilesystem', timeout_s=20)

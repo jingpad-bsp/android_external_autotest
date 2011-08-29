@@ -1,0 +1,22 @@
+[
+  {
+    "description": "ext3 filesystem with label",
+    "block_size": 1024,
+    "block_count": 65536,
+    "filesystem_type": "ext3",
+    "mkfs_options": [ "-L", "MyDisk" ],
+    "test_mount_options": [ "ro", "nodev", "noexec", "nosuid", "sync" ],
+    "expected_mount_status": 0,
+    "expected_mount_path": "/media/removable/MyDisk"
+  },
+  {
+    "description": "ext3 filesystem with UUID",
+    "block_size": 1024,
+    "block_count": 65536,
+    "filesystem_type": "ext3",
+    "mkfs_options": [ "-U", "01234567-89ab-cdef-0123-456789abcdef" ],
+    "test_mount_options": [ "ro", "nodev", "noexec", "nosuid", "sync" ],
+    "expected_mount_status": 0,
+    "expected_mount_path": "/media/removable/01234567-89ab-cdef-0123-456789abcdef"
+  }
+]

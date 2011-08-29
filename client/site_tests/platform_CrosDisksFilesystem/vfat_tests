@@ -1,0 +1,22 @@
+[
+  {
+    "description": "VFAT filesystem with label",
+    "block_size": 1024,
+    "block_count": 65536,
+    "filesystem_type": "vfat",
+    "mkfs_options": [ "-F", "32", "-n", "MYDISK" ],
+    "test_mount_options": [ "ro", "nodev", "noexec", "nosuid", "sync" ],
+    "expected_mount_status": 0,
+    "expected_mount_path": "/media/removable/MYDISK"
+  },
+  {
+    "description": "VFAT filesystem with UUID",
+    "block_size": 1024,
+    "block_count": 65536,
+    "filesystem_type": "vfat",
+    "mkfs_options": [ "-F", "32", "-i", "deadbeef" ],
+    "test_mount_options": [ "ro", "nodev", "noexec", "nosuid", "sync" ],
+    "expected_mount_status": 0,
+    "expected_mount_path": "/media/removable/DEAD-BEEF"
+  }
+]
