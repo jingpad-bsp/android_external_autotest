@@ -15,8 +15,9 @@ Security Functional test suite.
 
 # List of client tests with parameters
 TESTS = [
-  ('platform_DMVerityCorruption', {}),
-  ('platform_DMVerityBitCorruption', {}),
+  # TODO(jimhebert) Enable DMVerity*Corruption when crosbug.com/19775 is fixed.
+  #('platform_DMVerityCorruption', {}),
+  #('platform_DMVerityBitCorruption', {}),
   ('security_DbusOwners', {}),
   ('security_NetworkListeners', {}),
   ('security_RendererSandbox', {}),
