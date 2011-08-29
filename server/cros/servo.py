@@ -28,6 +28,8 @@ class Servo:
     LONG_DELAY = 8
     SHORT_DELAY = 0.1
     NORMAL_TRANSITION_DELAY = 1.2
+    # Maximum number of times to re-read power button on release.
+    RELEASE_RETRY_MAX = 5
 
     # Delays to deal with computer transitions.
     SLEEP_DELAY = 6
@@ -100,7 +102,18 @@ class Servo:
         """
         self.set_nocheck('pwr_button', 'press')
         time.sleep(secs)
-        self.set('pwr_button', 'release')
+        self.set_nocheck('pwr_button', 'release')
+        # TODO(tbroch) Different systems have different release times on the
+        # power button that this loop addresses.  Longer term we may want to
+        # make this delay platform specific.
+        retry = 1
+        while True:
+            value = self.get('pwr_button')
+            if value == 'release' or retry > Servo.RELEASE_RETRY_MAX:
+                break
+            logging.info('Waiting for pwr_button to release, retry %d.' % retry)
+            retry += 1
+            time.sleep(Servo.SHORT_DELAY)
 
 
     def lid_open(self):
