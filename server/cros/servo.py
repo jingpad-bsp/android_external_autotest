@@ -39,7 +39,7 @@ class Servo:
     MAX_SERVO_STARTUP_DELAY = 10
     SERVO_SEND_SIGNAL_DELAY = 0.5
 
-    def __init__(self, servo_host, servo_port, xml_config='servo.xml',
+    def __init__(self, servo_host=None, servo_port=None, xml_config='servo.xml',
                  servo_vid=None, servo_pid=None, servo_serial=None,
                  cold_reset=False):
         """Sets up the servo communication infrastructure.
@@ -58,16 +58,22 @@ class Servo:
         """
         # launch servod
         self._servod = None
-        self._launch_servod(servo_host, servo_port, xml_config, servo_vid,
-                            servo_pid, servo_serial)
 
-
-        # connect to servod
-        assert servo_host
-        assert servo_port
+        if not servo_port:
+            servo_port = 9999
+        # TODO(tbroch) In case where servo h/w is not connected to the host
+        # running the autotest server, servod will need to be launched by
+        # another means (udev likely).  For now we can assume servo_host ==
+        # localhost as one hueristic way of determining this.
+        if not servo_host or servo_host == 'localhost':
+            servo_host = 'localhost'
+            self._launch_servod(servo_host, servo_port, xml_config, servo_vid,
+                                servo_pid, servo_serial)
+        else:
+            logging.info('servod should already be running on host = %s',
+                         servo_host)
 
         self._do_cold_reset = cold_reset
-
         self._connect_servod(servo_host, servo_port)
 
 
@@ -297,17 +303,11 @@ class Servo:
             distinguish and control multiple servos.  Note servo's EEPROM must
             be programmed to use this feature.
         """
-        # TODO(tbroch) In case where servo h/w is not connected to the host
-        # running the autotest server, servod will need to be launched by
-        # another means (udev likely).  For now we can assume servo_host ==
-        # localhost as one hueristic way of determining this.
-        if servo_host != 'localhost':
-            logging.warn('servod should already be running on host = %s',
-                         servo_host)
-            return
-
-        cmdlist = ['sudo', 'servod', '-c', str(xml_config), '--host=' +
-                   str(servo_host), '--port=' + str(servo_port)]
+        cmdlist = ['sudo', 'servod', '-c', str(xml_config)]
+        if servo_host is not None:
+            cmdlist.append('--host=%s' % str(servo_host))
+        if servo_port is not None:
+            cmdlist.append('--port=%s' % str(servo_port))
         if servo_vid is not None:
             cmdlist.append('--vendor=%s' % str(servo_vid))
         if servo_pid is not None:
@@ -341,13 +341,9 @@ class Servo:
           servo_port: Port the Servod process is listening on.
         """
         remote = 'http://%s:%s' % (servo_host, servo_port)
-        try:
-            self._server = xmlrpclib.ServerProxy(remote)
-        except Exception:
-            logging.error('Unable to connect to servod')
-            raise
+        self._server = xmlrpclib.ServerProxy(remote)
         try:
             self._server.echo("ping-test")
-        except Exception:
-            logging.error('Unable to ping servod')
+        except:
+            logging.error('Connection to servod failed')
             raise
