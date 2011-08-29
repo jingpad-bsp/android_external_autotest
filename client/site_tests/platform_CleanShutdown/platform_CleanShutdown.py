@@ -7,6 +7,16 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 
+PROCESS_WHITELIST = (
+    # TODO(dalecurtis): Remove once http://crosbug.com/15697 is fixed.
+    'cryptohom',
+)
+
+SHUTDOWN_CRYPTOHOME_UMOUNT_FAIL = '/var/log/shutdown_cryptohome_umount_failure'
+SHUTDOWN_STATEFUL_UMOUNT_FAIL = '/var/log/shutdown_stateful_umount_failure'
+SHUTDOWN_KILLED_PROCESSES_LOG = '/var/log/shutdown_force_kill_processes'
+
+
 class platform_CleanShutdown(test.test):
     version = 1
 
@@ -15,10 +25,28 @@ class platform_CleanShutdown(test.test):
         if not os.path.exists(filename):
             return
 
-        contents = utils.read_file(filename)
+        contents = utils.read_file(filename).strip()
+        os.remove(filename)
+
+        if filename == SHUTDOWN_KILLED_PROCESSES_LOG:
+            # Remove all killed processes listed in the white list. An example
+            # log is included below:
+            #
+            #    COMMAND     PID    USER  FD   TYPE DEVICE SIZE/OFF   NODE NAME
+            #    cryptohom  [........]
+            #
+            filtered_contents = filter(
+                lambda line: not line.startswith(PROCESS_WHITELIST),
+                contents.splitlines())
+
+            # If there are no lines left but the header, return nothing.
+            if len(filtered_contents) <= 1:
+                return
+            else:
+                contents = '\n'.join(filtered_contents)
+
         logging.error('Last shutdown problem: %s. Detailed output was:\n%s' %
                       (message, contents))
-        os.remove(filename)
         self._errors.append(message)
 
 
@@ -26,11 +54,11 @@ class platform_CleanShutdown(test.test):
         self._errors = []
         # Problems during shutdown are brought out in /var/log files
         # which we show here.
-        self._log_remove_if_exists('/var/log/shutdown_cryptohome_umount_failure',
+        self._log_remove_if_exists(SHUTDOWN_CRYPTOHOME_UMOUNT_FAIL,
                                    'cryptohome unmount failed')
-        self._log_remove_if_exists('/var/log/shutdown_stateful_umount_failure',
+        self._log_remove_if_exists(SHUTDOWN_STATEFUL_UMOUNT_FAIL,
                                    'stateful unmount failed')
-        self._log_remove_if_exists('/var/log/shutdown_force_kill_processes',
+        self._log_remove_if_exists(SHUTDOWN_KILLED_PROCESSES_LOG,
                                    'force killed processes')
         if self._errors:
             raise error.TestFail(
