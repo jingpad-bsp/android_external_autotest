@@ -4,3 +4,8 @@ chromium-os-bug-14449/mpixels_sec_fill_tex_trilinear_nearest_05.pixmd5-6419cf54f
 chromium-os-bug-14449/mpixels_sec_yuv_shader_1.pixmd5-5b4ef5f496d92150b89611cf83154669.png
 chromium-os-bug-19501/mpixels_sec_yuv_shader_1.pixmd5-50f612a87c57d214fa208d5d37feaa9b.png
 chromium-os-bug-19501/mpixels_sec_yuv_shader_2.pixmd5-56194920f45ddbdc61d69db0d1777e59.png
+chromium-os-bug-19501/mpixels_sec_yuv_shader_2.pixmd5-7df31e3701d1897dc935b5112dad0942.png
+chromium-os-bug-19818/mpixels_sec_yuv_shader_1.pixmd5-7d0d40c7e69493aa075b8be42e4580aa.png
+chromium-os-bug-19818/mpixels_sec_yuv_shader_2.pixmd5-aebca66f973282a4a94f80fae27ae8af.png
+chromium-os-bug-19818/mpixels_sec_yuv_shader_3.pixmd5-eea853a3efd7df3566ff7247f0c7da70.png
+chromium-os-bug-19818/mpixels_sec_yuv_shader_4.pixmd5-eea853a3efd7df3566ff7247f0c7da70.png
