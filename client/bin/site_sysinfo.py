@@ -1,3 +1,7 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 import os, shutil, re, logging
 
 from autotest_lib.client.common_lib import utils
@@ -77,6 +81,7 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         self.after_iteration_loggables.add(purgeable_logdir("/var/spool/crash"))
         self.test_loggables.add(logfile("/home/chronos/.Google/"
                                         "Google Talk Plugin/gtbplugin.log"))
+        self.test_loggables.add(purgeable_logdir("/var/spool/crash"))
 
 
     def log_test_keyvals(self, test_sysinfodir):
