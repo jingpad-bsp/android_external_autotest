@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib import pexpect
 DEFAULT_BASELINE = 'baseline'
 
 FINGERPRINT_RE = re.compile(r'Fingerprint \(SHA1\):\n\s+(\b[:\w]+)\b')
-NSS_ISSUER_RE = re.compile(r'Object Token:(.+\b)\s+[CGA]*,[CGA]*,[CGA]*\n')
+NSS_ISSUER_RE = re.compile(r'Object Token:(.+\b)\s+[CGA]*,[CGA]*,[CGA]*')
 
 NSSCERTUTIL = '/usr/local/bin/nsscertutil'
 NSSMODUTIL = '/usr/local/bin/nssmodutil'
