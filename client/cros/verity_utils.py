@@ -132,7 +132,7 @@ class verity_image(object):
                                                             self.hash_file))
         # The verity tool doesn't include a templated error value.
         # For now, we add one.
-        self.table += " ERROR_BEHAVIOR"
+        self.table += " error_behavior=ERROR_BEHAVIOR"
         logging.info("table is %s" % self.table)
 
     def _append_hash(self):
