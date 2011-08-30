@@ -25,12 +25,12 @@ class desktopui_ScreenLocker(cros_ui_test.UITest):
             error.TestFail('screenlocker not locked')
 
         # send an incorrect password
-        error = self.pyauto.UnlockScreen('_boguspassword_')
+        error_msg = self.pyauto.UnlockScreen('_boguspassword_')
         # verify that the screen unlock attempt failed
-        if not error or not self.is_screen_locked():
-            raise error.TestFail('unlocked with bogus password: %s' % error)
+        if not error_msg or not self.is_screen_locked():
+            raise error.TestFail('unlocked with bogus password: %s' % error_msg)
 
         # send the correct password
-        error = self.pyauto.UnlockScreen(self.password)
-        if error or self.is_screen_locked():
-            raise error.TestFail('could not unlock screensaver: %s' % error)
+        error_msg = self.pyauto.UnlockScreen(self.password)
+        if error_msg or self.is_screen_locked():
+            raise error.TestFail('could not unlock screensaver: %s' % error_msg)
