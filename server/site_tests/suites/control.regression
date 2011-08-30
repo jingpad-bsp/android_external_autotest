@@ -69,6 +69,7 @@ TESTS = [
   ('platform_AccurateTime', {'constraints': ['seconds_offset < 60']}),
   ('platform_CleanShutdown', {}),
   ('platform_CrosDisksDBus', {}),
+  ('platform_CrosDisksFilesystem', {}),
   ('platform_DaemonsRespawn', {}),
   ('platform_FileNum', {}),
   ('platform_FileSize', {}),
