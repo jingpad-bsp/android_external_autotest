@@ -67,7 +67,9 @@ def repo_run_command(repo, cmd, ignore_status=False, cd=True):
 
 
 def create_directory(repo):
-    _, remote_path = parse_ssh_path(repo)
+    remote_path = repo
+    if repo.startswith('ssh://'):
+        _, remote_path = parse_ssh_path(repo)
     repo_run_command(repo, 'mkdir -p %s' % remote_path, cd=False)
 
 
