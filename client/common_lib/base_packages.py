@@ -451,6 +451,9 @@ class BasePackageManager(object):
                         or not self.compare_checksum(dest_path, fetcher.url))
                 if need_to_fetch:
                     fetcher.fetch_pkg_file(pkg_name, dest_path)
+                    # update checksum so we won't refetch next time.
+                    if use_checksum:
+                        self.update_checksum(dest_path)
                 return
             except (error.PackageFetchError, error.AutoservRunError):
                 # The package could not be found in this repo, continue looking
