@@ -18,18 +18,27 @@
 # -- CUSTOMIZATION VARIABLES ---------------------------------------
 # You can tune these settings to fit your factory process.
 
-# Change this to False if you want and allow fast wipe (insecure).
-_DO_FACTORY_SECURE_WIPE = False
-
-# Change this to enable firmware writeprotect on finalize.
-# THIS IS REQUIRED TO BE TRUE FOR SHIPPING DEVICES.
-_ENABLE_FW_WP = False # WARNING: False is ONLY ALLOWED FOR DEBUGGING.
-
 # Change this to the number of reboots you want during run-in.
 _REBOOT_SEQ_ITERATIONS = 2
 
 # Change this to the duration of SAT during run-in (suggested 10+ mins).
 _SAT_DURATION_SECS = 60
+
+# Change this to True if you want and secure wipe (very slower).
+_ENABLE_FACTORY_SECURE_WIPE = False
+
+# Change this to False if you want to have a better UI to list and report HWID
+# matching issue more precisely. Useful for debugging and RMA.
+_ENABLE_AUTODETECT_HWID = True
+
+# Change this to True if you want to make sure every tests has been already
+# passed before running finalization.
+# RECOMMENDED FOR SHIPPING DEVICES.
+_ENABLE_CHECK_ALL_TEST_PASSED = False
+
+# Change this to enable firmware writeprotect on finalize.
+# THIS IS REQUIRED TO BE TRUE FOR SHIPPING DEVICES.
+_ENABLE_FW_WP = False # WARNING: False is ONLY ALLOWED FOR DEBUGGING.
 
 # Change this to match your local report upload site.
 # You can use a FTP url like: ftp://user:pass@host:port/path/file
@@ -69,9 +78,11 @@ TEST_LIST = [
     #    dargs={'cmdline': job.autodir +
     #           '/site_tests/factory_ScriptWrapper/dummy.sh'}),
 
+    # Suggested tests (optional): ---------------------------------------------
+
     AutomatedSequence(
         label_en='memory',
-        label_zw='壓力測試',
+        label_zw='記憶體',
         subtest_tag_prefix='memoryrunin',
         kbd_shortcut='r',
         subtest_list=[
@@ -128,27 +139,6 @@ TEST_LIST = [
                 autotest_name='hardware_GPS'),
         ]),
 
-    # THIS IS A GOOGLE REQUIRED TEST.
-    # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
-    # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
-    OperatorTest(
-        label_en='region',
-        label_zw='地區語系',
-        autotest_name='factory_SelectRegion',
-        kbd_shortcut='j'),
-
-    OperatorTest(
-        label_en='serial no',
-        label_zw='',
-        autotest_name='factory_SetSN',
-        kbd_shortcut='6'),
-
-    OperatorTest(
-        label_en='keyboard',
-        label_zw='鍵盤',
-        autotest_name='factory_Keyboard',
-        kbd_shortcut='k'),
-
     OperatorTest(
         label_en='touchpad',
         label_zw='觸控板',
@@ -201,6 +191,8 @@ TEST_LIST = [
         dargs={'lux_max':1000, 'lux_min':1},
         kbd_shortcut='i'),
 
+    # Required tests (mandatory): ----------------------------------------------
+
     # THIS IS A GOOGLE REQUIRED TEST.
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
@@ -210,6 +202,30 @@ TEST_LIST = [
         autotest_name='factory_DeveloperRecovery',
         kbd_shortcut='b',
         dargs={'layout':'devrec'}),
+
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
+    # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
+    OperatorTest(
+        label_en='region',
+        label_zw='地區語系',
+        autotest_name='factory_SelectRegion',
+        kbd_shortcut='j'),
+
+    OperatorTest(
+        label_en='keyboard',
+        label_zw='鍵盤',
+        autotest_name='factory_Keyboard',
+        kbd_shortcut='k'),
+
+    # THIS IS A GOOGLE REQUIRED TEST.
+    # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
+    # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
+    OperatorTest(
+        label_en='serial no',
+        label_zw='序號設定',
+        autotest_name='factory_SetSN',
+        kbd_shortcut='6'),
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
@@ -225,6 +241,7 @@ TEST_LIST = [
                 label_en='hw-qual-id matching',
                 label_zw='型號匹配',
                 autotest_name='factory_ProbeHWID',
+                dargs={'autodetect': _ENABLE_AUTODETECT_HWID},
                 unique_name='hw-qual-id-match'),
 
             AutomatedSubTest(
@@ -262,18 +279,11 @@ TEST_LIST = [
                 label_zw='最終程序',
                 autotest_name='factory_Finalize',
                 dargs={
-                    'check_required_tests': True,
+                    'check_required_tests': _ENABLE_CHECK_ALL_TEST_PASSED,
                     'check_and_enable_write_protect': _ENABLE_FW_WP,
                     'upload_method': _REPORT_UPLOAD_METHOD,
-                    'secure_wipe': _DO_FACTORY_SECURE_WIPE,
+                    'secure_wipe': _ENABLE_FACTORY_SECURE_WIPE,
                 })]),
-            # NOTE: factory_Finalize.dargs support following variables for
-            # temporary testing. You can add these settings to help internal
-            # test, but THESE ARE GOOGLE REQUIRED TESTS SO YOU SHOULD NOT
-            # DISABLE THEM IN PRODUCTION RELEASES.
-            #  - check_required_tests: check if all required tests are passed
-            #  - check_and_enable_write_protect: enable and verify flashrom
-            #    write protection
 
     InformationScreen(
         label_en='review',

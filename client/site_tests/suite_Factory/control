@@ -80,11 +80,10 @@ def find_test_list():
     test_list = DEFAULT_TEST_LIST_PATH
     if os.path.exists(test_list):
         return test_list
-    # try platform specific list
-    test_list = ('%s.%s' % (DEFAULT_TEST_LIST_PATH,
-                            os.popen("crossystem arch").read().strip()))
+    # try default (all) list
+    test_list = ('%s.all' % DEFAULT_TEST_LIST_PATH)
     if os.path.exists(test_list):
-        factory.log('Using platform-specific test list: ' + test_list)
+        factory.log('Using default test list: ' + test_list)
         return test_list
     factory.log('ERROR: Cannot find any test list.')
 
