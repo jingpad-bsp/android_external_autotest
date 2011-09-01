@@ -30,7 +30,7 @@ TESTS = [
   ('dbench', {}),               # Runtime 0:15
   ('disktest', {}),             # Runtime 0:05
   ('graphics_GLBench', {}),     # Runtime 0:05
-  ('graphics_WebGLConformance', {}),  # Runtime 0:05
+  ('graphics_SanAngeles', {'creds': '$backdoor'}),  # Runtime 0:03
   #-----------------------------------------------------------------------------
   # Tests which leave the system in a strange state below. Don't add anything to
   # this section unless you know what you're doing.

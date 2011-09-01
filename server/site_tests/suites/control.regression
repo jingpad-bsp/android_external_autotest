@@ -28,7 +28,6 @@ TESTS = [
   ('desktopui_WindowManagerHotkeys', {}),
   ('fsx', {}),
   ('graphics_GLAPICheck', {}),
-  ('graphics_SanAngeles', {'creds': '$backdoor'}),
   ('graphics_WindowManagerGraphicsCapture', {}),
   ('hackbench', {}),
   ('hardware_Backlight', {}),
@@ -105,6 +104,10 @@ TESTS = [
   # Tests which leave the system in a strange state below. Don't add anything to
   # this section unless you know what you're doing.
   #-----------------------------------------------------------------------------
+  # This test runs about 7k short graphics tests. Bad behavior is normally
+  # limited to hanging/crashing a chrome tab but could leave the system
+  # in need of a reboot after kernel problems.
+  ('graphics_WebGLConformance', {}),  # Runtime 0:04
   # This test stops tcsd which is known to cause issues with cryptohome and
   # possibly other services. Specifically, cros_ui_test based tests will fail;
   # so always run it last. See http://crosbug.com/14265
