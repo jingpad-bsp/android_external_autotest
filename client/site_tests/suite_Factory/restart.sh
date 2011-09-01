@@ -12,6 +12,16 @@ FACTORY_STATE_PREFIX=/var/log/factory_state
 
 SCRIPT="$0"
 
+# Restart without session ID, the parent process may be one of the
+# processes we plan to kill.
+if [ -z "$_DAEMONIZED" ]; then
+  _DAEMONIZED=TRUE setsid "$SCRIPT" "$@" &
+  # setsid backgrounds the process. We want to block until complete and
+  # route the output here.
+  wait $!
+  exit $?
+fi
+
 usage_help() {
   echo "usage: $SCRIPT [options]
     options:
@@ -93,4 +103,7 @@ clear_files "$opt_start_tag" "$FACTORY_START_TAG_FILE" ""
 echo " done."
 
 echo "Restarting new factory test program..."
-restart factory || start factory
+# Ensure full stop, we don't want to have the same factory
+# process recycled after we've been killing bits of it.
+stop factory
+start factory
