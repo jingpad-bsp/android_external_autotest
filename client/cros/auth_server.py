@@ -23,8 +23,9 @@ class GoogleAuthServer(object):
     __service_login_html = """
 <HTML>
 <HEAD>
-<SCRIPT type='text/javascript' src='../service_login.js'>
-submitAndGo = function() {
+<SCRIPT type='text/javascript' src='../service_login.js'></SCRIPT>
+<SCRIPT>
+function submitAndGo() {
   gaia.chromeOSLogin.onAttemptedLogin(document.getElementById("Email"),
                                       document.getElementById("Passwd"),
                                       document.getElementById("continue"));
@@ -33,11 +34,12 @@ submitAndGo = function() {
 </SCRIPT>
 </HEAD>
 <BODY onload='gaia.chromeOSLogin.clearOldAttempts();'>
-  <FORM action=%(form_url)s method=POST onsubmit='return submitAndGo()'>
+  Local Auth Server:<BR>
+  <FORM action=%(form_url)s method=POST onsubmit='submitAndGo()'>
     <INPUT TYPE=text id="Email" name="Email">
     <INPUT TYPE=text id="Passwd" name="Passwd">
     <INPUT TYPE=hidden id="continue" name="continue" value=%(continue)s>
-    <INPUT TYPE=Submit>
+    <INPUT TYPE=Submit id="signIn">
   </FORM>
 </BODY>
 </HTML>
