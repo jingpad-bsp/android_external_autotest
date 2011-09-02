@@ -203,6 +203,20 @@ class ServoTest(test.test):
                 logging.info('Server: Relaunched remote %s.' % name)
 
 
+    def wait_for_client_offline(self, timeout=30):
+        """Wait for the client to come offline.
+
+        Args:
+          timeout: Time in seconds to wait the client to come offline.
+        """
+        # Wait for the client to come offline.
+        while timeout > 0 and self.ping_test(self._client.ip, timeout=1):
+            time.sleep(1)
+            timeout -= 1
+        assert timeout, 'Timed out waiting for client offline.'
+        logging.info('Server: Client machine is offline.')
+
+
     def cleanup(self):
         """Delete the Servo object, call remote cleanup, and kill ssh."""
         if self.servo:
