@@ -11,14 +11,16 @@ import utils
 import Xevent
 
 from operator import le, ge, eq, lt, gt, ne, and_
+from trackpad_util import read_trackpad_test_conf
 
 
 class Xcheck:
     ''' Check whether X events observe test criteria '''
     RESULT_STR = {True : 'Pass', False : 'Fail'}
 
-    def __init__(self, dev):
+    def __init__(self, dev, conf_path):
         self.dev = dev
+        self.conf_path = conf_path
         self.xbutton = Xevent.XButton()
         self.button_labels = self.xbutton.get_supported_buttons()
         # Create a dictionary to look up button label
@@ -367,6 +369,16 @@ class Xcheck:
                          ('Motion', '>=', 20),
                          ('ButtonRelease', 'Button Left'))
         '''
+
+        def _get_criteria(index, crit_sequence):
+            if index >= len(crit_sequence):
+                crit_e = ''
+                crit_e_type = ''
+            else:
+                crit_e = crit_sequence[index]
+                crit_e_type = crit_e[0]
+            return (crit_e, crit_e_type)
+
         op_le = self.op_dict['<=']
         axis_dict = {'left': 'x', 'right': 'x', 'up': 'y', 'down': 'y',
                      None: ''}
@@ -382,26 +394,62 @@ class Xcheck:
             work_crit_sequence = crit_sequence
             work_xevent_seq = self.xevent.xevent_seq
 
+        # Read some default parameters from config file
+        max_motion_mixed = read_trackpad_test_conf('max_motion_mixed',
+                                                   self.conf_path)
+        max_button_wheel_mixed = read_trackpad_test_conf(
+                                 'max_button_wheel_mixed', self.conf_path)
+
         index = -1
         crit_e_type = None
+        keep_prev_crit = False
         for e in work_xevent_seq:
             e_type = e[0]
             e_value = e[1]
             fail_msg = None
             if crit_e_type != '*':
-                index += 1
-            if index >= len(work_crit_sequence):
-                fail_msg = 'Event (%s, %s) is extra compared to the criteria.'
-                fail_para = (e_type, str(e_value))
-                break
-            crit_e = work_crit_sequence[index]
-            crit_e_type = crit_e[0]
+                if keep_prev_crit:
+                    keep_prev_crit = False
+                else:
+                    index += 1
+            (crit_e, crit_e_type) = _get_criteria(index, work_crit_sequence)
 
+            # Add Button Wheel direction
             if crit_e_type == 'Button Wheel':
                 crit_e_type = self._get_button_wheel_label_per_direction()
 
+            # When there is no detected motion, skip the motion criteria if any
+            # and get next criteria in the sequence.
+            if (not e_type.startswith('Motion') and
+                crit_e_type.startswith('Motion')):
+                index += 1
+                (crit_e, crit_e_type) = _get_criteria(index, work_crit_sequence)
+                # Add Button Wheel direction if the criteria is about Wheel
+                if crit_e_type == 'Button Wheel':
+                    crit_e_type = self._get_button_wheel_label_per_direction()
+
+            # Pass this event if the criteria is a wildcard
             if crit_e_type == '*':
                 pass
+            # Handle the situation that e_type not equal to crit_e_type
+            elif not crit_e_type.startswith(e_type):
+                keep_prev_crit = True
+                if e_type.startswith('Motion'):
+                    motion_val = e_value[0]
+                    if motion_val > max_motion_mixed:
+                        fail_msg = '%s (%d) is not allowed.'
+                        fail_para = (e_type, motion_val)
+                        break
+                elif e_type.startswith('Button '):
+                    if e_value > max_button_wheel_mixed:
+                        fail_msg = '%s (%d) is not allowed'
+                        fail_para = (e_type, e_value)
+                        break
+                else:
+                    fail_msg = '%s (%s) is not allowed'
+                    fail_para = (e_type, str(e_value))
+                    break
+            # Handle Motion event
             elif e_type.startswith('Motion'):
                 motion_val = e_value[0]
                 motion_x_val = e_value[1][1]
@@ -436,9 +484,9 @@ class Xcheck:
                                     op_le(motion_other_val, bound_other_axis))
                         crit_check = check_this_axis and check_other_axis
                         if not crit_check:
-                            fail_msg = '%s %s does not satisfy %s. ' \
-                                       'Check motion for this axis = %s. ' \
-                                       'Check motion for the other axis = %s'
+                            fail_msg = ('%s %s does not satisfy %s. '
+                                        'Check motion for this axis = %s. '
+                                        'Check motion for the other axis = %s')
                             fail_para = (crit_e_type, str(e_value), str(crit_e),
                                          check_this_axis, check_other_axis)
                             break
@@ -477,9 +525,22 @@ class Xcheck:
                 break
 
         # Check if the criteria has been fully matched
-        if fail_msg is None and index < len(crit_sequence) - 1:
-            fail_msg = 'Some events are missing compared to the criteria: %s.'
-            fail_para = str(crit_sequence)
+        if fail_msg is None and index < len(work_crit_sequence) - 1:
+            # Pass if the rest of criteria are trivial ones such as
+            #       'Motion <= ...'
+            #       'Button Wheel <= ...'
+            index += 1
+            trivial_op_list = ['<', '<=']
+            for i in range(index, len(work_crit_sequence)):
+                (crit_e, crit_e_type) = _get_criteria(index, work_crit_sequence)
+                if (crit_e_type.startswith('Motion') or
+                    crit_e_type.startswith('Button ')):
+                    crit_e_op = crit_e[1]
+                    if crit_e_op not in trivial_op_list:
+                        fail_msg = ('Some events are missing compared to the '
+                                    'criteria: %s.')
+                        fail_para = str(crit_sequence)
+                        break
 
         if fail_msg is not None:
             self.seq_flag = False

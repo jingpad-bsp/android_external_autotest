@@ -85,7 +85,7 @@ class hardware_Trackpad(test.test):
         self.xcapture = Xcapture(error, local_path, autox)
 
         # Initialize X events Check
-        self.xcheck = Xcheck(self.tp_device)
+        self.xcheck = Xcheck(self.tp_device, local_path)
 
         # Processing every functionality in functionality_list
         # An example functionality is 'any_finger_click'
