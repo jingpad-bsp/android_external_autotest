@@ -276,14 +276,10 @@ class XEvent:
 
         def _append_motion(pre_event_name, seg_move, seg_move_time):
             ''' Append Motion events '''
-
-            # Insert Motion events in the beginning and end of the xevent_seq
-            begin_or_end_flag = self.motion_begin_flag or self.motion_end_flag
-            self.motion_begin_flag = self.motion_end_flag = False
-
-            if pre_event_name == 'MotionNotify' or begin_or_end_flag:
-                event = ('Motion', (seg_move[0], ('Motion_x', seg_move[1][0]),
-                                                 ('Motion_y', seg_move[1][1])),
+            (move_xy, (move_x, move_y)) = seg_move
+            if move_x > 0 or move_y > 0:
+                event = ('Motion', (move_xy, ('Motion_x', move_x),
+                                             ('Motion_y', move_y)),
                                    seg_move_time)
                 _append_event(event)
 
@@ -331,8 +327,6 @@ class XEvent:
         seg_move_time = _reset_time_interval()
         button_time = _reset_time_interval()
         self.sum_move = 0
-        self.motion_begin_flag = True
-        self.motion_end_flag = False
 
         indent = ' ' * 8
         precede_state = {'ButtonPress': 'ButtonRelease',
@@ -419,7 +413,6 @@ class XEvent:
 
         # Append aggregated button wheel events and motion events
         _append_button_wheel(button_label, event_button, button_time)
-        self.motion_end_flag = True
         _append_motion(pre_event_name, seg_move, seg_move_time)
 
         # Convert dictionary to tuple
