@@ -315,7 +315,7 @@ class Xcheck:
                     # [1].
                     button_count_list[rounds-1][button_value][0] += event_count
 
-        speed =[0] * rounds
+        speed = [0] * rounds
         # Calculate button wheel speed
         for i, button_count in enumerate(button_count_list):
             speed[i] = self.xbutton.init_button_struct(0)
@@ -323,8 +323,8 @@ class Xcheck:
                 if v[0] > 0:
                     time_list = button_count[k][1]
                     time_interval = (time_list[1] - time_list[0]) / 1000.0
-                    speed[i][k] = (button_count[k][0] / time_interval) \
-                                  if time_interval != 0 else 1
+                    speed[i][k] = ((button_count[k][0] / time_interval)
+                                   if time_interval != 0 else 1)
 
         # Verify if the target button satisfies wheel speed criteria
         button_label = self._get_button_wheel_label_per_direction()
@@ -452,8 +452,9 @@ class Xcheck:
                         fail_msg = 'Motion %d is not allowed.'
                         fail_para = e_value
                         break
-            elif e_type == crit_e_type == 'ButtonPress' or \
-                 e_type == crit_e_type == 'ButtonRelease':
+            # Handle button events for Button Left/Middle/Right
+            elif (e_type == crit_e_type == 'ButtonPress' or
+                  e_type == crit_e_type == 'ButtonRelease'):
                 # Check if the button label matches criteria
                 if e_value != crit_e[1]:
                     fail_msg = 'Button %s does not match %s.'
@@ -461,7 +462,8 @@ class Xcheck:
                     break
             elif e_type == crit_e_type == 'NOP':
                 pass
-            elif e_type.startswith('Button Wheel') and e_type == crit_e_type:
+            # Handle 'Button Wheel' and 'Button Horiz Wheel' scroll events
+            elif e_type.startswith('Button ') and e_type == crit_e_type:
                 op_str = crit_e[1]
                 comp_op = self.op_dict[op_str]
                 crit_button_count = crit_e[2]
