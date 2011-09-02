@@ -10,6 +10,7 @@ import utils
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cros_ui_test
 from autotest_lib.client.cros import rtc, sys_power
 
 # Special import to define the location of the flimflam library.
@@ -17,13 +18,18 @@ from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
 
-class network_3GSuspendResume(test.test):
+class network_3GSuspendResume(cros_ui_test.UITest):
     version = 1
 
-    okerrors = [
+    device_okerrors = [
         # Setting of device power can sometimes result with InProgress error
         # if it is in the process of already doing so.
         'org.chromium.flimflam.Error.InProgress',
+    ]
+
+    service_okerrors = [
+        'org.chromium.flimflam.Error.InProgress',
+        'org.chromium.flimflam.Error.AlreadyConnected',
     ]
 
     scenarios = {
@@ -45,6 +51,16 @@ class network_3GSuspendResume(test.test):
         'MasterDevice'
     ]
 
+    def filterexns(self, function, exn_list):
+        try:
+            resp = function()
+        except dbus.exceptions.DBusException, e:
+            if error._dbus_error_name in exn_list:
+                return resp
+            else:
+                raise e
+        return resp
+
     # This function returns True when cellular service is available.  Otherwise,
     # if the timeout period has been hit, it returns false.
     def cellular_service_available(self, timeout=60):
@@ -55,13 +71,6 @@ class network_3GSuspendResume(test.test):
         logging.info('Cellular service is not available.')
         return None
 
-    def connect_service(self, service):
-        flim = flimflam.FlimFlam(dbus.SystemBus())
-        (success, reason) = flim.ConnectService(service)
-        if success:
-            return True
-        return False
-
     def get_powered(self, device):
         properties = device.GetProperties(utf8_strings=True)
         logging.debug(properties)
@@ -70,11 +79,9 @@ class network_3GSuspendResume(test.test):
         return properties['Powered']
 
     def set_powered(self, device, state):
-        try:
-            device.SetProperty('Powered', dbus.Boolean(state))
-        except dbus.exceptions.DBusException, e:
-            if e._dbus_error_name not in network_3GSuspendResume.okerrors:
-                raise e
+        self.filterexns(lambda: device.SetProperty('Powered',
+                                                   dbus.Boolean(state)),
+                        network_3GSuspendResume.device_okerrors)
         # Sometimes if we disable the modem then immediately enable the modem
         # we hit a condition where the modem seems to ignore the enable command
         # and keep the modem disabled.  This is to prevent that from happening.
@@ -229,6 +236,26 @@ class network_3GSuspendResume(test.test):
             return 0
         return 1
 
+    # This sets the autoconnect parameter for the cellular service.
+    def set_autoconnect(self, service, autoconnect=dbus.Boolean(0)):
+        props = service.GetProperties()
+
+        # If the cellular service is not a favorite, we cannot
+        # set the auto-connect parameters.  Connect to the service first
+        # to make it a favorite.
+        if not props['Favorite']:
+            (success, status) = self.filterexns(
+                                    lambda: self.flim.ConnectService(
+                                                service=service,
+                                                assoc_timeout=60,
+                                                config_timeout=60),
+                                    network_3GSuspendResume.service_okerrors)
+            if service.GetProperties()['State'] == 'online':
+                raise error.TestFail('Unable to set Favorite because device '
+                                     'could not connect to cellular service.')
+
+        service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
+
     # This is the wrapper around the running of each scenario with
     # initialization steps and final checks.
     def run_scenario(self, function_name):
@@ -259,9 +286,6 @@ class network_3GSuspendResume(test.test):
         if not service:
             raise error.TestFail('Could not find cellular service at the end '
                                  'of test %s.' % function_name)
-        # if not self.connect_service(service):
-        #     raise error.TestFail('Cellular service was not connectable at '
-        #                          'the end of %s' % function_name)
 
     def run_once(self, scenario_group='all', autoconnect=False):
         # Replace the test type with the list of tests
@@ -280,7 +304,7 @@ class network_3GSuspendResume(test.test):
         if not service:
             raise error.TestFail('Cannot find cellular service.')
 
-        service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
+        self.set_autoconnect(service, dbus.Boolean(autoconnect))
 
         logging.info('Running scenarios with autoconnect %s.' % autoconnect)
         for t in scenarios:
