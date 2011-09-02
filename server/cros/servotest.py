@@ -16,32 +16,64 @@ import autotest_lib.server.cros.servo
 class ServoTest(test.test):
     """AutoTest test class that creates and destroys a servo object.
 
-    Servo-based server side AutoTests can inherit from this object. If the
-    use_pyauto flag is True a remote session of PyAuto will also be launched.
+    Servo-based server side AutoTests can inherit from this object.
+    There are 2 remote clients supported:
+        If use_pyauto flag is True, a remote PyAuto client will be launched;
+        If use_faft flag is Ture, a remote FAFT client will be launched.
     """
-    version = 1
+    version = 2
     # Abstracts access to all Servo functions.
     servo = None
     # Exposes RPC access to a remote PyAuto client.
     pyauto = None
+    # Exposes RPC access to a remote FAFT client.
+    faft_client = None
+
     # Autotest references to the client.
-    _client = None
-    _client_autotest = None
-    # SSH processes for communicating with the client PyAuto RPC server.
-    _ssh = None
-    _remote_pyauto = None
-    # Enable PyAuto functionality.
-    _use_pyauto = False
-    # Port to look at for the client PyAuto RPC server.
-    _rpc_port = 9988
+    _autotest_client = None
+    # Remote client info list.
+    _remote_infos = {
+        'pyauto': {
+            # Used or not.
+            'used': False,
+            # Reference name of RPC object in this class.
+            'ref_name': 'pyauto',
+            # Port number of the remote RPC.
+            'port': 9988,
+            # Client test for installing dependency.
+            'client_test': 'desktopui_ServoPyAuto',
+            # The remote command to be run.
+            'remote_command': 'python /usr/local/autotest/cros/servo_pyauto.py'
+                              ' --no-http-server',
+            # The short form of remote command, used by pkill.
+            'remote_command_short': 'servo_pyauto',
+            # The remote process info.
+            'remote_process': None,
+            # The ssh tunnel process info.
+            'ssh_tunnel': None,
+            # Polling RPC function name for testing the server availability.
+            'polling_rpc': 'IsLinux',
+        },
+        'faft': {
+            'used': False,
+            'ref_name': 'faft_client',
+            'port': 9990,
+            'client_test': 'firmware_FAFTClient',
+            'remote_command': 'python /usr/local/autotest/cros/faft_client.py',
+            'remote_command_short': 'faft_client',
+            'remote_process': None,
+            'ssh_tunnel': None,
+            'polling_rpc': 'is_available',
+        },
+    }
 
 
-    def initialize(self, host, cmdline_args, use_pyauto=False):
-        """Create a Servo object and install the PyAuto dependency.
+    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
+        """Create a Servo object and install the dependency.
 
-        If use_pyauto is True the PyAuto dependency is installed on the client
-        and a remote PyAuto server is launched and connected.
-
+        If use_pyauto/use_faft is True the PyAuto/FAFTClient dependency is
+        installed on the client and a remote PyAuto/FAFTClient server is
+        launched and connected.
         """
         # Assign default arguments for servo invocation.
         args = {
@@ -75,12 +107,16 @@ class ServoTest(test.test):
 
         self._client = host;
 
-        # Install PyAuto dependency.
-        self._use_pyauto = use_pyauto
-        if self._use_pyauto:
-            self._client_autotest = autotest.Autotest(self._client)
-            self._client_autotest.run_test('desktopui_ServoPyAuto')
-            self.launch_pyauto()
+        self._remote_infos['pyauto']['used'] = use_pyauto
+        self._remote_infos['faft']['used'] = use_faft
+
+        # Install PyAuto/FAFTClient dependency.
+        for info in self._remote_infos.itervalues():
+            if info['used']:
+                if not self._autotest_client:
+                    self._autotest_client = autotest.Autotest(self._client)
+                self._autotest_client.run_test(info['client_test'])
+                self.launch_client(info)
 
 
     def assert_ping(self):
@@ -104,42 +140,52 @@ class ServoTest(test.test):
                                 str(timeout), hostname]) == 0
 
 
-    def launch_pyauto(self):
-        """Launch PyAuto on the client and set up an xmlrpc connection."""
-        assert self._use_pyauto, 'PyAuto dependency not installed.'
-        if not self._ssh or self._ssh.poll() is not None:
-            self._launch_ssh_tunnel()
-        assert self._ssh and self._ssh.poll() is None, \
+    def launch_client(self, info):
+        """Launch a remote process on client and set up an xmlrpc connection.
+
+        Args:
+          info: A dict of remote info, see the definition of self._remote_infos.
+        """
+        assert info['used'], \
+            'Remote %s dependency not installed.' % info['ref_name']
+        if not info['ssh_tunnel'] or info['ssh_tunnel'].poll() is not None:
+            self._launch_ssh_tunnel(info)
+        assert info['ssh_tunnel'] and info['ssh_tunnel'].poll() is None, \
             'The SSH tunnel is not up.'
-        # Launch client RPC server.
-        self._kill_remote_pyauto()
-        pyauto_cmd = \
-            'python /usr/local/autotest/cros/servo_pyauto.py --no-http-server'
-        logging.info('Client command: %s' % pyauto_cmd)
-        self._remote_pyauto = subprocess.Popen([
+
+        # Launch RPC server remotely.
+        self._kill_remote_process(info)
+        logging.info('Client command: %s' % info['remote_command'])
+        info['remote_process'] = subprocess.Popen([
             'ssh -o "StrictHostKeyChecking no" -n root@%s \'%s\'' %
-            (self._client.ip, pyauto_cmd)], shell=True)
-        logging.info('Connecting to client PyAuto RPC server...')
-        remote = 'http://localhost:%s' % self._rpc_port
-        self.pyauto = xmlrpclib.ServerProxy(remote, allow_none=True)
-        logging.info('Server proxy: %s' % remote)
+            (self._client.ip, info['remote_command'])], shell=True)
+
+        # Connect to RPC object.
+        logging.info('Connecting to client RPC server...')
+        remote_url = 'http://localhost:%s' % info['port']
+        setattr(self, info['ref_name'],
+            xmlrpclib.ServerProxy(remote_url, allow_none=True))
+        logging.info('Server proxy: %s' % remote_url)
+
         # Poll for client RPC server to come online.
         timeout = 10
         succeed = False
         while timeout > 0 and not succeed:
             time.sleep(2)
             try:
-                self.pyauto.IsLinux()
+                remote_object = getattr(self, info['ref_name'])
+                polling_rpc = getattr(remote_object, info['polling_rpc'])
+                polling_rpc()
                 succeed = True
             except:
                 timeout -= 1
-        assert succeed, 'Timed out connecting to client PyAuto RPC server.'
+        assert succeed, 'Timed out connecting to client RPC server.'
 
 
     def wait_for_client(self):
         """Wait for the client to come back online.
 
-        A new remote PyAuto process will be launched if use_pyauto is enabled.
+        New remote processes will be launched if their used flags are enabled.
         """
         timeout = 10
         # Ensure old ssh connections are terminated.
@@ -149,42 +195,54 @@ class ServoTest(test.test):
             time.sleep(5)
             timeout -= 1
         assert timeout, 'Timed out waiting for client to reboot.'
-        logging.info('Server: Client machine is back up.')
-        # Relaunch remote PyAuto.
-        if self._use_pyauto:
-            self.launch_pyauto()
-            logging.info('Server: Relaunched remote PyAuto.')
+        logging.info('Server: Client machine is up.')
+        # Relaunch remote clients.
+        for name, info in self._remote_infos.iteritems():
+            if info['used']:
+                self.launch_client(info)
+                logging.info('Server: Relaunched remote %s.' % name)
 
 
     def cleanup(self):
-        """Delete the Servo object, call PyAuto cleanup, and kill ssh."""
+        """Delete the Servo object, call remote cleanup, and kill ssh."""
         if self.servo:
             del self.servo
-        if self._remote_pyauto and self._remote_pyauto.poll() is None:
-            self.pyauto.cleanup()
+        for info in self._remote_infos.itervalues():
+            if info['remote_process'] and info['remote_process'].poll() is None:
+                remote_object = getattr(self, info['ref_name'])
+                remote_object.cleanup()
         self._terminate_all_ssh()
 
 
-    def _launch_ssh_tunnel(self):
-        """Establish an ssh tunnel for connecting to the remote RPC server."""
-        if not self._ssh or self._ssh.poll() is not None:
-            self._ssh = subprocess.Popen(['ssh', '-N', '-n', '-L',
-                '%s:localhost:%s' % (self._rpc_port, self._rpc_port),
+    def _launch_ssh_tunnel(self, info):
+        """Establish an ssh tunnel for connecting to the remote RPC server.
+
+        Args:
+          info: A dict of remote info, see the definition of self._remote_infos.
+        """
+        if not info['ssh_tunnel'] or info['ssh_tunnel'].poll() is not None:
+            info['ssh_tunnel'] = subprocess.Popen(['ssh', '-N', '-n', '-L',
+                '%s:localhost:%s' % (info['port'], info['port']),
                 'root@%s' % self._client.ip])
 
 
-    def _kill_remote_pyauto(self):
-        """Ensure the remote PyAuto and local ssh process are terminated."""
-        kill_cmd = 'pkill -f servo_pyauto'
+    def _kill_remote_process(self, info):
+        """Ensure the remote process and local ssh process are terminated.
+
+        Args:
+          info: A dict of remote info, see the definition of self._remote_infos.
+        """
+        kill_cmd = 'pkill -f %s' % info['remote_command_short']
         subprocess.call(['ssh -n -o "StrictHostKeyChecking no" root@%s \'%s\'' %
                          (self._client.ip, kill_cmd)],
                         shell=True)
-        if self._remote_pyauto and self._remote_pyauto.poll() is None:
-            self._remote_pyauto.terminate()
+        if info['remote_process'] and info['remote_process'].poll() is None:
+            info['remote_process'].terminate()
 
 
     def _terminate_all_ssh(self):
-        """Terminate all ssh connections associated with remote PyAuto."""
-        if self._ssh and self._ssh.poll() is None:
-            self._ssh.terminate()
-        self._kill_remote_pyauto()
+        """Terminate all ssh connections associated with remote processes."""
+        for info in self._remote_infos.itervalues():
+            if info['ssh_tunnel'] and info['ssh_tunnel'].poll() is None:
+                info['ssh_tunnel'].terminate()
+            self._kill_remote_process(info)

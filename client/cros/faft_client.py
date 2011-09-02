@@ -59,6 +59,15 @@ class FAFTClient(object):
         self._tpm_handler.init(self._chromeos_interface)
 
 
+    def is_available(self):
+        """Function for polling the RPC server availability.
+
+        Returns:
+            Always True.
+        """
+        return True
+
+
     def run_shell_command(self, command):
         """Run shell command.
 
@@ -127,6 +136,11 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Restoring firmware %s' % section)
         self._flashrom_handler.restore_firmware(section)
+
+
+    def cleanup(self):
+        """Cleanup for the RPC server. Currently nothing."""
+        pass
 
 
 def main():
