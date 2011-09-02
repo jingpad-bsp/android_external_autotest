@@ -56,37 +56,36 @@ def __session_manager_restarted(oldpid):
 
     Returns:
         True if the session manager is running under a pid other than
-        'oldpid', X is running, and there is a window displayed.
+        'oldpid'
     """
-    import autox
-
     newpid = __get_session_manager_pid()
-    if newpid and newpid != oldpid:
-        try:
-            ax = cros_ui.get_autox()
-        except autox.Xlib.error.DisplayConnectionError:
-            return False
+    return newpid and newpid != oldpid
 
-        # When the session manager starts up there is a moment where we can
-        # make a connection with autox, but there is no window displayed.  If
-        # we start sending keystrokes at this point they get lost.  If we wait
-        # for this window to show up, things go much smoother.
-        wid = ax.get_top_window_id_at_point(0, 0)
-        if not wid:
-            return False
 
-        # The login manager displays its widgetry in a second window centered
-        # on the screen.  Waiting for this window to show up is also helpful.
-        # TODO: perhaps the login manager should emit some more trustworthy
-        # signal when it's ready to accept credentials.
-        x, y = ax.get_screen_size()
-        wid2 = ax.get_top_window_id_at_point(x / 2, y / 2)
-        if wid == wid2:
-            return False
+def restart_session_manager():
+    """Send StopSession dbus call to cause session_manager restart."""
 
-        return True
+    # Log what we're about to do to /var/log/messages. Used to log crashes later
+    # in cleanup by cros_ui_test.UITest.
+    utils.system('logger "%s"' % UI_RESTART_ATTEMPT_MSG)
 
-    return False
+    try:
+        oldpid = __get_session_manager_pid()
+
+        log_reader = cros_logging.LogReader()
+        log_reader.set_start_by_current()
+
+        # Gracefully exiting session manager causes the user's session to end.
+        ownership.connect_to_session_manager().StopSession('')
+        wait_for_condition(
+            condition=lambda: __session_manager_restarted(oldpid),
+            timeout_msg='Timed out waiting for session_manager restart',
+            timeout=_DEFAULT_TIMEOUT,
+            process='session_manager',
+            log_reader=log_reader,
+            crash_msg='session_manager crashed while restarting.')
+    finally:
+        utils.system('logger "%s"' % UI_RESTART_COMPLETE_MSG)
 
 
 def process_crashed(process, log_reader):
@@ -261,29 +260,3 @@ def refresh_window_manager(timeout=_DEFAULT_TIMEOUT):
     os.unlink(constants.CHROME_WINDOW_MAPPED_MAGIC_FILE)
     nuke_process_by_name(constants.WINDOW_MANAGER)
     wait_for_window_manager()
-
-
-def restart_session_manager():
-    """Send StopSession dbus call to cause session_manager restart."""
-
-    # Log what we're about to do to /var/log/messages. Used to log crashes later
-    # in cleanup by cros_ui_test.UITest.
-    utils.system('logger "%s"' % UI_RESTART_ATTEMPT_MSG)
-
-    try:
-        oldpid = __get_session_manager_pid()
-
-        log_reader = cros_logging.LogReader()
-        log_reader.set_start_by_current()
-
-        # Gracefully exiting session manager causes the user's session to end.
-        ownership.connect_to_session_manager().StopSession('')
-        wait_for_condition(
-            condition=lambda: __session_manager_restarted(oldpid),
-            timeout_msg='Timed out waiting for session_manager restart',
-            timeout=_DEFAULT_TIMEOUT,
-            process='session_manager',
-            log_reader=log_reader,
-            crash_msg='session_manager crashed while restarting.')
-    finally:
-        utils.system('logger "%s"' % UI_RESTART_COMPLETE_MSG)
