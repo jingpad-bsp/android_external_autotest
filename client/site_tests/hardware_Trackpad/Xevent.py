@@ -376,9 +376,6 @@ class XEvent:
                 pre_button_state = self.button_states[event_button]
                 self.button_states[event_button] = event_name
 
-                # Append button events except button wheel events
-                _append_button(event_name, button_label, event_time)
-
                 if button_label == pre_button_label:
                     button_time[1] = event_time
                 else:
@@ -387,6 +384,9 @@ class XEvent:
                                          button_time)
                     self.seg_count_buttons = self.xbutton.init_button_struct(0)
                     button_time = _reset_time_interval(begin_time=event_time)
+
+                # Append button events except button wheel events
+                _append_button(event_name, button_label, event_time)
 
                 # A ButtonRelease should precede ButtonPress
                 # A ButtonPress should precede ButtonRelease
