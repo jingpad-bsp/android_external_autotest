@@ -15,10 +15,7 @@ SCRIPT="$0"
 # Restart without session ID, the parent process may be one of the
 # processes we plan to kill.
 if [ -z "$_DAEMONIZED" ]; then
-  _DAEMONIZED=TRUE setsid "$SCRIPT" "$@" &
-  # setsid backgrounds the process. We want to block until complete and
-  # route the output here.
-  wait $!
+  _DAEMONIZED=TRUE setsid "$SCRIPT" "$@"
   exit $?
 fi
 
