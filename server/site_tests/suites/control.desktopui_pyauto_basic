@@ -21,7 +21,8 @@ their usecase.
 # Uses pyauto in autotest tests
 TESTS = [
     'desktopui_UrlFetch',
-    'desktopui_PyAutoChromeFirstRender',
+# crosbug.com/20024
+#    'desktopui_PyAutoChromeFirstRender',
 ]
 
 # Produces gtest-style output

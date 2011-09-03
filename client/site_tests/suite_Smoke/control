@@ -15,7 +15,8 @@ listed here must be capable of running in a virtual machine.
 """
 
 job.run_test('build_RootFilesystemSize')
-job.run_test('desktopui_ChromeFirstRender')
+# crosbug.com/20024
+# job.run_test('desktopui_ChromeFirstRender')
 job.run_test('desktopui_UrlFetch', live=False, tag='not-live')
 
 # desktopui_FlashSanityCheck is taken out temporarily because it causes

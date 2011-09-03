@@ -27,7 +27,8 @@ TESTS = [
 # dependency on the 'file' command.
 # ('platform_ToolchainOptions', {}),
   ('build_RootFilesystemSize', {}),
-  ('desktopui_ChromeFirstRender', {}),
+# crosbug.com/20024
+#  ('desktopui_ChromeFirstRender', {}),
   ('desktopui_UrlFetch', {'live': False, 'tag': 'not-live'}),
   ('desktopui_FlashSanityCheck', {}),
   ('desktopui_KillRestart', {'binary': '^chrome$',
