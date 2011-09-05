@@ -46,9 +46,13 @@ class ChromeTestBase(test.test):
             raise error.TestError(e)
 
 
-    def filter_bad_tests(self, tests):
+    def filter_bad_tests(self, tests, blacklist = None):
         matcher = re.compile(".+\.(FLAKY|FAILS|DISABLED).+")
-        return filter(lambda(x): not matcher.match(x), tests)
+        if blacklist:
+          return filter(lambda(x): not matcher.match(x) and x not in blacklist,
+                        tests)
+        else:
+          return filter(lambda(x): not matcher.match(x), tests)
 
 
     def list_chrome_tests(self, test_binary):
