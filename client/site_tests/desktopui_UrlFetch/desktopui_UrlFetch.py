@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test, httpd
 
@@ -42,12 +45,22 @@ class desktopui_UrlFetch(cros_ui_test.UITest):
 
         assert not self.pyauto.GetCookie(pyauto.GURL(self._test_url))
 
-        self.pyauto.NavigateToURL(self._test_url)
-        tab_title = self.pyauto.GetActiveTabTitle()
-        if tab_title != self._expected_title:
-            raise error.TestError(
-                'Unexpected web site title.  Expected: %s. '
-                'Returned: %s' % (self._expected_title, tab_title))
+        def _OpenUrl():
+            self.pyauto.NavigateToURL(self._test_url)
+            tab_title = self.pyauto.GetActiveTabTitle()
+            logging.info('Expected tab title: %s. Got: %s' % (
+                self._expected_title, tab_title))
+            return tab_title == self._expected_title
+
+        # TODO(nirnimesh): This polling is a stop-gap fix and should not be
+        # necessary.  Looks like the http server takes a while to startup.
+        # Remove after http can guarantee its startup.
+        # crosbug.com/20034
+        utils.poll_for_condition(
+            _OpenUrl,
+            error.TestError('Timeout waiting to open %s' % self._test_url),
+            timeout=60,
+            sleep_interval=1)
 
         cookie = self.pyauto.GetCookie(pyauto.GURL(self._test_url))
         if not cookie:
