@@ -95,7 +95,8 @@ class ConnectStateHandler(StateHandler):
     else:
       if self.hidden:
         try:
-          path = manager.GetService((self.connection_settings))
+          path = manager.GetService(
+              dbus.Dictionary(self.connection_settings, signature='sv'))
           service = dbus.Interface(
               self.bus.get_object(FLIMFLAM, path), FLIMFLAM + '.Service')
         except Exception, e:
