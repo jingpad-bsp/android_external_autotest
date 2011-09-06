@@ -46,8 +46,10 @@ class logdir(base_sysinfo.loggable):
         if os.path.exists(self.dir):
             parent_dir = os.path.dirname(self.dir)
             utils.system("mkdir -p %s%s" % (log_dir, parent_dir))
-            utils.system("rsync -a --exclude=autoserv* %s %s%s" % 
-                         (self.dir, log_dir, parent_dir))
+            # Take source permissions and add ugo+r so files are accessible via
+            # archive server.
+            utils.system("rsync --no-perms --chmod=ugo+r -a --exclude=autoserv*"
+                         " %s %s%s" % (self.dir, log_dir, parent_dir))
 
 
 class purgeable_logdir(logdir):
@@ -77,7 +79,8 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         # We only want to gather and purge crash reports after the client test
         # runs in case a client test is checking that a crash found at boot
         # (such as a kernel crash) is handled.
-        self.after_iteration_loggables.add(purgeable_logdir("/home/chronos/user/crash"))
+        self.after_iteration_loggables.add(
+            purgeable_logdir("/home/chronos/user/crash"))
         self.after_iteration_loggables.add(purgeable_logdir("/var/spool/crash"))
         self.test_loggables.add(logfile("/home/chronos/.Google/"
                                         "Google Talk Plugin/gtbplugin.log"))
