@@ -4,19 +4,16 @@
 
 AUTHOR = "Daniel Erat <derat@chromium.org>"
 NAME = "desktopui_WindowManagerFocusNewWindows"
-PURPOSE = "Verify that new windows are in focus."
-CRITERIA = """
-Fail if the active window is not in focus, or if the test times out.
-"""
+PURPOSE = "Verify that new windows get focused."
+CRITERIA = "Fail if the _NET_ACTIVE_WINDOW X property is unset."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
-Test that the window manager focuses and maximizes new windows.
-
-It also checks that we're able to cycle between windows using hotkeys.
+Test that the window manager updates the _NET_ACTIVE_WINDOW X property when
+focusing new windows.
 """
 
 job.run_test('desktopui_WindowManagerFocusNewWindows')
