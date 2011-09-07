@@ -128,9 +128,13 @@ class platform_KernelErrorPaths(test.test):
                     self.breakme(action, cpu)
                 else:
                     self.breakme(action, None)
-                self.client.wait_for_restart(down_timeout=timeout,
-                                             down_warning=timeout,
-                                             old_boot_id=boot_id)
+                self.client.wait_for_restart(
+                    down_timeout=timeout,
+                    down_warning=timeout,
+                    old_boot_id=boot_id,
+                    # Extend the default reboot timeout as some targets take
+                    # longer than normal before ssh is available again.
+                    timeout=self.client.DEFAULT_REBOOT_TIMEOUT * 4)
                 result = self.client.run('cat %s/kernel.*.kcrash' %
                                          crash_log_dir)
                 if text not in result.stdout:
