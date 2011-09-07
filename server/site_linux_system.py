@@ -117,7 +117,7 @@ class LinuxSystem(object):
 
 
     def _get_wlanif(self, frequency, phytype, mode = None):
-        """ This function is used to inherited classes, so we use the
+        """ This function is used by inherited classes, so we use the
             single '_' convention rather than the '__' we usually use for
             non-scriptable commands, since these cannot be inherited by
             subclasses.
@@ -135,6 +135,11 @@ class LinuxSystem(object):
             raise error.TestFail("Unable to find phy for frequency %d mode %s" %
                                  (frequency, mode))
 
+        # If self.wlanifs is not defined, this is the first time we've
+        # allocated a wlan interface.  Perform init by calling
+        # remove_interfaces().
+        if not hasattr(self, 'wlanifs'):
+            self._remove_interfaces()
         if phytype not in self.wlanifs:
             self.wlanifs[phytype] = {}
         elif phy in self.wlanifs[phytype]:
