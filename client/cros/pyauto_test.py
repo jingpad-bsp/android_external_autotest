@@ -60,6 +60,10 @@ class PyAutoTest(test.test):
     def __init__(self, job, bindir, outputdir):
         test.test.__init__(self, job, bindir, outputdir)
 
+        # Handle to pyauto, for chrome automation.
+        self.pyauto = None
+        self.pyauto_suite = None
+
         self._pyauto_dep = 'pyauto_dep'
         self._pyauto_dep_dir = os.path.join(self.autodir, 'deps',
                                             self._pyauto_dep)
@@ -69,7 +73,10 @@ class PyAutoTest(test.test):
 
     def SetupDeps(self):
         """Set up deps needed for running pyauto."""
-        self.job.install_pkg(self._pyauto_dep, 'dep', self._pyauto_dep_dir)
+        try:
+            self.job.install_pkg(self._pyauto_dep, 'dep', self._pyauto_dep_dir)
+        except error.PackageInstallError, e:
+           raise error.PackageInstallError('%s.  Use --use_emerged?' % e)
         # Make pyauto importable.
         # This can be done only after pyauto_dep dependency has been installed.
         pyautolib_dir = os.path.join(
@@ -169,9 +176,11 @@ class PyAutoTest(test.test):
 
         We restart chrome and restart the login manager
         """
-        self.pyauto.tearDown()
-        del self.pyauto
-        del self.pyauto_suite
+        if self.pyauto:
+            self.pyauto.tearDown()
+            del self.pyauto
+        if self.pyauto_suite:
+            del self.pyauto_suite
 
         # Reset the UI.
         login.restart_session_manager()

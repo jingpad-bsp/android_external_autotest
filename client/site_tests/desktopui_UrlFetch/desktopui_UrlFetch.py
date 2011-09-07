@@ -16,7 +16,7 @@ class desktopui_UrlFetch(cros_ui_test.UITest):
     def initialize(self, live=True):
         self._live = live
         super(desktopui_UrlFetch, self).initialize(creds='$default')
-        if live:
+        if self._live:
             self._test_url = 'http://www.noaa.gov/'
             self._expected_title = \
                 'NOAA - National Oceanic and Atmospheric Administration'
@@ -28,7 +28,7 @@ class desktopui_UrlFetch(cros_ui_test.UITest):
 
 
     def cleanup(self):
-        if not self._live:
+        if not self._live and hasattr(self, '_testServer'):
             self._testServer.stop()
         super(desktopui_UrlFetch, self).cleanup()
 
