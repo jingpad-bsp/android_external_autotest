@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re
+import logging, os, re, glob
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -18,7 +18,7 @@ NSSCERTUTIL = '/usr/local/bin/nsscertutil'
 NSSMODUTIL = '/usr/local/bin/nssmodutil'
 OPENSSL = '/usr/bin/openssl'
 
-OPENSSL_CERT_DIR = '/usr/share/ca-certificates/chromeos'
+OPENSSL_CERT_GLOB = '/etc/ssl/certs/*.pem'
 
 
 class security_RootCA(test.test):
@@ -81,13 +81,13 @@ class security_RootCA(test.test):
         """Returns the set of certificate fingerprints observed in openssl."""
         fingerprint_cmd = ' '.join([OPENSSL, 'x509', '-fingerprint',
                                     '-issuer', '-noout',
-                                    '-in %s/%%s' % OPENSSL_CERT_DIR])
+                                    '-in %s'])
         certdict = {}  # A map of {SHA1_Fingerprint : CA_Nickname}.
 
-        for certfile in os.listdir(OPENSSL_CERT_DIR):
+        for certfile in glob.glob(OPENSSL_CERT_GLOB):
             f, i = utils.system_output(fingerprint_cmd % certfile).splitlines()
             fingerprint = f.split('=')[1]
-            if (fingerprint != certfile.split('.crt')[0]):
+            if (fingerprint != os.path.basename(certfile).split('.pem')[0]):
                 logging.warning('Filename %s doesn\'t match fingerprint %s' %
                                 (certfile, fingerprint))
             for field in i.split('/'):
