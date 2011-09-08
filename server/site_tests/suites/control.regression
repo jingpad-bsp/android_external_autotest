@@ -63,8 +63,7 @@ TESTS = [
 #
 # TODO: Until ltp can pass on chromiumos
 #  ('ltp', {}),
-# TODO(dalecurtis): Reenable test once http://crosbug.com/20151 is fixed.
-#  ('network_ConnmanCromoCrash', {}),
+  ('network_ConnmanCromoCrash', {}),
   ('network_UdevRename', {}),
   ('platform_AccurateTime', {'constraints': ['seconds_offset < 60']}),
   ('platform_CleanShutdown', {}),
