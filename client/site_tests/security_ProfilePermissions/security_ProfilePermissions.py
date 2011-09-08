@@ -84,7 +84,8 @@ class security_ProfilePermissions(cros_ui_test.UITest):
             # supporting directory structure.
             vaultpath = cryptohome.current_mounted_vault()
 
-            passes.append(self.check_owner_mode(vaultpath, "root", 0700))
+            passes.append(self.check_owner_mode(vaultpath, "chronos",
+                                                self._HOMEDIR_MODE))
             passes.append(self.check_owner_mode(vaultpath + "/../master.0",
                                                 "root", 0600))
             passes.append(self.check_owner_mode(vaultpath + "/../",
