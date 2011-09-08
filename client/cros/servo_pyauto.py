@@ -58,7 +58,7 @@ class RemotePyAuto(pyauto.PyUITest):
         This is necessary because RPCXML is unable pass the object
         returned by pyauto.GURL().
         """
-        pyauto.PyUITest.AppendTab(self, pyauto.GURL(url))
+        return pyauto.PyUITest.AppendTab(self, pyauto.GURL(url))
 
 
     def cleanup(self):
