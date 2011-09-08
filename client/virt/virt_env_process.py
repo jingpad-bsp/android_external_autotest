@@ -86,7 +86,7 @@ def preprocess_vm(test, params, env, name):
 
     scrdump_filename = os.path.join(test.debugdir, "pre_%s.ppm" % name)
     try:
-        if vm.monitor:
+        if vm.monitor and params.get("take_regular_screendumps") == "yes":
             vm.monitor.screendump(scrdump_filename, debug=False)
     except kvm_monitor.MonitorError, e:
         logging.warn(e)
@@ -122,7 +122,7 @@ def postprocess_vm(test, params, env, name):
 
     scrdump_filename = os.path.join(test.debugdir, "post_%s.ppm" % name)
     try:
-        if vm.monitor:
+        if vm.monitor and params.get("take_regular_screenshots") == "yes":
             vm.monitor.screendump(scrdump_filename, debug=False)
     except kvm_monitor.MonitorError, e:
         logging.warn(e)
@@ -163,7 +163,7 @@ def process_command(test, params, env, command, command_timeout,
             raise
 
 
-def process(test, params, env, image_func, vm_func):
+def process(test, params, env, image_func, vm_func, vm_first=False):
     """
     Pre- or post-process VMs and images according to the instructions in params.
     Call image_func for each image listed in params and vm_func for each VM.
@@ -177,13 +177,20 @@ def process(test, params, env, image_func, vm_func):
     # Get list of VMs specified for this test
     for vm_name in params.objects("vms"):
         vm_params = params.object_params(vm_name)
-        # Get list of images specified for this VM
-        for image_name in vm_params.objects("images"):
-            image_params = vm_params.object_params(image_name)
-            # Call image_func for each image
-            image_func(test, image_params)
-        # Call vm_func for each vm
-        vm_func(test, vm_params, env, vm_name)
+        if not vm_first:
+            # Get list of images specified for this VM
+            for image_name in vm_params.objects("images"):
+                image_params = vm_params.object_params(image_name)
+                # Call image_func for each image
+                image_func(test, image_params)
+            # Call vm_func for each vm
+            vm_func(test, vm_params, env, vm_name)
+        else:
+            vm_func(test, vm_params, env, vm_name)
+            for image_name in vm_params.objects("images"):
+                image_params = vm_params.object_params(image_name)
+                image_func(test, image_params)
+
 
 
 @error.context_aware
@@ -197,10 +204,6 @@ def preprocess(test, params, env):
     @param env: The environment (a dict-like object).
     """
     error.context("preprocessing")
-
-    if params.get("bridge") == "private":
-        brcfg = virt_test_setup.PrivateBridgeConfig(params)
-        brcfg.setup()
 
     # Start tcpdump if it isn't already running
     if "address_cache" not in env:
@@ -293,7 +296,7 @@ def postprocess(test, params, env):
     error.context("postprocessing")
 
     # Postprocess all VMs and images
-    process(test, params, env, postprocess_image, postprocess_vm)
+    process(test, params, env, postprocess_image, postprocess_vm, vm_first=True)
 
     # Terminate the screendump thread
     global _screendump_thread, _screendump_thread_termination_event
@@ -367,10 +370,6 @@ def postprocess(test, params, env):
         process_command(test, params, env, params.get("post_command"),
                         int(params.get("post_command_timeout", "600")),
                         params.get("post_command_noncritical") == "yes")
-
-    if params.get("bridge") == "private":
-        brcfg = virt_test_setup.PrivateBridgeConfig()
-        brcfg.cleanup()
 
 
 def postprocess_on_error(test, params, env):

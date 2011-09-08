@@ -20,7 +20,7 @@ ADMINS = (
 MANAGERS = ADMINS
 
 def _get_config(config_key, default=None):
-  return c.get_config_value(_section, config_key, default=default)
+    return c.get_config_value(_section, config_key, default=default)
 
 AUTOTEST_DEFAULT = {
     'ENGINE': 'autotest_lib.frontend.db.backends.afe',
