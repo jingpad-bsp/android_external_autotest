@@ -329,7 +329,7 @@ class UITest(pyauto_test.PyAutoTest):
             return
         self._save_logs_from_cryptohome()
         self.pyauto.Logout()
-        login.wait_for_browser()
+        login.wait_for_login_prompt()
 
 
     def _save_logs_from_cryptohome(self):
