@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, glob
+import glob, logging, os, re, stat
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -109,6 +109,20 @@ class security_RootCA(test.test):
         return set(certdict)
 
 
+    def cert_perms_errors(self):
+        """Returns True if certificate files have bad permissions."""
+        # Acts as a regression check for crosbug.com/19848
+        has_errors = False
+        for certfile in glob.glob(OPENSSL_CERT_GLOB):
+            s = os.stat(certfile)
+            if s.st_uid != 0 or stat.S_IMODE(s.st_mode) != 0644:
+                logging.error("Bad permissions: %s" %
+                              utils.system_output("ls -lH %s" % certfile))
+                has_errors = True
+
+        return has_errors
+
+
     def run_once(self, opts=None):
         """Entry point for command line (run_remote_test) use. Accepts 2
            optional args, e.g. run_remote_test --args="relaxed baseline=foo".
@@ -149,5 +163,8 @@ class security_RootCA(test.test):
                     for i in missing:
                         logging.error(i)
 
-        if testfail:
-            raise error.TestFail('Root CA Baseline mismatches')
+        # cert_perms_errors() call first to avoid short-circuiting.
+        # Short circuiting could mask additional failures that would
+        # require a second build/test iteration to uncover.
+        if self.cert_perms_errors() or testfail:
+            raise error.TestFail('Unexpected Root CA findings')
