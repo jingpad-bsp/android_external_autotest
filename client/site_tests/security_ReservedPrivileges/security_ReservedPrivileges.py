@@ -16,12 +16,11 @@ class security_ReservedPrivileges(test.test):
         process_list = []
         for line in command_list:
             items = line.split()
-            # Remove the zombie label
-            try:
-                items.remove('<defunct>')
-            except ValueError, e:
-                # The item wasn't in the list, that's ok
-                pass
+            # We don't care about defunct processes for purposes of this test,
+            # so skip to the next process if we encounter one.
+            if '<defunct>' in items:
+                continue
+
             # There are n items in the list.  The first is the command, all of
             # the remaining are either the different users or groups.  They
             # must all match, if they don't we collect it.
