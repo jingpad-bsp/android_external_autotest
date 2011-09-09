@@ -18,7 +18,12 @@ NSSCERTUTIL = '/usr/local/bin/nsscertutil'
 NSSMODUTIL = '/usr/local/bin/nssmodutil'
 OPENSSL = '/usr/bin/openssl'
 
-OPENSSL_CERT_GLOB = '/etc/ssl/certs/*.pem'
+# This glob pattern is coupled to the snprintf() format in
+# get_cert_by_subject() in crypto/x509/by_dir.c in the openssl
+# sources.  In theory the glob can catch files not created by that
+# snprintf(); such file names probably shouldn't be allowed to exist
+# anyway.
+OPENSSL_CERT_GLOB = '/etc/ssl/certs/' + '[0-9a-f]' * 8 + '.*'
 
 
 class security_RootCA(test.test):
@@ -87,9 +92,6 @@ class security_RootCA(test.test):
         for certfile in glob.glob(OPENSSL_CERT_GLOB):
             f, i = utils.system_output(fingerprint_cmd % certfile).splitlines()
             fingerprint = f.split('=')[1]
-            if (fingerprint != os.path.basename(certfile).split('.pem')[0]):
-                logging.warning('Filename %s doesn\'t match fingerprint %s' %
-                                (certfile, fingerprint))
             for field in i.split('/'):
                 items = field.split('=')
                 # Compensate for stupidly malformed issuer fields.
