@@ -27,8 +27,9 @@ _SAT_DURATION_SECS = 60
 # Change this to True if you want and secure wipe (very slower).
 _ENABLE_FACTORY_SECURE_WIPE = False
 
-# Change this to False if you want to have a better UI to list and report HWID
-# matching issue more precisely. Useful for debugging and RMA.
+# True to force automatically detecting HWID without manually selection;
+# False for operator to select from a list of HWIDs (and get more precise error
+# messages when not matched, useful for debugging and RMA).
 _ENABLE_AUTODETECT_HWID = True
 
 # Change this to True if you want to make sure every tests has been already
@@ -36,14 +37,16 @@ _ENABLE_AUTODETECT_HWID = True
 # RECOMMENDED FOR SHIPPING DEVICES.
 _ENABLE_CHECK_ALL_TEST_PASSED = False
 
-# Change this to enable firmware writeprotect on finalize.
+# Change this to enable firmware write protection on finalize.
 # THIS IS REQUIRED TO BE TRUE FOR SHIPPING DEVICES.
 _ENABLE_FW_WP = False # WARNING: False is ONLY ALLOWED FOR DEBUGGING.
 
 # Change this to match your local report upload site.
 # You can use a FTP url like: ftp://user:pass@host:port/path/file
-# VPD variables NAME=VALUE can be used as %(vpd_NAME).
-# Ex: serial=123 => $(vpd_serial).log => 123.log
+# The method supports VPD variables by %(vpd_NAME) format,
+#  Ex: serial_number=123 => %(vpd_serial_number).log.gz => 123.log.gz
+# A suggested setting is:
+# _REPORT_UPLOAD_METHOD = 'ftp://YOUR_FTP_HOST/%(vpd_serial_number).log.gz'
 _REPORT_UPLOAD_METHOD = 'none'  # WARNING: none is ONLY ALLOWED FOR DEBUGGING.
 # REPORT UPLOADING IS REQUIRED TO BE SET AT BUILD TIME.
 # REPORTS MUST BE PROVIDED TO GOOGLE, MACHINES WITHOUT LOGS CANNOT BE SUPPORTED.
