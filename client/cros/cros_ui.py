@@ -2,12 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, shutil
-import common
-import constants, httpd, login
+import os
+import constants, httpd, ownership
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+
+# Log messages used to signal when we're restarting UI. Used to detect
+# crashes by cros_ui_test.UITest.
+UI_RESTART_ATTEMPT_MSG = 'cros_ui.py: Attempting StopSession...'
+UI_RESTART_COMPLETE_MSG = 'cros_ui.py: StopSession complete.'
+DEFAULT_TIMEOUT = 90  # longer because we may be crash dumping now.
 
 def xcommand(cmd):
     """
@@ -65,12 +70,90 @@ def get_autox():
     return autox.AutoX()
 
 
+def _clear_login_prompt_state():
+    """Clear the magic file indicating that the login prompt is ready."""
+    if os.access(constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE, os.F_OK):
+        os.unlink(constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE)
+
+
+def _wait_for_login_prompt(timeout=DEFAULT_TIMEOUT):
+    """Wait until the login prompt is on screen and ready.
+
+    When the login prompt appears, the session manager will log this via
+    bootstat, creating a magic file in /tmp. We can check whether the prompt
+    has appeared yet using the following pattern:
+
+       _clear_login_prompt_state()
+       logout()
+       _wait_for_login_prompt()
+
+    TODO(davidjames): Reimplement this function using dbus messages so we
+                      don't depend on magic files.
+
+    Args:
+        timeout: float number of seconds to wait
+
+    Raises:
+        TimeoutError: Login prompt didn't get up before timeout
+    """
+
+    utils.poll_for_condition(
+        condition=lambda: os.access(
+            constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE, os.F_OK),
+        exception=utils.TimeoutError('Timed out waiting for login prompt'),
+        timeout=timeout)
+
+
 def stop(allow_fail=False):
     return utils.system("stop ui")
 
 
 def start(allow_fail=False):
-    return utils.system("start ui", ignore_status=allow_fail)
+    """Start the login manager and wait for the prompt to show up."""
+    _clear_login_prompt_state()
+    result = utils.system("start ui", ignore_status=allow_fail)
+    # If allow_fail is set, the caller might be calling us when the UI job
+    # is already running. In that case, the above command fails.
+    if result == 0:
+        _wait_for_login_prompt()
+    return result
+
+
+def restart(impl=None):
+    """Restart the session manager.
+
+    - If the user is logged in, the session will be terminated.
+    - To ensure all processes are up and ready, this function will wait
+      for the login prompt to show up and be marked as visible.
+
+    Args:
+        impl: Method to use to restart the session manager. By
+              default, the session manager is restarted using the
+              StopSession API.
+    """
+
+    _clear_login_prompt_state()
+
+    # Log what we're about to do to /var/log/messages. Used to log crashes later
+    # in cleanup by cros_ui_test.UITest.
+    utils.system('logger "%s"' % UI_RESTART_ATTEMPT_MSG)
+
+    try:
+        if impl is not None:
+            impl()
+        elif not ownership.connect_to_session_manager().StopSession(''):
+            raise error.TestError('Could not stop session')
+
+        # Wait for login prompt to appear to indicate that all processes are
+        # up and running again.
+        _wait_for_login_prompt()
+    finally:
+        utils.system('logger "%s"' % UI_RESTART_COMPLETE_MSG)
+
+
+def nuke():
+    """Nuke the login manager, waiting for it to restart."""
+    restart(lambda: utils.nuke_process_by_name('session_manager'))
 
 
 class ChromeSession(object):

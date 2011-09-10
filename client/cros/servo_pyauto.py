@@ -12,7 +12,7 @@ to be installed.
 import logging, os, sys
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
-import constants, cryptohome, login
+import constants, cros_ui, cryptohome, login
 
 # Import the pyauto module
 # This can be done only after pyauto_dep dependency has been installed.
@@ -69,7 +69,7 @@ class RemotePyAuto(pyauto.PyUITest):
         """
         self.tearDown()
         #reset UI
-        login.nuke_login_manager()
+        cros_ui.nuke()
 
 
 if __name__ == '__main__':

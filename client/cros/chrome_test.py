@@ -3,10 +3,9 @@
 # found in the LICENSE file.
 
 import logging, os, re, shutil, stat, subprocess, tempfile
-import common
-import constants, cros_ui, login
+import constants, cros_ui
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.common_lib import error
 
 class ChromeTestBase(test.test):
     home_dir = None
@@ -25,7 +24,7 @@ class ChromeTestBase(test.test):
         except IOError, e:
             logging.debug(e)
             raise error.TestError('Failed to disable browser restarting.')
-        login.nuke_process_by_name(name=constants.BROWSER, with_prejudice=True)
+        utils.nuke_process_by_name(name=constants.BROWSER, with_prejudice=True)
 
 
     def initialize(self, nuke_browser_norestart=True, skip_deps=False):
@@ -108,7 +107,7 @@ class ChromeTestBase(test.test):
             # Allow chrome to be restarted again.
             os.unlink(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
         # Reset the UI.
-        login.nuke_login_manager()
+        cros_ui.nuke()
         if self.home_dir:
             shutil.rmtree(self.home_dir, ignore_errors=True)
         test.test.cleanup(self)

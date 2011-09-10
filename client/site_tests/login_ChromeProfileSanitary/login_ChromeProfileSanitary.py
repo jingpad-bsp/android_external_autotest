@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, stat, time, utils
+import os, stat, time, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants
-from autotest_lib.client.cros import cros_ui, cros_ui_test, login, httpd
+from autotest_lib.client.cros import cros_ui_test, login, httpd
 
 def respond_with_cookies(handler, url_args):
     """Responds with a Set-Cookie header to any GET request, and redirects
@@ -55,7 +55,7 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
 
         # Wait for chrome to show, then "crash" it.
         login.wait_for_initial_chrome_window()
-        login.nuke_process_by_name(constants.BROWSER, with_prejudice=True)
+        utils.nuke_process_by_name(constants.BROWSER, with_prejudice=True)
 
         login.refresh_window_manager()
         login.wait_for_browser()

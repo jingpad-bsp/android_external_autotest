@@ -2,17 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
-import dbus.glib
-import gobject
-import logging
 import random
 import string
 import os
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cryptohome, cros_ownership_test, ownership
+from autotest_lib.client.cros import (cryptohome, cros_ownership_test, cros_ui,
+                                      ownership)
 
 
 class login_RemoteOwnership(cros_ownership_test.OwnershipTest):
@@ -54,8 +51,11 @@ class login_RemoteOwnership(cros_ownership_test.OwnershipTest):
                                               old_key=priv),
                          sm)
 
-        if not sm.StopSession(''):
-            raise error.TestFail('Could not stop session for random user')
+        def StopSession():
+            if not sm.StopSession(''):
+                raise error.TestFail('Could not stop session for random user')
+
+        cros_ui.restart(StopSession)
 
 
     def cleanup(self):

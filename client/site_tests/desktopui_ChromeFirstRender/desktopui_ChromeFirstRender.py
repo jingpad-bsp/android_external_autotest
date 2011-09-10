@@ -5,7 +5,7 @@
 import logging, os, re, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, login
+from autotest_lib.client.cros import cros_ui_test
 
 class desktopui_ChromeFirstRender(cros_ui_test.UITest):
     version = 1
@@ -34,10 +34,10 @@ class desktopui_ChromeFirstRender(cros_ui_test.UITest):
         try:
             utils.poll_for_condition(
                 self.__check_logfile(self._LOGIN_SUCCESS_FILE),
-                login.TimeoutError('Timeout waiting for initial login'))
+                utils.TimeoutError('Timeout waiting for initial login'))
             utils.poll_for_condition(
                 self.__check_logfile(self._FIRST_RENDER_FILE),
-                login.TimeoutError('Timeout waiting for initial render'),
+                utils.TimeoutError('Timeout waiting for initial render'),
                 timeout=60)
 
             start_time = self.__parse_uptime(self._LOGIN_SUCCESS_FILE)

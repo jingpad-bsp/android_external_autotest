@@ -19,14 +19,12 @@ import logging
 from optparse import OptionParser
 import os
 import shutil
-import stat
 import subprocess
 import sys
-import tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cryptohome, login
+from autotest_lib.client.cros import constants, cros_ui, cryptohome
 
 
 class PyAutoTest(test.test):
@@ -177,6 +175,6 @@ class PyAutoTest(test.test):
             del self.pyauto_suite
 
         # Reset the UI.
-        login.restart_session_manager()
+        cros_ui.restart()
 
         test.test.cleanup(self)

@@ -5,11 +5,10 @@
 import dbus
 import logging
 import os.path
-import subprocess
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, login
+from autotest_lib.client.cros import constants, cros_ui, login
 
 class security_RestartJob(test.test):
     version = 1
@@ -51,7 +50,7 @@ class security_RestartJob(test.test):
 
         # Clean up, before we throw our TestFail, since this test
         # killed chrome and mangled its argv...
-        login.nuke_login_manager()
+        cros_ui.nuke()
 
         if testfail:
             raise error.TestFail('RestartJob regression, see cros bug 7018')

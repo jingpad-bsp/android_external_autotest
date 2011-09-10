@@ -2,16 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import cros_ui
 import dbus
-import logging
 import sys
-import common
-import constants
 import login
-import os
 import ownership
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 
@@ -184,5 +181,5 @@ class OwnershipTest(test.test):
 
     def cleanup(self):
         login.wait_for_browser()  # Ensure login manager is there before nuking.
-        login.nuke_login_manager()
+        cros_ui.nuke()
         super(OwnershipTest, self).cleanup()

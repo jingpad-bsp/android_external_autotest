@@ -2,13 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, platform, re, tempfile, time
+import logging, os, platform, re, signal, tempfile, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 
 
 class TimeoutError(error.TestError):
     """Error raised when we time out when waiting on a condition."""
+    pass
 
 
 class Crossystem(object):
@@ -41,6 +42,18 @@ class Crossystem(object):
         string.
         """
         return lambda : self.cros_system_data[name]
+
+
+def nuke_process_by_name(name, with_prejudice=False):
+    try:
+        pid = int(utils.system_output('pgrep -o ^%s$' % name).split()[0])
+    except Exception as e:
+        logging.error(e)
+        return
+    if with_prejudice:
+        utils.nuke_pid(pid, [signal.SIGKILL])
+    else:
+        utils.nuke_pid(pid)
 
 
 def poll_for_condition(

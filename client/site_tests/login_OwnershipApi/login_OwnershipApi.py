@@ -2,16 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
-import dbus.glib
-import gobject
-import logging
 import os
 import tempfile
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import autotemp, error
-from autotest_lib.client.cros import constants, cros_ui, cryptohome, login
+from autotest_lib.client.cros import constants, cros_ui, cryptohome
 from autotest_lib.client.cros import cros_ownership_test, ownership
 
 
@@ -41,7 +37,6 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
 
         ownership.use_known_ownerkeys()
         cros_ui.start()
-        login.wait_for_browser()
 
 
     def __generate_temp_filename(self):
@@ -87,8 +82,12 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
             pass
         else:
             raise error.TestFail('Did not detect bad policy')
-        if not sm.StopSession(''):
-            raise error.TestFail('Could not stop session for owner')
+
+        def StopSession():
+            if not sm.StopSession(''):
+                raise error.TestFail('Could not stop session for owner')
+
+        cros_ui.restart(StopSession)
 
 
     def cleanup(self):

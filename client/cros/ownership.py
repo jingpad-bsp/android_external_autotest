@@ -2,12 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import common
 import constants
+import cros_ui
 import cryptohome
 import dbus
 import logging
-import login
 import os
 import tempfile
 from autotest_lib.client.bin import utils
@@ -298,7 +297,7 @@ def generate_and_register_keypair(testuser, testpass):
     pubkey = cert_extract_pubkey_der(certfile.name)
     utils.open_write_close(constants.OWNER_KEY_FILE, pubkey)
 
-    login.nuke_login_manager()
+    cros_ui.nuke()
     cryptohome.mount_vault(testuser, testpass, create=False)
     return (utils.read_file(keyfile.name), pubkey)
 

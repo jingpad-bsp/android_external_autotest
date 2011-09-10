@@ -5,7 +5,7 @@
 import logging, os, time, utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_ui, login
+from autotest_lib.client.cros import constants, cros_ui
 
 class desktopui_GmailLatency(test.test):
     version = 1
@@ -41,7 +41,7 @@ class desktopui_GmailLatency(test.test):
         # We could kill with signal 9 so that the session manager doesn't exit.
         # But this seems to leave the screen blank while the test is running.
         # So do it this way (which means clean_exit is always False)
-        login.nuke_process_by_name(name=constants.BROWSER)
+        utils.nuke_process_by_name(name=constants.BROWSER)
 
         clean_exit = False
         try:
@@ -71,4 +71,4 @@ class desktopui_GmailLatency(test.test):
 
             # Reset the UI but only if we need to (avoid double reset).
             if not clean_exit:
-                login.nuke_login_manager()
+                cros_ui.nuke()

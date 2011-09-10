@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, re, shutil, socket, subprocess, stat, sys, time
-import common
+import dbus, logging, os, re, shutil, socket, stat, sys, time
 import auth_server, constants, cryptohome, dns_server
 import cros_logging, cros_ui, login, ownership, pyauto_test
 from autotest_lib.client.bin import utils
@@ -150,7 +149,7 @@ class UITest(pyauto_test.PyAutoTest):
 
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.', '127.0.0.1'),
-            login.TimeoutError('Timed out waiting for DNS changes.'),
+            utils.TimeoutError('Timed out waiting for DNS changes.'),
             timeout=10)
 
 
@@ -171,7 +170,7 @@ class UITest(pyauto_test.PyAutoTest):
                 lambda: self.__attempt_resolve('www.google.com.',
                                                '127.0.0.1',
                                                expected=False),
-                login.TimeoutError('Timed out waiting to revert DNS.'),
+                utils.TimeoutError('Timed out waiting to revert DNS.'),
                 timeout=10)
         finally:
             # Set captive portal checking to whatever it was at the start.
@@ -268,7 +267,6 @@ class UITest(pyauto_test.PyAutoTest):
             self.fake_owner = False
 
         cros_ui.start()
-        login.wait_for_browser()
 
         pyauto_test.PyAutoTest.initialize(self, auto_login=False,
                                           extra_chrome_flags=extra_chrome_flags)
@@ -367,8 +365,7 @@ class UITest(pyauto_test.PyAutoTest):
         if not self.logged_in():
             return
         self._save_logs_from_cryptohome()
-        self.pyauto.Logout()
-        login.wait_for_login_prompt()
+        cros_ui.restart(self.pyauto.Logout)
 
 
     def _save_logs_from_cryptohome(self):
@@ -413,10 +410,10 @@ class UITest(pyauto_test.PyAutoTest):
         reported for any process names listed in |processes|. SIGABRT crashes in
         chrome or supplied-chrome during ui restart are ignored.
         """
-        ui_restart_begin_regex = re.compile(login.UI_RESTART_ATTEMPT_MSG)
+        ui_restart_begin_regex = re.compile(cros_ui.UI_RESTART_ATTEMPT_MSG)
         crash_regex = re.compile(
             'Received crash notification for ([-\w]+).+ (sig \d+)')
-        ui_restart_end_regex = re.compile(login.UI_RESTART_COMPLETE_MSG)
+        ui_restart_end_regex = re.compile(cros_ui.UI_RESTART_COMPLETE_MSG)
 
         in_restart = False
         for line in self._log_reader.get_logs().splitlines():
