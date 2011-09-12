@@ -26,7 +26,12 @@
   ["desktopui_V8Bench",
    "score_crypto,score_deltablue,score_earleyboyer,score_raytrace,score_regexp,score_richards,score_splay"],
   ["desktopui_V8Bench", "score_total"],
-  ["desktopui_PyAutoPerfTests", "milliseconds_NewTabPage,milliseconds_NewTabPdfPage,milliseconds_NewTabFlashPage"],
+  ["desktopui_PyAutoPerfTests",
+   "milliseconds_NewTabPage,milliseconds_NewTabPdfPage,milliseconds_NewTabFlashPage"],
   ["desktopui_PyAutoPerfTests", "milliseconds_20TabsNewTabPage"],
+  ["desktopui_PyAutoPerfTests",
+   "milliseconds_NewTabGmail,milliseconds_NewTabCalendar,milliseconds_NewTabDocs"],
+  ["desktopui_PyAutoPerfTests",
+   "milliseconds_Download100MBFile,milliseconds_Upload50MBFile"],
   ["desktopui_PyAutoPerfTests", "score_V8Benchmark"]
 ]
