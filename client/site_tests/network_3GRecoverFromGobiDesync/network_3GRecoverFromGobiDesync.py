@@ -65,6 +65,7 @@ class GobiDesyncEventLoop(TestEventLoop):
   def __init__(self, bus):
     super(GobiDesyncEventLoop, self).__init__()
     self.bus = bus
+    self.dbus_signal_receivers = []
 
     # Start conditions; once these have been met, call StartTest.
     # This makes sure that cromo and udevadm are ready to use
@@ -142,24 +143,31 @@ class GobiDesyncEventLoop(TestEventLoop):
     if self.remaining_start_conditions:
       logging.info('Not starting until: %s' % self.remaining_start_conditions)
     else:
-      logging.info('Starting test')
+      logging.info('Preconditions satisfied')
       self.StartTest()
       self.remaining_start_conditions = ['dummy entry so we do not start twice']
 
+  def RegisterDbusSignal(self, *args, **kwargs):
+    """Register signal receiver with dbus and our cleanup list."""
+    self.dbus_signal_receivers.append(
+        self.bus.add_signal_receiver(*args, **kwargs))
+
+  def CleanupDbusSignalReceivers(self):
+    for signal_match in self.dbus_signal_receivers:
+      signal_match.remove()
 
   def RegisterForDbusSignals(self):
     # Watch cromo leave the bus when it terminates and return when it
     # is restarted
-    self.bus.add_signal_receiver(self.ExceptionWrapper(self.NameOwnerChanged),
-                                 bus_name='org.freedesktop.DBus',
-                                 signal_name='NameOwnerChanged')
+    self.RegisterDbusSignal(self.ExceptionWrapper(self.NameOwnerChanged),
+                            bus_name='org.freedesktop.DBus',
+                            signal_name='NameOwnerChanged')
 
     # Wait for cromo to report that the modem is present.
-    self.bus.add_signal_receiver(self.ExceptionWrapper(self.ModemAdded),
-                                 bus_name='org.freedesktop.DBus',
-                                 signal_name='DeviceAdded',
-                                 dbus_interface='org.freedesktop.ModemManager')
-
+    self.RegisterDbusSignal(self.ExceptionWrapper(self.ModemAdded),
+                            bus_name='org.freedesktop.DBus',
+                            signal_name='DeviceAdded',
+                            dbus_interface='org.freedesktop.ModemManager')
 
   def RegisterForUdevMonitor(self):
     # have udevadm output to a pty so it will line buffer
@@ -189,6 +197,7 @@ class GobiDesyncEventLoop(TestEventLoop):
 
     network.ClearGobiModemFaultInjection()
     self.KillSubprocesses()
+    self.CleanupDbusSignalReceivers()
     if self.to_raise:
       raise self.to_raise
     logging.info('Done waiting for events')
