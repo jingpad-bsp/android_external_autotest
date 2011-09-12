@@ -1218,7 +1218,9 @@ class WiFiTest(object):
         script_client_file = self.install_script('site_system_suspend.py',
                                                  '../client/cros/rtc.py',
                                                  '../client/cros/'
-                                                 'sys_power.py')
+                                                 'sys_power.py',
+                                                 '../client/cros/'
+                                                 'upstart.py')
         result = self.client.run('python "%s" %d' %
             (script_client_file, int(params.get("suspend_time", 5))))
 
@@ -1229,7 +1231,9 @@ class WiFiTest(object):
         script_client_file = self.install_script('site_system_suspend.py',
                                                  '../client/cros/rtc.py',
                                                  '../client/cros/'
-                                                 'sys_power.py')
+                                                 'sys_power.py',
+                                                 '../client/cros/'
+                                                 'upstart.py')
         cmd = ('python "%s" %d %s' %
                (script_client_file,
                 int(params.get("suspend_time", 5)),
