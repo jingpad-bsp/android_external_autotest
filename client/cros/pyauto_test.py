@@ -117,13 +117,19 @@ class PyAutoTest(test.test):
     def initialize(self, auto_login=True, extra_chrome_flags=[]):
         """Initialize.
 
-        Expects session_manager to be alive.
-
         Args:
             auto_login: should we auto login using $default account?
             extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
         """
         assert os.geteuid() == 0, 'Need superuser privileges'
+
+        # Ensure there's no stale cryptohome from previous tests
+        creds = constants.CREDENTIALS['$default']
+        username = cryptohome.canonicalize(creds[0])
+        cryptohome.remove_vault(username)
+
+        # Reset the UI.
+        login.nuke_login_manager()
 
         self.SetupDeps()
         import pyauto
