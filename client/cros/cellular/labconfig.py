@@ -5,7 +5,7 @@
 import urllib
 import json
 
-class ConfigError(Exception):
+class LabConfigError(Exception):
   pass
 
 class LabConfig(object):
@@ -16,12 +16,27 @@ class LabConfig(object):
     for cell in self._config["cells"]:
       if cell["name"] == name:
         return cell
-    raise ConfigError("No cell named '%s'" % name)
+    raise LabConfigError("No cell named '%s'" % name)
 
-class JsonLabConfig(LabConfig):
-  def __init__(self, json_str):
-    super(JsonLabConfig, self).__init__(json.loads(json_str))
+def make_json_config(json_str):
+  config = json.loads(json_str)
+  return LabConfig(config)
 
-class JsonUrlLabConfig(JsonLabConfig):
-  def __init__(self, url):
-    super(JsonUrlLabConfig, self).__init__(urllib.urlopen(url).read())
+def fetch_json_config(url):
+  json_str = urllib.urlopen(url).read()
+  return make_json_config(json_str)
+
+class CellTestArgumentError(Exception):
+  pass
+
+def _parse_test_args(raw_args):
+  if raw_args[0] != '0':
+    raise CellTestArgumentError('Unknown test-args version %s' % raw_args[0])
+  if len(raw_args) != 3:
+    raise CellTestArgumentError('Wrong number of test-args for version 0')
+  return { 'url': raw_args[1], 'cell': raw_args[2] }
+
+def get_test_config(raw_args):
+  args = parse_test_args(raw_args)
+  config = fetch_json_config(args['url'])
+  return config.GetCellByName(args['cell'])
