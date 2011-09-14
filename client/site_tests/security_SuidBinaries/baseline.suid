@@ -1,6 +1,7 @@
 /usr/libexec/dbus-daemon-launch-helper
 /usr/lib/misc/ssh-keysign
 /usr/sbin/pppd
+/usr/sbin/traceroute6
 /usr/bin/chsh
 /usr/bin/chage
 /usr/bin/newgrp
@@ -18,4 +19,5 @@
 /bin/mount
 /bin/su
 /bin/ping
+/bin/ping6
 /bin/ntfs-3g
