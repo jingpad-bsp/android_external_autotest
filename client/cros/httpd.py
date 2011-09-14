@@ -174,7 +174,15 @@ class HTTPListener(object):
         self._server._url_handlers = url_handlers
         self._server._form_entries = {}
         self._server_thread = threading.Thread(
-            target=self._server.serve_forever)
+            target=self._begin_serving)
+        # Used to coordinate startup in a new thread.
+        self.__is_started = threading.Event()
+
+
+    def _begin_serving(self):
+        """Begin serving in the thread."""
+        self.__is_started.set()
+        self._server.serve_forever()
 
 
     def add_wait_url(self, url='/', matchParams={}):
@@ -200,7 +208,10 @@ class HTTPListener(object):
     def run(self):
         logging.debug('http server on %s:%d' %
                       (self._server.server_name, self._server.server_port))
+        self.__is_started.clear()
         self._server_thread.start()
+        # Wait until the server is started
+        self.__is_started.wait()
 
 
     def stop(self):
