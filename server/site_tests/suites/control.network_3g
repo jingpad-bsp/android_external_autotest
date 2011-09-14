@@ -21,7 +21,6 @@ from autotest_lib.client.common_lib import error
 CLIENT_TESTS = [
     'network_GobiUncleanDisconnect',
     'network_3GDisableWhileConnecting',
-    'network_3GDormancyDance',
     'network_3GModemPresent',
     'network_3GRecoverFromGobiDesync',
     'network_3GSafetyDance',
