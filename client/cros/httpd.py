@@ -13,8 +13,6 @@
 
 import cgi, errno, logging, os, posixpath, SimpleHTTPServer, socket
 import socket, ssl, sys, threading, urllib, urlparse
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from SocketServer import BaseServer, ThreadingMixIn
 
@@ -166,7 +164,6 @@ class HTTPListener(object):
     # Point default docroot to a non-existent directory (instead of None) to
     # avoid exceptions when page content is served through handlers only.
     def __init__(self, port=0, docroot='/_', wait_urls={}, url_handlers={}):
-        self._port = port
         self._server = ThreadedHTTPServer(('', port), FormHandler)
         self.config_server(self._server, docroot, wait_urls, url_handlers)
 
@@ -200,27 +197,10 @@ class HTTPListener(object):
         return self._server._form_entries
 
 
-    def _can_connect(self):
-        """Determine if we can connect to the server yet."""
-        s = socket.socket()
-        try:
-            s.connect(('localhost', self._port))
-            s.close()
-            return True
-        except socket.error:
-            pass
-        return False
-
-
     def run(self):
         logging.debug('http server on %s:%d' %
                       (self._server.server_name, self._server.server_port))
         self._server_thread.start()
-        # Ensure we can really connect now.
-        utils.poll_for_condition(
-            self._can_connect,
-            error.TestError('Timeout waiting for server to start.'),
-            timeout=10)
 
 
     def stop(self):
@@ -267,7 +247,6 @@ class SecureHTTPListener(HTTPListener):
                  docroot='/_',
                  wait_urls={},
                  url_handlers={}):
-        self._port = port
         self._server = SecureHTTPServer(('', port),
                                         SecureHTTPRequestHandler,
                                         cert_path,
