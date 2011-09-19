@@ -70,11 +70,15 @@ class factory_ExternalStorage(test.test):
     def rescan_storage(self, subtest_tag):
         if self._state == _STATE_WAIT_INSERT:
             new_devices = find_all_storage_dev()
-            diff = new_devices - self._devices
-            if diff:
+            insert_diff = new_devices - self._devices
+            removal_diff = self._devices - new_devices
+            if removal_diff:
+              self._devices = new_devices
+              factory.log('Device removed : %s' % removal_diff)
+            elif insert_diff:
                 self._devices = new_devices
-                factory.log('found new devs : %s' % diff)
-                self._target_device = diff.pop()
+                factory.log('found new devs : %s' % insert_diff)
+                self._target_device = insert_diff.pop()
                 devpath = os.path.join('/dev', self._target_device)
                 self._prompt.set_text(_TESTING_FMT_STR(devpath))
                 self._image = self.testing_image
@@ -92,14 +96,14 @@ class factory_ExternalStorage(test.test):
                 self._image = self.removal_image
                 self._pictogram.queue_draw()
         else:
-            diff = self._devices - find_all_storage_dev()
-            if len(diff) > 1:
+            removal_diff = self._devices - find_all_storage_dev()
+            if len(removal_diff) > 1:
                 self._error += _ERR_TOO_MANY_REMOVE_FMT_STR(
-                        self._target_device, diff)
-            if diff and self._target_device not in diff:
+                        self._target_device, removal_diff)
+            if removal_diff and self._target_device not in removal_diff:
                 self._error += _ERR_DEV_NOT_REMOVE_FMT_STR(
                         self._target_device)
-            if diff:
+            if removal_diff:
                 gtk.main_quit()
         return True
 
