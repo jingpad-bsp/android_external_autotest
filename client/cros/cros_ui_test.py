@@ -43,6 +43,9 @@ class UITest(pyauto_test.PyAutoTest):
     # Processes that we know crash and are willing to ignore.
     crash_blacklist = []
 
+    _IPTABLES_RULE = 'iptables -t nat %s OUTPUT -p udp ' \
+                     '-d %s --dport 53 -j DNAT --to-destination %s'
+
     def __init__(self, job, bindir, outputdir):
         pyauto_test.PyAutoTest.__init__(self, job, bindir, outputdir)
 
@@ -64,24 +67,48 @@ class UITest(pyauto_test.PyAutoTest):
             path='/')
 
 
+    def __connect_to_flimflam(self):
+        """Connect to the network manager via DBus.
+
+        Stores dbus connection in self._flim upon success, throws on failure.
+        """
+        self._bus_loop = DBusGMainLoop(set_as_default=True)
+        self._system_bus = dbus.SystemBus(mainloop=self._bus_loop)
+        self._flim = flimflam.FlimFlam(self._system_bus)
+
+
+    def __alter_dns_for_device(self, device, dns_op):
+        """Run |dns_op| for all DNS servers known for |device|
+
+        Given a flimflam DBus Device object, pull the IP address and
+        run dns_op(address, server) for all DNS servers associated
+        with that address.
+
+        Throws error.TestError upon failure.
+        """
+        properties = device.GetProperties()
+        interface = properties['Interface']
+        logging.debug('Considering ' + interface)
+        for path in properties['IPConfigs']:
+            ipconfig = self._flim.GetObjectInterface('IPConfig', path)
+            props = ipconfig.GetProperties()
+            servers = props.get('NameServers', None)
+            local_addr = props.get('Address', None)
+            if not local_addr:
+                raise error.TestError(interface + ' has no Address.')
+            if not servers:
+                raise error.TestError(interface + ' has no DNS servers.')
+            for server in servers:
+                dns_op(server, local_addr)
+
+
+
     def __get_host_by_name(self, hostname):
         """Resolve the dotted-quad IPv4 address of |hostname|
-
-        This used to use suave python code, like this:
-            hosts = socket.getaddrinfo(hostname, 80, socket.AF_INET)
-            (fam, socktype, proto, canonname, (host, port)) = hosts[0]
-            return host
-
-        But that hangs sometimes, and we don't understand why.  So, use clunky
-        ping + regexps.
         """
-        try:
-            host = utils.system_output("ping -c 1 -w 1 -q %s" % hostname,
-                                       ignore_status=True, timeout=2)
-        except Exception as e:
-            logging.warning(e)
-            return None
-        return re.match("PING [^ ]+ \((.+)\) 56.*", host).group(1)
+        hosts = socket.getaddrinfo(hostname, 80, socket.AF_INET)
+        (fam, socktype, proto, canonname, (host, port)) = hosts[0]
+        return host
 
 
     def __attempt_resolve(self, hostname, ip, expected=True):
@@ -94,28 +121,27 @@ class UITest(pyauto_test.PyAutoTest):
             logging.error(err)
 
 
+    def __add_dns_iptables_rule(self, original, replacement):
+      utils.system(self._IPTABLES_RULE % ('-A', original, replacement))
+
+
+    def __delete_dns_iptables_rule(self, original, replacement):
+      utils.system(self._IPTABLES_RULE % ('-D', original, replacement))
+
+
     def use_local_dns(self, dns_port=53):
         """Set all devices to use our in-process mock DNS server.
         """
         self._dnsServer = dns_server.LocalDns(fake_ip='127.0.0.1',
                                               local_port=dns_port)
         self._dnsServer.run()
-        self._bus_loop = DBusGMainLoop(set_as_default=True)
-        self._system_bus = dbus.SystemBus(mainloop=self._bus_loop)
-        self._flim = flimflam.FlimFlam(self._system_bus)
         # Turn off captive portal checking, until we fix
         # http://code.google.com/p/chromium-os/issues/detail?id=19640
         self.check_portal_list = self._flim.GetCheckPortalList()
         self._flim.SetCheckPortalList('')
         # Set all devices to use locally-running DNS server.
         for device in self._flim.GetObjectList('Device'):
-            properties = device.GetProperties()
-            interface = properties['Interface']
-            logging.debug('Considering ' + interface)
-            for path in properties['IPConfigs']:
-                ipconfig = self._flim.GetObjectInterface('IPConfig', path)
-                ipconfig.SetProperty('NameServers', '127.0.0.1')
-                logging.debug('Using local DNS for ' + interface)
+            self.__alter_dns_for_device(device, self.__add_dns_iptables_rule)
 
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.', '127.0.0.1'),
@@ -131,14 +157,8 @@ class UITest(pyauto_test.PyAutoTest):
         self._flim.SetCheckPortalList(self.check_portal_list)
         # Clear all DNS settings and restart flimflam.
         for device in self._flim.GetObjectList('Device'):
-            properties = device.GetProperties()
-            interface = properties['Interface']
-            logging.debug('Considering ' + interface)
-            for path in properties['IPConfigs']:
-                ipconfig = self._flim.GetObjectInterface('IPConfig', path)
-                ipconfig.ClearProperty('NameServers')
-                logging.debug('Clearing local DNS for ' + interface)
-        utils.system('restart %s' % constants.NETWORK_MANAGER)
+            self.__alter_dns_for_device(device, self.__delete_dns_iptables_rule)
+
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.',
                                            '127.0.0.1',
@@ -202,6 +222,8 @@ class UITest(pyauto_test.PyAutoTest):
         # crashed.
         self._log_reader = cros_logging.LogReader()
         self._log_reader.set_start_by_current()
+
+        self.__connect_to_flimflam()
 
         if creds:
             self.start_authserver()
