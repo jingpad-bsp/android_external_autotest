@@ -43,6 +43,8 @@ _ERR_TOO_MANY_REMOVE_FMT_STR = \
                     (removed_dev, target_dev, removed_dev, target_dev)
 _ERR_DEV_NOT_REMOVE_FMT_STR = \
         lambda t: 'Please remove %s.\n請移除 %s\n' % (t, t)
+_ERR_FIO_TEST_FAILED_FMT_STR = \
+        lambda target_dev: 'IO error while running test on %s.\n' % target_dev
 
 def find_root_dev():
     rootdev = utils.system_output('rootdev -s -d')
@@ -78,10 +80,13 @@ class factory_ExternalStorage(test.test):
                 self._image = self.testing_image
                 self._pictogram.queue_draw()
                 gtk.main_iteration()
-                test._result = self.job.run_test('hardware_StorageFio',
+                result = self.job.run_test('hardware_StorageFio',
                                                  dev=devpath,
                                                  quicktest=True,
                                                  tag=subtest_tag)
+                if result is not True:
+                  self._error += _ERR_FIO_TEST_FAILED_FMT_STR(
+                          self._target_device)
                 self._prompt.set_text(_REMOVE_FMT_STR(self._media))
                 self._state = _STATE_WAIT_REMOVE
                 self._image = self.removal_image
