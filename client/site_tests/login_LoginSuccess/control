@@ -16,5 +16,4 @@ This is a helper test that will login a system through the login manager.
 """
 
 job.run_test('login_LoginSuccess', tag='default')
-job.run_test('login_LoginSuccess', creds='$apps', tag='apps')
 
