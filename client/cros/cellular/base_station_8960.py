@@ -5,6 +5,7 @@
 import logging
 import re
 
+import air_state_verifier
 import base_station_interface
 import cellular
 
@@ -13,16 +14,22 @@ class Error(Exception):
   pass
 
 
+class Timeout(Error):
+  pass
+
+
+POLL_SLEEP=0.2
+
+
 class BaseStation8960(base_station_interface.BaseStationInterface):
   """Wrap an Agilent 8960 Series 10."""
 
   def __init__(self,
-               scpi_connection,
-               technology):
+               scpi_connection):
     self.c = scpi_connection
     self._Verify()
     self._Reset()
-    self.SetTechnology(technology)
+    self.SetPower(cellular.Power.DEFAULT)
 
   def _Verify(self):
     idn = self.c.Query('*IDN?')
@@ -32,16 +39,25 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
   def _Reset(self):
     logging.info('Clearing out old errors')
     self.c.RetrieveErrors()
-    self.c.Send('*RST')
-    self.c.Query('*OPC?')
+    self.c.Reset()
     self.c.WaitAndCheckError()
+    self.Stop()
 
-  def SetTechnology(self, technology):
-    self.c.SimpleVerify('SYSTem:APPLication:FORMat',
-                        ConfigDictionaries.TECHNOLOGY_TO_FORMAT[technology])
-    self.c.SendStanza(
-        ConfigDictionaries.TECHNOLOGY_TO_CONFIG_STANZA.get(technology, []))
-    self.technology = technology
+  def GetAirStateVerifier(self):
+    return air_state_verifier.AirStateVerifierBasestation(self)
+
+  def GetUeDataStatus(self):
+    status = self.c.Query('CALL:STATus:DATa?')
+    return ConfigDictionaries.CALL_STATUS_DATA_TO_STATUS[status]
+
+  def SetBsIpV4(self, ip1, ip2):
+    self.c.SendStanza([
+        'SYSTem:COMMunicate:LAN:SELF:ADDRess:IP4 "%s"' % ip1,
+        'SYSTem:COMMunicate:LAN:SELF:ADDRess2:IP4 "%s"' % ip2,])
+
+  def SetBsNetmaskV4(self, netmask):
+    self.c.SendStanza([
+        'SYSTem:COMMunicate:LAN:SELF:SMASk:IP4 "%s"' % netmask,])
 
   def SetPlmn(self, mcc, mnc):
     # Doing this appears to set the WCDMa versions as well
@@ -49,7 +65,7 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
         'CALL:MCCode %s' % mcc,
         'CALL:MNCode %s' % mnc,])
 
-  def SetPower(self, dbm=cellular.Power.DEFAULT):
+  def SetPower(self, dbm):
     if dbm <= cellular.Power.OFF :
       self.c.SendStanza([
           'CALL:CELL:POWer:STATe off',])
@@ -57,10 +73,73 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
       self.c.SendStanza([
           'CALL:CELL:POWer %s' % dbm,])
 
-  def GetUeDataStatus(self):
-    status = self.c.Query('CALL:STATus:DATa?')
-    return ConfigDictionaries.CALL_STATUS_DATA_TO_STATUS[status]
+  def SetTechnology(self, technology):
+    #  TODO(rochberg): Check that we're not already in chosen tech for
+    #  speed boost
+    self.c.SimpleVerify('SYSTem:APPLication:FORMat',
+                        ConfigDictionaries.TECHNOLOGY_TO_FORMAT[technology])
+    self.c.SendStanza(
+        ConfigDictionaries.TECHNOLOGY_TO_CONFIG_STANZA.get(technology, []))
+    self.technology = technology
 
+  def SetUeDnsV4(self, dns1, dns2):
+    """Set the DNS values provided to the UE.  Emulator must be stopped."""
+    stanza = ['CALL:MS:DNSServer:PRIMary:IP:ADDRess "%s"' % dns1]
+    if dns2:
+      stanza.append('CALL:MS:DNSServer:SECondary:IP:ADDRess "%s"' % dns2)
+    self.c.SendStanza(stanza)
+
+  def SetUeIpV4(self, ip1, ip2=None):
+    """Set the IP addresses provided to the UE.  Emulator must be stopped."""
+    stanza = ['CALL:MS:IP:ADDRess1 "%s"' % ip1]
+    if ip2:
+      stanza.append('CALL:MS:IP:ADDRess2 "%s"' % ip2)
+    self.c.SendStanza(stanza)
+
+  def Start(self):
+    self.c.SendStanza(['CALL:OPERating:MODE CALL'])
+
+  def Stop(self):
+    self.c.SendStanza(['CALL:OPERating:MODE OFF'])
+
+  def SupportedTechnologies(self):
+    return [
+      cellular.Technology.GPRS,
+      cellular.Technology.EGPRS,
+      cellular.Technology.WCDMA,
+      cellular.Technology.HSDPA,
+      cellular.Technology.HDUPA,
+      cellular.Technology.HSDUPA,
+      cellular.Technology.HSPA_PLUS,
+      cellular.Technology.CDMA_2000,
+      cellular.Technology.EVDO_1x,
+      ]
+
+  def WaitForStatusChange(self,
+                          interested=None,
+                          timeout=cellular.DEFAULT_TIMEOUT):
+    """When UE status changes (to a value in interested), return the value.
+
+    Arguments:
+        interested: if non-None, only transitions to these states will
+          cause a return
+        timeout: in seconds.
+    Returns: state
+    Raises:  Error.Timeout
+    """
+    start = time.time()
+    while time.time() - start <= timeout:
+      state = self.GetUeDataStatus()
+      if state in interested:
+        return state
+      time.sleep(POLL_SLEEP)
+
+    state = self.GetUeDataStatus()
+    if state in interested:
+      return state
+
+    raise Timeout('Timed out waiting for state in %s.  State was %s' %
+                  (interested, state))
 
 def _Parse(command_sequence):
   """Split and remove comments from a config stanza."""

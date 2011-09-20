@@ -58,6 +58,15 @@ class PrologixScpiDriver:
   def Send(self, command):
     self.socket.send(command + '\n')
 
+  def Reset(self):
+    """Sends a standard SCPI reset and waits for it to complete."""
+    # There is some misinteraction between the devices such that if we
+    # send *RST and *OPC? and then manually query with ++read,
+    # occasionally that ++read doesn't come back.  We currently depend
+    # on self.Query to turn on Prologix auto mode to avoid this
+    self.Send('*RST')
+    self.Query('*OPC?')
+
   def Read(self):
     """Read a response from the bridge."""
     response = self.read_side.readline()
@@ -68,10 +77,13 @@ class PrologixScpiDriver:
 
   def Query(self, command):
     """Send a GPIB command and return the response."""
+    self.SetAuto(1)
     self.Send(command)
     if not self.auto:
       self.Send('++read eoi')
-    return self.Read()
+    output = self.Read()
+    self.SetAuto(0)
+    return output
 
   def _DirectQuery(self, command):
     """Sends a query to the prologix (do not send ++read), return response."""

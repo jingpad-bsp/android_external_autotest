@@ -18,6 +18,18 @@ class BaseStationInterface(object):
   def Stop(self):
     raise NotImplementedError()
 
+  def GetAirStateVerifier(self):
+    return air_state_verifier.AirStateVerifierPermissive(self)
+
+
+  def SetBsIpV4(self, ip1, ip2):
+    """Sets basestation IPv4 addresses."""
+    raise NotImplementedError()
+
+  def SetBsNetmaskV4(self, netmask):
+    """Sets basestation netmask."""
+    raise NotImplementedError
+
   def SetFrequencyBand(self, band):
     """Sets the frequency used by the BS.  BS must be stopped.
 
@@ -38,6 +50,14 @@ class BaseStationInterface(object):
     Arguments:
       dbm:  Power, in dBm.  See class Power for useful constants.
     """
+    raise NotImplementedError()
+
+  def SetUeDnsV4(self, dns1, dns2):
+    """Set the DNS values provided to the UE.  Emulator must be stopped."""
+    raise NotImplementedError()
+
+  def SetUeIpV4(self, ip1, ip2=None):
+    """Set the IP addresses provided to the UE.  Emulator must be stopped."""
     raise NotImplementedError()
 
   def GetUeDataStatus(self):
@@ -82,4 +102,13 @@ class BaseStationInterface(object):
               o_address=cellular.SmsAddress('8960'),
               dcs=0xf0):
     """Sends the supplied SMS message."""
+    raise NotImplementedError()
+
+  def SetUeIpV4(self, ip, ip2=None):
+    """Sets the IP address assigned to the user equipment.
+
+    Arguments:
+      ip:  IP address, as a dotted-quad string.
+      ip2:  Secondary IP address.  Not set if not supplied
+    """
     raise NotImplementedError()

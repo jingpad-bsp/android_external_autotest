@@ -16,7 +16,7 @@ class Scpi(object):
   SCPI = "standard commands for programmable instruments",
   a relative of GPIB.
 
-  The SCPI driver must export two methods:  Send, and Query
+  The SCPI driver must export:  Send, Query, and Reset
   """
 
   def __init__(self, driver, opc_on_stanza=False):
@@ -35,6 +35,12 @@ class Scpi(object):
     """Send the SCPI command."""
     self.scpi_logger.info('] %s', command)
     self.driver.Send(command)
+
+  def Reset(self):
+    """Tell the device to reset with *RST."""
+    # Some devices (like the prologix) require special handling for
+    # reset.
+    self.driver.Reset()
 
   def RetrieveErrors(self):
     """Retrieves all SYSTem:ERRor messages from the device."""

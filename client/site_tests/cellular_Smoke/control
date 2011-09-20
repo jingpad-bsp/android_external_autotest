@@ -1,0 +1,22 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "ChromeOS Team"
+NAME = "cellular_Smoke"
+PURPOSE = "Verify cell modem can connect to an emulated network."
+CRITERIA = """Modem connects to an emulated network and show up as connected."""
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "network"
+TEST_TYPE = "client"
+
+DOC = """
+  Tests that a modem can connect to the network.
+"""
+
+from autotest_lib.client.cros.cellular import labconfig
+
+import logging
+
+job.run_test('cellular_Smoke', config=labconfig.get_test_config(args))
