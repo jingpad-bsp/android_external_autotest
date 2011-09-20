@@ -97,7 +97,8 @@ class platform_ToolchainOptions(test.test):
                     " -wholename '/home/chronos' -prune -o "
                     " %s "
                     " -type f -executable -exec "
-                    "sh -c 'file {} | grep -q ELF && "
+                    "sh -c 'file -m /usr/local/share/misc/magic.mgc "
+                    "{} | grep -q ELF && "
                     "(%s || echo {})' ';'")
         rootdir = "/"
         cmd = base_cmd % (rootdir, self.autodir, find_options, test_cmd)
@@ -223,4 +224,3 @@ class platform_ToolchainOptions(test.test):
         logging.debug(full_msg)
         if num_fails:
             raise error.TestFail(fail_summary_msg)
-
