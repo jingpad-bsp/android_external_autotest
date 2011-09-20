@@ -223,15 +223,12 @@ class network_3GSmokeTest(test.test):
               time.sleep(sleep_kludge)
 
     def run_once(self, connect_count=5, sleep_kludge=5):
-        backchannel.setup()
-        time.sleep(3)
-        self.flim = flimflam.FlimFlam()
-        self.device_manager = flimflam.DeviceManager(self.flim)
-        try:
-            self.device_manager.ShutdownAllExcept('cellular')
-            self.run_once_internal(connect_count, sleep_kludge)
-        finally:
+        with backchannel.Backchannel():
+            time.sleep(3)
+            self.flim = flimflam.FlimFlam()
+            self.device_manager = flimflam.DeviceManager(self.flim)
             try:
-                self.device_manager.RestoreDevices()
+                self.device_manager.ShutdownAllExcept('cellular')
+                self.run_once_internal(connect_count, sleep_kludge)
             finally:
-                backchannel.teardown()
+                self.device_manager.RestoreDevices()

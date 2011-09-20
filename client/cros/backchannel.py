@@ -5,6 +5,24 @@ import logging, os, subprocess
 from autotest_lib.client.common_lib import error, utils
 
 
+class Backchannel(object):
+    """Wrap backchannel in a context manager so it can be used with with.
+    Example usage:
+         with backchannel.Backchannel():
+                block
+    The backchannel will be torn down whether or not 'block' throws
+    """
+    def __init__(self, *args, **kwargs):
+        setup(*args, **kwargs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception, value, traceback):
+        teardown()
+        return False
+
+
 # Flag file used to tell backchannel script it's okay to run.
 BACKCHANNEL_FILE = '/mnt/stateful_partition/etc/enable_backchannel_network'
 
@@ -12,8 +30,8 @@ def backchannel(args):
     utils.system('/usr/local/lib/flimflam/test/backchannel %s' % args)
 
 def setup(interface='eth0', create_ssh_routes=True):
-    """Enables the backchannel interface and if specified creates routes so that
-    all existing SSH sessions will remain open."""
+    """Enables the backchannel interface and if specified creates
+    routes so that all existing SSH sessions will remain open."""
 
     # If the backchannel interface is already up there's nothing for us to do.
     if is_network_iface_running('eth_test'):
@@ -51,7 +69,7 @@ def setup(interface='eth0', create_ssh_routes=True):
     return True
 
 def teardown(interface='eth0'):
-  backchannel('teardown %s' % interface)
+    backchannel('teardown %s' % interface)
 
 def is_network_iface_running(name):
     try:
