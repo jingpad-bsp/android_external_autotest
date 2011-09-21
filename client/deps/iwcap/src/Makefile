@@ -9,6 +9,7 @@ MANDIR ?= $(PREFIX)/share/man
 MKDIR ?= mkdir -p
 INSTALL ?= install
 CC ?= "gcc"
+PKG_CONFIG ?= pkg-config
 
 CFLAGS ?= -O2 -g
 CFLAGS += -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration
@@ -16,8 +17,8 @@ CFLAGS += -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing 
 OBJS = iwcap.o
 ALL = iwcap
 
-NL1FOUND := $(shell pkg-config --atleast-version=1 libnl-1 && echo Y)
-NL2FOUND := $(shell pkg-config --atleast-version=2 libnl-2.0 && echo Y)
+NL1FOUND := $(shell $(PKG_CONFIG) --atleast-version=1 libnl-1 && echo Y)
+NL2FOUND := $(shell $(PKG_CONFIG) --atleast-version=2 libnl-2.0 && echo Y)
 
 ifeq ($(NL1FOUND),Y)
 NLLIBNAME = libnl-1
@@ -33,8 +34,8 @@ ifeq ($(NLLIBNAME),)
 $(error Cannot find development files for any supported version of libnl)
 endif
 
-LIBS += $(shell pkg-config --libs $(NLLIBNAME))
-CFLAGS += $(shell pkg-config --cflags $(NLLIBNAME))
+LIBS += $(shell $(PKG_CONFIG) --libs $(NLLIBNAME))
+CFLAGS += $(shell $(PKG_CONFIG) --cflags $(NLLIBNAME))
 
 ifeq ($(V),1)
 Q=
