@@ -17,7 +17,10 @@
 /usr/lib/opengl/xorg-x11/extensions/libdri.so
 /usr/lib/opengl/xorg-x11/extensions/libdri2.so
 /usr/lib/opengl/xorg-x11/extensions/libglx.so
+/usr/lib/xorg/modules/drivers/ati_drv.so
 /usr/lib/xorg/modules/drivers/intel_drv.so
+/usr/lib/xorg/modules/drivers/nouveau_drv.so
+/usr/lib/xorg/modules/drivers/radeon_drv.so
 /usr/lib/xorg/modules/drivers/vesa_drv.so
 /usr/lib/xorg/modules/drivers/vmware_drv.so
 /usr/lib/xorg/modules/extensions/libextmod.so
@@ -43,6 +46,9 @@
 /usr/lib/xorg/modules/multimedia/tda8425_drv.so
 /usr/lib/xorg/modules/multimedia/tda9850_drv.so
 /usr/lib/xorg/modules/multimedia/tda9885_drv.so
+/usr/lib/xorg/modules/multimedia/theatre200_drv.so
+/usr/lib/xorg/modules/multimedia/theatre_detect_drv.so
+/usr/lib/xorg/modules/multimedia/theatre_drv.so
 /usr/lib/xorg/modules/multimedia/uda1380_drv.so
 /usr/sbin/iotools
 /usr/sbin/vpd
