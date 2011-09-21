@@ -37,6 +37,6 @@ def _parse_test_args(raw_args):
   return { 'url': raw_args[1], 'cell': raw_args[2] }
 
 def get_test_config(raw_args):
-  args = parse_test_args(raw_args)
+  args = _parse_test_args(raw_args)
   config = fetch_json_config(args['url'])
   return config.GetCellByName(args['cell'])
