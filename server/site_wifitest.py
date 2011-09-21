@@ -595,7 +595,7 @@ class WiFiTest(object):
         return 'python "%s" %s' % (script_client_file, ' '.join(args))
 
 
-    def __wait_service_complete(self, result):
+    def __wait_service_complete(self, params, result):
         print "%s: %s" % (self.name, result)
 
         states = self.wait_service_states
@@ -621,10 +621,15 @@ class WiFiTest(object):
             self.write_perf({ index:float(intr) })
             print "  %s: %s" % (state, intr)
 
+            max = 'max_' + cstate
+            if max in params and float(intr) > float(params[max]):
+                raise error.TestFail('Too long to reach %s state: %f > %f' %
+                                     (cstate, float(intr), float(params[max])))
+
 
     def wait_service(self, params):
         result = self.client.run(self.__wait_service_start(params))
-        self.__wait_service_complete(result)
+        self.__wait_service_complete(params, result)
 
 
     def wait_service_suspend_bg(self, params):
@@ -634,7 +639,7 @@ class WiFiTest(object):
 
     def wait_service_suspend_end(self, params):
         self.client_suspend_end(params)
-        self.__wait_service_complete(self.client_suspend_thread.result)
+        self.__wait_service_complete(params, self.client_suspend_thread.result)
 
 
     def client_powersave_on(self, params):

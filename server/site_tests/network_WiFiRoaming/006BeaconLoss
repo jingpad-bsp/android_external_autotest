@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This tests how fast the DUT responds to beacon loss when AP completely
-# disappears
+# This tests how fast the DUT responds to beacon loss when an AP completely
+# disappears.  With a beacon interval of 100TU we expect the DUT to recognize
+# the AP is gone in ~1 sec (10 consecutive beacons).  Pad this in case it
+# automatically scans before marking the connection lost.
 { "name":"BeaconLoss",
   "steps":[
     [ "create",               { "type":"hostap" } ],
@@ -12,7 +14,8 @@
     [ "client_ping",          { "count":"10" } ],
     [ "sleep",                { "time":"5" } ],
     [ "deconfig",             { "silent":None } ],  # Exit AP without DEAUTH
-    [ "wait_service",         { "run_timeout":10,   # Timeout is 10 seconds
+    [ "wait_service",         { "run_timeout":20,   # Timeout is 20 seconds
+#                               "max_idle":5.5,     # Idle must happen in 5.5s
                                 "debug":True,       # Print state transitions
                                 "states":[
                                   (None, 'idle')    # Wait for transition to
@@ -25,7 +28,8 @@
     [ "client_ping",          { "count":"10" } ],
     [ "scan" ],
     [ "deconfig",             { "silent":None } ],  # Exit AP without DEAUTH
-    [ "wait_service",         { "run_timeout":10,   # Timeout is 10 seconds
+    [ "wait_service",         { "run_timeout":20,   # Timeout is 20 seconds
+#                               "max_idle":5.5,     # Idle must happen in 5.5s
                                 "debug":True,       # Print state transitions
                                 "states":[
                                   (None, 'idle')    # Wait for transition to
