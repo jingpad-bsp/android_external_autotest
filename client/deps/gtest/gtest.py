@@ -11,8 +11,8 @@ version = 1
 
 def setup(top_dir):
     # The copy the gtest files from the SYSROOT to the client
-    usr_lib = os.environ['SYSROOT'] + '/usr/lib'
-    os.chdir(usr_lib)
+    gtest = utils.run(os.environ['SYSROOT'] + '/usr/bin/gtest-config --libdir')
+    os.chdir(os.environ['SYSROOT'] + '/' + gtest.stdout.rstrip())
     utils.run('cp libgtest* ' + top_dir)
     
 pwd = os.getcwd()
