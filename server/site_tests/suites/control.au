@@ -18,6 +18,7 @@ to execution. The target machine is then imaged to the target version and a
 basic smoke test is run to verify functionality.
 """
 import os
+from autotest_lib.server import autoserv_parser
 
 
 # suite_Smoke client control file.
@@ -29,8 +30,16 @@ def run_client_test(machine):
 
     # Image the machine with the requested build. Run it as a test instead of
     # directly in the control file so useful log information is collected.
-    if job.run_test("autoupdate", host=host, update_url="%(update_url)s",
+    update_url = "%(update_url)s"
+    if job.run_test("autoupdate", host=host, update_url=update_url,
                     disable_sysinfo=True):
+        # Let the rest of Autotest know about the new update. Necessary to make
+        # sure test packages are served from the correct version. AU URLs are
+        # suffixed with ".../au/<build>" which must be stripped since the test
+        # packages are located at the image root.
+        autoserv_parser.autoserv_parser.options.image = (
+            update_url.rstrip('/').rsplit('/', 2)[0])
+
         # Execute client control file.
         autotest.Autotest(host).run(os.path.join(job.autodir, CLIENT_CONTROL))
 

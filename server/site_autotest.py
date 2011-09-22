@@ -1,3 +1,7 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 import os
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import autoserv_parser, installable_object
@@ -18,19 +22,15 @@ class SiteAutotest(installable_object.InstallableObject):
 
 
     def get_fetch_location(self):
-        if not parser.options.image:
-            return super(SiteAutotest, self).get_fetch_location()
+        """Autotest packages are always stored under the image URL."""
+        repos = super(SiteAutotest, self).get_fetch_location()
+        if parser.options.image:
+            # Add our new repo to the end, the package manager will later
+            # reverse the list of repositories resulting in ours being first.
+            repos.append(parser.options.image.replace(
+                'update', 'static/archive').rstrip('/') + '/autotest')
 
-        repos = config.get_config_value('PACKAGES', 'fetch_location', type=list,
-                                        default=[])
-        new_repos = []
-        for repo in repos[::-1]:
-            if repo.endswith('static/archive'):
-                path = parser.options.image.rstrip('/')
-                build = '/'.join(path.split('/')[-2:])
-                repo += '/%s/autotest' % build
-            new_repos.append(repo)
-        return new_repos
+        return repos
 
 
 class _SiteRun(object):

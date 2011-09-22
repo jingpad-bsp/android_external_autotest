@@ -354,7 +354,7 @@ class BaseAutotest(installable_object.InstallableObject):
         cmd = ';'.join('rm -f ' + control for control in delete_file_list)
         host.run(cmd, ignore_status=True)
 
-        tmppath = utils.get(control_file)
+        tmppath = utils.get(control_file, local_copy=True)
 
         # build up the initialization prologue for the control file
         prologue_lines = []
