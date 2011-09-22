@@ -28,12 +28,13 @@ class ChromeTestBase(test.test):
         login.nuke_process_by_name(name=constants.BROWSER, with_prejudice=True)
 
 
-    def initialize(self, nuke_browser_norestart = True):
+    def initialize(self, nuke_browser_norestart=True, skip_deps=False):
         self.home_dir = tempfile.mkdtemp()
         os.chmod(self.home_dir, stat.S_IROTH | stat.S_IWOTH |stat.S_IXOTH)
         dep = 'chrome_test'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
+        if not skip_deps:
+            self.job.install_pkg(dep, 'dep', dep_dir)
         self.cr_source_dir = '%s/test_src' % dep_dir
         self.test_binary_dir = '%s/out/Release' % self.cr_source_dir
         if (nuke_browser_norestart):
@@ -46,7 +47,7 @@ class ChromeTestBase(test.test):
             raise error.TestError(e)
 
 
-    def filter_bad_tests(self, tests, blacklist = None):
+    def filter_bad_tests(self, tests, blacklist=None):
         matcher = re.compile(".+\.(FLAKY|FAILS|DISABLED).+")
         if blacklist:
           return filter(lambda(x): not matcher.match(x) and x not in blacklist,
@@ -83,13 +84,13 @@ class ChromeTestBase(test.test):
         return all_tests
 
 
-    def run_chrome_test(self, test_to_run, extra_params=''):
+    def run_chrome_test(self, test_to_run, extra_params='', prefix=''):
         try:
             os.chdir(self.home_dir)
             cmd = '%s/%s %s' % (self.test_binary_dir, test_to_run, extra_params)
             cmd = 'HOME=%s CR_SOURCE_ROOT=%s %s' % (self.home_dir,
                                                     self.cr_source_dir,
-                                                    cmd)
+                                                    prefix + cmd)
             cros_ui.xsystem_as(cmd)
         except error.CmdError, e:
             logging.debug(e)
