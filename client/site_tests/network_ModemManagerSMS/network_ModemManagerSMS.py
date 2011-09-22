@@ -115,6 +115,7 @@ class network_ModemManagerSMS(test.test):
                                                    net_device +
                                                    parent_device),
                     'FAKEGUDEV_BLOCK_REAL' : 'true',
+                    'G_DEBUG' : 'fatal_criticals',
                     'LD_PRELOAD' : os.path.join(self.autodir,
                                                 "deps/fakegudev/lib",
                                                 "libfakegudev.so") }
@@ -233,16 +234,18 @@ class network_ModemManagerSMS(test.test):
       return
 
     if expected is None:
-      raise error.TestFail("SMS.Get(%d) succeeded" % (index))
+      logging.info("Got %s" % (sms))
+      raise error.TestFail("SMS.Get(%d) succeeded unexpectedly" % (index))
     if self.compare(expected, sms) == False:
-      raise error.TestFail("SMS did not match expected values;" +
-                           " got %s, expected %s" % (sms, expected))
+      logging.info("Got %s, expected %s" % (sms, expected))
+      raise error.TestFail("SMS.Get(%d) did not match expected values" %
+                           (index))
 
   def test_delete(self, index, expected_success):
     try:
       self.gsmsms.Delete(index)
       if expected_success == False:
-        raise error.TestFail("SMS.Delete(%d) succeeded" % (index))
+        raise error.TestFail("SMS.Delete(%d) succeeded unexpectedly" % (index))
     except dbus.DBusException, db:
       if expected_success:
         raise
@@ -260,16 +263,15 @@ class network_ModemManagerSMS(test.test):
   def test_list(self, expected_list):
     sms_list = self.gsmsms.List()
     if self.compare_list(expected_list, sms_list) == False:
-      raise error.TestFail("SMS.List() did not match expected values;" +
-                           " got %s, expected %s" % (sms_list, expected_list))
+      logging.info("Got %s, expected %s" % (sms_list, expected_list))
+      raise error.TestFail("SMS.List() did not match expected values")
 
-
-  def run_sms_test(self, testfunc, **kwargs):
+  def run_sms_test(self, testfunc, *args, **kwargs):
     self.start_programs(modem_pattern_files=['fake-gsm', 'fake-icera'])
     self.sms_init()
     self.gsmsms = self.mm.GsmSms(self.modem_object_path)
 
-    testfunc(**kwargs)
+    testfunc(*args, **kwargs)
 
     self.stop_programs()
 
@@ -279,6 +281,7 @@ class network_ModemManagerSMS(test.test):
     self.test_delete(1, False)
     self.test_delete(2, False)
 
+  # Side effect: Deletes SMS 1
   def test_sms_has_one(self, parsed_sms):
     self.test_list([parsed_sms])
     self.test_get(1, parsed_sms)
@@ -291,6 +294,50 @@ class network_ModemManagerSMS(test.test):
     self.sms_insert(1, testsms['pdu'])
     self.test_sms_has_one(testsms['parsed'])
     self.sms_remove(1)
+    self.test_sms_has_none()
+
+  def test_sms_arrive(self):
+    testsms = sms_sample[0]
+    self.test_sms_has_none()
+    self.sms_insert(1, testsms['pdu'])
+    self.fakemodem.SendUnsolicited('+CMTI: "ME",1')
+    # TODO: check for the signals
+    self.test_sms_has_one(testsms['parsed'])
+    self.sms_remove(1)
+    self.test_sms_has_none()
+
+  def test_sms_multipart(self):
+    self.test_sms_has_none()
+    testsms = sms_sample[1]
+    self.sms_insert(1, testsms['pdu'][0])
+    self.fakemodem.SendUnsolicited('+CMTI: "ME",1')
+    # TODO: check for the Received signal
+    # Can't use test_sms_has_none() here because it will delete the
+    # partial message
+    self.test_list([])
+    self.test_get(1, None)
+    self.sms_insert(2, testsms['pdu'][1])
+    self.fakemodem.SendUnsolicited('+CMTI: "ME",2')
+    # TODO: check for the Completed signal
+    self.test_sms_has_one(testsms['parsed'])
+    self.sms_remove(1)
+    self.sms_remove(2)
+    self.test_sms_has_none()
+
+  def test_sms_multipart_reverse(self):
+    self.test_sms_has_none()
+    testsms = sms_sample[1]
+    self.sms_insert(1, testsms['pdu'][1])
+    self.fakemodem.SendUnsolicited('+CMTI: "ME",1')
+    # Can't use test_sms_has_none() here because it will delete the
+    # partial message
+    self.test_list([])
+    self.test_get(1, None)
+    self.sms_insert(2, testsms['pdu'][0])
+    self.fakemodem.SendUnsolicited('+CMTI: "ME",2')
+    self.test_sms_has_one(testsms['parsed'])
+    self.sms_remove(1)
+    self.sms_remove(2)
     self.test_sms_has_none()
 
 
@@ -308,6 +355,9 @@ class network_ModemManagerSMS(test.test):
     try:
       self.run_sms_test(self.test_sms_has_none)
       self.run_sms_test(self.test_sms_one)
+      self.run_sms_test(self.test_sms_arrive)
+      self.run_sms_test(self.test_sms_multipart)
+      self.run_sms_test(self.test_sms_multipart_reverse)
 
     finally:
       # Autotest will hang if there are still children running

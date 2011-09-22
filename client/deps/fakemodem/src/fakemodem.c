@@ -508,6 +508,7 @@ send_unsolicited (FakeModem *fakemodem, const gchar* text)
 {
   int rval;
 
+  rval = write (masterfd, "\r\n", 2);
   rval = write (masterfd, text, strlen (text));
   assert(strlen(text) == rval);
   rval = write (masterfd, "\r\n", 2);
