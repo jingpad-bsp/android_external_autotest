@@ -105,10 +105,22 @@ class UITest(pyauto_test.PyAutoTest):
 
     def __get_host_by_name(self, hostname):
         """Resolve the dotted-quad IPv4 address of |hostname|
+
+        This used to use suave python code, like this:
+            hosts = socket.getaddrinfo(hostname, 80, socket.AF_INET)
+            (fam, socktype, proto, canonname, (host, port)) = hosts[0]
+            return host
+
+        But that hangs sometimes, and we don't understand why.  So, use clunky
+        ping + regexps.
         """
-        hosts = socket.getaddrinfo(hostname, 80, socket.AF_INET)
-        (fam, socktype, proto, canonname, (host, port)) = hosts[0]
-        return host
+        try:
+            host = utils.system_output("ping -c 1 -w 1 -q %s" % hostname,
+                                       ignore_status=True, timeout=2)
+        except Exception as e:
+            logging.warning(e)
+            return None
+        return re.match("PING [^ ]+ \((.+)\) 56.*", host).group(1)
 
 
     def __attempt_resolve(self, hostname, ip, expected=True):
