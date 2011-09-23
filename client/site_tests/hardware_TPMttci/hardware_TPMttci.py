@@ -14,7 +14,7 @@ class hardware_TPMttci(test.test):
         smogcheck_util.enableI2C()
         self.ttci_obj = None
 
-    def _prepareTtciBoard(self):
+    def _prepareTtciController(self):
         """Prepare PcaController and InaController instances for use.
 
         Returns:
@@ -82,7 +82,7 @@ class hardware_TPMttci(test.test):
 
     def run_once(self):
         # Initialize modules on TTCI
-        self._prepareTtciBoard()
+        self._prepareTtciController()
 
         start_time = datetime.datetime.now()
         # Turn on LEDs sequentially

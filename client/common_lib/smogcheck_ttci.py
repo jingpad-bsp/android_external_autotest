@@ -189,7 +189,11 @@ def computeTimeElapsed(end, start):
     Args:
       end: a datetime.datetime() object, end timestamp.
       start: a datetime.datetime() object, start timestamp.
+
+    Returns:
+      usec: an integer.
     """
     t = end - start
     usec = 1000000 * t.seconds + t.microseconds
     logging.info('Elapsed time = %d usec', usec)
+    return usec

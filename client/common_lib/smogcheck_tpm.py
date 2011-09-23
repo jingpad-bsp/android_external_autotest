@@ -20,7 +20,9 @@ Notes:
    expects to check for error code per API definition
 """
 
-import logging
+import datetime, logging
+
+from autotest_lib.client.common_lib import smogcheck_ttci
 # Use explicit import to make code more readable
 from ctypes import c_uint, c_uint32, cdll, c_bool, Structure, POINTER, \
     c_ubyte, c_byte, byref, c_uint16, cast, create_string_buffer, c_uint64, \
@@ -28,19 +30,20 @@ from ctypes import c_uint, c_uint32, cdll, c_bool, Structure, POINTER, \
 
 # TPM flags
 # TODO(tgao): possible to import from trousers/src/include/tss/tss_defines.h?
-TSS_KEY_AUTHORIZATION = c_uint(0x1)
-TSS_KEY_TSP_SRK = c_uint(0x4000000)
-TSS_POLICY_USAGE = c_uint(0x1)
-TSS_OBJECT_TYPE_RSAKEY = c_uint(0x2)
-TSS_SECRET_MODE_SHA1 = c_uint(0x1000)
-TSS_TPMCAP_PROP_MANUFACTURER = c_uint32(0x12)
-TSS_TPMCAP_PROPERTY = c_uint32(0x13)
-TSS_TPMCAP_VERSION = c_uint32(0x14)
+TSS_KEY_AUTHORIZATION = c_uint32(0x00000001)
+TSS_KEY_TSP_SRK = c_uint32(0x04000000)
+TSS_POLICY_USAGE = c_uint32(0x00000001)
+TSS_OBJECT_TYPE_RSAKEY = c_uint(0x02)
+TSS_SECRET_MODE_SHA1 = c_uint32(0x00001000)
+TSS_SECRET_MODE_PLAIN = c_uint32(0x00001800)
+TSS_TPMCAP_PROP_MANUFACTURER = c_uint(0x12)
+TSS_TPMCAP_PROPERTY = c_uint(0x13)
+TSS_TPMCAP_VERSION = c_uint(0x14)
 TSS_TPMCAP_VERSION_VAL = c_uint32(0x15)
-TSS_TPMSTATUS_DISABLEOWNERCLEAR = c_uint32(0x1)
-TSS_TPMSTATUS_DISABLEFORCECLEAR = c_uint32(0x2)
-TSS_TPMSTATUS_PHYSICALSETDEACTIVATED = c_uint32(0x10)
-TSS_TPMSTATUS_SETTEMPDEACTIVATED = c_uint32(0x11)
+TSS_TPMSTATUS_DISABLEOWNERCLEAR = c_uint32(0x00000001)
+TSS_TPMSTATUS_DISABLEFORCECLEAR = c_uint32(0x00000002)
+TSS_TPMSTATUS_PHYSICALSETDEACTIVATED = c_uint32(0x00000010)
+TSS_TPMSTATUS_SETTEMPDEACTIVATED = c_uint32(0x00000011)
 
 # TODO(tgao): possible to import from trousers/src/include/tss/tpm.h?
 TPM_SHA1_160_HASH_LEN = c_uint(0x14)
@@ -60,6 +63,10 @@ TPM_SETACTIVE_OP = ['status', 'activate', 'deactivate', 'temp']
 # 'owner' = tpm_setclearable --well-known --owner
 # 'force' = tpm_setclearable --well-known --force
 TPM_SETCLEARABLE_OP = ['status', 'owner', 'force']
+
+# Secret mode for setPolicySecret()
+TSS_SECRET_MODE = dict(sha1=TSS_SECRET_MODE_SHA1,
+                       plain=TSS_SECRET_MODE_PLAIN)
 
 
 class SmogcheckError(Exception):
@@ -212,6 +219,10 @@ class TpmController(object):
     def setupContext(self):
         """Sets up tspi context for TPM access.
 
+        TPM context cannot be reused. Therefore, each new Tspi_* command would
+        require a new context to be set up before execution and closing that
+        context after execution (or error).
+
         Raises:
           SmogcheckError: if an error is encountered.
         """
@@ -222,19 +233,19 @@ class TpmController(object):
         if self.tspi_lib.Tspi_Context_Create(byref(self.hContext)) != 0:
             raise SmogcheckError('Error creating tspi context')
 
-        logging.info('tspi context created')
+        logging.info('Created tspi context = 0x%x', self.hContext.value)
 
         if self.tspi_lib.Tspi_Context_Connect(self.hContext,
                                               POINTER(c_uint16)()) != 0:
             raise SmogcheckError('Error connecting to tspi context')
 
-        logging.info('tspi context connected')
+        logging.info('Connected to tspi context')
 
         if self.tspi_lib.Tspi_Context_GetTpmObject(self.hContext,
                                                    byref(self.hTpm)) != 0:
             raise SmogcheckError('Error getting TPM object from tspi context')
 
-        logging.info('Got tpm object from tspi context')
+        logging.info('Got tpm object from tspi context = 0x%x', self.hTpm.value)
         self._contextSet = True
 
     def _getTpmStatus(self, flag, bValue):
@@ -293,19 +304,24 @@ class TpmController(object):
         if hPolicy is None:
             hPolicy = self.hTpmPolicy
 
+        logging.debug('Tspi_GetPolicyObject(): hTpm = 0x%x, hPolicy = 0x%x',
+                      hTpm.value, hPolicy.value)
         result = self.tspi_lib.Tspi_GetPolicyObject(hTpm, TSS_POLICY_USAGE,
                                                     byref(hPolicy))
         if result != 0:
             msg = 'Error (0x%x) getting TPM policy object' % result
             raise SmogcheckError(msg)
 
-        logging.debug('Tspi_GetPolicyObject() success')
+        logging.debug('Tspi_GetPolicyObject() success hTpm = 0x%x, '
+                      'hPolicy = 0x%x', hTpm.value, hPolicy.value)
 
-    def setPolicySecret(self, hPolicy=None):
+    def setPolicySecret(self, hPolicy=None, pSecret=None, secret_mode=None):
         """Sets TPM policy secret.
 
         Args:
           hPolicy: a c_uint, TPM policy object handle.
+          pSecret: a pointer to a byte array, which holds the TSS secret.
+          secret_mode: a string, valid values are keys of TSS_SECRET_MODE.
 
         Raises:
           SmogcheckError: if an error is encountered.
@@ -313,19 +329,25 @@ class TpmController(object):
         if hPolicy is None:
             hPolicy = self.hTpmPolicy
 
-        # Defaults each byte value to 0x00
-        well_known_secret = create_string_buffer(20)
-        pSecret = c_char_p(addressof(well_known_secret))
+        if pSecret is None:
+            raise SmogcheckError('setPolicySecret(): pSecret cannot be None')
+
+        if secret_mode is None or secret_mode not in TSS_SECRET_MODE:
+            raise SmogcheckError('setPolicySecret(): invalid secret_mode')
+
+        logging.debug('Tspi_Policy_SetSecret(): hPolicy = 0x%x, secret_mode '
+                      '(%r) = %r', hPolicy.value, secret_mode,
+                      TSS_SECRET_MODE[secret_mode])
 
         result = self.tspi_lib.Tspi_Policy_SetSecret(
-            hPolicy, TSS_SECRET_MODE_SHA1, TPM_SHA1_160_HASH_LEN, pSecret)
+            hPolicy, TSS_SECRET_MODE[secret_mode], TPM_SHA1_160_HASH_LEN,
+            pSecret)
         if result != 0:
             msg = 'Error (0x%x) setting TPM policy secret' % result
             raise SmogcheckError(msg)
 
-        logging.debug('Tspi_Policy_SetSecret() success')
-
-    ### Begin porting of tpm-tools commands ###
+        logging.debug('Tspi_Policy_SetSecret() success, hPolicy = 0x%x',
+                      hPolicy.value)
 
     def getTpmVersion(self):
         """Gets TPM version info.
@@ -376,23 +398,28 @@ class TpmController(object):
         """
         uiResultLen = c_uint32(0)
         pResult = c_char_p()
+        self.setupContext()
 
-        logging.debug('Successfully set up tspi context: hTpm = %r', self.hTpm)
+        logging.debug('Successfully set up tspi context: hTpm = 0x%x',
+                      self.hTpm.value)
 
         result = self.tspi_lib.Tspi_TPM_SelfTestFull(self.hTpm)
         if result != 0:
+            self.closeContext()
             raise SmogcheckError('Error (0x%x) with TPM self test' % result)
 
-        logging.info('Successfully executed TPM self test')
+        logging.info('Successfully executed TPM self test: hTpm = 0x%x',
+                     self.hTpm.value)
         result = self.tspi_lib.Tspi_TPM_GetTestResult(
             self.hTpm, byref(uiResultLen), byref(pResult))
         if result != 0:
+            self.closeContext()
             raise SmogcheckError('Error (0x%x) getting test results' % result)
 
-        logging.info('Successfully got test results: '
-                     'uiResultLen = %d, pResult=%r', uiResultLen.value,
-                     pResult.value)
+        logging.info('TPM self test results: uiResultLen = %d, pResult=%r',
+                     uiResultLen.value, pResult.value)
         PrintSelfTestResult(uiResultLen.value, pResult)
+        self.closeContext()
 
     def takeTpmOwnership(self):
         """Take TPM ownership.
@@ -402,16 +429,23 @@ class TpmController(object):
         Raises:
           SmogcheckError: if an error is encountered.
         """
-        hSrk = c_uint32(0)
+        hSrk = c_uint32(0)  # TPM Storage Root Key
         hSrkPolicy = c_uint32(0)
+        # Defaults each byte value to 0x00
+        well_known_secret = create_string_buffer(20)
+        pSecret = c_char_p(addressof(well_known_secret))
 
-        logging.debug('Successfully set up tspi context: hTpm = %r', self.hTpm)
+        self.setupContext()
+        logging.debug('Successfully set up tspi context: hTpm = 0x%x',
+                      self.hTpm.value)
 
-        self.getPolicyObject()
         try:
-            self.setPolicySecret()
+            self.getPolicyObject()
+            self.setPolicySecret(pSecret=pSecret, secret_mode='sha1')
         except SmogcheckError:
-            self._closeContextObject(hSrk)
+            if hSrk != 0:
+                self._closeContextObject(hSrk)
+            self.closeContext()
             raise  # re-raise
 
         flag = TSS_KEY_TSP_SRK.value | TSS_KEY_AUTHORIZATION.value
@@ -420,20 +454,37 @@ class TpmController(object):
         if result != 0:
             raise SmogcheckError('Error (0x%x) creating context object' %
                                  result)
+        logging.debug('hTpm = 0x%x, flag = 0x%x, hSrk = 0x%x',
+                      self.hTpm.value, flag, hSrk.value)  # DEBUG
 
         try:
-            self.getPolicyObject(hSrk, hSrkPolicy)
-            self.setPolicySecret(hSrkPolicy)
+            self.getPolicyObject(hTpm=hSrk, hPolicy=hSrkPolicy)
+            self.setPolicySecret(hPolicy=hSrkPolicy, pSecret=pSecret,
+                                 secret_mode='sha1')
         except SmogcheckError:
-            self._closeContextObject(hSrk)
+            if hSrk != 0:
+                self._closeContextObject(hSrk)
+            self.closeContext()
             raise  # re-raise
 
-        result = self.tspi_lib.Tspi_TPM_TakeOwnership(self.hTpm, hSrk, 0)
+        logging.debug('Successfully set up SRK policy: secret = %r, '
+                      'hSrk = 0x%x, hSrkPolicy = 0x%x',
+                      well_known_secret.value, hSrk.value, hSrkPolicy.value)
+
+        start_time = datetime.datetime.now()
+        result = self.tspi_lib.Tspi_TPM_TakeOwnership(self.hTpm, hSrk,
+                                                      c_uint(0))
+        end_time = datetime.datetime.now()
         if result != 0:
+            logging.info('Tspi_TPM_TakeOwnership error')
             self._closeContextObject(hSrk)
+            self.closeContext()
             raise SmogcheckError('Error (0x%x) taking TPM ownership' % result)
 
         logging.info('Successfully took TPM ownership')
+        self._closeContextObject(hSrk)
+        self.closeContext()
+        return smogcheck_ttci.computeTimeElapsed(end_time, start_time)
 
     def clearTpm(self):
         """Return TPM to default state.
@@ -464,6 +515,9 @@ class TpmController(object):
           SmogcheckError: if an error is encountered.
         """
         bValue = c_bool()
+        # Defaults each byte value to 0x00
+        well_known_secret = create_string_buffer(20)
+        pSecret = c_char_p(addressof(well_known_secret))
 
         if op not in TPM_SETACTIVE_OP:
             msg = ('Invalid op (%s) for tpmSetActive(). Valid values are %r' %
@@ -474,7 +528,7 @@ class TpmController(object):
 
         if op == 'status':
             self.getPolicyObject()
-            self.setPolicySecret()
+            self.setPolicySecret(pSecret=pSecret, secret_mode='sha1')
 
             self._getTpmStatus(
                 TSS_TPMSTATUS_PHYSICALSETDEACTIVATED, bValue)
@@ -509,6 +563,9 @@ class TpmController(object):
           SmogcheckError: if an error is encountered.
         """
         bValue = c_bool()
+        # Defaults each byte value to 0x00
+        well_known_secret = create_string_buffer(20)
+        pSecret = c_char_p(addressof(well_known_secret))
 
         if op not in TPM_SETCLEARABLE_OP:
             msg = ('Invalid op (%s) for tpmSetClearable(). Valid values are %r'
@@ -519,7 +576,7 @@ class TpmController(object):
 
         if op == 'status':
             self.getPolicyObject()
-            self.setPolicySecret()
+            self.setPolicySecret(pSecret=pSecret, secret_mode='sha1')
 
             self._getTpmStatus(
                 TSS_TPMSTATUS_DISABLEOWNERCLEAR, bValue)
@@ -530,7 +587,7 @@ class TpmController(object):
             logging.info('Force Clear Disabled: %s', bValue.value)
         elif op == 'owner':
             self.getPolicyObject()
-            self.setPolicySecret()
+            self.setPolicySecret(pSecret=pSecret, secret_mode='sha1')
 
             self._setTpmStatus(
                 TSS_TPMSTATUS_DISABLEOWNERCLEAR, False)
