@@ -14,4 +14,4 @@ This test checks that, after logging in incognito, a cryptohome was mounted on
  tmpfs.  Then, it verifies that this tmpfs is unmounted on logout.
 """
 
-job.run_test('login_CryptohomeIncognitoUnmounted', creds='$backdoor')
+job.run_test('login_CryptohomeIncognitoUnmounted')
