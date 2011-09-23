@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, stat, time, utils
+import errno, logging, os, stat, time
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants
-from autotest_lib.client.cros import cros_ui_test, login, httpd
+from autotest_lib.client.cros import constants, cros_ui, cros_ui_test
+from autotest_lib.client.cros import httpd, login, pyauto_test
 
 def respond_with_cookies(handler, url_args):
     """Responds with a Set-Cookie header to any GET request, and redirects
@@ -22,17 +23,18 @@ def respond_with_cookies(handler, url_args):
 class login_ChromeProfileSanitary(cros_ui_test.UITest):
     version = 1
 
-    def __wait_for_login_profile(self, timeout=10):
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            if os.path.exists(constants.LOGIN_PROFILE + '/Cookies'):
-                break;
-            time.sleep(1)
-        else:
-            raise error.TestError('Login Profile took too long to populate')
+
+    def __get_cookies_mtime(self):
+        try:
+            cookies_info = os.stat(constants.LOGIN_PROFILE + '/Cookies')
+            return cookies_info[stat.ST_MTIME]
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                return None
+            raise
 
 
-    def initialize(self):
+    def initialize(self, creds='$default'):
         spec = 'http://localhost:8000'
         path = '/set_cookie'
         self._wait_path = '/test_over'
@@ -40,7 +42,7 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.add_url_handler('/set_cookie', respond_with_cookies)
         self._testServer.run()
-        super(login_ChromeProfileSanitary, self).initialize()
+        super(login_ChromeProfileSanitary, self).initialize(creds)
 
 
     def cleanup(self):
@@ -50,30 +52,29 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
 
     def run_once(self, timeout=10):
         # Get Default/Cookies mtime.
-        cookies_info = os.stat(constants.LOGIN_PROFILE + '/Cookies')
-        cookies_mtime = cookies_info[stat.ST_MTIME]
+        cookies_mtime = self.__get_cookies_mtime()
 
         # Wait for chrome to show, then "crash" it.
-        login.wait_for_initial_chrome_window()
         utils.nuke_process_by_name(constants.BROWSER, with_prejudice=True)
 
-        login.refresh_window_manager()
-        login.wait_for_browser()
-        login.wait_for_initial_chrome_window()
+        # Re-connect to automation channel.
+        self.pyauto.setUp()
 
         # Navigate to site that leaves cookies.
+        if not self.logged_in():
+            raise error.TestError('Logged out unexpectedly!')
         latch = self._testServer.add_wait_url(self._wait_path)
         self.pyauto.NavigateToURL(self._test_url)
-        latch.wait(timeout)
+        latch.wait(timeout)  # Redundant, but not a problem.
         if not latch.is_set():
             raise error.TestError('Never received callback from browser.')
 
         # Ensure chrome writes state to disk.
-        self.login()  # will logout automatically
+        self.logout()
+        self.login()
 
         # Check mtime of Default/Cookies.  If changed, KABLOOEY.
-        self.__wait_for_login_profile()
-        cookies_info = os.stat(constants.LOGIN_PROFILE + '/Cookies')
+        new_cookies_mtime = self.__get_cookies_mtime()
 
-        if cookies_mtime != cookies_info[stat.ST_MTIME]:
+        if new_cookies_mtime and cookies_mtime != new_cookies_mtime:
             raise error.TestFail('Cookies in Default profile changed!')
