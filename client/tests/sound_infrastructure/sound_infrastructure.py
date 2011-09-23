@@ -200,9 +200,6 @@ class sound_infrastructure(test.test):
                 '/proc/asound/card0/pcm1p/sub0/sw_params',
                 '/proc/asound/cards',
                 '/proc/asound/devices',
-                '/proc/asound/oss', # TODO(thutt): chromium-os:19340
-                '/proc/asound/oss/devices',
-                '/proc/asound/oss/sndstat',
                 '/proc/asound/pcm',
                 '/proc/asound/seq',
                 '/proc/asound/tegraseaboard',
@@ -274,9 +271,6 @@ class sound_infrastructure(test.test):
                 #              Reinstate after this test is testing
                 #              playing of sound.
                 #'/proc/asound/modules',  # Present only after sound played.
-                '/proc/asound/oss', # TODO(thutt): chromium-os:19340
-                '/proc/asound/oss/devices',
-                '/proc/asound/oss/sndstat',
                 '/proc/asound/pcm',
                 '/proc/asound/seq',
                 '/proc/asound/timers',
@@ -348,9 +342,6 @@ class sound_infrastructure(test.test):
                 '/proc/asound/cards',
                 '/proc/asound/devices',
                 '/proc/asound/hwdep',
-                '/proc/asound/oss', # TODO(thutt): chromium-os:19340
-                '/proc/asound/oss/devices',
-                '/proc/asound/oss/sndstat',
                 '/proc/asound/pcm',
                 '/proc/asound/seq',
                 '/proc/asound/timers',
@@ -408,9 +399,6 @@ class sound_infrastructure(test.test):
                     '/proc/asound/cards',
                     '/proc/asound/devices',
                     '/proc/asound/hwdep',
-                    '/proc/asound/oss',  # TODO(thutt): chromium-os:19340
-                    '/proc/asound/oss/devices',
-                    '/proc/asound/oss/sndstat',
                     '/proc/asound/pcm',
                     '/proc/asound/seq',
                     '/proc/asound/timers',
