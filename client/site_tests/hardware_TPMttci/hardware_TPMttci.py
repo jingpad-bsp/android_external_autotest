@@ -4,63 +4,14 @@
 
 import datetime, logging, subprocess, time
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, smogcheck_ttci
-
-
-def callI2Cproc(args, rc_list=None):
-    """Run a command in subprocess and return stdout.
-
-    Args:
-      args: a list of string, command to run.
-      rc_list: a list of int, acceptable return code values.
-
-    Returns:
-      out: a string, stdout of the command executed.
-      err: a string, stderr of the command executed, or None.
-
-    Raises:
-      RuntimeError: if subprocess return code is non-zero or not in rc_list.
-    """
-    if rc_list is None:
-        rc_list = []
-
-    # Sleep for 1 second so we don't overwhelm I2C bus with too many commands
-    time.sleep(1)
-    logging.debug('callI2Cproc args = %r; rc_list = %r', args, rc_list)
-    proc = subprocess.Popen(args,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    out, err = proc.communicate()
-    logging.error('callI2Cproc %s: out=%r, err=%r', args[0], out, err)
-    if proc.returncode and proc.returncode not in rc_list:
-        raise RuntimeError('callI2Cproc %s failed with returncode %d: %s' %
-                           (args[0], proc.returncode, out))
-    return str(out), str(err)
-
-
-def enableI2C():
-    """Enable i2c-dev so i2c-tools can be used.
-
-    Raises:
-      TestFail: if i2c-dev can't be enabled.
-    """
-    args = ['i2cdetect', '-l']
-    out, _ = callI2Cproc(args)
-    if not out:
-        logging.info('i2c-dev disabled. Enabling it with modprobe')
-        out, _ = callI2Cproc(['modprobe', 'i2c-dev'])
-        if out:
-            raise error.TestFail('Error enable i2c-dev: %s' % out)
-        out, _ = callI2Cproc(args)
-    logging.info('i2c-dev ready to go:\n%s', out)
-
+from autotest_lib.client.common_lib import error, smogcheck_ttci, smogcheck_util
 
 
 class hardware_TPMttci(test.test):
     version = 1
 
     def setup(self):
-        enableI2C()
+        smogcheck_util.enableI2C()
         self.ttci_obj = None
 
     def _prepareTtciBoard(self):
@@ -252,4 +203,4 @@ class hardware_TPMttci(test.test):
                                  self.ttci_obj.err)
 
         end_time = datetime.datetime.now()
-        smogcheck_ttci.computeTimeElapsed(end_time, start_time)
+        smogcheck_util.computeTimeElapsed(end_time, start_time)
