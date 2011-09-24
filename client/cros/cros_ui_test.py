@@ -165,18 +165,20 @@ class UITest(pyauto_test.PyAutoTest):
         """Clear the custom DNS setting for all devices and force them to use
         DHCP to pull the network's real settings again.
         """
-        # Set captive portal checking to whatever it was at the start.
-        self._flim.SetCheckPortalList(self.check_portal_list)
         # Clear all DNS settings and restart flimflam.
         for device in self._flim.GetObjectList('Device'):
             self.__alter_dns_for_device(device, self.__delete_dns_iptables_rule)
 
-        utils.poll_for_condition(
-            lambda: self.__attempt_resolve('www.google.com.',
-                                           '127.0.0.1',
-                                           expected=False),
-            login.TimeoutError('Timed out waiting to revert DNS.'),
-            timeout=10)
+        try:
+            utils.poll_for_condition(
+                lambda: self.__attempt_resolve('www.google.com.',
+                                               '127.0.0.1',
+                                               expected=False),
+                login.TimeoutError('Timed out waiting to revert DNS.'),
+                timeout=10)
+        finally:
+            # Set captive portal checking to whatever it was at the start.
+            self._flim.SetCheckPortalList(self.check_portal_list)
 
 
     def start_authserver(self):
