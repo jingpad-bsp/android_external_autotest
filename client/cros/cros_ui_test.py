@@ -45,6 +45,7 @@ class UITest(pyauto_test.PyAutoTest):
 
     _IPTABLES_RULE = 'iptables -t nat %s OUTPUT -p udp ' \
                      '-d %s --dport 53 -j DNAT --to-destination %s'
+    _iptables_rule_removers = []
 
     def __init__(self, job, bindir, outputdir):
         pyauto_test.PyAutoTest.__init__(self, job, bindir, outputdir)
@@ -77,32 +78,6 @@ class UITest(pyauto_test.PyAutoTest):
         self._flim = flimflam.FlimFlam(self._system_bus)
 
 
-    def __alter_dns_for_device(self, device, dns_op):
-        """Run |dns_op| for all DNS servers known for |device|
-
-        Given a flimflam DBus Device object, pull the IP address and
-        run dns_op(address, server) for all DNS servers associated
-        with that address.
-
-        Throws error.TestError upon failure.
-        """
-        properties = device.GetProperties()
-        interface = properties['Interface']
-        logging.debug('Considering ' + interface)
-        for path in properties['IPConfigs']:
-            ipconfig = self._flim.GetObjectInterface('IPConfig', path)
-            props = ipconfig.GetProperties()
-            servers = props.get('NameServers', None)
-            local_addr = props.get('Address', None)
-            if not local_addr:
-                raise error.TestError(interface + ' has no Address.')
-            if not servers:
-                raise error.TestError(interface + ' has no DNS servers.')
-            for server in servers:
-                dns_op(server, local_addr)
-
-
-
     def __get_host_by_name(self, hostname):
         """Resolve the dotted-quad IPv4 address of |hostname|
 
@@ -124,21 +99,41 @@ class UITest(pyauto_test.PyAutoTest):
 
 
     def __attempt_resolve(self, hostname, ip, expected=True):
-        logging.debug("Attempting to resolve %s to %s" % (hostname, ip))
+        logging.debug('Attempting to resolve %s to %s' % (hostname, ip))
         try:
             host = self.__get_host_by_name(hostname)
-            logging.debug("Resolve attempt for %s got %s" % (hostname, host))
+            logging.debug('Resolve attempt for %s got %s' % (hostname, host))
             return host and (host == ip) == expected
         except socket.gaierror as err:
             logging.error(err)
 
 
-    def __add_dns_iptables_rule(self, original, replacement):
-      utils.system(self._IPTABLES_RULE % ('-A', original, replacement))
+    def __alter_dns_for_device_and_register_remover(self, device):
+        """Reroute all DNS entries for |device| using iptables.
 
+        Given a flimflam DBus Device object, pull the IP address and
+        use IP tables to route all DNS servers associated with that
+        address to localhost.  Also store the command to remove that
+        rule later.
 
-    def __delete_dns_iptables_rule(self, original, replacement):
-      utils.system(self._IPTABLES_RULE % ('-D', original, replacement))
+        Throws error.TestError upon failure.
+        """
+        properties = device.GetProperties()
+        interface = properties['Interface']
+        logging.debug('Considering ' + interface)
+        for path in properties['IPConfigs']:
+            ipconfig = self._flim.GetObjectInterface('IPConfig', path)
+            props = ipconfig.GetProperties()
+            servers = props.get('NameServers', None)
+            local_addr = props.get('Address', None)
+            if not local_addr:
+                raise error.TestError(interface + ' has no Address.')
+            if not servers:
+                raise error.TestError(interface + ' has no DNS servers.')
+            for server in servers:
+                utils.system(self._IPTABLES_RULE % ('-A', server, local_addr))
+                self._iptables_rule_removers.append(
+                    self._IPTABLES_RULE % ('-D', server, local_addr))
 
 
     def use_local_dns(self, dns_port=53):
@@ -153,7 +148,7 @@ class UITest(pyauto_test.PyAutoTest):
         self._flim.SetCheckPortalList('')
         # Set all devices to use locally-running DNS server.
         for device in self._flim.GetObjectList('Device'):
-            self.__alter_dns_for_device(device, self.__add_dns_iptables_rule)
+            self.__alter_dns_for_device_and_register_remover(device)
 
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.', '127.0.0.1'),
@@ -165,10 +160,9 @@ class UITest(pyauto_test.PyAutoTest):
         """Clear the custom DNS setting for all devices and force them to use
         DHCP to pull the network's real settings again.
         """
-        # Clear all DNS settings and restart flimflam.
-        for device in self._flim.GetObjectList('Device'):
-            self.__alter_dns_for_device(device, self.__delete_dns_iptables_rule)
-
+        # Clear all iptables rules added earlier.
+        for remover in self._iptables_rule_removers:
+            utils.system(remover)
         try:
             utils.poll_for_condition(
                 lambda: self.__attempt_resolve('www.google.com.',
