@@ -6,15 +6,18 @@ PKGS := glib-2.0 dbus-glib-1
 PKG_CONFIG ?= pkg-config
 PKG_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PKGS))
 PKG_LIBS := $(shell $(PKG_CONFIG) --libs $(PKGS))
+
+CFLAGS ?= -O2
+CFLAGS += $(PKG_CFLAGS)
+CFLAGS += -g
 WARN := -Werror -Wall
-DEBUG := -g
-OPT   := -O2
+CFLAGS += $(WARN)
 
 all: fakemodem fakenet
 .PHONY: all clean install
 
 fakemodem: fakemodem.c fakemodem-dbus.h
-	$(CC) -o $@ $(WARN) $(OPT) $(DEBUG) $(PKG_CFLAGS) $< $(PKG_LIBS)
+	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< $(PKG_LIBS)
 
 fakemodem-dbus.h: fakemodem-dbus.xml
 	dbus-binding-tool --mode=glib-server --prefix=fakemodem \
@@ -22,7 +25,7 @@ fakemodem-dbus.h: fakemodem-dbus.xml
 	mv $@.tmp $@
 
 fakenet: fakenet.c
-	$(CC) -o $@ $(WARN) $(OPT) $(DEBUG)  $<
+	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $(LDFLAGS)  $<
 
 install:
 	install -m 0755 -d $(DESTDIR)/bin
