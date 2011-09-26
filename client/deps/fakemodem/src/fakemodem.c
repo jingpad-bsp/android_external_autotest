@@ -7,6 +7,7 @@
 #define _POSIX_C_SOURCE 201108L
 #define _XOPEN_SOURCE
 
+#include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -386,7 +387,9 @@ static gboolean master_read (GIOChannel *source, GIOCondition condition,
 
   if (fakemodem->echo) {
     rval = write (masterfd, line, term);
+    assert(term == rval);
     rval = write (masterfd, "\r\n", 2);
+    assert(2 == rval);
   }
 
   if (g_ascii_strncasecmp (line, "AT", 2) != 0) {
@@ -429,11 +432,13 @@ done:
       response = "OK";
     rstr = g_strdup_printf("\r\n%s\r\n", response);
     rval = write (masterfd, rstr, strlen (rstr));
+    assert(strlen(rstr) == rval);
     g_free (rstr);
   } else {
     gchar *rstr;
     rstr = g_strdup_printf("%s\n", response);
     rval = write (masterfd, rstr, strlen (rstr));
+    assert(strlen(rstr) == rval);
     g_free (rstr);
   }
 
@@ -445,13 +450,11 @@ out:
 static const gchar *
 handle_cmd(FakeModem *fakemodem, const gchar *cmd)
 {
-  gchar *rstr;
   guint i;
   Pattern *pat;
 
   printf (" Cmd:  '%s'\n", cmd);
 
-  rstr = NULL;
   if (toupper (cmd[0]) >= 'A' && toupper (cmd[0]) <= 'Z') {
     switch (toupper (cmd[0])) {
       case 'E':
@@ -491,7 +494,9 @@ handle_cmd(FakeModem *fakemodem, const gchar *cmd)
     int rval;
     printf (" Reply: '%s'\n", pat->reply);
     rval = write (masterfd, pat->reply, strlen (pat->reply));
+    assert(strlen(pat->reply) == rval);
     rval = write (masterfd, "\r\n", 2);
+    assert(2 == rval);
   }
 
   return pat->responsetext; /* NULL implies "OK" and keep processing */
@@ -504,7 +509,9 @@ send_unsolicited (FakeModem *fakemodem, const gchar* text)
   int rval;
 
   rval = write (masterfd, text, strlen (text));
+  assert(strlen(text) == rval);
   rval = write (masterfd, "\r\n", 2);
+  assert(2 == rval);
 
   return TRUE;
 }
