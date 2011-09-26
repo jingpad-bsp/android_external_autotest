@@ -64,10 +64,10 @@ TEST_LIST = [
     OperatorTest(
         label_en='start',
         label_zw='開始',
-        autotest_name='factory_Dummy',
+        autotest_name='factory_Start',
         kbd_shortcut='e',
-        dargs={'quit_key':ord(' '),
-               'msg':'Hit SPACE to start testing...\n按 "空白鍵" 開始測試...'}),
+        dargs={'press_to_continue': True,
+               'require_external_power': True}),
 
     # The factory_ScriptWrapper allows interactive execution of
     # external scripts or programs with the output displayed in the
