@@ -22,20 +22,26 @@
     [ "config",         { "channel":"2437", "mode":"11b" } ],
 
     # Wait for the DUT to scan and acquire the AP at the new frequency
-    [ "wait_service",   { "run_timeout":20, # Give up in 20 seconds
-                          "debug":True, # Output all state changes
-                          "states":
-                            [(None, '+ready')] # Wait for svc to go "ready"
-                         } ],
+    [ "sleep",          { "time":"10" } ],
+
+    # Verify that we're still connected
     [ "client_ping",    { "count":"10" } ],
-    [ "deconfig" ],
+
+    # Verify that the client switched to new frequency
+    [ "client_check_frequency", [ "2437" ] ],
 
     # Repeat the same test at a different frequency
+    [ "deconfig" ],
     [ "config",         { "channel":"2462", "mode":"11b" } ],
-    [ "wait_service",   { "run_timeout":20,
-                          "debug":True,
-                          "states":[(None, '+ready')] } ],
+
+    # Wait for the DUT to scan and acquire the AP at the new frequency
+    [ "sleep",          { "time":"10" } ],
+
+    # Verify that we're still connected
     [ "client_ping",    { "count":"10" } ],
+
+    # Verify that the client switched to new frequency
+    [ "client_check_frequency", [ "2462" ] ],
 
     [ "destroy" ],
   ],
