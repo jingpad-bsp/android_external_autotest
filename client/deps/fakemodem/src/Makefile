@@ -17,7 +17,8 @@ fakemodem: fakemodem.c fakemodem-dbus.h
 
 fakemodem-dbus.h: fakemodem-dbus.xml
 	dbus-binding-tool --mode=glib-server --prefix=fakemodem \
-	    fakemodem-dbus.xml > fakemodem-dbus.h
+		$< > $@.tmp
+	mv $@.tmp $@
 
 fakenet: fakenet.c
 	$(CC) -o $@ $(WARN) $(OPT) $(DEBUG)  $<
