@@ -13,12 +13,10 @@ This template implements chart point click-through to the data.
     '{{ job_tag }}'{% if not forloop.last %},{% endif %}
     {% endfor %}
     ];
-    window.open(
-        'http://cautotest/results/' +
-        build_tags[chart.getSelection()[0].row] +
-        '/' + '{{ tpl_chart.test_name }}' +
-        '/results/keyval');
-      });
+    window.open('http://cautotest/results/' +
+                build_tags[chart.getSelection()[0].row] +
+                '/' + '{{ tpl_chart.test_name }}' + '/results');
+    });
     {% endblock %}
     {% block subtitle_block %}
     <h5>
