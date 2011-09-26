@@ -3,8 +3,9 @@
 # found in the LICENSE file.
 
 PKGS := glib-2.0 dbus-glib-1
-PKG_CFLAGS := $(shell pkg-config --cflags $(PKGS))
-PKG_LIBS := $(shell pkg-config --libs $(PKGS))
+PKG_CONFIG ?= pkg-config
+PKG_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PKGS))
+PKG_LIBS := $(shell $(PKG_CONFIG) --libs $(PKGS))
 WARN := -Werror -Wall
 DEBUG := -g
 OPT   := -O2
