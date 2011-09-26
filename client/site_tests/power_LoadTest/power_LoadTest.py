@@ -256,13 +256,12 @@ class power_LoadTest(cros_ui_test.UITest):
                 os.system('rm -f %s' % jsonfile)
         # re-enable powerd
         os.system('start powerd')
-        if login.logged_in():
-            self.logout()
         # cleanup backchannel interface
         if self._force_wifi:
             backchannel.teardown()
         if self._testServer:
             self._testServer.stop()
+        super(power_LoadTest, self).cleanup()
 
     def _percent_current_charge(self):
         return self._power_status.battery[0].charge_now * 100 / \
