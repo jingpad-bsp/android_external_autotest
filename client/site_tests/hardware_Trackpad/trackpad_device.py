@@ -48,10 +48,13 @@ class TrackpadDevice:
         Device event types and codes are imported from linux_input.
         '''
         ev_format = '%04x'
-        self.ev_code_dict = {'left':  ev_format % ABS_MT_POSITION_X,
-                             'right': ev_format % ABS_MT_POSITION_X,
-                             'up':    ev_format % ABS_MT_POSITION_Y,
-                             'down':  ev_format % ABS_MT_POSITION_Y}
+        ev_code_x = ev_format % ABS_MT_POSITION_X
+        ev_code_y = ev_format % ABS_MT_POSITION_Y
+        self.ev_code_dict = {'left':  (ev_code_x,),
+                             'right': (ev_code_x,),
+                             'up':    (ev_code_y,),
+                             'down':  (ev_code_y,),
+                             None:    (ev_code_x, ev_code_y)}
         # Event types
         self.EV_KEY = ev_format % EV_KEY
         self.EV_ABS = ev_format % EV_ABS
@@ -113,9 +116,17 @@ class TrackpadDevice:
 
     def get_2nd_finger_touch_time(self, direction):
         ''' Derive the device playback time when the 2nd finger touches '''
-        self.motion_code = '%s %s' % (self.EV_ABS, self.ev_code_dict[direction])
-        ev_seq_MTB = [self.second_finger_on_MTB, self.motion_code]
-        return self._find_event_time(ev_seq_MTB)
+        ev_time = None
+        # When the functionality is 'two_fingers_no_delay_2d' in config file,
+        # check the ABS_MT_POSITION_X or ABS_MT_POSITION_Y event time.
+        # Use the timestamp which occurs earlier.
+        for ev_code in self.ev_code_dict[direction]:
+            motion_code = '%s %s' % (self.EV_ABS, ev_code)
+            ev_seq_MTB = [self.second_finger_on_MTB, motion_code]
+            new_ev_time = self._find_event_time(ev_seq_MTB)
+            ev_time = new_ev_time if ev_time is None else min(ev_time,
+                                                              new_ev_time)
+        return ev_time
 
     def get_2nd_finger_lifted_time(self):
         ''' Derive the device playback time when the 2nd finger is lifted '''
