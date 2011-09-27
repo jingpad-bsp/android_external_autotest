@@ -26,9 +26,7 @@ job.run_test('desktopui_UrlFetch', live=False, tag='not-live')
 
 job.run_test('desktopui_KillRestart', binary='^chrome$', tag='chrome')
 job.run_test('desktopui_KillRestart', binary='^session_manager$', tag='session')
-# TODO(sheriff): Re-enable  desktopui_ScreenLocker when chromium-os:20641
-#                is fixed.
-# job.run_test('desktopui_ScreenLocker')
+job.run_test('desktopui_ScreenLocker')
 job.run_test('desktopui_WindowManagerFocusNewWindows')
 job.run_test('logging_CrashSender')
 job.run_test('logging_UserCrash')
