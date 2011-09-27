@@ -171,6 +171,18 @@ class Xcheck:
                 return d
         return None
 
+    def _get_general_direction(self):
+        ''' Get a general direction from functionality name '''
+        direction = self._get_direction()
+        if direction is not None:
+            return direction
+        directions = ['vert', 'horiz', 'alldir']
+        file_name = self._extract_func_name()
+        for d in directions:
+            if d in file_name:
+                return d
+        return None
+
     def _get_more_directions(self):
         ''' Get direction(s) from functionality name '''
         dir_dict = {'vert': ('up', 'down'),
@@ -413,11 +425,17 @@ class Xcheck:
             else:
                 crit_e = crit_sequence[index]
                 crit_e_type = crit_e[0]
+                # Add Button Wheel direction
+                # Support only 'up', 'down', 'left', 'right' at this time in
+                # sequence criteria.
+                # May support 'vert', 'horiz', and 'alldir' later if needed.
+                if crit_e_type == 'Button Wheel':
+                    crit_e_type = self._get_button_wheel_label_per_direction()
             return (crit_e, crit_e_type)
 
         op_le = self.op_dict['<=']
         axis_dict = {'left': 'x', 'right': 'x', 'up': 'y', 'down': 'y',
-                     None: ''}
+                     'vert': 'y', 'horiz': 'x', 'alldir': '', None: ''}
         self.seq_flag = True
         crit_move_ratio = self.criteria.get('move_ratio', 0)
 
@@ -450,19 +468,12 @@ class Xcheck:
                     index += 1
             (crit_e, crit_e_type) = _get_criteria(index, work_crit_sequence)
 
-            # Add Button Wheel direction
-            if crit_e_type == 'Button Wheel':
-                crit_e_type = self._get_button_wheel_label_per_direction()
-
             # When there is no detected motion, skip the motion criteria if any
             # and get next criteria in the sequence.
             if (not e_type.startswith('Motion') and
                 crit_e_type.startswith('Motion')):
                 index += 1
                 (crit_e, crit_e_type) = _get_criteria(index, work_crit_sequence)
-                # Add Button Wheel direction if the criteria is about Wheel
-                if crit_e_type == 'Button Wheel':
-                    crit_e_type = self._get_button_wheel_label_per_direction()
 
             # Pass this event if the criteria is a wildcard
             if crit_e_type == '*':
@@ -501,7 +512,7 @@ class Xcheck:
                             fail_para = (crit_e_type, str(e_value), str(crit_e))
                             break
                     elif crit_e_type == 'Motion_x_or_y':
-                        axis = axis_dict[self._get_direction()]
+                        axis = axis_dict[self._get_general_direction()]
                         motion_axis_dict = {'x': {'this':  motion_x_val,
                                                   'other': motion_y_val},
                                             'y': {'this':  motion_y_val,
