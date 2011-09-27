@@ -59,13 +59,14 @@ class network_3GSmokeTest(test.test):
           size:  Number of bytes to download.
           label:  Label to add to performance keyval keys.
         """
+        logging.info('FetchUrl')
 
         if not label:
             raise error.TestError('FetchUrl: no label supplied.')
 
         url = url_pattern % size
         start_time = time.time()
-        result = urllib2.urlopen(url)
+        result = urllib2.urlopen(url, timeout=self.fetch_timeout)
         bytes_received = len(result.read())
         fetch_time = time.time() - start_time
         if not fetch_time:
@@ -222,7 +223,8 @@ class network_3GSmokeTest(test.test):
               logging.info('Sleeping for %.1f seconds', sleep_kludge)
               time.sleep(sleep_kludge)
 
-    def run_once(self, connect_count=5, sleep_kludge=5):
+    def run_once(self, connect_count=5, sleep_kludge=5, fetch_timeout=120):
+        self.fetch_timeout = fetch_timeout
         with backchannel.Backchannel():
             time.sleep(3)
             self.flim = flimflam.FlimFlam()
