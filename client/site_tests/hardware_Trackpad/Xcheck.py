@@ -80,20 +80,32 @@ class Xcheck:
         motion_value = motion_crit[2]
         return (motion_op, motion_value)
 
-    def _button_criteria(self, button_crit):
+    def _button_criteria(self, button_labels, button_crit):
         ''' Create a list of button criteria
+        This supports a list of button_labels in a more flexible way.
 
-        button_crit: the criteria of a single specified button
-        TODO(josephsih): support a list of button criteria to make it flexible.
+        For example,
+        button_labels: ('Button Horiz Wheel Left', 'Button Horiz Wheel Right')
+        button_crit: ('Button Wheel', '>=', 10)
+
+        And assume that button_labels = (
+            'Button Left', 'Button Middle', 'Button Right',
+            'Button Wheel Up', 'Button Wheel Down',
+            'Button Horiz Wheel Left', 'Button Horiz Wheel Right', ...)
+
+        The result of this method is
+        ops =    (eq, eq, eq, eq, eq, ge, ge, ...)
+        values = ( 0,  0,  0,  0,  0, 10, 10, ...)
         '''
         len_button_labels = len(self.button_labels)
-        values = [0] * len_button_labels
         ops = [eq] * len_button_labels
+        values = [0] * len_button_labels
         if button_crit is not None:
-            button_label, button_op, button_value = button_crit
-            button_index = self.xbutton.get_index(button_label)
-            values[button_index] = button_value
-            ops[button_index] = self.op_dict[button_op]
+            for button_label in button_labels:
+                _, button_op, button_value = button_crit
+                button_index = self.xbutton.get_index(button_label)
+                ops[button_index] = self.op_dict[button_op]
+                values[button_index] = button_value
         return (ops, values)
 
     def _insert_nop(self, nop_str):
@@ -146,19 +158,39 @@ class Xcheck:
                         if s[0] == 'NOP':
                             self._insert_nop(s[1])
 
+    def _extract_func_name(self):
+        ''' Extract functionality name from the gesture file name '''
+        return self.gesture_file_name.split('-')[self.func_name_pos]
+
     def _get_direction(self):
+        ''' Get a specific direction from functionality name '''
         directions = ['up', 'down', 'left', 'right']
-        file_name = self.gesture_file_name.split('-')[self.func_name_pos]
+        file_name = self._extract_func_name()
         for d in directions:
             if d in file_name:
                 return d
         return None
 
-    def _get_button_wheel_label_per_direction(self):
-        ''' Use the direction in gesture file name to get correct button label
+    def _get_more_directions(self):
+        ''' Get direction(s) from functionality name '''
+        dir_dict = {'vert': ('up', 'down'),
+                    'horiz': ('left', 'right'),
+                    'alldir': ('up', 'down', 'left', 'right')}
+        direction = self._get_direction()
+        if direction is not None:
+            return (direction,)
+        file_name = self._extract_func_name()
+        for d in dir_dict.keys():
+            if d in file_name:
+                return dir_dict[d]
 
-        Extract scroll direction, e.g., 'up' or 'down', from the gesture file
-        name. Use the scroll direction to derive the correct button label.
+    def _get_button_wheel_label_per_direction(self):
+        ''' Use the specific direction in gesture file name to get
+        correct button label.
+
+        Extract the scroll direction ('up', 'down', 'left', or 'right')
+        from the gesture file name. Use the scroll direction to derive
+        the correct button label.
         E.g., for direction = 'up':
               'Button Wheel' in config file is replaced by 'Button Wheel Up'
         '''
@@ -166,13 +198,13 @@ class Xcheck:
         button_label = self.xbutton.wheel_label_dict[direction]
         return button_label
 
-    def _get_button_crit_per_direction(self):
-        ''' Use the direction in gesture file name to get correct button label
-            in button criteria
+    def _get_button_wheel_labels_from_directions(self):
+        ''' Use the direction(s) in gesture file name to get the corresponding
+        button wheel label(s)
         '''
-        button_crit = list(self.criteria['button'])
-        button_crit[0] = self._get_button_wheel_label_per_direction()
-        return button_crit
+        directions = self._get_more_directions()
+        button_labels = [self.xbutton.wheel_label_dict[d] for d in directions]
+        return button_labels
 
     ''' _verify_xxx()
     Generic verification methods for various functionalities / areas
@@ -196,10 +228,14 @@ class Xcheck:
             result list =          [True, True, True, ...]
             count_flag =           True   (which is the AND of the result_list)
         '''
+        if crit_button is None:
+            crit_button_labels = None
+        elif crit_button[0] == 'Button Wheel':
+            crit_button_labels = self._get_button_wheel_labels_from_directions()
+        else:
+            crit_button_labels = (crit_button[0],)
 
-        if crit_button is not None and crit_button[0] == 'Button Wheel':
-            crit_button = self._get_button_crit_per_direction()
-        op, crit_count = self._button_criteria(crit_button)
+        op, crit_count = self._button_criteria(crit_button_labels, crit_button)
         compare = self._compare(tuple(op))
 
         # Compare if all parsed button counts meet the criteria
