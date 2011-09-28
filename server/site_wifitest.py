@@ -109,7 +109,8 @@ class WiFiTest(object):
         # NB: server may not be reachable on the control network
 
         if not router['addr'].startswith('cisco'):
-            self.router = hosts.SSHHost(router['addr'])
+            self.router = hosts.SSHHost(router['addr'],
+                                        port=int(router.get('port',22)))
             # NB: truncate SSID to 32 characters
             self.defssid = self.__get_defssid(router['addr'])[0:32]
         else:
@@ -165,7 +166,8 @@ class WiFiTest(object):
         self.client_logfile = client.get("logfile", "/var/log/messages")
 
         if 'addr' in server:
-            self.server = hosts.SSHHost(server['addr'])
+            self.server = hosts.SSHHost(server['addr'],
+                                        port=int(server.get('port', 22)))
             self.server_at = autotest.Autotest(self.server)
             # if not specified assume the same as the control address
             self.server_wifi_ip = server.get('wifi_addr', self.server.ip)

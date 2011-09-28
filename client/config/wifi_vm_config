@@ -11,6 +11,7 @@
   # client/netbook running Chrome OS
   "client"      : {
     "addr": "127.0.0.1",
+    "port": "9222",
     "cmd_netperf_client": "/bin/false",
     "cmd_netperf_server": "/bin/false",
     "cmd_iperf_client": "/bin/false",
@@ -20,6 +21,7 @@
   # machine on router net for ping/netperf
   "server"      : {
     "addr": "127.0.0.1",
+    "port": "9222",
     "cmd_netperf_client": "/bin/false",
     "cmd_netperf_server": "/bin/false",
     "cmd_iperf_client": "/bin/false"
@@ -27,6 +29,7 @@
   # configurable wifi/router that can reached by ssh
   "router"      : {
     "addr": "127.0.0.1",
+    "port": "9222",
     "cmd_dhcpd": "/usr/local/sbin/dhcpd",
     "cmd_hostapd": "/usr/local/sbin/hostapd",
     "cmd_hostapd_cli": "/usr/local/bin/hostapd_cli",
