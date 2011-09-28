@@ -77,6 +77,9 @@ class sound_infrastructure(test.test):
             'controls': [ ],
             'files': [
                 '/etc/asound.state',
+                '/usr/bin/alsamixer',
+                '/usr/bin/amixer',
+                '/usr/sbin/alsactl',
                 '/usr/share/alsa/init/00main',
                 '/usr/share/alsa/init/default',
                 '/usr/share/alsa/init/hda',
@@ -221,8 +224,7 @@ class sound_infrastructure(test.test):
                 "numid=9,iface=MIXER,name='IEC958 Playback Pro Mask'",
                 "numid=10,iface=MIXER,name='IEC958 Playback Default'",
                 "numid=11,iface=MIXER,name='IEC958 Playback Switch'",
-                "numid=12,iface=MIXER,name='IEC958 Default PCM Playback"+\
-                  " Switch'",
+                "numid=12,iface=MIXER,name='IEC958 Default PCM Playback Switch'",
                 "numid=13,iface=MIXER,name='PCM Playback Volume'",
                 ],
             'files': [
