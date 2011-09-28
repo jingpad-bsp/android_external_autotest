@@ -92,8 +92,8 @@ class UITest(pyauto_test.PyAutoTest):
         try:
             # Temporarily strace ping to try to diagnose crosbug.com/19005
             host = utils.system_output(
-                'strace -o %s ping -c 1 -w 1 -q %s' % (
-                    self.resultsdir + '/ping_trace', hostname),
+                'strace -t -T -o %s ping -c 1 -w 1 -q %s' % (
+                    self.resultsdir + '/ping_trace-%s' % time.time(), hostname),
                 ignore_status=True, timeout=2)
         except Exception as e:
             logging.warning(e)
