@@ -7,10 +7,11 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 def old_or_missing_firmware_version():
-    f = open("/sys/devices/platform/chromeos_acpi/FWID")
+    f = os.popen("crossystem fwid")
     if not f:
         return True
     version = f.readline().strip()
+    f.close()
     logging.info("firmware version: %s", version)
     # Expect a dot-separated list of 6 elements.  Discard 1st element.
     v = re.split("\.", version)[1:]
@@ -28,6 +29,7 @@ def dict_from_command(command):
         k = match.group(1)
         v = match.group(2)
         dict[k] = v
+    out.close()
     return dict
 
 def expect(d, key, value):
@@ -37,7 +39,9 @@ def expect(d, key, value):
 
 def checkp(space, permission):
     c = "tpmc getp %s" % space
-    l = os.popen(c).readline()
+    out = os.popen(c)
+    l = out.readline()
+    out.close()
     if (not re.match(".*%s" % permission, l)):
         raise error.TestError("invalid response to %s: %s" % (c, l))
 
@@ -76,9 +80,11 @@ class hardware_TPMCheck(test.test):
             checkp("0x1008", "0x1")
 
             # Check kernel space UID
-            l = os.popen("tpmc read 0x1008 0x5").readline()
+            out = os.popen("tpmc read 0x1008 0x5")
+            l = out.readline()
             if (not re.match(".* 4c 57 52 47$", l)):
                 raise error.TestError("invalid kernel space UID: %s" % l)
+            out.close()
 
         finally:
-            utils.system("start tcsd", ignore_status=True)
+            utils.system("start tcsd")
