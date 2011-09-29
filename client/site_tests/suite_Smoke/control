@@ -39,6 +39,7 @@ job.run_test('login_LoginSuccess', tag='default')
 job.run_test('login_OwnershipApi')
 job.run_test('platform_FilePerms')
 job.run_test('platform_OSLimits')
+job.run_test('platform_ToolchainOptions')
 job.run_test('security_ProfilePermissions', creds='$default', tag='login')
 job.run_test('security_ProfilePermissions', creds=None, tag='BWSI')
 
