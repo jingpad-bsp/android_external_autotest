@@ -17,7 +17,7 @@ class desktopui_V8Bench(cros_ui_test.UITest):
         super(desktopui_V8Bench, self).initialize(creds)
 
 
-    def setup(self, tarball='v8_v5.tar.bz2'):
+    def setup(self, tarball='v8_v6.tar.bz2'):
         shutil.rmtree(self.srcdir, ignore_errors=True)
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
