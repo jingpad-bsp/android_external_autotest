@@ -90,11 +90,13 @@ class UITest(pyauto_test.PyAutoTest):
         ping + regexps.
         """
         try:
+            # TODO(cmasone): remove this debugging info when we fix 19005.
             # Temporarily strace ping to try to diagnose crosbug.com/19005
+            # Also temporarily log all output.
             host = utils.system_output(
                 'strace -t -T -o %s ping -c 1 -w 1 -q %s' % (
                     self.resultsdir + '/ping_trace-%s' % time.time(), hostname),
-                ignore_status=True, timeout=2)
+                ignore_status=True, timeout=2, retain_output=True)
         except Exception as e:
             logging.warning(e)
             return None
