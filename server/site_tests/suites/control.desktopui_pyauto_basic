@@ -27,7 +27,12 @@ TESTS = [
 
 # Produces gtest-style output
 GTESTS = [
-    ('desktopui_PyAutoLoginTests', {}),
+    ('desktopui_PyAutoFunctionalTests', {
+        'suite': 'CHROMEOS_LOGIN',
+        'auto_login': False,
+        'as_chronos': False,
+        'tag': 'CHROMEOS_LOGIN',
+    }),
     ('desktopui_PyAutoPerfTests', {}),
 ]
 
