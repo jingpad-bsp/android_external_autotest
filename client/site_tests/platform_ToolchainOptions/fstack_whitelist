@@ -1,11 +1,10 @@
 /bin/lsmod
 /lib/ld-2.10.1.so
 /lib/ld-2.11.1.so
-/lib/libBrokenLocale-2.10.1.so
-/lib/libBrokenLocale-2.11.1.so
-/lib/libSegFault.so
 /lib/libanl-2.10.1.so
 /lib/libanl-2.11.1.so
+/lib/libBrokenLocale-2.10.1.so
+/lib/libBrokenLocale-2.11.1.so
 /lib/libcidn-2.10.1.so
 /lib/libcidn-2.11.1.so
 /lib/libcrypt-2.10.1.so
@@ -36,6 +35,7 @@
 /lib/libresolv-2.11.1.so
 /lib/librt-2.10.1.so
 /lib/librt-2.11.1.so
+/lib/libSegFault.so
 /lib/libthread_db-1.0.so
 /lib/libutil-2.10.1.so
 /lib/libutil-2.11.1.so

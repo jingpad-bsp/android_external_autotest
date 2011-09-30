@@ -1,4 +1,5 @@
 /home/autotest/tests/logging_UserCrash/src/crasher_nobreakpad
+/opt/google/chrome/nacl_helper_bootstrap
 /opt/Qualcomm/QDLService2k/QDLService2kAcer
 /sbin/insmod.static
 /sbin/ldconfig
