@@ -86,21 +86,18 @@ class UITest(pyauto_test.PyAutoTest):
             (fam, socktype, proto, canonname, (host, port)) = hosts[0]
             return host
 
-        But that hangs sometimes, and we don't understand why.  So, use clunky
-        ping + regexps.
+        But that hangs sometimes, and we don't understand why.  So, use
+        a subprocess with a timeout.
         """
         try:
-            # TODO(cmasone): remove this debugging info when we fix 19005.
-            # Temporarily strace ping to try to diagnose crosbug.com/19005
-            # Also temporarily log all output.
-            host = utils.system_output(
-                'strace -t -T -o %s ping -c 1 -w 1 -q %s' % (
-                    self.resultsdir + '/ping_trace-%s' % time.time(), hostname),
-                ignore_status=True, timeout=2, retain_output=True)
+            host = utils.system_output('%s -c "import socket; '
+                                       'print socket.gethostbyname(\'%s\')"' % (
+                                       sys.executable, hostname),
+                                       ignore_status=True, timeout=2)
         except Exception as e:
             logging.warning(e)
             return None
-        return re.match("PING [^ ]+ \((.+)\) 56.*", host).group(1)
+        return host or None
 
 
     def __attempt_resolve(self, hostname, ip, expected=True):
