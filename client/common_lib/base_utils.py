@@ -43,6 +43,13 @@ DEFAULT_STDERR_LEVEL = logging.ERROR
 STDOUT_PREFIX = '[stdout] '
 STDERR_PREFIX = '[stderr] '
 
+def custom_warning_handler(message, category, filename, lineno, file=None,
+                           line=None):
+    """Custom handler to log at the WARNING error level. Ignores |file|."""
+    logging.warning(warnings.formatwarning(message, category, filename, lineno,
+                                           line))
+
+warnings.showwarning = custom_warning_handler
 
 def get_stream_tee_file(stream, level, prefix=''):
     if stream is None:
