@@ -76,7 +76,8 @@ class sound_infrastructure(test.test):
         'ALL': {                # Things common to all sound codecs
             'controls': [ ],
             'files': [
-                '/etc/asound.state',
+                '/etc/init/adhd.conf', # Upstart script, from ADHD package
+                '/etc/asound.state',   # Factory defaults.  From ADHD.
                 '/usr/bin/alsamixer',
                 '/usr/bin/amixer',
                 '/usr/sbin/alsactl',
