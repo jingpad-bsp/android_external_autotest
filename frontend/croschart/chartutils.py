@@ -17,25 +17,34 @@ import re
 FIELD_SEPARATOR = ','
 BUILD_PART_SEPARATOR = ' '
 
-BUILD_PATTERN = re.compile(
+BUILD_PATTERN1 = re.compile(
     '([\w\-]+-r[c0-9]+)-([\d]+\.[\d]+\.[\d]+\.[\d]+)-([ar][\w]*)-(b[\d]+)')
+BUILD_PATTERN2 = re.compile(
+    '([\w\-]+-r[c0-9]+)-(R[\d]+-[\d]+\.[\d]+\.[\d]+)-([ar][\w]*)-(b[\d]+)')
 
 
 def AbbreviateBuild(build, chrome_versions, with_board=False):
   """Condense full build string for x-axis representation."""
-  m = re.match(BUILD_PATTERN, build)
-  if not m or m.lastindex < 4:
+  m = re.match(BUILD_PATTERN1, build)
+  if not m or not len(m.groups()) == 4:
+    m = re.match(BUILD_PATTERN2, build)
+  if not m or not len(m.groups()) == 4:
     logging.warning('Skipping poorly formatted build: %s.', build)
     return None
   chrome_version = ''
-  if chrome_versions and m.group(2) in chrome_versions:
-    chrome_version = '%s(%s)' % (BUILD_PART_SEPARATOR,
-                                 chrome_versions[m.group(2)])
-  if with_board:
-    new_build = '%s%s%s-%s%s' % (m.group(1), BUILD_PART_SEPARATOR,
-                                 m.group(2), m.group(4), chrome_version)
+  release_part, build_part, sequence_part = m.group(1, 2, 4)
+  if build_part[0] == 'R':
+    chrome_lookup = build_part.split('-')[1]
   else:
-    new_build = '%s-%s%s' % (m.group(2), m.group(4), chrome_version)
+    chrome_lookup = build_part
+  if chrome_versions and chrome_lookup in chrome_versions:
+    chrome_version = '%s(%s)' % (BUILD_PART_SEPARATOR,
+                                 chrome_versions[chrome_lookup])
+  if with_board:
+    new_build = '%s%s%s-%s%s' % (release_part, BUILD_PART_SEPARATOR,
+                                 build_part, sequence_part, chrome_version)
+  else:
+    new_build = '%s-%s%s' % (build_part, sequence_part, chrome_version)
 
   return new_build
 
