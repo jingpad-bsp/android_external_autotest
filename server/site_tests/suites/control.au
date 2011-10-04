@@ -17,12 +17,8 @@ The test relies on Autotest to image the machine to the proper base image prior
 to execution. The target machine is then imaged to the target version and a
 basic smoke test is run to verify functionality.
 """
-import os
+import os, shutil, tempfile
 from autotest_lib.server import autoserv_parser
-
-
-# suite_Smoke client control file.
-CLIENT_CONTROL = "client/site_tests/suite_Smoke/control"
 
 
 def run_client_test(machine):
@@ -40,8 +36,21 @@ def run_client_test(machine):
         autoserv_parser.autoserv_parser.options.image = (
             update_url.rstrip('/').rsplit('/', 2)[0])
 
-        # Execute client control file.
-        autotest.Autotest(host).run(os.path.join(job.autodir, CLIENT_CONTROL))
+        at = autotest.Autotest(host)
+
+        # Fetch smoke suite package for the build we're testing. Since the repo
+        # list returned by at.get_fetch_location() is ordered from least to
+        # greatest, take the last entry.
+        smoke_temp = tempfile.mkdtemp(dir=job.tmpdir)
+        job.pkgmgr.add_repository(at.get_fetch_location()[-1])
+        job.pkgmgr.install_pkg('suite_Smoke', 'test', smoke_temp, smoke_temp,
+                               preserve_install_dir=True)
+
+        # Execute smoke suite control file 'installed' from package.
+        at.run(os.path.join(smoke_temp, 'control'))
+
+        # Cleanup temp directory.
+        shutil.rmtree(smoke_temp)
 
 
 job.parallel_on_machines(run_client_test, machines)
