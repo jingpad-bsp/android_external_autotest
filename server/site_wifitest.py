@@ -273,6 +273,7 @@ class WiFiTest(object):
         self.client_cmd_flimflam_lib = client.get('flimflam_lib',
                                                   '/usr/local/lib/flimflam')
         self.client_cmd_ping = client.get('cmd_ping', 'ping')
+        self.client_cmd_ping6 = client.get('cmd_ping6', 'ping6')
 
     def __get_wlan_devs(self, host):
         ret = []
@@ -434,13 +435,27 @@ class WiFiTest(object):
             if value is not None:
                 self.perf_keyvals['%s_%s' % (self.prefix, key)] = value
 
+
+    def __get_interface_addresses(self, host, ifname, ip_version):
+        addresses = []
+        result = host.run("%s -%d addr show dev %s" %
+                          (self.client_cmd_ip, ip_version, ifname))
+        for line in result.stdout.splitlines():
+            addr_match = re.search("inet\S* (\S*)", line)
+            if addr_match is not None:
+                addresses.append(addr_match.group(1))
+        return addresses
+
+
     def __get_ipaddr(self, host, ifnet):
-        # XXX gotta be a better way to do this
-        result = host.run("%s %s" % (self.client_cmd_ifconfig, ifnet))
-        m = re.search('inet addr:([^ ]*)', result.stdout)
-        if m is None:
+        addrs = self.__get_interface_addresses(host, ifnet, 4)
+        if not addrs:
              raise error.TestFail("No inet address found")
-        return m.group(1)
+        return addrs[0]
+
+
+    def __get_ip6addrs(self, host, ifnet):
+        return self.__get_interface_addresses(host, ifnet, 6)
 
 
     def install_script(self, script_name, *support_scripts):
@@ -762,6 +777,8 @@ class WiFiTest(object):
             args += " -f"
         if 'interval' in params:
             args += " -i %s" % params['interval']
+        if 'interface' in params:
+            args += " -I %s" % params['interface']
         if 'qos' in params:
             ac = string.lower(params['qos'])
             if ac == 'be':
@@ -889,6 +906,29 @@ class WiFiTest(object):
             self.server.run("pkill ping")
             self.ping_thread.join()
             self.ping_thread = None
+
+
+    def client_ping6(self, params):
+        """ Ping the server from the client via IPv6 """
+        if 'ping_ip' in params:
+            ping_ip = params['ping_ip']
+        else:
+            result = self.client.run('%s -6 route show dev %s default' %
+                                     (self.client_cmd_ip, self.client_wlanif))
+            router_match = re.search('via (\S*)', result.stdout)
+            if not router_match:
+                raise error.TestFail('Cannot find default router')
+            ping_ip = router_match.group(1)
+            params.setdefault('interface', self.client_wlanif)
+        count = params.get('count', self.defpingcount)
+        # set timeout for 3s / ping packet
+        result = self.client.run("%s %s %s" % (
+            self.client_cmd_ping6, self.__ping_args(params), ping_ip),
+            timeout=3*int(count))
+
+        stats = self.__get_pingstats(result.stdout)
+        self.write_perf(stats)
+        self.__print_pingstats("client_ping6 ", stats)
 
 
     def __run_iperf(self, mode, params):
@@ -1663,6 +1703,54 @@ class WiFiTest(object):
                          label,
                          der_file_path,
                          resource_type))
+
+    def client_check_ipv6(self, params):
+        addrs = self.__get_ip6addrs(self.client, self.client_wlanif)
+        errors = []
+        if 'address_count' in params:
+            expected = int(params['address_count'])
+            if expected != len(addrs):
+                errors.append('IPv6 address count %d is different from '
+                              'expected %d' % (len(addrs), expected))
+
+        if 'local_count' in params:
+            local_count = 0
+            expected = int(params['local_count'])
+            for addr in addrs:
+                if addr.startswith('fe80'):
+                    local_count += 1
+            if local_count != expected:
+                errors.append('IPv6 address local count %d is different from '
+                              'expected %d' % (local_count, expected))
+
+        if 'mac_count' in params:
+            mac_count = 0
+            expected = int(params['mac_count'])
+            mac_parts = self.client.wlan_mac.split(':')
+            # Convert last 3 octets of MAC into suffix of IPv6 address
+            shorts = [int(mac_parts[-3], 16), int(''.join(mac_parts[-2:]), 16)]
+            mac_suffix_re = re.compile('%x:%x/' % tuple(shorts))
+            for addr in addrs:
+                if mac_suffix_re.search(addr):
+                    mac_count += 1
+            if mac_count != expected:
+                errors.append('IPv6 address mac count %d is different from '
+                              'expected %d' % (mac_count, expected))
+
+        if 'default_route' in params:
+            result = self.client.run('%s -6 route show dev %s default' %
+                                     (self.client_cmd_ip, self.client_wlanif))
+
+            found = bool('default' in result.stdout)
+            expected = bool(params['default_route'])
+            if found != expected:
+                errors.append('IPv6 default route found == %s '
+                              'from expected %s' % (found, expected))
+
+
+        if errors:
+            errors.append('Addresses are: %s' % ', '.join(addrs))
+            raise error.TestFail('\n'.join(errors))
 
 
 class HelperThread(threading.Thread):

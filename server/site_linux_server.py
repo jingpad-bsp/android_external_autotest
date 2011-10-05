@@ -12,13 +12,15 @@ class LinuxServer(site_linux_system.LinuxSystem):
 
     """
 
-    def __init__(self, server, wifi_ip):
+    def __init__(self, server, config):
         site_linux_system.LinuxSystem.__init__(self, server, {}, "server")
 
         self.server                      = server    # Server host.
         self.vpn_kind                    = None
-        self.wifi_ip                     = wifi_ip
+        self.config                      = config
         self.openvpn_config              = {}
+        self.radvd_config                = {'file':'/tmp/radvd-test.conf',
+                                            'server':'/usr/sbin/radvd'}
 
     def vpn_server_config(self, params):
         """ Configure & launch the server side of the VPN.
@@ -175,3 +177,36 @@ class LinuxServer(site_linux_system.LinuxSystem):
                 raise error.TestFail('(internal error): No kill case '
                                      'for VPN kind (%s)' % self.vpn_kind)
             self.vpn_kind = None
+
+    def ipv6_server_config(self, params):
+        self.ipv6_server_kill({})
+        radvd_opts = { 'interface': self.config.get('server_dev', 'eth0'),
+                       'adv_send_advert': 'on',
+                       'min_adv_interval': '3',
+                       'max_adv_interval': '10',
+                       # NB: Address below is is within the 2001:0db8/32
+                       # "documentation only" prefix (RFC3849), which is
+                       # guaranteed never to be assigned to a real network.
+                       'prefix': '2001:0db8:0100:f101::/64',
+                       'adv_on_link': 'on',
+                       'adv_autonomous': 'on',
+                       'adv_router_addr': 'on' }
+        radvd_opts.update(params)
+
+        config = ('interface %(interface)s {\n'
+                  '  AdvSendAdvert %(adv_send_advert)s;\n'
+                  '  MinRtrAdvInterval %(min_adv_interval)s;\n'
+                  '  MaxRtrAdvInterval %(max_adv_interval)s;\n'
+                  '  prefix %(prefix)s {\n'
+                  '    AdvOnLink %(adv_on_link)s;\n'
+                  '    AdvAutonomous %(adv_autonomous)s;\n'
+                  '    AdvRouterAddr %(adv_router_addr)s;\n'
+                  '  };\n'
+                  '};\n') % radvd_opts
+        cfg_file = params.get('config_file', self.radvd_config['file'])
+        self.server.run('cat <<EOF >%s\n%s\nEOF\n' % (cfg_file, config))
+        self.server.run('%s -C %s\n' % (self.radvd_config['server'], cfg_file))
+
+    def ipv6_server_kill(self, params):
+        self.server.run('pkill %s >/dev/null 2>&1' %
+                        self.radvd_config['server'], ignore_status=True)

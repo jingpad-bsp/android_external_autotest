@@ -1,0 +1,67 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This does rudimentary checks of IPv6 functionality by running an IPv6
+# router advertisement daemon on the server and checking to make sure
+# that the DUT picks up and discards information correctly.
+#
+# When connected to an IPv6 service, the kernel IPv6 autoconfig should
+# do as follows:
+#    * Create a locally scoped IPv6 address (contains last 3 octects of MAC)
+#    * Create a globally scoped IPv6 address (contains last 3 octects of MAC)
+#    * Create a temporary (prefferred) globally scoped IPv6 address (last 3
+#      octects of MAC do not appear in this address, so we preserve privacy)
+#    * Create a default route through the IPv6 gateway
+# When we disconnect, everything above should be removed except the locally
+# scoped IPv6 address which is benign.
+{ "name":"IPv6Basic",
+  "steps":[
+    # Start IPv6 router advertisments
+    [ "ipv6_server_config" ],
+
+    # Start an open AP, and connect to it
+    [ "create",           { "type":"hostap" } ],
+    [ "config",           { "channel":"2412",
+                            "mode":"11b",
+                            "ssid_suffix":"ip6" } ],
+    [ "connect",          { "security":"none" } ],
+
+    # Wait a while -- IPv6 address configuration should complete
+    [ "client_ping",      { "count":"10" } ],
+
+    # Assert the following about the client's IPv6 config:
+    [ "client_check_ipv6",  { "address_count":"3", # 3 addresses overall
+                              "local_count":"1",   # 1 locally scoped address
+                              "mac_count":"2",     # 2 linked with mac address
+                              "default_route":True # Should have default route
+                            } ],
+
+    # Ping router over IPv6
+    [ "client_ping6",     { "count":"10" } ],
+
+    # Disable IPv6 services and connect again
+    [ "disconnect" ],
+    [ "ipv6_server_kill" ],
+    [ "config",           { "channel":"2412",
+                            "mode":"11b",
+                            "ssid_suffix":"ip4" } ],
+    [ "connect",          { "security":"none" } ],
+
+    # Wait a while -- IPv6 address configuration should complete
+    [ "client_ping",      { "count":"10" } ],
+
+    # Once we should have cleaned up everything but the locally scoped address
+    [ "client_check_ipv6",  { "address_count":"1", # 1 address overall
+                              "local_count":"1",   # 1 locally scoped address
+                              "mac_count":"1",     # 1 linked with mac address
+                              "default_route":False # No default routes
+                            } ],
+
+
+
+    [ "disconnect" ],
+    [ "deconfig" ],
+    [ "destroy" ],
+  ],
+}
