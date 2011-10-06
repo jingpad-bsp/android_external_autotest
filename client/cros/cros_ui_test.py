@@ -151,6 +151,11 @@ class UITest(pyauto_test.PyAutoTest):
         # Set all devices to use locally-running DNS server.
         for device in self._flim.GetObjectList('Device'):
             self.__alter_dns_for_device_and_register_remover(device)
+        try:
+            # Best effort, for debugging http://crosbug.com/20323
+            utils.system('iptables -L -v -t nat')
+        except:
+            pass
 
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.', '127.0.0.1'),
@@ -162,6 +167,11 @@ class UITest(pyauto_test.PyAutoTest):
         """Clear the custom DNS setting for all devices and force them to use
         DHCP to pull the network's real settings again.
         """
+        try:
+            # Best effort, for debugging http://crosbug.com/20323
+            utils.system('iptables -L -v -t nat')
+        except:
+            pass
         # Clear all iptables rules added earlier.
         for remover in self._iptables_rule_removers:
             utils.system(remover)
@@ -243,6 +253,12 @@ class UITest(pyauto_test.PyAutoTest):
 
         # The UI must be taken down to ensure that no stale state persists.
         cros_ui.stop()
+        try:
+            # Best effort, for debugging http://crosbug.com/20323
+            utils.system('tcpdump -i eth0 -s 65535 -w '
+                         + self.resultsdir + '/tcpdump.out &')
+        except:
+            pass
         (self.username, self.password) = self.__resolve_creds(creds)
         # Ensure there's no stale cryptohome from previous tests.
         try:
@@ -441,6 +457,12 @@ class UITest(pyauto_test.PyAutoTest):
                                                        filename))
         except (IOError, OSError) as err:
             logging.error(err)
+
+        try:
+            # Best effort, for debugging http://crosbug.com/20323
+            utils.system('pkill -15 tcpdump')
+        except:
+            pass
 
         self._save_logs_from_cryptohome()
         pyauto_test.PyAutoTest.cleanup(self)
