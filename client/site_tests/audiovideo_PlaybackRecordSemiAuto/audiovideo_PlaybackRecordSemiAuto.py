@@ -328,7 +328,7 @@ _USR_BIN_PATH = '/usr/bin/'
 _PROC_ASOUND_CARD = 'cat /proc/asound/card%d/codec#0'
 
 # Regexps for parsing 'aplay -l'
-_CARD_RE = re.compile('card (\d+):\s(.+)\s\[(.+)\],\s+device\s(.+):.+\[(.+)\]')
+_CARD_RE = re.compile('card (\d+):\s(.+)\s\[(.+)\],\s+device\s(.+):.+\[(.*)\]')
 
 # Regexps for parsing 'amixer'
 _MIXER_CONTROL_RE = re.compile('Simple mixer control \'(.+)\',(\d+)')
