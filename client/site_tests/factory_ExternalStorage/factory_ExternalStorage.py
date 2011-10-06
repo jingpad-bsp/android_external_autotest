@@ -15,6 +15,8 @@ import glob
 import gobject
 import gtk
 import pango
+import pyudev
+import pyudev.glib
 import os
 import sys
 
@@ -147,7 +149,14 @@ class factory_ExternalStorage(test.test):
         self._image = self.insertion_image
         self._result = False
         self._devices = find_all_storage_dev()
-        gobject.timeout_add(250, self.rescan_storage, subtest_tag)
+        context = pyudev.Context()
+        monitor = pyudev.Monitor.from_netlink(context)
+        monitor.filter_by(subsystem='block')
+        observer = pyudev.glib.GUDevMonitorObserver(monitor)
+        observer.connect('device-event',
+                         lambda observer, action, device: \
+                                self.rescan_storage(subtest_tag))
+        monitor.start()
 
         drawing_area = gtk.DrawingArea()
         drawing_area.set_size_request(*image_size)
