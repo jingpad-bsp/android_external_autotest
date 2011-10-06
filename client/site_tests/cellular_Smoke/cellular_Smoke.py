@@ -20,7 +20,7 @@ class cellular_Smoke(test.test):
   def run_once(self, config):
     with backchannel.Backchannel():
       flim = flimflam.FlimFlam()
-      with cell_tools.OtherDeviceShutdownManager('cellular', flim):
+      with cell_tools.OtherDeviceShutdownContext('cellular', flim):
 
         bs = emulator_config.ConfigureBaseStations(config)[0]
         verifier = bs.GetAirStateVerifier()
