@@ -6,7 +6,8 @@ AUTHOR = "Chrome OS Team"
 NAME = "desktopui_TouchScreen"
 PURPOSE = "Replay some touch events and check how the browser sees them"
 CRITERIA = """
-This test will fail if no events were reported back by the web page.
+This test will fail if any of the HTML/JS subtests report anything
+other than 'PASS'.
 """
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -17,11 +18,13 @@ DOC = """
 This test replays raw touch screen events and checks how the browser
 interprets them.
 
-It spawns a web server thread, directs the browser to load a page from this
-server, then it replays the raw event and waits for the web page to report
-what events were fired.
+It spawns a web server thread, directs the browser to load a series of pages
+from this server. Each page asks the server to replay a recording of raw touch
+events and reports 'PASS' back to the server if it observed the
+expected results.
 """
 
-job.run_test('desktopui_TouchScreen')
-
-
+job.run_test('desktopui_TouchScreen', testfile="example.html",
+                tag="example.html")
+job.run_test('desktopui_TouchScreen', testfile="click.html",
+                tag="click.html")

@@ -3,8 +3,9 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import re
-import time
+import urllib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -20,16 +21,16 @@ def mygrep(fname, substring):
 
 
 class desktopui_TouchScreen(cros_ui_test.UITest):
-    """A test that replays raw touch screen events and checks how the browser
-    interprets them.
+    """Replay raw touch gestures and check how the browser interprets them.
 
-    You can inherit from test.test during develpment to avoid waiting for the
-    log in/out cycle of UITest.
+    This test runs a series of HTML/JS test pages (somewhat similar to WebKit
+    layout tests). Each HTML page asks to replay a recording of touch screen
+    gesture(s) and then reports whether the observed results were as expected.
 
     """
     version = 1
 
-    def initialize(self, creds='$default'):
+    def initialize(self, creds='$default', testfile="example.html"):
         # Check if the device file is grabbed by X.
         grab_lines = mygrep( '/etc/X11/xorg.conf.d/60-touchscreen-mxt.conf',
                              'GrabDevice' )
@@ -46,37 +47,62 @@ class desktopui_TouchScreen(cros_ui_test.UITest):
         msg = 'Found %s to be the touch device based on Xorg log file'
         logging.info(msg % self.touch_dev)
 
+        self.testfile = testfile
+        self.timeout = 120 #[sec] time to wait for each subtest to complete
+        self.port = 8000
+        tests_dir = 'tests'
+        self.tests_dir = os.path.join(self.bindir, tests_dir)
+        self.test_url = 'http://localhost:%s/%s/' % (self.port, tests_dir)
+        self.gestures_dir = os.path.join(self.bindir, 'gestures')
+
+        self.reported_status = None
+        self._testServer = httpd.HTTPListener(self.port, docroot=self.bindir)
+        self._testServer.add_url_handler('/replay', self.replay_url_handler)
+        self._testServer.add_url_handler('/msg', self.msg_url_handler)
+        self._testServer.add_url_handler('/done', self.done_url_handler)
         # Fire up the web server thread.
-        self._test_url = 'http://localhost:8000/interaction.html'
-        self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
         super(desktopui_TouchScreen, self).initialize(creds)
 
-    def run_once(self, timeout=60):
-        # Fire up the browser and wait for onload event from JavaScript
-        latch_onload = self._testServer.add_wait_url('/interaction/onload')
-        self.pyauto.NavigateToURL(self._test_url)
-        latch_onload.wait(timeout)
-
-        if not latch_onload.is_set():
-            msg = 'Timeout waiting for initial onload event from the page.'
-            raise error.TestError(msg)
-
-        # Replay the gesture and wait for any event to be reported by JS
-        latch = self._testServer.add_wait_url('/interaction/test')
-        # TODO: Use a gesture file storage later
-        gesture_file = 'scroll_both.dat'
+    def replay_gesture(self, gesture_file):
+        logging.info('Replaying gesture file: %s' % gesture_file)
         utils.system(
             '/usr/local/bin/evemu-play %s < %s/%s' %
-                (self.touch_dev, self.bindir, gesture_file))
-        latch.wait(timeout)
+                (self.touch_dev, self.gestures_dir, gesture_file))
 
+    def replay_url_handler(self, fh, form):
+        gestures = urllib.unquote(form['gesture'].value).split()
+        for gesture in gestures:
+            self.replay_gesture(gesture + '.dat')
+        fh.write_post_response(form)
+
+    def msg_url_handler(self, fh, form):
+        msg = urllib.unquote(form['msg'].value)
+        logging.info(msg)
+        fh.write_post_response(form)
+
+    def done_url_handler(self, fh, form):
+        self.reported_status = form['status'].value
+        fh.write_post_response(form)
+
+    def run_subtest(self, test_name):
+        self.reported_status = None
+        self.pyauto.NavigateToURL(self.test_url + test_name)
+        latch = self._testServer.add_wait_url('/done')
+        latch.wait(self.timeout)
+        msg = "'%s' reported by %s" % (self.reported_status, test_name)
         if not latch.is_set():
-            raise error.TestFail(
-                'Timed out waiting for the page to report an event.')
+            logging.error('Timed out waiting for %s test to report status.' %
+                            test_name)
+        elif self.reported_status != 'PASS':
+            logging.error(msg)
+        else:
+            logging.info(msg)
+        return self.reported_status
 
-        results = self._testServer.get_form_entries()
-        logging.info('The response:' + str(results))
-        if not results:
-            raise error.TestFail(
-                'Empty response from the browser or no response at all.')
+    def run_once(self):
+        logging.info('Running HTML test %s' % self.testfile)
+        result = self.run_subtest(self.testfile)
+        if result != 'PASS':
+            raise error.TestFail('HTML test %s did not pass.'
+                                    % self.testfile)
