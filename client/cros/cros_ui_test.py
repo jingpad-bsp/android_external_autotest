@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, re, shutil, socket, subprocess, sys, time
+import dbus, logging, os, re, shutil, socket, subprocess, stat, sys, time
 import common
 import auth_server, constants, cryptohome, dns_server
 import cros_logging, cros_ui, login, ownership, pyauto_test
@@ -43,9 +43,10 @@ class UITest(pyauto_test.PyAutoTest):
     # Processes that we know crash and are willing to ignore.
     crash_blacklist = []
 
-    _IPTABLES_RULE = 'iptables -t nat %s OUTPUT -p udp ' \
-                     '-d %s --dport 53 -j DNAT --to-destination %s'
-    _iptables_rule_removers = []
+    # This is a symlink.  We look up the real path at runtime by following it.
+    _resolv_conf = '/etc/resolv.conf'
+    _resolv_test_file = 'resolv.conf.test'
+    _resolv_bak_file = 'resolv.conf.bak'
 
     def __init__(self, job, bindir, outputdir):
         pyauto_test.PyAutoTest.__init__(self, job, bindir, outputdir)
@@ -110,34 +111,6 @@ class UITest(pyauto_test.PyAutoTest):
             logging.error(err)
 
 
-    def __alter_dns_for_device_and_register_remover(self, device):
-        """Reroute all DNS entries for |device| using iptables.
-
-        Given a flimflam DBus Device object, pull the IP address and
-        use IP tables to route all DNS servers associated with that
-        address to localhost.  Also store the command to remove that
-        rule later.
-
-        Throws error.TestError upon failure.
-        """
-        properties = device.GetProperties()
-        interface = properties['Interface']
-        logging.debug('Considering ' + interface)
-        for path in properties['IPConfigs']:
-            ipconfig = self._flim.GetObjectInterface('IPConfig', path)
-            props = ipconfig.GetProperties()
-            servers = props.get('NameServers', None)
-            local_addr = props.get('Address', None)
-            if not local_addr:
-                raise error.TestError(interface + ' has no Address.')
-            if not servers:
-                raise error.TestError(interface + ' has no DNS servers.')
-            for server in servers:
-                utils.system(self._IPTABLES_RULE % ('-A', server, local_addr))
-                self._iptables_rule_removers.append(
-                    self._IPTABLES_RULE % ('-D', server, local_addr))
-
-
     def use_local_dns(self, dns_port=53):
         """Set all devices to use our in-process mock DNS server.
         """
@@ -149,13 +122,31 @@ class UITest(pyauto_test.PyAutoTest):
         self.check_portal_list = self._flim.GetCheckPortalList()
         self._flim.SetCheckPortalList('')
         # Set all devices to use locally-running DNS server.
-        for device in self._flim.GetObjectList('Device'):
-            self.__alter_dns_for_device_and_register_remover(device)
         try:
-            # Best effort, for debugging http://crosbug.com/20323
-            utils.system('iptables -L -v -t nat')
-        except:
-            pass
+            # Follow resolv.conf symlink.
+            resolv = os.path.realpath(self._resolv_conf)
+            # Grab path to the real file, do following work in that directory.
+            resolv_dir = os.path.dirname(resolv)
+            resolv_test = os.path.join(resolv_dir, self._resolv_test_file)
+            resolv_bak = os.path.join(resolv_dir, self._resolv_bak_file)
+            resolv_contents = 'nameserver 127.0.0.1'
+            # Back up the current resolv.conf.
+            os.rename(resolv, resolv_bak)
+            # To stop flimflam from editing resolv.conf while we're working
+            # with it, we want to make the directory -r-x-r-x-r-x.  Open an
+            # fd to the file first, so that we'll retain the ability to
+            # alter it.
+            resolv_fd = open(resolv, 'w')
+            self._resolv_dir_mode = os.stat(resolv_dir).st_mode
+            os.chmod(resolv_dir, (stat.S_IRUSR | stat.S_IXUSR |
+                                  stat.S_IRGRP | stat.S_IXGRP |
+                                  stat.S_IROTH | stat.S_IXOTH))
+            resolv_fd.write(resolv_contents)
+            resolv_fd.close()
+            assert utils.read_one_line(resolv) == resolv_contents
+        except Exception as e:
+            logging.error(str(e))
+            raise e
 
         utils.poll_for_condition(
             lambda: self.__attempt_resolve('www.google.com.', '127.0.0.1'),
@@ -168,14 +159,14 @@ class UITest(pyauto_test.PyAutoTest):
         DHCP to pull the network's real settings again.
         """
         try:
-            # Best effort, for debugging http://crosbug.com/20323
-            utils.system('iptables -L -v -t nat')
-        except:
-            pass
-        # Clear all iptables rules added earlier.
-        for remover in self._iptables_rule_removers:
-            utils.system(remover)
-        try:
+            # Follow resolv.conf symlink.
+            resolv = os.path.realpath(self._resolv_conf)
+            # Grab path to the real file, do following work in that directory.
+            resolv_dir = os.path.dirname(resolv)
+            resolv_bak = os.path.join(resolv_dir, self._resolv_bak_file)
+            os.chmod(resolv_dir, self._resolv_dir_mode)
+            os.rename(resolv_bak, resolv)
+
             utils.poll_for_condition(
                 lambda: self.__attempt_resolve('www.google.com.',
                                                '127.0.0.1',
