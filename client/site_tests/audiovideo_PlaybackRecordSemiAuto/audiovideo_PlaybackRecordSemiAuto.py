@@ -76,7 +76,6 @@ _DEVICE_SECTION_START = '''<tr><td><table class="device_section">
 <th>Channels</th>
 <th>Format</th>
 <th>Sample Rates</th>
-<th>Sample Bits</th>
 <th>Controls</th>
 </tr>
 '''
@@ -89,7 +88,6 @@ _DEVICE_SECTION_ENTRY_TMPL = '''<tr>
 <td>%(channels)d</td>
 <td>%(sample_format)s</td>
 <td>%(sample_rate)s</td>
-<td>%(sample_bits)s</td>
 <td>%(control_names)s</td>
 </tr>
 '''
@@ -325,7 +323,6 @@ _TESTS = [{'name': "Volume Test (Master)",
 _DEVICE_RE_TEMPLATE_ = "(.*)%s(.*)"
 
 _USR_BIN_PATH = '/usr/bin/'
-_PROC_ASOUND_CARD = 'cat /proc/asound/card%d/codec#0'
 
 # Regexps for parsing 'aplay -l'
 _CARD_RE = re.compile('card (\d+):\s(.+)\s\[(.+)\],\s+device\s(.+):.+\[(.*)\]')
@@ -337,11 +334,10 @@ _MIXER_LIMITS_RE = re.compile('\s+Limits:\s*(.*) (\d+) - (\d+)')
 _MIXER_CHANNELS_RE = re.compile('(.+)channels:\s(.+)')
 _MIXER_CHANNEL_LIST_RE = re.compile('(.+) - (.+)')
 
-# Regexps for parsing Intel/codec#0 file
-_CODEC_RATES_RE = re.compile('\s+rates \[(.+)\]: (.+)')
-_CODEC_BITS_RE = re.compile('\s+bits \[(.+)\]: (.+)')
-_CODEC_FORMATS_RE = re.compile('\s+formats \[(.+)\]: (.+)')
-_CODEC_NODE_RE = re.compile('Node (.+) \[(.+)\]\s(.+)')
+# Regexps for parsing output of alsa_caps.
+_CAPS_RATES_RE = re.compile('Rates: (.*)')
+_CAPS_CHANNELS_RE = re.compile('Channels: (.*)')
+_CAPS_FORMATS_RE = re.compile('Formats: (.*)')
 
 class ToneThread(threading.Thread):
     """Wraps the running of test_tones in a thread."""
@@ -422,6 +418,10 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
     def setup(self):
         self.job.setup_dep(['test_tones'])
+        # build alsa_caps as well.
+        os.chdir(self.srcdir)
+        utils.make('clean')
+        utils.make()
 
 
     def initialize(self, creds = '$default'):
@@ -437,14 +437,20 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         dep = 'test_tones'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
-
-        self._playback_devices = self.enumerate_playback_devices()
-        self._record_devices = self.enumerate_record_devices()
         self._test_tones_path = os.path.join(dep_dir, 'src', dep)
         if not (os.path.exists(self._test_tones_path) and
                 os.access(self._test_tones_path, os.X_OK)):
             raise error.TestError(
                     '%s is not an executable' % self._test_tones_path)
+
+        self._alsa_caps_path = os.path.join(self.srcdir, 'alsa_caps')
+        if not (os.path.exists(self._alsa_caps_path) and
+                os.access(self._alsa_caps_path, os.X_OK)):
+            raise error.TestError(
+                    '%s is not an executable' % self._alsa_caps_path)
+
+        self._playback_devices = self.enumerate_playback_devices()
+        self._record_devices = self.enumerate_record_devices()
         logging.info(self._pp.pformat(self._playback_devices))
         logging.info(self._pp.pformat(self._record_devices))
 
@@ -811,45 +817,30 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                                      invoke_url)
 
 
-    def merge_proc_info_intel(self, current):
-        """Helper function for parsing /proc/asound/ info.  Since every card
-          has a different format for its info, we're only attempting Intel's
-          codec#0 format
+    def get_alsa_device_caps(self, device_info, direction):
+        """Get capabilites of the device.
+        Sample rates, formats, and number of channels supported.
+
+        Args:
+            device_info: dictionary containing card and device index.
         """
-        cmd = _PROC_ASOUND_CARD % (current['card_index'])
-        info_list =  list_amixer_output = self.do_cmd(cmd)
-
-        found_rates = False
-        found_bits = False
-        found_formats = False
-        on_default = False
-
-        if info_list is not None:
-            for line in info_list.split('\n'):
-                if (line == 'Default PCM:'):
-                    on_default = True
-                if on_default:
-                    if not found_rates:
-                        m = _CODEC_RATES_RE.match(line)
-                        if m is not None:
-                            found_rates = True
-                            current['sample_rate'] = m.group(2)
-                    if not found_bits:
-                        m = _CODEC_BITS_RE.match(line)
-                        if m is not None:
-                            found_bits = True
-                            current['sample_bits'] = m.group(2)
-                    if not found_formats:
-                        m = _CODEC_FORMATS_RE.match(line)
-                        if m is not None:
-                            found_formats = True
-                            current['sample_format'] = m.group(2)
-                m = _CODEC_NODE_RE.match(line)
-                if m is not None:
-                    on_default = False
+        cmd = self._alsa_caps_path + ' hw:%u,%u ' % (device_info['card_index'],
+                device_info['device_index'])
+        cmd += direction.lower()
+        caps_output = self.do_cmd(cmd)
+        for line in caps_output.split('\n'):
+            m = _CAPS_FORMATS_RE.match(line)
+            if m is not None:
+                device_info['sample_format'] = m.group(1)
+            m = _CAPS_CHANNELS_RE.match(line)
+            if m is not None:
+                device_info['channels'] = int(m.group(1))
+            m = _CAPS_RATES_RE.match(line)
+            if m is not None:
+                device_info['sample_rate'] = m.group(1)
 
 
-    def parse_device_info_alsa(self, device_info_output):
+    def parse_device_info_alsa(self, device_info_output, direction):
         """Parses the output of an "aplay -l" or "arecord -l" call."""
         device_info = { 'info' : [] }
         current_device = None
@@ -869,14 +860,12 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                                                          m.group(3),
                                                          m.group(5))
                 # Fake some capabilities for now,  These are filled in later
-                # with info from /proc/asound/
+                # with info from alsa_caps.
                 current_device['channels'] = 2
                 current_device['sample_rate'] = 'Unknown'
                 current_device['sample_format'] = 'Unknown'
-                current_device['sample_bits'] = 'Unknown'
 
-                if current_device['card'] == 'Intel':
-                    self.merge_proc_info_intel(current_device)
+                self.get_alsa_device_caps(current_device, direction)
 
                 device_info['info'].append(current_device)
         return device_info
@@ -939,7 +928,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         """
         list_aplay_output = self.do_cmd('aplay -l')
 
-        device_info = self.parse_device_info_alsa(list_aplay_output)
+        device_info = self.parse_device_info_alsa(list_aplay_output, 'Playback')
 
         for device in device_info['info']:
             cmd = 'amixer -c %d' % (device['card_index'])
@@ -958,7 +947,8 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         list_arecord_output = self.do_cmd('arecord -l')
         logging.info(list_arecord_output)
 
-        device_info = self.parse_device_info_alsa(list_arecord_output)
+        device_info = self.parse_device_info_alsa(list_arecord_output,
+                                                  'Capture')
 
         for device in device_info['info']:
             cmd = 'amixer -c %d' % (device['card_index'])
