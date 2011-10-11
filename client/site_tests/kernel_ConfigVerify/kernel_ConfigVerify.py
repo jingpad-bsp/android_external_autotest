@@ -1,0 +1,132 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import logging, os
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
+
+class kernel_ConfigVerify(test.test):
+    version = 1
+    IS_BUILTIN = [
+        # Sanity checks; should be present in builds as builtins.
+        'INET',
+        'MMU',
+        'MODULES',
+        'PRINTK',
+        'SECURITY',
+        # Security; adds stack buffer overflow protections.
+        'CC_STACKPROTECTOR',
+        # Security; marks data segments as read-only/non-executable.
+        'DEBUG_RODATA',
+        # Security; marks module data segments as RO/NX.
+        # TODO(kees): uncomment after crosbug.com/21552 is fixed.
+        #'DEBUG_SET_MODULE_RONX',
+        # Security; enables the SECCOMP application API.
+        'SECCOMP',
+        # Security; blocks direct physical memory access.
+        # TODO(kees): uncomment after crosbug.com/21553 is fixed.
+        #'STRICT_DEVMEM',
+        # Security; provides some protections against SYN flooding.
+        'SYN_COOKIES',
+    ]
+    IS_MODULE = [
+        # Sanity checks; should be present in builds as modules.
+        'BT',
+        'TUN',
+        'VIDEO_V4L2',
+        'SND_PCM',
+    ]
+    IS_MISSING = [
+        # Sanity checks.
+        'M386',                 # Never going to optimize to this CPU.
+        'CHARLIE_THE_UNICORN',  # Config not in real kernel config var list.
+        # Dangerous; disables brk ASLR.
+        'COMPAT_BRK',
+        # Dangerous; disables VDSO ASLR.
+        'COMPAT_VDSO',
+        # Dangerous; allows direct kernel memory writing.
+        'DEVKMEM',
+    ]
+
+    def _passed(self, msg):
+        logging.info('ok: %s' % (msg))
+
+    def _failed(self, msg):
+        logging.error('FAIL: %s' % (msg))
+        self._failures.append(msg)
+
+    def _fatal(self, msg):
+        logging.error('FATAL: %s' % (msg))
+        raise error.TestError(msg)
+
+    def _config_required(self, name, wanted):
+        value = self._config.get(name, None)
+        if value == wanted:
+            self._passed('"%s" was "%s" in kernel config' % (name, value))
+        else:
+            self._failed('"%s" was "%s" (wanted "%s") in kernel config' %
+                         (name, value, wanted))
+
+    def has_value(self, name, value):
+        self._config_required('CONFIG_%s' % (name), value)
+
+    def has_builtin(self, name):
+        self.has_value(name, 'y')
+
+    def has_module(self, name):
+        self.has_value(name, 'm')
+
+    def is_missing(self, name):
+        self.has_value(name, None)
+
+    def load_configs(self, filename):
+        # Make sure the given file actually exists.
+        if not os.path.exists(filename):
+            self._fatal('%s is missing' % (filename))
+
+        # Import kernel config variables into a dictionary for each searching.
+        config = dict()
+        for item in open(filename).readlines():
+            item = item.strip()
+            if not '=' in item:
+                continue
+            key, value = item.split('=', 1)
+            config[key] = value
+
+        # Make sure we actually loaded something sensible.
+        if len(config) == 0:
+            self._fatal('%s has no CONFIG variables' % (filename))
+
+        return config
+
+    def run_once(self):
+        # Empty failure list means test passes.
+        self._failures = []
+
+        # Locate and load the list of kernel config variables.
+        self._config = self.load_configs('/boot/config-%s' %
+                                         utils.system_output('uname -r'))
+
+        # Run the static checks.
+        map(self.has_builtin, self.IS_BUILTIN)
+        map(self.has_module, self.IS_MODULE)
+        map(self.is_missing, self.IS_MISSING)
+
+        # Run the dynamic checks.
+
+        # Security; NULL-address hole should be as large as possible.
+        # Upstream kernel recommends 64k, which should be large enough to
+        # catch nearly all dereferenced structures.
+        wanted = '65536'
+        if utils.get_arch().startswith('arm'):
+            # ... except on ARM where it shouldn't be larger than 32k due
+            # to historical ELF load location.
+            wanted = '32768'
+        # TODO(kees): remove 4k override once crosbug.com/21554 is fixed.
+        wanted = '4096'
+        self.has_value('DEFAULT_MMAP_MIN_ADDR', wanted)
+
+        # Raise a failure if anything unexpected was seen.
+        if len(self._failures):
+            raise error.TestFail((", ".join(self._failures)))
