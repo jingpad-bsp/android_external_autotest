@@ -47,7 +47,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             'conf': {
                 'ssid': defssid,
                 'hw_mode': 'g',
-                'ctrl_interface': '/tmp/hostapd-test.control'
+                'ctrl_interface': '/tmp/hostapd-test.control',
+                'logger_syslog': '-1',
+                'logger_syslog_level': '0'
             }
         }
         self.station = {
@@ -359,6 +361,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         params['dhcp_range'] = ' '.join(
             (self.ip_addr(netblock, self.dhcp_low),
              self.ip_addr(netblock, self.dhcp_high)))
+        params['interface'] = interface
 
         params['ip_params'] = ("%s broadcast %s dev %s" %
                                (netblock,
@@ -372,7 +375,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                         (self.cmd_ip, params['ip_params']))
         self.router.run("%s link set %s up" %
                         (self.cmd_ip, interface))
+        self.start_dhcp_server()
 
+    def start_dhcp_server(self):
         dhcp_conf = '\n'.join(map(
             lambda server_conf: \
                 "subnet %(subnet)s netmask %(netmask)s {\n" \
