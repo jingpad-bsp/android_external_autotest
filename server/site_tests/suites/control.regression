@@ -93,11 +93,12 @@ TESTS = [
 #                                'tag' : 'hci0'}, ['has_bluetooth']),
   ('network_WiFiCaps', {}, {'include': ['has_80211n']}),
   ('power_Resume', {}, {'exclude': ['has_resume_bug']}),
-  ('platform_KernelErrorPaths', {'host': 'client'},
-                                {'attributes': ['server_job']}),
-  ('logging_KernelCrashServer', {'host': 'client'},
-                                {'include': ['has_chromeos_firmware'],
-                                 'attributes': ['server_job']}),
+# TODO(dalecurtis): Re-enable once http://crosbug.com/21607 is fixed.
+#  ('platform_KernelErrorPaths', {'host': 'client'},
+#                                {'attributes': ['server_job']}),
+#  ('logging_KernelCrashServer', {'host': 'client'},
+#                                {'include': ['has_chromeos_firmware'],
+#                                 'attributes': ['server_job']}),
   # Some of the tests in the main regression suite must be run last to prevent
   # cross-test issues. Always add new suites above this line.
   #-----------------------------------------------------------------------------
