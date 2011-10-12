@@ -13,10 +13,12 @@
 import cairo
 import gobject
 import gtk
-import time
 import os
-import sys
+import pty
+import re
 import subprocess
+import sys
+import time
 
 from cmath import pi
 from glob import glob
@@ -30,9 +32,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.error import CmdError
 
-
-_SYNCLIENT_SETTINGS_CMDLINE = '/usr/bin/synclient -l'
-_SYNCLIENT_CMDLINE = '/usr/bin/synclient -m 50'
 
 _X_SEGMENTS = 5
 _Y_SEGMENTS = 4
@@ -209,14 +208,16 @@ class TouchpadTest:
 
 
 class SynClient:
+    _SETTINGS_CMDLINE = '/usr/bin/synclient -l'
+    _CMDLINE = '/usr/bin/synclient -m 50'
 
     def __init__(self, test):
         self._test = test
         try:
-            settings_data = utils.system_output(_SYNCLIENT_SETTINGS_CMDLINE)
+            settings_data = utils.system_output(self._SETTINGS_CMDLINE)
         except CmdError as e:
             raise error.TestError('Failure on "%s" [%d]' %
-                                  (_SYNCLIENT_SETTINGS_CMDLINE,
+                                  (self._SETTINGS_CMDLINE,
                                    e.args[1].exit_status))
         settings = {}
         for line in settings_data.split('\n'):
@@ -240,22 +241,20 @@ class SynClient:
             factory.log('Invalid literal format of %s: %s' % (key, e.args[0]))
             raise error.TestNAError("Can't understand all hardware information")
         try:
-            self._proc = subprocess.Popen(_SYNCLIENT_CMDLINE.split(),
+            self._proc = subprocess.Popen(self._CMDLINE.split(),
                                           stdout=subprocess.PIPE,
                                           stderr=subprocess.PIPE)
         except OSError as e:
-            raise error.TestError('Failure on launching "%s"' %
-                                  _SYNCLIENT_CMDLINE)
+            raise error.TestError('Failure on launching "%s"' % self._CMDLINE)
         # delay before we poll
         time.sleep(0.1)
         if self._proc.poll() is not None:
             if self._proc.returncode != 0:
                 raise error.TestError('Failure on "%s" [%d]' %
-                                      (_SYNCLIENT_CMDLINE,
-                                       self._proc.returncode))
+                                      (self._CMDLINE, self._proc.returncode))
             else:
                 raise error.TestError('Termination unexpected on "%s"' %
-                                      _SYNCLIENT_CMDLINE)
+                                      self._CMDLINE)
         gobject.io_add_watch(self._proc.stdout, gobject.IO_IN, self.recv)
 
     def recv(self, src, cond):
@@ -340,6 +339,139 @@ class EvdevClient:
             self.device.f.close()
 
 
+class SynControl:
+    ''' Use syncontrol to read packets and pass them to TouchpadTest '''
+    # A typical packet looks like
+    #     x: 4357, y: 2973, z: 48, w: 4, dx: 0, dy: 0,
+    #     finger_index: 0, left_button: 0, right_button: 0
+    pattern = (u'x: \d+, y: \d+, z: \d+, w: \d+, dx: -?\d+, dy: -?\d+, '
+               u'finger_index: \d+, left_button: \d+, right_button: \d+')
+    _SYNCONTROL = '/opt/Synaptics/bin/syncontrol'
+    _CMDLINE = '%s packets' % _SYNCONTROL
+
+    # Set the default min and max values for typical bezel limits and Z.
+    # These are approximate values, and may be different in different models.
+    # Use these values only if they cannot be derived from the diag file.
+    _X_RANGE = (1400, 5400)
+    _Y_RANGE = (1300, 4300)
+    _Z_RANGE = (0, 255)
+
+    def __init__(self, test):
+        self._test = test
+        # Read settings from diag file
+        self._get_settings()
+
+        # Open pty to avoid buffered output in subprocess.Popen
+        master, slave = pty.openpty()
+        self.pty_stdout = os.fdopen(master)
+        self._count = 0
+
+        try:
+            self._proc = subprocess.Popen(self._CMDLINE, shell=True,
+                                          stdout=slave, stderr=slave)
+        except OSError as e:
+            raise error.TestError('Failure on launching "%s"' % self._CMDLINE)
+
+        if self._proc.poll() is not None:
+            if self._proc.returncode != 0:
+                raise error.TestError('Failure on "%s" [%d]' %
+                                      (self._CMDLINE, self._proc.returncode))
+            else:
+                raise error.TestError('Termination unexpected on "%s"' %
+                                      self._CMDLINE)
+        gobject.io_add_watch(self.pty_stdout, gobject.IO_IN, self.recv)
+
+    def _get_settings(self):
+        ''' Get min x, min y, max x, max y, and max z '''
+
+        def _delete_diag_files(tmp_dir, diag_file):
+            for f in glob(os.path.join(tmp_dir, diag_file)):
+                if os.path.isfile(f):
+                    os.remove(f)
+
+        tmp_dir = '/tmp'
+        diag_file = 'SynDiag*'
+        diag_cmd = 'HOME=%s %s diag' % (tmp_dir, self._SYNCONTROL)
+
+        # delete any old diag file
+        _delete_diag_files(tmp_dir, diag_file)
+
+        # Execute syncontrol diag to dump touchpad settings
+        utils.system(diag_cmd)
+
+        # Initialize the settings
+        # Note: there is no min z in the diag file. Set it to default value 0.
+        self._xmin, self._xmax = self._X_RANGE
+        self._ymin, self._ymax = self._Y_RANGE
+        self._zmin, self._zmax = self._Z_RANGE
+        found_z = False
+        found_rect = False
+
+        # A bezel rectangle in diag file looks as:
+        #       'Bezel Rectangle (1374, 1324) (5538, 4464)'
+        # The max z in diag file looks as:
+        #       'Maximum Z       255'
+        rect_str = u'Bezel Rectangle\s+\((\d+),\s*(\d+)\)\s*\((\d+),\s*(\d+)\)'
+
+        diag = glob(os.path.join(tmp_dir, diag_file))
+        if diag != []:
+            factory.log('diag_file: %s' % diag)
+            with open(diag[0]) as f:
+                for line in f:
+                    # Read min x, min y, max x, max y from the bezel rectangle
+                    if not found_rect and line.startswith('Bezel Rectangle'):
+                        s = re.search(rect_str, line)
+                        if s is not None:
+                            self._xmin = int(s.group(1))
+                            self._ymin = int(s.group(2))
+                            self._xmax = int(s.group(3))
+                            self._ymax = int(s.group(4))
+                            found_rect = True
+                    # Read max z
+                    elif not found_z and line.startswith('Maximum Z'):
+                        self._zmax = int(line.split()[-1])
+                        found_z = True
+                    if found_rect and found_z:
+                        break
+
+        # delete the diag file
+        _delete_diag_files(tmp_dir, diag_file)
+
+    def recv(self, src, cond):
+        line = self.pty_stdout.readline()
+        if line == '':
+            return True
+
+        # check packet validity
+        if re.search(self.pattern, line) is None:
+            factory.log('  Invalid packet skipped: %s' % line)
+            return True
+
+        data = line.split(',')
+        self._count += 1
+        (data_x, data_y, data_z, data_w, data_dx, data_dy, data_finger_index,
+                 data_left_button, data_right_button) = \
+                 (d.split(':')[-1].strip().rstrip('\n') for d in data)
+
+        x = sorted([self._xmin, float(data_x), self._xmax])[1]
+        x = (x - self._xmin) / (self._xmax - self._xmin)
+        y = sorted([self._ymin, float(data_y), self._ymax])[1]
+        y = (y - self._ymin) / (self._ymax - self._ymin)
+        y = 1 - y
+        z = sorted([self._zmin, float(data_z), self._zmax])[1]
+        z = (z - self._zmin) / (self._zmax - self._zmin)
+        fingers = int(data_finger_index) + 1
+        left_button = int(data_left_button)
+        right_button = int(data_right_button)
+        self._test.device_event(x, y, z, fingers, left_button, right_button)
+        return True
+
+    def quit(self):
+        factory.log('killing SynControl ...')
+        self._proc.kill()
+        factory.log('dead')
+
+
 class factory_Touchpad(test.test):
     version = 1
     preserve_srcdir = True
@@ -374,20 +506,29 @@ class factory_Touchpad(test.test):
         test_widget.pack_start(drawing_area, False, False)
         test_widget.pack_start(countdown_widget, False, False)
 
-        # Detect an evdev compatible touchpad device.
-        # TODO(djkurtz): Use gudev to detect touchpad
-        for evdev in glob('/dev/input/event*'):
-            device = InputDevice(evdev)
-            if device.is_touchpad():
-                break
+        raw_dev = glob('/dev/serio_raw*')
+        # Check if synaptics closed source kernel driver is used
+        if len(raw_dev) > 0:
+            factory.log('Syncontrol: found device: %s' % raw_dev[0])
+            touchpad = SynControl(test)
         else:
-            device = None
+            # Detect an evdev compatible touchpad device.
+            # TODO(djkurtz): Use gudev to detect touchpad
+            for evdev in glob('/dev/input/event*'):
+                device = InputDevice(evdev)
+                if device.is_touchpad():
+                    break
+            else:
+                device = None
 
-        if device:
-            factory.log('Using %s,  device %s' % (device.name, device.path))
-            touchpad = EvdevClient(test, device)
-        else:
-            touchpad = SynClient(test)
+            # Using EvdevCient if an evdev compatible touchpad device is found
+            if device:
+                factory.log('EvdevClient: using %s,  device %s' %
+                            (device.name, device.path))
+                touchpad = EvdevClient(test, device)
+            else:
+                factory.log('Using SynClient.')
+                touchpad = SynClient(test)
 
         ful.run_test_widget(self.job, test_widget,
             cleanup_callback=touchpad.quit)
