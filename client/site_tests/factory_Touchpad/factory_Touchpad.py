@@ -258,11 +258,15 @@ class SynClient:
         gobject.io_add_watch(self._proc.stdout, gobject.IO_IN, self.recv)
 
     def recv(self, src, cond):
+        ''' header and data look as:
+            time     x    y   z f  w  l r u d m     multi  gl gm gr gdx gdy
+           0.000  3532 3807   0 0  0  0 0 0 0 0  00000000
+        '''
         data = self._proc.stdout.readline().split()
-        if len(data) != 17:
-            factory.log('unknown data : %d, %s' % (len(data), data))
-            return True
         if data[0] == 'time':
+            return True
+        if len(data) != 12:
+            factory.log('unknown data : %d, %s' % (len(data), data))
             return True
         data_x, data_y, data_z, f, w, l, r = data[1:8]
         x = sorted([self._xmin, float(data_x), self._xmax])[1]
