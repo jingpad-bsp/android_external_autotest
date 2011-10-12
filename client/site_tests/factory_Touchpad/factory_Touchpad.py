@@ -79,7 +79,7 @@ class TouchpadTest:
         missing_motion_sectors = sorted(
             i for i, v in self._motion_grid.items() if v is False)
         if missing_motion_sectors:
-            missing.append('Missing following motion sectors\n' \
+            missing.append('Missing following motion sectors\n'
                            '未偵測到下列位置的觸控移動訊號 [%s]' %
                            ', '.join(missing_motion_sectors))
         missing_scroll_segments = sorted(
@@ -89,9 +89,11 @@ class TouchpadTest:
                            '未偵測到下列位置的觸控捲動訊號 [%s]' %
                            ', '.join(missing_scroll_segments))
         if not self._l_click:
-            missing.append('Missing left click\n' \
+            missing.append('Missing left click\n'
                            '沒有偵測到左鍵被按下，請檢修')
-        # XXX add self._r_click here when that is supported...
+        if not self._r_click:
+            missing.append('Missing right click\n'
+                           '沒有偵測到右鍵被按下，請檢修')
         return '\n'.join(missing)
 
     def timer_event(self, countdown_label):
@@ -275,7 +277,9 @@ class SynClient:
         y = (y - self._ymin) / (self._ymax - self._ymin)
         z = sorted([self._zmin, float(data_z), self._zmax])[1]
         z = (z - self._zmin) / (self._zmax - self._zmin)
-        self._test.device_event(x, y, z, int(f), int(l), int(r))
+        # Detect right click button or alt right click
+        alt_r = int(r) or (int(l) and int(f) == 2)
+        self._test.device_event(x, y, z, int(f), int(l), alt_r)
         return True
 
     def quit(self):
@@ -324,7 +328,8 @@ class EvdevClient:
         y = self.device.get_y()
         z = self.device.get_pressure()
         l = self.device.get_left()
-        r = self.device.get_right()
+        # Detect right click button or alt right click
+        r = self.device.get_right() or (l and f == 2)
 
         # Convert raw coordinate to % of range.
         x_pct = self._to_percent(x, self._xmin, self._xmax)
