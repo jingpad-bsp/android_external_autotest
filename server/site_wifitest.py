@@ -451,7 +451,7 @@ class WiFiTest(object):
         addrs = self.__get_interface_addresses(host, ifnet, 4)
         if not addrs:
              raise error.TestFail("No inet address found")
-        return addrs[0]
+        return addrs[0].split('/')[0]
 
 
     def __get_ip6addrs(self, host, ifnet):
