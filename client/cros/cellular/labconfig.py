@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json, urllib
+import json, logging, urllib
 
 
 class LabConfigError(Exception):
@@ -19,7 +19,11 @@ class LabConfig(object):
     raise LabConfigError("No cell named '%s'" % name)
 
 def make_json_config(json_str):
-  config = json.loads(json_str)
+  try:
+    config = json.loads(json_str)
+  except ValueError:
+    logging.error('Could not parse JSON string: ' + json_str)
+    raise
   return LabConfig(config)
 
 def fetch_json_config(url):

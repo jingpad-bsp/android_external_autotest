@@ -24,7 +24,7 @@ class Error(Exception):
 
 
 class EtherIo24(object):
-  """Encapsulates an EtherIO24."""
+  """Encapsulates an EtherIO24 UDP-GPIO bridge."""
 
   def __init__(self, hostname, port=2424):
     self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -75,7 +75,8 @@ class RfSwitch(object):
 
   def __init__(self, ip):
     self.io = EtherIo24(ip)
-    # Must run on pythons without 0bxxx notation
+    # Must run on pythons without 0bxxx notation.  These are 1110,
+    # 1101, 1011, 0111
     decode = [0xe, 0xd, 0xb, 0x7]
 
     self.port_mapping = []

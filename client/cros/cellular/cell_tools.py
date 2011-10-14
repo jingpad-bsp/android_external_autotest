@@ -49,7 +49,7 @@ def ConnectToCellNetwork(flim, config_timeout=CONFIG_TIMEOUT):
     if not state in connected_states:
         raise Error('Still in state %s' % state)
 
-    return state
+    return (service, state)
 
 
 class OtherDeviceShutdownContext(object):

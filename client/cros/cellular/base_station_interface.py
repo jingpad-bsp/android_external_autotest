@@ -21,7 +21,6 @@ class BaseStationInterface(object):
   def GetAirStateVerifier(self):
     return air_state_verifier.AirStateVerifierPermissive(self)
 
-
   def SetBsIpV4(self, ip1, ip2):
     """Sets basestation IPv4 addresses."""
     raise NotImplementedError()
