@@ -54,7 +54,8 @@ TESTS = [
   ('login_OwnershipRetaken', {}),
   ('login_OwnershipTaken', {}),
   ('login_RemoteOwnership', {}),
-  ('login_DBusCalls', {}),
+# TODO(dalecurtis): Re-enable once http://crosbug.com/21362 is fixed.
+#  ('login_DBusCalls', {}),
 # TODO(kmixter): Fix log volume usage, or change test constraints. See http://crosbug.com/11350
 #  ('logging_LogVolume', {'constraints': ['bytes_unexpected <= 100000',
 #                                         'files_unexpected <= 50',
@@ -63,7 +64,8 @@ TESTS = [
 #
 # TODO: Until ltp can pass on chromiumos
 #  ('ltp', {}),
-  ('network_ConnmanCromoCrash', {}),
+# TODO(dalecurtis): Re-enable once http://crosbug.com/21363 is fixed.
+#  ('network_ConnmanCromoCrash', {}),
   ('network_UdevRename', {}),
   ('platform_AccurateTime', {'constraints': ['seconds_offset < 60']}),
   ('platform_CleanShutdown', {}),
