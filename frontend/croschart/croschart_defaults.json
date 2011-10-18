@@ -35,5 +35,6 @@
    "milliseconds_Download100MBFile,milliseconds_Upload50MBFile"],
   ["desktopui_PyAutoPerfTests", "score_V8Benchmark"],
   ["desktopui_PyAutoPerfTests",
-   "FPS_ScrollBlankPage,FPS_ScrollTextPage,FPS_ScrollGooglePlusPage"]
+   "FPS_ScrollBlankPage,FPS_ScrollTextPage,FPS_ScrollGooglePlusPage"],
+  ["desktopui_PyAutoPerfTests", "frames_YoutubeDroppedFrames"]
 ]
