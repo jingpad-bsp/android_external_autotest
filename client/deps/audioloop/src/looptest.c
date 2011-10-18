@@ -75,10 +75,11 @@ static void get_choice(char *direction_name, audio_device_list_t *list,
     }
 
     for (i = 0; i < list->count; i++) {
-      printf("(%d)\nCard %d: %s, %s\n  Device %d: %s [%s]", i + 1,
+      printf("(%d)\nCard %d: %s, %s\n  Device %d: %s [%s], %s", i + 1,
           list->devs[i].card, list->devs[i].dev_id,
           list->devs[i].dev_name, list->devs[i].dev_no,
-          list->devs[i].pcm_id, list->devs[i].pcm_name);
+          list->devs[i].pcm_id, list->devs[i].pcm_name,
+          list->devs[i].hwdevname);
       printf("\n");
     }
     printf("\nChoose one(1 - %d): ",  list->count);
@@ -199,4 +200,3 @@ int main(int argc, char **argv) {
   test(size, count, play_dev, cap_dev);
   return 0;
 }
-

@@ -142,9 +142,8 @@ audio_device_list_t * get_device_list(snd_pcm_stream_t direction) {
       snd_pcm_info_set_stream(pcminfo, direction);
       ret = snd_ctl_pcm_info(handle, pcminfo);
       if (ret < 0) {
-        if (ret != -ENOENT)
-          fprintf(stderr, "error getting device info [%d, %d]: %s\n",
-                  cid, dev, snd_strerror(ret));
+        fprintf(stderr, "error getting device info [%d, %d]: %s\n",
+                cid, dev, snd_strerror(ret));
         continue;
       }
 
@@ -164,6 +163,12 @@ audio_device_list_t * get_device_list(snd_pcm_stream_t direction) {
       fprintf(stderr, "Error reading next sound device on card %d\n", cid);
     }
     snd_ctl_close(handle);
+  }
+  if (i != list->count) {
+    fprintf(stderr,
+            "Error: expect %d sound device(s) but read only %d device(s)\n",
+            list->count, i);
+    list->count = i;
   }
   if (ret == -1) {
     fprintf(stderr, "Error reading next sound card\n");
@@ -351,4 +356,3 @@ ssize_t pcm_io(audio_device_t *device, unsigned char *data, size_t count) {
   }
   return result;
 }
-
