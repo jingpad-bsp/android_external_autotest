@@ -27,6 +27,7 @@ class OwnershipTest(test.test):
 
     def initialize(self):
         ownership.clear_ownership()
+        cros_ui.restart()
         super(OwnershipTest, self).initialize()
 
 
