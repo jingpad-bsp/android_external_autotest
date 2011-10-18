@@ -92,7 +92,9 @@ class network_3GSafetyDance(test.test):
         # Ensure that auto connect is turned off so that flimflam does
         # not interfere with running the test
         self.enable()
-        service = self.flim.FindCellularService(timeout=5)
+        service = self.flim.FindCellularService(timeout=30)
+        if not service:
+            raise error.TestFail('Could not find cellular service')
 
         props = service.GetProperties()
         favorite = props['Favorite']
