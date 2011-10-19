@@ -51,13 +51,9 @@ class login_OwnershipRetaken(cros_ownership_test.OwnershipTest):
 
     def initialize(self):
         super(login_OwnershipRetaken, self).initialize()
-        # Start with a clean slate wrt ownership
-        cros_ui.stop()
         cryptohome.remove_vault(self._testuser)
         cryptohome.mount_vault(self._testuser, self._testpass, create=True)
-        ownership.clear_ownership()
-        cros_ui.start()
-        login.wait_for_browser()
+
         DBusGMainLoop(set_as_default=True)
         ownership.listen_to_session_manager_signal(self.__handle_new_key,
                                                    'SetOwnerKeyComplete')

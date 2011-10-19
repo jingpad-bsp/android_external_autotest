@@ -26,8 +26,10 @@ class OwnershipTest(test.test):
     _testpass = 'testme'
 
     def initialize(self):
+        # Start with a clean slate wrt ownership
+        cros_ui.stop()
         ownership.clear_ownership()
-        cros_ui.restart()
+        cros_ui.start()
         super(OwnershipTest, self).initialize()
 
 
