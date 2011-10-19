@@ -36,5 +36,10 @@
   ["desktopui_PyAutoPerfTests", "score_V8Benchmark"],
   ["desktopui_PyAutoPerfTests",
    "FPS_ScrollBlankPage,FPS_ScrollTextPage,FPS_ScrollGooglePlusPage"],
-  ["desktopui_PyAutoPerfTests", "frames_YoutubeDroppedFrames"]
+  ["desktopui_PyAutoPerfTests", "frames_YoutubeDroppedFrames"],
+  ["desktopui_PyAutoPerfTests", "FPS_FlashGaming,FPS_FlashText"],
+  ["desktopui_PyAutoPerfTests",
+   "MFLOPS_ScimarkGui-lu_factoriza,MFLOPS_ScimarkGui-fast_fourier,MFLOPS_ScimarkGui-jacobi_sor-M,MFLOPS_ScimarkGui-monte_carlo_,MFLOPS_ScimarkGui-sparse_matri"],
+  ["desktopui_PyAutoPerfTests",
+   "MB_ScimarkGui-lu_factorization,MB_ScimarkGui-fast_fourier_tra,MB_ScimarkGui-jacobi_sor-Mem,MB_ScimarkGui-monte_carlo_inte,MB_ScimarkGui-sparse_matrix_mu"]
 ]
