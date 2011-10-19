@@ -19,9 +19,6 @@ class kernel_ConfigVerify(test.test):
         'CC_STACKPROTECTOR',
         # Security; marks data segments as read-only/non-executable.
         'DEBUG_RODATA',
-        # Security; marks module data segments as RO/NX.
-        # TODO(kees): uncomment after crosbug.com/21552 is fixed.
-        #'DEBUG_SET_MODULE_RONX',
         # Security; enables the SECCOMP application API.
         'SECCOMP',
         # Security; blocks direct physical memory access.
@@ -123,9 +120,14 @@ class kernel_ConfigVerify(test.test):
             # ... except on ARM where it shouldn't be larger than 32k due
             # to historical ELF load location.
             wanted = '32768'
-        # TODO(kees): remove 4k override once crosbug.com/21554 is fixed.
-        wanted = '4096'
         self.has_value('DEFAULT_MMAP_MIN_ADDR', wanted)
+
+        # Security; marks module data segments as RO/NX.
+        if utils.get_arch().startswith('arm'):
+            # TODO(kees): ARM kernel needs the module RO/NX logic added.
+            self.is_missing('DEBUG_SET_MODULE_RONX')
+        else:
+            self.has_builtin('DEBUG_SET_MODULE_RONX')
 
         # Raise a failure if anything unexpected was seen.
         if len(self._failures):
