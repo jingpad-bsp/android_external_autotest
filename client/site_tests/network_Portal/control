@@ -2,19 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "jglasgow@chromium.org (Jason R. Glasgow)"
-DOC = "Verifies that the flimflam portal detection code works."
-NAME = "network_Portal"
-PURPOSE = "Verify portal detection code works."
+AUTHOR = 'The Chromium OS Authors'
+DOC = 'Verifies that the flimflam portal detection code works.'
+NAME = 'network_Portal'
+PURPOSE = 'Verify portal detection code works.'
 CRITERIA = """
     Fails if portal code detects portal state when
-    www.google.com is accessible or if portcal code detects online
-    when www.google.com is not accessible.
+    clients3.google.com is accessible or if portal code detects online
+    when clients3.google.com is not accessible.
 """
-TIME = "SHORT"
-TEST_CATEGORY = "Functional"
-TEST_CLASS = "network"
-TEST_TYPE = "client"
+TIME = 'SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'network'
+TEST_TYPE = 'client'
 
 job.run_test('network_Portal',
              force_portal=False, tag='online')

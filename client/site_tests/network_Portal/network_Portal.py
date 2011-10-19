@@ -64,9 +64,8 @@ class network_Portal(test.test):
         return True
 
 
-    def run_once(self, force_portal, iterations=10):
+    def run_once(self, force_portal, test_iterations=10, service_name='wifi'):
         errors = 0
-        service_name = 'wifi'
         if force_portal:
             # depends on getting a consistent IP address from DNS
             # depends on portal detection using www.google.com or
@@ -86,7 +85,7 @@ class network_Portal(test.test):
                 error.TestFail(
                     'No service named "%s" available' % service_name))
             with cell_tools.BlackholeContext(hosts):
-                for _ in range(iterations):
+                for _ in range(test_iterations):
                     if not self.TestConnect(service_name, expected_state):
                         errors += 1
 
