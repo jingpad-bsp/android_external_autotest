@@ -30,6 +30,15 @@ from autotest_lib.client.common_lib import error
 _STATE_WAIT_INSERT = 1
 _STATE_WAIT_REMOVE = 2
 
+# udev constants
+_UDEV_ACTION_INSERT = 'add'
+_UDEV_ACTION_REMOVE = 'remove'
+_UDEV_MMCBLK_PATH   = '/dev/mmcblk'
+# USB card reader attributes and common text string in descriptors
+_USB_CARD_ATTRS     = ['vendor', 'model', 'product', 'configuration',
+                       'manufacturer']
+_USB_CARD_DESCS     = ['card', 'reader']
+
 _INSERT_FMT_STR = lambda t: (
     '\n'.join(['insert %s drive...' % t,
                'WARNING: DATA ON INSERTED MEDIA WILL BE LOST!\n',
@@ -38,26 +47,12 @@ _INSERT_FMT_STR = lambda t: (
                ]))
 _REMOVE_FMT_STR = lambda t: 'remove %s drive...\n提取%s存儲...' % (t, t)
 _TESTING_FMT_STR = lambda t:'testing %s...\n%s 檢查當中...' % (t, t)
-_ERR_TOO_MANY_REMOVE_FMT_STR = \
-        lambda target_dev, removed_dev: \
-            'Too many device removed (%s). Please only remove %s.\n' \
-            '有太多外部儲存裝置被移除 (%s)，請只移除 %s 即可\n' % \
-                    (removed_dev, target_dev, removed_dev, target_dev)
-_ERR_DEV_NOT_REMOVE_FMT_STR = \
-        lambda t: 'Please remove %s.\n請移除 %s\n' % (t, t)
+_ERR_TOO_EARLY_REMOVE_FMT_STR = \
+        lambda t: \
+            'Device removed too early (%s).\n' \
+            '太早移除外部儲存裝置 (%s).\n' % (t, t)
 _ERR_FIO_TEST_FAILED_FMT_STR = \
         lambda target_dev: 'IO error while running test on %s.\n' % target_dev
-
-def find_root_dev():
-    rootdev = utils.system_output('rootdev -s -d')
-    return os.path.basename(rootdev)
-
-
-def find_all_storage_dev():
-    return set([os.path.basename(device)
-                for device in (glob.glob('/sys/block/sd[a-z]') +
-                               glob.glob('/sys/block/mmcblk[0-9]'))])
-
 
 class factory_ExternalStorage(test.test):
     version = 1
@@ -69,19 +64,43 @@ class factory_ExternalStorage(test.test):
         context.paint()
         return True
 
-    def rescan_storage(self, subtest_tag):
-        if self._state == _STATE_WAIT_INSERT:
-            new_devices = find_all_storage_dev()
-            insert_diff = new_devices - self._devices
-            removal_diff = self._devices - new_devices
-            if removal_diff:
-              self._devices = new_devices
-              factory.log('Device removed : %s' % removal_diff)
-            elif insert_diff:
-                self._devices = new_devices
-                factory.log('found new devs : %s' % insert_diff)
-                self._target_device = insert_diff.pop()
-                devpath = os.path.join('/dev', self._target_device)
+    def get_attrs(self, device, key_set):
+        if device is None:
+            return ''
+        attrs = [device.attributes[key] for key in
+                    set(device.attributes.keys()) & key_set]
+        attr_str = ' '.join(attrs).strip()
+        if len(attr_str):
+            attr_str = '/' + attr_str
+        return self.get_attrs(device.parent, key_set) + attr_str
+
+    def is_usb_cardreader(self, device):
+        attr_str = self.get_attrs(device, set(_USB_CARD_ATTRS)).lower()
+        for desc in _USB_CARD_DESCS:
+            if desc in attr_str:
+                return True
+        return False
+
+
+    def is_sd(self, device):
+        if device.device_node.find(_UDEV_MMCBLK_PATH) == 0:
+            return True
+        return self.is_usb_cardreader(device)
+
+    def get_device_type(self, device):
+        if self.is_sd(device):
+            return 'SD'
+        return 'USB'
+
+    def udev_event_cb(self, subtest_tag, action, device):
+        if action == _UDEV_ACTION_INSERT:
+            if self._state == _STATE_WAIT_INSERT:
+                if self._media != self.get_device_type(device):
+                    return
+                factory.log('%s device inserted : %s' %
+                        (self._media, device.device_node))
+                self._target_device = device.device_node
+                devpath = device.device_node
                 self._prompt.set_text(_TESTING_FMT_STR(devpath))
                 self._image = self.testing_image
                 self._pictogram.queue_draw()
@@ -91,21 +110,20 @@ class factory_ExternalStorage(test.test):
                                                  quicktest=True,
                                                  tag=subtest_tag)
                 if result is not True:
-                  self._error += _ERR_FIO_TEST_FAILED_FMT_STR(
-                          self._target_device)
+                    self._error += _ERR_FIO_TEST_FAILED_FMT_STR(
+                            self._target_device)
                 self._prompt.set_text(_REMOVE_FMT_STR(self._media))
                 self._state = _STATE_WAIT_REMOVE
                 self._image = self.removal_image
                 self._pictogram.queue_draw()
-        else:
-            removal_diff = self._devices - find_all_storage_dev()
-            if len(removal_diff) > 1:
-                self._error += _ERR_TOO_MANY_REMOVE_FMT_STR(
-                        self._target_device, removal_diff)
-            if removal_diff and self._target_device not in removal_diff:
-                self._error += _ERR_DEV_NOT_REMOVE_FMT_STR(
-                        self._target_device)
-            if removal_diff:
+        elif action == _UDEV_ACTION_REMOVE:
+            if self._target_device == device.device_node:
+                factory.log('Device removed : %s' % device.device_node)
+                if self._state != _STATE_WAIT_REMOVE:
+                    self._error += _ERR_TOO_EARLY_REMOVE_FMT_STR(
+                            self._target_device)
+                    factory.log('Device %s removed too early' %
+                            self._target_device)
                 gtk.main_quit()
         return True
 
@@ -116,6 +134,7 @@ class factory_ExternalStorage(test.test):
         factory.log('%s run_once' % self.__class__)
 
         self._error = ''
+        self._target_device = None
 
         os.chdir(self.srcdir)
 
@@ -148,14 +167,14 @@ class factory_ExternalStorage(test.test):
         self._state = _STATE_WAIT_INSERT
         self._image = self.insertion_image
         self._result = False
-        self._devices = find_all_storage_dev()
         context = pyudev.Context()
         monitor = pyudev.Monitor.from_netlink(context)
-        monitor.filter_by(subsystem='block')
+        monitor.filter_by(subsystem='block', device_type='disk')
         observer = pyudev.glib.GUDevMonitorObserver(monitor)
         observer.connect('device-event',
                          lambda observer, action, device: \
-                                self.rescan_storage(subtest_tag))
+                                self.udev_event_cb(subtest_tag, action,
+                                        device))
         monitor.start()
 
         drawing_area = gtk.DrawingArea()
