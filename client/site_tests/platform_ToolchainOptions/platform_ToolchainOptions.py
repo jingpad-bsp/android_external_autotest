@@ -151,8 +151,18 @@ class platform_ToolchainOptions(test.test):
         libc_glob = "/lib/libc-[0-9]*"
         os.chdir(self.srcdir)
 
+        # we do not test binaries if they are built with Address Sanitizer
+        # because it is a separate testing tool.
+        no_asan_used = utils.system_output("binutils/readelf -s "
+                                           "/opt/google/chrome/chrome | "
+                                           "egrep -q \"__asan_init\" || "
+                                           "echo no ASAN")
+        if not no_asan_used:
+          logging.debug("ASAN detected on /opt/google/chrome/chrome. "
+                        "Will skip all checks.")
+
         # arm arch doesn't have hardened.
-        if utils.get_cpu_arch() != "arm":
+        if utils.get_cpu_arch() != "arm" and no_asan_used:
             fstack_cmd = ("binutils/objdump -CR {} 2>&1 | "
                           "egrep -q \"(stack_chk|Invalid|not recognized)\"")
             fstack_find_options = ((" -wholename '%s' -prune -o "
@@ -202,7 +212,8 @@ class platform_ToolchainOptions(test.test):
                                                       pie_cmd,
                                                       pie_whitelist))
 
-        if options.enable_hardfp and utils.get_cpu_arch() == 'arm':
+        if (options.enable_hardfp and utils.get_cpu_arch() == 'arm' and
+            no_asan_used):
             hardfp_cmd = ("binutils/readelf -A {} 2>&1 | "
                           "egrep -q \"Tag_ABI_VFP_args: VFP registers\"")
             hardfp_whitelist = os.path.join(self.bindir, "hardfp_whitelist")
