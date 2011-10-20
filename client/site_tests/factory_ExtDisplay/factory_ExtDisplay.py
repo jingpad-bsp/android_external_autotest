@@ -25,8 +25,8 @@ from autotest_lib.client.common_lib import utils
 
 
 _LABEL_STATUS_SIZE = (140, 30)
-_LABEL_START_STR = 'Connect headset.\n(Chinese)\n' + \
-    'Connect external display\n(Chinese)\n\nhit SPACE to start test.'
+_LABEL_START_STR = 'Connect headset.\n' + \
+    'Connect external display\n\nhit SPACE to start test.'
 _LABEL_RESPONSE_STR = ful.USER_PASS_FAIL_SELECT_STR + '\n'
 _VERBOSE = False
 
@@ -74,7 +74,7 @@ class factory_ExtDisplay(test.test):
                 try:
                     utils.system(cfg)
                 except error.CmdError:
-                    raise error.TestNAError('Setup failed\n設定失敗\nCmd: %s' % cfg)
+                    raise error.TestNAError('Setup failed\nCmd: %s' % cfg)
                 factory.log("cmd: " + cfg)
         if 'cmd' in subtest_cfg:
             cmd = "%s %s" % (subtest_cfg['cmd'], self._sample)
@@ -90,7 +90,7 @@ class factory_ExtDisplay(test.test):
                 try:
                     utils.system(cfg)
                 except error.CmdError:
-                    raise error.TestNAError('Setup failed\n設定失敗\nCmd: %s' % cfg)
+                    raise error.TestNAError('Setup failed\nCmd: %s' % cfg)
                 factory.log("cmd: " + cfg)
         self.close_bgjob(subtest_cfg)
 
