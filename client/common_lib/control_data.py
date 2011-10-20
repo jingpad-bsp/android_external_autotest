@@ -120,6 +120,10 @@ class ControlData(object):
         self._set_int('sync_count', val, min=1)
 
 
+    def set_suite(self, val):
+        self._set_string('suite', val)
+
+
     def set_time(self, val):
         self._set_option('time', val, ['short', 'medium', 'long'])
 
@@ -172,13 +176,24 @@ def _extract_name(n):
     return (key, val)
 
 
+def parse_control_string(control, raise_warnings=False):
+    try:
+        mod = compiler.parse(control)
+    except SyntaxError, e:
+        raise ControlVariableException("Error parsing data because %s" % e)
+    return finish_parse(mod, '', raise_warnings)
+
+
 def parse_control(path, raise_warnings=False):
     try:
         mod = compiler.parseFile(path)
     except SyntaxError, e:
         raise ControlVariableException("Error parsing %s because %s" %
                                        (path, e))
+    return finish_parse(mod, path, raise_warnings)
 
+
+def finish_parse(mod, path, raise_warnings):
     assert(mod.__class__ == compiler.ast.Module)
     assert(mod.node.__class__ == compiler.ast.Stmt)
     assert(mod.node.nodes.__class__ == list)

@@ -1,0 +1,37 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "dummy"
+PURPOSE = "To be run while testing the infrastructure and test harness."
+CRITERIA = "None."
+
+TIME = "SHORT"
+TEST_CATEGORY = "Dummy"
+TEST_CLASS = "suite"
+TEST_TYPE = "Server"
+
+DOC = """
+This is a dummy test suite.  It runs dummy tests that always pass or always fail
+so that we can test result gathering and reporting mechanisms.
+"""
+
+import common
+from autotest_lib.server.cros import dynamic_suite
+
+
+# These params should be injected by the thing scheduling the job
+image_url = 'http://172.22.50.205:8080/update/x86-mario-r17/R17-1388.0.0-a1-b1323'
+image_name ='x86-mario-r17/R17-1388.0.0-a1-b1323'
+board = 'netbook_MARIO_MP'
+
+# This is pretty much just here for testing.
+SKIP_IMAGE = False
+
+suite_tag = 'dummy'
+reimager = dynamic_suite.Reimager(job.autodir)
+
+if SKIP_IMAGE or reimager.attempt(image_url, image_name, 4, board, job.record):
+    bvt = dynamic_suite.Suite.create_from_name(suite_tag, job.autodir)
+    bvt.run_and_wait(image_name, job.record, add_experimental=True)

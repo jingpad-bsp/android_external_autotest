@@ -435,8 +435,7 @@ class AFE(RpcClient):
         results = []
         for job in jobs:
             if getattr(job, 'result', None) is None:
-                enough = lambda x, y: x + 1 >= y
-                job.result = self.poll_job_results(tko, job, enough)
+                job.result = self.poll_job_results(tko, job)
                 if job.result is not None:
                     self.result_notify(job, email_from, email_to)
 
@@ -606,24 +605,22 @@ class AFE(RpcClient):
         if self.job:
             self.job.record(result, None, testname, status='')
 
-
-    def poll_job_results(self, tko, job, enough_completed, debug=False):
+    def poll_job_results(self, tko, job, enough=1, debug=False):
         """
         Analyse all job results by platform
 
           params:
             tko: a TKO object representing the results DB.
             job: the job to be examined.
-            enough_completed: a predicate that takes the number of completed
-                              tests and the total number of tests and returns
-                              True if enough have completed, False if not.
+            enough: the acceptable delta between the number of completed
+                    tests and the total number of tests.
             debug: enable debugging output.
 
           returns:
-            False: if any platform has more than |enough_completed| failures
-            None:  if any platform has less than |enough_completed| machines
+            False: if any platform has more than |enough| failures
+            None:  if any platform has less than |enough| machines
                    not yet Good.
-            True:  if all platforms have at least |enough_completed| machines
+            True:  if all platforms have at least |enough| machines
                    Good.
         """
         self._job_test_results(tko, job, debug)
@@ -654,14 +651,13 @@ class AFE(RpcClient):
                 else:
                     platform_test_result = 'WARN'
 
-            if aborted > 1:
+            if aborted > enough:
                 aborted_platforms.append(platform)
                 self.set_platform_results(job, platform, platform_test_result)
-            elif (failed * 2 >= total) or (failed > 1):
+            elif (failed * 2 >= total) or (failed > enough):
                 failed_platforms.append(platform)
                 self.set_platform_results(job, platform, platform_test_result)
-            elif (completed >= 1) and enough_completed(completed, total):
-                # if all or all but one are good, call the job good.
+            elif (completed >= enough) and (completed + enough >= total):
                 good_platforms.append(platform)
                 self.set_platform_results(job, platform, 'GOOD')
             else:
