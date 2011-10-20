@@ -69,8 +69,8 @@ class platform_OSLimits(test.test):
 
         ref_min = {'file_max': 50000,
                    'max_open': 1024,
-                   'max_procs': 5000,
-                   'max_threads': 10000,
+                   'max_procs': 3000,
+                   'max_threads': 7000,
                    'ngroups_max': 65536,
                    'nr_open': 1048576,
                    'pid_max': 32768,
