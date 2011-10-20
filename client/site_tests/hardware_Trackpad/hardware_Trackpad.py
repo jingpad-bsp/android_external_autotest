@@ -127,14 +127,28 @@ class hardware_Trackpad(test.test):
             #                     'any_finger_click.l1-*', or
             #                     'any_finger_click.r*'), etc.
             for group_name in group_name_list:
-                if group_name == '*':
-                    group_name = tdata.func.name + '*'
-
+                # prefix is the area name as default
                 tdata.prefix = get_prefix(tdata.func)
                 if tdata.prefix is not None:
-                    group_name = tdata.prefix + '-' + group_name
-                group_path = os.path.join(gesture_files_path, group_name)
-                gesture_file_group = glob.glob(group_path)
+                    # E.g., prefix = 'click-'
+                    prefix = tdata.prefix + '-'
+                group_path = os.path.join(gesture_files_path, prefix)
+
+                if group_name == '*':
+                    # E.g., group_path = '.../click-any_finger_click'
+                    group_path = group_path + tdata.func.name
+                    # Two possibilities of the gesture_file_group:
+                    # 1. '.../click-any_finger_click.*':
+                    #    variations exists (subname is not None)
+                    # 2. '.../click-any_finger_click-*': no variations
+                    #    no variations (subname is None)
+                    # Note: attributes are separated by dash ('-')
+                    #       variations are separated by dot ('.')
+                    gesture_file_group = (glob.glob(group_path + '.*') +
+                                          glob.glob(group_path + '-*'))
+                else:
+                    group_path = group_path + group_name
+                    gesture_file_group = glob.glob(group_path)
 
                 # Process each specific gesture_file now.
                 for gesture_file in gesture_file_group:
