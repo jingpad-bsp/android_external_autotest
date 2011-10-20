@@ -72,7 +72,6 @@ class TouchpadTest:
         self._r_click = False
         self._of_z_rad = 0
         self._tf_z_rad = 0
-        self._deadline = None
 
     def calc_missing_string(self):
         missing = []
@@ -95,17 +94,6 @@ class TouchpadTest:
             missing.append('Missing right click\n'
                            '沒有偵測到右鍵被按下，請檢修')
         return '\n'.join(missing)
-
-    def timer_event(self, countdown_label):
-        if not self._deadline:  # Ignore timer with no countdown in progress.
-            return True
-        time_remaining = max(0, self._deadline - time.time())
-        if time_remaining == 0:
-            factory.log('deadline reached')
-            gtk.main_quit()
-        countdown_label.set_text('%d' % time_remaining)
-        countdown_label.queue_draw()
-        return True
 
     def device_event(self, x, y, z, fingers, left, right):
         x_seg = int(round(x / (1.0 / float(_X_SEGMENTS - 1))))
@@ -146,8 +134,6 @@ class TouchpadTest:
 
         if new_stuff:
             self._drawing_area.queue_draw()
-            if self._deadline is None:
-                self._deadline = int(time.time()) + ful.FAIL_TIMEOUT
 
         if not self.calc_missing_string():
             factory.log('completed successfully')
@@ -155,6 +141,10 @@ class TouchpadTest:
 
     def expose_event(self, widget, event):
         context = widget.window.cairo_create()
+
+        # Fill context with factory UI default background color.
+        context.set_source_rgb(0, 0, 0)
+        context.paint()
 
         # Show touchpad image as the background.
         context.set_source_surface(self._tp_image, 0, 0)
@@ -373,7 +363,6 @@ class SynControl:
         # Open pty to avoid buffered output in subprocess.Popen
         master, slave = pty.openpty()
         self.pty_stdout = os.fdopen(master)
-        self._count = 0
 
         try:
             self._proc = subprocess.Popen(self._CMDLINE, shell=True,
@@ -457,7 +446,6 @@ class SynControl:
             return True
 
         data = line.split(',')
-        self._count += 1
         (data_x, data_y, data_z, data_w, data_dx, data_dy, data_finger_index,
                  data_left_button, data_right_button) = \
                  (d.split(':')[-1].strip().rstrip('\n') for d in data)
@@ -507,13 +495,15 @@ class factory_Touchpad(test.test):
                                 gdk.BUTTON_RELEASE_MASK |
                                 gdk.POINTER_MOTION_MASK)
 
-        countdown_widget, countdown_label = ful.make_countdown_widget()
-        gobject.timeout_add(1000, test.timer_event, countdown_label)
-
         test_widget = gtk.VBox()
         test_widget.set_spacing(20)
         test_widget.pack_start(drawing_area, False, False)
-        test_widget.pack_start(countdown_widget, False, False)
+        usage_label = ful.make_label(
+                '1. Move one finger across entire touchpad surface\n'
+                '2. Scroll from top to bottom of pad with two fingers\n'
+                '3. Click touchpad with one finger\n'
+                '4. Click touchpad with two fingers\n')
+        test_widget.pack_start(usage_label, False, False)
 
         raw_dev = glob('/dev/serio_raw*')
         # Check if synaptics closed source kernel driver is used
