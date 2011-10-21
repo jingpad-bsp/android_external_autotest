@@ -31,8 +31,9 @@ class network_ConnmanCromoCrash(test.test):
         self.callproc('chmod', '755', self.srcdir)
         self.callproc('chmod', '755', '%s/%s' % (self.srcdir, 'common.py'))
         self.callproc('chmod', '755', '%s/%s' % (self.srcdir, test))
-        proc = subprocess.Popen(['/sbin/minijail', '--uid=210', '--gid=210',
-                                 '/usr/bin/env', 'python', '%s/%s' % (self.srcdir, test)],
+        proc = subprocess.Popen(['/sbin/minijail0', '-u', 'cromo', '-g',
+                                 'cromo', '/usr/bin/env', 'python',
+                                 '%s/%s' % (self.srcdir, test)],
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
         (out, err) = proc.communicate()
