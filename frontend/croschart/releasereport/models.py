@@ -93,10 +93,13 @@ def GetReleaseQuery(request):
 # Helpers
 def BuildNumberCmp(build_number1, build_number2):
   """Compare build numbers and return in ascending order."""
-  # 6 different build patterns:
+  # 10 different build patterns:
   #1. xxx-yyy-r13 0.12.133.0-b1 [(chrome version)]
-  #2. ttt_sss-rc 0.12.133.0-b1 [(chrome version)]
+  #2. ttt_sss1100-rc 0.12.133.0-b1 [(chrome version)]
   #3. 0.12.133.0-b1 [(chrome version)]
+  #4. xxx-yyy-r13 R16-1131.0.0-b1 [(chrome version)]
+  #5. ttt_sss-rc R16-1131.0.0-b1 [(chrome version)]
+
   def GetPureBuild(build):
     """This code coordinated with AbbreviateBuild()."""
     divided = build.split('(')[0].strip().split(chartutils.BUILD_PART_SEPARATOR)
@@ -104,7 +107,10 @@ def BuildNumberCmp(build_number1, build_number2):
     if dlen > 2:
       raise ChartDBError('Unexpected build format: %s' % build)
     # Get only the w.x.y.z part.
-    return divided[dlen-1].split('-')
+    dehyphened = divided[dlen-1].split('-')
+    if len(dehyphened) == 3 and dehyphened[0][0] == 'R':
+      return '%s.%s' % (dehyphened[0][1:], dehyphened[1]), dehyphened[2]
+    return dehyphened
 
   build1, b1 = GetPureBuild(build_number1)
   build2, b2 = GetPureBuild(build_number2)
