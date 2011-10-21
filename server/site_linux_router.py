@@ -125,6 +125,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Construct the hostapd.conf file and start hostapd.
         conf = self.hostapd['conf']
+        # default RTS and frag threshold to ``off''
+        conf['rts_threshold'] = '2347'
+        conf['fragm_threshold'] = '2346'
+
         tx_power_params = {}
         htcaps = set()
 
