@@ -8,6 +8,7 @@ XAUTH=/usr/bin/xauth
 XAUTH_FILE=/home/chronos/.Xauthority
 SERVER_READY=
 DISPLAY=":0"
+BOARD_CONFIG="$(dirname $0)"/board_config_x.sh
 
 user1_handler () {
   echo "X server ready..." 1>&2
@@ -29,6 +30,10 @@ done
 
 export DISPLAY=${DISPLAY}
 export XAUTHORITY=${XAUTH_FILE}
+
+if [ -x $BOARD_CONFIG ]; then
+  $BOARD_CONFIG
+fi
 
 /sbin/initctl emit factory-ui-started
 cat /proc/uptime > /tmp/uptime-x-started
