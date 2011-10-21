@@ -19,7 +19,7 @@ BASE_URL = 'http://' + SERVER + '/'
 class network_3GSmokeTest(test.test):
     version = 1
 
-    def ConnectTo3GNetwork(self, config_timeout):
+    def ConnectTo3GNetwork(self, config_timeout, service_timeout):
         """Attempts to connect to a 3G network using FlimFlam.
 
         Args:
@@ -29,7 +29,10 @@ class network_3GSmokeTest(test.test):
         error.TestFail if connection fails
         """
         logging.info('ConnectTo3GNetwork')
+
         service = self.flim.FindCellularService()
+        if not service:
+            raise error.TestError('Could not find cellular service.')
 
         success, status = self.flim.ConnectService(
             service=service,
@@ -37,10 +40,11 @@ class network_3GSmokeTest(test.test):
         if not success:
             raise error.TestFail('Could not connect: %s.' % status)
 
+        logging.info('Waiting for connected state.')
         connected_states = ['portal', 'online']
         state = self.flim.WaitForServiceState(service=service,
                                               expected_states=connected_states,
-                                              timeout=15,
+                                              timeout=service_timeout,
                                               ignore_failure=True)[0]
         if not state in connected_states:
             raise error.TestFail('Still in state %s' % state)
@@ -90,7 +94,10 @@ class network_3GSmokeTest(test.test):
               effect.  Raise if we time out.
         """
         logging.info('DisconnectFrom3GNetwork')
+
         service = self.flim.FindCellularService()
+        if not service:
+            raise error.TestError('Could not find cellular service.')
 
         success, status = self.flim.DisconnectService(
             service=service,
@@ -172,12 +179,12 @@ class network_3GSmokeTest(test.test):
 
         routes = routing.NetworkRoutes()
         for address in server_addresses:
-          interface = routes.getRouteFor(address).interface
-          logging.info('interface for %s: %s', address, interface)
-          if interface!= expected:
-            raise error.TestFail('Target server %s uses interface %s'
-                                 '(%s expected).' %
-                                 (address, interface, expected))
+            interface = routes.getRouteFor(address).interface
+            logging.info('interface for %s: %s', address, interface)
+            if interface != expected:
+                raise error.TestFail('Target server %s uses interface %s'
+                                     '(%s expected).' %
+                                     (address, interface, expected))
 
     def run_once_internal(self, connect_count, sleep_kludge):
         bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -197,7 +204,8 @@ class network_3GSmokeTest(test.test):
         modem_info = self.GetModemInfo()
 
         for ii in xrange(connect_count):
-            state = self.ConnectTo3GNetwork(config_timeout=120)
+            state = self.ConnectTo3GNetwork(config_timeout=120,
+                                            service_timeout=30)
             self.CheckInterfaceForDestination(SERVER,
                                               self.flim.FindCellularService())
 
@@ -220,8 +228,8 @@ class network_3GSmokeTest(test.test):
                                      'failed to leave modem in working state.')
 
             if sleep_kludge:
-              logging.info('Sleeping for %.1f seconds', sleep_kludge)
-              time.sleep(sleep_kludge)
+                logging.info('Sleeping for %.1f seconds', sleep_kludge)
+                time.sleep(sleep_kludge)
 
     def run_once(self, connect_count=5, sleep_kludge=5, fetch_timeout=120):
         self.fetch_timeout = fetch_timeout
