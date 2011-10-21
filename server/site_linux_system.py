@@ -20,7 +20,7 @@ class LinuxSystem(object):
         self.cmd_dhcpd = params.get("cmd_dhcpd", "/usr/sbin/dhcpd")
         self.cmd_tcpdump = params.get("cmd_tcpdump", "/usr/sbin/tcpdump")
 
-        self.capture_file = "/tmp/dump.cap"
+        self.capture_file = "/tmp/dump.pcap"
         self.capture_logfile = "/tmp/dump.log"
         self.capture_count = 0
         self.capture_running = False
@@ -97,7 +97,7 @@ class LinuxSystem(object):
                       (self.cmd_tcpdump,
                        self.capture_interface,
                        self.capture_file,
-                       params.get('snaplen', '2048'),
+                       params.get('snaplen', '0'),
                        self.capture_logfile))
         self.capture_running = True
 
@@ -110,7 +110,7 @@ class LinuxSystem(object):
                                                self.capture_interface))
 
         self.host.get_file(self.capture_file,
-                             'debug/tcpdump_%s_%d.cap' %
+                             'debug/%s_%d.pcap' %
                              (self.role, self.capture_count))
         self.capture_count += 1
         self.capture_running = False

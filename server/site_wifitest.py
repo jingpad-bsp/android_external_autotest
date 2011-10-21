@@ -217,8 +217,8 @@ class WiFiTest(object):
             self.__add_hook('config', self.hosting_server.start_capture)
         if 'router_capture_all' in self.run_options:
             self.__add_hook('config', self.wifi.start_capture)
-        if 'router_capture_all' in self.run_options:
-            self.__add_hook('config', self.netdump_start)
+        if 'client_capture_all' in self.run_options:
+            self.__add_hook('config', self.client_netdump_start)
 
         # NB: do last so code above doesn't need to cleanup on failure
         self.test_profile = {'name':'test'}
@@ -254,7 +254,7 @@ class WiFiTest(object):
 
 
     def __client_discover_commands(self, client):
-        self.client_cmd_netdump = client.get('cmd_netdump', 'tshark')
+        self.client_cmd_netdump = client.get('cmd_netdump', 'tcpdump')
         self.client_cmd_ifconfig = client.get('cmd_ifconfig', 'ifconfig')
         self.client_cmd_iw = client.get('cmd_iw', 'iw')
         self.client_cmd_netperf = self.__must_be_installed(self.client,
@@ -1236,12 +1236,12 @@ class WiFiTest(object):
 
 
     def client_netdump_start(self, params):
-        """ Ping the server from the client """
+        """ Start capturing network traffic on the client """
         self.client.run("pkill %s || /bin/true" % self.client_cmd_netdump)
         devname = self.__create_netdump_dev()
         self.client_netdump_dir = self.client.get_tmp_dir()
         self.client_netdump_file = os.path.join(self.client_netdump_dir,
-                                                "client_netdump.cap")
+                                                "client.pcap")
         cmd = "%s -i %s -w %s" % (self.client_cmd_netdump, devname,
                                   self.client_netdump_file)
         logging.info(cmd)
@@ -1252,7 +1252,8 @@ class WiFiTest(object):
     def client_netdump_stop(self, params):
         if self.client_netdump_thread is not None:
             self.__destroy_netdump_dev()
-            self.client.run("pkill %s" % self.client_cmd_netdump)
+            self.client.run("pkill %s" % self.client_cmd_netdump,
+                            ignore_status=True)
             self.client.get_file(self.client_netdump_file, '.')
             self.client.delete_tmp_dir(self.client_netdump_dir)
             self.client_netdump_thread.join()
