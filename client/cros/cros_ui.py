@@ -128,8 +128,7 @@ def restart(impl=None):
 
     Args:
         impl: Method to use to restart the session manager. By
-              default, the session manager is restarted using the
-              StopSession API.
+              default, the session manager is restarted using upstart.
     """
 
     _clear_login_prompt_state()
@@ -141,7 +140,7 @@ def restart(impl=None):
     try:
         if impl is not None:
             impl()
-        elif not ownership.connect_to_session_manager().StopSession(''):
+        elif utils.system("restart ui") != 0:
             raise error.TestError('Could not stop session')
 
         # Wait for login prompt to appear to indicate that all processes are

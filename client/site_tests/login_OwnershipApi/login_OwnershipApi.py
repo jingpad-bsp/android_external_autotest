@@ -83,11 +83,11 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
         else:
             raise error.TestFail('Did not detect bad policy')
 
-        def StopSession():
-            if not sm.StopSession(''):
-                raise error.TestFail('Could not stop session for owner')
-
-        cros_ui.restart(StopSession)
+        try:
+            cros_ui.restart()
+        except error.TestError as e:
+            logging.error(str(e))
+            raise error.TestFail('Could not stop session for owner')
 
 
     def cleanup(self):

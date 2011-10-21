@@ -51,11 +51,11 @@ class login_RemoteOwnership(cros_ownership_test.OwnershipTest):
                                               old_key=priv),
                          sm)
 
-        def StopSession():
-            if not sm.StopSession(''):
-                raise error.TestFail('Could not stop session for random user')
-
-        cros_ui.restart(StopSession)
+        try:
+            cros_ui.restart()
+        except error.TestError as e:
+            logging.error(str(e))
+            raise error.TestFail('Could not stop session for random user')
 
 
     def cleanup(self):
