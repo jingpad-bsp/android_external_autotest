@@ -2,15 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dbus, dbus.mainloop.glib, glib, gobject
+import logging, os, pty, re, subprocess, traceback
+
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import network
 
-import logging, os, pty, re, socket, string, subprocess, sys, time, traceback
-import urllib2
-import dbus, dbus.mainloop.glib, glib, gobject
-
 from autotest_lib.client.cros import flimflam_test_path
+import flimflam
 import mm
 
 # Preconditions for starting
@@ -267,6 +267,63 @@ class ApiConnectTest(GobiDesyncEventLoop):
     if not saw_exception:
       raise error.TestFail('Enable returned when it should have crashed')
 
+class EnableDisableTest():
+  """Test that the Enable and Disable technology functions work."""
+
+  def CompareModemPowerState(self, manager, path, expected_state):
+    """Compare the modem manager power state of a modem to an expected state."""
+    props = manager.Properties(path)
+    state = props['Enabled']
+    logging.info('Modem Enabled = %s' % state)
+    return state == expected_state
+
+  def CompareDevicePowerState(self, device, expected_state):
+    """Compare the flimflam device power state to an expected state."""
+    device_properties = device.GetProperties(utf8_strings=True);
+    state = device_properties['Powered']
+    logging.info('Device Enabled = %s' % state)
+    return state == expected_state
+
+  def Test(self):
+    """Test that the Enable and Disable technology functions work.
+
+       The expectation is that by using enable technology flimflam
+       will change the power state of the device by requesting that
+       the modem manager modem be either Enabled or Disabled.  The
+       state tracked by flimflam should not change until *after* the
+       modem state has changed.  Thus after Enabling or Disabling the
+       technology, we wait until the flimflam device state changes,
+       and then assert that the modem state has also changed, without
+       having to wait again.
+
+       Raises:
+         error.TestFail - if the flimflam device or the modem manager
+           modem is not in the expected state
+    """
+    flim = flimflam.FlimFlam()
+    modem_manager, gobi_path = mm.PickOneModem('Gobi')
+    props = modem_manager.Properties(gobi_path)
+    interface= props['Device']
+    device = flim.FindElementByPropertySubstring('Device',
+                                                 'Interface', interface)
+
+    for i in range(2):
+      # Enable technology, ensure that device and modem are enabled.
+      flim.EnableTechnology('cellular')
+      utils.poll_for_condition(
+          lambda: self.CompareDevicePowerState(device, True),
+          error.TestFail('Device Failed to enter state Powered=True'))
+      if not self.CompareModemPowerState(modem_manager, gobi_path, True):
+        raise error.TestFail('Modem Failed to enter state Enabled')
+
+      # Disable technology, ensure that device and modem are disabled.
+      flim.DisableTechnology('cellular')
+      utils.poll_for_condition(
+          lambda: self.CompareDevicePowerState(device, False),
+          error.TestFail('Device Failed to enter state Powered=False'))
+      if not self.CompareModemPowerState(modem_manager, gobi_path, False):
+        raise error.TestFail('Modem Failed to enter state Disabled')
+
 
 class network_3GRecoverFromGobiDesync(test.test):
   version = 1
@@ -283,5 +340,8 @@ class network_3GRecoverFromGobiDesync(test.test):
 
       logging.info('Testing failure during device initialization')
       ApiConnectTest(self.bus).Wait(60)
+
+      logging.info('Testing that Enable and Disable technology still work')
+      EnableDisableTest().Test()
     finally:
       network.ClearGobiModemFaultInjection()
