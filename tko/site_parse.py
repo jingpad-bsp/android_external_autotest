@@ -34,7 +34,6 @@ from autotest_lib.client.bin import os_dep, utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.tko import models, parse, utils as tko_utils
 from autotest_lib.tko.parsers import version_0
-from autotest_lib.utils.dashboard import dash_strings
 
 
 # Name of the report file to produce upon completion.
@@ -66,6 +65,9 @@ class StackTrace(object):
     # Maximum time to wait for another instance to finish processing symbols.
     _SYMBOL_WAIT_TIMEOUT = 10 * 60
 
+    # Path to JSON test config relative to Autotest root.
+    _TEST_CONFIG_PATH = 'utils/dashboard/chromeos_test_config.json'
+
 
     def __init__(self, results_dir, cros_src_dir):
         """Initializes class variables.
@@ -78,6 +80,15 @@ class StackTrace(object):
         self._results_dir = results_dir
         self._cros_src_dir = cros_src_dir
         self._chroot_dir = os.path.join(self._cros_src_dir, 'chroot')
+
+        # Figure out the location of the test config JSON. Code is modeled after
+        # Autotest's standard common.py.
+        dirname = os.path.dirname(sys.modules[__name__].__file__)
+        autotest_dir = os.path.abspath(os.path.join(dirname, '..'))
+        test_config_path = os.path.join(autotest_dir, self._TEST_CONFIG_PATH)
+
+        with open(test_config_path) as f:
+            self._test_config = json.load(f)
 
 
     def _get_cache_dir(self):
@@ -193,16 +204,18 @@ class StackTrace(object):
         try:
             symbol_file = 'debug-%s.tgz' % board
 
-            # TODO(dalecurtis): Read URLs from chromeos_test_config.json once
-            # they're transitioned to Google Storage.
-            remote_symbols_url = '/'.join([
-                dash_strings.IMAGE_URLS['-'.join([board, rev])], version,
+            # Build Google Storage URL from the test config.
+            board_key = '-'.join([board, rev])
+            remote_symbol_url = '/'.join([
+                self._test_config['boards'][board_key]['archive_server'],
+                self._test_config['boards'][board_key]['archive_path'].rsplit(
+                    '/', 1)[0] % {'board': board, 'build_version': version},
                 symbol_file])
 
-            # TODO(dalecurtis): Remove hack to convert www URLs to gs URLs once
-            # using chromeos_test_config.json for URLs.
-            remote_symbol_url = remote_symbols_url.replace(
-                'https://sandbox.google.com/storage/', 'gs://')
+            if not remote_symbol_url.lower().startswith('gs://'):
+                raise ValueError(
+                    'Invalid symbols URL encountered. Only Google Storage URLs,'
+                    ' gs://, are supported.')
 
             # Use gsutil to copy the file into the cache dir.
             gsutil_cmd = os_dep.command('gsutil')
@@ -301,8 +314,7 @@ class StackTrace(object):
             "cd %s; %s -- find %s -name *.dmp -exec "
             "sh -c 'minidump_stackwalk {} %s > {}.txt 2>/dev/null' \;" % (
                 self._cros_src_dir, cros_sdk_cmd, chroot_results_dir,
-                os.path.join(chroot_symbols_dir, self._SYMBOL_DIR)),
-            ignore_status=True)
+                os.path.join(chroot_symbols_dir, self._SYMBOL_DIR)))
 
 
     def generate(self):
