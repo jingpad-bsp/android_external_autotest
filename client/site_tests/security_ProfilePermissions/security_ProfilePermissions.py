@@ -51,6 +51,9 @@ class security_ProfilePermissions(cros_ui_test.UITest):
             passes.append(self.check_owner_mode(user_mountpt, "chronos",
                                                 self._HOMEDIR_MODE))
 
+        # TODO(benchan): Refactor the following code to use some helper
+        # functions instead of find commands.
+
         # An array of shell commands, each representing a test that
         # passes if it emits no output. The first test is the main one.
         # In general, writable by anyone else is bad, as is owned by
@@ -60,10 +63,19 @@ class security_ProfilePermissions(cros_ui_test.UITest):
             ('find -L "%s" -path "%s" -o '
              # Avoid false-positives on SingletonLock, SingletonCookie, etc.
              ' \\( -name "Singleton*" -a -type l \\) -o '
+             ' -path "%s/Downloads" -prune -o '
              ' -path "%s/flimflam" -prune -o '
              ' -path "%s/.tpm" -prune -o '
              ' \\( -perm /022 -o \\! -user chronos \\) -ls') %
-            (homepath, homepath, user_mountpt, user_mountpt),
+            (homepath, homepath, user_mountpt, user_mountpt, user_mountpt),
+            # /home/chronos/user and /home/chronos/user/Downloads are owned by
+            # the chronos-access group and with a group execute permission.
+            'find -L "%s" -maxdepth 0 \\( \\! -perm 710 '
+            '-o \\! -user chronos -o \\! -group chronos-access \\) -ls' %
+            user_mountpt,
+            'find -L "%s/Downloads" -maxdepth 0 \\( \\! -perm 710 '
+            '-o \\! -user chronos -o \\! -group chronos-access \\) -ls' %
+            user_mountpt,
             'find -L "%s/flimflam" \\( -perm /077 -o \\! -user root \\) -ls' %
             user_mountpt,
             # TODO(jimhebert) Uncomment after crosbug.com/16425 is fixed.
