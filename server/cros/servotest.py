@@ -93,6 +93,11 @@ class ServoTest(test.test):
             if match:
                 args[match.group(1)] = match.group(2)
 
+        # Initialize servotest args.
+        self._client = host;
+        self._remote_infos['pyauto']['used'] = use_pyauto
+        self._remote_infos['faft']['used'] = use_faft
+
         self.servo = autotest_lib.server.cros.servo.Servo(
             args['servo_host'], args['servo_port'], args['xml_config'],
             args['servo_vid'], args['servo_pid'], args['servo_serial'])
@@ -101,14 +106,9 @@ class ServoTest(test.test):
         # throwing in initialize and will cause a test to hang.
         try:
             self.servo.initialize_dut()
-        except AssertionError as e:
+        except (AssertionError, xmlrpclib.Fault) as e:
             del self.servo
             raise error.TestFail(e)
-
-        self._client = host;
-
-        self._remote_infos['pyauto']['used'] = use_pyauto
-        self._remote_infos['faft']['used'] = use_faft
 
         # Install PyAuto/FAFTClient dependency.
         for info in self._remote_infos.itervalues():
