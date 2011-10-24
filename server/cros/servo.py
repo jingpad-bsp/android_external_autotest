@@ -329,7 +329,6 @@ class Servo:
     def _init_seq(self):
         """Initiate starting state for servo."""
         self.set('tx_dir', 'input')
-        self.set_nocheck('servo_dut_tx', 'off')
         self.set('lid_open', 'yes')
         self.set('rec_mode', 'off')
 
