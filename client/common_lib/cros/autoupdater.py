@@ -111,7 +111,7 @@ class ChromiumOSUpdater():
 
 
     def revert_boot_partition(self):
-        part = self.rootdev()
+        part = self.rootdev('-s')
         logging.warn('Reverting update; Boot partition will be %s', part)
         return self._run('/postinst %s 2>&1' % part)
 
