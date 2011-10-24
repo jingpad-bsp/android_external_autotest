@@ -202,3 +202,21 @@ def target_is_x86_pie():
         return True
     else:
         return False
+
+def mounts():
+    ret = []
+    for line in file('/proc/mounts'):
+        m = re.match(r'(?P<src>\S+) (?P<dest>\S+) (?P<type>\S+) (?P<opts>\S+).*', line)
+        if m:
+            ret.append(m.groupdict())
+    return ret
+
+def is_mountpoint(path):
+    return path in [ m['dest'] for m in mounts() ]
+
+def require_mountpoint(path):
+    """
+    Raises an exception if path is not a mountpoint.
+    """
+    if not is_mountpoint(path):
+        raise error.TestFail('Path not mounted: "%s"' % path)

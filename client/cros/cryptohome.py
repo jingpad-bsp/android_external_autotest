@@ -60,8 +60,11 @@ def test_auth(user, password):
     return 'Authentication succeeded' in __run_cmd(cmd)
 
 
-def unmount_vault():
-    """Unmount the directory."""
+def unmount_vault(user=None):
+    """
+    Unmount the directory. Once unmount-by-user is supported, the user
+    parameter will name the target user. See crosbug.com/20778
+    """
     cmd = (CRYPTOHOME_CMD + ' --action=unmount')
     __run_cmd(cmd)
     # Ensure that the user directory is not mounted
@@ -129,3 +132,9 @@ def canonicalize(credential):
     if (domain == chromeos_constants.SPECIAL_CASE_DOMAIN):
         name = name.replace('.', '')
     return '@'.join([name, domain]).lower()
+
+def user_path(user):
+    return utils.system_output('cryptohome-path user %s' % user)
+
+def system_path(user):
+    return utils.system_output('cryptohome-path system %s' % user)
