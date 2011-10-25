@@ -52,6 +52,8 @@ class ServoTest(test.test):
             'ssh_tunnel': None,
             # Polling RPC function name for testing the server availability.
             'polling_rpc': 'IsLinux',
+            # Additional SSH options.
+            'ssh_config': '-o StrictHostKeyChecking=no ',
         },
         'faft': {
             'used': False,
@@ -63,6 +65,8 @@ class ServoTest(test.test):
             'remote_process': None,
             'ssh_tunnel': None,
             'polling_rpc': 'is_available',
+            'ssh_config': '-o StrictHostKeyChecking=no '
+                          '-o UserKnownHostsFile=/dev/null ',
         },
     }
 
@@ -208,8 +212,8 @@ class ServoTest(test.test):
         self._kill_remote_process(info)
         logging.info('Client command: %s' % info['remote_command'])
         info['remote_process'] = subprocess.Popen([
-            'ssh -o "StrictHostKeyChecking no" -n root@%s \'%s\'' %
-            (self._client.ip, info['remote_command'])], shell=True)
+            'ssh -n %s root@%s \'%s\'' % (info['ssh_config'],
+            self._client.ip, info['remote_command'])], shell=True)
 
         # Connect to RPC object.
         logging.info('Connecting to client RPC server...')
@@ -290,9 +294,10 @@ class ServoTest(test.test):
           info: A dict of remote info, see the definition of self._remote_infos.
         """
         if not info['ssh_tunnel'] or info['ssh_tunnel'].poll() is not None:
-            info['ssh_tunnel'] = subprocess.Popen(['ssh', '-N', '-n', '-L',
-                '%s:localhost:%s' % (info['port'], info['port']),
-                'root@%s' % self._client.ip])
+            info['ssh_tunnel'] = subprocess.Popen([
+                'ssh -N -n %s -L %s:localhost:%s root@%s' %
+                (info['ssh_config'], info['port'], info['port'],
+                self._client.ip)], shell=True)
 
 
     def _kill_remote_process(self, info):
@@ -302,8 +307,8 @@ class ServoTest(test.test):
           info: A dict of remote info, see the definition of self._remote_infos.
         """
         kill_cmd = 'pkill -f %s' % info['remote_command_short']
-        subprocess.call(['ssh -n -o "StrictHostKeyChecking no" root@%s \'%s\'' %
-                         (self._client.ip, kill_cmd)],
+        subprocess.call(['ssh -n %s root@%s \'%s\'' %
+                         (info['ssh_config'], self._client.ip, kill_cmd)],
                         shell=True)
         if info['remote_process'] and info['remote_process'].poll() is None:
             info['remote_process'].terminate()
