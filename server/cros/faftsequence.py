@@ -3,10 +3,13 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import re
+import tempfile
 import time
 import xmlrpclib
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.servotest import ServoTest
 
@@ -82,6 +85,29 @@ class FAFTSequence(ServoTest):
         self._faft_sequence = ()
         self._faft_template = None
         super(FAFTSequence, self).cleanup()
+
+
+    def assert_test_image_in_usb_disk(self):
+        """Assert an USB disk plugged-in on servo and a test image inside.
+
+        Raises:
+            error.TestError: if USB disk not detected or not a test image.
+        """
+        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        usb_dev = self.probe_host_usb_dev()
+        if not usb_dev:
+            raise error.TestError(
+                    'An USB disk should be plugged in the servo board.')
+
+        tmp_dir = tempfile.mkdtemp()
+        utils.system('sudo mount %s3 %s' % (usb_dev, tmp_dir))
+        code = utils.system('grep -q "Test Build" %s/etc/lsb-release' %
+                            tmp_dir, ignore_status=True)
+        utils.system('sudo umount %s' % tmp_dir)
+        os.removedirs(tmp_dir)
+        if code != 0:
+            raise error.TestError(
+                    'The image in the USB disk should be a test image.')
 
 
     def _parse_crossystem_output(self, lines):

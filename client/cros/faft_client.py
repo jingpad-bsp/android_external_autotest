@@ -118,6 +118,12 @@ class FAFTClient(object):
         self._chromeos_interface.cs.fwb_tries = 1
 
 
+    def request_recovery_boot(self):
+        """Request running in recovery mode on the restart."""
+        self._chromeos_interface.log('Requesting restart in recovery mode')
+        self._chromeos_interface.cs.request_recovery()
+
+
     def corrupt_firmware(self, section):
         """Corrupt the requested firmware section.
 

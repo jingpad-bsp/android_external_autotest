@@ -8,6 +8,7 @@ import subprocess
 import time
 import xmlrpclib
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest, site_host_attributes, test, utils
 from autotest_lib.server.cros import servo
@@ -70,6 +71,8 @@ class ServoTest(test.test):
         },
     }
 
+    # Time between an usb disk plugged-in and detected in the system.
+    USB_DETECTION_DELAY = 10
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
         """Create a Servo object and install the dependency.
@@ -120,6 +123,43 @@ class ServoTest(test.test):
                     self._autotest_client = autotest.Autotest(self._client)
                 self._autotest_client.run_test(info['client_test'])
                 self.launch_client(info)
+
+    # TODO(waihong) It may fail if multiple servo's are connected to the same
+    # host. Should look for a better way, like the USB serial name, to identify
+    # the USB device.
+    def probe_host_usb_dev(self):
+        """Probe the USB disk device plugged-in the servo from the host side.
+
+        It tries to switch the USB mux to make the host unable to see the
+        USB disk and compares the result difference.
+
+        Returns:
+          A string of USB disk path, like '/dev/sdb', or None if not existed.
+        """
+        cmd = 'ls /dev/sd[a-z]'
+        original_value = self.servo.get('usb_mux_sel1')
+
+        # Make the host unable to see the USB disk.
+        if original_value != 'dut_sees_usbkey':
+            self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+            time.sleep(self.USB_DETECTION_DELAY)
+        no_usb_set = set(utils.system_output(cmd, ignore_status=True).split())
+
+        # Make the host able to see the USB disk.
+        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        time.sleep(self.USB_DETECTION_DELAY)
+        has_usb_set = set(utils.system_output(cmd, ignore_status=True).split())
+
+        # Back to its original value.
+        if original_value != 'servo_sees_usbkey':
+            self.servo.set('usb_mux_sel1', original_value)
+            time.sleep(self.USB_DETECTION_DELAY)
+
+        diff_set = has_usb_set - no_usb_set
+        if len(diff_set) == 1:
+            return diff_set.pop()
+        else:
+            return None
 
     def install_recovery_image(self, image_path=None, usb_mount_point=None):
         """Install the recovery image specied by the path onto the DUT.
