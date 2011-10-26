@@ -237,10 +237,13 @@ class ServoTest(test.test):
         assert succeed, 'Timed out connecting to client RPC server.'
 
 
-    def wait_for_client(self):
+    def wait_for_client(self, install_deps=False):
         """Wait for the client to come back online.
 
         New remote processes will be launched if their used flags are enabled.
+
+        Args:
+            install_deps: If True, install the Autotest dependency when ready.
         """
         timeout = 10
         # Ensure old ssh connections are terminated.
@@ -258,6 +261,10 @@ class ServoTest(test.test):
                 # TODO(waihong) Investigate pinging port via netcat or nmap
                 # to interrogate client for when sshd has launched.
                 time.sleep(5)
+                if install_deps:
+                    if not self._autotest_client:
+                        self._autotest_client = autotest.Autotest(self._client)
+                    self._autotest_client.run_test(info['client_test'])
                 self.launch_client(info)
                 logging.info('Server: Relaunched remote %s.' % name)
 

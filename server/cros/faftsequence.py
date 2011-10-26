@@ -29,6 +29,13 @@ class FAFTSequence(ServoTest):
         reboot_action: a function to do reboot, default: software_reboot.
         firmware_action: a function to describe the action ran after reboot.
 
+    And configurations:
+        install_deps_after_boot: if True, install the Autotest dependency after
+             boot; otherwise, do nothing. It is for the cases of recovery mode
+             test. The test boots a USB/SD image instead of an internal image.
+             The previous installed Autotest dependency on the internal image
+             is lost. So need to install it again.
+
     The default FAFT_STEP checks nothing in state_checker and does nothing in
     userspace_action and firmware_action. Its reboot_action is simply a
     software reboot. You can change the default FAFT_STEP by calling
@@ -240,7 +247,6 @@ class FAFTSequence(ServoTest):
             cur_test.update(default_test)
             cur_test.update(test)
 
-            self.wait_for_client()
             if cur_test['state_checker']:
                 if not self._call_action(cur_test['state_checker']):
                     raise error.TestFail('State checker failed!')
@@ -252,3 +258,9 @@ class FAFTSequence(ServoTest):
                 self._call_action(cur_test['reboot_action'])
                 self.wait_for_client_offline()
                 self._call_action(cur_test['firmware_action'])
+
+                if 'install_deps_after_boot' in cur_test:
+                    self.wait_for_client(
+                            install_deps=cur_test['install_deps_after_boot'])
+                else:
+                    self.wait_for_client()
