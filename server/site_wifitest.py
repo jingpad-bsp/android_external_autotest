@@ -517,6 +517,7 @@ class WiFiTest(object):
         """ Connect client to AP/router """
 
         script_client_file = self.install_script('site_wlan_connect.py',
+                                                 'site_wlan_dbus_setup.py',
                                                  'site_wlan_wait_state.py')
 
         flags = []
@@ -573,7 +574,8 @@ class WiFiTest(object):
 
         self.client_ping_bg_stop({})
 
-        script_client_file = self.install_script('site_wlan_disconnect.py')
+        script_client_file = self.install_script('site_wlan_disconnect.py',
+                                                 'site_wlan_dbus_setup.py')
         result = self.client.run('python "%s" "%s" "%d"' %
             (script_client_file,
             params.get('ssid', self.defssid),
@@ -585,7 +587,8 @@ class WiFiTest(object):
     def __wait_service_start(self, params):
         """ Wait for service transitions on client. """
 
-        script_client_file = self.install_script('site_wlan_wait_state.py')
+        script_client_file = self.install_script('site_wlan_wait_state.py',
+                                                 'site_wlan_dbus_setup.py')
         args = []
 
         # Whether to print out all state transitions of watched services to

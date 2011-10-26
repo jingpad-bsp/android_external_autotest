@@ -1,16 +1,16 @@
+#!/usr/bin/python
+
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, dbus.mainloop.glib, gobject, sys, time
+import dbus
+import sys
+import time
+from site_wlan_dbus_setup import *
 
 ssid         = sys.argv[1]
 wait_timeout = int(sys.argv[2])
-
-bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-bus = dbus.SystemBus(mainloop=bus_loop)
-manager = dbus.Interface(bus.get_object("org.chromium.flimflam", "/"),
-    "org.chromium.flimflam.Manager")
 
 mprops = manager.GetProperties()
 for path in mprops["Services"]:
@@ -25,7 +25,7 @@ for path in mprops["Services"]:
         while wait_time < wait_timeout:
             sprops = service.GetProperties()
             state = sprops.get("State", None)
-#           print>>sys.stderr, "time %3.1f state %s" % (wait_time, state)
+#           print >>sys.stderr, "time %3.1f state %s" % (wait_time, state)
             if state == "idle":
                 break
             time.sleep(.5)
@@ -35,4 +35,3 @@ for path in mprops["Services"]:
     print "disconnect in %3.1f secs" % wait_time
     break
 sys.exit(0)
-

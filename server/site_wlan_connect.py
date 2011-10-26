@@ -13,14 +13,13 @@ files during that intervening time.
 
 """
 
+import dbus
+import gobject
 import logging
 import optparse
 import sys
 import time
 import traceback
-import dbus
-import dbus.mainloop.glib
-import gobject
 from site_wlan_wait_state import *
 
 FLIMFLAM_ERROR = FLIMFLAM + '.Error'

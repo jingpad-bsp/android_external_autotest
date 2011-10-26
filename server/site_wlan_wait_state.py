@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+
 """Wait for a series of SSID state transitions.
 
 Accepts a list of ServiceName=State pairs and waits for each transition to
@@ -19,21 +24,15 @@ to occur.  On failure, the last element will be a string containing
 have failed.
 """
 
+import dbus
+import gobject
 import optparse
 import sys
 import time
-import dbus
-import dbus.mainloop.glib
-import gobject
 import subprocess
+from site_wlan_dbus_setup import *
 
-FLIMFLAM = 'org.chromium.flimflam'
 SUPPLICANT = 'fi.w1.wpa_supplicant1'
-
-bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-bus = dbus.SystemBus(mainloop=bus_loop)
-manager = dbus.Interface(bus.get_object(FLIMFLAM, '/'), FLIMFLAM + '.Manager')
-
 
 def GetObject(kind, path):
   return dbus.Interface(bus.get_object(FLIMFLAM, path), FLIMFLAM + '.' + kind)
