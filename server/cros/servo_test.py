@@ -250,6 +250,10 @@ class ServoTest(test.test):
         # Relaunch remote clients.
         for name, info in self._remote_infos.iteritems():
             if info['used']:
+                # This 5s delay to ensure sshd launched after network is up.
+                # TODO(waihong) Investigate pinging port via netcat or nmap
+                # to interrogate client for when sshd has launched.
+                time.sleep(5)
                 self.launch_client(info)
                 logging.info('Server: Relaunched remote %s.' % name)
 
