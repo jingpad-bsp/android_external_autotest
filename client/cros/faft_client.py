@@ -9,6 +9,7 @@ The FAFTClient object aggreates some useful functions of exisintg SAFT
 libraries.
 """
 
+import functools
 import os
 import sys
 import tempfile
@@ -22,6 +23,17 @@ import flashrom_handler
 import kernel_handler
 import saft_flashrom_util
 import tpm_handler
+
+
+def allow_multiple_section_input(image_operator):
+    @functools.wraps(image_operator)
+    def wrapper(self, section):
+        if type(section) in (tuple, list):
+            for sec in section:
+                image_operator(self, sec)
+        else:
+            image_operator(self, section)
+    return wrapper
 
 
 class FAFTClient(object):
@@ -124,6 +136,7 @@ class FAFTClient(object):
         self._chromeos_interface.cs.request_recovery()
 
 
+    @allow_multiple_section_input
     def corrupt_firmware(self, section):
         """Corrupt the requested firmware section.
 
@@ -134,6 +147,7 @@ class FAFTClient(object):
         self._flashrom_handler.corrupt_firmware(section)
 
 
+    @allow_multiple_section_input
     def restore_firmware(self, section):
         """Restore the requested firmware section (previously corrupted).
 
