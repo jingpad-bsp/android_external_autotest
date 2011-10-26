@@ -104,9 +104,9 @@ class platform_CrosDisksFilesystem(test.test):
 
     def run_once(self, *args, **kwargs):
         test_configs = []
-        for config_file in glob.glob('%s/*_tests' % self.bindir):
-            with open(config_file, 'rb') as f:
-                test_configs.extend(json.load(f))
+        config_file = '%s/%s' % (self.bindir, kwargs['config_file'])
+        with open(config_file, 'rb') as f:
+            test_configs.extend(json.load(f))
 
         tester = CrosDisksFilesystemTester(self, test_configs)
         tester.run(*args, **kwargs)
