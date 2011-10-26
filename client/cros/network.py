@@ -29,7 +29,7 @@ def ClearGobiModemFaultInjection():
         modem_manager, gobi_path = mm.PickOneModem('Gobi')
     except ValueError:
         # Didn't find a gobi
-        pass
+        return
 
     gobi = modem_manager.GobiModem(gobi_path)
     if gobi:
