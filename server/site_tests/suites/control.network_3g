@@ -26,6 +26,7 @@ CLIENT_TESTS = [
     'network_3GSafetyDance',
     'network_3GSmokeTest',
     'network_3GStressEnable',
+    'network_3GModemControl',
     'network_3GSuspendResume'
 
 # These tests shouldn't be run on activated devices.

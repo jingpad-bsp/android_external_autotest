@@ -6,6 +6,7 @@
 import logging, string
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
@@ -113,5 +114,81 @@ class BlackholeContext(object):
             rule = string.replace(rule, '-A', '-D', 1)
             logging.info('removing %s' % rule)
             utils.run('iptables %s' % rule)
+
+        return False
+
+class DisableAutoConnectContext(object):
+    """Context manager which disables autoconnect.
+
+       Disable autoconnect for all services associated with a device.
+
+       Usage:
+           with cell_tools.DisableAutoConnectContext(device, flim):
+               block
+    """
+
+    def __init__(self, device, flim):
+        self.device = device
+        self.flim = flim
+        self.had_autoconnect = False
+
+    def __enter__(self):
+        """Power up device, get the service and disable autoconnect."""
+        logging.info('powered = %s' % self.device.GetProperties()['Powered'])
+        if not self.device.GetProperties()['Powered']:
+            self.device.SetProperty("Powered", True)
+
+        # TODO(jglasgow): generalize to use services associated with device
+        service = self.flim.FindCellularService(timeout=40)
+        if not service:
+            raise error.TestFail('No cellular service available.')
+
+        props = service.GetProperties()
+        favorite = props['Favorite']
+
+        if not favorite:
+            logging.Info('Enabling Favorite by connecting to service.')
+            service.Connect()
+            props = service.GetProperties()
+            favorite = props['Favorite']
+
+        autoconnect = props['AutoConnect']
+        logging.info('Favorite = %s, AutoConnect = %s' % (
+            favorite, autoconnect))
+
+        self.had_autoconnect = autoconnect
+
+        if autoconnect:
+            logging.info('Disabling AutoConnect.')
+            service.SetProperty('AutoConnect', dbus.Boolean(0))
+
+            props = service.GetProperties()
+            favorite = props['Favorite']
+            autoconnect = props['AutoConnect']
+
+        if not favorite:
+            raise error.TestFail('Favorite=False, but we want it to be True')
+
+        if autoconnect:
+            raise error.TestFail('AutoConnect=True, but we want it to be False')
+
+        return self
+
+    def __exit__(self, exception, value, traceback):
+        """Restore autoconnect state if we changed it."""
+        if not self.had_autoconnect:
+            return
+
+        if not self.device.GetProperties()['Powered']:
+            self.device.SetProperty("Powered", True)
+
+        # TODO(jglasgow): generalize to use services associated with
+        # device, and restore state only on changed services
+        service = self.flim.FindCellularService()
+        if not service:
+            logging.error('Cannot find cellular service.  '
+                          'Autoconnect left disabled.')
+            return
+        service.SetProperty('AutoConnect', True)
 
         return False
