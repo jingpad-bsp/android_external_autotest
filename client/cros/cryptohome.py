@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 import logging, os, re
+import dbus
 import common
 import constants as chromeos_constants
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 
@@ -138,3 +138,41 @@ def user_path(user):
 
 def system_path(user):
     return utils.system_output('cryptohome-path system %s' % user)
+
+
+class CryptohomeProxy:
+    def __init__(self):
+        BUSNAME = 'org.chromium.Cryptohome'
+        PATH = '/org/chromium/Cryptohome'
+        INTERFACE = 'org.chromium.CryptohomeInterface'
+        bus = dbus.SystemBus()
+        obj = bus.get_object(BUSNAME, PATH)
+        self.iface = dbus.Interface(obj, INTERFACE)
+
+    def mount(self, user, password, create=False):
+        """Mounts a cryptohome.
+
+        Returns True if the mount succeeds or False otherwise.
+        TODO(ellyjones): Migrate mount_vault() to use a multi-user-safe
+        heuristic, then remove this method. See <crosbug.com/20778>.
+        """
+        return self.iface.Mount(user, password, create, False, [])[1]
+
+    def unmount(self, user):
+        """Unmounts a cryptohome.
+
+        Returns True if the unmount suceeds or false otherwise.
+        TODO(ellyjones): Once there's a per-user unmount method, use it. See
+        <crosbug.com/20778>.
+        """
+        return self.iface.Unmount()[1]
+
+    def is_mounted(self, user):
+        """Tests whether a user's cryptohome is mounted."""
+        return (utils.is_mountpoint(user_path(user))
+                and utils.is_mountpoint(system_path(user)))
+
+    def require_mounted(self, user):
+        """Raises a test failure if a user's cryptohome is not mounted."""
+        utils.require_mountpoint(user_path(user))
+        utils.require_mountpoint(system_path(user))

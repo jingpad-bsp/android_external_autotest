@@ -2,26 +2,26 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-
-import utils
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cryptohome
 
 class platform_CryptohomeMultiple(test.test):
     version = 1
+    chome = None
+
     def test_mount_single(self):
         """
         Tests mounting a single not-already-existing cryptohome. Ensures that
         the infrastructure for multiple mounts is present and active.
         """
-        user = 'cryptohome-multiple-0@example.com'
-        cryptohome.mount_vault(user, 'test', create=True)
-        utils.require_mountpoint(cryptohome.user_path(user))
-        utils.require_mountpoint(cryptohome.system_path(user))
-        cryptohome.unmount_vault(user)
+        user = utils.random_username()
+        if not self.chome.mount(user, 'test', create=True):
+            raise error.TestFail('Mount failed for %s' % user)
+        self.chome.require_mounted(user)
+        if not self.chome.unmount(user):
+            raise error.TestFail('Unmount failed for %s' % user)
 
     def run_once(self):
-        if cryptohome.is_mounted(allow_fail=True):
-            raise error.TestFail('Cryptohome already mounted')
+        self.chome = cryptohome.Cryptohome()
         self.test_mount_single()

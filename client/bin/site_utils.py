@@ -2,10 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, platform, re, signal, tempfile, time
+import logging, os, platform, re, signal, tempfile, time, uuid
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-
 
 class TimeoutError(error.TestError):
     """Error raised when we time out when waiting on a condition."""
@@ -220,3 +219,6 @@ def require_mountpoint(path):
     """
     if not is_mountpoint(path):
         raise error.TestFail('Path not mounted: "%s"' % path)
+
+def random_username():
+    return str(uuid.uuid4()) + '@example.com'
