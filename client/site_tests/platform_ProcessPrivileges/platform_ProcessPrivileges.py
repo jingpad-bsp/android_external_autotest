@@ -30,8 +30,15 @@ class platform_ProcessPrivileges(cros_ui_test.UITest):
             time.sleep(10)
 
         # Get the process information
-        pscmd = 'ps -o f,euser,ruser,suser,fuser,args -C %s --no-headers'
-        pscmd = pscmd % process
+        # NOTE: ps command prints UID if the length of the user name does not
+        # fit in the column width. So we explicitly set the column width to
+        # make sure it prints the user name.
+        pscmd = ('ps -o f,euser:%d,ruser:%d,suser:%d,fuser:%d,args '
+                 '-C %s --no-headers')
+        user_column_width = 10
+        if user:
+          user_column_width = len(user)
+        pscmd = pscmd % tuple([user_column_width] * 4 + [process])
         if grep_arg:
             pscmd += ' | grep "%s"' % grep_arg
         ps = utils.system_output(pscmd,
@@ -76,10 +83,7 @@ class platform_ProcessPrivileges(cros_ui_test.UITest):
         self.check_process('cashewd', user='cashew')
         self.check_process('chrome')
         self.check_process('cryptohomed', user='root')
-        # TODO(mazda): Change the user value to 'messagebus'.
-        # 201 is a uid of messagebus. ps command displays 201 as the
-        # user name for some reasons (bug of the ps command?).
-        self.check_process('dbus-daemon', user='201',
+        self.check_process('dbus-daemon', user='messagebus',
                            grep_arg=' --system --fork$')
         self.check_process('flimflamd', user='root')
         self.check_process('metrics_daemon', user='root')
