@@ -35,6 +35,8 @@
    "milliseconds_Download100MBFile,milliseconds_Upload50MBFile"],
   ["desktopui_PyAutoPerfTests", "score_V8Benchmark"],
   ["desktopui_PyAutoPerfTests",
+   "score_V8Benchmark-Richards,score_V8Benchmark-DeltaBlue,score_V8Benchmark-Crypto,score_V8Benchmark-RayTrace,score_V8Benchmark-EarleyBoyer,score_V8Benchmark-RegExp,score_V8Benchmark-Splay"],
+  ["desktopui_PyAutoPerfTests",
    "FPS_ScrollBlankPage,FPS_ScrollTextPage,FPS_ScrollGooglePlusPage"],
   ["desktopui_PyAutoPerfTests", "frames_YoutubeDroppedFrames"],
   ["desktopui_PyAutoPerfTests", "FPS_FlashGaming,FPS_FlashText"],
