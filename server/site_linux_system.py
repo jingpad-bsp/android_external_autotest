@@ -29,8 +29,8 @@ class LinuxSystem(object):
         self.host = host
         self.role = role
 
-        setattr(self, '%s_netdump_start' % role, self.start_capture)
-        setattr(self, '%s_netdump_stop' % role, self.stop_capture)
+        setattr(self, '%s_start_capture' % role, self.start_capture)
+        setattr(self, '%s_stop_capture' % role, self.stop_capture)
 
         # Network interfaces.
         self.phy_for_frequency = {}
@@ -97,7 +97,7 @@ class LinuxSystem(object):
                       (self.cmd_tcpdump,
                        self.capture_interface,
                        self.capture_file,
-                       params.get('snaplen', '0'),
+                       params.get('snaplen', '152'),
                        self.capture_logfile))
         self.capture_running = True
 

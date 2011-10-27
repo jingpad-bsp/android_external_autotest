@@ -218,7 +218,7 @@ class WiFiTest(object):
         if 'router_capture_all' in self.run_options:
             self.__add_hook('config', self.wifi.start_capture)
         if 'client_capture_all' in self.run_options:
-            self.__add_hook('config', self.client_netdump_start)
+            self.__add_hook('config', self.client_start_capture)
 
         # NB: do last so code above doesn't need to cleanup on failure
         self.test_profile = {'name':'test'}
@@ -238,7 +238,7 @@ class WiFiTest(object):
         self.wifi.cleanup({})
         self.profile_pop(self.test_profile)
         self.profile_remove(self.test_profile)
-        self.client_netdump_stop({})
+        self.client_stop_capture({})
         self.firewall_cleanup({})
         self.host_route_cleanup({})
         self.wifi.stop_capture({})
@@ -1238,21 +1238,22 @@ class WiFiTest(object):
         self.client.run("%s dev %s del" % (self.client_cmd_iw, devname))
 
 
-    def client_netdump_start(self, params):
+    def client_start_capture(self, params):
         """ Start capturing network traffic on the client """
         self.client.run("pkill %s || /bin/true" % self.client_cmd_netdump)
         devname = self.__create_netdump_dev()
         self.client_netdump_dir = self.client.get_tmp_dir()
         self.client_netdump_file = os.path.join(self.client_netdump_dir,
                                                 "client.pcap")
-        cmd = "%s -i %s -w %s" % (self.client_cmd_netdump, devname,
-                                  self.client_netdump_file)
+        cmd = "%s -i %s -w %s -s %s" % (self.client_cmd_netdump, devname,
+                                  self.client_netdump_file,
+                                  params.get('snaplen', '152'))
         logging.info(cmd)
         self.client_netdump_thread = HelperThread(self.client, cmd)
         self.client_netdump_thread.start()
 
 
-    def client_netdump_stop(self, params):
+    def client_stop_capture(self, params):
         if self.client_netdump_thread is not None:
             self.__destroy_netdump_dev()
             self.client.run("pkill %s" % self.client_cmd_netdump,
