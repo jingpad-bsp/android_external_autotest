@@ -78,6 +78,19 @@ class UITest(pyauto_test.PyAutoTest):
         self._flim = flimflam.FlimFlam(self._system_bus)
 
 
+    def __log_kernel_stack(self, match_string):
+        """Print the kernel stack of the process we use to check DNS.
+
+        Temporary for debugging http://crosbug.com/22019
+        """
+        try:
+            pid = utils.system_output('pgrep -f "%s"' % match_string,
+                                      ignore_status=True)
+            logging.warning('\n' + utils.read_file('/proc/' + pid + '/stack'))
+        except:
+            logging.warning('Could not find kernel stack info.')
+
+
     def __get_host_by_name(self, hostname):
         """Resolve the dotted-quad IPv4 address of |hostname|
 
@@ -96,6 +109,8 @@ class UITest(pyauto_test.PyAutoTest):
                                        ignore_status=True, timeout=2)
         except Exception as e:
             logging.warning(e)
+            # TODO(cmasone): remove this when 22019 is sorted out.
+            self.__log_kernel_stack('socket.gethostbyname')
             return None
         return host or None
 
