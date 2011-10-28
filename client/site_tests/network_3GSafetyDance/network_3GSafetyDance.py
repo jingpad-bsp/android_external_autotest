@@ -49,6 +49,7 @@ class network_3GSafetyDance(test.test):
         if self.service:
             (success, status) = self.filterexns(lambda:
                 self.flim.ConnectService(service = self.service,
+                                         assoc_timeout = 120,
                                          config_timeout = 120))
             if not success and not self.ignoring(status):
                 raise error.TestFail('Could not connect: %s' % status)
