@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, time
+import dbus, logging, random, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -30,7 +30,7 @@ class TechnologyCommands():
         self.command_delegate.Connect()
 
     def Disconnect(self):
-        self.command_delegate.Disconnect()
+        return self.command_delegate.Disconnect()
 
     def __str__(self):
         return 'Technology Commands'
@@ -53,6 +53,12 @@ class ModemCommands():
         self.simple_modem.Connect(connect_props)
 
     def Disconnect(self):
+        """
+        Disconnect Modem.
+
+        Returns:
+            True - to indicate that flimflam may autoconnect again.
+        """
         try:
             self.modem.Disconnect()
         except dbus.exceptions.DBusException, e:
@@ -61,6 +67,7 @@ class ModemCommands():
                 pass
             else:
                 raise e
+        return True
 
     def __str__(self):
         return 'Modem Commands'
@@ -73,6 +80,13 @@ class DeviceCommands():
         self.device = device
         self.service = None
 
+    def GetService(self):
+        service = self.flim.FindCellularService()
+        if not service:
+            raise error.TestFail(
+                'Service failed to appear when using device commands.')
+        return service
+
     def Enable(self):
         self.device.SetProperty('Powered', True)
 
@@ -81,19 +95,52 @@ class DeviceCommands():
         self.device.SetProperty('Powered', False)
 
     def Connect(self):
-        service = self.flim.FindCellularService()
-        if not service:
-            raise error.TestFail('Service failed to appear when '
-                                 'using device commands.')
-        service.Connect()
-        self.service = service
+        self.GetService().Connect()
 
     def Disconnect(self):
-        self.service.Disconnect()
-        self.service = None
+        """
+        Disconnect Modem.
+
+        Returns:
+            False - to indicate that flimflam may not autoconnect again.
+        """
+        self.GetService().Disconnect()
+        return False
 
     def __str__(self):
         return 'Device Commands'
+
+
+class MixedRandomCommands():
+    """Control the modem using a mixture of commands on device, modems, etc."""
+    def __init__(self, commands_list):
+        self.commands_list = commands_list
+
+    def PickRandomCommands(self):
+        return self.commands_list[random.randrange(len(self.commands_list))]
+
+    def Enable(self):
+        cmds = self.PickRandomCommands()
+        logging.info('Enable with %s' % cmds)
+        cmds.Enable()
+
+    def Disable(self):
+        cmds = self.PickRandomCommands()
+        logging.info('Disable with %s' % cmds)
+        cmds.Disable()
+
+    def Connect(self):
+        cmds = self.PickRandomCommands()
+        logging.info('Connect with %s' % cmds)
+        cmds.Connect()
+
+    def Disconnect(self):
+        cmds = self.PickRandomCommands()
+        logging.info('Disconnect with %s' % cmds)
+        return cmds.Disconnect()
+
+    def __str__(self):
+        return 'Mixed Commands'
 
 
 class network_3GModemControl(test.test):
@@ -138,31 +185,14 @@ class network_3GModemControl(test.test):
             lambda: not self.flim.FindCellularService(timeout=1),
             error.TestFail('Service should not be available.'))
 
-    def EnsureEnabled(self):
+    def EnsureEnabled(self, check_idle):
         """
-        Ensure modem enabled, device powered on, and service idle.
+        Ensure modem enabled, device powered and service exists.
 
-        Raises:
-            error.TestFail if the states are not consistent
-        """
-        utils.poll_for_condition(
-            lambda: self.CompareModemPowerState(self.modem_manager,
-                                                self.modem_path, True),
-            error.TestFail('Modem failed to enter state Enabled'))
-        utils.poll_for_condition(
-            lambda: self.CompareDevicePowerState(self.device, True),
-            error.TestFail('Device failed to enter state Powered=True.'))
-        # wait for service to appear and then enter idle state
-        service = self.flim.FindCellularService()
-        if not service:
-            error.TestFail('Service failed to appear for enabled modem.')
-        utils.poll_for_condition(
-            lambda: self.CompareServiceState(service, ['idle']),
-            error.TestFail('Service failed to enter idle state.'))
-
-    def EnsureConnected(self):
-        """
-        Ensure modem connected, device powered on, service connected.
+        Args:
+            check_idle: if True, then ensure that the service is idle
+                        (i.e. not connected) otherwise ignore the
+                        service state
 
         Raises:
             error.TestFail if the states are not consistent.
@@ -174,10 +204,24 @@ class network_3GModemControl(test.test):
         utils.poll_for_condition(
             lambda: self.CompareDevicePowerState(self.device, True),
             error.TestFail('Device failed to enter state Powered=True.'))
-        # wait for service to appear and then enter a connected state
+        # wait for service to appear
         service = self.flim.FindCellularService()
         if not service:
-            error.TestFail('Service failed to appear for connected modem.')
+            error.TestFail('Service failed to appear for enabled modem.')
+        if check_idle:
+            utils.poll_for_condition(
+                lambda: self.CompareServiceState(service, ['idle']),
+                error.TestFail('Service failed to enter idle state.'))
+
+    def EnsureConnected(self):
+        """
+        Ensure modem connected, device powered on, service connected.
+
+        Raises:
+            error.TestFail if the states are not consistent.
+        """
+        self.EnsureEnabled(check_idle=False)
+        service = self.flim.FindCellularService()
         utils.poll_for_condition(
             lambda: self.CompareServiceState(service,
                                              ['ready', 'portal', 'online']),
@@ -196,26 +240,35 @@ class network_3GModemControl(test.test):
 
         """
         logging.info('Testing using %s' % commands)
+
         commands.Enable()
-        self.EnsureEnabled()
-        commands.Disable()
-        self.EnsureDisabled()
-        commands.Enable()
-        self.EnsureEnabled()
-        commands.Connect()
-        self.EnsureConnected()
-        commands.Disconnect()
-        self.EnsureEnabled()
-        commands.Connect()
-        self.EnsureConnected()
+        self.EnsureEnabled(check_idle=not self.autoconnect)
+
         commands.Disable()
         self.EnsureDisabled()
 
-    def run_once(self, connect_count=10, maximum_avg_assoc_time_seconds=5):
+        commands.Enable()
+        self.EnsureEnabled(check_idle=not self.autoconnect)
+
+        if not self.autoconnect:
+            commands.Connect()
+        self.EnsureConnected()
+
+        will_autoreconnect = commands.Disconnect()
+        if not (self.autoconnect and will_autoreconnect):
+            self.EnsureEnabled(check_idle=True)
+            commands.Connect()
+        self.EnsureConnected()
+
+        commands.Disable()
+        self.EnsureDisabled()
+
+    def run_once(self, autoconnect, mixed_iterations=2):
         # Use a backchannel so that flimflam will restart when the
         # test is over.  This ensures flimflam is in a known good
         # state even if this test fails.
         with backchannel.Backchannel():
+            self.autoconnect = autoconnect
             self.flim = flimflam.FlimFlam()
             self.device = self.flim.FindCellularDevice()
             self.modem_manager, self.modem_path = mm.PickOneModem('')
@@ -227,7 +280,9 @@ class network_3GModemControl(test.test):
                                                      modem_commands)
             device_commands = DeviceCommands(self.flim, self.device)
 
-            with cell_tools.DisableAutoConnectContext(self.device, self.flim):
+            with cell_tools.AutoConnectContext(self.device,
+                                               self.flim,
+                                               autoconnect):
                 # Get to a well known state.
                 self.flim.DisableTechnology('cellular')
                 self.EnsureDisabled()
@@ -235,3 +290,10 @@ class network_3GModemControl(test.test):
                 self.TestCommands(modem_commands)
                 self.TestCommands(technology_commands)
                 self.TestCommands(device_commands)
+
+                # Run several times using commands mixed from each type
+                mixed = MixedRandomCommands([modem_commands,
+                                             technology_commands,
+                                             device_commands])
+                for _ in range(mixed_iterations):
+                    self.TestCommands(mixed)

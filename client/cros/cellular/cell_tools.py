@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 """Utilities for cellular tests."""
-import logging, string
+import dbus, logging, string
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -117,26 +117,38 @@ class BlackholeContext(object):
 
         return False
 
-class DisableAutoConnectContext(object):
-    """Context manager which disables autoconnect.
+class AutoConnectContext(object):
+    """Context manager which sets autoconnect to either true or false
 
-       Disable autoconnect for all services associated with a device.
+       Enable or Disable autoconnect for the cellular service.
+       Restore it when done.
 
        Usage:
-           with cell_tools.DisableAutoConnectContext(device, flim):
+           with cell_tools.DisableAutoConnectContext(device, flim, autoconnect):
                block
     """
 
-    def __init__(self, device, flim):
+    def __init__(self, device, flim, autoconnect):
         self.device = device
         self.flim = flim
-        self.had_autoconnect = False
+        self.autoconnect = autoconnect
+        self.autoconnect_changed = False
+
+    def PowerOnDevice(self, device):
+        """Power on a flimflam device, ignoring in progress errors."""
+        logging.info('powered = %s' % device.GetProperties()['Powered'])
+        if device.GetProperties()['Powered']:
+            return
+        try:
+            device.SetProperty("Powered", True)
+        except dbus.exceptions.DBusException, e:
+            if e._dbus_error_name != 'org.chromium.flimflam.Error.InProgress':
+                raise e
 
     def __enter__(self):
         """Power up device, get the service and disable autoconnect."""
-        logging.info('powered = %s' % self.device.GetProperties()['Powered'])
-        if not self.device.GetProperties()['Powered']:
-            self.device.SetProperty("Powered", True)
+        changed = False
+        self.PowerOnDevice(self.device)
 
         # TODO(jglasgow): generalize to use services associated with device
         service = self.flim.FindCellularService(timeout=40)
@@ -156,39 +168,40 @@ class DisableAutoConnectContext(object):
         logging.info('Favorite = %s, AutoConnect = %s' % (
             favorite, autoconnect))
 
-        self.had_autoconnect = autoconnect
-
-        if autoconnect:
-            logging.info('Disabling AutoConnect.')
-            service.SetProperty('AutoConnect', dbus.Boolean(0))
+        if autoconnect != self.autoconnect:
+            logging.info('Setting AutoConnect = %s.', self.autoconnect)
+            service.SetProperty('AutoConnect', dbus.Boolean(self.autoconnect))
 
             props = service.GetProperties()
             favorite = props['Favorite']
             autoconnect = props['AutoConnect']
+            changed = True
 
         if not favorite:
             raise error.TestFail('Favorite=False, but we want it to be True')
 
-        if autoconnect:
-            raise error.TestFail('AutoConnect=True, but we want it to be False')
+        if autoconnect != self.autoconnect:
+            raise error.TestFail('AutoConnect is %s, but we want it to be %s' %
+                                 (autoconnect, self.autoconnect))
+
+        self.autoconnect_changed = changed
 
         return self
 
     def __exit__(self, exception, value, traceback):
         """Restore autoconnect state if we changed it."""
-        if not self.had_autoconnect:
+        if not self.autoconnect_changed:
             return
 
-        if not self.device.GetProperties()['Powered']:
-            self.device.SetProperty("Powered", True)
+        self.PowerOnDevice(self.device)
 
         # TODO(jglasgow): generalize to use services associated with
         # device, and restore state only on changed services
         service = self.flim.FindCellularService()
         if not service:
             logging.error('Cannot find cellular service.  '
-                          'Autoconnect left disabled.')
+                          'Autoconnect state not restored.')
             return
-        service.SetProperty('AutoConnect', True)
+        service.SetProperty('AutoConnect', dbus.Boolean(not self.autoconnect))
 
         return False

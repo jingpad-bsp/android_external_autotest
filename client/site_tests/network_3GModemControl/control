@@ -21,4 +21,5 @@ DOC = """
   if the commands are sent to the modem manager instead of flimflam.
 """
 
-job.run_test('network_3GModemControl')
+job.run_test('network_3GModemControl', autoconnect=False, tag='no-autoconnect')
+job.run_test('network_3GModemControl', autoconnect=True, tag='autoconnect')
