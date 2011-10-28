@@ -66,6 +66,7 @@ class DisableTester(GenericTesterMainLoop):
     enabled = self.enabled()
     logging.info('Modem enabled: %s', enabled)
     self.assert_(enabled == 0)
+    # Will return happily if no Gobi present
     network.ClearGobiModemFaultInjection()
 
 
@@ -202,9 +203,9 @@ class ModemDisableTester(DisableTester):
     self.modem_manager, self.modem_path = mm.PickOneModem('')
     self.modem = self.modem_manager.Modem(self.modem_path)
     self.simple_modem = self.modem_manager.SimpleModem(self.modem_path)
-    self.gobi_modem = self.modem_manager.GobiModem(self.modem_path)
-
-    if self.gobi_modem:
+    logging.info('modem_path = %s' % self.modem_path)
+    if 'Gobi' in self.modem_path:
+      self.gobi_modem = self.modem_manager.GobiModem(self.modem_path)
       sleep_ms = self.test_kwargs.get('async_connect_sleep_ms', 0)
 
       # Tell the modem manager to sleep this long before completing a
@@ -214,6 +215,13 @@ class ModemDisableTester(DisableTester):
       if 'connect_fails_with_error_sending_qmi_request' in self.test_kwargs:
         logging.info('Injecting QMI failure')
         self.gobi_modem.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
+    else:
+      self.gobi_modem = None
+      if 'async_connect_sleep_ms' in self.test_kwargs:
+        raise error.TestError('async_connect_sleep_ms on non-Gobi modem')
+      if 'connect_fails_with_error_sending_qmi_request' in self.test_kwargs:
+        raise error.TestError(
+          'connect_fails_with_error_sending_qmi_request on non-Gobi modem')
 
     self.modem.Enable(False)
     self.modem.Enable(True)
