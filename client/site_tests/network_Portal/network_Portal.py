@@ -69,8 +69,9 @@ class network_Portal(test.test):
         service_name = 'wifi'
         if force_portal:
             # depends on getting a consistent IP address from DNS
-            # depends on portal detection using www.google.com
-            hosts = ['www.google.com']
+            # depends on portal detection using www.google.com or
+            # clients3.google.com
+            hosts = ['clients3.google.com', 'www.google.com']
             expected_state = 'portal'
         else:
             hosts = []
