@@ -6,6 +6,8 @@ import logging
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam, mm
 
+
+# TODO(rochberg):  Move modem-specific functions to cellular/cell_utils
 def ResetAllModems(flim):
     """Disable/Enable cycle all modems to ensure valid starting state."""
     service = flim.FindCellularService()
@@ -22,6 +24,7 @@ def ResetAllModems(flim):
         modem = manager.Modem(path)
         modem.Enable(False)
         modem.Enable(True)
+
 
 def ClearGobiModemFaultInjection():
     """If there's a gobi present, try to clear its fault-injection state."""

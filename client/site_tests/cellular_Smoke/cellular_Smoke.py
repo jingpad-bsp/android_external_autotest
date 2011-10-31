@@ -61,10 +61,12 @@ class cellular_Smoke(test.test):
 
         network.ResetAllModems(flim)
 
-        (service, _) = cell_tools.ConnectToCellNetwork(flim)
-        verifier.AssertDataStatusIn([cellular.UeStatus.ACTIVE])
+        # TODO(rochberg) Need to figure out what isn't settling here.
+        # Going to wait 'til after ResetAllModems changes land.
+        time.sleep(10)
 
-        # TODO(rochberg):  Check connectivity from the UE as well
+        (service, _) = cell_tools.ConnectToCellular(flim, verifier)
+        cell_tools.CheckHttpConnectivity(config)
 
-        service.Disconnect()
-        verifier.AssertDataStatusIn([cellular.UeStatus.IDLE])
+
+        cell_tools.DisconnectFromCellularService(bs, flim, service)

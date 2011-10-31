@@ -3,11 +3,12 @@
 # found in the LICENSE file.
 
 """Utilities for cellular tests."""
-import dbus, logging, string
+import dbus, logging, string, urllib2
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import flimflam_test_path
+from autotest_lib.client.cros.cellular import cellular
 import flimflam
 
 
@@ -15,15 +16,17 @@ class Error(Exception):
     pass
 
 
-CONFIG_TIMEOUT=30
+TIMEOUT=30
 
 
-def ConnectToCellNetwork(flim, config_timeout=CONFIG_TIMEOUT):
+def ConnectToCellular(flim, verifier, timeout=TIMEOUT):
     """Attempts to connect to a cell network using FlimFlam.
 
     Args:
     flim:  A flimflam object
-    config_timeout:    Timeout (in seconds) before giving up on connect
+    verifier: A network-side verifier that supports AssertDataStatusIn.
+        Pass None to skip verification.
+    timeout:    Timeout (in seconds) before giving up on connect
 
     Raises:
     Error if connection fails or times out
@@ -31,11 +34,14 @@ def ConnectToCellNetwork(flim, config_timeout=CONFIG_TIMEOUT):
     service = flim.FindCellularService()
     if not service:
         raise Error('Could not find cell service')
+    properties = service.GetProperties(utf8_strings = True)
+    logging.error('Properties are: %s', properties)
 
     logging.info('Connecting to cell service: %s', service)
     success, status = flim.ConnectService(
         service=service,
-        config_timeout=config_timeout)
+        assoc_timeout=timeout,
+        config_timeout=timeout)
 
     if not success:
         # TODO(rochberg):  Turn off autoconnect
@@ -43,14 +49,55 @@ def ConnectToCellNetwork(flim, config_timeout=CONFIG_TIMEOUT):
             raise Error('Could not connect: %s.' % status)
 
     connected_states = ['portal', 'online']
+    # We have to wait up to 10 seconds for state to go to portal
     state = flim.WaitForServiceState(service=service,
                                      expected_states=connected_states,
-                                     timeout=15,
+                                     timeout=timeout,
                                      ignore_failure=True)[0]
     if not state in connected_states:
         raise Error('Still in state %s' % state)
 
+    if verifier:
+      verifier.AssertDataStatusIn([cellular.UeStatus.ACTIVE])
+
     return (service, state)
+
+
+def DisconnectFromCellularService(bs, flim, service):
+    """Attempts to disconnect from the supplied cellular service.
+
+    Args:
+        bs:  A basestation object.  Pass None to skip basestation-side checks
+        flim:  A flimflam object
+        service:  A cellular service object
+    """
+
+    flim.DisconnectService(service)  # Waits for flimflam state to go to idle
+
+    if bs:
+        bs.GetAirStateVerifier().AssertDataStatusIn([
+            cellular.UeStatus.DEACTIVATING, cellular.UeStatus.IDLE])
+
+def CheckHttpConnectivity(config):
+    """Check that the device can fetch HTTP pages.
+
+    Args:
+        config: A test cell config structure, with
+            config['http_connectivity'].   config['http_connectivity']['url']
+            should point to a URL that fetches a page small enough to be
+            comfortably kept in memory.
+
+            If config['http_connectivity']['url_required_contents'] is present,
+            that string must be in the fetched URL.
+    """
+    http_config = config['http_connectivity']
+    response = urllib2.urlopen(http_config['url'], timeout=TIMEOUT).read()
+
+    if ('url_required_contents' in http_config and
+        http_config['url_required_contents'] not in response):
+        logging.error('Could not find %s in \n\t%s\n',
+                      http_config['url_required_contents'], response)
+        raise Error('Content downloaded, but it was incorrect')
 
 
 class OtherDeviceShutdownContext(object):
@@ -61,7 +108,6 @@ class OtherDeviceShutdownContext(object):
 
     TODO(rochberg):  Replace flimflam.DeviceManager with this
     """
-
     def __init__(self, device_type, flim):
         self.device_manager = flimflam.DeviceManager(flim)
         self.device_manager.ShutdownAllExcept(device_type)
@@ -72,6 +118,7 @@ class OtherDeviceShutdownContext(object):
     def __exit__(self, exception, value, traceback):
         self.device_manager.RestoreDevices()
         return False
+
 
 class BlackholeContext(object):
     """Context manager which uses IP tables to black hole access to hosts

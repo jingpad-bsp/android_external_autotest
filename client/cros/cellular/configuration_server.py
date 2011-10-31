@@ -9,9 +9,9 @@ import BaseHTTPServer
 import json
 
 cells = {
-    "name": "cros-cam",
     "cells": [                  # A list of cells covered by this config file
         {
+            "name": "cros-3g-adhoc",
             "basestations": [
                 {
                     # IP addresses and netmask for the air-side of the
@@ -36,8 +36,8 @@ cells = {
                     # Unreachable messages, so the DNS lookups will
                     # fail quickly)
                     "ue_dns_addresses": [
-                        "192.168.2.2",
-                        "192.168.2.2"
+                        "192.168.2.254",
+                        "192.168.2.254"
                     ],
                     "ue_rf_addresses": [
                         "192.168.2.4",
@@ -61,13 +61,17 @@ cells = {
                 "name": "rspro-cros-1",
                 "rf_address": "192.168.2.254"
             },
-            # Used for tests that check web throughput and
-            # connectivity
-            "webserver": {
-                "address": "192.168.2.1",
+            # Used for tests that check web connectivity
+            "http_connectivity": {
+                "url": "http://192.168.2.254/index.html",
+                "url_required_contents": "Chromium",
             },
             "rf_switch": {
-                "type": "null"
+                "type": "ether_io",
+                "address":  "172.31.206.172",
+                # Ports maps from port index to name as specified in
+                # clients.name
+                "ports": ['y3300', None, None, 'ad-hoc-usb'],
             }
         }
     ]

@@ -4,6 +4,7 @@
 
 import logging
 import re
+import time
 
 import air_state_verifier
 import base_station_interface
@@ -268,4 +269,5 @@ class ConfigDictionaries(object):
       'OFF': cellular.UeStatus.NONE,
       'PDPAG': cellular.UeStatus.ACTIVATING,
       'PDP': cellular.UeStatus.ACTIVE,
+      'PDPD': cellular.UeStatus.DEACTIVATING,
       }

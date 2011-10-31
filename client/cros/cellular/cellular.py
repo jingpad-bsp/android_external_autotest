@@ -44,6 +44,7 @@ UeStatus = Enum([
     'DETACHING',
     'ACTIVATING',
     'ACTIVE',
+    'DEACTIVATING',
     ])
 
 
