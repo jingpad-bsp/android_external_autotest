@@ -3,21 +3,23 @@
 # found in the LICENSE file.
 
 { "name":"Check24HT20",
-  "skip_test":"Temporarily busted due to openwrt problem",
   "steps":[             # Channel 1,6,11
     [ "create",         { "type":"hostap" } ],
 
-    [ "config",         { "channel":"2412", "ht20":None, "puren":None } ],
+    [ "config",         { "channel":"2412", "ht20":None, "puren":None,
+                          "ssid_suffix": 'ch1' } ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "deconfig" ],
 
-    [ "config",         { "channel":"2437", "ht20":None, "puren":None } ],
+    [ "config",         { "channel":"2437", "ht20":None, "puren":None,
+                          "ssid_suffix": 'ch6' } ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "deconfig" ],
 
-    [ "config",         { "channel":"2462", "ht20":None, "puren":None } ],
+    [ "config",         { "channel":"2462", "ht20":None, "puren":None,
+                          "ssid_suffix": 'ch11' } ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "destroy" ],

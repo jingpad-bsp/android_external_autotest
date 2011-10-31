@@ -6,7 +6,8 @@
   "steps":[             # Channel 1, 6, 11
     [ "create",         { "type":"hostap" } ],
 
-    [ "config",         { "channel":"2412", "ht20":None, "puren":None } ],
+    [ "config",         { "channel":"2412", "ht20":None, "puren":None,
+                          "ssid_suffix": 'ch1' } ],
     [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
     [ "client_iperf",   { "udp":None } ],
@@ -17,7 +18,8 @@
     # XXX mixed streams
     [ "deconfig" ],
 
-    [ "config",         { "channel":"2437", "ht20":None, "puren":None } ],
+    [ "config",         { "channel":"2437", "ht20":None, "puren":None,
+                          "ssid_suffix": 'ch6' } ],
     [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
     [ "client_iperf",   { "udp":None } ],
@@ -28,7 +30,8 @@
     # XXX mixed streams
     [ "deconfig" ],
 
-    [ "config",         { "channel":"2462", "ht20":None, "puren":None } ],
+    [ "config",         { "channel":"2462", "ht20":None, "puren":None,
+                          "ssid_suffix": 'ch11' } ],
     [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
     [ "client_iperf",   { "udp":None } ],
