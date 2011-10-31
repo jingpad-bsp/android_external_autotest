@@ -7,21 +7,21 @@
     [ "create",         { "type":"hostap" } ],
 
     [ "config",         { "channel":"2412", "mode":"11g", "pureg":None,
-                          "ssid_suffix": 'ch1' } ],
+                          "ssid_suffix": "ch1" } ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "disconnect" ],
     [ "deconfig" ],
   
     [ "config",         { "channel":"2437", "mode":"11g", "pureg":None,
-                          "ssid_suffix": 'ch6' } ],
+                          "ssid_suffix": "ch6" } ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "disconnect" ],
     [ "deconfig" ],
 
     [ "config",         { "channel":"2462", "mode":"11g", "pureg":None,
-                          "ssid_suffix": 'ch11' } ],
+                          "ssid_suffix": "ch11" } ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
 

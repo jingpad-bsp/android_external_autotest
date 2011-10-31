@@ -14,7 +14,7 @@
     [ "create",         { "type":"hostap" } ],
 
     [ "config",         { "channel":"2412", "mode":"11b",
-                          "ssid_suffix": 't1'} ],
+                          "ssid_suffix": "t1"} ],
 
     # Connect to the first AP.  This just guarantees that this AP has
     # been placed in the connection manager profile.
@@ -24,14 +24,14 @@
 
     # Configure and connect to the second AP.
     [ "config",         { "channel":"2437", "mode":"11b",
-                          "ssid_suffix": 't2'} ],
+                          "ssid_suffix": "t2"} ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "deconfig" ],
 
     # Shut down the second AP and bring the first on back up
     [ "config",         { "channel":"2462", "mode":"11b",
-                          "ssid_suffix": 't1'} ],
+                          "ssid_suffix": "t1"} ],
 
     # Instead of explicitly connecting, just wait to see if the DUT
     # re-connects by itself

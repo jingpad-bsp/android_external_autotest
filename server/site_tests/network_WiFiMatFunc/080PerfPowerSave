@@ -6,7 +6,7 @@
   "steps":[             # Channel [1/11g,50/HT20]
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "mode":"11g",
-                          "pureg":None, "ssid_suffix": '24G' } ],
+                          "pureg":None, "ssid_suffix": "24G" } ],
     [ "client_powersave_on" ],
     [ "connect",        { "security":"none" } ],
     [ "client_iperf",   { "udp":None } ],
@@ -23,7 +23,7 @@
     [ "deconfig" ],
 
     [ "config",         { "channel":"5240", "ht20":None,
-                          "pureg":None, "ssid_suffix": '50N' } ],
+                          "pureg":None, "ssid_suffix": "50N" } ],
 
     [ "client_powersave_on" ],
     [ "connect",        { "security":"none" } ],

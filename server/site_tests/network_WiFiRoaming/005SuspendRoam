@@ -26,7 +26,7 @@
 
     # Configure and connect to the second AP.
     [ "config",         { "channel":"2462", "mode":"11g",
-                          "ssid_suffix": 't2'} ],
+                          "ssid_suffix": "t2"} ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
     [ "deconfig" ],
