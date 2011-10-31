@@ -1,3 +1,8 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chromium OS Team"
 NAME = "platform_OSLimits"
 PURPOSE = "Verify some kernel settings."
 CRITERIA = """
@@ -16,7 +21,7 @@ Fail if we find unexpected values for:
   - suid_dumpable
   - sysrq
 """
-AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

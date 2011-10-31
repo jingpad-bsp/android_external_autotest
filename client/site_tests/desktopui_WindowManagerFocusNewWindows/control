@@ -1,11 +1,12 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Daniel Erat <derat@chromium.org>"
+AUTHOR = "Chrome OS team"
 NAME = "desktopui_WindowManagerFocusNewWindows"
 PURPOSE = "Verify that new windows get focused."
 CRITERIA = "Fail if the _NET_ACTIVE_WINDOW X property is unset."
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"

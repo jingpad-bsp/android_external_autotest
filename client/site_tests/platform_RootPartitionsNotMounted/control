@@ -4,15 +4,23 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "platform_RootPartitionsNotMounted"
-PURPOSE = "Verify that the root partitions are not mounted by processes other than update-engine."
-CRITERIA = "This test will fail if a root partition is mounted by a process other than update-engine."
+PURPOSE = """
+Verify that the root partitions are not mounted by processes other than
+update-engine.
+"""
+CRITERIA = """
+This test will fail if a root partition is mounted by a process other than
+update-engine.
+"""
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
 
 DOC = """
-This test checks that the root partitions are not mounted by processes other than update-engine.
+This test checks that the root partitions are not mounted by processes other
+than update-engine.
 """
 
 job.run_test('platform_RootPartitionsNotMounted')

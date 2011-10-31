@@ -43,7 +43,7 @@ TESTS = [
   ('login_CryptohomeMounted', {}),
   ('login_CryptohomeUnmounted', {}),
   ('login_CryptohomeIncognitoUnmounted', {}),
-  ('login_LoginSuccess', {'tag': 'default'}),
+  ('login_LoginSuccess', {}),
   ('login_OwnershipApi', {}),
   ('login_RemoteLogin', {}),
   ('network_DisableInterface', {'iface_name': 'wifi_only',

@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,10 +6,11 @@ AUTHOR = "Chrome OS Team"
 NAME = "desktopui_ScreenLocker"
 PURPOSE = "Verify screen locker is functional."
 CRITERIA = """
-This test will fail if the screen cannot be locked with ctrl-alt-l, or
+This test will fail if the screen cannot be locked with browser automation, or
 cannot be unlocked with the correct password,
 or if the screen is unlocked with an incorrect password.
 """
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"

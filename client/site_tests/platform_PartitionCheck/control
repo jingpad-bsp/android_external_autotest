@@ -1,13 +1,20 @@
-AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
-DOC = "Verifies partitions are sized correctly."
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
 NAME = "platform_PartitionCheck"
-PURPOSE = "Verify size of main parition is correct."
-CRITERIA = """
-Fail if size of main partion is not equal to our reference size.
-"""
+PURPOSE = "Verify size of rootfs are as expected."
+CRITERIA = "Fail if rootfs partitions are not of our reference size."
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
+
+DOC = """
+Checks a hard-coded list of partitions to check that their sizes are the same
+as a hard-coded expected rootfs size.
+"""
 
 job.run_test('platform_PartitionCheck')

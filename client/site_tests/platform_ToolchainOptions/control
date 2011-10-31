@@ -2,11 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-TIME="MEDIUM"
-AUTHOR = "The Chromium OS Authors"
-DOC = """
-Tests whether system ELF executables were compiled with a hardened toolchain.
-"""
+AUTHOR = "Chrome OS Team"
 NAME = "platform_ToolchainOptions"
 PURPOSE = """
 Verify that system ELF executables were compiled with a
@@ -20,8 +16,14 @@ Fail if we find any ELF files compiled without the following options:
 4. -Wl,-z,relro
 5. -fPIE
 """
+SUITE = "bvt"
 TEST_CLASS = "platform"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
+TIME="MEDIUM"
+
+DOC = """
+Tests whether system ELF executables were compiled with a hardened toolchain.
+"""
 
 job.run_test("platform_ToolchainOptions", args=args)
