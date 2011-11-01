@@ -137,29 +137,41 @@ class Servo:
         time.sleep(Servo.SLEEP_DELAY)
 
 
+    def _press_and_release_keys(self, m1, m2, press_secs=None):
+        """Simulate button presses."""
+        if press_secs is None:
+            press_secs = Servo.SERVO_SEND_SIGNAL_DELAY
+
+        self.set_nocheck('kbd_en', 'on')
+        self.set_nocheck('kbd_m1', m1)
+        self.set_nocheck('kbd_m2', m2)
+        time.sleep(press_secs)
+        self.set_nocheck('kbd_en', 'off')
+
+
     def ctrl_d(self):
         """Simulate Ctrl-d simultaneous button presses."""
-        self.set_nocheck('kbd_en', 'on')
-        self.set_nocheck('kbd_m1', 'r2_c2')
-        self.set_nocheck('kbd_m2', 'r1_c1')
-        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
-        self.set_nocheck('kbd_en', 'off')
+        self._press_and_release_keys('d', 'ctrl')
+
+
+    def d_key(self):
+        """Simulate Enter key button press."""
+        self._press_and_release_keys('d', 'none')
+
+
+    def ctrl_key(self):
+        """Simulate Enter key button press."""
+        self._press_and_release_keys('none', 'ctrl')
 
 
     def enter_key(self):
         """Simulate Enter key button press."""
-        self.set_nocheck('kbd_en', 'on')
-        self.set_nocheck('kbd_m1', 'r3_c2')
-        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
-        self.set_nocheck('kbd_en', 'off')
+        self._press_and_release_keys('enter', 'none')
 
 
     def refresh_key(self):
         """Simulate Refresh key (F3) button press."""
-        self.set_nocheck('kbd_en', 'on')
-        self.set_nocheck('kbd_m2', 'r2_c1')
-        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
-        self.set_nocheck('kbd_en', 'off')
+        self._press_and_release_keys('none', 'refresh')
 
 
     def imaginary_key(self):
@@ -167,10 +179,7 @@ class Servo:
 
         Maps to a key that doesn't physically exist.
         """
-        self.set_nocheck('kbd_en', 'on')
-        self.set_nocheck('kbd_m2', 'r3_c1')
-        time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
-        self.set_nocheck('kbd_en', 'off')
+        self._press_and_release_keys('none', 'unused')
 
 
     def enable_recovery_mode(self):
