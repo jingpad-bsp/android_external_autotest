@@ -8,7 +8,7 @@ from autotest_lib.client.cros import cryptohome
 
 class platform_CryptohomeMultiple(test.test):
     version = 1
-    chome = None
+    cryptohome_proxy = None
 
     def test_mount_single(self):
         """
@@ -16,12 +16,12 @@ class platform_CryptohomeMultiple(test.test):
         the infrastructure for multiple mounts is present and active.
         """
         user = utils.random_username()
-        if not self.chome.mount(user, 'test', create=True):
+        if not self.cryptohome_proxy.mount(user, 'test', create=True):
             raise error.TestFail('Mount failed for %s' % user)
-        self.chome.require_mounted(user)
-        if not self.chome.unmount(user):
+        self.cryptohome_proxy.require_mounted(user)
+        if not self.cryptohome_proxy.unmount(user):
             raise error.TestFail('Unmount failed for %s' % user)
 
     def run_once(self):
-        self.chome = cryptohome.Cryptohome()
+        self.cryptohome_proxy = cryptohome.CryptohomeProxy()
         self.test_mount_single()
