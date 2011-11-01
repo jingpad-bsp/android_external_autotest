@@ -69,6 +69,27 @@ class sound_infrastructure(test.test):
      o Notify Chrome developers, if necessary, of removed control.
      o Notify GTalk developers, if necessary, of removed control.
      o Notify Flash player developers, if necessary, of removed control.
+
+     o To create 'controls' data file:
+
+        Execute the following on the DUT:
+
+          amixer controls >{codec-name}.controls
+
+        {codec-name} should be replaced with the name of the codec.
+        Replace spaces in the codec name with '_'.
+        See get_codec() to help determine the name of the codec.
+
+     o To create 'files' data file:
+
+        Execute the following on the DUT:
+
+          tar --absolute-names -c /dev/snd /proc/asound 2>/dev/null| \
+            tar -t 2>/dev/null|sed -e 's./$..g' >{codec-name}.files
+
+        {codec-name} should be replaced with the name of the codec.
+        Replace spaces in the codec name with '_'.
+        See get_codec() to help determine the name of the codec.
     """
     version = 1
 
@@ -91,223 +112,23 @@ class sound_infrastructure(test.test):
             },
 
         'WM8903': {
-            'controls': [ ], # Create: amixer controls >WM8903.controls
-            'files': [
-                '/dev/snd/by-path',
-                '/dev/snd/controlC0',
-                '/dev/snd/pcmC0D0c',
-                '/dev/snd/pcmC0D0p',
-                '/dev/snd/pcmC0D1p',
-                '/dev/snd/timer',
-                '/dev/snd/by-path/platform-tegra-snd-seaboard.0',
-                '/proc/asound/card0',
-                '/proc/asound/card0/id',
-                '/proc/asound/card0/pcm0c',
-                '/proc/asound/card0/pcm0c/info',
-                '/proc/asound/card0/pcm0c/sub0',
-                '/proc/asound/card0/pcm0c/sub0/hw_params',
-                '/proc/asound/card0/pcm0c/sub0/info',
-                '/proc/asound/card0/pcm0c/sub0/status',
-                '/proc/asound/card0/pcm0c/sub0/sw_params',
-                '/proc/asound/card0/pcm0p',
-                '/proc/asound/card0/pcm0p/info',
-                '/proc/asound/card0/pcm0p/sub0',
-                '/proc/asound/card0/pcm0p/sub0/hw_params',
-                '/proc/asound/card0/pcm0p/sub0/info',
-                '/proc/asound/card0/pcm0p/sub0/status',
-                '/proc/asound/card0/pcm0p/sub0/sw_params',
-                '/proc/asound/card0/pcm1p',
-                '/proc/asound/card0/pcm1p/info',
-                '/proc/asound/card0/pcm1p/sub0',
-                '/proc/asound/card0/pcm1p/sub0/hw_params',
-                '/proc/asound/card0/pcm1p/sub0/info',
-                '/proc/asound/card0/pcm1p/sub0/status',
-                '/proc/asound/card0/pcm1p/sub0/sw_params',
-                '/proc/asound/cards',
-                '/proc/asound/devices',
-                '/proc/asound/pcm',
-                '/proc/asound/seq',
-                '/proc/asound/tegraseaboard',
-                '/proc/asound/timers',
-                '/proc/asound/version',
-                ]
+            'controls': [ ],  # See above for creating 'controls' and 'files'.
+            'files'   : [ ],
             },
 
         'ALC271X': {
-            'controls': [ ], # Create: amixer controls >ALC271X.controls
-            'files': [
-                "/dev/snd/by-path",
-                "/dev/snd/controlC0",
-                "/dev/snd/hwC0D0",
-                "/dev/snd/pcmC0D0c",
-                "/dev/snd/pcmC0D0p",
-                "/dev/snd/pcmC0D1p",
-                "/dev/snd/timer",
-                '/proc/asound/Intel',
-                '/proc/asound/card0',
-                '/proc/asound/card0/codec#0',
-                '/proc/asound/card0/id',
-                '/proc/asound/card0/pcm0c',
-                '/proc/asound/card0/pcm0c/info',
-                '/proc/asound/card0/pcm0c/sub0',
-                '/proc/asound/card0/pcm0c/sub0/hw_params',
-                '/proc/asound/card0/pcm0c/sub0/info',
-                '/proc/asound/card0/pcm0c/sub0/prealloc',
-                '/proc/asound/card0/pcm0c/sub0/prealloc_max',
-                '/proc/asound/card0/pcm0c/sub0/status',
-                '/proc/asound/card0/pcm0c/sub0/sw_params',
-                '/proc/asound/card0/pcm0p',
-                '/proc/asound/card0/pcm0p/info',
-                '/proc/asound/card0/pcm0p/sub0',
-                '/proc/asound/card0/pcm0p/sub0/hw_params',
-                '/proc/asound/card0/pcm0p/sub0/info',
-                '/proc/asound/card0/pcm0p/sub0/prealloc',
-                '/proc/asound/card0/pcm0p/sub0/prealloc_max',
-                '/proc/asound/card0/pcm0p/sub0/status',
-                '/proc/asound/card0/pcm0p/sub0/sw_params',
-                '/proc/asound/card0/pcm1p',
-                '/proc/asound/card0/pcm1p/info',
-                '/proc/asound/card0/pcm1p/sub0',
-                '/proc/asound/card0/pcm1p/sub0/hw_params',
-                '/proc/asound/card0/pcm1p/sub0/info',
-                '/proc/asound/card0/pcm1p/sub0/prealloc',
-                '/proc/asound/card0/pcm1p/sub0/prealloc_max',
-                '/proc/asound/card0/pcm1p/sub0/status',
-                '/proc/asound/card0/pcm1p/sub0/sw_params',
-                '/proc/asound/cards',
-                '/proc/asound/devices',
-                '/proc/asound/hwdep',
-                # TODO(thutt): Present only after sound played.
-                #              Reinstate after this test is testing
-                #              playing of sound.
-                #'/proc/asound/modules',  # Present only after sound played.
-                '/proc/asound/pcm',
-                '/proc/asound/seq',
-                '/proc/asound/timers',
-                '/proc/asound/version',
-                ]
+            'controls': [ ],
+            'files'   : [ ],
             },
 
         'Cirrus Analog': {
-            'controls': [ ], # Create: amixer controls >Cirrus_Analog.controls
-            'files': [
-                '/dev/snd/by-path',
-                '/dev/snd/by-path/pci-0000:00:1b.0',
-                '/dev/snd/controlC0',
-                '/dev/snd/hwC0D0',
-                '/dev/snd/hwC0D3',
-                '/dev/snd/pcmC0D0c',
-                '/dev/snd/pcmC0D0p',
-                '/dev/snd/pcmC0D3p',
-                '/dev/snd/pcmC0D7p',
-                '/dev/snd/pcmC0D8p',
-                '/dev/snd/seq',
-                '/dev/snd/timer',
-                '/proc/asound/PCH',
-                '/proc/asound/card0',
-                '/proc/asound/cards',
-                '/proc/asound/devices',
-                '/proc/asound/hwdep',
-                '/proc/asound/pcm',
-                '/proc/asound/seq',
-                '/proc/asound/timers',
-                '/proc/asound/version',
-                '/proc/asound/card0/codec#0',
-                '/proc/asound/card0/codec#3',
-                '/proc/asound/card0/eld#3.0',
-                '/proc/asound/card0/eld#3.1',
-                '/proc/asound/card0/eld#3.2',
-                '/proc/asound/card0/id',
-                '/proc/asound/card0/pcm0c',
-                '/proc/asound/card0/pcm0p',
-                '/proc/asound/card0/pcm3p',
-                '/proc/asound/card0/pcm7p',
-                '/proc/asound/card0/pcm8p',
-                '/proc/asound/card0/pcm0c/info',
-                '/proc/asound/card0/pcm0c/sub0',
-                '/proc/asound/card0/pcm0c/sub0/hw_params',
-                '/proc/asound/card0/pcm0c/sub0/info',
-                '/proc/asound/card0/pcm0c/sub0/prealloc',
-                '/proc/asound/card0/pcm0c/sub0/prealloc_max',
-                '/proc/asound/card0/pcm0c/sub0/status',
-                '/proc/asound/card0/pcm0c/sub0/sw_params',
-                '/proc/asound/card0/pcm0p/info',
-                '/proc/asound/card0/pcm0p/sub0',
-                '/proc/asound/card0/pcm0p/sub0/hw_params',
-                '/proc/asound/card0/pcm0p/sub0/info',
-                '/proc/asound/card0/pcm0p/sub0/prealloc',
-                '/proc/asound/card0/pcm0p/sub0/prealloc_max',
-                '/proc/asound/card0/pcm0p/sub0/status',
-                '/proc/asound/card0/pcm0p/sub0/sw_params',
-                '/proc/asound/card0/pcm3p/info',
-                '/proc/asound/card0/pcm3p/sub0',
-                '/proc/asound/card0/pcm3p/sub0/hw_params',
-                '/proc/asound/card0/pcm3p/sub0/info',
-                '/proc/asound/card0/pcm3p/sub0/prealloc',
-                '/proc/asound/card0/pcm3p/sub0/prealloc_max',
-                '/proc/asound/card0/pcm3p/sub0/status',
-                '/proc/asound/card0/pcm3p/sub0/sw_params',
-                '/proc/asound/card0/pcm7p',
-                '/proc/asound/card0/pcm7p/sub0/info',
-                '/proc/asound/card0/pcm7p/sub0',
-                '/proc/asound/card0/pcm7p/sub0/hw_params',
-                '/proc/asound/card0/pcm7p/sub0/info',
-                '/proc/asound/card0/pcm7p/sub0/prealloc',
-                '/proc/asound/card0/pcm7p/sub0/prealloc_max',
-                '/proc/asound/card0/pcm7p/sub0/status',
-                '/proc/asound/card0/pcm7p/sub0/sw_params',
-                '/proc/asound/card0/pcm8p/info',
-                '/proc/asound/card0/pcm8p/sub0',
-                '/proc/asound/card0/pcm8p/sub0/hw_params',
-                '/proc/asound/card0/pcm8p/sub0/info',
-                '/proc/asound/card0/pcm8p/sub0/prealloc',
-                '/proc/asound/card0/pcm8p/sub0/prealloc_max',
-                '/proc/asound/card0/pcm8p/sub0/status',
-                '/proc/asound/card0/pcm8p/sub0/sw_params',
-                '/proc/asound/seq',
-                ],
+            'controls': [ ],
+            'files'   : [ ],
             },
 
         'ALC272': {
-            'controls': [ ], # Create: amixer controls >ALC272.controls
-            'files': [
-                    '/dev/snd/by-path',
-                    '/dev/snd/by-path/pci-0000:00:1b.0',
-                    '/dev/snd/controlC0',
-                    '/dev/snd/hwC0D0',
-                    '/dev/snd/pcmC0D0c',
-                    '/dev/snd/pcmC0D0p',
-                    '/dev/snd/timer',
-                    '/proc/asound/Intel',
-                    '/proc/asound/card0',
-                    '/proc/asound/card0/codec#0',
-                    '/proc/asound/card0/id',
-                    '/proc/asound/card0/pcm0c',
-                    '/proc/asound/card0/pcm0c/info',
-                    '/proc/asound/card0/pcm0c/sub0',
-                    '/proc/asound/card0/pcm0c/sub0/hw_params',
-                    '/proc/asound/card0/pcm0c/sub0/info',
-                    '/proc/asound/card0/pcm0c/sub0/prealloc',
-                    '/proc/asound/card0/pcm0c/sub0/prealloc_max',
-                    '/proc/asound/card0/pcm0c/sub0/status',
-                    '/proc/asound/card0/pcm0c/sub0/sw_params',
-                    '/proc/asound/card0/pcm0p',
-                    '/proc/asound/card0/pcm0p/info',
-                    '/proc/asound/card0/pcm0p/sub0',
-                    '/proc/asound/card0/pcm0p/sub0/hw_params',
-                    '/proc/asound/card0/pcm0p/sub0/info',
-                    '/proc/asound/card0/pcm0p/sub0/prealloc',
-                    '/proc/asound/card0/pcm0p/sub0/prealloc_max',
-                    '/proc/asound/card0/pcm0p/sub0/status',
-                    '/proc/asound/card0/pcm0p/sub0/sw_params',
-                    '/proc/asound/cards',
-                    '/proc/asound/devices',
-                    '/proc/asound/hwdep',
-                    '/proc/asound/pcm',
-                    '/proc/asound/seq',
-                    '/proc/asound/timers',
-                    '/proc/asound/version',
-                    ]
+            'controls': [ ],
+            'files'   : [ ],
             }
         }
 
@@ -363,6 +184,10 @@ class sound_infrastructure(test.test):
         self.codec_info[codec]['controls'] = [line.strip() for line in
                                               open(pathname)]
 
+        # Read files which must be present.
+        pathname = self.get_data_pathname(codec_basename + ".files")
+        self.codec_info[codec]['files'] = [line.strip() for line in
+                                           open(pathname)]
     def run_once(self):
         codec = self.get_codec()
         self.read_codec_data(codec)
