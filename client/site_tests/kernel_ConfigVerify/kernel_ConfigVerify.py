@@ -101,6 +101,9 @@ class kernel_ConfigVerify(test.test):
         # Empty failure list means test passes.
         self._failures = []
 
+        # Cache the architecture to avoid redundant execs to "uname".
+        self._arch = utils.get_arch()
+
         # Locate and load the list of kernel config variables.
         self._config = self.load_configs('/boot/config-%s' %
                                          utils.system_output('uname -r'))
@@ -116,14 +119,21 @@ class kernel_ConfigVerify(test.test):
         # Upstream kernel recommends 64k, which should be large enough to
         # catch nearly all dereferenced structures.
         wanted = '65536'
-        if utils.get_arch().startswith('arm'):
+        if self._arch.startswith('arm'):
             # ... except on ARM where it shouldn't be larger than 32k due
             # to historical ELF load location.
             wanted = '32768'
         self.has_value('DEFAULT_MMAP_MIN_ADDR', wanted)
 
+        # Security; make sure NX page table bits are usable.
+        if not self._arch.startswith('arm'):
+            if self._arch == "i386":
+                self.has_builtin('X86_PAE')
+            else:
+                self.has_builtin('X86_64')
+
         # Security; marks module data segments as RO/NX.
-        if utils.get_arch().startswith('arm'):
+        if self._arch.startswith('arm'):
             # TODO(kees): ARM kernel needs the module RO/NX logic added.
             self.is_missing('DEBUG_SET_MODULE_RONX')
         else:
