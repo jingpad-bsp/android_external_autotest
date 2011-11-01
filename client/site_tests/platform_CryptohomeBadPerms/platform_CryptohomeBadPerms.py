@@ -26,7 +26,7 @@ class platform_CryptohomeBadPerms(test.test):
         try:
             self.require_mount_fail(user)
         finally:
-            os.remove(path)
+            os.rmdir(path)
 
         # Leaf element of system path not owned by root.
         user = utils.random_username()
@@ -37,7 +37,7 @@ class platform_CryptohomeBadPerms(test.test):
         try:
             self.require_mount_fail(user)
         finally:
-            os.remove(path)
+            os.rmdir(path)
 
         # Leaf element of path too permissive.
         user = utils.random_username()
@@ -48,7 +48,7 @@ class platform_CryptohomeBadPerms(test.test):
         try:
             self.require_mount_fail(user)
         finally:
-            os.remove(path)
+            os.rmdir(path)
 
         # Non-leaf element of path not owned by root.
         user = utils.random_username()
