@@ -15,8 +15,11 @@ Security Functional test suite.
 
 # List of client tests with parameters
 TESTS = [
+  ('kernel_ConfigVerify', {}),
   ('platform_DMVerityCorruption', {}),
   ('platform_DMVerityBitCorruption', {}),
+# While security-related, this is already included in control.bvt.
+#  ('platform_ToolchainOptions', {}),
   ('security_DbusOwners', {}),
   ('security_NetworkListeners', {}),
   ('security_RendererSandbox', {}),
