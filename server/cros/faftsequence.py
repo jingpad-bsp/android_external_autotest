@@ -100,7 +100,7 @@ class FAFTSequence(ServoTest):
                     'An USB disk should be plugged in the servo board.')
 
         tmp_dir = tempfile.mkdtemp()
-        utils.system('sudo mount %s3 %s' % (usb_dev, tmp_dir))
+        utils.system('sudo mount -r %s3 %s' % (usb_dev, tmp_dir))
         code = utils.system('grep -q "Test Build" %s/etc/lsb-release' %
                             tmp_dir, ignore_status=True)
         utils.system('sudo umount %s' % tmp_dir)
