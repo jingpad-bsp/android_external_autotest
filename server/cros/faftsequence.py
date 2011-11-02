@@ -29,7 +29,7 @@ class FAFTSequence(ServoTest):
             returning True if valid, otherwise, False to break the whole
             test sequence.
         userspace_action: a function to describe the action ran in userspace.
-        reboot_action: a function to do reboot, default: software_reboot.
+        reboot_action: a function to do reboot, default: sync_and_hw_reboot.
         firmware_action: a function to describe the action ran after reboot.
 
     And configurations:
@@ -40,8 +40,8 @@ class FAFTSequence(ServoTest):
              is lost. So need to install it again.
 
     The default FAFT_STEP checks nothing in state_checker and does nothing in
-    userspace_action and firmware_action. Its reboot_action is simply a
-    software reboot. You can change the default FAFT_STEP by calling
+    userspace_action and firmware_action. Its reboot_action is a hardware
+    reboot. You can change the default FAFT_STEP by calling
     self.register_faft_template(FAFT_STEP).
 
     A FAFT test case consists of several FAFT_STEP's, namely FAFT_SEQUENCE.
@@ -75,7 +75,7 @@ class FAFTSequence(ServoTest):
         self.register_faft_template({
             'state_checker': (None),
             'userspace_action': (None),
-            'reboot_action': (self.faft_client.software_reboot),
+            'reboot_action': (self.sync_and_hw_reboot),
             'firmware_action': (None)
         })
 
@@ -189,6 +189,16 @@ class FAFTSequence(ServoTest):
                 logging.info("The expected_dict is neither a str nor a dict.")
                 return False
         return True
+
+
+    def sync_and_hw_reboot(self):
+        """Request the client sync and do a warm reboot.
+
+        This is the default reboot action on FAFT.
+        """
+        self.faft_client.run_shell_command('sync')
+        time.sleep(5)
+        self.servo.warm_reset()
 
 
     def _str_action(self, action):

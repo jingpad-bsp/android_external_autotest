@@ -18,7 +18,7 @@ class firmware_TryFwB(FAFTSequence):
         firmware A boot by recovering the firmware and rebooting.
         """
         if not self.crossystem_checker({'mainfw_act': 'A', 'tried_fwb': '0'}):
-            self.faft_client.software_reboot()
+            self.sync_and_hw_reboot()
             self.wait_for_client_offline()
             self.wait_for_client()
 

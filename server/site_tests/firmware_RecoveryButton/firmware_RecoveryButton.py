@@ -33,7 +33,7 @@ class firmware_RecoveryButton(FAFTSequence):
         """
         if self.crossystem_checker({'mainfw_type': 'recovery'}):
             self.servo.disable_recovery_mode
-            self.faft_client.software_reboot()
+            self.sync_and_hw_reboot()
             self.wait_for_client_offline()
             self.wait_for_client()
 

@@ -35,7 +35,7 @@ class firmware_CorruptFwAB(FAFTSequence):
         if self.crossystem_checker({'mainfw_type': 'recovery'}):
             self.faft_client.run_shell_command(
                     'chromeos-firmwareupdate --mode recovery')
-            self.faft_client.software_reboot()
+            self.sync_and_hw_reboot()
             self.wait_for_client_offline()
             self.wait_for_client()
 
