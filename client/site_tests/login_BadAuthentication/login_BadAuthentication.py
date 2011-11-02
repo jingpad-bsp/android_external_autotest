@@ -18,8 +18,8 @@ class login_BadAuthentication(cros_ui_test.UITest):
         handler.wfile.write(self._errorString)
 
 
-    def initialize(self, creds='$default'):
-        super(login_BadAuthentication, self).initialize(creds)
+    def initialize(self, creds='$default', **dargs):
+        super(login_BadAuthentication, self).initialize(creds, **dargs)
 
 
     def start_authserver(self):

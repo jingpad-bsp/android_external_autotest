@@ -21,7 +21,7 @@ class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
         self.job.setup_dep([self.dep])
 
 
-    def initialize(self, creds=None):
+    def initialize(self, creds=None, **dargs):
         self.dep_dir = os.path.join(self.autodir, 'deps', self.dep)
 
         # Start local HTTP server to serve playground.
@@ -32,7 +32,8 @@ class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
         # We need the initialize call to use empty creds (a guest account)
         # so that the auth service isn't started on port 80, preventing
         # the server we are trying to run from binding to the same port.
-        super(realtimecomm_GTalkPlayground, self).initialize(creds=None)
+        super(realtimecomm_GTalkPlayground, self).initialize(creds=None,
+                                                             **dargs)
 
         # Since the DNS redirection is only activated implicitly when the
         # auth service is used, start it up explicitly.

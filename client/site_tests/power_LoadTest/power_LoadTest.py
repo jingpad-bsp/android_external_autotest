@@ -50,7 +50,7 @@ class power_LoadTest(cros_ui_test.UITest):
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', low_battery_threshold=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
-                 wifi_pw='', tasks=""):
+                 wifi_pw='', tasks="", **dargs):
 
         """
         percent_initial_charge_min: min battery charge at start of test
@@ -161,7 +161,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._wh_energy_start = self._power_status.battery[0].energy
 
         # from cros_ui_test.UITest.initialize, sans authserver & local dns.
-        cros_ui_test.UITest.initialize(self, creds)
+        cros_ui_test.UITest.initialize(self, creds, **dargs)
 
     def run_once(self):
 

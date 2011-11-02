@@ -10,8 +10,8 @@ class desktopui_ScreenLocker(cros_ui_test.UITest):
     version = 1
 
 
-    def initialize(self, creds='$default'):
-        cros_ui_test.UITest.initialize(self, creds)
+    def initialize(self, creds='$default', **dargs):
+        cros_ui_test.UITest.initialize(self, creds, **dargs)
 
 
     def is_screen_locked(self):

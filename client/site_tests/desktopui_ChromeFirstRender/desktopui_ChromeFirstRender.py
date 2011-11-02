@@ -26,8 +26,8 @@ class desktopui_ChromeFirstRender(cros_ui_test.UITest):
                         and os.path.getsize(target_file))
 
 
-    def initialize(self, creds='$default'):
-        super(desktopui_ChromeFirstRender, self).initialize(creds)
+    def initialize(self, creds='$default', **dargs):
+        super(desktopui_ChromeFirstRender, self).initialize(creds, **dargs)
 
 
     def run_once(self):

@@ -10,11 +10,11 @@ from autotest_lib.client.cros import cros_ui_test, httpd
 class desktopui_SunSpiderBench(cros_ui_test.UITest):
     version = 1
 
-    def initialize(self, creds='$default'):
+    def initialize(self, creds='$default', **dargs):
         self._test_url = 'http://localhost:8000/sunspider-driver.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        super(desktopui_SunSpiderBench, self).initialize(creds)
+        super(desktopui_SunSpiderBench, self).initialize(creds, **dargs)
 
 
     def setup(self, tarball='sunspider-0.9.tar.bz2'):

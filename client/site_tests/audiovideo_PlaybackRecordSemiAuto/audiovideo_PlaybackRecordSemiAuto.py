@@ -424,7 +424,7 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         utils.make()
 
 
-    def initialize(self, creds = '$default'):
+    def initialize(self, creds = '$default', **dargs):
         id = 0
         for test in _TESTS:
             test['id'] = id
@@ -462,7 +462,8 @@ class audiovideo_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         self._server_root = 'http://localhost:8000/'
         self._testServer = httpd.HTTPListener(port=8000, docroot=self.bindir)
         self._testServer.run()
-        super(audiovideo_PlaybackRecordSemiAuto, self).initialize(creds)
+        super(audiovideo_PlaybackRecordSemiAuto, self).initialize(creds,
+                                                                  **dargs)
 
 
     def cleanup(self):
