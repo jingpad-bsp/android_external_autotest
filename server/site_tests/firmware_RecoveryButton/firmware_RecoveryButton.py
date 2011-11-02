@@ -25,8 +25,8 @@ class firmware_RecoveryButton(FAFTSequence):
     RECOVERY_BUTTON_REQUEST_CODE = '2'
 
 
-    def confirm_normal_boot(self):
-        """Confirm normal mode boot this time.
+    def ensure_normal_boot(self):
+        """Ensure normal mode boot this time.
 
         If not, it may be a test failure during step 2, try to recover to
         normal mode by setting no recovery mode and rebooting the machine.
@@ -45,7 +45,7 @@ class firmware_RecoveryButton(FAFTSequence):
 
 
     def cleanup(self):
-        self.confirm_normal_boot()
+        self.ensure_normal_boot()
         super(firmware_RecoveryButton, self).cleanup()
 
 

@@ -27,8 +27,8 @@ class firmware_UserRequestRecovery(FAFTSequence):
     USER_RECOVERY_REQUEST_CODE = '193'
 
 
-    def confirm_normal_boot(self):
-        """Confirm normal mode boot this time.
+    def ensure_normal_boot(self):
+        """Ensure normal mode boot this time.
 
         If not, it may be a test failure during step 2, try to recover to
         normal mode by simply rebooting the machine.
@@ -46,7 +46,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
 
 
     def cleanup(self):
-        self.confirm_normal_boot()
+        self.ensure_normal_boot()
         super(firmware_UserRequestRecovery, self).cleanup()
 
 

@@ -26,8 +26,8 @@ class firmware_CorruptFwAB(FAFTSequence):
     INVALID_RW_FW_CODE = '3'
 
 
-    def confirm_normal_boot(self):
-        """Confirm normal boot this time.
+    def ensure_normal_boot(self):
+        """Ensure normal boot this time.
 
         If not, it may be a test failure during step 2, try to recover to
         normal mode by recovering the firmware and rebooting.
@@ -47,7 +47,7 @@ class firmware_CorruptFwAB(FAFTSequence):
 
 
     def cleanup(self):
-        self.confirm_normal_boot()
+        self.ensure_normal_boot()
         super(firmware_CorruptFwAB, self).cleanup()
 
 

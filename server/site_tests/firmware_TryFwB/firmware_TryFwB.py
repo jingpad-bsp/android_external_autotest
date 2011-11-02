@@ -11,7 +11,12 @@ class firmware_TryFwB(FAFTSequence):
     """
     version = 1
 
-    def confirm_fw_a_boot(self):
+    def ensure_fw_a_boot(self):
+        """Ensure firmware A boot this time.
+
+        If not, it may be a test failure during step 2, try to recover to
+        firmware A boot by recovering the firmware and rebooting.
+        """
         if not self.crossystem_checker({'mainfw_act': 'A', 'tried_fwb': '0'}):
             self.faft_client.software_reboot()
             self.wait_for_client_offline()
@@ -20,11 +25,11 @@ class firmware_TryFwB(FAFTSequence):
 
     def setup(self):
         super(firmware_TryFwB, self).setup()
-        self.confirm_fw_a_boot()
+        self.ensure_fw_a_boot()
 
 
     def cleanup(self):
-        self.confirm_fw_a_boot()
+        self.ensure_fw_a_boot()
         super(firmware_TryFwB, self).cleanup()
 
 

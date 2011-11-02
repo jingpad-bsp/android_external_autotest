@@ -15,9 +15,9 @@ DOC = """
 This test corrupts firmware A and checks the next boot results.
 """
 
-def run_corrupta(machine):
+def run_corruptfwa(machine):
     host = hosts.create_host(machine)
     job.run_test("firmware_CorruptFwA", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True)
 
-parallel_simple(run_corrupta, machines)
+parallel_simple(run_corruptfwa, machines)

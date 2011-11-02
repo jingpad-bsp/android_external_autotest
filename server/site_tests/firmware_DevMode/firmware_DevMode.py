@@ -16,7 +16,12 @@ class firmware_DevMode(FAFTSequence):
     FIRMWARE_SCREEN_DELAY = 10
 
 
-    def confirm_normal_boot(self):
+    def ensure_normal_boot(self):
+        """Ensure normal boot this time.
+
+        If not, it may be a test failure during step 2, try to recover to
+        normal mode by recovering the firmware and rebooting.
+        """
         if not self.crossystem_checker({'devsw_boot': '0', 'mainfw_act': 'A',
                 'mainfw_type': 'normal'}):
             self.servo.disable_development_mode()
@@ -28,11 +33,11 @@ class firmware_DevMode(FAFTSequence):
 
     def setup(self):
         super(firmware_DevMode, self).setup()
-        self.confirm_normal_boot()
+        self.ensure_normal_boot()
 
 
     def cleanup(self):
-        self.confirm_normal_boot()
+        self.ensure_normal_boot()
         super(firmware_DevMode, self).cleanup()
 
 
