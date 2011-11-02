@@ -19,15 +19,50 @@ from autotest_lib.client.common_lib import error
 
 # List of tests to be run.
 CLIENT_TESTS = [
-    'network_GobiUncleanDisconnect',
-    'network_3GDisableWhileConnecting',
-    'network_3GModemPresent',
-    'network_3GRecoverFromGobiDesync',
-    'network_3GSafetyDance',
-    'network_3GSmokeTest',
-    'network_3GStressEnable',
-    'network_3GModemControl',
-    'network_3GSuspendResume'
+    ('network_GobiUncleanDisconnect', {}),
+
+    # See network_3GDisableWhileConnecting/control
+    ('network_3GDisableWhileConnecting', {
+        'timeout_s': 20,
+        'delay_before_disable_ms': 0,
+        'disable_delay_per_iteration_ms': 0,
+        'iterations': 1,
+        'tag': 'instant_disable'}),
+    ('network_3GDisableWhileConnecting', {
+        'timeout_s': 20,
+        'delay_before_disable_ms': 0,
+        'disable_delay_per_iteration_ms': 1000,
+        'iterations': 1,
+        'tag': 'disable_delay_ramp'}),
+
+    # See network_3GDisableGobiWhileConnecting/control
+    ('network_3GDisableWhileConnecting', {
+        'timeout_s': 20,
+        'delay_before_disable_ms': 200,
+        'async_connect_sleep_ms': 3000,
+        'iterations': 1,
+        'tag': 'short_delay_disable'}),
+    ('network_3GDisableWhileConnecting', {
+        'timeout_s': 20,
+        'delay_before_disable_ms': 0,
+        'disable_delay_per_iteration_ms': 0,
+        'connect_fails_with_error_sending_qmi_request': 1,
+        'iterations': 1,
+        'tag': 'qmi_failure'}),
+
+    ('network_3GModemPresent', {}),
+    ('network_3GRecoverFromGobiDesync', {}),
+    ('network_3GSafetyDance', {}),
+    ('network_3GSmokeTest', {}),
+    ('network_3GStressEnable', {}),
+    ('network_3GModemControl', {'autoconnect': False,
+                                'tag': 'no-autoconnect'}),
+    ('network_3GModemControl', {'autoconnect': True,
+                                'tag': 'autoconnect'}),
+    ('network_3GSuspendResume', {'autoconnect': False,
+                                 'tag': 'no-autoconnect'}),
+    ('network_3GSuspendResume', {'autoconnect': True,
+                                 'tag': 'autoconnect'}),
 
 # These tests shouldn't be run on activated devices.
 #    'network_3GActivate',
@@ -43,9 +78,8 @@ def run_tests(machine):
     client = hosts.create_host(machine)
     client_attributes = site_host_attributes.HostAttributes(machine)
     client_at = autotest.Autotest(client)
-
-    for test in CLIENT_TESTS:
-        client_at.run_test(test)
+    for test, argv in CLIENT_TESTS:
+        client_at.run_test(test, **argv)
 
     for test in SERVER_TESTS:
         job.run_test(test, host=client)
