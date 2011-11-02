@@ -19,21 +19,24 @@ class hardware_SsdDetection(test.test):
 
 
     def run_once(self):
+        # Use rootdev to find the underlying block device even if the
+        # system booted to /dev/dm-0.
+        # If it is an mmcbkl device, then it is SSD.
+        # Else run hdparm to check for SSD.
+        device = utils.system_output('rootdev -s -d')
+        if re.search("mmcblk", device):
+            return
+
         # TODO(ericli): need to find a general solution to install dep packages
         # when tests are pre-compiled, so setup() is not called from client any
         # more.
-
         dep = 'hdparm'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
 
-        # Use rootdev to find the underlying block device even if the
-        # system booted to /dev/dm-0.
-        device = utils.system_output('rootdev -s -d')
+        # Check if device is a SSD
         path = self.autodir + '/deps/hdparm/sbin/'
         hdparm = utils.run(path + 'hdparm -I %s' % device)
-
-        # Check if device is a SSD
         match = re.search(r'Nominal Media Rotation Rate: (.+)$',
                           hdparm.stdout, re.MULTILINE)
         if match and match.group(1):
