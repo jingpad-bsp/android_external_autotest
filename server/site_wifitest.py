@@ -1205,7 +1205,7 @@ class WiFiTest(object):
             16384  87380  1        1       2.00     14118.53
             16384  87380
             """
-            self.write_perf({'Trasnfer_Rate':float(lines[6].split()[5])})
+            self.write_perf({'Transfer_Rate':float(lines[6].split()[5])})
         else:
             raise error.TestError('Unhandled test')
 

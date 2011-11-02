@@ -61,10 +61,11 @@ class ConnectStateHandler(StateHandler):
                                  signal_name='PropertiesChanged',
                                  dbus_interface=SUPPLICANT+'.Interface')
 
-  def FindService(self, path_list=None):
-    service = None
-    for svc in FindObjects('Service', 'SSID', self.service_name,
-                           path_list=path_list):
+
+  def _GetMatchedService(self, service_list):
+    """Get a service matching the connection setting from a list of services."""
+    matched_service = None
+    for svc in service_list:
       props = svc.GetProperties()
       set_props = {}
       for key, val in self.connection_settings.items():
@@ -85,26 +86,38 @@ class ConnectStateHandler(StateHandler):
           except dbus.exceptions.DBusException, e:
             self.failure = ('SetProperty: DBus exception %s for set of %s' %
                             (e, key))
-            return None
-        service = svc
+            raise e
+
+        matched_service = svc
         if self.scan_timeout is not None:
           gobject.source_remove(self.scan_timeout)
           self.scan_timeout = None
-        break
-    else:
-      if self.hidden:
-        try:
-          path = manager.GetService(
-              dbus.Dictionary(self.connection_settings, signature='sv'))
-          service = dbus.Interface(
-              self.bus.get_object(FLIMFLAM, path), FLIMFLAM + '.Service')
-        except Exception, e:
-          self.failure = ('GetService: DBus exception %s for settings %s' %
-                          (e, self.connection_settings))
-          return None
-      else:
-        if not self.scan_timeout:
-          self.DoScan()
+    return matched_service
+
+
+  def FindService(self, path_list=None):
+    service = None
+    try:
+      service = self._GetMatchedService(
+         FindObjects('Service', 'SSID', self.service_name,
+                      path_list=path_list))
+    except dbus.exceptions.DBusException, e:
+      # Failure reason must have been set by _GetMatchedService().
+      return None
+
+    if not service and self.hidden:
+      try:
+        path = manager.GetService(
+            dbus.Dictionary(self.connection_settings, signature='sv'))
+        service = dbus.Interface(
+            self.bus.get_object(FLIMFLAM, path), FLIMFLAM + '.Service')
+      except dbus.exceptions.DBusException, e:
+        self.failure = ('GetService: DBus exception %s for settings %s' %
+                        (e, self.connection_settings))
+        return None
+    elif not service:
+      if not self.scan_timeout:
+        self.DoScan()
         return None
 
     if not self.acquisition_time:
@@ -192,10 +205,8 @@ def main(argv):
                     help='This is a hidden network')
   parser.add_option('--debug', dest='debug', action='store_true',
                     help='Report state changes and other debug info')
-  parser.add_option('--find_timeout', dest='find_timeout', type='int',
-                    default=10, help='This is a hidden network')
   parser.add_option('--mode', dest='mode', default='managed',
-                    help='This is a hidden network')
+                    help='AP mode')
   parser.add_option('--nosave', dest='save_creds', action='store_false',
                     default=True, help='Do not save credentials')
   (options, args) = parser.parse_args(argv[1:])
