@@ -1,0 +1,25 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = "security_ChromiumOSLSM"
+PURPOSE = "Verify that the Chromium Security Module is working as expected"
+CRITERIA = """
+This test will fail if:
+  - A mount operation can be specified using a symbolic mount path"
+"""
+AUTHOR = "ups@chromium.org (Stephan Uphoff)"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "security"
+TEST_TYPE = "client"
+DOC = """
+Verify that the Chromium Security Module is working as expected.
+
+The following will be tested:
+
+- Mount: Test that specifying a mount path containing a symbolic link will fail
+
+"""
+
+job.run_test('security_ChromiumOSLSM')
