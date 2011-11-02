@@ -63,6 +63,14 @@ class FAFTSequence(ServoTest):
     """
     version = 1
 
+
+    # Mapping of partition number of kernel and rootfs.
+    KERNEL_MAP = {'a':'2', 'b':'4', '2':'2', '4':'4', '3':'2', '5':'4'}
+    ROOTFS_MAP = {'a':'3', 'b':'5', '2':'3', '4':'5', '3':'3', '5':'5'}
+    OTHER_KERNEL_MAP = {'a':'4', 'b':'2', '2':'4', '4':'2', '3':'4', '5':'2'}
+    OTHER_ROOTFS_MAP = {'a':'5', 'b':'3', '2':'5', '4':'3', '3':'5', '5':'3'}
+
+
     _faft_template = None
     _faft_sequence = ()
 
@@ -189,6 +197,88 @@ class FAFTSequence(ServoTest):
                 logging.info("The expected_dict is neither a str nor a dict.")
                 return False
         return True
+
+
+    def root_part_checker(self, expected_part):
+        """Check the partition number of the root device matched.
+
+        Args:
+          expected_part: A string containing the number of the expected root
+                         partition.
+
+        Returns:
+          True if the currect root  partition number matched; otherwise, False.
+        """
+        part = self.faft_client.get_root_part()
+        return self.ROOTFS_MAP[expected_part] == part[-1]
+
+
+    def copy_kernel_and_rootfs(self, from_part, to_part):
+        """Copy kernel and rootfs from from_part to to_part.
+
+        Args:
+          from_part: A string of partition number to be copied from.
+          to_part: A string of partition number to be copied to
+        """
+        root_dev = self.faft_client.get_root_dev()
+        self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
+                (root_dev + self.KERNEL_MAP[from_part],
+                 root_dev + self.KERNEL_MAP[to_part]))
+        self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
+                (root_dev + self.ROOTFS_MAP[from_part],
+                 root_dev + self.ROOTFS_MAP[to_part]))
+
+
+    def ensure_kernel_boot(self, part):
+        """Ensure the request kernel boot.
+
+        If not, it duplicates the current kernel to the requested kernel
+        and sets the requested higher priority to ensure it boot.
+
+        Args:
+            part: A string of kernel partition number or 'a'/'b'.
+        """
+        if not self.root_part_checker(part):
+            self.copy_kernel_and_rootfs(from_part=self.OTHER_KERNEL_MAP[part],
+                                        to_part=part)
+            self.reset_and_prioritize_kernel(part)
+            self.sync_and_hw_reboot()
+            self.wait_for_client_offline()
+            self.wait_for_client()
+
+
+    def setup_kernel(self, part):
+        """Setup for kernel test.
+
+        It makes sure both kernel A and B bootable and the current boot is
+        the requested kernel part.
+
+        Args:
+            part: A string of kernel partition number or 'a'/'b'.
+        """
+        self.ensure_kernel_boot(part)
+        self.copy_kernel_and_rootfs(from_part=part,
+                                    to_part=self.OTHER_KERNEL_MAP[part])
+        self.reset_and_prioritize_kernel(part)
+
+
+    def reset_and_prioritize_kernel(self, part):
+        """Make the requested partition highest priority.
+
+        This function also reset kerenl A and B to bootable.
+
+        Args:
+            part: A string of partition number to be prioritized.
+        """
+        root_dev = self.faft_client.get_root_dev()
+        # Reset kernel A and B to bootable.
+        self.faft_client.run_shell_command('cgpt add -i%s -P1 -S1 -T0 %s' %
+                (self.KERNEL_MAP['a'], root_dev))
+        self.faft_client.run_shell_command('cgpt add -i%s -P1 -S1 -T0 %s' %
+                (self.KERNEL_MAP['b'], root_dev))
+        # Set kernel part highest priority.
+        self.faft_client.run_shell_command('cgpt prioritize -i%s %s' %
+                (self.KERNEL_MAP[part], root_dev))
 
 
     def sync_and_hw_reboot(self):

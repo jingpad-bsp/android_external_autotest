@@ -124,6 +124,26 @@ class FAFTClient(object):
                 'crossystem %s' % key)[0]
 
 
+    def get_root_dev(self):
+        """Get the name of root device without partition number.
+
+        Returns:
+            A string of the root device without partition number.
+        """
+        self._chromeos_interface.log('Requesting get root device')
+        return self._chromeos_interface.get_root_dev()
+
+
+    def get_root_part(self):
+        """Get the name of root device with partition number.
+
+        Returns:
+            A string of the root device with partition number.
+        """
+        self._chromeos_interface.log('Requesting get root part')
+        return self._chromeos_interface.get_root_part()
+
+
     def set_try_fw_b(self):
         """Set 'Try Frimware B' flag in crossystem."""
         self._chromeos_interface.log('Requesting restart with firmware B')
@@ -156,6 +176,28 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Restoring firmware %s' % section)
         self._flashrom_handler.restore_firmware(section)
+
+
+    @allow_multiple_section_input
+    def corrupt_kernel(self, section):
+        """Corrupt the requested kernel section.
+
+        Args:
+            section: A kernel section, either 'a' or 'b'.
+        """
+        self._chromeos_interface.log('Corrupting kernel %s' % section)
+        self._kernel_handler.corrupt_kernel(section)
+
+
+    @allow_multiple_section_input
+    def restore_kernel(self, section):
+        """Restore the requested kernel section (previously corrupted).
+
+        Args:
+            section: A kernel section, either 'a' or 'b'.
+        """
+        self._chromeos_interface.log('restoring kernel %s' % section)
+        self._kernel_handler.restore_kernel(section)
 
 
     def cleanup(self):
