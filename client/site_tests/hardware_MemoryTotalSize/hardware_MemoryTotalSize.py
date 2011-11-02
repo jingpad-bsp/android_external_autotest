@@ -18,10 +18,14 @@ class hardware_MemoryTotalSize(test.test):
         self.write_perf_keyval({"gb_memory_total": gb})
         logging.info("MemTotal: %.3f GB" % gb)
 
-        # We intend to check if a machine has at least 1G memory.  However,
-        # taking into consideration that some machines reserve certain amount
-        # of memory and these won't show in '/proc/meminfo', we lower the
-        # threshold to 0.75 Gb.  Hopefully the reserved memory size is less
-        # than 256 Mb.
-        if gb <= 0.75:
-            raise error.TestFail("total system memory size < 1G");
+        # x86 and ARM SDRAM configurations differ significantly from each other.
+        # Use a value specific to the architecture.
+        # On x86, I see 1.85GiB (2GiB - reserved memory).
+        # On ARM, I see 0.72GiB (1GiB - 256MiB carveout).
+        cpuType = utils.get_cpu_arch()
+        limit = 1.65
+        if cpuType == "arm":
+            limit = 0.65
+
+        if gb <= limit:
+            raise error.TestFail("total system memory size < %.3f GB" % limit);
