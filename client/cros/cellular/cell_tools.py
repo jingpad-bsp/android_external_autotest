@@ -206,7 +206,7 @@ class AutoConnectContext(object):
         favorite = props['Favorite']
 
         if not favorite:
-            logging.Info('Enabling Favorite by connecting to service.')
+            logging.info('Enabling Favorite by connecting to service.')
             service.Connect()
             props = service.GetProperties()
             favorite = props['Favorite']
