@@ -28,9 +28,10 @@ class UITest(pyauto_test.PyAutoTest):
     UITest.initialize for more details.
 
     If your subclass overrides the initialize() or cleanup() methods, it
-    should make sure to invoke this class' version of those methods as well.
-    The standard super(...) function cannot be used for this, since the base
-    test class is not a 'new style' Python class.
+    should make sure to invoke this class' version of those methods as well,
+    and accept any unknown keyword arguments passing them to this class'
+    version. The standard super(...) function cannot be used for this,
+    since the base test class is not a 'new style' Python class.
     """
     version = 1
 
@@ -200,7 +201,7 @@ class UITest(pyauto_test.PyAutoTest):
 
 
     def initialize(self, creds=None, is_creating_owner=False,
-                   extra_chrome_flags=[]):
+                   extra_chrome_flags=[], **dargs):
         """Overridden from test.initialize() to log out and (maybe) log in.
 
         If self.auto_login is True, this will automatically log in using the
@@ -226,6 +227,7 @@ class UITest(pyauto_test.PyAutoTest):
             is_creating_owner: If the test case is creating a new device owner.
             extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
 
+        Unknown arguments are passed to the super class' initialize method.
         """
         # Mark /var/log/messages now; we'll run through all subsequent
         # log messages at the end of the test and log info about processes that
@@ -263,7 +265,8 @@ class UITest(pyauto_test.PyAutoTest):
         cros_ui.start()
 
         pyauto_test.PyAutoTest.initialize(self, auto_login=False,
-                                          extra_chrome_flags=extra_chrome_flags)
+                                          extra_chrome_flags=extra_chrome_flags,
+                                          **dargs)
         if self.auto_login:
             self.login(self.username, self.password)
             if is_creating_owner:

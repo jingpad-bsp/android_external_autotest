@@ -54,6 +54,12 @@ class PyAutoTest(test.test):
 
     This test will login (with the default test account), then navigate to
     Google and verify its title.
+
+    If your subclass overrides the initialize() or cleanup() methods, it
+    should make sure to invoke this class' version of those methods as well,
+    and accept any unknown keyword arguments passing them to this class'
+    version. The standard super(...) function cannot be used for this,
+    since the base test class is not a 'new style' Python class.
     """
     def __init__(self, job, bindir, outputdir):
         test.test.__init__(self, job, bindir, outputdir)
