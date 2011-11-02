@@ -25,8 +25,14 @@ class platform_MemCheck(test.test):
         # reserved memory. We derived the value below by giving a small
         # cushion to allow for more system BIOS usage of ram. The memref value
         # is driven by the supported netbook model with the least amount of
-        # total memory.
+        # total memory.  ARM and x86 values differ considerably.
+        cpuType = utils.get_cpu_arch()
         memref = 986392
+        vmemref = 102400
+        if cpuType == "arm":
+            memref = 700000
+            vmemref = 210000
+
         less_refs = ['MemTotal', 'MemFree', 'VmallocTotal']
         equal_refs = ['SwapCached', 'SwapTotal']
 
@@ -34,7 +40,7 @@ class platform_MemCheck(test.test):
                'MemFree': memref/2,
                'SwapCached': 0,
                'SwapTotal': 0,
-               'VmallocTotal': 102400,
+               'VmallocTotal': vmemref,
               }
 
         for k in ref:
