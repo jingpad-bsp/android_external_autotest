@@ -207,7 +207,7 @@ class AutoConnectContext(object):
 
         if not favorite:
             logging.info('Enabling Favorite by connecting to service.')
-            service.Connect()
+            ConnectToCellular(self.flim, None)
             props = service.GetProperties()
             favorite = props['Favorite']
 
