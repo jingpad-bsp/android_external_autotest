@@ -1,0 +1,78 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+fuzzplan = {
+  'flimflamd': {
+    'org.chromium.flimflam': {
+      '/': {
+        'org.freedesktop.chromium.flimflam.Manager': [
+          ['SetProperty', StringMutator('BogusPropertyName').Mutations(),
+           StringMutator('BogusPropertyValue').Mutations()],
+
+          ['SetProperty', 'State', StringMutator('online').Mutations()],
+          ['SetProperty', 'CheckPortalList',
+           StringMutator('ethernet,wifi,wimax,bluetooth,cellular'
+                         ).Mutations()],
+
+          ['SetProperty', 'PortalURL',
+           StringMutator('http://www.google.com/generate_204').Mutations()],
+          ['SetProperty', 'DefaultTechnology',
+           StringMutator('ethernet').Mutations()],
+
+          ['CreateProfile', StringMutator('~chronos/flimflam').Mutations()],
+          ['RemoveProfile', StringMutator('~chronos/flimflam').Mutations()],
+          ['PushProfile', StringMutator('~chronos/flimflam').Mutations()],
+          ['PopProfile', StringMutator('~chronos/flimflam').Mutations()],
+          ['RequestScan', StringMutator('FIXME').Mutations()],
+          ['EnableTechnology', StringMutator('FIXME').Mutations()],
+          ['DisableTechnology', StringMutator('FIXME').Mutations()],
+          ['SetDebugTags', StringMutator('agent+connection+device+element+'
+                                         'inet+manager+network+notifier+'
+                                         'profile+resolv+rfkill+rtnl+'
+                                         'security+service+storage+task+'
+                                         'test+udev+metrics+crypto+plugin+'
+                                         'bluetooth+dhclient+dnsproxy+'
+                                         'ethernet+iwmx+pppd+vpn+wifi+'
+                                         'modem+resolvfiles+'
+                                         'portal').Mutations()],
+          ['SetServiceOrder', StringMutator('vpn,ethernet,bluetooth,wifi,'
+                                            'wimax,cellular').Mutations()],
+          ]
+        },
+
+      '/device/02000dc329dd': {
+        'org.chromium.flimflam.Device': [
+          ['SetProperty', StringMutator('FIXME-PropertyName').Mutations(),
+           StringMutator('FIXME-PropertyValue').Mutations()],
+          ['ClearProperty',
+           StringMutator('FIXME-PropertyName').Mutations()],
+          ['AddIPConfig', StringMutator('FIXME').Mutations()],
+          ['Register', StringMutator('FIXME').Mutations()],
+          ['EnterPin', StringMutator('FIXME').Mutations()],
+          ['UnblockPin', StringMutator('FIXME').Mutations(),
+           StringMutator('FIXME').Mutations()],
+          ['ChangePin', StringMutator('FIXME').Mutations(),
+           StringMutator('FIXME').Mutations()]
+          ]
+        },
+
+      '/profile/default': {
+        'org.chromium.flimflam.Profile': [
+          ['SetProperty', StringMutator('FIXME-PropertyName').Mutations(),
+           StringMutator('FIXME-PropertyValue').Mutations()],
+          ['GetEntry', StringMutator('FIXME').Mutations()],
+          ['DeleteEntry', StringMutator('FIXME').Mutations()]
+          ]
+        },
+
+      '/service/cellular_02000dc329dd_Verizon_Wireless': {
+        'org.chromium.flimflam.Service': [
+          ['SetProperty', StringMutator('FIXME-PropertyName').Mutations(),
+           StringMutator('FIXME-PropertyValue').Mutations()],
+          ['ClearProperty', StringMutator('FIXME-PropertyName').Mutations()],
+          ['ActivateCellularModem', StringMutator('FIXME').Mutations()]
+          ]
+        },
+      }
+    }
+  }
