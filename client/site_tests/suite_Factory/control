@@ -39,6 +39,7 @@ FACTORY_UI_PATH = job.autodir + '/bin/factory_ui'
 FACTORY_STATE_SERVER_PATH = job.autodir + '/bin/factory_state.py'
 STATUS_FILE_PATH = job.autodir + '/results/default/status'
 DEFAULT_TEST_LIST_PATH = job.autodir + '/site_tests/suite_Factory/test_list'
+HWID_CFG_PATH = '/usr/local/share/chromeos-hwid/cfg'
 
 
 # Hack to grab the pid for forked tests.
@@ -76,11 +77,27 @@ job.bootloader.set_default = lambda x: None
 job.bootloader.boot_once = lambda x: None
 
 
+def get_hwid_cfg():
+    if os.path.exists(HWID_CFG_PATH):
+        with open(HWID_CFG_PATH, "rt") as hwid_cfg_handle:
+            return hwid_cfg_handle.read().strip()
+    return ''
+
 def find_test_list():
+    hwid_cfg = get_hwid_cfg()
+
+    # Try in order: test_list, test_list.$hwid_cfg, test_list.all
+    if hwid_cfg:
+        test_list = "%s_%s" % (DEFAULT_TEST_LIST_PATH, hwid_cfg)
+        if os.path.exists(test_list):
+            factory.log('Loaded special test list: %s' % test_list)
+            return test_list
+        factory.log('WARNING: no specific test list for config: %s' % hwid_cfg)
+
     test_list = DEFAULT_TEST_LIST_PATH
     if os.path.exists(test_list):
         return test_list
-    # try default (all) list
+
     test_list = ('%s.all' % DEFAULT_TEST_LIST_PATH)
     if os.path.exists(test_list):
         factory.log('Using default test list: ' + test_list)
@@ -190,6 +207,9 @@ def main_loop(next_subtest_info, notify_callback):
         factory.log('Registered new test list.')
     else:
         factory.log('Continue with existing test list.')
+
+    # Updates HWID configuration tag.
+    factory.set_shared_data('hwid_cfg', get_hwid_cfg())
 
     # any 'active' tests should be fail now.
     for test in test_db.get_all_tests():

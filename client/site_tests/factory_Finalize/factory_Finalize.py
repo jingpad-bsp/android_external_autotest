@@ -99,10 +99,14 @@ class factory_Finalize(test.test):
         # solve upload file names
         upload_method = self.normalize_upload_method(upload_method)
 
+        # get report information
+        hwid_cfg = factory.get_shared_data('hwid_cfg')
+
         args = ['gooftool',
                 '--finalize',
                 '--verbose',
                 '--wipe_method "%s"' % ('secure' if secure_wipe else 'fast'),
+                '--report_tag "%s"' % hwid_cfg,
                 '--upload_method "%s"' % upload_method,
                 ]
         if not check_and_enable_write_protect:
