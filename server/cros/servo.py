@@ -40,15 +40,15 @@ class Servo:
     MAX_SERVO_STARTUP_DELAY = 10
     SERVO_SEND_SIGNAL_DELAY = 0.5
 
-    def __init__(self, servo_host=None, servo_port=None, xml_config='servo.xml',
-                 servo_vid=None, servo_pid=None, servo_serial=None,
-                 cold_reset=False):
+    def __init__(self, servo_host=None, servo_port=None,
+                 xml_config=['servo.xml'], servo_vid=None, servo_pid=None,
+                 servo_serial=None, cold_reset=False):
         """Sets up the servo communication infrastructure.
 
         Args:
           servo_host: Host the servod process should listen on.
           servo_port: Port the servod process should listen on.
-          xml_config: Configuration XML file for servod.
+          xml_config: A list of configuration XML files for servod.
           servo_vid: USB vendor id of servo.
           servo_pid: USB product id of servo.
           servo_serial: USB serial id in device descriptor to host to
@@ -312,14 +312,16 @@ class Servo:
         Args:
           servo_host: Host to start servod listening on.
           servo_port: Port to start servod listening on.
-          xml_config: XML configuration file for servod.
+          xml_config: A list of XML configuration files for servod.
           servo_vid: USB vendor id of servo.
           servo_pid: USB product id of servo.
           servo_serial: USB serial id in device descriptor to host to
             distinguish and control multiple servos.  Note servo's EEPROM must
             be programmed to use this feature.
         """
-        cmdlist = ['sudo', 'servod', '-c', str(xml_config)]
+        cmdlist = ['sudo', 'servod']
+        for config in xml_config:
+            cmdlist += ['-c', str(config)]
         if servo_host is not None:
             cmdlist.append('--host=%s' % str(servo_host))
         if servo_port is not None:

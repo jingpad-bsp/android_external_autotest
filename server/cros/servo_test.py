@@ -84,7 +84,7 @@ class ServoTest(test.test):
         # Assign default arguments for servo invocation.
         args = {
             'servo_host': 'localhost', 'servo_port': 9999,
-            'xml_config': 'servo.xml', 'servo_vid': None, 'servo_pid': None,
+            'xml_config': ['servo.xml'], 'servo_vid': None, 'servo_pid': None,
             'servo_serial': None, 'use_pyauto': False}
 
         # Parse arguments from AFE and override servo defaults above.
@@ -97,7 +97,13 @@ class ServoTest(test.test):
         for arg in cmdline_args:
             match = re.search("^(\w+)=(.+)", arg)
             if match:
-                args[match.group(1)] = match.group(2)
+                key = match.group(1)
+                val = match.group(2)
+                # Support multiple xml_config by appending it to a list.
+                if key == 'xml_config':
+                    args[key].append(val)
+                else:
+                    args[key] = val
 
         # Initialize servotest args.
         self._client = host;
