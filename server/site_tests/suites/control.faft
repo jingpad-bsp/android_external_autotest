@@ -1,0 +1,38 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "FAFT"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+This test suite runs FAFT (Fully Automated Firmware Test) that should
+all pass and that verifies the firmware fit Chrome OS verified-boot
+requirements.
+"""
+
+SERVER_TESTS = [
+    ('firmware_TryFwB', {}),
+    ('firmware_DevMode', {}),
+    ('firmware_UserRequestRecovery', {}),
+    ('firmware_RecoveryButton', {}),
+    ('firmware_DevTriggerRecovery', {}),
+    ('firmware_CorruptFwA', {}),
+    ('firmware_CorruptFwB', {}),
+    ('firmware_CorruptBothFwAB', {}),
+    ('firmware_CorruptKernelA', {}),
+    ('firmware_CorruptKernelB', {}),
+]
+
+
+def run_server_test(machine):
+    client = hosts.create_host(machine)
+    for test, argv in SERVER_TESTS:
+        job.run_test(test, host=client, cmdline_args=args,
+                     use_faft=True, disable_sysinfo=True, **argv)
+
+parallel_simple(run_server_test, machines)
