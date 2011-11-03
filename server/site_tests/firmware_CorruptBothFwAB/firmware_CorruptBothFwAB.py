@@ -7,7 +7,7 @@ import time
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
-class firmware_CorruptFwAB(FAFTSequence):
+class firmware_CorruptBothFwAB(FAFTSequence):
     """
     Servo based both firmware A and B corruption test.
 
@@ -41,14 +41,14 @@ class firmware_CorruptFwAB(FAFTSequence):
 
 
     def setup(self):
-        super(firmware_CorruptFwAB, self).setup()
+        super(firmware_CorruptBothFwAB, self).setup()
         self.assert_test_image_in_usb_disk()
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
 
 
     def cleanup(self):
         self.ensure_normal_boot()
-        super(firmware_CorruptFwAB, self).cleanup()
+        super(firmware_CorruptBothFwAB, self).cleanup()
 
 
     def run_once(self, host=None):

@@ -19,9 +19,9 @@ and enters recovery mode. This test then checks the success of the
 recovery boot.
 """
 
-def run_corruptfwab(machine):
+def run_corruptbothfwab(machine):
     host = hosts.create_host(machine)
-    job.run_test("firmware_CorruptFwAB", host=host, cmdline_args=args,
+    job.run_test("firmware_CorruptBothFwAB", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True)
 
-parallel_simple(run_corruptfwab, machines)
+parallel_simple(run_corruptbothfwab, machines)
