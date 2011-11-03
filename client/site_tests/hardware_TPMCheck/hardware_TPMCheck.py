@@ -16,6 +16,8 @@ def old_or_missing_firmware_version():
     # Expect a dot-separated list of 6 elements.  Discard 1st element.
     v = re.split("\.", version)[1:]
     w = re.split("\.", "any-nickname.03.60.1118.0036.")[1:]
+    if len(v) == 4:
+        return False  # assume ARM platform, or other newer firmware
     if len(v) != len(w):
         raise error.TestError("malformed firmware version %s" % version)
     return v < w
