@@ -109,8 +109,9 @@ class FAFTSequence(ServoTest):
 
         tmp_dir = tempfile.mkdtemp()
         utils.system('sudo mount -r %s3 %s' % (usb_dev, tmp_dir))
-        code = utils.system('grep -q "Test Build" %s/etc/lsb-release' %
-                            tmp_dir, ignore_status=True)
+        code = utils.system(
+               'grep -qE "(Test Build|testimage-channel)" %s/etc/lsb-release' %
+               tmp_dir, ignore_status=True)
         utils.system('sudo umount %s' % tmp_dir)
         os.removedirs(tmp_dir)
         if code != 0:
