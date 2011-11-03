@@ -72,7 +72,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
                     'chromeos-firmwareupdate --mode todev'),
                 'reboot_action': None,
                 'firmware_action': self.wait_and_trigger_recovery,
-                'install_deps_after_reboot': True,
+                'install_deps_after_boot': True,
             },
             {   # Step 3, expected recovery boot and disable dev switch
                 'state_checker': (self.crossystem_checker, {

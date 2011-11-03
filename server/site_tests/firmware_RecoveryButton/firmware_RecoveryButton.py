@@ -58,7 +58,7 @@ class firmware_RecoveryButton(FAFTSequence):
                 }),
                 'userspace_action': self.servo.enable_recovery_mode,
                 'firmware_action': self.wait_and_plug_usb,
-                'install_deps_after_reboot': True,
+                'install_deps_after_boot': True,
             },
             {   # Step 2, expected recovery boot and release recovery button
                 'state_checker': (self.crossystem_checker, {

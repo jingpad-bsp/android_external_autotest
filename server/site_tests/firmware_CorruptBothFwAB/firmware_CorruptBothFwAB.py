@@ -61,7 +61,7 @@ class firmware_CorruptBothFwAB(FAFTSequence):
                 'userspace_action': (self.faft_client.corrupt_firmware,
                                      ('a', 'b')),
                 'firmware_action': self.wait_and_plug_usb,
-                'install_deps_after_reboot': True,
+                'install_deps_after_boot': True,
             },
             {   # Step 2, expected recovery boot
                 'state_checker': (self.crossystem_checker, {
