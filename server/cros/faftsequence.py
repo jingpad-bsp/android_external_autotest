@@ -11,7 +11,7 @@ import xmlrpclib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.servotest import ServoTest
+from autotest_lib.server.cros.servo_test import ServoTest
 
 
 class FAFTSequence(ServoTest):
