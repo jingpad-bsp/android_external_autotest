@@ -28,29 +28,38 @@
     [ "client_iperf",   { "udp":None, "bandwidth":"40m" } ],
     [ "server_iperf",   { "udp":None, "bandwidth":"40m" } ],
 
-    [ "client_iperf",   { "udp":None, "bandwidth":"50m" } ],
-    [ "server_iperf",   { "udp":None, "bandwidth":"50m" } ],
-
     [ "client_iperf",   { "udp":None, "bandwidth":"60m" } ],
     [ "server_iperf",   { "udp":None, "bandwidth":"60m" } ],
-
-    [ "client_iperf",   { "udp":None, "bandwidth":"70m" } ],
-    [ "server_iperf",   { "udp":None, "bandwidth":"70m" } ],
 
     [ "client_iperf",   { "udp":None, "bandwidth":"80m" } ],
     [ "server_iperf",   { "udp":None, "bandwidth":"80m" } ],
 
-    [ "client_iperf",   { "udp":None, "bandwidth":"90m" } ],
-    [ "server_iperf",   { "udp":None, "bandwidth":"90m" } ],
-
     [ "client_iperf",   { "udp":None, "bandwidth":"100m" } ],
     [ "server_iperf",   { "udp":None, "bandwidth":"100m" } ],
 
-    [ "client_iperf",   { "udp":None, "bandwidth":"110m" } ],
-    [ "server_iperf",   { "udp":None, "bandwidth":"110m" } ],
-
     [ "client_iperf",   { "udp":None, "bandwidth":"120m" } ],
     [ "server_iperf",   { "udp":None, "bandwidth":"120m" } ],
+
+    [ "client_iperf",   { "udp":None, "bandwidth":"140m" } ],
+    [ "server_iperf",   { "udp":None, "bandwidth":"140m" } ],
+
+    [ "client_iperf",   { "udp":None, "bandwidth":"160m" } ],
+    [ "server_iperf",   { "udp":None, "bandwidth":"160m" } ],
+
+    [ "client_iperf",   { "udp":None, "bandwidth":"180m" } ],
+    [ "server_iperf",   { "udp":None, "bandwidth":"180m" } ],
+
+    [ "client_iperf",   { "udp":None, "bandwidth":"200m" } ],
+    [ "server_iperf",   { "udp":None, "bandwidth":"200m" } ],
+
+    [ "client_iperf",   { "udp":None, "bandwidth":"220m" } ],
+    [ "server_iperf",   { "udp":None, "bandwidth":"220m" } ],
+
+    [ "client_iperf",   { "udp":None, "bandwidth":"240m" } ],
+    [ "server_iperf",   { "udp":None, "bandwidth":"240m" } ],
+
+    [ "client_iperf",   { "udp":None, "bandwidth":"260m" } ],
+    [ "server_iperf",   { "udp":None, "bandwidth":"260m" } ],
 
     [ "destroy" ],
   ],
