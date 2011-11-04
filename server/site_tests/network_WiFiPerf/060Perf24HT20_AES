@@ -9,6 +9,7 @@
   "steps":[             # Channel 1, 6, 11
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "ht20":None, "puren":None,
+                          "ssid_suffix" : "ch1",
                           "wpa":"1", "wpa_key_mgmt":"WPA-PSK",
                           "wpa_pairwise":"CCMP",
                           "wpa_passphrase":"chromeos" } ],
@@ -50,6 +51,7 @@
     [ "deconfig" ],
 
     [ "config",         { "channel":"2437", "ht20":None, "puren":None,
+                          "ssid_suffix" : "ch6",
                           "wpa":"1", "wpa_key_mgmt":"WPA-PSK",
                           "wpa_pairwise":"CCMP",
                           "wpa_passphrase":"chromeos" } ],
@@ -91,6 +93,7 @@
     [ "deconfig" ],
 
     [ "config",         { "channel":"2462", "ht20":None, "puren":None,
+                          "ssid_suffix" : "ch11",
                           "wpa":"1", "wpa_key_mgmt":"WPA-PSK",
                           "wpa_pairwise":"CCMP",
                           "wpa_passphrase":"chromeos" } ],
