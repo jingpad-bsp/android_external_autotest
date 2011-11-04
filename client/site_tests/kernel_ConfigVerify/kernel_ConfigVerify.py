@@ -20,8 +20,7 @@ class kernel_ConfigVerify(test.test):
         # Security; enables the SECCOMP application API.
         'SECCOMP',
         # Security; blocks direct physical memory access.
-        # TODO(kees): uncomment after crosbug.com/21553 is fixed.
-        #'STRICT_DEVMEM',
+        'STRICT_DEVMEM',
         # Security; provides some protections against SYN flooding.
         'SYN_COOKIES',
     ]
@@ -42,6 +41,10 @@ class kernel_ConfigVerify(test.test):
         'COMPAT_VDSO',
         # Dangerous; allows direct kernel memory writing.
         'DEVKMEM',
+        # Dangerous; allows replacement of running kernel.
+        'KEXEC',
+        # Dangerous; allows replacement of running kernel.
+        'HIBERNATION',
     ]
 
     def _passed(self, msg):
