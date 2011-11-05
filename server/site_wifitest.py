@@ -186,6 +186,7 @@ class WiFiTest(object):
 
         # potential bg thread for client network monitoring
         self.client_netdump_thread = None
+        self.client_stats_thread = None
         self.__client_discover_commands(client)
 
         self.firewall_rules = []
@@ -219,6 +220,8 @@ class WiFiTest(object):
             self.__add_hook('config', self.wifi.start_capture)
         if 'client_capture_all' in self.run_options:
             self.__add_hook('config', self.client_start_capture)
+        if 'client_stats_all' in self.run_options:
+            self.__add_hook('config', self.client_start_statistics)
 
         # NB: do last so code above doesn't need to cleanup on failure
         self.test_profile = {'name':'test'}
@@ -239,6 +242,7 @@ class WiFiTest(object):
         self.profile_pop(self.test_profile)
         self.profile_remove(self.test_profile)
         self.client_stop_capture({})
+        self.client_stop_statistics({})
         self.firewall_cleanup({})
         self.host_route_cleanup({})
         self.wifi.stop_capture({})
@@ -456,6 +460,20 @@ class WiFiTest(object):
 
     def __get_ip6addrs(self, host, ifnet):
         return self.__get_interface_addresses(host, ifnet, 6)
+
+
+    def __get_local_file(self, pattern):
+        """
+        Pass a string pattern with a "%...d" in it, and get back a unique
+        string with the number of times this pattern has been used.  This
+        is useful for creating unique local file names to store data
+        related to each test run.
+        """
+        if not getattr(self, 'local_file_counts', None):
+            self.local_file_counts = {}
+        file_count = self.local_file_counts.get(pattern, 0)
+        self.local_file_counts[pattern] = file_count + 1
+        return './debug/%s' % (pattern % file_count)
 
 
     def install_script(self, script_name, *support_scripts):
@@ -1226,8 +1244,8 @@ class WiFiTest(object):
 
 
     def __create_netdump_dev(self, devname='mon0'):
-        self.client.run("%s dev %s del || /bin/true" % (self.client_cmd_iw,
-                                                        devname))
+        self.client.run("%s dev %s del" % (self.client_cmd_iw, devname),
+                        ignore_status=True)
         self.client.run("%s dev %s interface add %s type monitor" %
                         (self.client_cmd_iw, self.client_wlanif, devname))
         self.client.run("%s %s up" % (self.client_cmd_ifconfig, devname))
@@ -1240,7 +1258,7 @@ class WiFiTest(object):
 
     def client_start_capture(self, params):
         """ Start capturing network traffic on the client """
-        self.client.run("pkill %s || /bin/true" % self.client_cmd_netdump)
+        self.client_stop_capture({})
         devname = self.__create_netdump_dev()
         self.client_netdump_dir = self.client.get_tmp_dir()
         self.client_netdump_file = os.path.join(self.client_netdump_dir,
@@ -1258,10 +1276,16 @@ class WiFiTest(object):
             self.__destroy_netdump_dev()
             self.client.run("pkill %s" % self.client_cmd_netdump,
                             ignore_status=True)
-            self.client.get_file(self.client_netdump_file, '.')
+            self.client.get_file(
+                self.client_netdump_file,
+                self.__get_local_file('client_capture_%02d.pcap'))
             self.client.delete_tmp_dir(self.client_netdump_dir)
             self.client_netdump_thread.join()
             self.client_netdump_thread = None
+        else:
+            # Just in case something got leftover from a previous run...
+            self.client.run("pkill %s" % self.client_cmd_netdump,
+                            ignore_status=True)
 
 
     def client_suspend(self, params):
@@ -1757,6 +1781,30 @@ class WiFiTest(object):
             errors.append('Addresses are: %s' % ', '.join(addrs))
             raise error.TestFail('\n'.join(errors))
 
+    def client_start_statistics(self, params):
+        """ Start capturing network statistics on the client """
+        self.client_stop_statistics({})
+        script = 'site_wlan_statistics.py'
+        script_client_file = self.install_script(script)
+
+        cmd = ('python %s --count=%s --period=%s' %
+               (script_client_file,
+                params.get('count', '-1'),
+                params.get('period', '1')))
+        logging.info(cmd)
+        self.client_stats_thread = HelperThread(self.client, cmd)
+        self.client_stats_thread.start()
+
+    def client_stop_statistics(self, params):
+        self.client.run('pkill -f site_wlan_statistics.py',
+                        ignore_status=True)
+        if self.client_stats_thread is not None:
+            self.client_stats_thread.join()
+            stats = self.client_stats_thread.result.stdout
+            logging.info(stats)
+            file(self.__get_local_file(
+                    'client_interface_statistics_%02d.txt'), 'w').write(stats)
+            self.client_stats_thread = None
 
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
