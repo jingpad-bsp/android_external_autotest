@@ -246,6 +246,7 @@ class SysStat(object):
         self.battery = None
         self.linepower = None
         self.thermal = None
+        self.thermal_path = None
         battery_path = None
         linepower_path = None
         thermal_path_acpi = '/sys/class/thermal/thermal_zone*'
