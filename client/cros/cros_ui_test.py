@@ -43,7 +43,6 @@ class UITest(pyauto_test.PyAutoTest):
     crash_blacklist = []
 
     # This is a symlink.  We look up the real path at runtime by following it.
-    _resolv_conf = '/etc/resolv.conf'
     _resolv_test_file = 'resolv.conf.test'
     _resolv_bak_file = 'resolv.conf.bak'
 
@@ -123,7 +122,7 @@ class UITest(pyauto_test.PyAutoTest):
         # Set all devices to use locally-running DNS server.
         try:
             # Follow resolv.conf symlink.
-            resolv = os.path.realpath(self._resolv_conf)
+            resolv = os.path.realpath(constants.RESOLV_CONF_FILE)
             # Grab path to the real file, do following work in that directory.
             resolv_dir = os.path.dirname(resolv)
             resolv_test = os.path.join(resolv_dir, self._resolv_test_file)
@@ -159,7 +158,7 @@ class UITest(pyauto_test.PyAutoTest):
         """
         try:
             # Follow resolv.conf symlink.
-            resolv = os.path.realpath(self._resolv_conf)
+            resolv = os.path.realpath(constants.RESOLV_CONF_FILE)
             # Grab path to the real file, do following work in that directory.
             resolv_dir = os.path.dirname(resolv)
             resolv_bak = os.path.join(resolv_dir, self._resolv_bak_file)
