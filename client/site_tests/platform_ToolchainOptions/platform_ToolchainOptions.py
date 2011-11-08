@@ -121,8 +121,9 @@ class platform_ToolchainOptions(test.test):
         utils.make(extra="CFLAGS+=\"-w\"")
 
 
-    def create_and_filter(self, description, cmd, whitelist_file):
-        full_cmd = self.get_cmd(cmd)
+    def create_and_filter(self, description, cmd, whitelist_file,
+                          find_options=""):
+        full_cmd = self.get_cmd(cmd, find_options)
         bad_files = utils.system_output(full_cmd)
         cso = ToolchainOptionSet(description, bad_files, whitelist_file)
         cso.process_whitelist_with_private(whitelist_file)
@@ -151,7 +152,7 @@ class platform_ToolchainOptions(test.test):
         libc_glob = "/lib/libc-[0-9]*"
         os.chdir(self.srcdir)
 
-        # we do not test binaries if they are built with Address Sanitizer
+        # We do not test binaries if they are built with Address Sanitizer
         # because it is a separate testing tool.
         no_asan_used = utils.system_output("binutils/readelf -s "
                                            "/opt/google/chrome/chrome | "
@@ -160,9 +161,23 @@ class platform_ToolchainOptions(test.test):
         if not no_asan_used:
           logging.debug("ASAN detected on /opt/google/chrome/chrome. "
                         "Will skip all checks.")
+          return
 
-        # arm arch doesn't have hardened.
-        if utils.get_cpu_arch() != "arm" and no_asan_used:
+        # Check that gold was used to build binaries.
+        gold_cmd = ("binutils/readelf -S {} 2>&1 | "
+                    "egrep -q \".note.gnu.gold-ve\"")
+        gold_find_options = ""
+        if utils.get_cpu_arch() == "arm":
+          # gold is only enabled for Chrome on arm.
+          gold_find_options = "-path \"/opt/google/chrome/chrome\""
+        gold_whitelist = os.path.join(self.bindir, "gold_whitelist")
+        option_sets.append(self.create_and_filter("gold",
+                                                  gold_cmd,
+                                                  gold_whitelist,
+                                                  gold_find_options))
+
+        # ARM arch doesn't have hardened.
+        if utils.get_cpu_arch() != "arm":
             fstack_cmd = ("binutils/objdump -CR {} 2>&1 | "
                           "egrep -q \"(stack_chk|Invalid|not recognized)\"")
             fstack_find_options = ((" -wholename '%s' -prune -o "
@@ -206,14 +221,13 @@ class platform_ToolchainOptions(test.test):
                                                       relro_whitelist))
 
             pie_cmd = ("binutils/readelf -l {} 2>&1 | "
-                   "egrep -q \"Elf file type is DYN\"")
+                       "egrep -q \"Elf file type is DYN\"")
             pie_whitelist = os.path.join(self.bindir, "pie_whitelist")
             option_sets.append(self.create_and_filter("-fPIE",
                                                       pie_cmd,
                                                       pie_whitelist))
 
-        if (options.enable_hardfp and utils.get_cpu_arch() == 'arm' and
-            no_asan_used):
+        if (options.enable_hardfp and utils.get_cpu_arch() == 'arm'):
             hardfp_cmd = ("binutils/readelf -A {} 2>&1 | "
                           "egrep -q \"Tag_ABI_VFP_args: VFP registers\"")
             hardfp_whitelist = os.path.join(self.bindir, "hardfp_whitelist")
@@ -221,7 +235,17 @@ class platform_ToolchainOptions(test.test):
                                                       hardfp_whitelist))
 
         fail_msg = ""
-        fail_summary_msg = ""
+
+        # There is currently no way to clear binary prebuilts for all devs.
+        # Thus, when a new check is added to this test, the test might fail
+        # for users who have old prebuilts which have not been compiled
+        # in the correct manner. Warn the user that if a test fails,
+        # they might have to clear their prebuilts to make it pass.
+        fail_summary_msg = "The following tests failed. If you expected " \
+                           "the test to pass you may have stale binary " \
+                           "prebuilts which are causing the failure. Try " \
+                           "clearing binary prebuilts and rebuilding by " \
+                           " running: ./setup_board --board=... --force\n\n"
         full_msg = "Test results:"
         num_fails = 0
         for cos in option_sets:
