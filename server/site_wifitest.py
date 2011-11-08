@@ -1563,7 +1563,7 @@ class WiFiTest(object):
             label = 'vpn'
             nss_dir = '/home/chronos/user/.pki/nssdb'
             ca_nickname = 'test_nickname'
-            libopencryptoki_path = '/usr/lib/opencryptoki/libopencryptoki.so.0'
+            pkcs11_lib = '/usr/lib/libchaps.so'
             slot_id = '07'
             user_pin = '111111'
 
@@ -1610,13 +1610,13 @@ class WiFiTest(object):
                             '-outform DER' %
                             (cert_pathnames['client-key'],
                              der_pathnames['client-key']))
-            self.__store_pkcs11_resource(libopencryptoki_path,
+            self.__store_pkcs11_resource(pkcs11_lib,
                                          user_pin,
                                          slot_id,
                                          label,
                                          der_pathnames['client-certificate'],
                                          'cert')
-            self.__store_pkcs11_resource(libopencryptoki_path,
+            self.__store_pkcs11_resource(pkcs11_lib,
                                          user_pin,
                                          slot_id,
                                          label,
@@ -1717,7 +1717,7 @@ class WiFiTest(object):
         self.profile_create(self.test_profile)
         self.profile_push(self.test_profile)
 
-    def __store_pkcs11_resource(self, libopencryptoki_path, user_pin, slot_id,
+    def __store_pkcs11_resource(self, pkcs11_lib, user_pin, slot_id,
                                 label, der_file_path, resource_type):
         self.client.run('pkcs11-tool '
                         '--module=%s '
@@ -1726,7 +1726,7 @@ class WiFiTest(object):
                         '--label %s '
                         '--write-object %s '
                         '--type %s' %
-                        (libopencryptoki_path,
+                        (pkcs11_lib,
                          user_pin,
                          slot_id,
                          label,

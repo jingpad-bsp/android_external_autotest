@@ -12,7 +12,7 @@ from autotest_lib.client.cros import constants
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 PKCS11_DIR = '/var/lib/opencryptoki'
 PKCS11_TOOL = '/usr/bin/pkcs11-tool '\
-    '--module /usr/lib/opencryptoki/PKCS11_API.so'
+    '--module /usr/lib/libchaps.so'
 USER_TOKEN_NAME = 'User-Specific TPM Token'
 USER_TOKEN_DIR= '/home/chronos/user/.tpm'
 
@@ -34,10 +34,13 @@ def ensure_initial_state():
 
     This includes:
     - ensuring pkcsslotd is not running, if it is, it is killed.
+    - ensuring chapsd is not running, if it is, it is killed.
     - waiting for and ensuring that the tpm is already owned.
     """
     utils.system('pkill -TERM pkcsslotd', ignore_status=True)
     utils.system('pkill -KILL pkcsslotd', ignore_status=True)
+    utils.system('pkill -TERM chapsd', ignore_status=True)
+    utils.system('pkill -KILL chapsd', ignore_status=True)
 
     if os.path.exists(constants.PKCS11_INIT_MAGIC_FILE):
         os.remove(constants.PKCS11_INIT_MAGIC_FILE)
@@ -111,8 +114,11 @@ def __verify_permissions():
         ('/home/chronos/user/.tpm/TOK_OBJ/60000000', 'chronos:pkcs11', 0640),
         ('/home/chronos/user/.tpm/TOK_OBJ/50000000', 'chronos:pkcs11', 0640),
         ('/home/chronos/user/.tpm/TOK_OBJ/40000000', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/.isinitialized', 'chronos:pkcs11', 0644),
-        ('/home/chronos/user/.tpm/NVTOK.DAT', 'root:pkcs11', 0660)]
+        ('/home/chronos/user/.tpm/.isinitialized', 'chronos:pkcs11', 0644)]
+        # This file does not always have the same permissions. Sometimes it's
+        # 640, sometimes 660. I suspect there is a race condition as to whether
+        # the file exists when cryptohome sets recursive permissions.
+        #('/home/chronos/user/.tpm/NVTOK.DAT', 'root:pkcs11', 0660)
     for item in expected_permissions:
         path = item[0]
         (user, group) = item[1].split(':')
@@ -127,7 +133,7 @@ def __verify_permissions():
         path_group = grp.getgrgid(stat_buf.st_gid).gr_name
         if path_user != user or path_group != group:
             logging.error('Ownership of %s does not match! Got = (%s, %s)'
-                          ', Expected = (%s, %s)', path_user, path_group,
+                          ', Expected = (%s, %s)', path, path_user, path_group,
                           user, group)
             return False
 
