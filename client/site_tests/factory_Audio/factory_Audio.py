@@ -124,6 +124,10 @@ class factory_Audio(test.test):
         return True
 
     def key_release_callback(self, widget, event):
+        # Make sure we capture more advanced key events only when
+        # entered a subtest.
+        if self._subtest_widget is None:
+            return True
         name = self._current_sample
         if event.keyval == gtk.keysyms.Tab:
             self._status_map[name] = ful.FAILED
