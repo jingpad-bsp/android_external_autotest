@@ -23,6 +23,9 @@ import os
 import sys
 import utils
 
+import re
+import subprocess
+
 from gtk import gdk
 
 from autotest_lib.client.bin import factory
@@ -30,6 +33,69 @@ from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
+# The keycodes from the GTK keyboard event have a +8 offset
+# from the real one, hence the constant here
+_GTK_KB_KEYCODE_OFFSET = 8
+
+def GetScanToKeyMap():
+    """
+        Generate the scancode-to-keycode conversion table
+    """
+
+    p = subprocess.Popen('getkeycodes', stdout=subprocess.PIPE)
+    rawTable, useless = p.communicate()
+
+    # plain scancodes (scancode = keycode)
+    r1 = re.search(r'for\s\d+-\d+', rawTable)
+    r1 = re.findall(r'\d+', r1.group())
+    mapping = dict([('%02X' % x, x) for x in xrange(int(r1[0]), int(r1[1])+1)])
+
+    # irregular mappings
+    eights = re.findall(r'0x\d+:\s+[\d-]+\s+[\d-]+\s+[\d-]+\s+[\d-]+'
+                        r'\s+[\d-]+\s+[\d-]+\s+[\d-]+\s+[\d-]+', rawTable)
+    for row in eights:
+        start = int(re.search(r'0x\d+', row).group(), 16)
+
+        kcodes = re.findall(r'\s+\d+', row[5:])
+        for entry in kcodes:
+            if int(entry) != 0:
+                mapping['%02X' % start] = int(entry)
+            start = start + 1
+
+    # special scancodes (with 0xe0 leading byte)
+    eights = re.findall(r'e0\s\d+:\s+[\d-]+\s+[\d-]+\s+[\d-]+\s+[\d-]+'
+                        r'\s+[\d-]+\s+[\d-]+\s+[\d-]+\s+[\d-]+', rawTable)
+    for row in eights:
+        start = int(re.search(r'\s\d+:', row).group()[:-1], 16)
+
+        kcodes = re.findall(r'\s+\d+', row[6:])
+        for entry in kcodes:
+            if int(entry) != 0:
+                mapping['E0 %02X' % start] = int(entry)
+            start = start + 1
+
+    return mapping
+
+def GenerateKeycodeBinding(scan_to_geom):
+    """
+        Convert the scancode-to-geometry binding
+        to keycode-to-geometry binding
+    """
+
+    # Get the scan-to-key mapping
+    scan_to_key = GetScanToKeyMap()
+
+    # Convert scancodes to keycodes in the scan-to-geom bindings
+    key_to_geom = {}
+    for item in scan_to_geom.items():
+        # make binding only for the keys which exist in both mappings
+        # things like power key are skipped here (keycode of power is
+        # inconsistent)
+
+        if(scan_to_key.has_key(item[0])):
+            key_to_geom[scan_to_key[item[0]] + _GTK_KB_KEYCODE_OFFSET] = item[1]
+
+    return key_to_geom
 
 class KeyboardTest:
 
@@ -83,24 +149,15 @@ class KeyboardTest:
         return True
 
     def key_press_event(self, widget, event):
-        if ('GDK_MOD1_MASK' in event.state.value_names
-            and event.keyval == gtk.keysyms.q):
-            # Alt-q for early exit.
-            gtk.main_quit()
-            return True
-        if event.keyval in self.successful_keys:
+        if event.hardware_keycode in self.successful_keys:
             # Ignore keys already found to work successfully.
             return True
-        if event.state != 0:
-            factory.log('key (0x%x) ignored because modifier applied (state=%d)'
-                        % (event.keyval, event.state))
-            return True
-        if event.keyval not in self._bindings:
+        if event.hardware_keycode not in self._bindings:
             factory.log('key (0x%x) ignored because not in bindings'
                         % event.keyval)
             return True
 
-        self._pressed_keys.add(event.keyval)
+        self._pressed_keys.add(event.hardware_keycode)
         widget.queue_draw()
 
         # The first keypress starts test countdown.
@@ -110,11 +167,11 @@ class KeyboardTest:
         return True
 
     def key_release_event(self, widget, event):
-        if event.keyval not in self._pressed_keys:
+        if event.hardware_keycode not in self._pressed_keys:
             # Ignore releases for keys not previously accepted as pressed.
             return False
-        self._pressed_keys.remove(event.keyval)
-        self.successful_keys.add(event.keyval)
+        self._pressed_keys.remove(event.hardware_keycode)
+        self.successful_keys.add(event.hardware_keycode)
         widget.queue_draw()
         if not self.calc_missing_string():
             factory.log('completed successfully')
@@ -166,6 +223,7 @@ class factory_Keyboard(test.test):
         try:
             with open('%s.bindings' % layout, 'r') as file:
                 bindings = eval(file.read())
+                bindings = GenerateKeycodeBinding(bindings)
         except IOError as e:
             raise error.TestNAError('Error while opening %s: %s [Errno %d]' %
                                     (e.filename, e.strerror, e.errno))
