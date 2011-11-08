@@ -17,7 +17,7 @@ from optparse import OptionParser
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
 # Import libraries from SAFT.
-sys.path.append('/usr/sbin/firmware/saft')
+sys.path.append('/usr/local/sbin/firmware/saft')
 import chromeos_interface
 import flashrom_handler
 import kernel_handler
