@@ -33,3 +33,8 @@ class hardware_DiskSize(test.test):
         gb = blocks * 1024.0 / 1000.0 / 1000.0 / 1000.0
         self.write_perf_keyval({"gb_main_disk_size": gb})
         logging.info("DiskSize: %.3f GB" % gb)
+        min_gb = 16
+        if (gb < min_gb):
+            raise error.TestError("DiskSize %.3f GB below minimum (%.3f GB)" \
+                % (gb, min_gb))
+
