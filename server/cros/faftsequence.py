@@ -218,20 +218,46 @@ class FAFTSequence(ServoTest):
         return self.ROOTFS_MAP[expected_part] == part[-1]
 
 
+    def _join_part(self, dev, part):
+        """Return a concatenated string of device and partition number.
+
+        Args:
+          dev: A string of device, e.g.'/dev/sda'.
+          part: A string of partition number, e.g.'3'.
+
+        Returns:
+          A concatenated string of device and partition number, e.g.'/dev/sda3'.
+
+        >>> seq = FAFTSequence()
+        >>> seq._join_part('/dev/sda', '3')
+        '/dev/sda3'
+        >>> seq._join_part('/dev/mmcblk0', '2')
+        '/dev/mmcblk0p2'
+        """
+        if 'mmcblk' in dev:
+            return dev + 'p' + part
+        else:
+            return dev + part
+
+
     def copy_kernel_and_rootfs(self, from_part, to_part):
         """Copy kernel and rootfs from from_part to to_part.
 
         Args:
           from_part: A string of partition number to be copied from.
-          to_part: A string of partition number to be copied to
+          to_part: A string of partition number to be copied to.
         """
         root_dev = self.faft_client.get_root_dev()
+        logging.info('Copying kernel from %s to %s. Please wait...' %
+                     (from_part, to_part))
         self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
-                (root_dev + self.KERNEL_MAP[from_part],
-                 root_dev + self.KERNEL_MAP[to_part]))
+                (self._join_part(root_dev, self.KERNEL_MAP[from_part]),
+                 self._join_part(root_dev, self.KERNEL_MAP[to_part])))
+        logging.info('Copying rootfs from %s to %s. Please wait...' %
+                     (from_part, to_part))
         self.faft_client.run_shell_command('dd if=%s of=%s bs=4M' %
-                (root_dev + self.ROOTFS_MAP[from_part],
-                 root_dev + self.ROOTFS_MAP[to_part]))
+                (self._join_part(root_dev, self.ROOTFS_MAP[from_part]),
+                 self._join_part(root_dev, self.ROOTFS_MAP[to_part])))
 
 
     def ensure_kernel_boot(self, part):
