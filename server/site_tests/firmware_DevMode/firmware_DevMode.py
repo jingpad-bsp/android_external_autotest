@@ -26,7 +26,7 @@ class firmware_DevMode(FAFTSequence):
                 'mainfw_type': 'normal'}):
             self.servo.disable_development_mode()
             self.faft_client.run_shell_command(
-                    'chromeos-firmwareupdate --mode tonormal')
+                    'chromeos-firmwareupdate --mode tonormal && reboot')
             self.wait_for_client_offline()
             self.wait_for_client()
 
@@ -53,10 +53,12 @@ class firmware_DevMode(FAFTSequence):
                 'firmware_action': self.wait_and_ctrl_d,
             },
             {   # Step 2, expected values based on platforms (see below),
-                # and run "chromeos-firmwareupdate --mode todev"
+                # and run "chromeos-firmwareupdate --mode todev && reboot".
                 'state_checker': self.check_devsw_on_transition,
                 'userspace_action': (self.faft_client.run_shell_command,
-                    'chromeos-firmwareupdate --mode todev'),
+                    'chromeos-firmwareupdate --mode todev && reboot'),
+                # Ignore the default reboot_action here because the
+                # userspace_action (firmware updater) will reboot the system.
                 'reboot_action': None,
                 'firmware_action': self.wait_and_ctrl_d,
             },
@@ -69,10 +71,10 @@ class firmware_DevMode(FAFTSequence):
                 'userspace_action': self.servo.disable_development_mode,
             },
             {   # Step 4, expected values based on platforms (see below),
-                # and run "chromeos-firmwareupdate --mode tonormal"
+                # and run "chromeos-firmwareupdate --mode tonormal && reboot"
                 'state_checker': self.check_devsw_off_transition,
                 'userspace_action': (self.faft_client.run_shell_command,
-                    'chromeos-firmwareupdate --mode tonormal'),
+                    'chromeos-firmwareupdate --mode tonormal && reboot'),
                 'reboot_action': None,
             },
             {   # Step 5, expected normal mode boot, done
