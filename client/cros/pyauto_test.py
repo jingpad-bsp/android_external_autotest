@@ -24,10 +24,10 @@ import sys
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_ui, cryptohome, recall_test
+from autotest_lib.client.cros import constants, cros_ui, cryptohome
 
 
-class PyAutoTest(recall_test.RecallClientTest):
+class PyAutoTest(test.test):
     """Base autotest class for tests which require the PyAuto framework.
 
     Inherit this class to make calls to the PyUITest framework.
@@ -62,7 +62,7 @@ class PyAutoTest(recall_test.RecallClientTest):
     since the base test class is not a 'new style' Python class.
     """
     def __init__(self, job, bindir, outputdir):
-        recall_test.RecallClientTest.__init__(self, job, bindir, outputdir)
+        test.test.__init__(self, job, bindir, outputdir)
 
         # Handle to pyauto, for chrome automation.
         self.pyauto = None
@@ -118,7 +118,7 @@ class PyAutoTest(recall_test.RecallClientTest):
         os.chmod(suid_python, 04755)
 
 
-    def initialize(self, auto_login=True, extra_chrome_flags=[], **dargs):
+    def initialize(self, auto_login=True, extra_chrome_flags=[]):
         """Initialize.
 
         Expects session_manager to be alive.
@@ -126,8 +126,6 @@ class PyAutoTest(recall_test.RecallClientTest):
         Args:
             auto_login: should we auto login using $default account?
             extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
-
-        Unknown arguments are passed to the super class' initialize method.
         """
         assert os.geteuid() == 0, 'Need superuser privileges'
 
@@ -158,7 +156,6 @@ class PyAutoTest(recall_test.RecallClientTest):
         if auto_login:
             self.LoginToDefaultAccount()
 
-        recall_test.RecallClientTest.initialize(self, **dargs)
 
     def LoginToDefaultAccount(self):
         """Login to ChromeOS using $default testing account."""
@@ -186,4 +183,4 @@ class PyAutoTest(recall_test.RecallClientTest):
         # Reset the UI.
         cros_ui.restart()
 
-        recall_test.RecallClientTest.cleanup(self)
+        test.test.cleanup(self)
