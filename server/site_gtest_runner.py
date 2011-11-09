@@ -37,7 +37,7 @@ class gtest_runner(object):
 
         Args:
             gtest_entry: Test tuple from control file.  See documentation in
-                server_job_utils.test_item class.
+                site_server_job_utils.test_item class.
             machine: Name (IP) if remote host to run tests on.
             work_dir: Local directory to run tests in.
 
@@ -68,8 +68,9 @@ class gtest_runner(object):
         Then creates entries  in status.log file for each test.
         """
         # Find gtest log files from the autotest client run.
-        log_path = os.path.join(self._results_dir, self._gtest.test_name,
-                                'debug', self._gtest.test_name + '.DEBUG')
+        log_path = os.path.join(
+            self._results_dir, self._gtest.tagged_test_name,
+            'debug', self._gtest.tagged_test_name + '.DEBUG')
         if not os.path.exists(log_path):
             logging.error('gtest log file "%s" is missing.', log_path)
             return

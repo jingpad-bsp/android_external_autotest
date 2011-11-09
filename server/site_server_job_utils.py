@@ -43,6 +43,9 @@ class test_item(object):
         """
         self.test_name = test_name
         self.test_args = test_args
+        self.tagged_test_name = test_name
+        if test_args.get('tag'):
+            self.tagged_test_name = test_name + '.' + test_args.get('tag')
 
         if test_attribs is None:
             test_attribs = {}
