@@ -34,7 +34,7 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
             raise
 
 
-    def initialize(self, creds='$default', **dargs):
+    def initialize(self, creds='$default'):
         spec = 'http://localhost:8000'
         path = '/set_cookie'
         self._wait_path = '/test_over'
@@ -42,7 +42,7 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.add_url_handler('/set_cookie', respond_with_cookies)
         self._testServer.run()
-        super(login_ChromeProfileSanitary, self).initialize(creds, **dargs)
+        super(login_ChromeProfileSanitary, self).initialize(creds)
 
 
     def cleanup(self):

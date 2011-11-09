@@ -17,8 +17,8 @@ class login_DBusCalls(cros_ui_test.UITest):
     version = 1
 
 
-    def initialize(self, creds = '$default', **dargs):
-        cros_ui_test.UITest.initialize(self, creds, **dargs)
+    def initialize(self, creds = '$default'):
+        cros_ui_test.UITest.initialize(self, creds)
 
 
     def _call_session_manager_method(self, method, user='chronos'):

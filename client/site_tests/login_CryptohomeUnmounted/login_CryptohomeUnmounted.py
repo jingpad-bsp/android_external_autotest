@@ -8,8 +8,8 @@ from autotest_lib.client.cros import cros_ui_test, cryptohome, login
 class login_CryptohomeUnmounted(cros_ui_test.UITest):
     version = 2
 
-    def initialize(self, creds='$default', **dargs):
-        super(login_CryptohomeUnmounted, self).initialize(creds, **dargs)
+    def initialize(self, creds='$default'):
+        super(login_CryptohomeUnmounted, self).initialize(creds)
 
 
     def run_once(self):

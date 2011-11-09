@@ -15,10 +15,10 @@ class TimeoutError(error.TestError):
 class platform_Pkcs11InitOnLogin(cros_ui_test.UITest):
     version = 1
 
-    def initialize(self, creds='$default', **dargs):
+    def initialize(self, creds='$default'):
         self.auto_login = False
         super(platform_Pkcs11InitOnLogin, self).initialize(
-            creds, is_creating_owner=True, **dargs)
+            creds, is_creating_owner=True)
         self.login(self.username, self.password)
 
 

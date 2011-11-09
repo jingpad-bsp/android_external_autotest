@@ -8,8 +8,8 @@ class desktopui_WindowManagerHotkeys(cros_ui_test.UITest):
     version = 1
 
 
-    def initialize(self, creds = '$default', **dargs):
-        cros_ui_test.UITest.initialize(self, creds, **dargs)
+    def initialize(self, creds = '$default'):
+        cros_ui_test.UITest.initialize(self, creds)
 
 
     def run_once(self):

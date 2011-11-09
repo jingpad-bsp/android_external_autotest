@@ -31,13 +31,12 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         'conformance/more/functions/readPixelsBadArgs.html' : 1,
       }
 
-    def initialize(self, creds='$default', **dargs):
+    def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/webgl-conformance-tests.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
         cros_ui_test.UITest.initialize(self, creds,
-                                       extra_chrome_flags=['--enable-webgl'],
-                                       **dargs)
+                                       extra_chrome_flags=['--enable-webgl'])
 
     def setup(self, tarball='webgl-conformance-1.0.1.tar.bz2'):
         shutil.rmtree(self.srcdir, ignore_errors=True)

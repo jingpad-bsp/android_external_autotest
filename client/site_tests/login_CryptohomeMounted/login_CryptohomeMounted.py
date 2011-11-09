@@ -14,8 +14,8 @@ TEST_FILE = os.path.join(constants.CRYPTOHOME_MOUNT_PT, 'hello')
 class login_CryptohomeMounted(cros_ui_test.UITest):
     version = 1
 
-    def initialize(self, creds='$default', **dargs):
-        super(login_CryptohomeMounted, self).initialize(creds, **dargs)
+    def initialize(self, creds='$default'):
+        super(login_CryptohomeMounted, self).initialize(creds)
 
 
     def run_once(self):

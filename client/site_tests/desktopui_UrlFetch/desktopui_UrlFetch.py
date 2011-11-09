@@ -13,9 +13,9 @@ class desktopui_UrlFetch(cros_ui_test.UITest):
     version = 1
 
 
-    def initialize(self, live=True, **dargs):
+    def initialize(self, live=True):
         self._live = live
-        super(desktopui_UrlFetch, self).initialize(creds='$default', **dargs)
+        super(desktopui_UrlFetch, self).initialize(creds='$default')
         if self._live:
             self._test_url = 'http://www.noaa.gov/'
             self._expected_title = \

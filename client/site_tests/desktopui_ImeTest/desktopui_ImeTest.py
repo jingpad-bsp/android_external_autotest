@@ -15,12 +15,12 @@ class desktopui_ImeTest(cros_ui_test.UITest):
         # TODO: We shouldn't use ibusclient, we should talk to Chrome directly
         self.job.setup_dep(['ibusclient'])
 
-    def initialize(self, creds='$default', **dargs):
+    def initialize(self, creds='$default'):
         self._test_url = 'http://127.0.0.1:8000/interaction_form.html'
         self._test_server = httpd.HTTPListener(8000, docroot=self.bindir)
         self._test_server.run()
 
-        cros_ui_test.UITest.initialize(self, creds, **dargs)
+        cros_ui_test.UITest.initialize(self, creds)
 
 
     def cleanup(self):

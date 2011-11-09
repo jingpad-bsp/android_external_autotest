@@ -30,7 +30,7 @@ class login_LoginSuccess(cros_ui_test.UITest):
         self._authServer.client_login_responder(handler, url_args)
 
 
-    def initialize(self, creds='$default', **dargs):
+    def initialize(self, creds='$default'):
         """Override superclass to provide a default value for the creds param.
 
         This is important for our class, since a creds of None (AKA "browse
@@ -41,7 +41,7 @@ class login_LoginSuccess(cros_ui_test.UITest):
                 '$default'.
         """
         assert creds, "Must use non-Guest creds for login_LoginSuccess test."
-        super(login_LoginSuccess, self).initialize(creds, **dargs)
+        super(login_LoginSuccess, self).initialize(creds)
 
 
     def start_authserver(self):

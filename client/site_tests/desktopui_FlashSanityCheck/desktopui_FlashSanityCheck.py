@@ -10,11 +10,11 @@ from autotest_lib.client.cros import cros_ui_test, httpd
 class desktopui_FlashSanityCheck(cros_ui_test.UITest):
     version = 3
 
-    def initialize(self, **dargs):
+    def initialize(self):
         self._test_url = 'http://localhost:8000/index.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        super(desktopui_FlashSanityCheck, self).initialize(**dargs)
+        super(desktopui_FlashSanityCheck, self).initialize()
 
 
     def run_once(self, time_to_wait=25):

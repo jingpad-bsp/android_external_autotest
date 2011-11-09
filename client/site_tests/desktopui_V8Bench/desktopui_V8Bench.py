@@ -10,11 +10,11 @@ from autotest_lib.client.cros import cros_ui_test, httpd
 class desktopui_V8Bench(cros_ui_test.UITest):
     version = 1
 
-    def initialize(self, creds='$default', **dargs):
+    def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/run.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        super(desktopui_V8Bench, self).initialize(creds, **dargs)
+        super(desktopui_V8Bench, self).initialize(creds)
 
 
     def setup(self, tarball='v8_v6.tar.bz2'):

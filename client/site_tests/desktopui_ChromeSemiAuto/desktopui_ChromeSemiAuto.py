@@ -10,12 +10,12 @@ from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
 class desktopui_ChromeSemiAuto(cros_ui_test.UITest):
     version = 1
 
-    def initialize(self, creds='$default', **dargs):
+    def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/interaction.html'
         # TODO(seano): Use ephemeral port.
         self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
-        super(desktopui_ChromeSemiAuto, self).initialize(creds, **dargs)
+        super(desktopui_ChromeSemiAuto, self).initialize(creds)
 
 
     def cleanup(self):

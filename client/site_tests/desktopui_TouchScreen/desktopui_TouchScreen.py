@@ -30,7 +30,7 @@ class desktopui_TouchScreen(cros_ui_test.UITest):
     """
     version = 1
 
-    def initialize(self, creds='$default', testfile="example.html", **dargs):
+    def initialize(self, creds='$default', testfile="example.html"):
         # Check if the device file is grabbed by X.
         grab_lines = mygrep( '/etc/X11/xorg.conf.d/60-touchscreen-mxt.conf',
                              'GrabDevice' )
@@ -62,7 +62,7 @@ class desktopui_TouchScreen(cros_ui_test.UITest):
         self._testServer.add_url_handler('/done', self.done_url_handler)
         # Fire up the web server thread.
         self._testServer.run()
-        super(desktopui_TouchScreen, self).initialize(creds, **dargs)
+        super(desktopui_TouchScreen, self).initialize(creds)
 
     def replay_gesture(self, gesture_file):
         logging.info('Replaying gesture file: %s' % gesture_file)

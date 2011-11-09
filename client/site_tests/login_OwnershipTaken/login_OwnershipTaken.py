@@ -20,11 +20,10 @@ class login_OwnershipTaken(cros_ui_test.UITest):
         utils.make('OUT_DIR=.')
 
 
-    def initialize(self, creds='$default', **dargs):
+    def initialize(self, creds='$default'):
         self.auto_login = False  # Will log in manually later.
         super(login_OwnershipTaken, self).initialize(creds,
-                                                     is_creating_owner=True,
-                                                     **dargs)
+                                                     is_creating_owner=True)
         if os.access(constants.OWNER_KEY_FILE, os.F_OK):
             raise error.TestFail("Ownership already taken!")
 
