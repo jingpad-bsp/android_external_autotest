@@ -1,0 +1,38 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a small subset of factory tests that can be tested using
+# the servo factory test.
+
+TEST_LIST = [
+    OperatorTest(
+        label_en='start',
+        label_zw='開始',
+        autotest_name='factory_Start',
+        kbd_shortcut='e',
+        dargs={'press_to_continue': False}),
+
+    AutomatedSequence(
+        label_en='memory',
+        label_zw='記憶體',
+        subtest_tag_prefix='memoryrunin',
+        kbd_shortcut='r',
+        subtest_list=[
+            AutomatedSubTest(
+                label_en='system stress',
+                label_zw='壓力測試',
+                autotest_name='hardware_SAT',
+                dargs={'seconds': 2},
+                drop_caches=True),
+        ]),
+
+    InformationScreen(
+        label_en='review',
+        label_zw='報告',
+        autotest_name='factory_Review',
+        unique_name='ReviewInformation',
+        kbd_shortcut='z'),
+]
