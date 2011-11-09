@@ -5,6 +5,7 @@
 import logging
 import os
 from autotest_lib.client.common_lib import utils as client_utils
+from autotest_lib.client.cros import constants
 from autotest_lib.server import utils
 
 def generate_minidump_stacktrace(minidump_path):
@@ -25,7 +26,7 @@ def generate_minidump_stacktrace(minidump_path):
     return rc
 
 
-def find_and_generate_minidump_stacktraces(host):
+def find_and_generate_minidump_stacktraces(host_resultdir):
     """
     Finds all minidump files and generates a stack trace for each.
 
@@ -34,7 +35,6 @@ def find_and_generate_minidump_stacktraces(host):
     identified as files with .dmp extension.  The stack trace filename is
     composed by appending the .txt extension to the minidump filename.
     """
-    host_resultdir = getattr(getattr(host, "job", None), "resultdir", None)
     for dir, subdirs, files in os.walk(host_resultdir):
         for file in files:
             if not file.endswith('.dmp'):
@@ -49,5 +49,20 @@ def find_and_generate_minidump_stacktraces(host):
                              'dump %s (rc=%d)' % (minidump, rc))
 
 
+def fetch_orphaned_crashdumps(host, host_resultdir):
+    for file in host.list_files_glob(os.path.join(constants.CRASH_DIR, '*')):
+        logging.info("Collecting %s...", file)
+        try:
+            host.get_file(file, host_resultdir, preserve_perm=False)
+        except Exception as e:
+            logging.warning("Collection of %s failed:\n%s", file, e)
+
+
+
 def get_site_crashdumps(host, test_start_time):
-    find_and_generate_minidump_stacktraces(host)
+    host_resultdir = getattr(getattr(host, "job", None), "resultdir", None)
+    infodir = os.path.join(host_resultdir, "crashinfo.%s" % host.hostname)
+    if not os.path.exists(infodir):
+        os.mkdir(infodir)
+    fetch_orphaned_crashdumps(host, infodir)
+    find_and_generate_minidump_stacktraces(host_resultdir)

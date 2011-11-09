@@ -6,7 +6,7 @@ import os, shutil, re, logging
 
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_sysinfo
-from autotest_lib.client.cros import constants as chromeos_constants
+from autotest_lib.client.cros import constants
 
 
 logfile = base_sysinfo.logfile
@@ -73,18 +73,23 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         self.boot_loggables.add(command("ls -l /boot",
                                         "boot_file_list"))
         self.before_iteration_loggables.add(
-            command("/opt/google/chrome/chrome --version", "chrome_version"))
-        self.test_loggables.add(purgeable_logdir("/home/chronos/user/log"))
+            command(constants.BROWSER_EXE + " --version", "chrome_version"))
+        self.test_loggables.add(
+            purgeable_logdir(
+                os.path.join(constants.CRYPTOHOME_MOUNT_PT, "log")))
         self.test_loggables.add(logdir("/var/log"))
         # We only want to gather and purge crash reports after the client test
         # runs in case a client test is checking that a crash found at boot
         # (such as a kernel crash) is handled.
         self.after_iteration_loggables.add(
-            purgeable_logdir("/home/chronos/user/crash"))
-        self.after_iteration_loggables.add(purgeable_logdir("/var/spool/crash"))
-        self.test_loggables.add(logfile("/home/chronos/.Google/"
-                                        "Google Talk Plugin/gtbplugin.log"))
-        self.test_loggables.add(purgeable_logdir("/var/spool/crash"))
+            purgeable_logdir(
+                os.path.join(constants.CRYPTOHOME_MOUNT_PT, "crash")))
+        self.after_iteration_loggables.add(
+            purgeable_logdir(constants.CRASH_DIR))
+        self.test_loggables.add(
+            logfile(os.path.join(constants.USER_DATA_DIR,
+                                 ".Google/Google Talk Plugin/gtbplugin.log")))
+        self.test_loggables.add(purgeable_logdir(constants.CRASH_DIR))
 
 
     def log_test_keyvals(self, test_sysinfodir):

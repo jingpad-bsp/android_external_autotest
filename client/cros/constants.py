@@ -22,6 +22,8 @@ CLEANUP_LOGS_PAUSED_FILE = '/var/lib/cleanup_logs_paused'
 
 CLIENT_LOGIN_URL = '/accounts/ClientLogin'
 
+CRASH_DIR = '/var/spool/crash'
+
 CREDENTIALS = {
     '$mockowner': ['mockowner.test.account@gmail.com', 'perfsmurf'],
     '$default': ['performance.test.account@gmail.com', 'perfsmurf'],
