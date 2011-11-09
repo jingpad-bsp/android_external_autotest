@@ -19,9 +19,6 @@ class firmware_CorruptBothFwAB(FAFTSequence):
     """
     version = 1
 
-    FIRMWARE_SCREEN_DELAY = 10
-    USB_PLUG_DELAY = 2
-
     # Code dedicated for RW firmware failed signature check.
     INVALID_RW_FW_CODE = '3'
 
@@ -44,6 +41,7 @@ class firmware_CorruptBothFwAB(FAFTSequence):
         super(firmware_CorruptBothFwAB, self).setup()
         self.assert_test_image_in_usb_disk()
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.setup_dev_mode(dev_mode=False)
 
 
     def cleanup(self):

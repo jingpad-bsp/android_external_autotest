@@ -20,9 +20,6 @@ class firmware_UserRequestRecovery(FAFTSequence):
     """
     version = 1
 
-    FIRMWARE_SCREEN_DELAY = 10
-    USB_PLUG_DELAY = 2
-
     # Code dedicated for user triggering recovery mode through crossystem.
     USER_RECOVERY_REQUEST_CODE = '193'
 
@@ -43,6 +40,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
         super(firmware_UserRequestRecovery, self).setup()
         self.assert_test_image_in_usb_disk()
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.setup_dev_mode(dev_mode=False)
 
 
     def cleanup(self):

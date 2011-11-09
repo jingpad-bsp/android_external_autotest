@@ -28,6 +28,7 @@ class firmware_CorruptFwB(FAFTSequence):
 
     def setup(self):
         super(firmware_CorruptFwB, self).setup()
+        self.setup_dev_mode(dev_mode=False)
         self.ensure_fw_a_boot()
 
 

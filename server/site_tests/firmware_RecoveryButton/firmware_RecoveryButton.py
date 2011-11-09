@@ -18,9 +18,6 @@ class firmware_RecoveryButton(FAFTSequence):
     """
     version = 1
 
-    FIRMWARE_SCREEN_DELAY = 10
-    USB_PLUG_DELAY = 2
-
     # Code dedicated for user manually requested recovery via recovery button.
     RECOVERY_BUTTON_REQUEST_CODE = '2'
 
@@ -42,6 +39,7 @@ class firmware_RecoveryButton(FAFTSequence):
         super(firmware_RecoveryButton, self).setup()
         self.assert_test_image_in_usb_disk()
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.setup_dev_mode(dev_mode=False)
 
 
     def cleanup(self):

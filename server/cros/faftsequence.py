@@ -70,6 +70,10 @@ class FAFTSequence(ServoTest):
     OTHER_KERNEL_MAP = {'a':'4', 'b':'2', '2':'4', '4':'2', '3':'4', '5':'2'}
     OTHER_ROOTFS_MAP = {'a':'5', 'b':'3', '2':'5', '4':'3', '3':'5', '5':'3'}
 
+    # Delay timing
+    FIRMWARE_SCREEN_DELAY = 10
+    TEXT_SCREEN_DELAY = 20
+    USB_PLUG_DELAY = 5
 
     _faft_template = None
     _faft_sequence = ()
@@ -99,7 +103,7 @@ class FAFTSequence(ServoTest):
         """Assert an USB disk plugged-in on servo and a test image inside.
 
         Raises:
-            error.TestError: if USB disk not detected or not a test image.
+          error.TestError: if USB disk not detected or not a test image.
         """
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         usb_dev = self.probe_host_usb_dev()
@@ -237,7 +241,7 @@ class FAFTSequence(ServoTest):
         and sets the requested higher priority to ensure it boot.
 
         Args:
-            part: A string of kernel partition number or 'a'/'b'.
+          part: A string of kernel partition number or 'a'/'b'.
         """
         if not self.root_part_checker(part):
             self.copy_kernel_and_rootfs(from_part=self.OTHER_KERNEL_MAP[part],
@@ -248,6 +252,46 @@ class FAFTSequence(ServoTest):
             self.wait_for_client()
 
 
+    def wait_fw_screen_and_ctrl_d(self):
+        """Wait for firmware warning screen and press Ctrl-D."""
+        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        self.servo.ctrl_d()
+
+
+    def setup_dev_mode(self, dev_mode):
+        """Setup for development mode.
+
+        It makes sure the system in the request normal/dev mode. If not, i
+        tries to do so.
+
+        Args:
+          dev_mode: True if requested in dev mode; False if normal mode.
+        """
+        if dev_mode:
+            if not self.crossystem_checker({'devsw_cur': '1'}):
+                logging.info('Dev switch is not on. Now switch it on.')
+                self.servo.enable_development_mode()
+            if not self.crossystem_checker({'devsw_boot': '1',
+                    'mainfw_type': 'developer'}):
+                logging.info('System is not in dev mode. Reboot into it.')
+                self.faft_client.run_shell_command(
+                        'chromeos-firmwareupdate --mode todev && reboot')
+                self.wait_for_client_offline()
+                self.wait_fw_screen_and_ctrl_d()
+                self.wait_for_client()
+        else:
+            if not self.crossystem_checker({'devsw_cur': '0'}):
+                logging.info('Dev switch is not off. Now switch it off.')
+                self.servo.disable_development_mode()
+            if not self.crossystem_checker({'devsw_boot': '0',
+                    'mainfw_type': 'normal'}):
+                logging.info('System is not in normal mode. Reboot into it.')
+                self.faft_client.run_shell_command(
+                        'chromeos-firmwareupdate --mode tonormal && reboot')
+                self.wait_for_client_offline()
+                self.wait_for_client()
+
+
     def setup_kernel(self, part):
         """Setup for kernel test.
 
@@ -255,7 +299,7 @@ class FAFTSequence(ServoTest):
         the requested kernel part.
 
         Args:
-            part: A string of kernel partition number or 'a'/'b'.
+          part: A string of kernel partition number or 'a'/'b'.
         """
         self.ensure_kernel_boot(part)
         self.copy_kernel_and_rootfs(from_part=part,
@@ -269,7 +313,7 @@ class FAFTSequence(ServoTest):
         This function also reset kerenl A and B to bootable.
 
         Args:
-            part: A string of partition number to be prioritized.
+          part: A string of partition number to be prioritized.
         """
         root_dev = self.faft_client.get_root_dev()
         # Reset kernel A and B to bootable.
@@ -364,7 +408,7 @@ class FAFTSequence(ServoTest):
         """Run FAFT sequence.
 
         Raises:
-            error.TestFail: An error when the test failed.
+          error.TestFail: An error when the test failed.
         """
         default_test = self._faft_template
         sequence = self._faft_sequence
