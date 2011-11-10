@@ -42,12 +42,21 @@ _ENABLE_CHECK_ALL_TEST_PASSED = False
 _ENABLE_FW_WP = False # WARNING: False is ONLY ALLOWED FOR DEBUGGING.
 
 # Change this to match your local report upload site.
-# You can use a FTP url like: ftp://user:pass@host:port/path/file
-# The method supports VPD variables by %(vpd_NAME) format,
-#  Ex: serial_number=123 => %(vpd_serial_number).log.gz => 123.log.gz
-# A suggested setting is:
-# _REPORT_UPLOAD_METHOD = 'ftp://YOUR_FTP_HOST/%(vpd_serial_number).log.gz'
 _REPORT_UPLOAD_METHOD = 'none'  # WARNING: none is ONLY ALLOWED FOR DEBUGGING.
+#
+# * For LAN environments, setup a FTP server and build FTP URL.
+#   Example: ftp://user:pass@host:port/directory/
+#
+#_REPORT_UPLOAD_METHOD = 'ftp://LOCAL_FTP_HOST/'
+#
+# * If you have access to public internet, use Google CPFE URL.
+#   Example: ("cpfe:https://www.google.com/chromeos/partner/fe/report_upload?"
+#             "device_name=mario&report_type=rma")
+#
+#_REPORT_UPLOAD_METHOD = (
+#  "cpfe:https://www.google.com/chromeos/partner/fe/report_upload?"
+#  "device_name=PLATFORM_NAME&report_type=REPORT_TYPE")
+#
 # REPORT UPLOADING IS REQUIRED TO BE SET AT BUILD TIME.
 # REPORTS MUST BE PROVIDED TO GOOGLE, MACHINES WITHOUT LOGS CANNOT BE SUPPORTED.
 
