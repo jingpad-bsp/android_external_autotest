@@ -69,6 +69,7 @@ TESTS = [
   ('network_UdevRename', {}),
   ('platform_AccurateTime', {'constraints': ['seconds_offset < 60']}),
   ('platform_CleanShutdown', {}),
+  ('platform_CrosDisksArchive', {'timeout_s': 10, 'tag': 'zip'}),
   ('platform_CrosDisksDBus', {}),
   ('platform_CrosDisksFilesystem', {'timeout_s': 10, 'tag': 'ext2',
                                     'config_file': 'ext2_tests'}),
