@@ -22,6 +22,10 @@ disk and checks success of it.
 def run_userrequestrecovery(machine):
     host = hosts.create_host(machine)
     job.run_test("firmware_UserRequestRecovery", host=host, cmdline_args=args,
-                 use_faft=True, disable_sysinfo=True)
+                 use_faft=True, disable_sysinfo=True,
+                 dev_mode=False, tag="normal")
+    job.run_test("firmware_UserRequestRecovery", host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True,
+                 dev_mode=True, tag="dev")
 
 parallel_simple(run_userrequestrecovery, machines)

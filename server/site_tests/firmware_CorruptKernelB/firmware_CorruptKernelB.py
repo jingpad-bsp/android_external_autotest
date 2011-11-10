@@ -19,9 +19,9 @@ class firmware_CorruptKernelB(FAFTSequence):
     version = 1
 
 
-    def setup(self):
+    def setup(self, dev_mode=False):
         super(firmware_CorruptKernelB, self).setup()
-        self.setup_dev_mode(dev_mode=False)
+        self.setup_dev_mode(dev_mode)
         self.setup_kernel('a')
 
 

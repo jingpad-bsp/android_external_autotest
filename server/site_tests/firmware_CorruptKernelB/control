@@ -20,6 +20,10 @@ fail if kernel verification mis-behaved.
 def run_corruptkernelb(machine):
     host = hosts.create_host(machine)
     job.run_test("firmware_CorruptKernelB", host=host, cmdline_args=args,
-                 use_faft=True, disable_sysinfo=True)
+                 use_faft=True, disable_sysinfo=True,
+                 dev_mode=False, tag="normal")
+    job.run_test("firmware_CorruptKernelB", host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True,
+                 dev_mode=True, tag="dev")
 
 parallel_simple(run_corruptkernelb, machines)

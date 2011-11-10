@@ -21,9 +21,9 @@ class firmware_TryFwB(FAFTSequence):
             self.run_faft_step({})
 
 
-    def setup(self):
+    def setup(self, dev_mode=False):
         super(firmware_TryFwB, self).setup()
-        self.setup_dev_mode(dev_mode=False)
+        self.setup_dev_mode(dev_mode)
         self.ensure_fw_a_boot()
 
 

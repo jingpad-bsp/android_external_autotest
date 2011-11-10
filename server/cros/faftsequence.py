@@ -305,6 +305,13 @@ class FAFTSequence(ServoTest):
                 self.wait_for_client_offline()
                 self.wait_fw_screen_and_ctrl_d()
                 self.wait_for_client()
+            # Change the default firmware_action for passing the dev screen.
+            self.register_faft_template({
+                'state_checker': (None),
+                'userspace_action': (None),
+                'reboot_action': (self.sync_and_hw_reboot),
+                'firmware_action': (self.wait_fw_screen_and_ctrl_d)
+            })
         else:
             if not self.crossystem_checker({'devsw_cur': '0'}):
                 logging.info('Dev switch is not off. Now switch it off.')

@@ -34,11 +34,11 @@ class firmware_RecoveryButton(FAFTSequence):
             })
 
 
-    def setup(self):
+    def setup(self, dev_mode=False):
         super(firmware_RecoveryButton, self).setup()
         self.assert_test_image_in_usb_disk()
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
-        self.setup_dev_mode(dev_mode=False)
+        self.setup_dev_mode(dev_mode)
 
 
     def cleanup(self):
@@ -50,7 +50,7 @@ class firmware_RecoveryButton(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, press recovery button and reboot
                 'state_checker': (self.crossystem_checker, {
-                    'mainfw_type': 'normal',
+                    'mainfw_type': ('normal', 'developer'),
                     'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.servo.enable_recovery_mode,
@@ -67,7 +67,7 @@ class firmware_RecoveryButton(FAFTSequence):
             },
             {   # Step 3, expected normal boot
                 'state_checker': (self.crossystem_checker, {
-                    'mainfw_type': 'normal',
+                    'mainfw_type': ('normal', 'developer'),
                     'recoverysw_boot': '0',
                 }),
             },

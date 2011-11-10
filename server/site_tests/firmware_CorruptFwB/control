@@ -18,6 +18,10 @@ This test corrupts firmware B and checks the next boot results.
 def run_corruptfwb(machine):
     host = hosts.create_host(machine)
     job.run_test("firmware_CorruptFwB", host=host, cmdline_args=args,
-                 use_faft=True, disable_sysinfo=True)
+                 use_faft=True, disable_sysinfo=True,
+                 dev_mode=False, tag="normal")
+    job.run_test("firmware_CorruptFwB", host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True,
+                 dev_mode=True, tag="dev")
 
 parallel_simple(run_corruptfwb, machines)
