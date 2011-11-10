@@ -430,34 +430,45 @@ class FAFTSequence(ServoTest):
         self._faft_sequence = sequence
 
 
-    def run_faft_sequence(self):
-        """Run FAFT sequence.
+    def run_faft_step(self, step, no_reboot=False):
+        """Run a single FAFT step.
+
+        Any missing field falls back to faft_template. An empty step means
+        running the default faft_template.
+
+        Args:
+          step: A FAFT_STEP dict.
+          no_reboot: True to prevent running reboot_action and firmware_action.
 
         Raises:
           error.TestFail: An error when the test failed.
         """
-        default_test = self._faft_template
+        test = {}
+        test.update(self._faft_template)
+        test.update(step)
+
+        if test['state_checker']:
+            if not self._call_action(test['state_checker']):
+                raise error.TestFail('State checker failed!')
+
+        self._call_action(test['userspace_action'])
+
+        # Don't run reboot_action and firmware_action if no_reboot is True.
+        if not no_reboot:
+            self._call_action(test['reboot_action'])
+            self.wait_for_client_offline()
+            self._call_action(test['firmware_action'])
+
+            if 'install_deps_after_boot' in test:
+                self.wait_for_client(
+                        install_deps=test['install_deps_after_boot'])
+            else:
+                self.wait_for_client()
+
+
+    def run_faft_sequence(self):
+        """Run FAFT sequence which was previously registered."""
         sequence = self._faft_sequence
-
-        for test in sequence:
-            cur_test = {}
-            cur_test.update(default_test)
-            cur_test.update(test)
-
-            if cur_test['state_checker']:
-                if not self._call_action(cur_test['state_checker']):
-                    raise error.TestFail('State checker failed!')
-
-            self._call_action(cur_test['userspace_action'])
-
-            # Don't run reboot_action and firmware_action of the last step.
-            if test is not sequence[-1]:
-                self._call_action(cur_test['reboot_action'])
-                self.wait_for_client_offline()
-                self._call_action(cur_test['firmware_action'])
-
-                if 'install_deps_after_boot' in cur_test:
-                    self.wait_for_client(
-                            install_deps=cur_test['install_deps_after_boot'])
-                else:
-                    self.wait_for_client()
+        for step in sequence:
+            # Don't reboot in the last step.
+            self.run_faft_step(step, no_reboot=(step is sequence[-1]))

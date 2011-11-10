@@ -30,11 +30,10 @@ class firmware_CorruptBothFwAB(FAFTSequence):
         normal mode by recovering the firmware and rebooting.
         """
         if self.crossystem_checker({'mainfw_type': 'recovery'}):
-            self.faft_client.run_shell_command(
+            self.run_faft_step({
+                'userspace_action': (self.faft_client.run_shell_command,
                     'chromeos-firmwareupdate --mode recovery')
-            self.sync_and_hw_reboot()
-            self.wait_for_client_offline()
-            self.wait_for_client()
+            })
 
 
     def setup(self):

@@ -29,10 +29,9 @@ class firmware_RecoveryButton(FAFTSequence):
         normal mode by setting no recovery mode and rebooting the machine.
         """
         if self.crossystem_checker({'mainfw_type': 'recovery'}):
-            self.servo.disable_recovery_mode
-            self.sync_and_hw_reboot()
-            self.wait_for_client_offline()
-            self.wait_for_client()
+            self.run_faft_step({
+                'userspace_action': self.servo.disable_recovery_mode,
+            })
 
 
     def setup(self):

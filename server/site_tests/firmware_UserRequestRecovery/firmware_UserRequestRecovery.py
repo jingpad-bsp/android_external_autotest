@@ -31,9 +31,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
         normal mode by simply rebooting the machine.
         """
         if self.crossystem_checker({'mainfw_type': 'recovery'}):
-            self.sync_and_hw_reboot()
-            self.wait_for_client_offline()
-            self.wait_for_client()
+            self.run_faft_step({})
 
 
     def setup(self):
