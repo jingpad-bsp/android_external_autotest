@@ -20,6 +20,7 @@ TESTS = [
   ('platform_DMVerityBitCorruption', {}),
 # While security-related, this is already included in control.bvt.
 #  ('platform_ToolchainOptions', {}),
+  ('security_AccountsBaseline', {}),
   ('security_DbusOwners', {}),
   ('security_NetworkListeners', {}),
   ('security_RendererSandbox', {}),
