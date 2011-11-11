@@ -10,7 +10,7 @@ from autotest_lib.server import autotest, test
 class security_DbusFuzzServer(test.test):
     version = 1
     FUZZER_BIN = 'dbusfuzz.py'
-    FUZZPLAN = 'fuzzplan'
+    FUZZPLAN = 'fuzzplan.yaml'
     CLIENT_INSTALL_PATH_TMPL = '/tmp/DbusFuzzServer.XXXXXX'
     _client_install_path = None
 
