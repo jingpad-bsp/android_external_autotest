@@ -13,10 +13,8 @@ fi
 
 baseimg=$1
 while sleep 2;do :
-    cowimg=$(mktemp ./cow-XXXXXX)
-    qemu-img create -f qcow2 -b "$baseimg" "$cowimg" && \
-    kvm -m 1024 -vga std -pidfile kvm.pid -net nic,model=e1000  \
+    kvm -m 1024 -vga std -pidfile kvm.pid -snapshot \
+      -net nic,model=e1000  \
       -net user,hostfwd=tcp::9022-:22 \
-      -hda "$cowimg" -serial stdio -vnc 127.0.0.1:1
-    rm -f "$cowimg"
+      -hda "$baseimg" -serial stdio -vnc 127.0.0.1:1
 done
