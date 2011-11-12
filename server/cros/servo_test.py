@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import re
 import subprocess
 import time
@@ -237,8 +238,10 @@ class ServoTest(test.test):
           hostname: Hostname to ping.
           timeout: Time in seconds to wait for a response.
         """
-        return subprocess.call(['ping', '-c', '1', '-W',
-                                str(timeout), hostname]) == 0
+        with open(os.devnull, 'w') as fnull:
+            return subprocess.call(
+                    ['ping', '-c', '1', '-W', str(timeout), hostname],
+                    stdout=fnull, stderr=fnull) == 0
 
 
     def launch_client(self, info):
@@ -258,7 +261,7 @@ class ServoTest(test.test):
         self._kill_remote_process(info)
         logging.info('Client command: %s' % info['remote_command'])
         info['remote_process'] = subprocess.Popen([
-            'ssh -n %s root@%s \'%s\'' % (info['ssh_config'],
+            'ssh -n -q %s root@%s \'%s\'' % (info['ssh_config'],
             self._client.ip, info['remote_command'])], shell=True)
 
         # Connect to RPC object.
@@ -348,7 +351,7 @@ class ServoTest(test.test):
         """
         if not info['ssh_tunnel'] or info['ssh_tunnel'].poll() is not None:
             info['ssh_tunnel'] = subprocess.Popen([
-                'ssh -N -n %s -L %s:localhost:%s root@%s' %
+                'ssh -N -n -q %s -L %s:localhost:%s root@%s' %
                 (info['ssh_config'], info['port'], info['port'],
                 self._client.ip)], shell=True)
 
@@ -360,7 +363,7 @@ class ServoTest(test.test):
           info: A dict of remote info, see the definition of self._remote_infos.
         """
         kill_cmd = 'pkill -f %s' % info['remote_command_short']
-        subprocess.call(['ssh -n %s root@%s \'%s\'' %
+        subprocess.call(['ssh -n -q %s root@%s \'%s\'' %
                          (info['ssh_config'], self._client.ip, kill_cmd)],
                         shell=True)
         if info['remote_process'] and info['remote_process'].poll() is None:

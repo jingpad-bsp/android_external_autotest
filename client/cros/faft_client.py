@@ -214,7 +214,8 @@ def main():
     faft_client = FAFTClient()
 
     # Launch the XMLRPC server to provide FAFTClient commands.
-    server = SimpleXMLRPCServer(('localhost', options.port), allow_none=True)
+    server = SimpleXMLRPCServer(('localhost', options.port), allow_none=True,
+                                logRequests=False)
     server.register_introspection_functions()
     server.register_instance(faft_client)
     print 'XMLRPC Server: Serving FAFTClient on port %s' % options.port
