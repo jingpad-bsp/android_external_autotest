@@ -22,7 +22,7 @@ COMMON_PERF_QUERY_TEMPLATE = """
 SELECT %(select_keys)s
 FROM tko_perf_view_2
 WHERE job_name REGEXP %(job_name)s
-  AND platform = '%(platform)s'
+  AND platform REGEXP '(desktop|netbook)_%(platform)s'
   AND job_owner = 'chromeos-test'
   AND NOT ISNULL(iteration_value)
   AND iteration_value >= 0.0
@@ -47,7 +47,7 @@ def GetBasePerfQueryParts(request):
   query = COMMON_PERF_QUERY_TEMPLATE + CHART_QUERY_KEYS
 
   boards = '|'.join(request.GET.getlist('board'))
-  platform = 'netbook_%s' % request.GET.get('system').upper()
+  platform = '%s' % request.GET.get('system').upper()
   test_name, test_keys = chartutils.GetTestNameKeys(request.GET.get('testkey'))
 
   query_parameters = {}
