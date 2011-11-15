@@ -49,5 +49,6 @@
    "ms_SunSpider-3d,ms_SunSpider-access,ms_SunSpider-bitops,ms_SunSpider-controlflow,ms_SunSpider-crypto,ms_SunSpider-date,ms_SunSpider-math,ms_SunSpider-regexp,ms_SunSpider-string"],
   ["desktopui_PyAutoPerfTests", "runsPerSec_Dromaeo-total"],
   ["desktopui_PyAutoPerfTests",
-   "runsPerSec_Dromaeo-RegularExpr,runsPerSec_Dromaeo-Arrays,runsPerSec_Dromaeo-Base64Encod,runsPerSec_Dromaeo-CodeEvaluat,runsPerSec_Dromaeo-Rotating3DC,runsPerSec_Dromaeo-Strings"]
+   "runsPerSec_Dromaeo-RegularExpr,runsPerSec_Dromaeo-Arrays,runsPerSec_Dromaeo-Base64Encod,runsPerSec_Dromaeo-CodeEvaluat,runsPerSec_Dromaeo-Rotating3DC,runsPerSec_Dromaeo-Strings"],
+  ["desktopui_PyAutoPerfTests", "extrapolation_YoutubeCPUExtrap"]
 ]
