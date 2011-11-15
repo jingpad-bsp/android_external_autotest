@@ -435,7 +435,8 @@ class AFE(RpcClient):
         results = []
         for job in jobs:
             if getattr(job, 'result', None) is None:
-                job.result = self.poll_job_results(tko, job)
+                enough = lambda x, y: x + 1 >= y
+                job.result = self.poll_job_results(tko, job, enough)
                 if job.result is not None:
                     self.result_notify(job, email_from, email_to)
 
@@ -606,13 +607,24 @@ class AFE(RpcClient):
             self.job.record(result, None, testname, status='')
 
 
-    def poll_job_results(self, tko, job, debug=False):
+    def poll_job_results(self, tko, job, enough_completed, debug=False):
         """
-        Analyse all job results by platform, return:
+        Analyse all job results by platform
 
-            False: if any platform has more than one failure
-            None:  if any platform has more than one machine not yet Good.
-            True:  if all platforms have at least all-but-one machines Good.
+          params:
+            tko: a TKO object representing the results DB.
+            job: the job to be examined.
+            enough_completed: a predicate that takes the number of completed
+                              tests and the total number of tests and returns
+                              True if enough have completed, False if not.
+            debug: enable debugging output.
+
+          returns:
+            False: if any platform has more than |enough_completed| failures
+            None:  if any platform has less than |enough_completed| machines
+                   not yet Good.
+            True:  if all platforms have at least |enough_completed| machines
+                   Good.
         """
         self._job_test_results(tko, job, debug)
         if job.test_status == {}:
@@ -648,7 +660,7 @@ class AFE(RpcClient):
             elif (failed * 2 >= total) or (failed > 1):
                 failed_platforms.append(platform)
                 self.set_platform_results(job, platform, platform_test_result)
-            elif (completed >= 1) and (completed + 1 >= total):
+            elif (completed >= 1) and enough_completed(completed, total):
                 # if all or all but one are good, call the job good.
                 good_platforms.append(platform)
                 self.set_platform_results(job, platform, 'GOOD')
@@ -739,11 +751,11 @@ class Label(RpcObject):
 
 
     def add_hosts(self, hosts):
-        return self.afe.run('label_add_hosts', self.id, hosts)
+        return self.afe.run('label_add_hosts', id=self.id, hosts=hosts)
 
 
     def remove_hosts(self, hosts):
-        return self.afe.run('label_remove_hosts', self.id, hosts)
+        return self.afe.run('label_remove_hosts', id=self.id, hosts=hosts)
 
 
 class Acl(RpcObject):
