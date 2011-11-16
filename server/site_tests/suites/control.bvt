@@ -33,7 +33,6 @@ TESTS = [
                              'tag': 'chrome'}),
   ('desktopui_KillRestart', {'binary': '^session_manager$',
                              'tag': 'session'}),
-  ('desktopui_WindowManagerFocusNewWindows', {}),
   ('desktopui_ScreenLocker', {}),
   ('graphics_WindowManagerGraphicsCapture', {}),
   ('logging_CrashSender', {}),
