@@ -151,10 +151,11 @@ class factory_Audio(test.test):
         self._test_widget.queue_draw()
         return True
 
-    def label_status_expose(self, widget, event, name=None):
+    def label_status_expose(self, widget, event, label=None, name=None):
         status = self._status_map[name]
-        widget.set_text(status)
-        widget.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
+        if label:
+            label.set_text(status)
+            label.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
 
     def make_sample_label_box(self, name):
         eb = gtk.EventBox()
@@ -162,8 +163,11 @@ class factory_Audio(test.test):
         label_status = ful.make_label(ful.UNTESTED, size=_LABEL_STATUS_SIZE,
                                       alignment=(0, 0.5),
                                       fg=ful.LABEL_COLORS['UNTESTED'])
-        expose_cb = lambda *x: self.label_status_expose(*x, **{'name':name})
-        label_status.connect('expose_event', expose_cb)
+        # Note that expose callback must not tie to the object we are going t
+        # modify. Or it'll cause infinite event loop.
+        expose_cb = lambda *x: self.label_status_expose(
+                *x, **{'name':name, 'label':label_status})
+        eb.connect('expose_event', expose_cb)
         label_en = ful.make_label(name, alignment=(1,0.5))
         label_sep = ful.make_label(' : ', alignment=(0.5, 0.5))
         hbox = gtk.HBox()
