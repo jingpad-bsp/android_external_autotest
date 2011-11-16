@@ -37,7 +37,7 @@ class platform_CryptohomeMount(test.test):
 
         # Mount the test user account
         cmd = ('/usr/sbin/cryptohome --action=mount --user=' + test_user
-               + ' --password=' + test_password)
+               + ' --password=' + test_password + ' --create')
         self.__run_cmd(cmd)
         # Ensure that the user directory exists
         if not os.path.exists('/home/.shadow/' + user_hash):
