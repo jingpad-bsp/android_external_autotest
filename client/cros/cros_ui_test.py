@@ -429,36 +429,38 @@ class UITest(pyauto_test.PyAutoTest):
         """Overridden from pyauto_test.cleanup() to log out and restart
            session_manager when the test is complete.
         """
-        logpath = constants.CHROME_LOG_DIR
         try:
-            for filename in os.listdir(logpath):
-                fullpath = os.path.join(logpath, filename)
-                if os.path.isfile(fullpath):
-                    shutil.copy(fullpath, os.path.join(self.resultsdir,
-                                                       filename))
-        except (IOError, OSError) as err:
-            logging.error(err)
-
-        self._save_logs_from_cryptohome()
-        pyauto_test.PyAutoTest.cleanup(self)
-
-        if os.path.isfile(constants.CRYPTOHOMED_LOG):
+            logpath = constants.CHROME_LOG_DIR
             try:
-                base = os.path.basename(constants.CRYPTOHOMED_LOG)
-                shutil.copy(constants.CRYPTOHOMED_LOG,
-                            os.path.join(self.resultsdir, base))
+                for filename in os.listdir(logpath):
+                    fullpath = os.path.join(logpath, filename)
+                    if os.path.isfile(fullpath):
+                        shutil.copy(fullpath, os.path.join(self.resultsdir,
+                                                           filename))
             except (IOError, OSError) as err:
                 logging.error(err)
 
-        if self.fake_owner:
-            logging.info('Erasing fake owner state.')
-            ownership.clear_ownership()
+            self._save_logs_from_cryptohome()
+            pyauto_test.PyAutoTest.cleanup(self)
 
-        self.stop_authserver()
-        self.__log_crashed_processes(self.crash_blacklist)
+            if os.path.isfile(constants.CRYPTOHOMED_LOG):
+                try:
+                    base = os.path.basename(constants.CRYPTOHOMED_LOG)
+                    shutil.copy(constants.CRYPTOHOMED_LOG,
+                                os.path.join(self.resultsdir, base))
+                except (IOError, OSError) as err:
+                    logging.error(err)
 
-        if os.path.isfile(constants.CHROME_CORE_MAGIC_FILE):
-            os.unlink(constants.CHROME_CORE_MAGIC_FILE)
+            if self.fake_owner:
+                logging.info('Erasing fake owner state.')
+                ownership.clear_ownership()
+
+            self.__log_crashed_processes(self.crash_blacklist)
+
+            if os.path.isfile(constants.CHROME_CORE_MAGIC_FILE):
+                os.unlink(constants.CHROME_CORE_MAGIC_FILE)
+        finally:
+            self.stop_authserver()
 
 
     def get_auth_endpoint_misses(self):
