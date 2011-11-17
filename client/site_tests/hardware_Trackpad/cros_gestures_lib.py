@@ -40,9 +40,8 @@ import json
 import os
 import shutil
 
+import common_util
 import trackpad_util
-
-from autotest_lib.client.bin import utils
 
 
 GESTURE_BASE_URI = 'http://chromeos-gestures.appspot.com'
@@ -80,8 +79,8 @@ class CrosGesturesLib(object):
     def determine_model(self):
         """Inspect the machine to determine the model."""
         cmd = 'cat /etc/lsb-release | grep CHROMEOS_RELEASE_BOARD'
-        line = utils.system_output(cmd)
-        if not line or not line.strip() or line.find('=') < 0:
+        line = common_util.simple_system_output(cmd)
+        if not line or line.find('=') < 0:
             return None
         return line.split('=')[1].strip().split('-')[-1]
 
@@ -91,23 +90,32 @@ class CrosGesturesLib(object):
         file_list_uri = '%s/modeldefaultfiles?json=true&model=%s'
         cmd = wget_cmd % (file_list_uri % (GESTURE_BASE_URI,
                                            self.determine_model()))
-        return json.loads(utils.system_output(cmd))
+        return json.loads(common_util.simple_system_output(cmd))
 
 
     def download_files(self, file_list, ignore_failures=False):
         """Given file list, download them to a conf file specified location."""
+        rc  = 0
         wget_cmd = 'wget --timeout=30 --tries=5 --no-proxy -qO "%s" "%s"'
         for f in file_list:
             cmd = wget_cmd % (os.path.join(self.gesture_files_path,
                                            os.path.basename(f)), f)
-            utils.system(cmd, ignore_status=ignore_failures)
+            rc = common_util.simple_system(cmd)
         # TODO(Truty): Verify the files using md5.
+        return rc
 
     def upload_files(self):
         """Use the config file to find file location and upload all files.
         If an uploaded version of the file already exists the upload silently
         fails to allow for repeat attempts to upload without clearing files.
         """
-        upload_cmd = '/usr/local/cros_gestures/cros_gestures upload "%s"'
+        rc = 0
+        cg_cmd = '/usr/local/cros_gestures/cros_gestures'
+        upload_cmd = '%s upload "%s"'
         for f in os.listdir(self.gesture_files_path):
-            utils.system(upload_cmd % os.path.join(self.gesture_files_path, f))
+            full_gesture_path = os.path.join(self.gesture_files_path, f)
+            rc = common_util.simple_system(upload_cmd % (cg_cmd,
+                                                         full_gesture_path))
+            if rc:
+                break
+        return rc
