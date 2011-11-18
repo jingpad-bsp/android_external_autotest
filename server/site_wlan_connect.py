@@ -234,7 +234,7 @@ def main(argv):
   elif security == '802_1x_wep':
     split_psk(connection_settings, psk)
     connection_settings['Security'] = 'wep'
-  else:
+  elif security in ['wep', 'wpa', 'rsn', 'psk']:
     connection_settings['Passphrase'] = psk
 
   global logs
