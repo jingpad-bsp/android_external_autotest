@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import logging, os, time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.crash_test import CrashTest as CrashTestDefs
@@ -135,6 +135,8 @@ class platform_KernelErrorPaths(test.test):
                     # Extend the default reboot timeout as some targets take
                     # longer than normal before ssh is available again.
                     timeout=self.client.DEFAULT_REBOOT_TIMEOUT * 4)
+                # give the crash_reporter some time to log the crash
+                time.sleep(5)
                 result = self.client.run('cat %s/kernel.*.kcrash' %
                                          crash_log_dir)
                 if text not in result.stdout:
