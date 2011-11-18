@@ -35,29 +35,8 @@ class cellular_Smoke(test.test):
       # this is to ensure that test traffic goes over the modem
       with cell_tools.OtherDeviceShutdownContext('cellular', flim):
 
-        # ConfigureBaseStations connects to the basestations and sets
-        # them up with things like IP addresses.  It returns a list
-        # of basestations.
-        # TODO(rochberg): This won't be the right thing to do if we
-        # have two basestations in a cell and want to use only one
-        bs = emulator_config.ConfigureBaseStations(config)[0]
-
-        # The AirStateVerifier encapsulates checking the state of the
-        # cell network.  The idea here is that for tests like this one
-        # that don't rely on much control over the network state, we
-        # can substitute in a "Live OTA" basestation
-        verifier = bs.GetAirStateVerifier()
-
-        # Now we apply test-specific configuration.   See
-        #  autotest/files/client/cros/cellular/base_station_interface.py
-        # and the specific file
-        #  autotest/files/client/cros/cellular/base_station_8960.py
-        # for the commands currently available
-        bs.SetTechnology(cellular.Technology.WCDMA)
-        bs.SetPower(-50)
-
-        # The base station is stopped during configuration, so start it.
-        bs.Start()
+        bs, verifier = emulator_config.GetDefaultBasestation(
+            config, cellular.Technology.WCDMA)
 
         network.ResetAllModems(flim)
 

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 """Configure cellular data emulation setup."""
-
+import time
 
 from autotest_lib.client.cros.cellular import base_station_8960, cellular
 from autotest_lib.client.cros.cellular import prologix_scpi_driver, scpi
@@ -36,3 +36,18 @@ def _ConfigureOneBaseStation(c):
 def ConfigureBaseStations(config):
   """Extract base stations from supplied dictionary and configure them."""
   return [_ConfigureOneBaseStation(x) for x in config['basestations']]
+
+
+def GetDefaultBasestation(config, technology):
+  """Set up a base station and turn it on.  Return BS and verifier."""
+  bs = ConfigureBaseStations(config)[0]
+
+  bs.SetTechnology(technology)
+  bs.SetPower(-40)
+  verifier = bs.GetAirStateVerifier()
+  bs.Start()
+
+  # TODO(rochberg):  Why does this seem to be necessary?
+  time.sleep(10)
+
+  return (bs, verifier)
