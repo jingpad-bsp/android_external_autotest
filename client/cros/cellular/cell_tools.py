@@ -44,6 +44,7 @@ def ConnectToCellular(flim, verifier, timeout=TIMEOUT):
         config_timeout=timeout)
 
     if not success:
+        logging.error('Connect failed: %s' % status)
         # TODO(rochberg):  Turn off autoconnect
         if 'Error.AlreadyConnected' not in status['reason']:
             raise Error('Could not connect: %s.' % status)
