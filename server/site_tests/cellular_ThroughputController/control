@@ -1,0 +1,31 @@
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "ChromeOS Team"
+NAME = "cellular_ThroughputController"
+PURPOSE = "Modem delivers appropriate throughput on an emulated network."
+CRITERIA = """Throughput is within a reasonable factor of
+    maximally achievable for the technology."""
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "cellular"
+TEST_TYPE = "server"
+
+DOC = """
+  Tests that a modem can get reasonable throughput.
+"""
+
+from autotest_lib.client.cros.cellular import labconfig
+from autotest_lib.server.cros import remote_command
+
+config = labconfig.get_test_config(args)
+
+def run_at(machine):
+    client = hosts.create_host(str(machine))
+    at = autotest.Autotest(client)
+    at.run_test('cellular_Throughput', config=config, host=client, iterations=1)
+
+iperf = hosts.create_host(str(config['perfserver']['address']))
+with remote_command.Command(iperf, '/usr/bin/iperf -s'):
+    parallel_simple(run_at, machines)
