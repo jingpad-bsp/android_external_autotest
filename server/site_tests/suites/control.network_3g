@@ -50,6 +50,7 @@ CLIENT_TESTS = [
         'iterations': 1,
         'tag': 'qmi_failure'}),
 
+    ('network_3GGobiPorts', {}),
     ('network_3GModemPresent', {}),
     ('network_3GRecoverFromGobiDesync', {}),
     ('network_3GSafetyDance', {}),
