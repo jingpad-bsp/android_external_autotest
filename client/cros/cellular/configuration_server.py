@@ -55,10 +55,10 @@ cells = {
                     "name": "y3300"
                 }
             ],
-            # Routerstation pro for runing {i/net}perf
+            # Routerstation pro for runing iperf
             "perfserver": {
-                "address": "172.31.206.151",
-                "name": "rspro-cros-1",
+                "address": "172.31.206.152",
+                "name": "rspro-cros-2",
                 "rf_address": "192.168.2.254"
             },
             # Used for tests that check web connectivity
