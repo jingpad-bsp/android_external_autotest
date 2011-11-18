@@ -457,6 +457,9 @@ class Xcheck:
         index = -1
         crit_e_type = None
         keep_prev_crit = False
+        # Handle boundary condition when work_xevent_seq is empty
+        fail_msg = '%s'
+        fail_para = '(empty work_xevent_seq)'
         for e in work_xevent_seq:
             e_type = e[0]
             e_value = e[1]
