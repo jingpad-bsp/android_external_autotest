@@ -1,0 +1,21 @@
+{% extends "tables/details/header.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template extends the details base header to include links to
+other test categories.
+{% endcomment %}
+{% block header_link_block %}
+<span style="padding-top:5px;display:block;line-height:28px">
+{% for category, not_used, label, bg_class in tpl_categories_with_color %}
+  {% ifequal category tpl_category %}
+  <span class="{{ bg_class }} testtab roundedheader">{{ label }}</span>
+  {% else %}
+  <a href="{{ category }}.html" target="ifm"
+     class="{{ bg_class }} testtab roundedheader">{{ label }}</a>
+  {% endifequal %}
+  {% if not forloop.last %}|{% endif %}
+{% endfor %}
+</span>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "tables/base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds a page to show the emails produced for the Chrome OS
+Test Dashboard.
+
+It's a combination of our existing summary header plus to iframe panels:
+one planel to show test emails and the other to show performance emails.
+{% endcomment %}
+{% block title %}ChromeOS Test Emails{% endblock %}
+
+{% block header_block %}
+{% include 'tables/summary/header.html' %}
+{% endblock %}
+
+{% block html_block %}
+<iframe src ="emails/test" name="test_html" id="test_html" scrolling=yes
+        style="height:45%; width:100%; float:left;"></iframe>
+<iframe src ="emails/performance"
+        name="perf_html" id="perf_html" scrolling=yes
+        style="height:50%; width:100%;"></iframe>
+{% endblock %}

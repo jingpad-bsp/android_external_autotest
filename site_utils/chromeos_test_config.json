@@ -1,0 +1,277 @@
+{
+    "boards": {
+        "x86-generic-full": {
+            "archive_server": "gs://chromeos-image-archive/x86-generic-full",
+            "archive_path": "%(build)s/image.zip",
+            "build_pattern": "R17-*",
+            "platforms": [
+                {"platform": "netbook_SANDY_BRIDGE",
+                 "groups": ["bvt", "desktopui"]}
+            ]
+        },
+
+        "x86-alex-r14": {
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
+            "build_pattern": "0.14.811.*",
+            "platforms": [
+                {"platform": "netbook_ALEX"}
+            ]
+        },
+
+        "x86-alex-r15": {
+            "archive_server": "gs://chromeos-releases/beta-channel/x86-alex",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
+            "build_pattern": "0.15.1011.*",
+            "platforms": [
+                {"platform": "netbook_ALEX"}
+            ]
+        },
+
+        "x86-alex-r16": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
+            "build_pattern": "R16-1193.*",
+            "platforms": [
+                {"platform": "netbook_ALEX", "au_test": true},
+                {"platform": "netbook_ALEX_CDMA_GOBI2K",
+                 "groups": ["network_3g"]},
+                {"platform": "netbook_ALEX_CDMA_GOBI3K",
+                 "groups": ["network_3g"]}
+            ]
+        },
+
+        "x86-alex-r17": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
+            "build_pattern": "R17-*",
+            "platforms": [
+                {"platform": "netbook_ALEX", "au_test": true},
+                {"platform": "netbook_ALEX_CDMA_GOBI2K",
+                 "groups": ["network_3g"]},
+                {"platform": "netbook_ALEX_CDMA_GOBI3K",
+                 "groups": ["network_3g"]}
+            ]
+        },
+
+        "x86-zgb-r14": {
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
+            "build_pattern": "0.14.811.*",
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB"}
+            ]
+        },
+
+        "x86-zgb-r15": {
+            "archive_server": "gs://chromeos-releases/beta-channel/x86-zgb",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
+            "build_pattern": "0.15.1011.*",
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB"}
+            ]
+        },
+
+        "x86-zgb-r16": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
+            "build_pattern": "R16-1193.*",
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB", "au_test": true}
+            ]
+        },
+
+        "x86-zgb-r17": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
+            "build_pattern": "R17-*",
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB", "au_test": true}
+            ]
+        },
+
+        "x86-mario-r14": {
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-mario",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
+            "build_pattern": "0.14.811.*",
+            "platforms": [
+                {"platform": "netbook_MARIO_MP"}
+            ]
+        },
+
+        "x86-mario-r15": {
+            "archive_server": "gs://chromeos-releases/beta-channel/x86-mario",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
+            "build_pattern": "0.15.1011.*",
+            "platforms": [
+                {"platform": "netbook_MARIO_MP"}
+            ]
+        },
+
+        "x86-mario-r16": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-mario",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
+            "build_pattern": "R16-1193.*",
+            "platforms": [
+                {"platform": "netbook_MARIO_MP", "au_test": true},
+                {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
+                 "groups": ["network_3g"]}
+            ]
+        },
+
+        "x86-mario-r17": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-mario",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
+            "build_pattern": "R17-*",
+            "platforms": [
+                {"platform": "netbook_MARIO_MP", "au_test": true},
+                {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
+                 "groups": ["network_3g"]}
+            ]
+        },
+
+        "stumpy-r17": {
+            "archive_server": "gs://chromeos-releases/dev-channel/stumpy",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
+            "build_pattern": "R17-*",
+            "platforms": [
+                {"platform": "desktop_STUMPY", "au_test": true}
+            ]
+        },
+
+        "tegra2-kaen-r17": {
+            "archive_server": "gs://chromeos-releases/dev-channel/tegra2-kaen",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-kaen.zip",
+            "build_pattern": "R17-*",
+            "platforms": [
+                {"platform": "netbook_KAEN", "groups": ["bvt"]}
+            ]
+        },
+
+        "tegra2-seaboard-cosine-r17": {
+            "archive_server": "gs://chromeos-releases/dev-channel/tegra2-seaboard-cosine",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-seaboard-cosine.zip",
+            "build_pattern": "R17-*",
+            "platforms": [
+                {"platform": "netbook_TEGRA2_SEABOARD_T25",
+                 "groups": ["touch", "sbstage", "bvt"]}
+            ]
+        }
+    },
+
+    "default_groups": [
+        "bvtx4", "build", "desktopui", "kernel", "pagecycler", "perfx3", "power"
+    ],
+
+    "groups": {
+        "autoupdate": [
+            {"name": "au",
+             "control": "server/site_tests/suites/control.au"}
+        ],
+
+        "bvt": [
+            {"name": "bvt",
+             "control": "server/site_tests/suites/control.bvt"}
+        ],
+
+        "bvtx4": [
+            {"name": "bvt",
+             "control": "server/site_tests/suites/control.bvt",
+             "count": 4,
+             "sync": true}
+        ],
+
+        "build": [
+            {"name": "regression",
+             "control": "server/site_tests/suites/control.regression",
+             "count": 2,
+             "sync": true},
+
+            {"name": "security",
+             "control": "server/site_tests/suites/control.security"}
+        ],
+
+        "desktopui": [
+            {"name": "browsertests",
+             "control": "server/site_tests/suites/control.desktopui_browsertest"},
+
+            {"name": "pyauto",
+             "control": "server/site_tests/suites/control.desktopui_pyautofunctionaltests"},
+
+            {"name": "pyauto_basic",
+             "control": "server/site_tests/suites/control.desktopui_pyauto_basic"},
+
+            {"name": "sync",
+             "control": "server/site_tests/suites/control.desktopui_syncintegrationtests"}
+        ],
+
+        "power": [
+            {"name": "power_build",
+             "control": "server/site_tests/suites/control.power_build"}
+        ],
+
+        "perf": [
+            {"name": "perfalerts",
+             "control": "server/site_tests/suites/control.perfalerts"}
+        ],
+
+        "perfx3": [
+            {"name": "perfalerts",
+             "control": "server/site_tests/suites/control.perfalerts",
+             "count": 3,
+             "sync": true}
+        ],
+
+        "network_3g": [
+            {"name": "network_3g",
+             "control": "server/site_tests/suites/control.network_3g"}
+        ],
+
+        "network_wifi": [
+            {"name": "network_wifi",
+             "control": "server/site_tests/suites/control.network_wifi"}
+        ],
+
+        "pagecycler": [
+            {"name": "pagecycler",
+             "control": "server/site_tests/suites/control.pagecycler"}
+        ],
+
+        "kernel": [
+            {"name": "kernel_fs_performance",
+             "control": "server/site_tests/suites/control.kernel_fs_performance"},
+
+            {"name": "kernel_main_functional",
+             "control": "server/site_tests/suites/control.kernel_main_functional"}
+        ],
+
+        "sbstage": [
+            {"name": "sbstage",
+             "control": "server/site_tests/suites/control.sbstage"}
+        ],
+
+        "touch": [
+            {"name": "touch",
+             "control": "server/site_tests/suites/control.touch"}
+        ]
+    },
+
+    "import_hosts": [
+        {
+            "host": "cautotest.corp.google.com",
+            "path": "/usr/local/autotest",
+            "user": "chromeos-test"
+        }
+    ],
+
+    "dev_server": {
+        "dev_host": "172.22.50.2",
+        "path": "/usr/local/google/images",
+        "user": "chromeos-test"
+    },
+
+    "appengine": {
+        "dash_url": "https://cros-test-dash.appspot.com",
+        "upload_from": "cautotest.corp.google.com"
+    }
+}

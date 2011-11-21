@@ -1,0 +1,45 @@
+USER=chromeos-test
+MAILTO=chromeos-test-cron@google.com
+PATH=/home/chromeos-test/bin:/usr/local/scripts:/usr/kerberos/bin:/usr/local/buildtools/java/jdk/bin:/home/chromeos-test/depot_tools:/home/chromeos-test/gsutil:/usr/local/symlinks:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# $VARs are not allowed in cron definitions, so all paths must be explicit.
+CHROMEOS_BASE=/usr/local/google/chromeos
+AUTOTEST_TOOLS_DIR=/home/chromeos-test/autotest-tools
+CRON_SCRIPT_BASE=/home/chromeos-test/autotest-tools/cron
+AUTOTEST_DASH_DIR=/usr/local/autotest/utils/dashboard
+CROS_CHART_DIR=/usr/local/autotest/frontend/croschart
+CROSCHART_SRC_DIR=/home/chromeos-test/chromeos-src/src/third_party/autotest/files/frontend/croschart
+CROSTOOLS_SRC_DIR=/home/chromeos-test/crostools
+
+SSH_AGENT=/home/chromeos-test/.ssh/agents/chrometest1.mtv.corp.google.com
+
+# Standard cron format:
+# m h  dom mon dow   command
+
+# Offload logs to Google Storage.
+0 * * * * cd $CRON_SCRIPT_BASE; ./gs_offloader.py
+
+# Sync crostools repo.
+0 * * * * cd $CROSTOOLS_SRC_DIR; git pull -q
+
+# Sync source repo used for building update.gz image. Every day at 7am so we
+# can fix any issues when we arrive in the morning.
+0 7 * * * cd $CHROMEOS_BASE; runcron repo sync -q
+
+# Build system health page.
+*/10 * * * * cd $CRON_SCRIPT_BASE; . $SSH_AGENT; http_proxy= runcron ./system_health/monitor.py --update --skip_console --acl ""
+
+# Deploy new dashboard and croschart code automatically.
+0 * * * * cd ${AUTOTEST_DASH_DIR}; http_proxy= . $SSH_AGENT && runcron ./deploy_new_dashboard.sh &> /dev/null
+0 7 * * * cd ${CROS_CHART_DIR}; runcron ./deploy_new_croschart.sh ${CROSCHART_SRC_DIR}/
+
+# Create dashboards and send out emails
+5 * * * * http_proxy= flock -w 60 -x /tmp/new_dashboard.lock -c 'runcron ${AUTOTEST_DASH_DIR}/run_copy_dashboard.sh dashboard &> /dev/null'
+*/5 * * * * http_proxy= flock -w 60 -x /tmp/new_dashboard.lock -c 'runcron ${AUTOTEST_DASH_DIR}/run_copy_dashboard.sh email'
+
+# Extract chrome version information for dashboard and emails.
+*/5 * * * * http_proxy= runcron ${CROSTOOLS_SRC_DIR}/version_extract.py -i "http://chromeos-images" -o ${AUTOTEST_DASH_DIR}/chromeos-chrome-version.json &> /dev/null
+*/10 * * * * cp ${AUTOTEST_DASH_DIR}/chromeos-chrome-version.json ${CROS_CHART_DIR}/chromeos-chrome-version.json
+
+# Check database replica health.
+*/30 * * * * /usr/local/autotest/utils/db_replica_checker.py --to=scottz+chrometest1 --cc=truty+chrometest1

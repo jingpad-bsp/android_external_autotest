@@ -1,0 +1,66 @@
+{% extends "tables/base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds a performance landing page for each netbook for the
+Test Dashboard.  These are reachable from the main summary page
+by choosing a particular netbook within a board table.
+
+The view is divided into three areas: build table, contents and plots.
+
+The build table includes static build data about each build.  The contents
+include hyperlinks to performance graphing groups and then the graphs
+themselves are embedded.
+{% endcomment %}
+{% block title %}ChromeOS Test - Performance Builds{% endblock %}
+
+{% block header_block %}
+{% include 'tables/details/header.html' %}
+{% endblock %}
+
+{% block html_block %}
+<table bgcolor="#bbbbbb" width="100%" style="margin-right: 200px;">
+<tbody>
+<tr><th>Build</th></tr>
+{% if tpl_perf_builds %}
+{% for builder, build_number, popup, test_status, chrome_version in tpl_perf_builds %}
+<tr><td>
+  <center>{{ popup.4 }}</center>
+  <a class="info" href="{{ builder }}" target="_blank">
+    <center>{{ build_number }}</center>
+    <span>
+      View build log for build:<br>{{ build_number }} on {{ tpl_board }}
+      {% if chrome_version %}
+      for Chrome build:<br>{{ chrome_version.0 }}&nbsp;({{ chrome_version.1 }})
+      {% endif %}
+    </span>
+  </a>
+  {% if chrome_version %}
+  <a class="info"
+     href="http://chromegw/viewvc/chrome-internal/trunk/tools/buildspec/releases/{{ chrome_version.0 }}" target="_blank">
+    <center>Chrome: {{ chrome_version.0 }}&nbsp;({{ chrome_version.1 }})</center>
+    <span>
+      View Chrome build DEPS for build:<br>{{ chrome_version.0 }}&nbsp;({{ chrome_version.1 }}) on {{ tpl_board }}
+    </span>
+  </a>
+  {% endif %}
+  {% if tpl_perf_available %}
+  <a class="info"
+     href="../../{{ tpl_netbook }}/{{ tpl_board }}/performance/{{ build_number }}_build_performance.html"
+     target="_blank">
+    <center>performance details</center>
+    <span>
+      View performance details for build:<br>{{ build_number }} on {{ tpl_board }}
+    </span>
+  </a>
+  {% endif %}
+</td></tr>
+{% endfor %}
+{% endif %}
+</tbody>
+</table>
+{% endblock %}
+
+{% block footer_block %}
+{% endblock %}

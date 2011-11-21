@@ -1,0 +1,8 @@
+2010-11-03:
+This utility created to scan a large (~100GB) directory hierarchy of Autotest
+results dirs/files for very large files (usually core files).
+
+To analyze from an Autotest server:
+1. pushd /usr/local/autotest/results
+2. find_large_files.sh
+3. core_directory_analyzer.py /tmp/largeresultfileslist.txt

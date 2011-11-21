@@ -1,0 +1,47 @@
+{% extends "tables/base.html" %}
+{% comment %}
+
+Copyright 2011 Google Inc. All Rights Reserved.
+
+This template builds the test config summary page for the ChromeOS
+Test Dashboard.
+
+{% endcomment %}
+{% block title %}ChromeOS Test/Email Config Summary{% endblock %}
+
+{% block header_block %}
+{% include 'tables/configs/header.html' %}
+{% endblock %}
+
+{% block html_block %}
+<!--Load the AJAX API-->
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+  // Load the Visualization API and the table package.
+  google.load('visualization', '1', {'packages':['table']});
+
+  // Set a callback to run when the Google Visualization API is loaded.
+  google.setOnLoadCallback(drawCharts);
+
+  // Callback that creates and populates a data table,
+  // instantiates the charts, passes in the data and
+  // draws them.
+  function drawCharts() {
+    var table = new google.visualization.Table(
+        document.getElementById('testtable'));
+    var json_data = new google.visualization.DataTable(
+        {% autoescape off %}
+        {{ tpl_rows }}
+        {% endautoescape %}, 0.5);
+    table.draw(json_data,
+               {allowHtml: true,
+                showRowNumber: true,
+                sortAscending: true,
+                sortColumn: 0});
+  }
+</script>
+<center>
+<span id="testtable"></span>
+</center>
+<hr>
+{% endblock %}

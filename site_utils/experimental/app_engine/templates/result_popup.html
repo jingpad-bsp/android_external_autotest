@@ -1,0 +1,9 @@
+<div style="color:blue;font-weight:bold;font-size:150%;">{{ test_name }}</div>
+{% if chrome_version %}
+<b>Chrome Version:</b>{{ chrome_version }}</nobr><br>
+{% endif %}<nobr>
+<b>Host Name:</b></nobr>{{ host_name }}<br>
+<b style="color:red;font-weight:normal;">{{ reason }}</b><br>
+{% for host_key, host_value in host_info %}
+<b>{{ host_key }}:</b>{{ host_value|wordwrap:60 }}<br>
+{% endfor %}

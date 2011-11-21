@@ -1,0 +1,285 @@
+{
+    "keylist": {
+        "alerts": "Unordered list of the performance checks which send email.",
+        "alternatelandings": "Dictionary of exceptions to default landing (bvt).",
+        "blacklistboards": "Boards to ignore.",
+        "customboardfilter": "Board filter for parsing boards from jobnames.",
+        "resultmail": "Unordered list of test groups to check for failures.",
+        "plots": "Ordered list of plots to generate on dash details page.",
+        "priorityboards": "Ordered list of boards at top of summary dash."},
+    "alerts": [
+        {
+            "platforms": [
+                {"x86-alex-r17": "netbook_ALEX"},
+                {"x86-alex-r16": "netbook_ALEX"},
+                {"x86-alex-r15": "netbook_ALEX"},
+                {"x86-alex-r14": "netbook_ALEX"},
+                {"x86-mario-r14": "netbook_MARIO_MP"},
+                {"x86-mario-r15": "netbook_MARIO_MP"},
+                {"x86-mario-r16": "netbook_MARIO_MP"},
+                {"x86-mario-r17": "netbook_MARIO_MP"},
+                {"x86-zgb-r14": "netbook_ACER_ZGB"},
+                {"x86-zgb-r15": "netbook_ACER_ZGB"},
+                {"x86-zgb-r16": "netbook_ACER_ZGB"},
+                {"x86-zgb-r17": "netbook_ACER_ZGB"}],
+            "categories": ["perfalerts"],
+            "sheriffs": false,
+            "cc": [
+                "chromeos-autotest@google.com",
+                "chromeos-perf-test@google.com"],
+            "test": "platform_BootPerfServer",
+            "preprocess": [
+                ["GroupDeltas", ""]],
+            "checks": {
+                "seconds_kernel_to_login": {
+                    "PrintAverages": "",
+                    "PrintStats": "",
+                    "PrintHistogram": {
+                        "numbins": 16, "limits": [5, 9],
+                        "width": 1024, "height": 768},
+                    "PrintIterations": {
+                        "width": 1024, "height": 768}},
+                "seconds_kernel_to_*": {
+                    "PrintAverages": "",
+                    "PrintStats": ""},
+                "seconds_power_on_to_login": {
+                    "PrintAverages": ""},
+                "rdbytes_kernel_to_*": {
+                    "PrintAverages": "",
+                    "PrintStats": ""}}}],
+    "resultmail": [
+        {
+            "platforms": {
+                "netbook_MARIO_MP": ["x86-mario-r17", "x86-mario-r16",
+                                     "x86-mario-r15"],
+                "netbook_ALEX": ["x86-alex-r17", "x86-alex-r16",
+                                 "x86-alex-r15"],
+                "netbook_ACER_ZGB": ["x86-zgb-r17", "x86-zgb-r16",
+                                     "x86-zgb-r15"]},
+            "filters": [
+                {"categories": ["bvt"],
+                 "sheriffs": true,
+                 "cc": ["chromeos-autotest@google.com",
+                        "chromeos-test@google.com",
+                        "chromeos-tpms@google.com"]},
+                {"categories": ["audiovideo", "graphics"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "josephv@google.com"]},
+                {"categories": ["autotest"],
+                 "cc": ["chromeos-autotest@google.com"]},
+                {"categories": ["build"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "krisr@google.com"]},
+                {"categories": ["desktopui", "login", "realtimecomm"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "tturchetto@google.com"]},
+                {"categories": ["firmware", "hardware", "hwqual", "power"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "rchenna@google.com"]},
+                {"categories": ["logging", "platform"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "scunningham@google.com"]},
+                {"categories": ["network"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "stanleyw@google.com"]},
+                {"categories": ["mton_au", "nton_au", "regression"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "chromeos-test@google.com"]},
+                {"categories": ["security"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "jimhebert@google.com"]},
+                {"categories": ["perfalerts"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "jrbarnette@google.com"]},
+                {"categories": ["browsertests"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "chromeos-ui@google.com"]},
+                {"categories": ["pyauto", "pyauto_basic"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "rohitbm@google.com"]},
+                {"categories": ["sound"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "thutt@google.com"]},
+                {"categories": ["sync"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "rsimha@google.com"]}]},
+        {
+            "platforms": {
+                "netbook_MARIO_MP": ["x86-mario-r14"],
+                "netbook_ALEX": ["x86-alex-r14"],
+                "netbook_ACER_ZGB": ["x86-zgb-r14"]},
+            "filters": [{
+                "categories": ["bvt"],
+                "sheriffs": true,
+                "cc": ["chromeos-autotest@google.com",
+                       "chromeos-test@google.com",
+                       "chromeos-tpms@google.com"]}]},
+        {
+            "platforms": {
+                "desktop_STUMPY": ["stumpy-r17"],
+                "netbook_KAEN": ["tegra2-kaen-r17"],
+                "netbook_TEGRA2_SEABOARD_T25": ["tegra2-seaboard-cosine-r17"]},
+            "filters": [{
+                "categories": ["bvt"],
+                "cc": ["chromeos-autotest@google.com"]}]},
+        {
+            "platforms": {
+                "netbook_SANDY_BRIDGE": ["x86-generic-full"]},
+            "filters": [{
+                "categories": ["bvt", "browsertests", "pyauto", "sync"],
+                "cc": ["chromeos-autotest@google.com",
+                       "marcheu@google.com"]}]},
+        {
+            "platforms": {
+                "netbook_RF_ENCLOSURE": ["x86-mario-r17", "x86-mario-r16",
+                                         "x86-mario-r15"]},
+            "filters": [{
+                "categories": ["network_wifi"],
+                "cc": ["chromeos-autotest@google.com",
+                       "stanleyw@google.com"]}]},
+        {
+            "platforms": {
+                "netbook_MARIO_MP_CDMA_GOBI2K": ["x86-mario-r17",
+                                                 "x86-mario-r16",
+                                                 "x86-mario-r15"],
+                "netbook_ALEX_CDMA_GOBI2K": ["x86-alex-r17", "x86-alex-r16",
+                                             "x86-alex-r15"],
+                "netbook_ALEX_CDMA_GOBI3K": ["x86-alex-r17", "x86-alex-r16",
+                                             "x86-alex-r15"]},
+            "filters": [{
+                "categories": ["network_3g"],
+                "cc": ["chromeos-autotest@google.com",
+                       "jglasgow@google.com",
+                       "rochberg@google.com"]}]}],
+    "plots": {
+        "10": {
+            "test": "platform_BootPerfServer",
+            "keys": [
+                "seconds_kernel_to_startup",
+                "seconds_kernel_to_startup_done",
+                "seconds_kernel_to_x_started",
+                "seconds_kernel_to_chrome_exec",
+                "seconds_kernel_to_chrome_main",
+                "seconds_kernel_to_login",
+                "seconds_kernel_to_network"],
+            "ylabel": "Seconds"},
+        "11": {
+            "test": "platform_BootPerfServer",
+            "keys": [
+                "seconds_power_on_to_login"],
+            "ylabel": "Seconds"},
+        "12": {
+            "test": "platform_BootPerfServer",
+            "keys": [
+                "seconds_reboot_time",
+                "seconds_shutdown_time"],
+            "ylabel": "Seconds"},
+        "15": {
+            "test": "platform_BootPerfServer",
+            "keys": [
+                "rdbytes_kernel_to_startup",
+                "rdbytes_kernel_to_startup_done",
+                "rdbytes_kernel_to_chrome_exec",
+                "rdbytes_kernel_to_chrome_main",
+                "rdbytes_kernel_to_login"],
+            "ylabel": "bytes"},
+        "17": {
+            "test": "platform_BootPerfServer",
+            "keys": [
+                "seconds_firmware_boot"],
+            "ylabel": "seconds"},
+        "20": {
+            "test": "desktopui_ChromeFirstRender",
+            "keys": [
+                "seconds_chrome_first_tab"],
+            "ylabel": "Seconds"},
+        "30": {
+            "test": "build_RootFilesystemSize",
+            "keys": ["bytes_rootfs_prod"],
+            "ylabel": "100M Bytes"},
+        "35": {
+            "test": "build_RootFilesystemSize",
+            "keys": ["bytes_rootfs_test"],
+            "ylabel": "100M Bytes"},
+        "40": {
+            "test": "power_LoadTest.WIFI",
+            "keys": ["w_energy_rate"]},
+        "41": {
+            "test": "power_LoadTest.WIFI",
+            "keys": ["minutes_battery_life"]},
+        "45": {
+            "test": "power_LoadTest.WIRED",
+            "keys": ["w_energy_rate"]},
+        "46": {
+            "test": "power_LoadTest.WIRED",
+            "keys": ["minutes_battery_life"]},
+        "50": {
+            "test": "power_Idle",
+            "keys": [
+                "w_energy_rate"]},
+        "60": {
+            "test": "power_Resume",
+            "keys": [
+                "seconds_system_resume",
+                "seconds_system_suspend",
+                "seconds_system_resume_firmware",
+                "seconds_system_resume_kernel"]},
+        "70": {
+            "test": "hardware_MemoryThroughput",
+            "keys": [
+                "mb_per_sec_memory_cp_256k_seq",
+                "mb_per_sec_memory_r_256k_ran",
+                "mb_per_sec_memory_rw_256k_seq",
+                "mb_per_sec_memory_set_256k_seq",
+                "mb_per_sec_memory_w_256k_seq"]},
+        "72": {
+            "test": "desktopui_PageCyclerTests",
+            "keys": [
+                "PageCyclerTest.Alexa_usFile",
+                "PageCyclerTest.MozFile",
+                "PageCyclerTest.Moz2File"]},
+        "74": {
+            "test": "desktopui_PageCyclerTests",
+            "keys": [
+                "PageCyclerTest.DhtmlFile",
+                "PageCyclerTest.Intl1File",
+                "PageCyclerTest.Intl2File"]},
+        "76": {
+            "test": "desktopui_PageCyclerTests",
+            "keys": [
+                "PageCyclerTest.BloatFile"]},
+        "120": {
+            "test": "desktopui_V8Bench",
+            "keys": [
+                "score_crypto",
+                "score_deltablue",
+                "score_earleyboyer",
+                "score_raytrace",
+                "score_regexp",
+                "score_richards",
+                "score_splay"]},
+        "121": {
+            "test": "desktopui_V8Bench",
+            "keys": [
+                "score_total"]}},
+    "alternatelandings": {
+        "x86-alex-r16": {
+            "netbook_ALEX_CDMA_GOBI2K": "network",
+            "netbook_ALEX_CDMA_GOBI3K": "network"},
+        "x86-alex-r17": {
+            "netbook_ALEX_CDMA_GOBI2K": "network",
+            "netbook_ALEX_CDMA_GOBI3K": "network"},
+        "x86-mario-r16": {
+            "netbook_MARIO_MP_CDMA_GOBI2K": "network",
+            "netbook_RF_ENCLOSURE": "network"},
+        "x86-mario-r17": {
+            "netbook_MARIO_MP_CDMA_GOBI2K": "network",
+            "netbook_RF_ENCLOSURE": "network"}},
+    "priorityboards_tot": ["x86-alex-r17", "x86-mario-r17", "x86-zgb-r17"],
+    "priorityboards": [
+        "x86-alex-r15", "x86-alex-r16", "x86-alex-r17",
+        "x86-mario-r15", "x86-mario-r16", "x86-mario-r17",
+        "x86-zgb-r15", "x86-zgb-r16", "x86-zgb-r17"],
+    "blacklistboards": ["x86-alex-test"],
+    "customboardfilter": "x86|tegra2|stumpy"
+}

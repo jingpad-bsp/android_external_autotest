@@ -1,0 +1,34 @@
+<link href="/static/stylesheet.css" rel="stylesheet" type="text/css"/> 
+<div style="float:left;font-size:x-large;">
+<a href="/" class=""><img style="vertical-align:middle;width:58;border-style:none;" src="/chromiumos.gif"/> ChromiumOS Autotest Dashboard</a>
+</div>
+<div style="float:right;font-size:75%;text-align:right;padding-top:5px;padding-bottom:5px;">
+<b>{{ email }}</b> | <a href="/_ah/login?action=Logout">sign out</a>
+</div>
+<div style="border:5px;font-size:75%;text-align:right;clear:right;">
+<a href="/">HOME</a> |
+<a href="/?limit=150">MORE</a> |
+<a href="timing">TIMING</a> |
+<a href="http://buildbot.jail.google.com/i/chromiumos/waterfall?reload=300"
+   target="_blank">PUBLIC WATERFALL</a> |
+{% if internal %}
+<a href="http://chromiumos-git/git/" target="_blank">REPOS</a>
+{% else %}
+<a href="http://git.chromium.org/gitweb/" target="_blank">REPOS</a>
+{% endif %}
+{% if internal %}
+</div>
+<div style="border:5px;font-size:75%;text-align:right;clear:right;">
+<a href="http://chromeos-botmaster.mtv.corp.google.com:8026/waterfall?branch=&committer=&reload=300"
+   target="_blank">INTERNAL WATERFALL</a> |
+<a href="http://chromeos-images/diff"
+   target="_blank">VERSION DIFF</a> |
+<a href="http://cautotest/afe" target="_blank">CAUTOTEST</a> |
+<a href="http://www/~chromeos-test/systemhealth"
+   target="_blank">SYSTEM HEALTH</a> |
+<a href="http://cautotest/results/dashboard/emails.html">EMAILS</a> |
+<a href="http://cautotest/results/dashboard/test_config_table.html">TEST CONFIG</a>
+{% endif %}
+</div>
+<br>
+<br>

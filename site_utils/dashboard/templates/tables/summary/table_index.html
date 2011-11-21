@@ -1,0 +1,164 @@
+{% extends "tables/base.html" %}
+{% comment %}
+
+Copyright 2011 Google Inc. All Rights Reserved.
+
+This template builds the main summary page for the ChromeOS
+Test Dashboard.
+
+Tables include variable number of columns that reflect test netbooks used
+and a variable number of rows that represent builds.
+
+The build cells are hyperlinks, the timing cells include popup text and
+the status cells are hyperlinks to details pages.
+{% endcomment %}
+{% block title %}ChromeOS Test Dashboard{% endblock %}
+
+{% block header_block %}
+{% include 'tables/summary/header.html' %}
+{% endblock %}
+
+{% block html_block %}
+<div class="div_full"><hr><b>TOT Boards</b></div>
+{% for summary_data in tpl_summary_data %}
+{% for board, netbooks, columns, rows in summary_data %}
+{% if forloop.counter0|divisibleby:"2" %}
+  {% if not forloop.last %}
+    <div class="div_left">
+    <table align="right">
+  {% else %}
+    <div class="div_left" style="width:100%;">
+    <table align="center">
+  {% endif %}
+{% else %}
+  <div class="div_right">
+  <table align="left">
+{% endif %}
+  <tr>
+    <td colspan={{ columns|add:"2" }}
+        style="border-width:0px;background-color:white;font-size:x-large;font-weight:bold;text-align:center;color:grey;">
+      {{ board }}
+    </td>
+  </tr>
+  <tr>
+    <th class="roundedheader tableheader">Build</th>
+    <th class="roundedheader tableheader">Build End</th>
+    {% for netbook in netbooks %}
+    <th class="roundedheader tableheader">
+      <table>
+      <tr>
+        <td colspan=3>{{ netbook|slice:"8:" }}</td>
+      </tr>
+      <tr>
+        <td>
+        <a class="info" href="{{ netbook }}/{{ board }}"
+           onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+          combined
+          <span style="width:300px">
+            View test and performance results for {{ board }} on {{ netbook|slice:"8:" }}
+          </span>
+        </a>
+        </td>
+        <td>
+        <a class="info" href="{{ netbook }}/{{ board }}/bvt.html"
+           onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+          bvt
+          <span style="width:300px">
+            View performance plots for {{ board }} on {{ netbook|slice:"8:" }}
+          </span>
+        </a>
+        </td>
+        <td>
+        <a class="info" href="{{ netbook }}/{{ board }}/perf_index.html"
+           onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+          perf
+          <span style="width:300px">
+            View performance plots for {{ board }} on {{ netbook|slice:"8:" }}
+          </span>
+        </a>
+        </td>
+      </tr>
+      </table>
+    </th>
+    {% endfor %}
+  </tr>
+  {% for builder, build, start, finish, short_finish, details in rows %}
+  <tr>
+    <td class="build buildborder">
+      <a class="info" href="{{ builder }}" target="_blank"
+         onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+        {{ build }}
+        <span style="width:300px">
+          View build log for {{ build }} on {{ board }}
+        </span>
+      </a>
+    </td>
+    <td class="build buildborder" title="{{ start }} ~ {{ finish }}">
+      {{ short_finish }}
+    </td>
+    {% for netbook, job_attempted, job_good, passed, total, kernel in details %}
+      {% if job_attempted %}
+        {% ifequal total 0 %}
+        <td align="center" class="failure">
+            <a class="info" target="_blank"
+               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&condition=job_name+%253D+%2527{{ board }}-{{ build }}_bvt%2527"
+               onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+              {{ passed }}/{{ total }}
+              <span style="width:300px">
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+              </span>
+            </a>
+        </td>
+        {% else %}
+          {% ifequal passed total%}
+            {% if job_good %}
+            <td align="center" class="success">
+            <a class="info" href="{{ netbook }}/{{ board }}/bvt.html"
+               onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+              {{ passed }}/{{ total }}
+              <span style="width:300px">
+                View bvt test results for {{ board }} on {{ netbook|slice:"8:" }}
+              </span>
+            </a>
+            {% else %}
+            <td align="center" class="failure">
+            <a class="info" target="_blank"
+               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&condition=job_name+%253D+%2527{{ board }}-{{ build }}_bvt%2527"
+               onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+              {{ passed }}/{{ total }}
+              <span style="width:300px">
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+              </span>
+            </a>
+            {% endif %}
+          {% else %}
+          <td align="center" class="failure">
+          <a class="info" href="{{ netbook }}/{{ board }}/bvt.html"
+             onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+            {{ passed }}/{{ total }}
+            <span style="width:300px">
+              View bvt test results for {{ board }} on {{ netbook|slice:"8:" }}
+            </span>
+          </a>
+          {% endifequal %}
+        {% endifequal %}
+        </td>
+      {% else %}
+      <td align="center">None</td>
+      {% endif %}
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% if forloop.counter0|divisibleby:"2" %}
+  <div class="div_middle">&nbsp;</div>
+{% endif %}
+{% empty %}
+<p>There are no summary test tables.</p>
+{% endfor %}
+{% if not forloop.last %}
+<div class="div_left" style="width:100%;"><hr><b>Branch Boards</b></div>
+{% endif %}
+{% endfor %}
+{% endblock %}

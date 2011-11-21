@@ -1,0 +1,14 @@
+<th bgcolor="#E5E5C0" valign="bottom">
+<div class="div_testname">
+  {% if link %}
+  <a class="info"
+     href="{{ link }}" target="_blank" title="{{ title }}">{{ header_name }}
+     {% if popup %}
+     <span>{{ popup }}</span>
+     {% endif %}
+  </a>
+  {% else %}
+  {{ header_name }}
+  {% endif %}
+</div>
+</th>

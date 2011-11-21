@@ -1,0 +1,8 @@
+# this is the default.
+total_storage_limit: 100M
+
+# numbers are estimated but not optimized.
+queue:
+- name: jobpost
+  rate: 10/s
+  bucket_size: 1

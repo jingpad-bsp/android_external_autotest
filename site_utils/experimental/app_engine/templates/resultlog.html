@@ -1,0 +1,13 @@
+<style>
+#header { background-color: white; position: fixed; width: 100%; top: 0; left: 0; right: 0; bottom: auto; 
+z-index: 2; padding-bottom:5px; border-bottom:solid 1px;}
+#bodytext { position: relative; width: 100%; left: 0; top:105; z-index: 1;}
+</style>
+
+<div id="header">
+{{ header }}
+<img src="data:image/gif;base64,R0lGODlhFAAWAMIAAP///8z//5mZmWZmZjMzMwAAAAAAAAAAACH+TlRoaXMgYXJ0IGlzIGluIHRoZSBwdWJsaWMgZG9tYWluLiBLZXZpbiBIdWdoZXMsIGtldmluaEBlaXQuY29tLCBTZXB0ZW1iZXIgMTk5NQAh+QQBAAABACwAAAAAFAAWAAADSxi63P4jEPJqEDNTu6LO3PVpnDdOFnaCkHQGBTcqRRxuWG0v+5LrNUZQ8QPqeMakkaZsFihOpyDajMCoOoJAGNVWkt7QVfzokc+LBAA7"><a href="http://cautotest/{{ log_dir }}">Parent Directory</A>
+</div>
+<div id="bodytext">
+<iframe src="http://cautotest/{{ log_path }}" frameborder="0" scrolling="no" width="100%" height="10000"></iframe>
+</div>

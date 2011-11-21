@@ -1,0 +1,48 @@
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds an email with details of regressed performance keys.
+{% endcomment %}
+<html>
+<style type="text/css">
+table, td
+{
+    border-color: #600;
+    border-style: solid;
+}
+
+table
+{
+    border-width: 1px 1px 1px 1px;
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+td
+{
+    margin: 0;
+    padding: 4px;
+    border-width: 1px 1px 1px 1px;
+}
+</style>
+Hello,<p>
+You are getting this message because you are enlisted in
+chromeos-perf-test@google.com.
+<p>
+A recent build <b>{{ tpl_build }}</b> for <b>{{ tpl_board }}</b> has
+performance metrics on <b>{{ tpl_netbook|slice:"8:" }}</b>. Please take a look
+and take action accordingly.<p>
+You could go to the
+<a class="info"
+   href="http://goto/chromeos-dash/{{ tpl_netbook }}/{{ tpl_board }}/performance/{{ tpl_build }}_build_performance.html"
+   target="_blank">
+   performance details</a> for that build or the
+<a href="http://goto/chromeos-dash/{{ tpl_netbook }}/{{ tpl_board }}/perf_index.html">
+chromeos performance test dashboard</a> to take a look at all the plot details.
+<p>
+
+Sincerely,<br>
+Your test farm friends<br>
+From Kirkland, WA<br>
+</html>

@@ -1,0 +1,253 @@
+{% extends "tables/base.html" %}
+{% comment %}
+
+Copyright 2011 Google Inc. All Rights Reserved.
+
+This template builds the kernel test summary as a single table for the
+Test Dashboard.
+
+The table includes a variable number of columns that reflects the test
+netbooks used and a variable number of rows that represent builds.
+
+The build cells are hyperlinks, the timing cells include popup text and
+the status cells are hyperlinks to details pages.
+{% endcomment %}
+{% block title %}ChromeOS Kernel Test Dashboard{% endblock %}
+
+{% block header_block %}
+{% include 'tables/summary/kernel_header.html' %}
+{% endblock %}
+
+{% block html_block %}
+{% comment %}
+-------------------------------------------------------------------------------
+- A table of quick links to test pages.                                       -
+-------------------------------------------------------------------------------
+{% endcomment %}
+<div class="div_statustitle"><b><a href="http://cautotest">CAutotest</a></b> Kernel Test Results</div>
+<table class="standalone top">
+  <tr>
+    <th class="roundedheader tableheader">Build</th>
+    {% for board, netbook, formatted_netbook in tpl_summary_data.platforms %}
+    <th class="roundedheader tableheader">
+      {{ board }}<br>
+      {{ formatted_netbook|slice:"8:" }}<br>
+    </th>
+    {% endfor %}
+  </tr>
+  {% for release in tpl_summary_data.releases %}
+  <tr>
+    <td style="text-align:center;">{{ release }}</td>
+    {% for board, netbook, formatted_netbook in tpl_summary_data.platforms %}
+    <td style="text-align:center;">
+      {% if board in tpl_summary_data.irregular %}
+      <a class="info" href="{{ netbook }}/{{ board }}"
+      {% else %}
+      <a class="info" href="{{ netbook }}/{{ board }}-{{ release }}"
+      {% endif %}
+         onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+        combined
+        {% if board in tpl_summary_data.irregular %}
+        <span style="width:300px">View test and performance results for {{ board }} on {{ netbook|slice:"8:" }}
+        {% else %}
+        <span style="width:300px">View test and performance results for {{ board }}-{{ release }} on {{ netbook|slice:"8:" }}
+        {% endif %}
+        </span>
+      </a>
+      &nbsp;
+      {% if board in tpl_summary_data.irregular %}
+      <a class="info" href="{{ netbook }}/{{ board }}/perf_index.html"
+      {% else %}
+      <a class="info" href="{{ netbook }}/{{ board }}-{{ release }}/perf_index.html"
+      {% endif %}
+         onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+        perf
+        {% if board in tpl_summary_data.irregular %}
+        <span style="width:300px">View performance plots for {{ board }} on {{ netbook|slice:"8:" }}
+        {% else %}
+        <span style="width:300px">View performance plots for {{ board }}-{{ release }} on {{ netbook|slice:"8:" }}
+        {% endif %}
+        </span>
+        </span>
+      </a>
+    </td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+<br>
+{% comment %}
+-------------------------------------------------------------------------------
+- The waterfall-like table of Kernel test results.                               -
+-------------------------------------------------------------------------------
+{% endcomment %}
+<table>
+  <tr>
+    <th class="roundedheader tableheader">Build</th>
+    <th class="roundedheader tableheader">Start Time</th>
+    {% for board, netbook, formatted_netbook in tpl_summary_data.platforms %}
+    <th class="roundedheader tableheader">
+      {{ board }}<br>
+      {{ formatted_netbook|slice:"8:" }}<br>
+    </th>
+  {% endfor %}
+  </tr>
+  {% for build, build_release, start_time, build_results in tpl_summary_data.results %}
+  <tr>
+    <td onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)"
+    {% if tpl_summary_data.releases.0|slice:"1:" == build_release %}
+      class="build buildborder">
+      <a class="info" onclick="return false">
+      <span>This is a TOT build.</span>
+    {% else %}
+      {% if tpl_summary_data.releases.1|slice:"1:" == build_release %}
+        class="buildminusone buildborder">
+      {% else %}
+        class="buildminustwo buildborder">
+      {% endif %}
+      <a class="info" onclick="return false">
+      <span>This is a branch build.</span>
+    {% endif %}
+      {{ build }}
+    </td>
+    <td class="build buildborder">{{ start_time }}</td>
+    {% for board, netbook, full_build, job_attempted, job_good, passed, total, kernel, failed_tests, crashes, crash_count, crash_cat in build_results %}
+      {% if job_attempted %}
+        {% ifequal total 0 %}
+        <td align="center" class="failure"">
+            <a class="info" target="_blank"
+               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&row=job_name%252Ctest_name&column=platform%252Ckernel&condition=job_name+regexp+%2527{{ board }}-{{ build }}.*_kernel.*%2527"
+               onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+              <table><tbody><tr>
+                <td>{{ passed }}/{{ total }}</td>
+                {% if crash_count %}
+                  <td class="warning_summary">
+                  <a class="info"
+                     href="{{ netbook }}/{{ board }}/{{ crash_cat }}.html">({{ crash_count }})
+                  </a>
+                  </td>
+                {% endif %}
+              </tr></tbody></table>
+              <span style="width:300px">
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+                {% if kernel %}
+                  (Kernel: {{ kernel }})
+                {% endif %}
+                {% if crash_count %}
+                  <div style="color:orange;font-weight:bold;">{{ crash_count }} Crashes.</div>
+                  {% for test_name, crash_info in crashes %}
+                    <b>{{ test_name }}:</b><br>
+                    {% for one_crash in crash_info %}
+                      &nbsp;&nbsp;{{ one_crash }}<br>
+                    {% endfor %}
+                  {% endfor %}
+                {% endif %}
+              </span>
+            </a>
+        </td>
+        {% else %}
+          {% ifequal passed total%}
+            {% if job_good %}
+            <td align="center" class="success">
+            <a class="info" href="{{ netbook }}/{{ board }}/kerneltest.html"
+               onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+              <table><tbody><tr>
+                <td>{{ passed }}/{{ total }}</td>
+                {% if crash_count %}
+                  <td class="warning_summary">
+                  <a class="info"
+                     href="{{ netbook }}/{{ board }}/{{ crash_cat }}.html">({{ crash_count }})
+                  </a>
+                  </td>
+                {% endif %}
+              </tr></tbody></table>
+              <span style="width:300px">
+                View kernel test results for {{ board }} on {{ netbook|slice:"8:" }}
+                {% if kernel %}
+                  (Kernel: {{ kernel }})
+                {% endif %}
+                {% if crash_count %}
+                  <div style="color:orange;font-weight:bold;">{{ crash_count }} Crashes.</div>
+                  {% for test_name, crash_info in crashes %}
+                    <b>{{ test_name }}:</b><br>
+                    {% for one_crash in crash_info %}
+                      &nbsp;&nbsp;{{ one_crash }}<br>
+                    {% endfor %}
+                  {% endfor %}
+                {% endif %}
+              </span>
+            </a>
+            {% else %}
+            <td align="center" class="failure"">
+            <a class="info" target="_blank"
+               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&row=job_name%252Ctest_name&column=platform%252Ckernel&condition=job_name+regexp+%2527{{ board }}-{{ build }}.*_kernel.*%2527"
+               onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+              <table><tbody><tr>
+                <td>{{ passed }}/{{ total }}</td>
+                {% if crash_count %}
+                  <td class="warning_summary">
+                  <a class="info"
+                     href="{{ netbook }}/{{ board }}/{{ crash_cat }}.html">({{ crash_count }})
+                  </a>
+                  </td>
+                {% endif %}
+              </tr></tbody></table>
+              <span style="width:300px">
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+                {% if kernel %}
+                  (Kernel: {{ kernel }})
+                {% endif %}
+                {% if crash_count %}
+                  <div style="color:orange;font-weight:bold;">{{ crash_count }} Crashes.</div>
+                  {% for test_name, crash_info in crashes %}
+                    <b>{{ test_name }}:</b><br>
+                    {% for one_crash in crash_info %}
+                      &nbsp;&nbsp;{{ one_crash }}<br>
+                    {% endfor %}
+                  {% endfor %}
+                {% endif %}
+              </span>
+            </a>
+            {% endif %}
+          {% else %}
+          <td align="center" class="failure"">
+          <a class="info" href="{{ netbook }}/{{ board }}/kerneltest.html"
+             onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+            <table><tbody><tr>
+              <td>{{ passed }}/{{ total }}</td>
+              {% if crash_count %}
+                <td class="warning_summary">
+                <a class="info"
+                   href="{{ netbook }}/{{ board }}/{{ crash_cat }}.html">({{ crash_count }})
+                </a>
+                </td>
+              {% endif %}
+            </tr></tbody></table>
+            <span style="width:300px">
+              <div style="color:red;"><b>Failed Tests:</b> {{ failed_tests }}.</div>
+              View kernel test results for {{ board }} on {{ netbook|slice:"8:" }}
+              {% if kernel %}
+                (Kernel: {{ kernel }})
+              {% endif %}
+              {% if crash_count %}
+                <div style="color:orange;font-weight:bold;">{{ crash_count }} Crashes.</div>
+                {% for test_name, crash_info in crashes %}
+                  <b>{{ test_name }}:</b><br>
+                  {% for one_crash in crash_info %}
+                    &nbsp;&nbsp;{{ one_crash }}<br>
+                  {% endfor %}
+                {% endfor %}
+              {% endif %}
+            </span>
+          </a>
+          {% endifequal %}
+        {% endifequal %}
+        </td>
+      {% else %}
+      <td align="center">None</td>
+      {% endif %}
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,86 @@
+message Build {
+  required string board = 1;
+  required string name = 2;
+
+  optional string version = 3;
+  optional string hash = 4;
+  optional int32 seq = 5;
+
+  repeated string netbooks = 6;
+
+  optional string buildlog_json_url = 7 [default = ''];
+  optional string buildlog_url = 8 [default = ''];;
+  optional string build_image_url = 9 [default = ''];;
+
+  optional float build_started_time = 10 [default = 0.0];
+  optional float build_finished_time = 11 [default = 0.0];
+  optional float build_time = 12 [default = 0.0];
+
+  optional string chrome_version = 13 [default = ''];
+  optional int32 chrome_svn_number = 14 [default = 0];
+}
+
+message HostKeyValue {
+  required string key = 2;
+  required string value = 3;
+}
+
+message PerfKerValues {
+  required string key = 2;
+  repeated float values = 3;
+}
+
+message Test {
+  optional int64 id = 1;
+  optional int64 tko_test_id = 2;
+
+  required string test_name = 3;
+  optional float test_started_time = 4 [default = 0.0];
+  optional float test_finished_time = 5 [default = 0.0];
+
+  optional int64 afe_job_id = 6;
+  optional string netbook = 7;
+  optional string board = 8;
+  optional string build = 9;
+  optional string owner = 10;
+
+  optional string status = 11;
+  optional string hostname = 12;
+  optional string chrome_version = 13;
+  optional string test_log_url = 14;
+
+  repeated HostKeyValue host_keyvals = 15;
+  repeated PerfKerValues perfkeys = 16;
+
+  optional string reason = 17;
+}
+
+message Job {
+  optional int64 id = 1;
+  optional int64 afe_job_id = 2;
+
+  required string job_name = 3;
+  optional string netbook = 4;
+  optional string board = 5;
+  optional string build = 6;
+  optional string owner = 7;
+  optional bool job_status = 8;
+  
+  optional float job_created_time = 9 [default = 0.0];
+  optional float job_queued_time = 10 [default = 0.0];
+  optional float job_started_time = 11 [default = 0.0];
+  optional float job_finished_time = 12 [default = 0.0];
+
+  optional float test_started_time = 13 [default = 0.0];
+  optional float test_finished_time = 14 [default = 0.0];
+
+  optional int32 passed = 15 [default = 0];
+  optional int32 total = 16 [default = 0];
+
+  optional bool email_alert = 17 [default = false];
+
+  repeated Test tests = 18;
+
+  optional bool completed = 19;
+  optional bool aborted = 20;
+}

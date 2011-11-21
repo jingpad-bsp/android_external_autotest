@@ -1,0 +1,6 @@
+This file is the output of test_dash_view.py.
+It is very useful in looking at the data model
+created by dash_view.py which is complicated.
+It's too large for the depot so the full file
+resides here:
+/home/truty/chromeos-test/test_dash_view.out

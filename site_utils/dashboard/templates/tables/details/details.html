@@ -1,0 +1,136 @@
+{% extends "tables/base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds each category details page for the ChromeOS
+Test Dashboard.  These are reachable from the main summary page
+by choosing a particular netbook within a board table.
+
+The view is divided into two areas: test table and plots.
+
+The test table includes a variable number of columns that reflect tests
+and a variable number of rows that represent builds.  The table cells are
+hyperlinks to log data.
+
+The plots area is an aggregation of all the plots generated for the given
+board-netbook platform.
+{% endcomment %}
+{% block title %}ChromeOS {{ tpl_category }} Test Details{% endblock %}
+
+{% block header_block %}
+{% include 'tables/details/test_header.html' %}
+{% endblock %}
+
+{% block html_block %}
+<div style="margin-top:10px;margin-bottom:10px;">
+<span class="legend success">G</span> Good |
+<span class="legend failure">A</span> Aborted |
+<span class="legend warning">W</span> Warn |
+<span class="legend failure">F</span> Fail |
+<span class="legend failure">E</span> Error |
+<span style="background-color:#FFFFFF;" class="legend">N</span> None
+</div>
+<center>
+<table>
+<tbody>
+<tr>
+{% for table_dict in tpl_tables %}
+{% if table_dict.header %}
+  <td>
+  <b>{{ table_dict.label }}: {{ tpl_category }} ({{ table_dict.header|length }})</b>
+  <table cellspacing="1" cellpadding="5" style="margin-bottom:0px;">
+  <thead>
+  <tr>
+    {% if forloop.first %}
+    <th class="tableheader roundedheader" style="height:150px;">&nbsp;</th>
+    {% endif %}
+    {% for path, alias, name, author in table_dict.header %}
+    <th class="tableheader roundedheader" style="height:150px;" valign="bottom">
+      <div class="div_testname">
+      {% if path %}
+      <a class="info"
+         href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ path }}"
+         target="_blank" title="{{ name }}">{{ alias }}
+      </a>
+      {% else %}
+      {{ alias }}
+      {% endif %}
+      </div>
+    </th>
+    {% endfor %}
+  </tr>
+  </thead>
+  <tbody>
+  {% for builder, build_number, popup, test_status, chrome_version in table_dict.body %}
+  <tr>
+    {% if forloop.parentloop.first %}
+    <td align="center" class="build"
+        onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+      <a class="info" href="{{ builder }}" target="_blank">
+        <nobr>{{ build_number }}</nobr>
+        <span>
+          {% if chrome_version %}
+          <nobr><b>Chrome Version:</b> {{ chrome_version.0 }}&nbsp;({{ chrome_version.1 }})</nobr><br>
+          {% endif %}
+          <nobr><b>Build Start:</b> {{ popup.0 }}</nobr><br>
+          <nobr><b>Build Finish:</b> {{ popup.1 }}</nobr><br>
+          <nobr><b>Build Elapsed Time:</b> {{ popup.2 }}</nobr><br>
+          <nobr><b>Test Start:</b> {{ popup.3 }}</nobr><br>
+          <nobr><b>Test Finish:</b> {{ popup.4 }}</nobr><br>
+          <nobr><b>Test Elapsed Time:</b> {{ popup.5 }}</nobr><br>
+          <nobr><b>Reported:</b> {{ popup.6 }}</nobr><br>
+        </span>
+      </a>
+    </td>
+    {% endif %}
+    {% for test_name, host_name, host_info, query_url, host_status, passed_tests, total_tests, crashes in test_status %}
+    {% if host_name %}
+      <td align="center"
+      {% if passed_tests == total_tests %}
+          class="success"
+      {% else %}
+        {% if host_status|upper == "W" %}
+          class="warning"
+        {% else %}
+          class="failure"
+        {% endif %}
+      {% endif %}
+          onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+        <a class="info" href="http://cautotest/results/{{ query_url }}"
+           target="_blank" style="font-weight:bold;">
+          <table><tbody><tr>
+            <td>{{ host_status }}</td>
+            {% if crashes %}<td class="warning_summary">*</td>{% endif %}
+          </tr></tbody></table>
+          <span>
+            <div style="color:blue;font-weight:bold;font-size:150%;">{{ test_name }}</div>
+            <b>Host Name:</b>{{ host_name }}<br>
+            {% for host_key, host_value in host_info %}
+              <b>{{ host_key }}:</b>{{ host_value|wordwrap:60 }}<br>
+            {% endfor %}
+            {% if crashes %}
+              <div style="color:orange;font-weight:bold;">*Crash:</div>
+              {% for crash in crashes %}
+              &nbsp;&nbsp;{{ crash }}<br>
+              {% endfor %}
+            {% endif %}
+          </span>
+        </a>
+      </td>
+    {% else %}
+      <td align="center" style="font-weight:bold;">N</td>
+    {% endif %}
+    {% endfor %}
+  </tr>
+  {% endfor %}
+  </tbody>
+  </table>
+  </td>
+{% endif %}
+{% endfor %}
+</tr>
+</tbody>
+</table>
+</center>
+{% endblock %}

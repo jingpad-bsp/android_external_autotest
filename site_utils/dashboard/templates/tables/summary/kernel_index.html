@@ -1,0 +1,142 @@
+{% extends "tables/base.html" %}
+{% comment %}
+
+Copyright 2011 Google Inc. All Rights Reserved.
+
+This template builds the kernel summary page for the ChromeOS
+Test Dashboard.
+
+Tables include variable number of columns that reflect test netbooks used
+and a variable number of rows that represent builds.
+
+The build cells are hyperlinks, the timing cells include popup text and
+the status cells are hyperlinks to details pages.
+{% endcomment %}
+{% block title %}ChromeOS Kernel Test Dashboard{% endblock %}
+
+{% block header_block %}
+{% include 'tables/summary/kernel_header.html' %}
+{% endblock %}
+
+{% block html_block %}
+<div class="div_full"><hr><b>TOT Boards</b></div>
+{% for summary_data in tpl_summary_data %}
+{% for board, netbooks, columns, rows in summary_data %}
+{% if forloop.counter0|divisibleby:"2" %}
+  {% if not forloop.last %}
+    <div class="div_left">
+    <table align="right">
+  {% else %}
+    <div class="div_left" style="width:100%;">
+    <table align="center">
+  {% endif %}
+{% else %}
+  <div class="div_right">
+  <table align="left">
+{% endif %}
+  <tr>
+    <td colspan={{ columns|add:columns|add:"2" }}
+        style="border-width:0px;background-color:white;font-size:x-large;font-weight:bold;text-align:center;color:grey;">
+      {{ board }}
+    </td>
+  </tr>
+  <tr>
+    <th class="roundedheader tableheader">Build</th>
+    <th class="roundedheader tableheader">Build End</th>
+    {% for netbook in netbooks %}
+    <th class="roundedheader tableheader">
+      <a class="info" href="{{ netbook }}/{{ board }}/kerneltest.html">
+        {{ netbook|slice:"8:" }}
+        <span style="width:300px">View kernel test results for {{ board }} on {{ netbook|slice:"8:" }}
+        </span>
+      </a>
+    </th>
+    <th class="roundedheader tableheader">Kernel</th>
+    {% endfor %}
+  </tr>
+  {% for builder, build, start, finish, short_finish, details in rows %}
+  <tr>
+    <td class="build buildborder">
+      <a class="info" href="{{ builder }}" target="_blank"
+         onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+        {{ build }}
+        <span style="width:300px">
+          View build log for {{ build }} on {{ board }}
+        </span>
+      </a>
+    </td>
+    <td class="build buildborder" title="{{ start }} ~ {{ finish }}">
+      {{ short_finish }}
+    </td>
+    {% for netbook, job_attempted, job_good, passed, total, kernel in details %}
+      {% if job_attempted %}
+        {% ifequal total 0 %}
+        <td align="center" class="failure">
+            <a class="info" target="_blank"
+               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&row=job_name&column=test_name&content=&show_incomplete=true&show_only_latest=false&condition=job_name+like+%2527{{ board }}-{{ build }}_kernel%2525%2527+and+test_name+not+regexp+%2527(CLIENT%257CSERVER)_JOB.*%2527+and+test_name+not+regexp+%2527boot%255C..*%2527"
+               onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+              {{ passed }}/{{ total }}
+              <span style="width:300px">
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+              </span>
+            </a>
+        </td>
+        {% else %}
+          {% ifequal passed total%}
+            {% if job_good %}
+            <td align="center" class="success">
+            <a class="info" href="{{ netbook }}/{{ board }}/kerneltest.html"
+               onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+              {{ passed }}/{{ total }}
+              <span style="width:300px">
+                View kernel test results for {{ board }} on {{ netbook|slice:"8:" }}
+              </span>
+            </a>
+            {% else %}
+            <td align="center" class="failure">
+            <a class="info" target="_blank"
+               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&row=job_name&column=test_name&content=&show_incomplete=true&show_only_latest=false&condition=job_name+like+%2527{{ board }}-{{ build }}_kernel%2525%2527+and+test_name+not+regexp+%2527(CLIENT%257CSERVER)_JOB.*%2527+and+test_name+not+regexp+%2527boot%255C..*%2527"
+               onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+              {{ passed }}/{{ total }}
+              <span style="width:300px">
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+              </span>
+            </a>
+            {% endif %}
+          {% else %}
+          <td align="center" class="failure">
+          <a class="info" href="{{ netbook }}/{{ board }}/kerneltest.html"
+             onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+            {{ passed }}/{{ total }}
+            <span style="width:300px">
+              View kernel test results for {{ board }} on {{ netbook|slice:"8:" }}
+            </span>
+          </a>
+          {% endifequal %}
+        {% endifequal %}
+        </td>
+        {% if kernel %}
+        <td class="build">{{ kernel }}</td>
+        {% else %}
+        <td class="build">None</td>
+        {% endif %}
+      {% else %}
+        <td class="build">None</td>
+        <td class="build">None</td>
+      {% endif %}
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% if forloop.counter0|divisibleby:"2" %}
+  <div class="div_middle">&nbsp;</div>
+{% endif %}
+{% empty %}
+<p>There are no summary test tables.</p>
+{% endfor %}
+{% if not forloop.last %}
+<div class="div_left" style="width:100%;"><hr><b>Branch Boards</b></div>
+{% endif %}
+{% endfor %}
+{% endblock %}

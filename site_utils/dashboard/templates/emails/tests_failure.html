@@ -1,0 +1,78 @@
+{% extends "emails/tests_base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds an email with details of test(s) that failed.
+{% endcomment %}
+{% block status_block %}failed{% endblock %}
+{% block fail_table_block %}
+
+{% if tpl_failed_tests %}
+  <h3>Report summary:</h3>
+  <table width="100%" style="border-collapse: collapse">
+  {% for row in tpl_split_failed_tests %}
+    <tr>
+    {% for name, details in row %}
+      {% if details %}
+        <td style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #eaeef3; text-align: center">
+          <a title="Click to view source." href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.test_path }}" target="_blank">{{ name }}</a>
+        </td>
+      {% endif %}
+    {% endfor %}
+    </tr>
+    <tr>
+    {% for name, details in row %}
+      {% if details %}
+        <td style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #ff9f9f; text-align: center">
+          <a title="Click to view test logs." href="http://cautotest/results/{{ details.tag }}/{{ name }}" target="_blank">{{ details.status }}</a>
+        </td>
+      {% endif %}
+    {% endfor %}
+    </tr>
+  {% endfor %}
+  </table><p>
+{% endif %}
+{% if tpl_crashes %}
+  <h3>Crashes detected during testing:</h3>
+  <ul>
+  {% for crash, tests in tpl_crashes %}
+    <li>{{ crash }}<ul>
+    {% for test, details in tests %}
+      <li>
+        <a title="Click to view test logs." href="http://cautotest/results/{{ details.tag }}/{{ test }}" target="_blank">{{ test }}</a>
+      </li>
+    {% endfor %}
+    </ul></li>
+  {% endfor %}
+  </ul>
+{% endif %}
+{% if tpl_failed_tests %}
+  <h3>Full report:</h3>
+  <table width="100%" style="border-collapse: collapse">
+  {% for name, details in tpl_failed_tests %}
+    {% if details %}
+      <tr>
+        <td width="10%" style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #ff9f9f; text-align: center">
+          <a title="Click to view test logs." href="http://cautotest/results/{{ details.0.tag }}/{{ name }}" target="_blank">{{ details.0.status }}</a>
+        </td>
+        <td style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #eaeef3;">
+          <a title="Click to view source." href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.0.test_path }}" target="_blank">{{ name }}</a>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="100%" style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666;">
+          {% if details.0.test_logs %}
+            <pre style="white-space: pre-wrap; margin: 0px; padding: 0px">{{ details.0.test_logs }}</pre>
+          {% else %}
+            <pre style="white-space: pre-wrap; margin: 0px; padding: 0px">No error logs available.</pre>
+          {% endif %}
+          </pre>
+        </td>
+      </tr>
+      <tr><td colspan="100%" style="padding: 4px;"></td></tr>
+    {% endif %}
+  {% endfor %}
+  </table><p>
+{% endif %}
+{% endblock %}

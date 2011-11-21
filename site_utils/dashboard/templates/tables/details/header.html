@@ -1,0 +1,33 @@
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds the page header for the details pages on the Chrome OS
+Test Dashboard. It consists of one row of hyperlinks:
+-HOME
+-Info about the current board/netbook
+-A block for optional additional entries from headers that inherit this.
+{% endcomment %}
+<div>
+<span style="text-align: left">
+<a href="../../index.html" target="_top">HOME</a>&nbsp;|&nbsp;
+<b>{{ tpl_board }}({{ tpl_netbook|slice:"8:" }})</b>
+{% for other_netbook, landing in tpl_board_netbooks %}
+  &nbsp;|&nbsp;
+  <a href="../../{{ other_netbook }}/{{ tpl_board }}/{{ landing }}.html" target="_top">
+    {{ other_netbook|slice:"8:" }}
+  </a>
+{% endfor %}
+{% for other_board in tpl_other_boards %}
+  &nbsp;|&nbsp;<b>
+  <a href="../../{{ tpl_netbook }}/{{ other_board }}/{{ tpl_category }}.html" target="_top">
+    {{ other_board }}
+  </a></b>
+{% endfor %}
+<span style="float: right">
+  <i>last updated: {{ tpl_last_updated }}</i>
+</span>
+<br>
+{% block header_link_block %}{% endblock %}
+</span>
+</div>

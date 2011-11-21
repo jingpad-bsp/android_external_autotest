@@ -1,0 +1,122 @@
+{
+    "__base__": "chromeos_test_config.json",
+
+    "boards": {
+        "x86-alex-r14": {
+            "platforms": [
+                {"platform": "netbook_ALEX"}
+            ]
+        },
+
+        "x86-alex-r15": {
+            "platforms": [
+                {"platform": "netbook_ALEX"}
+            ]
+        },
+
+        "x86-alex-r16": {
+            "platforms": [
+                {"platform": "netbook_ALEX"}
+            ]
+        },
+
+        "x86-alex-r17": {
+            "platforms": [
+                {"platform": "netbook_ALEX"}
+            ]
+        },
+
+        "x86-mario-r14": {
+            "platforms": [
+                {"platform": "netbook_MARIO_MP"}
+            ]
+        },
+
+        "x86-mario-r15": {
+            "platforms": [
+                {"platform": "netbook_MARIO_MP"}
+            ]
+        },
+
+        "x86-mario-r16": {
+            "platforms": [
+                {"platform": "netbook_MARIO_MP"}
+            ]
+        },
+
+        "x86-mario-r17": {
+            "platforms": [
+                {"platform": "netbook_MARIO_MP"}
+            ]
+        },
+
+        "x86-zgb-r14": {
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB"}
+            ]
+        },
+
+        "x86-zgb-r15": {
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB"}
+            ]
+        },
+
+        "x86-zgb-r16": {
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB"}
+            ]
+        },
+
+        "x86-zgb-r17": {
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB"}
+            ]
+        },
+
+        "stumpy-r17": {
+            "platforms": [
+                {"platform": "desktop_STUMPY"}
+            ]
+        }
+    },
+
+    "default_groups": ["daily", "network", "power_daily"],
+
+    "groups": {
+        "daily": [
+            {"name": "benchmarks",
+             "control": "server/site_tests/suites/control.benchmarks",
+             "count": 3,
+             "sync": true},
+
+            {"name": "hwqual",
+             "control": "server/site_tests/suites/control.hwqual_auto"}
+        ],
+
+        "network": [
+            {"name": "iperf",
+             "control": "server/tests/iperf/control.stress.srv",
+             "count": 2,
+             "sync": true},
+
+            {"name": "netperf2",
+             "control": "server/tests/netperf2/control.stress.srv",
+             "count": 2,
+             "sync": true},
+
+            {"name": "netpipe",
+             "control": "server/tests/netpipe/control.stress.srv",
+             "count": 2,
+             "sync": true}
+        ],
+
+       "power_daily": [
+            {"name": "power_daily",
+             "control": "server/site_tests/suites/control.power_daily",
+             "count": 2,
+             "sync": true,
+             "labels": ["powerswitch_controlled"]}
+        ]
+    }
+}

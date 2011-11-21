@@ -1,0 +1,104 @@
+{% extends "tables/base.html" %}
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds a complicated timing page for the ChromeOS
+Test Dashboard.
+
+The table header is complicated both because it uses row-spanning and it
+includes columns for a dynamic list of netbooks.
+
+The table cells themselves are implemented as hyperlinks and vanilla text
+but include hovertext popups that make the elements a little longer.
+{% endcomment %}
+{% block title %}ChromeOS Timing Dashboard{% endblock %}
+
+{% block header_block %}
+{% include 'tables/summary/header.html' %}
+{% endblock %}
+
+{% block html_block %}
+<div class="div_full"><hr><b>TOT Boards</b></div>
+{% for summary_data in tpl_summary_data %}
+{% for board, netbooks, columns, rows in summary_data %}
+{% if forloop.counter0|divisibleby:"2" %}
+  {% if not forloop.last %}
+    <div class="div_left">
+    <table align="right">
+  {% else %}
+    <div class="div_left" style="width:100%;">
+    <table align="center">
+  {% endif %}
+{% else %}
+  <div class="div_right">
+  <table align="left">
+{% endif %}
+  <tr>
+    <td colspan={{ columns|add:"2" }}
+        style="border-width:0px;background-color:white;font-size:x-large;font-weight:bold;text-align:center;color:grey;">
+      {{ board }}
+    </td>
+  </tr>
+  <tr>
+    <th rowspan=2 class="roundedheader tableheader">Build#</th>
+    <th rowspan=2 class="roundedheader tableheader">Build Time</th>
+    {% for netbook in netbooks %}
+    <th class="roundedheader tableheader" colspan=2 style="text-align:center;">
+      <a class="info" href="{{ netbook }}/{{ board }}"
+         onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+        {{ netbook|slice:"8:" }}
+        <span style="width:300px">
+          View test and performance results for {{ board }} on {{ netbook|slice:"8:" }}
+        </span>
+      </a>
+    </th>
+    {% endfor %}
+  </tr>
+  <tr>
+    {% for netbook in netbooks %}
+    <th class="tableheader">Test Time</th>
+    <th class="tableheader">Delayed</th>
+    {% endfor %}
+  </tr>
+  {% for builder, build, start, finish, elapsed, details in rows %}
+  <tr>
+    <td class="build buildborder">
+      <a class="info" href="{{ builder }}" target="_blank"
+         onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
+        {{ build }}
+        <span style="width:300px">
+          View build log for {{ build }} on {{ board }}
+        </span>
+      </a>
+    </td>
+    <td class="build buildborder" title="{{ start }} ~ {{ finish }}">
+      {{ elapsed }}
+    </td>
+    {% for tstart, tfinish, telapsed, tdelayed in details %}
+    <td class="build buildborder">
+      <span title="{{ tstart }} ~ {{ tfinish }}">
+        {{ telapsed }}
+      </span>
+    </td>
+    <td class="build buildborder">
+      <span title="{{ finish }} ~ {{ tstart }}">
+        {{ tdelayed }}
+      </span>
+    </td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% if forloop.counter0|divisibleby:"2" %}
+  <div class="div_middle">&nbsp;</div>
+{% endif %}
+{% empty %}
+<p>There are no summary timing tables.</p>
+{% endfor %}
+{% if not forloop.last %}
+<div class="div_left" style="width:100%;"><hr><b>Branch Boards</b></div>
+{% endif %}
+{% endfor %}
+{% endblock %}

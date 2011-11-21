@@ -1,0 +1,7 @@
+<div style="clear:both;padding-top:5px;">
+<b>Build started</b>: {{ started_time }}, <b>Build finished</b>: {{ finished_time }}, <b>Build time</b>: {{ build_time }}<br>
+{% if test_time != 'Unknown' %}
+<b>Test started</b>: {{ test_started_time }}, <b>Test finished</b>: {{ test_finished_time }}, <b>Test time</b>: {{ test_time }}<br>
+{% endif %}
+<a href="{{ build_log_url }}" target="_blank">buildlog</a> | <a href="{{ image_dir }}" target="_blank">image</a> | <a href="{{ image_url }}">download</a>
+</div>

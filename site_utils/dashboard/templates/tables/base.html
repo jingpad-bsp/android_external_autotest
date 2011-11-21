@@ -1,0 +1,243 @@
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template describes the overall page structure for the
+tables pages for the ChromeOS Test Dashboard.
+{% endcomment %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="refresh" content="600">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="pragma" content="no-cache">
+    <title>{% block title %}{% endblock %}</title>
+  </head>
+  <body style="height:100%; width:99%;">
+    <script type="text/javascript">
+      function fixTooltip(event, box) {
+        e = box.getElementsByTagName('span')[0];
+
+        // Show the tooltip so we can get the width.
+        e.style.display = 'block';
+
+        // Use a slight offset so user can move to the next cell unhindered.
+        offset = 5;
+
+        // If the tooltip falls off the right side, move it left of mouse.
+        x = event.clientX;
+        if (x + e.offsetWidth > window.innerWidth)
+          x = x - offset - e.offsetWidth;
+        else
+          x = x + offset;
+
+        // If the tooltip falls off the bottom, move it above the mouse.
+        y = event.clientY;
+        if (y + e.offsetHeight > window.innerHeight)
+          y = y - offset - e.offsetHeight;
+        else
+          y = y + offset;
+
+        e.style.left = x + 'px';
+        e.style.top = y + 'px';
+      }
+
+      function clearTooltip(box) {
+        box.getElementsByTagName('span')[0].style.display = 'none';
+      }
+    </script>
+    <style type="text/css">
+      body, td, th {
+        font-family: Verdana, Geneva, sans-serif;
+        font-size: 0.9em;
+        padding: 4px 4px 4px 4px;
+      }
+      .div_left {
+        clear:left;
+        float:left;
+        margin-left:auto;
+        margin-right:0pt;
+        width:45%;
+      }
+      .div_middle {
+        float:left;
+        width:8%;
+      }
+      .div_right {
+        float:left;
+        clear:right;
+        width:45%;
+      }
+      .div_full {
+        margin-left:auto;
+        margin-right:auto;
+        width:100%;
+      }
+      .div_statustitle {
+        background-color: #8FDF5F;
+        margin-bottom: 1em;
+        padding: 0.5em;
+        font-weight: normal;
+        font-size: 16px;
+        font-family: Verdana, Cursor;
+        text-align: center;
+        color: black;
+        border-top-right-radius: 24px;
+        -webkit-border-top-right-radius: 24px;
+        -moz-border-radius-topright: 1em;
+        border-top-left-radius: 24px;
+        -webkit-border-top-left-radius: 24px;
+        -moz-border-radius-topleft: 1em;
+        box-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+        -moz-box-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+        -webkit-box-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+      }
+      .div_testname {
+        -webkit-transform:rotate(270deg);
+        -moz-transform:rotate(270deg);
+        width:20px;
+        white-space:nowrap;
+        text-decoration:none;
+        font-weight:normal;
+      }
+      .legend {
+        padding:3px;
+        border:1px solid #c0c0c0;
+        width:5px;
+        font-weight:bold;
+      }
+      .roundedheader {
+        border-top-left-radius: 5px;
+        -webkit-border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+        -webkit-border-top-right-radius: 5px;
+      }
+      .testtab {
+        padding:3px;
+      }
+      .success {
+        color: white;
+        background-color: #8FDF5F;
+        border-color: #4F8530;
+      }
+      .failure {
+        color: white;
+        background-color: #E98080;
+        border-color: #A77272;
+      }
+      .warning_summary {
+        color: black;
+        background-color: #FFC343;
+        border-color: #C29D46;
+      }
+      .warning {
+        color: white;
+        background-color: #FFC343;
+        border-color: #C29D46;
+      }
+      th.tableheader {
+        color: #333;
+        background-color: #CCC;
+      }
+      td.buildborder {
+        border-bottom: 1px solid #AAA;
+      }
+      td.build {
+        color: black;
+        background-color: #EEE;
+        text-align: center;
+      }
+      td.buildminusone {
+        color: #333;
+        background-color: #CCC;
+        text-align: center;
+      }
+      td.buildminustwo {
+        color: white;
+        background-color: #999;
+        text-align: center;
+      }
+      a img {
+        border-style: ridge;
+        width: 760px;
+      }
+      a { text-decoration: none; }
+      a.info {
+        position:relative; /*this is the key*/
+        z-index:1
+        color:#000;
+        font-weight:normal;
+      }
+      a.info span {
+        z-index: 25;
+        display: none;
+        position:fixed;
+        top:1em; left:1em;
+        min-width: 200px;
+        max-width: 500px;
+        overflow: auto;
+        color:#000;
+        background: #FFFFAA; border: 1px solid #FFAD33;
+        text-align: left;
+        font-family: Verdana, Geneva, sans-serif;
+        font-size: 0.9em;
+        font-weight: normal;
+        padding: 0.2em 0 0.6em 0;
+        word-wrap: break-word;
+        border-radius: 5px 5px;
+        -moz-border-radius: 5px;
+        -webkit-border-radius: 5px;
+        box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1);
+        -webkit-box-shadow: 5px 5px rgba(0, 0, 0, 0.1);
+        -moz-box-shadow: 5px 5px rgba(0, 0, 0, 0.1);
+      }
+      table {
+        border-collapse: separate;
+        border-spacing: 1px 1px 1px 1px;
+        margin-top:0px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      table.top {
+        vertical-align: top;
+      }
+      table.standalone {
+        width: 100%;
+        background-color: #EFEFEF;
+        -webkit-border-bottom-left-radius: 24px;
+        -webkit-border-bottom-right-radius: 24px;
+        -moz-border-bottom-right-radius: 24px;
+        -moz-border-bottom-right-radius: 24px;
+        box-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+        -moz-box-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+        -webkit-box-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+        border-bottom-left-radius: 24px 24px;
+        border-bottom-right-radius: 24px 24px;
+      }
+      a.configs { text-decoration: underline; }
+
+      tbody th a {
+        padding:1.0em 3.0em 0 0;
+        text-decoration:none;
+        }
+
+      tbody th a:hover {
+        background:none;
+        color:#000;
+        }
+
+      tbody td a {
+        padding: 0px;
+        text-decoration: none;
+        }
+
+      tbody td a:hover {
+        background:none;
+        color:#000;
+        }
+    </style>
+    {% block header_block %}{% endblock %}
+    {% block html_block %}{% endblock %}
+    {% block footer_block %}{% endblock %}
+  </body>
+</html>

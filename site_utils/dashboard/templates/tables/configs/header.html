@@ -1,0 +1,31 @@
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds the page header for the summary page on the Chrome OS
+Test Dashboard. It consists of a series of hyperlinks to related pages.
+{% endcomment %}
+
+{% include 'tables/summary/header.html' %}
+
+<h2>Chrome OS Test Config Summary</h2>
+<ul>
+  <li>
+    <b>Reference:</b>
+    <a class="configs"
+       href="https://gerrit-int.chromium.org/gitweb?p=chromeos/autotest-tools.git;a=blob;f=cron/chromeos_test_config.json"
+       target="_blank">
+    Test Config JSON</a>
+    &nbsp;|&nbsp;
+    <a class="configs"
+       href="https://gerrit-int.chromium.org/gitweb?p=chromeos/autotest-tools.git;a=blob;f=dashboard/dash_config.json"
+       target="_blank">
+    Dash Config JSON</a>
+  </li>
+  <li>
+    <b>Email Conditions:</b>
+    <tt><u>completed</u></tt>: mail on test completed,
+    <tt><u><b>failed [default]</b></u></tt>: email on test failed,
+    <tt><u>result_changed</u></tt>: email on result changed from last build.
+  </li>
+</ul>

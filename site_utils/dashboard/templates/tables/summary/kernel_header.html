@@ -1,0 +1,25 @@
+{% comment %}
+
+Copyright 2010 Google Inc. All Rights Reserved.
+
+This template builds the page header for the summary page on the Chrome OS
+Test Dashboard. It consists of a series of hyperlinks to related pages.
+{% endcomment %}
+<div style="border:5px; text-align:right;">
+<a href="../dashboard/index.html">HOME</a> |
+<a href="../dashboard/kernel_index.html"><b>OLD</b> KERNEL DASH</a> |
+<a href="http://cautotest" target="_blank">CAUTOTEST</a> |
+<a href="http://chromegw.corp.google.com/i/chromiumos/console"
+   target="_blank">EXTERNAL BUILDBOT</a> |
+<a href="http://chromeos-botmaster.mtv:8026/console"
+   target="_blank">INTERNAL BUILDBOT</a> |
+<a href="http://cros-reports/croschart/server/labtestreport?interval=4,week&updatecache=true"
+   target="_blank">LAB_TEST USAGE</a> |
+<a href="https://sites.google.com/a/google.com/chromeos/for-team-members/test-1/chromeos-kernel-test-notes"
+   target="_blank">KERNEL TEST</a> |
+<a href="test_config_table.html"
+   target="_blank">TEST CONFIG</a> |
+<a href="http://cros-reports/croschart/server/testreport?interval=2,week"
+   target="_blank">TESTS</a>
+<p><i>last updated: {{ tpl_last_updated }}</i></p>
+</div>

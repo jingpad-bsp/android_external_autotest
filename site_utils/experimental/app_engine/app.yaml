@@ -1,0 +1,70 @@
+# application: google.com:cros-dash
+# application: cautotest-dashboard
+application: cros-test-dash
+
+version: 1
+runtime: python
+api_version: 1
+
+builtins:
+- datastore_admin: on
+- appstats: on
+
+handlers:
+- url: /
+  script: landing.py
+  secure: always
+  login: required
+
+- url: /post/job
+  script: post.py
+  secure: optional
+
+- url: /post/build
+  script: post.py
+  secure: optional
+
+- url: /_tasks/jobpost
+  script: post.py
+  login: admin
+
+- url: /query
+  script: query.py
+  secure: optional
+
+- url: /board
+  script: board_view.py
+  secure: always
+  login: required
+
+- url: /build
+  script: build_view.py
+  secure: always
+  login: required
+
+- url: /table
+  script: table_view.py
+  secure: always
+  login: required
+
+- url: /test
+  script: test_view.py
+  secure: always
+  login: required
+
+- url: /result
+  script: result_view.py
+  secure: always
+  login: required
+
+- url: /static
+  static_dir: static
+  secure: optional
+
+- url: /images
+  static_dir: images
+  secure: optional
+
+- url: /(.*\.(gif|png|jpg|ico))
+  static_files: images/\1
+  upload: images/(.*\.(gif|png|jpg|ico))

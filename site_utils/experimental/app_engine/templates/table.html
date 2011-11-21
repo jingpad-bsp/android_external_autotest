@@ -1,0 +1,51 @@
+{% comment %}
+Copyright 2011 Google Inc. All Rights Reserved.
+{% endcomment %}
+
+<link href="/static/stylesheet.css" rel="stylesheet" type="text/css" /> 
+
+<table bgcolor="#bbbbbb" cellspacing="1" cellpadding="5">
+<thead>
+<tr>
+  <th style="height:{{ header_height }}px;"><b>{{ tbl_name }}</b></th>
+  {% for col_header in tbl_header %}
+  {{ col_header }}
+  {% endfor %}
+</tr>
+</thead>
+
+<tbody>
+{% for row_head, row_link, row_popup, cells in tbl_rows %}
+<tr>
+  <td bgcolor="#E5E5C0" align="right">
+    {% if row_link %}
+    <a class="info" href="{{ row_link }}" target="_blank">
+    {% endif %}
+      <nobr>{{ row_head }}</nobr>
+      {% if row_popup %}
+      <span>{{ row_popup }}</span>
+      {% endif %}
+    {% if row_link %}
+    </a>
+    {% endif %}
+  </td>
+  {% for cell_text, cell_link, cell_popup, cell_bg_color in cells %}
+    <td bgcolor="{{ cell_bg_color }}">
+      <center>
+      {% if cell_link %}
+        <a class="info" href="{{ cell_link }}" target="_blank">
+        {{ cell_text }}
+        {% if cell_popup %}
+          <span style="width:500px;">{{ cell_popup }}</span>
+        {% endif %}
+        </a>
+      {% else %}
+        {{ cell_text }}
+      {% endif %}
+      </center>
+    </td>
+  {% endfor %}
+</tr>
+{% endfor %}
+</tbody>
+</table>

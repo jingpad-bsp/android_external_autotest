@@ -1,0 +1,27 @@
+USER=chromeos-test
+MAILTO=chromeos-test-cron@google.com
+PATH=/home/chromeos-test/bin:/usr/local/scripts:/usr/kerberos/bin:/usr/local/buildtools/java/jdk/bin:/home/chromeos-test/depot_tools:/home/chromeos-test/gsutil:/usr/local/symlinks:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+CHROMEOS_BASE=/usr/local/google/chromeos
+CRON_SCRIPT_BASE=/home/chromeos-test/autotest-tools/cron
+
+# Standard cron format:
+# m h  dom mon dow   command
+
+# Dev Server cleanup and auto-restart on failure.
+0 0 * * * cd /usr/local/google/images; ./clean_dir.sh
+*/5 * * * * cd $CRON_SCRIPT_BASE; ./start_dev_server.sh
+
+# Autotest pipeline spice. Pulls images and schedules new tests.
+*/5 * * * * cd $CRON_SCRIPT_BASE; . ./ssh_agent.sh; flock -n -x /tmp/downloader.lock -c 'runcron ./downloader.py --cros_checkout $CHROMEOS_BASE'
+*/5 * * * * cd $CRON_SCRIPT_BASE; . ./ssh_agent.sh; flock -n -x /tmp/test_scheduler.lock -c 'runcron ./test_scheduler.py'
+
+# Sync source repo used for building update.gz image. Every day at 7am so we
+# can fix any issues when we arrive in the morning.
+0 7 * * * cd $CHROMEOS_BASE; runcron repo sync -q
+
+# Sync autotest-tools repo.
+0 * * * * cd $CRON_SCRIPT_BASE; git pull -q
+
+# Schedule daily test runs at midnight.
+0 0 * * * cd $CRON_SCRIPT_BASE; . ./ssh_agent.sh; runcron ./test_scheduler.py --config daily_test_config.json
