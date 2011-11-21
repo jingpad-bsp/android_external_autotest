@@ -46,7 +46,16 @@ class network_ModemManagerSMS(test.test):
         smsstore.sms_remove(1)
         smstest.test_has_none()
 
-    def test_sms_multipart(self, smsstore, smstest):
+    def test_sms_multipart_existing(self, smsstore, smstest):
+        testsms = sms.sample_multipart
+        smsstore.sms_insert(1, testsms['pdu'][0])
+        smsstore.sms_insert(2, testsms['pdu'][1])
+        smstest.test_has_one(testsms['parsed'])
+        smsstore.sms_remove(1)
+        smsstore.sms_remove(2)
+        smstest.test_has_none()
+
+    def test_sms_multipart_receive(self, smsstore, smstest):
         smstest.test_has_none()
         testsms = sms.sample_multipart
         smsstore.sms_receive(1, testsms['pdu'][0])
@@ -89,7 +98,8 @@ class network_ModemManagerSMS(test.test):
             self.run_sms_test(self.test_sms_zero)
             self.run_sms_test(self.test_sms_one)
             self.run_sms_test(self.test_sms_arrive)
-            self.run_sms_test(self.test_sms_multipart)
+            self.run_sms_test(self.test_sms_multipart_existing)
+            self.run_sms_test(self.test_sms_multipart_receive)
             self.run_sms_test(self.test_sms_multipart_reverse)
 
         finally:
