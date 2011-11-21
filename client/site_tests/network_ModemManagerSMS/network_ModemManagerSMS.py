@@ -41,7 +41,9 @@ class network_ModemManagerSMS(test.test):
         smstest.test_has_none()
         testsms = sms.sample
         smsstore.sms_receive(1, testsms['pdu'])
-        # TODO: check for the signals
+        # Note: this test doesn't check for the DBus signals that
+        # are supposed to be sent when a new message arrives.
+        # See network_ModemManagerSMSSignal for that.
         smstest.test_has_one(testsms['parsed'])
         smsstore.sms_remove(1)
         smstest.test_has_none()
@@ -59,13 +61,11 @@ class network_ModemManagerSMS(test.test):
         smstest.test_has_none()
         testsms = sms.sample_multipart
         smsstore.sms_receive(1, testsms['pdu'][0])
-        # TODO: check for the Received signal
         # Can't use test_has_none() here because it will delete the
         # partial message
         smstest.test_list([])
         smstest.test_get(1, None)
         smsstore.sms_receive(2, testsms['pdu'][1])
-        # TODO: check for the Completed signal
         smstest.test_has_one(testsms['parsed'])
         smsstore.sms_remove(1)
         smsstore.sms_remove(2)
