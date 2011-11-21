@@ -33,6 +33,12 @@ GTESTS = [
         'as_chronos': False,
         'tag': 'CHROMEOS_LOGIN',
     }),
+    ('desktopui_PyAutoFunctionalTests', {
+        'suite': 'CHROMEOS_VOLUME',
+        'auto_login': False,
+        'as_chronos': False,
+        'tag': 'CHROMEOS_VOLUME',
+    }),
     ('desktopui_PyAutoPerfTests', {}),
 ]
 
