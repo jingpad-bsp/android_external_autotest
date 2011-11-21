@@ -48,7 +48,7 @@ SERVER_TESTS = [
     # if you experience a 'green recovery device' screen while running
     # the reboot test.
     ('platform_BootDevice', {'iterations': 10, 'tag': 'stress'}),
-    ('platform_KernelErrorPaths', {'iterations': 10}),
+    ('platform_KernelErrorPaths', {}),
 ]
 
 
