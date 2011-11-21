@@ -50,6 +50,29 @@ class hardware_Trackpad(test.test):
     '''
     version = 1
 
+    def read_gesture_files_path(self, local_path, name):
+        pathname = read_trackpad_test_conf(name, local_path)
+        logging.info('Path of %s: %s' % (name, pathname))
+        return pathname
+
+    def _open_result_log(self, result_path, autotest_path):
+        time_format = '%Y%m%d_%H%M%S'
+        test_time = 'tested:' + time.strftime(time_format, time.gmtime())
+        autotest_dir = os.path.realpath(autotest_path).split('/')[-1]
+        result_file_name = '.'.join([autotest_dir, test_time])
+        self.result_file = os.path.join(result_path, result_file_name)
+        self.result_fh = open(self.result_file, 'w+')
+        logging.info('Result is saved at %s' % self.result_file)
+        logging.info(autotest_path)
+        logging.info(autotest_dir)
+
+    def _write_result_log(self, msg):
+        logging.info(msg)
+        self.result_fh.write('%s\n' % msg)
+
+    def _close_result_log(self):
+        self.result_fh.close()
+
     def run_once(self):
         global tdata
         tdata.file_basename = None
@@ -57,13 +80,22 @@ class hardware_Trackpad(test.test):
         tdata.report_finished = False
 
         # Get functionality_list, and gesture_files_path from config file
-        local_path = self.autodir + '/tests/hardware_Trackpad'
+        local_path = self.bindir
         functionality_list = read_trackpad_test_conf('functionality_list',
                                                      local_path)
-        gesture_files_path_conf = read_trackpad_test_conf('gesture_files_path',
-                                                          local_path)
-        gesture_files_path = os.path.join(local_path, gesture_files_path_conf)
-        logging.info('Path of trackpad gesture files: %s' % gesture_files_path)
+
+        gesture_files_path_autotest = self.read_gesture_files_path(local_path,
+                                      'gesture_files_path_autotest')
+
+        gesture_files_path_results = self.read_gesture_files_path(local_path,
+                                     'gesture_files_path_results')
+
+        if not os.path.exists(gesture_files_path_results):
+            os.makedirs(gesture_files_path_results)
+            logging.info('  The result path "%s" is created successfully.' %
+                         gesture_files_path_results)
+        self._open_result_log(gesture_files_path_results,
+                              gesture_files_path_autotest)
 
         # Initialization of statistics
         tdata.num_wrong_file_name = 0
@@ -132,7 +164,7 @@ class hardware_Trackpad(test.test):
                 if tdata.prefix is not None:
                     # E.g., prefix = 'click-'
                     prefix = tdata.prefix + '-'
-                group_path = os.path.join(gesture_files_path, prefix)
+                group_path = os.path.join(gesture_files_path_autotest, prefix)
 
                 if group_name == '*':
                     # E.g., group_path = '.../click-any_finger_click'
@@ -168,8 +200,8 @@ class hardware_Trackpad(test.test):
                         logging.warning(warn_msg % gesture_file)
                         tdata.num_wrong_file_name += 1
 
-                    gesture_file_path = os.path.join(gesture_files_path,
-                                                     gesture_file)
+                    gesture_file_path = os.path.join(
+                                    gesture_files_path_autotest, gesture_file)
                     logging.info('')
                     logging.info('    gesture file: %s' % tdata.file_basename)
 
@@ -201,28 +233,33 @@ class hardware_Trackpad(test.test):
         self.xcapture.terminate()
 
         # Logging test summary
-        logging.info('\n')
+        self._write_result_log('\n')
         tot_pass_count = tdata.tot_num_files_tested - tdata.tot_fail_count
-        logging.info('*** Total number of (passed / tested) files: (%d / %d) '
-                     '***' % (tot_pass_count, tdata.tot_num_files_tested))
+        msg = ('*** Total number of (passed / tested) files: (%d / %d) ***' %
+               (tot_pass_count, tdata.tot_num_files_tested))
+        self._write_result_log(msg)
         area_name = None
         for tp_func in functionality_list:
             func_name = tp_func.name
             if tp_func.area[0] != area_name:
                 area_name = tp_func.area[0]
-                logging.info('  Area: %s' % area_name)
+                self._write_result_log('  Area: %s' % area_name)
             test_count = tdata.num_files_tested[func_name]
             fail_count = tdata.fail_count[func_name]
             pass_count = test_count - fail_count
             if test_count > 0:
                 pass_rate_str = '%3.0f%%' % (100.0 * pass_count / test_count)
                 count_str = '(%d / %d)' % (pass_count, test_count)
+                pass_str = 'passed.'
             else:
                 pass_rate_str = ' '
                 count_str = ' '
-            func_msg = '      {0:<25}: {1:4s}  {2:9s} passed.'
-            logging.info(func_msg.format(func_name, pass_rate_str, count_str))
-        logging.info('\n')
+                pass_str = ''
+            func_msg = '      {0:<25}: {1:4s}  {2:9s} '
+            msg = func_msg.format(func_name, pass_rate_str, count_str)
+            msg += pass_str
+            self._write_result_log(msg)
+        self._write_result_log('\n')
 
         # Raise error.TestFail if there is any test failed.
         if tdata.tot_fail_count > 0:
