@@ -9,7 +9,7 @@ import re
 
 
 record_program = 'evemu-record'
-trackpad_test_conf = 'trackpad_test_natural.conf'
+trackpad_test_conf = 'trackpad_usability_test.conf'
 trackpad_device_file_hardcoded = '/dev/input/event6'
 conf_file_executed = False
 
