@@ -19,7 +19,7 @@ class test_RecallServer(recall_test.RecallServerTest):
         if pickle_file is not None:
             logging.info("Restoring from pickle %s", pickle_file)
             self.certificate_authority, self.dns_client, self.http_client \
-                = pickle.load(pickle_file)
+                = pickle.load(open(pickle_file))
         else:
             logging.info("Setting up recall server")
             self.certificate_authority = recall.CertificateAuthority(
