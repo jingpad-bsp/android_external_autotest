@@ -1,9 +1,10 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import optparse
 import os, shutil, re, string
 from autotest_lib.client.bin import utils, test
 
@@ -122,9 +123,47 @@ class kernel_fs_Punybench(test.test):
         p =  4096.0 * int(iterations) / float(r2.group(0)) / 1024.0 / 1024.0
         self.write_perf_keyval({'ureadrand': p})
 
-    def run_once(self):
-        self.memcpy_test()
-        self.memcpy()
-        self.threadtree()
-        self.uread()
-        self.ureadrand()
+    def parse_args(self, args):
+        """Parse input arguments to this autotest.
+
+        Args:
+          args: List of arguments to parse.
+        Returns:
+          opts: Options, as per optparse.
+          args: Non-option arguments, as per optparse.
+        """
+        parser = optparse.OptionParser()
+        parser.add_option('--nomem', dest='want_mem_tests',
+                          action='store_false', default=True,
+                          help='Skip memory tests.')
+        parser.add_option('--nodisk', dest='want_disk_tests',
+                          action='store_false', default=True,
+                          help='Skip disk tests.')
+        # Preprocess the args to remove quotes before/after each one if they
+        # exist.  This is necessary because arguments passed via
+        # run_remote_tests.sh may be individually quoted, and those quotes must
+        # be stripped before they are parsed.
+        return parser.parse_args(map(lambda arg: arg.strip('\'\"'), args))
+
+    def run_once(self, args=[]):
+        """Run the PyAuto performance tests.
+
+        Args:
+          args: Either space-separated arguments or a list of string arguments.
+              If this is a space separated string, we'll just call split() on
+              it to get a list.  The list will be sent to optparse for parsing.
+        """
+        if isinstance(args, str):
+          args = args.split()
+        options, test_args = self.parse_args(args)
+
+        if test_args:
+            raise error.TestFail("Unknown args: %s" % repr(test_args))
+
+        if options.want_mem_tests:
+            self.memcpy_test()
+            self.memcpy()
+        if options.want_disk_tests:
+            self.threadtree()
+            self.uread()
+            self.ureadrand()

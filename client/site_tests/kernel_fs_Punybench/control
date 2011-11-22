@@ -13,4 +13,4 @@ TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Performance'
 TEST_TYPE = 'client'
 
-job.run_test('kernel_fs_Punybench')
+job.run_test('kernel_fs_Punybench', args=args)
