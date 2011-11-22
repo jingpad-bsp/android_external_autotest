@@ -49,7 +49,7 @@ def GetReleaseQueryParts(request):
   query = chartmodels.COMMON_PERF_QUERY_TEMPLATE + RELEASEREPORT_QUERY_KEYS
 
   boards = request.GET.getlist('board')
-  platform = 'netbook_%s' % request.GET.get('system').upper()
+  platform = '%s' % request.GET.get('system').upper()
   test_names = set()
   test_keys = set()
   test_key_tuples = {}
