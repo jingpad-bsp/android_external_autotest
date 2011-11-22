@@ -116,7 +116,10 @@ class DBusClient(object):
                                             interface)
 
     def wait_for_signal(self, signal_name):
-        """Waits for the receiption of a signal.
+        """Waits for the reception of a signal.
+
+        Args:
+            signal_name: The name of the signal to wait for.
 
         Returns:
             The content of the signal.
@@ -139,6 +142,37 @@ class DBusClient(object):
         self.__signal_content[signal_name] = None
         return content
 
+    def expect_signal(self, signal_name, expected_content):
+        """Waits the the reception of a signal and verifies its content.
+
+        Args:
+            signal_name: The name of the signal to wait for.
+            expected_content: The expected content of the signal, which can be
+                              partially specified. Only specified fields are
+                              compared between the actual and expected content.
+
+        Returns:
+            The actual content of the signal.
+
+        Raises:
+            error.TestFail: A test failure when there is a mismatch between the
+                            actual and expected content of the signal.
+        """
+        actual_content = self.wait_for_signal(signal_name)
+        logging.debug("%s signal: expected=%s actual=%s",
+                      signal_name, expected_content, actual_content)
+        for argument, expected_value in expected_content.iteritems():
+            if argument not in actual_content:
+                raise error.TestFail(
+                    ('%s signal missing "%s": expected=%s, actual=%s') %
+                    (signal_name, argument, expected_content, actual_content))
+
+            if actual_content[argument] != expected_value:
+                raise error.TestFail(
+                    ('%s signal not matched on "%s": expected=%s, actual=%s') %
+                    (signal_name, argument, expected_content, actual_content))
+        return actual_content
+
 
 class CrosDisksClient(DBusClient):
     """A DBus proxy client for testing the CrosDisks DBus server.
@@ -149,6 +183,10 @@ class CrosDisksClient(DBusClient):
     CROS_DISKS_OBJECT_PATH = '/org/chromium/CrosDisks'
     DBUS_PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
     EXPERIMENTAL_FEATURES_ENABLED_PROPERTY = 'ExperimentalFeaturesEnabled'
+    FORMAT_COMPLETED_SIGNAL = 'FormatCompleted'
+    FORMAT_COMPLETED_SIGNAL_ARGUMENTS = (
+        'status', 'path'
+    )
     MOUNT_COMPLETED_SIGNAL = 'MountCompleted'
     MOUNT_COMPLETED_SIGNAL_ARGUMENTS = (
         'status', 'source_path', 'source_type', 'mount_path'
@@ -168,6 +206,9 @@ class CrosDisksClient(DBusClient):
                                         self.CROS_DISKS_INTERFACE)
         self.properties = dbus.Interface(self.proxy_object,
                                          self.DBUS_PROPERTIES_INTERFACE)
+        self.handle_signal(self.CROS_DISKS_INTERFACE,
+                           self.FORMAT_COMPLETED_SIGNAL,
+                           self.FORMAT_COMPLETED_SIGNAL_ARGUMENTS)
         self.handle_signal(self.CROS_DISKS_INTERFACE,
                            self.MOUNT_COMPLETED_SIGNAL,
                            self.MOUNT_COMPLETED_SIGNAL_ARGUMENTS)
@@ -231,6 +272,49 @@ class CrosDisksClient(DBusClient):
         """
         return self.interface.GetDeviceProperties(path)
 
+    def format(self, path, filesystem_type=None, options=None):
+        """Invokes the CrosDisks Format method.
+
+        Args:
+            path: The device path to format.
+            filesystem_type: The filesystem type used for formatting the device.
+            options: A list of options used for formatting the device.
+        """
+        if filesystem_type is None:
+            filesystem_type = ''
+        if options is None:
+            options = []
+        self.clear_signal_content(self.FORMAT_COMPLETED_SIGNAL)
+        self.interface.Format(path, filesystem_type, options)
+
+    def wait_for_format_completion(self):
+        """Waits for the CrosDisks FormatCompleted signal.
+
+        Returns:
+            The content of the FormatCompleted signal.
+        """
+        return self.wait_for_signal(self.FORMAT_COMPLETED_SIGNAL)
+
+    def expect_format_completion(self, expected_content):
+        """Waits and verifies for the CrosDisks FormatCompleted signal.
+
+        Args:
+            expected_content: The expected content of the FormatCompleted
+                              signal, which can be partially specified.
+                              Only specified fields are compared between the
+                              actual and expected content.
+
+        Returns:
+            The actual content of the FormatCompleted signal.
+
+        Raises:
+            error.TestFail: A test failure when there is a mismatch between the
+                            actual and expected content of the FormatCompleted
+                            signal.
+        """
+        return self.expect_signal(self.FORMAT_COMPLETED_SIGNAL,
+                                  expected_content)
+
     def mount(self, path, filesystem_type=None, options=None):
         """Invokes the CrosDisks Mount method.
 
@@ -277,24 +361,13 @@ class CrosDisksClient(DBusClient):
         Returns:
             The actual content of the MountCompleted signal.
 
-
         Raises:
             error.TestFail: A test failure when there is a mismatch between the
                             actual and expected content of the MountCompleted
                             signal.
         """
-        actual_content = self.wait_for_mount_completion()
-        logging.debug("MountCompleted signal: expected=%s actual=%s",
-                      expected_content, actual_content)
-        for argument in self.MOUNT_COMPLETED_SIGNAL_ARGUMENTS:
-            if argument not in expected_content:
-                continue
-            if actual_content[argument] != expected_content[argument]:
-                raise error.TestFail(
-                    ('MountCompleted signal not matched on "%s": '
-                     'expected=%s, actual=%s') %
-                    (argument, expected_content, actual_content))
-        return actual_content
+        return self.expect_signal(self.MOUNT_COMPLETED_SIGNAL,
+                                  expected_content)
 
 
 class CrosDisksTester(GenericTesterMainLoop):
