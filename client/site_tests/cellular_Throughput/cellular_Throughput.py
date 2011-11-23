@@ -29,12 +29,27 @@ class cellular_Throughput(test.test):
                 time.sleep(10)
 
                 (service, _) = cell_tools.ConnectToCellular(flim, verifier)
+
                 cell_tools.CheckHttpConnectivity(config)
+
+                # TODO(rochberg): Factor this and the counts stuff out
+                # so that individual tests don't have to care.
+                bs.LogStats()
+                bs.ResetDataCounters()
 
                 # The control file has started iperf at this address
                 perftarget = config['perfserver']['rf_address']
-                (client, perf) = iperf.BuildClientCommand(perftarget)
-                iperf_output = utils.system_output(client, retain_output=True)
+                (client, perf) = iperf.BuildClientCommand(
+                    perftarget,
+                    {'tradeoff': True,})
+
+                with network.IpTablesContext(perftarget):
+                    iperf_output = utils.system_output(client,
+                                                       retain_output=True)
+
+                # TODO(rochberg):  Can/should we these values into the
+                # write_perf_keyval dictionary?  Now we just log them.
+                bs.GetDataCounters()
 
                 # Add in conditions from BuildClientCommand
                 perf.update(iperf.ParseIperfOutput(iperf_output))
