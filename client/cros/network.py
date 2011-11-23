@@ -44,7 +44,8 @@ class IpTablesContext(object):
     """Context manager that manages iptables rules."""
     IPTABLES='/sbin/iptables'
 
-    def __init__(self):
+    def __init__(self, initial_allowed_host=None):
+        self.initial_allowed_host = initial_allowed_host
         self.rules = []
 
     def _IpTables(self, command):
@@ -74,6 +75,8 @@ class IpTablesContext(object):
             self._RemoveRule(rule)
 
     def __enter__(self):
+        if self.initial_allowed_host:
+            self.AllowHost(self.initial_allowed_host)
         return self
 
     def __exit__(self, exception, value, traceback):
