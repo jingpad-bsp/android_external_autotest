@@ -47,9 +47,30 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
   def GetAirStateVerifier(self):
     return air_state_verifier.AirStateVerifierBasestation(self)
 
+  def GetDataCounters(self):
+    output = {}
+    for counter in ['OTATx', 'OTARx', 'IPTX', 'IPRX']:
+      result_text = self.c.Query('CALL:COUNT:DTMonitor:%s:DRATe?' % counter)
+      result = [float(x) for x in result_text.rstrip().split(',')]
+      output[counter] = dict(zip(['Mean', 'Current', 'Max', 'Total'], result))
+    logging.info('Data counters: %s', output)
+    return output
+
   def GetUeDataStatus(self):
     status = self.c.Query('CALL:STATus:DATa?')
     return ConfigDictionaries.CALL_STATUS_DATA_TO_STATUS[status]
+
+  def ResetDataCounters(self):
+    self.c.SendStanza(['CALL:COUNt:DTMonitor:CLEar'])
+
+  def LogStats(self):
+    self.c.Query("CALL:HSDPa:SERVice:PSData:HSDSchannel:CONFig?")
+
+    # Category reported by UE
+    self.c.Query("CALL:HSDPa:MS:REPorted:HSDSChannel:CATegory?")
+    # The category in use
+    self.c.Query("CALL:STATUS:MS:HSDSChannel:CATegory?")
+    self.c.Query("CALL:HSDPA:SERV:PSD:CQI?")
 
   def SetBsIpV4(self, ip1, ip2):
     self.c.SendStanza([
@@ -144,11 +165,22 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
 
 def _Parse(command_sequence):
   """Split and remove comments from a config stanza."""
-  return [re.sub(r'\s*#.*', '', line)
+  uncommented = [re.sub(r'\s*#.*', '', line)
           for line in command_sequence.split('\n')]
+
+  # Return only nonempty lines
+  return [line for line in uncommented if line]
 
 
 class ConfigStanzas(object):
+  # p 22 of http://cp.literature.agilent.com/litweb/pdf/5989-5932EN.pdf
+  WCDMA_MAX = _Parse("""
+# RAB3: 64 Up/384 down
+# http://wireless.agilent.com/rfcomms/refdocs/wcdma/wcdmala_hpib_call_service.html#CACBDEAH
+CALL:UPLink:TXPower:LEVel:MAXimum 24
+CALL:SERVICE:GPRS:RAB GPRSRAB3
+""")
+
   # /home/rochberg/Downloads/USB306PA 14-6-MaxRateHSPA+-1.xml
   CAT_14 = _Parse("""
 # Need to figure out whether to remove these lines
@@ -258,6 +290,7 @@ class ConfigDictionaries(object):
       x, y in TECHNOLOGY_TO_FORMAT_RAW.iteritems()])
 
   TECHNOLOGY_TO_CONFIG_STANZA = {
+      cellular.Technology.WCDMA: ConfigStanzas.WCDMA_MAX,
       cellular.Technology.HSPA_PLUS: ConfigStanzas.CAT_14,
       }
 
