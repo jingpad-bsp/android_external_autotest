@@ -15,7 +15,7 @@ class firmware_CorruptFwA(FAFTSequence):
     def ensure_fw_a_boot(self):
         """Ensure firmware A boot this time.
 
-        If not, it may be a test failure during step 2, try to recover to
+        If not, it may be a test failure during step 2 or 3, try to recover to
         firmware A boot by recovering the firmware and rebooting.
         """
         if not self.crossystem_checker({'mainfw_act': 'A', 'tried_fwb': '0'}):
@@ -45,14 +45,21 @@ class firmware_CorruptFwA(FAFTSequence):
                 }),
                 'userspace_action': (self.faft_client.corrupt_firmware, 'a'),
             },
-            {   # Step 2, expected firmware B boot and restore firmware A
+            {   # Step 2, expected firmware B boot and set fwb_tries flag
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_act': 'B',
                     'tried_fwb': '0',
                 }),
+                'userspace_action': self.faft_client.set_try_fw_b,
+            },
+            {   # Step 3, still expected firmware B boot and restore firmware A
+                'state_checker': (self.crossystem_checker, {
+                    'mainfw_act': 'B',
+                    'tried_fwb': '1',
+                }),
                 'userspace_action': (self.faft_client.restore_firmware, 'a'),
             },
-            {   # Step 3, expected firmware A boot, done
+            {   # Step 4, expected firmware A boot, done
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',

@@ -26,7 +26,7 @@ class firmware_CorruptBothFwAB(FAFTSequence):
     def ensure_normal_boot(self):
         """Ensure normal boot this time.
 
-        If not, it may be a test failure during step 2, try to recover to
+        If not, it may be a test failure during step 2 or 3, try to recover to
         normal mode by recovering the firmware and rebooting.
         """
         if self.crossystem_checker({'mainfw_type': 'recovery'}):
@@ -60,7 +60,16 @@ class firmware_CorruptBothFwAB(FAFTSequence):
                 'firmware_action': self.wait_and_plug_usb,
                 'install_deps_after_boot': True,
             },
-            {   # Step 2, expected recovery boot
+            {   # Step 2, expected recovery boot and set fwb_tries flag
+                'state_checker': (self.crossystem_checker, {
+                    'mainfw_type': 'recovery',
+                    'recovery_reason' : self.INVALID_RW_FW_CODE,
+                    'recoverysw_boot': '0',
+                }),
+                'userspace_action': self.faft_client.set_try_fw_b,
+                'firmware_action': self.wait_and_plug_usb,
+            },
+            {   # Step 3, still expected recovery boot and restore firmware
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason' : self.INVALID_RW_FW_CODE,
@@ -69,7 +78,7 @@ class firmware_CorruptBothFwAB(FAFTSequence):
                 'userspace_action': (self.faft_client.restore_firmware,
                                      ('a', 'b')),
             },
-            {   # Step 3, expected normal boot
+            {   # Step 4, expected normal boot, done
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': ('normal', 'developer'),
                     'recoverysw_boot': '0',
