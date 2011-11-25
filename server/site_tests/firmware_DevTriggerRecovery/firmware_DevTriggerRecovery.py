@@ -81,11 +81,6 @@ class firmware_DevTriggerRecovery(FAFTSequence):
         self.setup_dev_mode(dev_mode=False)
 
 
-    def cleanup(self):
-        self.setup_dev_mode(dev_mode=False)
-        super(firmware_DevTriggerRecovery, self).cleanup()
-
-
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, enable dev mode
