@@ -74,6 +74,16 @@ class factory_ExternalStorage(test.test):
             attr_str = '/' + attr_str
         return self.get_attrs(device.parent, key_set) + attr_str
 
+    def get_vidpid(self, device):
+        if device is None:
+            return None
+        if device.device_type == 'usb_device':
+            attrs = device.attributes
+            if set(['idProduct', 'idVendor']) <= set(attrs.keys()):
+                vidpid = attrs['idVendor'] + ':' + attrs['idProduct']
+                return vidpid.strip()
+        return self.get_vidpid(device.parent)
+
     def is_usb_cardreader(self, device):
         attr_str = self.get_attrs(device, set(_USB_CARD_ATTRS)).lower()
         for desc in _USB_CARD_DESCS:
@@ -95,8 +105,13 @@ class factory_ExternalStorage(test.test):
     def udev_event_cb(self, subtest_tag, action, device):
         if action == _UDEV_ACTION_INSERT:
             if self._state == _STATE_WAIT_INSERT:
-                if self._media != self.get_device_type(device):
-                    return
+                if self._vidpid is None:
+                    if self._media != self.get_device_type(device):
+                        return True
+                else:
+                    if self._vidpid != self.get_vidpid(device):
+                        return True
+                    factory.log('VID:PID == %s' % self._vidpid)
                 factory.log('%s device inserted : %s' %
                         (self._media, device.device_node))
                 self._target_device = device.device_node
@@ -129,7 +144,8 @@ class factory_ExternalStorage(test.test):
 
     def run_once(self,
                  subtest_tag=None,
-                 media=None):
+                 media=None,
+                 vidpid=None):
 
         factory.log('%s run_once' % self.__class__)
 
@@ -139,6 +155,7 @@ class factory_ExternalStorage(test.test):
         os.chdir(self.srcdir)
 
         self._media = media
+        self._vidpid = vidpid
         factory.log('media = %s' % media)
 
         self.insertion_image = cairo.ImageSurface.create_from_png(
