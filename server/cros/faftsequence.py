@@ -284,15 +284,46 @@ class FAFTSequence(ServoTest):
         self.servo.ctrl_d()
 
 
+    def setup_tried_fwb(self, tried_fwb):
+        """Setup for fw B tried state.
+
+        It makes sure the system in the requested fw B tried state. If not, it
+        tries to do so.
+
+        Args:
+          tried_fwb: True if requested in tried_fwb=1; False if tried_fwb=0.
+        """
+        if tried_fwb:
+            if not self.crossystem_checker({'tried_fwb': '1'}):
+                logging.info(
+                    'Firmware is not booted with tried_fwb. Reboot into it.')
+                self.run_faft_step({
+                    'userspace_action': self.faft_client.set_try_fw_b,
+                })
+        else:
+            if not self.crossystem_checker({'tried_fwb': '0'}):
+                logging.info(
+                    'Firmware is booted with tried_fwb. Reboot to clear.')
+                self.run_faft_step({})
+
+
     def setup_dev_mode(self, dev_mode):
         """Setup for development mode.
 
-        It makes sure the system in the request normal/dev mode. If not, i
+        It makes sure the system in the requested normal/dev mode. If not, it
         tries to do so.
 
         Args:
           dev_mode: True if requested in dev mode; False if normal mode.
         """
+        # Change the default firmware_action for dev mode passing the fw screen.
+        self.register_faft_template({
+            'state_checker': (None),
+            'userspace_action': (None),
+            'reboot_action': (self.sync_and_hw_reboot),
+            'firmware_action': (self.wait_fw_screen_and_ctrl_d if dev_mode
+                                else None),
+        })
         if dev_mode:
             if not self.crossystem_checker({'devsw_cur': '1'}):
                 logging.info('Dev switch is not on. Now switch it on.')
@@ -300,18 +331,10 @@ class FAFTSequence(ServoTest):
             if not self.crossystem_checker({'devsw_boot': '1',
                     'mainfw_type': 'developer'}):
                 logging.info('System is not in dev mode. Reboot into it.')
-                self.faft_client.run_shell_command(
+                self.run_faft_step({
+                    'userspace_action': (self.faft_client.run_shell_command,
                         'chromeos-firmwareupdate --mode todev && reboot')
-                self.wait_for_client_offline()
-                self.wait_fw_screen_and_ctrl_d()
-                self.wait_for_client()
-            # Change the default firmware_action for passing the dev screen.
-            self.register_faft_template({
-                'state_checker': (None),
-                'userspace_action': (None),
-                'reboot_action': (self.sync_and_hw_reboot),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d)
-            })
+                })
         else:
             if not self.crossystem_checker({'devsw_cur': '0'}):
                 logging.info('Dev switch is not off. Now switch it off.')
@@ -319,10 +342,10 @@ class FAFTSequence(ServoTest):
             if not self.crossystem_checker({'devsw_boot': '0',
                     'mainfw_type': 'normal'}):
                 logging.info('System is not in normal mode. Reboot into it.')
-                self.faft_client.run_shell_command(
+                self.run_faft_step({
+                    'userspace_action': (self.faft_client.run_shell_command,
                         'chromeos-firmwareupdate --mode tonormal && reboot')
-                self.wait_for_client_offline()
-                self.wait_for_client()
+                })
 
 
     def setup_kernel(self, part):
