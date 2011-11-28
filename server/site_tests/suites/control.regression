@@ -81,6 +81,8 @@ TESTS = [
                                     'config_file': 'ntfs_tests'}),
   ('platform_CrosDisksFilesystem', {'timeout_s': 10, 'tag': 'vfat',
                                     'config_file': 'vfat_tests'}),
+  ('platform_CrosDisksFormat', {'timeout_s': 10, 'tag': 'vfat',
+                                'config_file': 'vfat_tests'}),
   ('platform_DaemonsRespawn', {}),
   ('platform_FileNum', {}),
   ('platform_FileSize', {}),
