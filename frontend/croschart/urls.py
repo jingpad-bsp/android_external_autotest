@@ -12,6 +12,7 @@ COMMON_URL = r'[\w\-.=&]+'
 urlpatterns = defaults.patterns(
     'frontend.croschart.views',
     (r'^chartdiff?%s$' % COMMON_URL, 'PlotChartDiff'),
+    (r'^chartplatforms?%s$' % COMMON_URL, 'PlotChartPlatforms'),
     (r'^chartreport?%s$' % COMMON_URL, 'PlotChartReport'),
     (r'^chart?%s$' % COMMON_URL, 'PlotChart'),
     (r'^releasereport?%s$' % COMMON_URL, 'PlotReleaseReport'),

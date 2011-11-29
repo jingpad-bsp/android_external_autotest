@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% comment %}
+
+Copyright 2011 Google Inc. All Rights Reserved.
+
+This template builds a page with multiple plots in frames.
+{% endcomment %}
+{% block header_block %}
+<center>
+<h2>Chrome OS Performance Test Results - Platform Comparison</h2>
+<div>
+<i>last updated: {% now "D M j H:i:s Y" %}</i>
+</div>
+</center>
+{% endblock %}
+{% block body_block_header %}<body style="width:99%; height:100%;">{% endblock %}
+{% block html_block %}
+<center>
+{% for boards, systems in tpl_platforms %}
+  {% for system in systems %}
+  <h3>{{ boards }} - {{ system }}</h3>
+    {% for test_name, test_keys in tpl_charts %}
+    {% ifchanged %}
+    <hr><center><a name="{{ test_name }}"><strong>{{ test_name }}</strong></a></center>
+    {% endifchanged %}
+    <iframe style="height:{{ tpl_params.height|default:'600'|add:'140' }}px; width:{{ tpl_params.width|default:'800'|add:'20' }}px; border:0;"
+            {% autoescape off %}
+            src="/croschart/server/chart?{{ boards }}&system={{ system }}&testkey={{ test_name }},{{ test_keys }}&{{ tpl_chart_url }}">
+            {% endautoescape %}
+    </iframe>
+    {% endfor %}
+  {% endfor %}
+{% endfor %}
+</center>
+{% endblock %}

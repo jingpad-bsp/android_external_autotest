@@ -65,6 +65,17 @@ class CrosChartValidator(object):
                     'updatecache': [BOOL_PATTERN]}
 
 
+class CrosPlatformsValidator(object):
+  """Common parameter expectations for Chrome OS platforms reports."""
+
+  required = ['platform']
+  supported = required + ['testkey', 'width', 'height', 'chromeversion',
+                          'updatecache']
+  match_patterns = {'testkey': [TESTKEY_PATTERN], 'width': [DIM_PATTERN],
+                    'height': [DIM_PATTERN], 'chromeversion': [BOOL_PATTERN],
+                    'updatecache': [BOOL_PATTERN]}
+
+
 class CrosReportValidator(object):
   """Common parameter expectations for Chrome OS reports."""
 

@@ -28,6 +28,13 @@ VLISTS = {
                       validators.DateRangeValidator],
         'interval': [validators.CrosChartValidator,
                      validators.IntervalRangeValidator]},
+    'chartplatforms': {
+        'from_build': [validators.CrosPlatformsValidator,
+                       validators.BuildRangeValidator],
+        'from_date': [validators.CrosPlatformsValidator,
+                      validators.DateRangeValidator],
+        'interval': [validators.CrosPlatformsValidator,
+                     validators.IntervalRangeValidator]},
     'chartreport': {
         'from_build': [validators.CrosReportValidator,
                        validators.BuildRangeValidator],
@@ -78,6 +85,16 @@ def PlotChartDiff(request):
     return chartviews.PlotChart(
         request, 'perfchart/plot_chartdiff.html',
         perfchart_models.GetRangedKeyByBuildLinechartData, salt)
+  except ChartInputError as e:
+    tpl_hostname = request.get_host()
+    return render_to_response('plot_syntax.html', locals())
+
+
+def PlotChartPlatforms(request):
+  """Plot the requested report from /chartplatforms?..."""
+  try:
+    ValidateParameters(request, VLISTS['chartplatforms'])
+    return reportviews.PlotReport(request, 'chartplatforms/plot_chartplatforms.html')
   except ChartInputError as e:
     tpl_hostname = request.get_host()
     return render_to_response('plot_syntax.html', locals())
