@@ -17,8 +17,6 @@ class kernel_ConfigVerify(test.test):
         'SECURITY',
         # Security; adds stack buffer overflow protections.
         'CC_STACKPROTECTOR',
-        # Security; marks data segments as read-only/non-executable.
-        'DEBUG_RODATA',
         # Security; enables the SECCOMP application API.
         'SECCOMP',
         # Security; blocks direct physical memory access.
@@ -29,10 +27,10 @@ class kernel_ConfigVerify(test.test):
     ]
     IS_MODULE = [
         # Sanity checks; should be present in builds as modules.
+        'BLK_DEV_SR',
         'BT',
         'TUN',
         'VIDEO_V4L2',
-        'SND_PCM',
     ]
     IS_MISSING = [
         # Sanity checks.
@@ -132,11 +130,13 @@ class kernel_ConfigVerify(test.test):
             else:
                 self.has_builtin('X86_64')
 
-        # Security; marks module data segments as RO/NX.
+        # Security; marks data segments as RO/NX.
         if self._arch.startswith('arm'):
             # TODO(kees): ARM kernel needs the module RO/NX logic added.
+            self.is_missing('DEBUG_RODATA')
             self.is_missing('DEBUG_SET_MODULE_RONX')
         else:
+            self.has_builtin('DEBUG_RODATA')
             self.has_builtin('DEBUG_SET_MODULE_RONX')
 
         # Raise a failure if anything unexpected was seen.
