@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2010 The Chromium Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -56,7 +56,7 @@ class platform_OSLimits(test.test):
             return int(value)
 
     def run_once(self):
-        errors = 0
+        errors = set()
 
         # Max procs, max threads, and file max are dependent upon total memory.
         # The kernel uses a formula similar to:
@@ -68,18 +68,22 @@ class platform_OSLimits(test.test):
         # room for usage and kernel allocation.
 
         ref_min = {'file_max': 50000,
+                   'kptr_restrict': 1,
                    'max_open': 1024,
                    'max_procs': 3000,
                    'max_threads': 7000,
                    'ngroups_max': 65536,
                    'nr_open': 1048576,
                    'pid_max': 32768,
+                   'randomize_va_space': 2,
+                   'mmap_min_addr': 65536,
                   }
 
         ref_equal = {'leases': 1,
                      'panic': -1,
                      'sysrq': 1,
                      'suid-dump': 2,
+                     'tcp_syncookies': 1,
                     }
 
         refpath = {'file_max': '/proc/sys/fs/file-max',
@@ -87,18 +91,28 @@ class platform_OSLimits(test.test):
                    'max_open': '/proc/self/limits',
                    'max_procs': '/proc/self/limits',
                    'max_threads': '/proc/sys/kernel/threads-max',
+                   'mmap_min_addr': '/proc/sys/vm/mmap_min_addr',
+                   'kptr_restrict': '/proc/sys/kernel/kptr_restrict',
                    'ngroups_max': '/proc/sys/kernel/ngroups_max',
                    'nr_open': '/proc/sys/fs/nr_open',
                    'panic': '/proc/sys/kernel/panic',
                    'pid_max': '/proc/sys/kernel/pid_max',
-                   'sysrq': '/proc/sys/kernel/sysrq',
+                   'randomize_va_space': '/proc/sys/kernel/randomize_va_space',
                    'suid-dump': '/proc/sys/fs/suid_dumpable',
+                   'sysrq': '/proc/sys/kernel/sysrq',
+                   'tcp_syncookies': '/proc/sys/net/ipv4/tcp_syncookies',
                   }
+
+        # Adjust arch-specific values.
+        if utils.get_arch().startswith('arm'):
+            ref_min['mmap_min_addr'] = 32768;
+            # FIXME(kees): armel builds need COMPAT_BRK removed.
+            ref_min['randomize_va_space'] = 1;
 
         # Create osvalue dictionary with the same keys as refpath.
         osvalue = {}
-        for k in refpath:
-            osvalue[k] = None
+        for key in refpath:
+            osvalue[key] = None
 
         for key in ref_min:
             osvalue[key] = self.get_limit(key, refpath[key])
@@ -106,15 +120,22 @@ class platform_OSLimits(test.test):
                 logging.warn('%s is %d' % (refpath[key], osvalue[key]))
                 logging.warn('%s should be at least %d' % (refpath[key],
                              ref_min[key]))
-                errors += 1
+                errors.add(key)
 
         for key in ref_equal:
             osvalue[key] = self.get_limit(key, refpath[key])
             if osvalue[key] != ref_equal[key]:
                 logging.warn('%s is set to %d' % (refpath[key], osvalue[key]))
                 logging.warn('Expected %d' % ref_equal[key])
-                errors += 1
+                errors.add(key)
+
+        # Look for anything from refpath that wasn't checked yet:
+        for key in osvalue:
+            if osvalue[key] == None:
+                logging.warn('%s was never checked')
+                errors.add(key)
 
         # If self.error is not zero, there were errors.
-        if errors > 0:
-            raise error.TestFail('Found %d incorrect values' % errors)
+        if len(errors) > 0:
+            raise error.TestFail('Found incorrect values: %s' %
+                                 ', '.join(errors))
