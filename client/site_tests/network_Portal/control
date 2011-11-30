@@ -17,6 +17,8 @@ TEST_CLASS = 'network'
 TEST_TYPE = 'client'
 
 job.run_test('network_Portal',
-             force_portal=False, tag='online')
+             force_failure='dns', tag='dns', test_iterations=2)
 job.run_test('network_Portal',
-             force_portal=True, tag='portal')
+             force_failure='partial-dns', tag='partial-dns', test_iterations=2)
+job.run_test('network_Portal', force_failure=False, tag='online')
+job.run_test('network_Portal', force_failure='portal', tag='portal')

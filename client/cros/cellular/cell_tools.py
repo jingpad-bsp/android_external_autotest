@@ -138,24 +138,30 @@ class BlackholeContext(object):
     def __init__(self, hosts):
         self.hosts = hosts
 
-    def __enter__(self):
-        """Preserve original list of OUTPUT rules and blacklist self.hosts"""
+    def _rules(self):
         rules = utils.system_output('iptables -S OUTPUT').splitlines()
-        self.original_rules = set(rules)
+        rules += utils.system_output('iptables -S INPUT').splitlines()
+        return set(rules)
 
-        for host in self.hosts:
+    def __enter__(self):
+        """Preserve original list of rules and blacklist self.hosts"""
+        self.original_rules = self._rules()
+
+        for host, chain in self.hosts:
+            if chain == 'OUTPUT':
+                host_flag = '-d'
+            else:
+                host_flag = '-s'
             cmd = ' '.join(['iptables',
-                            '-I OUTPUT',
-                            '-d %s' % host,
+                            '-I %s' % chain,
+                            '%s %s' % (host_flag, host),
                             '-j REJECT'])
             utils.run(cmd)
         return self
 
     def __exit__(self, exception, value, traceback):
         """ Remove all rules not in the original list."""
-        rules = utils.system_output('iptables -S OUTPUT').splitlines()
-
-        for rule in rules:
+        for rule in self._rules():
             if rule in self.original_rules:
                 logging.info('preserving %s' % rule)
                 continue

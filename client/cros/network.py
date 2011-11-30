@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import logging
-from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.common_lib import utils
-import flimflam, mm
+from autotest_lib.client.cros import flimflam_test_path
+import mm
 
 
 # TODO(rochberg):  Move modem-specific functions to cellular/cell_utils
@@ -82,3 +82,25 @@ class IpTablesContext(object):
     def __exit__(self, exception, value, traceback):
         self._CleanupRules()
         return False
+
+
+def NameServersForService(flim, service):
+    """Return the list of name servers used by a connected service."""
+    service_properties = service.GetProperties(utf8_strings=True)
+    device_path = service_properties['Device']
+    device = flim.GetObjectInterface('Device', device_path)
+    if device is None:
+        logging.error('No device for service %s' % service)
+        return []
+
+    properties = device.GetProperties(utf8_strings=True)
+
+    hosts = []
+    for path in properties['IPConfigs']:
+        ipconfig = flim.GetObjectInterface('IPConfig', path)
+        ipconfig_properties = ipconfig.GetProperties(utf8_strings=True)
+        hosts += ipconfig_properties['NameServers']
+
+    logging.info('Name servers: %s', ', '.join(hosts))
+
+    return hosts
