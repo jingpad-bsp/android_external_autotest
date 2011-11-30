@@ -80,17 +80,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._testServer = None
         self._tasks = '\'' + tasks.replace(' ','') + '\''
 
-        # verify that initial conditions are met:
-        if self._power_status.linepower[0].online:
-            raise error.TestError(
-                'Running on AC power. Please remove AC power cable')
-
-        percent_initial_charge = self._percent_current_charge()
-        if percent_initial_charge_min and percent_initial_charge < \
-                                          percent_initial_charge_min:
-            raise error.TestError('Initial charge (%f) less than min (%f)'
-                      % (percent_initial_charge, percent_initial_charge_min))
-
+        self._power_status.assert_battery_state(percent_initial_charge_min)
         # If force wifi enabled, convert eth0 to backchannel and connect to the
         # specified WiFi AP.
         if self._force_wifi:
@@ -263,10 +253,6 @@ class power_LoadTest(cros_ui_test.UITest):
             self._testServer.stop()
         super(power_LoadTest, self).cleanup()
 
-    def _percent_current_charge(self):
-        return self._power_status.battery[0].charge_now * 100 / \
-               self._power_status.battery[0].charge_full_design
-
 
     def _write_ext_params(self):
         data = ''
@@ -301,7 +287,7 @@ class power_LoadTest(cros_ui_test.UITest):
                 logging.debug('v_voltage_now %f' \
                     % self._power_status.battery[0].voltage_now)
 
-            low_battery = (self._percent_current_charge() <
+            low_battery = (self._power_status.percent_current_charge() <
                            self._low_battery_threshold)
 
             latched = latch.is_set()

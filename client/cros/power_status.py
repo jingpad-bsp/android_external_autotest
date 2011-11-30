@@ -319,6 +319,38 @@ class SysStat(object):
             logging.error('Could not read temperature, skipping.')
 
 
+    def on_ac(self):
+        return self.linepower[0].online
+
+
+    def percent_current_charge(self):
+        return self.battery[0].charge_now * 100 / \
+               self.battery[0].charge_full_design
+
+
+    def assert_battery_state(self, percent_initial_charge_min):
+        """Check initial power configuration state is battery.
+
+        Args:
+          percent_initial_charge_min: float between 0 -> 1.00 of
+            percentage of battery that must be remaining.
+            None|0|False means check not performed.
+
+        Raises:
+          TestError: if one of battery assertions fails
+        """
+        if self.on_ac():
+            raise error.TestError(
+                'Running on AC power. Please remove AC power cable')
+
+        percent_initial_charge = self.percent_current_charge()
+
+        if percent_initial_charge_min and percent_initial_charge < \
+                                          percent_initial_charge_min:
+            raise error.TestError('Initial charge (%f) less than min (%f)'
+                      % (percent_initial_charge, percent_initial_charge_min))
+
+
 def get_status():
     """
     Return a new power status object (SysStat). A new power status snapshot
