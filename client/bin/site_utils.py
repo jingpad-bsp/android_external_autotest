@@ -59,19 +59,24 @@ def poll_for_condition(
     condition, exception=None, timeout=10, sleep_interval=0.1, desc=None):
     """Poll until a condition becomes true.
 
-    condition: function taking no args and returning bool
-    exception: exception to throw if condition doesn't become true
-    timeout: maximum number of seconds to wait
-    sleep_interval: time to sleep between polls
-    desc: description of default TimeoutError used if 'exception' is None
+    Arguments:
+      condition: function taking no args and returning bool
+      exception: exception to throw if condition doesn't become true
+      timeout: maximum number of seconds to wait
+      sleep_interval: time to sleep between polls
+      desc: description of default TimeoutError used if 'exception' is None
+
+    Returns:
+      The true value that caused the poll loop to terminate.
 
     Raises:
         'exception' arg if supplied; site_utils.TimeoutError otherwise
     """
     start_time = time.time()
     while True:
-        if condition():
-            return
+        value = condition()
+        if value:
+            return value
         if time.time() + sleep_interval - start_time > timeout:
             if exception:
                 logging.error(exception)
