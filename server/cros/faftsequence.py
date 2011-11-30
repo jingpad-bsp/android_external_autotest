@@ -106,7 +106,7 @@ class FAFTSequence(ServoTest):
           error.TestError: if USB disk not detected or not a test image.
         """
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
-        usb_dev = self.probe_host_usb_dev()
+        usb_dev = self.servo.probe_host_usb_dev()
         if not usb_dev:
             raise error.TestError(
                     'An USB disk should be plugged in the servo board.')

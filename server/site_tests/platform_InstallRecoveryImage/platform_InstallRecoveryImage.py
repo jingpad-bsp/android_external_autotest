@@ -9,7 +9,7 @@ class platform_InstallRecoveryImage(servo_test.ServoTest):
     version = 1
 
     def run_once(self, host, image, usb):
-        self.install_recovery_image(image, usb)
+        self.servo.install_recovery_image(image, usb)
         # Verify we can ping the machine afterwards.
         # TODO(sosa): Add a better test of valid image recovery.
         self.assert_ping()
