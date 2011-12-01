@@ -52,5 +52,7 @@
    "runsPerSec_Dromaeo-RegularExpr,runsPerSec_Dromaeo-Arrays,runsPerSec_Dromaeo-Base64Encod,runsPerSec_Dromaeo-CodeEvaluat,runsPerSec_Dromaeo-Rotating3DC,runsPerSec_Dromaeo-Strings"],
   ["desktopui_PyAutoPerfTests", "extrapolation_YoutubeCPUExtrap"],
   ["desktopui_PyAutoPerfTests", "frames_NetflixDroppedFrames"],
-  ["desktopui_PyAutoPerfTests", "extrapolation_NetflixCPUExtrap"]
+  ["desktopui_PyAutoPerfTests", "extrapolation_NetflixCPUExtrap"],
+  ["desktopui_PyAutoPerfTests",
+   "fps_WebGLAquarium,fps_WebGLField,fps_WebGLSpaceRocks"]
 ]
