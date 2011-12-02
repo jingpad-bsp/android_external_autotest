@@ -13,21 +13,21 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test, httpd
 
 
-class platform_RestictNewUserWhenDiskFull(cros_ui_test.UITest):
+class platform_RestrictNewUserWhenDiskFull(cros_ui_test.UITest):
     version = 1
     MINIMUM_BLOCK_SIZE = 1048576 # Exactly one megabyte
     DISK_SPACE_BUFFER = 524288 # Exactly half a megabyte
     FOLDER_PATH = '/mnt/stateful_partition/'
 
     def initialize(self):
-        super(platform_RestictNewUserWhenDiskFull,
+        super(platform_RestrictNewUserWhenDiskFull,
               self).initialize(creds='$default')
 
     def start_authserver(self):
-        super(platform_RestictNewUserWhenDiskFull, self).start_authserver()
+        super(platform_RestrictNewUserWhenDiskFull, self).start_authserver()
 
     def cleanup(self):
-        super(platform_RestictNewUserWhenDiskFull, self).cleanup()
+        super(platform_RestrictNewUserWhenDiskFull, self).cleanup()
         delete_path = os.path.join(self.FOLDER_PATH, 'big_file_*')
         utils.system('rm %s' % delete_path)
 

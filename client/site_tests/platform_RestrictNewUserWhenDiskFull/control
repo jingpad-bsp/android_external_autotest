@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chromium OS Project"
-NAME = "platform_RestictNewUserWhenDiskFull"
+NAME = "platform_RestrictNewUserWhenDiskFull"
 PURPOSE = "Verify a new user cannot log in when there is low disk space"
 CRITERIA = """
 This test will fail if a new user can log in after all free disk space is used
@@ -18,4 +18,4 @@ This test fills what remains of free disk space and attempts to log in a new
 user.
 """
 
-job.run_test('platform_RestictNewUserWhenDiskFull')
+job.run_test('platform_RestrictNewUserWhenDiskFull')
