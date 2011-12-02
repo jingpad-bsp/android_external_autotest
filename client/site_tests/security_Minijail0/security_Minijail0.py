@@ -6,6 +6,7 @@ import glob
 import logging
 import os
 import re
+import shutil
 import tempfile
 
 from autotest_lib.client.bin import test
