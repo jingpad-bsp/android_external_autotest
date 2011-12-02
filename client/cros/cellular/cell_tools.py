@@ -59,7 +59,7 @@ def ConnectToCellular(flim, verifier, timeout=TIMEOUT):
         raise Error('Still in state %s' % state)
 
     if verifier:
-      verifier.AssertDataStatusIn([cellular.UeStatus.ACTIVE])
+      verifier.AssertDataStatusIn([cellular.UeGenericDataStatus.CONNECTED])
 
     return (service, state)
 
@@ -77,7 +77,8 @@ def DisconnectFromCellularService(bs, flim, service):
 
     if bs:
         bs.GetAirStateVerifier().AssertDataStatusIn([
-            cellular.UeStatus.DEACTIVATING, cellular.UeStatus.IDLE])
+            cellular.UeGenericDataStatus.REGISTERED,
+            cellular.UeGenericDataStatus.NONE])
 
 def CheckHttpConnectivity(config):
     """Check that the device can fetch HTTP pages.

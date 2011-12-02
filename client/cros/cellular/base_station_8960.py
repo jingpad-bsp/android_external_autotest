@@ -56,9 +56,20 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
     logging.info('Data counters: %s', output)
     return output
 
-  def GetUeDataStatus(self):
+  def GetRatUeDataStatus(self):
+    """Get the radio-access-technology-specific status of the UE.
+
+    Unlike GetUeDataStatus, below, this returns a status that depends
+    on the RAT being used.
+    """
     status = self.c.Query('CALL:STATus:DATa?')
-    return ConfigDictionaries.CALL_STATUS_DATA_TO_STATUS[status]
+    rat = ConfigDictionaries.FORMAT_TO_DATA_STATUS_TYPE[self.format][status]
+    return rat
+
+  def GetUeDataStatus(self):
+    """Get the UeGenericDataStatus status of the device."""
+    rat = self.GetRatUeDataStatus()
+    return cellular.RatToGenericDataStatus[rat]
 
   def ResetDataCounters(self):
     self.c.SendStanza(['CALL:COUNt:DTMonitor:CLEar'])
@@ -98,11 +109,13 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
   def SetTechnology(self, technology):
     #  TODO(rochberg): Check that we're not already in chosen tech for
     #  speed boost
-    self.c.SimpleVerify('SYSTem:APPLication:FORMat',
-                        ConfigDictionaries.TECHNOLOGY_TO_FORMAT[technology])
+
+    self.format = ConfigDictionaries.TECHNOLOGY_TO_FORMAT[technology]
+    self.technology = technology
+
+    self.c.SimpleVerify('SYSTem:APPLication:FORMat', self.format)
     self.c.SendStanza(
         ConfigDictionaries.TECHNOLOGY_TO_CONFIG_STANZA.get(technology, []))
-    self.technology = technology
 
   def SetUeDnsV4(self, dns1, dns2):
     """Set the DNS values provided to the UE.  Emulator must be stopped."""
@@ -134,7 +147,7 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
       cellular.Technology.HSDUPA,
       cellular.Technology.HSPA_PLUS,
       cellular.Technology.CDMA_2000,
-      cellular.Technology.EVDO_1x,
+      cellular.Technology.EVDO_1X,
       ]
 
   def WaitForStatusChange(self,
@@ -179,6 +192,21 @@ class ConfigStanzas(object):
 # http://wireless.agilent.com/rfcomms/refdocs/wcdma/wcdmala_hpib_call_service.html#CACBDEAH
 CALL:UPLink:TXPower:LEVel:MAXimum 24
 CALL:SERVICE:GPRS:RAB GPRSRAB3
+""")
+
+  # p 20 of http://cp.literature.agilent.com/litweb/pdf/5989-5932EN.pdf
+  CDMA_2000_MAX = _Parse("""
+CALL:SCHannel:FORWard:DRATe BPS153600
+CALL:CELL:SOPTion:RCONfig3 SOFS33
+""")
+
+  # p 19 of http://cp.literature.agilent.com/litweb/pdf/5989-5932EN.pdf
+  EVDO_1X_MAX = _Parse("""
+CALL:CELL:CONTrol:CATTribute:ISTate:PCCCycle ATSP
+# Default data application
+CALL:APPLication:SESSion DPAPlication
+# Give DUT 100% of channel
+CALL:CELL:APPLication:ATDPackets 100
 """)
 
   # /home/rochberg/Downloads/USB306PA 14-6-MaxRateHSPA+-1.xml
@@ -281,7 +309,7 @@ class ConfigDictionaries(object):
 
       cellular.Technology.CDMA_2000: 'IS-2000/IS-95/AMPS',
 
-      cellular.Technology.EVDO_1x: 'IS-856',
+      cellular.Technology.EVDO_1X: 'IS-856',
       }
 
   # Put each value in "" marks to quote it for GPIB
@@ -290,17 +318,49 @@ class ConfigDictionaries(object):
       x, y in TECHNOLOGY_TO_FORMAT_RAW.iteritems()])
 
   TECHNOLOGY_TO_CONFIG_STANZA = {
+      cellular.Technology.CDMA_2000: ConfigStanzas.CDMA_2000_MAX,
+      cellular.Technology.EVDO_1X: ConfigStanzas.EVDO_1X_MAX,
       cellular.Technology.WCDMA: ConfigStanzas.WCDMA_MAX,
       cellular.Technology.HSPA_PLUS: ConfigStanzas.CAT_14,
       }
 
-#  http://wireless.agilent.com/rfcomms/refdocs/wcdma/wcdma_gen_call_proc_status.html#CJADGAHG
-  CALL_STATUS_DATA_TO_STATUS = {
-      'IDLE': cellular.UeStatus.IDLE,
-      'ATTG': cellular.UeStatus.ATTACHING,
-      'DET': cellular.UeStatus.DETACHING,
-      'OFF': cellular.UeStatus.NONE,
-      'PDPAG': cellular.UeStatus.ACTIVATING,
-      'PDP': cellular.UeStatus.ACTIVE,
-      'PDPD': cellular.UeStatus.DEACTIVATING,
+# http://wireless.agilent.com/rfcomms/refdocs/wcdma/wcdma_gen_call_proc_status.html#CJADGAHG
+  CALL_STATUS_DATA_TO_STATUS_GSM_WCDMA = {
+      'IDLE': cellular.UeGsmDataStatus.IDLE,
+      'ATTG': cellular.UeGsmDataStatus.ATTACHING,
+      'DET': cellular.UeGsmDataStatus.DETACHING,
+      'OFF': cellular.UeGsmDataStatus.NONE,
+      'PDPAG': cellular.UeGsmDataStatus.PDP_ACTIVATING,
+      'PDP': cellular.UeGsmDataStatus.PDP_ACTIVE,
+      'PDPD': cellular.UeGsmDataStatus.PDP_DEACTIVATING,
+      }
+
+# http://wireless.agilent.com/rfcomms/refdocs/cdma2k/cdma2000_hpib_call_status.html#CJABGBCF
+  CALL_STATUS_DATA_TO_STATUS_CDMA_2000 = {
+      'OFF': cellular.UeC2kDataStatus.OFF,
+      'DORM': cellular.UeC2kDataStatus.DORMANT,
+      'DCON': cellular.UeC2kDataStatus.DATA_CONNECTED,
+      }
+
+# http://wireless.agilent.com/rfcomms/refdocs/1xevdo/1xevdo_hpib_call_status.html#BABCGBCD
+  CALL_STATUS_DATA_TO_STATUS_EVDO = {
+      'CCL': cellular.UeEvdoDataStatus.CONNECTION_CLOSING,
+      'CNEG': cellular.UeEvdoDataStatus.CONNECTION_NEGOTIATE,
+      'CREQ': cellular.UeEvdoDataStatus.CONNECTION_REQUEST,
+      'DCON': cellular.UeEvdoDataStatus.DATA_CONNECTED,
+      'DORM': cellular.UeEvdoDataStatus.DORMANT,
+      'HAND': cellular.UeEvdoDataStatus.HANDOFF,
+      'IDLE': cellular.UeEvdoDataStatus.IDLE,
+      'PAG': cellular.UeEvdoDataStatus.PAGING,
+      'SCL': cellular.UeEvdoDataStatus.SESSION_CLOSING,
+      'SNEG': cellular.UeEvdoDataStatus.SESSION_NEGOTIATE,
+      'SOP': cellular.UeEvdoDataStatus.SESSION_OPEN,
+      'UREQ': cellular.UeEvdoDataStatus.UATI_REQUEST,
+      }
+
+  FORMAT_TO_DATA_STATUS_TYPE = {
+      '"GSM/GPRS"': CALL_STATUS_DATA_TO_STATUS_GSM_WCDMA,
+      '"WCDMA"': CALL_STATUS_DATA_TO_STATUS_GSM_WCDMA,
+      '"IS-2000/IS-95/AMPS"': CALL_STATUS_DATA_TO_STATUS_CDMA_2000,
+      '"IS-856"': CALL_STATUS_DATA_TO_STATUS_EVDO,
       }

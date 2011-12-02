@@ -7,23 +7,23 @@
 DEFAULT_TIMEOUT = 10
 
 
-def Enum(items):
-  """Build an class with a member for each item, with value set to the name.
+def Enum(enum_name, items):
+  """Build a class with a member for each item.
 
   Arguments:
     members: A list of items for the enum.  They must be valid python
      identifiers
 """
-  class output:
+  class output(object):
     pass
 
   for item in items:
-    setattr(output, item, item)
+    setattr(output, item, enum_name + ':' + item)
 
   return output
 
 
-Technology = Enum([
+Technology = Enum('Technology', [
     'GPRS',
     'EGPRS',
     'WCDMA',
@@ -32,20 +32,86 @@ Technology = Enum([
     'HSDUPA',
     'HSPA_PLUS',
     'CDMA_2000',
-    'EVDO_1x',
+    'EVDO_1X',
     'LTE'
     ])
 
 
-UeStatus = Enum([
+UeGsmDataStatus = Enum('GsmDataStatus', [
     'NONE',
     'IDLE',
     'ATTACHING',
     'DETACHING',
-    'ACTIVATING',
-    'ACTIVE',
-    'DEACTIVATING',
+    'PDP_ACTIVATING',
+    'PDP_ACTIVE',
+    'PDP_DEACTIVATING',
     ])
+
+UeC2kDataStatus = Enum('C2kDataStatus', [
+    'OFF',
+    'DORMANT',
+    'DATA_CONNECTED',
+])
+
+UeEvdoDataStatus = Enum('EvdoDataStatus', [
+    'CONNECTION_CLOSING',
+    'CONNECTION_NEGOTIATE',
+    'CONNECTION_REQUEST',
+    'DATA_CONNECTED',
+    'DORMANT',
+    'HANDOFF',
+    'IDLE',
+    'PAGING',
+    'SESSION_CLOSING',
+    'SESSION_NEGOTIATE',
+    'SESSION_OPEN',
+    'UATI_REQUEST',
+])
+
+
+# Each cell technology has a different connection state machine.  For
+# generic tests, we want to abstract that away.  UeGenericDataStatus
+# is this abstraction, and RatToGenericDataStatus is a map from
+# specific states to this generic status.
+
+
+# TODO(rochberg):  Do we need connecting/disconnecting for this level of test?
+UeGenericDataStatus = Enum('UeGenericDataStatus', [
+    'NONE',             # UE not seen or in transition to/from REGISTERED
+    'REGISTERED',       # Network knows about UE
+    'CONNECTED',        # Data can be sent
+    'CONNECTING',
+    'DISCONNECTING',
+    ])
+
+
+RatToGenericDataStatus = {
+    UeGsmDataStatus.NONE: UeGenericDataStatus.NONE,
+    UeGsmDataStatus.IDLE: UeGenericDataStatus.NONE,
+    UeGsmDataStatus.ATTACHING: UeGenericDataStatus.NONE, # Transition
+    UeGsmDataStatus.DETACHING: UeGenericDataStatus.NONE, # Transition
+    UeGsmDataStatus.PDP_ACTIVATING: UeGenericDataStatus.CONNECTING,
+    UeGsmDataStatus.PDP_ACTIVE: UeGenericDataStatus.CONNECTED,
+    UeGsmDataStatus.PDP_DEACTIVATING: UeGenericDataStatus.DISCONNECTING,
+
+    UeC2kDataStatus.OFF: UeGenericDataStatus.NONE,
+    UeC2kDataStatus.DORMANT: UeGenericDataStatus.CONNECTED,
+    UeC2kDataStatus.DATA_CONNECTED: UeGenericDataStatus.CONNECTED,
+
+    UeEvdoDataStatus.CONNECTION_CLOSING: UeGenericDataStatus.DISCONNECTING,
+    UeEvdoDataStatus.CONNECTION_NEGOTIATE: UeGenericDataStatus.CONNECTING,
+    UeEvdoDataStatus.CONNECTION_REQUEST: UeGenericDataStatus.CONNECTING,
+    UeEvdoDataStatus.DATA_CONNECTED: UeGenericDataStatus.CONNECTED,
+    UeEvdoDataStatus.DORMANT: UeGenericDataStatus.CONNECTED,
+    UeEvdoDataStatus.HANDOFF: UeGenericDataStatus.CONNECTING,
+    UeEvdoDataStatus.IDLE: UeGenericDataStatus.CONNECTED,
+    UeEvdoDataStatus.PAGING: UeGenericDataStatus.CONNECTED,
+    UeEvdoDataStatus.SESSION_CLOSING: UeGenericDataStatus.DISCONNECTING,
+    UeEvdoDataStatus.SESSION_NEGOTIATE: UeGenericDataStatus.CONNECTING,
+    UeEvdoDataStatus.SESSION_OPEN: UeGenericDataStatus.REGISTERED,
+    UeEvdoDataStatus.UATI_REQUEST: UeGenericDataStatus.NONE,
+}
+
 
 
 class Power(object):
