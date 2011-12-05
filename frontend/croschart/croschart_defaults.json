@@ -39,6 +39,8 @@
   ["desktopui_PyAutoPerfTests",
    "FPS_ScrollBlankPage,FPS_ScrollTextPage,FPS_ScrollGooglePlusPage"],
   ["desktopui_PyAutoPerfTests", "frames_YoutubeDroppedFrames"],
+  ["desktopui_PyAutoPerfTests",
+   "frames_YoutubeDroppedFramesSlo,frames_YoutubeDroppedFramesNor,frames_YoutubeDroppedFramesFas"],
   ["desktopui_PyAutoPerfTests", "FPS_FlashGaming,FPS_FlashText"],
   ["desktopui_PyAutoPerfTests",
    "MFLOPS_ScimarkGui-lu_factoriza,MFLOPS_ScimarkGui-fast_fourier,MFLOPS_ScimarkGui-jacobi_sor-M,MFLOPS_ScimarkGui-monte_carlo_,MFLOPS_ScimarkGui-sparse_matri"],
