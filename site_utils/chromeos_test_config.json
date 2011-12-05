@@ -144,17 +144,9 @@
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-kaen.zip",
             "build_pattern": "R17-*",
             "platforms": [
-                {"platform": "netbook_KAEN", "groups": ["bvt"]}
-            ]
-        },
-
-        "tegra2-seaboard-cosine-r17": {
-            "archive_server": "gs://chromeos-releases/dev-channel/tegra2-seaboard-cosine",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-seaboard-cosine.zip",
-            "build_pattern": "R17-*",
-            "platforms": [
-                {"platform": "netbook_TEGRA2_SEABOARD_T25",
-                 "groups": ["touch", "sbstage", "bvt"]}
+                {"platform": "netbook_KAEN",
+                 "groups": ["bvt", "build", "desktopui", "kernel", "pagecycler",
+                            "perfx3", "power"]}
             ]
         }
     },
