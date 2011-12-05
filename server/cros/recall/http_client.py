@@ -15,6 +15,7 @@ import httplib
 import logging
 import threading
 import time
+import zlib
 
 
 class HTTPResponse(httplib.HTTPResponse):
@@ -30,18 +31,21 @@ class HTTPResponse(httplib.HTTPResponse):
   def __init__(self, *args, **kwds):
     httplib.HTTPResponse.__init__(self, *args, **kwds)
     self._mutate_functions = []
+    self._decompressor = None
 
   def __getstate__(self):
     state = self.__dict__.copy()
     if 'fp' in state:
       del state['fp']
     del state['_mutate_functions']
+    del state['_decompressor']
     return state
 
   def __setstate__(self, state):
     self.__dict__.update(state)
 
     self._mutate_functions = []
+    self._decompressor = None
 
   @property
   def headers(self):
@@ -82,9 +86,21 @@ class HTTPResponse(httplib.HTTPResponse):
     # server must recalculate on the fly
     del self.msg['Content-Length']
 
+    # It also means we have to decompress
+    content_encoding = self.getheader('Content-Encoding')
+    if content_encoding in ('gzip', 'deflate'):
+      self.logger.debug("Will decompresss data in order to mutate")
+      del self.msg['Content-Encoding']
+      if content_encoding == 'gzip':
+        self._decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress
+      elif content_encoding == 'deflate':
+        self._decompressor = zlib.decompressobj(-zlib.MAX_WBITS).decompress
+
   def _RecordChunk(self, chunk):
     """Record and mutate chunk received from the server."""
     delay = time.time() - self.start_time
+    if self._decompressor:
+      chunk = self._decompressor(chunk)
     for mutate_function in self._mutate_functions:
       chunk = mutate_function(chunk)
 
