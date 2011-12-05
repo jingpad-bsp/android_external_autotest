@@ -73,7 +73,7 @@ class FAFTSequence(ServoTest):
     # Delay timing
     FIRMWARE_SCREEN_DELAY = 10
     TEXT_SCREEN_DELAY = 20
-    USB_PLUG_DELAY = 5
+    USB_PLUG_DELAY = 10
 
     _faft_template = None
     _faft_sequence = ()
