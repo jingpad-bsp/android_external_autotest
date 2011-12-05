@@ -19,8 +19,9 @@ class firmware_CorruptBothFwAB(FAFTSequence):
     """
     version = 1
 
-    # Code dedicated for RW firmware failed signature check.
+    # Codes dedicated for RW firmware failed signature check.
     INVALID_RW_FW_CODE = '3'
+    VERIFY_KEYBLOCK_FAIL_CODE = '19
 
 
     def ensure_normal_boot(self):
@@ -63,7 +64,8 @@ class firmware_CorruptBothFwAB(FAFTSequence):
             {   # Step 2, expected recovery boot and set fwb_tries flag
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
-                    'recovery_reason' : self.INVALID_RW_FW_CODE,
+                    'recovery_reason': (self.INVALID_RW_FW_CODE,
+                                        self.VERIFY_KEYBLOCK_FAIL_CODE),
                     'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.faft_client.set_try_fw_b,
@@ -72,7 +74,8 @@ class firmware_CorruptBothFwAB(FAFTSequence):
             {   # Step 3, still expected recovery boot and restore firmware
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
-                    'recovery_reason' : self.INVALID_RW_FW_CODE,
+                    'recovery_reason': (self.INVALID_RW_FW_CODE,
+                                        self.VERIFY_KEYBLOCK_FAIL_CODE),
                     'recoverysw_boot': '0',
                 }),
                 'userspace_action': (self.faft_client.restore_firmware,
