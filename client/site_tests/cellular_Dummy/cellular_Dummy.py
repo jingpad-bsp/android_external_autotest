@@ -5,8 +5,10 @@
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
+import logging
+
 class cellular_Dummy(test.test):
     version = 1
 
-    def run_once(self, config):
-        print config
+    def run_once(self, config=None):
+        logging.info("Config is %s", config)

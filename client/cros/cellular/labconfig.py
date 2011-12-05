@@ -2,45 +2,53 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json, logging, urllib
-
+import labconfig_data
 
 class LabConfigError(Exception):
   pass
 
-class LabConfig(object):
-  def __init__(self, config):
-    self._config = config
 
-  def GetCellByName(self, name):
-    for cell in self._config["cells"]:
-      if cell["name"] == name:
-        return cell
-    raise LabConfigError("No cell named '%s'" % name)
+def extract_options(args, options_to_expand):
+    """Extracts options_to_expand from args, returns (extracted, remaining).
+    Args:
+        args:  A list of arguments
+        options_to_expand: A container with options to expand (with
+          '--' already prepended)
+    Returns:
+        (dict of extracted options, list of untouched arguments). """
 
-def make_json_config(json_str):
-  try:
-    config = json.loads(json_str)
-  except ValueError:
-    logging.error('Could not parse JSON string: ' + json_str)
-    raise
-  return LabConfig(config)
+    remaining = []
+    extracted = {}
+    i = 0
+    while i < len(args):
+        (option, delimiter, value) = args[i].partition('=')
+        if option in options_to_expand and value:
+            extracted[option] = value
+        elif (option in options_to_expand) and not delimiter:
+            extracted[option] = args[i+1]
+            i += 1
+        else:
+            remaining.append(args[i])
+        i += 1
+    return (extracted, remaining)
 
-def fetch_json_config(url):
-  json_str = urllib.urlopen(url).read()
-  return make_json_config(json_str)
 
-class CellTestArgumentError(Exception):
-  pass
+def get_test_arguments(args):
+    """Extract the --cell= argument from args, return config, rest of args."""
 
-def _parse_test_args(raw_args):
-  if raw_args[0] != '0':
-    raise CellTestArgumentError('Unknown test-args version %s' % raw_args[0])
-  if len(raw_args) != 3:
-    raise CellTestArgumentError('Wrong number of test-args for version 0')
-  return { 'url': raw_args[1], 'cell': raw_args[2] }
+    (extracted, remaining) = extract_options(args, ['--cell'])
+    if '--cell' not in extracted:
+        raise LabConfigError(
+            'Could not find --cell argument.  ' +
+            'To specify a cell, pass --args=--cell=foo to run_remote_tests')
 
-def get_test_config(raw_args):
-  args = _parse_test_args(raw_args)
-  config = fetch_json_config(args['url'])
-  return config.GetCellByName(args['cell'])
+    if extracted['--cell'] not in labconfig_data.CELLS:
+        raise LabConfigError('Could not find cell %s, valid cells are %s' %
+                             (extracted['--cell'], labconfig_data.CELLS.keys()))
+
+    return (labconfig_data.CELLS[extracted['--cell']], remaining)
+
+
+def get_test_config(args):
+    """Return only a test config (ignoring the remaining args)."""
+    return get_test_arguments(args)[0]
