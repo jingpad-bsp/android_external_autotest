@@ -272,10 +272,9 @@ class FAFTSequence(ServoTest):
         if not self.root_part_checker(part):
             self.copy_kernel_and_rootfs(from_part=self.OTHER_KERNEL_MAP[part],
                                         to_part=part)
-            self.reset_and_prioritize_kernel(part)
-            self.sync_and_hw_reboot()
-            self.wait_for_client_offline()
-            self.wait_for_client()
+            self.run_faft_step({
+                'userspace_action': (self.reset_and_prioritize_kernel, part),
+            })
 
 
     def wait_fw_screen_and_ctrl_d(self):
@@ -341,7 +340,8 @@ class FAFTSequence(ServoTest):
                 logging.info('System is not in dev mode. Reboot into it.')
                 self.run_faft_step({
                     'userspace_action': (self.faft_client.run_shell_command,
-                        'chromeos-firmwareupdate --mode todev && reboot')
+                        'chromeos-firmwareupdate --mode todev && reboot'),
+                    'reboot_action': None,
                 })
         else:
             if not self.crossystem_checker({'devsw_cur': '0'}):
@@ -352,7 +352,8 @@ class FAFTSequence(ServoTest):
                 logging.info('System is not in normal mode. Reboot into it.')
                 self.run_faft_step({
                     'userspace_action': (self.faft_client.run_shell_command,
-                        'chromeos-firmwareupdate --mode tonormal && reboot')
+                        'chromeos-firmwareupdate --mode tonormal && reboot'),
+                    'reboot_action': None,
                 })
 
 
