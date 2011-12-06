@@ -64,6 +64,7 @@ class CrosGesturesLib(object):
                                               'cros_gestures_old')
         if not os.path.isdir(self.gesture_files_old):
             os.makedirs(self.gesture_files_old)
+        self.cg_cmd = '/usr/local/cros_gestures/cros_gestures'
 
     def remove_existing_test_files(self):
         """Cleanup existing files for a fresh test."""
@@ -104,17 +105,22 @@ class CrosGesturesLib(object):
         # TODO(Truty): Verify the files using md5.
         return rc
 
+    def download_file(self, file_name):
+        """Given a file_name, download the file from the storage server."""
+        download_cmd = '%s download %s'
+        rc = common_util.simple_system(download_cmd % (self.cg_cmd, file_name))
+        return rc
+
     def upload_files(self):
         """Use the config file to find file location and upload all files.
         If an uploaded version of the file already exists the upload silently
         fails to allow for repeat attempts to upload without clearing files.
         """
         rc = 0
-        cg_cmd = '/usr/local/cros_gestures/cros_gestures'
         upload_cmd = '%s upload "%s"'
         for f in os.listdir(self.gesture_files_path):
             full_gesture_path = os.path.join(self.gesture_files_path, f)
-            rc = common_util.simple_system(upload_cmd % (cg_cmd,
+            rc = common_util.simple_system(upload_cmd % (self.cg_cmd,
                                                          full_gesture_path))
             if rc:
                 break

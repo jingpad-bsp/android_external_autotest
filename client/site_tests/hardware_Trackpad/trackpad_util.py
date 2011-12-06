@@ -4,8 +4,12 @@
 
 ''' Trackpad utility program for reading test configuration data '''
 
+import glob
 import os
 import re
+
+import common_util
+import cros_gestures_lib
 
 
 record_program = 'evemu-record'
@@ -203,3 +207,87 @@ def get_model():
                     model = board_str
                 break
     return model
+
+
+def _create_dir_meta_name(gesture_path, extra_name_code, dir_code):
+    ''' Create a meta data file holding the file names in a given path
+
+    An example meta data file name looks like:
+            mix-dir.all-alex-john_tut1-20111216_000547.dat
+    where 'alex' is the user name, and 'john_tut1-20111216_000547' is the
+    target directory name.
+    '''
+    model = get_model()
+    patt = '%s_' % extra_name_code
+    repl = '%s-' % extra_name_code
+    dir_name = os.path.realpath(gesture_path).split('/')[-1]
+    dir_name = re.sub(patt, repl, dir_name)
+    dir_meta_name = '%s-%s-%s.dat' % (dir_code, model, dir_name)
+    return dir_meta_name
+
+
+def _create_dir_file(gesture_path, extra_name_code, mix_code, dir_code):
+    ''' Create a directory file containing gesture file names and misc info '''
+
+    # Get gesture files
+    gesture_files = glob.glob(os.path.join(gesture_path, '*'))
+    lambda_exclude = lambda f: not f.split('/')[-1].startswith(mix_code)
+    gesture_files = filter(lambda_exclude, gesture_files)
+
+    # Get WiFi hardware address
+    hw_addr = 'unknown'
+    cmd_if = 'ifconfig | grep HWaddr'
+    hw_addr_str = common_util.simple_system_output(cmd_if)
+    if hw_addr is not None:
+        m = re.search('HWaddr\s+(.*)', hw_addr_str)
+        if m is not None:
+            hw_addr = m.group(1)
+
+    # Get chromeos lsb information
+    chromeos_description = 'unknown'
+    chromeos_devserver = 'unknown'
+    with open('/etc/lsb-release') as f:
+        context = f.read()
+    if context is not None:
+        for line in context.splitlines():
+            if line.startswith('CHROMEOS_RELEASE_DESCRIPTION'):
+                chromeos_description = line
+            elif line.startswith('CHROMEOS_DEVSERVER'):
+                chromeos_devserver = line
+
+    # Create the directory file
+    dir_meta_name = _create_dir_meta_name(gesture_path, extra_name_code,
+                                          dir_code)
+    dir_meta_file = os.path.join(gesture_path, dir_meta_name)
+    hw_addr_format = '# WiFi hardware address=%s\n'
+    chromeos_description_format = '# CHROMEOS_RELEASE_DESCRIPTION=%s\n'
+    chromeos_devserver_format = '# CHROMEOS_DEVSERVER=%s\n'
+    with open(dir_meta_file, 'w') as f:
+        for filename in gesture_files:
+            # filename includes path information
+            f.write(filename + '\n')
+        f.write('\n\n')
+        f.write(hw_addr_format % hw_addr)
+        f.write(chromeos_description_format % chromeos_description)
+        f.write(chromeos_devserver_format % chromeos_devserver)
+
+
+def gs_upload_gesture_set(gesture_path, autotest_dir, extra_name_code,
+                          mix_code, dir_code):
+    ''' Upload a gesture set to google storage through cros_gestures_lib '''
+    # Create a directory file containing gesture file names and misc information
+    _create_dir_file(gesture_path, extra_name_code, mix_code, dir_code)
+
+    # Upload the gesture files
+    gesture_lib = cros_gestures_lib.CrosGesturesLib(autotest_dir)
+    rc = gesture_lib.upload_files()
+    if rc != 0:
+        print 'Error in uploading gesture files in %s.' % gesture_path
+    return rc
+
+
+def write_symlink(source, link_name):
+    # Make the link point to the source
+    if os.path.exists(link_name):
+        os.remove(link_name)
+    os.symlink(source, link_name)

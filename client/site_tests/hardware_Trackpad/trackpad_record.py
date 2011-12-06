@@ -68,7 +68,7 @@ class Record:
         self.opt_func_list = opt_func_list
         self.tester_name = tester
         self.filename_attr = read_trackpad_test_conf('filename_attr', '.')
-        self.system_model = trackpad_util._get_model()
+        self.system_model = trackpad_util.get_model()
         self.functionality_list = \
                            read_trackpad_test_conf('functionality_list', '.')
         self.func_dict = dict((func.name, func)
