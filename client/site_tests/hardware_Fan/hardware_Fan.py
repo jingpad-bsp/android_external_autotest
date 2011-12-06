@@ -12,6 +12,7 @@
 # setting when finished.  This test uses mosys to read and control fan settings.
 
 
+import re
 import time
 
 from autotest_lib.client.bin import test, utils
@@ -19,15 +20,16 @@ from autotest_lib.client.common_lib import error
 
 
 class FanControl(object):
+    MOSYS_OUTPUT_RE = re.compile('(\w+)="(.*?)"')
+
     def __init__(self, fan_name='system'):
         self._fan_name = fan_name
 
     def get_values(self):
         values = {}
         cmd = 'mosys -k sensor print fantach %s' % self._fan_name
-        for kv in utils.system_output(cmd).split():
-            key, value = kv.split('=')
-            value = value[1:-1]
+        for kv in self.MOSYS_OUTPUT_RE.finditer(utils.system_output(cmd)):
+            key, value = kv.groups()
             if key == 'reading':
                 value = int(value)
             values[key] = value
