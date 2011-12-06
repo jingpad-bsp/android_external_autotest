@@ -270,6 +270,12 @@ class network_3GModemControl(test.test):
         with backchannel.Backchannel():
             self.autoconnect = autoconnect
             self.flim = flimflam.FlimFlam()
+
+            # Enabling flimflam debugging makes it easier to debug
+            # problems.  Tags will be cleared when the Backchannel
+            # context exits and flimflam is restarted.
+            self.flim.SetDebugTags('service+device+modem+portal+network')
+
             self.device = self.flim.FindCellularDevice()
             self.modem_manager, self.modem_path = mm.PickOneModem('')
             self.modem = self.modem_manager.Modem(self.modem_path)
