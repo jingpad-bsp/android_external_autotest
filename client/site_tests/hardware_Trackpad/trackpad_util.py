@@ -184,3 +184,22 @@ def get_trackpad_device_file():
         trackpad_device_file = None
         msg = 'The trackpad device file is not available!'
     return (trackpad_device_file, msg)
+
+
+def get_model():
+    ''' Get model (board) of the Chromebook machine. '''
+    with open('/etc/lsb-release') as f:
+        context = f.read()
+    model = 'unknown_model'
+    if context is not None:
+        for line in context.splitlines():
+            if line.startswith('CHROMEOS_RELEASE_BOARD'):
+                board_str = line.split('=')[1]
+                if '-' in board_str:
+                    model = board_str.split('-')[1]
+                elif '_' in board_str:
+                    model = board_str.split('_')[1]
+                else:
+                    model = board_str
+                break
+    return model

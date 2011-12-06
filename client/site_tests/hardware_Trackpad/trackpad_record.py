@@ -68,31 +68,14 @@ class Record:
         self.opt_func_list = opt_func_list
         self.tester_name = tester
         self.filename_attr = read_trackpad_test_conf('filename_attr', '.')
-        with open('/etc/lsb-release') as f:
-            self.system_model = self._get_model(f.read())
+        self.system_model = trackpad_util._get_model()
         self.functionality_list = \
                            read_trackpad_test_conf('functionality_list', '.')
         self.func_dict = dict((func.name, func)
                               for func in self.functionality_list)
         self.display = trackpad_util.Display()
         self.display.calc_center()
-
-    def _get_model(self, context):
-        ''' Extract model name from the context '''
-        model = 'unknown_model'
-        if context is not None:
-            for line in context.splitlines():
-                if line.startswith('CHROMEOS_RELEASE_BOARD'):
-                    board_str = line.split('=')[1]
-                    if '-' in board_str:
-                        model = board_str.split('-')[1]
-                    elif '_' in board_str:
-                        model = board_str.split('_')[1]
-                    else:
-                        model = board_str
-                    break
-        print 'Model name: %s' % model
-        return model
+        print 'Model name: %s' % self.system_model
 
     def _create_file_name(self, func, subname):
         ''' Create the file name based on filename_attr
