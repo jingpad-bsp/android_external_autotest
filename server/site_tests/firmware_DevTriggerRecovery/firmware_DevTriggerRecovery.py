@@ -24,7 +24,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
     need_dev_transition = False
 
 
-    def wait_and_trigger_recovery(self):
+    def wait_fw_screen_and_trigger_recovery(self):
         """Wait for firmware warning screen and trigger recovery boot."""
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
         self.servo.enter_key()
@@ -102,7 +102,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
                 # Ignore the default reboot_action here because the
                 # userspace_action (firmware updater) will reboot the system.
                 'reboot_action': None,
-                'firmware_action': self.wait_and_trigger_recovery,
+                'firmware_action': self.wait_fw_screen_and_trigger_recovery,
                 'install_deps_after_boot': True,
             },
             {   # Step 3, expected recovery boot and disable dev switch

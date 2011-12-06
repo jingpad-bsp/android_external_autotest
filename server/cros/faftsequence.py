@@ -284,6 +284,14 @@ class FAFTSequence(ServoTest):
         self.servo.ctrl_d()
 
 
+    def wait_fw_screen_and_plug_usb(self):
+        """Wait for firmware warning screen and then unplug and plug the USB."""
+        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        time.sleep(self.USB_PLUG_DELAY)
+        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+
+
     def setup_tried_fwb(self, tried_fwb):
         """Setup for fw B tried state.
 

@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import time
-
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
@@ -54,7 +52,7 @@ class firmware_RecoveryButton(FAFTSequence):
                     'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.servo.enable_recovery_mode,
-                'firmware_action': self.wait_and_plug_usb,
+                'firmware_action': self.wait_fw_screen_and_plug_usb,
                 'install_deps_after_boot': True,
             },
             {   # Step 2, expected recovery boot and release recovery button
@@ -73,11 +71,3 @@ class firmware_RecoveryButton(FAFTSequence):
             },
         ))
         self.run_faft_sequence()
-
-
-    def wait_and_plug_usb(self):
-        """Wait for firmware warning screen and then unplug and plug the USB."""
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
-        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
-        time.sleep(self.USB_PLUG_DELAY)
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
