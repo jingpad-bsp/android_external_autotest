@@ -21,7 +21,7 @@ class firmware_CorruptBothFwAB(FAFTSequence):
 
     # Codes dedicated for RW firmware failed signature check.
     INVALID_RW_FW_CODE = '3'
-    VERIFY_KEYBLOCK_FAIL_CODE = '19
+    VERIFY_KEYBLOCK_FAIL_CODE = '19'
 
 
     def ensure_normal_boot(self):
