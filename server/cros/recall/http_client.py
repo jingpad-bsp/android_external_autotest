@@ -13,6 +13,7 @@ __all__ = ["HTTPConnection", "HTTPSConnection", "HTTPRequest", "HTTPResponse",
 
 import httplib
 import logging
+import struct
 import threading
 import time
 import zlib
@@ -32,6 +33,7 @@ class HTTPResponse(httplib.HTTPResponse):
     httplib.HTTPResponse.__init__(self, *args, **kwds)
     self._mutate_functions = []
     self._decompressor = None
+    self._compressor = None
 
   def __getstate__(self):
     state = self.__dict__.copy()
@@ -39,6 +41,7 @@ class HTTPResponse(httplib.HTTPResponse):
       del state['fp']
     del state['_mutate_functions']
     del state['_decompressor']
+    del state['_compressor']
     return state
 
   def __setstate__(self, state):
@@ -46,6 +49,7 @@ class HTTPResponse(httplib.HTTPResponse):
 
     self._mutate_functions = []
     self._decompressor = None
+    self._compressor = None
 
   @property
   def headers(self):
@@ -79,30 +83,47 @@ class HTTPResponse(httplib.HTTPResponse):
   def AddMutateFunction(self, function):
     """Add a function to mutate data chunks.
 
-    Must be called before the chunks property is accessed.
+    Must be called before the chunks property is accessed and before any
+    headers are sent.
+
+    Performing mutation on an HTTP Request drops the Content-Length
+    header from the request, requiring the server to generate it if
+    necessary. It also enforces on-the-fly decompression and
+    compression of the incoming chunks,
     """
     self._mutate_functions.append(function)
     # Mutate functions means the length of the content may change;
     # server must recalculate on the fly
     del self.msg['Content-Length']
 
-    # It also means we have to decompress
+    # It also means we have to decompress and compress again after
     content_encoding = self.getheader('Content-Encoding')
     if content_encoding in ('gzip', 'deflate'):
       self.logger.debug("Will decompresss data in order to mutate")
-      del self.msg['Content-Encoding']
       if content_encoding == 'gzip':
-        self._decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress
+        self._decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        self._compressor = HTTPGzipCompressor()
       elif content_encoding == 'deflate':
-        self._decompressor = zlib.decompressobj(-zlib.MAX_WBITS).decompress
+        self._decompressor = zlib.decompressobj(-zlib.MAX_WBITS)
+        self._compressor = zlib.compressobj()
 
-  def _RecordChunk(self, chunk):
-    """Record and mutate chunk received from the server."""
+  def _RecordChunk(self, chunk, last=False):
+    """Record and mutate chunk received from the server.
+
+    This method handles the decompression and recompression of chunks.
+    """
     delay = time.time() - self.start_time
     if self._decompressor:
-      chunk = self._decompressor(chunk)
+      chunk = self._decompressor.decompress(chunk)
     for mutate_function in self._mutate_functions:
       chunk = mutate_function(chunk)
+    if self._compressor:
+      chunk = self._compressor.compress(chunk)
+      if last:
+        chunk += self._compressor.flush(zlib.Z_FULL_FLUSH)
+        chunk += self._compressor.flush()
+      else:
+        chunk += self._compressor.flush(zlib.Z_SYNC_FLUSH)
 
     self._chunks.append((delay, chunk))
     return chunk
@@ -130,7 +151,7 @@ class HTTPResponse(httplib.HTTPResponse):
       # this means that for streaming, there's a bit of a wait the first time
       # since it has to reach the server first, but not when playing back
       if not self.chunked:
-        yield self._RecordChunk(self.read())
+        yield self._RecordChunk(self.read(), last=True)
         return
 
       # (keybuk) this code is basically _read_chunked() from the superclass,
@@ -152,11 +173,78 @@ class HTTPResponse(httplib.HTTPResponse):
 
         # (keybuk) we always want to yield the final empty chunk since we
         # need to send it to the client anyway
-        yield self._RecordChunk(self._safe_read(chunk_len))
+        yield self._RecordChunk(self._safe_read(chunk_len), last=(chunk_len==0))
         self._safe_read(2)      # toss the CRLF at the end of the chunk
 
       # we read everything; close the "file"
       self.close()
+
+
+class HTTPGzipCompressor(object):
+  """Wrapper around zlib.Decompress to handle HTTP gzip compression.
+
+  We can't use the Python gzip module for this since it only encapsulates
+  files, and we can't subclass zlib.Decompress itself because that object
+  is "hidden".
+
+  This wrapper only implements the compress() and flush() methods, so
+  is equivalent to Python 2.4-era zlib
+  """
+
+  # see gzip.py _write_gzip_header() in the Python distribution
+  GZIP_HEADER = (
+    '\037\213'             # magic header
+    '\010'                 # compression method
+    '\000'                 # flags (none)
+    '\000\000\000\000'     # packed time (use zero)
+    '\002'
+    '\377')
+
+  def __init__(self):
+    # see gzip.py in the Python distribution
+    self._compressor = zlib.compressobj(
+        6, zlib.DEFLATED, -zlib.MAX_WBITS, zlib.DEF_MEM_LEVEL, 0)
+    self._crc = zlib.crc32('') & 0xffffffffL
+    self._size = 0
+    self._sent_header = False
+
+  def compress(self, string):
+    """Compress string, returning at least part of it.
+
+    Wraps zlib.Decompress.compress() prepending the gzip header for the
+    first chunk, and keeping track of the CRC and size of the compressed
+    data.
+
+    Args:
+        string: string to be compressed;
+    Returns:
+        string of compressed data forming at least part of string
+    """
+    chunk = self._compressor.compress(string)
+    if not self._sent_header:
+      chunk = self.GZIP_HEADER + chunk
+      self._sent_header = True
+
+    self._crc = zlib.crc32(string, self._crc) & 0xffffffffL
+    self._size += len(string)
+    return chunk
+
+  def flush(self, mode=zlib.Z_FINISH):
+    """Flush all pending input.
+
+    Wraps zlib.Decompress.flush(), when called without arguments or
+    with zlib.Z_FINISH, appends the CRC and size of the compressed data
+    as required for gzip files.
+
+    Args:
+        mode: see zlib.py documentation
+    Returns:
+        string of remaining compressed data;
+    """
+    chunk = self._compressor.flush(mode)
+    if mode == zlib.Z_FINISH:
+      chunk += struct.pack('<LL', long(self._crc), long(self._size))
+    return chunk
 
 
 class HTTPConnectionMixIn: # HTTPConnection is not an object
