@@ -20,7 +20,9 @@ TESTS_ON_NORMAL_MODE = [
     ('firmware_DevTriggerRecovery', {}),
 ]
 
-TESTS_ON_DEV_MODE = []
+TESTS_ON_DEV_MODE = [
+    ('firmware_DevFwNormalBoot', {}),
+]
 
 TESTS_ON_BOTH_MODES = [
     ('firmware_TryFwB', {}),
