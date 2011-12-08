@@ -71,6 +71,27 @@ class FAFTClient(object):
         self._tpm_handler.init(self._chromeos_interface)
 
 
+    def _dispatch(self, method, params):
+        """This _dispatch method handles string conversion especially.
+
+        Since we turn off allow_dotted_names option. So any string conversion,
+        like str(FAFTClient.method), i.e. FAFTClient.method.__str__, failed
+        via XML RPC call.
+        """
+        is_str = method.endswith('.__str__')
+        if is_str:
+            method = method.rsplit('.', 1)[0]
+        try:
+            func = getattr(self, method)
+        except AttributeError:
+            raise Exception('method "%s" is not supported' % method)
+        else:
+            if is_str:
+                return str(func)
+            else:
+                return func(*params)
+
+
     def is_available(self):
         """Function for polling the RPC server availability.
 

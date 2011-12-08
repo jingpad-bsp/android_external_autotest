@@ -484,25 +484,6 @@ class FAFTSequence(ServoTest):
         self.servo.warm_reset()
 
 
-    def _str_action(self, action):
-        """Convert the action function into a readable string.
-
-        The simple str() doesn't work on remote objects since we disable
-        allow_dotted_names flag when we launch the SimpleXMLRPCServer.
-        So this function handles the exception in this case.
-
-        Args:
-          action: A function.
-
-        Returns:
-          A readable string.
-        """
-        try:
-            return str(action)
-        except xmlrpclib.Fault:
-            return '<remote method>'
-
-
     def _call_action(self, action_tuple):
         """Call the action function with/without arguments.
 
@@ -518,7 +499,7 @@ class FAFTSequence(ServoTest):
             args = action_tuple[1:]
             if callable(action):
                 logging.info('calling %s with parameter %s' % (
-                        self._str_action(action), str(action_tuple[1])))
+                        str(action), str(action_tuple[1])))
                 return action(*args)
             else:
                 logging.info('action is not callable!')
@@ -526,7 +507,7 @@ class FAFTSequence(ServoTest):
             action = action_tuple
             if action is not None:
                 if callable(action):
-                    logging.info('calling %s' % self._str_action(action))
+                    logging.info('calling %s' % str(action))
                     return action()
                 else:
                     logging.info('action is not callable!')
@@ -593,6 +574,10 @@ class FAFTSequence(ServoTest):
     def run_faft_sequence(self):
         """Run FAFT sequence which was previously registered."""
         sequence = self._faft_sequence
+        index = 1
         for step in sequence:
+            logging.info('======== Running FAFT sequence step %d ========' %
+                         index)
             # Don't reboot in the last step.
             self.run_faft_step(step, no_reboot=(step is sequence[-1]))
+            index += 1
