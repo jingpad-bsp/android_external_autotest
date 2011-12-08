@@ -76,7 +76,7 @@ class FAFTSequence(ServoTest):
     USB_PLUG_DELAY = 10
     SYNC_DELAY = 5
 
-    _faft_template = None
+    _faft_template = {}
     _faft_sequence = ()
 
 
@@ -96,7 +96,7 @@ class FAFTSequence(ServoTest):
     def cleanup(self):
         """Autotest cleanup function."""
         self._faft_sequence = ()
-        self._faft_template = None
+        self._faft_template = {}
         super(FAFTSequence, self).cleanup()
 
 
@@ -330,9 +330,6 @@ class FAFTSequence(ServoTest):
         """
         # Change the default firmware_action for dev mode passing the fw screen.
         self.register_faft_template({
-            'state_checker': (None),
-            'userspace_action': (None),
-            'reboot_action': (self.sync_and_hw_reboot),
             'firmware_action': (self.wait_fw_screen_and_ctrl_d if dev_mode
                                 else None),
         })
@@ -462,10 +459,12 @@ class FAFTSequence(ServoTest):
     def register_faft_template(self, template):
         """Register FAFT template, the default FAFT_STEP of each step.
 
+        Any missing field falls back to the original faft_template.
+
         Args:
           template: A FAFT_STEP dict.
         """
-        self._faft_template = template
+        self._faft_template.update(template)
 
 
     def register_faft_sequence(self, sequence):

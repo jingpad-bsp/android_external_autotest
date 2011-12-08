@@ -22,6 +22,7 @@ TESTS_ON_NORMAL_MODE = [
 
 TESTS_ON_DEV_MODE = [
     ('firmware_DevFwNormalBoot', {}),
+    ('firmware_DevScreenTimeout', {}),
 ]
 
 TESTS_ON_BOTH_MODES = [
