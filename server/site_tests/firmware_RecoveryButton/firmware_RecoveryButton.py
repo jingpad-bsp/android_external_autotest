@@ -16,9 +16,6 @@ class firmware_RecoveryButton(FAFTSequence):
     """
     version = 1
 
-    # Code dedicated for user manually requested recovery via recovery button.
-    RECOVERY_BUTTON_REQUEST_CODE = '2'
-
 
     def ensure_normal_boot(self):
         """Ensure normal mode boot this time.
@@ -58,7 +55,7 @@ class firmware_RecoveryButton(FAFTSequence):
             {   # Step 2, expected recovery boot and release recovery button
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
-                    'recovery_reason' : self.RECOVERY_BUTTON_REQUEST_CODE,
+                    'recovery_reason' : self.RECOVERY_REASON['RO_MANUAL'],
                     'recoverysw_boot': '1',
                 }),
                 'userspace_action': self.servo.disable_recovery_mode,

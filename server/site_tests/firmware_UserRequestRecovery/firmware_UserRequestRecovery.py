@@ -17,9 +17,6 @@ class firmware_UserRequestRecovery(FAFTSequence):
     """
     version = 1
 
-    # Code dedicated for user triggering recovery mode through crossystem.
-    USER_RECOVERY_REQUEST_CODE = '193'
-
 
     def ensure_normal_boot(self):
         """Ensure normal mode boot this time.
@@ -57,7 +54,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
             {   # Step 2, expected recovery boot
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
-                    'recovery_reason' : self.USER_RECOVERY_REQUEST_CODE,
+                    'recovery_reason' : self.RECOVERY_REASON['US_TEST'],
                     'recoverysw_boot': '0',
                 }),
             },

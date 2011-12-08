@@ -18,8 +18,6 @@ class firmware_DevTriggerRecovery(FAFTSequence):
     """
     version = 1
 
-    DEV_SCREEN_TO_RECOVERY_CODE = '65'
-
     # True if Alex/ZBG which needs a transition state to enter dev mode.
     need_dev_transition = False
 
@@ -109,7 +107,7 @@ class firmware_DevTriggerRecovery(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'recovery',
-                    'recovery_reason' : self.DEV_SCREEN_TO_RECOVERY_CODE,
+                    'recovery_reason' : self.RECOVERY_REASON['RW_DEV_SCREEN'],
                     'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.servo.disable_development_mode,

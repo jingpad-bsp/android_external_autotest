@@ -20,9 +20,6 @@ class firmware_DevFwNormalBoot(FAFTSequence):
     """
     version = 1
 
-    # Codes dedicated for failed to load RW firmware.
-    INVALID_RW_FW_CODE = '3'
-
     # True if Alex/ZBG which contains two different types of firmware.
     has_different_dev_fw = False
 
@@ -67,7 +64,8 @@ class firmware_DevFwNormalBoot(FAFTSequence):
                     'state_checker': (self.crossystem_checker, {
                         'devsw_boot': '0',
                         'mainfw_type': 'recovery',
-                        'recovery_reason' : self.INVALID_RW_FW_CODE,
+                        'recovery_reason' :
+                                self.RECOVERY_REASON['RO_INVALID_RW'],
                         'recoverysw_boot': '0',
                     }),
                     'userspace_action': self.restore_fw_b_and_enable_devsw,

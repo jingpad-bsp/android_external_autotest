@@ -19,10 +19,6 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
     """
     version = 1
 
-    # Code dedicated for OS kernel failed signature check.
-    NO_OS_RECOVERY_CODE = '66'       # 0x42
-    INVALID_OS_RECOVERY_CODE = '67'  # 0x43
-
 
     def check_root_part_on_non_recovery(self, part):
         """Check the partition number of root device and on normal/dev boot.
@@ -70,9 +66,9 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
         fwid = self.faft_client.get_crossystem_value('fwid').lower()
         if fwid.startswith('mario') or fwid.startswith('alex') or \
                 fwid.startswith('zgb'):
-            recovery_reason = self.NO_OS_RECOVERY_CODE
+            recovery_reason = self.RECOVERY_REASON['RW_NO_OS']
         else:
-            recovery_reason = self.INVALID_OS_RECOVERY_CODE
+            recovery_reason = self.RECOVERY_REASON['RW_INVALID_OS']
 
         self.register_faft_sequence((
             {   # Step 1, corrupt kernel A and B
