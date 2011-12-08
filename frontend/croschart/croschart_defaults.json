@@ -56,5 +56,7 @@
   ["desktopui_PyAutoPerfTests", "frames_NetflixDroppedFrames"],
   ["desktopui_PyAutoPerfTests", "extrapolation_NetflixCPUExtrap"],
   ["desktopui_PyAutoPerfTests",
-   "fps_WebGLAquarium,fps_WebGLField,fps_WebGLSpaceRocks"]
+   "fps_WebGLAquarium,fps_WebGLField,fps_WebGLSpaceRocks"],
+  ["desktopui_PyAutoPerfTests", "Fraction_AngryBirdsCpuBusy"],
+  ["desktopui_PyAutoPerfTests", "MB_AngryBirdsV8HeapSize"]
 ]
