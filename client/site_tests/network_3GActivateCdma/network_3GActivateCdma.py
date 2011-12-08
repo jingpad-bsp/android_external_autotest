@@ -19,9 +19,9 @@ class State:
     RESET_BACK     = 2
     RESET_EVDO     = 3
     ACTIVATE       = 4
-    ACTIVATE_GONE  = 5
-    ACTIVATE_BACK  = 6
-    CONNECT        = 7
+    ACTIVATING     = 5
+    CONNECT        = 8
+
 
 class ActivationStateMachine(object):
     """
@@ -38,9 +38,15 @@ class ActivationStateMachine(object):
     8. Start over if we have more loops.
     """
 
-    def __init__(self, tester, loops):
+    def __init__(self, tester, loops,
+                 max_activate_retries=20,
+                 max_connect_retries=5):
         self.tester = tester
         self.loops_remaining = loops
+        self.max_activate_retries = max_activate_retries
+        self.max_connect_retries = max_connect_retries
+        self.activate_retry = 0
+        self.connect_retry = 0
 
     def Start(self):
         logging.info('Starting activation test.')
@@ -50,48 +56,61 @@ class ActivationStateMachine(object):
         if self.state == State.RESET_GONE:
             logging.info('Service reappeared while resetting.')
             self.state = State.RESET_BACK
-        elif self.state == State.ACTIVATE_GONE:
+        elif self.state == State.ACTIVATING:
             logging.info('Service reappeared while activating.')
-            self.state = State.ACTIVATE_BACK
         else:
             raise error.TestFail('Service appeared unexpectedly')
 
     def OnServiceDisappeared(self):
-        self.is_evdo = False
-        self.has_signal = False
         if self.state == State.RESET:
             logging.info('Service disappeared while resetting.')
             self.state = State.RESET_GONE
-        elif self.state == State.ACTIVATE:
+        elif self.state == State.ACTIVATING:
             logging.info('Service disappeared while activating.')
-            self.state = State.ACTIVATE_GONE
         else:
             raise error.TestFail('Service disappeared unexpectedly')
 
     def OnServiceStateChanged(self, service_state):
-        if self.state == State.CONNECT:
+        if self.state == State.ACTIVATING:
+            if service_state == 'activation-failure':
+                logging.info('Activation failed.')
+                self.OnActivateFailure()
+        elif self.state == State.CONNECT:
             if service_state == 'portal':
-                self.Done()
+                logging.info('Connected.')
+                self.OnConnectSuccess()
             elif service_state in [ 'association', 'configuration', 'ready' ]:
                 logging.info('Service state %s while connecting.' %
                     service_state)
+            elif service_state in [ 'disconnect', 'failure' ]:
+                logging.info('Connect failed (state %s).' % service_state)
+                self.OnConnectFailure()
+            elif service_state == 'idle':
+                # TODO(ttuttle): See if we still need this.
+                logging.info('ignoring idle')
             else:
                 raise error.TestFail(
                     'Unexpected service state %s while connecting' %
                     service_state)
 
     def OnActivationStateChanged(self, activation_state):
-        if self.state == State.ACTIVATE_BACK:
+        if self.state == State.ACTIVATE:
+            if activation_state == 'activating':
+                self.state = State.ACTIVATING
+        elif self.state == State.ACTIVATING:
             if activation_state == 'partially-activated':
-                logging.info('Modem partially-activated.')
-                self.Connect()
+                logging.info('Activated.')
+                self.OnActivateSuccess()
+            if activation_state == 'not-activated':
+                logging.info('Returned to not-activated while activating.')
+                self.OnActivateFailure()
 
     def OnNetworkTechnologyChanged(self, technology):
         if self.state == State.RESET_BACK:
             if technology == 'EVDO':
                 logging.info('Modem switched to EVDO.')
                 self.state = State.RESET_EVDO
-        if self.state == State.RESET_EVDO:
+        elif self.state == State.RESET_EVDO:
             if technology != 'EVDO':
                 logging.info('Modem switched from EVDO.')
                 self.state = State.RESET_BACK
@@ -102,6 +121,28 @@ class ActivationStateMachine(object):
         if self.state == State.RESET_EVDO:
             logging.info('Modem has signal strength %d.' % strength)
             self.Activate()
+
+    def OnActivateSuccess(self):
+        self.tester.LogActivate(self.activate_retry)
+        self.activate_retry = 0
+        self.Connect()
+
+    def OnActivateFailure(self):
+        self.activate_retry += 1
+        if self.activate_retry > self.max_activate_retries:
+            raise error.TestFail('Activate failed too many times.')
+        self.Activate()
+
+    def OnConnectSuccess(self):
+        self.tester.LogConnect(self.connect_retry)
+        self.connect_retry = 0
+        self.Done()
+
+    def OnConnectFailure(self):
+        self.connect_retry += 1
+        if self.connect_retry > self.max_connect_retries:
+            raise error.TestFail('Connect failed too many times.')
+        self.Connect()
 
     def Reset(self):
         logging.info('RESET (%d loops left)' % self.loops_remaining)
@@ -141,6 +182,11 @@ class ActivationStateMachine(object):
         self.tester.LogTimes(reset_time, activate_time, connect_time)
 
 
+SERVICES           = 'Services'
+STATE              = 'State'
+STRENGTH           = 'Strength'
+NETWORK_TECHNOLOGY = 'Cellular.NetworkTechnology'
+ACTIVATION_STATE   = 'Cellular.ActivationState'
 
 class ActivationTester(ExceptionForwardingMainLoop):
     def __init__(self, loops, test, main_loop):
@@ -170,14 +216,19 @@ class ActivationTester(ExceptionForwardingMainLoop):
         self.modem.FactoryReset('000000')
 
     def Activate(self):
-        self.FindModem()
-        self.cdma_modem.Activate('')
+        self.service.ActivateCellularModem('')
 
     def Connect(self):
         self.service.Connect()
 
     def LogTimes(self, *args):
         self.test.LogTimes(*args)
+
+    def LogActivate(self, retries):
+        self.test.LogActivate(retries)
+
+    def LogConnect(self, retries):
+        self.test.LogConnect(retries)
 
     def OnServiceStateChanged(self, service_state):
         if service_state == self.service_state:
@@ -213,8 +264,8 @@ class ActivationTester(ExceptionForwardingMainLoop):
 
     def CheckStrength(self):
         props = self.service.GetProperties()
-        if props.has_key('Strength'):
-            self.OnStrengthChanged(props['Strength'])
+        if STRENGTH in props:
+            self.OnStrengthChanged(props[STRENGTH])
 
     @ExceptionForward
     def OnServicePropertyChanged(self, *args, **kwargs):
@@ -222,13 +273,13 @@ class ActivationTester(ExceptionForwardingMainLoop):
         new_value = args[1]
         logging.debug('OnServicePropertyChanged: %s = %r' %
                 (property_name, new_value))
-        if property_name == 'State':
+        if property_name == STATE:
             self.OnServiceStateChanged(new_value)
-        if property_name == 'Cellular.ActivationState':
+        elif property_name == ACTIVATION_STATE:
             self.OnActivationStateChanged(new_value)
-        if property_name == 'Cellular.NetworkTechnology':
+        elif property_name == NETWORK_TECHNOLOGY:
             self.OnNetworkTechnologyChanged(new_value)
-        if property_name == 'Strength':
+        elif property_name == STRENGTH:
             self.OnStrengthChanged(new_value)
 
     def OnServiceAdded(self, service_path):
@@ -249,12 +300,12 @@ class ActivationTester(ExceptionForwardingMainLoop):
         props = service.GetProperties()
         if self.sm:
             self.sm.OnServiceAppeared()
-        if 'State' in props:
-            self.OnServiceStateChanged(props['State'])
-        if 'Cellular.ActivationState' in props:
-            self.OnActivationStateChanged(props['Cellular.ActivationState'])
-        if 'Cellular.NetworkTechnology' in props:
-            self.OnNetworkTechnologyChanged(props['Cellular.NetworkTechnology'])
+        if STATE in props:
+            self.OnServiceStateChanged(props[STATE])
+        if ACTIVATION_STATE in props:
+            self.OnActivationStateChanged(props[ACTIVATION_STATE])
+        if NETWORK_TECHNOLOGY in props:
+            self.OnNetworkTechnologyChanged(props[NETWORK_TECHNOLOGY])
 
     def OnServiceRemoved(self, service_path):
         if service_path == self.service_path:
@@ -282,7 +333,7 @@ class ActivationTester(ExceptionForwardingMainLoop):
         new_value = args[1]
         logging.debug('OnManagerPropertyChanged: %s = %r' %
                 (property_name, new_value))
-        if property_name == 'Services':
+        if property_name == SERVICES:
             self.OnServicesChanged(new_value)
 
     @ExceptionForward
@@ -305,14 +356,14 @@ class ActivationTester(ExceptionForwardingMainLoop):
                                                 self.OnManagerPropertyChanged)
 
         mgr_props = self.flimflam.manager.GetProperties()
-        self.OnServicesChanged(mgr_props['Services'])
+        self.OnServicesChanged(mgr_props[SERVICES])
 
         self.sm = ActivationStateMachine(tester=self, loops=self.loops)
         self.sm.Start()
 
 
 def average(list):
-    return sum(list) / len(list)
+    return (sum(list) * 1.0) / len(list)
 
 
 class network_3GActivateCdma(test.test):
@@ -326,6 +377,9 @@ class network_3GActivateCdma(test.test):
         self.activate_times = []
         self.connect_times = []
 
+        self.activate_retries = []
+        self.connect_retries = []
+
         ActivationTester(loops=loops, test=self, main_loop=main_loop).run()
 
         self.CalculateStats()
@@ -335,8 +389,16 @@ class network_3GActivateCdma(test.test):
         self.activate_times.append(activate_time)
         self.connect_times.append(connect_time)
 
+    def LogActivate(self, retries):
+        self.activate_retries.append(retries)
+
+    def LogConnect(self, retries):
+        self.connect_retries.append(retries)
+
     def CalculateStats(self):
         self.write_perf_keyval({
             'reset_time_average': average(self.reset_times),
             'activate_time_average': average(self.activate_times),
-            'connect_time_average': average(self.connect_times)})
+            'connect_time_average': average(self.connect_times),
+            'activate_retry_average': average(self.activate_retries),
+            'connect_retry_average': average(self.connect_retries)})
