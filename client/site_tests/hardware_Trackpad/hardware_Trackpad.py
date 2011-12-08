@@ -62,9 +62,8 @@ class hardware_Trackpad(test.test):
         result_file_name = '.'.join([autotest_dir, test_time])
         self.result_file = os.path.join(result_path, result_file_name)
         self.result_fh = open(self.result_file, 'w+')
+        logging.info('Gesture set tested: %s', autotest_dir)
         logging.info('Result is saved at %s' % self.result_file)
-        logging.info(autotest_path)
-        logging.info(autotest_dir)
 
     def _write_result_log(self, msg):
         logging.info(msg)
@@ -72,6 +71,18 @@ class hardware_Trackpad(test.test):
 
     def _close_result_log(self):
         self.result_fh.close()
+
+    def _append_detailed_log(self):
+        # autodir is an attribute of test.test.
+        # autodir is currently /usr/local/autotest in chromebook.
+        detailed_log_path = os.path.join(self.autodir,
+                                         'results/default/debug/client.INFO')
+        append_cmd = 'cat %s >> %s' % (detailed_log_path, self.result_file)
+        try:
+            utils.system(append_cmd)
+            logging.info('Append detailed log: "%s"' % append_cmd)
+        except:
+            logging.warn('Warning: fail to execute "%s"' % append_cmd)
 
     def run_once(self):
         global tdata
@@ -258,8 +269,12 @@ class hardware_Trackpad(test.test):
             func_msg = '      {0:<25}: {1:4s}  {2:9s} '
             msg = func_msg.format(func_name, pass_rate_str, count_str)
             msg += pass_str
-            self._write_result_log(msg)
-        self._write_result_log('\n')
+            if test_count > 0:
+                self._write_result_log(msg)
+        self._write_result_log('\n\n### End of Test Summary ###\n\n')
+
+        self._close_result_log()
+        self._append_detailed_log()
 
         # Raise error.TestFail if there is any test failed.
         if tdata.tot_fail_count > 0:
