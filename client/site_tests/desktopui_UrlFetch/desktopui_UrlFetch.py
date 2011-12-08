@@ -17,9 +17,8 @@ class desktopui_UrlFetch(cros_ui_test.UITest):
         self._live = live
         super(desktopui_UrlFetch, self).initialize(creds='$default')
         if self._live:
-            self._test_url = 'http://www.noaa.gov/'
-            self._expected_title = \
-                'NOAA - National Oceanic and Atmospheric Administration'
+            self._test_url = 'http://www.msn.com/'
+            self._expected_title = 'MSN.com'
         else:
             self._test_url = 'http://localhost:8000/hello.html'
             self._expected_title = 'Hello World'
