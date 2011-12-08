@@ -74,6 +74,7 @@ class FAFTSequence(ServoTest):
     FIRMWARE_SCREEN_DELAY = 10
     TEXT_SCREEN_DELAY = 20
     USB_PLUG_DELAY = 10
+    SYNC_DELAY = 5
 
     _faft_template = None
     _faft_sequence = ()
@@ -214,8 +215,12 @@ class FAFTSequence(ServoTest):
         Returns:
           True if the currect root  partition number matched; otherwise, False.
         """
-        part = self.faft_client.get_root_part()
-        return self.ROOTFS_MAP[expected_part] == part[-1]
+        part = self.faft_client.get_root_part()[-1]
+        if self.ROOTFS_MAP[expected_part] != part:
+            logging.info("Expected root part %s but got %s" %
+                         (self.ROOTFS_MAP[expected_part], part))
+            return False
+        return True
 
 
     def _join_part(self, dev, part):
@@ -389,6 +394,9 @@ class FAFTSequence(ServoTest):
         # Set kernel part highest priority.
         self.faft_client.run_shell_command('cgpt prioritize -i%s %s' %
                 (self.KERNEL_MAP[part], root_dev))
+        # Safer to sync and wait until the cgpt status written to the disk.
+        self.faft_client.run_shell_command('sync')
+        time.sleep(self.SYNC_DELAY)
 
 
     def sync_and_hw_reboot(self):
@@ -397,7 +405,7 @@ class FAFTSequence(ServoTest):
         This is the default reboot action on FAFT.
         """
         self.faft_client.run_shell_command('sync')
-        time.sleep(5)
+        time.sleep(self.SYNC_DELAY)
         self.servo.warm_reset()
 
 
