@@ -157,6 +157,31 @@ class FAFTSequence(ServoTest):
     _faft_template = {}
     _faft_sequence = ()
 
+    _customized_ctrl_d_key_command = None
+    _customized_enter_key_command = None
+
+
+    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
+        # Parse arguments from command line
+        args = {}
+        for arg in cmdline_args:
+            match = re.search("^(\w+)=(.+)", arg)
+            if match:
+                args[match.group(1)] = match.group(2)
+
+        # Keep the customized Ctrl-D and Enter key commands.
+        if 'ctrl_d_cmd' in args:
+            self._customized_ctrl_d_key_command = args['ctrl_d_cmd']
+            logging.info('Customized Ctrl-D key command: %s' %
+                    self._customized_ctrl_d_key_command)
+        if 'enter_cmd' in args:
+            self._customized_enter_key_command = args['enter_cmd']
+            logging.info('Customized Enter key command: %s' %
+                    self._customized_enter_key_command)
+
+        super(FAFTSequence, self).initialize(host, cmdline_args, use_pyauto,
+                use_faft)
+
 
     def setup(self):
         """Autotest setup function."""
@@ -360,10 +385,28 @@ class FAFTSequence(ServoTest):
             })
 
 
+    def send_ctrl_d_to_dut(self):
+        """Send Ctrl-D key to DUT."""
+        if self._customized_ctrl_d_key_command:
+            logging.info('running the customized Ctrl-D key command')
+            os.system(self._customized_ctrl_d_key_command)
+        else:
+            self.servo.ctrl_d()
+
+
+    def send_enter_to_dut(self):
+        """Send Enter key to DUT."""
+        if self._customized_enter_key_command:
+            logging.info('running the customized Enter key command')
+            os.system(self._customized_enter_key_command)
+        else:
+            self.servo.enter_key()
+
+
     def wait_fw_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
-        self.servo.ctrl_d()
+        self.send_ctrl_d_to_dut()
 
 
     def wait_fw_screen_and_plug_usb(self):

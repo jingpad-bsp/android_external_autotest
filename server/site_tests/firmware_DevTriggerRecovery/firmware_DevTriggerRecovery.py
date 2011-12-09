@@ -25,13 +25,13 @@ class firmware_DevTriggerRecovery(FAFTSequence):
     def wait_fw_screen_and_trigger_recovery(self):
         """Wait for firmware warning screen and trigger recovery boot."""
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
-        self.servo.enter_key()
+        self.send_enter_to_dut()
 
         # For Alex/ZGB, there is a dev warning screen in text mode.
         # Skip it by pressing Ctrl-D.
         if self.need_dev_transition:
             time.sleep(self.TEXT_SCREEN_DELAY)
-            self.servo.ctrl_d()
+            self.send_ctrl_d_to_dut()
 
 
     # The devsw off->on transition states are different based on platforms.
