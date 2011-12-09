@@ -10,6 +10,36 @@ class Error(Exception):
   pass
 
 
+_DefaultAlwaysCheck = False
+
+
+class _ErrorCheckerContext(object):
+    """Reference-count our error-checking state and only check for
+    errors when we take the first ref or drop the last ref.
+
+    This way, we can minimize the number of checks; each one takes a
+    bit of time.  You will likely want to set always_check to True when
+    debugging new SCPI interactions."""
+
+    def __init__(self, scpi):
+        self.always_check = _DefaultAlwaysCheck
+        self.scpi = scpi
+        self.depth = 0
+
+    def __enter__(self):
+        if self.depth == 0 or self.always_check:
+            # Clear out errors that came before us
+            self.scpi.WaitAndCheckError()
+        self.depth += 1
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.depth -= 1
+        if self.depth <= 0 or self.always_check:
+            self.scpi.WaitAndCheckError()
+        return
+
+
 class Scpi(object):
   """Wrapper for SCPI.
 
@@ -23,6 +53,7 @@ class Scpi(object):
     self.driver = driver
     self.opc_on_stanza = opc_on_stanza
     self.scpi_logger = logging.getLogger('SCPI')
+    self.checker_context = _ErrorCheckerContext(self)
 
   def Query(self, command):
     """Send the SCPI command and return the response."""
@@ -83,20 +114,17 @@ class Scpi(object):
     Raises:
       Error:  Verification failed
     """
-    self.Send('%s %s' % (command, arg))
-    self.WaitAndCheckError()
-    result = self.Query('%s?' % (command,))
-    if result != arg:
-      raise Error('Error on %s: sent %s, got %s' % (command, arg, result))
+    with self.checker_context:
+        self.Send('%s %s' % (command, arg))
+        result = self.Query('%s?' % (command,))
+        if result != arg:
+          raise Error('Error on %s: sent %s, got %s' % (command, arg, result))
 
   def SendStanza(self, commands):
     """Sends a list of commands, checks to see that they complete correctly."""
-    self.WaitAndCheckError()
-
-    for c in commands:
-      if self.opc_on_stanza:
-        self.Query(c + ';*OPC?')
-      else:
-        self.Send(c)
-
-    self.WaitAndCheckError()
+    with self.checker_context:
+        for c in commands:
+          if self.opc_on_stanza:
+            self.Query(c + ';*OPC?')
+          else:
+            self.Send(c)

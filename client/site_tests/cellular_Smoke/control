@@ -21,6 +21,6 @@ from autotest_lib.client.cros.cellular import labconfig
 config = labconfig.Configuration(args)
 for technology in config.get_technologies():
     job.run_test('cellular_Smoke',
-                 config=config.cell,
+                 config=config,
                  technology=technology,
                  tag=technology)

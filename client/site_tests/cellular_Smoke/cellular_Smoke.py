@@ -34,9 +34,7 @@ class cellular_Smoke(test.test):
       # This shuts down other network devices on the host.  Again,
       # this is to ensure that test traffic goes over the modem
       with cell_tools.OtherDeviceShutdownContext('cellular', flim):
-        bs, verifier = emulator_config.GetDefaultBasestation(
-            config, technology)
-
+        bs, verifier = emulator_config.GetDefaultBasestation(config, technology)
         network.ResetAllModems(flim)
 
         # TODO(rochberg) Need to figure out what isn't settling here.
@@ -45,6 +43,5 @@ class cellular_Smoke(test.test):
 
         (service, _) = cell_tools.ConnectToCellular(flim, verifier)
         cell_tools.CheckHttpConnectivity(config)
-
 
         cell_tools.DisconnectFromCellularService(bs, flim, service)

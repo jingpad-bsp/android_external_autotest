@@ -28,9 +28,11 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
   def __init__(self,
                scpi_connection):
     self.c = scpi_connection
-    self._Verify()
-    self._Reset()
-    self.SetPower(cellular.Power.DEFAULT)
+    self.checker_context = self.c.checker_context
+    with self.checker_context:
+      self._Verify()
+      self._Reset()
+      self.SetPower(cellular.Power.DEFAULT)
 
   def _Verify(self):
     idn = self.c.Query('*IDN?')
