@@ -11,28 +11,48 @@ from autotest_lib.client.cros import power_status
 # Specify registers to check.  The format needs to be:
 #   register offset : ('bits', 'expression')
 DMI_BAR_CHECKS = {
-    '0x88':  [('1:0', 3)],
-    '0x200': [('27:26', 0)],
-    '0x210': [('2:0', 1), ('15:8', 1)],
-    '0xc28': [('5:1', 7)],
-    '0xc2e': [('5', 1)],
-    '0xc30': [('11', 0), ('10:8', 4)],
-    '0xc34': [('9:4', 7), ('0', 1)],
-}
+    'cpuA': {
+        '0x88':  [('1:0', 3)],
+        '0x200': [('27:26', 0)],
+        '0x210': [('2:0', 1), ('15:8', 1)],
+        '0xc28': [('5:1', 7)],
+        '0xc2e': [('5', 1)],
+        '0xc30': [('11', 0), ('10:8', 4)],
+        '0xc34': [('9:4', 7), ('0', 1)],
+        },
+    'cpuB': {},
+    }
 
 MCH_BAR_CHECKS = {}
 
 MSR_CHECKS = {
-    '0xe2':  [('7', 0), ('2:0', 4)],
-    '0x198': [('28:24', 6)],
-    '0x1a0': [('33:32', 3), ('26:25', 3), ('16', 1)],
-}
+    'cpuA': {
+        '0xe2':  [('7', 0), ('2:0', 4)],
+        '0x198': [('28:24', 6)],
+        '0x1a0': [('33:32', 3), ('26:25', 3), ('16', 1)],
+        },
+    'cpuB': {
+        # IA32_ENERGY_PERF_BIAS[3:0] -- 0 == hi-perf, 6 balanced, 15 powersave
+        '0x1b0': [('3:0', 6)],
+        },
+    }
 
 # Give an ASPM exception for these PCI devices. ID is taken from lspci -n.
-ASPM_EXCEPTED_DEVICES = [
-    '8086:27d8'  # Intel Corporation 82801G High Definition Audio Controller
-]
+ASPM_EXCEPTED_DEVICES = {
+    'cpuA': [
+        # Intel 82801G HDA Controller
+        '8086:27d8'
+        ],
+    'cpuB': [
+        # Intel HDA Controller
+        '8086:1c20'
+        ],
+    }
 
+GFX_CHECKS = {
+    'cpuB': {'i915_enable_rc6': 1, 'i915_enable_fbc': 1, 'powersave': 1,
+             'semaphores':1 }
+    }
 
 class power_x86Settings(test.test):
     version = 1
@@ -91,6 +111,10 @@ class power_x86Settings(test.test):
         if fail_count:
             failures += 'filesystem_failures(%d) ' % fail_count
 
+        fail_count = self._verify_graphics_power_settings()
+        if fail_count:
+            failures += 'graphics_failures(%d) ' % fail_count
+
         if failures:
             raise error.TestFail(failures)
 
@@ -99,8 +123,14 @@ class power_x86Settings(test.test):
         cpuinfo = utils.read_file('/proc/cpuinfo')
 
         # Look for Intel Atom N4xx or N5xx series CPUs
-        match = re.search(r'Intel.*Atom.*N[45]', cpuinfo)
-        if match:
+        if re.search(r'Intel.*Atom.*N[45]', cpuinfo):
+            self._cpu_type = 'cpuA'
+            return True
+        if re.search(r'Intel.*Celeron.*8[1456][07]', cpuinfo):
+            self._cpu_type = 'cpuB'
+            return True
+        if re.search(r'Intel.*Core.*i[357]-2[357][0-9][0-9]', cpuinfo):
+            self._cpu_type = 'cpuB'
             return True
 
         logging.info(cpuinfo)
@@ -173,7 +203,8 @@ class power_x86Settings(test.test):
             logging.debug('USB: path set to %s for %s',
                            out, level_file)
             if out != expected_state:
-                logging.info(level_file)
+                logging.error("%s == %s, but expected %s", level_file, out,
+                              expected_state)
                 errors += 1
 
         return errors
@@ -228,6 +259,33 @@ class power_x86Settings(test.test):
         return errors
 
 
+    def _verify_graphics_power_settings(self):
+        """Verify that power-saving for graphics are configured properly.
+
+        Returns:
+            0 if no errors, otherwise the number of errors that occurred.
+        """
+        errors = 0
+
+        if self._cpu_type in GFX_CHECKS:
+            checks = GFX_CHECKS[self._cpu_type]
+            for param_name in checks:
+                param_path = '/sys/module/i915/parameters/%s' % param_name
+                if not os.path.exists(param_path):
+                  logging.debug('Error, %s not found' % param_path)
+                  errors += 1
+                else:
+                  out = utils.read_one_line(param_path)
+                  logging.debug('Graphics: %s = %s', param_path, out)
+                  value = int(out)
+                  if value != checks[param_name]:
+                    logging.debug('Error, %s = %d but should be %d',
+                                  param_path, value, checks[param_name])
+                    errors += 1
+
+        return errors
+
+
     def _verify_pcie_aspm(self):
         errors = 0
         out = utils.system_output('lspci -n')
@@ -237,7 +295,7 @@ class power_x86Settings(test.test):
                                             retain_output=True)
             match = re.search(r'LnkCtl:(.*);', slot_out)
             if match:
-                if id in ASPM_EXCEPTED_DEVICES:
+                if id in ASPM_EXCEPTED_DEVICES[self._cpu_type]:
                     continue
 
                 split = match.group(1).split()
@@ -258,7 +316,7 @@ class power_x86Settings(test.test):
         logging.debug('DMI BAR is %s', hex(self._dmi_bar))
 
         return self._verify_registers('dmi', self._read_dmi_bar,
-                                      DMI_BAR_CHECKS)
+                                      DMI_BAR_CHECKS[self._cpu_type])
 
 
     def _verify_mch_bar(self):
@@ -272,7 +330,8 @@ class power_x86Settings(test.test):
 
 
     def _verify_msrs(self):
-        return self._verify_registers('msr', self._read_msr, MSR_CHECKS)
+        return self._verify_registers('msr', self._read_msr,
+                                      MSR_CHECKS[self._cpu_type])
 
 
     def _verify_registers(self, type, read_fn, match_list):
