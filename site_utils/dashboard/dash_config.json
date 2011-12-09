@@ -10,18 +10,21 @@
     "alerts": [
         {
             "platforms": [
+                {"x86-alex-r18": "netbook_ALEX"},
                 {"x86-alex-r17": "netbook_ALEX"},
                 {"x86-alex-r16": "netbook_ALEX"},
                 {"x86-alex-r15": "netbook_ALEX"},
                 {"x86-alex-r14": "netbook_ALEX"},
-                {"x86-mario-r14": "netbook_MARIO_MP"},
-                {"x86-mario-r15": "netbook_MARIO_MP"},
-                {"x86-mario-r16": "netbook_MARIO_MP"},
+                {"x86-mario-r18": "netbook_MARIO_MP"},
                 {"x86-mario-r17": "netbook_MARIO_MP"},
-                {"x86-zgb-r14": "netbook_ACER_ZGB"},
-                {"x86-zgb-r15": "netbook_ACER_ZGB"},
+                {"x86-mario-r16": "netbook_MARIO_MP"},
+                {"x86-mario-r15": "netbook_MARIO_MP"},
+                {"x86-mario-r14": "netbook_MARIO_MP"},
+                {"x86-zgb-r18": "netbook_ACER_ZGB"},
+                {"x86-zgb-r17": "netbook_ACER_ZGB"},
                 {"x86-zgb-r16": "netbook_ACER_ZGB"},
-                {"x86-zgb-r17": "netbook_ACER_ZGB"}],
+                {"x86-zgb-r15": "netbook_ACER_ZGB"},
+                {"x86-zgb-r14": "netbook_ACER_ZGB"}],
             "categories": ["perfalerts"],
             "sheriffs": false,
             "cc": [
@@ -50,12 +53,12 @@
     "resultmail": [
         {
             "platforms": {
-                "netbook_MARIO_MP": ["x86-mario-r17", "x86-mario-r16",
-                                     "x86-mario-r15"],
-                "netbook_ALEX": ["x86-alex-r17", "x86-alex-r16",
-                                 "x86-alex-r15"],
-                "netbook_ACER_ZGB": ["x86-zgb-r17", "x86-zgb-r16",
-                                     "x86-zgb-r15"]},
+                "netbook_MARIO_MP": ["x86-mario-r18", "x86-mario-r17",
+                                     "x86-mario-r16", "x86-mario-r15"],
+                "netbook_ALEX": ["x86-alex-r18", "x86-alex-r17",
+                                 "x86-alex-r16", "x86-alex-r15"],
+                "netbook_ACER_ZGB": ["x86-zgb-r18", "x86-zgb-r17",
+                                     "x86-zgb-r16", "x86-zgb-r15"]},
             "filters": [
                 {"categories": ["bvt"],
                  "sheriffs": true,
@@ -116,9 +119,9 @@
                        "chromeos-tpms@google.com"]}]},
         {
             "platforms": {
-                "desktop_STUMPY": ["stumpy-r17"],
-                "netbook_KAEN": ["tegra2-kaen-r17"],
-                "netbook_TEGRA2_SEABOARD_T25": ["tegra2-seaboard-cosine-r17"]},
+                "netbook_LUMPY": ["lumpy-r18", "lumpy-r17"],
+                "desktop_STUMPY": ["stumpy-r18", "stumpy-r17"],
+                "netbook_KAEN": ["tegra2-kaen-r18", "tegra2-kaen-r17"]},
             "filters": [{
                 "categories": ["bvt"],
                 "cc": ["chromeos-autotest@google.com"]}]},
@@ -131,21 +134,22 @@
                        "marcheu@google.com"]}]},
         {
             "platforms": {
-                "netbook_RF_ENCLOSURE": ["x86-mario-r17", "x86-mario-r16",
-                                         "x86-mario-r15"]},
+                "netbook_RF_ENCLOSURE": ["x86-mario-r18", "x86-mario-r17",
+                                         "x86-mario-r16", "x86-mario-r15"]},
             "filters": [{
                 "categories": ["network_wifi"],
                 "cc": ["chromeos-autotest@google.com",
                        "stanleyw@google.com"]}]},
         {
             "platforms": {
-                "netbook_MARIO_MP_CDMA_GOBI2K": ["x86-mario-r17",
+                "netbook_MARIO_MP_CDMA_GOBI2K": ["x86-mario-r18",
+                                                 "x86-mario-r17",
                                                  "x86-mario-r16",
                                                  "x86-mario-r15"],
-                "netbook_ALEX_CDMA_GOBI2K": ["x86-alex-r17", "x86-alex-r16",
-                                             "x86-alex-r15"],
-                "netbook_ALEX_CDMA_GOBI3K": ["x86-alex-r17", "x86-alex-r16",
-                                             "x86-alex-r15"]},
+                "netbook_ALEX_CDMA_GOBI2K": ["x86-alex-r18", "x86-alex-r17",
+                                             "x86-alex-r16", "x86-alex-r15"],
+                "netbook_ALEX_CDMA_GOBI3K": ["x86-alex-r18", "x86-alex-r17",
+                                             "x86-alex-r16", "x86-alex-r15"]},
             "filters": [{
                 "categories": ["network_3g"],
                 "cc": ["chromeos-autotest@google.com",
@@ -263,23 +267,29 @@
             "keys": [
                 "score_total"]}},
     "alternatelandings": {
-        "x86-alex-r16": {
+        "x86-alex-r18": {
             "netbook_ALEX_CDMA_GOBI2K": "network",
             "netbook_ALEX_CDMA_GOBI3K": "network"},
         "x86-alex-r17": {
             "netbook_ALEX_CDMA_GOBI2K": "network",
             "netbook_ALEX_CDMA_GOBI3K": "network"},
-        "x86-mario-r16": {
+        "x86-alex-r16": {
+            "netbook_ALEX_CDMA_GOBI2K": "network",
+            "netbook_ALEX_CDMA_GOBI3K": "network"},
+        "x86-mario-r18": {
             "netbook_MARIO_MP_CDMA_GOBI2K": "network",
             "netbook_RF_ENCLOSURE": "network"},
         "x86-mario-r17": {
             "netbook_MARIO_MP_CDMA_GOBI2K": "network",
+            "netbook_RF_ENCLOSURE": "network"},
+        "x86-mario-r16": {
+            "netbook_MARIO_MP_CDMA_GOBI2K": "network",
             "netbook_RF_ENCLOSURE": "network"}},
-    "priorityboards_tot": ["x86-alex-r17", "x86-mario-r17", "x86-zgb-r17"],
+    "priorityboards_tot": ["x86-alex-r18", "x86-mario-r18", "x86-zgb-r18"],
     "priorityboards": [
-        "x86-alex-r15", "x86-alex-r16", "x86-alex-r17",
-        "x86-mario-r15", "x86-mario-r16", "x86-mario-r17",
-        "x86-zgb-r15", "x86-zgb-r16", "x86-zgb-r17"],
+        "x86-alex-r18", "x86-alex-r17", "x86-alex-r16", "x86-alex-r15",
+        "x86-mario-r18", "x86-mario-r17", "x86-mario-r16", "x86-mario-r15",
+        "x86-zgb-r18", "x86-zgb-r17", "x86-zgb-r16", "x86-zgb-r15"],
     "blacklistboards": ["x86-alex-test"],
-    "customboardfilter": "x86|tegra2|stumpy"
+    "customboardfilter": "x86|tegra2|stumpy|lumpy"
 }
