@@ -200,7 +200,16 @@ TEST_LIST = [
         label_en='light sensor',
         label_zw='光感應器',
         autotest_name='factory_LightSensor',
-        dargs={'lux_max':1000, 'lux_min':1},
+        dargs={'subtest_list':['Light sensor dark',
+                               'Light sensor exact',
+                               'Light sensor light'],
+               'subtest_cfg': {'Light sensor dark': {'below': 4},
+                               'Light sensor exact': {'between': (10, 15)},
+                               'Light sensor light': {'above': 200}},
+               'subtest_instruction': {
+                   'Light sensor dark': 'Cover light sensor with finger',
+                   'Light sensor exact': 'Remove finger from light sensor',
+                   'Light sensor light': 'Shine light sensor with flashlight'}},
         kbd_shortcut='i'),
 
     # Required tests (mandatory): ----------------------------------------------
