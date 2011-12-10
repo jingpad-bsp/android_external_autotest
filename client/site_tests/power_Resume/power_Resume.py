@@ -11,7 +11,7 @@ START_SUSPEND_MESSAGES = [ 'Freezing user space' ]
 END_SUSPEND_MESSAGES = [ 'Back to C!', 'Low-level resume complete',
                          'Entering suspend state' ]
 START_RESUME_MESSAGES = [ 'Back to C!', 'Low-level resume complete',
-                          'Suspended for' ]
+                          'Suspended for', 'Resume caused by' ]
 END_RESUME_MESSAGES = [ 'Restarting tasks' ]
 
 class power_Resume(test.test):
