@@ -1,7 +1,7 @@
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import logging, time
+import logging, pickle, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -17,16 +17,17 @@ import flimflam
 class cellular_Throughput(test.test):
     version = 1
 
-    def run_once(self, config):
+    def run_once(self, config_pickle, technology):
+        config = pickle.loads(config_pickle)
         with backchannel.Backchannel():
             flim = flimflam.FlimFlam()
             with cell_tools.OtherDeviceShutdownContext('cellular', flim):
                 bs, verifier = emulator_config.GetDefaultBasestation(
-                    config, cellular.Technology.WCDMA)
+                    config, technology)
                 network.ResetAllModems(flim)
                 # TODO(rochberg): Figure out whether it's just Gobi 2k
                 # that requires this or all modems
-                time.sleep(10)
+                time.sleep(5)
 
                 (service, _) = cell_tools.ConnectToCellular(flim, verifier)
 
@@ -38,7 +39,7 @@ class cellular_Throughput(test.test):
                 bs.ResetDataCounters()
 
                 # The control file has started iperf at this address
-                perftarget = config['perfserver']['rf_address']
+                perftarget = config.cell['perfserver']['rf_address']
                 (client, perf) = iperf.BuildClientCommand(
                     perftarget,
                     {'tradeoff': True,})

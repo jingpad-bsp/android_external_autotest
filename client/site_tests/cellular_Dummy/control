@@ -15,4 +15,10 @@ DOC = ""
 
 from autotest_lib.client.cros.cellular import labconfig
 
-job.run_test('cellular_Dummy', config=labconfig.get_test_config(args))
+config = labconfig.Configuration(args)
+for technology in config.get_technologies():
+    job.run_test('cellular_Dummy',
+                 config=config,
+                 technology=technology,
+                 tag=technology)
+

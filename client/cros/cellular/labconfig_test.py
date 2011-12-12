@@ -4,52 +4,69 @@
 # found in the LICENSE file.
 
 import unittest
+import cellular
 import labconfig
-import json
+import labconfig_data
 
-TEST_CONFIG = {
-  'cells': [
-    { 'name': 'cell-1' }
-  ]
-}
+
+TEST_CELL = {
+    'duts': [
+        {
+            'address': '1.2.3.4',
+            'name': 'one_two_three_four',
+            'technologies': ['CDMA_2000'],
+            },
+        {
+            'address': '5.6.7.8',
+            'name': 'five_six_seven_eight',
+            'technologies': ['GPRS', 'EGPRS'],
+            },
+        ],
+    'rf_switch': {
+        'type': 'ether_io',
+        'address':  '172.31.206.172',
+        # Ports maps from port index to name as specified in
+        # duts.name
+        'ports': ['one_two_three_four', None, None, 'five_six_seven_eight'],
+        }
+    }
 
 class TestLabConfig(unittest.TestCase):
-  def setUp(self):
-    self.config = labconfig.LabConfig(TEST_CONFIG)
+    def setUp(self):
+        # Monkey-patch in our test cell
+        labconfig_data.CELLS['test'] = TEST_CELL
 
-  def test_get_present_cell(self):
-    cell = self.config.GetCellByName('cell-1')
-    self.assertEqual(cell['name'], 'cell-1')
+    def test_get_present_cell(self):
+        c = labconfig.Configuration(['--cell', 'test'])
 
-  def test_get_absent_cell(self):
-    self.assertRaises(labconfig.LabConfigError,
-                      self.config.GetCellByName,
-                      'cell-2')
+    def test_get_missing_cell(self):
+        self.assertRaises(labconfig.LabConfigError,
+                          labconfig.Configuration, ['--cell', 'NOT_PRESENT'])
 
-class TestParseTestArgs(unittest.TestCase):
-  def assertParses(self, ret, *args):
-    self.assertEqual(ret, labconfig.parse_test_args(args))
+    def test_get_dut(self):
+        c = labconfig.Configuration(['--cell', 'test'])
+        m = c._get_dut('1.2.3.4')
+        self.assertEqual('one_two_three_four', m['name'])
 
-  def assertParseFails(self, *args):
-    self.assertRaises(labconfig.CellTestArgumentError,
-                      labconfig.parse_test_args,
-                      args)
+        m = c._get_dut('one_two_three_four')
+        self.assertEqual('one_two_three_four', m['name'])
 
-  def test_v0_valid(self):
-    URL = 'url-foo'
-    CELL = 'cell-bar'
-    self.assertParses(
-        { 'url': URL, 'cell': CELL },
-        '0', URL, CELL)
+    def test_get_technologies(self):
+        c = labconfig.Configuration(['--cell', 'test', '--technology=all'])
+        t = c.get_technologies('five_six_seven_eight')
+        self.assertEqual([cellular.Technology.GPRS, cellular.Technology.EGPRS],
+                         t)
 
-  def test_v0_invalid(self):
-    self.assertParseFails('0')
-    self.assertParseFails('0', 'foo')
-    self.assertParseFails('0', 'foo', 'bar', 'baz')
+        c = labconfig.Configuration(['--cell=test',
+                                     '--technology=WCDMA,CDMA_2000'])
 
-  def test_invalid_version(self):
-    self.assertParseFails('1')
-    self.assertParseFails('2')
+        self.assertEqual(
+            [cellular.Technology.WCDMA, cellular.Technology.CDMA_2000],
+            c.get_technologies('five_six_seven_eight'))
+
+    def test_get_interface_ip(self):
+        self.assertEqual('127.0.0.1', labconfig.get_interface_ip('lo'))
+
 
 if __name__ == '__main__':
   unittest.main()

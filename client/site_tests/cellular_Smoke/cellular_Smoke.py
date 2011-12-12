@@ -22,7 +22,7 @@ class cellular_Smoke(test.test):
   # The autotest infrastructure calls run_once.  The control file
   # fetches the JSON lab config and passes it in as a python object
 
-  def run_once(self, config):
+  def run_once(self, config, technology):
     # backchannel.Backchannel sets up an ethernet connection to the
     # DUT that has restrictive routes is outside of flimflam's
     # control.  This makes the tests resilient to flimflam restarts
@@ -34,9 +34,8 @@ class cellular_Smoke(test.test):
       # This shuts down other network devices on the host.  Again,
       # this is to ensure that test traffic goes over the modem
       with cell_tools.OtherDeviceShutdownContext('cellular', flim):
-
         bs, verifier = emulator_config.GetDefaultBasestation(
-            config, cellular.Technology.WCDMA)
+            config, technology)
 
         network.ResetAllModems(flim)
 

@@ -85,14 +85,14 @@ def CheckHttpConnectivity(config):
 
     Args:
         config: A test cell config structure, with
-            config['http_connectivity'].   config['http_connectivity']['url']
-            should point to a URL that fetches a page small enough to be
-            comfortably kept in memory.
+        config.cell['http_connectivity']. config['http_connectivity']['url']
+        should point to a URL that fetches a page small enough to be
+        comfortably kept in memory.
 
-            If config['http_connectivity']['url_required_contents'] is present,
-            that string must be in the fetched URL.
+        If config.cell['http_connectivity']['url_required_contents'] is
+        present, that string must be in the fetched URL.
     """
-    http_config = config['http_connectivity']
+    http_config = config.cell['http_connectivity']
     response = urllib2.urlopen(http_config['url'], timeout=TIMEOUT).read()
 
     if ('url_required_contents' in http_config and

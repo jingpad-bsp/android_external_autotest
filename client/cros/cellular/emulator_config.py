@@ -35,7 +35,7 @@ def _ConfigureOneBaseStation(c):
 
 def ConfigureBaseStations(config):
   """Extract base stations from supplied dictionary and configure them."""
-  return [_ConfigureOneBaseStation(x) for x in config['basestations']]
+  return [_ConfigureOneBaseStation(x) for x in config.cell['basestations']]
 
 
 def GetDefaultBasestation(config, technology):

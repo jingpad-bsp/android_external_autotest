@@ -19,13 +19,23 @@ DOC = """
 from autotest_lib.client.cros.cellular import labconfig
 from autotest_lib.server.cros import remote_command
 
-config = labconfig.get_test_config(args)
+from autotest_lib.client.common_lib import utils
 
-def run_at(machine):
+config = labconfig.Configuration(args)
+
+def run_autotest(machine):
     client = hosts.create_host(str(machine))
     at = autotest.Autotest(client)
-    at.run_test('cellular_Throughput', config=config, host=client, iterations=1)
 
-iperf = hosts.create_host(str(config['perfserver']['address']))
+    for technology in config.get_technologies(machine):
+        # We'd like to pass the config argument to the client-side
+        # here, but it's not POD
+        at.run_test('cellular_Throughput',
+                    config_pickle=config.get_pickle(),
+                    technology=technology,
+                    host=client,
+                    iterations=1)
+
+iperf = hosts.create_host(str(config.cell['perfserver']['address']))
 with remote_command.Command(iperf, '/usr/bin/iperf -s'):
-    parallel_simple(run_at, machines)
+    parallel_simple(run_autotest, machines)

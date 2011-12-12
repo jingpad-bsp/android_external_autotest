@@ -7,6 +7,12 @@
 
 CELLS = {}
 
+
+# TODO(rochberg):  Need some way to subset this list for long/short tests
+GOBI_2000_TECHNOLOGIES = ['GPRS', 'EGPRS',
+                          'WCDMA', 'HSDPA', 'HDUPA', 'HSDUPA', 'HSPA_PLUS',
+                          'CDMA_2000', 'EVDO_1X']
+
 CELLS['cam'] = {
     "basestations": [
         {
@@ -41,10 +47,11 @@ CELLS['cam'] = {
                 ]
             }
         ],
-    "clients": [
+    "duts": [
         {
             "address": "172.31.206.145",
-            "name": "ad-hoc-usb"
+            "name": "ad-hoc-usb",
+            "technologies": GOBI_2000_TECHNOLOGIES,
             },
         {
             "address": "172.31.206.146",

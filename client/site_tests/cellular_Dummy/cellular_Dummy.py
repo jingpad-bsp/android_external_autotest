@@ -10,5 +10,5 @@ import logging
 class cellular_Dummy(test.test):
     version = 1
 
-    def run_once(self, config=None):
-        logging.info("Config is %s", config)
+    def run_once(self, config, technology):
+        logging.error('Technology is %s' % technology)

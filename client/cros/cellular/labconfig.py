@@ -2,53 +2,99 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import labconfig_data
+import optparse, pickle, re, subprocess
+
+import cellular, labconfig_data
 
 class LabConfigError(Exception):
   pass
 
 
-def extract_options(args, options_to_expand):
-    """Extracts options_to_expand from args, returns (extracted, remaining).
-    Args:
-        args:  A list of arguments
-        options_to_expand: A container with options to expand (with
-          '--' already prepended)
-    Returns:
-        (dict of extracted options, list of untouched arguments). """
+def get_interface_ip(interface='eth0'):
+    """Returns the IP address for an interface."""
 
-    remaining = []
-    extracted = {}
-    i = 0
-    while i < len(args):
-        (option, delimiter, value) = args[i].partition('=')
-        if option in options_to_expand and value:
-            extracted[option] = value
-        elif (option in options_to_expand) and not delimiter:
-            extracted[option] = args[i+1]
-            i += 1
-        else:
-            remaining.append(args[i])
-        i += 1
-    return (extracted, remaining)
+    # We'd like to use
+    #  utils.system_output('ifconfig eth0 2>&1', retain_output=True)
+    # but that gives us a dependency on the rest of autotest, which
+    # means that running the unit test requires pythonpath manipulation
+    ifconfig = subprocess.Popen(['/sbin/ifconfig', interface],
+                                stdout=subprocess.PIPE).communicate()[0]
+
+    match = re.search(r'inet addr:([0-9.]+)', ifconfig)
+    if not match:
+        raise LabConfigError('Could not parse interface address from ' +
+                             ifconfig)
+    return match.group(1)
 
 
-def get_test_arguments(args):
-    """Extract the --cell= argument from args, return config, rest of args."""
+class Configuration(object):
+    """Configuration for a cellular test.
 
-    (extracted, remaining) = extract_options(args, ['--cell'])
-    if '--cell' not in extracted:
-        raise LabConfigError(
-            'Could not find --cell argument.  ' +
-            'To specify a cell, pass --args=--cell=foo to run_remote_tests')
+    This includes things like the address of the cell emulator device
+    and details of the RF switching between the emulated basestation
+    and the DUT."""
 
-    if extracted['--cell'] not in labconfig_data.CELLS:
-        raise LabConfigError('Could not find cell %s, valid cells are %s' %
-                             (extracted['--cell'], labconfig_data.CELLS.keys()))
+    def __init__(self, args):
+        parser = optparse.OptionParser()
 
-    return (labconfig_data.CELLS[extracted['--cell']], remaining)
+        # Record our args so we can serialize ourself.
+        self.args = args
 
+        parser.add_option('--cell', dest='cell', default=None,
+                          help='Cellular test cell to use')
+        parser.add_option(
+            '--technology', dest='technology', default='all',
+            help='Radio access technologies to use (e.g. "WCDMA")')
 
-def get_test_config(args):
-    """Return only a test config (ignoring the remaining args)."""
-    return get_test_arguments(args)[0]
+        (self.options, _) = parser.parse_args(args)
+        self.cell = self._get_cell(self.options.cell)
+
+    def _get_cell(self, name):
+        """Extracts the named cell from labconfig_data.CELLS."""
+        if not name:
+            raise LabConfigError(
+                'Could not find --cell argument.  ' +
+                'To specify a cell, pass --args=--cell=foo to run_remote_tests')
+
+        if name not in labconfig_data.CELLS:
+            raise LabConfigError(
+                'Could not find cell %s, valid cells are %s' % (
+                    name, labconfig_data.CELLS.keys()))
+
+        return labconfig_data.CELLS[name]
+
+    def _get_dut(self, machine=None):
+        """Returns the DUT record for machine from cell["duts"].
+
+        Right now, we use the interface of eth0 to figure out which
+        machine we're running on.  The important thing is that this
+        matches the IP address in the cell duts configuration.  We'll
+        have to come up with a better way if this proves brittle."""
+
+        if not machine:
+            machine = get_interface_ip('eth0')
+
+        for dut in self.cell["duts"]:
+            if machine == dut["address"] or machine == dut["name"]:
+                return dut
+        return None
+
+    def get_technologies(self, machine=None):
+        """Gets technologies to use for machine; defaults to all available."""
+        technologies_list = self.options.technology.split(',')
+
+        if 'all' in technologies_list:
+            m = self._get_dut(machine)
+            technologies_list = m["technologies"]
+
+        enums = [getattr(cellular.Technology, t, None)
+                 for t in technologies_list]
+
+        if None in enums:
+            raise LabConfigError(
+                'Could not understand a technology in %s' % technologies_string)
+
+        return enums
+
+    def get_pickle(self):
+        return pickle.dumps(self)
