@@ -3,24 +3,15 @@
         "x86-generic-full": {
             "archive_server": "gs://chromeos-image-archive/x86-generic-full",
             "archive_path": "%(build)s/image.zip",
-            "build_pattern": "R17-*",
+            "build_pattern": "R*",
             "platforms": [
                 {"platform": "netbook_SANDY_BRIDGE",
                  "groups": ["bvt", "desktopui"]}
             ]
         },
 
-        "x86-alex-r14": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "0.14.811.*",
-            "platforms": [
-                {"platform": "netbook_ALEX"}
-            ]
-        },
-
         "x86-alex-r15": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-alex",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
             "build_pattern": "0.15.1011.*",
             "platforms": [
@@ -29,7 +20,7 @@
         },
 
         "x86-alex-r16": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
+            "archive_server": "gs://chromeos-releases/beta-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
             "build_pattern": "R16-1193.*",
             "platforms": [
@@ -44,7 +35,7 @@
         "x86-alex-r17": {
             "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R17-*",
+            "build_pattern": "R17-1412.*",
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
@@ -54,17 +45,21 @@
             ]
         },
 
-        "x86-zgb-r14": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "0.14.811.*",
+        "x86-alex-r18": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
+            "build_pattern": "R18-*",
             "platforms": [
-                {"platform": "netbook_ACER_ZGB"}
+                {"platform": "netbook_ALEX", "au_test": true},
+                {"platform": "netbook_ALEX_CDMA_GOBI2K",
+                 "groups": ["network_3g"]},
+                {"platform": "netbook_ALEX_CDMA_GOBI3K",
+                 "groups": ["network_3g"]}
             ]
         },
 
         "x86-zgb-r15": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-zgb",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "0.15.1011.*",
             "platforms": [
@@ -73,7 +68,7 @@
         },
 
         "x86-zgb-r16": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
+            "archive_server": "gs://chromeos-releases/beta-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R16-1193.*",
             "platforms": [
@@ -84,23 +79,23 @@
         "x86-zgb-r17": {
             "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "R17-*",
+            "build_pattern": "R17-1412.*",
             "platforms": [
                 {"platform": "netbook_ACER_ZGB", "au_test": true}
             ]
         },
 
-        "x86-mario-r14": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-mario",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
-            "build_pattern": "0.14.811.*",
+        "x86-zgb-r18": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
+            "build_pattern": "R18-*",
             "platforms": [
-                {"platform": "netbook_MARIO_MP"}
+                {"platform": "netbook_ACER_ZGB", "au_test": true}
             ]
         },
 
         "x86-mario-r15": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-mario",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-mario",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
             "build_pattern": "0.15.1011.*",
             "platforms": [
@@ -109,7 +104,7 @@
         },
 
         "x86-mario-r16": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-mario",
+            "archive_server": "gs://chromeos-releases/beta-channel/x86-mario",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
             "build_pattern": "R16-1193.*",
             "platforms": [
@@ -122,7 +117,18 @@
         "x86-mario-r17": {
             "archive_server": "gs://chromeos-releases/dev-channel/x86-mario",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
-            "build_pattern": "R17-*",
+            "build_pattern": "R17-1412.*",
+            "platforms": [
+                {"platform": "netbook_MARIO_MP", "au_test": true},
+                {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
+                 "groups": ["network_3g"]}
+            ]
+        },
+
+        "x86-mario-r18": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-mario",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
+            "build_pattern": "R18-*",
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
@@ -133,16 +139,43 @@
         "stumpy-r17": {
             "archive_server": "gs://chromeos-releases/dev-channel/stumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
-            "build_pattern": "R17-*",
+            "build_pattern": "R17-1412.*",
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true}
             ]
         },
 
-        "tegra2-kaen-r17": {
+       "stumpy-r18": {
+            "archive_server": "gs://chromeos-releases/dev-channel/stumpy",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
+            "build_pattern": "R18-*",
+            "platforms": [
+                {"platform": "desktop_STUMPY", "au_test": true}
+            ]
+        },
+
+        "lumpy-r17": {
+            "archive_server": "gs://chromeos-releases/dev-channel/lumpy",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
+            "build_pattern": "R17-1412.*",
+            "platforms": [
+                {"platform": "lumpy", "au_test": true}
+            ]
+        },
+
+       "lumpy-r18": {
+            "archive_server": "gs://chromeos-releases/dev-channel/lumpy",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
+            "build_pattern": "R18-*",
+            "platforms": [
+                {"platform": "lumpy", "au_test": true}
+            ]
+        },
+
+        "tegra2-kaen-r18": {
             "archive_server": "gs://chromeos-releases/dev-channel/tegra2-kaen",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-kaen.zip",
-            "build_pattern": "R17-*",
+            "build_pattern": "R18-*",
             "platforms": [
                 {"platform": "netbook_KAEN",
                  "groups": ["bvt", "build", "desktopui", "kernel", "pagecycler",
@@ -257,8 +290,8 @@
     ],
 
     "dev_server": {
-        "dev_host": "172.22.50.2",
-        "path": "/usr/local/google/images",
+        "dev_host": "172.22.50.205",
+        "path": "/home/chromeos-test/images",
         "user": "chromeos-test"
     },
 
