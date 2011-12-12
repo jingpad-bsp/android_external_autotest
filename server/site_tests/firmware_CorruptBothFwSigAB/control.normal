@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_CorruptFwAB"
-PURPOSE = "Servo based both firmware A and B corruption test"
+NAME = "firmware_CorruptFwSigAB"
+PURPOSE = "Servo based both firmware signature A and B corruption test"
 CRITERIA = "This test will fail if firmware does not enter recovery mode"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
@@ -14,15 +14,15 @@ TEST_TYPE = "server"
 DOC = """
 This test requires a USB disk plugged-in, which contains a Chrome OS test
 image (built by "build_image --test"). On runtime, this test corrupts
-both firmware A and B. On next reboot, the firmware verification fails
-and enters recovery mode. This test then checks the success of the
+both firmware signature A and B. On next reboot, the firmware verification
+fails and enters recovery mode. This test then checks the success of the
 recovery boot.
 """
 
-def run_corruptbothfwab(machine):
+def run_corruptbothfwsigab(machine):
     host = hosts.create_host(machine)
-    job.run_test("firmware_CorruptBothFwAB", host=host, cmdline_args=args,
+    job.run_test("firmware_CorruptBothFwSigAB", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
-                 dev_mode=True, tag="dev")
+                 dev_mode=False, tag="normal")
 
-parallel_simple(run_corruptbothfwab, machines)
+parallel_simple(run_corruptbothfwsigab, machines)

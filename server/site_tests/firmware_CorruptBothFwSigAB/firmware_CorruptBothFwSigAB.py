@@ -5,14 +5,14 @@
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
-class firmware_CorruptBothFwAB(FAFTSequence):
+class firmware_CorruptBothFwSigAB(FAFTSequence):
     """
-    Servo based both firmware A and B corruption test.
+    Servo based both firmware signature A and B corruption test.
 
     This test requires a USB disk plugged-in, which contains a Chrome OS test
     image (built by "build_image --test"). On runtime, this test corrupts
-    both firmware A and B. On next reboot, the firmware verification fails
-    and enters recovery mode. This test then checks the success of the
+    both firmware signature A and B. On next reboot, the firmware verification
+    fails and enters recovery mode. This test then checks the success of the
     recovery boot.
     """
     version = 1
@@ -32,7 +32,7 @@ class firmware_CorruptBothFwAB(FAFTSequence):
 
 
     def setup(self, dev_mode=False):
-        super(firmware_CorruptBothFwAB, self).setup()
+        super(firmware_CorruptBothFwSigAB, self).setup()
         self.assert_test_image_in_usb_disk()
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
         self.setup_dev_mode(dev_mode)
@@ -40,12 +40,12 @@ class firmware_CorruptBothFwAB(FAFTSequence):
 
     def cleanup(self):
         self.ensure_normal_boot()
-        super(firmware_CorruptBothFwAB, self).cleanup()
+        super(firmware_CorruptBothFwSigAB, self).cleanup()
 
 
     def run_once(self, host=None):
         self.register_faft_sequence((
-            {   # Step 1, corrupt both firmware A and B
+            {   # Step 1, corrupt both firmware signature A and B
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': ('normal', 'developer'),
                     'recoverysw_boot': '0',

@@ -5,9 +5,9 @@
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
 
-class firmware_CorruptFwB(FAFTSequence):
+class firmware_CorruptFwSigB(FAFTSequence):
     """
-    Servo based firmware B corruption test.
+    Servo based firmware signature B corruption test.
     """
     version = 1
 
@@ -26,19 +26,20 @@ class firmware_CorruptFwB(FAFTSequence):
 
 
     def setup(self, dev_mode=False):
-        super(firmware_CorruptFwB, self).setup()
+        super(firmware_CorruptFwSigB, self).setup()
         self.setup_dev_mode(dev_mode)
         self.ensure_fw_a_boot()
 
 
     def cleanup(self):
         self.ensure_fw_a_boot()
-        super(firmware_CorruptFwB, self).cleanup()
+        super(firmware_CorruptFwSigB, self).cleanup()
 
 
     def run_once(self, host=None):
         self.register_faft_sequence((
-            {   # Step 1, expected firmware A boot and corrupt firmware B
+            {   # Step 1, expected firmware A boot and corrupt firmware
+                # signature B.
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_act': 'A',
                     'tried_fwb': '0',

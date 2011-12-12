@@ -179,23 +179,25 @@ class FAFTClient(object):
 
     @allow_multiple_section_input
     def corrupt_firmware(self, section):
-        """Corrupt the requested firmware section.
+        """Corrupt the requested firmware section signature.
 
         Args:
             section: A firmware section, either 'a' or 'b'.
         """
-        self._chromeos_interface.log('Corrupting firmware %s' % section)
+        self._chromeos_interface.log('Corrupting firmware signature %s' %
+                                     section)
         self._flashrom_handler.corrupt_firmware(section)
 
 
     @allow_multiple_section_input
     def restore_firmware(self, section):
-        """Restore the requested firmware section (previously corrupted).
+        """Restore the previously corrupted firmware section signature.
 
         Args:
             section: A firmware section, either 'a' or 'b'.
         """
-        self._chromeos_interface.log('Restoring firmware %s' % section)
+        self._chromeos_interface.log('Restoring firmware signature %s' %
+                                     section)
         self._flashrom_handler.restore_firmware(section)
 
 

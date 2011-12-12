@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_CorruptB"
-PURPOSE = "Servo based firmware B corruption test"
+NAME = "firmware_CorruptFwSigB"
+PURPOSE = "Servo based firmware signature B corruption test"
 CRITERIA = "This test will fail if firmware verification mis-behaved"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
@@ -12,16 +12,16 @@ TEST_CLASS = "firmware"
 TEST_TYPE = "server"
 
 DOC = """
-This test corrupts firmware B and checks the next boot results.
+This test corrupts firmware signature B and checks the next boot results.
 """
 
-def run_corruptfwb(machine):
+def run_corruptfwsigb(machine):
     host = hosts.create_host(machine)
-    job.run_test("firmware_CorruptFwB", host=host, cmdline_args=args,
+    job.run_test("firmware_CorruptFwSigB", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
                  dev_mode=False, tag="normal")
-    job.run_test("firmware_CorruptFwB", host=host, cmdline_args=args,
+    job.run_test("firmware_CorruptFwSigB", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
                  dev_mode=True, tag="dev")
 
-parallel_simple(run_corruptfwb, machines)
+parallel_simple(run_corruptfwsigb, machines)
