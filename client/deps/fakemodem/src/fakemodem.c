@@ -5,7 +5,7 @@
  */
 
 #define _POSIX_C_SOURCE 201108L
-#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600
 
 #include <assert.h>
 #include <ctype.h>
