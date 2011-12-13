@@ -206,7 +206,7 @@ class AbstractSSHHost(SiteHost):
         max_privs = 0777 & ~umask
 
         def set_file_privs(filename):
-            file_stat = os.stat(filename)
+            file_stat = os.lstat(filename)
 
             file_privs = max_privs
             # if the original file permissions do not have at least one
