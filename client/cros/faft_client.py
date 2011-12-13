@@ -177,6 +177,20 @@ class FAFTClient(object):
         self._chromeos_interface.cs.request_recovery()
 
 
+    def get_firmware_flags(self, section):
+        """Get the preamble flags of a firmware section.
+
+        Args:
+            section: A firmware section, either 'a' or 'b'.
+
+        Returns:
+            An integer of the preamble flags.
+        """
+        self._chromeos_interface.log('Getting preamble flags of firmware %s' %
+                                     section)
+        return self._flashrom_handler.get_section_flags(section)
+
+
     @allow_multiple_section_input
     def corrupt_firmware(self, section):
         """Corrupt the requested firmware section signature.
@@ -190,6 +204,18 @@ class FAFTClient(object):
 
 
     @allow_multiple_section_input
+    def corrupt_firmware_body(self, section):
+        """Corrupt the requested firmware section body.
+
+        Args:
+            section: A firmware section, either 'a' or 'b'.
+        """
+        self._chromeos_interface.log('Corrupting firmware body %s' %
+                                     section)
+        self._flashrom_handler.corrupt_firmware_body(section)
+
+
+    @allow_multiple_section_input
     def restore_firmware(self, section):
         """Restore the previously corrupted firmware section signature.
 
@@ -199,6 +225,18 @@ class FAFTClient(object):
         self._chromeos_interface.log('Restoring firmware signature %s' %
                                      section)
         self._flashrom_handler.restore_firmware(section)
+
+
+    @allow_multiple_section_input
+    def restore_firmware_body(self, section):
+        """Restore the previously corrupted firmware section body.
+
+        Args:
+            section: A firmware section, either 'a' or 'b'.
+        """
+        self._chromeos_interface.log('Restoring firmware body %s' %
+                                     section)
+        self._flashrom_handler.restore_firmware_body(section)
 
 
     @allow_multiple_section_input
