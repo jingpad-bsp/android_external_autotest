@@ -159,7 +159,7 @@
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
             "build_pattern": "R17-1412.*",
             "platforms": [
-                {"platform": "lumpy", "au_test": true}
+                {"platform": "netbook_LUMPY", "au_test": true}
             ]
         },
 
@@ -168,7 +168,7 @@
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
             "build_pattern": "R18-*",
             "platforms": [
-                {"platform": "lumpy", "au_test": true}
+                {"platform": "netbook_LUMPY", "au_test": true}
             ]
         },
 
