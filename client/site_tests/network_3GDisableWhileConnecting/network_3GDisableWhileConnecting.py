@@ -191,11 +191,18 @@ class ModemDisableTester(DisableTester):
   def __init__(self, *args, **kwargs):
     super(ModemDisableTester, self).__init__(*args, **kwargs)
 
-  def start_test(self):
-    self.remaining_requirements = set(['connect', 'disable', 'get_status'])
+  def is_gobi(self):
+    return 'Gobi' in self.modem_path
 
-    self.status_delay_ms = self.test_kwargs.get('status_delay_ms', 200)
-    gobject.timeout_add(self.status_delay_ms, self.start_get_status)
+  def start_test(self):
+    self.remaining_requirements = set(['connect', 'disable'])
+
+    # Only cromo/gobi-cromo-plugin maintain the invariant that GetStatus
+    # will always succeed, so we only check it if the modem is a Gobi.
+    if self.is_gobi():
+      self.remaining_requirements.add('get_status')
+      self.status_delay_ms = self.test_kwargs.get('status_delay_ms', 200)
+      gobject.timeout_add(self.status_delay_ms, self.start_get_status)
 
     self.start_connect()
 
@@ -203,28 +210,37 @@ class ModemDisableTester(DisableTester):
     self.modem_manager, self.modem_path = mm.PickOneModem('')
     self.modem = self.modem_manager.Modem(self.modem_path)
     self.simple_modem = self.modem_manager.SimpleModem(self.modem_path)
-    logging.info('modem_path = %s' % self.modem_path)
-    if 'Gobi' in self.modem_path:
-      self.gobi_modem = self.modem_manager.GobiModem(self.modem_path)
-      sleep_ms = self.test_kwargs.get('async_connect_sleep_ms', 0)
 
-      # Tell the modem manager to sleep this long before completing a
-      # connect
-      self.gobi_modem.InjectFault('AsyncConnectSleepMs', sleep_ms)
+    logging.info('Modem path: %s' % self.modem_path)
 
-      if 'connect_fails_with_error_sending_qmi_request' in self.test_kwargs:
-        logging.info('Injecting QMI failure')
-        self.gobi_modem.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
+    if self.is_gobi():
+      self.configure_gobi()
     else:
-      self.gobi_modem = None
-      if 'async_connect_sleep_ms' in self.test_kwargs:
-        raise error.TestError('async_connect_sleep_ms on non-Gobi modem')
-      if 'connect_fails_with_error_sending_qmi_request' in self.test_kwargs:
-        raise error.TestError(
-          'connect_fails_with_error_sending_qmi_request on non-Gobi modem')
+      self.configure_non_gobi()
 
     self.modem.Enable(False)
     self.modem.Enable(True)
+
+  def configure_gobi(self):
+    gobi_modem = self.modem_manager.GobiModem(self.modem_path)
+
+    if 'async_connect_sleep_ms' in self.test_kwargs:
+      logging.info('Sleeping %d ms before connect' % sleep_ms)
+      sleep_ms = self.test_kwargs.get('async_connect_sleep_ms', 0)
+      self.gobi_modem.InjectFault('AsyncConnectSleepMs', sleep_ms)
+
+    if 'connect_fails_with_error_sending_qmi_request' in self.test_kwargs:
+      logging.info('Injecting QMI failure')
+      self.gobi_modem.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
+
+  def configure_non_gobi(self):
+    # Check to make sure no Gobi-specific arguments were specified.
+    if 'async_connect_sleep_ms' in self.test_kwargs:
+      raise error.TestError(
+        'async_connect_sleep_ms on non-Gobi modem')
+    if 'connect_fails_with_error_sending_qmi_request' in self.test_kwargs:
+      raise error.TestError(
+        'connect_fails_with_error_sending_qmi_request on non-Gobi modem')
 
   @ExceptionForward
   def start_connect(self):
