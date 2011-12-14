@@ -90,6 +90,7 @@
                         "chromeos-test@google.com"]},
                 {"categories": ["security"],
                  "cc": ["chromeos-autotest@google.com",
+                        "keescook@google.com",
                         "jimhebert@google.com"]},
                 {"categories": ["perfalerts"],
                  "cc": ["chromeos-autotest@google.com",
