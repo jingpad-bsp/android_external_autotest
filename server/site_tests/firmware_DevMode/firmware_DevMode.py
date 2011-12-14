@@ -13,13 +13,16 @@ class firmware_DevMode(FAFTSequence):
     """
     version = 1
 
+    # True if Alex/ZGB which needs a transition state to enter dev mode.
+    need_dev_transition = False
+
 
     # The devsw off->on transition states are different based on platforms.
     # For Alex/ZGB, it is dev switch on but normal firmware boot.
     # For other platforms, it is dev switch on and developer firmware boot.
     def check_devsw_on_transition(self, fwb_tries='0'):
-        fwid = self.faft_client.get_crossystem_value('fwid').lower()
-        if fwid.startswith('alex') or fwid.startswith('zgb'):
+        if self.faft_client.get_platform_name() in ('Alex', 'ZGB'):
+            self.need_dev_transition = True
             return self.crossystem_checker({
                     'devsw_boot': '1',
                     'mainfw_act': 'A' if fwb_tries == '0' else 'B',
@@ -39,8 +42,7 @@ class firmware_DevMode(FAFTSequence):
     # For Alex/ZGB, it is firmware B normal boot. Firmware A is still developer.
     # For other platforms, it is directly firmware A normal boot.
     def check_devsw_off_transition(self, fwb_tries='0'):
-        fwid = self.faft_client.get_crossystem_value('fwid').lower()
-        if fwid.startswith('alex') or fwid.startswith('zgb'):
+        if self.need_dev_transition:
             return self.crossystem_checker({
                     'devsw_boot': '0',
                     'mainfw_act': 'B',

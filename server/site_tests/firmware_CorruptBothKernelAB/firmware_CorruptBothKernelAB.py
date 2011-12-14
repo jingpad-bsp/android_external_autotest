@@ -63,9 +63,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
 
 
     def run_once(self, host=None):
-        fwid = self.faft_client.get_crossystem_value('fwid').lower()
-        if fwid.startswith('mario') or fwid.startswith('alex') or \
-                fwid.startswith('zgb'):
+        if self.faft_client.get_platform_name() in ('Mario', 'Alex', 'ZGB'):
             recovery_reason = self.RECOVERY_REASON['RW_NO_OS']
         else:
             recovery_reason = self.RECOVERY_REASON['RW_INVALID_OS']
@@ -76,7 +74,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
                 'userspace_action': (self.faft_client.corrupt_kernel,
                                      ('a', 'b')),
                 'firmware_action': self.wait_fw_screen_and_plug_usb,
-                'install_deps_after_reboot': True,
+                'install_deps_after_boot': True,
             },
             {   # Step 2, expected recovery boot
                 'state_checker': (self.crossystem_checker, {

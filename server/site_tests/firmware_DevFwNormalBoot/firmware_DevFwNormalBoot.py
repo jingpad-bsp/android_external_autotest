@@ -20,7 +20,7 @@ class firmware_DevFwNormalBoot(FAFTSequence):
     """
     version = 1
 
-    # True if Alex/ZBG which contains two different types of firmware.
+    # True if Alex/ZGB which contains two different types of firmware.
     has_different_dev_fw = False
 
 
@@ -37,8 +37,7 @@ class firmware_DevFwNormalBoot(FAFTSequence):
     def setup(self):
         super(firmware_DevFwNormalBoot, self).setup()
         # This test is only meaningful on Alex/ZGB.
-        fwid = self.faft_client.get_crossystem_value('fwid').lower()
-        if fwid.startswith('alex') or fwid.startswith('zgb'):
+        if self.faft_client.get_platform_name() in ('Alex', 'ZGB'):
             self.has_different_dev_fw = True
             self.assert_test_image_in_usb_disk()
             self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')

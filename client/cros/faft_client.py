@@ -131,6 +131,17 @@ class FAFTClient(object):
         self._chromeos_interface.run_shell_command('reboot')
 
 
+    def get_platform_name(self):
+        """Get the platform name of the current system.
+
+        Returns:
+            A string of the platform name.
+        """
+        self._chromeos_interface.log('Requesting get platform name')
+        return self._chromeos_interface.run_shell_command_get_output(
+                'mosys platform name')[0]
+
+
     def get_crossystem_value(self, key):
         """Get crossystem value of the requested key.
 
