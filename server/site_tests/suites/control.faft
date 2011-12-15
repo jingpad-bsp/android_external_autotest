@@ -34,6 +34,7 @@ TESTS_ON_BOTH_MODES = [
     ('firmware_CorruptBothFwSigAB', {}),
     ('firmware_CorruptFwBodyA', {}),
     ('firmware_CorruptFwBodyB', {}),
+    ('firmware_CorruptBothFwBodyAB', {}),
     ('firmware_CorruptKernelA', {}),
     ('firmware_CorruptKernelB', {}),
     ('firmware_CorruptBothKernelAB', {}),
