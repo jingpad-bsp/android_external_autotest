@@ -92,7 +92,7 @@ class Configuration(object):
 
         if None in enums:
             raise LabConfigError(
-                'Could not understand a technology in %s' % technologies_string)
+                'Could not understand a technology in %s' % technologies_list)
 
         return enums
 

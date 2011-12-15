@@ -36,6 +36,25 @@ Technology = Enum('Technology', [
     'LTE'
     ])
 
+TechnologyFamily = Enum('TechnologyFamily', [
+    'UMTS',
+    'CDMA',
+    ])
+
+TechnologyToFamily = {
+    Technology.GPRS: TechnologyFamily.UMTS,
+    Technology.EGPRS: TechnologyFamily.UMTS,
+    Technology.WCDMA: TechnologyFamily.UMTS,
+    Technology.HSDPA: TechnologyFamily.UMTS,
+    Technology.HDUPA: TechnologyFamily.UMTS,
+    Technology.HSDUPA: TechnologyFamily.UMTS,
+    Technology.HSPA_PLUS: TechnologyFamily.UMTS,
+    Technology.CDMA_2000: TechnologyFamily.CDMA,
+    Technology.EVDO_1X: TechnologyFamily.CDMA,
+    Technology.LTE: TechnologyFamily.UMTS,
+}
+
+
 
 UeGsmDataStatus = Enum('GsmDataStatus', [
     'NONE',

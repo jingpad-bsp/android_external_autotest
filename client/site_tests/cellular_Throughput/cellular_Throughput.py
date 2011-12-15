@@ -25,6 +25,7 @@ class cellular_Throughput(test.test):
                 bs, verifier = emulator_config.GetDefaultBasestation(
                     config, technology)
                 network.ResetAllModems(flim)
+                cell_tools.PrepareModemForTechnology('', technology)
                 # TODO(rochberg): Figure out whether it's just Gobi 2k
                 # that requires this or all modems
                 time.sleep(5)

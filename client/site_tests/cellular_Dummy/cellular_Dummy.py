@@ -3,13 +3,12 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular import emulator_config, labconfig
+from autotest_lib.client.cros.cellular import cell_tools, emulator_config
 
-import logging
 
 class cellular_Dummy(test.test):
     version = 1
 
     def run_once(self, config, technology):
         _, _ = emulator_config.GetDefaultBasestation(config, technology)
+        cell_tools.PrepareModemForTechnology('', technology)
