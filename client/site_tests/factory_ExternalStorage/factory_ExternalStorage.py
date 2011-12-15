@@ -29,6 +29,8 @@ from autotest_lib.client.common_lib import error
 
 _STATE_WAIT_INSERT = 1
 _STATE_WAIT_REMOVE = 2
+_STATE_LOCKTEST_WAIT_INSERT = 3
+_STATE_LOCKTEST_WAIT_REMOVE = 4
 
 # udev constants
 _UDEV_ACTION_INSERT = 'add'
@@ -47,12 +49,22 @@ _INSERT_FMT_STR = lambda t: (
                ]))
 _REMOVE_FMT_STR = lambda t: 'remove %s drive...\n提取%s存儲...' % (t, t)
 _TESTING_FMT_STR = lambda t:'testing %s...\n%s 檢查當中...' % (t, t)
+_LOCKTEST_INSERT_FMT_STR = lambda t: (
+    '\n'.join(['toggle lock switch and insert %s drive again...' % t,
+               '切換防寫開關並再次插入%s存儲...' % t]))
+_LOCKTEST_REMOVE_FMT_STR = lambda t: (
+    '\n'.join(['remove %s drive and toggle lock switch...' % t,
+               '提取%s存儲並關閉防寫開關...' % t]))
+
 _ERR_TOO_EARLY_REMOVE_FMT_STR = \
         lambda t: \
             'Device removed too early (%s).\n' \
             '太早移除外部儲存裝置 (%s).\n' % (t, t)
 _ERR_FIO_TEST_FAILED_FMT_STR = \
         lambda target_dev: 'IO error while running test on %s.\n' % target_dev
+
+_ERR_LOCKTEST_FAILED_FMT_STR = \
+        lambda target_dev: 'Locktest failed on %s.\n' % target_dev
 
 class factory_ExternalStorage(test.test):
     version = 1
@@ -102,6 +114,53 @@ class factory_ExternalStorage(test.test):
             return 'SD'
         return 'USB'
 
+    def test_read_write(self, subtest_tag):
+        devpath = self._target_device
+        self._prompt.set_text(_TESTING_FMT_STR(devpath))
+        self._image = self.testing_image
+        self._pictogram.queue_draw()
+        gtk.main_iteration()
+        requirement = {'read_write_verify': ['read_bw', 'write_bw']}
+        constraint = list()
+        if self._min_read_speed is not None:
+            constraint.append(
+                'read_bw_read_write_verify >= %d * 1024 * 1024' %
+                self._min_read_speed)
+        if self._min_write_speed is not None:
+            constraint.append(
+                'write_bw_read_write_verify >= %d * 1024 * 1024' %
+                self._min_write_speed)
+        self.job.drop_caches_between_iterations = True
+        result = self.job.run_test('hardware_StorageFio',
+                                   dev=devpath,
+                                   tag=subtest_tag + "rwv",
+                                   requirements=requirement,
+                                   constraints=constraint)
+        if result is not True:
+            self._error += _ERR_FIO_TEST_FAILED_FMT_STR(self._target_device)
+        self._prompt.set_text(_REMOVE_FMT_STR(self._media))
+        self._state = _STATE_WAIT_REMOVE
+        self._image = self.removal_image
+        self._pictogram.queue_draw()
+
+    def test_lock(self, subtest_tag):
+        devpath = self._target_device
+        self._prompt.set_text(_TESTING_FMT_STR(devpath))
+        self._image = self.testing_image
+        self._pictogram.queue_draw()
+        gtk.main_iteration()
+        requirement = {'read_write_verify': list()}
+        result = self.job.run_test('hardware_StorageFio',
+                                   dev=devpath,
+                                   tag=subtest_tag + "lt",
+                                   requirements = requirement)
+        if result is True:
+            self._error += _ERR_LOCKTEST_FAILED_FMT_STR(self._target_device)
+        self._prompt.set_text(_LOCKTEST_REMOVE_FMT_STR(self._media))
+        self._state = _STATE_LOCKTEST_WAIT_REMOVE
+        self._image = self.locktest_removal_image
+        self._pictogram.queue_draw()
+
     def udev_event_cb(self, subtest_tag, action, device):
         if action == _UDEV_ACTION_INSERT:
             if self._state == _STATE_WAIT_INSERT:
@@ -115,37 +174,39 @@ class factory_ExternalStorage(test.test):
                 factory.log('%s device inserted : %s' %
                         (self._media, device.device_node))
                 self._target_device = device.device_node
-                devpath = device.device_node
-                self._prompt.set_text(_TESTING_FMT_STR(devpath))
-                self._image = self.testing_image
-                self._pictogram.queue_draw()
-                gtk.main_iteration()
-                result = self.job.run_test('hardware_StorageFio',
-                                                 dev=devpath,
-                                                 quicktest=True,
-                                                 tag=subtest_tag)
-                if result is not True:
-                    self._error += _ERR_FIO_TEST_FAILED_FMT_STR(
-                            self._target_device)
-                self._prompt.set_text(_REMOVE_FMT_STR(self._media))
-                self._state = _STATE_WAIT_REMOVE
-                self._image = self.removal_image
-                self._pictogram.queue_draw()
+                self.test_read_write(subtest_tag)
+            if self._state == _STATE_LOCKTEST_WAIT_INSERT:
+                if self._target_device == device.device_node:
+                    self.test_lock(subtest_tag)
         elif action == _UDEV_ACTION_REMOVE:
             if self._target_device == device.device_node:
                 factory.log('Device removed : %s' % device.device_node)
-                if self._state != _STATE_WAIT_REMOVE:
+                if self._state == _STATE_WAIT_REMOVE:
+                    if self._has_locktest:
+                        self._prompt.set_text(
+                            _LOCKTEST_INSERT_FMT_STR(self._media))
+                        self._state = _STATE_LOCKTEST_WAIT_INSERT
+                        self._image = self.locktest_insertion_image
+                        self._pictogram.queue_draw()
+                    else:
+                        gtk.main_quit()
+                elif self._state == _STATE_LOCKTEST_WAIT_REMOVE:
+                    gtk.main_quit()
+                else:
                     self._error += _ERR_TOO_EARLY_REMOVE_FMT_STR(
                             self._target_device)
                     factory.log('Device %s removed too early' %
                             self._target_device)
-                gtk.main_quit()
+                    gtk.main_quit()
         return True
 
     def run_once(self,
                  subtest_tag=None,
                  media=None,
-                 vidpid=None):
+                 vidpid=None,
+                 min_read_speed=None,
+                 min_write_speed=None,
+                 perform_locktest=False):
 
         factory.log('%s run_once' % self.__class__)
 
@@ -158,12 +219,22 @@ class factory_ExternalStorage(test.test):
         self._vidpid = vidpid
         factory.log('media = %s' % media)
 
+        self._min_read_speed = min_read_speed
+        self._min_write_speed = min_write_speed
+
         self.insertion_image = cairo.ImageSurface.create_from_png(
             '%s_insert.png' % media)
         self.removal_image = cairo.ImageSurface.create_from_png(
             '%s_remove.png' % media)
         self.testing_image = cairo.ImageSurface.create_from_png(
             '%s_testing.png' % media)
+
+        self._has_locktest = perform_locktest
+        if perform_locktest:
+            self.locktest_insertion_image = cairo.ImageSurface.create_from_png(
+                '%s_locktest_insert.png' % media)
+            self.locktest_removal_image = cairo.ImageSurface.create_from_png(
+                '%s_locktest_remove.png' % media)
 
         image_size_set = set([(i.get_width(), i.get_height()) for
                               i in [self.insertion_image,
@@ -183,7 +254,6 @@ class factory_ExternalStorage(test.test):
         self._prompt.set_text(_INSERT_FMT_STR(self._media))
         self._state = _STATE_WAIT_INSERT
         self._image = self.insertion_image
-        self._result = False
         context = pyudev.Context()
         monitor = pyudev.Monitor.from_netlink(context)
         monitor.filter_by(subsystem='block', device_type='disk')
@@ -198,9 +268,11 @@ class factory_ExternalStorage(test.test):
         drawing_area.set_size_request(*image_size)
         drawing_area.connect('expose_event', self.expose_event)
         self._pictogram = drawing_area
+        hbox = gtk.HBox()
+        hbox.pack_start(drawing_area, expand=True, fill=False)
 
         vbox = gtk.VBox()
-        vbox.pack_start(drawing_area, False, False)
+        vbox.pack_start(hbox, False, False)
         vbox.pack_start(label, False, False)
 
         test_widget = gtk.EventBox()

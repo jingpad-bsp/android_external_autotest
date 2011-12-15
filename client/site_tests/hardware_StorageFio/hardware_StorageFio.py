@@ -160,7 +160,7 @@ class hardware_StorageFio(test.test):
         self.__filesize = min(self.__filesize, filesize)
 
 
-    def run_once(self, dev='', quicktest=False):
+    def run_once(self, dev='', quicktest=False, requirements=None):
         # TODO(ericli): need to find a general solution to install dep packages
         # when tests are pre-compiled, so setup() is not called from client any
         # more.
@@ -168,7 +168,9 @@ class hardware_StorageFio(test.test):
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
 
-        if quicktest:
+        if requirements is not None:
+            pass
+        elif quicktest:
             requirements = {
                 'quick_write': 'bw',
                 'quick_read': 'iops',
@@ -201,12 +203,15 @@ class hardware_StorageFio(test.test):
             }
 
         results = {}
-        for test, metric in requirements.iteritems():
+        for test, metric_list in requirements.iteritems():
+            if not isinstance(metric_list, list):
+                metric_list = [metric_list]
             result = self.__RunFio(test)
-            units = metric
-            if metric == 'bw':
-                units = 'bytes_per_sec'
-            results[units + '_' + test] = result[metric]
+            for metric in metric_list:
+                units = metric
+                if metric == 'bw':
+                    units = 'bytes_per_sec'
+                results[units + '_' + test] = result[metric]
 
         # Output keys relevent to the performance, larger filesize will run
         # slower, and sda5 should be slightly slower than sda3 on a rotational

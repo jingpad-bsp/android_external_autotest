@@ -188,13 +188,13 @@ TEST_LIST = [
         label_en='usb',
         autotest_name='factory_ExternalStorage',
         kbd_shortcut='u',
-        dargs={'media':'USB'}),
+        dargs={'media':'USB', 'min_read_speed': 20, 'min_write_speed': 10}),
 
     OperatorTest(
         label_en='sd',
         autotest_name='factory_ExternalStorage',
         kbd_shortcut='d',
-        dargs={'media':'SD'}),
+        dargs={'media':'SD', 'min_read_speed': 6, 'min_write_speed': 2}),
 
     OperatorTest(
         label_en='light sensor',
