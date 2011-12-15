@@ -590,10 +590,18 @@ class FAFTSequence(ServoTest):
 
         Raises:
           error.TestFail: An error when the test failed.
+          error.TestError: An error when the given step is not valid.
         """
+        FAFT_STEP_KEYS = ('state_checker', 'userspace_action', 'reboot_action',
+                          'firmware_action', 'install_deps_after_boot')
+
         test = {}
         test.update(self._faft_template)
         test.update(step)
+
+        for key in test:
+            if key not in FAFT_STEP_KEYS:
+                error.TestError('Invalid key in FAFT step: %s', key)
 
         if test['state_checker']:
             if not self._call_action(test['state_checker']):
