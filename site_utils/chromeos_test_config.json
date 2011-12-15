@@ -137,7 +137,7 @@
         },
 
         "stumpy-r17": {
-            "archive_server": "gs://chromeos-releases/dev-channel/stumpy",
+            "archive_server": "gs://chromeos-releases/beta-channel/stumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
             "build_pattern": "R17-1412.*",
             "platforms": [
@@ -155,7 +155,7 @@
         },
 
         "lumpy-r17": {
-            "archive_server": "gs://chromeos-releases/dev-channel/lumpy",
+            "archive_server": "gs://chromeos-releases/beta-channel/lumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
             "build_pattern": "R17-1412.*",
             "platforms": [
