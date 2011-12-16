@@ -114,15 +114,17 @@ class factory_LightSensor(test.test):
 
     def next_subtest(self):
         self._tested += 1
-        if self._tested is len(self._subtest_list):
+        if self._tested >= len(self._subtest_list):
             gtk.main_iteration(False)
             gtk.main_quit()
+            return False
         self._active_subtest = self._subtest_list[self._tested]
         self._status_map[self._active_subtest] = ful.ACTIVE
         self._status_label[self._active_subtest].queue_draw()
         self._deadline = time.time() + self._timeout_per_subtest
         self._current_iter_remained = self._iter_req_per_subtest
         self._cumulative_val = 0
+        return True
 
     def timer_event(self, countdown_label):
         time_remaining = max(0, self._deadline - time.time())
@@ -130,7 +132,8 @@ class factory_LightSensor(test.test):
             self._status_map[self._active_subtest] = ful.FAILED
             self._status_label[self._active_subtest].queue_draw()
             factory.log('Timeout on subtest "%s"' % self._active_subtest)
-            self.next_subtest()
+            if not self.next_subtest():
+                return True
 
         countdown_label.set_text('%d' % time_remaining)
         countdown_label.queue_draw()
@@ -139,6 +142,7 @@ class factory_LightSensor(test.test):
     def key_release_callback(self, widget, event):
         if event.keyval == ord('Q'):
             gtk.main_quit()
+            return True
         if event.keyval == ord(' ') and not self._started:
             self._started = True
             self._active_subtest = self._subtest_list[0]
@@ -154,11 +158,12 @@ class factory_LightSensor(test.test):
         if self._current_iter_remained is 0:
             self._status_map[name] = ful.PASSED
             self._status_label[name].queue_draw()
-            self.next_subtest()
             self._current_iter_remained = self._iter_req_per_subtest
             mean_val = self._cumulative_val / self._iter_req_per_subtest
             factory.log('Passed subtest "%s" with mean value %d.' %
                         (name, mean_val))
+            if not self.next_subtest():
+                return
 
     def sensor_event(self, sensor_value):
         val = self._als.read('mean', samples=5, delay=0)
