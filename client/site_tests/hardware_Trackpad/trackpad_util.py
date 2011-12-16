@@ -210,6 +210,11 @@ def get_model():
     return model
 
 
+def get_fullname(filename):
+    ''' Extract the fullname (func name + subname) from a gesture file name '''
+    return filename.split('-')[1]
+
+
 def _create_dir_meta_name(gesture_path, extra_name_code, dir_code):
     ''' Create a meta data file holding the file names in a given path
 

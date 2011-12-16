@@ -9,6 +9,9 @@ import logging
 import os
 import time
 
+import trackpad_util
+import trackpad_summary
+
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui
@@ -59,8 +62,8 @@ class hardware_Trackpad(test.test):
         time_format = '%Y%m%d_%H%M%S'
         test_time = 'tested:' + time.strftime(time_format, time.gmtime())
         autotest_dir = os.path.realpath(autotest_path).split('/')[-1]
-        result_file_name = '.'.join([autotest_dir, test_time])
-        self.result_file = os.path.join(result_path, result_file_name)
+        self.result_file_name = '.'.join([autotest_dir, test_time])
+        self.result_file = os.path.join(result_path, self.result_file_name)
         self.result_fh = open(self.result_file, 'w+')
         logging.info('Gesture set tested: %s', autotest_dir)
         logging.info('Result is saved at %s' % self.result_file)
@@ -111,10 +114,13 @@ class hardware_Trackpad(test.test):
         # Initialization of statistics
         tdata.num_wrong_file_name = 0
         tdata.num_files_tested = {}
+        tdata.num_files_tested_fullname = {}
+        tdata.subname_list = {}
         tdata.tot_fail_count = 0
         tdata.tot_num_files_tested = 0
         tdata.fail_count = dict([(tp_func.name, 0)
                                  for tp_func in functionality_list])
+        tdata.fail_count_fullname = {}
         logging.info('')
         logging.info('*** hardware_Trackpad autotest is started ***')
 
@@ -141,6 +147,7 @@ class hardware_Trackpad(test.test):
             logging.info('Functionality: %s  (Area: %s)' %
                          (tdata.func.name, tdata.func.area[1]))
             tdata.num_files_tested[tdata.func.name] = 0
+            tdata.subname_list[tdata.func.name] = []
 
             # Some cases of specifying gesture files in the configuration file:
             # Case 1:
@@ -233,45 +240,57 @@ class hardware_Trackpad(test.test):
                                                    self.xcapture.read()) and \
                                    normal_timeout_flag
 
+                    # Initialization for this subname
+                    fullname = trackpad_util.get_fullname(tdata.file_basename)
+                    if len(tdata.subname_list[tdata.func.name]) == 0:
+                        tdata.subname_list[tdata.func.name] = []
+                    if not tdata.num_files_tested_fullname.has_key(fullname):
+                        tdata.num_files_tested_fullname[fullname] = 0
+                        tdata.subname_list[tdata.func.name].append(fullname)
+                        tdata.fail_count_fullname[fullname] = 0
+
                     # Update statistics
                     tdata.num_files_tested[tdata.func.name] += 1
+                    tdata.num_files_tested_fullname[fullname] += 1
                     tdata.tot_num_files_tested += 1
                     if not tdata.result:
                         tdata.fail_count[tdata.func.name] += 1
+                        tdata.fail_count_fullname[fullname] += 1
                         tdata.tot_fail_count += 1
 
         # Terminate X event capture process
         self.xcapture.terminate()
 
         # Logging test summary
-        self._write_result_log('\n')
         tot_pass_count = tdata.tot_num_files_tested - tdata.tot_fail_count
-        msg = ('*** Total number of (passed / tested) files: (%d / %d) ***' %
-               (tot_pass_count, tdata.tot_num_files_tested))
+        msg = trackpad_summary.format_result_header(self.result_file_name,
+                                                    tot_pass_count,
+                                                    tdata.tot_num_files_tested)
         self._write_result_log(msg)
+
         area_name = None
         for tp_func in functionality_list:
             func_name = tp_func.name
-            if tp_func.area[0] != area_name:
-                area_name = tp_func.area[0]
-                self._write_result_log('  Area: %s' % area_name)
             test_count = tdata.num_files_tested[func_name]
+            if test_count == 0:
+                continue
             fail_count = tdata.fail_count[func_name]
             pass_count = test_count - fail_count
-            if test_count > 0:
-                pass_rate_str = '%3.0f%%' % (100.0 * pass_count / test_count)
-                count_str = '(%d / %d)' % (pass_count, test_count)
-                pass_str = 'passed.'
-            else:
-                pass_rate_str = ' '
-                count_str = ' '
-                pass_str = ''
-            func_msg = '      {0:<25}: {1:4s}  {2:9s} '
-            msg = func_msg.format(func_name, pass_rate_str, count_str)
-            msg += pass_str
-            if test_count > 0:
+            if tp_func.area[0] != area_name:
+                area_name = tp_func.area[0]
+                msg = trackpad_summary.format_result_area(area_name)
                 self._write_result_log(msg)
-        self._write_result_log('\n\n### End of Test Summary ###\n\n')
+
+            for fullname in tdata.subname_list[func_name]:
+                test_count_fullname = tdata.num_files_tested_fullname[fullname]
+                fail_count_fullname = tdata.fail_count_fullname[fullname]
+                pass_count_fullname = test_count_fullname - fail_count_fullname
+                msg = trackpad_summary.format_result_pass_rate(fullname,
+                                       pass_count_fullname, test_count_fullname)
+                self._write_result_log(msg)
+
+        msg = trackpad_summary.format_result_tail()
+        self._write_result_log(msg)
 
         self._close_result_log()
         self._append_detailed_log()
