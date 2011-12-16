@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, re, shutil, socket, stat, sys, time
+import dbus, glob, logging, os, re, shutil, socket, stat, subprocess, sys, time
 import auth_server, constants, cryptohome, dns_server
 import cros_logging, cros_ui, login, ownership, pyauto_test
 from autotest_lib.client.bin import utils
@@ -198,6 +198,39 @@ class UITest(pyauto_test.PyAutoTest):
             self._dnsServer.stop()
 
 
+    class Tcpdump(object):
+        """Run tcpdump and save output.
+
+        To be used with 'with' statement.
+        """
+        # Handle to tcpdump process.
+        _tcpdump = None
+
+        def __init__(self, iface, fname_prefix, results_dir):
+            self._iface = iface
+            self._fname_prefix = fname_prefix
+            self._results_dir = results_dir
+
+
+        def __enter__(self):
+            self._tcpdump = subprocess.Popen(
+                ['tcpdump', '-i', self._iface, '-vv'], stdout=subprocess.PIPE)
+
+
+        def __exit__(self, type, value, traceback):
+            """Stop tcpdump process and save output to a new file."""
+            if not self._tcpdump:
+                return
+            self._tcpdump.terminate()
+            # Save output to a new file
+            next_index = len(glob.glob(
+                os.path.join(self._results_dir, '%s-*' % self._fname_prefix)))
+            tcpdump_file = os.path.join(
+                self._results_dir, '%s-%d' % (self._fname_prefix, next_index))
+            logging.info('Saving tcpdump output to %s.' % tcpdump_file)
+            open(tcpdump_file, 'w').write(self._tcpdump.communicate()[0])
+
+
     def initialize(self, creds=None, is_creating_owner=False,
                    extra_chrome_flags=[]):
         """Overridden from test.initialize() to log out and (maybe) log in.
@@ -332,15 +365,20 @@ class UITest(pyauto_test.PyAutoTest):
         uname = username or self.username
         passwd = password or self.password
 
-        if uname:  # Regular login
-            login_error = self.pyauto.Login(username=uname, password=passwd)
-            if login_error:
-                raise error.TestError('Error during login (%s, %s): %s.' % (
-                                      uname, passwd, login_error))
-            logging.info('Logged in as %s.' % uname)
-        else:  # Login as guest
-            self.pyauto.LoginAsGuest()
-            logging.info('Logged in as guest.')
+        # Run tcpdump on 'lo' interface to investigate network
+        # issues in the lab during login.
+        with UITest.Tcpdump(iface='lo', fname_prefix='tcpdump-lo-login',
+                            results_dir=self.resultsdir):
+            if uname:  # Regular login
+                login_error = self.pyauto.Login(username=uname, password=passwd)
+                if login_error:
+                    raise error.TestError('Error during login (%s, %s): %s.' % (
+                                          uname, passwd, login_error))
+                logging.info('Logged in as %s.' % uname)
+            else:  # Login as guest
+                self.pyauto.LoginAsGuest()
+                logging.info('Logged in as guest.')
+
         if not self.logged_in():
             raise error.TestError('Not logged in')
 
