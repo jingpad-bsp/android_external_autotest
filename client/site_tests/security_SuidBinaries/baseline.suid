@@ -4,6 +4,7 @@
 /usr/sbin/traceroute6
 /usr/bin/chsh
 /usr/bin/chage
+/usr/bin/ddcpci
 /usr/bin/newgrp
 /usr/bin/chfn
 /usr/bin/expiry
