@@ -42,5 +42,6 @@ cros-disks:x:213:
 tor:x:214:
 tcpdump:x:215:
 debugd:x:216:
+openvpn:x:217:
 ntfs-3g:x:300:
 avfs:x:301:

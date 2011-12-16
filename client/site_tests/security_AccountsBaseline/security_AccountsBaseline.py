@@ -4,6 +4,7 @@
 
 import logging
 import os
+import shutil
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -16,7 +17,14 @@ class security_AccountsBaseline(test.test):
         return [x.strip().split(':') for x in open(fpath).readlines()]
 
 
+    def capture_files(self):
+        for f in ['passwd','group']:
+            shutil.copyfile(os.path.join('/etc',f),
+                            os.path.join(self.resultsdir,f))
+
+
     def run_once(self):
+        self.capture_files()
         # Match users
         passwd_baseline = self.load_path(os.path.join(
             self.bindir, 'baseline.passwd'))

@@ -29,5 +29,6 @@ cros-disks:*:213:213::/dev/null:/bin/false
 tor:*:214:214::/dev/null:/bin/false
 tcpdump:*:215:215::/dev/null:/bin/false
 debugd:*:216:216::/dev/null:/bin/false
+openvpn:*:217:217::/dev/null:/bin/false
 ntfs-3g:*:300:300::/dev/null:/bin/false
 avfs:*:301:301::/dev/null:/bin/false
