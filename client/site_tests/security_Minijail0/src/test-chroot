@@ -2,8 +2,8 @@
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-# setup: mkdir -p "%T/c/lib" "%T/c/usr/lib" "%T/c/tmp-rw" "%T/c/tmp-ro" "%T/tmp"
-# args: -b /lib,/lib -b /usr/lib,/usr/lib -b %T/tmp,/tmp,1 -b %T/tmp,/tmp-ro -C "%T/c" -v
+# setup: mkdir -p "%T/c/lib" "%T/c/usr/lib" "%T/c/usr/local" "%T/c/tmp-rw" "%T/c/tmp-ro" "%T/tmp"
+# args: -b /lib,/lib -b /usr/lib,/usr/lib -b /usr/local,/usr/local -b %T/tmp,/tmp-rw,1 -b %T/tmp,/tmp-ro -C "%T/c" -v
 
 # Can't get at common.sh from here... oops :)
 die () {
@@ -16,6 +16,6 @@ wd=$(pwd)
 [ ! -d /lib ] && die "no /lib"
 [ ! -d /tmp-rw ] && die "no /tmp-rw"
 [ ! -d /tmp-ro ] && die "no /tmp-ro"
-touch /tmp-rw/test-rw || die "non-writeable /tmp-rw"
-touch /tmp-ro/test-ro && die "writeable /tmp-ro"
+echo 'x' > /tmp-rw/test-rw || die "non-writeable /tmp-rw"
+echo 'x' > /tmp-ro/test-ro && die "writeable /tmp-ro"
 exit 0

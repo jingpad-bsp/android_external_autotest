@@ -44,7 +44,6 @@ class security_Minijail0(test.test):
         if '%T' in args:
             td = td or tempfile.mkdtemp()
             args = args.replace('%T', td)
-
         ret = os.system('/sbin/minijail0 %s /bin/bash %s' % (args, path))
         if td:
             # The test better not have polluted our mount namespace :).
