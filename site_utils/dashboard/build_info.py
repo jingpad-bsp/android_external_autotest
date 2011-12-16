@@ -177,12 +177,14 @@ class BuildInfo(object):
             dash_util.SaveHTML(cache_filename, '')
 
         if build_log_json:
-          current = build_log_json['steps'][0]['times'][0]
-          if current:
-            build_keys['started_time'] = current
-          current = build_log_json['steps'][-1]['times'][1]
-          if current:
-            build_keys['finished_time'] = current
+          if 'steps' in build_log_json:
+            current = build_log_json['steps'][0]['times'][0]
+            if current:
+              build_keys['started_time'] = current
+            current = build_log_json['steps'][-1]['times'][1]
+            if current:
+              build_keys['finished_time'] = current
+
           build_log_chrome_version = build_log_json.get('chrome_version')
           if build_log_chrome_version and len(build_log_chrome_version) > 1:
             build_keys['chrome_version'] = build_log_chrome_version

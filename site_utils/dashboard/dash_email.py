@@ -239,8 +239,11 @@ class DashEmailNotifier(EmailNotifier):
         tpl_netbook = self._netbook
         tpl_board = self._board_type
         categories = ', '.join(sorted(self._categories))
-        tpl_images_link = dash_util.UrlFix('%s/%s' % (
-            IMAGE_URLS[tpl_board].rstrip('/'), _ParseVersion(tpl_build)))
+        if tpl_board in IMAGE_URLS:
+          tpl_images_link = dash_util.UrlFix('%s/%s' % (
+              IMAGE_URLS[tpl_board].rstrip('/'), _ParseVersion(tpl_build)))
+        else:
+          tpl_images_link = IMAGE_URLS['default']
         tpl_buildbot_link = dash_util.UrlFix(buildinfo.GetBotURL(
             tpl_board, tpl_build))
         if tpl_build in self._previous_build:

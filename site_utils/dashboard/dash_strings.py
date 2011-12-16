@@ -118,54 +118,11 @@ BUILDBOT_URLS = {
 
 # Image URLs.
 IMAGE_URLS = {
+    'default':
+      'https://sandbox.google.com/storage/chromeos-releases/',
     'x86-generic-full':
       ('https://sandbox.google.com/storage/chromeos-image-archive/'
-       'x86-generic-full/'),
-    'x86-alex-r17':
-      ('https://sandbox.google.com/storage/chromeos-releases/dev-channel/'
-       'x86-alex/'),
-    'x86-alex-r16':
-      ('https://sandbox.google.com/storage/chromeos-releases/dev-channel/'
-       'x86-alex/'),
-    'x86-alex-r15':
-      ('https://sandbox.google.com/storage/chromeos-releases/beta-channel/'
-       'x86-alex/'),
-    'x86-alex-r14':
-      ('https://sandbox.google.com/storage/chromeos-releases/stable-channel/'
-       'x86-alex/'),
-    'x86-mario-r17':
-      ('https://sandbox.google.com/storage/chromeos-releases/dev-channel/'
-       'x86-mario/'),
-    'x86-mario-r16':
-      ('https://sandbox.google.com/storage/chromeos-releases/dev-channel/'
-       'x86-mario/'),
-    'x86-mario-r15':
-      ('https://sandbox.google.com/storage/chromeos-releases/beta-channel/'
-       'x86-mario/'),
-    'x86-mario-r14':
-      ('https://sandbox.google.com/storage/chromeos-releases/stable-channel/'
-       'x86-mario/'),
-    'stumpy-r17':
-      ('https://sandbox.google.com/storage/chromeos-releases/dev-channel/'
-       'stumpy/'),
-    'tegra2-seaboard-cosine-r17':
-      ('https://sandbox.google.com/storage/chromeos-releases/dev-channel/'
-       'tegra2-seaboard/'),
-    'tegra2-kaen-r17':
-      ('https://sandbox.google.com/storage/chromeos-releases/dev-channel/'
-       'tegra2-kaen/'),
-    'x86-zgb-r17':
-      ('https://sandbox.google.com/storage/chromeos-releases/dev-channel/'
-       'x86-zgb/'),
-    'x86-zgb-r16':
-      ('https://sandbox.google.com/storage/chromeos-releases/dev-channel/'
-       'x86-zgb/'),
-    'x86-zgb-r15':
-      ('https://sandbox.google.com/storage/chromeos-releases/beta-channel/'
-       'x86-zgb/'),
-    'x86-zgb-r14':
-      ('https://sandbox.google.com/storage/chromeos-releases/stable-channel/'
-       'x86-zgb/')}
+       'x86-generic-full/')}
 
 GSUTIL_GET_CMD = 'gsutil cat '
 WGET_CMD = 'wget --timeout=30 --tries=1 --no-proxy -qO- '
