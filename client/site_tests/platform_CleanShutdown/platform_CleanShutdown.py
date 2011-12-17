@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib import error
 PROCESS_WHITELIST = (
     # TODO(dalecurtis): Remove once http://crosbug.com/15697 is fixed.
     'cryptohom',
+    'chapsd',
 )
 
 SHUTDOWN_CRYPTOHOME_UMOUNT_FAIL = '/var/log/shutdown_cryptohome_umount_failure'
