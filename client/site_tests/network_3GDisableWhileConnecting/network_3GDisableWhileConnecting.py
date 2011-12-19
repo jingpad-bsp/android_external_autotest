@@ -225,13 +225,13 @@ class ModemDisableTester(DisableTester):
     gobi_modem = self.modem_manager.GobiModem(self.modem_path)
 
     if 'async_connect_sleep_ms' in self.test_kwargs:
-      logging.info('Sleeping %d ms before connect' % sleep_ms)
       sleep_ms = self.test_kwargs.get('async_connect_sleep_ms', 0)
-      self.gobi_modem.InjectFault('AsyncConnectSleepMs', sleep_ms)
+      logging.info('Sleeping %d ms before connect' % sleep_ms)
+      gobi_modem.InjectFault('AsyncConnectSleepMs', sleep_ms)
 
     if 'connect_fails_with_error_sending_qmi_request' in self.test_kwargs:
       logging.info('Injecting QMI failure')
-      self.gobi_modem.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
+      gobi_modem.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
 
   def configure_non_gobi(self):
     # Check to make sure no Gobi-specific arguments were specified.
