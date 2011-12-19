@@ -10,7 +10,13 @@ TEST_CLASS = "platform"
 TEST_TYPE = "server"
 
 DOC = """
+A test that reimages the assigned machines and checks for success.
 
+Can only be used by test suites based on server.cros.dynamic_suite.Suite.
+Assumes that a label including the image name has already been created.
+
+@param image_url: the devserver URL at which the image to install is served.
+@param image_name: the name of the image, used to label the device
 """
 
 from autotest_lib.server import frontend
