@@ -22,18 +22,6 @@ class firmware_DevTriggerRecovery(FAFTSequence):
     need_dev_transition = False
 
 
-    def wait_fw_screen_and_trigger_recovery(self):
-        """Wait for firmware warning screen and trigger recovery boot."""
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
-        self.send_enter_to_dut()
-
-        # For Alex/ZGB, there is a dev warning screen in text mode.
-        # Skip it by pressing Ctrl-D.
-        if self.need_dev_transition:
-            time.sleep(self.TEXT_SCREEN_DELAY)
-            self.send_ctrl_d_to_dut()
-
-
     # The devsw off->on transition states are different based on platforms.
     # For Alex/ZGB, it is dev switch on but normal firmware boot.
     # For other platforms, it is dev switch on and developer firmware boot.
@@ -99,7 +87,8 @@ class firmware_DevTriggerRecovery(FAFTSequence):
                 # Ignore the default reboot_action here because the
                 # userspace_action (firmware updater) will reboot the system.
                 'reboot_action': None,
-                'firmware_action': self.wait_fw_screen_and_trigger_recovery,
+                'firmware_action': (self.wait_fw_screen_and_trigger_recovery,
+                                    self.need_dev_transition),
                 'install_deps_after_boot': True,
             },
             {   # Step 3, expected recovery boot and disable dev switch

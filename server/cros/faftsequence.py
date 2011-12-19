@@ -76,6 +76,9 @@ class FAFTSequence(ServoTest):
     USB_PLUG_DELAY = 10
     SYNC_DELAY = 5
 
+    CHROMEOS_MAGIC = "CHROMEOS"
+    CORRUPTED_MAGIC = "CORRUPTD"
+
     # Recovery reason codes, copied from:
     #     vboot_reference/firmware/lib/vboot_nvstorage.h
     #     vboot_reference/firmware/lib/vboot_struct.h
@@ -409,12 +412,36 @@ class FAFTSequence(ServoTest):
         self.send_ctrl_d_to_dut()
 
 
+    def wait_fw_screen_and_trigger_recovery(self, need_dev_transition=False):
+        """Wait for firmware warning screen and trigger recovery boot."""
+        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        self.send_enter_to_dut()
+
+        # For Alex/ZGB, there is a dev warning screen in text mode.
+        # Skip it by pressing Ctrl-D.
+        if need_dev_transition:
+            time.sleep(self.TEXT_SCREEN_DELAY)
+            self.send_ctrl_d_to_dut()
+
+
     def wait_fw_screen_and_plug_usb(self):
         """Wait for firmware warning screen and then unplug and plug the USB."""
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         time.sleep(self.USB_PLUG_DELAY)
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+
+
+    def wait_fw_screen_and_press_power(self):
+        """Wait for firmware warning screen and press power button."""
+        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        self.servo.power_normal_press()
+
+
+    def wait_fw_screen_and_close_lid(self):
+        """Wait for firmware warning screen and close lid."""
+        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        self.servo.lid_close()
 
 
     def setup_tried_fwb(self, tried_fwb):
@@ -438,6 +465,20 @@ class FAFTSequence(ServoTest):
                 logging.info(
                     'Firmware is booted with tried_fwb. Reboot to clear.')
                 self.run_faft_step({})
+
+
+    def enable_dev_mode_and_fw(self):
+        """Enable developer mode and use developer firmware."""
+        self.servo.enable_development_mode()
+        self.faft_client.run_shell_command(
+                'chromeos-firmwareupdate --mode todev && reboot')
+
+
+    def enable_normal_mode_and_fw(self):
+        """Enable normal mode and use normal firmware."""
+        self.servo.disable_development_mode()
+        self.faft_client.run_shell_command(
+                'chromeos-firmwareupdate --mode tonormal && reboot')
 
 
     def setup_dev_mode(self, dev_mode):
@@ -527,6 +568,61 @@ class FAFTSequence(ServoTest):
         self.servo.warm_reset()
 
 
+    def _modify_usb_kernel(self, usb_dev, from_magic, to_magic):
+        """Modify the kernel header magic in USB stick.
+
+        The kernel header magic is the first 8-byte of kernel partition.
+        We modify it to make it fail on kernel verification check.
+
+        Args:
+          usb_dev: A string of USB stick path on the host, like '/dev/sdc'.
+          from_magic: A string of magic which we change it from.
+          to_magic: A string of magic which we change it to.
+
+        Raises:
+          error.TestError: if failed to change magic.
+        """
+        assert len(from_magic) == 8
+        assert len(to_magic) == 8
+        kernel_part = self._join_part(usb_dev, '2')
+        read_cmd = "sudo dd if=%s bs=8 count=1 2>/dev/null" % kernel_part
+        current_magic = utils.system_output(read_cmd)
+        if current_magic == to_magic:
+            logging.info("The kernel magic is already %s." % current_magic)
+            return
+        if current_magic != from_magic:
+            raise error.TestError("Invalid kernel image on USB: wrong magic.")
+
+        logging.info('Modify the kernel magic in USB, from %s to %s.' %
+                     (from_magic, to_magic))
+        write_cmd = ("echo -n '%s' | sudo dd of=%s oflag=sync conv=notrunc "
+                     " 2>/dev/null" % (to_magic, kernel_part))
+        utils.system(write_cmd)
+
+        if utils.system_output(read_cmd) != to_magic:
+            raise error.TestError("Failed to write new magic.")
+
+
+    def corrupt_usb_kernel(self, usb_dev):
+        """Corrupt USB kernel by modifying its magic from CHROMEOS to CORRUPTD.
+
+        Args:
+          usb_dev: A string of USB stick path on the host, like '/dev/sdc'.
+        """
+        self._modify_usb_kernel(usb_dev, self.CHROMEOS_MAGIC,
+                                self.CORRUPTED_MAGIC)
+
+
+    def restore_usb_kernel(self, usb_dev):
+        """Restore USB kernel by modifying its magic from CORRUPTD to CHROMEOS.
+
+        Args:
+          usb_dev: A string of USB stick path on the host, like '/dev/sdc'.
+        """
+        self._modify_usb_kernel(usb_dev, self.CORRUPTED_MAGIC,
+                                self.CHROMEOS_MAGIC)
+
+
     def _call_action(self, action_tuple):
         """Call the action function with/without arguments.
 
@@ -556,6 +652,37 @@ class FAFTSequence(ServoTest):
                     logging.info('action is not callable!')
 
         return None
+
+
+    def run_shutdown_process(self, shutdown_action, pre_power_action=None,
+            post_power_action=None):
+        """Run shutdown_action(), which makes DUT shutdown, and power it on.
+
+        Args:
+          shutdown_action: a function which makes DUT shutdown, like pressing
+                           power key.
+          pre_power_action: a function which is called before next power on.
+          post_power_action: a function which is called after next power on.
+
+        Raises:
+          error.TestFail: if the shutdown_action() failed to turn DUT off.
+        """
+        self._call_action(shutdown_action)
+        logging.info('Wait to ensure DUT shut down...')
+        try:
+            self.wait_for_client()
+            raise error.TestFail(
+                    'Should shut the device down after calling %s.' %
+                    str(shutdown_action))
+        except AssertionError:
+            logging.info(
+                'DUT is surely shutdown. We are going to power it on again...')
+
+        if pre_power_action:
+            self._call_action(pre_power_action)
+        self.servo.power_normal_press()
+        if post_power_action:
+            self._call_action(post_power_action)
 
 
     def register_faft_template(self, template):
@@ -601,7 +728,7 @@ class FAFTSequence(ServoTest):
 
         for key in test:
             if key not in FAFT_STEP_KEYS:
-                error.TestError('Invalid key in FAFT step: %s', key)
+                raise error.TestError('Invalid key in FAFT step: %s', key)
 
         if test['state_checker']:
             if not self._call_action(test['state_checker']):
