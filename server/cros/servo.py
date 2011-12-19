@@ -455,7 +455,9 @@ class Servo:
     def _init_seq(self):
         """Initiate starting state for servo."""
         self.set('tx_dir', 'input')
-        self.set('lid_open', 'yes')
+        # TODO(tbroch) Investigate method to determine DUT's type so we can
+        # conditionally set lid if applicable
+        self.set_nocheck('lid_open', 'yes')
         self.set('rec_mode', 'off')
 
 
