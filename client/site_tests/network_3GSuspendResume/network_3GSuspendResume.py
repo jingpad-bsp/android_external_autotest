@@ -56,7 +56,7 @@ class network_3GSuspendResume(cros_ui_test.UITest):
         try:
             resp = function()
         except dbus.exceptions.DBusException, e:
-            if error._dbus_error_name in exn_list:
+            if e._dbus_error_name in exn_list:
                 return resp
             else:
                 raise e
