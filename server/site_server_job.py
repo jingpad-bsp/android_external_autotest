@@ -151,4 +151,3 @@ class site_server_job(base_server_job):
         self.record('START', None, skipped_test.test_name)
         self.record('INFO', None, skipped_test.test_name, msg)
         self.record('END TEST_NA', None, skipped_test.test_name, msg)
-

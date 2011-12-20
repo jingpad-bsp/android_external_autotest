@@ -4,12 +4,23 @@
 
 import common
 import compiler, logging, os, random, re, time
-from autotest_lib.client.common_lib import control_data, error, utils
+from autotest_lib.client.common_lib import control_data, global_config, error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros import control_file_getter
 from autotest_lib.server import frontend
 
 
 VERSION_PREFIX = 'cros-version-'
+CONFIG = global_config.global_config
+
+
+def _image_url_pattern():
+    return CONFIG.get_config_value('CROS', 'image_url_pattern', type=str)
+
+
+def _package_url_pattern():
+    return CONFIG.get_config_value('CROS', 'package_url_pattern', type=str)
+
 
 class Reimager(object):
     """
@@ -35,7 +46,11 @@ class Reimager(object):
             [os.path.join(autotest_dir, 'server/site_tests')])
 
 
-    def attempt(self, url, name, num, board, record):
+    def skip(self, g):
+        return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
+
+
+    def attempt(self, name, num, board, record):
         """
         Synchronously attempt to reimage some machines.
 
@@ -43,7 +58,6 @@ class Reimager(object):
         image at |url| called |name|.  Wait for completion, polling every
         10s, and log results with |record| upon completion.
 
-        @param url: the URL of the image to install.
         @param name: the name of the image to install (must be unique).
         @param num: how many devices to reimage.
         @param board: which kind of devices to reimage.
@@ -54,7 +68,7 @@ class Reimager(object):
         """
         record('START', None, 'try new image')
         self._ensure_version_label(VERSION_PREFIX+name)
-        canary = self._schedule_reimage_job(url, name, num, board)
+        canary = self._schedule_reimage_job(name, num, board)
         logging.debug('Created re-imaging job: %d', canary.id)
         while len(self._afe.get_jobs(id=canary.id, not_yet_run=True)) > 0:
             time.sleep(10)
@@ -103,30 +117,27 @@ class Reimager(object):
         return control_file + control_file_in
 
 
-    def _schedule_reimage_job(self, url, name, num_machines, board):
+    def _schedule_reimage_job(self, name, num_machines, board):
         """
         Schedules the reimaging of |num_machines| |board| devices with |image|.
 
         Sends an RPC to the autotest frontend to enqueue reimaging jobs on
         |num_machines| devices of type |board|
 
-        @param url: the URL of the image to install.
         @param name: the name of the image to install (must be unique).
-        @param num: how many devices to reimage.
+        @param num_machines: how many devices to reimage.
         @param board: which kind of devices to reimage.
         @return a frontend.Job object for the reimaging job we scheduled.
         """
         control_file = self._inject_vars(
-            { 'image_url': url,
+            { 'image_url': _image_url_pattern() % name,
               'image_name': name },
             self._cf_getter.get_control_file_contents_by_name('autoupdate'))
 
-        dargs = { 'control_file': control_file,
-                  'name': name + '-try',
-                  'control_type': 'Server',
-                  'meta_hosts': [board] * num_machines }
-
-        return self._afe.create_job(**dargs)
+        return self._afe.create_job(control_file=control_file,
+                                    name=name + '-try',
+                                    control_type='Server',
+                                    meta_hosts=[board] * num_machines)
 
 
     def _report_results(self, job, record):

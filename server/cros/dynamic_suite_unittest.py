@@ -34,7 +34,7 @@ class ReimagerTest(mox.MoxTestBase):
     @var _BOARD: fake board to reimage
     """
 
-    _URL = 'http://nothing'
+    _URL = 'http://nothing/%s'
     _NAME = 'name'
     _NUM = 4
     _BOARD = 'board'
@@ -149,15 +149,18 @@ class ReimagerTest(mox.MoxTestBase):
         cf_getter.get_control_file_contents_by_name('autoupdate').AndReturn('')
         self.reimager._cf_getter = cf_getter
 
+        # Fake out getting the image URL pattern.
+        self.mox.StubOutWithMock(dynamic_suite, '_image_url_pattern')
+        dynamic_suite._image_url_pattern().AndReturn(self._URL)
+
         self.afe.create_job(
             control_file=mox.And(mox.StrContains(self._NAME),
-                                 mox.StrContains(self._URL)),
+                                 mox.StrContains(self._URL % self._NAME)),
             name=mox.StrContains(self._NAME),
             control_type='Server',
             meta_hosts=[self._BOARD] * self._NUM)
         self.mox.ReplayAll()
-        self.reimager._schedule_reimage_job(self._URL, self._NAME,
-                                            self._NUM, self._BOARD)
+        self.reimager._schedule_reimage_job(self._NAME, self._NUM, self._BOARD)
 
 
     def expect_attempt(self, success):
@@ -171,8 +174,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._ensure_version_label(mox.StrContains(self._NAME))
 
         self.mox.StubOutWithMock(self.reimager, '_schedule_reimage_job')
-        self.reimager._schedule_reimage_job(self._URL,
-                                            self._NAME,
+        self.reimager._schedule_reimage_job(self._NAME,
                                             self._NUM,
                                             self._BOARD).AndReturn(canary)
         if success is not None:
@@ -194,8 +196,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._URL, self._NAME,
-                              self._NUM, self._BOARD, rjob.record)
+        self.reimager.attempt(self._NAME, self._NUM, self._BOARD, rjob.record)
 
 
     def testFailedReimage(self):
@@ -206,8 +207,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._URL, self._NAME,
-                              self._NUM, self._BOARD, rjob.record)
+        self.reimager.attempt(self._NAME, self._NUM, self._BOARD, rjob.record)
 
 
     def testReimageThatNeverHappened(self):
@@ -219,8 +219,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('FAIL', mox.IgnoreArg(), canary.name, mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._URL, self._NAME,
-                              self._NUM, self._BOARD, rjob.record)
+        self.reimager.attempt(self._NAME, self._NUM, self._BOARD, rjob.record)
 
 
 class SuiteTest(mox.MoxTestBase):
@@ -394,7 +393,7 @@ class SuiteTest(mox.MoxTestBase):
                 """Compares this object to a recorded status."""
                 return self._equals_record(*args)
 
-            def _equals_record(self, status, subdir, name, reason):
+            def _equals_record(self, status, subdir, name, reason=None):
                 """Compares this object and fields of recorded status."""
                 if 'aborted' in self.entry and self.entry['aborted']:
                     return status == 'ABORT'

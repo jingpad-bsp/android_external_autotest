@@ -15,24 +15,21 @@ TEST_TYPE = "Server"
 DOC = """
 This is the Build Verification Test suite.  It should consist of SHORT tests
 that validate critical functionality -- ability to acquire connectivity, perform
-crash reporting, get updates, and allow a user to log in, among other things..
+crash reporting, get updates, and allow a user to log in, among other things.
+
+@param image_name: The name of the image to test.
+                     Ex: x86-mario-r17/R17-1412.33.0-a1-b29
+@param board: The board to test on.  Ex: netbook_MARIO_MP
+@param SKIP_IMAGE: (optional) If present and True, don't re-image devices.
 """
 
 import common
 from autotest_lib.server.cros import dynamic_suite
 
-
-# These params should be injected by the thing scheduling the job
-image_url = 'http://172.22.50.205:8080/update/x86-mario-r17/R17-1388.0.0-a1-b1323'
-image_name ='x86-mario-r17/R17-1388.0.0-a1-b1323'
-board = 'netbook_MARIO_MP'
-
-# This is pretty much just here for testing.
-SKIP_IMAGE = True
-
 suite_tag = 'bvt'
 reimager = dynamic_suite.Reimager(job.autodir)
 
-if SKIP_IMAGE or reimager.attempt(image_url, image_name, 4, board, job.record):
+if (reimager.skip(globals()) or
+    reimager.attempt(image_name, 4, board, job.record)):
     bvt = dynamic_suite.Suite.create_from_name(suite_tag, job.autodir)
     bvt.run_and_wait(image_name, job.record, add_experimental=True)
