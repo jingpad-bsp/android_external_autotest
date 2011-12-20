@@ -24,9 +24,9 @@ job.run_test('desktopui_UrlFetch', live=False, tag='not-live')
 # It will be put back once that gets fixed.
 # job.run_test('desktopui_FlashSanityCheck')
 
+job.run_test('desktopui_ScreenLocker')
 job.run_test('desktopui_KillRestart', binary='^chrome$', tag='chrome')
 job.run_test('desktopui_KillRestart', binary='^session_manager$', tag='session')
-job.run_test('desktopui_ScreenLocker')
 job.run_test('logging_CrashSender')
 job.run_test('logging_UserCrash')
 job.run_test('login_BadAuthentication')
