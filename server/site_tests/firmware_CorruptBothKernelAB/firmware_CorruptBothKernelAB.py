@@ -62,7 +62,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
         super(firmware_CorruptBothKernelAB, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self, host=None, dev_mode=False):
         if self.faft_client.get_platform_name() in ('Mario', 'Alex', 'ZGB'):
             recovery_reason = self.RECOVERY_REASON['RW_NO_OS']
         else:
@@ -73,16 +73,20 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
                 'state_checker': (self.check_root_part_on_non_recovery, 'a'),
                 'userspace_action': (self.faft_client.corrupt_kernel,
                                      ('a', 'b')),
-                'firmware_action': self.wait_fw_screen_and_plug_usb,
+                # Kernel is verified after firmware screen.
+                # Should press Ctrl-D to skip the screen on dev_mode.
+                'firmware_action': self.wait_fw_screen_and_ctrl_d if dev_mode
+                                   else self.wait_fw_screen_and_plug_usb,
                 'install_deps_after_boot': True,
             },
-            {   # Step 2, expected recovery boot
+            {   # Step 2, expected recovery boot and restore the OS image.
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason': recovery_reason,
                     'recoverysw_boot': '0',
                 }),
-                'userspace_action': (self.ensure_kernel_on_non_recovery, 'a'),
+                'userspace_action': (self.faft_client.run_shell_command,
+                                     'chromeos-install --yes'),
             },
             {   # Step 3, expected kernel A normal/dev boot
                 'state_checker': (self.check_root_part_on_non_recovery, 'a'),

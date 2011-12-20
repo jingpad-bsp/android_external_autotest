@@ -24,7 +24,8 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
         If not, it may be a test failure during step 2 or 3, try to recover to
         normal mode by recovering the firmware and rebooting.
         """
-        if self.crossystem_checker({'mainfw_type': 'recovery'}):
+        if not self.crossystem_checker(
+                {'mainfw_type': ('normal', 'developer')}):
             self.run_faft_step({
                 'userspace_action': (self.faft_client.run_shell_command,
                     'chromeos-firmwareupdate --mode recovery')
@@ -43,16 +44,17 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
         super(firmware_CorruptBothFwSigAB, self).cleanup()
 
 
-    def run_once(self, host=None):
+    def run_once(self, host=None, dev_mode=False):
         self.register_faft_sequence((
             {   # Step 1, corrupt both firmware signature A and B
                 'state_checker': (self.crossystem_checker, {
-                    'mainfw_type': ('normal', 'developer'),
+                    'mainfw_type': 'developer' if dev_mode else 'normal',
                     'recoverysw_boot': '0',
                 }),
                 'userspace_action': (self.faft_client.corrupt_firmware,
                                      ('a', 'b')),
-                'firmware_action': self.wait_fw_screen_and_plug_usb,
+                'firmware_action': None if dev_mode else
+                                   self.wait_fw_screen_and_plug_usb,
                 'install_deps_after_boot': True,
             },
             {   # Step 2, expected recovery boot and set fwb_tries flag
@@ -63,7 +65,8 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
                     'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.faft_client.set_try_fw_b,
-                'firmware_action': self.wait_fw_screen_and_plug_usb,
+                'firmware_action': None if dev_mode else
+                                   self.wait_fw_screen_and_plug_usb,
             },
             {   # Step 3, still expected recovery boot and restore firmware
                 'state_checker': (self.crossystem_checker, {
@@ -77,7 +80,7 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
             },
             {   # Step 4, expected normal boot, done
                 'state_checker': (self.crossystem_checker, {
-                    'mainfw_type': ('normal', 'developer'),
+                    'mainfw_type': 'developer' if dev_mode else 'normal',
                     'recoverysw_boot': '0',
                 }),
             },
