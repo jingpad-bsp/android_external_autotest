@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "Network3G"
+NAME = "Network3GGobi"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
 
 DOC = """
-This test suite runs automated 3G tests that should all pass.
+This test suite runs automated, Gobi-specific 3G tests that should all pass.
 """
 
 from autotest_lib.server import site_host_attributes
@@ -18,32 +18,25 @@ from autotest_lib.server import site_host_attributes
 
 # List of tests to be run.
 CLIENT_TESTS = [
-    # See network_3GDisableWhileConnecting/control
+    ('network_GobiUncleanDisconnect', {}),
+
+    # See network_3GDisableGobiWhileConnecting/control
+    ('network_3GDisableWhileConnecting', {
+        'timeout_s': 20,
+        'delay_before_disable_ms': 200,
+        'async_connect_sleep_ms': 3000,
+        'iterations': 1,
+        'tag': 'short_delay_disable'}),
     ('network_3GDisableWhileConnecting', {
         'timeout_s': 20,
         'delay_before_disable_ms': 0,
         'disable_delay_per_iteration_ms': 0,
+        'connect_fails_with_error_sending_qmi_request': 1,
         'iterations': 1,
-        'tag': 'instant_disable'}),
-    ('network_3GDisableWhileConnecting', {
-        'timeout_s': 20,
-        'delay_before_disable_ms': 0,
-        'disable_delay_per_iteration_ms': 1000,
-        'iterations': 1,
-        'tag': 'disable_delay_ramp'}),
+        'tag': 'qmi_failure'}),
 
-    ('network_3GModemPresent', {}),
-    ('network_3GSafetyDance', {}),
-    ('network_3GSmokeTest', {}),
-    ('network_3GStressEnable', {}),
-    ('network_3GModemControl', {'autoconnect': False,
-                                'tag': 'no-autoconnect'}),
-    ('network_3GModemControl', {'autoconnect': True,
-                                'tag': 'autoconnect'}),
-    ('network_3GSuspendResume', {'autoconnect': False,
-                                 'tag': 'no-autoconnect'}),
-    ('network_3GSuspendResume', {'autoconnect': True,
-                                 'tag': 'autoconnect'}),
+    ('network_3GGobiPorts', {}),
+    ('network_3GRecoverFromGobiDesync', {}),
 
 # These tests shouldn't be run on activated devices.
 #    'network_3GActivate',
@@ -51,6 +44,7 @@ CLIENT_TESTS = [
 ]
 
 SERVER_TESTS = [
+    'network_3GLoadFirmware'
 ]
 
 
