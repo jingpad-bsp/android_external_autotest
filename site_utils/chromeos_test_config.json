@@ -26,9 +26,9 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
-                 "groups": ["network_3g"]},
+                 "groups": ["network_3g_gobi"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI3K",
-                 "groups": ["network_3g"]}
+                 "groups": ["network_3g_gobi"]}
             ]
         },
 
@@ -39,9 +39,35 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
-                 "groups": ["network_3g"]},
+                 "groups": ["network_3g_gobi"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI3K",
-                 "groups": ["network_3g"]}
+                 "groups": ["network_3g_gobi"]}
+            ]
+        },
+
+        "x86-alex-r17-trackpad-break": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
+            "build_pattern": "R17-1412.24.0*",
+            "platforms": [
+                {"platform": "netbook_ALEX_trackpad", "au_test": true},
+                {"platform": "netbook_ALEX_CDMA_GOBI2K",
+                 "groups": ["network_3g_gobi"]},
+                {"platform": "netbook_ALEX_CDMA_GOBI3K",
+                 "groups": ["network_3g_gobi"]}
+            ]
+        },
+
+        "x86-alex-r17-trackpad-new-driver": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
+            "build_pattern": "R17-1412.24.1*",
+            "platforms": [
+                {"platform": "netbook_ALEX_trackpad", "au_test": true},
+                {"platform": "netbook_ALEX_CDMA_GOBI2K",
+                 "groups": ["network_3g_gobi"]},
+                {"platform": "netbook_ALEX_CDMA_GOBI3K",
+                 "groups": ["network_3g_gobi"]}
             ]
         },
 
@@ -54,9 +80,9 @@
                 {"platform": "netbook_ALEX",
                  "groups": ["audio"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
-                 "groups": ["network_3g"]},
+                 "groups": ["network_3g_gobi"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI3K",
-                 "groups": ["network_3g"]},
+                 "groups": ["network_3g_gobi"]},
                 {"platform": "netbook_ALEX_GSM_Y3300",
                  "groups": ["network_3g"]},
                 {"platform": "netbook_ALEX_GSM_Y3400",
@@ -120,7 +146,7 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
-                 "groups": ["network_3g"]}
+                 "groups": ["network_3g_gobi"]}
             ]
         },
 
@@ -131,7 +157,7 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
-                 "groups": ["network_3g"]}
+                 "groups": ["network_3g_gobi"]}
             ]
         },
 
@@ -142,7 +168,7 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
-                 "groups": ["network_3g"]}
+                 "groups": ["network_3g_gobi"]}
             ]
         },
 
@@ -272,6 +298,13 @@
         "network_3g": [
             {"name": "network_3g",
              "control": "server/site_tests/suites/control.network_3g"}
+        ],
+
+        "network_3g_gobi": [
+            {"name": "network_3g",
+             "control": "server/site_tests/suites/control.network_3g"},
+            {"name": "network_3g_gobi",
+             "control": "server/site_tests/suites/control.network_3g_gobi"}
         ],
 
         "network_wifi": [
