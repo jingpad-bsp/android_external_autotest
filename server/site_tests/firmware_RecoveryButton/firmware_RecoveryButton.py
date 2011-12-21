@@ -43,6 +43,9 @@ class firmware_RecoveryButton(FAFTSequence):
 
 
     def run_once(self, host=None, dev_mode=False):
+        # The old models need users to remove and insert USB stick during boot.
+        remove_usb = (self.faft_client.get_platform_name() in
+                      ('Mario', 'Alex', 'ZGB', 'Aebl', 'Kaen'))
         self.register_faft_sequence((
             {   # Step 1, press recovery button and reboot
                 'state_checker': (self.crossystem_checker, {
@@ -50,7 +53,11 @@ class firmware_RecoveryButton(FAFTSequence):
                     'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.servo.enable_recovery_mode,
-                'firmware_action': None if dev_mode else
+                # When dev_mode ON, directly boot to USB stick if presented.
+                # When dev_mode OFF,
+                #     the old models need users to remove and insert the USB;
+                #     the new models directly boot to the USB.
+                'firmware_action': None if dev_mode or not remove_usb else
                                    self.wait_fw_screen_and_plug_usb,
                 'install_deps_after_boot': True,
             },
