@@ -165,7 +165,7 @@ class CryptohomeProxy:
         TODO(ellyjones): Once there's a per-user unmount method, use it. See
         <crosbug.com/20778>.
         """
-        return self.iface.Unmount()[1]
+        return self.iface.Unmount()
 
     def is_mounted(self, user):
         """Tests whether a user's cryptohome is mounted."""
