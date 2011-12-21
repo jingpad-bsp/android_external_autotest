@@ -17,33 +17,34 @@ import flimflam, routing, mm
 # Cellular smoke test and documentation for writing cell tests
 
 class cellular_Smoke(test.test):
-  version = 1
+    version = 1
 
-  # The autotest infrastructure calls run_once.  The control file
-  # fetches the JSON lab config and passes it in as a python object
+    # The autotest infrastructure calls run_once.  The control file
+    # fetches the JSON lab config and passes it in as a python object
 
-  def run_once(self, config, technology):
-    # backchannel.Backchannel sets up an ethernet connection to the
-    # DUT that has restrictive routes is outside of flimflam's
-    # control.  This makes the tests resilient to flimflam restarts
-    # and helps to ensure that the test is actually sending traffic on
-    # the cellular link
-    with backchannel.Backchannel():
-      flim = flimflam.FlimFlam()
+    def run_once(self, config, technology):
+        # backchannel.Backchannel sets up an ethernet connection to the
+        # DUT that has restrictive routes is outside of flimflam's
+        # control.  This makes the tests resilient to flimflam restarts
+        # and helps to ensure that the test is actually sending traffic on
+        # the cellular link
+        with backchannel.Backchannel():
+            flim = flimflam.FlimFlam()
 
-      # This shuts down other network devices on the host.  Again,
-      # this is to ensure that test traffic goes over the modem
-      with cell_tools.OtherDeviceShutdownContext('cellular', flim):
-        bs, verifier = emulator_config.GetDefaultBasestation(config, technology)
+            # This shuts down other network devices on the host.  Again,
+            # this is to ensure that test traffic goes over the modem
+            with cell_tools.OtherDeviceShutdownContext('cellular', flim):
+                bs, verifier = emulator_config.GetDefaultBasestation(config,
+                                                                     technology)
 
-        network.ResetAllModems(flim)
-        cell_tools.PrepareModemForTechnology('', technology)
+                network.ResetAllModems(flim)
+                cell_tools.PrepareModemForTechnology('', technology)
 
-        # TODO(rochberg) Need to figure out what isn't settling here.
-        # Going to wait 'til after ResetAllModems changes land.
-        time.sleep(10)
+                # TODO(rochberg) Need to figure out what isn't settling here.
+                # Going to wait 'til after ResetAllModems changes land.
+                time.sleep(10)
 
-        (service, _) = cell_tools.ConnectToCellular(flim, verifier)
-        cell_tools.CheckHttpConnectivity(config)
+                (service, _) = cell_tools.ConnectToCellular(flim, verifier)
+                cell_tools.CheckHttpConnectivity(config)
 
-        cell_tools.DisconnectFromCellularService(bs, flim, service)
+                cell_tools.DisconnectFromCellularService(bs, flim, service)
