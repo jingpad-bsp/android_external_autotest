@@ -82,6 +82,10 @@
                  "groups": ["network_3g"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI3K",
                  "groups": ["network_3g"]}
+                {"platform": "netbook_ALEX_GSM_Y3300",
+                 "groups": ["network_3g"]}
+                {"platform": "netbook_ALEX_GSM_Y3400",
+                 "groups": ["network_3g"]}
             ]
         },
 
@@ -136,6 +140,8 @@
             "build_pattern": "R18-*",
             "platforms": [
                 {"platform": "netbook_ACER_ZGB", "au_test": true}
+                {"platform": "netbook_ACER_ZGB_CDMA_GOBI2K",
+                 "groups": ["network_3g"]}
             ]
         },
 
