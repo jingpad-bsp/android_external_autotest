@@ -22,7 +22,9 @@ TESTS = [
 #  ('platform_ToolchainOptions', {}),
   ('security_AccountsBaseline', {}),
   ('security_DbusOwners', {}),
+  ('security_HardlinkRestrictions', {}),
   ('security_NetworkListeners', {}),
+  ('security_ptraceRestrictions', {}),
   ('security_RendererSandbox', {}),
   ('security_ReservedPrivileges', {'owner_type': 'user', 'tag': 'user'}),
   ('security_ReservedPrivileges', {'owner_type': 'group', 'tag': 'group'}),
@@ -32,6 +34,7 @@ TESTS = [
   ('security_RootfsStatefulSymlinks', {}),
   ('security_SuidBinaries', {'baseline': 'suid', 'tag': 'suid'}),
   ('security_SuidBinaries', {'baseline': 'sgid', 'tag': 'sgid'}),
+  ('security_SymlinkRestrictions', {}),
 ]
 
 # Kick off client tests
