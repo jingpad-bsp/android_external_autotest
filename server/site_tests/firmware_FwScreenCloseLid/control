@@ -1,0 +1,26 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "firmware_FwScreenCloseLid"
+PURPOSE = "Servo based lid close triggered shutdown during firmware screens."
+CRITERIA = "This test will fail if DUT doesn't shutdown"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "firmware"
+TEST_TYPE = "server"
+
+DOC = """
+This test requires a USB disk plugged-in, which contains a Chrome OS test
+image (built by "build_image --test"). On runtime, this test triggers
+four firmware screens (developer, remove, insert, and yuck screens), and
+then closes the lid in order to power the machine down.
+"""
+
+def run_fwscreencloselid(machine):
+    host = hosts.create_host(machine)
+    job.run_test("firmware_FwScreenCloseLid", host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True)
+
+parallel_simple(run_fwscreencloselid, machines)

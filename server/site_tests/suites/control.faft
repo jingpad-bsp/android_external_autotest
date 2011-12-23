@@ -19,6 +19,7 @@ TESTS_ON_NORMAL_MODE = [
     ('firmware_DevMode', {}),
     ('firmware_DevTriggerRecovery', {}),
     ('firmware_FwScreenPressPower', {}),
+    ('firmware_FwScreenCloseLid', {}),
 ]
 
 TESTS_ON_DEV_MODE = [

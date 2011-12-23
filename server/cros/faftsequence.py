@@ -584,7 +584,8 @@ class FAFTSequence(ServoTest):
         """
         assert len(from_magic) == 8
         assert len(to_magic) == 8
-        kernel_part = self._join_part(usb_dev, '2')
+        # USB image only contains one kernel.
+        kernel_part = self._join_part(usb_dev, self.KERNEL_MAP['a'])
         read_cmd = "sudo dd if=%s bs=8 count=1 2>/dev/null" % kernel_part
         current_magic = utils.system_output(read_cmd)
         if current_magic == to_magic:
