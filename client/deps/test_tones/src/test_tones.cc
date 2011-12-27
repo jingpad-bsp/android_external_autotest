@@ -20,9 +20,9 @@
 #include "tone_generators.h"
 
 using autotest_client::audio::ASharpMinorGenerator;
-using autotest_client::audio::AlsaAudioClient;
+using autotest_client::audio::AlsaPlaybackClient;
 using autotest_client::audio::SampleFormat;
-using autotest_client::audio::SingleToneGenerator;
+using autotest_client::audio::MultiToneGenerator;
 using autotest_client::audio::TestConfig;
 
 static struct option long_options[] = {
@@ -222,8 +222,11 @@ int main(int argc, char* argv[]) {
 
   PrintConfig(stdout, config);
 
-  AlsaAudioClient client(config.alsa_device);
-  if (!client.Init()) {
+  AlsaPlaybackClient client(config.alsa_device);
+  if (!client.Init(config.sample_rate,
+                   config.format,
+                   config.channels,
+                   &config.active_channels)) {
     fprintf(stderr, "Unable to initialize Alsa: %d\n",
             client.last_error());
     return 1;
@@ -233,17 +236,15 @@ int main(int argc, char* argv[]) {
     ASharpMinorGenerator scale_generator(config.sample_rate,
                                          config.tone_length_sec);
     scale_generator.SetVolumes(config.start_volume, config.end_volume);
-    client.PlayTones(config.sample_rate, config.format, 
-                     config.channels, config.active_channels,
-                     &scale_generator);
+    client.SetPlayObj(&scale_generator);
+    client.PlayTones();
   } else {
-    SingleToneGenerator tone_generator(config.sample_rate,
+    MultiToneGenerator tone_generator(config.sample_rate,
                                        config.tone_length_sec);
     tone_generator.SetVolumes(config.start_volume, config.end_volume);
     tone_generator.Reset(config.frequency);
-    client.PlayTones(config.sample_rate, config.format,
-                     config.channels, config.active_channels,
-                     &tone_generator);
+    client.SetPlayObj(&tone_generator);
+    client.PlayTones();
   }
 
   return 0;

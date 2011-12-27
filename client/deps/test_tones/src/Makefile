@@ -4,31 +4,38 @@
 
 PKG_CONFIG ?= pkg-config
 
-CXXFLAGS += -Wall -Werror -g $(shell $(PKG_CONFIG) --cflags-only-other alsa)
-INCLUDE_DIRS += $(shell $(PKG_CONFIG) --cflags-only-I alsa)
-LIB_DIRS += $(shell $(PKG_CONFIG) --libs-only-L alsa)
+CXXFLAGS += -Wall -Werror -g \
+	$(shell $(PKG_CONFIG) --cflags-only-other alsa)
+INCLUDE_DIRS += $(shell $(PKG_CONFIG) --cflags-only-I alsa) -Iinclude
+LIB_DIRS += $(shell $(PKG_CONFIG) --libs-only-L alsa) -Llib
 LDFLAGS += $(shell $(PKG_CONFIG) --libs-only-l alsa)
 DEPDIR = .deps
 
-TEST_TONES_OBJS = alsa_client.o \
-                  test_tones.o \
-                  tone_generators.o
-TEST_TONES_BIN = test_tones
+OBJS = alsa_client.o \
+	tone_generators.o
+
+BIN = audiofuntest test_tones
 
 .PHONY: clean all
 
-all: $(TEST_TONES_BIN)
+audiofuntest: LDFLAGS += -lfftw3 -pthread
 
-$(TEST_TONES_BIN): $(TEST_TONES_OBJS)
-	$(CXX) -Wall $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $^ \
+all: $(BIN)
+
+audiofuntest: $(OBJS) audiofuntest.cc
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $^ \
+	    $(LDFLAGS) -o $@
+
+test_tones: $(OBJS) test_tones.cc
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $^ \
 	    $(LDFLAGS) -o $@
 
 clean:
-	rm -rf .deps $(TEST_TONES_BIN) $(TEST_TONES_OBJS)
+	rm -rf .deps $(BIN) $(OBJS)
 
 # compile and generate dependency info
 %.o: %.cc
 	@mkdir -p $(shell dirname $(DEPDIR)/$*.d)
 	$(CXX) -MMD -MF $(DEPDIR)/$*.d $(CXXFLAGS) $(INCLUDE_DIRS) -c -o $@ $<
 
--include $(TEST_TONES_OBJS:%.o=$(DEPDIR)/%.d)
+-include $(OBJS:%.o=$(DEPDIR)/%.d)

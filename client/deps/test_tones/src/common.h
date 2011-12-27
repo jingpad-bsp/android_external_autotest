@@ -24,12 +24,10 @@ class SampleFormat {
   };
 
   SampleFormat()
-      : type_(kPcmInvalid) {
-  }
+      : type_(kPcmInvalid) {}
 
   explicit SampleFormat(Type type)
-      : type_(type) {
-  }
+      : type_(type) {}
 
   void set_type(Type type) { type_ = type; }
   Type type() const { return type_; }
@@ -68,7 +66,6 @@ class SampleFormat {
   Type type_;
 };
 
-// All samples are linear, and little-endian.
 struct TestConfig {
   enum TestType {
     kInvalid,
@@ -76,7 +73,7 @@ struct TestConfig {
     kSingleTone,
   };
 
-  TestConfig() 
+  TestConfig()
       : type(kInvalid),
         alsa_device("default"),
         format(SampleFormat::kPcmS16),
@@ -98,6 +95,33 @@ struct TestConfig {
   double end_volume;
   int channels;
   std::set<int> active_channels;
+};
+// All samples are linear, and little-endian.
+struct AudioFunTestConfig {
+
+  AudioFunTestConfig()
+      : capture_alsa_device("default"),
+      playback_alsa_device("default"),
+      format(SampleFormat::kPcmS16),
+      tone_length_sec(10.0f),
+      sample_rate(64000),
+      start_volume(1.0f),
+      end_volume(1.0f),
+      channels(2),
+      fftsize(1024u),
+      verbose(false) {}
+
+  std::string capture_alsa_device;
+  std::string playback_alsa_device;
+  SampleFormat format;
+  double tone_length_sec;
+  int sample_rate;
+  double start_volume;  // TODO(ajwong): Figure out units, and use this value.
+  double end_volume;
+  int channels;
+  std::set<int> active_channels;
+  unsigned int fftsize;
+  bool verbose;
 };
 
 }  // namespace audio

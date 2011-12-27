@@ -8,16 +8,17 @@
 //
 // SineWaveGenerator -- Generates a single test tone for a given frequency.
 // ASharpMinorGenerator -- Generates tones for the A# Harmonic Minor Scale.
-//    Why choose A# Harmonic Minor?  Cause I can. (and because double-sharps 
+//    Why choose A# Harmonic Minor?  Cause I can. (and because double-sharps
 //    are cool :) )
 
 #ifndef AUTOTEST_CLIENT_SITE_TESTS_AUDIO_TONE_GENERATORS_H_
 #define AUTOTEST_CLIENT_SITE_TESTS_AUDIO_TONE_GENERATORS_H_
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include <set>
+#include <vector>
 
 #include "common.h"
 
@@ -43,11 +44,11 @@ class FrameGenerator {
   // The |active_channels| set is 0 indexed.  If you have 2 channels, and you
   // want to play on all of them, make sure |active_channels| contains 0, and
   // 1.
-  virtual void GetFrames(SampleFormat format,
+  virtual size_t GetFrames(SampleFormat format,
                          int channels,
                          const std::set<int>& active_channels,
                          void* data,
-                         size_t* buf_size) = 0;
+                         size_t buf_size) = 0;
 
   // Returns whether or not the FrameGenerator is able to produce more frames.
   // This is used to signal when one should stop calling GetFrames().
@@ -62,7 +63,7 @@ class SineWaveGenerator {
 
   // Generates a sampled sine wave, where the sine wave period is determined
   // by |frequency| and the sine wave sampling rate is determined by
-  // |sample_rate| (in HZ). 
+  // |sample_rate| (in HZ).
   //
   // It's probably not advisable to change |sample_rate| from call to call, but
   // the API is simpler.
@@ -70,39 +71,49 @@ class SineWaveGenerator {
     cur_x_ += (kPi * 2 * frequency) / sample_rate;
     return sin(cur_x_);
   }
+  void Reset(double cur_x = 0.0) {
+    cur_x_ = cur_x;
+  }
 
  private:
   double cur_x_;
 };
 
-class SingleToneGenerator : public FrameGenerator {
+
+class MultiToneGenerator : public FrameGenerator {
  public:
-  SingleToneGenerator(int sample_rate, double length_sec);
-  virtual ~SingleToneGenerator();
+  MultiToneGenerator(int sample_rate, double length_sec);
+  virtual ~MultiToneGenerator();
 
   void SetVolumes(double start_vol, double end_vol);
-  virtual void Reset(double frequency);
-  virtual void GetFrames(SampleFormat format,
+  virtual void Reset(const std::vector<double> &frequencies,
+                     bool reset_timer = false);
+  virtual void Reset(const double *frequencies, unsigned int ntones,
+                     bool reset_timer = false);
+  virtual void Reset(double frequency, bool reset_timer = false);
+  virtual size_t GetFrames(SampleFormat format,
                          int channels,
                          const std::set<int>& active_channels,
                          void* data,
-                         size_t* buf_size);
+                         size_t buf_size);
   virtual bool HasMoreFrames() const;
 
  private:
-  SineWaveGenerator tone_wave_;
+  std::vector<SineWaveGenerator> tone_wave_;
 
   double GetFadeMagnitude() const;
 
   int frames_generated_;
   int frames_wanted_;
   int fade_frames_;
-  double frequency_;
+  std::vector<double> frequencies_;
   int sample_rate_;
   double cur_vol_;
   double start_vol_;
   double inc_vol_;
+  pthread_mutex_t param_mutex;
 };
+
 
 class ASharpMinorGenerator : public FrameGenerator {
  public:
@@ -111,18 +122,18 @@ class ASharpMinorGenerator : public FrameGenerator {
 
   void SetVolumes(double start_vol, double end_vol);
   virtual void Reset();
-  virtual void GetFrames(SampleFormat format,
+  virtual size_t GetFrames(SampleFormat format,
                          int channels,
                          const std::set<int>& active_channels,
                          void* data,
-                         size_t* buf_size);
+                         size_t buf_size);
   virtual bool HasMoreFrames() const;
 
  private:
   static const int kNumNotes = 16;
   static const double kNoteFrequencies[kNumNotes];
 
-  SingleToneGenerator tone_generator_;
+  MultiToneGenerator tone_generator_;
   int cur_note_;
 };
 

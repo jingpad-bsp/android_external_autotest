@@ -5,8 +5,7 @@
 #include "tone_generators.h"
 
 #include <assert.h>
-
-#include <algorithm>
+#include <cstdio>
 #include <limits>
 
 namespace autotest_client {
@@ -53,56 +52,100 @@ void* WriteSampleForFormat(void* data, double magnitude, SampleFormat format) {
 
 }  // namespace
 
-SingleToneGenerator::SingleToneGenerator(int sample_rate, double length_sec)
+
+MultiToneGenerator::MultiToneGenerator(int sample_rate, double length_sec)
     : frames_generated_(0),
       frames_wanted_(length_sec * sample_rate),
       fade_frames_(0),  // Calculated below.
-      frequency_(0.0f),
       sample_rate_(sample_rate),
       cur_vol_(1.0),
       start_vol_(1.0),
       inc_vol_(0.0) {
 
-  // Use a 5ms fade.
-  const double kFadeTimeSec = 0.01;
+  // Use a fade of 2.5ms at both the start and end of a tone .
+  const double kFadeTimeSec = 0.005;
 
   // Only fade if the fade won't take more than 1/2 the tone.
   if (length_sec > (kFadeTimeSec * 4)) {
     fade_frames_ = kFadeTimeSec * sample_rate;
   }
+
+  frequencies_.clear();
+  pthread_mutex_init(&param_mutex, NULL);
 }
 
-SingleToneGenerator::~SingleToneGenerator() {
+MultiToneGenerator::~MultiToneGenerator() {
+  pthread_mutex_destroy(&param_mutex);
 }
 
-void SingleToneGenerator::SetVolumes(double start_vol, double end_vol) {
+void MultiToneGenerator::SetVolumes(double start_vol, double end_vol) {
+  pthread_mutex_lock(&param_mutex);
   cur_vol_ = start_vol_ = start_vol;
   inc_vol_ = (end_vol - start_vol) / frames_wanted_;
+  pthread_mutex_unlock(&param_mutex);
 }
 
-void SingleToneGenerator::Reset(double frequency) {
-  frequency_ = frequency;
-  frames_generated_ = 0;
-  cur_vol_ = start_vol_;
+void MultiToneGenerator::Reset(const std::vector<double> &frequencies,
+                               bool reset_timer) {
+  pthread_mutex_lock(&param_mutex);
+  frequencies_ = frequencies;
+  if (reset_timer) {
+    frames_generated_ = 0;
+    cur_vol_ = start_vol_;
+  }
+  pthread_mutex_unlock(&param_mutex);
 }
 
-void SingleToneGenerator::GetFrames(SampleFormat format,
-                                    int channels,
-                                    const std::set<int>& active_channels,
-                                    void* data,
-                                    size_t* buf_size) {
+void MultiToneGenerator::Reset(const double *frequency, unsigned int ntones,
+                               bool reset_timer) {
+  pthread_mutex_lock(&param_mutex);
+  frequencies_.resize(ntones);
+  for (unsigned int i = 0; i < ntones; ++i) {
+    frequencies_[i] = frequency[i];
+  }
+  if (reset_timer) {
+    frames_generated_ = 0;
+    cur_vol_ = start_vol_;
+  }
+  pthread_mutex_unlock(&param_mutex);
+}
+
+void MultiToneGenerator::Reset(double frequency, bool reset_timer) {
+  pthread_mutex_lock(&param_mutex);
+  frequencies_.resize(1);
+  frequencies_[0] = frequency;
+  if (reset_timer) {
+    frames_generated_ = 0;
+    cur_vol_ = start_vol_;
+  }
+  pthread_mutex_unlock(&param_mutex);
+}
+
+size_t MultiToneGenerator::GetFrames(SampleFormat format,
+                                   int channels,
+                                   const std::set<int>& active_channels,
+                                   void* data,
+                                   size_t buf_size) {
   const size_t kBytesPerFrame = channels * format.bytes();
   void* cur = data;
-  size_t frames = *buf_size / kBytesPerFrame;
+  size_t frames = buf_size / kBytesPerFrame;
   size_t frames_written;
+  pthread_mutex_lock(&param_mutex);
+  tone_wave_.resize(frequencies_.size());
   for (frames_written = 0; frames_written < frames; ++frames_written) {
     if (!HasMoreFrames()) {
       break;
     }
 
-    double frame_magnitude = 
-        GetFadeMagnitude() *
-        tone_wave_.Next(sample_rate_, frequency_) * cur_vol_;
+    double frame_magnitude = 0;
+    for (unsigned int f = 0; f < frequencies_.size(); ++f) {
+      frame_magnitude += tone_wave_[f].Next(sample_rate_, frequencies_[f]);
+    }
+    frame_magnitude *= GetFadeMagnitude() * cur_vol_;
+    if (frequencies_.size() > 1) {
+      frame_magnitude /= static_cast<double>(frequencies_.size());
+    }
+    //printf("%f\n", frame_magnitude);
     cur_vol_ += inc_vol_;
     for (int c = 0; c < channels; ++c) {
       if (active_channels.find(c) != active_channels.end()) {
@@ -115,37 +158,36 @@ void SingleToneGenerator::GetFrames(SampleFormat format,
 
     ++frames_generated_;
   }
-
-  *buf_size = frames_written * kBytesPerFrame;
+  pthread_mutex_unlock(&param_mutex);
+  return frames_written * kBytesPerFrame;
 }
 
-bool SingleToneGenerator::HasMoreFrames() const {
+bool MultiToneGenerator::HasMoreFrames() const {
   return frames_generated_ < frames_wanted_;
 }
 
-double SingleToneGenerator::GetFadeMagnitude() const {
-  // Fade in.
+double MultiToneGenerator::GetFadeMagnitude() const {
   int frames_left = frames_wanted_ - frames_generated_;
-  if (frames_generated_ < fade_frames_) {
+  if (frames_generated_ < fade_frames_) { // Fade in.
     return sin(kHalfPi * frames_generated_ / fade_frames_);
-  } else if (frames_left < fade_frames_) {
+  } else if (frames_left < fade_frames_) { // Fade out.
     return sin(kHalfPi * frames_left / fade_frames_);
   } else {
     return 1.0f;
   }
 }
 
-// A# minor harmoic scale is: A#, B# (C), C#, D#, E# (F), F#, G## (A). 
+// A# minor harmoic scale is: A#, B# (C), C#, D#, E# (F), F#, G## (A).
 const double ASharpMinorGenerator::kNoteFrequencies[] = {
   466.16, 523.25, 554.37, 622.25, 698.46, 739.99, 880.00, 932.33,
-  932.33, 880.00, 739.99, 698.46, 622.25, 554.37, 523.25, 466.16, 
+  932.33, 880.00, 739.99, 698.46, 622.25, 554.37, 523.25, 466.16,
 };
 
 ASharpMinorGenerator::ASharpMinorGenerator(int sample_rate,
                                            double tone_length_sec)
     : tone_generator_(sample_rate, tone_length_sec),
       cur_note_(0) {
-  tone_generator_.Reset(kNoteFrequencies[cur_note_]);
+  tone_generator_.Reset(kNoteFrequencies[cur_note_], true);
 }
 
 ASharpMinorGenerator::~ASharpMinorGenerator() {
@@ -157,25 +199,28 @@ void ASharpMinorGenerator::SetVolumes(double start_vol, double end_vol) {
 
 void ASharpMinorGenerator::Reset() {
   cur_note_ = 0;
-  tone_generator_.Reset(kNoteFrequencies[cur_note_]);
+  tone_generator_.Reset(kNoteFrequencies[cur_note_], true);
 }
 
-void ASharpMinorGenerator::GetFrames(SampleFormat format,
+size_t ASharpMinorGenerator::GetFrames(SampleFormat format,
                                      int channels,
                                      const std::set<int>& active_channels,
                                      void* data,
-                                     size_t* buf_size) {
+                                     size_t buf_size) {
   if (!HasMoreFrames()) {
-    *buf_size = 0;
-    return;
+    return 0;
   }
 
   // Go to next note if necessary.
   if (!tone_generator_.HasMoreFrames()) {
-    tone_generator_.Reset(kNoteFrequencies[++cur_note_]);
+    tone_generator_.Reset(kNoteFrequencies[++cur_note_], true);
   }
-  
-  tone_generator_.GetFrames(format, channels, active_channels, data, buf_size);
+
+  return tone_generator_.GetFrames(format,
+                                   channels,
+                                   active_channels,
+                                   data,
+                                   buf_size);
 }
 
 bool ASharpMinorGenerator::HasMoreFrames() const {
