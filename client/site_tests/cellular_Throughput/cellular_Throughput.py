@@ -22,8 +22,7 @@ class cellular_Throughput(test.test):
         with backchannel.Backchannel():
             flim = flimflam.FlimFlam()
             with cell_tools.OtherDeviceShutdownContext('cellular', flim):
-                bs, verifier = emulator_config.GetDefaultBasestation(
-                    config, technology)
+                bs, verifier = emulator_config.StartDefault(config, technology)
                 network.ResetAllModems(flim)
                 cell_tools.PrepareModemForTechnology('', technology)
                 # TODO(rochberg): Figure out whether it's just Gobi 2k

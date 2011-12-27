@@ -67,6 +67,10 @@ class TestLabConfig(unittest.TestCase):
     def test_get_interface_ip(self):
         self.assertEqual('127.0.0.1', labconfig.get_interface_ip('lo'))
 
+    def test_get_switch_port(self):
+        c = labconfig.Configuration(['--cell', 'test', '--technology=all'])
+        self.assertEqual(0,
+                         c.get_switch_port('one_two_three_four'))
 
 if __name__ == '__main__':
   unittest.main()

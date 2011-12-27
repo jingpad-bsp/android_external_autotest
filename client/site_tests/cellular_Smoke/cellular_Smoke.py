@@ -34,8 +34,8 @@ class cellular_Smoke(test.test):
             # This shuts down other network devices on the host.  Again,
             # this is to ensure that test traffic goes over the modem
             with cell_tools.OtherDeviceShutdownContext('cellular', flim):
-                bs, verifier = emulator_config.GetDefaultBasestation(config,
-                                                                     technology)
+                bs, verifier = emulator_config.StartDefault(config, technology)
+
                 network.ResetAllModems(flim)
                 cell_tools.PrepareModemForTechnology('', technology)
 

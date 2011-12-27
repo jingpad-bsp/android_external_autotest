@@ -3,9 +3,10 @@
 # found in the LICENSE file.
 
 """Configure cellular data emulation setup."""
-import time
+import logging, time
 
 from autotest_lib.client.cros.cellular import base_station_8960, cellular
+from autotest_lib.client.cros.cellular import ether_io_rf_switch
 from autotest_lib.client.cros.cellular import prologix_scpi_driver, scpi
 
 class Error(Exception):
@@ -25,13 +26,30 @@ def _CreateBaseStation(c):
     return base_station_8960.BaseStation8960(s)
 
 
-def GetDefaultBasestation(config, technology):
+def _CreateRfSwitch(config):
+    if 'rf_switch' not in config.cell:
+        return None
+    switch_config = config.cell['rf_switch']
+    if switch_config['type'] != 'ether_io':
+        raise KeyError('Could not configure switch of type %s' %
+                       switch_config['type'])
+    return ether_io_rf_switch.RfSwitch(switch_config['address'])
+
+
+def StartDefault(config, technology):
     """Set up a base station and turn it on.  Return BS and verifier."""
     if len(config.cell['basestations']) > 1:
         raise Error('Cannot (yet) handle >1 base station')
 
     c = config.cell['basestations'][0]
     bs = _CreateBaseStation(c)
+
+    rf_switch = _CreateRfSwitch(config)
+    if rf_switch:
+        port = config.get_rf_switch_port()
+        logging.info(
+            'Changing switch port from %s to %s' % (rf_switch.Query(), port))
+        rf_switch.SelectPort(port)
 
     with bs.checker_context:
         bs.SetBsNetmaskV4(c['bs_netmask'])
