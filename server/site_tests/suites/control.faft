@@ -18,6 +18,7 @@ requirements.
 TESTS_ON_NORMAL_MODE = [
     ('firmware_DevMode', {}),
     ('firmware_DevTriggerRecovery', {}),
+    ('firmware_InvalidUSB', {}),
     ('firmware_FwScreenPressPower', {}),
     ('firmware_FwScreenCloseLid', {}),
 ]
