@@ -15,6 +15,7 @@ import cros_gestures_lib
 record_program = 'evemu-record'
 trackpad_test_conf = 'trackpad_usability_test.conf'
 trackpad_device_file_hardcoded = '/dev/input/event6'
+autotest_program = '/usr/local/autotest/bin/autotest'
 conf_file_executed = False
 
 
@@ -291,3 +292,26 @@ def write_symlink(source, link_name):
     if os.path.exists(link_name):
         os.remove(link_name)
     os.symlink(source, link_name)
+
+
+def hardware_trackpad_test_all(gss_path=None):
+    ''' Run all trackpad autotest analysis on all gesture sets (gss) '''
+    if gss_path is None:
+        gss_path = read_trackpad_test_conf('gesture_files_path_root', '.')
+
+    if not os.path.isdir(gss_path):
+        print 'Error: "%s" does not exist.' % gss_path
+        sys.exit(1)
+
+    print 'Gesture Sets: "%s"' % gss_path
+    autotest_link = read_trackpad_test_conf('gesture_files_path_autotest', '.')
+    for gs in glob.glob(os.path.join(gss_path, '*')):
+        if os.path.islink(gs):
+            print '  Skip the symbolic link "%s"' % gs
+            continue
+        print '  Test the gesture set "%s"' % gs
+        if os.path.islink(autotest_link):
+            os.remove(autotest_link)
+        os.symlink(gs, autotest_link)
+        cmd = '%s %s' % (autotest_program, 'control')
+        common_util.simple_system(cmd)
