@@ -25,6 +25,7 @@ TESTS = [
   ('platform_RootPartitionsNotMounted', {}),
   ('platform_ToolchainOptions', {}),
   ('build_RootFilesystemSize', {}),
+  ('desktopui_AudioFeedback', {}),
 # crosbug.com/20024
 #  ('desktopui_ChromeFirstRender', {}),
   ('desktopui_UrlFetch', {'live': False, 'tag': 'not-live'}),
