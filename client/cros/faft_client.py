@@ -188,6 +188,16 @@ class FAFTClient(object):
         self._chromeos_interface.cs.request_recovery()
 
 
+    def get_gbb_flags(self):
+        """Get the GBB flags.
+
+        Returns:
+            An integer of the GBB flags.
+        """
+        self._chromeos_interface.log('Getting GBB flags')
+        return self._flashrom_handler.get_gbb_flags()
+
+
     def get_firmware_flags(self, section):
         """Get the preamble flags of a firmware section.
 

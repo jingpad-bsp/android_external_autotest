@@ -25,14 +25,18 @@ class firmware_DevScreenTimeout(FAFTSequence):
     """
     version = 1
 
+    GBB_FLAG_DEV_SCREEN_SHORT_DELAY = 0x00000001
+
     CTRL_D_REPEAT_COUNT = 10
     CTRL_D_REPEAT_DELAY = 0.5
 
-    # The developer screen timeout is 30s in our spec.
-    EXPECTED_TIMEOUT = 30
+    # The developer screen timeouts fit our spec.
+    DEV_SCREEN_TIMEOUT_NORMAL = 30
+    DEV_SCREEN_TIMEOUT_SHORT = 2
     # We accept 3s timeout margin.
     TIMEOUT_MARGIN = 3
 
+    expected_timeout = DEV_SCREEN_TIMEOUT_NORMAL
     fw_time_record = {}
 
 
@@ -73,18 +77,23 @@ class firmware_DevScreenTimeout(FAFTSequence):
                        self.fw_time_record['ctrl_d_boot'])
         logging.info('Estimated developer firmware timeout: %s' % got_timeout)
 
-        if got_timeout < self.EXPECTED_TIMEOUT - self.TIMEOUT_MARGIN or \
-                got_timeout > self.EXPECTED_TIMEOUT + self.TIMEOUT_MARGIN:
+        if got_timeout < self.expected_timeout - self.TIMEOUT_MARGIN or \
+                got_timeout > self.expected_timeout + self.TIMEOUT_MARGIN:
             raise error.TestFail(
                     'The developer firmware timeout does not match our spec: ' \
                     'expected %.2f +/- %.2f but got %.2f.' %
-                    (self.EXPECTED_TIMEOUT, self.TIMEOUT_MARGIN, got_timeout))
+                    (self.expected_timeout, self.TIMEOUT_MARGIN, got_timeout))
 
 
     def setup(self):
         super(firmware_DevScreenTimeout, self).setup()
         # This test is run on developer mode only.
         self.setup_dev_mode(dev_mode=True)
+        if (self.faft_client.get_gbb_flags() &
+                self.GBB_FLAG_DEV_SCREEN_SHORT_DELAY):
+            logging.info('DEV_SCREEN_SHORT_DELAY flag is detected on GBB; '
+                         'use 2 seconds timeout.')
+            self.expected_timeout = self.DEV_SCREEN_TIMEOUT_SHORT
 
 
     def run_once(self, host=None):
