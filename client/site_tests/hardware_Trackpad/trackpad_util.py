@@ -5,8 +5,10 @@
 ''' Trackpad utility program for reading test configuration data '''
 
 import glob
+import logging
 import os
 import re
+import time
 
 import common_util
 import cros_gestures_lib
@@ -16,6 +18,7 @@ record_program = 'evemu-record'
 trackpad_test_conf = 'trackpad_usability_test.conf'
 trackpad_device_file_hardcoded = '/dev/input/event6'
 autotest_program = '/usr/local/autotest/bin/autotest'
+autotest_log_subpath = 'results/default/debug/client.INFO'
 conf_file_executed = False
 
 
@@ -90,6 +93,39 @@ class Display:
         ''' Move the cursor to the center of the screen '''
         self.root.warp_pointer(*self.center)
         self.disp.sync()
+
+
+class IterationLog:
+    ''' Maintain the log for an iteration '''
+
+    def __init__(self, result_path, autotest_gs_symlink):
+        self.open_result_log(result_path, autotest_gs_symlink)
+
+    def open_result_log(self, result_path, autotest_gs_symlink):
+        time_format = '%Y%m%d_%H%M%S'
+        test_time = 'tested:' + time.strftime(time_format, time.gmtime())
+        autotest_gs_name = os.path.realpath(autotest_gs_symlink).split('/')[-1]
+        self.result_file_name = '.'.join([autotest_gs_name, test_time])
+        self.result_file = os.path.join(result_path, self.result_file_name)
+        self.result_fh = open(self.result_file, 'w+')
+        logging.info('Gesture set tested: %s', autotest_gs_name)
+        logging.info('Result is saved at %s' % self.result_file)
+
+    def write_result_log(self, msg):
+        logging.info(msg)
+        self.result_fh.write('%s\n' % msg)
+
+    def close_result_log(self):
+        self.result_fh.close()
+
+    def append_detailed_log(self, autodir):
+        detailed_log_path = os.path.join(autodir, autotest_log_subpath)
+        append_cmd = 'cat %s >> %s' % (detailed_log_path, self.result_file)
+        try:
+            utils.system(append_cmd)
+            logging.info('Append detailed log: "%s"' % append_cmd)
+        except:
+            logging.warn('Warning: fail to execute "%s"' % append_cmd)
 
 
 def read_trackpad_test_conf(target_name, path):

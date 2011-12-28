@@ -58,35 +58,6 @@ class hardware_Trackpad(test.test):
         logging.info('Path of %s: %s' % (name, pathname))
         return pathname
 
-    def _open_result_log(self, result_path, autotest_path):
-        time_format = '%Y%m%d_%H%M%S'
-        test_time = 'tested:' + time.strftime(time_format, time.gmtime())
-        autotest_dir = os.path.realpath(autotest_path).split('/')[-1]
-        self.result_file_name = '.'.join([autotest_dir, test_time])
-        self.result_file = os.path.join(result_path, self.result_file_name)
-        self.result_fh = open(self.result_file, 'w+')
-        logging.info('Gesture set tested: %s', autotest_dir)
-        logging.info('Result is saved at %s' % self.result_file)
-
-    def _write_result_log(self, msg):
-        logging.info(msg)
-        self.result_fh.write('%s\n' % msg)
-
-    def _close_result_log(self):
-        self.result_fh.close()
-
-    def _append_detailed_log(self):
-        # autodir is an attribute of test.test.
-        # autodir is currently /usr/local/autotest in chromebook.
-        detailed_log_path = os.path.join(self.autodir,
-                                         'results/default/debug/client.INFO')
-        append_cmd = 'cat %s >> %s' % (detailed_log_path, self.result_file)
-        try:
-            utils.system(append_cmd)
-            logging.info('Append detailed log: "%s"' % append_cmd)
-        except:
-            logging.warn('Warning: fail to execute "%s"' % append_cmd)
-
     def run_once(self):
         global tdata
         tdata.file_basename = None
@@ -108,8 +79,8 @@ class hardware_Trackpad(test.test):
             os.makedirs(gesture_files_path_results)
             logging.info('  The result path "%s" is created successfully.' %
                          gesture_files_path_results)
-        self._open_result_log(gesture_files_path_results,
-                              gesture_files_path_autotest)
+        self.ilog = trackpad_util.IterationLog(gesture_files_path_results,
+                                               gesture_files_path_autotest)
 
         # Initialization of statistics
         tdata.num_wrong_file_name = 0
@@ -263,10 +234,10 @@ class hardware_Trackpad(test.test):
 
         # Logging test summary
         tot_pass_count = tdata.tot_num_files_tested - tdata.tot_fail_count
-        msg = trackpad_summary.format_result_header(self.result_file_name,
+        msg = trackpad_summary.format_result_header(self.ilog.result_file_name,
                                                     tot_pass_count,
                                                     tdata.tot_num_files_tested)
-        self._write_result_log(msg)
+        self.ilog.write_result_log(msg)
 
         area_name = None
         for tp_func in functionality_list:
@@ -279,7 +250,7 @@ class hardware_Trackpad(test.test):
             if tp_func.area[0] != area_name:
                 area_name = tp_func.area[0]
                 msg = trackpad_summary.format_result_area(area_name)
-                self._write_result_log(msg)
+                self.ilog.write_result_log(msg)
 
             for fullname in tdata.subname_list[func_name]:
                 test_count_fullname = tdata.num_files_tested_fullname[fullname]
@@ -287,13 +258,13 @@ class hardware_Trackpad(test.test):
                 pass_count_fullname = test_count_fullname - fail_count_fullname
                 msg = trackpad_summary.format_result_pass_rate(fullname,
                                        pass_count_fullname, test_count_fullname)
-                self._write_result_log(msg)
+                self.ilog.write_result_log(msg)
 
         msg = trackpad_summary.format_result_tail()
-        self._write_result_log(msg)
+        self.ilog.write_result_log(msg)
 
-        self._close_result_log()
-        self._append_detailed_log()
+        self.ilog.close_result_log()
+        self.ilog.append_detailed_log(self.autodir)
 
         # Raise error.TestFail if there is any test failed.
         if tdata.tot_fail_count > 0:
