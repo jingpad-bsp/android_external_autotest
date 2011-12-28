@@ -84,7 +84,7 @@ class login_OwnershipRetaken(cros_ownership_test.OwnershipTest):
 
         # grab key, ensure that it's the same as the known key.
         if (utils.read_file(constants.OWNER_KEY_FILE) != pubkey):
-            raise error.TestFail('Owner key should have changed!')
+            raise error.TestFail('Owner key should not have changed!')
 
         # Start a new session, which will trigger the re-taking of ownership.
         if not sm.StartSession(self._testuser, ''):
