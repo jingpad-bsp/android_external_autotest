@@ -206,17 +206,24 @@ class FAFTSequence(ServoTest):
         super(FAFTSequence, self).cleanup()
 
 
-    def assert_test_image_in_usb_disk(self):
+    def assert_test_image_in_usb_disk(self, usb_dev=None):
         """Assert an USB disk plugged-in on servo and a test image inside.
+
+        Args:
+          usb_dev: A string of USB stick path on the host, like '/dev/sdc'.
+                   If None, it is detected automatically.
 
         Raises:
           error.TestError: if USB disk not detected or not a test image.
         """
-        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
-        usb_dev = self.servo.probe_host_usb_dev()
-        if not usb_dev:
-            raise error.TestError(
-                    'An USB disk should be plugged in the servo board.')
+        if usb_dev:
+            assert self.servo.get('usb_mux_sel1') == 'servo_sees_usbkey'
+        else:
+            self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+            usb_dev = self.servo.probe_host_usb_dev()
+            if not usb_dev:
+                raise error.TestError(
+                        'An USB disk should be plugged in the servo board.')
 
         tmp_dir = tempfile.mkdtemp()
         utils.system('sudo mount -r -t ext2 %s3 %s' % (usb_dev, tmp_dir))

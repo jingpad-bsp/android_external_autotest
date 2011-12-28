@@ -20,13 +20,6 @@ class firmware_InvalidUSB(FAFTSequence):
     version = 1
 
 
-    def corrupt_usb(self):
-        """Corrupt the USB image. USB plugs/unplugs happen in this method."""
-        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
-        usb_dev = self.servo.probe_host_usb_dev()
-        self.corrupt_usb_kernel(usb_dev)
-
-
     def restore_usb(self):
         """Restore the USB image. USB plugs/unplugs happen in this method."""
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
@@ -52,10 +45,12 @@ class firmware_InvalidUSB(FAFTSequence):
 
     def setup(self):
         super(firmware_InvalidUSB, self).setup()
-        self.setup_dev_mode(dev_mode=False)
-        self.assert_test_image_in_usb_disk()
-        self.corrupt_usb()
+        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        usb_dev = self.servo.probe_host_usb_dev()
+        self.assert_test_image_in_usb_disk(usb_dev)
+        self.corrupt_usb_kernel(usb_dev)
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.setup_dev_mode(dev_mode=False)
 
 
     def cleanup(self):
