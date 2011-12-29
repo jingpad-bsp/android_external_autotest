@@ -201,8 +201,7 @@ class platform_ToolchainOptions(test.test):
             option_sets.append(cos)
 
             fortify_cmd = ("binutils/readelf -s {} 2>&1 | "
-                           "egrep \"__.*_chk\" | "
-                           "grep -qv \"__stack_chk\"")
+                           "egrep -q \"__.*_chk\"")
             fortify_whitelist = os.path.join(self.bindir, "fortify_whitelist")
             option_sets.append(self.create_and_filter("-D_FORTIFY_SOURCE=2",
                                                       fortify_cmd,
