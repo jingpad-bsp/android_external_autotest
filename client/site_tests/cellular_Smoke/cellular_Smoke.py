@@ -36,7 +36,6 @@ class cellular_Smoke(test.test):
             with cell_tools.OtherDeviceShutdownContext('cellular', flim):
                 bs, verifier = emulator_config.GetDefaultBasestation(config,
                                                                      technology)
-
                 network.ResetAllModems(flim)
                 cell_tools.PrepareModemForTechnology('', technology)
 

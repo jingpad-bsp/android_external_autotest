@@ -9,10 +9,11 @@ import copy, unittest
 CELLS = {}
 
 # TODO(rochberg):  Need some way to subset this list for long/short tests
-GOBI_2000_TECHNOLOGIES = ['GPRS', 'EGPRS',
-                          'WCDMA', 'HSDPA', 'HDUPA', 'HSDUPA', 'HSPA_PLUS',
-                          'CDMA_2000', 'EVDO_1X']
 
+GENERIC_GSM_TECHNOLOGIES = ['GPRS', 'EGPRS', 'WCDMA', 'HSDPA', 'HDUPA',
+                            'HSDUPA', 'HSPA_PLUS',]
+
+GOBI_2000_TECHNOLOGIES = GENERIC_GSM_TECHNOLOGIES + ['CDMA_2000', 'EVDO_1X']
 
 
 def combine_trees(a_original, b):
@@ -74,7 +75,8 @@ CELLS['cam'] = {
             },
         {
             "address": "172.31.206.146",
-            "name": "y3300"
+            "name": "y3300",
+            "technologies": GENERIC_GSM_TECHNOLOGIES,
             }
         ],
     # Routerstation pro for runing iperf

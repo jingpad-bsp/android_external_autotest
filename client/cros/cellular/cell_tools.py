@@ -76,9 +76,25 @@ def DisconnectFromCellularService(bs, flim, service):
     flim.DisconnectService(service)  # Waits for flimflam state to go to idle
 
     if bs:
-        bs.GetAirStateVerifier().AssertDataStatusIn([
+        verifier = bs.GetAirStateVerifier()
+        # This is racy: The modem is free to report itself as
+        # disconnected before it actually finishes tearing down its RF
+        # connection.
+        verifier.AssertDataStatusIn([
+            cellular.UeGenericDataStatus.DISCONNECTING,
             cellular.UeGenericDataStatus.REGISTERED,
-            cellular.UeGenericDataStatus.NONE])
+            cellular.UeGenericDataStatus.NONE,])
+
+        def _ModemIsFullyDisconnected():
+            return verifier.IsDataStatusIn([
+                cellular.UeGenericDataStatus.REGISTERED,
+                cellular.UeGenericDataStatus.NONE,])
+
+        utils.poll_for_condition(
+            _ModemIsFullyDisconnected,
+            timeout=20,
+            exception=Error('modem not disconnected from base station'))
+
 
 def _EnumerateModems(manager):
     """Get a set of modem paths."""
@@ -197,14 +213,24 @@ def PrepareCdmaModem(manager, modem_path):
     return new_path
 
 
+def GetCurrentTechnologyFamily(manager, modem_path):
+  """Returns the technology family of the specified modem."""
+
+  try:
+      manager.GetAll(mm.ModemManager.GSM_CARD_INTERFACE, modem_path)
+      return cellular.TechnologyFamily.UMTS
+  except dbus.exceptions.DBusException:
+      return cellular.TechnologyFamily.CDMA
+
+
 def PrepareModemForTechnology(modem_path, target_technology):
     """Prepare modem for the technology: Sets things like firmware, PRL."""
 
     manager, modem_path = mm.PickOneModem(modem_path)
+
     logging.info('Found modem %s' % modem_path)
-    status = manager.SimpleModem(modem_path).GetStatus()
-    current_family = getattr(cellular.TechnologyFamily,
-                             str(status['technology']))
+
+    current_family = GetCurrentTechnologyFamily(manager, modem_path)
     target_family = cellular.TechnologyToFamily[target_technology]
 
     if current_family != target_family:

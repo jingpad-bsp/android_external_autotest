@@ -2,10 +2,29 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
+import logging, time
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros import flimflam_test_path
-import mm
+import dbus, mm
+
+
+def _Bug24628WorkaroundEnable(modem):
+    """Enable a modem.  Try again if a SerialResponseTimeout is received."""
+    # http://code.google.com/p/chromium-os/issues/detail?id=24628
+    tries = 5
+    while tries > 0:
+        try:
+            modem.Enable(True)
+            return
+        except dbus.exceptions.DBusException, e:
+            logging.error('Enable failed: %s' % e)
+            tries -= 1
+            if tries > 0:
+                logging.error('_Bug24628WorkaroundEnable:  sleeping')
+                time.sleep(6)
+                logging.error('_Bug24628WorkaroundEnable:  retrying')
+            else:
+                raise
 
 
 # TODO(rochberg):  Move modem-specific functions to cellular/cell_utils
@@ -19,12 +38,17 @@ def ResetAllModems(flim):
     logging.info('ResetAllModems: found service %s' % service)
 
     if service and service.GetProperties()['Favorite']:
-        service.SetProperty('AutoConnect', False)
+        service.SetProperty('AutoConnect', False),
 
     for manager, path in mm.EnumerateDevices():
         modem = manager.Modem(path)
+        version = manager.Modem(path).GetInfo()[2]
         modem.Enable(False)
-        modem.Enable(True)
+        time.sleep(1)
+        if 'Y3300XXKB1' in version:
+            _Bug24628WorkaroundEnable(modem)
+        else:
+            modem.Enable(True)
 
 
 def ClearGobiModemFaultInjection():

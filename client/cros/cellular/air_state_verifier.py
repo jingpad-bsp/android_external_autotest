@@ -21,6 +21,9 @@ class AirStateVerifierPermissive(object):
     # it doesn't
     pass
 
+  def IsDataStatusIn(self, expected):
+    return True
+
 
 class AirStateVerifierBasestation(object):
   """An abstraction for verifying the air-side cellular state.
@@ -29,6 +32,10 @@ class AirStateVerifierBasestation(object):
   """
   def __init__(self, base_station):
     self.base_station = base_station
+
+  def IsDataStatusIn(self, expected):
+    actual = self.base_station.GetUeDataStatus()
+    return actual in expected
 
   def AssertDataStatusIn(self, expected):
     actual = self.base_station.GetUeDataStatus()
