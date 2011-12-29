@@ -9,9 +9,9 @@ import math
 import os
 import re
 import time
-import utils
 
 import trackpad_util
+from common_util import simple_system_output
 
 
 class XButton:
@@ -44,7 +44,7 @@ class XButton:
     def _get_trackpad_dev_id(self):
         trackpad_dev_id = None
         if os.system('which xinput') == 0:
-            input_dev_str = utils.system_output(self.xinput_list_cmd)
+            input_dev_str = simple_system_output(self.xinput_list_cmd)
             for dev_str in input_dev_str.splitlines():
                 res = re.search(r'(t(ouch|rack)pad\s+id=)(\d+)', dev_str, re.I)
                 if res is not None:
@@ -75,8 +75,8 @@ class XButton:
                 'Button 4', 'Button 5', 'Button 6', 'Button 7')
 
         if self.trackpad_dev_id is not None:
-            features = utils.system_output(self.xinput_dev_cmd %
-                                           self.trackpad_dev_id)
+            xinput_dev_cmd = self.xinput_dev_cmd % self.trackpad_dev_id
+            features = simple_system_output(xinput_dev_cmd)
             button_labels_str = [line for line in features.splitlines()
                                  if line.lstrip().startswith('Button labels:')]
             strip_str = button_labels_str[0].lstrip().lstrip('Button labels:')
