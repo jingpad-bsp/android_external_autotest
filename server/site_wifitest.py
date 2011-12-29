@@ -708,23 +708,19 @@ class WiFiTest(object):
         find_results = filter(bool, map(find_re.match,
                                         result.stdout.splitlines()))
         if not find_results:
-            return False
+            raise error.TestFail("wanted %s but %s not found" % (want, param))
         got = find_results[0].group(1)
         if not re.match(want, got):
-            raise error.TestFail("client_check_%s: wanted %s got %s" %
-                                 (param, want, got))
-        return True
+            raise error.TestFail("wanted %s got %s" % (want, got))
 
     def client_check_bintval(self, params):
         """ Verify negotiated beacon interval """
-        (self.__client_check_iw_link("beacon int", params[0]) or
-         self.__client_check("beacon_int", params[0]))
+        self.__client_check_iw_link("beacon int", params[0])
 
 
     def client_check_dtimperiod(self, params):
         """ Verify negotiated DTIM period """
-        (self.__client_check_iw_link("dtim period", params[0]) or
-         self.__client_check("dtim_period", params[0]))
+        self.__client_check_iw_link("dtim period", params[0])
 
 
     def client_check_rifs(self, params):
