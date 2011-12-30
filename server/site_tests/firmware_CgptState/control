@@ -1,0 +1,29 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "firmware_CgptState"
+PURPOSE = "Servo based executing the CgptState test on client side."
+CRITERIA = "This test will fail if cgpt mis-behaves"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "firmware"
+TEST_TYPE = "server"
+
+DOC = """
+This test triggers the CgptState test on client side. In the client
+CgptState test, it set kernels A and B with different cgpt states
+(priority, tries, successful) and checks their boot results.
+
+The test items and logic are now handled in client. This FAFT test
+just handles the reboot logic.
+See /usr/local/sbin/firmware/saft/cgpt_state.py for more detail.
+"""
+
+def run_cgptstate(machine):
+    host = hosts.create_host(machine)
+    job.run_test("firmware_CgptState", host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True)
+
+parallel_simple(run_cgptstate, machines)

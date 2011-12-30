@@ -10,14 +10,13 @@ libraries.
 """
 
 import functools
-import os
 import sys
-import tempfile
 from optparse import OptionParser
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
 # Import libraries from SAFT.
 sys.path.append('/usr/local/sbin/firmware/saft')
+import cgpt_state
 import chromeos_interface
 import flashrom_handler
 import kernel_handler
@@ -51,13 +50,13 @@ class FAFTClient(object):
 
     def __init__(self):
         """Initialize the data attributes of this class."""
-        tmp_dir = tempfile.mkdtemp()
-
         # TODO(waihong): Move the explicit object.init() methods to the
         # objects' constructors (ChromeOSInterface, FlashromHandler,
         # KernelHandler, and TpmHandler).
         self._chromeos_interface = chromeos_interface.ChromeOSInterface(False)
-        self._chromeos_interface.init(tmp_dir)
+        # We keep the state of FAFT test in a permanent directory over reboots.
+        self._chromeos_interface.init(state_dir='/var/tmp/faft',
+                log_file='/tmp/faft_log.txt')
 
         self._flashrom_handler = flashrom_handler.FlashromHandler()
         self._flashrom_handler.init(saft_flashrom_util,
@@ -69,6 +68,9 @@ class FAFTClient(object):
 
         self._tpm_handler = tpm_handler.TpmHandler()
         self._tpm_handler.init(self._chromeos_interface)
+
+        self._cgpt_state = cgpt_state.CgptState(
+                'AUTO', self._chromeos_interface, self.get_root_dev())
 
 
     def _dispatch(self, method, params):
@@ -280,6 +282,34 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('restoring kernel %s' % section)
         self._kernel_handler.restore_kernel(section)
+
+
+    def run_cgpt_test_loop(self):
+        """Run the CgptState test loop. The tst logic is handled in the client.
+
+        Returns:
+            0: there are more cgpt tests to execute.
+            1: no more CgptState test, finished.
+        """
+        return self._cgpt_state.test_loop()
+
+
+    def set_cgpt_test_step(self, step):
+        """Set the CgptState test step.
+
+        Args:
+            step: A test step number.
+        """
+        self._cgpt_state.set_step(step)
+
+
+    def get_cgpt_test_step(self):
+        """Get the CgptState test step.
+
+        Returns:
+            A test step number.
+        """
+        return self._cgpt_state.get_step()
 
 
     def cleanup(self):

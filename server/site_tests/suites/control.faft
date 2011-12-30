@@ -21,6 +21,7 @@ TESTS_ON_NORMAL_MODE = [
     ('firmware_InvalidUSB', {}),
     ('firmware_FwScreenPressPower', {}),
     ('firmware_FwScreenCloseLid', {}),
+    ('firmware_CgptState', {}),
 ]
 
 TESTS_ON_DEV_MODE = [
