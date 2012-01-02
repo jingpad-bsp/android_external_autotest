@@ -192,8 +192,10 @@ class TrackpadDevice:
             logging.info('The synaptics device file is ungrabbed now.')
 
     def playback(self, packet_data_file):
-        play_cmd = '%s %s %s < %s' % (TrackpadDevice.PLAYBACK_PROGRAM,
+        option_slot0 = '--insert-slot0'
+        play_cmd = '%s %s %s %s < %s' % (TrackpadDevice.PLAYBACK_PROGRAM,
                                       self.trackpad_device_file,
+                                      option_slot0,
                                       TrackpadDevice.DEVICE_TIME_FILE,
                                       packet_data_file)
         utils.system(play_cmd)
