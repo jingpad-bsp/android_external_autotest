@@ -28,14 +28,13 @@ from autotest_lib.client.common_lib import utils
 
 _LABEL_STATUS_SIZE = (140, 30)
 
-_SUBTEST_LIST = ['Light sensor dark',
-                 'Light sensor exact',
-                 'Light sensor light']
-_SUBTEST_CFG = {'Light sensor dark': {'below': 4},
-                'Light sensor exact': {'between': (10, 15)},
-                'Light sensor light': {'above': 200}}
-
-_SUBTEST_INSTRUCTION = {
+_DEFAULT_SUBTEST_LIST = ['Light sensor dark',
+                         'Light sensor exact',
+                         'Light sensor light']
+_DEFAULT_SUBTEST_CFG = {'Light sensor dark': {'below': 4},
+                        'Light sensor exact': {'between': (10, 15)},
+                        'Light sensor light': {'above': 200}}
+_DEFAULT_SUBTEST_INSTRUCTION = {
     'Light sensor dark': 'Cover light sensor with finger',
     'Light sensor exact': 'Remove finger from light sensor',
     'Light sensor light': 'Shine light sensor with flashlight'}
@@ -255,9 +254,9 @@ class factory_LightSensor(test.test):
             self._subtest_cfg = subtest_cfg
             self._subtest_instruction = subtest_instruction
         else:
-            self._subtest_list = _SUBTEST_LIST
-            self._subtest_cfg = _SUBTEST_CFG
-            self._subtest_instruction = _SUBTEST_INSTRUCTION
+            self._subtest_list = _DEFAULT_SUBTEST_LIST
+            self._subtest_cfg = _DEFAULT_SUBTEST_CFG
+            self._subtest_instruction = _DEFAULT_SUBTEST_INSTRUCTION
 
     def run_once(self,
                  timeout_per_subtest=10,
