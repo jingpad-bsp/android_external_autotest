@@ -111,6 +111,7 @@
 /lib/security/pam_warn.so
 /lib/security/pam_wheel.so
 /lib/udev/mtd_probe
+/opt/google/chrome/plugins/libgcflashplayer.so
 /opt/google/chrome/nacl_helper_bootstrap
 /opt/google/o3d/lib/libCgGL.so
 /opt/google/o3d/lib/libCg.so
