@@ -116,21 +116,21 @@
             ]
         },
 
-        "x86-zgb-r17-trackpad-cmt": {
+        "x86-zgb-r17-trackpad-break": {
             "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R17-1412.24.0*",
             "platforms": [
-                {"platform": "netbook_ACER_ZGB_trackpad_cmt", "au_test": true}
+                {"platform": "netbook_ACER_ZGB_trackpad", "au_test": true}
             ]
         },
 
-        "x86-zgb-r17-synaptic": {
+        "x86-zgb-r17-new-driver": {
             "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R17-1412.24.2*",
             "platforms": [
-                {"platform": "netbook_ACER_ZGB_trackpad_synaptic", "au_test": true}
+                {"platform": "netbook_ACER_ZGB_trackpad", "au_test": true}
             ]
         },
 
