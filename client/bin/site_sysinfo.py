@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, shutil, re, logging
+import glob, os, shutil, re, logging
 
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_sysinfo
@@ -90,6 +90,13 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
             logfile(os.path.join(constants.USER_DATA_DIR,
                                  ".Google/Google Talk Plugin/gtbplugin.log")))
         self.test_loggables.add(purgeable_logdir(constants.CRASH_DIR))
+        # Collect files under /tmp/crash_reporter.*, which contain the procfs
+        # copy of those crashed processes whose core file didn't get converted
+        # into minidump. We need these additional files for post-mortem analysis
+        # of the conversion failure.
+        for log_dir in glob.glob(constants.CRASH_REPORTER_DIR_GLOB_PATTERN):
+            if os.path.isdir(log_dir):
+                self.test_loggables.add(purgeable_logdir(log_dir))
 
 
     def log_test_keyvals(self, test_sysinfodir):
