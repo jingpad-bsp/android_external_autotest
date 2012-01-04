@@ -45,33 +45,6 @@
             ]
         },
 
-        "x86-alex-r17-trackpad-break": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R17-1412.24.0*",
-            "platforms": [
-                {"platform": "netbook_ALEX_trackpad", "au_test": true},
-                {"platform": "netbook_ALEX_CDMA_GOBI2K",
-                 "groups": ["network_3g"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI3K",
-                 "groups": ["network_3g"]}
-            ]
-        },
-
-        "x86-alex-r17-trackpad-new-driver": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R17-1412.24.1*",
-            "platforms": [
-                {"platform": "netbook_ALEX_trackpad", "au_test": true},
-                {"platform": "netbook_ALEX_CDMA_GOBI2K",
-                 "groups": ["network_3g"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI3K",
-                 "groups": ["network_3g"]}
-            ]
-        },
-
-
         "x86-alex-r18": {
             "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
@@ -113,24 +86,6 @@
             "build_pattern": "R17-1412.*",
             "platforms": [
                 {"platform": "netbook_ACER_ZGB", "au_test": true}
-            ]
-        },
-
-        "x86-zgb-r17-trackpad-break": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "R17-1412.24.0*",
-            "platforms": [
-                {"platform": "netbook_ACER_ZGB_trackpad", "au_test": true}
-            ]
-        },
-
-        "x86-zgb-r17-new-driver": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "R17-1412.24.2*",
-            "platforms": [
-                {"platform": "netbook_ACER_ZGB_trackpad", "au_test": true}
             ]
         },
 
