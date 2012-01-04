@@ -28,6 +28,7 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
   def __init__(self,
                scpi_connection):
     self.c = scpi_connection
+
     self.checker_context = self.c.checker_context
     with self.checker_context:
       self._Verify()
@@ -40,10 +41,7 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
       raise Error('Not actually an 8960:  *IDN? says ' + idn)
 
   def _Reset(self):
-    logging.info('Clearing out old errors')
-    self.c.RetrieveErrors()
     self.c.Reset()
-    self.c.WaitAndCheckError()
     self.Stop()
 
   def GetAirStateVerifier(self):

@@ -19,24 +19,31 @@ class _ErrorCheckerContext(object):
 
     This way, we can minimize the number of checks; each one takes a
     bit of time.  You will likely want to set always_check to True when
-    debugging new SCPI interactions."""
+    debugging new SCPI interactions.
+
+    On first entry, we check for errors, but do not stop if we find
+    them; these are errors that were accumulated on the device before
+    this test ran.
+    """
 
     def __init__(self, scpi):
         self.always_check = _DefaultAlwaysCheck
         self.scpi = scpi
         self.depth = 0
+        self.ignore_errors_once = True
 
     def __enter__(self):
         if self.depth == 0 or self.always_check:
-            # Clear out errors that came before us
-            self.scpi.WaitAndCheckError()
+            errors = self.scpi._WaitAndFetchErrors(
+                raise_on_error=not self.ignore_errors_once)
+            self.ignore_errors_once = False
         self.depth += 1
         return self
 
     def __exit__(self, type, value, traceback):
         self.depth -= 1
         if self.depth <= 0 or self.always_check:
-            self.scpi.WaitAndCheckError()
+            self.scpi._WaitAndFetchErrors()
         return
 
 
@@ -95,12 +102,13 @@ class Scpi(object):
     errors.reverse()
     return errors
 
-  def WaitAndCheckError(self):
-    """Waits for command completion, checks for errors."""
+  def _WaitAndFetchErrors(self, raise_on_error=True):
+    """Waits for command completion, returns errors."""
     self.Query('*OPC?')      # Wait for operation complete
     errors = self.RetrieveErrors()
-    if errors:
+    if errors and raise_on_error:
       raise Error('\n'.join(errors))
+    return errors
 
   def SimpleVerify(self, command, arg):
     """Sends "command arg", then "command?", expecting arg back.
