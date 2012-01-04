@@ -232,6 +232,9 @@
             {"name": "pyauto_basic",
              "control": "server/site_tests/suites/control.desktopui_pyauto_basic"},
 
+            {"name": "pyauto_perf",
+             "control": "server/site_tests/suites/control.desktopui_pyauto_perf"},
+
             {"name": "sync",
              "control": "server/site_tests/suites/control.desktopui_syncintegrationtests"}
         ],

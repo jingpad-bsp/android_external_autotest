@@ -1,0 +1,16 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "PyAuto Perf"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+This test suite runs PyAuto-based performance tests.
+"""
+
+gtest_runner.run(('desktopui_PyAutoPerfTests', {}), machines[0])

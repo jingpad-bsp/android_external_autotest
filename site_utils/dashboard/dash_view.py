@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -35,7 +35,7 @@ from dash_strings import UNKNOWN_TIME_STR
 JOB_MATCH = ("[-.][[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+-"
              "[ar][[:alnum:]]*-b")
 GTEST_SUFFIXES = ["browsertests", "pagecycler", "pyauto", "pyauto_basic",
-                  "sync"]
+                  "pyauto_perf", "sync"]
 SUFFIXES_TO_SHOW = ["bvt", "flaky", "hwqual", "regression",
                     KERNELTEST_TAG] + GTEST_SUFFIXES
 SERVER_JOB = "SERVER_JOB"
