@@ -55,6 +55,8 @@ MSR_CHECKS = {
         '0x1a0': [('33:32', 3), ('26:25', 3), ('16', 1)],
         },
     'cpuB': {
+        # VMX disabled.
+        '0x3a':  [('2:0', 1)],
         # IA32_ENERGY_PERF_BIAS[3:0] -- 0 == hi-perf, 6 balanced, 15 powersave
         '0x1b0': [('3:0', 6)],
         },
@@ -361,7 +363,7 @@ class power_x86Settings(test.test):
 
         good = (value == expr)
         if not good:
-            logging.info('FAILED: bits = %s value = %s mask = %s expr = %s',
+            logging.error('FAILED: bits = %s value = %s mask = %s expr = %s',
                           bits, hex(value), mask, expr)
         return good
 
