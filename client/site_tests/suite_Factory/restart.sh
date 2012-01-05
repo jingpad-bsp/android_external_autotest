@@ -40,10 +40,10 @@ clear_files() {
   fi
   if [ -n "$is_multi" ]; then
     echo -n "$file"* " "
-    rm -f "$file"*  2>/dev/null
+    rm -rf "$file"*  2>/dev/null
   else
     echo -n "$file "
-    rm -f "$file" "$file.bak" 2>/dev/null
+    rm -rf "$file" "$file.bak" 2>/dev/null
   fi
 }
 

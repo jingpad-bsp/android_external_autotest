@@ -185,12 +185,14 @@ TEST_LIST = [
         dargs={'audio_sample_path':'site_tests/suite_Factory/fhorn.wav'}),
 
     OperatorTest(
+        id='usb',
         label_en='usb',
         autotest_name='factory_ExternalStorage',
         kbd_shortcut='u',
         dargs={'media':'USB', 'min_read_speed': 20, 'min_write_speed': 10}),
 
     OperatorTest(
+        id='sd',
         label_en='sd',
         autotest_name='factory_ExternalStorage',
         kbd_shortcut='d',

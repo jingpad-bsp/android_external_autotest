@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python -u
 #
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -25,42 +25,27 @@
 
 import gobject
 import gtk
-import imp
+import logging
 import os
 import pango
-import select
-import signal
+import re
 import subprocess
 import sys
-import time
 
-import common
+import common  # pylint: disable=W0611
 import factory
-import factory_state
+import factory_event
+from factory_state import TestState
 import factory_ui_lib as ful
-import utils
 
 from gtk import gdk
 from Xlib import X
 from Xlib.display import Display as X_Display
 
-
-# These definitions are expose these classes directly into this
-# namespace, so that the test_list that is sent from the control file
-# can have cleaner syntax.  These are done in this fashion, as opposed
-# to "from factory import <class>" to work-around Python namespace
-# wackiness -- the from syntax does not work, creating new classes.
-OperatorTest = factory.OperatorTest
-InformationScreen = factory.InformationScreen
-AutomatedSequence = factory.AutomatedSequence
-AutomatedSubTest = factory.AutomatedSubTest
-AutomatedRebootSubTest = factory.AutomatedRebootSubTest
-
-
 _LABEL_EN_SIZE = (170, 35)
-_LABEL_ZW_SIZE = (70, 35)
+_LABEL_ZH_SIZE = (70, 35)
 _LABEL_EN_FONT = pango.FontDescription('courier new extra-condensed 16')
-_LABEL_ZW_FONT = pango.FontDescription('normal 12')
+_LABEL_ZH_FONT = pango.FontDescription('normal 12')
 _LABEL_T_SIZE = (40, 35)
 _LABEL_T_FONT = pango.FontDescription('arial ultra-condensed 10')
 _LABEL_UNTESTED_FG = gtk.gdk.color_parse('grey40')
@@ -71,7 +56,14 @@ _LABEL_STATUS_FONT = pango.FontDescription(
 _OTHER_LABEL_FONT = pango.FontDescription('courier new condensed 20')
 
 _ST_LABEL_EN_SIZE = (250, 35)
-_ST_LABEL_ZW_SIZE = (150, 35)
+_ST_LABEL_ZH_SIZE = (150, 35)
+
+_NO_ACTIVE_TEST_DELAY_MS = 500
+
+test_list = None
+ui_state = None
+event_client = None
+
 
 class Console:
     '''Display a progress log.  Implemented by launching an borderless
@@ -79,15 +71,15 @@ class Console:
 
     def __init__(self, allocation):
         xterm_coords = '145x13+%d+%d' % (allocation.x, allocation.y)
-        factory.log('xterm_coords = %s' % xterm_coords)
+        logging.info('xterm_coords = %s', xterm_coords)
         xterm_opts = ('-bg black -fg lightgray -bw 0 -g %s' % xterm_coords)
         xterm_cmd = (('urxvt %s -e bash -c ' % xterm_opts).split() +
                      ['tail -f "%s"' % factory.CONSOLE_LOG_PATH])
-        factory.log('xterm_cmd = %s' % xterm_cmd)
+        logging.info('xterm_cmd = %s', xterm_cmd)
         self._proc = subprocess.Popen(xterm_cmd)
 
     def __del__(self):
-        factory.log('console_proc __del__')
+        logging.info('console_proc __del__')
         self._proc.kill()
 
 
@@ -96,21 +88,21 @@ class Console:
 # tests, and hence this should not be called.
 
 def handle_key_release_event(_, event):
-    factory.log('base ui key event (%s)' % event.keyval)
+    logging.info('base ui key event (%s)', event.keyval)
     return True
 
 
-class TestLabelBox(gtk.EventBox):
+class TestLabelBox(gtk.EventBox):  # pylint: disable=R0904
 
     def __init__(self, test, show_shortcut=False):
         gtk.EventBox.__init__(self)
-        self.modify_bg(gtk.STATE_NORMAL, ful.LABEL_COLORS[ful.UNTESTED])
+        self.modify_bg(gtk.STATE_NORMAL, ful.LABEL_COLORS[TestState.UNTESTED])
 
         label_en = ful.make_label(test.label_en, size=_LABEL_EN_SIZE,
                                   font=_LABEL_EN_FONT, alignment=(0.5, 0.5),
                                   fg=_LABEL_UNTESTED_FG)
-        label_zw = ful.make_label(test.label_zw, size=_LABEL_ZW_SIZE,
-                                  font=_LABEL_ZW_FONT, alignment=(0.5, 0.5),
+        label_zh = ful.make_label(test.label_zh, size=_LABEL_ZH_SIZE,
+                                  font=_LABEL_ZH_FONT, alignment=(0.5, 0.5),
                                   fg=_LABEL_UNTESTED_FG)
         label_t = ful.make_label('C-' + test.kbd_shortcut.upper(),
                                  size=_LABEL_T_SIZE,
@@ -129,153 +121,105 @@ class TestLabelBox(gtk.EventBox):
 
         hbox = gtk.HBox()
         hbox.pack_start(label_en, False, False)
-        hbox.pack_start(label_zw, False, False)
+        hbox.pack_start(label_zh, False, False)
         hbox.pack_start(label_t, False, False)
         self.add(hbox)
-        self.label_list = [label_en, label_zw]
+        self.label_list = [label_en, label_zh]
 
-    def update(self, status):
-        label_fg = status == ful.UNTESTED and _LABEL_UNTESTED_FG or ful.BLACK
+    def update(self, state):
+        label_fg = (_LABEL_UNTESTED_FG if state.status == TestState.UNTESTED
+                    else ful.BLACK)
         for label in self.label_list:
             label.modify_fg(gtk.STATE_NORMAL, label_fg)
-        self.modify_bg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
-        self.queue_draw()
-
-
-class SubTestLabelBox(gtk.EventBox):
-
-    def __init__(self, test):
-        gtk.EventBox.__init__(self)
-        self.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        label_status = ful.make_label(ful.UNTESTED, size=_LABEL_STATUS_SIZE,
-                                      alignment=(0, 0.5),
-                                      font=_LABEL_STATUS_FONT,
-                                      fg=_LABEL_UNTESTED_FG)
-        label_sep = ful.make_label(' : ', alignment=(0.5, 0.5),
-                                   font=_LABEL_EN_FONT)
-        label_en = ful.make_label(test.label_en, size=_ST_LABEL_EN_SIZE,
-                                  alignment=(0.5, 0.5),
-                                  font=_LABEL_EN_FONT)
-        label_zw = ful.make_label(test.label_zw, size=_ST_LABEL_ZW_SIZE,
-                                  alignment=(0.5, 0.5), font=_LABEL_ZW_FONT)
-        hbox = gtk.HBox()
-        hbox.pack_end(label_status, False, False)
-        hbox.pack_end(label_sep, False, False)
-        hbox.pack_end(label_zw, False, False)
-        hbox.pack_end(label_en, False, False)
-        self.add(hbox)
-        self.label_status = label_status
-
-    def update(self, status):
-        self.label_status.set_text(status)
-        self.label_status.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
+        self.modify_bg(gtk.STATE_NORMAL, ful.LABEL_COLORS[state.status])
         self.queue_draw()
 
 
 class UiState():
 
-    def __init__(self, test_widget_box, automated_sequence_set):
-
-        def make_empty_test_label_widget():
-            label_box = gtk.EventBox()
-            label_box.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-            label = ful.make_label('no active test', font=_OTHER_LABEL_FONT,
-                                   alignment=(0.5, 0.5))
-            label_box.add(label)
-            return label_box
-
-        def make_automated_sequence_label_widget(subtest_list):
-            vbox = gtk.VBox()
-            vbox.set_spacing(0)
-            for subtest in subtest_list:
-                label_box = SubTestLabelBox(subtest)
-                self.set_label_box(subtest, label_box)
-                vbox.pack_start(label_box, False, False)
-            return vbox
-
-        self._label_box_map = {}
+    def __init__(self, test_widget_box):
         self._test_widget_box = test_widget_box
-        self._empty_test_widget = make_empty_test_label_widget()
-        self._active_test_widget = self._empty_test_widget
-        self.active_test = None
+        self._label_box_map = {}
+        self._transition_count = 0
 
-        self._test_widget_box.add(self._empty_test_widget)
+        self._active_test_label_map = None
 
-        self._automated_seq_widget_map = dict(
-            (test, make_automated_sequence_label_widget(test.subtest_list))
-            for test in automated_sequence_set)
+    def _remove_state_widget(self):
+        """Remove any existing state widgets."""
+        for child in self._test_widget_box.get_children():
+            self._test_widget_box.remove(child)
+        self._active_test_label_map = None
 
-    def status_change_callback(self, test, status):
+    def update_test_label(self, test, state):
         label_box = self._label_box_map.get(test)
         if label_box:
-            label_box.update(status)
+            label_box.update(state)
+
+    def update_test_state(self, state_map):
+        active_tests = [
+            t for t in test_list.walk()
+            if t.is_leaf() and state_map[t].status == TestState.ACTIVE]
+        has_active_ui = any(t.has_ui for t in active_tests)
+
+        if not active_tests:
+            # Display the "no active tests" widget if there are still no
+            # active tests after _NO_ACTIVE_TEST_DELAY_MS.
+            def run(transition_count):
+                if transition_count != self._transition_count:
+                    # Something has happened
+                    return False
+
+                self._transition_count += 1
+                self._remove_state_widget()
+
+                self._test_widget_box.set(0.5, 0.5, 0.0, 0.0)
+                self._test_widget_box.set_padding(0, 0, 0, 0)
+                label_box = gtk.EventBox()
+                label_box.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
+                label = ful.make_label('no active test', font=_OTHER_LABEL_FONT,
+                                       alignment=(0.5, 0.5))
+                label_box.add(label)
+                self._test_widget_box.add(label_box)
+                self._test_widget_box.show_all()
+
+            gobject.timeout_add(_NO_ACTIVE_TEST_DELAY_MS, run,
+                                self._transition_count)
+            return
+
+        self._transition_count += 1
+
+        if has_active_ui:
+            # Remove the widget (if any) since there is an active test
+            # with a UI.
+            self._remove_state_widget()
+            return
+
+        if (self._active_test_label_map is not None and
+            all(t in self._active_test_label_map for t in active_tests)):
+            # All active tests are already present in the summary, so just
+            # update their states.
+            for test, label in self._active_test_label_map.iteritems():
+                label.modify_fg(
+                    gtk.STATE_NORMAL,
+                    ful.LABEL_COLORS[state_map[test].status])
+            return
+
+        self._remove_state_widget()
+        # No active UI; draw summary of current test states
+        self._test_widget_box.set(0.5, 0.0, 0.0, 0.0)
+        self._test_widget_box.set_padding(40, 0, 0, 0)
+        vbox, self._active_test_label_map = ful.make_summary_box(
+            [t for t in test_list.subtests
+             if state_map[t].status == TestState.ACTIVE],
+            state_map)
+        self._test_widget_box.add(vbox)
+        self._test_widget_box.show_all()
 
     def set_label_box(self, test, label_box):
         self._label_box_map[test] = label_box
 
-    def set_active_test(self, test_db, test):
-        '''Control what kind of widget is shown in the testing area of
-        the screen.  For normal operator tests, this is just a label
-        saying there is no active test.  The expectation is that the
-        operator test itself has a window obscuring this message.  For
-        automated sequences, since there is no other window, the no
-        active test message is replaced with an updated list of
-        subtest status.'''
-        if test is None or test == self.active_test:
-            return
-        factory.log('UI active test is %s' % test_db.get_unique_id_str(test))
-        self.active_test = test
-        self._test_widget_box.remove(self._active_test_widget)
-        active_widget = (isinstance(test, factory.AutomatedSequence)
-                         and self._automated_seq_widget_map[test]
-                         or self._empty_test_widget)
-        self._test_widget_box.add(active_widget)
-        self._active_test_widget = active_widget
-        self._test_widget_box.show_all()
 
-
-def state_change_handler(fd, cb_condition, test_db, test_state, ui_state):
-    # Currently the 'state change' event (sent via fd) is fired when each single
-    # test changed its state, but the state_change_handler will change all tests
-    # at once.  To get best performance, we wait N=merge_events_duration seconds
-    # to collect and accumulate all changes occured in a short period.
-    events = 0
-    max_merged_events = 10
-    merge_events_duration = 0.2
-    while (events < max_merged_events and
-           len(select.select((fd,), (), (), merge_events_duration)[0]) > 0):
-        fd.read(1)
-        events = events + 1
-
-    try:
-        factory.log('factory_ui: refresh status (merged %s events)' % events)
-        for name, status in test_state.get_all_tests().items():
-            test = test_db.get_test_by_unique_id_str(name)
-            ui_state.status_change_callback(test, status)
-            if (status == factory.ACTIVE and
-                (not isinstance(test, AutomatedSubTest))):
-                ui_state.set_active_test(test_db, test)
-    except Exception, e:
-        factory.log('state_change_handler got exception: %s', repr(e))
-    return True
-
-def kill_active_test(control_pid):
-    # Currently we kill the active test directly.
-    # If we want to use the old way - notify main control to kill it,
-    # then send USR1 to main control instead:
-    #   os.kill(control_pid, signal.SIGUSR1)
-    active_test_data = factory.get_shared_data('active_test_data')
-    if active_test_data is None:
-        return
-    factory.log('KILLING active test %s' % repr(active_test_data))
-    try:
-        utils.nuke_pid(active_test_data[1])
-        # To remove the dependency of utils, use kill:
-        # os.kill(active_test_data[1], signal.SIGTERM)
-    except OSError, e:
-        factory.log('Failed to kill test: ' + repr(e))
-
-def grab_shortcut_keys(kbd_shortcut_set, control_pid):
+def grab_shortcut_keys(kbd_shortcuts):
     disp = X_Display()
     root = disp.screen().root
 
@@ -283,53 +227,70 @@ def grab_shortcut_keys(kbd_shortcut_set, control_pid):
     root.change_attributes(event_mask = X.KeyPressMask)
 
     keycode_map = {}
-    for shortcut in kbd_shortcut_set:
+    for mod, shortcut in ([(X.ControlMask, k) for k in kbd_shortcuts] +
+                          [(X.Mod1Mask, 'Tab')]):  # Mod1 = Alt
         keysym = gdk.keyval_from_name(shortcut)
         keycode = disp.keysym_to_keycode(keysym)
         keycode_map[keycode] = shortcut
-        root.grab_key(keycode, X.ControlMask, 1,
+        root.grab_key(keycode, mod, 1,
                       X.GrabModeAsync, X.GrabModeAsync)
 
     # This flushes the XGrabKey calls to the server.
-    for x in range(0, root.display.pending_events()):
+    for dummy_x in range(0, root.display.pending_events()):
         root.display.next_event()
 
-    def handle_xevent(src, cond, xhandle=root.display,
-                      keycode_map=keycode_map,
-                      control_pid=control_pid):
-        for i in range(0, xhandle.pending_events()):
+    def handle_xevent(  # pylint: disable=W0102
+        dummy_src, dummy_cond, xhandle=root.display, keycode_map=keycode_map):
+        for dummy_i in range(0, xhandle.pending_events()):
             xevent = xhandle.next_event()
             if xevent.type == X.KeyPress:
                 keycode = xevent.detail
-                factory.set_shared_data('activated_kbd_shortcut',
-                                        keycode_map[keycode])
-                kill_active_test(control_pid)
+                event_client.post_event(
+                    factory_event.Event('kbd_shortcut',
+                                        key=keycode_map[keycode]))
         return True
 
     gobject.io_add_watch(root.display, gobject.IO_IN, handle_xevent)
 
 
-def main(test_list, status_file_path, control_pid):
+def handle_event(event):
+    if event.type == factory_event.Event.Type.STATE_CHANGE:
+        test = test_list.lookup_path(event.path)
+        state_map = test_list.get_state_map()
+        ui_state.update_test_label(test, state_map[test])
+        ui_state.update_test_state(state_map)
+
+
+def main(test_list_path):
     '''This process is launched by the autotest suite_Factory control
     process, which should be identified by the <control pid> cmdline
     argument.  When operators press keyboard shortcuts, the shortcut
-    value is sent by set_shared_data() and a SIGUSR1 is sent to
-    the control program.'''
+    value is sent as an event to the control program.'''
+    global test_list, ui_state, event_client  # pylint: disable=W0603
 
-    test_db = factory.TestDatabase(test_list)
-    test_state = factory_state.get_instance()
+    test_list = factory.read_test_list(test_list_path)
 
     window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     window.connect('destroy', lambda _: gtk.main_quit())
     window.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
 
+    event_client = factory_event.EventClient(
+        callback=handle_event,
+        event_loop=factory_event.EventClient.EVENT_LOOP_GOBJECT_IO)
+
     screen = window.get_screen()
     if (screen is None):
-        factory.log('ERROR: communication with the X server is not working, ' +
+        logging.info('ERROR: communication with the X server is not working, ' +
                     'could not find a working screen.  UI exiting.')
         sys.exit(1)
 
-    screen_size = (screen.get_width(), screen.get_height())
+    screen_size_str = os.environ.get('CROS_SCREEN_SIZE')
+    if screen_size_str:
+        match = re.match(r'^(\d+)x(\d+)$', screen_size_str)
+        assert match, 'CROS_SCREEN_SIZE should be {width}x{height}'
+        screen_size = (int(match.group(1)), int(match.group(2)))
+    else:
+        screen_size = (screen.get_width(), screen.get_height())
     window.set_size_request(*screen_size)
 
     label_trough = gtk.VBox()
@@ -343,7 +304,7 @@ def main(test_list, status_file_path, control_pid):
     console_box.set_size_request(-1, 180)
     console_box.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
 
-    test_widget_box = gtk.Alignment(xalign=0.5, yalign=0.5)
+    test_widget_box = gtk.Alignment()
     test_widget_box.set_size_request(-1, -1)
 
     lhs_box = gtk.VBox()
@@ -359,9 +320,9 @@ def main(test_list, status_file_path, control_pid):
     window.connect('key-release-event', handle_key_release_event)
     window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-    ui_state = UiState(test_widget_box, test_db.get_automated_sequences())
+    ui_state = UiState(test_widget_box)
 
-    for test in test_list:
+    for test in test_list.subtests:
         label_box = TestLabelBox(test, True)
         ui_state.set_label_box(test, label_box)
         label_trough.pack_start(label_box, False, False)
@@ -370,8 +331,12 @@ def main(test_list, status_file_path, control_pid):
     window.add(base_box)
     window.show_all()
 
-    kbd_shortcut_db = factory.KbdShortcutDatabase(test_list, test_db)
-    grab_shortcut_keys(kbd_shortcut_db.get_shortcut_keys(), control_pid)
+    state_map = test_list.get_state_map()
+    for test, state in test_list.get_state_map().iteritems():
+        ui_state.update_test_label(test, state)
+    ui_state.update_test_state(state_map)
+
+    grab_shortcut_keys(test_list.kbd_shortcut_map.keys())
 
     ful.hide_cursor(window.window)
 
@@ -380,26 +345,19 @@ def main(test_list, status_file_path, control_pid):
                         test_widget_allocation.height)
     factory.set_shared_data('test_widget_size', test_widget_size)
 
-    console = Console(console_box.get_allocation())
-    gobject.io_add_watch(sys.stdin, gobject.IO_IN, state_change_handler,
-                         test_db, test_state, ui_state)
+    dummy_console = Console(console_box.get_allocation())
 
-    # This is to notify suite_Factory/control that UI is ready.
-    sys.stdout.write('Factory UI Ready\n')
-    sys.stdout.flush()
+    event_client.post_event(factory_event.Event(
+            factory_event.Event.Type.UI_READY))
 
-    factory.log('factory_ui setup done, starting gtk.main()...')
+    logging.info('factory_ui setup done, starting gtk.main()...')
     gtk.main()
-    factory.log('factory_ui gtk.main() finished, exiting.')
+    logging.info('factory_ui gtk.main() finished, exiting.')
 
 if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print 'usage: %s <test list path>' % sys.argv[0]
+        sys.exit(1)
 
-    if len(sys.argv) != 4:
-        print ('usage: %s <test list path> <status file path> <control pid>' %
-               sys.argv[0])
-    test_list_path, status_file_path, control_pid_str = sys.argv[1:]
-    control_pid = int(control_pid_str)
-
-    execfile(test_list_path)
-
-    main(TEST_LIST, status_file_path, control_pid)
+    factory.init_logging("factory_ui", verbose=True)
+    main(sys.argv[1])
