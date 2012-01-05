@@ -106,6 +106,7 @@
 /usr/bin/gpspipe
 /usr/bin/gtf
 /usr/bin/ipcmk
+/usr/bin/l2ping
 /usr/bin/ntfs-3g.probe
 /usr/bin/rename
 /usr/bin/rev
@@ -378,6 +379,7 @@
 /usr/lib64/m17n/1.0/libmimx-anthy.so
 /usr/lib64/pppd/2.4.4/minconn.so
 /usr/lib64/xorg/modules/libxf8_16bpp.so
+/usr/lib/bluetooth/plugins/netlink.so
 /usr/lib/coreutils/libstdbuf.so
 /usr/lib/engines/libcapi.so
 /usr/lib/engines/libgmp.so
