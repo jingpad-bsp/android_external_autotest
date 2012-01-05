@@ -1425,7 +1425,7 @@ class WiFiTest(object):
         if params.get('short_interval', None):
             opts += " BgscanShortInterval=%s" % params['short_interval']
         if params.get('long_interval', None):
-            opts += " BgscanInterval=%s" % params['long_interval']
+            opts += " ScanInterval=%s" % params['long_interval']
         if params.get('signal', None):
             signal = params['signal']
             if signal == 'auto':
