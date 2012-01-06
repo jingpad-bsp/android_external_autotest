@@ -20,10 +20,33 @@ DMI_BAR_CHECKS = {
         '0xc30': [('11', 0), ('10:8', 4)],
         '0xc34': [('9:4', 7), ('0', 1)],
         },
-    'cpuB': {},
+    'cpuB': {
+        # http://www.intel.com/content/dam/doc/datasheet/2nd-gen-core-family-mobile-vol-2-datasheet.pdf
+        # PCIE DMI Link Control Register
+        # -- [1:0] : ASPM State 0=Disable, 1=L0s, 2=reserved, 3=L0s&L1
+        '0x88':  [('1:0', 3)],
+        },
     }
 
-MCH_BAR_CHECKS = {}
+# http://www.intel.com/content/dam/www/public/us/en/documents/datasheets/2nd-gen-core-family-mobile-vol-1-datasheet.pdf
+# PM_PDWN_Config_
+# -- [12]   : Global power-down (GLPDN).  1 == global, 0 == per rank
+# -- [11:8] : Power-down mode. 0->0x7.  Higher is lower power
+# -- [7:0]  : Power-down idle timer.  Lower is better. Minimum
+#             recommended is 0xf
+MCH_PM_PDWN_CONFIG = [('12', 0), ('11:8', 0x6), ('7:0', 0x40)]
+
+MCH_BAR_CHECKS = {
+    'cpuA': {},
+    'cpuB': {
+        # mmc0
+        '0x40b0': MCH_PM_PDWN_CONFIG,
+        # mmc1
+        '0x44b0': MCH_PM_PDWN_CONFIG,
+        # single mmc
+        '0x4cb0': MCH_PM_PDWN_CONFIG,
+        },
+    }
 
 MSR_CHECKS = {
     'cpuA': {
@@ -302,7 +325,7 @@ class power_x86Settings(test.test):
         logging.debug('MCH BAR is %s', hex(self._mch_bar))
 
         return self._verify_registers('mch', self._read_mch_bar,
-                                       MCH_BAR_CHECKS)
+                                       MCH_BAR_CHECKS[self._cpu_type])
 
 
     def _verify_msr_power_settings(self):
