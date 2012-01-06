@@ -54,6 +54,11 @@ GFX_CHECKS = {
              'semaphores':1 }
     }
 
+
+SUBTESTS = ['dmi', 'mch', 'msr', 'pcie_aspm', 'wifi', 'usb', 'storage',
+            'audio', 'filesystem', 'graphics']
+
+
 class power_x86Settings(test.test):
     version = 1
 
@@ -75,45 +80,12 @@ class power_x86Settings(test.test):
 
         failures = ''
 
-        fail_count = self._verify_dmi_bar()
-        if fail_count:
-            failures += 'dmi_failures(%d) ' % fail_count
-
-        fail_count = self._verify_mch_bar()
-        if fail_count:
-            failures += 'mch_failures(%d) ' % fail_count
-
-        fail_count = self._verify_msrs()
-        if fail_count:
-            failures += 'msr_failures(%d) ' % fail_count
-
-        fail_count = self._verify_pcie_aspm()
-        if fail_count:
-            failures += 'pcie_aspm_failures(%d) ' % fail_count
-
-        fail_count = self._verify_wifi_power_settings()
-        if fail_count:
-            failures += 'wifi_failures(%d) ' % fail_count
-
-        fail_count = self._verify_usb_power_settings()
-        if fail_count:
-            failures += 'usb_failures(%d) ' % fail_count
-
-        fail_count = self._verify_storage_power_settings()
-        if fail_count:
-            failures += 'storage_failures(%d) ' % fail_count
-
-        fail_count = self._verify_audio_power_settings()
-        if fail_count:
-            failures += 'audio_failures(%d) ' % fail_count
-
-        fail_count = self._verify_filesystem_power_settings()
-        if fail_count:
-            failures += 'filesystem_failures(%d) ' % fail_count
-
-        fail_count = self._verify_graphics_power_settings()
-        if fail_count:
-            failures += 'graphics_failures(%d) ' % fail_count
+        for testname in SUBTESTS:
+            logging.info("SUBTEST = %s", testname)
+            func = getattr(self, "_verify_%s_power_settings" % testname)
+            fail_count = func()
+            if fail_count:
+                failures += '%s_failures(%d) ' % (testname, fail_count)
 
         if failures:
             raise error.TestFail(failures)
@@ -143,7 +115,7 @@ class power_x86Settings(test.test):
         else:
             expected_state = 'on'
 
-        iwconfig_out = utils.system_output('iwconfig', retain_output=True)
+        iwconfig_out = utils.system_output('iwconfig 2>&1', retain_output=True)
         match = re.search(r'Power Management:(.*)', iwconfig_out)
         if match and match.group(1) == expected_state:
             return 0
@@ -164,8 +136,8 @@ class power_x86Settings(test.test):
             logging.info('scsi_host paths not found')
             return 1
 
-        for dir in dirs:
-            link_policy_file = os.path.join(dir,
+        for dirpath in dirs:
+            link_policy_file = os.path.join(dirpath,
                                             'link_power_management_policy')
             if not os.path.exists(link_policy_file):
                 logging.debug('path does not exist: %s', link_policy_file)
@@ -193,8 +165,8 @@ class power_x86Settings(test.test):
             return 1
 
         errors = 0
-        for dir in dirs:
-            level_file = os.path.join(dir, 'level')
+        for dirpath in dirs:
+            level_file = os.path.join(dirpath, 'level')
             if not os.path.exists(level_file):
                 logging.info('USB: power level file not found for %s', dir)
                 continue
@@ -203,9 +175,9 @@ class power_x86Settings(test.test):
             logging.debug('USB: path set to %s for %s',
                            out, level_file)
             if out != expected_state:
-                logging.error("%s == %s, but expected %s", level_file, out,
-                              expected_state)
                 errors += 1
+                logging.error("Error(%d), %s == %s, but expected %s", errors,
+                              level_file, out, expected_state)
 
         return errors
 
@@ -246,15 +218,16 @@ class power_x86Settings(test.test):
             try:
                 commit = int(re.search(r'(commit=)([0-9]*)', line).group(2))
             except:
-                logging.debug('Error reading commit value from \'%s\'', line)
                 errors += 1
+                logging.error('Error(%d), reading commit value from \'%s\'',
+                              errors, line)
                 continue
 
             # Check for the correct commit interval.
             if commit != 600:
-                logging.debug('File System: Incorrect commit interval %d', \
-                              commit)
                 errors += 1
+                logging.error('Error(%d), incorrect commit interval %d', errors,
+                              commit)
 
         return errors
 
@@ -272,30 +245,31 @@ class power_x86Settings(test.test):
             for param_name in checks:
                 param_path = '/sys/module/i915/parameters/%s' % param_name
                 if not os.path.exists(param_path):
-                  logging.debug('Error, %s not found' % param_path)
-                  errors += 1
-                else:
-                  out = utils.read_one_line(param_path)
-                  logging.debug('Graphics: %s = %s', param_path, out)
-                  value = int(out)
-                  if value != checks[param_name]:
-                    logging.debug('Error, %s = %d but should be %d',
-                                  param_path, value, checks[param_name])
                     errors += 1
+                    logging.error('Error(%d), %s not found', errors, param_path)
+                else:
+                    out = utils.read_one_line(param_path)
+                    logging.debug('Graphics: %s = %s', param_path, out)
+                    value = int(out)
+                    if value != checks[param_name]:
+                        errors += 1
+                        logging.error('Error(%d), %s = %d but should be %d',
+                                      errors, param_path, value,
+                                      checks[param_name])
 
         return errors
 
 
-    def _verify_pcie_aspm(self):
+    def _verify_pcie_aspm_power_settings(self):
         errors = 0
         out = utils.system_output('lspci -n')
         for line in out.splitlines():
-            slot, _, id = line.split()[0:3]
+            slot, _, pci_id = line.split()[0:3]
             slot_out = utils.system_output('lspci -s %s -vv' % slot,
                                             retain_output=True)
             match = re.search(r'LnkCtl:(.*);', slot_out)
             if match:
-                if id in ASPM_EXCEPTED_DEVICES[self._cpu_type]:
+                if pci_id in ASPM_EXCEPTED_DEVICES[self._cpu_type]:
                     continue
 
                 split = match.group(1).split()
@@ -303,13 +277,15 @@ class power_x86Settings(test.test):
                    (split[2] == 'Enabled' and split[1] != 'L1'):
                     errors += 1
                     logging.info(slot_out)
+                    logging.error('Error(%d), %s ASPM off or no L1 support',
+                                  errors, slot)
             else:
                 logging.info('PCIe: LnkCtl not found for %s', line)
 
         return errors
 
 
-    def _verify_dmi_bar(self):
+    def _verify_dmi_power_settings(self):
         # DMIBAR is at offset 0x68 of B/D/F 0/0/0
         cmd = '%s 0 0 0 0x68' % (self._pci_read32_cmd)
         self._dmi_bar = int(utils.system_output(cmd), 16) & 0xfffffffe
@@ -319,7 +295,7 @@ class power_x86Settings(test.test):
                                       DMI_BAR_CHECKS[self._cpu_type])
 
 
-    def _verify_mch_bar(self):
+    def _verify_mch_power_settings(self):
         # MCHBAR is at offset 0x48 of B/D/F 0/0/0
         cmd = '%s 0 0 0 0x48' % (self._pci_read32_cmd)
         self._mch_bar = int(utils.system_output(cmd), 16) & 0xfffffffe
@@ -329,21 +305,21 @@ class power_x86Settings(test.test):
                                        MCH_BAR_CHECKS)
 
 
-    def _verify_msrs(self):
+    def _verify_msr_power_settings(self):
         return self._verify_registers('msr', self._read_msr,
                                       MSR_CHECKS[self._cpu_type])
 
 
-    def _verify_registers(self, type, read_fn, match_list):
+    def _verify_registers(self, reg_type, read_fn, match_list):
         errors = 0
         for k, v in match_list.iteritems():
             r = read_fn(k)
             for item in v:
                 good = self._shift_mask_match(r, item)
                 if not good:
-                    logging.info('%s: reg = %s value = %s match = %s',
-                                  type, k, hex(r), v)
                     errors += 1
+                    logging.error('Error(%d), %s: reg = %s val = %s match = %s',
+                                  errors, reg_type, k, hex(r), v)
         return errors
 
 
