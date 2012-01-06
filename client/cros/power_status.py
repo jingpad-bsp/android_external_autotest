@@ -207,6 +207,18 @@ class BatteryStat(DevStat):
             self.remaining_time =  self.energy / self.energy_rate
 
 
+class LineStatDummy(object):
+    """
+    Dummy line stat for devices which don't provide power_supply related sysfs
+    interface.
+    """
+    def __init__(self):
+        self.online = True
+
+
+    def update(self):
+        pass
+
 class LineStat(DevStat):
     """
     Power line status.
@@ -247,8 +259,8 @@ class SysStat(object):
         self.linepower = None
         self.thermal = None
         self.thermal_path = None
-        battery_path = None
-        linepower_path = None
+        self.battery_path = None
+        self.linepower_path = None
         thermal_path_acpi = '/sys/class/thermal/thermal_zone*'
         thermal_path_hwmon = '/sys/class/hwmon/hwmon*/device'
         # Look for these types of thermal sysfs paths, in the listed order.
@@ -260,16 +272,14 @@ class SysStat(object):
             type_path = os.path.join(path,'type')
             if not os.path.exists(type_path):
                 continue
-            type = utils.read_one_line(type_path)
-            if type == 'Battery':
-                battery_path = path
-            elif type == 'Mains':
-                linepower_path = path
-        if battery_path and linepower_path:
-            self.battery_path = battery_path
-            self.linepower_path = linepower_path
-        else:
-            raise error.TestError('Battery or Linepower path not found')
+            power_type = utils.read_one_line(type_path)
+            if power_type == 'Battery':
+                self.battery_path = path
+            elif power_type == 'Mains':
+                self.linepower_path = path
+
+        if not self.battery_path or not self.linepower_path:
+            logging.warn("System does not provide power sysfs interface")
 
         for thermal_path, thermal_type in thermal_stat_types.items():
             try:
@@ -288,12 +298,15 @@ class SysStat(object):
 
     def refresh(self):
         """
-        Initialize device power status objects for a single battery and a
-        single power line by parsing the output of devkit-power -d.
+        Initialize device power status objects.
         """
-        self.battery = [ BatteryStat(self.battery_path) ]
-        self.linepower = [ LineStat(self.linepower_path) ]
-        if self.thermal_path != None:
+        if self.battery_path:
+            self.battery = [ BatteryStat(self.battery_path) ]
+        if self.linepower_path:
+            self.linepower = [ LineStat(self.linepower_path) ]
+        else:
+            self.linepower = [ LineStatDummy() ]
+        if self.thermal_path:
             self.thermal = [ self.thermal_type(self.thermal_path) ]
 
         try:
