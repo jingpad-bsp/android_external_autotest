@@ -193,13 +193,17 @@ class factory_Audio(test.test):
             raise error.TestFail('ERROR: Unable to find audio sample %s' % path)
         return path
 
-    def run_once(self, audio_sample_path=None, audio_init_volume=None):
+    def run_once(self, audio_sample_path=None, audio_init_volume=None,
+                 amixer_init_cmd=None):
 
         factory.log('%s run_once' % self.__class__)
 
         # Change initial volume.
         if audio_init_volume:
             os.system("amixer -c 0 sset Master %d%%" % audio_init_volume)
+        # Allow extra amixer command for init.
+        if amixer_init_cmd:
+            os.system("amixer -c 0 %s" % amixer_init_cmd)
 
         # Write recordings in tmpdir.
         os.chdir(self.tmpdir)
