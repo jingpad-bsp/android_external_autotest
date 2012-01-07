@@ -5,9 +5,9 @@
 ''' A module verifying whether X events satisfy specified criteria '''
 
 import logging
-import time
-import utils
 
+import common_util
+import constants
 import trackpad_util
 import Xevent
 
@@ -15,9 +15,13 @@ from operator import le, ge, eq, lt, gt, ne, and_
 from trackpad_util import read_trackpad_test_conf
 
 
+# Declare NOP as a instance containing NOP related constants
+NOP = constants.NOP()
+
+
 class Xcheck:
     ''' Check whether X events observe test criteria '''
-    RESULT_STR = {True : 'Pass', False : 'Fail'}
+    RESULT_STR = {True: 'Pass', False: 'Fail'}
 
     def __init__(self, dev, conf_path):
         self.dev = dev
@@ -41,26 +45,31 @@ class Xcheck:
         to that since Epoch.
         '''
         stat_cmd = 'cat /proc/stat'
-        stat = utils.system_output(stat_cmd)
+        stat = common_util.simple_system_output(stat_cmd)
         boot_time_tuple = tuple(int(line.split()[1])
                                 for line in stat.splitlines()
                                 if line.startswith('btime'))
-        if len(boot_time_tuple) == 0:
+        if not boot_time_tuple:
             raise error.TestError('Fail to extract boot time by "%s"' %
                                   stat_cmd)
         self.boot_time = boot_time_tuple[0]
 
-    def _set_flags(self):
-        ''' Set all flags to True before invoking check function '''
+    def _set_result_flags(self):
+        ''' Set all result flags to True before invoking check function '''
         self.motion_flag = True
         self.button_flag = True
-        self.seq_flag = True
         self.delay_flag = True
+        self.wheel_speed_flag = True
+        self.seq_flag = True
+        self.button_seg_flag = True
+        self.result_flags = ('self.motion_flag', 'self.button_flag',
+                             'self.delay_flag', 'self.wheel_speed_flag',
+                             'self.seq_flag', 'self.button_seg_flag')
 
     def _get_result(self):
         ''' Get the final result from various check flags '''
-        flags = (self.motion_flag, self.button_flag, self.seq_flag,
-                 self.delay_flag)
+        # Evaluate the result_flags
+        flags = map(eval, self.result_flags)
         self.result = flags[0] if len(flags) == 1 else reduce(and_, flags)
         logging.info('    --> Result: %s' % Xcheck.RESULT_STR[self.result])
 
@@ -109,59 +118,92 @@ class Xcheck:
                 values[button_index] = button_value
         return (ops, values)
 
-    def _insert_nop(self, nop_str):
-        ''' Insert a 'NOP' fake event into the xevent_data
+    def _insert_fake_event(self, fake_xevent_value, fake_xevent_name=NOP.NOP):
+        ''' Insert a fake X event into the xevent_data
 
-        NOP is not an X event. It is inserted to indicate the occurrence of
-        related device events.
+        A NOP event is not an X event. It is inserted to indicate the
+        occurrence of related device events.
         '''
-        if nop_str == 'Two Finger Touch':
+        if fake_xevent_value == NOP.TWO_FINGER_TOUCH:
             dev_event_time = self.dev.get_two_finger_touch_time_list()
+        elif fake_xevent_value.startswith(NOP.DEVICE_MOUSE_CLICK):
+            dev_event_time = self.dev.find_all_event_time(fake_xevent_value)
         else:
-            dev_event_time = self.dev.get_finger_time(nop_str)
+            dev_event_time = self.dev.get_finger_time(fake_xevent_value)
 
-        if dev_event_time is None:
-            logging.warn('Cannot get time for %s.' % nop_str)
+        if not dev_event_time:
+            logging.warn('Fail to get time for "%s" in device file.' %
+                         fake_xevent_value)
             return
 
-        # Insert NOP event into xevent data
+        # Insert fake_xevent_name event into xevent data
         begin_index = 0
         for devent_time in dev_event_time:
             for index, line in enumerate(self.xevent.xevent_data[begin_index:]):
                 xevent_name = line[0]
                 xevent_dict = line[1]
-                if xevent_name == 'NOP':
+                if xevent_name == fake_xevent_name:
                     continue
                 xevent_time = float(xevent_dict.get('time', 0))
                 if xevent_time > devent_time:
                     insert_index = begin_index + index
-                    nop_data = ('NOP', nop_str, devent_time)
-                    self.xevent.xevent_data.insert(insert_index, nop_data)
+                    fake_event = (fake_xevent_name, fake_xevent_value,
+                                  devent_time)
+                    self.xevent.xevent_data.insert(insert_index, fake_event)
                     begin_index = insert_index + 1
                     break
 
     def _insert_nop_per_criteria(self, criteria_method):
-        ''' Insert NOP based on criteria '''
+        ''' Insert NOP events based on criteria '''
         for c in criteria_method:
-            if self.criteria.has_key(c):
+            crit = self._match_criteria_with_subname(c)
+            if crit is not None:
                 if c == 'wheel_speed':
                     # There are a couple of times of two-finger scrolling.
                     # Insert NOP between them in self.xevent_seq
-                    self._insert_nop('Two Finger Touch')
-                elif c == 'sequence':
-                    crit_sequence = self.criteria[c]
+                    self._insert_fake_event(NOP.TWO_FINGER_TOUCH)
+                elif c in ['sequence', 'button_segment']:
+                    crit_item = self.criteria[crit]
+                    # crit_item could be either 'sequence' or 'button_segment'
+                    #
+                    # 'sequence'
                     # Insert NOP in self.xevent_seq if NOP is specified
                     # in sequence criteria.
-                    # Example of crit_sequence below:
-                    #     ('NOP', '1st Finger Lifted')
-                    #     ('NOP', '2nd Finger Lifted')
-                    for s in crit_sequence:
-                        if s[0] == 'NOP':
-                            self._insert_nop(s[1])
+                    # Example of criteria of 'sequence' below:
+                    #   ('NOP', '1st Finger Lifted')
+                    #   ('NOP', '2nd Finger Lifted')
+                    #
+                    # 'button_segment'
+                    # Insert NOP (device) event into self.xevent_seq if
+                    # 'NOP' is specified in button_segment criteria.
+                    # Example of criteria of 'button_segment' below:
+                    #   ('NOP', ('Device Mouse Click Press', 'before', True))
+                    #   ('NOP', ('Device Mouse Click Release', 'between', True))
+                    for s in crit_item:
+                        if s[0] == NOP.NOP:
+                            _, value = s
+                            dev_ev = value if c == 'sequence' else value[0]
+                            self._insert_fake_event(dev_ev)
 
     def _extract_func_name(self):
-        ''' Extract functionality name from the gesture file name '''
+        ''' Extract functionality name plus subname from the gesture file name
+
+        E.g., A file name looks like:
+            palm-palm_presence.static.both-alex-jane-20111215_001214.dat
+            Return value in this case: palm_presence.static.both
+        '''
         return self.gesture_file_name.split('-')[self.func_name_pos]
+
+    def _extract_subname(self):
+        ''' Extract subname from the gesture file name
+
+        E.g., A file name looks like:
+            palm-palm_presence.static.both-alex-jane-20111215_001214.dat
+            Return value in this case: static.both
+        '''
+        full_name = self._extract_func_name()
+        name_seg = full_name.split('.', 1)
+        return name_seg[1] if len(name_seg) > 1 else None
 
     def _get_direction(self):
         ''' Get a specific direction from functionality name '''
@@ -219,6 +261,26 @@ class Xcheck:
         button_labels = [self.xbutton.wheel_label_dict[d] for d in directions]
         return button_labels
 
+    def _match_criteria_with_subname(self, crit):
+        ''' Determine if a given criterion crit could apply to a file with a
+        particular subname
+
+        E.g.,
+        A file with subname of 'physical_click' could match the criteria:
+            'button_segment'
+            'button_segment(physical_click)'
+        but not the criteria:
+            'button_segment(tap_and_half)'
+        '''
+        subname = self._extract_subname()
+        for c in self.criteria:
+            if c == crit:
+                return c
+            elif subname is not None:
+                crit_with_subname = '%s(%s)' % (crit, subname)
+                if c == crit_with_subname:
+                    return c
+
     ''' _verify_xxx()
     Generic verification methods for various functionalities / areas
     '''
@@ -269,7 +331,6 @@ class Xcheck:
         '''
         # Extract scroll direction, i.e., 'up' or 'down', from the file name
         # We do not support scrolling 'left' or 'right' at this time.
-        pos = self.func_name_pos
         direction = self._get_direction()
 
         # Derive the device event playback time when the 2nd finger touches
@@ -331,7 +392,7 @@ class Xcheck:
         rounds = 0
         for line in self.xevent.xevent_seq:
             event_name, event_count, event_time = line
-            if event_name == 'NOP':
+            if event_name == NOP.NOP:
                 button_count = self.xbutton.init_button_struct_with_time(0,
                                init_time)
                 button_count_list.append(button_count)
@@ -391,7 +452,9 @@ class Xcheck:
             for k, v in button_count.iteritems():
                 if v[0] > 0:
                     logging.info(msg_details.format(self.xbutton.get_label(k),
-                                 speed[i][k], v[0], str(v[1][0]), str(v[1][1])))
+                                                    speed[i][k], v[0],
+                                                    str(v[1][0]),
+                                                    str(v[1][1])))
 
     def _verify_select_sequence(self, crit_sequence):
         ''' Verify event sequence against criteria sequence
@@ -439,7 +502,7 @@ class Xcheck:
         max_motion_mixed = read_trackpad_test_conf('max_motion_mixed',
                                                    self.conf_path)
         max_button_wheel_mixed = read_trackpad_test_conf(
-                                 'max_button_wheel_mixed', self.conf_path)
+            'max_button_wheel_mixed', self.conf_path)
 
         index = -1
         crit_e_type = None
@@ -503,9 +566,9 @@ class Xcheck:
                             break
                     elif crit_e_type == 'Motion_x_or_y':
                         axis = axis_dict[self._get_general_direction()]
-                        motion_axis_dict = {'x': {'this':  motion_x_val,
+                        motion_axis_dict = {'x': {'this': motion_x_val,
                                                   'other': motion_y_val},
-                                            'y': {'this':  motion_y_val,
+                                            'y': {'this': motion_y_val,
                                                   'other': motion_x_val}}
                         motion_axis_val = motion_axis_dict[axis]['this']
                         motion_other_val = motion_axis_dict[axis]['other']
@@ -518,7 +581,8 @@ class Xcheck:
                         other_axis_cond = crit_e_op == '>=' or crit_e_op == '>'
                         bound_other_axis = motion_axis_val * crit_move_ratio
                         check_other_axis = (not other_axis_cond or
-                                    op_le(motion_other_val, bound_other_axis))
+                                            op_le(motion_other_val,
+                                                  bound_other_axis))
                         crit_check = check_this_axis and check_other_axis
                         if not crit_check:
                             fail_msg = ('%s %s does not satisfy %s. '
@@ -545,7 +609,7 @@ class Xcheck:
                     fail_msg = 'Button %s does not match %s.'
                     fail_para = (e_value, crit_e[1])
                     break
-            elif e_type == crit_e_type == 'NOP':
+            elif e_type == crit_e_type == NOP.NOP:
                 pass
             # Handle 'Button Wheel' and 'Button Horiz Wheel' scroll events
             elif e_type.startswith('Button ') and e_type == crit_e_type:
@@ -585,6 +649,178 @@ class Xcheck:
         self.vlog.verify_sequence_log(self.seq_flag, self.xevent.xevent_seq,
                                       fail_msg, fail_para)
 
+    def _verify_button_segment(self, crit_button_segment):
+        ''' Verify if a button event segment satisfies criteria
+
+        This button_segment criteria allows to specify the interleaving of
+        various device events in a bracketing X Button events between
+        ButtonPress and ButtonRelease. This criteria is usually used
+        for select and drag gesture with or without trackpad clicking.
+
+        For example, the following event subsequence matches
+        crit_button_segment.
+        event sequence looks like: [
+                         ...
+                         ('NOP', 'Device Mouse Click Press'),
+                         ('Motion', 10),
+                         ('ButtonPress', 'Button Left'),
+                         ('Motion', 68),
+                         ('NOP', 'Device Mouse Click Release'),
+                         ('ButtonRelease', 'Button Left')]
+                         ...
+        'crit_button_segment' : (
+            ('NOP', ('Device Mouse Click Press', 'before', True)),
+            ('NOP', ('Device Mouse Click Press', 'between', False)),
+            ('NOP', ('Device Mouse Click Release', 'between', True)),
+            ('Button', 'Button Left'),
+            ('Motion', '>=', select_drag_distance),
+        ),
+        '''
+
+        def _init_button_seg_events(self, nop_init_value=False,
+                                    button_init_value=None,
+                                    motion_init_value=0):
+            ''' Initialize button_seg_events '''
+            button_seg_events = {}
+            # Initialize device event flag
+            button_seg_events['accept_1st_gesture_only'] = False
+            button_seg_events[NOP.NOP] = {}
+            for d in self.button_segment_dev_event_list:
+                button_seg_events[NOP.NOP][d] = {}
+                for w in self.where_list:
+                    button_seg_events[NOP.NOP][d][w] = nop_init_value
+            button_seg_events['Button'] = button_init_value
+            for m in self.motion_list:
+                button_seg_events[m] = motion_init_value
+            return button_seg_events
+
+        def _check_button_segment(self, button_seg_events,
+                                  crit_button_seg_events):
+            ''' Check if the button_seg_events conform to the criteria '''
+            flag = _init_button_seg_events(self, nop_init_value=False,
+                                           button_init_value=False,
+                                           motion_init_value=False)
+            result = True
+            fail_causes = []
+
+            # Check device events
+            for d in self.button_segment_dev_event_list:
+                for w in self.where_list:
+                    this_ev = button_seg_events[NOP.NOP][d][w]
+                    flag[NOP.NOP][d][w] = (this_ev ==
+                                         crit_button_seg_events[NOP.NOP][d][w])
+                    if not flag[NOP.NOP][d][w]:
+                        msg = 'NOP[%s][%s]: %s' % (d, w, this_ev)
+                        fail_causes.append(msg)
+
+            # Check button event
+            flag['Button'] = (button_seg_events['Button'] ==
+                              crit_button_seg_events['Button'])
+            if not flag['Button']:
+                msg = 'button: %s' % button_seg_events['Button']
+                fail_causes.append(msg)
+
+            # Check Motion events
+            for m in self.motion_list:
+                op_str, val = crit_button_seg_events[m]
+                op = self.op_dict[op_str]
+                flag[m] = op(button_seg_events[m], val)
+                if not flag[m]:
+                    msg = '%s: %s' % (m, button_seg_events[m])
+                    fail_causes.append(msg)
+
+            result = (len(fail_causes) == 0)
+            return (result, '    Check Button Segment: %s', str(fail_causes))
+
+        def _parse_button_seg_criteria(self):
+            ''' Parse the button_segment criteria '''
+            crit_button_seg_events = _init_button_seg_events(self,
+                                            motion_init_value=('>=', 0))
+
+            for c in crit_button_segment:
+                name = c[0]
+                if name == NOP.NOP:
+                    # E.g.,('NOP', ('Device Mouse Click Press', 'before', True))
+                    name, (dev_event, where, value) = c
+                    crit_button_seg_events[name][dev_event][where] = value
+                elif name == 'Button':
+                    # E.g., ('bracket', 'Button Left')
+                    name, button = c
+                    crit_button_seg_events[name] = button
+                elif name.startswith('Motion'):
+                    # E.g., ('Motion', '>=', 20),
+                    # E.g., ('Motion_x', '>=', 20),
+                    # E.g., ('Motion_y', '<=', 0),
+                    name, op, value = c
+                    crit_button_seg_events[name] = (op, int(value))
+                elif name == 'accept_1st_gesture_only':
+                    name, value = c
+                    crit_button_seg_events[name] = value
+
+            return crit_button_seg_events
+
+        # Some initialization
+        where = 'before'
+        fail_msg = '%s'
+        fail_para = None
+        self.button_seg_flag = False
+        self.button_segment_dev_event_list = ['Device Mouse Click Press',
+                                              'Device Mouse Click Release']
+        self.where_list = ['before', 'between']
+        self.motion_list = ['Motion', 'Motion_x', 'Motion_y']
+        button_seg_events = _init_button_seg_events(self)
+
+        # Parse the criteria into a dictionary
+        crit_button_seg_events = _parse_button_seg_criteria(self)
+
+        # Match the xevent sequence against the criteria dictionary
+        xevent_seq = self.xevent.xevent_seq
+        for ev in xevent_seq:
+            name = ev[0]
+            if name == 'ButtonPress':
+                # E.g., ('ButtonPress', 'Button Left', 443854733)
+                name, button, timestamp = ev
+                button_seg_events['Button'] = button
+                where = 'between'
+                for m in self.motion_list:
+                    button_seg_events[m] = 0
+
+            elif name == 'ButtonRelease':
+                # E.g, ('ButtonRelease', 'Button Left', 443854884)
+                name, button_release, timestamp = ev
+                if button_release == button_seg_events['Button']:
+                    check_results = _check_button_segment(self,
+                                    button_seg_events, crit_button_seg_events)
+                    self.button_seg_flag, fail_msg, fail_para = check_results
+                    if (self.button_seg_flag or
+                        crit_button_seg_events['accept_1st_gesture_only']):
+                        break
+                    where = 'before'
+                    button_seg_events = _init_button_seg_events(self)
+                else:
+                    fail_msg = ('ButtonRelease of "%s" is not consistent with '
+                                'ButtonPress of "%s".')
+                    fail_para = (button_release, button)
+                    break
+
+            elif name == NOP.NOP:
+                # E.g., ('NOP', 'Device Mouse Click Press')
+                #       ('NOP', 'Device Mouse Click Release')
+                name, dev_event, timestamp = ev
+                button_seg_events[name][dev_event][where] = True
+
+            elif name == 'Motion':
+                # E.g., ('Motion', (655.0, ('Motion_x', 605), ('Motion_y', 20)),
+                #                  [443855715, 443858536])
+                (name, (motion_val, (_, motion_x_val), (_, motion_y_val)),
+                 timestamp) = ev
+                button_seg_events['Motion'] = int(motion_val)
+                button_seg_events['Motion_x'] = int(motion_x_val)
+                button_seg_events['Motion_y'] = int(motion_y_val)
+
+        self.vlog.verify_button_segment_log(self.button_seg_flag, xevent_seq,
+                                            fail_msg, fail_para)
+
     def _verify_all_criteria(self):
         ''' A general verification method for all criteria
 
@@ -598,7 +834,11 @@ class Xcheck:
                            'delay': self._verify_select_delay,
                            'wheel_speed': self._verify_wheel_speed,
                            'sequence': self._verify_select_sequence,
-         }
+                           'button_segment': self._verify_button_segment,
+                          }
+
+        # The result flags of performing the above verification methods
+        self._set_result_flags()
 
         # Insert NOP based on criteria
         self._insert_nop_per_criteria(criteria_method)
@@ -608,14 +848,15 @@ class Xcheck:
 
         # Check those criteria specified in the config file.
         for c in criteria_method:
-            if self.criteria.has_key(c):
-                crit_item = self.criteria[c]
+            crit = self._match_criteria_with_subname(c)
+            if crit is not None:
+                crit_item = self.criteria[crit]
                 criteria_method[c](crit_item)
 
         # AND all results of various criteria.
         self._get_result()
 
-    def run(self, tp_func, tp_data,  xevent_str):
+    def run(self, tp_func, tp_data, xevent_str):
         ''' Parse the x events and invoke a proper check function
 
         Invoke the corresponding check function based on its functionality name.
@@ -628,7 +869,6 @@ class Xcheck:
         self.criteria = tp_func.criteria
         self.vlog = trackpad_util.VerificationLog()
         if parse_result:
-            self._set_flags()
             self._verify_all_criteria()
             return {'result': self.result, 'vlog': self.vlog.log}
         else:

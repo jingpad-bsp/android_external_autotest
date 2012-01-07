@@ -177,6 +177,17 @@ class VerificationLog:
         if not result_flag:
             self.log['sequence'] = seq
 
+    def verify_button_segment_log(self, result_flag, button_seg, fail_msg,
+                                fail_para):
+        result_str = self.RESULT_STR[result_flag]
+        logging.info('        Verify button_segment: (%s)' % result_str)
+        logging.info('              Detected event sequence')
+        for e in button_seg:
+            logging.info('                      ' + str(e))
+        if not result_flag:
+            logging.info('              ' + fail_msg % fail_para)
+            self.log['button_segment'] = button_seg
+
     def insert_vlog_dict(self, vlog_dict, gesture_file, vlog_result, vlog_log):
         ''' Insert the verification log in a dictionary '''
         gesture_name = extract_gesture_name_from_file(gesture_file)

@@ -4,17 +4,20 @@
 
 ''' A module for extracting trackpad device file properties '''
 
-import glob
 import logging
 import os
-import re
 
+import constants
 import trackpad_util
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.bin.input.linux_input import *
 from autotest_lib.client.common_lib import error
 from trackpad_util import read_trackpad_test_conf, get_trackpad_device_file
+
+
+# Declare NOP as a instance containing NOP related constants
+NOP = constants.NOP()
 
 
 class TrackpadDevice:
@@ -26,10 +29,13 @@ class TrackpadDevice:
     (2) to play back the device packets. The device file is usually
         '/dev/input/event*'.
     '''
-    PLAYBACK_PROGRAM = 'evemu-play'
+    playback_program_default = 'evemu-play'
+    playback_program_emerged = '/usr/bin/evemu-play'
     DEVICE_TIME_FILE = '/tmp/time.out'
 
-    def __init__(self, conf_path):
+    def __init__(self):
+        self._init_event_type_code()
+        self._init_event_structure()
         self._set_dev_type_and_code()
         if self._get_trackpad_driver() == 'synaptics':
             self._ungrab_device()
@@ -37,6 +43,78 @@ class TrackpadDevice:
         if self.trackpad_device_file is None:
             raise error.TestError(msg)
         logging.info(msg)
+
+        if os.path.isfile(self.playback_program_emerged):
+            self.playback_program = self.playback_program_emerged
+        else:
+            self.playback_program = self.playback_program_default
+        logging.info('Trackpad device playback program: %s' %
+                     self.playback_program)
+
+    def _init_event_type_code(self):
+        ''' Initialize event type and code '''
+        self.ev_format = ev_format = '%04x'
+
+        # Event types
+        self.EV_SYN = ev_format % EV_SYN
+        self.EV_KEY = ev_format % EV_KEY
+        self.EV_ABS = ev_format % EV_ABS
+
+        # Event codes for synchronization event
+        self.SYN_REPORT = ev_format % SYN_REPORT
+
+        # Event codes for absolute axes
+        self.ABS_MT_SLOT = ev_format % ABS_MT_SLOT
+        self.ABS_MT_TRACKING_ID = ev_format % ABS_MT_TRACKING_ID
+
+        # Event codes for keys and buttons
+        self.BTN_MOUSE = ev_format % BTN_MOUSE
+        self.BTN_TOUCH = ev_format % BTN_TOUCH
+        self.BTN_TOOL_FINGER = ev_format % BTN_TOOL_FINGER
+        self.BTN_TOOL_DOUBLETAP = ev_format % BTN_TOOL_DOUBLETAP
+        self.BTN_TOOL_TRIPLETAP = ev_format % BTN_TOOL_TRIPLETAP
+        self.BTN_TOOL_QUADTAP = ev_format % BTN_TOOL_QUADTAP
+
+        # Event codes for keys and buttons
+        self.ABS_X = ev_format % ABS_X
+        self.ABS_Y = ev_format % ABS_Y
+        self.ABS_PRESSURE = ev_format % ABS_PRESSURE
+        self.ABS_MT_SLOT = ev_format % ABS_MT_SLOT
+        self.ABS_MT_POSITION_X = ev_format % ABS_MT_POSITION_X
+        self.ABS_MT_POSITION_Y = ev_format % ABS_MT_POSITION_Y
+        self.ABS_MT_TRACKING_ID = ev_format % ABS_MT_TRACKING_ID
+        self.ABS_MT_PRESSURE = ev_format % ABS_MT_PRESSURE
+
+    def _init_event_structure(self):
+        ev_type_code = '%s %s'
+        ev_struct = '%s %s %d'
+        self.finger_on = ev_struct % (self.EV_KEY, self.BTN_TOUCH, 1)
+        self.finger_off = ev_struct % (self.EV_KEY, self.BTN_TOUCH, 0)
+        self.mouse_click_press = ev_struct % (self.EV_KEY, self.BTN_MOUSE, 1)
+        self.mouse_click_release = ev_struct % (self.EV_KEY, self.BTN_MOUSE, 0)
+        self.one_finger_on = ev_struct % (self.EV_KEY, self.BTN_TOOL_FINGER, 1)
+        self.one_finger_off = ev_struct % (self.EV_KEY, self.BTN_TOOL_FINGER, 0)
+        self.two_fingers_on = ev_struct % (self.EV_KEY,
+                                           self.BTN_TOOL_DOUBLETAP, 1)
+        self.two_fingers_off = ev_struct % (self.EV_KEY,
+                                            self.BTN_TOOL_DOUBLETAP, 0)
+        self.three_fingers_on = ev_struct % (self.EV_KEY,
+                                             self.BTN_TOOL_TRIPLETAP, 1)
+        self.three_fingers_off = ev_struct % (self.EV_KEY,
+                                              self.BTN_TOOL_TRIPLETAP, 0)
+        self.four_fingers_on = ev_struct % (self.EV_KEY,
+                                            self.BTN_TOOL_QUADTAP, 1)
+        self.four_fingers_off = ev_struct % (self.EV_KEY,
+                                             self.BTN_TOOL_QUADTAP, 0)
+        self.tracking_id = ev_type_code % (self.EV_ABS, self.ABS_MT_TRACKING_ID)
+        self.slot = ev_type_code % (self.EV_ABS, self.ABS_MT_SLOT)
+        self.abs_mt_x = ev_type_code % (self.EV_ABS, self.ABS_MT_POSITION_X)
+        self.abs_mt_y = ev_type_code % (self.EV_ABS, self.ABS_MT_POSITION_Y)
+        self.abs_mt_z = ev_type_code % (self.EV_ABS, self.ABS_MT_PRESSURE)
+        self.abs_x = ev_type_code % (self.EV_ABS, self.ABS_X)
+        self.abs_y = ev_type_code % (self.EV_ABS, self.ABS_Y)
+        self.abs_z = ev_type_code % (self.EV_ABS, self.ABS_PRESSURE)
+        self.ev_syn = ev_type_code % (self.EV_SYN, self.SYN_REPORT)
 
     def _finger_i_on_MTB(self, i):
         ''' The i-th finger touches the trackpad in MTB protocol '''
@@ -47,24 +125,13 @@ class TrackpadDevice:
 
         Device event types and codes are imported from linux_input.
         '''
-        ev_format = '%04x'
-        ev_code_x = ev_format % ABS_MT_POSITION_X
-        ev_code_y = ev_format % ABS_MT_POSITION_Y
-        self.ev_code_dict = {'left':  (ev_code_x,),
+        ev_code_x = self.ev_format % ABS_MT_POSITION_X
+        ev_code_y = self.ev_format % ABS_MT_POSITION_Y
+        self.ev_code_dict = {'left': (ev_code_x,),
                              'right': (ev_code_x,),
-                             'up':    (ev_code_y,),
-                             'down':  (ev_code_y,),
-                             None:    (ev_code_x, ev_code_y)}
-        # Event types
-        self.EV_KEY = ev_format % EV_KEY
-        self.EV_ABS = ev_format % EV_ABS
-
-        # Event codes
-        self.ABS_MT_SLOT = ev_format % ABS_MT_SLOT
-        self.ABS_MT_TRACKING_ID = ev_format % ABS_MT_TRACKING_ID
-        self.BTN_TOOL_FINGER = ev_format % BTN_TOOL_FINGER
-        self.BTN_TOOL_DOUBLETAP = ev_format % BTN_TOOL_DOUBLETAP
-        self.BTN_TOOL_TRIPLETAP = ev_format % BTN_TOOL_TRIPLETAP
+                             'up': (ev_code_y,),
+                             'down': (ev_code_y,),
+                             None: (ev_code_x, ev_code_y)}
 
         # MTA: not supported at this time
 
@@ -78,21 +145,35 @@ class TrackpadDevice:
         finger_off_MTB = finger_MTB.format(self.EV_KEY, 0)
 
         self.dev_event = {
-            '1st Finger Landed': finger_on_MTB  % self.BTN_TOOL_FINGER,
-            '1st Finger Lifted': finger_off_MTB % self.BTN_TOOL_FINGER,
-            '2nd Finger Landed': finger_on_MTB  % self.BTN_TOOL_DOUBLETAP,
-            '2nd Finger Lifted': finger_off_MTB % self.BTN_TOOL_DOUBLETAP,
-            '3rd Finger Landed': finger_on_MTB  % self.BTN_TOOL_TRIPLETAP,
-            '3rd Finger Lifted': finger_off_MTB % self.BTN_TOOL_TRIPLETAP,
+            NOP.FINGER1_LANDED: finger_on_MTB  % self.BTN_TOOL_FINGER,
+            NOP.FINGER1_LIFTED: finger_off_MTB % self.BTN_TOOL_FINGER,
+            NOP.FINGER2_LANDED: finger_on_MTB  % self.BTN_TOOL_DOUBLETAP,
+            NOP.FINGER2_LIFTED: finger_off_MTB % self.BTN_TOOL_DOUBLETAP,
+            NOP.FINGER3_LANDED: finger_on_MTB  % self.BTN_TOOL_TRIPLETAP,
+            NOP.FINGER3_LIFTED: finger_off_MTB % self.BTN_TOOL_TRIPLETAP,
+            NOP.DEVICE_MOUSE_CLICK_PRESS: self.mouse_click_press,
+            NOP.DEVICE_MOUSE_CLICK_RELEASE: self.mouse_click_release,
         }
 
     def _extract_playback_time(self, line):
         ''' Extract the actual event playback time from the line '''
         return int(float(line.split('playback ')[1]) * 1000)
 
+    def find_all_event_time(self, ev_str):
+        ''' Find the timestamps of all occurences of an event '''
+        with open(TrackpadDevice.DEVICE_TIME_FILE) as f:
+            time_file = f.read().splitlines()
+
+        ev = self.dev_event[ev_str]
+        time_list = []
+        for line in time_file:
+            if ev in line:
+                time_list.append(self._extract_playback_time(line))
+        return time_list
+
     def _find_event_time(self, ev_seq):
         ''' Match the events in ev_seq against the device time file, and
-        return the time stamps of the matched device events.
+        return the timestamp of the first matched device events.
         '''
         ev_seq_len = len(ev_seq)
         if ev_seq_len == 0:
@@ -110,9 +191,10 @@ class TrackpadDevice:
         return None
 
     def get_finger_time(self, ev_str):
-        ''' Derive the device playback time when the 2nd finger touches '''
+        ''' Derive the device playback time of a specified event '''
         ev_seq_MTB = [self.dev_event[ev_str]]
-        return [self._find_event_time(ev_seq_MTB)]
+        ev_time = self._find_event_time(ev_seq_MTB)
+        return [ev_time] if ev_time is not None else []
 
     def get_2nd_finger_touch_time(self, direction):
         ''' Derive the device playback time when the 2nd finger touches '''
@@ -138,7 +220,7 @@ class TrackpadDevice:
         with open(TrackpadDevice.DEVICE_TIME_FILE) as f:
             time_file = f.read().splitlines()
 
-        ev = self.dev_event['2nd Finger Landed']
+        ev = self.dev_event[NOP.FINGER2_LANDED]
         touch_time_list = []
         for line in time_file:
             if ev in line:
@@ -185,26 +267,30 @@ class TrackpadDevice:
             raise error.TestError(err_msg % synclient_list_cmd)
         # Ungrab the device only if it has been grabbed.
         elif self.grab_value == 1:
+            ungrab_cmd = self.grab_device % 0
             try:
-                utils.system(self.grab_device % 0)
+                utils.system(ungrab_cmd)
             except:
                 raise error.TestError('Fail to execute: %s' % ungrab_cmd)
             logging.info('The synaptics device file is ungrabbed now.')
 
     def playback(self, packet_data_file):
         option_slot0 = '--insert-slot0'
-        play_cmd = '%s %s %s %s < %s' % (TrackpadDevice.PLAYBACK_PROGRAM,
-                                      self.trackpad_device_file,
-                                      option_slot0,
-                                      TrackpadDevice.DEVICE_TIME_FILE,
-                                      packet_data_file)
+        option_output = '--output'
+        play_cmd = '%s %s %s %s %s < %s' % (self.playback_program,
+                                            self.trackpad_device_file,
+                                            option_slot0,
+                                            option_output,
+                                            TrackpadDevice.DEVICE_TIME_FILE,
+                                            packet_data_file)
         utils.system(play_cmd)
 
     def __del__(self):
         # Grab the device again only if it was originally grabbed.
         if self.trackpad_driver == 'synaptics' and self.grab_value == 1:
+            grab_cmd = self.grab_device % 1
             try:
-                utils.system(self.grab_device % 1)
+                utils.system(grab_cmd)
             except:
                 raise error.TestError('Fail to execute: %s' % grab_cmd)
             logging.info('The synaptics device file is grabbed successfully.')

@@ -10,8 +10,13 @@ import os
 import re
 import time
 
+import constants
 import trackpad_util
 from common_util import simple_system_output
+
+
+# Declare NOP as a instance containing NOP related constants
+NOP = constants.NOP()
 
 
 class XButton:
@@ -308,7 +313,7 @@ class XEvent:
 
         def _append_NOP(event_name, event_description, event_time):
             ''' Append NOP event '''
-            if event_name == 'NOP':
+            if event_name == NOP.NOP:
                 event = (event_name, event_description, event_time)
                 _append_event(event)
 
@@ -335,7 +340,7 @@ class XEvent:
 
         for line in self.xevent_data:
             event_name = line[0]
-            if event_name != 'NOP':
+            if event_name != NOP.NOP:
                 event_dict = line[1]
                 if event_dict.has_key('coord'):
                     event_coord = list(eval(event_dict['coord']))
@@ -399,7 +404,7 @@ class XEvent:
                 self.seg_count_buttons[event_button] += 0.5
                 pre_button_label = button_label
                 pre_event_button = event_button
-            elif event_name == 'NOP':
+            elif event_name == NOP.NOP:
                 _append_button_wheel(pre_button_label, pre_event_button,
                                      button_time)
                 pre_button_label = None
@@ -408,7 +413,7 @@ class XEvent:
                 _append_motion(pre_event_name, seg_move, seg_move_time)
                 seg_move = _reset_seg_move()
                 seg_move_time = _reset_time_interval()
-                _append_NOP('NOP', line[1], line[2])
+                _append_NOP(NOP.NOP, line[1], line[2])
             pre_event_name = event_name
 
         # Append aggregated button wheel events and motion events

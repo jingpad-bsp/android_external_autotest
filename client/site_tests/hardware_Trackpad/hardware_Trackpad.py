@@ -7,12 +7,11 @@
 import glob
 import logging
 import os
-import time
 
 import trackpad_util
 import trackpad_summary
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui
 
@@ -57,6 +56,7 @@ class hardware_Trackpad(test.test):
         self.vlog = trackpad_util.VerificationLog()
 
     def read_gesture_files_path(self, local_path, name):
+        ''' Read gesture file path from config file. '''
         pathname = read_trackpad_test_conf(name, local_path)
         logging.info('Path of %s: %s' % (name, pathname))
         return pathname
@@ -102,7 +102,7 @@ class hardware_Trackpad(test.test):
         logging.info('*** hardware_Trackpad autotest is started ***')
 
         # Start Trackpad Input Device
-        self.tp_device = TrackpadDevice(local_path)
+        self.tp_device = TrackpadDevice()
 
         # Get an instance of AutoX to handle X related issues
         autox = cros_ui.get_autox()
@@ -118,11 +118,9 @@ class hardware_Trackpad(test.test):
         for tdata.func in functionality_list:
             # If this function is not enabled in configuration file, skip it.
             if not tdata.func.enabled:
-                continue;
+                continue
 
-            logging.info('\n')
-            logging.info('Functionality: %s  (Area: %s)' %
-                         (tdata.func.name, tdata.func.area[1]))
+            flag_logging_func_name = False
             tdata.num_files_tested[tdata.func.name] = 0
             tdata.subname_list[tdata.func.name] = []
 
@@ -163,7 +161,7 @@ class hardware_Trackpad(test.test):
 
                 if group_name == '*':
                     # E.g., group_path = '.../click-any_finger_click'
-                    group_path = group_path + tdata.func.name
+                    group_path += tdata.func.name
                     # Two possibilities of the gesture_file_group:
                     # 1. '.../click-any_finger_click.*':
                     #    variations exists (subname is not None)
@@ -174,7 +172,7 @@ class hardware_Trackpad(test.test):
                     gesture_file_group = (glob.glob(group_path + '.*') +
                                           glob.glob(group_path + '-*'))
                 else:
-                    group_path = group_path + group_name
+                    group_path += group_name
                     gesture_file_group = glob.glob(group_path)
 
                 # Process each specific gesture_file now.
@@ -188,17 +186,21 @@ class hardware_Trackpad(test.test):
                                   tdata.func.name)
                     start_flag1 = tdata.file_basename.split('-')[1].startswith(
                                   tdata.func.name)
-                    if (tdata.prefix is None and not start_flag0) or \
-                       (tdata.prefix is not None and not start_flag1):
-                        warn_msg = 'The gesture file does not start with ' + \
-                                   'correct functionality: %s'
+                    if ((tdata.prefix is None and not start_flag0) or
+                        (tdata.prefix is not None and not start_flag1)):
+                        warn_msg = ('The gesture file does not start with '
+                                    'correct functionality: %s')
                         logging.warning(warn_msg % gesture_file)
                         tdata.num_wrong_file_name += 1
 
                     gesture_file_path = os.path.join(
-                                    gesture_files_path_autotest, gesture_file)
-                    logging.info('')
-                    logging.info('    gesture file: %s' % tdata.file_basename)
+                        gesture_files_path_autotest, gesture_file)
+
+                    if not flag_logging_func_name:
+                        flag_logging_func_name = True
+                        logging.info('\nFunctionality: %s  (Area: %s)' %
+                                     (tdata.func.name, tdata.func.area[1]))
+                    logging.info('\n    gesture file: %s' % tdata.file_basename)
 
                     # Start X events capture
                     self.xcapture.start(tdata.file_basename)
@@ -226,9 +228,9 @@ class hardware_Trackpad(test.test):
 
                     # Initialization for this subname
                     fullname = trackpad_util.get_fullname(tdata.file_basename)
-                    if len(tdata.subname_list[tdata.func.name]) == 0:
+                    if not tdata.subname_list[tdata.func.name]:
                         tdata.subname_list[tdata.func.name] = []
-                    if not tdata.num_files_tested_fullname.has_key(fullname):
+                    if fullname not in tdata.num_files_tested_fullname:
                         tdata.num_files_tested_fullname[fullname] = 0
                         tdata.subname_list[tdata.func.name].append(fullname)
                         tdata.fail_count_fullname[fullname] = 0
@@ -258,8 +260,6 @@ class hardware_Trackpad(test.test):
             test_count = tdata.num_files_tested[func_name]
             if test_count == 0:
                 continue
-            fail_count = tdata.fail_count[func_name]
-            pass_count = test_count - fail_count
             if tp_func.area[0] != area_name:
                 area_name = tp_func.area[0]
                 msg = trackpad_summary.format_result_area(area_name)
@@ -270,7 +270,7 @@ class hardware_Trackpad(test.test):
                 fail_count_fullname = tdata.fail_count_fullname[fullname]
                 pass_count_fullname = test_count_fullname - fail_count_fullname
                 msg = trackpad_summary.format_result_pass_rate(fullname,
-                                       pass_count_fullname, test_count_fullname)
+                      pass_count_fullname, test_count_fullname)
                 self.ilog.write_result_log(msg)
 
         msg = trackpad_summary.format_result_tail()
