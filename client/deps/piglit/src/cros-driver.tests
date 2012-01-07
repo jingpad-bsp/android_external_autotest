@@ -33,7 +33,6 @@ del profile.tests['glx']['glx-make-glxdrawable-current']
 del profile.tests['shaders']['glsl-texcoord-array']
 
 # IHF: bug 19813 - x86-generic crashes/hangs blacklisted (roughly declining order of badness)
-del profile.tests['shaders']['fp-long-alu']
 del profile.tests['spec']['glsl-1.10']['execution']['samplers']['in-parameter']
 del profile.tests['spec']['glsl-1.10']['execution']['samplers']['in-parameter-struct']
 del profile.tests['spec']['glsl-1.10']['execution']['samplers']['normal-parameter']
@@ -47,5 +46,3 @@ del profile.tests['fbo']['fbo-rg-GL_RG']
 del profile.tests['fbo']['fbo-rg-GL_RG8']
 del profile.tests['fbo']['fbo-rg-GL_RG16']
 
-del profile.tests['fbo']['fbo-readpixels-depth-formats']
-del profile.tests['general']['bgra-vert-attrib-pointer']

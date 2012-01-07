@@ -24,6 +24,12 @@ class graphics_Piglit(cros_ui_test.UITest):
         self.crash_blacklist.append('glslparsertest')
         self.crash_blacklist.append('shader_runner')
 
+        # SCBA Sandy Bridge crash cases
+        self.crash_blacklist.append('draw-elements-base-vertex-neg')
+        self.crash_blacklist.append('glsl-fs-raytrace-bug27060')
+        self.crash_blacklist.append('glsl-vs-raytrace-bug26691')
+        self.crash_blacklist.append('fp-long-alu')
+
         dep = 'piglit'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)

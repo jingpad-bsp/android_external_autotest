@@ -11,6 +11,7 @@
        NAMES EGL
        PATHS /usr/lib
  )
+ find_library(OPENGL_gles1_LIBRARY NAMES GLESv1_CM)
 -find_library(OPENGL_gles2_LIBRARY NAMES GLESv2)
 +endif(OPENGL_gles2_LIBRARY)
  
