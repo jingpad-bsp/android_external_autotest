@@ -54,8 +54,6 @@ TESTS = [
   ('login_OwnershipRetaken', {}),
   ('login_OwnershipTaken', {}),
   ('login_RemoteOwnership', {}),
-# TODO(dalecurtis): Re-enable once http://crosbug.com/21362 is fixed.
-#  ('login_DBusCalls', {}),
 # TODO(kmixter): Fix log volume usage, or change test constraints. See http://crosbug.com/11350
 #  ('logging_LogVolume', {'constraints': ['bytes_unexpected <= 100000',
 #                                         'files_unexpected <= 50',
