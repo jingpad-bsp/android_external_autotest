@@ -78,7 +78,7 @@ class factory_InstallServo(FactoryInstallTest):
         """
         self.servo.install_recovery_image(
             image_path=shim_image,
-            usb_mount_point=self.servo_usb_disk if self.image_usb else None,
+            usb_dev=self.servo_usb_disk if self.image_usb else None,
             wait_for_completion=False)
 
         # Wait for the IP address of the DUT to appear in the Miniohama

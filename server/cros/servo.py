@@ -326,19 +326,20 @@ class Servo:
             return None
 
 
-    def install_recovery_image(self, image_path=None, usb_mount_point=None,
+    def install_recovery_image(self, image_path=None, usb_dev=None,
                                wait_for_completion=True):
         """Install the recovery image specied by the path onto the DUT.
 
         This method uses google recovery mode to install a recovery image
         onto a DUT through the use of a USB stick that is mounted on a servo
-        board specified by the usb_mount_point.  If no image path is specified
+        board specified by the usb_dev.  If no image path is specified
         we use the recovery image already on the usb image.
 
         Args:
             image_path: Path on the host to the recovery image.
-            usb_mount_point:  When servo_sees_usbkey is enabled, which dev
-                              e.g. /dev/sdb will the usb key show up as.
+            usb_dev:  When servo_sees_usbkey is enabled, which dev
+                      e.g. /dev/sdb will the usb key show up as.
+                      If None, detects it automatically.
             wait_for_completion: Whether to wait for completion of the
                                  factory install and disable the USB hub
                                  before returning.  Currently this is just
@@ -348,16 +349,18 @@ class Servo:
         # Set up Servo's usb mux.
         self.set('prtctl4_pwren', 'on')
         self.enable_usb_hub(host=True)
-        if image_path and usb_mount_point:
-          logging.info('Installing recovery image onto usb stick.  '
-                       'This takes a while ...')
-          client_utils.poll_for_condition(
-              lambda: os.path.exists(usb_mount_point),
-              timeout=Servo.USB_DETECTION_DELAY,
-              desc="%s exists" % usb_mount_point)
-          utils.system(' '.join(
-                           ['sudo', 'dd', 'if=%s' % image_path,
-                            'of=%s' % usb_mount_point, 'bs=4M']))
+        if image_path:
+            if not usb_dev:
+                usb_dev = self.probe_host_usb_dev()
+            logging.info('Installing image onto usb stick. '
+                         'This takes a while...')
+            client_utils.poll_for_condition(
+                lambda: os.path.exists(usb_dev),
+                timeout=Servo.USB_DETECTION_DELAY,
+                desc="%s exists" % usb_dev)
+            utils.system(' '.join(
+                             ['sudo', 'dd', 'if=%s' % image_path,
+                              'of=%s' % usb_dev, 'bs=4M']))
 
         # Turn the device off.
         self.power_normal_press()

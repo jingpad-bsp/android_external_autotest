@@ -25,10 +25,8 @@ from autotest_lib.client.common_lib import error
 opts = dict([[k, v] for (k, _, v) in [x.partition('=') for x in args]])
 
 def run_install_recovery_image(machine):
-    # TODO(sosa): Grabbing the and usb location is hardcoded.
-    # Implement automatic detection of usb insertion rather than hard-code.
     image = opts.get('image')
-    usb = opts.get('usb', '/dev/sdc')
+    usb = opts.get('usb', None)
 
     # Setup the client machine.
     host = hosts.create_host(machine)
