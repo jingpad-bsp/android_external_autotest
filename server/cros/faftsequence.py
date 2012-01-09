@@ -5,6 +5,7 @@
 import logging
 import os
 import re
+import sys
 import tempfile
 import time
 import xmlrpclib
@@ -12,7 +13,11 @@ import xmlrpclib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.servo_test import ServoTest
+from autotest_lib.site_utils import lab_test
 
+dirname = os.path.dirname(sys.modules[__name__].__file__)
+autotest_dir = os.path.abspath(os.path.join(dirname, "..", ".."))
+cros_dir = os.path.join(autotest_dir, "..", "..", "..", "..")
 
 class FAFTSequence(ServoTest):
     """
@@ -60,6 +65,11 @@ class FAFTSequence(ServoTest):
         _faft_template: The default FAFT_STEP of each step. The actions would
             be over-written if the registered FAFT_SEQUENCE is valid.
         _faft_sequence: The registered FAFT_SEQUENCE.
+        _customized_ctrl_d_key_command: The customized Ctrl-D key command
+            instead of sending key via servo board.
+        _customized_enter_key_command: The customized Enter key command instead
+            of sending key via servo board.
+        _install_image_path: The path of Chrome OS test image to be installed.
     """
     version = 1
 
@@ -162,6 +172,7 @@ class FAFTSequence(ServoTest):
 
     _customized_ctrl_d_key_command = None
     _customized_enter_key_command = None
+    _install_image_path = None
 
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
@@ -172,7 +183,7 @@ class FAFTSequence(ServoTest):
             if match:
                 args[match.group(1)] = match.group(2)
 
-        # Keep the customized Ctrl-D and Enter key commands.
+        # Keep the arguments which will be used later.
         if 'ctrl_d_cmd' in args:
             self._customized_ctrl_d_key_command = args['ctrl_d_cmd']
             logging.info('Customized Ctrl-D key command: %s' %
@@ -181,6 +192,10 @@ class FAFTSequence(ServoTest):
             self._customized_enter_key_command = args['enter_cmd']
             logging.info('Customized Enter key command: %s' %
                     self._customized_enter_key_command)
+        if 'image' in args:
+            self._install_image_path = args['image']
+            logging.info('Install Chrome OS test image path: %s' %
+                    self._install_image_path)
 
         super(FAFTSequence, self).initialize(host, cmdline_args, use_pyauto,
                 use_faft)
@@ -191,12 +206,15 @@ class FAFTSequence(ServoTest):
         super(FAFTSequence, self).setup()
         if not self._remote_infos['faft']['used']:
             raise error.TestError('The use_faft flag should be enabled.')
+
         self.register_faft_template({
             'state_checker': (None),
             'userspace_action': (None),
             'reboot_action': (self.sync_and_hw_reboot),
             'firmware_action': (None)
         })
+        if self._install_image_path:
+            self.install_test_image(self._install_image_path)
 
 
     def cleanup(self):
@@ -235,6 +253,35 @@ class FAFTSequence(ServoTest):
         if code != 0:
             raise error.TestError(
                     'The image in the USB disk should be a test image.')
+
+
+    def install_test_image(self, image_path=None, usb_dev=None):
+        """Install the test image specied by the path onto the USB and DUT disk.
+
+        The method first copies the image to USB disk and reboots into it via
+        recovery mode. Then runs 'chromeos-install' to install it to DUT disk.
+
+        Args:
+            image_path: Path on the host to the test image.
+            usb_dev:  When servo_sees_usbkey is enabled, which dev
+                      e.g. /dev/sdb will the usb key show up as.
+                      If None, detects it automatically.
+        """
+        build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
+                                                             image_path)
+        logging.info('Processing build: %s %s' % (build_ver, build_hash))
+        if not usb_dev:
+            usb_dev = self.servo.probe_host_usb_dev()
+
+        # Reuse the install_recovery_image method by using a test image.
+        # Don't wait for completion but run chromeos-install to install it.
+        self.servo.install_recovery_image(image_path, usb_dev,
+                                          wait_for_completion=False)
+        self.wait_for_client(install_deps=True)
+        self.run_faft_step({
+            'userspace_action': (self.faft_client.run_shell_command,
+                                 'chromeos-install --yes')
+        })
 
 
     def _parse_crossystem_output(self, lines):
