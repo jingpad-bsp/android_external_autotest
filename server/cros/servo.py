@@ -365,10 +365,10 @@ class Servo:
 
         # Boot in recovery mode.
         try:
-            self.set('usb_mux_sel1', 'dut_sees_usbkey')
             self.enable_recovery_mode()
             self.power_normal_press()
             time.sleep(Servo.RECOVERY_BOOT_DELAY)
+            self.set('usb_mux_sel1', 'dut_sees_usbkey')
             self.disable_recovery_mode()
 
             if wait_for_completion:
