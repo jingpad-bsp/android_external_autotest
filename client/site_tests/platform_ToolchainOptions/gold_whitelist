@@ -36,6 +36,9 @@
 /lib/libSegFault.so
 /lib/libthread_db-1.0.so
 /lib/libutil-2.11.1.so
+/opt/Synaptics/bin/syncontrol_bin
+/opt/Synaptics/bin/syndetect_bin
+/opt/Synaptics/bin/synreflash_bin
 /opt/google/chrome/nacl_helper_bootstrap
 /opt/google/o3d/lib/libCgGL.so
 /opt/google/o3d/lib/libCg.so

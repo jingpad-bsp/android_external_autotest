@@ -107,6 +107,7 @@
 /usr/bin/gtf
 /usr/bin/ipcmk
 /usr/bin/l2ping
+/usr/bin/label
 /usr/bin/ntfs-3g.probe
 /usr/bin/rename
 /usr/bin/rev

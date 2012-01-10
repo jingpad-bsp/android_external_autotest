@@ -147,6 +147,7 @@
 /usr/bin/dbusxx-introspect
 /usr/bin/dbusxx-xml2cpp
 /usr/bin/dev_sign_file
+/usr/bin/disk
 /usr/bin/dump_fmap
 /usr/bin/dump_kernel_config
 /usr/bin/dump_syms
@@ -163,6 +164,7 @@
 /usr/bin/gtk-query-immodules-2.0
 /usr/bin/gtk-update-icon-cache
 /usr/bin/ibus-daemon
+/usr/bin/label
 /usr/bin/line
 /usr/bin/linux_dumper_unittest_helper
 /usr/bin/metrics_client
