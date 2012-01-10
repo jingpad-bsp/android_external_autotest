@@ -100,7 +100,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
                 '%s is not an executable' % self._sox_path)
 
         super(desktopui_AudioFeedback, self).initialize()
-        self._test_url = 'http://localhost:8000/youtube.html'
+        self._test_url = 'http://127.0.0.1:8000/youtube.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
 
@@ -177,7 +177,11 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
 
         # Speaker control settings may differ from device to device.
         if self.pyauto.ChromeOSBoard() in _CONTROL_SPEAKER_DEVICE:
-            self._mixer_settings.append({'name': _CONTROL_SPEAKER, 'value': "0%"})
+            self._mixer_settings.append({'name': _CONTROL_SPEAKER,
+                                         'value': "0%"})
+        else: # TODO(rohitbm) : Create a private file for 'HP/Speakers' devices.
+            self._mixer_settings.append({'name': _CONTROL_SPEAKER_SL,
+                                         'value': "0%"})
 
         for item in self._mixer_settings:
             logging.info('Setting %s to %s on card %s' %
@@ -230,7 +234,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
                 if rms_val < self._sox_min_rms:
                     raise error.TestError(
                         'RMS value %f too low. Minimum threshold is %f.' %
-                        rms_val, self._sox_min_rms)
+                        (rms_val, self._sox_min_rms))
 
     def noise_reduce_file(self, test_file, noise_file):
         """Runs the sox command to reduce the noise.
