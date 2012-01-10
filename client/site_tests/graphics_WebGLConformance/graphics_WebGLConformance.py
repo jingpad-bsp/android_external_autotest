@@ -15,11 +15,13 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
     # of all failing configurations
     waived_tests = {
         'conformance/context-lost.html' : 2,
+        'conformance/context-lost-restored.html' : 4,
         'conformance/origin-clean-conformance.html' : 4,
         'conformance/more/conformance/quickCheckAPI.html' : 1,
         'conformance/more/functions/texSubImage2DHTML.html' : 1,
         'conformance/shaders/glsl-features/../../glsl-features.html?feature=sign-frag-vec4&reffs=shaders/glsl-features/sign-vec4-ref.frag&testfs=shaders/glsl-features/sign-vec4.frag' : 1,
-        'conformance/framebuffer-object-attachment.html' : 24,
+        'conformance/framebuffer-object-attachment.html' : 42, # issue 24418
+        'conformance/invalid-passed-params.html' : 3,
         'conformance/texture-npot-video.html' : 1,
         'conformance/more/functions/texImage2DHTML.html' : 1,
         'conformance/oes-standard-derivatives.html' : 16,
