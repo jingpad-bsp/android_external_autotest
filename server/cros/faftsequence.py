@@ -70,6 +70,8 @@ class FAFTSequence(ServoTest):
         _customized_enter_key_command: The customized Enter key command instead
             of sending key via servo board.
         _install_image_path: The path of Chrome OS test image to be installed.
+        _firmware_update: Boolean. True if firmware update needed after
+            installing the image.
     """
     version = 1
 
@@ -173,6 +175,7 @@ class FAFTSequence(ServoTest):
     _customized_ctrl_d_key_command = None
     _customized_enter_key_command = None
     _install_image_path = None
+    _firmware_update = False
 
 
     def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
@@ -196,6 +199,14 @@ class FAFTSequence(ServoTest):
             self._install_image_path = args['image']
             logging.info('Install Chrome OS test image path: %s' %
                     self._install_image_path)
+        if 'firmware_update' in args and args['firmware_update'].lower() \
+                not in ('0', 'false', 'no'):
+            if self._install_image_path:
+                self._firmware_update = True
+                logging.info('Also update firmware after installing.')
+            else:
+                logging.warning('Firmware update will not not performed '
+                                'since no image is specified.')
 
         super(FAFTSequence, self).initialize(host, cmdline_args, use_pyauto,
                 use_faft)
@@ -214,7 +225,8 @@ class FAFTSequence(ServoTest):
             'firmware_action': (None)
         })
         if self._install_image_path:
-            self.install_test_image(self._install_image_path)
+            self.install_test_image(self._install_image_path,
+                                    self._firmware_update)
 
 
     def cleanup(self):
@@ -255,7 +267,8 @@ class FAFTSequence(ServoTest):
                     'The image in the USB disk should be a test image.')
 
 
-    def install_test_image(self, image_path=None, usb_dev=None):
+    def install_test_image(self, image_path=None, firmware_update=False,
+                           usb_dev=None):
         """Install the test image specied by the path onto the USB and DUT disk.
 
         The method first copies the image to USB disk and reboots into it via
@@ -263,10 +276,14 @@ class FAFTSequence(ServoTest):
 
         Args:
             image_path: Path on the host to the test image.
+            firmware_update: Also update the firmware after installing.
             usb_dev:  When servo_sees_usbkey is enabled, which dev
                       e.g. /dev/sdb will the usb key show up as.
                       If None, detects it automatically.
         """
+        install_cmd = 'chromeos-install --yes'
+        if firmware_update:
+            install_cmd += ' && chromeos-firmwareupdate --mode recovery'
         build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
                                                              image_path)
         logging.info('Processing build: %s %s' % (build_ver, build_hash))
@@ -280,7 +297,7 @@ class FAFTSequence(ServoTest):
         self.wait_for_client(install_deps=True)
         self.run_faft_step({
             'userspace_action': (self.faft_client.run_shell_command,
-                                 'chromeos-install --yes')
+                                 install_cmd)
         })
 
 
