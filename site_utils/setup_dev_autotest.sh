@@ -85,6 +85,9 @@ cat > "${SHADOW_CONFIG_PATH}" <<EOF
 [AUTOTEST_WEB]
 host: localhost
 password: ${PASSWD}
+readonly_host: localhost
+readonly_user: chromeosqa-admin
+readonly_password: ${PASSWD}
 
 [SERVER]
 hostname: localhost
@@ -106,7 +109,7 @@ echo -e "Done!\n"
 echo -n "Setting up Database: chromeos_autotest_db in MySQL..."
 SQL_COMMAND="create database chromeos_autotest_db; \
 grant all privileges on chromeos_autotest_db.* TO \
-'chromeosqa-admin'@'localhost' identified by '${PASSWD}'; \
+'chromeosqa-admin'@'%' identified by '${PASSWD}'; \
 FLUSH PRIVILEGES;"
 
 if mysql -u root -e ';' 2> /dev/null ; then
