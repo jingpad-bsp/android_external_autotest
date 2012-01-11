@@ -508,9 +508,11 @@
 /usr/lib64/libgailutil.so.18.0.1
 /usr/lib64/libgdk_pixbuf-2.0.so.0.2000.1
 /usr/lib64/libGLEW.so.1.5.6
+/usr/lib64/libgmodule-2.0.so.0.3000.0
 /usr/lib64/libgmodule-2.0.so.0.3000.2
 /usr/lib64/libgmpxx.so.4.2.2
 /usr/lib64/libgpg-error.so.0.8.0
+/usr/lib64/libgthread-2.0.so.0.3000.0
 /usr/lib64/libgthread-2.0.so.0.3000.2
 /usr/lib64/libhangul.so.0.1.2
 /usr/lib64/libiptc.so.0.0.0
@@ -945,9 +947,11 @@
 /usr/lib/libexpatw.so.1.5.2
 /usr/lib/libgailutil.so.18.0.1
 /usr/lib/libGLEW.so.1.5.6
+/usr/lib/libgmodule-2.0.so.0.3000.0
 /usr/lib/libgmodule-2.0.so.0.3000.2
 /usr/lib/libgmpxx.so.4.2.2
 /usr/lib/libgpg-error.so.0.8.0
+/usr/lib/libgthread-2.0.so.0.3000.0
 /usr/lib/libgthread-2.0.so.0.3000.2
 /usr/lib/libhangul.so.0.1.2
 /usr/lib/libiptc.so.0.0.0
