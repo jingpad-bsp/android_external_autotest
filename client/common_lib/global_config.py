@@ -27,8 +27,7 @@ root_dir = os.path.dirname(client_dir)
 # other entry points are being executed
 global_config_path_root = os.path.join(root_dir, 'global_config.ini')
 shadow_config_path_root = os.path.join(root_dir, 'shadow_config.ini')
-config_in_root = (os.path.exists(global_config_path_root) and
-                  os.path.exists(shadow_config_path_root))
+config_in_root = os.path.exists(global_config_path_root)
 
 # Check if the config files are at autotest's client dir
 # This will happen if a client stand alone execution is happening
@@ -37,7 +36,10 @@ config_in_client = os.path.exists(global_config_path_client)
 
 if config_in_root:
     DEFAULT_CONFIG_FILE = global_config_path_root
-    DEFAULT_SHADOW_FILE = shadow_config_path_root
+    if os.path.exists(shadow_config_path_root):
+        DEFAULT_SHADOW_FILE = shadow_config_path_root
+    else:
+        DEFAULT_SHADOW_FILE = None
     RUNNING_STAND_ALONE_CLIENT = False
 elif config_in_client:
     DEFAULT_CONFIG_FILE = global_config_path_client
