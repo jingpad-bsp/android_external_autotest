@@ -489,7 +489,7 @@ class FAFTSequence(ServoTest):
     def wait_fw_screen_and_press_power(self):
         """Wait for firmware warning screen and press power button."""
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
-        self.servo.power_normal_press()
+        self.servo.power_short_press()
 
 
     def wait_fw_screen_and_close_lid(self):
@@ -735,7 +735,7 @@ class FAFTSequence(ServoTest):
 
         if pre_power_action:
             self._call_action(pre_power_action)
-        self.servo.power_normal_press()
+        self.servo.power_short_press()
         if post_power_action:
             self._call_action(post_power_action)
 
