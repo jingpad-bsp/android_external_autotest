@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -25,6 +25,41 @@ def get_user_hash(user):
     """Get the hash for the test user account."""
     hash_cmd = CRYPTOHOME_CMD + ' --action=obfuscate_user --user=%s' % user
     return __run_cmd(hash_cmd)
+
+
+def get_tpm_status():
+    """Get the TPM status.
+
+    Returns:
+        A TPM status dictionary, for example:
+        { 'Enabled': True,
+          'Owned': True,
+          'Being Owned': False,
+          'Ready': True,
+          'Password': ''
+        }
+    """
+    out = __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_status')
+    status = {}
+    for field in ['Enabled', 'Owned', 'Being Owned', 'Ready']:
+        match = re.search('TPM %s: (true|false)' % field, out)
+        if not match:
+            raise ChromiumOSError('Invalid TPM status: "%s".' % out)
+        status[field] = match.group(1) == 'true'
+    match = re.search('TPM Password: (\w*)', out)
+    status['Password'] = ''
+    if match:
+        status['Password'] = match.group(1)
+    return status
+
+
+def take_tpm_ownership():
+    """Take TPM owernship.
+
+    Blocks until TPM is owned.
+    """
+    __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_take_ownership')
+    __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_wait_ownership')
 
 
 def remove_vault(user):

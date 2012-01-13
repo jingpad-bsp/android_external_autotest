@@ -1,0 +1,36 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "desktopui_EnterprisePolicyServer"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "desktopui"
+TEST_TYPE = "server"
+
+DOC = """
+This test uses the client-side desktopui_EnterprisePolicy test to perform
+enterprise enrollment, and verify enterprise policies. The name of the
+client-side test functions to execute are specified in the TESTS list below.
+"""
+
+# prod: Whether to point to production DMServer and gaia auth server.
+# enroll: Whether the test enrolls the device.
+TESTS = [
+    ('test_qa_user_policies', {}),
+    ('test_executive_user_policies', {'prod': True}),
+    ('test_sales_user_policies', {'prod': True}),
+    ('test_developer_user_policies', {'prod': True}),
+    ('test_tester_user_policies', {'prod': True}),
+    ('test_operations_user_policies', {'prod': True}),
+    ('test_device_policies', {'prod': True, 'enroll': True}),
+]
+
+
+for test, argv in TESTS:
+    tag = '_'.join([test] + [k for k in argv if argv[k]])
+    job.run_test('desktopui_EnterprisePolicyServer',
+                 host=hosts.create_host(machines[0]),
+                 tag=tag,
+                 subtest=test, **argv)
