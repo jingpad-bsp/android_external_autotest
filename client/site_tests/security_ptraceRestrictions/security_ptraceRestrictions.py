@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors.
+# Copyright (c) 2012 The Chromium OS Authors.
 #
 # Based on tests from http://bazaar.launchpad.net/~ubuntu-bugcontrol/qa-regression-testing/master/view/head:/scripts/test-kernel-security.py
 # Copyright (C) 2010-2011 Canonical Ltd.
@@ -62,7 +62,7 @@ class security_ptraceRestrictions(test.test):
         os.chdir(self.srcdir)
 
         # Verify ptrace is only allowed on children or declared processes.
-        utils.system("su -c './ptrace-restrictions.sh' chronos", timeout=10)
+        utils.system("su -c './ptrace-restrictions.sh' chronos", timeout=30)
         # Verify ptrace of child ok from parent process and thread.
         utils.system("su -c './thread-prctl 0 1' chronos")
         utils.system("su -c './thread-prctl 0 0' chronos")

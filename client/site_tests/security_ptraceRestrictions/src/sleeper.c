@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 The Chromium OS Authors.
+ * Copyright (c) 2012 The Chromium OS Authors.
  *
  * Based on:
  * http://bazaar.launchpad.net/~ubuntu-bugcontrol/qa-regression-testing/master/view/head:/scripts/kernel-security/ptrace/sleeper.c
@@ -44,6 +44,8 @@ int main(int argc, char * argv[])
         prctl(PR_SET_PTRACER, pid, 0, 0, 0);
     }
 
+    puts("ready");
+    fflush(NULL);
     sleep(atoi(argv[2]));
 
     return 0;

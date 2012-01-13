@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2011 The Chromium OS Authors.
+# Copyright (c) 2012 The Chromium OS Authors.
 #
 # Based on:
 # http://bazaar.launchpad.net/~ubuntu-bugcontrol/qa-regression-testing/master/view/head:/scripts/kernel-security/ptrace/ptrace-restrictions.sh
@@ -14,6 +14,25 @@ if [ "$(whoami)" = "root" ]; then
 fi
 
 export LANG=C
+pid=
+dir=
+
+function start_sleeper()
+{
+    dir=$(mktemp -d -t sleeper-XXXXXX)
+    mkfifo "$dir"/status
+    ./sleeper "$1" 120 >"$dir"/status &
+    pid=$!
+    # Wait for sleeper to start up.
+    read status < "$dir"/status
+}
+
+function kill_sleeper()
+{
+    disown $pid
+    kill $pid
+    rm -rf "$dir"
+}
 
 rc=0
 
@@ -67,8 +86,7 @@ disown $pid
 kill $pid
 
 # Validate that prctl(PR_SET_PTRACER, 0, ...) works to delete tracer.
-./sleeper 0 120 &
-pid=$!
+start_sleeper 0
 OUT=$(gdb -ex "attach $pid" -ex "quit" --batch </dev/null 2>&1)
 prctl="prctl(PR_SET_PTRACER, 0, ...)"
 if echo "$OUT" | grep -q 'Operation not permitted'; then
@@ -77,12 +95,10 @@ else
     echo "FAIL: $prctl unexpectedly allowed ptrace"
     rc=1
 fi
-disown $pid
-kill $pid
+kill_sleeper
 
 # Validate near ancestor allowed with PR_SET_PTRACER use.
-./sleeper $$ 120 &
-pid=$!
+start_sleeper $$
 OUT=$(gdb -ex "attach $pid" -ex "quit" --batch </dev/null 2>&1)
 prctl="prctl(PR_SET_PTRACER, parent, ...)"
 if echo "$OUT" | grep -q 'Quit anyway'; then
@@ -91,12 +107,10 @@ else
     echo "FAIL: $prctl unexpectedly not allowed ptrace"
     rc=1
 fi
-disown $pid
-kill $pid
+kill_sleeper
 
 # Validate distant ancestor allowed with PR_SET_PTRACER use.
-./sleeper 1 120 &
-pid=$!
+start_sleeper 1
 OUT=$(gdb -ex "attach $pid" -ex "quit" --batch </dev/null 2>&1)
 prctl="prctl(PR_SET_PTRACER, 1, ...)"
 if echo "$OUT" | grep -q 'Quit anyway'; then
@@ -105,7 +119,6 @@ else
     echo "FAIL: $prctl unexpectedly not allowed ptrace"
     rc=1
 fi
-disown $pid
-kill $pid
+kill_sleeper
 
 exit $rc
