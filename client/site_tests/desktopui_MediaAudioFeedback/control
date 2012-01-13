@@ -1,0 +1,28 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chromium OS Project"
+NAME = "desktopui_MediaAudioFeedback"
+PURPOSE = "Verify sound from media files is audible"
+CRITERIA = """
+This test will fail if media files sound is not audible.
+"""
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "desktopui"
+TEST_TYPE = "client"
+
+DOC = """
+Test that the sound from media files can be heard by recording from mic in.
+Each audio channel is tested independently and currently there is no accurate
+comparison with the input data. Instead the test passes when
+a) the silent signal is sufficiently weak and (TODO: rohitbm@chromium.org)
+b) the captured audio from each media replay is sufficiently loud.
+
+NOTE: For this test to pass you need to have the line out looped back to mic-in.
+This can be through a 3.5mm male-to-male cable or a loopback dongle depending on
+your device.
+"""
+
+job.run_test('desktopui_MediaAudioFeedback')
