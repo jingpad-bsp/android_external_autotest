@@ -126,16 +126,20 @@
                 "netbook_LUMPY": ["lumpy-r18", "lumpy-r17"],
                 "desktop_STUMPY": ["stumpy-r18", "stumpy-r17"],
                 "netbook_KAEN": ["tegra2-kaen-r18", "tegra2-kaen-r17"]},
-            "filters": [{
-                "categories": ["bvt"],
-                "cc": ["chromeos-autotest@google.com"]}]},
+            "filters": [
+                {"categories": ["bvt"],
+                 "cc": ["chromeos-autotest@google.com"]},
+                {"categories": ["security"],
+                 "cc": ["keescook@google.com"]}]},
         {
             "platforms": {
                 "netbook_SANDY_BRIDGE": ["x86-generic-full"]},
-            "filters": [{
-                "categories": ["bvt", "browsertests", "pyauto", "sync"],
-                "cc": ["chromeos-autotest@google.com",
-                       "marcheu@google.com"]}]},
+            "filters": [
+                {"categories": ["bvt", "browsertests", "pyauto", "sync"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "marcheu@google.com"]},
+                {"categories": ["security"],
+                 "cc": ["keescook@google.com"]}]},
         {
             "platforms": {
                 "netbook_RF_ENCLOSURE": ["x86-mario-r18", "x86-mario-r17",
