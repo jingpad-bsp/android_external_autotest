@@ -83,7 +83,7 @@ class FAFTSequence(ServoTest):
     OTHER_ROOTFS_MAP = {'a':'5', 'b':'3', '2':'5', '4':'3', '3':'5', '5':'3'}
 
     # Delay timing
-    FIRMWARE_SCREEN_DELAY = 10
+    FIRMWARE_SCREEN_DELAY = 2
     TEXT_SCREEN_DELAY = 20
     USB_PLUG_DELAY = 10
     SYNC_DELAY = 5
