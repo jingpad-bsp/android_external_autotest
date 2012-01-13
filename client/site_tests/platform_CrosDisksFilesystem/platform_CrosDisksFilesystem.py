@@ -28,6 +28,7 @@ class CrosDisksFilesystemTester(CrosDisksTester):
         is_experimental = config.get('experimental_features_enabled', False)
         test_mount_filesystem_type = config.get('test_mount_filesystem_type')
         test_mount_options = config.get('test_mount_options')
+        is_write_test = config.get('is_write_test', False)
 
         # Create a virtual filesystem image based on the specified parameters in
         # the test configuration and use it to verify that CrosDisks can
@@ -41,7 +42,11 @@ class CrosDisksFilesystemTester(CrosDisksTester):
             image.format()
             image.mount(options=['sync'])
             test_content = DefaultFilesystemTestContent()
-            if not test_content.create(image.mount_dir):
+
+            # If it is not a write test, create the test content on the virtual
+            # filesystem so that they can be read later after CrosDisks mounts
+            # the filesystem.
+            if not is_write_test and not test_content.create(image.mount_dir):
                 raise error.TestFail("Failed to create filesystem test content")
             image.unmount()
 
@@ -80,7 +85,15 @@ class CrosDisksFilesystemTester(CrosDisksTester):
                     config['expected_mount_path']
             result = self.cros_disks.expect_mount_completion(
                     expected_mount_completion)
-            if not test_content.verify(result['mount_path']):
+
+            actual_mount_path = result['mount_path']
+
+            # If it is a write test, create the test content on the filesystem
+            # after it is mounted by CrosDisks.
+            if is_write_test and not test_content.create(actual_mount_path):
+                raise error.TestFail("Failed to create filesystem test content")
+
+            if not test_content.verify(actual_mount_path):
                 raise error.TestFail("Failed to verify filesystem test content")
             self.cros_disks.unmount(device_file, ['force'])
 
