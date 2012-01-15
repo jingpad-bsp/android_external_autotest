@@ -29,6 +29,12 @@ KEY_LOG = 'log'
 KEY_SEQ = 'seq'
 
 
+def debug(msg, level=2):
+    debug_level = 1
+    if level <= debug_level:
+        logging.info(msg)
+
+
 class TrackpadTestFunctionality:
     ''' Define the attributes of test functionality
 
@@ -177,8 +183,29 @@ class VerificationLog:
         if not result_flag:
             self.log['sequence'] = seq
 
+    def verify_button_dev_log(self, result_flag, button_dev, fail_msg,
+                              target_button, button_count, crit_button_count):
+        result_str = self.RESULT_STR[result_flag]
+        logging.info('        Verify button_dev: (%s)' % result_str)
+        logging.info('              Detected event sequence')
+        for e in button_dev:
+            logging.info('                      ' + str(e))
+
+        logging.info('              ' + 'Detected button count:')
+        msg = 'Count[%s] = %d, Criteria = %d' % (target_button, button_count,
+                                                 crit_button_count)
+        button_count_msg = '                  ' + msg
+        logging.info(button_count_msg)
+
+        if not result_flag:
+            logging.info('              Failed causes:')
+            for m in fail_msg:
+                logging.info('                  ' + m)
+        if not result_flag:
+            self.log['button_dev'] = fail_msg
+
     def verify_button_segment_log(self, result_flag, button_seg, fail_msg,
-                                fail_para):
+                                  fail_para):
         result_str = self.RESULT_STR[result_flag]
         logging.info('        Verify button_segment: (%s)' % result_str)
         logging.info('              Detected event sequence')

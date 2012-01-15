@@ -4,6 +4,7 @@
 
 ''' A module verifying whether X events satisfy specified criteria '''
 
+import copy
 import logging
 
 import common_util
@@ -12,7 +13,7 @@ import trackpad_util
 import Xevent
 
 from operator import le, ge, eq, lt, gt, ne, and_
-from trackpad_util import read_trackpad_test_conf
+from trackpad_util import read_trackpad_test_conf, debug
 
 
 # Declare NOP as a instance containing NOP related constants
@@ -37,6 +38,7 @@ class Xcheck:
         self.xevent = Xevent.XEvent(self.xbutton)
         self.op_dict = {'>=': ge, '<=': le, '==': eq, '=': eq, '>': gt,
                         '<': lt, '!=': ne, '~=': ne, 'not': ne, 'is not': ne}
+        self.motion_list = ['Motion', 'Motion_x', 'Motion_y']
 
     def _get_boot_time(self):
         ''' Get the system boot up time
@@ -58,13 +60,18 @@ class Xcheck:
         ''' Set all result flags to True before invoking check function '''
         self.motion_flag = True
         self.button_flag = True
+        self.button_dev_flag = True
         self.delay_flag = True
         self.wheel_speed_flag = True
         self.seq_flag = True
         self.button_seg_flag = True
-        self.result_flags = ('self.motion_flag', 'self.button_flag',
-                             'self.delay_flag', 'self.wheel_speed_flag',
-                             'self.seq_flag', 'self.button_seg_flag')
+        self.result_flags = ('self.motion_flag',
+                             'self.button_flag',
+                             'self.button_dev_flag',
+                             'self.delay_flag',
+                             'self.wheel_speed_flag',
+                             'self.seq_flag',
+                             'self.button_seg_flag')
 
     def _get_result(self):
         ''' Get the final result from various check flags '''
@@ -118,7 +125,8 @@ class Xcheck:
                 values[button_index] = button_value
         return (ops, values)
 
-    def _insert_fake_event(self, fake_xevent_value, fake_xevent_name=NOP.NOP):
+    def _insert_fake_event(self, criterion, fake_xevent_value,
+                           fake_xevent_name=NOP.NOP):
         ''' Insert a fake X event into the xevent_data
 
         A NOP event is not an X event. It is inserted to indicate the
@@ -126,7 +134,7 @@ class Xcheck:
         '''
         if fake_xevent_value == NOP.TWO_FINGER_TOUCH:
             dev_event_time = self.dev.get_two_finger_touch_time_list()
-        elif fake_xevent_value.startswith(NOP.DEVICE_MOUSE_CLICK):
+        elif (criterion == 'button_dev'):
             dev_event_time = self.dev.find_all_event_time(fake_xevent_value)
         else:
             dev_event_time = self.dev.get_finger_time(fake_xevent_value)
@@ -139,19 +147,20 @@ class Xcheck:
         # Insert fake_xevent_name event into xevent data
         begin_index = 0
         for devent_time in dev_event_time:
+            found_insert_index = False
+            fake_event = [fake_xevent_name, {'event': fake_xevent_value,
+                                             'time': devent_time}]
             for index, line in enumerate(self.xevent.xevent_data[begin_index:]):
-                xevent_name = line[0]
                 xevent_dict = line[1]
-                if xevent_name == fake_xevent_name:
-                    continue
                 xevent_time = float(xevent_dict.get('time', 0))
                 if xevent_time > devent_time:
                     insert_index = begin_index + index
-                    fake_event = (fake_xevent_name, fake_xevent_value,
-                                  devent_time)
                     self.xevent.xevent_data.insert(insert_index, fake_event)
                     begin_index = insert_index + 1
+                    found_insert_index = True
                     break
+            if not found_insert_index:
+                self.xevent.xevent_data.append(fake_event)
 
     def _insert_nop_per_criteria(self, criteria_method):
         ''' Insert NOP events based on criteria '''
@@ -161,8 +170,8 @@ class Xcheck:
                 if c == 'wheel_speed':
                     # There are a couple of times of two-finger scrolling.
                     # Insert NOP between them in self.xevent_seq
-                    self._insert_fake_event(NOP.TWO_FINGER_TOUCH)
-                elif c in ['sequence', 'button_segment']:
+                    self._insert_fake_event(c, NOP.TWO_FINGER_TOUCH)
+                elif c in ['sequence', 'button_segment', 'button_dev']:
                     crit_item = self.criteria[crit]
                     # crit_item could be either 'sequence' or 'button_segment'
                     #
@@ -179,11 +188,20 @@ class Xcheck:
                     # Example of criteria of 'button_segment' below:
                     #   ('NOP', ('Device Mouse Click Press', 'before', True))
                     #   ('NOP', ('Device Mouse Click Release', 'between', True))
+                    #
+                    # 'button_dev'
+                    # Insert NOP (device) event into self.xevent_seq if
+                    # 'NOP' is specified in button criteria.
+                    # Example of criteria of 'button_segment' below:
+                    #   ('NOP', ('Finger On', None))
+                    #   ('NOP', ('Device Mouse Click Release', True))
+                    #   ('NOP', ('Finger Off', None))
+                    #
                     for s in crit_item:
                         if s[0] == NOP.NOP:
                             _, value = s
                             dev_ev = value if c == 'sequence' else value[0]
-                            self._insert_fake_event(dev_ev)
+                            self._insert_fake_event(c, dev_ev)
 
     def _extract_func_name(self):
         ''' Extract functionality name plus subname from the gesture file name
@@ -321,6 +339,295 @@ class Xcheck:
 
         self.button_flag = state_flag and count_flag
         self.vlog.verify_button_log(self.button_flag, self.xevent.count_buttons)
+
+    def _verify_button_with_device_events(self, crit_button_dev):
+        ''' Verify if the observed button satisfy the criteria
+
+        E.g., the critieria for
+            'button_dev(physical_click)': (
+                ('NOP', ('Finger On', None)),
+                ('NOP', ('Device Mouse Click Press', True)),
+                ('NOP', ('Device Mouse Click Release', True)),
+                ('NOP', ('One Finger On', True)),
+                ('Motion', '<=', 0),
+                ('Button', 'Button Left'),
+                ('NOP', ('Finger Off', None)),
+            )
+
+            The rules above make sure that
+            (1) It only counts Button Left with a physical mouse click
+            (2) Exactly one finger is observed.
+            (3) Should match the number of physical mouse clicks.
+            (4) Ignore finger tracking.
+
+        Refer to configuration files (*.conf) for more details about the
+        criteria.
+        '''
+
+        def _reset_button_dev_motion(self, button_dev_events):
+            ''' Initialize button_dev motion events '''
+            for m in self.motion_list:
+                button_dev_events[m] = 0
+
+        def _init_button_dev_events(self, motion_values=True):
+            ''' Initialize button_dev_events '''
+            button_dev_events = {}
+            # Initialize 'NOP'
+            button_dev_events['NOP'] = {}
+
+            # Initialize 'Button'
+            button_dev_events['Button'] = {}
+            for b in self.button_labels:
+                button_dev_events['Button'][b] = 0
+
+            # Initialize 'Motion'
+            if motion_values:
+                for m in self.motion_list:
+                    button_dev_events[m] = 0
+            return button_dev_events
+
+        def _check_button_dev_criteria(self, button_dev_events,
+                                       crit_button_dev_events):
+            ''' Check if the button_dev_events conform to the criteria '''
+            fail_cause = []
+            # Check all observed NOP device events match the corresponding
+            # criteria
+            crit_dup = copy.deepcopy(crit_button_dev_events)
+            for e in button_dev_events['NOP']:
+                # check if this NOP event is specified in the criteria
+                if crit_button_dev_events['NOP'].has_key(e):
+                    this_ev = button_dev_events['NOP'][e]
+                    crit = crit_button_dev_events['NOP'][e]
+                    crit_dup['NOP'].pop(e)
+                    if this_ev == crit or crit == 'DONTCARE':
+                        continue
+                msg = 'NOP[%s]: %s' % (e, this_ev)
+                fail_cause.append(msg)
+
+            # Check if there are any NOP criteria not matched yet.
+            if crit_dup['NOP']:
+                for e in crit_dup['NOP']:
+                    if (crit_dup['NOP'][e] != 'DONTCARE' and
+                        crit_dup['NOP'][e]):
+                        msg = ('NOP[%s]: %s is missing' %
+                               (e, crit_dup['NOP'][e]))
+                        fail_cause.append(msg)
+
+            debug('    check Button: %s' % str(button_dev_events['Button']))
+            debug('    check Button crit: %s' %
+                  str(crit_button_dev_events['Button']))
+
+            # Check Button event
+            for b in self.button_labels:
+                crit_button_count = crit_button_dev_events['Button'][b]
+                button_count = button_dev_events['Button'][b]
+                if button_count != crit_button_count:
+                    msg = ('Count of Button[%s]: %d. It should be %d' %
+                           (b, button_count, crit_button_count))
+                    fail_cause.append(msg)
+
+            # Check Motion events
+            for m in self.motion_list:
+                if crit_button_dev_events.has_key(m):
+                    op_str, val = crit_button_dev_events[m]
+                    op = self.op_dict[op_str]
+                    if not op(button_dev_events[m], val):
+                        msg = '%s: %s' % (m, button_dev_events[m])
+                        fail_cause.append(msg)
+
+            result = (len(fail_cause) == 0)
+            return (result, fail_cause)
+
+        def _parse_button_dev_criteria(self):
+            ''' Parse the button_dev criteria '''
+            crit_button_dev_events = _init_button_dev_events(self,
+                                                      motion_values=False)
+
+            for c in crit_button_dev:
+                name = c[0]
+                if name == 'NOP':
+                    # E.g., ('NOP', ('Finger On', True)),
+                    #       ('NOP', ('Device Mouse Click Release', True)),
+                    name, (dev_event, value) = c
+                    crit_button_dev_events[name][dev_event] = value
+                elif name == 'Button':
+                    # E.g., ('Button', 'Button Left')
+                    # No need to specifiy the count in the criteria
+                    # Will count it based on the gesture file.
+                    name, button = c
+                    self.button_dev_target = button
+                    crit_button_dev_events[name][button] = 0
+                elif name.startswith('Motion'):
+                    # E.g., ('Motion', '<=', 0),
+                    name, op, value = c
+                    crit_button_dev_events[name] = (op, int(value))
+
+            return crit_button_dev_events
+
+        def _check_device_events(button_dev_events, crit_button_dev_events):
+            ''' Check if all NOP device events except Finger On/Off
+            are matched.
+
+            If any NOP device event does not match, the user had made
+            a wrong gesture. For example, a user may make tap-to-clicks
+            when physical clicks are expected.
+            '''
+            flag_match = True
+            debug('  button_dev_events: %s' % str(button_dev_events['NOP']))
+            debug('  crit_button_dev_events: %s' %
+                  str(crit_button_dev_events['NOP']))
+            if len(crit_button_dev_events['NOP']) > 0:
+                for ev in crit_button_dev_events['NOP']:
+                    if not ev.startswith('Finger'):
+                        if button_dev_events['NOP'].has_key(ev):
+                            flag_match = (button_dev_events['NOP'][ev] ==
+                                          crit_button_dev_events['NOP'][ev])
+                        else:
+                            flag_match = not crit_button_dev_events['NOP'][ev]
+                        if not flag_match:
+                            debug('  NOP[%s] violation' % ev)
+                            break
+            return flag_match
+
+        def _init_file_accu_motion(self, file_accu_motion):
+            for m in self.motion_list:
+                file_accu_motion[m] = 0
+
+        def _update_file_accu_motion(self, file_accu_motion, button_dev_events):
+            for m in self.motion_list:
+                file_accu_motion[m] += button_dev_events[m]
+
+        def _check_button_dev(self, dev_event, button_dev_events,
+                              crit_button_dev_events, file_accu_motion):
+            # Check if there is a 'Finger On' event observed.
+            if not button_dev_events['NOP'].has_key('Finger On'):
+                msg = '  Warning: There is no Finger On before %s.' % dev_event
+                logging.info(msg)
+                return
+
+            device_events_matched = _check_device_events(button_dev_events,
+                                                         crit_button_dev_events)
+            debug('  check device events: matched = %s' %
+                  str(device_events_matched))
+            if device_events_matched:
+                result = _check_button_dev_criteria(self, button_dev_events,
+                                                    crit_button_dev_events)
+                debug('  *** result: %s' % str(result))
+                result_flag, fail_cause = result
+                self.fail_causes += fail_cause
+                if self.button_dev_flag is None:
+                    self.button_dev_flag = result_flag
+                else:
+                    self.button_dev_flag &= result_flag
+                _update_file_accu_motion(self, file_accu_motion,
+                                         button_dev_events)
+            else:
+                msg = '  check device events: not matched. Skip.'
+                logging.info(msg)
+
+        # Some initialization
+        self.button_dev_flag = None
+        self.fail_causes = []
+        button_dev_events = _init_button_dev_events(self)
+        state_button = {}
+        for b in self.button_labels:
+            state_button[b] = None
+        state_click = None
+
+        file_crit_button_count = 0
+        file_button_count = 0
+        file_accu_motion = {}
+        _init_file_accu_motion(self, file_accu_motion)
+
+        # Parse the criteria into a dictionary
+        crit_button_dev_events = _parse_button_dev_criteria(self)
+        target_button = self.button_dev_target
+
+        # Match the xevent sequence against the criteria dictionary
+        # For a normal Button Left resulting from a mouse click:
+        #       (1) Finger On
+        #       (2) One Finger On
+        #       (3) Mouse Click Press
+        #       (4) ButtonPress
+        #       (5) Mouse Click Release
+        #       (6) ButtonRelease
+        #        .  (Optional: repeat Steps (3) ~ (6))
+        #       (7) Finger Off
+        xevent_seq = self.xevent.xevent_seq
+        for ev in xevent_seq:
+            name = ev[0]
+            if name == 'ButtonPress':
+                # E.g., ('ButtonPress', 'Button Left', 443854733)
+                name, button, timestamp = ev
+                if state_button[button] in ['ButtonRelease', None]:
+                    state_button[button] = 'ButtonPress'
+                    button_dev_events['Button'][button] += 0.5
+                    debug('  %s(%s): state=%s count=%s '%
+                          (name, button, state_button[button],
+                           button_dev_events['Button'][button]))
+
+            elif name == 'ButtonRelease':
+                # E.g, ('ButtonRelease', 'Button Left', 443854884)
+                name, button_released, timestamp = ev
+                if state_button[button] == 'ButtonPress':
+                    state_button[button] = 'ButtonRelease'
+                    button_dev_events['Button'][button_released] += 0.5
+                    debug('  %s(%s): state=%s count=%s '%
+                          (name, button, state_button[button],
+                           button_dev_events['Button'][button]))
+
+            elif name == 'NOP':
+                # E.g., ('NOP', 'Device Mouse Click Press')
+                #       ('NOP', 'Device Mouse Click Release')
+                name, dev_event, timestamp = ev
+                button_dev_events[name][dev_event] = True
+
+                # When finger off, check if all NOP device criteria are matched.
+                if dev_event == 'Finger Off':
+                    # Check button_dev criteria
+                    _check_button_dev(self, dev_event, button_dev_events,
+                                      crit_button_dev_events, file_accu_motion)
+                    # Accumulate file-wise button counts
+                    file_button_count += \
+                            button_dev_events['Button'][target_button]
+                    file_crit_button_count += \
+                            crit_button_dev_events['Button'][target_button]
+                    # Reset
+                    button_dev_events = _init_button_dev_events(self)
+                    crit_button_dev_events = _parse_button_dev_criteria(self)
+                    _reset_button_dev_motion(self, button_dev_events)
+
+                elif dev_event == 'Device Mouse Click Press':
+                    # _reset_button_dev_motion(self, button_dev_events)
+                    if state_click in ['Click Release', None]:
+                        state_click = 'Click Press'
+                        crit_button_dev_events['Button'][target_button] += 0.5
+                        debug('  %s: target_button count = %s' % (dev_event,
+                              crit_button_dev_events['Button'][target_button]))
+
+                elif dev_event == 'Device Mouse Click Release':
+                    if state_click == 'Click Press':
+                        state_click = 'Click Release'
+                        crit_button_dev_events['Button'][target_button] += 0.5
+                        debug('  %s: target_button count = %s' % (dev_event,
+                              crit_button_dev_events['Button'][target_button]))
+
+            elif name == 'Motion':
+                # E.g., ('Motion', (655.0, ('Motion_x', 605), ('Motion_y', 20)),
+                #                  [443855715, 443858536])
+                (name, (motion_val, (_, motion_x_val), (_, motion_y_val)),
+                 timestamp) = ev
+                button_dev_events['Motion'] += int(motion_val)
+                button_dev_events['Motion_x'] += int(motion_x_val)
+                button_dev_events['Motion_y'] += int(motion_y_val)
+
+        debug('  *** vlog: button_dev_flag = %s' % self.button_dev_flag)
+        self.vlog.verify_button_dev_log(self.button_dev_flag,
+                                        xevent_seq,
+                                        self.fail_causes,
+                                        target_button,
+                                        file_button_count,
+                                        file_crit_button_count)
 
     def _verify_select_delay(self, crit_delay):
         ''' Verify if the delay time satisfy the criteria
@@ -767,7 +1074,6 @@ class Xcheck:
         self.button_segment_dev_event_list = ['Device Mouse Click Press',
                                               'Device Mouse Click Release']
         self.where_list = ['before', 'between']
-        self.motion_list = ['Motion', 'Motion_x', 'Motion_y']
         button_seg_events = _init_button_seg_events(self)
 
         # Parse the criteria into a dictionary
@@ -831,6 +1137,7 @@ class Xcheck:
         # A dictionary mapping criterion to its verification method
         criteria_method = {'total_movement': self._verify_motion,
                            'button': self._verify_button,
+                           'button_dev': self._verify_button_with_device_events,
                            'delay': self._verify_select_delay,
                            'wheel_speed': self._verify_wheel_speed,
                            'sequence': self._verify_select_sequence,
@@ -842,6 +1149,10 @@ class Xcheck:
 
         # Insert NOP based on criteria
         self._insert_nop_per_criteria(criteria_method)
+
+        debug('    xevent_data:', level=1)
+        for x in self.xevent.xevent_data:
+            debug('          %s' % x, level=1)
 
         # Parse X button and motion events and aggregate the results.
         self.xevent.parse_button_and_motion()

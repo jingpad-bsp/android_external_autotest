@@ -18,4 +18,10 @@ class NOP:
     DEVICE_MOUSE_CLICK_PRESS = 'Device Mouse Click Press'
     DEVICE_MOUSE_CLICK_RELEASE = 'Device Mouse Click Release'
     TWO_FINGER_TOUCH = 'Two Finger Touch'
+    FINGER_ON = 'Finger On'
+    FINGER_OFF = 'Finger Off'
+    ONE_FINGER_ON = 'One Finger On'
+    TWO_FINGERS_ON = 'Two Fingers On'
+    THREE_FINGERS_ON = 'Three Fingers On'
+    FOUR_FINGERS_ON = 'Four Fingers On'
     pass

@@ -153,6 +153,12 @@ class TrackpadDevice:
             NOP.FINGER3_LIFTED: finger_off_MTB % self.BTN_TOOL_TRIPLETAP,
             NOP.DEVICE_MOUSE_CLICK_PRESS: self.mouse_click_press,
             NOP.DEVICE_MOUSE_CLICK_RELEASE: self.mouse_click_release,
+            NOP.FINGER_ON: self.finger_on,
+            NOP.FINGER_OFF: self.finger_off,
+            NOP.ONE_FINGER_ON: self.one_finger_on,
+            NOP.TWO_FINGERS_ON: self.two_fingers_on,
+            NOP.THREE_FINGERS_ON: self.three_fingers_on,
+            NOP.FOUR_FINGERS_ON: self.four_fingers_on,
         }
 
     def _extract_playback_time(self, line):

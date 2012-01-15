@@ -8,10 +8,10 @@ import logging
 import math
 import os
 import re
-import time
 
 import constants
 import trackpad_util
+
 from common_util import simple_system_output
 
 
@@ -73,11 +73,11 @@ class XButton:
             return self.button_labels
 
         DEFAULT_BUTTON_LABELS = (
-                'Button Left', 'Button Middle', 'Button Right',
-                'Button Wheel Up', 'Button Wheel Down',
-                'Button Horiz Wheel Left', 'Button Horiz Wheel Right',
-                'Button 0', 'Button 1', 'Button 2', 'Button 3',
-                'Button 4', 'Button 5', 'Button 6', 'Button 7')
+            'Button Left', 'Button Middle', 'Button Right',
+            'Button Wheel Up', 'Button Wheel Down',
+            'Button Horiz Wheel Left', 'Button Horiz Wheel Right',
+            'Button 0', 'Button 1', 'Button 2', 'Button 3',
+            'Button 4', 'Button 5', 'Button 6', 'Button 7')
 
         if self.trackpad_dev_id is not None:
             xinput_dev_cmd = self.xinput_dev_cmd % self.trackpad_dev_id
@@ -86,8 +86,7 @@ class XButton:
                                  if line.lstrip().startswith('Button labels:')]
             strip_str = button_labels_str[0].lstrip().lstrip('Button labels:')
             self.button_labels = tuple(['Button ' + b.strip() for b in
-                                        strip_str.split('Button')
-                                        if len(b) > 0])
+                                        strip_str.split('Button') if b])
         else:
             logging.warn('Cannot find trackpad device in xinput. '
                          'Using default Button Labels instead.')
@@ -133,7 +132,7 @@ class XButton:
     def init_button_struct_with_time(self, value, time):
         ''' Initialize a button dictionary with time to the given values. '''
         return dict(map(lambda b: (self.get_value(b), [value, list(time)]),
-                                  self.button_labels))
+                        self.button_labels))
 
     def is_button_wheel(self, button_label):
         '''  Is this button a wheel button? '''
@@ -158,6 +157,12 @@ class XEvent:
             'Button_time'   : '{5}',
             'Button_tv'     : '{7}',
         }
+        self.motion_trace_before = trackpad_util.read_trackpad_test_conf(
+            'motion_trace_before', '.')
+        self.motion_trace_after = trackpad_util.read_trackpad_test_conf(
+            'motion_trace_after', '.')
+        self.LONG_MOTIOIN_TRACE = trackpad_util.read_trackpad_test_conf(
+            'LONG_MOTION_TRACE', '.')
 
     def _extract_prop(self, event_name, line, prop_key):
         ''' Extract property from X events '''
@@ -206,7 +211,7 @@ class XEvent:
             ['ButtonPress', {'coord': (150,200), 'button': 5}, 'time': ...]
         '''
 
-        if len(xevent_str) == 0:
+        if not xevent_str:
             logging.warn('    No X events were captured.')
             return False
 
@@ -217,7 +222,7 @@ class XEvent:
             if line is None:
                 break
             line_words = line.split()
-            if len(line_words) == 0:
+            if not line_words:
                 continue
             event_name = line_words[0]
 
@@ -238,7 +243,7 @@ class XEvent:
                 prop_button = self._extract_prop('Button_button', line2,
                                                  'button')
                 if (prop_coord is not None and prop_button is not None
-                                           and prop_time is not None):
+                    and prop_time is not None):
                     event_dict = dict([prop_coord, prop_button, prop_time])
                     self.xevent_data.append([event_name, event_dict])
         return True
@@ -268,10 +273,190 @@ class XEvent:
             ''' Reset time interval '''
             return [begin_time, None]
 
+        def _reset_coord():
+            return [None, None]
+
         def _add_seg_move(seg_move, move):
             ''' Accumulate seg_move in x+y, x, and y respectively '''
             list_add = lambda list1, list2: map(sum, zip(list1, list2))
             return [seg_move[0] + move[0], list_add(seg_move[1], move[1])]
+
+        def _is_finger_off(line):
+            ''' Is finger off the trackpad? '''
+            ev_name, ev_dict = line
+            if isinstance(ev_dict, dict) and ev_dict.has_key('event'):
+                return ev_dict['event'] == 'Finger Off'
+
+        def _reset_motion_trace(self):
+            ''' Reset motion_trace and its state '''
+            self.motion_trace_state = None
+            self.motion_trace = []
+            self.motion_trace_len = self.LONG_MOTIOIN_TRACE
+
+        def _extract_motion_trace_state(self, line):
+            ''' Extract motion_trace_state which determines motion trace
+            length and buffer strategy.
+
+            For typical physical clicks:
+            ----------------------------
+              Finger On
+
+                  optional Motion events        Use trace: motion_trace_before
+                Device Mouse Click Press
+                  optional Motion events
+                ButtonPress
+                  optional Motion events
+                Device Mouse Click Release
+                  optional Motion events
+                ButtonRelease
+                  optional Motion events        Use trace: motion_trace_after
+
+                  optional Motion events        Use trace: motion_trace_before
+                Device Mouse Click Press
+                  optional Motion events
+                ButtonPress
+                  optional Motion events
+                Device Mouse Click Release
+                  optional Motion events
+                ButtonRelease
+                  optional Motion events        Use trace: motion_trace_after
+
+                  ...
+
+              Finger Off
+
+            (1) state == 'Finger On':
+                Set trace length: LONG_MOTIOIN_TRACE
+                Note: its next state could be either 'Device Mouse Click Press'
+                      or 'ButtonPress'.
+                motion_trace_state = state
+
+            (2) state == 'Device Mouse Click Press':
+                Set trace length: motion_trace_before
+                Motion report: Use only the motion_trace_before portion in
+                               motion_trace.
+                Reason: Users may move cursor around and, without finger
+                        leaving trackpad, make a physical click. We do not want
+                        to take into account the cursor movement during
+                        finger tracking.
+                Set trace length: LONG_MOTIOIN_TRACE
+                motion_trace_state = state
+
+            (3) state == 'ButtonPress':
+                Motion report: Use all motion events in motion_trace
+                               since it is in the middle of a physical click.
+                Note: its previoius state could be either 'Device Mouse Click
+                      Press' or 'Finger On'
+                Set trace length: LONG_MOTIOIN_TRACE
+                motion_trace_state = state
+
+            (4) state == 'Device Mouse Click Release':
+                (No need to handle 'Device Mouse Click Release' explicitly)
+
+            (5) state == 'ButtonRelease':
+                Motion report: Use all motion events in motion_trace
+                               since it is in the middle of a physical click.
+                Set trace length: motion_trace_after
+                Reason: After releasing the physical click, without finger
+                        leaving trackpad, users may move cursor around. So we
+                        only want to collect the motion events afterwards in
+                        limited time.
+                Note: After motion_trace_after has been collected.
+                      Append a motion report. And then turn to using
+                      "Set trace length: LONG_MOTIOIN_TRACE"
+                                          for next possible clicks or
+                                          tap-to-clicks.
+                motion_trace_state = state
+
+            (6) state == 'Finger Off':
+                if self.motion_trace_state == 'ButtonRelease':
+                    Motion report: Use motion events in the motion_trace
+                                   for up to motion_trace_after elements.
+                Set trace length: LONG_MOTIOIN_TRACE
+                motion_trace_state = state
+
+            (7) event_name == 'Motion':
+                if (self.motion_trace_state == 'ButtonRelease' and
+                    len(self.motion_trace) >= self.motion_trace_len - 1):
+                    _append_motion(self, event_coord, event_time)
+                    self.motion_trace_len = self.LONG_MOTIOIN_TRACE
+                    self.motion_trace_state = 'ButtonRelease.TraceAfterDone'
+                    Note: Next state could be either 'Device Mouse Click Press'
+                          or 'Finger Off'
+            '''
+            ev_name, ev_dict = line
+            state = None
+            if ev_name in ['ButtonPress', 'ButtonRelease', 'MotionNotify']:
+                state = ev_name
+            elif (ev_name == 'NOP' and
+                  ev_dict['event'] in ['Finger On', 'Finger Off',
+                                       'Device Mouse Click Press']):
+                state = ev_dict['event']
+            return state
+
+        def _insert_motion_trace_entry(self, event_coord, event_time):
+            # Insert an entry into motion_trace
+            mtrace_dict = {'coord': event_coord, 'time': event_time}
+            self.motion_trace.append(mtrace_dict)
+
+            if len(self.motion_trace) > self.motion_trace_len:
+                self.motion_trace.pop(0)
+
+        def _reduce_motion_trace(self, target_trace_len):
+            # Reduce motion_trace according to target_trace_len
+            trace_len = len(self.motion_trace)
+            if trace_len > target_trace_len:
+                begin_index = trace_len - target_trace_len
+                self.motion_trace = self.motion_trace[begin_index:]
+
+        def _add_motion_trace(self, event_coord, event_time, line):
+            ''' Add the new coordinate into motion_trace.
+
+            If the trace lenght exceeds a predefined length, pop off the
+            oldest entry from the trace buffer.
+
+            Refer to _extract_motion_trace_state() for details about
+            the operations of motion_trace.
+            '''
+            state = _extract_motion_trace_state(self, line)
+
+            # Determine motion trace length based on motion trace state
+            if state == 'Finger On':
+                self.motion_trace_len = self.LONG_MOTIOIN_TRACE
+                self.motion_trace_state = state
+
+            elif state == 'Device Mouse Click Press':
+                _reduce_motion_trace(self, self.motion_trace_before)
+                _append_motion(self, event_coord, event_time)
+                self.motion_trace_len = self.LONG_MOTIOIN_TRACE
+                self.motion_trace_state = state
+
+            elif state == 'ButtonPress':
+                _insert_motion_trace_entry(self, event_coord, event_time)
+                _append_motion(self, event_coord, event_time)
+                self.motion_trace_len = self.LONG_MOTIOIN_TRACE
+                self.motion_trace_state = state
+
+            elif state == 'ButtonRelease':
+                _insert_motion_trace_entry(self, event_coord, event_time)
+                _append_motion(self, event_coord, event_time)
+                self.motion_trace_len = self.motion_trace_after
+                self.motion_trace_state = state
+
+            elif state == 'Finger Off':
+                # if the state is not 'ButtonRelease.TraceAfterDone' yet
+                if self.motion_trace_state == 'ButtonRelease':
+                    _append_motion(self, event_coord, event_time)
+                self.motion_trace_len = self.LONG_MOTIOIN_TRACE
+                self.motion_trace_state = state
+
+            elif state == 'MotionNotify':
+                _insert_motion_trace_entry(self, event_coord, event_time)
+                if (self.motion_trace_state == 'ButtonRelease' and
+                    len(self.motion_trace) >= self.motion_trace_len - 1):
+                    _append_motion(self, event_coord, event_time)
+                    self.motion_trace_len = self.LONG_MOTIOIN_TRACE
+                    self.motion_trace_state = 'ButtonRelease.TraceAfterDone'
 
         def _append_event(event):
             ''' Append the event into xevent_seq '''
@@ -279,14 +464,45 @@ class XEvent:
             indent = ' ' * 14
             logging.info(indent + str(event))
 
-        def _append_motion(pre_event_name, seg_move, seg_move_time):
-            ''' Append Motion events '''
+        def _append_motion(self, event_coord, event_time):
+            ''' Append Motion events to xevent_seq '''
+            if not self.motion_trace:
+                return
+
+            # Compute the accumulated movement and the time span
+            # in motion_trace buffer.
+            pre_xy = _reset_coord()
+            seg_move = _reset_seg_move()
+            seg_time_span = [None, None]
+            for m in self.motion_trace:
+                cur_xy = m['coord']
+                cur_time = m['time']
+                if pre_xy == [None, None]:
+                    pre_xy = cur_xy
+                    seg_time_span = [cur_time, cur_time]
+                else:
+                    move = self._calc_distance(*(pre_xy + cur_xy))
+                    seg_move = _add_seg_move(seg_move, move)
+                    pre_xy = cur_xy
+                    seg_time_span[1] = cur_time
+
+            # Append the motion report data to xevent_seq
+            # The format of reported motion data looks like:
+            #   ('Motion', motion_data, time_span)
+            #
+            #   E.g.,
+            #   ('Motion', (2.0, ('Motion_x', 2), ('Motion_y', 0)),
+            #              [351613962, 351614138])
             (move_xy, (move_x, move_y)) = seg_move
             if move_x > 0 or move_y > 0:
-                event = ('Motion', (move_xy, ('Motion_x', move_x),
-                                             ('Motion_y', move_y)),
-                                   seg_move_time)
+                move_val = (move_xy, ('Motion_x', move_x), ('Motion_y', move_y))
+                event = ('Motion', move_val, seg_time_span)
                 _append_event(event)
+
+            # Clear the motion_trace buffer and keep the last entry
+            last_entry = self.motion_trace.pop()
+            _reset_motion_trace(self)
+            self.motion_trace.append(last_entry)
 
         def _append_button(event_name, button_label, event_time):
             ''' Append non-wheel Buttons
@@ -323,23 +539,26 @@ class XEvent:
         self.count_buttons_release = self.xbutton.init_button_struct(0)
         self.button_states = self.xbutton.init_button_struct('ButtonRelease')
 
-        pre_xy = [None, None]
+        pre_xy = _reset_coord()
         button_label = pre_button_label = None
-        event_name = pre_event_name = None
+        event_name = None
         event_button = pre_event_button = None
         self.xevent_seq = []
-        seg_move = _reset_seg_move()
         seg_move_time = _reset_time_interval()
         button_time = _reset_time_interval()
         self.sum_move = 0
+        _reset_motion_trace(self)
 
         indent = ' ' * 8
         precede_state = {'ButtonPress': 'ButtonRelease',
-                         'ButtonRelease': 'ButtonPress',}
+                         'ButtonRelease': 'ButtonPress'}
         logging.info(indent + 'X events detected:')
 
         for line in self.xevent_data:
+            flag_finger_off = _is_finger_off(line)
             event_name = line[0]
+            event_coord = _reset_coord()
+            event_time = None
             if event_name != NOP.NOP:
                 event_dict = line[1]
                 if event_dict.has_key('coord'):
@@ -349,11 +568,15 @@ class XEvent:
                 if event_dict.has_key('time'):
                     event_time = eval(event_dict['time'])
 
+            # _extract_motion_trace_state(self, line)
+            _add_motion_trace(self, event_coord, event_time, line)
+
             if event_name == 'EnterNotify':
                 if pre_xy == [None, None]:
                     pre_xy = event_coord
                     seg_move_time[0] = event_time
                 self.seg_count_buttons = self.xbutton.init_button_struct(0)
+
                 if seg_move_time[0] is None:
                     seg_move_time = [event_time, event_time]
                 else:
@@ -366,16 +589,14 @@ class XEvent:
                     cur_xy = event_coord
                     move = self._calc_distance(*(pre_xy + cur_xy))
                     pre_xy = cur_xy
-                    seg_move = _add_seg_move(seg_move, move)
                     self.sum_move += move[0]
+
                 if seg_move_time[0] is None:
                     seg_move_time = [event_time, event_time]
                 else:
                     seg_move_time[1] = event_time
 
             elif event_name.startswith('Button'):
-                _append_motion(pre_event_name, seg_move, seg_move_time)
-                seg_move = _reset_seg_move()
                 seg_move_time = _reset_time_interval()
                 button_label = self.xbutton.get_label(event_button)
                 pre_button_state = self.button_states[event_button]
@@ -395,7 +616,6 @@ class XEvent:
 
                 # A ButtonRelease should precede ButtonPress
                 # A ButtonPress should precede ButtonRelease
-                precede_flag = pre_button_state == precede_state[event_name]
                 if event_name == 'ButtonPress':
                     self.count_buttons_press[event_button] += 1
                 elif event_name == 'ButtonRelease':
@@ -404,22 +624,23 @@ class XEvent:
                 self.seg_count_buttons[event_button] += 0.5
                 pre_button_label = button_label
                 pre_event_button = event_button
+
             elif event_name == NOP.NOP:
                 _append_button_wheel(pre_button_label, pre_event_button,
                                      button_time)
                 pre_button_label = None
                 self.seg_count_buttons = self.xbutton.init_button_struct(0)
                 button_time = _reset_time_interval()
-                _append_motion(pre_event_name, seg_move, seg_move_time)
-                seg_move = _reset_seg_move()
                 seg_move_time = _reset_time_interval()
-                _append_NOP(NOP.NOP, line[1], line[2])
-            pre_event_name = event_name
+                _append_NOP(NOP.NOP, line[1]['event'], line[1]['time'])
+                if flag_finger_off:
+                    pre_xy = _reset_coord()
+                    _reset_motion_trace(self)
 
         # Append aggregated button wheel events and motion events
         _append_button_wheel(button_label, event_button, button_time)
-        _append_motion(pre_event_name, seg_move, seg_move_time)
+        _append_motion(self, event_coord, event_time)
 
         # Convert dictionary to tuple
         self.button_states = tuple(self.button_states.values())
-        self.count_buttons= tuple(self.count_buttons.values())
+        self.count_buttons = tuple(self.count_buttons.values())
