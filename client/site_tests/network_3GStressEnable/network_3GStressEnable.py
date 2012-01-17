@@ -25,7 +25,7 @@ class network_3GStressEnable(test.test):
             if err._dbus_error_name in network_3GStressEnable.okerrors:
                 return
             else:
-                raise error.TestFailed(err)
+                raise error.TestFail(err)
 
     def test(self, settle):
         self.SetPowered(1)
