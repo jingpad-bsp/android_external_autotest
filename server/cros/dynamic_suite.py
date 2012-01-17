@@ -190,8 +190,20 @@ class Suite(object):
     """
 
 
-    @classmethod
-    def create_from_name(cls, name, autotest_dir, afe=None, tko=None):
+    @staticmethod
+    def create_fs_getter(autotest_dir):
+        """
+        @param autotest_dir: the place to find autotests.
+        @return a FileSystemGetter instance that looks under |autotest_dir|.
+        """
+        # currently hard-coded places to look for tests.
+        subpaths = ['server/site_tests', 'client/site_tests']
+        directories = [os.path.join(autotest_dir, p) for p in subpaths]
+        return control_file_getter.FileSystemGetter(directories)
+
+
+    @staticmethod
+    def create_from_name(name, autotest_dir, afe=None, tko=None):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -227,10 +239,7 @@ class Suite(object):
         self._tko = tko or frontend.TKO(debug=False)
         self._jobs = []
 
-        # currently hard-coded places to look for tests.
-        subpaths = [ 'server/site_tests', 'client/site_tests']
-        directories = [ os.path.join(autotest_dir, p) for p in subpaths ]
-        self._cf_getter = control_file_getter.FileSystemGetter(directories)
+        self._cf_getter = Suite.create_fs_getter(autotest_dir)
 
         self._tests = Suite.find_and_parse_tests(self._cf_getter,
                                                  self._predicate,
@@ -385,8 +394,8 @@ class Suite(object):
         return results
 
 
-    @classmethod
-    def find_and_parse_tests(cls, cf_getter, predicate, add_experimental=False):
+    @staticmethod
+    def find_and_parse_tests(cf_getter, predicate, add_experimental=False):
         """
         Function to scan through all tests and find eligible tests.
 

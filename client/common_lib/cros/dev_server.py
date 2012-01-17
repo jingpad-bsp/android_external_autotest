@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import httplib
-import logging
 import urllib2
 
 from autotest_lib.client.common_lib import global_config
@@ -69,7 +68,6 @@ class DevServer(object):
             if e.code == httplib.INTERNAL_SERVER_ERROR:
                 return False
             else:
-                logging.debug(e)
                 raise
 
 
@@ -93,7 +91,6 @@ class DevServer(object):
             if e.code == httplib.INTERNAL_SERVER_ERROR:
                 return None
             else:
-                logging.debug(e)
                 raise
 
 
@@ -118,5 +115,4 @@ class DevServer(object):
             if e.code == httplib.INTERNAL_SERVER_ERROR:
                 return None
             else:
-                logging.debug(e)
                 raise

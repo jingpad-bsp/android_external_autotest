@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 new_globals = globals()
-new_globals['image_name'] = 'x86-mario-r17/R17-1412.33.0-a1-b29'
+new_globals['image_name'] = 'x86-mario-r17/R17-1412.144.0-a1-b115'
 new_globals['board'] = 'netbook_MARIO_MP'
-new_globals['SKIP_IMAGE'] = True
+new_globals['SKIP_IMAGE'] = False
 
 import os
 

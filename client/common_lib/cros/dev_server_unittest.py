@@ -23,16 +23,6 @@ class DevServerTest(mox.MoxTestBase):
     """
 
     _HOST = 'http://nothing'
-    _500 = urllib2.HTTPError(url='',
-                             code=httplib.INTERNAL_SERVER_ERROR,
-                             msg='',
-                             hdrs=None,
-                             fp=None)
-    _403 = urllib2.HTTPError(url='',
-                             code=httplib.FORBIDDEN,
-                             msg='',
-                             hdrs=None,
-                             fp=None)
 
     def setUp(self):
         super(DevServerTest, self).setUp()
@@ -41,12 +31,22 @@ class DevServerTest(mox.MoxTestBase):
 
     def _returnHttpServerError(self):
         self.mox.StubOutWithMock(urllib2, 'urlopen')
-        urllib2.urlopen(mox.IgnoreArg()).AndRaise(self._500)
+        500 = urllib2.HTTPError(url='',
+                                code=httplib.INTERNAL_SERVER_ERROR,
+                                msg='',
+                                hdrs=None,
+                                fp=None)
+        urllib2.urlopen(mox.IgnoreArg()).AndRaise(500)
 
 
     def _returnHttpForbidden(self):
         self.mox.StubOutWithMock(urllib2, 'urlopen')
-        urllib2.urlopen(mox.IgnoreArg()).AndRaise(self._403)
+        403 = urllib2.HTTPError(url='',
+                                code=httplib.FORBIDDEN,
+                                msg='',
+                                hdrs=None,
+                                fp=None)
+        urllib2.urlopen(mox.IgnoreArg()).AndRaise(403)
 
 
     def testSuccessfulTriggerDownload(self):
@@ -108,7 +108,7 @@ class DevServerTest(mox.MoxTestBase):
 
 
     def testGetControlFile(self):
-        """Should successfully list control files from the dev server."""
+        """Should successfully get a control file from the dev server."""
         name = 'fake/build'
         file = 'file/one'
         contents = 'Multi-line\nControl File Contents\n'

@@ -371,6 +371,21 @@ class SuiteTest(mox.MoxTestBase):
             self.tko.get_status_counts(job=job.id).AndReturn(job.statuses)
 
 
+    def _createSuiteWithMockedTestsAndControlFiles(self):
+        """Create a Suite, using mocked tests and control file contents.
+
+        @return Suite object, after mocking out behavior needed to create it.
+        """
+        self.mox.StubOutWithMock(dynamic_suite.Suite, 'create_fs_getter')
+        dynamic_suite.Suite.create_fs_getter(self.tmpdir).AndReturn(self.getter)
+        self.expect_control_file_parsing()
+        self.mox.ReplayAll()
+        suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
+                                                     self.afe, self.tko)
+        self.mox.ResetAll()
+        return suite
+
+
     def testWaitForResults(self):
         """Should gather status and return records for job summaries."""
         class FakeStatus(object):
@@ -401,6 +416,7 @@ class SuiteTest(mox.MoxTestBase):
                         self.test_name == name and
                         self.reason == reason)
 
+        suite = self._createSuiteWithMockedTestsAndControlFiles()
 
         jobs = [FakeJob(0, [FakeStatus('GOOD', 'T0', ''),
                             FakeStatus('GOOD', 'T1', '')]),
@@ -422,8 +438,6 @@ class SuiteTest(mox.MoxTestBase):
         time.sleep(5)
         self.mox.ReplayAll()
 
-        suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
-                                                     self.afe, self.tko)
         suite._jobs = list(jobs)
         results = suite.wait_for_results()
         for job in jobs:
@@ -433,16 +447,15 @@ class SuiteTest(mox.MoxTestBase):
 
     def testRunAndWaitSuccess(self):
         """Should record successful results."""
-        results = [('GOOD', None, 'good'), ('FAIL', None, 'bad', 'reason')]
+        suite = self._createSuiteWithMockedTestsAndControlFiles()
 
+        results = [('GOOD', None, 'good'), ('FAIL', None, 'bad', 'reason')]
         recorder = self.mox.CreateMock(base_job.base_job)
         recorder.record('START', mox.IgnoreArg(), self._TAG)
         for result in results:
             recorder.record(*result).InAnyOrder('results')
         recorder.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
 
-        suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
-                                                     self.afe, self.tko)
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(self._NAME, True)
         self.mox.StubOutWithMock(suite, 'wait_for_results')
@@ -454,12 +467,12 @@ class SuiteTest(mox.MoxTestBase):
 
     def testRunAndWaitFailure(self):
         """Should record failure to gather results."""
+        suite = self._createSuiteWithMockedTestsAndControlFiles()
+
         recorder = self.mox.CreateMock(base_job.base_job)
         recorder.record('START', mox.IgnoreArg(), self._TAG)
         recorder.record('END ERROR', None, None, mox.StrContains('waiting'))
 
-        suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
-                                                     self.afe, self.tko)
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(self._NAME, True)
         self.mox.StubOutWithMock(suite, 'wait_for_results')
@@ -470,13 +483,13 @@ class SuiteTest(mox.MoxTestBase):
 
 
     def testRunAndWaitScheduleFailure(self):
-        """Should record failure to gather results."""
+        """Should record failure to schedule jobs."""
+        suite = self._createSuiteWithMockedTestsAndControlFiles()
+
         recorder = self.mox.CreateMock(base_job.base_job)
         recorder.record('START', mox.IgnoreArg(), self._TAG)
         recorder.record('END ERROR', None, None, mox.StrContains('scheduling'))
 
-        suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
-                                                     self.afe, self.tko)
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(self._NAME, True).AndRaise(Exception())
         self.mox.ReplayAll()
