@@ -20,7 +20,7 @@ def _CreateBaseStation(c):
     adapter = c['gpib_adapter']
     s = scpi.Scpi(
         prologix_scpi_driver.PrologixScpiDriver(
-            hostname=adapter['ip_address'],
+            hostname=adapter['address'],
             port=adapter['ip_port'],
             gpib_address=adapter['gpib_address']))
     return base_station_8960.BaseStation8960(s)

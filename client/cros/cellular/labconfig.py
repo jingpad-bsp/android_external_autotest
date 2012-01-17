@@ -118,12 +118,7 @@ class Configuration(object):
     def get_rf_switch_port(self, machine=None):
         """Get the RF Switch Port for the specified machine."""
         dut = self._get_dut(machine)
-
-        rf_switch = self.cell.get('rf_switch', None)
-        if rf_switch:
-            return rf_switch['ports'].index(dut['name'])
-        else:
-            return None
+        return dut['rf_switch_port']
 
     def get_pickle(self):
         return pickle.dumps(self)

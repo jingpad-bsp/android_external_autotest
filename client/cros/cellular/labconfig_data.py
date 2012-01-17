@@ -63,7 +63,7 @@ CELLS['cam'] = {
     "basestations": [
         MakeDefault8960({
             "gpib_adapter": {
-                "ip_address": "172.31.206.171",
+                "address": "172.31.206.171",
                 },
             })
         ],
@@ -72,11 +72,13 @@ CELLS['cam'] = {
             "address": "172.31.206.145",
             "name": "ad-hoc-usb",
             "technologies": GOBI_2000_TECHNOLOGIES,
+            "rf_switch_port": 3,
             },
         {
             "address": "172.31.206.146",
             "name": "y3300",
             "technologies": GENERIC_GSM_TECHNOLOGIES,
+            "rf_switch_port": 0,
             }
         ],
     # Routerstation pro for runing iperf
@@ -93,9 +95,6 @@ CELLS['cam'] = {
     "rf_switch": {
         "type": "ether_io",
         "address":  "172.31.206.172",
-        # Ports maps from port index to name as specified in
-        # clients.name
-        "ports": ['y3300', None, None, 'ad-hoc-usb'],
         }
     }
 
@@ -104,18 +103,46 @@ CELLS['mtv'] = {
     "basestations": [
         MakeDefault8960({
             "gpib_adapter": {
-              "ip_address": "172.22.50.118",
+              "name": "gpib-mtv",
+              "address": "172.22.50.118",
+              "ethernet_mac": "00:21:69:01:06:46",
               }
             })
         ],
 
     "duts": [
         {
-            "address": "172.22.50.132",
+            "address": "172.22.50.133",
+            "ethernet_mac": "00:00:00:00:08:4b",
             "name": "alex-gobi-2000",
             "technologies": GOBI_2000_TECHNOLOGIES,
+            "location": "rack2-host11",
+            "rf_switch_port": 0,
+            },
+        {
+            "address": "172.22.50.12",
+            "ethernet_mac": "58:6d:8f:50:ae:55",
+            "name": "alex-y3300",
+            "technologies": GENERIC_GSM_TECHNOLOGIES,
+            "location": "rack2-host12",
+            "rf_switch_port": 1,
+            },
+        {
+            "address": "172.22.50.85",
+            "ethernet_mac": "00:00:00:00:00:c8",
+            "name": "alex-gobi-3000",
+            "technologies": GENERIC_GSM_TECHNOLOGIES,
+            "location": "rack2-host5",
+            "rf_switch_port": 4,
             },
         ],
+
+    "perfserver": {
+        "name": "perfserver-mtv",
+        "address": "172.22.50.124",
+        "ethernet_mac": "e8:03:9a:11:70:31",
+        "rf_address": "192.168.2.254",
+        },
 
     # Used for tests that check web connectivity
     "http_connectivity": {
@@ -123,6 +150,12 @@ CELLS['mtv'] = {
         # Check for the redirect to the auth page
         "url_required_contents": '<a href="http://172.22.73.6/afe">',
         },
+    "rf_switch": {
+        "type": "ether_io",
+        "name": "rf-switch-1-mtv",
+        "ethernet_mac": "00:11:BA:02:12:82",
+        "address":  "172.22.50.137",
+        }
     }
 
 
@@ -163,4 +196,4 @@ class TestCombineTrees(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()
