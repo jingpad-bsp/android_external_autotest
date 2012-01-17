@@ -71,8 +71,8 @@ class ReimagerTest(mox.MoxTestBase):
             return reduce(lambda b,i: "%s='%s'\n" % i in s, d.iteritems(), True)
 
         v = {'v1': 'one', 'v2': 'two'}
-        self.assertTrue(find_all_in(v, self.reimager._inject_vars(v, '')))
-        self.assertTrue(find_all_in(v, self.reimager._inject_vars(v, 'ctrl')))
+        self.assertTrue(find_all_in(v, dynamic_suite.inject_vars(v, '')))
+        self.assertTrue(find_all_in(v, dynamic_suite.inject_vars(v, 'ctrl')))
 
 
     def testReportResultsGood(self):

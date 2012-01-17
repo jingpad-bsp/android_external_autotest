@@ -22,13 +22,30 @@ def _get_dev_server():
 
 class DevServer(object):
     """Helper class for interacting with the Dev Server via http."""
-    def __init__(self, dev_host):
+    def __init__(self, dev_host=None):
         """Constructor.
 
         Args:
-        @param host: Address of the Dev Server.
+        @param dev_host: Address of the Dev Server.
+                         Defaults to None.  If not set, CROS.dev_server is used.
         """
         self._dev_server = dev_host if dev_host else _get_dev_server()
+
+
+    def _build_call(self, method, **kwargs):
+        """Build a URL that calls |method|, passing |kwargs|.
+
+        Build a URL that calls |method| on the dev server, passing a set
+        of key/value pairs built from the dict |kwargs|.
+
+        @param method: the dev server method to call.
+        @param kwargs: a dict mapping arg names to arg values
+        @return the URL string
+        """
+        argstr = '&'.join(map(lambda x: "%s=%s" % x, kwargs.iteritems()))
+        return "%(host)s/%(method)s?%(args)s" % {'host': self._dev_server,
+                                                 'method': method,
+                                                 'args': argstr}
 
 
     def trigger_download(self, image):
@@ -40,12 +57,12 @@ class DevServer(object):
         @param image: the image to fetch and stage.
         @return True if the remote call returns HTTP OK, False if it returns
                 an internal server error.
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500
+        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
         """
         try:
             call = self._build_call(
-                method='download',
-                named_args={'archive_url': _get_image_storage_server() + image})
+                'download',
+                archive_url=_get_image_storage_server() + image)
             response = urllib2.urlopen(call)
             return response.read() == 'Success'
         except urllib2.HTTPError as e:
@@ -56,17 +73,50 @@ class DevServer(object):
                 raise
 
 
-    def _build_call(self, method, named_args):
-        """Build a URL that calls |method|, passing |named_args|.
+    def list_control_files(self, build):
+        """Ask the dev server to list all control files for |build|.
 
-        Build a URL that calls |method| on the dev server, passing a set
-        of key/value pairs built from the dict |named_args|.
+        Ask the dev server at |self._dev_server| to list all control files
+        for |build|.
 
-        @param method: the dev server method to call.
-        @param named_args: a dict mapping arg names to arg values
-        @return the URL string
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
+                      whose control files the caller wants listed.
+        @return None on failure, or a list of control file paths
+                (e.g. server/site_tests/autoupdate/control)
+        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
         """
-        argstr = '&'.join(map(lambda x: "%s=%s" % x, named_args.iteritems()))
-        return "%(host)s/%(method)s?%(args)s" % { 'host': self._dev_server,
-                                                  'method': method,
-                                                  'args': argstr }
+        try:
+            call = self._build_call('controlfiles', build=build)
+            response = urllib2.urlopen(call)
+            return [line.rstrip() for line in response]
+        except urllib2.HTTPError as e:
+            if e.code == httplib.INTERNAL_SERVER_ERROR:
+                return None
+            else:
+                logging.debug(e)
+                raise
+
+
+    def get_control_file(self, build, control_path):
+        """Ask the dev server for the contents of a control file.
+
+        Ask the dev server at |self._dev_server|for the contents of the
+        control file at |control_path| for |build|.
+
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
+                      whose control files the caller wants listed.
+        @param control_path: The file to list
+                             (e.g. server/site_tests/autoupdate/control)
+        @return The contents of the desired file, or None
+        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        """
+        try:
+            call = self._build_call('controlfiles',
+                                    build=build, control_path=control_path)
+            return urllib2.urlopen(call).read()
+        except urllib2.HTTPError as e:
+            if e.code == httplib.INTERNAL_SERVER_ERROR:
+                return None
+            else:
+                logging.debug(e)
+                raise

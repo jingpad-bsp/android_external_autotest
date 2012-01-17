@@ -14,6 +14,20 @@ VERSION_PREFIX = 'cros-version-'
 CONFIG = global_config.global_config
 
 
+def inject_vars(vars, control_file_in):
+    """
+    Inject the contents of |vars| into |control_file_in|
+
+    @param vars: a dict to shoehorn into the provided control file string.
+    @param control_file_in: the contents of a control file to munge.
+    @return the modified control file string.
+    """
+    control_file = ''
+    for key, value in vars.iteritems():
+        control_file += "%s='%s'\n" % (key, value)
+    return control_file + control_file_in
+
+
 def _image_url_pattern():
     return CONFIG.get_config_value('CROS', 'image_url_pattern', type=str)
 
@@ -103,20 +117,6 @@ class Reimager(object):
             self._afe.create_label(name=name)
 
 
-    def _inject_vars(self, vars, control_file_in):
-        """
-        Inject the contents of |vars| into |control_file_in|
-
-        @param vars: a dict to shoehorn into the provided control file string.
-        @param control_file_in: the contents of a control file to munge.
-        @return the modified control file string.
-        """
-        control_file = ''
-        for key, value in vars.iteritems():
-            control_file += "%s='%s'\n" % (key, value)
-        return control_file + control_file_in
-
-
     def _schedule_reimage_job(self, name, num_machines, board):
         """
         Schedules the reimaging of |num_machines| |board| devices with |image|.
@@ -129,7 +129,7 @@ class Reimager(object):
         @param board: which kind of devices to reimage.
         @return a frontend.Job object for the reimaging job we scheduled.
         """
-        control_file = self._inject_vars(
+        control_file = inject_vars(
             { 'image_url': _image_url_pattern() % name,
               'image_name': name },
             self._cf_getter.get_control_file_contents_by_name('autoupdate'))
