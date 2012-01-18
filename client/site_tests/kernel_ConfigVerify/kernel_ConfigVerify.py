@@ -35,6 +35,8 @@ class kernel_ConfigVerify(test.test):
         # Sanity checks.
         'M386',                 # Never going to optimize to this CPU.
         'CHARLIE_THE_UNICORN',  # Config not in real kernel config var list.
+        # Dangerous; allows direct physical memory writing.
+        'ACPI_CUSTOM_METHOD',
         # Dangerous; disables brk ASLR.
         'COMPAT_BRK',
         # Dangerous; disables VDSO ASLR.
