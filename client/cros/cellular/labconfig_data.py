@@ -81,12 +81,14 @@ CELLS['cam'] = {
             "rf_switch_port": 0,
             }
         ],
-    # Routerstation pro for runing iperf
+
     "perfserver": {
-        "address": "172.31.206.152",
-        "name": "rspro-cros-2",
-        "rf_address": "192.168.2.254"
+        "name": "perfserver-cam",
+        "address": "172.31.206.153",
+        "ethernet_mac": "e8:11:32:cb:bb:95 ",
+        "rf_address": "192.168.2.254",
         },
+
     # Used for tests that check web connectivity
     "http_connectivity": {
         "url": "http://192.168.2.254/index.html",
@@ -95,6 +97,7 @@ CELLS['cam'] = {
     "rf_switch": {
         "type": "ether_io",
         "address":  "172.31.206.172",
+        "ethernet_mac": "00:11:ba:02:12:83",
         }
     }
 
