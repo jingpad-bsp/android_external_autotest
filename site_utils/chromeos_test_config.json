@@ -35,7 +35,7 @@
         "x86-alex-r17": {
             "archive_server": "gs://chromeos-releases/beta-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R17-1412.*",
+            "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
@@ -85,7 +85,7 @@
         "x86-zgb-r17": {
             "archive_server": "gs://chromeos-releases/beta-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "R17-1412.*",
+            "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "netbook_ACER_ZGB", "au_test": true}
             ]
@@ -127,7 +127,7 @@
         "x86-mario-r17": {
             "archive_server": "gs://chromeos-releases/beta-channel/x86-mario",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
-            "build_pattern": "R17-1412.*",
+            "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
@@ -149,7 +149,7 @@
         "stumpy-r17": {
             "archive_server": "gs://chromeos-releases/beta-channel/stumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
-            "build_pattern": "R17-1412.*",
+            "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true}
             ]
@@ -169,7 +169,7 @@
         "lumpy-r17": {
             "archive_server": "gs://chromeos-releases/beta-channel/lumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
-            "build_pattern": "R17-1412.*",
+            "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "netbook_LUMPY", "au_test": true}
             ]
