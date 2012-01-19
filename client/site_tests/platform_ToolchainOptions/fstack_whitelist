@@ -377,7 +377,7 @@
 /usr/lib64/libplc4.so.8
 /usr/lib64/libX11-xcb.so.1.0.0
 /usr/lib64/m17n/1.0/libmimx-anthy.so
-/usr/lib64/pppd/2.4.4/minconn.so
+/usr/lib64/pppd/2.4.5/minconn.so
 /usr/lib64/xorg/modules/libxf8_16bpp.so
 /usr/lib/bluetooth/plugins/netlink.so
 /usr/lib/coreutils/libstdbuf.so
@@ -398,7 +398,7 @@
 /usr/lib/libplc4.so.8
 /usr/lib/libX11-xcb.so.1.0.0
 /usr/lib/m17n/1.0/libmimx-anthy.so
-/usr/lib/pppd/2.4.4/minconn.so
+/usr/lib/pppd/2.4.5/minconn.so
 /usr/lib/xorg/modules/libxf8_16bpp.so
 /usr/sbin/iconvconfig
 /usr/sbin/ldattach

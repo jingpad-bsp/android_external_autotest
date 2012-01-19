@@ -598,8 +598,9 @@
 /usr/lib64/pango/1.6.0/modules/pango-syriac-fc.so
 /usr/lib64/pango/1.6.0/modules/pango-thai-fc.so
 /usr/lib64/pango/1.6.0/modules/pango-tibetan-fc.so
-/usr/lib64/pppd/2.4.4/minconn.so
-/usr/lib64/pppd/2.4.4/passwordfd.so
+/usr/lib64/pppd/2.4.5/minconn.so
+/usr/lib64/pppd/2.4.5/openl2tp.so
+/usr/lib64/pppd/2.4.5/passwordfd.so
 /usr/lib64/pppd/2.4.5/mm-test-pppd-plugin.so
 /usr/lib64/rsyslog/immark.so
 /usr/lib64/rsyslog/imtcp.so
@@ -1037,8 +1038,9 @@
 /usr/lib/pango/1.6.0/modules/pango-syriac-fc.so
 /usr/lib/pango/1.6.0/modules/pango-thai-fc.so
 /usr/lib/pango/1.6.0/modules/pango-tibetan-fc.so
-/usr/lib/pppd/2.4.4/minconn.so
-/usr/lib/pppd/2.4.4/passwordfd.so
+/usr/lib/pppd/2.4.5/minconn.so
+/usr/lib/pppd/2.4.5/openl2tp.so
+/usr/lib/pppd/2.4.5/passwordfd.so
 /usr/lib/pppd/2.4.5/mm-test-pppd-plugin.so
 /usr/lib/rsyslog/immark.so
 /usr/lib/rsyslog/imtcp.so
