@@ -34,8 +34,8 @@ from dash_strings import UNKNOWN_TIME_STR
 # This used in SQL job matching.
 JOB_MATCH = ("[-.][[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+-"
              "[ar][[:alnum:]]*-b")
-GTEST_SUFFIXES = ["browsertests", "pagecycler", "pyauto", "pyauto_basic",
-                  "pyauto_perf", "sync"]
+GTEST_SUFFIXES = ["audio", "browsertests", "pagecycler", "pyauto",
+                  "pyauto_basic", "pyauto_perf", "sync"]
 SUFFIXES_TO_SHOW = ["bvt", "flaky", "hwqual", "regression",
                     KERNELTEST_TAG] + GTEST_SUFFIXES
 SERVER_JOB = "SERVER_JOB"
