@@ -11,7 +11,7 @@
 declare -r SCRIPT_DIR="$(cd $(dirname $0); pwd)"
 
 declare -r DASH_BASE="/usr/local/autotest/results/dashboard"
-declare -r EXEC_BASE="/usr/local/autotest/utils/dashboard"
+declare -r EXEC_BASE=$(dirname "$0")
 declare -r SOURCE_BASE="/home/$USER/autotest-tools"
 declare -r TEMPLATE_BASE="/usr/local/autotest/frontend/templates"
 

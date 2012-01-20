@@ -137,6 +137,20 @@ class CrashDashView(object):
     categories = self._LookupCrashDict(netbook, board, build, test_name)[0]
     categories.add(category)
 
+  def _CollapseCrashes(self, crash_strings):
+    """Helper to change 'chrome sig 11' 'chrome sig 11' to '(2) chrome sig 11'
+
+    This is needed to tighten up the popups when large crash quantities
+    are encountered.
+    """
+    counted = {}
+    for c in crash_strings:
+      counted[c] = counted.setdefault(c, 0) + 1
+    collapsed = []
+    for c, v in counted.iteritems():
+      collapsed.append('(%s) %s' % (v, c))
+    return sorted(collapsed)
+
   def GetBuildCrashSummary(self, netbook, board, build, category=None):
     """Used to populate the waterfall summary page with a crash count.
 
@@ -167,7 +181,7 @@ class CrashDashView(object):
         if (not category) or (category and category in categories):
           new_crashes = sorted(list(itertools.chain(*crash_dict.values())))
           if new_crashes:
-            crashes.append((test_name, new_crashes))
+            crashes.append((test_name, self._CollapseCrashes(new_crashes)))
             n += len(new_crashes)
             all_categories |= categories
     if not crashes:
@@ -194,7 +208,7 @@ class CrashDashView(object):
     if not test_crashes:
       return [], 0
     new_crashes = sorted(list(itertools.chain(*test_crashes.values())))
-    return new_crashes, len(new_crashes)
+    return self._CollapseCrashes(new_crashes), len(new_crashes)
 
   def GetTestSummaries(self):
     """Test Summaries are used to probe the crash cache for crashes in a job.

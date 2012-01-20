@@ -10,7 +10,7 @@
 
 declare -r SCRIPT_DIR="$(cd $(dirname $0); pwd)"
 
-declare -r EXEC_BASE="/usr/local/autotest/utils/dashboard"
+declare -r EXEC_BASE=$(dirname "$0")
 declare -r RESULTS_BASE="/usr/local/autotest/results/dashboard"
 
 declare -r RESULTS_SERVER="cautotest.corp.google.com"

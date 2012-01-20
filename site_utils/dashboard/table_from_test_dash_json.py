@@ -110,31 +110,32 @@ def ParseTestConfig(config_dict, test_json):
 
 def ParseDashConfig(config_dict, dash_json):
   # Show the email targets in a readable manner.
-  for email_filter in dash_json['filters']:
-    netbook = email_filter['netbook']
-    netbook_dict = config_dict.setdefault(netbook, {})
-    # chromeos-bvt is special since it is automatically
-    # included when sheriffs is True.
-    sheriffs = chromeos_bvt = email_filter.get('sheriffs', False)
-    cc = [f.split('@')[0] for f in email_filter['cc']]
-    if 'chromeos-bvt' in cc:
-      chromeos_bvt = True
-      cc.remove('chromeos-bvt')
-    if 'chromeos-tpms' in cc:
-      chromeos_tpms = True
-      cc.remove('chromeos-tpms')
-    else:
-      chromeos_tpms = None
-    trigger = email_filter.get('trigger', 'result_changed')
-    for board in email_filter['board']:
-      board_dict = netbook_dict.setdefault(board, {})
-      for category in email_filter['categories']:
-        cat_dict = board_dict.setdefault(category, {})
-        cat_dict['sheriffs'] = sheriffs
-        cat_dict['chromeos-bvt'] = chromeos_bvt
-        cat_dict['chromeos-tpms'] = chromeos_tpms
-        cat_dict['others'] = ', '.join(cc)
-        cat_dict['emailcondition'] = trigger
+  for mail_config in dash_json['resultmail']:
+    for email_filter in mail_config['filters']:
+      # chromeos-bvt is special since it is automatically
+      # included when sheriffs is True.
+      sheriffs = chromeos_bvt = email_filter.get('sheriffs', False)
+      cc = [f.split('@')[0] for f in email_filter['cc']]
+      if 'chromeos-bvt' in cc:
+        chromeos_bvt = True
+        cc.remove('chromeos-bvt')
+      if 'chromeos-tpms' in cc:
+        chromeos_tpms = True
+        cc.remove('chromeos-tpms')
+      else:
+        chromeos_tpms = None
+      trigger = email_filter.get('trigger', 'result_changed')
+      for netbook, boards in mail_config['platforms'].iteritems():
+        netbook_dict = config_dict.setdefault(netbook, {})
+        for board in boards:
+          board_dict = netbook_dict.setdefault(board, {})
+          for category in email_filter['categories']:
+            cat_dict = board_dict.setdefault(category, {})
+            cat_dict['sheriffs'] = sheriffs
+            cat_dict['chromeos-bvt'] = chromeos_bvt
+            cat_dict['chromeos-tpms'] = chromeos_tpms
+            cat_dict['others'] = ', '.join(cc)
+            cat_dict['emailcondition'] = trigger
   for email_alert in dash_json['alerts']:
     for platform in email_alert['platforms']:
       for board, netbook in platform.iteritems():
