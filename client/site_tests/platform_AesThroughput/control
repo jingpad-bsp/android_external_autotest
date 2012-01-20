@@ -10,6 +10,7 @@ This test is a benchmark.
 
 This test will fail if the output of openssl cannot be parsed.
 """
+SUITE = "kernel.main.smoketest"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "platform"

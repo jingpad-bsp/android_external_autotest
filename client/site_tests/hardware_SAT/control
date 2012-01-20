@@ -22,6 +22,7 @@ For more information, see:
 http://code.google.com/p/stressapptest/
 """
 NAME = 'hardware_SAT'
+SUITE = "kernel.main.smoketest"
 TEST_CLASS = "hardware"
 TEST_CATEGORY = 'Stress'
 TEST_TYPE = 'client'

@@ -6,6 +6,7 @@ NAME = 'hardware_MemoryThroughput'
 AUTHOR = 'The Chromium OS Authors'
 PURPOSE = 'Benchmark sequential and random access mode memory throughput.'
 CRITERIA = 'This test is a benchmark.'
+SUITE = "kernel.main.smoketest"
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "hardware"

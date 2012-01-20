@@ -8,6 +8,7 @@ NAME = 'kernel_fs_Inplace'
 DOC = '''
 Does inplace preads and pwrites.
 '''
+SUITE = "kernel.main.smoketest"
 TIME = 'SHORT'
 TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Performance'

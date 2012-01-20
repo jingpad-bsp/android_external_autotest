@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "BootPerfServer"
+SUITE = "kernel.main.smoketest"
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "platform"
