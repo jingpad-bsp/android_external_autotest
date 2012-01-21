@@ -40,8 +40,12 @@ int main(int argc, char * argv[])
     }
 
     pid = atoi(argv[1]);
-    if (pid != -1) {
-        prctl(PR_SET_PTRACER, pid, 0, 0, 0);
+    if (pid != -2) {
+        if (prctl(PR_SET_PTRACER, pid, 0, 0, 0)) {
+            perror("prctl");
+            puts("failed");
+            return 1;
+        }
     }
 
     puts("ready");

@@ -63,6 +63,8 @@ class security_ptraceRestrictions(test.test):
 
         # Verify ptrace is only allowed on children or declared processes.
         utils.system("su -c './ptrace-restrictions.sh' chronos", timeout=30)
+        # Verify ptrace can be made to work across pid namespaces.
+        utils.system("./root-ptrace-restrictions.sh chronos", timeout=10)
         # Verify ptrace of child ok from parent process and thread.
         utils.system("su -c './thread-prctl 0 1' chronos")
         utils.system("su -c './thread-prctl 0 0' chronos")

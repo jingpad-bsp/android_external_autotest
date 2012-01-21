@@ -121,4 +121,16 @@ else
 fi
 kill_sleeper
 
+# Validate -1 disables protection.
+start_sleeper -1
+OUT=$(gdb -ex "attach $pid" -ex "quit" --batch </dev/null 2>&1)
+prctl="prctl(PR_SET_PTRACER, -1, ...)"
+if echo "$OUT" | grep -q 'Quit anyway'; then
+    echo "ok: $prctl correctly allowed ptrace"
+else
+    echo "FAIL: $prctl unexpectedly not allowed ptrace"
+    rc=1
+fi
+kill_sleeper
+
 exit $rc
