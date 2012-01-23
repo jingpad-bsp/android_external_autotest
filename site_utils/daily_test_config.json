@@ -2,18 +2,6 @@
     "__base__": "chromeos_test_config.json",
 
     "boards": {
-        "x86-alex-r14": {
-            "platforms": [
-                {"platform": "netbook_ALEX"}
-            ]
-        },
-
-        "x86-alex-r15": {
-            "platforms": [
-                {"platform": "netbook_ALEX"}
-            ]
-        },
-
         "x86-alex-r16": {
             "platforms": [
                 {"platform": "netbook_ALEX"}
@@ -26,15 +14,15 @@
             ]
         },
 
-        "x86-mario-r14": {
+        "x86-alex-r18": {
             "platforms": [
-                {"platform": "netbook_MARIO_MP"}
+                {"platform": "netbook_ALEX"}
             ]
         },
 
-        "x86-mario-r15": {
+        "x86-alex-r19": {
             "platforms": [
-                {"platform": "netbook_MARIO_MP"}
+                {"platform": "netbook_ALEX"}
             ]
         },
 
@@ -50,15 +38,15 @@
             ]
         },
 
-        "x86-zgb-r14": {
+        "x86-mario-r18": {
             "platforms": [
-                {"platform": "netbook_ACER_ZGB"}
+                {"platform": "netbook_MARIO_MP"}
             ]
         },
 
-        "x86-zgb-r15": {
+        "x86-mario-r19": {
             "platforms": [
-                {"platform": "netbook_ACER_ZGB"}
+                {"platform": "netbook_MARIO_MP"}
             ]
         },
 
@@ -74,9 +62,51 @@
             ]
         },
 
+        "x86-zgb-r18": {
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB"}
+            ]
+        },
+
+        "x86-zgb-r19": {
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB"}
+            ]
+        },
+
         "stumpy-r17": {
             "platforms": [
                 {"platform": "desktop_STUMPY"}
+            ]
+        }
+
+        "stumpy-r18": {
+            "platforms": [
+                {"platform": "desktop_STUMPY"}
+            ]
+        }
+
+        "stumpy-r19": {
+            "platforms": [
+                {"platform": "desktop_STUMPY"}
+            ]
+        }
+
+        "lumpy-r17": {
+            "platforms": [
+                {"platform": "netbook_LUMPY"}
+            ]
+        }
+
+        "lumpy-r18": {
+            "platforms": [
+                {"platform": "netbook_LUMPY"}
+            ]
+        }
+
+        "lumpy-r19": {
+            "platforms": [
+                {"platform": "netbook_LUMPY"}
             ]
         }
     },
