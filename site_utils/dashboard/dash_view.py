@@ -968,7 +968,7 @@ class AutotestDashView(object):
       """
       m = re.match(self._jobname_parse, job_name)
       if not m or not len(m.groups()) == 3:
-        logging.warn("***Invalid job_name: %s (%s).", job_name, len(m.groups()))
+        logging.warn("***Invalid job_name: %s.", job_name)
         return None, None, None
       board = m.group(1)
       # Subjob handles multi-build au test job names.
