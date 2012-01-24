@@ -20,7 +20,7 @@
         },
 
         "x86-alex-r16": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-alex",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
             "build_pattern": "R16-1193.*",
             "platforms": [
@@ -74,7 +74,7 @@
         },
 
         "x86-zgb-r16": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-zgb",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R16-1193.*",
             "platforms": [
@@ -114,7 +114,7 @@
         },
 
         "x86-mario-r16": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-mario",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-mario",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
             "build_pattern": "R16-1193.*",
             "platforms": [
