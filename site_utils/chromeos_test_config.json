@@ -192,8 +192,8 @@
             "build_pattern": "R18-*",
             "platforms": [
                 {"platform": "netbook_KAEN",
-                 "groups": ["bvt", "build", "desktopui", "kernel", "pagecycler",
-                            "perfx3", "power"]}
+                 "groups": ["bvt", "build", "desktopui", "desktopui_tegra2",
+                            "kernel", "pagecycler", "perfx3", "power"]}
             ]
         }
     },
@@ -250,6 +250,11 @@
 
             {"name": "sync",
              "control": "server/site_tests/suites/control.desktopui_syncintegrationtests"}
+        ],
+
+        "desktopui_tegra2": [
+            {"name": "omx",
+             "control": "server/site_tests/suites/control.desktopui_omxtest"}
         ],
 
         "power": [
