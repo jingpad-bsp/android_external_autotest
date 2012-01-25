@@ -131,6 +131,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         Args:
             media_file: Media file to test.
         """
+        logging.info('Playing back now media file %s.' % media_file)
         self.pyauto.NavigateToURL(self._test_url + media_file)
 
     def loopback_test_one_channel(self, channel, noise_file, media_file):
@@ -167,7 +168,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
             tmpfile: The file to record to.
         """
         cmd_rec = 'arecord -d %f -f dat %s' % (duration, tmpfile)
-        logging.info('Record now (%fs)' % duration)
+        logging.info('Recording audio now for %f seconds.' % duration)
         utils.system(cmd_rec)
 
     def set_mixer_controls(self):
@@ -234,16 +235,16 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
             if m is not None:
                 sox_rms_status = True
                 rms_val = float(m.group(1))
-                logging.info('Got RMS value of %f. Minimum threshold is %f.' %
+                logging.info('Got audio RMS value of %f. Minimum pass is %f.' %
                              (rms_val, self._sox_min_rms))
                 if rms_val < self._sox_min_rms:
                     raise error.TestError(
-                        'RMS value %f too low. Minimum threshold is %f.' %
+                        'Audio RMS value %f too low. Minimum pass is %f.' %
                         (rms_val, self._sox_min_rms))
         # In case sox didn't return an RMS value.
         if not sox_rms_status:
             raise error.TestError(
-                'Failed to generate an RMS value for playback.')
+                'Failed to generate an audio RMS value from playback.')
 
     def noise_reduce_file(self, test_file, noise_file):
         """Runs the sox command to reduce the noise.
