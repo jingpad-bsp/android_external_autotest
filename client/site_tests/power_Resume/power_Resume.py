@@ -7,6 +7,9 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import rtc, sys_power
 
+from autotest_lib.client.cros import flimflam_test_path
+import flimflam
+
 START_SUSPEND_MESSAGES = [ 'Freezing user space' ]
 END_SUSPEND_MESSAGES = [ 'Back to C!', 'Low-level resume complete',
                          'Entering suspend state' ]
@@ -130,8 +133,25 @@ class power_Resume(test.test):
         raise ValueError('Unable to read the hardware clock -- ' +
                          hwclock_output)
 
-
     def run_once(self):
+        # Disconnect from 3G network to take out the variability of
+        # disconnection time from suspend_time
+        disconnect_3G_time = 0
+        flim = flimflam.FlimFlam()
+        service = flim.FindCellularService()
+        if service:
+            logging.info('Found 3G interface, disconnecting.')
+            start_time = time.time()
+            success, status = flim.DisconnectService(
+                service=service,
+                wait_timeout=60)
+            disconnect_3G_time = time.time() - start_time
+            if success:
+                logging.info('3G disconnected successfully.')
+            else:
+                logging.error('Could not disconnect: %s.' % status)
+                disconnect_3G_time = -1
+
         # Some idle time before initiating suspend-to-ram
         idle_time = random.randint(1, 10)
         time.sleep(idle_time)
@@ -190,5 +210,6 @@ class power_Resume(test.test):
         results['seconds_system_resume_kernel'] = kernel_resume_time
         results['seconds_system_resume_kernel_cpu'] = kernel_cpu_resume_time
         results['seconds_system_resume_kernel_dev'] = kernel_device_resume_time
+        results['seconds_3G_disconnect'] = disconnect_3G_time
         results['num_retry_attempts'] = retry_count
         self.write_perf_keyval(results)
