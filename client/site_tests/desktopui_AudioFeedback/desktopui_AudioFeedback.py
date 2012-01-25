@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,11 +8,11 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test, httpd
 
-# Names of mixer controls
+# Names of mixer controls.
 _CONTROL_MASTER = "'Master Playback Volume'"
 _CONTROL_HEADPHONE = "'Headphone Playback Volume'"
 _CONTROL_SPEAKER = "'Speaker Playback Volume'"
-_CONTROL_SPEAKER_SL = "'HP/Speakers'"
+_CONTROL_SPEAKER_HP = "'HP/Speakers'"
 _CONTROL_MIC_BOOST = "'Mic Boost Volume'"
 _CONTROL_CAPTURE = "'Capture Volume'"
 _CONTROL_PCM = "'PCM Playback Volume'"
@@ -31,6 +31,7 @@ _DEFAULT_MIXER_SETTINGS = [{'name': _CONTROL_MASTER, 'value': "100%"},
                            {'name': _CONTROL_CAPTURE_SWITCH, 'value': "on"}]
 
 _CONTROL_SPEAKER_DEVICE = ['x86-alex', 'x86-mario', 'x86-zgb']
+_CONTROL_SPEAKER_DEVICE_HP = ['stumpy', 'lumpy']
 
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_RECORD_DURATION = 15
@@ -44,7 +45,7 @@ _SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 
 
 class RecordSampleThread(threading.Thread):
-    """Wraps the running of arecord in a thread."""
+    """Wraps the execution of arecord in a thread."""
     def __init__(self, audio, duration, recordfile):
         threading.Thread.__init__(self)
         self._audio = audio
@@ -80,7 +81,8 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
             record_duration: How long of a sample to record.
             sox_min_rms: The minimum RMS value to consider a pass.
 
-        Raises: error.TestError if the deps can't be run.
+        Raises:
+            error.TestError if the deps can't be run.
         """
         self._card = card
         self._frequency = frequency
@@ -122,6 +124,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
            Skipping initial 60 seconds so we can ignore initial silence
            in the video.
         """
+        logging.info('Playing back youtube media file %s.' % self._test_url)
         self.pyauto.NavigateToURL(self._test_url)
         if not self.pyauto.WaitUntil(lambda: self.pyauto.ExecuteJavascript("""
                     player_status = document.getElementById('player_status');
@@ -168,7 +171,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
             tmpfile: The file to record to.
         """
         cmd_rec = 'arecord -d %f -f dat %s' % (duration, tmpfile)
-        logging.info('Record now (%fs)' % duration)
+        logging.info('Recording audio now for %f seconds.' % duration)
         utils.system(cmd_rec)
 
     def set_mixer_controls(self):
@@ -179,8 +182,8 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         if self.pyauto.ChromeOSBoard() in _CONTROL_SPEAKER_DEVICE:
             self._mixer_settings.append({'name': _CONTROL_SPEAKER,
                                          'value': "0%"})
-        else: # TODO(rohitbm) : Create a private file for 'HP/Speakers' devices.
-            self._mixer_settings.append({'name': _CONTROL_SPEAKER_SL,
+        elif self.pyauto.ChromeOSBoard() in _CONTROL_SPEAKER_DEVICE_HP:
+            self._mixer_settings.append({'name': _CONTROL_SPEAKER_HP,
                                          'value': "0%"})
 
         for item in self._mixer_settings:
@@ -198,8 +201,14 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
     def check_recorded_audio(self, infile, channel):
         """Runs the sox command to check if we captured audio.
 
+        Note: if we captured any sufficient loud audio which can generate
+        the rms_value greater than the threshold value, test will pass.
+        TODO (rohitbm) : find a way to compare the recorded audio with
+                         an actual sample file.
+
         Args:
-            infile: The file to test for audio in.
+            infile: The file is to test for (strong) audio content via the RMS
+                    method.
             channel: The audio channel to test.
 
         Raises:
@@ -207,15 +216,12 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
                 the threshold.
         """
         # Build up a pan value string for the sox command.
-        if channel == 0:
-            pan_values = '1'
-        else:
-            pan_values = '0'
+        pan_values = '1' if channel == 0 else '0'
         for pan_index in range(1, self._num_channels):
             if channel == pan_index:
-                pan_values = '%s%s' % (pan_values, ',1')
+                pan_values += ',1'
             else:
-                pan_values = '%s%s' % (pan_values, ',0')
+                pan_values += ',0'
         # Set up the sox commands.
         os.environ['LD_LIBRARY_PATH'] = self._sox_lib_path
         sox_mixer_cmd = '%s -c 2 %s %s -c 1 %s - mixer %s'
@@ -226,15 +232,22 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         logging.info('running %s' % sox_cmd)
         sox_output = utils.system_output(sox_cmd, retain_output=True)
         # Find the RMS value line and check that it is above threshold.
+        sox_rms_status = False
         for rms_line in sox_output.split('\n'):
             m = _SOX_RMS_AMPLITUDE_RE.match(rms_line)
             if m is not None:
+                sox_rms_status = True
                 rms_val = float(m.group(1))
-                logging.info('Got RMS value of %f' % rms_val)
+                logging.info('Got audio RMS value of %f. Minimum pass is %f.' %
+                             (rms_val, self._sox_min_rms))
                 if rms_val < self._sox_min_rms:
                     raise error.TestError(
-                        'RMS value %f too low. Minimum threshold is %f.' %
+                        'Audio RMS value %f too low. Minimum pass is %f.' %
                         (rms_val, self._sox_min_rms))
+        # In case sox didn't return an RMS value.
+        if not sox_rms_status:
+            raise error.TestError(
+                'Failed to generate an audio RMS value from playback.')
 
     def noise_reduce_file(self, test_file, noise_file):
         """Runs the sox command to reduce the noise.
