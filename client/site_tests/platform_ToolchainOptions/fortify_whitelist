@@ -190,6 +190,7 @@
 /usr/lib64/alsa-lib/libasound_module_pcm_vdownmix.so
 /usr/lib64/alsa-lib/smixer/smixer-ac97.so
 /usr/lib64/alsa-lib/smixer/smixer-hda.so
+/usr/lib64/cromo/plugins/gobi.so
 /usr/lib64/engines/libaep.so
 /usr/lib64/engines/libatalla.so
 /usr/lib64/engines/libcapi.so
@@ -612,6 +613,7 @@
 /usr/lib64/xorg/modules/drivers/ati_drv.so
 /usr/lib64/xorg/modules/drivers/vesa_drv.so
 /usr/lib64/xorg/modules/extensions/librecord.so
+/usr/lib64/xorg/modules/input/cmt_drv.so
 /usr/lib64/xorg/modules/libexa.so
 /usr/lib64/xorg/modules/libfb.so
 /usr/lib64/xorg/modules/libint10.so
