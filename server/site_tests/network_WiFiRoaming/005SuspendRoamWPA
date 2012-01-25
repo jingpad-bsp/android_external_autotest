@@ -33,7 +33,6 @@
                           "wpa":"0"} ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
-    [ "deconfig" ],
 
     # Ask the DUT to sleep for 20 seconds while we switch things around,
     # then see how long it takes for the DUT to return the service to the
@@ -57,6 +56,7 @@
     [ "sleep",          { "time":"15" } ],
 
     # Shut down the second AP and bring the first one back up
+    [ "deconfig" ],
     [ "config",         { "channel":"2412", "mode":"11g",
                           "ssid": 'SuspendRoamWPA_t1',
                           "wpa":"1", "wpa_key_mgmt":"WPA-PSK",

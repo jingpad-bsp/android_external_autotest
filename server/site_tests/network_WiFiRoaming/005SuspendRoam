@@ -29,7 +29,6 @@
                           "ssid_suffix": "t2"} ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
-    [ "deconfig" ],
 
     # Ask the DUT to sleep for 20 seconds while we switch things around,
     # then see how long it takes for the DUT to return the service to the
@@ -53,6 +52,7 @@
     [ "sleep",          { "time":"15" } ],
 
     # Shut down the second AP and bring the first one back up
+    [ "deconfig" ],
     [ "config",         { "channel":"2412", "mode":"11g",
                           "ssid": 'SuspendRoam_t1'} ],
 
