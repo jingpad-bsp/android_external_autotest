@@ -524,6 +524,7 @@
 /usr/lib64/libnssckbi.so.12
 /usr/lib64/libnsssysinit.so.12
 /usr/lib64/libnssutil3.so.12
+/usr/lib64/libp11.so.2.2.0
 /usr/lib64/libp11.so.1.2.0
 /usr/lib64/libpanel.so.5.9
 /usr/lib64/libpanelw.so.5.9
@@ -965,6 +966,7 @@
 /usr/lib/libnssckbi.so.12
 /usr/lib/libnsssysinit.so.12
 /usr/lib/libnssutil3.so.12
+/usr/lib/libp11.so.2.2.0
 /usr/lib/libp11.so.1.2.0
 /usr/lib/libpanel.so.5.9
 /usr/lib/libpanelw.so.5.9
