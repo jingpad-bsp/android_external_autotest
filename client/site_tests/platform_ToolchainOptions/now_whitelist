@@ -10,6 +10,7 @@
 /sbin/insmod.static
 /sbin/ldconfig
 /usr/bin/cgpt
+/usr/bin/cros_installer
 /usr/bin/cvt
 /usr/bin/gtf
 /usr/bin/synclient

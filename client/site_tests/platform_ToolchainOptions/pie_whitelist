@@ -4,6 +4,7 @@
 /sbin/insmod.static
 /sbin/ldconfig
 /usr/bin/cgpt
+/usr/bin/cros_installer
 /usr/bin/getent
 /usr/sbin/iconvconfig
 /usr/sbin/iotools

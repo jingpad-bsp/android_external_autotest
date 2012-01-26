@@ -142,6 +142,7 @@
 /usr/bin/column
 /usr/bin/core2md
 /usr/bin/core_dumper
+/usr/bin/cros_installer
 /usr/bin/crossystem
 /usr/bin/curl
 /usr/bin/dbusxx-introspect

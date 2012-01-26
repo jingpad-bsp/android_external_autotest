@@ -25,6 +25,7 @@
 /opt/Synaptics/lib/libwx_gtk2u-2.8.so.0.5.0
 /sbin/insmod.static
 /usr/bin/cgpt
+/usr/bin/cros_installer
 /usr/lib64/opengl/xorg-x11/extensions/libglx.so
 /usr/lib64/opengl/xorg-x11/lib/libGL.so.1.2
 /usr/lib/cromo/plugins/madison.so
