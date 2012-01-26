@@ -78,31 +78,31 @@
             "platforms": [
                 {"platform": "desktop_STUMPY"}
             ]
-        }
+        },
 
         "stumpy-r18": {
             "platforms": [
                 {"platform": "desktop_STUMPY"}
             ]
-        }
+        },
 
         "stumpy-r19": {
             "platforms": [
                 {"platform": "desktop_STUMPY"}
             ]
-        }
+        },
 
         "lumpy-r17": {
             "platforms": [
                 {"platform": "netbook_LUMPY"}
             ]
-        }
+        },
 
         "lumpy-r18": {
             "platforms": [
                 {"platform": "netbook_LUMPY"}
             ]
-        }
+        },
 
         "lumpy-r19": {
             "platforms": [
