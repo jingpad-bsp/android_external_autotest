@@ -1,0 +1,42 @@
+#!/usr/bin/python
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+"""Interact with a SCPI device, checking for errors each time."""
+
+import logging, readline, sys
+
+import prologix_scpi_driver, scpi
+
+
+try:
+    [target] = sys.argv[1:]
+except ValueError:
+    print 'usage: %s gpib_host_name' % sys.argv[0]
+    exit(1)
+
+
+logging.basicConfig(level=logging.INFO)
+
+driver = prologix_scpi_driver.PrologixScpiDriver(hostname=target,port=1234)
+s = scpi.Scpi(driver)
+s.opc_on_stanza = False
+
+while True:
+    try:
+        line = raw_input('scpi> ').rstrip()
+    except EOFError:
+        print
+        exit(0)
+
+    try:
+        # TODO(rochberg): If our query is in fact an error, then we
+        # will hang waiting for ++read to return.
+        if line[-1:] == '?':
+            s.Query(line)
+        else:
+            s.SendStanza([line])
+
+    except scpi.Error:
+        continue
