@@ -39,6 +39,11 @@ class FormHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     If the form submission is a file upload, the file will be written
     to disk with the name contained in the 'filename' field.
     """
+
+    SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map.update({
+        '.webm': 'video/webm',
+    })
+
     # Override the default logging methods to use the logging module directly.
     def log_error(self, format, *args):
         logging.warning("(httpd error) %s - - [%s] %s\n" %
