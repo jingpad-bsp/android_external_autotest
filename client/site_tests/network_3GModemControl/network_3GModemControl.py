@@ -8,6 +8,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import cell_tools
+from autotest_lib.client.cros.cellular import emulator_config
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -263,13 +264,19 @@ class network_3GModemControl(test.test):
         commands.Disable()
         self.EnsureDisabled()
 
-    def run_once(self, autoconnect, mixed_iterations=2):
+    def run_once(self, autoconnect, mixed_iterations=2,
+                 config=None, technology=None):
         # Use a backchannel so that flimflam will restart when the
         # test is over.  This ensures flimflam is in a known good
         # state even if this test fails.
         with backchannel.Backchannel():
             self.autoconnect = autoconnect
             self.flim = flimflam.FlimFlam()
+
+            if config and technology:
+                bs, verifier = emulator_config.StartDefault(config, technology)
+                cell_tools.PrepareModemForTechnology('', technology)
+
 
             # Enabling flimflam debugging makes it easier to debug
             # problems.  Tags will be cleared when the Backchannel
