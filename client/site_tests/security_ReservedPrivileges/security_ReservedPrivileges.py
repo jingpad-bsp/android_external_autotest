@@ -50,10 +50,24 @@ class security_ReservedPrivileges(test.test):
         Do a find on the system for commands with reserved privileges and
         compare against baseline.  Fail if these do not match.
         """
+
+        # Find the max column width needed to represent user and group names
+        # in ps outoupt.
+        usermax = utils.system_output("cut -d: -f1 /etc/passwd | wc -L",
+                                      ignore_status=True)
+        usermax = max(int(usermax), 8)
+
+        groupmax = utils.system_output("cut -d: -f1 /etc/group | wc -L",
+                                       ignore_status=True)
+        groupmax = max(int(groupmax), 8)
+
         if (owner_type == 'user'):
-            command = ('ps --no-headers -eo comm,euser,ruser,suser,fuser')
+            command = ('ps --no-headers -eo '\
+                       'comm:16,euser:%d,ruser:%d,suser:%d,fuser:%d' %
+                       (usermax, usermax, usermax, usermax))
         else:
-            command = ('ps --no-headers -eo comm,rgroup,group')
+            command = ('ps --no-headers -eo comm:16,rgroup:%d,group:%d' %
+                       (groupmax, groupmax))
         command_output = utils.system_output(command, ignore_status=True)
         observed_set = self.reserved_commands(command_output.splitlines())
         baseline_set = self.load_baseline(owner_type)
