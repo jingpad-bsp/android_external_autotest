@@ -65,7 +65,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.dhcp_high = 128
 
         # Kill hostapd if already running.
-        self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
+        self.kill_hostapd()
 
         # Place us in the US by default
         self.router.run("%s reg set US" % self.cmd_iw)
@@ -106,6 +106,19 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """ Clean up any resources in use """
         # For linux, this is a no-op
         pass
+
+    def kill_hostapd(self):
+        """
+        Kills the hostapd process.  Makes sure hostapd exits before
+        continuing since it sets the interface back to station mode in its
+        cleanup path.  If we start another instance of hostapd before the
+        previous instance exits, the interface station mode will overwrite the
+        ap mode.
+        """
+        self.router.run("pkill hostapd >/dev/null 2>&1 && "
+                        "while pgrep hostapd &> /dev/null; do sleep 1; done",
+                        timeout=30,
+                        ignore_status=True)
 
     def hostap_config(self, params):
         """ Configure the AP per test requirements """
@@ -258,7 +271,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Run hostapd.
         logging.info("Starting hostapd...")
-        self.router.run("%s -dd %s > %s &" %
+        self.router.run("%s -dd %s &> %s &" %
             (self.cmd_hostapd, self.hostapd['file'], self.hostapd['log']))
 
         if not multi_interface:
@@ -426,7 +439,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 # interface hostapd uses to send beacon and DEAUTH packets
                 self._remove_interfaces()
 
-            self.router.run("pkill hostapd >/dev/null 2>&1", ignore_status=True)
+            self.kill_hostapd()
 #           self.router.run("rm -f %s" % self.hostapd['file'])
             self.router.get_file(self.hostapd['log'],
                                  'debug/hostapd_router_%d.log' %
