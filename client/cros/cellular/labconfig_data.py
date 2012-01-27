@@ -120,7 +120,7 @@ CELLS['mtv'] = {
             "name": "alex-gobi-2000",
             "technologies": GOBI_2000_TECHNOLOGIES,
             "location": "rack2-host11",
-            "rf_switch_port": 0,
+            "rf_switch_port": 2,
             },
         {
             "address": "172.22.50.12",
@@ -128,7 +128,7 @@ CELLS['mtv'] = {
             "name": "alex-y3300",
             "technologies": GENERIC_GSM_TECHNOLOGIES,
             "location": "rack2-host12",
-            "rf_switch_port": 1,
+            "rf_switch_port": 5,
             },
         {
             "address": "172.22.50.85",
