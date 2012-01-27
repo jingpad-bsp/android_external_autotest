@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -337,6 +337,21 @@ class UITest(pyauto_test.PyAutoTest):
         return [cryptohome.canonicalize(name), passwd]
 
 
+    def __take_screenshot(self, fname_prefix):
+      """Take screenshot and save to a new file in the results dir.
+
+      Args:
+        fname_prefix: prefix for the output fname
+      """
+      next_index = len(glob.glob(
+          os.path.join(self.resultsdir, '%s-*.png' % fname_prefix)))
+      screenshot_file = os.path.join(
+          self.resultsdir, '%s-%d.png' % (fname_prefix, next_index))
+      logging.info('Saving screenshot to %s.' % screenshot_file)
+      utils.system('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
+                   'screenshot %s' % screenshot_file)
+
+
     def login(self, username=None, password=None):
         """Log in with a set of credentials.
 
@@ -369,15 +384,21 @@ class UITest(pyauto_test.PyAutoTest):
         # issues in the lab during login.
         with UITest.Tcpdump(iface='lo', fname_prefix='tcpdump-lo-login',
                             results_dir=self.resultsdir):
-            if uname:  # Regular login
-                login_error = self.pyauto.Login(username=uname, password=passwd)
-                if login_error:
-                    raise error.TestError('Error during login (%s, %s): %s.' % (
-                                          uname, passwd, login_error))
-                logging.info('Logged in as %s.' % uname)
-            else:  # Login as guest
-                self.pyauto.LoginAsGuest()
-                logging.info('Logged in as guest.')
+            try:
+                if uname:  # Regular login
+                    login_error = self.pyauto.Login(username=uname,
+                                                    password=passwd)
+                    if login_error:
+                        raise error.TestError(
+                            'Error during login (%s, %s): %s.' % (
+                            uname, passwd, login_error))
+                    logging.info('Logged in as %s.' % uname)
+                else:  # Login as guest
+                    self.pyauto.LoginAsGuest()
+                    logging.info('Logged in as guest.')
+            except:
+                self.__take_screenshot(fname_prefix='login-fail-screenshot')
+                raise
 
         if not self.logged_in():
             raise error.TestError('Not logged in')
