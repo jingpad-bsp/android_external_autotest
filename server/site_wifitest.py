@@ -1412,7 +1412,7 @@ class WiFiTest(object):
                 signal_info[var] = val
 
         self.client_signal_info = signal_info
-        logging.info('Signal Info: %s\n' % repr(signal_info))
+        logging.info('Signal Info: %s' % repr(signal_info))
 
 
     def bgscan_set(self, params):
@@ -1434,7 +1434,7 @@ class WiFiTest(object):
                     if 'noise' in self.client_signal_info:
                         # Compensate for real noise vs standard estimate
                         signal -= 95 + int(self.client_signal_info['noise'])
-                logging.info('Auto signal: %s\n' % repr(signal))
+                logging.info('Auto signal: %s' % repr(signal))
             opts += " BgscanSignalThreshold=%s" % signal
         if params.get('method', None):
             opts += " BgscanMethod=%s" % params['method']
