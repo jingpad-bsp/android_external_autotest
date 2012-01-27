@@ -23,7 +23,8 @@
     [ "deconfig" ],
 
     # Configure and connect to the second AP.
-    [ "config",         { "channel":"2437", "mode":"11b",
+    # NB: use a 5GHz channel so it has a different BSSID (hack)
+    [ "config",         { "channel":"5240", "mode":"11a",
                           "ssid_suffix": "t2"} ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
