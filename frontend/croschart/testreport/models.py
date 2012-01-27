@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -29,6 +29,7 @@ SELECT * FROM
 (SELECT name as test_name, test_class, test_type, path, author, test_category,
        '' as platform, 0 as run_count, 0.0 as avg_test_time
 FROM afe_autotests
+  %(afe_where)s
 UNION
 SELECT test_name, '' as test_class, '' as test_type, '' as path, '' as author,
        '' as test_category, platform, COUNT(*) as run_count,
@@ -39,7 +40,7 @@ WHERE NOT test_name REGEXP '(CLIENT|SERVER)_JOB.*'
   AND NOT test_name REGEXP 'boot\.[0-9]'
   AND NOT ISNULL(test_started_time)
   AND NOT ISNULL(test_finished_time)
-  %s
+  %(tko_where)s
 GROUP BY test_name, subdir, platform) AS q"""
 
 
@@ -110,6 +111,14 @@ def GetTestReportData(query):
   return {'gviz_data_table': gviz_data_table}
 
 
+def AddWhereClause(existing, new_clause):
+  """Add a clause to a SQL WHERE."""
+  if not existing or not existing.strip():
+    return ' WHERE %s ' % new_clause
+  else:
+    return existing + (' AND %s ' % new_clause)
+
+
 def GetRangedTestReportData(request):
   """Prepare and run the db query and massage the results."""
   ranged_queries = {'from_date': chartmodels.GetDateRangedChartQuery,
@@ -119,6 +128,16 @@ def GetRangedTestReportData(request):
       break
   if not range_key:
     raise ChartInputError('One interval-type parameter must be supplied.')
-  query = GetBaseTestQuery(request) % (ranged_queries[range_key](request))
+  query_parameters = {'afe_where': ' ',
+                      'tko_where': ranged_queries[range_key](request)}
+  test_name = request.GET.get('test_name')
+  if test_name and test_name.strip():
+    query_parameters['afe_where'] = AddWhereClause(
+        query_parameters['afe_where'], "name = '%s'" % test_name.strip())
+    query_parameters['tko_where'] = AddWhereClause(
+        query_parameters['tko_where'], "test_name = '%s'" % test_name.strip())
+  query = GetBaseTestQuery(request) % query_parameters
+  if request.GET.get('query'):
+    raise ChartDBError(query)
   data_dict = GetTestReportData(query)
   return data_dict

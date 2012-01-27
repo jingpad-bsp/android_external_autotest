@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -18,17 +18,19 @@ COMMON_REGEXP = "'(%s).*'"
 # Queries: These are designed as stateless functions with static relationships.
 #          e.g. GetBuildRangedChartQuery() depends on
 #               GetBasePerfQuery() for efficiency.
+PLATFORM_QUERY_TEMPLATE = """
+  AND platform REGEXP '(desktop|netbook)_%(platform)s'"""
+
 COMMON_PERF_QUERY_TEMPLATE = """
 SELECT %(select_keys)s
 FROM tko_perf_view_2
 WHERE job_name REGEXP %(job_name)s
-  AND platform REGEXP '(desktop|netbook)_%(platform)s'
   AND job_owner = 'chromeos-test'
   AND NOT ISNULL(iteration_value)
   AND iteration_value >= 0.0
   AND NOT ISNULL(test_started_time)
   AND NOT ISNULL(test_finished_time)
-  AND NOT ISNULL(job_finished_time)"""
+  AND NOT ISNULL(job_finished_time)""" + PLATFORM_QUERY_TEMPLATE
 
 CHART_SELECT_KEYS = 'job_name, job_tag, iteration_key, iteration_value'
 
@@ -47,7 +49,7 @@ def GetBasePerfQueryParts(request):
   query = COMMON_PERF_QUERY_TEMPLATE + CHART_QUERY_KEYS
 
   boards = '|'.join(request.GET.getlist('board'))
-  platform = '%s' % request.GET.get('system').upper()
+  platform = request.GET.get('system').upper()
   test_name, test_keys = chartutils.GetTestNameKeys(request.GET.get('testkey'))
 
   query_parameters = {}
@@ -95,6 +97,16 @@ def GetBuildRangedChartQuery(request):
   return query % query_parameters
 
 
+def GetPlatformChartQuery(request):
+  """Handle an optional system query parameter."""
+  query_parameters = {}
+  platform = request.GET.get('system')
+  if platform and platform.strip():
+    query_parameters['platform'] = platform.strip().upper()
+    return PLATFORM_QUERY_TEMPLATE % query_parameters
+  return ' '
+
+
 def GetDateRangedChartQuery(request):
   """Apply a date range against the BaseQuery."""
   query = RANGE_QUERY_TEMPLATE
@@ -107,7 +119,7 @@ def GetDateRangedChartQuery(request):
   query_parameters['max_query'] = "SELECT '%s'" % to_date
 
   """Fully populates and returns a filter query string."""
-  return query % query_parameters
+  return query % query_parameters + GetPlatformChartQuery(request)
 
 
 def GetIntervalRangedChartQuery(request):
@@ -123,4 +135,4 @@ def GetIntervalRangedChartQuery(request):
   query_parameters['max_query'] = 'SELECT NOW()'
 
   """Fully populates and returns a filter query string."""
-  return query % query_parameters
+  return query % query_parameters + GetPlatformChartQuery(request)
