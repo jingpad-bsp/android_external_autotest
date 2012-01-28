@@ -294,6 +294,10 @@ class UITest(pyauto_test.PyAutoTest):
 
         cros_ui.start()
 
+        # Save name of the last chrome log before our test started.
+        log_files = glob.glob(constants.CHROME_LOG_DIR + '/chrome_*')
+        self._last_chrome_log = max(log_files) if log_files else ''
+
         pyauto_test.PyAutoTest.initialize(self, auto_login=False,
                                           extra_chrome_flags=extra_chrome_flags)
         if self.auto_login:
@@ -489,13 +493,15 @@ class UITest(pyauto_test.PyAutoTest):
            session_manager when the test is complete.
         """
         try:
-            logpath = constants.CHROME_LOG_DIR
+            # Save all chrome logs created during the test.
             try:
-                for filename in os.listdir(logpath):
-                    fullpath = os.path.join(logpath, filename)
-                    if os.path.isfile(fullpath):
-                        shutil.copy(fullpath, os.path.join(self.resultsdir,
-                                                           filename))
+                for fullpath in glob.glob(
+                    constants.CHROME_LOG_DIR + '/chrome_*'):
+                    if os.path.isfile(fullpath) and \
+                        not os.path.islink(fullpath) and \
+                        fullpath > self._last_chrome_log:  # ignore old logs
+                        shutil.copy2(fullpath, self.resultsdir)
+
             except (IOError, OSError) as err:
                 logging.error(err)
 
