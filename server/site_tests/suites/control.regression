@@ -89,6 +89,7 @@ TESTS = [
   ('platform_Rootdev', {}),
   ('platform_SessionManagerTerm', {}),
   ('platform_TempFS', {}),
+  ('platform_ToolchainOptions', {}),
   ('realtimecomm_GTalkAudioBench', {}),
   ('realtimecomm_GTalkunittest', {}),
   ('security_Minijail0', {}),

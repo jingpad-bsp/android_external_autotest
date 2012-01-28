@@ -23,7 +23,6 @@ TESTS = [
   ('platform_OSLimits', {}),
   ('platform_PartitionCheck', {}),
   ('platform_RootPartitionsNotMounted', {}),
-  ('platform_ToolchainOptions', {}),
   ('build_RootFilesystemSize', {}),
 # crosbug.com/20024
 #  ('desktopui_ChromeFirstRender', {}),
