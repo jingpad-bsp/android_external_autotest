@@ -31,6 +31,12 @@ class DevServer(object):
         self._dev_server = dev_host if dev_host else _get_dev_server()
 
 
+    @staticmethod
+    def create(dev_host=None):
+        """Wraps the constructor.  Purely for mocking purposes."""
+        return DevServer(dev_host)
+
+
     def _build_call(self, method, **kwargs):
         """Build a URL that calls |method|, passing |kwargs|.
 

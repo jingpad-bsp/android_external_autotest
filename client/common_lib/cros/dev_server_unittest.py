@@ -31,22 +31,22 @@ class DevServerTest(mox.MoxTestBase):
 
     def _returnHttpServerError(self):
         self.mox.StubOutWithMock(urllib2, 'urlopen')
-        500 = urllib2.HTTPError(url='',
-                                code=httplib.INTERNAL_SERVER_ERROR,
-                                msg='',
-                                hdrs=None,
-                                fp=None)
-        urllib2.urlopen(mox.IgnoreArg()).AndRaise(500)
+        e500 = urllib2.HTTPError(url='',
+                                 code=httplib.INTERNAL_SERVER_ERROR,
+                                 msg='',
+                                 hdrs=None,
+                                 fp=None)
+        urllib2.urlopen(mox.IgnoreArg()).AndRaise(e500)
 
 
     def _returnHttpForbidden(self):
         self.mox.StubOutWithMock(urllib2, 'urlopen')
-        403 = urllib2.HTTPError(url='',
-                                code=httplib.FORBIDDEN,
-                                msg='',
-                                hdrs=None,
-                                fp=None)
-        urllib2.urlopen(mox.IgnoreArg()).AndRaise(403)
+        e403 = urllib2.HTTPError(url='',
+                                 code=httplib.FORBIDDEN,
+                                 msg='',
+                                 hdrs=None,
+                                 fp=None)
+        urllib2.urlopen(mox.IgnoreArg()).AndRaise(e403)
 
 
     def testSuccessfulTriggerDownload(self):

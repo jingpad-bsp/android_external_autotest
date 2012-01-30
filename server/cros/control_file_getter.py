@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -94,7 +94,11 @@ class CacheingControlFileGetter(ControlFileGetter):
         """
         if not self._files and not self.get_control_file_list():
             raise ControlFileNotFound('No control files found.')
-        regexp = re.compile(os.path.join(test_name, 'control'))
+
+        if 'control' not in test_name:
+            regexp = re.compile(os.path.join(test_name, 'control'))
+        else:
+            regexp = re.compile(test_name)
         candidates = filter(regexp.search, self._files)
         if not candidates:
             raise ControlFileNotFound('No control file for ' + test_name)
@@ -180,6 +184,12 @@ class DevServerGetter(CacheingControlFileGetter):
         super(DevServerGetter, self).__init__()
         self._dev_server = ds if ds else dev_server.DevServer()
         self._build = build
+
+
+    @staticmethod
+    def create(build, ds=None):
+        """Wraps constructor.  Can be mocked for testing purposes."""
+        return DevServerGetter(build, ds)
 
 
     def _get_control_file_list(self):

@@ -107,6 +107,22 @@ class DevServerGetterTest(mox.MoxTestBase):
                           self._CONTENTS)
 
 
+    def testGetSuiteControlFileByName(self):
+        """\
+        Should successfully get a suite control file from the devserver by name.
+        """
+        name = 'control.bvt'
+        path = "file/" + name
+
+        files = self._FILES + [path]
+        self.dev_server.list_control_files(self._BUILD).AndReturn(files)
+        self.dev_server.get_control_file(self._BUILD,
+                                         path).AndReturn(self._CONTENTS)
+        self.mox.ReplayAll()
+        self.assertEquals(self.getter.get_control_file_contents_by_name(name),
+                          self._CONTENTS)
+
+
     def testGetControlFileByNameFail(self):
         """Should fail to get a control file from the dev server by name."""
         name = 'one'
