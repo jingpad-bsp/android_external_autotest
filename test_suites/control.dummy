@@ -24,6 +24,6 @@ suite_tag = 'dummy'
 reimager = dynamic_suite.Reimager(job.autodir)
 
 if (reimager.skip(globals()) or
-    reimager.attempt(image_name, 1, board, job.record)):
+    reimager.attempt(build, 1, board, job.record)):
     bvt = dynamic_suite.Suite.create_from_name(suite_tag, job.autodir)
-    bvt.run_and_wait(image_name, job.record, add_experimental=True)
+    bvt.run_and_wait(build, job.record, add_experimental=True)
