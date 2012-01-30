@@ -45,11 +45,14 @@
     [ "client_ping",    { "count":"10" } ],
 
     # Pull some time differences out of the logs
-    [ "log_time_diff",  { "from":"Back to C", "to":"Reason: 7",
+    [ "log_time_diff",  { "from":"Low-level resume complete",
+                          "to":"Reason: 7",
                           "perf":"deauth" } ],
-    [ "log_time_diff",  { "from":"Back to C", "to":": associated",
+    [ "log_time_diff",  { "from":"Low-level resume complete",
+                          "to":": associated",
                           "perf":"reassociated" } ],
-    [ "log_time_diff",  { "from":"Back to C", "to":" -> COMPLETED",
+    [ "log_time_diff",  { "from":"Low-level resume complete",
+                          "to":" -> COMPLETED",
                           "perf":"reconnect" } ],
     [ "destroy" ],
 
