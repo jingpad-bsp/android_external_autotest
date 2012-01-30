@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote  name="cros"
+           fetch="http://git.chromium.org/git"
+           review="gerrit.chromium.org/gerrit" />
+  <remote  name="cros-internal"
+           fetch="ssh://gerrit-int.chromium.org:29419"
+           review="gerrit-int.chromium.org" />
+  <default revision="refs/heads/master"
+           remote="cros" />
+
+  <project path="autotest"
+           name="chromiumos/third_party/autotest" />
+
+  <project remote="cros-internal" path="autotest/site_utils/autotest_tools"
+           name="chromeos/autotest-tools" />
+  <project remote="cros-internal" path="autotest/site_utils/autotest_private"
+           name="chromeos/autotest-private" />
+
+  <!-- end chromeos projects -->
+
+</manifest>
