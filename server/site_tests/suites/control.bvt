@@ -24,8 +24,6 @@ TESTS = [
   ('platform_PartitionCheck', {}),
   ('platform_RootPartitionsNotMounted', {}),
   ('build_RootFilesystemSize', {}),
-# crosbug.com/20024
-#  ('desktopui_ChromeFirstRender', {}),
   ('desktopui_UrlFetch', {'live': False, 'tag': 'not-live'}),
   ('desktopui_FlashSanityCheck', {}),
   ('desktopui_KillRestart', {'binary': '^chrome$',

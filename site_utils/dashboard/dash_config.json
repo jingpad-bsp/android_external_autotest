@@ -203,11 +203,6 @@
             "keys": [
                 "seconds_firmware_boot"],
             "ylabel": "seconds"},
-        "20": {
-            "test": "desktopui_ChromeFirstRender",
-            "keys": [
-                "seconds_chrome_first_tab"],
-            "ylabel": "Seconds"},
         "30": {
             "test": "build_RootFilesystemSize",
             "keys": ["bytes_rootfs_prod"],

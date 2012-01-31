@@ -4,7 +4,6 @@
   "platform_BootPerfServer,seconds_reboot_time": "lowisgood",
   "platform_BootPerfServer,seconds_shutdown_time": "lowisgood",
   "platform_BootPerfServer,seconds_firmware_boot": "lowisgood",
-  "desktopui_ChromeFirstRender,seconds_chrome_first_tab": "lowisgood",
   "build_RootFilesystemSize,bytes_rootfs_prod": "lowisgood",
   "power_LoadTest.WIFI,minutes_battery_life": "highisgood",
   "power_Resume,seconds_system_resume": "lowisgood",

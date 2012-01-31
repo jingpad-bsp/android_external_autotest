@@ -6,7 +6,6 @@
   ["platform_BootPerfServer", "seconds_reboot_time,seconds_shutdown_time"],
   ["platform_BootPerfServer",
    "rdbytes_kernel_to_startup,rdbytes_kernel_to_startup_done,rdbytes_kernel_to_x_started,rdbytes_kernel_to_chrome_exec,rdbytes_kernel_to_chrome_main,rdbytes_kernel_to_login"],
-  ["desktopui_ChromeFirstRender", "seconds_chrome_first_tab"],
   ["build_RootFilesystemSize", "bytes_rootfs_prod"],
   ["build_RootFilesystemSize", "bytes_rootfs_test"],
   ["power_LoadTest.WIFI", "w_energy_rate"],
