@@ -80,7 +80,8 @@ class Reimager(object):
                    record(status, subdir, name, reason)
         @return True if all reimaging jobs succeed, false otherwise.
         """
-        record('START', None, 'try new image')
+        wrapper_job_name = 'try new image'
+        record('START', None, wrapper_job_name)
         self._ensure_version_label(VERSION_PREFIX+name)
         canary = self._schedule_reimage_job(name, num, board)
         logging.debug('Created re-imaging job: %d', canary.id)
@@ -94,7 +95,7 @@ class Reimager(object):
 
         if canary.result is True:
             self._report_results(canary, record)
-            record('END GOOD', None, None)
+            record('END GOOD', None, wrapper_job_name)
             return True
 
         if canary.result is None:
@@ -102,7 +103,7 @@ class Reimager(object):
         else:  # canary.result is False
             self._report_results(canary, record)
 
-        record('END FAIL', None, None)
+        record('END FAIL', None, wrapper_job_name)
         return False
 
 
