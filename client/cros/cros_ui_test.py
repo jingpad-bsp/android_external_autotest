@@ -198,37 +198,26 @@ class UITest(pyauto_test.PyAutoTest):
             self._dnsServer.stop()
 
 
-    class Tcpdump(object):
-        """Run tcpdump and save output.
-
-        To be used with 'with' statement.
-        """
-        # Handle to tcpdump process.
-        _tcpdump = None
-
-        def __init__(self, iface, fname_prefix, results_dir):
-            self._iface = iface
-            self._fname_prefix = fname_prefix
-            self._results_dir = results_dir
-
-
-        def __enter__(self):
+    def start_tcpdump(self, iface):
+        """Start tcpdump process, if not running already."""
+        if not hasattr(self, '_tcpdump'):
             self._tcpdump = subprocess.Popen(
-                ['tcpdump', '-i', self._iface, '-vv'], stdout=subprocess.PIPE)
+                ['tcpdump', '-i', iface, '-vv'], stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
 
 
-        def __exit__(self, type, value, traceback):
-            """Stop tcpdump process and save output to a new file."""
-            if not self._tcpdump:
-                return
+    def stop_tcpdump(self, fname_prefix):
+        """Stop tcpdump process and save output to a new file."""
+        if hasattr(self, '_tcpdump'):
             self._tcpdump.terminate()
             # Save output to a new file
             next_index = len(glob.glob(
-                os.path.join(self._results_dir, '%s-*' % self._fname_prefix)))
+                os.path.join(self.resultsdir, '%s-*' % fname_prefix)))
             tcpdump_file = os.path.join(
-                self._results_dir, '%s-%d' % (self._fname_prefix, next_index))
-            logging.info('Saving tcpdump output to %s.' % tcpdump_file)
-            open(tcpdump_file, 'w').write(self._tcpdump.communicate()[0])
+                self.resultsdir, '%s-%d' % (fname_prefix, next_index))
+            logging.info('Saving tcpdump output to %s' % tcpdump_file)
+            utils.open_write_close(tcpdump_file, self._tcpdump.communicate()[0])
+            del self._tcpdump
 
 
     def initialize(self, creds=None, is_creating_owner=False,
@@ -269,6 +258,10 @@ class UITest(pyauto_test.PyAutoTest):
 
         if creds:
             self.start_authserver()
+
+        # Run tcpdump on 'lo' interface to investigate network
+        # issues in the lab during login.
+        self.start_tcpdump(iface='lo')
 
         # We yearn for Chrome coredumps...
         open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
@@ -384,25 +377,23 @@ class UITest(pyauto_test.PyAutoTest):
         uname = username or self.username
         passwd = password or self.password
 
-        # Run tcpdump on 'lo' interface to investigate network
-        # issues in the lab during login.
-        with UITest.Tcpdump(iface='lo', fname_prefix='tcpdump-lo-login',
-                            results_dir=self.resultsdir):
-            try:
-                if uname:  # Regular login
-                    login_error = self.pyauto.Login(username=uname,
-                                                    password=passwd)
-                    if login_error:
-                        raise error.TestError(
-                            'Error during login (%s, %s): %s.' % (
-                            uname, passwd, login_error))
-                    logging.info('Logged in as %s.' % uname)
-                else:  # Login as guest
-                    self.pyauto.LoginAsGuest()
-                    logging.info('Logged in as guest.')
-            except:
-                self.__take_screenshot(fname_prefix='login-fail-screenshot')
-                raise
+        try:
+            if uname:  # Regular login
+                login_error = self.pyauto.Login(username=uname,
+                                                password=passwd)
+                if login_error:
+                    raise error.TestError(
+                        'Error during login (%s, %s): %s.' % (
+                        uname, passwd, login_error))
+                logging.info('Logged in as %s.' % uname)
+            else:  # Login as guest
+                self.pyauto.LoginAsGuest()
+                logging.info('Logged in as guest.')
+        except:
+            self.__take_screenshot(fname_prefix='login-fail-screenshot')
+            raise
+        finally:
+            self.stop_tcpdump(fname_prefix='tcpdump-lo--till-login')
 
         if not self.logged_in():
             raise error.TestError('Not logged in')
@@ -525,6 +516,7 @@ class UITest(pyauto_test.PyAutoTest):
             if os.path.isfile(constants.CHROME_CORE_MAGIC_FILE):
                 os.unlink(constants.CHROME_CORE_MAGIC_FILE)
         finally:
+            self.stop_tcpdump(fname_prefix='tcpdump-lo--till-end')
             self.stop_authserver()
 
 
