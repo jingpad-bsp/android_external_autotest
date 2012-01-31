@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -22,17 +22,18 @@ Assumes that a label including the image name has already been created.
 from autotest_lib.server import frontend
 
 vers = 'cros-version-'
-try:
+repo_url = None
+if image_name in locals():
     from autotest_lib.server.cros import dynamic_suite
     vers = dynamic_suite.VERSION_PREFIX
-except:
-    pass
+    repo_url = dynamic_suite._package_url_pattern() % image_name
 
 AFE = frontend.AFE(debug=False)
 
 def clear_version_labels(machine):
     labels = AFE.get_labels(name__startswith=vers)
     for label in labels: label.remove_hosts(hosts=[machine])
+    AFE.set_host_attribute('job_repo_url', None, hostname=machine)
 
 
 def run(machine):
@@ -41,6 +42,7 @@ def run(machine):
     if job.run_test('autoupdate', host=host, update_url=image_url):
         label = AFE.get_labels(name=vers+image_name)[0]
         label.add_hosts([machine])
+        AFE.set_host_attribute('job_repo_url', repo_url, hostname=machine)
 
 
 job.parallel_simple(run, machines)

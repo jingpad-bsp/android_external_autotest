@@ -197,6 +197,10 @@ class AFE(RpcClient):
         return self.get_hosts(id=id)[0]
 
 
+    def set_host_attribute(self, attr, val, **dargs):
+        self.run('set_host_attribute', attribute=attr, value=val, **dargs)
+
+
     def get_labels(self, **dargs):
         labels = self.run('get_labels', **dargs)
         return [Label(self, l) for l in labels]

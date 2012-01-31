@@ -64,15 +64,16 @@ class Reimager(object):
         return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
 
 
-    def attempt(self, name, num, board, record):
+    def attempt(self, build, num, board, record):
         """
         Synchronously attempt to reimage some machines.
 
         Fire off attempts to reimage |num| machines of type |board|, using an
-        image at |url| called |name|.  Wait for completion, polling every
+        image at |url| called |build|.  Wait for completion, polling every
         10s, and log results with |record| upon completion.
 
-        @param name: the name of the image to install (must be unique).
+        @param build: the build to install e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
         @param num: how many devices to reimage.
         @param board: which kind of devices to reimage.
         @param record: callable that records job status.
@@ -82,8 +83,8 @@ class Reimager(object):
         """
         wrapper_job_name = 'try new image'
         record('START', None, wrapper_job_name)
-        self._ensure_version_label(VERSION_PREFIX+name)
-        canary = self._schedule_reimage_job(name, num, board)
+        self._ensure_version_label(VERSION_PREFIX + build)
+        canary = self._schedule_reimage_job(build, num, board)
         logging.debug('Created re-imaging job: %d', canary.id)
         while len(self._afe.get_jobs(id=canary.id, not_yet_run=True)) > 0:
             time.sleep(10)
@@ -118,25 +119,24 @@ class Reimager(object):
             self._afe.create_label(name=name)
 
 
-    def _schedule_reimage_job(self, name, num_machines, board):
+    def _schedule_reimage_job(self, build, num_machines, board):
         """
         Schedules the reimaging of |num_machines| |board| devices with |image|.
 
         Sends an RPC to the autotest frontend to enqueue reimaging jobs on
         |num_machines| devices of type |board|
 
-        @param name: the name of the image to install (must be unique).
+        @param build: the build to install (must be unique).
         @param num_machines: how many devices to reimage.
         @param board: which kind of devices to reimage.
         @return a frontend.Job object for the reimaging job we scheduled.
         """
         control_file = inject_vars(
-            { 'image_url': _image_url_pattern() % name,
-              'image_name': name },
+            {'image_url': _image_url_pattern() % build, 'image_name': build},
             self._cf_getter.get_control_file_contents_by_name('autoupdate'))
 
         return self._afe.create_job(control_file=control_file,
-                                    name=name + '-try',
+                                    name=build + '-try',
                                     control_type='Server',
                                     meta_hosts=[board] * num_machines)
 
