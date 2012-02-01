@@ -64,6 +64,25 @@
             ]
         },
 
+        "x86-alex-r19": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
+            "build_pattern": "R19-*",
+            "platforms": [
+                {"platform": "netbook_ALEX", "au_test": true},
+                {"platform": "netbook_ALEX",
+                 "groups": ["audio"]},
+                {"platform": "netbook_ALEX_CDMA_GOBI2K",
+                 "groups": ["network_3g_gobi"]},
+                {"platform": "netbook_ALEX_CDMA_GOBI3K",
+                 "groups": ["network_3g_gobi"]},
+                {"platform": "netbook_ALEX_GSM_Y3300",
+                 "groups": ["network_3g"]},
+                {"platform": "netbook_ALEX_GSM_Y3400",
+                 "groups": ["network_3g"]}
+            ]
+        },
+
         "x86-zgb-r15": {
             "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
@@ -95,6 +114,19 @@
             "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R18-*",
+            "platforms": [
+                {"platform": "netbook_ACER_ZGB","au_test": true},
+                {"platform": "netbook_ACER_ZGB",
+                 "groups": ["audio"]},
+                {"platform": "netbook_ACER_ZGB_CDMA_GOBI2K",
+                 "groups": ["network_3g"]}
+            ]
+        },
+
+        "x86-zgb-r19": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
+            "build_pattern": "R19-*",
             "platforms": [
                 {"platform": "netbook_ACER_ZGB","au_test": true},
                 {"platform": "netbook_ACER_ZGB",
@@ -146,6 +178,17 @@
             ]
         },
 
+        "x86-mario-r19": {
+            "archive_server": "gs://chromeos-releases/dev-channel/x86-mario",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
+            "build_pattern": "R19-*",
+            "platforms": [
+                {"platform": "netbook_MARIO_MP", "au_test": true},
+                {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
+                 "groups": ["network_3g_gobi"]}
+            ]
+        },
+
         "stumpy-r17": {
             "archive_server": "gs://chromeos-releases/beta-channel/stumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
@@ -159,6 +202,17 @@
             "archive_server": "gs://chromeos-releases/dev-channel/stumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
             "build_pattern": "R18-*",
+            "platforms": [
+                {"platform": "desktop_STUMPY", "au_test": true},
+                {"platform": "desktop_STUMPY",
+                 "groups": ["audio"]}
+            ]
+        },
+
+       "stumpy-r19": {
+            "archive_server": "gs://chromeos-releases/dev-channel/stumpy",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
+            "build_pattern": "R19-*",
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true},
                 {"platform": "desktop_STUMPY",
@@ -186,10 +240,32 @@
             ]
         },
 
+       "lumpy-r19": {
+            "archive_server": "gs://chromeos-releases/dev-channel/lumpy",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
+            "build_pattern": "R19-*",
+            "platforms": [
+                {"platform": "netbook_LUMPY", "au_test": true},
+                {"platform": "netbook_LUMPY",
+                 "groups": ["audio"]}
+            ]
+        },
+
         "tegra2-kaen-r18": {
             "archive_server": "gs://chromeos-releases/dev-channel/tegra2-kaen",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-kaen.zip",
             "build_pattern": "R18-*",
+            "platforms": [
+                {"platform": "netbook_KAEN",
+                 "groups": ["bvt", "build", "desktopui", "desktopui_tegra2",
+                            "kernel", "pagecycler", "perfx3", "power"]}
+            ]
+        },
+
+        "tegra2-kaen-r19": {
+            "archive_server": "gs://chromeos-releases/dev-channel/tegra2-kaen",
+            "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-kaen.zip",
+            "build_pattern": "R19-*",
             "platforms": [
                 {"platform": "netbook_KAEN",
                  "groups": ["bvt", "build", "desktopui", "desktopui_tegra2",
