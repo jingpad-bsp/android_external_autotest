@@ -85,6 +85,11 @@ class hardware_Trackpad(test.test):
         self.ilog = trackpad_util.IterationLog(gesture_files_path_results,
                                                gesture_files_path_autotest)
 
+        # Start tpcontrol log and get the gesture library version
+        self.tpcontrol_log = trackpad_util.TpcontrolLog()
+        gesture_version = self.tpcontrol_log.get_gesture_version()
+        logging.info('Gesture library version: %s' % gesture_version)
+
         # Initialization of statistics
         tdata.num_wrong_file_name = 0
         tdata.num_files_tested = {}
@@ -106,9 +111,6 @@ class hardware_Trackpad(test.test):
 
         # Get an instance of AutoX to handle X related issues
         autox = cros_ui.get_autox()
-
-        # Start tpcontrol log
-        self.tpcontrol_log = trackpad_util.TpcontrolLog()
 
         # Start X events capture
         self.xcapture = Xcapture(error, local_path, autox)

@@ -368,6 +368,7 @@ class TpcontrolLog:
     def __init__(self):
         tpcontrol_log_cmd = '/opt/google/touchpad/tpcontrol log'
         self.original_log_dir = '/home/chronos/user/log'
+        self.latest_log_file = '/var/log/touchpad_activity_log.txt'
         trackpad_test_dir = '/var/tmp/trackpad_test_data'
         self.tmp_log_dir = os.path.join(trackpad_test_dir, 'old_tpcontrol_log')
         self.new_log_dir = os.path.join(trackpad_test_dir, 'tpcontrol_log')
@@ -427,6 +428,24 @@ class TpcontrolLog:
         logging.info('  The tar ball of tpcontrol log files is saved in %s' %
                      self.tar_path)
         common_util.simple_system(tar_cmd)
+
+    def get_gesture_version(self):
+        ''' Extract the gesture library version from the tpcontrol log '''
+        # Generate tpcontrol log and confirm its existence
+        common_util.simple_system(self.tpcontrol_log_cmd)
+        if not os.path.isfile(self.latest_log_file):
+            return None
+
+        # Extract the version string from the tpcontrol log
+        # The gesture library version in tpcontrol log looks like
+        # "gesturesVersion": "0.0.1-r86-f821a04bb5487f24efe0bd2952abd0a23fe68e"
+        version = re.compile('"gesturesVersion":\s*"(.*)"')
+        with open(self.latest_log_file) as f:
+            for line in f:
+                result = version.search(line)
+                if result is not None:
+                    return result.group(1)
+        return None
 
 
 def get_fullname(filename):
