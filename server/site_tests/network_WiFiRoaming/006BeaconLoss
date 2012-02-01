@@ -18,8 +18,8 @@
 #                               "max_idle":5.5,     # Idle must happen in 5.5s
                                 "debug":True,       # Print state transitions
                                 "states":[
-                                  (None, 'idle')    # Wait for transition to
-                                ] } ],              # 'idle' state.
+                                  (None, '-ready')  # Wait for transition to a
+                                ] } ],              # 'non-ready' state.
 
     # Do the test again, this time forcing a scan on the DUT just before the
     # AP disappears.
@@ -32,8 +32,8 @@
 #                               "max_idle":5.5,     # Idle must happen in 5.5s
                                 "debug":True,       # Print state transitions
                                 "states":[
-                                  (None, 'idle')    # Wait for transition to
-                                ] } ],              # 'idle' state.
+                                  (None, '-ready')  # Wait for transition to a
+                                ] } ],              # 'non-ready' state.
     [ "destroy" ],
   ],
 }

@@ -165,7 +165,7 @@ class StateHandler(object):
     self.step_start_time = None
     self.event_timeout_ptr = None
     self.wait_path = None
-    self.wait_state = None
+    self.wait_value = None
     self.waiting_for_services = False
     self.results = []
     self.service_cache = {}
@@ -201,7 +201,7 @@ class StateHandler(object):
     self.Debug('Service %s %s changed to \'%s\'' %
                (repr(self.service_name), attr, state))
 
-    if state == self.wait_state:
+    if (state == self.wait_value) == self.wait_for_enter:
       self.results.append('%.3f' % (time.time() - self.step_start_time))
       if not self.NextState():
         self.runloop.quit()
@@ -250,12 +250,8 @@ class StateHandler(object):
     if not self.state_list:
       return False
 
-    self.service_name, self.wait_attr, self.wait_state = self.state_list.pop(0)
-    if self.wait_state.startswith('+'):
-      self.wait_state = self.wait_state[1:]
-      self.waitchange = True
-    else:
-      self.waitchange = False
+    (self.service_name, self.wait_attr, self.wait_value,
+     self.wait_change, self.wait_for_enter) = self.state_list.pop(0)
 
     now = time.time()
     if self.run_start_time is None:
@@ -306,7 +302,9 @@ class StateHandler(object):
 
     self.StateChanged()
 
-    if self.svc_state == self.wait_state and not self.waitchange:
+    self.Debug('Initial state is %s' % self.svc_state)
+    if (((self.svc_state == self.wait_value) == self.wait_for_enter) and
+        not self.wait_change):
       return True
 
     if not self.wait_path in self.waiting_paths:
@@ -373,10 +371,23 @@ def main(argv):
                    '"SSID=[ATTRIBUTE:]STATE..."' % arg)
 
     attribute, sep, desired_value = desired_state.partition(':')
-    if sep == ':':
-      state_list.append((name, attribute, desired_value))
+    if sep != ':':
+      attribute = 'State'
+      desired_value = desired_state
+
+    if desired_value[0] == '+':
+      desired_value = desired_value[1:]
+      wait_change = True
     else:
-      state_list.append((name, 'State', desired_state))
+      wait_change = False
+    if desired_value[0] == '-':
+      desired_value = desired_value[1:]
+      wait_for_enter = False
+    else:
+      wait_for_enter = True
+
+    state_list.append((name, attribute, desired_value, wait_change,
+                       wait_for_enter))
 
   handler = StateHandler(bus, state_list, options.run_timeout,
                          options.step_timeout, options.svc_timeout,

@@ -639,7 +639,7 @@ class WiFiTest(object):
         states = self.wait_service_states
         counts = {}
         for service, state in states:
-            cstate = state.strip('+')
+            cstate = state.strip('+-')
             if state in counts:
                 counts[cstate] = 1
             else:
@@ -649,7 +649,7 @@ class WiFiTest(object):
             if intr.startswith('ERR_'):
                 raise error.TestFail('Wait for step %s failed with error %s' %
                                      (state, intr))
-            cstate = state.strip('+')
+            cstate = state.strip('+-')
             if counts[cstate]:
                 index = '%s%d' % (cstate, counts[cstate] - 1)
                 counts[cstate] += 1
