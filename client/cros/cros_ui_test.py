@@ -220,6 +220,26 @@ class UITest(pyauto_test.PyAutoTest):
             del self._tcpdump
 
 
+    def __perform_ui_diagnostics(self):
+        """Save diagnostic logs about UI.
+
+        This includes the output of:
+          $ initctl status ui
+          $ ps auxwww
+        """
+        output_file = os.path.join(self.resultsdir, 'ui_diagnostics.txt')
+        with open(output_file, 'w') as output_fd:
+            print >>output_fd, time.asctime(), '\n'
+            cmd = 'initctl status ui'
+            print >>output_fd, '$ %s' % cmd
+            print >>output_fd, utils.system_output(cmd), '\n'
+            cmd = 'ps auxwww'
+            print >>output_fd, '$ %s' % cmd
+            print >>output_fd, utils.system_output(cmd), '\n'
+        logging.info('Saved UI diagnostics to %s' % output_file)
+
+
+
     def initialize(self, creds=None, is_creating_owner=False,
                    extra_chrome_flags=[]):
         """Overridden from test.initialize() to log out and (maybe) log in.
@@ -266,6 +286,8 @@ class UITest(pyauto_test.PyAutoTest):
         # We yearn for Chrome coredumps...
         open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
 
+        self._last_chrome_log = ''
+
         # The UI must be taken down to ensure that no stale state persists.
         cros_ui.stop()
         (self.username, self.password) = self.__resolve_creds(creds)
@@ -285,7 +307,11 @@ class UITest(pyauto_test.PyAutoTest):
             ownership.clear_ownership()
             self.fake_owner = False
 
-        cros_ui.start()
+        try:
+            cros_ui.start()
+        except:
+            self.__perform_ui_diagnostics()
+            raise
 
         # Save name of the last chrome log before our test started.
         log_files = glob.glob(constants.CHROME_LOG_DIR + '/chrome_*')
