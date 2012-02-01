@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import bisect
 import itertools
 import math
 from StringIO import StringIO
@@ -10,6 +11,66 @@ from StringIO import StringIO
 from autotest_lib.client.cros.rf import lan_scpi
 from autotest_lib.client.cros.rf.lan_scpi import LANSCPI
 from autotest_lib.client.cros.rf.lan_scpi import Error
+
+
+def CheckTraceValid(x_values, y_values):
+    '''
+    Raises an exception if x_values and y_values cannot form a valid trace.
+
+    Args:
+        x_values: A list of X values.
+        y_values: A list of Y values.
+
+    Raises:
+        An error raises if
+        (1) x_values is empty.
+        (2) x_values is not an increasing sequence.
+        (3) x_values and y_values are not equal in length.
+    '''
+    if not x_values:
+        raise Error("Parameter x_values is empty")
+    if len(x_values) != len(y_values):
+        raise Error("Parameter x_values and y_values are not equal in length")
+    if not all(x <= y for x, y in zip(x_values, x_values[1:])):
+        raise Error("Parameter x_values is not an increasing sequence")
+
+
+def Interpolate(x_values, y_values, x_position):
+    '''
+    Returns an interpolated (linear) y-value at x_position.
+
+    Args:
+        x_values: A list of X values.
+        y_values: A list of Y values.
+        x_position: The position where we want to interpolate.
+
+    Returns:
+        Interpolated value. For example:
+        Interpolate([10, 20], [0, 10], 15) returns 5.0
+
+    Raises:
+        An error raises if
+        (1) x_position is not in the range of x_values.
+        (2) Arguments failed to pass CheckTraceValid().
+    '''
+    CheckTraceValid(x_values, y_values)
+
+    # Check if the x_position is inside some interval in the trace
+    if x_position < x_values[0] or x_position > x_values[-1]:
+        raise Error(
+            "x_position is not in the current range of x_values[%s,%s]" %
+            (x_values[0], x_values[-1]))
+
+    # Binary search where to interpolate the x_position
+    right_index = bisect.bisect_left(x_values, x_position)
+    if x_position == x_values[right_index]:
+        return y_values[right_index]
+
+    # Interpolate the value according to the x_position
+    delta_interval = (float(x_position - x_values[right_index - 1]) /
+            float(x_values[right_index] - x_values[right_index - 1]))
+    return (y_values[right_index - 1] +
+        (y_values[right_index] - y_values[right_index - 1]) * delta_interval)
 
 
 def Enum(*elements):
@@ -255,6 +316,8 @@ class ENASCPI(AgilentSCPI):
     '''
     An Agilent ENA (E5071C) device.
     '''
+    PARAMETERS = Enum('S11', 'S12', 'S21', 'S22')
+
     def __init__(self, *args, **kwargs):
         super(ENASCPI, self).__init__('E5071C', *args, **kwargs)
 
@@ -262,7 +325,7 @@ class ENASCPI(AgilentSCPI):
         '''
         Loads saved state from a file.
 
-        Parameters:
+        Args:
             state: The file name for the state; or a number indicating
                 the state in the "Recall State" menu.
         '''
@@ -354,6 +417,26 @@ class ENASCPI(AgilentSCPI):
                     print >>ret, "\t".join(str(c) for c in row)
                 return ret.getvalue()
 
+            def GetFreqResponse(self, freq, parameter):
+                '''
+                Returns corresponding frequency response given the parameter.
+
+                If the particular frequency was not sampled, uses linear
+                interpolation to estimate the response.
+
+                Args:
+                    freq: The frequency we want to obtain from the traces.
+                    parameter: One of the parameters provided in
+                        ENASCPI.PARAMETERS.
+
+                Returns:
+                    A floating point value in dB at freq.
+                '''
+                if parameter not in self.traces:
+                    raise Error("No trace available for parameter %s" %
+                                parameter)
+                return Interpolate(self.x_axis, self.traces[parameter], freq)
+
         ret = Traces()
         ret.parameters = parameters
         ret.x_axis = self.Query(":CALC:SEL:DATA:XAX?", lan_scpi.FLOATS)
@@ -365,4 +448,5 @@ class ENASCPI(AgilentSCPI):
             if len(ret.x_axis) != len(ret.traces[p]):
                 raise Error("x_axis has %d elements but trace has %d" %
                             (len(x_axis, len_trace)))
+            CheckTraceValid(ret.x_axis, ret.traces[p])
         return ret
