@@ -107,6 +107,9 @@ class hardware_Trackpad(test.test):
         # Get an instance of AutoX to handle X related issues
         autox = cros_ui.get_autox()
 
+        # Start tpcontrol log
+        self.tpcontrol_log = trackpad_util.TpcontrolLog()
+
         # Start X events capture
         self.xcapture = Xcapture(error, local_path, autox)
 
@@ -225,6 +228,10 @@ class hardware_Trackpad(test.test):
 
                     logging.info('...................vlog.................')
                     logging.info(str(output['vlog']))
+
+                    # Save tpcontrol log if this gesture file failed.
+                    if not tdata.result:
+                        self.tpcontrol_log.save_log(tdata.file_basename)
 
                     # Initialization for this subname
                     fullname = trackpad_util.get_fullname(tdata.file_basename)

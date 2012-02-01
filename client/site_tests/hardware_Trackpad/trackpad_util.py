@@ -8,6 +8,7 @@ import glob
 import logging
 import os
 import re
+import shutil
 import time
 
 import common_util
@@ -359,6 +360,73 @@ def get_model():
                     model = board_str
                 break
     return model
+
+
+class TpcontrolLog:
+    ''' Handles tpcontrol log '''
+
+    def __init__(self):
+        tpcontrol_log_cmd = '/opt/google/touchpad/tpcontrol log'
+        self.original_log_dir = '/home/chronos/user/log'
+        trackpad_test_dir = '/var/tmp/trackpad_test_data'
+        self.tmp_log_dir = os.path.join(trackpad_test_dir, 'old_tpcontrol_log')
+        self.new_log_dir = os.path.join(trackpad_test_dir, 'tpcontrol_log')
+        self.log_prefix = 'touchpad_activity*'
+        self.log_ext = '.tpcontrol_log.gz'
+        self.tar_dir = os.path.join(trackpad_test_dir, 'tpcontrol_log_tar')
+        self.tar_path = os.path.join(self.tar_dir, 'tpcontrol_log_tar')
+        display_environ = Display().get_environ()
+        self.tpcontrol_log_cmd = ' '.join([display_environ, tpcontrol_log_cmd])
+        self.all_dirs = [self.original_log_dir, self.tmp_log_dir,
+                         self.new_log_dir, self.tar_dir]
+
+        # Create the log directory if not existent yet
+        for p in self.all_dirs:
+            if not os.path.isdir(p):
+                logging.info('Create tpcontrol log directory: %s' % p)
+                os.makedirs(p)
+
+    def save_log(self, file_name):
+        ''' Save tpcontrol log file '''
+        # Move any existent log files
+        existent_log_files = glob.glob(os.path.join(self.original_log_dir,
+                                                    self.log_prefix))
+        if existent_log_files:
+            for f in existent_log_files:
+                src_f_path = os.path.join(self.original_log_dir, f)
+                msg = '  Move the log file "%s" to "%s"'
+                logging.info(msg % (f, self.tmp_log_dir))
+                shutil.move(src_f_path, self.tmp_log_dir)
+
+        # Create tpcontrol log file
+        common_util.simple_system(self.tpcontrol_log_cmd)
+        log_file_list = glob.glob(os.path.join(self.original_log_dir,
+                                               self.log_prefix))
+        num_log_files = len(log_file_list)
+        if num_log_files == 0:
+            logging.warn('  tpcontrol log file is not generated.')
+        elif num_log_files > 1:
+            logging.warn('  Multiple (%d) tpcontrol log files were generated.' %
+                         num_log_files)
+        else:
+            # Convert the file name from xxx.dat to xxx.tpcontrol_log.gz
+            basename = os.path.basename(file_name)
+            new_log_file_name = os.path.splitext(basename)[0] + self.log_ext
+            new_log_file_path = os.path.join(self.new_log_dir,
+                                             new_log_file_name)
+            # Move the log file to the new path
+            original_log_file_path = os.path.join(self.original_log_dir,
+                                                  log_file_list[0])
+            logging.info('  tpcontrol log file: from %s to %s' %
+                         (original_log_file_path, new_log_file_path))
+            shutil.move(original_log_file_path, new_log_file_path)
+
+    def tar_tpcontrol_logs(self):
+        ''' tar the tpcontrol logs '''
+        tar_cmd = 'tar -jcvf %s.tar.bz2 %s' % (self.tar_path, self.new_log_dir)
+        logging.info('  The tar ball of tpcontrol log files is saved in %s' %
+                     self.tar_path)
+        common_util.simple_system(tar_cmd)
 
 
 def get_fullname(filename):

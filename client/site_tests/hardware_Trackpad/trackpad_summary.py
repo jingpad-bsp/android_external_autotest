@@ -16,6 +16,7 @@ import sys
 import time
 
 import common_util
+import trackpad_util
 
 from trackpad_util import read_trackpad_test_conf, KEY_LOG, KEY_SEQ
 
@@ -154,7 +155,7 @@ def insert_list(summary_list, fullname, area):
 
 
 class TrackpadResult:
-    ''' Calculate integrated results over a number of gesture sets '''
+    """Calculate integrated results over a number of gesture sets."""
 
     def __init__(self, results_dir=None):
         if results_dir is None:
@@ -174,8 +175,10 @@ class TrackpadResult:
         self.summary_file.write(msg)
         msg = '     Gesture Sets Results Directory: "%s"\n' % self.results_dir
         self.summary_file.write(msg)
+        self._get_results_files()
 
-        # Collect results_files from results_dir
+    def _get_results_files(self):
+        """Collect results_files from results_dir."""
         self.label = SUMMARY_LABEL
         _results = glob.glob(os.path.join(self.results_dir, '*'))
         self.results_files = filter(lambda f: self.label in f and
@@ -313,6 +316,9 @@ class TrackpadResult:
                 cmd = '%s %s' % (autotest_program, 'control')
                 common_util.simple_system(cmd)
 
+        # Update the results_files since more results files have been created.
+        self._get_results_files()
+
     def hardware_trackpad_vlog_all(self, results_dir=None, flag_vlog=False):
         ''' Collect all verification logs from all gesture set results path. '''
 
@@ -368,7 +374,9 @@ def _usage():
     print '  -d, --dir=<result_directory>'
     print '         <result_directory>: the path containing result files'
     print '  -e, --enforce: enforce to run autotest analysis. Default is False.'
-    print '  -h, --help: show this help\n'
+    print '  -h, --help: show this help'
+    print '  -t, --tar: To tar all tpcontrol log files.'
+    print
 
 
 def _parsing_error(msg):
@@ -381,8 +389,8 @@ def _parsing_error(msg):
 def _parse_options():
     """Parse the command line options."""
     try:
-        short_opt = 'hd:e'
-        long_opt = ['help', 'dir=', 'enforce']
+        short_opt = 'hd:et'
+        long_opt = ['help', 'dir=', 'enforce', 'tar']
         opts, args = getopt.getopt(sys.argv[1:], short_opt, long_opt)
     except getopt.GetoptError, err:
         _parsing_error(str(err))
@@ -392,6 +400,7 @@ def _parse_options():
     option_dict['results_dir'] = read_trackpad_test_conf(
                                         'gesture_files_path_results', '.')
     option_dict['enforce'] = False
+    option_dict['tar'] = False
     for opt, arg in opts:
         if opt in ('-h', '--help'):
             _usage()
@@ -404,6 +413,8 @@ def _parse_options():
                 sys.exit(1)
         elif opt in ('-e', '--enforce'):
             option_dict['enforce'] = True
+        elif opt in ('-t', '--tar'):
+            option_dict['tar'] = True
         else:
             msg = 'Error: This option %s is not handled in program' % opt
             _parsing_error(msg)
@@ -420,6 +431,10 @@ def main():
     # Determine whether to execute autotest analysis on gesture sets
     if option_dict['enforce']:
         tresult.hardware_trackpad_test_all()
+
+    # Tar all tpcontrol logs into a tar ball
+    if option_dict['tar']:
+        trackpad_util.TpcontrolLog().tar_tpcontrol_logs()
 
     # Collect verification logs from all analysis logs
     gss_vlog_dict = tresult.hardware_trackpad_vlog_all()
