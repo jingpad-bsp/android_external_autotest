@@ -33,13 +33,12 @@ GTESTS = [
         'as_chronos': False,
         'tag': 'CHROMEOS_LOGIN',
     }),
-    # crosbug.com/24302.
-    #('desktopui_PyAutoFunctionalTests', {
-    #    'suite': 'CHROMEOS_POLICY',
-    #    'auto_login': True,
-    #    'as_chronos': False,
-    #    'tag': 'CHROMEOS_POLICY',
-    #}),
+    ('desktopui_PyAutoFunctionalTests', {
+        'suite': 'CHROMEOS_POLICY',
+        'auto_login': False,
+        'as_chronos': False,
+        'tag': 'CHROMEOS_POLICY',
+    }),
     ('desktopui_PyAutoFunctionalTests', {
         'suite': 'CHROMEOS_VOLUME',
         'auto_login': False,
