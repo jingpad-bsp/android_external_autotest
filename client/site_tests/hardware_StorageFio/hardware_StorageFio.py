@@ -139,7 +139,16 @@ class hardware_StorageFio(test.test):
         vars = 'LD_LIBRARY_PATH="' + self.autodir + '/deps/libaio/lib"'
         os.putenv('FILENAME', self.__filename)
         os.putenv('FILESIZE', str(self.__filesize))
-        fio = utils.run(vars + ' ./fio "%s"' % os.path.join(self.bindir, test))
+        # running fio with ionice -c 3 so it doesn't lock out other
+        # processes from the disk while it is running.
+        # If you want to run the fio test for performance purposes,
+        # take out the ionice and disable hung process detection:
+        # "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+        # -c 3 = Idle
+        # Tried lowest priority for "best effort" but still failed
+        ionice = ' ionice -c 3'
+        fio = utils.run(vars + ionice +
+                        ' ./fio "%s"' % os.path.join(self.bindir, test))
         logging.debug(fio.stdout)
         return self.__parse_fio(fio.stdout)
 
