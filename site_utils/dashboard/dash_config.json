@@ -97,7 +97,7 @@
                         "jrbarnette@google.com"]},
                 {"categories": ["browsertests"],
                  "cc": ["chromeos-autotest@google.com",
-                        "chromeos-ui@google.com"]},
+                        "chromeos-ui-sheriffs@google.com"]},
                 {"categories": ["pyauto", "pyauto_basic"],
                  "cc": ["chromeos-autotest@google.com",
                         "rohitbm@google.com"]},
