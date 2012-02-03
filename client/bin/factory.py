@@ -238,6 +238,7 @@ class FactoryTest(object):
                  backgroundable=False,
                  subtests=None,
                  id=None,                  # pylint: disable=W0622
+                 has_ui=None,
                  _root=None,
                  # TODO(jsalz): Kill off deprecated fields
                  # (chrome-os-partner:7407)
@@ -257,6 +258,10 @@ class FactoryTest(object):
         @param backgroundable: Whether the test may run in the background.
         @param subtests: A list of tests to run inside this test.
         @param id: A unique ID for the test (defaults to the autotest name).
+        @param has_ui: True if the test has a UI.  (This defaults to True for
+            OperatorTest and InformationScreen.)  If has_ui is not True,
+            then when the test is running, the statuses of the test and its
+            siblings will be shown in the test UI area instead.
         @param _root: True only if this is the root node (for internal use
             only).
         '''
@@ -281,6 +286,9 @@ class FactoryTest(object):
             assert '.' not in self.id, (
                 'id cannot contain a period: %r' % self)
             # Note that we check ID uniqueness in _assign_paths.
+
+        if has_ui is not None:
+            self.has_ui = has_ui
 
         assert not (autotest_name and self.subtests), (
             'Test %s may not have both an autotest and subtests' % self.id)

@@ -255,12 +255,14 @@ TEST_LIST = [
                 label_zw='型號匹配',
                 autotest_name='factory_ProbeHWID',
                 dargs={'autodetect': _ENABLE_AUTODETECT_HWID},
-                unique_name='hw-qual-id-match'),
+                unique_name='hw-qual-id-match',
+                has_ui=True),
 
             AutomatedSubTest(
                 label_en='write GBB',
                 label_zw='寫入GBB',
-                autotest_name='factory_WriteGBB'),
+                autotest_name='factory_WriteGBB',
+                has_ui=True),
 
             AutomatedRebootSubTest(
                 label_en='reboot',
@@ -281,13 +283,13 @@ TEST_LIST = [
         subtest_list=[
             # The pre-flight is to help operators checking if everything is OK.
             # You can remove the step if you want a fully automated process.
-            AutomatedSubTest(
+            OperatorTest(
                 label_en='pre flight',
                 label_zw='就緒檢查',
                 autotest_name='factory_PreFinalCheck'),
             # The finalize is required for every products.
             # You can't remove this step.
-            AutomatedSubTest(
+            OperatorTest(
                 label_en='finalize',
                 label_zw='最終程序',
                 autotest_name='factory_Finalize',
