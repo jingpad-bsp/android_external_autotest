@@ -10,6 +10,17 @@
             ]
         },
 
+        "x86_64-generic-full": {
+            "archive_server": "gs://chromeos-image-archive/amd64-generic-full",
+            "archive_path": "%(build)s/image.zip",
+            "build_pattern": "R*",
+            "platforms": [
+                {"platform": "netbook_MARIO_64",
+                 "groups": ["bvt"]}
+            ]
+        },
+
+
         "x86-alex-r15": {
             "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
@@ -190,7 +201,7 @@
         },
 
         "stumpy-r17": {
-            "archive_server": "gs://chromeos-releases/beta-channel/stumpy",
+            "archive_server": "gs://chromeos-releases/stable-channel/stumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
             "build_pattern": "R17-1412.*.0*",
             "platforms": [
