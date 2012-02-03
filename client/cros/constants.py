@@ -45,7 +45,7 @@ CRYPTOHOMED_LOG = '/var/log/cryptohomed.log'
 # Directories to copy out of cryptohome, relative to CRYPTOHOME_MOUNT_PT.
 CRYPTOHOME_DIRS_TO_RECOVER = ['crash', 'log']
 
-DISABLE_BROWSER_RESTART_MAGIC_FILE = '/tmp/disable_chrome_restart'
+DISABLE_BROWSER_RESTART_MAGIC_FILE = '/var/run/disable_chrome_restart'
 DEFAULT_OWNERSHIP_TIMEOUT = 300  # Ownership is an inherently random process.
 
 FLIMFLAM_TEST_PATH = '/usr/lib/flimflam/test/'
