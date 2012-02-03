@@ -26,18 +26,20 @@ class factory_Finalize(test.test):
                          '(continue in %d seconds)') % (target, i))
             time.sleep(1)
 
-    def check_google_required_tests(self, do_check, status_file, test_list):
+    def check_google_required_tests(self, do_check, status_file,
+                                    test_list_path):
         """ Checks if all previous and Google Required Tests are passed. """
         if not do_check:
             self.alert_bypassed('REQUIRED TESTS')
             return
 
         # check if all previous tests are passed.
-        db = factory.TestDatabase(test_list)
-        status_map = factory.StatusMap(test_list, status_file, db)
-        failed_list = status_map.filter_by_status(ful.FAILED)
+        test_list = factory.read_test_list(test_list_path)
+        state_map = test_list.get_state_map()
+        failed_list = [test for test in test_list.walk()
+                       if state_map[test].status == factory.TestState.FAILED]
         if failed_list:
-            failed = ','.join([db.get_unique_id_str(t) for t in failed_list])
+            failed = ','.join([x.path for x in failed_list])
             raise error.TestFail('Some previous tests failed: %s' % failed)
         factory.log('All previous tests are PASSED.')
 
@@ -90,12 +92,12 @@ class factory_Finalize(test.test):
                  upload_method='none',
                  subtest_tag=None,
                  status_file_path=None,
-                 test_list=None):
+                 test_list_path=None):
 
         # verify previous test results
         self.check_google_required_tests(check_required_tests,
                                          status_file_path,
-                                         test_list)
+                                         test_list_path)
         # solve upload file names
         upload_method = self.normalize_upload_method(upload_method)
 

@@ -42,11 +42,9 @@ class MiniVerifier(object):
 
     def check_required_tests(self):
         """ Checks if all previous tests are passed """
-        db = factory.TestDatabase(self.test_list)
-        status_map = factory.StatusMap(self.test_list, self.status_file, db)
-        if status_map.filter_by_status(ful.FAILED):
-            return False
-        return True
+        state_map = self.test_list.get_state_map()
+        return not any(x.status == factory.TestState.FAILED
+                       for x in state_map.values())
 
 
 class factory_PreFinalCheck(test.test):
@@ -139,7 +137,9 @@ class factory_PreFinalCheck(test.test):
         return ful.make_label(
                 message, fg=self.COLOR_DISABLED, alignment=(0, 0.5))
 
-    def run_once(self, status_file_path=None, test_list=None):
+    def run_once(self, status_file_path=None, test_list_path=None):
+        test_list = factory.read_test_list(test_list_path)
+
         # configure verifier
         self.verifier = MiniVerifier()
         self.verifier.set_test_info(status_file_path, test_list)
