@@ -45,11 +45,8 @@ class security_ProfilePermissions(cros_ui_test.UITest):
         passes.append(self.check_owner_mode(homepath, "chronos", 0755))
 
         user_mountpt = constants.CRYPTOHOME_MOUNT_PT
-        # TODO(jimhebert) homedir mode check excluded from BWSI right now.
-        # Once crosbug.com/16425 is fixed, remove the is_mounted() check.
-        if cryptohome.is_mounted():
-            passes.append(self.check_owner_mode(user_mountpt, "chronos",
-                                                self._HOMEDIR_MODE))
+        passes.append(self.check_owner_mode(user_mountpt, "chronos",
+                                            self._HOMEDIR_MODE))
 
         # TODO(benchan): Refactor the following code to use some helper
         # functions instead of find commands.
