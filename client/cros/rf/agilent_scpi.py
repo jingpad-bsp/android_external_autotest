@@ -5,6 +5,7 @@
 
 import itertools
 import math
+from StringIO import StringIO
 
 from autotest_lib.client.cros.rf import lan_scpi
 from autotest_lib.client.cros.rf.lan_scpi import LANSCPI
@@ -288,9 +289,21 @@ class ENASCPI(AgilentSCPI):
         self.Send(commands)
 
         class Traces(POD):
-            pass
+            def tsv(self):
+                '''
+                Returns the traces in TSV (tab-separated values) format.  The
+                first column is the frequency, and each trace is in a separate
+                column.
+                '''
+                ret = StringIO()
+                print >>ret, "\t".join(["freq"] + self.parameters)
+                for row in zip(self.x_axis,
+                               *[self.traces[p] for p in self.parameters]):
+                    print >>ret, "\t".join(str(c) for c in row)
+                return ret.getvalue()
 
         ret = Traces()
+        ret.parameters = parameters
         ret.x_axis = self.Query(":CALC:SEL:DATA:XAX?", lan_scpi.FLOATS)
         ret.traces = {}
         for i, p in zip(itertools.count(1), parameters):
