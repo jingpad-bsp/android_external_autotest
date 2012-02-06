@@ -7,8 +7,8 @@
 
 # DESCRIPTION :
 #
-# This test looks in "/dev/video0" for a v4l2 video capture device,
-# and starts streaming captured frames on the monitor.
+# This test searches for a v4l2 video capture device, and starts streaming
+# captured frames on the monitor.
 # The observer then decides if the captured image looks good or defective,
 # pressing enter key to let it pass or tab key to fail.
 #
@@ -19,26 +19,47 @@
 # shown on the monitor, so the observer must answer what he really sees.
 # The test passes only if the answer for all rounds are correct.
 
+
+# The current configuration of buildbot will try to compile Python
+# files for the remote test purpose. Since this is done on the host,
+# it can't use any library that is not installed there even if the
+# library might be available on the target. We currently do not have
+# OpenCV on the host so we have to try-catch the import in order to
+# avoid the compilation error.
+#
+# TODO: Fix it either when we have OpenCV on the host or the build
+#       configuration for Python files in the autotest changes.
+
+try:
+    import cv
+    import cv2
+except ImportError:
+    # We can't raise error because it will fail the interpreter.
+    pass
+
 import gtk
 import glib
 import pango
 import numpy
+import time
 
 from gtk import gdk
 from random import randrange
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
 
-import v4l2
+# OpenCV will automatically search for a working camera device if we use the
+# index -1.
+DEVICE_INDEX = -1
 
+PREFERRED_FPS = 30
+PREFERRED_INTERVAL = int(round(1000.0 / PREFERRED_FPS))
+FPS_UPDATE_FACTOR = 0.1
 
-DEVICE_NAME = '/dev/video0'
-PREFERRED_WIDTH = 320
-PREFERRED_HEIGHT = 240
-PREFERRED_BUFFER_COUNT = 4
+GDK_PIXBUF_BIT_PER_SAMPLE = 8
 
 KEY_GOOD = gdk.keyval_from_name('Return')
 KEY_BAD = gdk.keyval_from_name('Tab')
@@ -53,34 +74,6 @@ MESSAGE_STR2 = ('hit TAB if the LED is off and ENTER if the LED is on\n' +
 
 class factory_Camera(test.test):
     version = 1
-
-    @staticmethod
-    def get_best_frame_size(dev, pixel_format, width, height):
-        '''Given the preferred frame size, find a reasonable frame size the
-        capture device is capable of.
-
-        currently it returns the smallest frame size that is equal or bigger
-        than the preferred size in both axis. this does not conform to
-        chrome browser's behavior, but is easier for testing purpose.
-        '''
-        sizes = [(w, h) for w, h in dev.enum_framesizes(pixel_format)
-                 if type(w) is int or type(w) is long]
-        if not sizes:
-            return (width, height)
-        if False: # see doc string above
-            for w, h in sizes:
-                if w >= width and h >= height:
-                    return (w,h)
-        good_sizes = [(w, h) for w, h in sizes if w >= width and h >= height]
-        if good_sizes:
-            return min(good_sizes, key=lambda x: x[0] * x[1])
-        return max(sizes, key=lambda x: x[0] * x[1])
-
-    def render(self, pixels):
-        numpy.maximum(pixels, 0, pixels)
-        numpy.minimum(pixels, 255, pixels)
-        self.pixels[:] = pixels
-        self.img.queue_draw()
 
     def key_release_callback(self, widget, event):
         factory.log('key_release_callback %s(%s)' %
@@ -108,22 +101,64 @@ class factory_Camera(test.test):
             glib.timeout_add(1000, lambda *x: self.label.show())
         return True
 
+    def capture_core(self):
+        '''Captures an image and displays it
+
+        The FPS is determined by the camera hardware limit, the gtk display
+        overhead and the amount of memory copy operations. This subroutine
+        involves 3 copy operations of image data which usually takes less than
+        10 ms on an average machine.
+        '''
+        # Read image from camera.
+        ret, cvImg = self.dev.read()
+        if not ret:
+            raise IOError("Error while capturing. Camera disconnected?")
+
+        # Convert from BGR to RGB in-place.
+        cv2.cvtColor(cvImg, cv.CV_BGR2RGB, cvImg)
+
+        # Convert to gdk pixbuf format.
+        pbuf = gdk.pixbuf_new_from_data(cvImg.data,
+            gdk.COLORSPACE_RGB, False, GDK_PIXBUF_BIT_PER_SAMPLE,
+            cvImg.shape[1], cvImg.shape[0], cvImg.strides[0])
+
+        # Copy to the display buffer.
+        pbuf.copy_area(0, 0, pbuf.get_width(), pbuf.get_height(), self.pixbuf,
+                       0, 0)
+
+        # Queue for refreshing.
+        self.img.queue_draw()
+
+        # Update FPS if required.
+        if self.show_fps:
+            current_time = time.clock()
+            self.current_fps = (self.current_fps * (1 - FPS_UPDATE_FACTOR) +
+                                1.0 / (current_time - self.last_capture_time) *
+                                FPS_UPDATE_FACTOR)
+            self.last_capture_time = current_time
+
+            self.label.set_text(MESSAGE_STR2 +
+                                'FPS = ' + '%.2f\n' % self.current_fps)
+
+        return True
+
     def register_callbacks(self, w):
         w.connect('key-release-event', self.key_release_callback)
         w.add_events(gdk.KEY_RELEASE_MASK)
 
     def capture_start(self):
-        self.dev.capture_mmap_start()
-        self.gio_tag = glib.io_add_watch(self.dev.fd, glib.IO_IN,
-            lambda *x:self.dev.capture_mmap_shot(self.render) or True,
+        # Register the image capturing subroutine using glib.
+        # It will be called every PREFERRED_INTERVAL time.
+        self.gio_tag = glib.timeout_add( PREFERRED_INTERVAL,
+            lambda *x:self.capture_core(),
             priority=glib.PRIORITY_LOW)
 
     def capture_stop(self):
+        # Unregister the image capturing subroutine.
         glib.source_remove(self.gio_tag)
-        self.dev.capture_mmap_stop()
 
     def run_once(self,
-                 led_rounds=1):
+                 led_rounds=1, show_fps=False):
         '''Run the camera test
 
         Parameter
@@ -139,11 +174,12 @@ class factory_Camera(test.test):
         self.led_rounds = led_rounds
         self.ledstats = 0
         if led_rounds == 1:
-            # always on if only one round
+            # Always on if only one round.
             self.ledstats = 1
         elif led_rounds > 1:
-            # ensure one on round and one off round
+            # Ensure one on round and one off round.
             self.ledstats = randrange(2 ** led_rounds - 2) + 1
+        self.show_fps = show_fps
         self.stage = 0
 
         self.label = label = gtk.Label(MESSAGE_STR)
@@ -157,37 +193,30 @@ class factory_Camera(test.test):
 
         self.img = None
 
-        self.dev = dev = v4l2.Device(DEVICE_NAME)
-        if not dev.cap.capabilities & v4l2.V4L2_CAP_VIDEO_CAPTURE:
-            raise ValueError('%s does not support video capture interface'
-                             % (DEVICE_NAME, ))
-        if not dev.cap.capabilities & v4l2.V4L2_CAP_STREAMING:
-            raise ValueError('%s does not support streaming I/O'
-                             % (DEVICE_NAME, ))
+        # Initialize the camera with OpenCV.
+        self.dev = dev = cv2.VideoCapture(DEVICE_INDEX)
+        if not dev.isOpened():
+            raise IOError('Device #%s ' % DEVICE_INDEX +
+                             'does not support video capture interface')
 
-        frame_size = self.get_best_frame_size(dev, v4l2.V4L2_PIX_FMT_YUYV,
-            PREFERRED_WIDTH, PREFERRED_HEIGHT)
+        width, height = (dev.get(cv.CV_CAP_PROP_FRAME_WIDTH),
+                dev.get(cv.CV_CAP_PROP_FRAME_HEIGHT))
 
-        adj_fmt = dev.capture_set_format(frame_size[0], frame_size[1],
-            v4l2.V4L2_PIX_FMT_YUYV, v4l2.V4L2_FIELD_INTERLACED)
-        width, height = adj_fmt.fmt.pix.width, adj_fmt.fmt.pix.height
-
+        # Initialize the canvas.
         self.pixbuf = gdk.Pixbuf(gdk.COLORSPACE_RGB, False, 8,
             width, height)
-        self.pixels = self.pixbuf.get_pixels_array()
         self.img = gtk.image_new_from_pixbuf(self.pixbuf)
         self.test_widget.add(self.img)
         self.img.show()
 
-        dev.capture_mmap_prepare(PREFERRED_BUFFER_COUNT, 2)
+        if self.show_fps:
+            self.last_capture_time = time.clock()
+            self.current_fps = PREFERRED_FPS
+
         self.capture_start()
 
         ful.run_test_widget(self.job, test_widget,
             window_registration_callback=self.register_callbacks)
-
-        # we don't call capture_mmap_stop here,
-        # it will be called before returning from main loop.
-        dev.capture_mmap_finish()
 
         if self.fail:
             raise error.TestFail('Camera test failed by user indication\n' \
