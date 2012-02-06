@@ -67,6 +67,9 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
         expected_policy = self._get_expected_policies()[user]
 
         # Get actual policy data and verify.
+        # TODO(frankf): Remove once crosbug.com/25639 is fixed.
+        import time
+        time.sleep(5)
         self.pyauto.RefreshPolicies()
         actual_policy = self.pyauto.GetEnterprisePolicyInfo()
         diff = self._compare_policies(

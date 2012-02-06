@@ -112,7 +112,8 @@ class PyAutoTest(test.test):
         os.chmod(suid_python, 04755)
 
 
-    def initialize(self, auto_login=True, extra_chrome_flags=[]):
+    def initialize(self, auto_login=True, extra_chrome_flags=[],
+                   subtract_extra_chrome_flags=[]):
         """Initialize.
 
         Expects session_manager to be alive.
@@ -120,6 +121,8 @@ class PyAutoTest(test.test):
         Args:
             auto_login: should we auto login using $default account?
             extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
+            subtract_extra_chrome_flags: Remove default flags passed to chrome
+                by pyauto, if any.
         """
         assert os.geteuid() == 0, 'Need superuser privileges'
 
@@ -134,7 +137,8 @@ class PyAutoTest(test.test):
 
             def ExtraChromeFlags(self):
                 args = pyauto.PyUITest.ExtraChromeFlags(self)
-                return args + extra_chrome_flags
+                return list((set(args) - set(subtract_extra_chrome_flags))
+                            | set(extra_chrome_flags))
 
         parser = OptionParser()
         pyauto._OPTIONS, args = parser.parse_args([])

@@ -241,7 +241,7 @@ class UITest(pyauto_test.PyAutoTest):
 
 
     def initialize(self, creds=None, is_creating_owner=False,
-                   extra_chrome_flags=[]):
+                   extra_chrome_flags=[], subtract_extra_chrome_flags=[]):
         """Overridden from test.initialize() to log out and (maybe) log in.
 
         If self.auto_login is True, this will automatically log in using the
@@ -266,7 +266,8 @@ class UITest(pyauto_test.PyAutoTest):
                 Defaults to None -- browse without signing-in.
             is_creating_owner: If the test case is creating a new device owner.
             extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
-
+            subtract_extra_chrome_flags: Remove default flags passed to chrome
+                by pyauto, if any.
         """
         # Mark /var/log/messages now; we'll run through all subsequent
         # log messages at the end of the test and log info about processes that
@@ -317,8 +318,10 @@ class UITest(pyauto_test.PyAutoTest):
         log_files = glob.glob(constants.CHROME_LOG_DIR + '/chrome_*')
         self._last_chrome_log = max(log_files) if log_files else ''
 
-        pyauto_test.PyAutoTest.initialize(self, auto_login=False,
-                                          extra_chrome_flags=extra_chrome_flags)
+        pyauto_test.PyAutoTest.initialize(
+            self, auto_login=False,
+            extra_chrome_flags=extra_chrome_flags,
+            subtract_extra_chrome_flags=subtract_extra_chrome_flags)
         if self.auto_login:
             self.login(self.username, self.password)
             if is_creating_owner:
