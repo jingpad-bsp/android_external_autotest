@@ -14,10 +14,10 @@ from autotest_lib.client.common_lib import error
 
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import lan_scpi
+from autotest_lib.client.cros.rf.config import PluggableConfig
 
-# Default configuration.  This may be overridden by the 'config_path'
-# argument (see the control file for more details).
-DEFAULT_CONFIG = {
+
+base_config = PluggableConfig({
     'channels': [
         # channel, freq, fixed_rate, min_avg_power, max_avg_power
         #
@@ -30,38 +30,14 @@ DEFAULT_CONFIG = {
         ( 64, 5320e6,  7,  7.0,  9.0),
         (157, 5785e6,  7,  3.5,  5.5),
         ]
-}
+})
 
-def _TryReadFile(path):
-    '''
-    Returns the contents of a file if it exists, else returns None.
-    '''
-    if os.path.exists(path):
-        return open(path).read()
-    else:
-        return None
 
 class factory_Wifi(test.test):
     version = 1
 
     def run_once(self, n4010a_host, config_path=None):
-        if config_path:
-            factory.log('Waiting for test configuration file %r...' %
-                        config_path)
-            config_str = utils.poll_for_condition(
-                lambda: _TryReadFile(config_path),
-                timeout=30, desc='Configuration file %r' % config_path)
-            factory.log('Read test configuration file %r' % config_path)
-            logging.info('Configuration file %r: MD5=%s; '
-                         'contents="""%s"""' % (
-                    config_path,
-                    hashlib.md5(config_str).hexdigest(),
-                    config_str))
-            config = eval(config_str)
-        else:
-            logging.info('Using default configuration %r' % DEFAULT_CONFIG)
-            config = DEFAULT_CONFIG
-
+        config = base_config.Read(config_path)
         n4010a = agilent_scpi.N4010ASCPI(n4010a_host, timeout=5)
 
         logging.info("Tester ID: %s" % n4010a.id)

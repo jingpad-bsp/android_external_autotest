@@ -17,9 +17,11 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import lan_scpi
 from autotest_lib.client.cros.rf import modem_commands
+from autotest_lib.client.cros.rf.config import PluggableConfig
+
 
 # See http://niviuk.free.fr/umts_band.php for band calculations.
-DEFAULT_CONFIG = {
+base_config = PluggableConfig({
     'tx_channels': [
         # band_name, channel, freq, min_power, max_power
         ('WCDMA_IMT_BC1',   9750, 1950.0e6,  3.5,  5.5),
@@ -30,14 +32,14 @@ DEFAULT_CONFIG = {
     'rx_channels': [
         ('WCDMA_800', 4405, 881e6, -55, -40),
     ],
-}
+})
+
 
 class factory_Cellular(test.test):
     version = 1
 
     def run_once(self, ext_host, dev='ttyUSB0', config_path=None):
-        # TODO(jsalz): Use config mechanism from factory_Wifi.py.
-        config = DEFAULT_CONFIG
+        config = base_config.Read(config_path)
 
         # TODO(jsalz): Disable and re-enable ModemManager, and reset the modem
         # at the end of the test.
