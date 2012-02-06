@@ -11,14 +11,27 @@ SCPI-over-TCP controller.
 
 import inspect
 import logging
+import re
 import signal
 import socket
 import struct
 import time
 from contextlib import contextmanager
 
+
 class Error(Exception):
-    pass
+    '''
+    A SCPI error.
+
+    Properties:
+        error_id: The numeric SCPI error code, if any.
+        error_msg: The SCPI error message, if any.
+    '''
+    def __init__(self, msg, error_id=None, error_msg=None):
+        super(Error, self).__init__(msg)
+        self.error_id = error_id
+        self.error_msg = error_msg
+
 
 class TimeoutError(Error):
     pass
@@ -119,13 +132,23 @@ class LANSCPI(object):
             self._WriteLine('SYST:ERR?')
 
         errors = []
+        error_id = None
+        error_msg = None
         for i in range(len(commands)):
             ret = self._ReadLine()
             if ret != '+0,"No error"':
                 errors.append(
                     'Issuing command %r: %r' % (commands[i], ret))
+            if not error_id:
+                # We don't have an error ID for the exception yet;
+                # try to parse the SCPI error.
+                match = re.match(r'^([-+]?\d+),"(.+)"$', ret)
+                if match:
+                    error_id = int(match.group(1))
+                    error_msg = match.group(2)
+
         if errors:
-            raise Error('; '.join(errors))
+            raise Error('; '.join(errors), error_id, error_msg)
 
         if wait:
             self._WriteLine('*OPC?')

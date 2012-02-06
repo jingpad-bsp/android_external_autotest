@@ -59,6 +59,8 @@ class N4010ASCPI(AgilentSCPI):
     '''
     An Agilent Wireless Connectivity Set (N4010A) device.
     '''
+    MISSING_HARDWARE_ERROR_ID = -241
+
     def __init__(self, *args, **kwargs):
         super(N4010ASCPI, self).__init__('N4010A', *args, **kwargs)
 
@@ -126,8 +128,16 @@ class N4010ASCPI(AgilentSCPI):
           avg_power: Average power (dBm)
           peak_power: Peak power (dBm)
         '''
+        try:
+            self.Send('DIAG:HW:SCAR:LCOM:COUP ON')
+        except Error as e:
+            if e.error_id == self.MISSING_HARDWARE_ERROR_ID:
+                pass  # No worries, there is just no N4011 attached
+            else:
+                raise
+
         self.Send(
-            ['DIAG:HW:SCAR:LCOM:COUP ON',
+            [
              'DIAG:HW:BAND 22e6',
              'DIAG:HW:FEA:FREQ %d' % freq,
              'DIAG:HW:FEA:RANG 19',
