@@ -17,7 +17,7 @@
     "mkfs_options": [ "-U", "01234567-89ab-cdef-0123-456789abcdef" ],
     "test_mount_options": [ "ro", "nodev", "noexec", "nosuid", "sync" ],
     "expected_mount_status": 0,
-    "expected_mount_path": "/media/removable/01234567-89ab-cdef-0123-456789abcdef"
+    "expected_mount_path": "/media/removable/External Drive"
   },
   {
     "description": "ext3 filesystem (write)",

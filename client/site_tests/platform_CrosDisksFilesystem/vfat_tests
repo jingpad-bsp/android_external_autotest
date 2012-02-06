@@ -17,7 +17,7 @@
     "mkfs_options": [ "-F", "32", "-i", "deadbeef" ],
     "test_mount_options": [ "ro", "nodev", "noexec", "nosuid", "sync" ],
     "expected_mount_status": 0,
-    "expected_mount_path": "/media/removable/DEAD-BEEF"
+    "expected_mount_path": "/media/removable/External Drive"
   },
   {
     "description": "VFAT filesystem (write)",

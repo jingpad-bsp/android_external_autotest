@@ -18,7 +18,8 @@
     "mount_filesystem_type": "ntfs-3g",
     "mkfs_options": [ "-f" ],
     "test_mount_options": [ "ro", "nodev", "noexec", "nosuid", "sync" ],
-    "expected_mount_status": 0
+    "expected_mount_status": 0,
+    "expected_mount_path": "/media/removable/External Drive"
   },
   {
     "description": "NTFS filesystem (write)",
