@@ -86,6 +86,10 @@ def stop():
     '''
     Stops the pre-spawn thread gracefully.
     '''
+    if not _thread:
+        # Never started
+        return
+
     global _terminated  # pylint: disable=W0603
     _terminated = True
     # Wait for any existing prespawned processes.

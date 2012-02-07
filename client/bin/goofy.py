@@ -554,9 +554,18 @@ class Goofy(object):
         parser.add_option('-v', '--verbose', dest='verbose',
                           action='store_true',
                           help='Enable debug logging')
+        parser.add_option('--print_test_list', dest='print_test_list',
+                          metavar='FILE',
+                          help='Read and print test list FILE, and exit')
         (self.options, self.args) = parser.parse_args()
 
         factory.init_logging('goofy', verbose=self.options.verbose)
+
+        if self.options.print_test_list:
+            print (factory.read_test_list(self.options.print_test_list).
+                   __repr__(recursive=True))
+            return
+
         logging.info('Started')
 
         self.start_state_server()
