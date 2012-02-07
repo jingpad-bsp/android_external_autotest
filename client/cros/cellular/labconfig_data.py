@@ -89,9 +89,13 @@ CELLS['cam'] = {
         "rf_address": "192.168.2.254",
         },
 
-    # Used for tests that check web connectivity
     "http_connectivity": {
-        "url": "http://192.168.2.254/index.html",
+        # "url" should point to a URL that fetches a page small enough
+        # to be comfortably kept in memory.  If
+        # "url_required_contents" is present, it points to a string
+        # that must be present in the the fetched data.
+
+        "url": "http://192.168.2.254/connectivity/index.html",
         "url_required_contents": "Chromium",
         },
     "rf_switch": {
@@ -149,9 +153,8 @@ CELLS['mtv'] = {
 
     # Used for tests that check web connectivity
     "http_connectivity": {
-        "url": "http://172.22.50.118",
-        # Check for the redirect to the auth page
-        "url_required_contents": '<a href="http://172.22.73.6/afe">',
+        "url": "http://192.168.2.254/connectivity/index.html",
+        "url_required_contents": "Chromium",
         },
     "rf_switch": {
         "type": "ether_io",
