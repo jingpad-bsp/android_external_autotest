@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 """Utilities for cellular tests."""
-import copy, dbus, logging, os, string, tempfile, urllib2
+import copy, dbus, logging, os, string, tempfile
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -19,13 +19,11 @@ class Error(Exception):
 TIMEOUT=30
 
 
-def ConnectToCellular(flim, verifier, timeout=TIMEOUT):
+def ConnectToCellular(flim, timeout=TIMEOUT):
     """Attempts to connect to a cell network using FlimFlam.
 
     Args:
     flim:  A flimflam object
-    verifier: A network-side verifier that supports AssertDataStatusIn.
-        Pass None to skip verification.
     timeout:    Timeout (in seconds) before giving up on connect
 
     Raises:
@@ -57,9 +55,6 @@ def ConnectToCellular(flim, verifier, timeout=TIMEOUT):
                                      ignore_failure=True)[0]
     if not state in connected_states:
         raise Error('Still in state %s' % state)
-
-    if verifier:
-      verifier.AssertDataStatusIn([cellular.UeGenericDataStatus.CONNECTED])
 
     return (service, state)
 
@@ -250,28 +245,6 @@ def FactoryResetModem(modem_pattern, spc='000000'):
     modem = manager.Modem(modem_path)
     modem.FactoryReset(spc)
     return _WaitForModemToReturn(manager, preexisting_modems, modem_path)
-
-
-def CheckHttpConnectivity(config):
-    """Check that the device can fetch HTTP pages.
-
-    Args:
-        config: A test cell config structure, with
-        config.cell['http_connectivity']. config['http_connectivity']['url']
-        should point to a URL that fetches a page small enough to be
-        comfortably kept in memory.
-
-        If config.cell['http_connectivity']['url_required_contents'] is
-        present, that string must be in the fetched URL.
-    """
-    http_config = config.cell['http_connectivity']
-    response = urllib2.urlopen(http_config['url'], timeout=TIMEOUT).read()
-
-    if ('url_required_contents' in http_config and
-        http_config['url_required_contents'] not in response):
-        logging.error('Could not find %s in \n\t%s\n',
-                      http_config['url_required_contents'], response)
-        raise Error('Content downloaded, but it was incorrect')
 
 
 class OtherDeviceShutdownContext(object):
