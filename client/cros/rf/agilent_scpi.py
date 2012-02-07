@@ -270,13 +270,56 @@ class ENASCPI(AgilentSCPI):
             state = 'STATE%02d.STA' % state
         self.Send(':MMEM:LOAD %s' % self.Quote(state))
 
-    def GetTraces(self, min_freq, max_freq, parameters):
+    def SetLinearSweep(self, min_freq, max_freq):
         '''
-        Collects a set of traces.
+        Sets the range to be a linear sweep between min_freq and max_freq.
 
-        Parameters:
-            min_freq: The minimum frequency in the span.
-            max_freq: The maximum frequency in the span
+        Args:
+            min_freq: The minimum frequency in Hz.
+            max_freq: The maximum frequency in Hz.
+        '''
+        self.Send([':SENS:SWEep:TYPE LINear',
+                   ':SENS:FREQ:STAR %d' % min_freq,
+                   ':SENS:FREQ:STOP %d' % max_freq])
+
+    def SetSweepSegments(self, segments):
+        '''
+        Sets a collection of sweep segments.
+
+        Args:
+            segments: An array of 3-tuples.  Each tuple is of the
+                form (min_freq, max_freq, points) as follows:
+
+                    min_freq: The segment's minimum frequency in Hz.
+                    max_freq: The segment's maximum frequency in Hz.
+                    points: The number of points in the segment.
+
+                The frequencies must be monotonically increasing.
+        '''
+        # Check that the segments are all 3-tuples and that they are
+        # in increasing order of frequency.
+        for i in xrange(len(segments)):
+            min_freq, max_freq, pts = segments[i]
+            assert max_freq >= min_freq
+            if i < len(segments) - 1:
+                assert segments[i+1][0] >= min_freq
+
+        data = [
+            5,              # Magic number from the device documentation
+            0,              # Stop/stop values
+            0,              # No per-segment IF bandwidth setting
+            0,              # No per-segment sweep delay setting
+            0,              # No per-segment sweep mode setting
+            0,              # No per-segment sweep time setting
+            len(segments),  # Number of segments
+        ] + list(sum(segments, ()))
+        self.Send([':SENS:SWEep:TYPE SEGMent',
+                   (':SENS:SEGMent:DATA %s' %
+                    ','.join(str(x) for x in data))])
+
+    def GetTraces(self, parameters):
+        '''
+        Collects a set of traces based on the current sweep.
 
         Returns:
             A Traces object containing the following attributes:
@@ -285,15 +328,14 @@ class ENASCPI(AgilentSCPI):
                     of values for that trace.
 
             Example:
-                data = ena.GetTraces(700e6, 2200e6, ['S11', 'S12', 'S22'])
+                ena.SetLinearSweep(700e6, 2200e6)
+                data = ena.GetTraces(['S11', 'S12', 'S22'])
                 print zip(data.x_axis, data.traces['S11'])
         '''
         assert len(parameters) > 0
         assert len(parameters) <= 4
 
-        commands = [':CALC:PAR:COUN %d' % len(parameters),
-                    ':SENS:FREQ:STAR %d' % min_freq,
-                    ':SENS:FREQ:STOP %d' % max_freq]
+        commands = [':CALC:PAR:COUN %d' % len(parameters)]
         for i, p in zip(itertools.count(1), parameters):
             commands.append(':CALC:PAR%d:DEF %s' % (i, p))
         self.Send(commands)
