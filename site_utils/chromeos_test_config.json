@@ -206,6 +206,8 @@
             "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true}
+                {"platform": "desktop_STUMPY",
+                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "desktopui_lumpy_stumpy_celeron"]}
             ]
         },
 
@@ -216,7 +218,7 @@
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true},
                 {"platform": "desktop_STUMPY",
-                 "groups": ["audio"]}
+                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "audio", "desktopui_lumpy_stumpy_celeron"]}
             ]
         },
 
@@ -227,7 +229,7 @@
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true},
                 {"platform": "desktop_STUMPY",
-                 "groups": ["audio"]}
+                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "audio", "desktopui_lumpy_stumpy_celeron"]}
             ]
         },
 
@@ -237,6 +239,7 @@
             "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "netbook_LUMPY", "au_test": true}
+                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "desktopui_lumpy_stumpy_celeron"]}
             ]
         },
 
@@ -247,7 +250,7 @@
             "platforms": [
                 {"platform": "netbook_LUMPY", "au_test": true},
                 {"platform": "netbook_LUMPY",
-                 "groups": ["audio"]}
+                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "audio", "desktopui_lumpy_stumpy_celeron"]}
             ]
         },
 
@@ -258,7 +261,7 @@
             "platforms": [
                 {"platform": "netbook_LUMPY", "au_test": true},
                 {"platform": "netbook_LUMPY",
-                 "groups": ["audio"]}
+                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "audio", "desktopui_lumpy_stumpy_celeron"]}
             ]
         },
 
@@ -334,6 +337,24 @@
 
             {"name": "pyauto_perf",
              "control": "server/site_tests/suites/control.desktopui_pyauto_perf"},
+
+            {"name": "sync",
+             "control": "server/site_tests/suites/control.desktopui_syncintegrationtests"}
+        ],
+
+        "desktopui_lumpy_stumpy_celeron": [
+            {"name": "browsertests",
+             "control": "server/site_tests/suites/control.desktopui_browsertest"},
+
+            {"name": "pyauto",
+             "control": "server/site_tests/suites/control.desktopui_pyautofunctionaltests"},
+
+            {"name": "pyauto_basic",
+             "control": "server/site_tests/suites/control.desktopui_pyauto_basic"},
+
+            {"name": "pyauto_perf",
+             "control": "server/site_tests/suites/control.desktopui_pyauto_perf"},
+             "labels": ["CPU-Celeron"]}
 
             {"name": "sync",
              "control": "server/site_tests/suites/control.desktopui_syncintegrationtests"}
