@@ -82,10 +82,15 @@ class FAFTSequence(ServoTest):
     OTHER_KERNEL_MAP = {'a':'4', 'b':'2', '2':'4', '4':'2', '3':'4', '5':'2'}
     OTHER_ROOTFS_MAP = {'a':'5', 'b':'3', '2':'5', '4':'3', '3':'5', '5':'3'}
 
-    # Delay timing
+    # Delay between power-on and firmware screen.
     FIRMWARE_SCREEN_DELAY = 2
+    # Delay between passing firmware screen and text mode warning screen.
     TEXT_SCREEN_DELAY = 20
+    # Delay of loading the USB kernel.
+    USB_LOAD_DELAY = 5
+    # Delay between USB plug-out and plug-in.
     USB_PLUG_DELAY = 10
+    # Delay after running the 'sync' command.
     SYNC_DELAY = 5
 
     CHROMEOS_MAGIC = "CHROMEOS"
@@ -497,7 +502,7 @@ class FAFTSequence(ServoTest):
 
     def wait_fw_screen_and_plug_usb(self):
         """Wait for firmware warning screen and then unplug and plug the USB."""
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.USB_LOAD_DELAY)
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         time.sleep(self.USB_PLUG_DELAY)
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')

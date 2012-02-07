@@ -31,7 +31,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
         """Wait and trigger yuck screen and close_lid."""
         self.wait_fw_screen_and_trigger_recovery()
         # Insert a corrupted USB stick. A yuck screen is expected.
-        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        time.sleep(self.USB_LOAD_DELAY)
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
         self.wait_fw_screen_and_close_lid()
 
