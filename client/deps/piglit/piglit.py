@@ -27,7 +27,7 @@ def setup(topdir):
     dst_path = os.path.join(topdir, 'piglit')
     # in-source build, clean/overwrite destination
     shutil.rmtree(dst_path, ignore_errors=True)
-    if re.search('x86', sysroot.lower()):
+    if utils.target_is_x86():
         utils.extract_tarball_to_dir(tarball_path, dst_path)
         # patch in files now
         utils.system('patch -p0 < ' +

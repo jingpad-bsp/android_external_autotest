@@ -207,6 +207,27 @@ def target_is_x86_pie():
     else:
         return False
 
+def target_is_x86():
+    """Returns whether the toolchain produces an x86 object
+
+    Arguments:
+      None
+
+    Returns:
+      True if the target toolchain produces an x86 object
+      False otherwise.
+    """
+
+
+    command = "echo \"int main(){return 0;}\" | ${CC} -o /tmp/a.out -xc -"
+    command += "&& file /tmp/a.out"
+    result = utils.system_output(command, retain_output=True,
+                                 ignore_status=True)
+    if re.search("80\d86", result) or re.search("x86-64", result):
+        return True
+    else:
+        return False
+
 def mounts():
     ret = []
     for line in file('/proc/mounts'):
