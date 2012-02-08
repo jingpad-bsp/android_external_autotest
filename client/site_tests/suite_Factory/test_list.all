@@ -41,6 +41,16 @@ _ENABLE_CHECK_ALL_TEST_PASSED = False
 # THIS IS REQUIRED TO BE TRUE FOR SHIPPING DEVICES.
 _ENABLE_FW_WP = False # WARNING: False is ONLY ALLOWED FOR DEBUGGING.
 
+# Change this to enable checking external power (AC) before starting test.
+_ENABLE_CHECK_EXTERNAL_POWER = False
+
+# Change this to enable using shop floor system.
+_ENABLE_SHOP_FLOOR = False
+
+# Change this to http://SERVER_ADDR:PORT/ if your shop floor server is not
+# running on same host of mini-omaha server.
+_SHOP_FLOOR_SERVER_URL = ''
+
 # Change this to match your local report upload site.
 _REPORT_UPLOAD_METHOD = 'none'  # WARNING: none is ONLY ALLOWED FOR DEBUGGING.
 #
@@ -75,8 +85,10 @@ TEST_LIST = [
         label_zw='開始',
         autotest_name='factory_Start',
         kbd_shortcut='e',
-        dargs={'press_to_continue': True,
-               'require_external_power': True}),
+        dargs={'press_to_continue': not _ENABLE_SHOP_FLOOR,
+               'require_external_power': _ENABLE_CHECK_EXTERNAL_POWER,
+               'require_shop_floor': _ENABLE_SHOP_FLOOR,
+               'shop_floor_server_url': _SHOP_FLOOR_SERVER_URL}),
 
     # The factory_ScriptWrapper allows interactive execution of
     # external scripts or programs with the output displayed in the
