@@ -60,7 +60,9 @@ class FAFTClient(object):
 
         self._flashrom_handler = flashrom_handler.FlashromHandler()
         self._flashrom_handler.init(saft_flashrom_util,
-                                    self._chromeos_interface)
+                                    self._chromeos_interface,
+                                    None,
+                                    '/usr/share/vboot/devkeys')
         self._flashrom_handler.new_image()
 
         self._kernel_handler = kernel_handler.KernelHandler()
@@ -260,6 +262,33 @@ class FAFTClient(object):
         self._chromeos_interface.log('Restoring firmware body %s' %
                                      section)
         self._flashrom_handler.restore_firmware_body(section)
+
+
+    def _modify_firmware_version(self, section, delta):
+        """Modify firmware version for the requested section, by adding delta.
+
+        The passed in delta, a positive or a negative number, is added to the
+        original firmware version.
+        """
+        original_version = self._flashrom_handler.get_section_version(section)
+        new_version = original_version + delta
+        flags = self._flashrom_handler.get_section_flags(section)
+        self._chromeos_interface.log(
+                'Setting firmware section %s version from %d to %d' % (
+                section, original_version, new_version))
+        self._flashrom_handler.set_section_version(section, new_version, flags,
+                                             write_through=True)
+
+    @allow_multiple_section_input
+    def move_firmware_backward(self, section):
+        """Decrement firmware version for the requested section."""
+        self._modify_firmware_version(section, -1)
+
+
+    @allow_multiple_section_input
+    def move_firmware_forward(self, section):
+        """Increase firmware version for the requested section."""
+        self._modify_firmware_version(section, 1)
 
 
     @allow_multiple_section_input
