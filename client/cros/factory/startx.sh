@@ -8,7 +8,9 @@ XAUTH=/usr/bin/xauth
 XAUTH_FILE=/home/chronos/.Xauthority
 SERVER_READY=
 DISPLAY=":0"
-BOARD_CONFIG="$(dirname $0)"/board_config_x.sh
+
+SUITE_FACTORY="$(dirname "$0")"/../../site_tests/suite_Factory
+BOARD_CONFIG="$(readlink -f "$SUITE_FACTORY")/board_config_x.sh"
 
 user1_handler () {
   echo "X server ready..." 1>&2
