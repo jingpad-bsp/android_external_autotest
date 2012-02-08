@@ -52,13 +52,11 @@ class EnterpriseUITest(cros_ui_test.UITest):
             self.__tpm_take_ownership()
             self.__generate_machine_info_file()
         self.auto_login = False
-        extra_chrome_flags = (self._STAGING_CHROME_FLAGS if not prod
-                              else [])
-        subtract_extra_chrome_flags = ['--skip-oauth-login'] if prod else []
+        extra_chrome_flags = self._STAGING_CHROME_FLAGS if not prod else []
         cros_ui_test.UITest.initialize(
-            self,is_creating_owner=True,
+            self, is_creating_owner=True,
             extra_chrome_flags=extra_chrome_flags,
-            subtract_extra_chrome_flags=subtract_extra_chrome_flags)
+            subtract_extra_chrome_flags=['--skip-oauth-login'])
 
 
     def cleanup(self):
