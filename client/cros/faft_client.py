@@ -10,6 +10,8 @@ libraries.
 """
 
 import functools
+import os
+import shutil
 import sys
 from optparse import OptionParser
 from SimpleXMLRPCServer import SimpleXMLRPCServer
@@ -55,8 +57,9 @@ class FAFTClient(object):
         # KernelHandler, and TpmHandler).
         self._chromeos_interface = chromeos_interface.ChromeOSInterface(False)
         # We keep the state of FAFT test in a permanent directory over reboots.
-        self._chromeos_interface.init(state_dir='/var/tmp/faft',
-                log_file='/tmp/faft_log.txt')
+        state_dir = '/var/tmp/faft'
+        self._chromeos_interface.init(state_dir, log_file='/tmp/faft_log.txt')
+        os.chdir(state_dir)
 
         self._flashrom_handler = flashrom_handler.FlashromHandler()
         self._flashrom_handler.init(saft_flashrom_util,
@@ -66,7 +69,15 @@ class FAFTClient(object):
         self._flashrom_handler.new_image()
 
         self._kernel_handler = kernel_handler.KernelHandler()
-        self._kernel_handler.init(self._chromeos_interface)
+        # TODO(waihong): The dev_key_path is a new argument. We do that in
+        # order not to break the old image and still be able to run.
+        try:
+            self._kernel_handler.init(self._chromeos_interface,
+                                      dev_key_path='/usr/share/vboot/devkeys')
+        except:
+            # Copy the key to the current working directory.
+            shutil.copy('/usr/share/vboot/devkeys/kernel_data_key.vbprivk', '.')
+            self._kernel_handler.init(self._chromeos_interface)
 
         self._tpm_handler = tpm_handler.TpmHandler()
         self._tpm_handler.init(self._chromeos_interface)
@@ -311,6 +322,32 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('restoring kernel %s' % section)
         self._kernel_handler.restore_kernel(section)
+
+
+    def _modify_kernel_version(self, section, delta):
+        """Modify kernel version for the requested section, by adding delta.
+
+        The passed in delta, a positive or a negative number, is added to the
+        original kernel version.
+        """
+        original_version = self._kernel_handler.get_version(section)
+        new_version = original_version + delta
+        self._chromeos_interface.log(
+                'Setting kernel section %s version from %d to %d' % (
+                section, original_version, new_version))
+        self._kernel_handler.set_version(section, new_version)
+
+
+    @allow_multiple_section_input
+    def move_kernel_backward(self, section):
+        """Decrement kernel version for the requested section."""
+        self._modify_kernel_version(section, -1)
+
+
+    @allow_multiple_section_input
+    def move_kernel_forward(self, section):
+        """Increase kernel version for the requested section."""
+        self._modify_kernel_version(section, 1)
 
 
     def run_cgpt_test_loop(self):

@@ -20,20 +20,6 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
     version = 1
 
 
-    def check_root_part_on_non_recovery(self, part):
-        """Check the partition number of root device and on normal/dev boot.
-
-        Returns:
-            True if the root device matched and on normal/dev boot;
-            otherwise, False.
-        """
-        return self.root_part_checker(part) and \
-                self.crossystem_checker({
-                    'mainfw_type': ('normal', 'developer'),
-                    'recoverysw_boot': '0',
-                })
-
-
     def ensure_kernel_on_non_recovery(self, part):
         """Ensure the requested kernel part on normal/dev boot path.
 

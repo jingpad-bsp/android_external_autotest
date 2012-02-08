@@ -87,7 +87,7 @@ class FAFTSequence(ServoTest):
     # Delay between passing firmware screen and text mode warning screen.
     TEXT_SCREEN_DELAY = 20
     # Delay of loading the USB kernel.
-    USB_LOAD_DELAY = 5
+    USB_LOAD_DELAY = 10
     # Delay between USB plug-out and plug-in.
     USB_PLUG_DELAY = 10
     # Delay after running the 'sync' command.
@@ -403,6 +403,20 @@ class FAFTSequence(ServoTest):
                          (self.ROOTFS_MAP[expected_part], part))
             return False
         return True
+
+
+    def check_root_part_on_non_recovery(self, part):
+        """Check the partition number of root device and on normal/dev boot.
+
+        Returns:
+            True if the root device matched and on normal/dev boot;
+            otherwise, False.
+        """
+        return self.root_part_checker(part) and \
+                self.crossystem_checker({
+                    'mainfw_type': ('normal', 'developer'),
+                    'recoverysw_boot': '0',
+                })
 
 
     def _join_part(self, dev, part):
