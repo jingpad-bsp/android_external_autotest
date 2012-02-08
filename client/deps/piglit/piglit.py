@@ -13,7 +13,14 @@ version = 2
 # TODO(ihf) piglit only builds on x86, Tegra2 only supports GLES
 def setup(topdir):
     sysroot = os.environ.get("SYSROOT", "")
+    # This gets the proper lib directory of "lib" or "lib64" from an
+    # environment variable defined by the ebuild
+    glut_libdir = os.environ.get("GLUT_LIBDIR", "")  + '/'
+    if glut_libdir == "/":
+        glut_libdir = '/usr/lib/'
+    glut_libpath = sysroot + glut_libdir + 'libglut.so'
     logging.debug('INFO: piglit sysroot = %s' % sysroot)
+    logging.debug('INFO: glut_libpath = %s' % glut_libpath)
     tarball = 'piglit.tar.gz'
     srcdir = os.path.join(topdir, 'src')
     tarball_path = os.path.join(srcdir, tarball)
@@ -31,7 +38,7 @@ def setup(topdir):
         # we have to tell cmake where to find glut
         cmd = 'cmake  -DCMAKE_FIND_ROOT_PATH=' + sysroot
         cmd = cmd + ' -DGLUT_INCLUDE_DIR=' + sysroot + '/usr/include'
-        cmd = cmd + ' -DGLUT_glut_LIBRARY=' + sysroot + '/usr/lib/libglut.so'
+        cmd = cmd + ' -DGLUT_glut_LIBRARY=' + glut_libpath
         utils.run(cmd)
         utils.make('-j %d' % utils.count_cpus())
         # strip symbols from all binaries to save space
