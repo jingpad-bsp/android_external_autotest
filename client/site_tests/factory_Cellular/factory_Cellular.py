@@ -9,6 +9,8 @@ import re
 import select
 import time
 
+import serial
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -24,7 +26,7 @@ from autotest_lib.client.cros.rf.config import PluggableConfig
 base_config = PluggableConfig({
     'tx_channels': [
         # band_name, channel, freq, min_power, max_power
-        ('WCDMA_IMT_BC1',   9750, 1950.0e6,  3.5,  5.5),
+        ('WCDMA_IMT_BC1',   9750, 1950.0e6,  7.6,  9.6),
         ('WCDMA_1900_BC2',  9400, 1880.0e6,    4,    8),
         ('WCDMA_800_BC5',   4180,  836.0e6, 13.5, 17.5),
         #('WCDMA_900_BC8',   2787,  897.4e6,    0,    0),
@@ -41,49 +43,28 @@ class factory_Cellular(test.test):
     def run_once(self, ext_host, dev='ttyUSB0', config_path=None):
         config = base_config.Read(config_path)
 
-        # TODO(jsalz): Disable and re-enable ModemManager, and reset the modem
-        # at the end of the test.
+        # Kill off modem manager, which might be holding the device open.
+        utils.system("stop modemmanager", ignore_status=True)
 
         ext = agilent_scpi.EXTSCPI(ext_host, timeout=5)
         logging.info('Tester ID: %s' % ext.id)
 
-        modem = open('/dev/%s' % dev, 'rb+', 0)
+        ser = serial.Serial('/dev/%s' % dev, timeout=2)
 
-        # TODO(jsalz): Use pyserial instead
-        def ReadLine(timeout=2):
+        def ReadLine():
             '''
-            Reads a line from the modem with the given timeout.
-
-            Returns the line, without leading or trailing whitespace.
+            Reads a line from the modem.
             '''
-            chars = []
-            start = time.time()
-            while True:
-                if chars and chars[-1] == '\n':
-                    logging.debug('modem[ %r' % ''.join(chars))
-                    return ''.join(chars).strip()
-
-                if timeout:
-                    remaining = start + timeout - time.time()
-                    if remaining <= 0:
-                        raise utils.TimeoutError()
-                else:
-                    remaining = None
-
-                ready, _, _ = select.select([modem], [], [], remaining)
-                if not ready:
-                    raise utils.TimeoutError()
-                char = modem.read(1)
-                if char == '':
-                    raise EOFError()
-                chars.append(char)
+            line = ser.readline()
+            logging.debug('modem[ %r' % line)
+            return line.rstrip('\r\n')
 
         def SendLine(line):
             '''
             Sends a line to the modem.
             '''
             logging.debug('modem] %r' % line)
-            modem.write(line + '\r')
+            ser.write(line + '\r')
 
         def SendCommand(command):
             '''
@@ -145,37 +126,41 @@ class factory_Cellular(test.test):
 
         rx_power_by_channel = {}
 
-        for (band_name, channel, freq,
-             min_power, max_power) in config['rx_channels']:
-            channel_id = (band_name, channel)
+        for antenna, port in (('MAIN', ext.PORTS.RFIO1),
+                              ('AUX', ext.PORTS.RFIO2)):
+            for (band_name, channel, freq,
+                 min_power, max_power) in config['rx_channels']:
+                channel_id = (band_name, channel)
 
-            ext.EnableSource('WCDMA', freq, port=ext.PORTS.RFIO1)
-            # Try a few times, as it may take the modem a while to pick up the
-            # new RSSI
-            power_readings = []
-            def IsPowerInRange():
-                SendCommand(modem_commands.READ_RSSI % (band_name, channel))
-                line = ReadLine()
-                match = re.match(modem_commands.READ_RSSI_RESPONSE, line)
-                if not match:
-                    raise error.TestError(
-                        'Expected RSSI value but got %r' % line)
-                power = int(match.group(1))
-                power_readings.append(power)
-                if power >= min_power and power <= max_power:
-                    return power
-                ExpectLine('')
-                ExpectLine('OK')
+                ext.EnableSource('WCDMA', freq, port=port)
+                # Try a few times, as it may take the modem a while to pick up
+                # the new RSSI
+                power_readings = []
+                def IsPowerInRange():
+                    SendCommand(modem_commands.READ_RSSI % (
+                            band_name, channel, antenna))
+                    line = ReadLine()
+                    match = re.match(modem_commands.READ_RSSI_RESPONSE, line)
+                    if not match:
+                        raise error.TestError(
+                            'Expected RSSI value but got %r' % line)
+                    power = int(match.group(1))
+                    power_readings.append(power)
+                    ExpectLine('')
+                    ExpectLine('OK')
+                    if power >= min_power and power <= max_power:
+                        return power
 
-            try:
-                utils.poll_for_condition(IsPowerInRange,
-                                         timeout=5, sleep_interval=0.5)
-            except utils.TimeoutError:
-                failures.append(
-                    'RSSI on %s out of range (%g, %g); read %s' % (
-                        channel_id, min_power, max_power, power_readings))
+                try:
+                    utils.poll_for_condition(IsPowerInRange,
+                                             timeout=5, sleep_interval=0.5)
+                except utils.TimeoutError:
+                    failures.append(
+                        'RSSI for %s/%s out of range (%g, %g); read %s' % (
+                            antenna, channel_id,
+                            min_power, max_power, power_readings))
 
-            rx_power_by_channel[channel_id] = power_readings[-1]
+                rx_power_by_channel[antenna, channel_id] = power_readings[-1]
 
         logging.info("RX power: %s" % [
                 (k, rx_power_by_channel[k])
