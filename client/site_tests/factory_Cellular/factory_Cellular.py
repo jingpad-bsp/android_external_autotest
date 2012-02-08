@@ -9,11 +9,11 @@ import re
 import select
 import time
 
-from autotest_lib.client.bin import factory
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
+from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import lan_scpi
 from autotest_lib.client.cros.rf import modem_commands

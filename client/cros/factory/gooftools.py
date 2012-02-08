@@ -15,8 +15,9 @@ import subprocess
 import sys
 import tempfile
 
-from autotest_lib.client.bin import factory
+import factory_common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import factory
 
 
 GOOFTOOL_HOME = '/usr/local/gooftool'

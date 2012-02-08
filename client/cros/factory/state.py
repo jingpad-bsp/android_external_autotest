@@ -10,10 +10,12 @@ can be used to handle factory test states (status) and shared persistent data.
 '''
 
 
-import factory, logging, os, shelve, SimpleXMLRPCServer, sys, threading
+import logging, os, shelve, SimpleXMLRPCServer, sys, threading
 import xmlrpclib
 
-from factory import TestState
+import factory_common
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import TestState
 
 
 DEFAULT_FACTORY_STATE_PORT = 0x0FAC

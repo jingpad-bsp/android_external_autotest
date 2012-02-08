@@ -15,10 +15,10 @@
 import gobject, gtk, pango
 from itertools import izip, product
 
-import common  # pylint: disable=W0611
-import factory, factory_event
-
-from factory import TestState
+import factory_common
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import TestState
+from autotest_lib.client.cros.factory.event import Event, EventClient
 
 # For compatibility with tests before TestState existed
 ACTIVE = TestState.ACTIVE
@@ -193,14 +193,14 @@ def run_test_widget(dummy_job, test_widget,
     test_path = factory.get_current_test_path()
 
     def handle_event(event):
-        if (event.type == factory_event.Event.Type.STATE_CHANGE and
+        if (event.type == Event.Type.STATE_CHANGE and
             test_path and event.path == test_path and
             event.state.visible):
             show_window()
 
-    event_client = factory_event.EventClient(
+    event_client = EventClient(
         callback=handle_event,
-        event_loop=factory_event.EventClient.EVENT_LOOP_GOBJECT_IO)
+        event_loop=EventClient.EVENT_LOOP_GOBJECT_IO)
 
     align = gtk.Alignment(xalign=0.5, yalign=0.5)
     align.add(test_widget)
@@ -230,4 +230,3 @@ def run_test_widget(dummy_job, test_widget,
         cleanup_callback()
 
     del event_client
-

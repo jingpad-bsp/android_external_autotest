@@ -6,7 +6,8 @@ import cPickle as pickle, errno, logging, os, socket, SocketServer, sys
 import tempfile, threading, time, traceback, types
 from Queue import Queue
 
-import factory
+import factory_common
+from autotest_lib.client.cros import factory
 
 
 # Environment variable storing the path to the endpoint.

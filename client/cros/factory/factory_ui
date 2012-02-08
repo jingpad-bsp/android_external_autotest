@@ -32,11 +32,11 @@ import re
 import subprocess
 import sys
 
-import common  # pylint: disable=W0611
-import factory
-import factory_event
-from factory_state import TestState
-import factory_ui_lib as ful
+import factory_common
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import TestState
+from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.cros.factory.event import Event, EventClient
 
 from gtk import gdk
 from Xlib import X
@@ -246,7 +246,7 @@ def grab_shortcut_keys(kbd_shortcuts):
             if xevent.type == X.KeyPress:
                 keycode = xevent.detail
                 event_client.post_event(
-                    factory_event.Event('kbd_shortcut',
+                    Event('kbd_shortcut',
                                         key=keycode_map[keycode]))
         return True
 
@@ -254,7 +254,7 @@ def grab_shortcut_keys(kbd_shortcuts):
 
 
 def handle_event(event):
-    if event.type == factory_event.Event.Type.STATE_CHANGE:
+    if event.type == Event.Type.STATE_CHANGE:
         test = test_list.lookup_path(event.path)
         state_map = test_list.get_state_map()
         ui_state.update_test_label(test, state_map[test])
@@ -274,9 +274,9 @@ def main(test_list_path):
     window.connect('destroy', lambda _: gtk.main_quit())
     window.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
 
-    event_client = factory_event.EventClient(
+    event_client = EventClient(
         callback=handle_event,
-        event_loop=factory_event.EventClient.EVENT_LOOP_GOBJECT_IO)
+        event_loop=EventClient.EVENT_LOOP_GOBJECT_IO)
 
     screen = window.get_screen()
     if (screen is None):
@@ -347,8 +347,8 @@ def main(test_list_path):
 
     dummy_console = Console(console_box.get_allocation())
 
-    event_client.post_event(factory_event.Event(
-            factory_event.Event.Type.UI_READY))
+    event_client.post_event(Event(
+            Event.Type.UI_READY))
 
     logging.info('factory_ui setup done, starting gtk.main()...')
     gtk.main()

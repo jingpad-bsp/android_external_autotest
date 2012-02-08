@@ -23,10 +23,10 @@ import sys
 
 from gtk import gdk
 
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import ui as ful
 
 _LABEL_FONT = pango.FontDescription('courier new condensed 24')
 _PLUG_IN_POWER_FMT_STR = \

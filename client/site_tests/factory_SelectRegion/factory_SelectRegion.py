@@ -16,10 +16,10 @@ import utils
 
 from gtk import gdk
 
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import ui as ful
 
 # References
 # - Keyboard: http://git.chromium.org/gitweb/?p=chromiumos/platform/assets.git;a=blob;f=input_methods/whitelist.txt;hb=HEAD

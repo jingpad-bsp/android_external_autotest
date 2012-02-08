@@ -8,7 +8,7 @@
 # This is an example factory test that does not really do anything --
 # it displays a message in the center of the testing area, as
 # communicated by arguments to run_once().  This test makes use of the
-# factory_ui_lib library to display its UI, and to monitor keyboard
+# ui_lib library to display its UI, and to monitor keyboard
 # events for test-switching triggers.  This test can be terminated by
 # typing SHIFT-Q.
 
@@ -21,10 +21,9 @@ import sys
 from gtk import gdk
 from itertools import count, izip, product
 
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_state
-from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import ui as ful
 
 # Expose the class into the namespace rather than "from factory import <class>"
 AutomatedSequence = factory.AutomatedSequence

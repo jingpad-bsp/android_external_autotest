@@ -14,10 +14,10 @@ import re
 import threading
 import utils
 
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import ui as ful
 
 _LABEL_START_STR = 'Hit s to start loopback test\n' +\
         '按s鍵開始音源回放測試\n\n'

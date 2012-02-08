@@ -20,11 +20,11 @@ import re
 import sys
 import subprocess
 
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import ui as ful
 
 from gtk import gdk
 

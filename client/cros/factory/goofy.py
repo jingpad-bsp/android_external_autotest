@@ -16,19 +16,23 @@ from collections import deque
 from optparse import OptionParser
 from Queue import Queue
 
-import factory, factory_event, factory_prespawner, factory_state
-
-from factory_event import Event
-from factory import TestState
+import factory_common
+from autotest_lib.client.bin import prespawner
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import state
+from autotest_lib.client.cros.factory import TestState
+from autotest_lib.client.cros.factory.event import Event
+from autotest_lib.client.cros.factory.event import EventClient
+from autotest_lib.client.cros.factory.event import EventServer
 
 
 SCRIPT_PATH = os.path.realpath(__file__)
-CLIENT_PATH = os.path.dirname(os.path.dirname(SCRIPT_PATH))
-FACTORY_UI_PATH = CLIENT_PATH + '/bin/factory_ui'
-FACTORY_STATE_SERVER_PATH = CLIENT_PATH + '/bin/factory_state.py'
-STATUS_FILE_PATH = CLIENT_PATH + '/results/default/status'
+CROS_FACTORY_LIB_PATH = os.path.dirname(SCRIPT_PATH)
+FACTORY_UI_PATH = os.path.join(CROS_FACTORY_LIB_PATH, 'factory_ui')
+CLIENT_PATH = os.path.realpath(os.path.join(CROS_FACTORY_LIB_PATH, '..', '..'))
+DEFAULT_TEST_LIST_PATH = os.path.join(
+        CLIENT_PATH , 'site_tests', 'suite_Factory', 'test_list')
 HWID_CFG_PATH = '/usr/local/share/chromeos-hwid/cfg'
-DEFAULT_TEST_LIST_PATH = CLIENT_PATH + '/site_tests/suite_Factory/test_list'
 
 
 def get_hwid_cfg():
@@ -180,8 +184,7 @@ class TestInvocation(object):
         error_msg = 'Unknown'
 
         try:
-            client_dir = os.path.dirname(os.path.dirname(
-                    os.path.realpath(__file__)))
+            client_dir = CLIENT_PATH
 
             output_dir = '%s/results/%s' % (client_dir, test.path)
             if not os.path.exists(output_dir):
@@ -218,7 +221,7 @@ class TestInvocation(object):
                     [pipes.quote(arg) for arg in args]))
 
             with self._lock:
-                self._process = factory_prespawner.spawn(
+                self._process = prespawner.spawn(
                     args, {'CROS_FACTORY_TEST_PATH': test.path})
 
             returncode = self._process.wait()
@@ -329,23 +332,23 @@ class Goofy(object):
             logging.info('Stopping event server')
             self.event_server.shutdown()  # pylint: disable=E1101
             self.event_server_thread.join()
-        factory_prespawner.stop()
+        prespawner.stop()
 
     def start_state_server(self):
-        self.state_instance, self.state_server = factory_state.create_server()
+        self.state_instance, self.state_server = state.create_server()
         logging.info('Starting state server')
         self.state_server_thread = threading.Thread(
             target=self.state_server.serve_forever)
         self.state_server_thread.start()
 
     def start_event_server(self):
-        self.event_server = factory_event.EventServer()
+        self.event_server = EventServer()
         logging.info('Starting factory event server')
         self.event_server_thread = threading.Thread(
             target=self.event_server.serve_forever)  # pylint: disable=E1101
         self.event_server_thread.start()
 
-        self.event_client = factory_event.EventClient(
+        self.event_client = EventClient(
             callback=self.handle_event, event_loop=self.run_queue)
 
     def start_ui(self):
@@ -580,7 +583,7 @@ class Goofy(object):
         self.init_states()
         self.start_event_server()
         self.start_ui()
-        factory_prespawner.start()
+        prespawner.start()
 
         def state_change_callback(test, state):
             self.event_client.post_event(

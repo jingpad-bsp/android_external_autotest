@@ -10,13 +10,12 @@ allow its use by the autotest control process.
 
 To log to the factory console, use:
 
-  import factory
+  from autotest_lib.client.cros import factory
   factory.console.info('...')  # Or warn, or error
 '''
 
 
 import logging, os, sys
-
 
 def get_log_root():
     '''Returns the root for logging and state.
@@ -84,12 +83,14 @@ def log(s):
 
 def get_state_instance():
     '''
-    Returns a cached factory_state client instance.
+    Returns a cached factory state client instance.
     '''
-    import factory_state
+    # Delay loading modules to prevent circular dependency.
+    import factory_common
+    from autotest_lib.client.cros.factory import state
     global _state_instance  # pylint: disable=W0603
     if _state_instance is None:
-        _state_instance = factory_state.get_instance()
+        _state_instance = state.get_instance()
     return _state_instance
 
 

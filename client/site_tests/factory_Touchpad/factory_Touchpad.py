@@ -24,13 +24,13 @@ from cmath import pi
 from glob import glob
 from gtk import gdk
 
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin.input.input_device import *
+from autotest_lib.client.common_lib.error import CmdError
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.error import CmdError
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import ui as ful
 
 
 _X_SEGMENTS = 5

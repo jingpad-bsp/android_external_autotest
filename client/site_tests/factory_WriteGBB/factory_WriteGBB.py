@@ -4,9 +4,11 @@
 
 import glob, os
 
-from autotest_lib.client.bin import factory, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import gooftools
+
+from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import gooftools
 
 
 class factory_WriteGBB(test.test):
