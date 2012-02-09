@@ -1,0 +1,40 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Enterprise"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """This test suite runs all enterprise related tests. Specifically:
+    1. PyAuto functional CHROMEOS_POLICY suite
+    2. desktopui_EnterprisePolicyServer.
+"""
+
+
+# Produces gtest-style output
+CLIENT_GTESTS = [
+    ('desktopui_PyAutoFunctionalTests', {
+        'suite': 'CHROMEOS_POLICY',
+        'auto_login': False,
+        'as_chronos': False,
+        'tag': 'CHROMEOS_POLICY',
+    }),
+]
+
+
+SERVER_CONTROL = 'server/site_tests/desktopui_EnterprisePolicyServer/control'
+
+
+def run_client_test(machine):
+    client = hosts.create_host(machine)
+    client_at = autotest.Autotest(client)
+    for test in CLIENT_GTESTS:
+        gtest_runner.run(test, machine)
+
+
+job.parallel_on_machines(run_client_test, machines)
+job.run_control(SERVER_CONTROL)
