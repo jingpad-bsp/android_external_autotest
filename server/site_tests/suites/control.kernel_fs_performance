@@ -19,8 +19,7 @@ from autotest_lib.server import site_host_attributes
 
 # TODO: Add some tests
 TESTS = [
-## TODO(taysom) hardware_StorageFio is failing:  http://crosbug.com/20676
-##  ('hardware_StorageFio', {} ),
+  ('hardware_StorageFio', {} ),
   ('kernel_fs_Punybench', {}),
   ('kernel_HdParm', {}),
   ('dbench', {}),
