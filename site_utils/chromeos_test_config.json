@@ -20,22 +20,14 @@
             ]
         },
 
-
-        "x86-alex-r15": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "0.15.1011.*",
-            "platforms": [
-                {"platform": "netbook_ALEX"}
-            ]
-        },
-
         "x86-alex-r16": {
             "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
             "build_pattern": "R16-1193.*",
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
+                {"platform": "netbook_ALEX",
+                 "groups": ["desktopui_pyauto_perf"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI3K",
@@ -49,6 +41,8 @@
             "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
+                {"platform": "netbook_ALEX",
+                 "groups": ["desktopui_pyauto_perf"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI3K",
@@ -63,7 +57,7 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["audio"]},
+                 "groups": ["audio", "desktopui_pyauto_perf"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI3K",
@@ -82,7 +76,7 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["audio"]},
+                 "groups": ["audio", "desktopui_pyauto_perf"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI3K",
@@ -94,21 +88,14 @@
             ]
         },
 
-        "x86-zgb-r15": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "0.15.1011.*",
-            "platforms": [
-                {"platform": "netbook_ACER_ZGB"}
-            ]
-        },
-
         "x86-zgb-r16": {
             "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R16-1193.*",
             "platforms": [
-                {"platform": "netbook_ACER_ZGB", "au_test": true}
+                {"platform": "netbook_ACER_ZGB", "au_test": true},
+                {"platform": "netbook_ACER_ZGB",
+                 "groups": ["desktopui_pyauto_perf"]}
             ]
         },
 
@@ -117,7 +104,9 @@
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R17-1412.*.0*",
             "platforms": [
-                {"platform": "netbook_ACER_ZGB", "au_test": true}
+                {"platform": "netbook_ACER_ZGB", "au_test": true},
+                {"platform": "netbook_ACER_ZGB",
+                 "groups": ["desktopui_pyauto_perf"]}
             ]
         },
 
@@ -128,7 +117,7 @@
             "platforms": [
                 {"platform": "netbook_ACER_ZGB","au_test": true},
                 {"platform": "netbook_ACER_ZGB",
-                 "groups": ["audio"]},
+                 "groups": ["audio", "desktopui_pyauto_perf"]},
                 {"platform": "netbook_ACER_ZGB_CDMA_GOBI2K",
                  "groups": ["network_3g"]}
             ]
@@ -141,18 +130,9 @@
             "platforms": [
                 {"platform": "netbook_ACER_ZGB","au_test": true},
                 {"platform": "netbook_ACER_ZGB",
-                 "groups": ["audio"]},
+                 "groups": ["audio", "desktopui_pyauto_perf"]},
                 {"platform": "netbook_ACER_ZGB_CDMA_GOBI2K",
                  "groups": ["network_3g"]}
-            ]
-        },
-
-        "x86-mario-r15": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-mario",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
-            "build_pattern": "0.15.1011.*",
-            "platforms": [
-                {"platform": "netbook_MARIO_MP"}
             ]
         },
 
@@ -162,6 +142,8 @@
             "build_pattern": "R16-1193.*",
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
+                {"platform": "netbook_MARIO_MP",
+                 "groups": ["desktopui_pyauto_perf"]},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]}
             ]
@@ -173,6 +155,8 @@
             "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
+                {"platform": "netbook_MARIO_MP",
+                 "groups": ["desktopui_pyauto_perf"]},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]}
             ]
@@ -184,6 +168,8 @@
             "build_pattern": "R18-*",
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
+                {"platform": "netbook_MARIO_MP",
+                 "groups": ["desktopui_pyauto_perf"]},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]}
             ]
@@ -195,6 +181,8 @@
             "build_pattern": "R19-*",
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
+                {"platform": "netbook_MARIO_MP",
+                 "groups": ["desktopui_pyauto_perf"]},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]}
             ]
@@ -207,7 +195,7 @@
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true},
                 {"platform": "desktop_STUMPY",
-                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "desktopui_lumpy_stumpy_celeron"]}
+                 "groups": ["desktopui_pyauto_perf_celeron"]}
             ]
         },
 
@@ -218,7 +206,7 @@
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true},
                 {"platform": "desktop_STUMPY",
-                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "audio", "desktopui_lumpy_stumpy_celeron"]}
+                 "groups": ["desktopui_pyauto_perf_celeron"]}
             ]
         },
 
@@ -229,7 +217,7 @@
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true},
                 {"platform": "desktop_STUMPY",
-                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "audio", "desktopui_lumpy_stumpy_celeron"]}
+                 "groups": ["desktopui_pyauto_perf_celeron"]}
             ]
         },
 
@@ -240,7 +228,7 @@
             "platforms": [
                 {"platform": "netbook_LUMPY", "au_test": true},
                 {"platform": "netbook_LUMPY",
-                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "desktopui_lumpy_stumpy_celeron"]}
+                 "groups": ["desktopui_pyauto_perf_celeron"]}
             ]
         },
 
@@ -251,7 +239,7 @@
             "platforms": [
                 {"platform": "netbook_LUMPY", "au_test": true},
                 {"platform": "netbook_LUMPY",
-                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "audio", "desktopui_lumpy_stumpy_celeron"]}
+                 "groups": ["desktopui_pyauto_perf_celeron"]}
             ]
         },
 
@@ -262,7 +250,7 @@
             "platforms": [
                 {"platform": "netbook_LUMPY", "au_test": true},
                 {"platform": "netbook_LUMPY",
-                 "groups": ["bvtx4", "build", "kernel", "pagecycler", "perfx3", "power", "audio", "desktopui_lumpy_stumpy_celeron"]}
+                 "groups": ["desktopui_pyauto_perf_celeron"]}
             ]
         },
 
@@ -336,29 +324,19 @@
             {"name": "pyauto_basic",
              "control": "server/site_tests/suites/control.desktopui_pyauto_basic"},
 
-            {"name": "pyauto_perf",
-             "control": "server/site_tests/suites/control.desktopui_pyauto_perf"},
-
             {"name": "sync",
              "control": "server/site_tests/suites/control.desktopui_syncintegrationtests"}
         ],
 
-        "desktopui_lumpy_stumpy_celeron": [
-            {"name": "browsertests",
-             "control": "server/site_tests/suites/control.desktopui_browsertest"},
+        "desktopui_pyauto_perf": [
+            {"name": "pyauto_perf",
+             "control": "server/site_tests/suites/control.desktopui_pyauto_perf"}
+        ],
 
-            {"name": "pyauto",
-             "control": "server/site_tests/suites/control.desktopui_pyautofunctionaltests"},
-
-            {"name": "pyauto_basic",
-             "control": "server/site_tests/suites/control.desktopui_pyauto_basic"},
-
+        "desktopui_pyauto_perf_celeron": [
             {"name": "pyauto_perf",
              "control": "server/site_tests/suites/control.desktopui_pyauto_perf",
-             "labels": ["CPU-Celeron"]},
-
-            {"name": "sync",
-             "control": "server/site_tests/suites/control.desktopui_syncintegrationtests"}
+             "labels": ["CPU-Celeron"]}
         ],
 
         "desktopui_tegra2": [
