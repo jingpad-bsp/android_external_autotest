@@ -50,8 +50,14 @@ class network_EthernetStressPlug(test.test):
             net_list = pyudev.Context().list_devices(subsystem='net')
             for dev in net_list:
                 if device in dev.sys_path:
-                    return re.search('(/sys/devices/pci[^/]*/0000[^/]*/usb[^/]*'
-                                     '/[^/]*)', dev.sys_path).groups()[0]
+                    # Currently, we only support usb devices where the
+                    # device path should match something of the form
+                    # /sys/devices/pci.*/0000.*/usb.*/.*.
+                    net_path = re.search('(/sys/devices/pci[^/]*/0000[^/]*/'
+                                         'usb[^/]*/[^/]*)', dev.sys_path)
+                    if net_path:
+                        return net_path.groups()[0]
+
             raise error.TestError('No ethernet device with name %s found.'
                                   % device)
 
