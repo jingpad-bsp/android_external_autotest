@@ -40,10 +40,8 @@ CISCO_300M = EthernetDongle(expect_speed='100',
 class network_EthernetStressPlug(test.test):
     version = 1
 
-    def __init__(self, *argv, **kwargs):
+    def initialize(self):
         """ Determines and defines the bus information and interface info. """
-
-        test.test.__init__(self, *argv, **kwargs)
 
         def get_net_device_path(device='eth0'):
             """ Uses udev to get the path of the desired internet device. """
