@@ -439,7 +439,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         suite._jobs = list(jobs)
-        results = suite.wait_for_results()
+        results = [result for result in suite.wait_for_results()]
         for job in jobs:
             for status in job.statuses:
                 self.assertTrue(True in map(status.equals_record, results))
@@ -451,10 +451,13 @@ class SuiteTest(mox.MoxTestBase):
 
         results = [('GOOD', None, 'good'), ('FAIL', None, 'bad', 'reason')]
         recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record('START', mox.IgnoreArg(), self._TAG)
+        recorder.record('INFO', None, 'Start %s' % self._TAG)
         for result in results:
+            status = result[0]
+            test_name = result[2]
+            recorder.record('START', None, test_name)
             recorder.record(*result).InAnyOrder('results')
-        recorder.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
+            recorder.record('END %s' % status, None, test_name)
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(self._NAME, True)
@@ -470,8 +473,9 @@ class SuiteTest(mox.MoxTestBase):
         suite = self._createSuiteWithMockedTestsAndControlFiles()
 
         recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record('START', mox.IgnoreArg(), self._TAG)
-        recorder.record('END ERROR', None, None, mox.StrContains('waiting'))
+        recorder.record('INFO', None, 'Start %s' % self._TAG)
+        recorder.record('FAIL', None, self._TAG,
+                        mox.StrContains('waiting'))
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(self._NAME, True)
@@ -487,8 +491,9 @@ class SuiteTest(mox.MoxTestBase):
         suite = self._createSuiteWithMockedTestsAndControlFiles()
 
         recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record('START', mox.IgnoreArg(), self._TAG)
-        recorder.record('END ERROR', None, None, mox.StrContains('scheduling'))
+        recorder.record('INFO', None, 'Start %s' % self._TAG)
+        recorder.record('FAIL', None, self._TAG,
+                        mox.StrContains('scheduling'))
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(self._NAME, True).AndRaise(Exception())

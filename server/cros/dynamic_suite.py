@@ -302,18 +302,27 @@ class Suite(object):
         @param add_experimental: schedule experimental tests as well, or not.
         """
         try:
-            record('START', None, self._tag)
+            record('INFO', None, 'Start %s' % self._tag)
             self.schedule(image_name, add_experimental)
             try:
                 for result in self.wait_for_results():
+                    # |result| will be a tuple of a maximum of 4 entries and a
+                    # minimum of 3. We use the first 3 for START and END
+                    # entries so we separate those variables out for legible
+                    # variable names, nothing more.
+                    status = result[0]
+                    test_name = result[2]
+                    record('START', None, test_name)
                     record(*result)
-                record('END GOOD', None, None)
+                    record('END %s' % status, None, test_name)
             except Exception as e:
                 logging.error(e)
-                record('END ERROR', None, None, 'Exception waiting for results')
+                record('FAIL', None, self._tag,
+                       'Exception waiting for results')
         except Exception as e:
             logging.error(e)
-            record('END ERROR', None, None, 'Exception while scheduling suite')
+            record('FAIL', None, self._tag,
+                   'Exception while scheduling suite')
 
 
     def schedule(self, image_name, add_experimental=True):
@@ -375,7 +384,6 @@ class Suite(object):
         Currently polls for results every 5s.  When all results are available,
         @return a list of tuples, one per test: (status, subdir, name, reason)
         """
-        results = []
         while self._jobs:
             for job in list(self._jobs):
                 if not self._afe.get_jobs(id=job.id, finished=True):
@@ -385,14 +393,12 @@ class Suite(object):
 
                 entries = self._afe.run('get_host_queue_entries', job=job.id)
                 if reduce(self._collate_aborted, entries, False):
-                    results.append(('ABORT', None, job.name))
+                    yield('ABORT', None, job.name)
                 else:
                     statuses = self._tko.get_status_counts(job=job.id)
                     for s in filter(self._status_is_relevant, statuses):
-                        results.append((s.status, None, s.test_name, s.reason))
+                        yield(s.status, None, s.test_name, s.reason)
             time.sleep(5)
-
-        return results
 
 
     @staticmethod
