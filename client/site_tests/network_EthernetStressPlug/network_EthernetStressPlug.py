@@ -219,12 +219,12 @@ class network_EthernetStressPlug(test.test):
         """
         return CISCO_300M
 
-    def run_once(self, num_runs=1):
+    def run_once(self, num_iterations=1):
         try:
             self.dongle = self.GetDongle()
             #Sleep for a random duration between .5 and 2 seconds
             #for unplug and plug scenarios.
-            for i in range(num_runs):
+            for i in range(num_iterations):
                 logging.debug('Iteration: %d' % i)
                 if self.TestPowerEthernet(power=0) > self.secs_before_warning:
                     self.warning_count+=1
@@ -235,11 +235,12 @@ class network_EthernetStressPlug(test.test):
 
                 self.RandSleep(500, 2000)
 
-                if self.warning_count > num_runs * self.warning_threshold:
+                if self.warning_count > num_iterations * self.warning_threshold:
                     raise error.TestFail('ERROR: %.2f%% of total runs (%d) '
                                          'took longer than %d seconds for '
                                          'ethernet to come up.' %
-                                         (self.warning_threshold*100, num_runs,
+                                         (self.warning_threshold*100,
+                                          num_iterations,
                                           self.secs_before_warning))
 
         except Exception as e:

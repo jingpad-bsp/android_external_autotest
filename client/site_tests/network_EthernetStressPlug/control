@@ -18,14 +18,15 @@ DOC = """
   Stress-tests simulating plugging/unplugging the ethernet dongle.
 """
 
-# Default test to 100 iterations.
-iterations = 100
+# We want the default number of loops per test run
+# to be 100.
+num_iterations = 100
 
 # Parse comma-separated args.
 for arg in args:
     for item in arg.split(','):
         key, val = item.split('=')
-        if key == 'iterations':
-            iterations = int(val)
+        if key == 'num_iterations':
+            num_iterations = int(val)
 
-job.run_test('network_EthernetStressPlug', num_runs=iterations)
+job.run_test('network_EthernetStressPlug', num_iterations=num_iterations)
