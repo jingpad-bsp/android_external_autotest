@@ -12,7 +12,6 @@ class hardware_SsdDetection(test.test):
     version = 1
 
     def setup(self):
-        self.job.setup_dep(['hdparm'])
         # create a empty srcdir to prevent the error that checks .version file
         if not os.path.exists(self.srcdir):
             utils.system('mkdir %s' % self.srcdir)
@@ -27,16 +26,9 @@ class hardware_SsdDetection(test.test):
         if re.search("mmcblk", device):
             return
 
-        # TODO(ericli): need to find a general solution to install dep packages
-        # when tests are pre-compiled, so setup() is not called from client any
-        # more.
-        dep = 'hdparm'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
+        hdparm = utils.run('/sbin/hdparm -I %s' % device)
 
         # Check if device is a SSD
-        path = self.autodir + '/deps/hdparm/sbin/'
-        hdparm = utils.run(path + 'hdparm -I %s' % device)
         match = re.search(r'Nominal Media Rotation Rate: (.+)$',
                           hdparm.stdout, re.MULTILINE)
         if match and match.group(1):
@@ -51,7 +43,6 @@ class hardware_SsdDetection(test.test):
         # Check if SSD is > 8GB in size
         match = re.search("device size with M = 1000\*1000: (.+) MBytes",
                           hdparm.stdout, re.MULTILINE)
-
         if match and match.group(1):
             size = int(match.group(1))
             self.write_perf_keyval({"mb_ssd_device_size" : size})
