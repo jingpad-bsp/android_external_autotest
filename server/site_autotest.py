@@ -39,7 +39,9 @@ class SiteAutotest(installable_object.InstallableObject):
                 hosts = afe.get_hosts(hostname=self.host.hostname)
                 if 'job_repo_url' in hosts[0].attributes:
                     return hosts[0].attributes['job_repo_url']
+                logging.warning("No job_repo_url for %s", self.host)
         except ImportError:
+            logging.warning('Not attempting to look for job_repo_url')
             pass
         return None
 

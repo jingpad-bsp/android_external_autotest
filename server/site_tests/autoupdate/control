@@ -23,7 +23,7 @@ from autotest_lib.server import frontend
 
 vers = 'cros-version-'
 repo_url = None
-if image_name in locals():
+if 'image_name' in locals():
     from autotest_lib.server.cros import dynamic_suite
     vers = dynamic_suite.VERSION_PREFIX
     repo_url = dynamic_suite._package_url_pattern() % image_name
