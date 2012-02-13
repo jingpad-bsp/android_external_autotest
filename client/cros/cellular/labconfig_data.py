@@ -58,6 +58,16 @@ def MakeDefault8960(specifics):
             }
     return combine_trees(base, specifics)
 
+def MakeDefaultPerfServer(specifics):
+    rf_address = "192.168.2.254"
+    base = {
+        "rf_address": rf_address,
+        "upload_url": "http://%s/upload" % (rf_address),
+        "download_url_format_string": ("http://%s/download?size=%%(size)s" %
+                                       rf_address),
+        }
+    return combine_trees(base, specifics)
+
 
 CELLS['cam'] = {
     "basestations": [
@@ -82,12 +92,11 @@ CELLS['cam'] = {
             }
         ],
 
-    "perfserver": {
+    "perfserver": MakeDefaultPerfServer({
         "name": "perfserver-cam",
         "address": "172.31.206.153",
         "ethernet_mac": "e8:11:32:cb:bb:95 ",
-        "rf_address": "192.168.2.254",
-        },
+        }),
 
     "http_connectivity": {
         # "url" should point to a URL that fetches a page small enough
@@ -144,12 +153,11 @@ CELLS['mtv'] = {
             },
         ],
 
-    "perfserver": {
+    "perfserver": MakeDefaultPerfServer({
         "name": "perfserver-mtv",
         "address": "172.22.50.124",
         "ethernet_mac": "e8:03:9a:11:70:31",
-        "rf_address": "192.168.2.254",
-        },
+        }),
 
     # Used for tests that check web connectivity
     "http_connectivity": {

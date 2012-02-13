@@ -5,10 +5,9 @@ import logging, pickle, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import backchannel, iperf, network
+from autotest_lib.client.cros import backchannel, http_speed, network
 
-from autotest_lib.client.cros.cellular import cellular, cell_tools
-from autotest_lib.client.cros.cellular import emulator_config, labconfig
+from autotest_lib.client.cros.cellular import cellular, cell_tools, environment
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -17,42 +16,33 @@ import flimflam
 class cellular_Throughput(test.test):
     version = 1
 
-    def run_once(self, config_pickle, technology):
-        config = pickle.loads(config_pickle)
-        with backchannel.Backchannel():
+    def run_once(self, config, technology):
+        with environment.DefaultCellularTestContext(config) as c:
+            env = c.env
             flim = flimflam.FlimFlam()
-            with cell_tools.OtherDeviceShutdownContext('cellular', flim):
-                bs, verifier = emulator_config.StartDefault(config, technology)
-                network.ResetAllModems(flim)
-                cell_tools.PrepareModemForTechnology('', technology)
-                # TODO(rochberg): Figure out whether it's just Gobi 2k
-                # that requires this or all modems
-                time.sleep(5)
+            env.StartDefault(technology)
+            network.ResetAllModems(flim)
+            cell_tools.PrepareModemForTechnology('', technology)
 
-                (service, _) = cell_tools.ConnectToCellular(flim, verifier)
+            # TODO(rochberg): Figure out why this is necessary
+            time.sleep(10)
 
-                cell_tools.CheckHttpConnectivity(config)
+            service = env.CheckedConnectToCellular()
 
-                # TODO(rochberg): Factor this and the counts stuff out
-                # so that individual tests don't have to care.
-                bs.LogStats()
-                bs.ResetDataCounters()
+            # TODO(rochberg): Factor this and the counts stuff out
+            # so that individual tests don't have to care.
+            env.emulator.LogStats()
+            env.emulator.ResetDataCounters()
 
-                # The control file has started iperf at this address
-                perftarget = config.cell['perfserver']['rf_address']
-                (client, perf) = iperf.BuildClientCommand(
-                    perftarget,
-                    {'tradeoff': True,})
+            perf = http_speed.HttpSpeed(
+                env.config.cell['perfserver']['download_url_format_string'],
+                env.config.cell['perfserver']['upload_url'])
 
-                with network.IpTablesContext(perftarget):
-                    iperf_output = utils.system_output(client,
-                                                       retain_output=True)
 
-                # TODO(rochberg):  Can/should we these values into the
-                # write_perf_keyval dictionary?  Now we just log them.
-                bs.GetDataCounters()
+            # TODO(rochberg):  Can/should we these values into the
+            # write_perf_keyval dictionary?  Now we just log them.
+            env.emulator.GetDataCounters()
 
-                # Add in conditions from BuildClientCommand
-                perf.update(iperf.ParseIperfOutput(iperf_output))
-                cell_tools.DisconnectFromCellularService(bs, flim, service)
-                self.write_perf_keyval(perf)
+            env.CheckedDisconnectFromCellular(service)
+
+            self.write_perf_keyval(perf)
