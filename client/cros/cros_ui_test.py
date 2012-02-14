@@ -42,6 +42,17 @@ class UITest(pyauto_test.PyAutoTest):
     # Processes that we know crash and are willing to ignore.
     crash_blacklist = []
 
+    # ftrace-related files.
+    _ftrace_process_fork_event_enable_file = \
+        '/sys/kernel/debug/tracing/events/sched/sched_process_fork/enable'
+    _ftrace_process_fork_event_filter_file = \
+        '/sys/kernel/debug/tracing/events/sched/sched_process_fork/filter'
+    _ftrace_signal_generate_event_enable_file = \
+        '/sys/kernel/debug/tracing/events/signal/signal_generate/enable'
+    _ftrace_signal_generate_event_filter_file = \
+        '/sys/kernel/debug/tracing/events/signal/signal_generate/filter'
+    _ftrace_trace_file = '/sys/kernel/debug/tracing/trace'
+
     # This is a symlink.  We look up the real path at runtime by following it.
     _resolv_test_file = 'resolv.conf.test'
     _resolv_bak_file = 'resolv.conf.bak'
@@ -198,6 +209,62 @@ class UITest(pyauto_test.PyAutoTest):
             self._dnsServer.stop()
 
 
+    def start_chrome_event_tracing(self):
+        """Start tracing events of a chrome process being created or receiving a
+        signal.
+        """
+        try:
+            # Clear the trace buffer.
+            utils.open_write_close(self._ftrace_trace_file, '')
+
+            # Trace only chrome process creation events, which we may later use
+            # to determine if a chrome process is killed by its parent.
+            utils.open_write_close(
+                self._ftrace_process_fork_event_filter_file,
+                'child_comm==chrome')
+            # Trace only chrome processes receiving any signal except for
+            # the uninteresting SIGPROF (sig 27 on x86 and arm).
+            utils.open_write_close(
+                self._ftrace_signal_generate_event_filter_file,
+                'comm==chrome && sig!=27')
+
+            # Enable the process_fork event tracing.
+            utils.open_write_close(
+                self._ftrace_process_fork_event_enable_file, '1')
+            # Enable the signal_generate event tracing.
+            utils.open_write_close(
+                self._ftrace_signal_generate_event_enable_file, '1')
+        except IOError as err:
+            logging.warning('Failed to start chrome signal tracing: %s', err)
+
+
+    def stop_chrome_event_tracing(self):
+        """Stop tracing events of a chrome process being created or receiving a
+        signal.
+        """
+        try:
+            # Disable the process_fork event tracing.
+            utils.open_write_close(
+                self._ftrace_process_fork_event_enable_file, '0')
+            # Disable the signal_generate event tracing.
+            utils.open_write_close(
+                self._ftrace_signal_generate_event_enable_file, '0')
+
+            # Clear the process_fork event filter.
+            utils.open_write_close(
+                self._ftrace_process_fork_event_filter_file, '0')
+            # Clear the signal_generate event filter.
+            utils.open_write_close(
+                self._ftrace_signal_generate_event_filter_file, '0')
+
+            # Dump the trace buffer to a log file.
+            trace_file = os.path.join(self.resultsdir, 'chrome_event_trace')
+            trace_data = utils.read_file(self._ftrace_trace_file)
+            utils.open_write_close(trace_file, trace_data)
+        except IOError as err:
+            logging.warning('Failed to stop chrome signal tracing: %s', err)
+
+
     def start_tcpdump(self, iface):
         """Start tcpdump process, if not running already."""
         if not hasattr(self, '_tcpdump'):
@@ -218,6 +285,22 @@ class UITest(pyauto_test.PyAutoTest):
             logging.info('Saving tcpdump output to %s' % tcpdump_file)
             utils.open_write_close(tcpdump_file, self._tcpdump.communicate()[0])
             del self._tcpdump
+
+
+    def __log_all_processes(self, fname_prefix):
+        """Log all processes to a file.
+
+        Args:
+            fname_prefix: Prefix of the log file.
+        """
+        try:
+            next_index = len(glob.glob(
+                os.path.join(self.resultsdir, '%s-*' % fname_prefix)))
+            log_file = os.path.join(
+                self.resultsdir, '%s-%d' % (fname_prefix, next_index))
+            utils.open_write_close(log_file, utils.system_output('ps -eF'))
+        except (error.CmdError, IOError, OSError) as err:
+            logging.warning('Failed to log all processes: %s', err)
 
 
     def __perform_ui_diagnostics(self):
@@ -286,6 +369,13 @@ class UITest(pyauto_test.PyAutoTest):
         # Run tcpdump on 'lo' interface to investigate network
         # issues in the lab during login.
         self.start_tcpdump(iface='lo')
+
+        # Log all processes so that we can correlate PIDs to processes in
+        # the chrome signal trace.
+        self.__log_all_processes('processes--before-tracing')
+
+        # Start event tracing related to chrome processes.
+        self.start_chrome_event_tracing()
 
         # We yearn for Chrome coredumps...
         open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
@@ -549,6 +639,8 @@ class UITest(pyauto_test.PyAutoTest):
             if os.path.isfile(constants.CHROME_CORE_MAGIC_FILE):
                 os.unlink(constants.CHROME_CORE_MAGIC_FILE)
         finally:
+            self.stop_chrome_event_tracing()
+            self.__log_all_processes('processes--after-tracing')
             self.stop_tcpdump(fname_prefix='tcpdump-lo--till-end')
             self.stop_authserver()
 
