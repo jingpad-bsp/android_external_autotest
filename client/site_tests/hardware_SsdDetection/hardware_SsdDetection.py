@@ -17,7 +17,7 @@ class hardware_SsdDetection(test.test):
             utils.system('mkdir %s' % self.srcdir)
 
 
-    def run_once(self):
+    def run_once(self, check_link_speed=()):
         # Use rootdev to find the underlying block device even if the
         # system booted to /dev/dm-0.
         # If it is an mmcbkl device, then it is SSD.
@@ -49,3 +49,14 @@ class hardware_SsdDetection(test.test):
         else:
             raise error.TestFail(
                 'Device size info missing from the device')
+
+        # Check supported link speed.
+        #
+        # check_link_speed is an empty tuple by default, which does not perform
+        # link speed checking.  You can run the test while specifying
+        # check_link_speed=('1.5Gb/s', '3.0Gb/s') to check the 2 signaling
+        # speeds are both supported.
+        for link_speed in check_link_speed:
+            if not re.search(r'Gen. signaling speed \(%s\)' % link_speed,
+                             hdparm.stdout, re.MULTILINE):
+                raise error.TestFail('Link speed %s not supported' % link_speed)
