@@ -25,7 +25,6 @@ TESTS = [
 #  ('desktopui_ImeTest', {}),
   ('desktopui_SunSpiderBench', {}),
   ('desktopui_V8Bench', {}),
-  ('desktopui_WindowManagerHotkeys', {}),
   ('fsx', {}),
   ('graphics_GLAPICheck', {}),
   ('graphics_WindowManagerGraphicsCapture', {}),
