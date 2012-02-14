@@ -11,8 +11,8 @@ Things this class does:
   - Log in to default account
 
 The PyAuto framework must be installed on the machine for this to work,
-under .../autotest/deps/pyauto_dep/test_src/chrome/pyautolib'. This is
-built by the chromeos-chrome ebuild.
+under .../autotest/deps/{pyauto_dep|chrome_test}/test_src/chrome/pyautolib'.
+This is built by the chromeos-chrome ebuild.
 """
 
 import logging
@@ -58,48 +58,41 @@ class PyAutoTest(test.test):
     def __init__(self, job, bindir, outputdir):
         test.test.__init__(self, job, bindir, outputdir)
 
-        # Handle to pyauto, for chrome automation.
-        self.pyauto = None
-        self.pyauto_suite = None
 
-        self._pyauto_dep = 'pyauto_dep'
-        self._pyauto_dep_dir = os.path.join(self.autodir, 'deps',
-                                            self._pyauto_dep)
-        self._test_binary_dir = os.path.join(
-            self._pyauto_dep_dir, 'test_src', 'out', 'Release')
-
-
-    def SetupDeps(self):
+    def SetupDeps(self, chrome_test_deps=False):
         """Set up deps needed for running pyauto."""
-        try:
-            self.job.install_pkg(self._pyauto_dep, 'dep', self._pyauto_dep_dir)
-        except error.PackageInstallError, e:
-           raise error.PackageInstallError('%s.  Use --use_emerged?' % e)
+        dep = 'chrome_test' if chrome_test_deps else 'pyauto_dep'
+        self.job.setup_dep([dep])
+
         # Make pyauto importable.
-        # This can be done only after pyauto_dep dependency has been installed.
+        # This can be done only after chrome_test/pyauto_dep dependency has been
+        # installed.
+        dep_dir = os.path.join(self.autodir, 'deps', dep)
         pyautolib_dir = os.path.join(
-            os.path.dirname(__file__), os.pardir, 'deps', 'pyauto_dep',
-            'test_src', 'chrome', 'test', 'pyautolib')
+            dep_dir, 'test_src', 'chrome', 'test', 'pyautolib')
         if not os.path.isdir(pyautolib_dir):
             raise error.TestError('%s missing.' % pyautolib_dir)
         sys.path.append(pyautolib_dir)
 
+        # TODO(frankf): This should be done automatically by setup_dep.
         # Create symlinks to chrome
+        test_binary_dir = os.path.join(
+            dep_dir, 'test_src', 'out', 'Release')
         try:
-            setup_cmd = '/bin/sh %s/%s' % (self._test_binary_dir,
+            setup_cmd = '/bin/sh %s/%s' % (test_binary_dir,
                                            'setup_test_links.sh')
             utils.system(setup_cmd)  # this might raise an exception
         except error.CmdError, e:
             raise error.TestError(e)
-        self._SetupSuidPython()
+        self._SetupSuidPython(test_binary_dir)
 
 
-    def _SetupSuidPython(self):
+    def _SetupSuidPython(self, test_binary_dir):
         """Setup suid python which can enable chrome testing interface.
 
         This is required when running pyauto as non-privileged user (chronos).
         """
-        suid_python = os.path.join(self._test_binary_dir, 'suid-python')
+        suid_python = os.path.join(test_binary_dir, 'suid-python')
         py_path = subprocess.Popen(['which', 'python'],
                                    stdout=subprocess.PIPE).communicate()[0]
         py_path = py_path.strip()
@@ -113,7 +106,7 @@ class PyAutoTest(test.test):
 
 
     def initialize(self, auto_login=True, extra_chrome_flags=[],
-                   subtract_extra_chrome_flags=[]):
+                   subtract_extra_chrome_flags=[], chrome_test_deps=False):
         """Initialize.
 
         Expects session_manager to be alive.
@@ -123,10 +116,16 @@ class PyAutoTest(test.test):
             extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
             subtract_extra_chrome_flags: Remove default flags passed to chrome
                 by pyauto, if any.
+            chrome_test_deps: Whether to use the much larger chrome deps instead
+                of pyauto deps.
         """
         assert os.geteuid() == 0, 'Need superuser privileges'
 
-        self.SetupDeps()
+        # Handle to pyauto, for chrome automation.
+        self.pyauto = None
+        self.pyauto_suite = None
+
+        self.SetupDeps(chrome_test_deps=chrome_test_deps)
         import pyauto
 
         class PyUITestInAutotest(pyauto.PyUITest):

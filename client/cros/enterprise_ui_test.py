@@ -56,7 +56,8 @@ class EnterpriseUITest(cros_ui_test.UITest):
         cros_ui_test.UITest.initialize(
             self, is_creating_owner=True,
             extra_chrome_flags=extra_chrome_flags,
-            subtract_extra_chrome_flags=['--skip-oauth-login'])
+            subtract_extra_chrome_flags=['--skip-oauth-login'],
+            chrome_test_deps=True)
 
 
     def cleanup(self):
