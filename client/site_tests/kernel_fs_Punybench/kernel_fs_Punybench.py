@@ -57,12 +57,10 @@ class kernel_fs_Punybench(test.test):
 
         Several different ways are used to move memory.
         """
-        size = '0x4000000'
-        loops = '4'
-        iterations = '10'
-        args  = '-z' + size
-        args += ' -i' + iterations
-        args += ' -l' + loops
+        size = 64 * 1024 * 1024
+        loops = 4
+        iterations = 10
+        args  = '-z %d -i %d -l %d' % (size, iterations, loops)
         result = self._run('memcpy', args)
 
         for tag in ['memcpy', '32bit', '64bit']:
@@ -96,19 +94,16 @@ class kernel_fs_Punybench(test.test):
         It then copies that tree then deletes it.
         """
         directory = '/usr/local/_Dir'
-        iterations = '4'
-        tasks = '2'
-        width = '3'
-        depth = '5'
-        args  = '-d' + directory
-        args += ' -i' + iterations
-        args += ' -t' + tasks
-        args += ' -w' + width
-        args += ' -k' + depth
+        iterations = 4
+        tasks = 2
+        width = 3
+        depth = 5
+        args = ('-d %s -i %d -t %d -w %d -k %d' %
+               (directory, iterations, tasks, width, depth))
         result = self._run('threadtree', args)
         r1 = re.search(r"timer avg= *([^\s]*).*$", result)
         timer_avg = float(r1.groups()[0])
-        p = int(tasks) * pow(int(width), int(depth) + 1) / timer_avg
+        p = tasks * pow(width, depth + 1) / timer_avg
         self.write_perf_keyval({'threadtree': p})
 
 
@@ -119,14 +114,11 @@ class kernel_fs_Punybench(test.test):
         not fit in memory.
         """
         file = '/usr/local/xyzzy'
-        size = '0x200000000'
-        loops = '4'
-        iterations = '1'
-        args = '-f' + file
-        args += ' -z' + size
-        args += ' -i' + iterations
-        args += ' -l' + loops
-        args += ' -b12'
+        size = 8 * 1024 * 1024 * 1024
+        loops = 4
+        iterations = 1
+        args = ('-f %s -z %d -i %d -l %d -b12' %
+               (file, size, iterations, loops))
         result = self._run('uread', args)
         r1 = re.search(r"([^\s]+ MiB/s).*$", result)
         value = r1.groups()[0]
@@ -137,14 +129,11 @@ class kernel_fs_Punybench(test.test):
         """Read randomly a large file
         """
         file = '/usr/local/xyzzy'
-        size = '0x200000000'
-        loops = '4'
-        iterations = '100000'
-        args = '-f' + file
-        args += ' -z' + size
-        args += ' -i' + iterations
-        args += ' -l' + loops
-        args += ' -b12'
+        size = 8 * 1024 * 1024 * 1024
+        loops = 4
+        iterations = 100000
+        args = ('-f %s -z %d -i %d -l %d -b12' %
+               (file, size, iterations, loops))
         result = self._run('ureadrand', args)
         r1 = re.search(r"([^\s]+ MiB/s).*$", result)
         value = r1.groups()[0]
