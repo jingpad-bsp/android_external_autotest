@@ -70,9 +70,12 @@ class network_EthernetStressPlug(test.test):
             'last_wait': 0
         }
 
+        # Todo:  Increased the failure time to 10 seconds because
+        # of crosbug.com/26343.  Change this back to 5 secs once the
+        # lab has been fixed.
         # Represents the number of seconds it can take
         # for ethernet to fully come up before we flag a warning.
-        self.secs_before_warning = 5
+        self.secs_before_warning = 10
 
         # Represents the current number of instances in which ethernet
         # took longer than dhcp_warning_level to come up.
