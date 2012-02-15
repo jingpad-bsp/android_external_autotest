@@ -54,11 +54,11 @@
         {
             "platforms": {
                 "netbook_MARIO_MP": ["x86-mario-r18", "x86-mario-r17",
-                                     "x86-mario-r16", "x86-mario-r15"],
+                                     "x86-mario-r19"],
                 "netbook_ALEX": ["x86-alex-r18", "x86-alex-r17",
-                                 "x86-alex-r16", "x86-alex-r15"],
+                                 "x86-alex-r19"],
                 "netbook_ACER_ZGB": ["x86-zgb-r18", "x86-zgb-r17",
-                                     "x86-zgb-r16", "x86-zgb-r15"]},
+                                     "x86-zgb-r19"]},
             "filters": [
                 {"categories": ["bvt"],
                  "sheriffs": true,
