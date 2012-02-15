@@ -10,6 +10,7 @@ replayed later to test trackpad drivers.
 '''
 
 import getopt
+import glob
 import os
 import re
 import subprocess
@@ -63,10 +64,12 @@ def _system_output(command):
 class Record:
     ''' Record device events from the device event file '''
 
-    def __init__(self, (trackpad_device_file, opt_func_list, tester)):
+    def __init__(self, (trackpad_device_file, opt_func_list, tester,
+                        flag_continue)):
         self.trackpad_device_file = trackpad_device_file
         self.opt_func_list = opt_func_list
         self.tester_name = tester
+        self.flag_continue = flag_continue
         self.filename_attr = read_trackpad_test_conf('filename_attr', '.')
         self.system_model = trackpad_util.get_model()
         self.functionality_list = \
@@ -174,7 +177,7 @@ class Record:
         if isinstance(subname, tuple):
             subprompt = reduce(lambda s1, s2: s1 + s2,
                                tuple(func.subprompt[s] for s in subname))
-        elif subname is None:
+        elif subname is None or func.subprompt is None:
             subprompt = None
         else:
             subprompt = func.subprompt[subname]
@@ -202,6 +205,14 @@ class Record:
             self.display.move_cursor_to_center()
             (file_name, full_func_name) = self._create_file_name(func, subname)
             file_path = os.path.join(gesture_files_path, file_name)
+
+            # Skip recording this file if this gesture exists already
+            area_func = file_name.split(self.tester_name)[0]
+            files = glob.glob(os.path.join(gesture_files_path, area_func) + '*')
+            if files:
+                print '  Skip recording existing "%s" gestures.' % area_func
+                return True
+
             print color_func_msg % (full_func_name, prefix_space, color_prompt)
             self.rec_f = open(file_path, 'w')
             # -1 in the following record_cmd means that the recording program
@@ -271,11 +282,9 @@ class Record:
             return tuple(tuple(to_list(s1) + to_list(s2)) for s1 in seq1
                                                           for s2 in seq2)
 
-        # Get the gesture files path. Create the path if not existent.
-        gesture_files_path = read_trackpad_test_conf('gesture_files_path', '.')
-        if not os.path.exists(gesture_files_path):
-            os.makedirs(gesture_files_path)
-            print '  %s has been created successfully.' % gesture_files_path
+        # Set up a gesture set to store the gesture files
+        gs = trackpad_util.setup_tester_gesture_set(self.tester_name,
+                                                    self.flag_continue)
 
         # Check whether the record program exists
         record_program = trackpad_util.record_program
@@ -283,14 +292,12 @@ class Record:
             print 'Warning: "%s" does not exist in $PATH' % record_program
             sys.exit(1)
 
-        print 'Gesture files will be stored in %s \n' % gesture_files_path
         print 'Begin recording ...\n'
 
         # Iterate through every functionality to record gesture files.
         for func_name, subname in self.opt_func_list:
             if subname is None:
-                continued = self._record(func_name, None, gesture_files_path,
-                                         record_program)
+                continued = self._record(func_name, None, gs, record_program)
             else:
                 # If subname is a sequence of sequence, it looks like
                 # (('click', 'tap'), ('l0', 'l1', 'l2', 'r0', 'r1', 'r2')), or
@@ -300,14 +307,13 @@ class Record:
                 span_subname = reduce(_span, subname) \
                                if isinstance(subname[0], tuple) else subname
                 for sub in span_subname:
-                    continued = self._record(func_name, sub, gesture_files_path,
-                                             record_program)
+                    continued = self._record(func_name, sub, gs, record_program)
                     if not continued:
                         break
             if not continued:
                 print '\n  You choose to exit %s' % sys.argv[0]
                 break
-        print '  Gesture files are stored under %s \n' % gesture_files_path
+        print '  Gesture files have been saved in %s \n' % gs
 
 
 def _usage():
@@ -319,6 +325,8 @@ def _usage():
     # Print the usage
     print 'Usage: $ sudo %s [options]\n' % sys.argv[0]
     print 'options:'
+    print "  -c, --continue: continue recording gestures in the tester's" \
+          " gesture set."
     print '  -d, --device=<device>'
     print '         <device>: /dev/input/eventN'
     print '         the device file for trackpad\n'
@@ -334,6 +342,7 @@ def _usage():
     print 'Examples:'
     print '    $ sudo %s # use default settings in %s' % \
                (sys.argv[0], trackpad_util.trackpad_test_conf)
+    print '    $ sudo %s -c' % sys.argv[0]
     print '    $ sudo %s -d %s' % (sys.argv[0], example_device_file)
     print '    $ sudo %s -f %s' % (sys.argv[0], example_func_list)
     print '    $ sudo %s -t %s' % (sys.argv[0], example_tester)
@@ -342,8 +351,8 @@ def _usage():
 def _parse_options():
     ''' Parse the command line options. '''
     try:
-        short_opt = 'hd:f:t:'
-        long_opt = ['help', 'device=', 'functionality=', 'tester=']
+        short_opt = 'chd:f:t:'
+        long_opt = ['continue', 'help', 'device=', 'functionality=', 'tester=']
         opts, args = getopt.getopt(sys.argv[1:], short_opt, long_opt)
     except getopt.GetoptError, err:
         print 'Error: %s' % str(err)
@@ -353,10 +362,13 @@ def _parse_options():
     trackpad_device_file = None
     func_list = None
     tester = None
+    flag_continue = False
     for opt, arg in opts:
         if opt in ('-h', '--help'):
             _usage()
             sys.exit()
+        elif opt in ('-c', '--continue'):
+            flag_continue = True
         elif opt in ('-d', '--device'):
             if os.path.exists(arg):
                 trackpad_device_file = arg
@@ -371,7 +383,7 @@ def _parse_options():
             print '       Need to fix the program to support it.'
             sys.exit(1)
 
-    return (trackpad_device_file, func_list, tester)
+    return (trackpad_device_file, func_list, tester, flag_continue)
 
 
 def _verify_file_existence(filename):
@@ -432,7 +444,7 @@ def _get_functionality_list(func_list_str):
         for func_full_name in opt_func_list:
             if '.' in func_full_name:
                 func_name, subname_str = func_full_name.split('.')
-                subname = None if subname_str == '' else subname_str.split(',')
+                subname = subname_str.split(',') if subname_str else None
             else:
                 func_name = func_full_name
                 subname = None
@@ -445,7 +457,7 @@ def _get_functionality_list(func_list_str):
             else:
                 # Check the validity of each subname
                 sub_list = [s for s in subname if s in func_dict[func_name]]
-                if len(sub_list) == 0:
+                if not sub_list:
                     print 'No valid subname in %s' % func_name
                     print 'Please look up valid subname in %s' % \
                            trackpad_util.trackpad_test_conf
@@ -483,14 +495,15 @@ def _get_options():
     trackpad_test.conf
     '''
     # Parse command line options
-    trackpad_device_file, func_list_str, tester = _parse_options()
+    options = _parse_options()
+    trackpad_device_file, func_list_str, tester, flag_continue = options
 
     # Verify the command line options. Check the configuration file if needed.
     trackpad_device_file = _get_trackpad_device_file(trackpad_device_file)
     verified_opt_func_list = _get_functionality_list(func_list_str)
     tester = _get_tester(tester)
 
-    return (trackpad_device_file, verified_opt_func_list, tester)
+    return (trackpad_device_file, verified_opt_func_list, tester, flag_continue)
 
 
 if __name__ == '__main__':

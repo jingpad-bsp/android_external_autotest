@@ -23,6 +23,7 @@ autodir = '/usr/local/autotest'
 autotest_program = os.path.join(autodir, 'bin/autotest')
 autotest_log_subpath = 'results/default/debug/client.INFO'
 conf_file_executed = False
+time_format = '%Y%m%d_%H%M%S'
 
 # The following two key definitions will be used in verification log
 # related dictionaries: vlog_dict and gss_vlog_dict.
@@ -116,7 +117,6 @@ class IterationLog:
         self.open_result_log(result_path, autotest_gs_symlink)
 
     def open_result_log(self, result_path, autotest_gs_symlink):
-        time_format = '%Y%m%d_%H%M%S'
         test_time = 'tested:' + time.strftime(time_format, time.gmtime())
         autotest_gs_name = os.path.realpath(autotest_gs_symlink).split('/')[-1]
         self.result_file_name = '.'.join([autotest_gs_name, test_time])
@@ -360,6 +360,41 @@ def get_model():
                     model = board_str
                 break
     return model
+
+
+def _create_dir(data_dir):
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+        print '  %s is created successfully.' % data_dir
+
+
+def setup_tester_gesture_set(tester, flag_continue):
+    ''' Set up a gesture set path for a tester or create a new directory. '''
+    # Get the root path storing gesture sets (gss)
+    gss_root = read_trackpad_test_conf('gesture_files_path_root', '.')
+    gss_latest = read_trackpad_test_conf('gesture_files_path_latest', '.')
+
+    # Get the tester's latest gesture set or create a new one
+    tester_gs_search = os.path.join(gss_root, tester) + '*'
+    all_tester_gs = glob.glob(tester_gs_search)
+    if flag_continue and all_tester_gs:
+        tester_gs = reduce(lambda x, y: x if x >= y else y, all_tester_gs)
+    else:
+        tester_gs_base = '_'.join([tester, time.strftime(time_format,
+                                                         time.gmtime())])
+        tester_gs = os.path.join(gss_root, tester_gs_base)
+
+    # Create tester gesture set if it does not exist yet.
+    _create_dir(tester_gs)
+
+    # Make the 'latest' link in gss_root point to tester_gs.
+    # Should use islink() rather than exists() here for a symbolic link.
+    if os.path.islink(gss_latest):
+        os.remove(gss_latest)
+    os.symlink(tester_gs, gss_latest)
+    print 'Gesture files will be stored in the gesture set: %s.' % tester_gs
+
+    return tester_gs
 
 
 class TpcontrolLog:
