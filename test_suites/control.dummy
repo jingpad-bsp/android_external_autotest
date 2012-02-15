@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -24,6 +24,6 @@ suite_tag = 'dummy'
 reimager = dynamic_suite.Reimager(job.autodir)
 
 if (reimager.skip(globals()) or
-    reimager.attempt(build, 1, board, job.record)):
+    reimager.attempt(build, board, job.record, num=1)):
     bvt = dynamic_suite.Suite.create_from_name(suite_tag, job.autodir)
     bvt.run_and_wait(build, job.record, add_experimental=True)

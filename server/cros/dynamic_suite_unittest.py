@@ -13,7 +13,7 @@ import tempfile
 import time
 import unittest
 
-from autotest_lib.client.common_lib import base_job, control_data
+from autotest_lib.client.common_lib import base_job, control_data, global_config
 from autotest_lib.server.cros import control_file_getter, dynamic_suite
 from autotest_lib.server import frontend
 
@@ -38,6 +38,7 @@ class ReimagerTest(mox.MoxTestBase):
     _NAME = 'name'
     _NUM = 4
     _BOARD = 'board'
+    _CONFIG = global_config.global_config
 
 
     def setUp(self):
@@ -45,6 +46,9 @@ class ReimagerTest(mox.MoxTestBase):
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.tko = self.mox.CreateMock(frontend.TKO)
         self.reimager = dynamic_suite.Reimager('', afe=self.afe, tko=self.tko)
+        self._CONFIG.override_config_value('CROS',
+                                           'sharding_factor',
+                                           "%d" % self._NUM)
 
 
     def testEnsureVersionLabelAlreadyExists(self):
@@ -196,7 +200,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._NAME, self._NUM, self._BOARD, rjob.record)
+        self.reimager.attempt(self._NAME, self._BOARD, rjob.record)
 
 
     def testFailedReimage(self):
@@ -207,7 +211,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._NAME, self._NUM, self._BOARD, rjob.record)
+        self.reimager.attempt(self._NAME, self._BOARD, rjob.record)
 
 
     def testReimageThatNeverHappened(self):
@@ -219,7 +223,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('FAIL', mox.IgnoreArg(), canary.name, mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._NAME, self._NUM, self._BOARD, rjob.record)
+        self.reimager.attempt(self._NAME, self._BOARD, rjob.record)
 
 
 class SuiteTest(mox.MoxTestBase):

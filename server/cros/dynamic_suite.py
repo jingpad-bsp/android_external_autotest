@@ -64,7 +64,7 @@ class Reimager(object):
         return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
 
 
-    def attempt(self, build, num, board, record):
+    def attempt(self, build, board, record, num=None):
         """
         Synchronously attempt to reimage some machines.
 
@@ -74,13 +74,16 @@ class Reimager(object):
 
         @param build: the build to install e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
-        @param num: how many devices to reimage.
         @param board: which kind of devices to reimage.
         @param record: callable that records job status.
                  prototype:
                    record(status, subdir, name, reason)
+        @param num: how many devices to reimage.
         @return True if all reimaging jobs succeed, false otherwise.
         """
+        if not num:
+            num = CONFIG.get_config_value('CROS', 'sharding_factor', type=int)
+        logging.debug("scheduling reiamging across %d machines", num)
         wrapper_job_name = 'try new image'
         record('START', None, wrapper_job_name)
         self._ensure_version_label(VERSION_PREFIX + build)
