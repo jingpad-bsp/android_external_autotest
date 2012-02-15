@@ -339,19 +339,15 @@ ssize_t pcm_io(audio_device_t *device, unsigned char *data, size_t count) {
     if (completed == -EAGAIN) {
       snd_pcm_wait(device->handle, 1000);
     } else if (completed == -EPIPE) {
-      fprintf(stderr, "Error in %s: %s\n",
-          snd_pcm_stream_name(device->direction),
-          snd_pcm_state_name(snd_pcm_state(device->handle)));
       res = snd_pcm_prepare(device->handle);
       if (res < 0) {
         fprintf(stderr, "Prepare error: %s", snd_strerror(res));
         exit(EXIT_FAILURE);
       }
     } else if (completed < 0) {
-      fprintf(stderr, "I/O error in %s: %s, %d\n",
+      fprintf(stderr, "I/O error in %s: %s, %lu\n",
               snd_pcm_stream_name(device->direction), snd_strerror(completed),
-              completed);
-      exit(EXIT_FAILURE);
+          (long unsigned int)completed);
     } else {
       result += completed;
       count -= completed;
