@@ -16,7 +16,7 @@ dynamic suite infrastructure in server/cros/dynamic_suite.py.
 
 import optparse, time, sys
 import common
-from autotest_lib.server import frontend
+from autotest_lib.server.cros import frontend_wrappers
 
 def parse_options():
     usage = "usage: %prog [options] control_file"
@@ -24,6 +24,8 @@ def parse_options():
     parser.add_option("-b", "--board", dest="board")
     parser.add_option("-i", "--build", dest="build")
     parser.add_option("-s", "--suite_name", dest="name")
+    parser.add_option("-t", "--timeout_min", dest="timeout_min", default=30)
+    parser.add_option("-d", "--delay_sec", dest="delay_sec", default=10)
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -50,12 +52,14 @@ def main():
     if args or not options.build or not options.board or not options.name:
         parser.print_help()
         return
-    afe = frontend.AFE(debug=False)
+    afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
+                                        delay_sec=options.delay_sec)
     job_id = afe.run('create_suite_job',
                      suite_name=options.name,
                      board=options.board,
                      build=options.build)
-    TKO = frontend.TKO(debug=False)
+    TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
+                                        delay_sec=options.delay_sec)
     # Return code that will be sent back to autotest_rpc_server.py
     code = 0
     while True:

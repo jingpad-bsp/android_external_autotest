@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,7 +6,7 @@ import common
 import compiler, logging, os, random, re, time
 from autotest_lib.client.common_lib import control_data, global_config, error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.server.cros import control_file_getter
+from autotest_lib.server.cros import control_file_getter, frontend_wrappers
 from autotest_lib.server import frontend
 
 
@@ -54,8 +54,12 @@ class Reimager(object):
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
         """
-        self._afe = afe or frontend.AFE(debug=False)
-        self._tko = tko or frontend.TKO(debug=False)
+        self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
+                                                         delay_sec=10,
+                                                         debug=False)
+        self._tko = tko or frontend_wrappers.RetryingTKO(timeout_min=30,
+                                                         delay_sec=10,
+                                                         debug=False)
         self._cf_getter = control_file_getter.FileSystemGetter(
             [os.path.join(autotest_dir, 'server/site_tests')])
 
@@ -239,8 +243,12 @@ class Suite(object):
         """
         self._predicate = predicate
         self._tag = tag
-        self._afe = afe or frontend.AFE(debug=False)
-        self._tko = tko or frontend.TKO(debug=False)
+        self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
+                                                         delay_sec=10,
+                                                         debug=False)
+        self._tko = tko or frontend_wrappers.RetryingTKO(timeout_min=30,
+                                                         delay_sec=10,
+                                                         debug=False)
         self._jobs = []
 
         self._cf_getter = Suite.create_fs_getter(autotest_dir)
