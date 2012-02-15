@@ -18,12 +18,16 @@ client-side test functions to execute are specified in the TESTS list below.
 # prod: Whether to point to production DMServer and gaia auth server.
 # enroll: Whether the test enrolls the device.
 TESTS = [
-    ('test_qa_user_policies', {}),
-    ('test_executive_user_policies', {'prod': True}),
-    ('test_sales_user_policies', {'prod': True}),
-    ('test_developer_user_policies', {'prod': True}),
-    ('test_tester_user_policies', {'prod': True}),
-    ('test_operations_user_policies', {'prod': True}),
+    ('test_prod_enterprise_executive_user', {'prod': True}),
+    ('test_prod_enterprise_sales_user', {'prod': True}),
+    ('test_prod_enterprise_development_user', {'prod': True}),
+    ('test_prod_enterprise_test_user', {'prod': True}),
+    ('test_prod_enterprise_operations_user', {'prod': True}),
+    ('test_qa_enterprise_executive_user', {}),
+    ('test_qa_enterprise_sales_user', {}),
+    ('test_qa_enterprise_development_user', {}),
+    ('test_qa_enterprise_test_user', {}),
+    ('test_qa_enterprise_operations_user', {}),
     ('test_device_policies', {'prod': True, 'enroll': True}),
 ]
 

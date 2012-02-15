@@ -47,6 +47,7 @@ class EnterpriseUITest(cros_ui_test.UITest):
             prod: Whether to point to production DMServer and gaia auth server.
             enroll: Whether the test enrolls the device.
         """
+        self._client_completed = False
         self._enroll = enroll
         if self._enroll:
             self.__tpm_take_ownership()
@@ -64,6 +65,7 @@ class EnterpriseUITest(cros_ui_test.UITest):
         cros_ui_test.UITest.cleanup(self)
         if self._enroll:
             self.__tpm_clear()
+        self.job.set_state('client_completed', self._client_completed)
 
 
     def __remove_files(self, list):
@@ -138,3 +140,4 @@ class EnterpriseUITest(cros_ui_test.UITest):
         """
         logging.info('client: Running client test %s', subtest)
         getattr(self, subtest)()
+        self._client_completed = True

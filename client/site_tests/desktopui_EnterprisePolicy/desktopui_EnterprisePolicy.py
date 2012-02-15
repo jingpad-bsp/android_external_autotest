@@ -67,9 +67,6 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
         expected_policy = self._get_expected_policies()[user]
 
         # Get actual policy data and verify.
-        # TODO(frankf): Remove once crosbug.com/25639 is fixed.
-        import time
-        time.sleep(5)
         self.pyauto.RefreshPolicies()
         actual_policy = self.pyauto.GetEnterprisePolicyInfo()
         diff = self._compare_policies(
@@ -80,27 +77,43 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
                                  diff)
 
 
-    def test_qa_user_policies(self):
-        self._test_user_policies('test_enterprise_enabled_domain')
+    def test_prod_enterprise_executive_user(self):
+        self._test_user_policies('prod_enterprise_executive_user')
 
 
-    def test_executive_user_policies(self):
+    def test_prod_enterprise_sales_user(self):
+        self._test_user_policies('prod_enterprise_sales_user')
+
+
+    def test_prod_enterprise_development_user(self):
+        self._test_user_policies('prod_enterprise_development_user')
+
+
+    def test_prod_enterprise_test_user(self):
+        self._test_user_policies('prod_enterprise_test_user')
+
+
+    def test_prod_enterprise_operations_user(self):
+        self._test_user_policies('prod_enterprise_operations_user')
+
+
+    def test_qa_enterprise_executive_user(self):
         self._test_user_policies('test_enterprise_executive_user')
 
 
-    def test_sales_user_policies(self):
+    def test_qa_enterprise_sales_user(self):
         self._test_user_policies('test_enterprise_sales_user')
 
 
-    def test_developer_user_policies(self):
-        self._test_user_policies('test_enterprise_developer_user')
+    def test_qa_enterprise_development_user(self):
+        self._test_user_policies('test_enterprise_development_user')
 
 
-    def test_tester_user_policies(self):
-        self._test_user_policies('test_enterprise_tester_user')
+    def test_qa_enterprise_test_user(self):
+        self._test_user_policies('test_enterprise_test_user')
 
 
-    def test_operations_user_policies(self):
+    def test_qa_enterprise_operations_user(self):
         self._test_user_policies('test_enterprise_operations_user')
 
 

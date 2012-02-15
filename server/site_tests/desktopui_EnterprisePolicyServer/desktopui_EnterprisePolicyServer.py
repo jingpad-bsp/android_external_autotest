@@ -29,7 +29,11 @@ class desktopui_EnterprisePolicyServer(test.test):
         self.client = host
         self.client_at = autotest.Autotest(self.client)
         logging.info('Server: starting client test "%s"' % subtest)
+        self.job.set_state('client_completed', False)
         self.client_at.run_test(self.client_test, subtest=subtest, prod=prod,
                                 enroll=enroll)
         if enroll:
             self.reboot_client()
+
+        if not self.job.get_state('client_completed'):
+            raise error.TestFail('Server: client test failed.')
