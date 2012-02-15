@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 # Verify we can connect to a RSN network using PSK security.
-{ "name":"CheckPSK",
+{ "name":"CheckRSNPSK",
   "steps":[
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "mode":"11g",
