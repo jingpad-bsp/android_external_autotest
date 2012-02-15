@@ -153,10 +153,9 @@ class ReimagerTest(mox.MoxTestBase):
         cf_getter.get_control_file_contents_by_name('autoupdate').AndReturn('')
         self.reimager._cf_getter = cf_getter
 
-        # Fake out getting the image URL pattern.
-        self.mox.StubOutWithMock(dynamic_suite, '_image_url_pattern')
-        dynamic_suite._image_url_pattern().AndReturn(self._URL)
-
+        self._CONFIG.override_config_value('CROS',
+                                           'image_url_pattern',
+                                           self._URL)
         self.afe.create_job(
             control_file=mox.And(mox.StrContains(self._NAME),
                                  mox.StrContains(self._URL % self._NAME)),
