@@ -32,31 +32,31 @@ class factory_SetSN(test.test):
                % serial_number)
         utils.system_output(cmd)
 
-    def enter_callback(self, widget, entry):
+    def on_complete(self, serial_number):
         if self.writing:
             return True
 
-        serial_number = entry.get_text()
-        if not serial_number:
-            serial_number=('InvalidSN-%s' %
-                datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S'))
         factory.log(' sn is %s' % serial_number)
         self.writing = True
 
-        # Hide entry
-        entry.hide()
-        gtk.main_iteration(False)
-
-        # Update label
-        self.label.set_text('Writing serial number: %s\n'
-                            'Please wait... (may take >10s)' % serial_number)
-        gtk.main_iteration(False)
-
+        # Display one single label.
+        self.test_widget.remove(self.sn_widget)
+        self.label = ful.make_label(
+                'Writing serial number: %s\n'
+                'Please wait... (may take >10s)' % serial_number)
+        self.test_widget.add(self.label)
+        self.test_widget.show_all()
+        while gtk.events_pending():
+            gtk.main_iteration(False)
         self.write_vpd(serial_number)
         gtk.main_quit()
 
-    def register_callbacks(self, window):
-        pass
+    def on_keypress(self, entry, key):
+        if key.keyval == gtk.keysyms.Tab:
+            entry.set_text('InvalidSN-%s' % datetime.datetime.now().
+                           strftime('%Y%m%d-%H%M%S'))
+            return True
+        return False
 
     def run_once(self):
 
@@ -64,13 +64,12 @@ class factory_SetSN(test.test):
 
         self.writing = False
         self.test_widget = gtk.VBox()
-        self.label = ful.make_label(
-            'Enter Serial Number (Blank for testing only):')
-        entry = gtk.Entry()
-        entry.connect("activate", self.enter_callback, entry)
-        self.test_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        self.test_widget.add(self.label)
-        self.test_widget.pack_start(entry)
+        # TODO(hungte) add other hot key to load "current serial number"
+        self.sn_widget = ful.make_input_window(
+                prompt='Enter Serial Number (TAB to insert testing random SN):',
+                on_keypress=self.on_keypress,
+                on_complete=self.on_complete)
+        self.test_widget.add(self.sn_widget)
 
         ful.run_test_widget(self.job, self.test_widget)
 
