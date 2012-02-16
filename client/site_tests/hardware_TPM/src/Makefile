@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-TROUSERS_DIR = "$(GCLIENT_ROOT)/src/third_party/trousers"
+TROUSERS_DIR = "$(CROS_WORKON_SRCROOT)/src/third_party/trousers"
 TESTSUITE_DIR = "$(TROUSERS_DIR)/testsuite"
 TCG_DIR = "$(TESTSUITE_DIR)/tcg"
 BUILD_TEST_DIR = work
