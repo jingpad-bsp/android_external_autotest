@@ -19,5 +19,5 @@ dhcpcd,root,No,No,No,No,No
 metrics_daemon,root,No,No,No,No,No
 disks,root,No,No,No,No,No
 update_engine,root,No,No,No,No,No
-bluetoothd,bluetooth,Yes,Yes,Yes,Yes,No
+bluetoothd,bluetooth,Yes,Yes,No,Yes,No
 debugd,debugd,No,No,No,No,No
