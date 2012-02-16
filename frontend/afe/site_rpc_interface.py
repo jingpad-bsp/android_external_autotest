@@ -31,16 +31,18 @@ def _rpc_utils():
     return rpc_utils
 
 
-def create_suite_job(suite_name, board, build):
+def create_suite_job(suite_name, board, build, pool):
     """
     Create a job to run a test suite on the given device with the given image.
 
     When the timeout specified in the control file is reached, the
     job is guaranteed to have completed and results will be available.
 
-    @param suite_name: the test suite to run, e.g. 'control.bvt'.
+    @param suite_name: the test suite to run, e.g. 'bvt'.
     @param board: the kind of device to run the tests on.
     @param build: unique name by which to refer to the image from now on.
+    @param pool: Specify the pool of machines to use for scheduling
+            purposes.
 
     @throws ControlFileNotFound if a unique suite control file doesn't exist.
     @throws NoControlFileList if we can't list the control files at all.
@@ -50,6 +52,8 @@ def create_suite_job(suite_name, board, build):
 
     @return: the job ID of the suite; -1 on error.
     """
+    # All suite names are assumed under test_suites/control.XX.
+    suite_name = 'test_suites/control.%s' % suite_name
     # Ensure |build| is staged is on the dev server.
     ds = dev_server.DevServer.create()
     if not ds.trigger_download(build):
@@ -62,8 +66,10 @@ def create_suite_job(suite_name, board, build):
         raise ControlFileEmpty("Fetching %s returned no data." % suite_name)
 
     # prepend build and board to the control file
-    control_file = dynamic_suite.inject_vars({'board': board, 'build': build},
-                                             control_file_in)
+    inject_dict = {'board': board,
+                   'build': build,
+                   'pool': pool}
+    control_file = dynamic_suite.inject_vars(inject_dict, control_file_in)
 
     return _rpc_utils().create_job_common('%s-%s' % (build, suite_name),
                                           priority='Medium',

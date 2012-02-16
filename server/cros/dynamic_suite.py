@@ -10,7 +10,7 @@ from autotest_lib.server.cros import control_file_getter, frontend_wrappers
 from autotest_lib.server import frontend
 
 
-VERSION_PREFIX = 'cros-version-'
+VERSION_PREFIX = 'cros-version:'
 CONFIG = global_config.global_config
 
 
@@ -46,13 +46,15 @@ class Reimager(object):
     """
 
 
-    def __init__(self, autotest_dir, afe=None, tko=None):
+    def __init__(self, autotest_dir, afe=None, tko=None, pool=None):
         """
         Constructor
 
         @param autotest_dir: the place to find autotests.
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
         """
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
@@ -60,6 +62,7 @@ class Reimager(object):
         self._tko = tko or frontend_wrappers.RetryingTKO(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
+        self._pool = pool
         self._cf_getter = control_file_getter.FileSystemGetter(
             [os.path.join(autotest_dir, 'server/site_tests')])
 
@@ -68,7 +71,7 @@ class Reimager(object):
         return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
 
 
-    def attempt(self, build, board, record, num=None):
+    def attempt(self, build, board, record, num=None, pool=None):
         """
         Synchronously attempt to reimage some machines.
 
@@ -83,11 +86,15 @@ class Reimager(object):
                  prototype:
                    record(status, subdir, name, reason)
         @param num: how many devices to reimage.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
         @return True if all reimaging jobs succeed, false otherwise.
         """
         if not num:
             num = CONFIG.get_config_value('CROS', 'sharding_factor', type=int)
-        logging.debug("scheduling reiamging across %d machines", num)
+        if pool:
+          self._pool = pool
+        logging.debug("scheduling reimaging across %d machines", num)
         wrapper_job_name = 'try new image'
         record('START', None, wrapper_job_name)
         self._ensure_version_label(VERSION_PREFIX + build)
@@ -141,11 +148,20 @@ class Reimager(object):
         control_file = inject_vars(
             {'image_url': _image_url_pattern() % build, 'image_name': build},
             self._cf_getter.get_control_file_contents_by_name('autoupdate'))
+        job_deps = []
+        if self._pool:
+            meta_host = 'pool:%s' % self._pool
+            board_label = 'board:%s' % board
+            job_deps.append(board_label)
+        else:
+            # No pool specified use board.
+            meta_host = 'board:%s' % board
 
         return self._afe.create_job(control_file=control_file,
                                     name=build + '-try',
                                     control_type='Server',
-                                    meta_hosts=[board] * num_machines)
+                                    meta_hosts=[meta_host] * num_machines,
+                                    dependencies=job_deps)
 
 
     def _report_results(self, job, record):
@@ -211,7 +227,7 @@ class Suite(object):
 
 
     @staticmethod
-    def create_from_name(name, autotest_dir, afe=None, tko=None):
+    def create_from_name(name, autotest_dir, afe=None, tko=None, pool=None):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -223,13 +239,16 @@ class Suite(object):
         @param autotest_dir: the place to find autotests.
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
         @return a Suite instance.
         """
         return Suite(lambda t: hasattr(t, 'suite') and t.suite == name,
-                     name, autotest_dir, afe, tko)
+                     name, autotest_dir, afe, tko, pool)
 
 
-    def __init__(self, predicate, tag, autotest_dir, afe=None, tko=None):
+    def __init__(self, predicate, tag, autotest_dir, afe=None, tko=None,
+                 pool=None):
         """
         Constructor
 
@@ -240,6 +259,8 @@ class Suite(object):
         @param autotest_dir: the place to find autotests.
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
         """
         self._predicate = predicate
         self._tag = tag
@@ -249,6 +270,7 @@ class Suite(object):
         self._tko = tko or frontend_wrappers.RetryingTKO(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
+        self._pool = pool
         self._jobs = []
 
         self._cf_getter = Suite.create_fs_getter(autotest_dir)
@@ -288,11 +310,21 @@ class Suite(object):
         @param image_name: the name of an image against which to test.
         @return frontend.Job object for the job just scheduled.
         """
+        job_deps = []
+        if self._pool:
+            meta_hosts = 'pool:%s' % self._pool
+            cros_label = VERSION_PREFIX+image_name
+            job_deps.append(cros_label)
+        else:
+            # No pool specified use any machines with the following label.
+            meta_hosts = VERSION_PREFIX+image_name
+
         return self._afe.create_job(
             control_file=test.text,
             name='/'.join([image_name, self._tag, test.name]),
             control_type=test.test_type.capitalize(),
-            meta_hosts=[VERSION_PREFIX+image_name])
+            meta_hosts=[meta_hosts],
+            dependencies=job_deps)
 
 
     def run_and_wait(self, image_name, record, add_experimental=True):

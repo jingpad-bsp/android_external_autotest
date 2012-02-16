@@ -23,6 +23,7 @@ def parse_options():
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-b", "--board", dest="board")
     parser.add_option("-i", "--build", dest="build")
+    parser.add_option("-p", "--pool", dest="pool", default=None)
     parser.add_option("-s", "--suite_name", dest="name")
     parser.add_option("-t", "--timeout_min", dest="timeout_min", default=30)
     parser.add_option("-d", "--delay_sec", dest="delay_sec", default=10)
@@ -57,7 +58,8 @@ def main():
     job_id = afe.run('create_suite_job',
                      suite_name=options.name,
                      board=options.board,
-                     build=options.build)
+                     build=options.build,
+                     pool=options.pool)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     # Return code that will be sent back to autotest_rpc_server.py

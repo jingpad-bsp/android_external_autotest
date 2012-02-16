@@ -20,6 +20,8 @@ crash reporting, get updates, and allow a user to log in, among other things.
 @param build: The name of the image to test.
               Ex: x86-mario-r17/R17-1412.33.0-a1-b29
 @param board: The board to test on.  Ex: netbook_MARIO_MP
+@param pool: The pool of machines to utilize for scheduling. If pool=None
+             board is used.
 @param SKIP_IMAGE: (optional) If present and True, don't re-image devices.
 """
 
@@ -27,9 +29,10 @@ import common
 from autotest_lib.server.cros import dynamic_suite
 
 suite_tag = 'bvt'
-reimager = dynamic_suite.Reimager(job.autodir)
+reimager = dynamic_suite.Reimager(job.autodir, pool=pool)
 
 if (reimager.skip(globals()) or
     reimager.attempt(build, board, job.record)):
-    bvt = dynamic_suite.Suite.create_from_name(suite_tag, job.autodir)
+    bvt = dynamic_suite.Suite.create_from_name(suite_tag, job.autodir,
+                                               pool=pool)
     bvt.run_and_wait(build, job.record, add_experimental=True)
