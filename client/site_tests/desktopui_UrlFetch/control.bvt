@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,6 +8,7 @@ PURPOSE = "Verify URL loads and cookies are stored in Chrome."
 CRITERIA = """
 This test will fail if the URL fails to load or the cookie is not saved.
 """
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
@@ -18,5 +19,4 @@ This test opens a new browser to the given URL and waits for the specified
 cookie to be saved.
 """
 
-job.run_test('desktopui_UrlFetch', live=True, tag='live')
 job.run_test('desktopui_UrlFetch', live=False, tag='not-live')
