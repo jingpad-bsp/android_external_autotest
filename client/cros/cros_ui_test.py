@@ -57,6 +57,8 @@ class UITest(pyauto_test.PyAutoTest):
     _resolv_test_file = 'resolv.conf.test'
     _resolv_bak_file = 'resolv.conf.bak'
 
+    _last_chrome_log = ''
+
     def __init__(self, job, bindir, outputdir):
         pyauto_test.PyAutoTest.__init__(self, job, bindir, outputdir)
 
@@ -379,8 +381,6 @@ class UITest(pyauto_test.PyAutoTest):
 
         # We yearn for Chrome coredumps...
         open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
-
-        self._last_chrome_log = ''
 
         # The UI must be taken down to ensure that no stale state persists.
         cros_ui.stop()
