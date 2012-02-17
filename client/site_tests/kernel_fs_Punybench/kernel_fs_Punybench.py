@@ -25,11 +25,49 @@ class kernel_fs_Punybench(test.test):
         """Run a puny benchmark
 
         Prepends the path to the puny benchmark bin.
+
+        Args:
+          cmd: command to be run
+          args: arguments for the command
         """
         result = utils.system_output(
             os.path.join(self.Bin, cmd) + ' ' + args)
         logging.debug(result)
         return result
+
+
+    @staticmethod
+    def _ecrypt_mount(dir, mnt):
+        """Mount the eCrypt File System
+
+        Args:
+          dir: directory where encrypted file system is stored
+          mnt: mount point for encrypted file system
+        """
+        options = ('-o'
+                   ' passwd=abcdefg'
+                   ',ecryptfs_cipher=aes'
+                   ',ecryptfs_key_bytes=32'
+                   ',no_sig_cache'
+                   ',ecryptfs_passthrough=no'
+                   ',ecryptfs_enable_filename_crypto=yes'
+                   ',ecryptfs_fnek_sig=36677572068bf8ca')
+        utils.system_output('mkdir -p %s %s' % (dir, mnt))
+        utils.system_output('mount -t ecryptfs %s %s %s' %
+                           (options, dir, mnt))
+
+
+    @staticmethod
+    def _ecrypt_unmount(dir, mnt):
+        """Unmount the eCrypt File System and remove it and its mount point
+
+        Args:
+          dir: directory where encrypted file system was stored
+          mnt: mount point for encrypted file system
+        """
+        utils.system_output('umount ' + dir)
+        utils.system_output('rm -R ' + dir)
+        utils.system_output('rm -R ' + mnt)
 
 
     @staticmethod
@@ -87,33 +125,39 @@ class kernel_fs_Punybench(test.test):
         self.write_perf_keyval({'SDRAM': r2.group()})
 
 
-    def _threadtree(self):
+    def _threadtree(self, prefix, dir):
         """Create and manipulate directory trees.
 
         Threadtree creates a directory tree with files for each task.
         It then copies that tree then deletes it.
+
+        Args:
+          prefix: prefix to use on name/value pair for identifying results
+          dir: directory path to use for test
         """
-        directory = '/usr/local/_Dir'
         iterations = 4
         tasks = 2
         width = 3
         depth = 5
         args = ('-d %s -i %d -t %d -w %d -k %d' %
-               (directory, iterations, tasks, width, depth))
+               (dir, iterations, tasks, width, depth))
         result = self._run('threadtree', args)
         r1 = re.search(r"timer avg= *([^\s]*).*$", result)
         timer_avg = float(r1.groups()[0])
         p = tasks * pow(width, depth + 1) / timer_avg
-        self.write_perf_keyval({'threadtree': p})
+        self.write_perf_keyval({prefix + 'threadtree': p})
 
 
-    def _uread(self):
+    def _uread(self, prefix, file):
         """Read a large file.
+
+        Args:
+          prefix: prefix to use on name/value pair for identifying results
+          file: file path to use for test
 
         The size should be picked so the file will
         not fit in memory.
         """
-        file = '/usr/local/xyzzy'
         size = 8 * 1024 * 1024 * 1024
         loops = 4
         iterations = 1
@@ -122,13 +166,16 @@ class kernel_fs_Punybench(test.test):
         result = self._run('uread', args)
         r1 = re.search(r"([^\s]+ MiB/s).*$", result)
         value = r1.groups()[0]
-        self.write_perf_keyval({'uread': value})
+        self.write_perf_keyval({prefix + 'uread': value})
 
 
-    def _ureadrand(self):
+    def _ureadrand(self, prefix, file):
         """Read randomly a large file
+
+        Args:
+          prefix: prefix to use on name/value pair for identifying results
+          file: file path to use for test
         """
-        file = '/usr/local/xyzzy'
         size = 8 * 1024 * 1024 * 1024
         loops = 4
         iterations = 100000
@@ -137,7 +184,30 @@ class kernel_fs_Punybench(test.test):
         result = self._run('ureadrand', args)
         r1 = re.search(r"([^\s]+ MiB/s).*$", result)
         value = r1.groups()[0]
-        self.write_perf_keyval({'ureadrand': value})
+        self.write_perf_keyval({prefix + 'ureadrand': value})
+
+
+    def _disk_tests(self, prefix,  dir, file):
+        """Run this collection of disk tests
+
+        Args:
+          prefix: prefix to use on name/value pair for identifying results
+          dir: directory path to use for tests
+          file: file path to use for tests
+        """
+        self._threadtree(prefix, dir)
+        self._uread(prefix, file)
+        self._ureadrand(prefix, file)
+
+
+    def _ecryptfs(self):
+        """Setup up to run disk tests on encrypted volume
+        """
+        dir = '/usr/local/ecrypt_tst'
+        mnt = '/usr/local/ecrypt_mnt'
+        self._ecrypt_mount(dir, mnt)
+        self._disk_tests('ecryptfs_', mnt + '/_Dir', mnt + '/xyzzy')
+        self._ecrypt_unmount(dir, mnt)
 
 
     def _parse_args(self, args):
@@ -183,7 +253,6 @@ class kernel_fs_Punybench(test.test):
             self._memcpy_test()
             self._memcpy()
         if options.want_disk_tests:
-            self._threadtree()
-            self._uread()
-            self._ureadrand()
+            self._disk_tests('ext4_', '/usr/local/_Dir', '/usr/local/xyzzy')
+            self._ecryptfs()
         utils.system_output('start ui')
