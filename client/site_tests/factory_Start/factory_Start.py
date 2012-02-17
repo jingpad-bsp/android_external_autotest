@@ -154,17 +154,19 @@ class ShopFloorTask(Task):
                 on_complete=self.complete_serial_task)
 
     def validate_serial_number(self, serial):
-        # TODO(hungte) Queries server to see if serial number is valid.
-        return serial.strip()
+        try:
+            shopfloor.check_serial_number(serial.strip())
+            return True
+        except shopfloor.Fault as e:
+            factory.log("Server Error: %s" % e)
+        except:
+            factory.log("Unknown exception: %s" % repr(sys.exc_info()))
+        return False
 
     def complete_serial_task(self, serial):
         serial = serial.strip()
         factory.log('Serial number: %s' % serial)
-        # TODO(hungte) Wipe all cached shopfloor values.
-        # TODO(hungte) Move shared data manipulation into shopfloor module
-        factory.set_shared_data(shopfloor.KEY_ENABLED, True)
-        factory.set_shared_data(shopfloor.KEY_SERVER_URL, self.server_url)
-        factory.set_shared_data(shopfloor.KEY_SERIAL_NUMBER, serial)
+        shopfloor.set_serial_number(serial)
         self.stop()
         return True
 
