@@ -55,19 +55,27 @@ class PyAutoTest(test.test):
     This test will login (with the default test account), then navigate to
     Google and verify its title.
     """
-    def __init__(self, job, bindir, outputdir):
-        test.test.__init__(self, job, bindir, outputdir)
+    def __init__(self, *args, **kwargs):
+        self._dep = 'pyauto_dep'
+        test.test.__init__(self, *args, **kwargs)
 
 
-    def SetupDeps(self, chrome_test_deps=False):
+    def use_chrome_deps(self):
+      self._dep = 'chrome_test'
+
+
+    def setup(self):
+      self.job.setup_dep([self._dep])
+
+
+    def _install_deps(self):
         """Set up deps needed for running pyauto."""
-        dep = 'chrome_test' if chrome_test_deps else 'pyauto_dep'
-        self.job.setup_dep([dep])
+        dep_dir = os.path.join(self.autodir, 'deps', self._dep)
+        self.job.install_pkg(self._dep, 'dep', dep_dir)
 
         # Make pyauto importable.
         # This can be done only after chrome_test/pyauto_dep dependency has been
         # installed.
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
         pyautolib_dir = os.path.join(
             dep_dir, 'test_src', 'chrome', 'test', 'pyautolib')
         if not os.path.isdir(pyautolib_dir):
@@ -84,10 +92,10 @@ class PyAutoTest(test.test):
             utils.system(setup_cmd)  # this might raise an exception
         except error.CmdError, e:
             raise error.TestError(e)
-        self._SetupSuidPython(test_binary_dir)
+        self._setup_suid_python(test_binary_dir)
 
 
-    def _SetupSuidPython(self, test_binary_dir):
+    def _setup_suid_python(self, test_binary_dir):
         """Setup suid python which can enable chrome testing interface.
 
         This is required when running pyauto as non-privileged user (chronos).
@@ -106,7 +114,7 @@ class PyAutoTest(test.test):
 
 
     def initialize(self, auto_login=True, extra_chrome_flags=[],
-                   subtract_extra_chrome_flags=[], chrome_test_deps=False):
+                   subtract_extra_chrome_flags=[]):
         """Initialize.
 
         Expects session_manager to be alive.
@@ -116,8 +124,6 @@ class PyAutoTest(test.test):
             extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
             subtract_extra_chrome_flags: Remove default flags passed to chrome
                 by pyauto, if any.
-            chrome_test_deps: Whether to use the much larger chrome deps instead
-                of pyauto deps.
         """
         assert os.geteuid() == 0, 'Need superuser privileges'
 
@@ -125,7 +131,7 @@ class PyAutoTest(test.test):
         self.pyauto = None
         self.pyauto_suite = None
 
-        self.SetupDeps(chrome_test_deps=chrome_test_deps)
+        self._install_deps()
         import pyauto
 
         class PyUITestInAutotest(pyauto.PyUITest):

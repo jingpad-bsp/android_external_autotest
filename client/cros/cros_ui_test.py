@@ -59,10 +59,6 @@ class UITest(pyauto_test.PyAutoTest):
 
     _last_chrome_log = ''
 
-    def __init__(self, job, bindir, outputdir):
-        pyauto_test.PyAutoTest.__init__(self, job, bindir, outputdir)
-
-
     def xsystem(self, cmd, timeout=None, ignore_status=False):
         """Convenience wrapper around cros_ui.xsystem, to save you an import.
         """
@@ -314,20 +310,19 @@ class UITest(pyauto_test.PyAutoTest):
         """
         output_file = os.path.join(self.resultsdir, 'ui_diagnostics.txt')
         with open(output_file, 'w') as output_fd:
-            print >>output_fd, time.asctime(), '\n'
+            print >> output_fd, time.asctime(), '\n'
             cmd = 'initctl status ui'
-            print >>output_fd, '$ %s' % cmd
-            print >>output_fd, utils.system_output(cmd), '\n'
+            print >> output_fd, '$ %s' % cmd
+            print >> output_fd, utils.system_output(cmd), '\n'
             cmd = 'ps auxwww'
-            print >>output_fd, '$ %s' % cmd
-            print >>output_fd, utils.system_output(cmd), '\n'
+            print >> output_fd, '$ %s' % cmd
+            print >> output_fd, utils.system_output(cmd), '\n'
         logging.info('Saved UI diagnostics to %s' % output_file)
 
 
 
     def initialize(self, creds=None, is_creating_owner=False,
-                   extra_chrome_flags=[], subtract_extra_chrome_flags=[],
-                   chrome_test_deps=False):
+                   extra_chrome_flags=[], subtract_extra_chrome_flags=[]):
         """Overridden from test.initialize() to log out and (maybe) log in.
 
         If self.auto_login is True, this will automatically log in using the
@@ -354,8 +349,6 @@ class UITest(pyauto_test.PyAutoTest):
             extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
             subtract_extra_chrome_flags: Remove default flags passed to chrome
                 by pyauto, if any.
-            chrome_test_deps: Whether to use the much larger chrome deps instead
-                of pyauto deps.
         """
         # Mark /var/log/messages now; we'll run through all subsequent
         # log messages at the end of the test and log info about processes that
@@ -414,8 +407,7 @@ class UITest(pyauto_test.PyAutoTest):
         pyauto_test.PyAutoTest.initialize(
             self, auto_login=False,
             extra_chrome_flags=extra_chrome_flags,
-            subtract_extra_chrome_flags=subtract_extra_chrome_flags,
-            chrome_test_deps=chrome_test_deps)
+            subtract_extra_chrome_flags=subtract_extra_chrome_flags)
         if self.auto_login:
             self.login(self.username, self.password)
             if is_creating_owner:

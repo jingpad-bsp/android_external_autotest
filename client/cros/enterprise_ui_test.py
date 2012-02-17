@@ -40,6 +40,10 @@ class EnterpriseUITest(cros_ui_test.UITest):
         '--gaia-host=gaiastaging.corp.google.com',
     ]
 
+    def __init__(self, *args, **kwargs):
+      cros_ui_test.UITest.__init__(self, *args, **kwargs)
+      cros_ui_test.UITest.use_chrome_deps(self)
+
 
     def initialize(self, prod=False, enroll=False):
         """
@@ -57,8 +61,7 @@ class EnterpriseUITest(cros_ui_test.UITest):
         cros_ui_test.UITest.initialize(
             self, is_creating_owner=True,
             extra_chrome_flags=extra_chrome_flags,
-            subtract_extra_chrome_flags=['--skip-oauth-login'],
-            chrome_test_deps=True)
+            subtract_extra_chrome_flags=['--skip-oauth-login'])
 
 
     def cleanup(self):
