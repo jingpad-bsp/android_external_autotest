@@ -44,5 +44,6 @@ tcpdump:x:215:
 debugd:x:216:
 openvpn:x:217:
 bluetooth:x:218:
+wpa:x:219:root
 ntfs-3g:x:300:
 avfs:x:301:
