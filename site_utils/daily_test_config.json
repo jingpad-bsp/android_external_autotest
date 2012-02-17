@@ -22,7 +22,8 @@
 
         "x86-alex-r19": {
             "platforms": [
-                {"platform": "netbook_ALEX"}
+                {"platform": "netbook_ALEX",
+                 "extra_groups": ["kernel_daily"]}
             ]
         },
 
@@ -122,6 +123,14 @@
 
             {"name": "hwqual",
              "control": "server/site_tests/suites/control.hwqual_auto"}
+        ],
+
+        "kernel_daily": [
+            {"name": "kernel_main_smoketest",
+             "control": "server/site_tests/suites/control.kernel_main_smoketest"}
+
+            {"name": "kernel_fs_smoketest",
+             "control": "server/site_tests/suites/control.kernel_fs_smoketest"},
         ],
 
         "network": [
