@@ -36,7 +36,7 @@ class power_Resume(test.test):
             data = commands.getoutput(cmd)
 
         if count == 5:
-            raise error.TestError("Failed to find log message: " + msg)
+            raise error.TestError("Did not find log message: " + msg)
 
         return data
 
@@ -44,7 +44,7 @@ class power_Resume(test.test):
         data = self._get_last_msg(msg)
         match = re.search(r' \[\s*([0-9.]+)\] ', data)
         if match is None:
-            raise error.TestError('Failed to find timestamp for log message: '
+            raise error.TestError('Did not find timestamp for log message: '
                                   + msg)
 
         msg_time = float(match.group(1))
