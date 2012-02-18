@@ -178,36 +178,6 @@ class platform_ToolchainOptions(test.test):
 
         # ARM arch doesn't have hardened.
         if utils.get_cpu_arch() != "arm":
-            fstack_cmd = ("binutils/objdump -CR {} 2>&1 | "
-                          "egrep -q \"(stack_chk|Invalid|not recognized)\"")
-            fstack_find_options = ((" -wholename '%s' -prune -o "
-                                    # gconv locale .so's don't count:
-                                    " -wholename '/usr/lib/gconv/*' -prune -o")
-                                   % libc_glob)
-            full_cmd = self.get_cmd(fstack_cmd, fstack_find_options)
-            fstack_badfiles = utils.system_output(full_cmd)
-
-            # special case check for libc, needs different objdump flags
-            cmd = "binutils/objdump -D %s | egrep -q stack_chk || echo %s"
-            fstack_libc_badfiles = utils.system_output(cmd % (libc_glob,
-                                                              libc_glob))
-
-            fstack_all_badfiles = ("%s\n%s" %
-                                   (fstack_badfiles, fstack_libc_badfiles))
-            fstack_whitelist = os.path.join(self.bindir, "fstack_whitelist")
-            cos = ToolchainOptionSet("-fstack-protector-all",
-                                     fstack_all_badfiles,
-                                     fstack_whitelist)
-            option_sets.append(cos)
-
-            fortify_cmd = ("binutils/readelf -s {} 2>&1 | "
-                           "egrep \"__.*_chk\" | "
-                           "grep -qv \"__stack_chk\"")
-            fortify_whitelist = os.path.join(self.bindir, "fortify_whitelist")
-            option_sets.append(self.create_and_filter("-D_FORTIFY_SOURCE=2",
-                                                      fortify_cmd,
-                                                      fortify_whitelist))
-
             now_cmd = ("binutils/readelf -d {} 2>&1 | "
                        "egrep -q \"BIND_NOW\"")
             now_whitelist = os.path.join(self.bindir, "now_whitelist")
