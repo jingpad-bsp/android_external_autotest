@@ -7,7 +7,7 @@ import hashlib
 import logging
 import os
 
-from autotest_lib.client.bin import factory
+from autotest_lib.client.cros import factory
 from autotest_lib.client.bin import utils
 
 
