@@ -14,23 +14,29 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
     # list was assembled on mario but should be a superset
     # of all failing configurations
     waived_tests = {
-        'conformance/context-lost.html' : 2,
-        'conformance/context-lost-restored.html' : 4,
-        'conformance/origin-clean-conformance.html' : 4,
-        'conformance/more/conformance/quickCheckAPI.html' : 1,
-        'conformance/more/functions/texSubImage2DHTML.html' : 1,
-        'conformance/shaders/glsl-features/../../glsl-features.html?feature=sign-frag-vec4&reffs=shaders/glsl-features/sign-vec4-ref.frag&testfs=shaders/glsl-features/sign-vec4.frag' : 1,
-        'conformance/framebuffer-object-attachment.html' : 42, # issue 24418
-        'conformance/invalid-passed-params.html' : 3,
-        'conformance/texture-npot-video.html' : 1,
-        'conformance/more/functions/texImage2DHTML.html' : 1,
-        'conformance/oes-standard-derivatives.html' : 16,
-        'conformance/texture-npot.html' : 1,
-        'conformance/tex-image-and-sub-image-2d-with-video.html' : 1,
-        'conformance/gl-object-get-calls.html' : 2,
-        'conformance/more/conformance/webGLArrays.html' : 1,
-        'conformance/point-size.html' : 1,
-        'conformance/more/functions/readPixelsBadArgs.html' : 1,
+          'conformance/context/premultiplyalpha-test.html' : 1,
+          'conformance/extensions/oes-standard-derivatives.html' : 15,
+          'conformance/glsl/functions/glsl-function-acos.html' : 1,
+          'conformance/glsl/functions/glsl-function-asin.html' : 1,
+          'conformance/glsl/functions/glsl-function-atan.html' : 2,
+          'conformance/glsl/functions/glsl-function-atan-xy.html' : 1,
+          'conformance/glsl/functions/glsl-function-cos.html' : 4,
+          'conformance/glsl/functions/glsl-function-sin.html' : 4,
+          'conformance/glsl/functions/glsl-function-smoothstep-gentype.html' : 1,
+          'conformance/glsl/variables/gl-frontfacing.html' : 16,
+          'conformance/limits/gl-max-texture-dimensions.html' : 2,
+          'conformance/misc/instanceof-test.html' : 1,
+          'conformance/more/conformance/quickCheckAPI-B2.html' : 1,
+          'conformance/more/conformance/quickCheckAPI-D_G.html' : 1,
+          'conformance/more/functions/readPixelsBadArgs.html' : 1,
+          'conformance/more/functions/texImage2DHTML.html' : 1,
+          'conformance/more/functions/texSubImage2DHTML.html' : 1,
+          'conformance/rendering/line-loop-tri-fan.html' : 2,
+          'conformance/rendering/point-size.html' : 3,
+          'conformance/textures/origin-clean-conformance.html' : 4,
+          'conformance/textures/texture-mips.html' : 1,
+          'conformance/textures/texture-npot.html' : 1,
+          'conformance/textures/texture-size.html' : 6,
       }
 
     def initialize(self, creds='$default'):
@@ -40,7 +46,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         cros_ui_test.UITest.initialize(self, creds,
                                        extra_chrome_flags=['--enable-webgl'])
 
-    def setup(self, tarball='webgl-conformance-1.0.1.tar.bz2'):
+    def setup(self, tarball='webgl-conformance-1.0.0-r2.tar.bz2'):
         shutil.rmtree(self.srcdir, ignore_errors=True)
         tarball_path = os.path.join(self.bindir, tarball)
         if not os.path.exists(self.srcdir):
@@ -52,13 +58,14 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
             os.mkdir(self.srcdir)
             utils.extract_tarball_to_dir(tarball_path, self.srcdir)
         os.chdir(self.srcdir)
-        utils.system('patch -p2 < ../webgl-conformance-1.0.1.patch')
+        utils.system('patch -p2 < ../webgl-conformance-1.0.0-r2.patch')
+        shutil.copy('../favicon.ico', self.srcdir)
 
     def cleanup(self):
         self._testServer.stop()
         cros_ui_test.UITest.cleanup(self)
 
-    def run_once(self, timeout=300):
+    def run_once(self, timeout=600):
         # TODO(ihf) remove when stable. for now we have to expect crashes
         self.crash_blacklist.append('chrome')
         self.crash_blacklist.append('chromium')
