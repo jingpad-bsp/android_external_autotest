@@ -95,76 +95,82 @@ class factory_Cellular(test.test):
         ExpectLine('OK')
 
         # Put in factory test mode
-        SendCommand(modem_commands.ENABLE_FACTORY_TEST_MODE)
-        ExpectLine('OK')
-
-        failures = []
-
-        tx_power_by_channel = {}
-
-        # Start continuous transmit
-        for (band_name, channel, freq,
-             min_power, max_power) in config['tx_channels']:
-            channel_id = (band_name, channel)
-
-            SendCommand(modem_commands.START_TX_TEST % (band_name, channel))
-            ExpectLine(modem_commands.START_TX_TEST_RESPONSE)
-            ExpectLine('')
+        try:
+            SendCommand(modem_commands.ENABLE_FACTORY_TEST_MODE)
             ExpectLine('OK')
 
-            # Get channel power from the EXT
-            power = ext.MeasureChannelPower('WCDMA', freq, port=ext.PORTS.RFIO1)
-            tx_power_by_channel[channel_id] = power
-            if power < min_power or power > max_power:
-                failures.append(
-                    'Power for channel %s is %g, out of range (%g,%g)' %
-                    (channel_id, power, min_power, max_power))
+            failures = []
 
-        logging.info("TX power: %s" % [
-                (k, tx_power_by_channel[k])
-                for k in sorted(tx_power_by_channel.keys())])
+            tx_power_by_channel = {}
 
-        rx_power_by_channel = {}
-
-        for antenna, port in (('MAIN', ext.PORTS.RFIO1),
-                              ('AUX', ext.PORTS.RFIO2)):
+            # Start continuous transmit
             for (band_name, channel, freq,
-                 min_power, max_power) in config['rx_channels']:
+                 min_power, max_power) in config['tx_channels']:
                 channel_id = (band_name, channel)
 
-                ext.EnableSource('WCDMA', freq, port=port)
-                # Try a few times, as it may take the modem a while to pick up
-                # the new RSSI
-                power_readings = []
-                def IsPowerInRange():
-                    SendCommand(modem_commands.READ_RSSI % (
-                            band_name, channel, antenna))
-                    line = ReadLine()
-                    match = re.match(modem_commands.READ_RSSI_RESPONSE, line)
-                    if not match:
-                        raise error.TestError(
-                            'Expected RSSI value but got %r' % line)
-                    power = int(match.group(1))
-                    power_readings.append(power)
-                    ExpectLine('')
-                    ExpectLine('OK')
-                    if power >= min_power and power <= max_power:
-                        return power
+                SendCommand(modem_commands.START_TX_TEST % (band_name, channel))
+                ExpectLine(modem_commands.START_TX_TEST_RESPONSE)
+                ExpectLine('')
+                ExpectLine('OK')
 
-                try:
-                    utils.poll_for_condition(IsPowerInRange,
-                                             timeout=5, sleep_interval=0.5)
-                except utils.TimeoutError:
+                # Get channel power from the EXT
+                power = ext.MeasureChannelPower('WCDMA', freq,
+                                                port=ext.PORTS.RFIO1)
+                tx_power_by_channel[channel_id] = power
+                if power < min_power or power > max_power:
                     failures.append(
-                        'RSSI for %s/%s out of range (%g, %g); read %s' % (
-                            antenna, channel_id,
-                            min_power, max_power, power_readings))
+                        'Power for channel %s is %g, out of range (%g,%g)' %
+                        (channel_id, power, min_power, max_power))
 
-                rx_power_by_channel[antenna, channel_id] = power_readings[-1]
+            logging.info("TX power: %s" % [
+                    (k, tx_power_by_channel[k])
+                    for k in sorted(tx_power_by_channel.keys())])
 
-        logging.info("RX power: %s" % [
-                (k, rx_power_by_channel[k])
-                for k in sorted(rx_power_by_channel.keys())])
+            rx_power_by_channel = {}
 
-        if failures:
-            raise error.TestError('; '.join(failures))
+            for antenna, port in (('MAIN', ext.PORTS.RFIO1),
+                                  ('AUX', ext.PORTS.RFIO2)):
+                for (band_name, channel, freq,
+                     min_power, max_power) in config['rx_channels']:
+                    channel_id = (band_name, channel)
+
+                    ext.EnableSource('WCDMA', freq, port=port)
+                    # Try a few times, as it may take the modem a while to pick
+                    # up the new RSSI
+                    power_readings = []
+                    def IsPowerInRange():
+                        SendCommand(modem_commands.READ_RSSI % (
+                                band_name, channel, antenna))
+                        line = ReadLine()
+                        match = re.match(modem_commands.READ_RSSI_RESPONSE,
+                                         line)
+                        if not match:
+                            raise error.TestError(
+                                'Expected RSSI value but got %r' % line)
+                        power = int(match.group(1))
+                        power_readings.append(power)
+                        ExpectLine('')
+                        ExpectLine('OK')
+                        if power >= min_power and power <= max_power:
+                            return power
+
+                    try:
+                        utils.poll_for_condition(IsPowerInRange,
+                                                 timeout=5, sleep_interval=0.5)
+                    except utils.TimeoutError:
+                        failures.append(
+                            'RSSI for %s/%s out of range (%g, %g); read %s' % (
+                                antenna, channel_id,
+                                min_power, max_power, power_readings))
+
+                    rx_power_by_channel[antenna, channel_id] = (
+                        power_readings[-1])
+
+            logging.info("RX power: %s" % [
+                    (k, rx_power_by_channel[k])
+                    for k in sorted(rx_power_by_channel.keys())])
+
+            if failures:
+                raise error.TestError('; '.join(failures))
+        finally:
+            SendCommand(modem_commands.DISABLE_FACTORY_TEST_MODE)
