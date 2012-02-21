@@ -28,7 +28,8 @@ TESTS = [
     ('test_qa_enterprise_development_user', {}),
     ('test_qa_enterprise_test_user', {}),
     ('test_qa_enterprise_operations_user', {}),
-    ('test_device_policies', {'prod': True, 'enroll': True}),
+    ('test_qa_device_policies', {'enroll': True}),
+    ('test_prod_device_policies', {'prod': True, 'enroll': True}),
 ]
 
 

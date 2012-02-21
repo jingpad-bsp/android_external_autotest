@@ -449,7 +449,7 @@ class UITest(pyauto_test.PyAutoTest):
         return [cryptohome.canonicalize(name), passwd]
 
 
-    def __take_screenshot(self, fname_prefix):
+    def _take_screenshot(self, fname_prefix):
       """Take screenshot and save to a new file in the results dir.
 
       Args:
@@ -505,7 +505,7 @@ class UITest(pyauto_test.PyAutoTest):
                 self.pyauto.LoginAsGuest()
                 logging.info('Logged in as guest.')
         except:
-            self.__take_screenshot(fname_prefix='login-fail-screenshot')
+            self._take_screenshot(fname_prefix='login-fail-screenshot')
             raise
         finally:
             self.stop_tcpdump(fname_prefix='tcpdump-lo--till-login')

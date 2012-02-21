@@ -26,6 +26,8 @@ class desktopui_EnterprisePolicyServer(test.test):
             prod: Whether to point to production DMServer and gaia auth server.
             enroll: Whether the test enrolls the device.
         """
+        # TODO(frankf): Remove once crosbug.com/26158 is fixed.
+        enroll = True
         self.client = host
         self.client_at = autotest.Autotest(self.client)
         logging.info('Server: starting client test "%s"' % subtest)

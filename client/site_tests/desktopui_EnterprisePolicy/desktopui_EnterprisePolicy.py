@@ -117,12 +117,16 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
         self._test_user_policies('test_enterprise_operations_user')
 
 
-    def test_device_policies(self):
+    def test_device_policies(self, user):
         # Enroll the device and verify.
-        credentials = self.pyauto.GetPrivateInfo()[
-            'test_enterprise_executive_user']
-        self.pyauto.EnrollEnterpriseDevice(credentials['username'],
-                                           credentials['password'])
+        credentials = self.pyauto.GetPrivateInfo()[user]
+        try:
+            self.pyauto.EnrollEnterpriseDevice(credentials['username'],
+                                               credentials['password'])
+        except:
+            self._take_screenshot(fname_prefix='enrollment-fail-screenshot')
+            raise
+
         if not self.pyauto.IsEnterpriseDevice():
             raise error.TestFail('Failed to enroll the device.')
 
@@ -130,8 +134,7 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
         self.login(credentials['username'], credentials['password'])
 
         # Get expected policy data.
-        expected_policy = self._get_expected_policies()[
-            'test_enterprise_executive_user']
+        expected_policy = self._get_expected_policies()[user]
 
         # Get actual policy data and verify.
         self.pyauto.RefreshPolicies()
@@ -142,3 +145,11 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
         if diff:
             raise error.TestFail('Incorrect mandatory device policies:\n%s' %
                                  diff)
+
+
+    def test_qa_device_policies(self):
+        self.test_device_policies('test_enterprise_executive_user')
+
+
+    def test_prod_device_policies(self):
+        self.test_device_policies('prod_enterprise_executive_user')
