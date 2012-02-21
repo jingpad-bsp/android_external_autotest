@@ -14,8 +14,10 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
     # list was assembled on mario but should be a superset
     # of all failing configurations
     waived_tests = {
+          'conformance/constants.html' : 1,
           'conformance/context/premultiplyalpha-test.html' : 1,
           'conformance/extensions/oes-standard-derivatives.html' : 15,
+          'conformance/gl-get-calls.html' : 1,
           'conformance/glsl/functions/glsl-function-acos.html' : 1,
           'conformance/glsl/functions/glsl-function-asin.html' : 1,
           'conformance/glsl/functions/glsl-function-atan.html' : 2,
@@ -26,6 +28,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
           'conformance/glsl/variables/gl-frontfacing.html' : 16,
           'conformance/limits/gl-max-texture-dimensions.html' : 2,
           'conformance/misc/instanceof-test.html' : 1,
+          'conformance/more/conformance/constants.html' : 1,
           'conformance/more/conformance/quickCheckAPI-B2.html' : 1,
           'conformance/more/conformance/quickCheckAPI-D_G.html' : 1,
           'conformance/more/functions/readPixelsBadArgs.html' : 1,
