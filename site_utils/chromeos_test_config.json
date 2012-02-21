@@ -84,7 +84,9 @@
                 {"platform": "netbook_ALEX_GSM_Y3300",
                  "groups": ["network_3g"]},
                 {"platform": "netbook_ALEX_GSM_Y3400",
-                 "groups": ["network_3g"]}
+                 "groups": ["network_3g"]},
+                {"platform": "netbook_ALEX_enterprise",
+                 "groups": ["enroll_enterprise"]}
             ]
         },
 
@@ -132,7 +134,9 @@
                 {"platform": "netbook_ACER_ZGB",
                  "groups": ["audio", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_ACER_ZGB_CDMA_GOBI2K",
-                 "groups": ["network_3g"]}
+                 "groups": ["network_3g"]},
+                {"platform": "netbook_ACER_ZGB_enterprise",
+                 "groups": ["enroll_enterprise"]}
             ]
         },
 
@@ -184,7 +188,9 @@
                 {"platform": "netbook_MARIO_MP",
                  "groups": ["desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
-                 "groups": ["network_3g_gobi"]}
+                 "groups": ["network_3g_gobi"]},
+                {"platform": "netbook_MARIO_MP_enterprise",
+                 "groups": ["enroll_enterprise"]}
             ]
         },
 
@@ -347,6 +353,11 @@
         "enterprise": [
             {"name": "enterprise",
              "control": "server/site_tests/suites/control.desktopui_enterprise"}
+        ],
+
+        "enroll_enterprise": [
+            {"name": "enroll_enterprise",
+             "control": "server/site_tests/suites/control.desktopui_enroll_enterprise"}
         ],
 
         "power": [

@@ -9,9 +9,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
 
-DOC = """This test suite runs all enterprise related tests. Specifically:
-    1. PyAuto functional CHROMEOS_POLICY suite
-    2. desktopui_EnterprisePolicyServer.
+DOC = """This test suite runs the PyAuto functional CHROMEOS_POLICY suite.
 """
 
 
@@ -26,9 +24,6 @@ CLIENT_GTESTS = [
 ]
 
 
-SERVER_CONTROL = 'server/site_tests/desktopui_EnterprisePolicyServer/control'
-
-
 def run_client_test(machine):
     client = hosts.create_host(machine)
     client_at = autotest.Autotest(client)
@@ -37,4 +32,3 @@ def run_client_test(machine):
 
 
 job.parallel_on_machines(run_client_test, machines)
-job.run_control(SERVER_CONTROL)
