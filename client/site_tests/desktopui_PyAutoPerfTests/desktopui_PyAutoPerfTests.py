@@ -59,7 +59,6 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
             cros_ui.nuke()
         assert os.path.exists(minidumps_file)
 
-        # Setup /tmp/disable_chrome_restart.
         # Disallow further browser restart by its babysitter.
         if not os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
             open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
