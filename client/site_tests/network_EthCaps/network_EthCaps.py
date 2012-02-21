@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import collections, logging, os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -27,7 +27,7 @@ class network_EthCaps(test.test):
         Executes ethtool command and parses various capabilities into a
         dictionary.
         """
-        caps = {}
+        caps = collections.defaultdict(list)
 
         cmd = "ethtool %s" % self._ethname
         prev_keyname = None
@@ -35,18 +35,56 @@ class network_EthCaps(test.test):
             cap_str = ln.strip()
             try:
                 (keyname, value) = cap_str.split(': ')
-                caps[keyname] = value
+                caps[keyname].extend(value.split())
                 prev_keyname = keyname
             except ValueError:
                 # keyname from previous line, add there
                 if prev_keyname:
-                    caps[prev_keyname] += " %s" % cap_str
-                pass
+                    caps[prev_keyname].extend(cap_str.split())
 
         for keyname in caps:
             logging.debug("cap['%s'] = %s", keyname, caps[keyname])
 
         self._caps = caps
+
+
+    def _check_eth_caps(self):
+        """Check necessary LAN capabilities are present.
+
+        Hardware and driver should support the following functionality:
+          1000baseT, 100baseT, 10baseT, half-duplex, full-duplex, auto-neg, WOL
+
+        Raises:
+          error.TestError if above LAN capabilities are NOT supported.
+        """
+        default_eth_caps = {
+            'Supported link modes': ['10baseT/Half', '100baseT/Half',
+                                      '1000baseT/Half', '10baseT/Full',
+                                      '100baseT/Full', '1000baseT/Full'],
+            'Supports auto-negotiation': ['Yes'],
+            # TODO(tbroch): Will this order, 'pumbg' remain across other h/w +
+            # drivers
+            # TODO(tbroch): Other WOL caps: 'a': arp and 's': magicsecure are
+            # they important?  Are any of these undesirable/security holes?
+            'Supports Wake-on': ['pumbg']
+            }
+        errors = 0
+
+        for keyname in default_eth_caps:
+            if keyname not in self._caps:
+                logging.error("\'%s\' not a capability of %s", keyname,
+                              self._ethname)
+                errors += 1
+                continue
+
+            for value in default_eth_caps[keyname]:
+                if value not in self._caps[keyname]:
+                    logging.error("\'%s\' not a supported mode in \'%s\' of %s",
+                                  value, keyname, self._ethname)
+                    errors += 1
+
+        if errors:
+            raise error.TestError("Eth capability checks.  See errors")
 
 
     def _test_wol_magic_packet(self):
@@ -57,14 +95,14 @@ class network_EthCaps(test.test):
         """
         # Magic number WOL supported
         capname = 'Supports Wake-on'
-        if self._caps[capname].find('g') != -1:
+        if self._caps[capname][0].find('g') != -1:
             logging.info("%s support magic number WOL", self._ethname)
         else:
             raise error.TestError('%s should support magic number WOL' %
                             self._ethname)
 
         # Check that WOL works
-        if self._caps['Wake-on'] != 'g':
+        if self._caps['Wake-on'][0] != 'g':
             utils.system_output("ethtool -s %s wol g" % self._ethname)
             self._restore_wol = True
 
@@ -80,8 +118,6 @@ class network_EthCaps(test.test):
         rtc.set_wake_alarm(0)
 
         suspend_secs = after_suspend_secs - before_suspend_secs
-        # TODO(tbroch) Is there evidence in the filesystem of the wake source?
-        # If so should interrogate that as well.
         if suspend_secs > self._threshold_secs:
             raise error.TestError("Device woke due to RTC not WOL")
 
@@ -138,7 +174,7 @@ class network_EthCaps(test.test):
     def cleanup(self):
         if self._restore_wol:
             utils.system_output("ethtool -s %s wol %s" %
-                                (self._ethname, self._caps['Wake-on']))
+                                (self._ethname, self._caps['Wake-on'][0]))
 
 
     def run_once(self, ethname=None, threshold_secs=None):
@@ -156,6 +192,10 @@ class network_EthCaps(test.test):
         self._threshold_secs = threshold_secs
 
         self._parse_ethtool_caps()
+        self._check_eth_caps()
         self._test_wol_magic_packet()
+        # TODO(tbroch) There is evidence in the filesystem of the wake source
+        # for coreboot but its still being flushed out.  For now only produce a
+        # warning for this check.
         if not self._verify_wol_magic():
-            raise error.TestError("Device woke due to non-WOL event")
+            logging.warning("Unable to see evidence of WOL wake in filesystem")
