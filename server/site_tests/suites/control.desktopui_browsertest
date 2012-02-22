@@ -16,4 +16,4 @@ This test suite runs automated browser tests that should all pass.
 num_groups = len(machines)
 for group, machine in enumerate(machines):
     gtest_runner.run(('desktopui_BrowserTest',
-                     {group=group, total_groups=num_groups}), machine)
+                     {'group':group, 'total_groups':num_groups}), machine)
