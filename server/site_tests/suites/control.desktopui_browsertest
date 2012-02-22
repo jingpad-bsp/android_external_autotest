@@ -13,4 +13,7 @@ DOC = """
 This test suite runs automated browser tests that should all pass.
 """
 
-gtest_runner.run(('desktopui_BrowserTest', {}), machines[0])
+num_groups = len(machines)
+for group, machine in enumerate(machines):
+    gtest_runner.run(('desktopui_BrowserTest',
+                     {group=group, total_groups=num_groups}), machine)
