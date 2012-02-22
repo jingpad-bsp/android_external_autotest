@@ -76,7 +76,9 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["audio", "desktopui_pyauto_perf", "enterprise"]},
+                 "groups": ["audio", "desktopui_pyauto_perf"]},
+                {"platform": "netbook_ALEX_enterprise",
+                 "groups": ["enterprise"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]},
                 {"platform": "netbook_ALEX_CDMA_GOBI3K",
@@ -130,7 +132,9 @@
             "platforms": [
                 {"platform": "netbook_ACER_ZGB","au_test": true},
                 {"platform": "netbook_ACER_ZGB",
-                 "groups": ["audio", "desktopui_pyauto_perf", "enterprise"]},
+                 "groups": ["audio", "desktopui_pyauto_perf"]},
+                {"platform": "netbook_ACER_ZGB_enterprise",
+                 "groups": ["enterprise"]},
                 {"platform": "netbook_ACER_ZGB_CDMA_GOBI2K",
                  "groups": ["network_3g"]}
             ]
@@ -182,7 +186,9 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP",
-                 "groups": ["desktopui_pyauto_perf", "enterprise"]},
+                 "groups": ["desktopui_pyauto_perf"]},
+                {"platform": "netbook_MARIO_MP_enterprise",
+                 "groups": ["enterprise"]},
                 {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
                  "groups": ["network_3g_gobi"]}
             ]
