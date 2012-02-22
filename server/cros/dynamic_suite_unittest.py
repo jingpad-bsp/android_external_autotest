@@ -318,7 +318,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mock_control_file_parsing()
         self.mox.ReplayAll()
         suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
-                                                     self.afe, self.tko)
+                                                     afe=self.afe, tko=self.tko)
 
         self.assertTrue(self.files['one'] in suite.tests)
         self.assertTrue(self.files['two'] in suite.tests)
@@ -352,7 +352,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
         suite = dynamic_suite.Suite.create_from_name(self._TAG, self._BUILD,
-                                                     self.afe, self.tko)
+                                                     afe=self.afe, tko=self.tko)
         suite.schedule()
 
 
@@ -363,7 +363,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
         suite = dynamic_suite.Suite.create_from_name(self._TAG, self._BUILD,
-                                                     self.afe, self.tko)
+                                                     afe=self.afe, tko=self.tko)
         suite.schedule(add_experimental=False)
 
 
@@ -381,12 +381,11 @@ class SuiteTest(mox.MoxTestBase):
 
         @return Suite object, after mocking out behavior needed to create it.
         """
-        self.mox.StubOutWithMock(dynamic_suite.Suite, 'create_cf_getter')
-        dynamic_suite.Suite.create_cf_getter(self.tmpdir).AndReturn(self.getter)
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
         suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
-                                                     self.afe, self.tko)
+                                                     self.getter, self.afe,
+                                                     self.tko)
         self.mox.ResetAll()
         return suite
 

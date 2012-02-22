@@ -217,7 +217,7 @@ class Suite(object):
 
 
     @staticmethod
-    def create_cf_getter(build):
+    def create_ds_getter(build):
         """
         @param build: the build on which we're running this suite.
         @return a FileSystemGetter instance that looks under |autotest_dir|.
@@ -227,27 +227,47 @@ class Suite(object):
 
 
     @staticmethod
-    def create_from_name(name, build, afe=None, tko=None, pool=None):
+    def create_fs_getter(autotest_dir):
+        """
+        @param autotest_dir: the place to find autotests.
+        @return a FileSystemGetter instance that looks under |autotest_dir|.
+        """
+        # currently hard-coded places to look for tests.
+        subpaths = ['server/site_tests', 'client/site_tests',
+                    'server/tests', 'client/tests']
+        directories = [os.path.join(autotest_dir, p) for p in subpaths]
+        return control_file_getter.FileSystemGetter(directories)
+
+
+    @staticmethod
+    def create_from_name(name, build, cf_getter=None,
+                         afe=None, tko=None, pool=None):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
         Makes a predicate based on |name| and uses it to instantiate a Suite
         that looks for tests in |autotest_dir| and will schedule them using
-        |afe|.  Results will be pulled from |tko| upon completion
+        |afe|.  Pulls control files from the default dev server.
+        Results will be pulled from |tko| upon completion.
 
         @param name: a value of the SUITE control file variable to search for.
         @param build: the build on which we're running this suite.
+        @param cf_getter: a control_file_getter.ControlFileGetter.
+                          If None, default to using a DevServerGetter.
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
-                purposes.
+                     purposes.
         @return a Suite instance.
         """
+        if cf_getter is None:
+            cf_getter = Suite.create_ds_getter(build)
         return Suite(lambda t: hasattr(t, 'suite') and t.suite == name,
-                     name, build, afe, tko, pool)
+                     name, build, cf_getter, afe, tko, pool)
 
 
-    def __init__(self, predicate, tag, build, afe=None, tko=None,
+
+    def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
                  pool=None):
         """
         Constructor
@@ -257,6 +277,7 @@ class Suite(object):
                this Suite.
         @param tag: a string with which to tag jobs run in this suite.
         @param build: the build on which we're running this suite.
+        @param cf_getter: a control_file_getter.ControlFileGetter
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
@@ -265,6 +286,7 @@ class Suite(object):
         self._predicate = predicate
         self._tag = tag
         self._build = build
+        self._cf_getter = cf_getter
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
@@ -273,9 +295,6 @@ class Suite(object):
                                                          debug=False)
         self._pool = pool
         self._jobs = []
-
-        self._cf_getter = Suite.create_cf_getter(self._build)
-
         self._tests = Suite.find_and_parse_tests(self._cf_getter,
                                                  self._predicate,
                                                  add_experimental=True)
