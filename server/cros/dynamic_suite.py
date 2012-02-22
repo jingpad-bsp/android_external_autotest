@@ -6,6 +6,7 @@ import common
 import compiler, logging, os, random, re, time
 from autotest_lib.client.common_lib import control_data, global_config, error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import control_file_getter, frontend_wrappers
 from autotest_lib.server import frontend
 
@@ -207,6 +208,7 @@ class Suite(object):
          ControlData representation of a control file that should be in
          this Suite.
     @var _tag: a string with which to tag jobs run in this suite.
+    @var _build: the build on which we're running this suite.
     @var _afe: an instance of AFE as defined in server/frontend.py.
     @var _tko: an instance of TKO as defined in server/frontend.py.
     @var _jobs: currently scheduled jobs, if any.
@@ -215,19 +217,17 @@ class Suite(object):
 
 
     @staticmethod
-    def create_fs_getter(autotest_dir):
+    def create_cf_getter(build):
         """
-        @param autotest_dir: the place to find autotests.
+        @param build: the build on which we're running this suite.
         @return a FileSystemGetter instance that looks under |autotest_dir|.
         """
-        # currently hard-coded places to look for tests.
-        subpaths = ['server/site_tests', 'client/site_tests']
-        directories = [os.path.join(autotest_dir, p) for p in subpaths]
-        return control_file_getter.FileSystemGetter(directories)
+        return control_file_getter.DevServerGetter(
+            build, dev_server.DevServer.create())
 
 
     @staticmethod
-    def create_from_name(name, autotest_dir, afe=None, tko=None, pool=None):
+    def create_from_name(name, build, afe=None, tko=None, pool=None):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -236,7 +236,7 @@ class Suite(object):
         |afe|.  Results will be pulled from |tko| upon completion
 
         @param name: a value of the SUITE control file variable to search for.
-        @param autotest_dir: the place to find autotests.
+        @param build: the build on which we're running this suite.
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
@@ -244,10 +244,10 @@ class Suite(object):
         @return a Suite instance.
         """
         return Suite(lambda t: hasattr(t, 'suite') and t.suite == name,
-                     name, autotest_dir, afe, tko, pool)
+                     name, build, afe, tko, pool)
 
 
-    def __init__(self, predicate, tag, autotest_dir, afe=None, tko=None,
+    def __init__(self, predicate, tag, build, afe=None, tko=None,
                  pool=None):
         """
         Constructor
@@ -256,7 +256,7 @@ class Suite(object):
                ControlData representation of a control file that should be in
                this Suite.
         @param tag: a string with which to tag jobs run in this suite.
-        @param autotest_dir: the place to find autotests.
+        @param build: the build on which we're running this suite.
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
@@ -264,6 +264,7 @@ class Suite(object):
         """
         self._predicate = predicate
         self._tag = tag
+        self._build = build
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
@@ -273,7 +274,7 @@ class Suite(object):
         self._pool = pool
         self._jobs = []
 
-        self._cf_getter = Suite.create_fs_getter(autotest_dir)
+        self._cf_getter = Suite.create_cf_getter(self._build)
 
         self._tests = Suite.find_and_parse_tests(self._cf_getter,
                                                  self._predicate,
@@ -302,43 +303,41 @@ class Suite(object):
         return filter(lambda t: t.experimental, self.tests)
 
 
-    def _create_job(self, test, image_name):
+    def _create_job(self, test):
         """
         Thin wrapper around frontend.AFE.create_job().
 
         @param test: ControlData object for a test to run.
-        @param image_name: the name of an image against which to test.
         @return frontend.Job object for the job just scheduled.
         """
         job_deps = []
         if self._pool:
             meta_hosts = 'pool:%s' % self._pool
-            cros_label = VERSION_PREFIX+image_name
+            cros_label = VERSION_PREFIX + self._build
             job_deps.append(cros_label)
         else:
             # No pool specified use any machines with the following label.
-            meta_hosts = VERSION_PREFIX+image_name
+            meta_hosts = VERSION_PREFIX + self._build
 
         return self._afe.create_job(
             control_file=test.text,
-            name='/'.join([image_name, self._tag, test.name]),
+            name='/'.join([self._build, self._tag, test.name]),
             control_type=test.test_type.capitalize(),
             meta_hosts=[meta_hosts],
             dependencies=job_deps)
 
 
-    def run_and_wait(self, image_name, record, add_experimental=True):
+    def run_and_wait(self, record, add_experimental=True):
         """
         Synchronously run tests in |self.tests|.
 
-        Schedules tests against a device running image |image_name|, and
+        Schedules tests against a device running image |self._build|, and
         then polls for status, using |record| to print status when each
         completes.
 
         Tests returned by self.stable_tests() will always be run, while tests
         in self.unstable_tests() will only be run if |add_experimental| is true.
 
-        @param image_name: the name of an image against which to test.
         @param record: callable that records job status.
                  prototype:
                    record(status, subdir, name, reason)
@@ -346,7 +345,7 @@ class Suite(object):
         """
         try:
             record('INFO', None, 'Start %s' % self._tag)
-            self.schedule(image_name, add_experimental)
+            self.schedule(add_experimental)
             try:
                 for result in self.wait_for_results():
                     # |result| will be a tuple of a maximum of 4 entries and a
@@ -368,25 +367,24 @@ class Suite(object):
                    'Exception while scheduling suite')
 
 
-    def schedule(self, image_name, add_experimental=True):
+    def schedule(self, add_experimental=True):
         """
         Schedule jobs using |self._afe|.
 
         frontend.Job objects representing each scheduled job will be put in
         |self._jobs|.
 
-        @param image_name: the name of an image against which to test.
         @param add_experimental: schedule experimental tests as well, or not.
         """
         for test in self.stable_tests():
             logging.debug('Scheduling %s', test.name)
-            self._jobs.append(self._create_job(test, image_name))
+            self._jobs.append(self._create_job(test))
 
         if add_experimental:
             # TODO(cmasone): ensure I can log results from these differently.
             for test in self.unstable_tests():
                 logging.debug('Scheduling %s', test.name)
-                self._jobs.append(self._create_job(test, image_name))
+                self._jobs.append(self._create_job(test))
 
 
     def _status_is_relevant(self, status):

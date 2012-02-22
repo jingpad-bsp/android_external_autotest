@@ -29,13 +29,13 @@ class ReimagerTest(mox.MoxTestBase):
     """Unit tests for dynamic_suite.Reimager.
 
     @var _URL: fake image url
-    @var _NAME: fake image name
+    @var _BUILD: fake build
     @var _NUM: fake number of machines to run on
     @var _BOARD: fake board to reimage
     """
 
     _URL = 'http://nothing/%s'
-    _NAME = 'name'
+    _BUILD = 'build'
     _NUM = 4
     _BOARD = 'board'
     _CONFIG = global_config.global_config
@@ -119,8 +119,8 @@ class ReimagerTest(mox.MoxTestBase):
         # The semantics of |results_platform_map| and |test_results| are
         # drawn from frontend.AFE.poll_all_jobs()
         job.results_platform_map = {'netbook': {'Aborted' : [H3],
-                                                  'Completed' : [H1, H4, H5],
-                                                  'Failed':     [H2]
+                                                'Completed' : [H1, H4, H5],
+                                                'Failed':     [H2]
                                                 }
                                     }
         # Gin up fake results for H2 and H3 failure cases.
@@ -157,13 +157,14 @@ class ReimagerTest(mox.MoxTestBase):
                                            'image_url_pattern',
                                            self._URL)
         self.afe.create_job(
-            control_file=mox.And(mox.StrContains(self._NAME),
-                                 mox.StrContains(self._URL % self._NAME)),
-            name=mox.StrContains(self._NAME),
+            control_file=mox.And(mox.StrContains(self._BUILD),
+                                 mox.StrContains(self._URL % self._BUILD)),
+            name=mox.StrContains(self._BUILD),
             control_type='Server',
-            meta_hosts=[self._BOARD] * self._NUM)
+            meta_hosts=['board:'+self._BOARD] * self._NUM,
+            dependencies=[])
         self.mox.ReplayAll()
-        self.reimager._schedule_reimage_job(self._NAME, self._NUM, self._BOARD)
+        self.reimager._schedule_reimage_job(self._BUILD, self._NUM, self._BOARD)
 
 
     def expect_attempt(self, success):
@@ -174,10 +175,10 @@ class ReimagerTest(mox.MoxTestBase):
         """
         canary = FakeJob()
         self.mox.StubOutWithMock(self.reimager, '_ensure_version_label')
-        self.reimager._ensure_version_label(mox.StrContains(self._NAME))
+        self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
 
         self.mox.StubOutWithMock(self.reimager, '_schedule_reimage_job')
-        self.reimager._schedule_reimage_job(self._NAME,
+        self.reimager._schedule_reimage_job(self._BUILD,
                                             self._NUM,
                                             self._BOARD).AndReturn(canary)
         if success is not None:
@@ -199,7 +200,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._NAME, self._BOARD, rjob.record)
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
 
 
     def testFailedReimage(self):
@@ -210,7 +211,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._NAME, self._BOARD, rjob.record)
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
 
 
     def testReimageThatNeverHappened(self):
@@ -222,18 +223,18 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('FAIL', mox.IgnoreArg(), canary.name, mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._NAME, self._BOARD, rjob.record)
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
 
 
 class SuiteTest(mox.MoxTestBase):
     """Unit tests for dynamic_suite.Suite.
 
-    @var _NAME: fake image name
+    @var _BUILD: fake build
     @var _TAG: fake suite tag
     """
 
-    _NAME = 'name'
-    _TAG = 'suite tag'
+    _BUILD = 'build'
+    _TAG = 'suite_tag'
 
 
     def setUp(self):
@@ -337,10 +338,11 @@ class SuiteTest(mox.MoxTestBase):
                 continue
             self.afe.create_job(
                 control_file=test.text,
-                name=mox.And(mox.StrContains(self._NAME),
+                name=mox.And(mox.StrContains(self._BUILD),
                              mox.StrContains(test.name)),
                 control_type=mox.IgnoreArg(),
-                meta_hosts=[dynamic_suite.VERSION_PREFIX+self._NAME])
+                meta_hosts=[dynamic_suite.VERSION_PREFIX + self._BUILD],
+                dependencies=[])
 
 
     def testScheduleTests(self):
@@ -349,9 +351,9 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_job_scheduling(add_experimental=True)
 
         self.mox.ReplayAll()
-        suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
+        suite = dynamic_suite.Suite.create_from_name(self._TAG, self._BUILD,
                                                      self.afe, self.tko)
-        suite.schedule(self._NAME)
+        suite.schedule()
 
 
     def testScheduleStableTests(self):
@@ -360,9 +362,9 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_job_scheduling(add_experimental=False)
 
         self.mox.ReplayAll()
-        suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
+        suite = dynamic_suite.Suite.create_from_name(self._TAG, self._BUILD,
                                                      self.afe, self.tko)
-        suite.schedule(self._NAME, add_experimental=False)
+        suite.schedule(add_experimental=False)
 
 
     def expect_result_gathering(self, job):
@@ -379,8 +381,8 @@ class SuiteTest(mox.MoxTestBase):
 
         @return Suite object, after mocking out behavior needed to create it.
         """
-        self.mox.StubOutWithMock(dynamic_suite.Suite, 'create_fs_getter')
-        dynamic_suite.Suite.create_fs_getter(self.tmpdir).AndReturn(self.getter)
+        self.mox.StubOutWithMock(dynamic_suite.Suite, 'create_cf_getter')
+        dynamic_suite.Suite.create_cf_getter(self.tmpdir).AndReturn(self.getter)
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
         suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
@@ -463,12 +465,12 @@ class SuiteTest(mox.MoxTestBase):
             recorder.record('END %s' % status, None, test_name)
 
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(self._NAME, True)
+        suite.schedule(True)
         self.mox.StubOutWithMock(suite, 'wait_for_results')
         suite.wait_for_results().AndReturn(results)
         self.mox.ReplayAll()
 
-        suite.run_and_wait(self._NAME, recorder.record, True)
+        suite.run_and_wait(recorder.record, True)
 
 
     def testRunAndWaitFailure(self):
@@ -481,12 +483,12 @@ class SuiteTest(mox.MoxTestBase):
                         mox.StrContains('waiting'))
 
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(self._NAME, True)
+        suite.schedule(True)
         self.mox.StubOutWithMock(suite, 'wait_for_results')
         suite.wait_for_results().AndRaise(Exception())
         self.mox.ReplayAll()
 
-        suite.run_and_wait(self._NAME, recorder.record, True)
+        suite.run_and_wait(recorder.record, True)
 
 
     def testRunAndWaitScheduleFailure(self):
@@ -499,10 +501,10 @@ class SuiteTest(mox.MoxTestBase):
                         mox.StrContains('scheduling'))
 
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(self._NAME, True).AndRaise(Exception())
+        suite.schedule(True).AndRaise(Exception())
         self.mox.ReplayAll()
 
-        suite.run_and_wait(self._NAME, recorder.record, True)
+        suite.run_and_wait(recorder.record, True)
 
 
 if __name__ == '__main__':
