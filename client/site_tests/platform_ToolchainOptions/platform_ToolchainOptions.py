@@ -9,6 +9,8 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from optparse import OptionParser
 
+FILE_CMD="file -m /usr/local/share/misc/magic.mgc"
+
 class ToolchainOptionSet:
     def __init__(self, description, bad_files, whitelist_file):
         self.description = description
@@ -97,11 +99,12 @@ class platform_ToolchainOptions(test.test):
                     " -wholename '/home/chronos' -prune -o "
                     " %s "
                     " -type f -executable -exec "
-                    "sh -c 'file -m /usr/local/share/misc/magic.mgc "
+                    "sh -c '%s "
                     "{} | grep -q ELF && "
                     "(%s || echo {})' ';'")
         rootdir = "/"
-        cmd = base_cmd % (rootdir, self.autodir, find_options, test_cmd)
+        cmd = base_cmd % (rootdir, self.autodir, find_options, FILE_CMD,
+                          test_cmd)
         return cmd
 
 
@@ -178,21 +181,24 @@ class platform_ToolchainOptions(test.test):
 
         # ARM arch doesn't have hardened.
         if utils.get_cpu_arch() != "arm":
-            now_cmd = ("binutils/readelf -d {} 2>&1 | "
-                       "egrep -q \"BIND_NOW\"")
+            now_cmd = ("(%s {} | grep -q statically) ||"
+                       "binutils/readelf -d {} 2>&1 | "
+                       "egrep -q \"BIND_NOW\"" % FILE_CMD)
             now_whitelist = os.path.join(self.bindir, "now_whitelist")
             option_sets.append(self.create_and_filter("-Wl,-z,now",
                                                       now_cmd,
                                                       now_whitelist))
-            relro_cmd = ("binutils/readelf -l {} 2>&1 | "
-                         "egrep -q \"GNU_RELRO\"")
+            relro_cmd = ("(%s {} | grep -q statically) ||"
+                         "binutils/readelf -l {} 2>&1 | "
+                         "egrep -q \"GNU_RELRO\"" % FILE_CMD)
             relro_whitelist = os.path.join(self.bindir, "relro_whitelist")
             option_sets.append(self.create_and_filter("-Wl,-z,relro",
                                                       relro_cmd,
                                                       relro_whitelist))
 
-            pie_cmd = ("binutils/readelf -l {} 2>&1 | "
-                       "egrep -q \"Elf file type is DYN\"")
+            pie_cmd = ("(%s {} | grep -q statically) ||"
+                       "binutils/readelf -l {} 2>&1 | "
+                       "egrep -q \"Elf file type is DYN\"" % FILE_CMD)
             pie_whitelist = os.path.join(self.bindir, "pie_whitelist")
             option_sets.append(self.create_and_filter("-fPIE",
                                                       pie_cmd,
