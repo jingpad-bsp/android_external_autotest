@@ -5,7 +5,7 @@
 # found in the LICENSE file.
 
 # DESCRIPTION :
-# This factory test is run a the start of a test sequence to verify the DUT has
+# This factory test runs at the start of a test sequence to verify the DUT has
 # been setup correctly.
 #
 # The start provides several settings (set via darg):
@@ -13,7 +13,7 @@
 # 'require_shop_floor': Prompts and waits for serial number as input.  The
 #       server is default to the host running mini-omaha, unless you specify an
 #       URL by 'shop_floor_server_url' darg.
-# 'press_to_continue': Prompts and waits for a key press (SPACE) to continue
+# 'press_to_continue': Prompts and waits for a key press (SPACE) to continue.
 
 import glob
 import os
@@ -37,8 +37,7 @@ _MSG_TASK_POWER = (
         '請插上外接電源以繼續。')
 _MSG_TASK_SERIAL = (
         'Enter valid serial number:\n'
-        '請輸入有效的序號:'
-        )
+        '請輸入有效的序號:')
 _MSG_TASK_SPACE = (
         'Hit SPACE to start testing...\n'
         '按 "空白鍵" 開始測試...')

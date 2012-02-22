@@ -23,11 +23,14 @@ class factory_HWID(test.test):
     version = 1
 
     def write_hwid(self, hwid):
+        """Writes system HWID by assigned spec.
+
+        @param hwid: A complete HWID, or BOM-VARIANT pair.
+        """
         # TODO(hungte) Replace this by gooftool, plus partial matching.
-        # "Partial matching" means: given HWID string from shop floor system
-        # contains only BOM and VARIANT names, select and derive the complete ID
-        # from active HWIDs in current database. Ex: hwid="BLUE A-A" => matched
-        # to "MARIO BLUE A-A 6868".
+        # When the input is not a complete HWID (i.e., BOM-VARIANT pair), select
+        # and derive the complete ID from active HWIDs in current database.
+        # Ex: input="BLUE A" => matched to "MARIO BLUE A-B 6868".
         def shell(command):
             factory.log(command)
             utils.system(command)

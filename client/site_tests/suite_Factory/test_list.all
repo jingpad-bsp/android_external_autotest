@@ -85,6 +85,9 @@ TEST_LIST = [
         label_zw='開始',
         autotest_name='factory_Start',
         kbd_shortcut='e',
+        # 'press_to_continue' can be disabled by default when the configuration
+        # includes other explicit prompts, like _ENABLE_SHOP_FLOOR (operator
+        # must input one string), so the value is "not _ENABLE_SHOP_FLOOR".
         dargs={'press_to_continue': not _ENABLE_SHOP_FLOOR,
                'require_external_power': _ENABLE_CHECK_EXTERNAL_POWER,
                'require_shop_floor': _ENABLE_SHOP_FLOOR,
