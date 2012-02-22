@@ -22,7 +22,7 @@ class ECControl(object):
     HELLO_RE = "EC says hello"
     GET_FANSPEED_RE = "Current fan RPM: ([0-9]*)"
     SET_FANSPEED_RE = "Fan target RPM set."
-    TEMP_SENSOR_RE = "Reading TEMP_SENSOR_EC_INTERNAL...([0-9]*)"
+    TEMP_SENSOR_RE = "Reading temperature...([0-9]*)"
     def ec_command(self, cmd):
         full_cmd = 'ectool %s' % cmd
         result = utils.system_output(full_cmd)
@@ -49,19 +49,20 @@ class ECControl(object):
         logging.info('Set fan speed: %d' % rpm)
         return (result != None)
 
-    def get_temperature(self):
-        response = self.ec_command('temps TEMP_SENSOR_EC_INTERNAL')
+    def get_temperature(self, idx):
+        response = self.ec_command('temps %d' % idx)
         match = re.search(self.TEMP_SENSOR_RE, response).group(1)
         if match:
             return int(match)
-        raise error.TestError('Unable to read temperature')
+        raise error.TestError('Unable to read temperature sensor %d.' % idx)
 
 
 class hardware_EC(test.test):
     version = 1
     FAN_DELAY = 3
+    TEMP_ERR_MSG = 'Abnormal temperature reading on sensor %d.'
 
-    def run_once(self):
+    def run_once(self, num_temp_sensor = 1):
         ec = ECControl()
 
         if not ec.hello():
@@ -87,6 +88,7 @@ class hardware_EC(test.test):
         finally:
             ec.set_fanspeed(original_rpm)
 
-        temperature = ec.get_temperature() - 273
-        if temperature < 0 or temperature > 100:
-            raise error.TestError('Abnormal temperature reading.')
+        for idx in xrange(0, num_temp_sensor):
+            temperature = ec.get_temperature(idx) - 273
+            if temperature < 0 or temperature > 100:
+                raise error.TestError(TEMP_ERR_MSG % idx);
