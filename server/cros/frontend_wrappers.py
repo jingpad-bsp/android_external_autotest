@@ -40,8 +40,8 @@ def retry(ExceptionToCheck, timeout_min=1, delay_sec=3):
         random.seed()
         def func_retry(*args, **kwargs):
             deadline = time.time() + timeout_min * 60  # convert to seconds.
-            delay = jittered_delay(delay_sec)
             while time.time() < deadline:
+                delay = jittered_delay(delay_sec)
                 try:
                     return func(*args, **kwargs)
                     break
@@ -51,7 +51,6 @@ def retry(ExceptionToCheck, timeout_min=1, delay_sec=3):
                                                                  delay)
                     logging.warning(msg)
                     time.sleep(delay)
-                    delay = jittered_delay(delay)
             else:
                 return func(*args, **kwargs)
             return
