@@ -80,23 +80,15 @@ job.run_test('audiovideo_FFMPEG',
 job.run_test('audiovideo_V4L2')
 
 # RealTimeComm
-# TODO(noahric): crosbug.com/3001 - Test issue is causing this test
-# to fail.
-#
 # TODO(zhurunz): crosbug.com/p/1332 - improve performance and
 # replace with fps_gtalk_down >= 28.0 and fps_gtalk_dup >= 29.5.
-#
-# job.run_test('realtimecomm_GTalkPlayground',
-#              constraints=[
-#                  'fps_gtalk_down >= 20.0',
-#                  'fps_gtalk_up >= 20.0',
-#              ])
-#
-# TODO(noahric): This will break with the coming gtalk update.
-#                To be re-enabled after that change lands and the
-#                test is fixed to use the new audiotool.
-# job.run_test('realtimecomm_GTalkAudioPlayground',
-#              constraints=['ctime_gtalk + stime_gtalk < 30'])
+job.run_test('realtimecomm_GTalkPlayground',
+             constraints=[
+                 'fps_gtalk_down >= 20.0',
+                 'fps_gtalk_up >= 20.0',
+             ])
+job.run_test('realtimecomm_GTalkAudioPlayground',
+             constraints=['ctime_gtalk + stime_gtalk < 30'])
 job.run_test('realtimecomm_GTalkLmiCamera',
              constraints=[
                  'fps > 28',
