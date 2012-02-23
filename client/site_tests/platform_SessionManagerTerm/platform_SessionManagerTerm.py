@@ -21,8 +21,7 @@ class platform_SessionManagerTerm(test.test):
 
 
     def run_once(self):
-        log_reader = cros_logging.LogReader(
-            filename=constants.SESSION_MANAGER_LOG)
+        log_reader = cros_logging.LogReader()
         log_reader.set_start_by_current()
         binary = constants.SESSION_MANAGER
         # Try to kill all running instances of the binary.
