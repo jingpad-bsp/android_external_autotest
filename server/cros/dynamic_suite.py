@@ -84,11 +84,11 @@ class Reimager(object):
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param board: which kind of devices to reimage.
         @param record: callable that records job status.
-                 prototype:
-                   record(status, subdir, name, reason)
+                       prototype:
+                         record(status, subdir, name, reason)
         @param num: how many devices to reimage.
         @param pool: Specify the pool of machines to use for scheduling
-                purposes.
+                     purposes.
         @return True if all reimaging jobs succeed, false otherwise.
         """
         if not num:
@@ -98,16 +98,22 @@ class Reimager(object):
         logging.debug("scheduling reimaging across %d machines", num)
         wrapper_job_name = 'try new image'
         record('START', None, wrapper_job_name)
-        self._ensure_version_label(VERSION_PREFIX + build)
-        canary = self._schedule_reimage_job(build, num, board)
-        logging.debug('Created re-imaging job: %d', canary.id)
-        while len(self._afe.get_jobs(id=canary.id, not_yet_run=True)) > 0:
-            time.sleep(10)
-        logging.debug('Re-imaging job running.')
-        while len(self._afe.get_jobs(id=canary.id, finished=True)) == 0:
-            time.sleep(10)
-        logging.debug('Re-imaging job finished.')
-        canary.result = self._afe.poll_job_results(self._tko, canary, 0)
+        try:
+            self._ensure_version_label(VERSION_PREFIX + build)
+            canary = self._schedule_reimage_job(build, num, board)
+            logging.debug('Created re-imaging job: %d', canary.id)
+            while len(self._afe.get_jobs(id=canary.id, not_yet_run=True)) > 0:
+                time.sleep(10)
+            logging.debug('Re-imaging job running.')
+            while len(self._afe.get_jobs(id=canary.id, finished=True)) == 0:
+                time.sleep(10)
+            logging.debug('Re-imaging job finished.')
+            canary.result = self._afe.poll_job_results(self._tko, canary, 0)
+        except Exception as e:
+            # catch Exception so we record the job as terminated no matter what.
+            logging.error(e)
+            record('END ERROR', None, wrapper_job_name, str(e))
+            return False
 
         if canary.result is True:
             self._report_results(canary, record)

@@ -167,10 +167,11 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._schedule_reimage_job(self._BUILD, self._NUM, self._BOARD)
 
 
-    def expect_attempt(self, success):
+    def expect_attempt(self, success, ex=None):
         """Sets up |self.reimager| to expect an attempt() that returns |success|
 
-        @param success the value returned by poll_job_results()
+        @param success: the value returned by poll_job_results()
+        @param ex: if not None, |ex| is raised by get_jobs()
         @return a FakeJob configured with appropriate expectations
         """
         canary = FakeJob()
@@ -186,8 +187,12 @@ class ReimagerTest(mox.MoxTestBase):
             self.reimager._report_results(canary, mox.IgnoreArg())
 
         self.afe.get_jobs(id=canary.id, not_yet_run=True).AndReturn([])
-        self.afe.get_jobs(id=canary.id, finished=True).AndReturn([canary])
-        self.afe.poll_job_results(mox.IgnoreArg(), canary, 0).AndReturn(success)
+        if ex is not None:
+            self.afe.get_jobs(id=canary.id, finished=True).AndRaise(ex)
+        else:
+            self.afe.get_jobs(id=canary.id, finished=True).AndReturn([canary])
+            self.afe.poll_job_results(mox.IgnoreArg(),
+                                      canary, 0).AndReturn(success)
 
         return canary
 
@@ -222,6 +227,18 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('FAIL', mox.IgnoreArg(), canary.name, mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
+        self.mox.ReplayAll()
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+
+
+    def testReimageThatRaised(self):
+        """Should attempt a reimage that raises an exception and record that."""
+        ex_message = 'Oh no!'
+        canary = self.expect_attempt(None, Exception(ex_message))
+
+        rjob = self.mox.CreateMock(base_job.base_job)
+        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
+        rjob.record('END ERROR', mox.IgnoreArg(), mox.IgnoreArg(), ex_message)
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
 
