@@ -143,7 +143,6 @@ class ShopFloorTask(Task):
     def __init__(self, ui, server_url):
         Task.__init__(self, ui)
         self.server_url = server_url or shopfloor.detect_default_server_url()
-        shopfloor.set_enabled(True)
         shopfloor.set_server_url(self.server_url)
 
     def start(self):
@@ -217,6 +216,8 @@ class factory_Start(test.test):
         self._error_message = 'An unspecified error occurred.'
 
         self._task_list = []
+        shopfloor.reset()
+        shopfloor.set_enabled(require_shop_floor)
         if require_shop_floor:
             self._task_list.append(ShopFloorTask(self, shop_floor_server_url))
         if require_external_power:
