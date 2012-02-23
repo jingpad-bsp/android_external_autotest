@@ -49,6 +49,8 @@ class site_suite_create(action_common.atest_create, site_suite):
                                     'x86-alex-release/R17-1412.144.0-a1-b115.'
                                     ' Required.',
                                metavar='BUILD')
+        self.parser.add_option('-p', '--pool', help='Pool of machines to use.',
+                               metavar='POOL')
 
 
     def parse(self):
@@ -56,6 +58,8 @@ class site_suite_create(action_common.atest_create, site_suite):
                                                   inline_option='board')
         build_info = topic_common.item_parse_info(attribute_name='build',
                                                   inline_option='build')
+        build_info = topic_common.item_parse_info(attribute_name='pool',
+                                                  inline_option='pool')
         suite_info = topic_common.item_parse_info(attribute_name='name',
                                                   use_leftover=True)
 
@@ -67,6 +71,7 @@ class site_suite_create(action_common.atest_create, site_suite):
             self.invalid_syntax('Too many arguments specified, only expected '
                                 'to receive suite name: %s' % name)
         self.data['suite_name'] = name[0]
+        self.data['pool'] = options.pool  # None is OK.
         if options.board:
             self.data['board'] = options.board
         else:
