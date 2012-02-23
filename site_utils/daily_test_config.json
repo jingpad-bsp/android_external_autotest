@@ -127,10 +127,10 @@
 
         "kernel_daily": [
             {"name": "kernel_main_smoketest",
-             "control": "server/site_tests/suites/control.kernel_main_smoketest"}
+             "control": "server/site_tests/suites/control.kernel_main_smoketest"},
 
             {"name": "kernel_fs_smoketest",
-             "control": "server/site_tests/suites/control.kernel_fs_smoketest"},
+             "control": "server/site_tests/suites/control.kernel_fs_smoketest"}
         ],
 
         "network": [
