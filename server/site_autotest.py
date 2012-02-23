@@ -4,7 +4,7 @@
 
 import logging
 import os
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import installable_object, autoserv_parser
 
 
@@ -14,7 +14,7 @@ parser = autoserv_parser.autoserv_parser
 
 class SiteAutotest(installable_object.InstallableObject):
 
-    def get(self, location = None):
+    def get(self, location=None):
         if not location:
             location = os.path.join(self.serverdir, '../client')
             location = os.path.abspath(location)
@@ -86,6 +86,64 @@ class SiteAutotest(installable_object.InstallableObject):
             self.host = host
 
         super(SiteAutotest, self).install(host=host, autodir=autodir)
+
+
+class SiteClientLogger(object):
+    """Overrides default client logger to allow for using a local package cache.
+    """
+
+    def _process_line(self, line):
+        """Returns the package checksum file if it exists."""
+        logging.debug(line)
+        fetch_package_match = self.fetch_package_parser.search(line)
+        if fetch_package_match:
+            pkg_name, dest_path, fifo_path = fetch_package_match.groups()
+            serve_packages = global_config.global_config.get_config_value(
+                "PACKAGES", "serve_packages_from_autoserv", type=bool)
+            if serve_packages and pkg_name == 'packages.checksum':
+                package_served = False
+                try:
+                    checksum_file = os.path.join(
+                        self.job.pkgmgr.pkgmgr_dir, 'packages', pkg_name)
+                    if os.path.exists(checksum_file):
+                        self.host.send_file(checksum_file, dest_path)
+                        package_served = True
+                except error.AutoservRunError:
+                    msg = "Package checksum file not found, continuing anyway"
+                    logging.exception(msg)
+
+                if package_served:
+                    try:
+                        # When fetching a package, the client expects to be
+                        # notified when the fetching is complete. Autotest
+                        # does this pushing a B to a fifo queue to the client.
+                        self.host.run("echo B > %s" % fifo_path)
+                    except error.AutoservRunError:
+                        msg = "Checksum installation failed, continuing anyway"
+                        logging.exception(msg)
+                    finally:
+                      return
+
+        # Fall through to process the line using the default method.
+        super(SiteClientLogger, self)._process_line(line)
+
+
+    def _send_tarball(self, pkg_name, remote_dest):
+        """Uses tarballs in package manager by default."""
+        try:
+            server_package = os.path.join(self.job.pkgmgr.pkgmgr_dir,
+                                          'packages', pkg_name)
+            if os.path.exists(server_package):
+              self.host.send_file(server_package, remote_dest)
+              return
+
+        except error.AutoservRunError:
+            msg = ("Package %s could not be sent from the package cache." %
+                   pkg_name)
+            logging.exception(msg)
+
+        # Fall through to send tarball the default method.
+        super(SiteClientLogger, self)._send_tarball(pkg_name, remote_dest)
 
 
 class _SiteRun(object):

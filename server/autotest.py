@@ -158,7 +158,8 @@ class BaseAutotest(installable_object.InstallableObject):
 
 
     def _install_using_send_file(self, host, autodir):
-        dirs_to_exclude = set(["tests", "site_tests", "deps", "profilers"])
+        dirs_to_exclude = set(["tests", "site_tests", "deps", "profilers",
+                               "packages"])
         light_files = [os.path.join(self.source_material, f)
                        for f in os.listdir(self.source_material)
                        if f not in dirs_to_exclude]
@@ -837,7 +838,7 @@ class log_collector(object):
 
 # a file-like object for catching stderr from an autotest client and
 # extracting status logs from it
-class client_logger(object):
+class BaseClientLogger(object):
     """Partial file object to write to both stdout and
     the status log file.  We only implement those methods
     utils.run() actually calls.
@@ -1049,7 +1050,16 @@ _SiteRun = client_utils.import_site_class(
     __file__, "autotest_lib.server.site_autotest", "_SiteRun", _BaseRun)
 
 
+SiteClientLogger = client_utils.import_site_class(
+    __file__, "autotest_lib.server.site_autotest", "SiteClientLogger",
+    BaseClientLogger)
+
+
 class Autotest(SiteAutotest):
+    pass
+
+
+class client_logger(SiteClientLogger):
     pass
 
 
