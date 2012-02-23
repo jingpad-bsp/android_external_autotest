@@ -24,9 +24,7 @@ TESTS = [
   ('security_DbusOwners', {}),
   ('security_HardlinkRestrictions', {}),
   ('security_NetworkListeners', {}),
-# TODO(keescook): Re-enable this test once ptrace restrictions are enabled
-# again (crosbug.com/25087).
-#  ('security_ptraceRestrictions', {}),
+  ('security_ptraceRestrictions', {}),
   ('security_RendererSandbox', {}),
   ('security_ReservedPrivileges', {'owner_type': 'user', 'tag': 'user'}),
   ('security_ReservedPrivileges', {'owner_type': 'group', 'tag': 'group'}),
