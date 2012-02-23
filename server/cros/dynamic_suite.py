@@ -246,6 +246,24 @@ class Suite(object):
 
 
     @staticmethod
+    def name_in_tag_predicate(name):
+        """Returns predicate that takes a control file and looks for |name|.
+
+        Builds a predicate that takes in a parsed control file (a ControlData)
+        and returns True if the SUITE tag is present and contains |name|.
+
+        @param name: the suite name to base the predicate on.
+        @return a callable that takes a ControlData and looks for |name| in that
+                ControlData object's suite member.
+        """
+        def parse(suite):
+            """Splits a string on ',' optionally surrounded by whitespace."""
+            return map(lambda x: x.strip(), suite.split(','))
+
+        return lambda t: hasattr(t, 'suite') and name in parse(t.suite)
+
+
+    @staticmethod
     def create_from_name(name, build, cf_getter=None,
                          afe=None, tko=None, pool=None):
         """
@@ -268,9 +286,8 @@ class Suite(object):
         """
         if cf_getter is None:
             cf_getter = Suite.create_ds_getter(build)
-        return Suite(lambda t: hasattr(t, 'suite') and t.suite == name,
+        return Suite(Suite.name_in_tag_predicate(name),
                      name, build, cf_getter, afe, tko, pool)
-
 
 
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
