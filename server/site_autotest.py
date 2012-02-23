@@ -58,18 +58,20 @@ class SiteAutotest(installable_object.InstallableObject):
         """
         repos = super(SiteAutotest, self).get_fetch_location()
 
-        # The new way.
-        found_repo = self._get_fetch_location_from_host_attribute()
-        if found_repo is not None:
-            repos.append(found_repo)
-            return repos
-
-        # The old way.
         if parser.options.image:
+            # The old way.
             # Add our new repo to the end, the package manager will later
             # reverse the list of repositories resulting in ours being first.
             repos.append(parser.options.image.replace(
                 'update', 'static/archive').rstrip('/') + '/autotest')
+        else:
+            # The new way.
+            found_repo = self._get_fetch_location_from_host_attribute()
+            if found_repo is not None:
+                # Add our new repo to the end, the package manager will
+                # later reverse the list of repositories resulting in ours
+                # being first
+                repos.append(found_repo)
 
         return repos
 
