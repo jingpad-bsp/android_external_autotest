@@ -6,7 +6,7 @@ import os, re, shutil, sys, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_ui, cros_ui_test, httpd
+from autotest_lib.client.cros import constants, cros_ui_test, httpd
 
 WARMUP_TIME = 60
 SLEEP_DURATION = 260
@@ -65,11 +65,12 @@ class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
 
     def get_framerate(self, log):
         d = {}
-        # We get a framerate report every 10 seconds for both streams.
-        # We run for 5 mins, and should get around (5 * 60/10) * 2 = 60
-        # framerate reports for 2 streams. Since this is an estimate,
-        # expect the frames to be at least 90% of that count.
-        expected_frame_count = (WARMUP_TIME + SLEEP_DURATION) / 10 * 2 * .9
+        # We get two framerate reports every 10 seconds (one per stream).
+        # Expect at least that many frames over the SLEEP_DURATION. We should
+        # get frames during some portion of WARMUP_TIME, so we're being a bit
+        # generous about duration, but the camera startup + call connect can
+        # take a decent chunk of the warmup time.
+        expected_frame_count = SLEEP_DURATION / 10 * 2
 
         l = re.findall(r'Rendered framerate \((.*)\): (\d+\.?\d*) fps', log)
         if len(l) < expected_frame_count:
@@ -106,12 +107,11 @@ class realtimecomm_GTalkPlayground(cros_ui_test.UITest):
 
         try:
             # Launch Playground
-            # Though we are using talk.google.com, this will be redirected
-            # to localhost, via DNS redirection
-            session = cros_ui.ChromeSession(
-                'http://talk.google.com/'
-                'buzz/javascript/media/examples/'
-                'videoplayground.html?callType=v')
+            pyauto_timeout_changer = self.pyauto.ActionTimeoutChanger(
+                self.pyauto, 10000)
+            # This will be redirected to localhost, via DNS redirection
+            self.pyauto.NavigateToURL('http://fake.corp.google.com/?callType=v')
+            del pyauto_timeout_changer
 
             # Collect ctime,stime for GoogleTalkPlugin
             time.sleep(WARMUP_TIME)

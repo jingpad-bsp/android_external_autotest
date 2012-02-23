@@ -72,7 +72,7 @@ def setup_playground(src, dst, optionfile):
     utils.run('chown chronos %s -R' % dst)
 
     dst_path = constants.CRYPTOHOME_MOUNT_PT
-    opt_path = os.path.join(dst_path, 'google-googletalkplugin')
+    opt_path = os.path.join(dst_path, '.config/google-googletalkplugin')
     dst_opt = os.path.join(opt_path, 'options')
     utils.run('mkdir -p \'%s\'' % opt_path)
     utils.run('cp -f %s \'%s\'' % (optionfile, dst_opt))

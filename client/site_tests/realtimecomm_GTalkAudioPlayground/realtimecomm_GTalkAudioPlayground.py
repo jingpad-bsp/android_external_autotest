@@ -6,7 +6,7 @@ import os, re, shutil, sys, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
+from autotest_lib.client.cros import cros_ui_test, httpd
 
 WARMUP_TIME = 30
 SLEEP_DURATION = 90
@@ -63,12 +63,11 @@ class realtimecomm_GTalkAudioPlayground(cros_ui_test.UITest):
 
         try:
             # Launch Playground
-            # Though we are using talk.google.com, this will be redirected
-            # to localhost, via DNS redirection
-            session = cros_ui.ChromeSession(
-                'http://talk.google.com/'
-                'buzz/javascript/media/examples/'
-                'videoplayground.html?callType=a')
+            pyauto_timeout_changer = self.pyauto.ActionTimeoutChanger(
+                self.pyauto, 10000)
+            # This will be redirected to localhost, via DNS redirection
+            self.pyauto.NavigateToURL('http://fake.corp.google.com/?callType=a')
+            del pyauto_timeout_changer
 
             # Collect ctime,stime for GoogleTalkPlugin
             time.sleep(WARMUP_TIME)
