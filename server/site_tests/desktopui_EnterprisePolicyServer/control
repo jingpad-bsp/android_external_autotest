@@ -30,6 +30,8 @@ TESTS = [
     ('test_qa_enterprise_operations_user', {}),
     ('test_qa_device_policies', {'enroll': True}),
     ('test_prod_device_policies', {'prod': True, 'enroll': True}),
+    ('test_enroll_unmanaged_domain', {'prod': True, 'enroll': True}),
+    ('test_enroll_bad_credential', {'prod': True, 'enroll': True}),
 ]
 
 

@@ -59,6 +59,7 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
 
 
     def _test_user_policies(self, user):
+        """Login, fetch and verify mandatory user policies."""
         # Login and verify.
         credentials = self.pyauto.GetPrivateInfo()[user]
         self.login(credentials['username'], credentials['password'])
@@ -117,7 +118,44 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
         self._test_user_policies('test_enterprise_operations_user')
 
 
-    def test_device_policies(self, user):
+    def test_enroll_unmanaged_domain(self):
+        """Test that enrollment fails with an unmanaged account."""
+        import pyauto_errors
+
+        credentials = self.pyauto.GetPrivateInfo()[
+            'test_enterprise_disabled_domain']
+
+        try:
+            self.pyauto.EnrollEnterpriseDevice(credentials['username'],
+                                               credentials['password'])
+        except pyauto_errors.JSONInterfaceError:
+            pass
+
+        if self.pyauto.IsEnterpriseDevice():
+            raise error.TestFail('Device was enrolled with an unmanaged domain')
+
+
+    def test_enroll_bad_credential(self):
+        """Test that enrollment fails with an invalid credential."""
+        import pyauto_errors
+
+        credentials = self.pyauto.GetPrivateInfo()[
+            'test_enterprise_executive_user']
+
+        try:
+            self.pyauto.EnrollEnterpriseDevice(credentials['username'],
+                                               'BogusPassword')
+        except pyauto_errors.JSONInterfaceError:
+            pass
+
+        if self.pyauto.IsEnterpriseDevice():
+            raise error.TestFail('Device was enrolled with an invalid'
+                                 'credential.')
+
+
+    def _test_device_policies(self, user):
+        """Enroll the device, login, fetch and verify mandatory device policies.
+        """
         # Enroll the device and verify.
         credentials = self.pyauto.GetPrivateInfo()[user]
         try:
@@ -148,8 +186,8 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
 
 
     def test_qa_device_policies(self):
-        self.test_device_policies('test_enterprise_executive_user')
+        self._test_device_policies('test_enterprise_executive_user')
 
 
     def test_prod_device_policies(self):
-        self.test_device_policies('prod_enterprise_executive_user')
+        self._test_device_policies('prod_enterprise_executive_user')
