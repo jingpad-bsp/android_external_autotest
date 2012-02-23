@@ -30,7 +30,6 @@ messagebus:x:201:
 syslog:x:202:
 ntp:x:203:
 sshd:x:204:
-pulse:x:205:
 polkituser:x:206:
 tss:x:207:
 pkcs11:x:208:root,ipsec,chronos

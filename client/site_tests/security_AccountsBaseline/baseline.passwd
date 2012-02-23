@@ -17,7 +17,6 @@ messagebus:*:201:201::/dev/null:/bin/false
 syslog:*:202:202::/dev/null:/bin/false
 ntp:*:203:203::/dev/null:/bin/false
 sshd:*:204:204::/dev/null:/bin/false
-pulse:*:205:205::/dev/null:/bin/false
 polkituser:*:206:206::/dev/null:/bin/false
 tss:*:207:207::/dev/null:/bin/false
 pkcs11:*:208:208::/dev/null:/bin/false
