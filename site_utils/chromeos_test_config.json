@@ -36,9 +36,9 @@
         },
 
         "x86-alex-r17": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-alex",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R17-1412.*.0*",
+            "build_pattern": "R17-1412.205*.0*",
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
@@ -102,7 +102,7 @@
         },
 
         "x86-zgb-r17": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-zgb",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R17-1412.*.0*",
             "platforms": [
@@ -154,7 +154,7 @@
         },
 
         "x86-mario-r17": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-mario",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-mario",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
             "build_pattern": "R17-1412.*.0*",
             "platforms": [
@@ -228,7 +228,7 @@
         },
 
         "lumpy-r17": {
-            "archive_server": "gs://chromeos-releases/beta-channel/lumpy",
+            "archive_server": "gs://chromeos-releases/stable-channel/lumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
             "build_pattern": "R17-1412.*.0*",
             "platforms": [
