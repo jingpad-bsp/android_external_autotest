@@ -31,7 +31,7 @@ class security_DbusMap(test.test):
         # As derived from dbus-daemon(1) manpage
         if policy.getAttribute('context') == 'default':
             return 0
-        if policy.getAttribute('goup') != '':
+        if policy.getAttribute('group') != '':
             return 1
         if policy.getAttribute('user') != '':
             return 2
