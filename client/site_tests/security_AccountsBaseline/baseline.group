@@ -13,7 +13,7 @@ floppy::11:root
 news::13:news
 uucp::14:uucp
 console::17:
-audio::18:chronos
+audio::18:chronos,cras
 cdrom::19:
 tape::26:root
 video::27:root,chronos
@@ -43,6 +43,7 @@ tcpdump:x:215:
 debugd:x:216:
 openvpn:x:217:
 bluetooth:x:218:
+cras:x:220:chronos
 wpa:x:219:root
 ntfs-3g:x:300:
 avfs:x:301:

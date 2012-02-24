@@ -31,5 +31,6 @@ debugd:*:216:216::/dev/null:/bin/false
 openvpn:*:217:217::/dev/null:/bin/false
 bluetooth:*:218:218::/dev/null:/bin/false
 wpa:*:219:219::/dev/null:/bin/false
+cras:*:220:220::/dev/null:/bin/false
 ntfs-3g:*:300:300::/dev/null:/bin/false
 avfs:*:301:301::/dev/null:/bin/false
