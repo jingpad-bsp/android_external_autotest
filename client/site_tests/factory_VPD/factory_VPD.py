@@ -12,6 +12,9 @@ import gobject
 import gtk
 from gtk import gdk
 
+import serial_task
+import region_task
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.cros import factory
@@ -19,8 +22,10 @@ from autotest_lib.client.cros.factory import shopfloor
 from autotest_lib.client.cros.factory import ui as ful
 
 
+_MESSAGE_PREPARE_VPD = "Preparing VPD..."
+
 class factory_VPD(test.test):
-    version = 1
+    version = 2
 
     def write_vpd(self, vpd):
         """Writes a VPD structure into system.
@@ -48,14 +53,15 @@ class factory_VPD(test.test):
                 parameter = format_vpd_parameter(vpd[vpd_type])
                 shell('vpd -i %s %s' % (section, parameter))
 
-    def shop_floor_thread(self):
-        """Task thread for writing VPD by shop floor system."""
+    def worker_thread(self, vpd):
+        """Task thread for writing VPD."""
         def update_label(text):
-            with gtk.gdk.lock:
+            with ful.gtk_lock:
                 self.label.set_text(text)
         try:
-            update_label("Fetching VPD information...")
-            vpd = shopfloor.get_vpd()
+            if vpd is None:
+                update_label("Fetching VPD information...")
+                vpd = shopfloor.get_vpd()
 
             # Flatten key-values in VPD dictionary.
             vpd_list = []
@@ -67,21 +73,46 @@ class factory_VPD(test.test):
             self.write_vpd(vpd)
         except:
             self._fail_msg = "Failed writing VPD: %s" % sys.exc_info()[1]
-            logging.exception("Exception when writing VPD by shop floor")
+            logging.exception("Exception when writing VPD")
         finally:
             gobject.idle_add(gtk.main_quit)
 
     def run_shop_floor(self):
         """Runs with shop floor system."""
-        self.label = ful.make_label('Preparing VPD...')
-        test_widget = self.label
-        thread.start_new_thread(self.shop_floor_thread, ())
-        ful.run_test_widget(self.job, test_widget)
+        self.label = ful.make_label(_MESSAGE_PREPARE_VPD)
+        thread.start_new_thread(self.worker_thread, (None, ))
+        ful.run_test_widget(self.job, self.label)
+
+    def stop_task(self, task):
+        factory.log("Stopping task: %s" % task.__class__.__name__)
+        self.tasks.remove(task)
+        self.find_next_task()
+
+    def find_next_task(self):
+        if self.tasks:
+            task = self.tasks[0]
+            factory.log("Starting task: %s" % task.__class__.__name__)
+            task.start(self.window, self.container, self.stop_task)
+        else:
+            # No more tasks - try to write into VPD.
+            self.label = ful.make_label(_MESSAGE_PREPARE_VPD)
+            self.container.add(self.label)
+            self.container.show_all()
+            thread.start_new_thread(self.worker_thread, (self.vpd, ))
 
     def run_interactively(self):
         """Runs interactively (without shop floor system)."""
-        # TODO(hungte) A complete user interface to select VPD values.
-        self._fail_msg = "Interactive mode VPD writing is not implemented yet."
+        def register_window(window):
+            self.window = window
+            self.find_next_task()
+            return True
+        self.vpd = {'ro': {}, 'rw': {}}
+        self.container = gtk.VBox()
+        self.tasks = [serial_task.SerialNumberTask(self.vpd),
+                      region_task.SelectRegionTask(self.vpd)]
+        ful.run_test_widget(self.job, self.container,
+                            window_registration_callback=register_window)
+
 
     def run_once(self):
         factory.log('%s run_once' % self.__class__)

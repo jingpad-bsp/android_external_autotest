@@ -1,30 +1,17 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-
-# DESCRIPTION :
-#
-# Select the region information (locale, keyboard layout, timezone), and
-# write to VPD.
-
+"""Factory task to select region info (locale, keyboard layout, timezone)."""
 
 import gtk
-import pango
-import sys
-import utils
-
-from gtk import gdk
-
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import ui as ful
 
 # References
-# - Keyboard: http://git.chromium.org/gitweb/?p=chromiumos/platform/assets.git;a=blob;f=input_methods/whitelist.txt;hb=HEAD
-# - Locale: http://google.com/codesearch/p?#OAMlx_jo-ck/src/ui/base/l10n/l10n_util.cc&q=kAcceptLanguageList
-# - Time Zone: http://google.com/codesearch/p?#OAMlx_jo-ck/src/chrome/browser/ui/webui/options/chromeos/system_settings_provider.cc&q=kTimeZones
+# - Keyboard: http://gerrit.chromium.org/gerrit/gitweb?p=chromium/src.git;a=blob;f=chrome/browser/chromeos/input_method/ibus_input_methods.txt
+# - Locale: http://git.chromium.org/gitweb/?p=chromium.git;a=blob;f=ui/base/l10n/l10n_util.cc
+# - Time Zone: http://git.chromium.org/gitweb/?p=chromium.git;a=blob;f=chrome/browser/chromeos/dom_ui/system_settings_provider.cc
 #              http://google.com/codesearch/p?#uX1GffpyOZk/core/tests/coretests/src/android/util/TimeUtilsTest.java
 #              http://en.wikipedia.org/wiki/List_of_time_zones_by_UTC_offset
 
@@ -395,23 +382,70 @@ def build_region_information(region_data):
                 "Unknown timezone: %s" % repr(data))
     return (locale, layout, timezone, description)
 
-class factory_SelectRegion(test.test):
-    version = 1
+
+class SelectRegionTask(object):
+
     SELECTION_PER_PAGE = 10
 
-    def write_vpd(self, entry):
-        assert len(entry) == 3, "Invalid entry for writing VPD"
-        cmd = ('vpd -i RO_VPD '
-               '-s "initial_locale"="%s" '
-               '-s "keyboard_layout"="%s" '
-               '-s "initial_timezone"="%s" '
-               % entry[:3])
-        utils.system_output(cmd)
+    def __init__(self, vpd, regions=None):
+        self.vpd = vpd
+        self.regions = regions
 
-    def key_release_callback(self, widget, event):
-        if self.writing:
-            return True
+    def save_vpd(self, initial_locale, keyboard_layout, initial_timezone):
+        """Saves VPD parameters into self.vpd structure."""
+        self.vpd['ro']['initial_locale'] = initial_locale
+        self.vpd['ro']['keyboard_layout'] = keyboard_layout
+        self.vpd['ro']['initial_timezone'] = initial_timezone
 
+    def render_page(self):
+        # TODO(hungte) rewrite by GTKList.
+        msg = 'Select region information:\n'
+        start = self.page_index * self.SELECTION_PER_PAGE
+        end = start + self.SELECTION_PER_PAGE
+        for index, region in enumerate(self.region_list[start:end]):
+            msg += '%s) %s\n\t(%s %s %s)\n' % ((index, region[3]) + region[:3])
+        if self.pages > 1:
+            msg += '[Page %d / %d, navigate with arrow keys]' % (
+                    self.page_index + 1, self.pages)
+        self.label.set_text(msg)
+
+    def start(self, window, container, on_stop):
+        self.on_stop = on_stop
+        self.container = container
+
+        self.page_index = 0
+        self.pages = 0
+
+        if self.regions is None:
+            self.regions = DEFAULT_REGION_LIST
+        self.region_list = [build_region_information(entry) if entry[0]
+                            else ('', 'Skip', '', 'None')
+                            for entry in self.regions]
+        self.pages = len(self.region_list) / self.SELECTION_PER_PAGE
+        if len(self.region_list) % self.SELECTION_PER_PAGE:
+            self.pages += 1
+
+        self.label = ful.make_label('')
+        widget = gtk.EventBox()
+        widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
+        widget.add(self.label)
+        self.render_page()
+
+        self.callback = (window, window.connect('key-press-event',
+                                                self.key_press_callback))
+        window.add_events(gtk.gdk.KEY_PRESS_MASK)
+
+        self.widget = widget
+        container.add(widget)
+        container.show_all()
+
+    def stop(self):
+        (window, callback_id) = self.callback
+        window.disconnect(callback_id)
+        self.container.remove(self.widget)
+        self.on_stop(self)
+
+    def key_press_callback(self, widget, event):
         # Process page navigation
         KEY_PREV = [65361, 65362]  # Left, Up
         KEY_NEXT = [65363, 65364]  # Right, Down
@@ -427,7 +461,7 @@ class factory_SelectRegion(test.test):
             return True
 
         char = chr(event.keyval) if event.keyval in range(32,127) else  None
-        factory.log('key_release %s(%s)' % (event.keyval, char))
+        factory.log('key_press %s(%s)' % (event.keyval, char))
         try:
             select = int(char)
         except ValueError:
@@ -441,54 +475,5 @@ class factory_SelectRegion(test.test):
 
         data = self.region_list[select]
         if data[0]:
-            factory.log('Selected: %s' % ', '.join(data))
-            self.label.set_text('Writing keyboard layout:\n<%s: %s %s %s>\n'
-                                'Please wait... (may take >10s)' %
-                                ((data[3],) + data[:3]))
-            self.writing = True
-            gtk.main_iteration(False)  # try to update screen
-            self.write_vpd(data[:3])
-        gtk.main_quit()
-        return True
-
-    def register_callbacks(self, window):
-        window.connect('key-release-event', self.key_release_callback)
-        window.add_events(gdk.KEY_RELEASE_MASK)
-
-    def render_page(self):
-        msg = 'Choose a keyboard:\n'
-        start = self.page_index * self.SELECTION_PER_PAGE
-        end = start + self.SELECTION_PER_PAGE
-        for index, region in enumerate(self.region_list[start:end]):
-            msg += '%s) %s\n\t(%s %s %s)\n' % ((index, region[3]) + region[:3])
-        if self.pages > 1:
-            msg += '[Page %d / %d, navigate with arrow keys]' % (
-                    self.page_index + 1, self.pages)
-        self.label.set_text(msg)
-
-    def run_once(self, region_list=None):
-
-        factory.log('%s run_once' % self.__class__)
-        self.page_index = 0
-        self.pages = 0
-        self.writing = False
-
-        if region_list is None:
-            region_list = DEFAULT_REGION_LIST
-        self.region_list = [build_region_information(entry) if entry[0]
-                            else ('', 'Skip', '', 'None')
-                            for entry in region_list]
-        self.pages = len(self.region_list) / self.SELECTION_PER_PAGE
-        if len(self.region_list) % self.SELECTION_PER_PAGE:
-            self.pages += 1
-
-        self.label = ful.make_label('')
-        test_widget = gtk.EventBox()
-        test_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        test_widget.add(self.label)
-        self.render_page()
-
-        ful.run_test_widget(self.job, test_widget,
-            window_registration_callback=self.register_callbacks)
-
-        factory.log('%s run_once finished' % repr(self.__class__))
+            self.save_vpd(*data[:3])
+        self.stop()
