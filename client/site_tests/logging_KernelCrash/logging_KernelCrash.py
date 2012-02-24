@@ -30,9 +30,12 @@ class logging_KernelCrash(crash_test.CrashTest):
 
 
     def _is_signature_match(self, signature):
-        return (re.match(r'kernel-write_breakme-[0-9A-F]{8}$', signature) is
-                not None)
+        return (re.match(r'kernel-(write_breakme|breakme_do_bug)-[0-9A-F]{8}$',
+                         signature) is not None)
 
+    def _is_handled_reason(self, reason):
+        return (re.match(r'(handling|developer build - always dumping)$',
+                         reason) is not None)
 
     def _test_reporter_kcrash_storage(self):
         """Test that crash_reporter has properly stored the kcrash report."""
@@ -42,6 +45,9 @@ class logging_KernelCrash(crash_test.CrashTest):
 
         if not announce_match:
             raise error.TestFail('Could not find kernel crash announcement')
+
+        logging.info('Signature: [%s]' % (announce_match.group(1)))
+        logging.info('Reason: [%s]' % (announce_match.group(2)))
 
         if not self._is_signature_match(announce_match.group(1)):
             raise error.TestFail(
@@ -54,13 +60,15 @@ class logging_KernelCrash(crash_test.CrashTest):
             if kcrash_report is None:
                 raise error.TestFail(
                     'Could not find message with kcrash filename')
-            if announce_match.group(2) != 'handling':
-                raise error.TestFail('Did not announce handling of kcrash')
+            if not self._is_handled_reason(announce_match.group(2)):
+                raise error.TestFail('Did not announce handling of kcrash ' \
+                                     '(%s)' % (announce_match.group(2)))
         else:
             if kcrash_report is not None:
                 raise error.TestFail('Should not have found kcrash filename')
             if announce_match.group(2) != 'ignoring - no consent':
-                raise error.TestFail('Did not announce ignoring of kcrash')
+                raise error.TestFail('Did not announce ignoring of kcrash ' \
+                                     '(%s)' % (announce_match.group(2)))
             return
 
         if not os.path.exists(kcrash_report):
@@ -78,13 +86,17 @@ class logging_KernelCrash(crash_test.CrashTest):
         kcrash_report = self._get_kcrash_name()
         if not os.path.exists(kcrash_report):
             raise error.TestFail('Crash report %s gone' % kcrash_report)
+        # TODO(keescook): Remove once mosys crash is fixed (crosbug.com/26876).
+        utils.system('rm /var/spool/crash/mosys.*', ignore_status=True)
         result = self._call_sender_one_crash(
             report=os.path.basename(kcrash_report))
         if (not result['send_attempt'] or not result['send_success'] or
             result['report_exists']):
             raise error.TestFail('kcrash not sent properly')
         if result['exec_name'] != 'kernel' or result['report_kind'] != 'kcrash':
-            raise error.TestFail('kcrash exec name or report kind wrong')
+            raise error.TestFail('kcrash exec name or report kind wrong ' \
+                                 '(exec_name: [%s] report_kind: [%s]' %
+                                 (result['exec_name'], result['report_kind']))
         if result['report_payload'] != kcrash_report:
             raise error.TestFail('Sent the wrong kcrash report')
         if not self._is_signature_match(result['sig']):

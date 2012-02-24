@@ -64,9 +64,17 @@ class logging_KernelCrashServer(test.test):
         does not exist.  Therefore, we cannot guarantee that
         crash-reporter.conf will start with the file gone if we
         removed it before causing a crash.
+
+        Presence of /root/.leave_core causes crash_reporter to always
+        handle crashes, so consent cannot be disabled in this case too.
         """
-        status = self._host.run('[ -r /etc/send_metrics ]', ignore_status=True)
-        return status.exit_status != 0
+        always_regen = self._host.run('[ -r /etc/send_metrics ]',
+                                      ignore_status=True).exit_status == 0
+        is_devimg = self._host.run('[ -r /root/.leave_core ]',
+                                   ignore_status=True).exit_status == 0
+        logging.info('always_regen: %d' % (always_regen))
+        logging.info('is_devimg: %d' % (is_devimg))
+        return not (always_regen or is_devimg)
 
 
     def _crash_it(self, consent):
