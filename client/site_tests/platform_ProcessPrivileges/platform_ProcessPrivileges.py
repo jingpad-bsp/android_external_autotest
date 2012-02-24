@@ -90,7 +90,7 @@ class platform_ProcessPrivileges(cros_ui_test.UITest):
         self.check_process('powerd')
         self.check_process('rsyslogd', user='root')
         self.check_process('udevd', user='root')
-        self.check_process('wpa_supplicant', user='root')
+        self.check_process('wpa_supplicant', user='wpa')
         self.check_process('X', user='root')
 
         if len(self._failed) != 0:
