@@ -22,10 +22,13 @@
                               "/tmp/hostapd_eap_user_file" :
                                 """* TTLS
 "testuser-chapv2" MSCHAPV2 "password" [2]
-"testuser-md5" MD5 "password" [2]""" } } ],
+"testuser-md5" MD5 "password" [2]
+"testuser-tchapv2" TTLS-MSCHAPV2 "password" [2]
+"testuser-tchap" TTLS-MSCHAP "password" [2]
+"testuser-tpap" TTLS-PAP "password" [2]""" } } ],
     [ "config",         { "channel":"2412", "mode":"11g",
                           "wpa":"1", "wpa_key_mgmt":"WPA-EAP",
-			  "eap_server" : "1",
+                           "eap_server" : "1",
                           "wpa_pairwise":"CCMP", "ieee8021x":"1",
                           "ca_cert" : "/tmp/hostapd_ca_cert",
                           "server_cert" : "/tmp/hostapd_server_cert",
@@ -39,7 +42,7 @@
                                 site_eap_certs.ca_cert_2} } ],
     [ "connect",        { "security":"802_1x",
                           "psk" : "EAP.Identity:testuser-chapv2"
-			  ":EAP.Password:password"
+                          ":EAP.Password:password"
                           ":EAP.CACert:/tmp/ca-cert.pem"} ],
     [ "client_ping",    { "count":"10" } ],
 
@@ -71,8 +74,27 @@
                             "psk" : "EAP.Identity:testuser-chapv2"
                             ":EAP.Password:password"
                             ":EAP.CACert:/tmp/ca-cert-other.pem"} ],
+    ]
 
+    # Create a template for the rest of our attempts at EAP-TTLS types
+    + reduce(lambda x,y: x+y, map(list, zip(
+      [ [ "restart_supplicant" ] ] * 3,
+      list([ "config",         { "ssid_suffix": "t" + suffix } ]
+        for suffix in map(str, range(4,7))),
+      list([ "connect",   { "security":"802_1x",
+                            "psk" : "EAP.Identity:" + user +
+                            ":EAP.Password:" + password +
+                            ":EAP.CACert:/tmp/ca-cert.pem" +
+                            ":EAP.InnerEAP:" + auth } ]
+        for user, password, auth in [
+          # This is the list of authentication attempts to perform
+          ("testuser-tchapv2", "password", "auth=MSCHAPV2" ),
+          ("testuser-tchap", "password", "auth=MSCHAP"),
+          ("testuser-tpap", "password", "auth=PAP")
+        ]),
+      [ [ "client_ping",    { "count":"10" } ] ] * 3,
+      [ [ "disconnect" ] ] * 3
+    ))) +
 
-    [ "destroy" ],
-  ],
+    [ [ "destroy" ] ],
 }
