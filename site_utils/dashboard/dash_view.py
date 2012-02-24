@@ -1112,6 +1112,8 @@ class AutotestDashView(object):
           continue
         if suffix.startswith('kernel_'):
           suffix = KERNELTEST_TAG
+        elif suffix.startswith('enroll_'):
+          suffix = 'enterprise'
         if (self._dash_config and
             'blacklistboards' in self._dash_config and
             board in self._dash_config['blacklistboards']):
@@ -1136,6 +1138,8 @@ class AutotestDashView(object):
         board, full_build, suffix = self.ParseJobName(name)
         if suffix.startswith('kernel_'):
           suffix = KERNELTEST_TAG
+        elif suffix.startswith('enroll_'):
+          suffix = 'enterprise'
         tracking_name = "%s-%s" % (board, full_build)
         if suffix in jobname_to_jobid[tracking_name]:
           for str_job_id in jobname_to_jobid[tracking_name][suffix]:
@@ -1175,6 +1179,8 @@ class AutotestDashView(object):
         ui_categories = self._ui_categories[netbook].setdefault(board, set())
         if job_suffix.startswith('kernel_'):
           job_suffix = KERNELTEST_TAG
+        elif job_suffix.startswith('enroll_'):
+          job_suffix = 'enterprise'
         if job_suffix in SUFFIXES_TO_SHOW:
           ui_categories.add(job_suffix)
         if job_suffix in GTEST_SUFFIXES:
