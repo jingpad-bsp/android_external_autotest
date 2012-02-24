@@ -29,6 +29,7 @@ class Servo:
     NORMAL_TRANSITION_DELAY = 1.2
     # Maximum number of times to re-read power button on release.
     RELEASE_RETRY_MAX = 5
+    GET_RETRY_MAX = 10
 
     # Delays to deal with computer transitions.
     SLEEP_DELAY = 6
@@ -275,8 +276,15 @@ class Servo:
     def set(self, gpio_name, gpio_value):
         """Set and check the value of a gpio using Servod."""
         self.set_nocheck(gpio_name, gpio_value)
-        assert gpio_value == self.get(gpio_name), \
-            'Servo failed to set %s to %s' % (gpio_name, gpio_value)
+        retry_count = Servo.GET_RETRY_MAX
+        while gpio_value != self.get(gpio_name) and retry_count:
+            logging.warn("%s != %s, retry %d", gpio_name, gpio_value,
+                         retry_count)
+            retry_count -= 1
+            time.sleep(Servo.SHORT_DELAY)
+        if not retry_count:
+            assert gpio_value == self.get(gpio_name), \
+                'Servo failed to set %s to %s' % (gpio_name, gpio_value)
 
 
     def set_nocheck(self, gpio_name, gpio_value):
