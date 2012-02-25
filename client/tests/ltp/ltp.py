@@ -1,6 +1,14 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import logging
 import os
 from autotest_lib.client.bin import utils, test
 from autotest_lib.client.common_lib import error
+
+import parse_ltp_out
+
 
 class ltp(test.test):
     version = 6
@@ -23,32 +31,33 @@ class ltp(test.test):
         self.job.require_gcc()
 
 
-    # http://prdownloads.sourceforge.net/ltp/ltp-full-20091231.tgz
-    def setup(self, tarball = 'ltp-full-20091231.tar.bz2'):
+    # http://sourceforge.net/projects/ltp/files/LTP%20Source/ltp-20120104/
+    #        ltp-full-20120104.bz2
+    def setup(self, tarball = 'ltp-full-20120104.bz2'):
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
         os.chdir(self.srcdir)
         ltpbin_dir = os.path.join(self.srcdir, 'bin')
         os.mkdir(ltpbin_dir)
 
-        utils.system('patch -p1 < ../ltp.patch')
-
-        # comment the capability tests if we fail to load the capability module
-        try:
-            utils.system('modprobe capability')
-        except error.CmdError, detail:
-            utils.system('patch -p1 < ../ltp_capability.patch')
-
-        utils.system('cp ../scan.c pan/')   # saves having lex installed
         utils.make('autotools')
         utils.configure('--prefix=%s' % ltpbin_dir)
         utils.make('-j %d all' % utils.count_cpus())
         utils.system('yes n | make SKIP_IDCHECK=1 install')
 
 
-    # Note: to run a specific test, try '-f cmdfile -s test' in the
-    # in the args (-f for test file and -s for the test case)
-    # eg, job.run_test('ltp', '-f math -s float_bessel')
+    # Note: to run specific test(s), runltp supports an option (-f)
+    #       to specify a custom 'scenario group' which is a comma-separated
+    #       list of cmdfiles and/or an option (-s) to specify a grep match
+    #       pattern for individual test names.
+    # e.g. -for all tests in math cmdfile:
+    #       job.run_test('ltp', '-f math')
+    #      -for just the float_bessel test in the math cmdfile:
+    #       job.run_test('ltp', '-f math -s float_bessel')
+    #      -for the math and memory management cmdfiles:
+    #       job.run_test('ltp', '-f math,mm')
+    # Note: the site_excluded file lists individual test tags for tests
+    #       to exclude (see the comment at the top of site_excluded).
     def run_once(self, args = '', script = 'runltp', ignore_tests=[]):
 
         ignore_tests = ignore_tests + self.site_ignore_tests
@@ -59,7 +68,7 @@ class ltp(test.test):
             outfile = os.path.join(self.resultsdir, 'ltp.out')
             failcmdfile = os.path.join(self.debugdir, 'failcmdfile')
             excludecmdfile = os.path.join(self.bindir, 'site_excluded')
-            args2 = '-q -l %s -C %s -d %s -o %s -S %s' % (logfile, failcmdfile,
+            args2 = '-p -l %s -C %s -d %s -o %s -S %s' % (logfile, failcmdfile,
                                                           self.tmpdir, outfile,
                                                           excludecmdfile)
             args = args + ' ' + args2
@@ -68,7 +77,16 @@ class ltp(test.test):
         cmd = os.path.join(ltpbin_dir, script) + ' ' + args
         result = utils.run(cmd, ignore_status=True)
 
-        # look for if there is any failed test command.
-        failed_cmd = open(failcmdfile).read()
+        if script == 'runltp':
+            parse_ltp_out.summarize(outfile)
+
+        # look for any failed test command.
+        try:
+            f = open(failcmdfile)
+        except IOError:
+            logging.warning('Expected to find failcmdfile but did not.')
+            return
+        failed_cmd = f.read().strip()
+        f.close()
         if failed_cmd:
             raise error.TestFail(failed_cmd)
