@@ -1,15 +1,13 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import logging, os, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_logging, cros_ui_test
+from autotest_lib.client.cros import constants, cros_logging, cros_ui_test
 
 _CRASH_PATH = '/sbin/crash_reporter'
-_PENDING_SHUTDOWN_PATH = '/var/lib/crash_reporter/pending_clean_shutdown'
-_UNCLEAN_SHUTDOWN_DETECTED_PATH = '/tmp/unclean-shutdown-detected'
 _UNCLEAN_SHUTDOWN_MESSAGE = 'Last shutdown was not clean'
 
 class logging_UncleanShutdown(cros_ui_test.UITest):
@@ -18,9 +16,9 @@ class logging_UncleanShutdown(cros_ui_test.UITest):
 
 
     def run_once(self):
-        if not os.path.exists(_PENDING_SHUTDOWN_PATH):
+        if not os.path.exists(constants.PENDING_SHUTDOWN_PATH):
             raise error.TestFail('pending shutdown file, %s, not found' %
-                                 _PENDING_SHUTDOWN_PATH)
+                                 constants.PENDING_SHUTDOWN_PATH)
 
         log_reader = cros_logging.LogReader()
         log_reader.set_start_by_reboot(-1)
@@ -29,7 +27,7 @@ class logging_UncleanShutdown(cros_ui_test.UITest):
             raise error.TestFail(
                 'Unexpectedly detected unclean shutdown during boot')
 
-        if os.path.exists(_UNCLEAN_SHUTDOWN_DETECTED_PATH):
+        if os.path.exists(constants.UNCLEAN_SHUTDOWN_DETECTED_PATH):
             raise error.TestFail('an unclean shutdown file was detected')
 
         # Log in and out twice to make sure that doesn't cause
@@ -45,7 +43,7 @@ class logging_UncleanShutdown(cros_ui_test.UITest):
             raise error.TestFail(
                 'Unexpectedly detected kernel crash during login/logout')
 
-        if os.path.exists(_UNCLEAN_SHUTDOWN_DETECTED_PATH):
+        if os.path.exists(constants.UNCLEAN_SHUTDOWN_DETECTED_PATH):
             raise error.TestFail('an unclean shutdown file was generated')
 
         # Run the shutdown and verify it does not complain of unclean
@@ -56,7 +54,7 @@ class logging_UncleanShutdown(cros_ui_test.UITest):
         utils.system('%s --init' % _CRASH_PATH)
 
         if (log_reader.can_find(_UNCLEAN_SHUTDOWN_MESSAGE) or
-            os.path.exists(_UNCLEAN_SHUTDOWN_DETECTED_PATH)):
+            os.path.exists(constants.UNCLEAN_SHUTDOWN_DETECTED_PATH)):
             raise error.TestFail('Incorrectly signalled unclean shutdown')
 
         # Now simulate an unclean shutdown and test handling.
@@ -67,7 +65,7 @@ class logging_UncleanShutdown(cros_ui_test.UITest):
         if not log_reader.can_find(_UNCLEAN_SHUTDOWN_MESSAGE):
             raise error.TestFail('Did not signal unclean shutdown when should')
 
-        if not os.path.exists(_UNCLEAN_SHUTDOWN_DETECTED_PATH):
+        if not os.path.exists(constants.UNCLEAN_SHUTDOWN_DETECTED_PATH):
             raise error.TestFail('Did not touch unclean shutdown file')
 
-        os.remove(_UNCLEAN_SHUTDOWN_DETECTED_PATH)
+        os.remove(constants.UNCLEAN_SHUTDOWN_DETECTED_PATH)

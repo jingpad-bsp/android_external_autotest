@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -89,6 +89,9 @@ WINDOW_MANAGER = 'chromeos-wm'
 PKCS11_INIT_MAGIC_FILE = '/home/chronos/user/.tpm/.isinitialized'
 
 RESOLV_CONF_FILE = '/etc/resolv.conf'
+
+PENDING_SHUTDOWN_PATH = '/var/lib/crash_reporter/pending_clean_shutdown'
+UNCLEAN_SHUTDOWN_DETECTED_PATH = '/var/run/unclean-shutdown-detected'
 
 FAKE_ROOT_CA_DIR = '/etc/fake_root_ca'
 FAKE_NSSDB_DIR = FAKE_ROOT_CA_DIR + '/nssdb'
