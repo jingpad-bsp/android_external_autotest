@@ -157,6 +157,16 @@
                        "stanleyw@google.com"]}]},
         {
             "platforms": {
+                "netbook_MARIO_MP_enterprise": ["x86-mario-r19"],
+                "netbook_ALEX_enterprise": ["x86-alex-r19"],
+                "netbook_ACER_ZGB_enterprise": ["x86-zgb-r19"]},
+            "filters": [
+                {"categories": ["enterprise"],
+                 "cc": ["chromeos-autotest@google.com",
+                        "frankf@google.com",
+                        "scunningham@google.com"]}]},
+        {
+            "platforms": {
                 "netbook_MARIO_MP_CDMA_GOBI2K": ["x86-mario-r18",
                                                  "x86-mario-r17",
                                                  "x86-mario-r16",
