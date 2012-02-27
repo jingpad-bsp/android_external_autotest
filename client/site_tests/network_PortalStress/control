@@ -18,7 +18,7 @@ CRITERIA = """
     clients3.google.com is accessible or if portal code detects online
     when clients3.google.com is not accessible.
 """
-TIME = 'LARGE'
+TIME = 'LONG'
 TEST_CATEGORY = 'Stress'
 TEST_CLASS = 'network'
 TEST_TYPE = 'client'
