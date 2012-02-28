@@ -16,7 +16,10 @@ dynamic suite infrastructure in server/cros/dynamic_suite.py.
 
 import optparse, time, sys
 import common
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros import frontend_wrappers
+
+CONFIG = global_config.global_config
 
 def parse_options():
     usage = "usage: %prog [options] control_file"
@@ -48,6 +51,19 @@ def status_is_relevant(status):
                 status['test_name'].startswith('CLIENT_JOB'))
 
 
+def generate_log_link(anchor, job_string):
+    """
+    Generate a link to this job's logs, for consumption by buildbot.
+
+    @param anchor: Link anchor text.
+    @param job_id: the job whose logs we'd like to link to.
+    @return A link formatted for the buildbot log annotator.
+    """
+    host = CONFIG.get_config_value('SERVER', 'hostname', type=str)
+    pattern = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
+    return "@@@STEP_LINK@%s@%s@@@" % (anchor, pattern % (host, job_string))
+
+
 def main():
     parser, options, args = parse_options()
     if args or not options.build or not options.board or not options.name:
@@ -69,8 +85,9 @@ def main():
             time.sleep(1)
             continue
         views = filter(status_is_relevant,
-                       TKO.run('get_test_views', afe_job_id=job_id))
+                       TKO.run('get_detailed_test_views', afe_job_id=job_id))
         width = len(max(map(lambda x: x['test_name'], views), key=len)) + 3
+        log_links = []
         for entry in views:
             test_entry = entry['test_name'].ljust(width)
             print "%s%s" % (test_entry, get_pretty_status(entry['status']))
@@ -78,7 +95,14 @@ def main():
                 print "%s  %s: %s" % (test_entry,
                                       entry['status'],
                                       entry['reason'])
+                job_name = entry['test_name'].split('.')[0]
+                if 'job_keyvals' in entry and job_name in entry['job_keyvals']:
+                    log_links.append(
+                        generate_log_link(entry['test_name'],
+                                          entry['job_keyvals'][job_name]))
                 code = 1
+        for link in log_links:
+            print link
         break
     return code
 
