@@ -264,8 +264,8 @@ class Suite(object):
 
 
     @staticmethod
-    def create_from_name(name, build, cf_getter=None,
-                         afe=None, tko=None, pool=None):
+    def create_from_name(name, build, cf_getter=None, afe=None, tko=None,
+                         pool=None, results_dir=None):
         """
         Create a Suite using a predicate based on the SUITE control file var.
 
@@ -282,16 +282,19 @@ class Suite(object):
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
                      purposes.
+        @param results_dir: The directory where the job can write results to.
+                            This must be set if you want job_id of sub-jobs
+                            list in the job keyvals.
         @return a Suite instance.
         """
         if cf_getter is None:
             cf_getter = Suite.create_ds_getter(build)
         return Suite(Suite.name_in_tag_predicate(name),
-                     name, build, cf_getter, afe, tko, pool)
+                     name, build, cf_getter, afe, tko, pool, results_dir)
 
 
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
-                 pool=None):
+                 pool=None, results_dir=None):
         """
         Constructor
 
@@ -305,11 +308,15 @@ class Suite(object):
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
+        @param results_dir: The directory where the job can write results to.
+                            This must be set if you want job_id of sub-jobs
+                            list in the job keyvals.
         """
         self._predicate = predicate
         self._tag = tag
         self._build = build
         self._cf_getter = cf_getter
+        self._results_dir = results_dir
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
@@ -360,7 +367,6 @@ class Suite(object):
         else:
             # No pool specified use any machines with the following label.
             meta_hosts = VERSION_PREFIX + self._build
-
         return self._afe.create_job(
             control_file=test.text,
             name='/'.join([self._build, self._tag, test.name]),
@@ -427,6 +433,18 @@ class Suite(object):
             for test in self.unstable_tests():
                 logging.debug('Scheduling %s', test.name)
                 self._jobs.append(self._create_job(test))
+        if self._results_dir:
+            self._record_scheduled_jobs()
+
+
+    def _record_scheduled_jobs(self):
+        """
+        Record scheduled job ids as keyvals, so they can be referenced later.
+
+        """
+        for job in self._jobs:
+            job_id_owner = '%s-%s' % (job.id, job.owner)
+            utils.write_keyval(self.results_dir, {test.name: job_id_owner})
 
 
     def _status_is_relevant(self, status):

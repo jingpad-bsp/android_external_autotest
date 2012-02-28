@@ -373,6 +373,21 @@ class SuiteTest(mox.MoxTestBase):
         suite.schedule()
 
 
+    def testScheduleTestsAndRecord(self):
+        """Should schedule stable and experimental tests with the AFE."""
+        self.mock_control_file_parsing()
+        self.mox.ReplayAll()
+        suite = dynamic_suite.Suite.create_from_name(self._TAG, self._BUILD,
+                                                     afe=self.afe, tko=self.tko,
+                                                     results_dir=self.tmpdir)
+        self.mox.ResetAll()
+        self.expect_job_scheduling(add_experimental=True)
+        self.mox.StubOutWithMock(suite, '_record_scheduled_jobs')
+        suite._record_scheduled_jobs()
+        self.mox.ReplayAll()
+        suite.schedule()
+
+
     def testScheduleStableTests(self):
         """Should schedule only stable tests with the AFE."""
         self.mock_control_file_parsing()
@@ -400,7 +415,7 @@ class SuiteTest(mox.MoxTestBase):
         """
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
-        suite = dynamic_suite.Suite.create_from_name(self._TAG, self.tmpdir,
+        suite = dynamic_suite.Suite.create_from_name(self._TAG, self._BUILD,
                                                      self.getter, self.afe,
                                                      self.tko)
         self.mox.ResetAll()
