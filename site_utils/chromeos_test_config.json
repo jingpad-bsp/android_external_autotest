@@ -20,25 +20,11 @@
             ]
         },
 
-        "x86-alex-r16": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R16-1193.*",
-            "platforms": [
-                {"platform": "netbook_ALEX", "au_test": true},
-                {"platform": "netbook_ALEX",
-                 "groups": ["desktopui_pyauto_perf"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI2K",
-                 "groups": ["network_3g_gobi"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI3K",
-                 "groups": ["network_3g_gobi"]}
-            ]
-        },
 
         "x86-alex-r17": {
             "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R17-1412.205*.0*",
+            "build_pattern": "R17-1412.*.0*",
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
@@ -90,17 +76,6 @@
             ]
         },
 
-        "x86-zgb-r16": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "R16-1193.*",
-            "platforms": [
-                {"platform": "netbook_ACER_ZGB", "au_test": true},
-                {"platform": "netbook_ACER_ZGB",
-                 "groups": ["desktopui_pyauto_perf"]}
-            ]
-        },
-
         "x86-zgb-r17": {
             "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
@@ -137,19 +112,6 @@
                  "groups": ["network_3g"]},
                 {"platform": "netbook_ACER_ZGB_enterprise",
                  "groups": ["enroll_enterprise"]}
-            ]
-        },
-
-        "x86-mario-r16": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-mario",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
-            "build_pattern": "R16-1193.*",
-            "platforms": [
-                {"platform": "netbook_MARIO_MP", "au_test": true},
-                {"platform": "netbook_MARIO_MP",
-                 "groups": ["desktopui_pyauto_perf"]},
-                {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
-                 "groups": ["network_3g_gobi"]}
             ]
         },
 
