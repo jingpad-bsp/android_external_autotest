@@ -4,7 +4,7 @@ session_manager,root,No,No,No,No,No
 rsyslogd,root,No,No,No,No,No
 dbus-daemon,messagebus,No,No,No,No,No
 powerm,root,No,No,No,No,No
-wpa_supplicant,root,No,No,No,No,No
+wpa_supplicant,wpa,Yes,Yes,No,Yes,No
 flimflamd,root,No,No,No,No,No
 X,root,No,No,No,No,No
 htpdate,ntp,No,No,No,No,No
@@ -12,7 +12,6 @@ cashewd,cashew,Yes,Yes,No,No,No
 chapsd,root,No,No,No,No,No
 cryptohomed,root,No,No,No,No,No
 powerd,chronos,Yes,No,No,No,No
-chromeos-wm,chronos,No,No,No,No,No
 modem-manager,root,No,No,No,No,No
 gavd,root,No,No,No,No,No
 dhcpcd,root,No,No,No,No,No

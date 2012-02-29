@@ -4,6 +4,7 @@ autotestd
 autotestd_monit
 bash
 chrome
+chrome-sandbox
 endpoint
 init
 nacl_helper_boo
