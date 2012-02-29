@@ -444,7 +444,7 @@ class Suite(object):
         """
         for job in self._jobs:
             job_id_owner = '%s-%s' % (job.id, job.owner)
-            utils.write_keyval(self.results_dir, {test.name: job_id_owner})
+            utils.write_keyval(self._results_dir, {test.name: job_id_owner})
 
 
     def _status_is_relevant(self, status):
