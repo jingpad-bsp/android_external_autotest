@@ -1,8 +1,9 @@
-# Copyright (c) 2011 The Chromium Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import dbus
+import logging
 import os
 import pwd
 import shutil
@@ -10,6 +11,7 @@ import subprocess
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros import constants, chrome_test, cros_ui, login
+from autotest_lib.client.cros import ownership
 
 
 class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
@@ -58,6 +60,13 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
             open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
         assert os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
 
+        # The UI must be taken down to ensure that no stale state persists.
+        cros_ui.stop()
+        # Clear ownership before login.
+        ownership.clear_ownership()
+        cros_ui.start(wait_for_login_prompt=False)
+
+
     def run_once(self, suite=None, tests=None,
                  as_chronos=True, auto_login=True):
         """Run pyauto functional tests.
@@ -86,6 +95,10 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
             print 'Login cmd', login_cmd
             utils.system(login_cmd)
 
+        # Create fake owner.
+        logging.info('Faking ownership...')
+        cros_ui.fake_ownership()
+
         # Run tests.
         functional_cmd = 'python %s/chrome_test/test_src/' \
             'chrome/test/functional/pyauto_functional.py -v ' % deps_dir
@@ -100,3 +113,8 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
             launch_cmd = cros_ui.xcommand(functional_cmd)
         print 'Test launch cmd', launch_cmd
         utils.system(launch_cmd)
+
+
+    def cleanup(self):
+        ownership.clear_ownership()
+        chrome_test.ChromeTestBase.cleanup(self)

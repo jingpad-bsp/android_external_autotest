@@ -59,11 +59,6 @@ class UITest(pyauto_test.PyAutoTest):
 
     _last_chrome_log = ''
 
-    def xsystem(self, cmd, timeout=None, ignore_status=False):
-        """Convenience wrapper around cros_ui.xsystem, to save you an import.
-        """
-        return cros_ui.xsystem(cmd, timeout, ignore_status)
-
 
     def listen_to_signal(self, callback, signal, interface):
         """Listens to the given |signal| that is sent to power manager.
@@ -387,7 +382,7 @@ class UITest(pyauto_test.PyAutoTest):
         # Fake ownership unless the test is explicitly testing owner creation.
         if not is_creating_owner:
             logging.info('Faking ownership...')
-            self.__fake_ownership()
+            cros_ui.fake_ownership()
             self.fake_owner = True
         else:
             logging.info('Erasing stale owner state.')
@@ -412,20 +407,6 @@ class UITest(pyauto_test.PyAutoTest):
             self.login(self.username, self.password)
             if is_creating_owner:
                 login.wait_for_ownership()
-
-
-    def __fake_ownership(self):
-        """Fake ownership by generating the necessary magic files."""
-        # Determine the module directory.
-        dirname = os.path.dirname(__file__)
-        mock_certfile = os.path.join(dirname, constants.MOCK_OWNER_CERT)
-        mock_signedpolicyfile = os.path.join(dirname,
-                                             constants.MOCK_OWNER_POLICY)
-        utils.open_write_close(
-            constants.OWNER_KEY_FILE,
-            ownership.cert_extract_pubkey_der(mock_certfile))
-        shutil.copy(mock_signedpolicyfile,
-                    constants.SIGNED_POLICY_FILE)
 
 
     def __resolve_creds(self, creds):

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
+import os, shutil
 import constants, httpd, ownership
 
 from autotest_lib.client.bin import utils
@@ -108,13 +108,13 @@ def stop(allow_fail=False):
     return utils.system("stop ui", ignore_status=allow_fail)
 
 
-def start(allow_fail=False):
+def start(allow_fail=False, wait_for_login_prompt=True):
     """Start the login manager and wait for the prompt to show up."""
     _clear_login_prompt_state()
     result = utils.system("start ui", ignore_status=allow_fail)
     # If allow_fail is set, the caller might be calling us when the UI job
     # is already running. In that case, the above command fails.
-    if result == 0:
+    if result == 0 and wait_for_login_prompt:
         _wait_for_login_prompt()
     return result
 
@@ -153,6 +153,20 @@ def restart(impl=None):
 def nuke():
     """Nuke the login manager, waiting for it to restart."""
     restart(lambda: utils.nuke_process_by_name('session_manager'))
+
+
+def fake_ownership():
+    """Fake ownership by generating the necessary magic files."""
+    # Determine the module directory.
+    dirname = os.path.dirname(__file__)
+    mock_certfile = os.path.join(dirname, constants.MOCK_OWNER_CERT)
+    mock_signedpolicyfile = os.path.join(dirname,
+                                         constants.MOCK_OWNER_POLICY)
+    utils.open_write_close(
+        constants.OWNER_KEY_FILE,
+        ownership.cert_extract_pubkey_der(mock_certfile))
+    shutil.copy(mock_signedpolicyfile,
+                constants.SIGNED_POLICY_FILE)
 
 
 class ChromeSession(object):
