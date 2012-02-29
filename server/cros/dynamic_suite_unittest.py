@@ -21,6 +21,7 @@ class FakeJob(object):
     """Faked out RPC-client-side Job object."""
     def __init__(self, id=0, statuses=[]):
         self.id = id
+        self.owner = 'tester'
         self.name = 'Fake Job %d' % self.id
         self.statuses = statuses
 
@@ -359,7 +360,7 @@ class SuiteTest(mox.MoxTestBase):
                              mox.StrContains(test.name)),
                 control_type=mox.IgnoreArg(),
                 meta_hosts=[dynamic_suite.VERSION_PREFIX + self._BUILD],
-                dependencies=[])
+                dependencies=[]).AndReturn(FakeJob())
 
 
     def testScheduleTests(self):
@@ -386,6 +387,8 @@ class SuiteTest(mox.MoxTestBase):
         suite._record_scheduled_jobs()
         self.mox.ReplayAll()
         suite.schedule()
+        for job in  suite._jobs:
+          self.assertTrue(hasattr(job, 'test_name'))
 
 
     def testScheduleStableTests(self):

@@ -357,7 +357,9 @@ class Suite(object):
         Thin wrapper around frontend.AFE.create_job().
 
         @param test: ControlData object for a test to run.
-        @return frontend.Job object for the job just scheduled.
+        @return a frontend.Job object with an added test_name member.
+                test_name is used to preserve the higher level TEST_NAME
+                name of the job.
         """
         job_deps = []
         if self._pool:
@@ -367,12 +369,16 @@ class Suite(object):
         else:
             # No pool specified use any machines with the following label.
             meta_hosts = VERSION_PREFIX + self._build
-        return self._afe.create_job(
+        test_obj = self._afe.create_job(
             control_file=test.text,
             name='/'.join([self._build, self._tag, test.name]),
             control_type=test.test_type.capitalize(),
             meta_hosts=[meta_hosts],
             dependencies=job_deps)
+
+        setattr(test_obj, 'test_name', test.name)
+
+        return test_obj
 
 
     def run_and_wait(self, record, add_experimental=True):
@@ -444,7 +450,7 @@ class Suite(object):
         """
         for job in self._jobs:
             job_id_owner = '%s-%s' % (job.id, job.owner)
-            utils.write_keyval(self._results_dir, {test.name: job_id_owner})
+            utils.write_keyval(self._results_dir, {job.test_name: job_id_owner})
 
 
     def _status_is_relevant(self, status):
