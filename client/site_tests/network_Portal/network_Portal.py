@@ -125,3 +125,21 @@ class network_Portal(test.test):
                 if errors:
                     raise error.TestFail('%d failures to enter state %s ' % (
                         errors, expected_state))
+
+            #
+            # Test the portal retry timer which should transition the
+            # service to online (at most) 1 minute after the portal
+            # restriction is removed.
+            #
+            if expected_state == 'portal':
+                with cell_tools.BlackholeContext(hosts):
+                    if not self.TestConnect(service_name, 'portal'):
+                        raise error.TestFail('Failed to enter state portal')
+
+                state = self.flim.WaitForServiceState(
+                    service=self.service,
+                    expected_states=['online'],
+                    timeout=60)[0]
+
+                if state != 'online':
+                    raise error.TestFail('Failed to enter state online')
