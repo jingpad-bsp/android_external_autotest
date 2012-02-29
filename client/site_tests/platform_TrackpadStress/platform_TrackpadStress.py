@@ -64,7 +64,7 @@ class platform_TrackpadStress(test.test):
             os.kill(int(pid), 0)
         except OSError:
             raise error.TestFail('The forever script process id: %s cannot be '
-                                 'found.' % pid)
+                                 'found.' % pid.rstrip('\n'))
 
         self.job.set_state('client_passed', True)
 
