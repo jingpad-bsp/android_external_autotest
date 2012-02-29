@@ -171,6 +171,8 @@ class StateHandler(object):
     self.service_cache = {}
     self.svc_state = None
     self.failure = False
+    self.runloop = None
+    self.error = None
 
   def Debug(self, debugstr):
     if self.debug:
@@ -275,6 +277,8 @@ class StateHandler(object):
       if self.WaitForState(svc, self.step_timeout):
         self.results.append('0.0')
         return self.NextState()
+      elif self.error:
+        return False
 
     return True
 
@@ -297,7 +301,7 @@ class StateHandler(object):
     """Setup a callback for state changes on our service."""
 
     # Are we already in the desired state?
-    self.svc_state = svc.GetProperties().get(self.wait_attr)
+    self.svc_state = str(svc.GetProperties().get(self.wait_attr))
     self.wait_path = svc.object_path
 
     self.StateChanged()
@@ -334,7 +338,9 @@ class StateHandler(object):
       self.results.append('ERR_TIMEDOUT=' + self.svc_state)
     else:
       self.results.append('ERR_NOTFOUND')
-    self.runloop.quit()
+    if self.runloop:
+      self.runloop.quit()
+    self.error = 'TIMEOUT'
 
   def PrintSummary(self):
     print ' '.join(map(str, self.results))

@@ -637,19 +637,20 @@ class WiFiTest(object):
         print "%s: %s" % (self.name, result)
 
         states = self.wait_service_states
+        cstates = []
         counts = {}
         for service, state in states:
-            cstate = state.strip('+-')
+            cstate = state.strip('+-').replace(':', '_')
+            cstates.append(cstate)
             if state in counts:
                 counts[cstate] = 1
             else:
                 counts[cstate] = 0
 
-        for (service, state), intr in zip(states, result.stdout.split(' ')):
+        for cstate, intr in zip(cstates, result.stdout.split(' ')):
             if intr.startswith('ERR_'):
                 raise error.TestFail('Wait for step %s failed with error %s' %
-                                     (state, intr))
-            cstate = state.strip('+-')
+                                     (cstate, intr))
             if counts[cstate]:
                 index = '%s%d' % (cstate, counts[cstate] - 1)
                 counts[cstate] += 1
@@ -772,6 +773,13 @@ class WiFiTest(object):
         """ Verify current frequency """
         self.__client_check_iw_link("freq", params[0])
 
+
+    def client_check_service_properties(self, params):
+        """ Verify that service properties attained their expected values. """
+        service = params.pop("service", None)
+        states = [(service, "%s:%s" % (var, val))
+                  for var, val in params.iteritems()]
+        self.wait_service({ "run_timeout": 0, "states": states})
 
     def sleep(self, params):
         time.sleep(float(params['time']))
