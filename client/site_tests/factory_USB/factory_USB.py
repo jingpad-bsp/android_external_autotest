@@ -26,9 +26,8 @@ from autotest_lib.client.cros.factory import ui as ful
 _UDEV_ACTION_INSERT = 'add'
 _UDEV_ACTION_REMOVE = 'remove'
 
-_PROMPT_FMT_STR = lambda n: (
-    '\n'.join(['插拔每個 USB 端口, 還有 %d 個待測試...' % n,
-               'Plug and unplug every USB ports, %d to go...' % n]))
+_PROMPT_FMT_STR = ('插拔每個 USB 端口, 還有 {0} 個待測試...\n'
+                   'Plug and unplug every USB ports, {0} to go...')
 
 
 class factory_USB(test.test):
@@ -49,7 +48,7 @@ class factory_USB(test.test):
             gtk.main_quit()
         else:
             self._prompt.set_text(
-                    _PROMPT_FMT_STR(self._num_usb_ports - num_checked))
+                    _PROMPT_FMT_STR.format(self._num_usb_ports - num_checked))
 
     def run_once(self, num_usb_ports=1):
         if num_usb_ports <= 0:
@@ -73,7 +72,7 @@ class factory_USB(test.test):
         label.set_alignment(0.5, 0.5)
         label.modify_fg(gtk.STATE_NORMAL, gtk.gdk.color_parse('light green'))
         self._prompt = label
-        self._prompt.set_text(_PROMPT_FMT_STR(self._num_usb_ports))
+        self._prompt.set_text(_PROMPT_FMT_STR.format(self._num_usb_ports))
 
         vbox = gtk.VBox()
         vbox.pack_start(label, False, False)
