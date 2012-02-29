@@ -15,5 +15,5 @@ class dummy_Fail(test.test):
             raise getattr(error, to_throw)('always fail')
         else:  # Generate a crash to test that behavior.
             self.write_perf_keyval({'perf_key': 102.7})
-            self.job.record('INFO', self.tagged_testname,
+            self.job.record('WARN', self.tagged_testname,
                             'Received crash notification for sleep[273] sig 6')
