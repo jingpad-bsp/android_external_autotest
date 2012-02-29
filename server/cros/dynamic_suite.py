@@ -490,6 +490,12 @@ class Suite(object):
 
 
     @staticmethod
+    def parse_tag(tag):
+        """Splits a string on ',' optionally surrounded by whitespace."""
+        return map(lambda x: x.strip(), tag.split(','))
+
+
+    @staticmethod
     def name_in_tag_predicate(name):
         """Returns predicate that takes a control file and looks for |name|.
 
@@ -500,11 +506,29 @@ class Suite(object):
         @return a callable that takes a ControlData and looks for |name| in that
                 ControlData object's suite member.
         """
-        def parse(suite):
-            """Splits a string on ',' optionally surrounded by whitespace."""
-            return map(lambda x: x.strip(), suite.split(','))
+        return lambda t: hasattr(t, 'suite') and \
+                         name in Suite.parse_tag(t.suite)
 
-        return lambda t: hasattr(t, 'suite') and name in parse(t.suite)
+
+    @staticmethod
+    def list_all_suites(build, cf_getter=None):
+        """
+        Parses all ControlData objects with a SUITE tag and extracts all
+        defined suite names.
+
+        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
+                          using DevServerGetter.
+
+        @return list of suites
+        """
+        if cf_getter is None:
+            cf_getter = Suite.create_ds_getter(build)
+
+        suites = set()
+        predicate = lambda t: hasattr(t, 'suite')
+        for test in Suite.find_and_parse_tests(cf_getter, predicate):
+            suites.update(Suite.parse_tag(test.suite))
+        return list(suites)
 
 
     @staticmethod

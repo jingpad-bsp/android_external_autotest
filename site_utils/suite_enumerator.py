@@ -34,17 +34,30 @@ def parse_options():
     parser.add_option('-s', '--stable_only', dest='add_experimental',
                       action='store_false', default=True,
                       help='List only tests that are not labeled experimental.')
+    parser.add_option('-l', '--listall',
+                      action='store_true', default=False,
+                      help='Print a listing of all suites. Ignores all args.')
     options, args = parser.parse_args()
     return parser, options, args
 
 
 def main():
     parser, options, args = parse_options()
-    if not args or len(args) != 1:
+    if options.listall:
+        if args:
+            print 'Cannot use suite_name with --listall'
+            parser.print_help()
+    elif not args or len(args) != 1:
         parser.print_help()
         return
 
     fs_getter = dynamic_suite.Suite.create_fs_getter(options.autotest_dir)
+
+    if options.listall:
+        for suite in dynamic_suite.Suite.list_all_suites('', fs_getter):
+            print suite
+        return
+
     suite = dynamic_suite.Suite.create_from_name(args[0], '', fs_getter)
     for test in suite.stable_tests():
         print test.path
