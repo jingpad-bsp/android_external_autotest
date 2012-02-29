@@ -23,6 +23,7 @@ class ECControl(object):
     GET_FANSPEED_RE = "Current fan RPM: ([0-9]*)"
     SET_FANSPEED_RE = "Fan target RPM set."
     TEMP_SENSOR_RE = "Reading temperature...([0-9]*)"
+    TOGGLE_AUTO_FAN_RE = "Automatic fan control is now on"
     def ec_command(self, cmd):
         full_cmd = 'ectool %s' % cmd
         result = utils.system_output(full_cmd)
@@ -33,6 +34,12 @@ class ECControl(object):
     def hello(self):
         response = self.ec_command('hello')
         result = re.search(self.HELLO_RE, response)
+        return (result != None)
+
+    def auto_fan_ctrl(self):
+        response = self.ec_command('autofanctrl')
+        result = re.search(self.TOGGLE_AUTO_FAN_RE, response)
+        logging.info('Turned on auto fan control.')
         return (result != None)
 
     def get_fanspeed(self):
@@ -68,10 +75,6 @@ class hardware_EC(test.test):
         if not ec.hello():
             raise error.TestError('EC communication failed.')
 
-        # Record the original fan speed and restore it after testing.
-        # TODO: Modify this if our EC support auto fan speed control.
-        original_rpm = ec.get_fanspeed()
-
         try:
             ec.set_fanspeed(10000)
             time.sleep(self.FAN_DELAY)
@@ -86,7 +89,7 @@ class hardware_EC(test.test):
                 current_reading >= max_reading):
                 raise error.TestError('Unable to set fan speed.')
         finally:
-            ec.set_fanspeed(original_rpm)
+            ec.auto_fan_ctrl()
 
         for idx in xrange(0, num_temp_sensor):
             temperature = ec.get_temperature(idx) - 273
