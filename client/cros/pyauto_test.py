@@ -57,6 +57,10 @@ class PyAutoTest(test.test):
     """
     def __init__(self, *args, **kwargs):
         self._dep = 'pyauto_dep'
+        # Handle to pyauto, for chrome automation.
+        self.pyauto = None
+        self.pyauto_suite = None
+
         test.test.__init__(self, *args, **kwargs)
 
 
@@ -126,10 +130,6 @@ class PyAutoTest(test.test):
                 by pyauto, if any.
         """
         assert os.geteuid() == 0, 'Need superuser privileges'
-
-        # Handle to pyauto, for chrome automation.
-        self.pyauto = None
-        self.pyauto_suite = None
 
         self._install_deps()
         import pyauto
