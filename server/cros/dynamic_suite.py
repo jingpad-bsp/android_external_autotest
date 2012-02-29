@@ -531,6 +531,7 @@ class Suite(object):
                     continue
 
                 found_test.text = text
+                found_test.path = file
                 tests[file] = found_test
             except control_data.ControlVariableException, e:
                 logging.warn("Skipping %s\n%s", file, e)

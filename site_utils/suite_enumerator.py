@@ -47,7 +47,7 @@ def main():
     fs_getter = dynamic_suite.Suite.create_fs_getter(options.autotest_dir)
     suite = dynamic_suite.Suite.create_from_name(args[0], '', fs_getter)
     for test in suite.tests:
-        print test.name
+        print test.path
 
 
 if __name__ == "__main__":
