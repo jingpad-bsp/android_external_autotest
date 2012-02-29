@@ -39,6 +39,17 @@ def Interpolate(x_values, y_values, x_position):
     '''
     Returns an interpolated (linear) y-value at x_position.
 
+    This function is especially designed for interpolating values from a
+    Network Analyzer. It happens in practice that x_values will have
+    sorted, duplicated values. In addition, y_values may be different for
+    identical x value. The function behavior under this situation is as follows:
+        (1) The function finds a right sentinel for interpolating, which is the
+            smallest index that less of equal to the x_position.
+        (2) If it is exactly the x_position, returns the y_value.
+        (3) Otherwise, interpolate values as the left sentinel is just the
+            one before right sentinel.
+    Example used in the unittest elaborates more on this.
+
     Args:
         x_values: A list of X values.
         y_values: A list of Y values.

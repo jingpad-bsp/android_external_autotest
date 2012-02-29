@@ -2,35 +2,31 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-if __name__ == '__main__':
-    import os, sys
-    # Magic to set up path so we can see autotest libraries.
-    sys.path.append(
-        os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-    import common
-
+import rf_common
 import unittest
 
 from autotest_lib.client.cros.rf.agilent_scpi import Interpolate
 from autotest_lib.client.cros.rf.agilent_scpi import CheckTraceValid
 from autotest_lib.client.cros.rf.lan_scpi import Error
 
-X_VALUES = [10, 10, 15, 20, 20, 30, 40, 40]
-Y_VALUES = [0.5, 0.5, 0.9, 0.6, 0.6, 0.1, 1.1, 9.0]
+X_VALUES = [10, 10, 15, 18, 20, 20, 30, 30, 40]
+Y_VALUES = [0.5, 0.7, 0.9, 1.2, 0.6, 0.7, 0.1, 1.1, 9.1]
 
 class TestInterpolation(unittest.TestCase):
 
     def testInterpolateNormal(self):
-        '''Tests whether the Interpolate function works for query in range.
-        '''
-        self.assertAlmostEqual(0.50, Interpolate(X_VALUES, Y_VALUES, 10))
-        self.assertAlmostEqual(0.66, Interpolate(X_VALUES, Y_VALUES, 12))
+        '''Tests whether the Interpolate function works for query in range.'''
+        # Test cases for non-ambiguous situation.
         self.assertAlmostEqual(0.90, Interpolate(X_VALUES, Y_VALUES, 15))
-        self.assertAlmostEqual(0.60, Interpolate(X_VALUES, Y_VALUES, 20))
-        self.assertAlmostEqual(0.35, Interpolate(X_VALUES, Y_VALUES, 25))
-        self.assertAlmostEqual(0.10, Interpolate(X_VALUES, Y_VALUES, 30))
-        self.assertAlmostEqual(0.80, Interpolate(X_VALUES, Y_VALUES, 37))
-        self.assertAlmostEqual(1.10, Interpolate(X_VALUES, Y_VALUES, 40))
+        self.assertAlmostEqual(1.10, Interpolate(X_VALUES, Y_VALUES, 17))
+        self.assertAlmostEqual(9.10, Interpolate(X_VALUES, Y_VALUES, 40))
+
+        # Test cases for duplicated values presented in X_VALUES.
+        self.assertAlmostEqual(0.50, Interpolate(X_VALUES, Y_VALUES, 10))
+        self.assertAlmostEqual(0.78, Interpolate(X_VALUES, Y_VALUES, 12))
+        self.assertAlmostEqual(0.90, Interpolate(X_VALUES, Y_VALUES, 19))
+        self.assertAlmostEqual(0.40, Interpolate(X_VALUES, Y_VALUES, 25))
+        self.assertAlmostEqual(6.70, Interpolate(X_VALUES, Y_VALUES, 37))
 
     def testInterpolateException(self):
         '''Tests whether the Interpolate function raises exception as expected.
