@@ -13,8 +13,10 @@ CELLS = {}
 GENERIC_GSM_TECHNOLOGIES = ['GPRS', 'EGPRS', 'WCDMA', 'HSDPA', 'HSUPA',
                             'HSDUPA', 'HSPA_PLUS',]
 
-GOBI_2000_TECHNOLOGIES = GENERIC_GSM_TECHNOLOGIES + ['CDMA_2000', 'EVDO_1X']
+GOBI_3000_TECHNOLOGIES = GENERIC_GSM_TECHNOLOGIES + ['CDMA_2000', 'EVDO_1X']
 
+GOBI_2000_TECHNOLOGIES = GOBI_3000_TECHNOLOGIES
+GOBI_2000_TECHNOLOGIES.remove('HSPA_PLUS')
 
 def combine_trees(a_original, b):
     """Combines two dict-of-dict trees, favoring the second."""
