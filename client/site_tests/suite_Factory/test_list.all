@@ -239,6 +239,12 @@ TEST_LIST = [
         autotest_name='factory_LightSensor',
         kbd_shortcut='i'),
 
+    OperatorTest(
+        label_en='keyboard',
+        label_zw='鍵盤',
+        autotest_name='factory_Keyboard',
+        kbd_shortcut='k'),
+
     # Required tests (mandatory): ----------------------------------------------
 
     # THIS IS A GOOGLE REQUIRED TEST.
@@ -250,12 +256,6 @@ TEST_LIST = [
         autotest_name='factory_DeveloperRecovery',
         kbd_shortcut='b',
         dargs={'layout':'devrec'}),
-
-    OperatorTest(
-        label_en='keyboard',
-        label_zw='鍵盤',
-        autotest_name='factory_Keyboard',
-        kbd_shortcut='k'),
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
@@ -269,35 +269,11 @@ TEST_LIST = [
     # THIS IS A GOOGLE REQUIRED TEST.
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
-    AutomatedSequence(
+    OperatorTest(
         label_en='HWID',
         label_zw='硬體代號',
-        subtest_tag_prefix='hwid',
-        kbd_shortcut='h',
-        subtest_list=[
-
-            AutomatedSubTest(
-                label_en='hw-qual-id matching',
-                label_zw='型號匹配',
-                autotest_name='factory_ProbeHWID',
-                dargs={'autodetect': _ENABLE_AUTODETECT_HWID},
-                unique_name='hw-qual-id-match',
-                has_ui=True),
-
-            AutomatedSubTest(
-                label_en='write GBB',
-                label_zw='寫入GBB',
-                autotest_name='factory_WriteGBB',
-                has_ui=True),
-
-            AutomatedRebootSubTest(
-                label_en='reboot',
-                label_zw='重新開機',
-                iterations=1),
-
-            # Validation will be made in final stage.
-            # If you've got problems, use gooftool to check.
-        ]),
+        autotest_name='factory_HWID',
+        kbd_shortcut='h'),
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
