@@ -60,6 +60,7 @@ UeGsmDataStatus = Enum('GsmDataStatus', [
     'NONE',
     'IDLE',
     'ATTACHING',
+    'ATTACHED',
     'DETACHING',
     'PDP_ACTIVATING',
     'PDP_ACTIVE',
@@ -108,6 +109,7 @@ RatToGenericDataStatus = {
     UeGsmDataStatus.NONE: UeGenericDataStatus.NONE,
     UeGsmDataStatus.IDLE: UeGenericDataStatus.NONE,
     UeGsmDataStatus.ATTACHING: UeGenericDataStatus.NONE, # Transition
+    UeGsmDataStatus.ATTACHED: UeGenericDataStatus.REGISTERED,
     UeGsmDataStatus.DETACHING: UeGenericDataStatus.NONE, # Transition
     UeGsmDataStatus.PDP_ACTIVATING: UeGenericDataStatus.CONNECTING,
     UeGsmDataStatus.PDP_ACTIVE: UeGenericDataStatus.CONNECTED,

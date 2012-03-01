@@ -324,8 +324,25 @@ class ConfigDictionaries(object):
       cellular.Technology.HSPA_PLUS: ConfigStanzas.CAT_14,
       }
 
+# http://wireless.agilent.com/rfcomms/refdocs/gsmgprs/prog_synch_callstategprs.html#CHDDFBAJ
+# NB:  We have elided a few states of the GSM state machine here.
+  CALL_STATUS_DATA_TO_STATUS_GSM_GPRS = {
+      'IDLE': cellular.UeGsmDataStatus.IDLE,
+      'ATTG': cellular.UeGsmDataStatus.ATTACHING,
+      'DET': cellular.UeGsmDataStatus.DETACHING,
+      'ATT': cellular.UeGsmDataStatus.ATTACHED,
+      'STAR': cellular.UeGsmDataStatus.ATTACHING,
+      'END': cellular.UeGsmDataStatus.PDP_DEACTIVATING,
+      'TRAN': cellular.UeGsmDataStatus.PDP_ACTIVATING,
+      'PDPAG': cellular.UeGsmDataStatus.PDP_ACTIVATING,
+      'PDP': cellular.UeGsmDataStatus.PDP_ACTIVE,
+      'PDPD': cellular.UeGsmDataStatus.PDP_DEACTIVATING,
+      'DCON': cellular.UeGsmDataStatus.PDP_ACTIVE,
+      'SUSP': cellular.UeGsmDataStatus.IDLE,
+}
+
 # http://wireless.agilent.com/rfcomms/refdocs/wcdma/wcdma_gen_call_proc_status.html#CJADGAHG
-  CALL_STATUS_DATA_TO_STATUS_GSM_WCDMA = {
+  CALL_STATUS_DATA_TO_STATUS_WCDMA = {
       'IDLE': cellular.UeGsmDataStatus.IDLE,
       'ATTG': cellular.UeGsmDataStatus.ATTACHING,
       'DET': cellular.UeGsmDataStatus.DETACHING,
@@ -359,8 +376,8 @@ class ConfigDictionaries(object):
       }
 
   FORMAT_TO_DATA_STATUS_TYPE = {
-      '"GSM/GPRS"': CALL_STATUS_DATA_TO_STATUS_GSM_WCDMA,
-      '"WCDMA"': CALL_STATUS_DATA_TO_STATUS_GSM_WCDMA,
+      '"GSM/GPRS"': CALL_STATUS_DATA_TO_STATUS_GSM_GPRS,
+      '"WCDMA"': CALL_STATUS_DATA_TO_STATUS_WCDMA,
       '"IS-2000/IS-95/AMPS"': CALL_STATUS_DATA_TO_STATUS_CDMA_2000,
       '"IS-856"': CALL_STATUS_DATA_TO_STATUS_EVDO,
       }
