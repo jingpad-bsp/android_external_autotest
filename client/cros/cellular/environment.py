@@ -37,6 +37,7 @@ class EmulatedEnvironment(object):
         return self
 
     def __exit__(self, exception, value, traceback):
+        self.emulator.Close()
         return False
 
     def StartDefault(self, technology):

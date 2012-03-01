@@ -44,6 +44,9 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
     self.c.Reset()
     self.Stop()
 
+  def Close(self):
+    self.c.Close()
+
   def GetAirStateVerifier(self):
     return air_state_verifier.AirStateVerifierBasestation(self)
 
