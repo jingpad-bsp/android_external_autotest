@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -24,6 +24,91 @@ class FakeJob(object):
         self.owner = 'tester'
         self.name = 'Fake Job %d' % self.id
         self.statuses = statuses
+
+
+class DynamicSuiteTest(mox.MoxTestBase):
+    """Unit tests for dynamic_suite module methods.
+
+    @var _DARGS: default args to vet.
+    """
+
+
+    def setUp(self):
+        super(DynamicSuiteTest, self).setUp()
+        self._DARGS = {'name': 'name',
+                       'build': 'build',
+                       'board': 'board',
+                       'job': self.mox.CreateMock(base_job.base_job),
+                       'num': 1,
+                       'pool': 'pool',
+                       'skip_reimage': True,
+                       'add_experimental': False}
+
+
+    def testVetRequiredReimageAndRunArgs(self):
+        """Should verify only that required args are present and correct."""
+        build, board, name, job, _, _, _, _ = \
+            dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
+        self.assertEquals(build, self._DARGS['build'])
+        self.assertEquals(board, self._DARGS['board'])
+        self.assertEquals(name, self._DARGS['name'])
+        self.assertEquals(job, self._DARGS['job'])
+
+
+    def testVetReimageAndRunBuildArgFail(self):
+        """Should fail verification because |build| arg is bad."""
+        self._DARGS['build'] = None
+        self.assertRaises(dynamic_suite.SuiteArgumentException,
+                          dynamic_suite._vet_reimage_and_run_args,
+                          **self._DARGS)
+
+
+    def testVetReimageAndRunBoardArgFail(self):
+        """Should fail verification because |board| arg is bad."""
+        self._DARGS['board'] = None
+        self.assertRaises(dynamic_suite.SuiteArgumentException,
+                          dynamic_suite._vet_reimage_and_run_args,
+                          **self._DARGS)
+
+
+    def testVetReimageAndRunNameArgFail(self):
+        """Should fail verification because |name| arg is bad."""
+        self._DARGS['name'] = None
+        self.assertRaises(dynamic_suite.SuiteArgumentException,
+                          dynamic_suite._vet_reimage_and_run_args,
+                          **self._DARGS)
+
+
+    def testVetReimageAndRunJobArgFail(self):
+        """Should fail verification because |job| arg is bad."""
+        self._DARGS['job'] = None
+        self.assertRaises(dynamic_suite.SuiteArgumentException,
+                          dynamic_suite._vet_reimage_and_run_args,
+                          **self._DARGS)
+
+
+    def testOverrideOptionalReimageAndRunArgs(self):
+        """Should verify that optional args can be overridden."""
+        _, _, _, _, pool, num, skip, expr = \
+            dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
+        self.assertEquals(pool, self._DARGS['pool'])
+        self.assertEquals(num, self._DARGS['num'])
+        self.assertEquals(skip, self._DARGS['skip_reimage'])
+        self.assertEquals(expr, self._DARGS['add_experimental'])
+
+
+    def testDefaultOptionalReimageAndRunArgs(self):
+        """Should verify that optional args get defaults."""
+        del(self._DARGS['pool'])
+        del(self._DARGS['skip_reimage'])
+        del(self._DARGS['add_experimental'])
+        del(self._DARGS['num'])
+        _, _, _, _, pool, num, skip, expr = \
+            dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
+        self.assertEquals(pool, None)
+        self.assertEquals(num, None)
+        self.assertEquals(skip, False)
+        self.assertEquals(expr, True)
 
 
 class ReimagerTest(mox.MoxTestBase):

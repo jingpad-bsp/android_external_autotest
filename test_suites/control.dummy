@@ -20,10 +20,6 @@ so that we can test result gathering and reporting mechanisms.
 import common
 from autotest_lib.server.cros import dynamic_suite
 
-suite_tag = 'dummy'
-reimager = dynamic_suite.Reimager(job.autodir)
-
-if (reimager.skip(globals()) or
-    reimager.attempt(build, board, job.record, num=1)):
-    bvt = dynamic_suite.Suite.create_from_name(suite_tag, build)
-    bvt.run_and_wait(job.record, add_experimental=True)
+dynamic_suite.reimage_and_run(
+    build=build, board=board, name='dummy', job=job, pool=pool, num=1,
+    add_experimental=True, skip_reimage=dynamic_suite.skip_reimage(globals()))

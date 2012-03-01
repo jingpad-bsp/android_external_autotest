@@ -31,7 +31,7 @@ from autotest_lib.server.cros import dynamic_suite
 suite_tag = 'bvt'
 reimager = dynamic_suite.Reimager(job.autodir, pool=pool)
 
-if (reimager.skip(globals()) or
+if (dynamic_suite.skip_reimage(globals()) or
     reimager.attempt(build, board, job.record)):
     bvt = dynamic_suite.Suite.create_from_name(suite_tag, build, pool=pool,
                                                results_dir=job.resultdir)

@@ -4,8 +4,8 @@
 
 import common
 import compiler, logging, os, random, re, time
-from autotest_lib.client.common_lib import control_data, global_config, error
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import base_job, control_data, global_config
+from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import control_file_getter, frontend_wrappers
 from autotest_lib.server import frontend
@@ -15,9 +15,86 @@ VERSION_PREFIX = 'cros-version:'
 CONFIG = global_config.global_config
 
 
+class SuiteArgumentException(Exception):
+    """Raised when improper arguments are used to run a suite."""
+    pass
+
+
+def reimage_and_run(**dargs):
+    """
+    Backward-compatible API for dynamic_suite.
+
+    Will re-image a number of devices (of the specified board) with the
+    provided build, and then run the indicated test suite on them.
+    Guaranteed to be compatible with any build from stable to dev.
+
+    Currently required args:
+    @param build: the build to install e.g.
+                  x86-alex-release/R18-1655.0.0-a1-b1584.
+    @param board: which kind of devices to reimage.
+    @param name: a value of the SUITE control file variable to search for.
+    @param job: an instance of client.common_lib.base_job representing the
+                currently running suite job.
+
+    Currently supported optional args:
+    @param pool: specify the pool of machines to use for scheduling purposes.
+                 Default: None
+    @param num: how many devices to reimage.
+                Default in global_config
+    @param skip_reimage: skip reimaging, used for testing purposes.
+                         Default: False
+    @param add_experimental: schedule experimental tests as well, or not.
+                             Default: True
+    """
+    build, board, name, job, pool, num, skip_reimage, add_experimental = \
+        _vet_remage_and_run_args(**dargs)
+    reimager = Reimager(job.autodir, pool=pool)
+    if skip_reimage or reimager.attempt(build, board, job.record, num=num):
+        suite = Suite.create_from_name(name, build, pool=pool,
+                                       results_dir=job.resultdir)
+        suite.run_and_wait(job.record, add_experimental=add_experimental)
+
+
+def _vet_reimage_and_run_args(build=None, board=None, name=None, job=None,
+                              pool=None, num=None, skip_reimage=False,
+                              add_experimental=True, **dargs):
+    """
+    Vets arguments for reimage_and_run().
+
+    Currently required args:
+    @param build: the build to install e.g.
+                  x86-alex-release/R18-1655.0.0-a1-b1584.
+    @param board: which kind of devices to reimage.
+    @param name: a value of the SUITE control file variable to search for.
+    @param job: an instance of client.common_lib.base_job representing the
+                currently running suite job.
+
+    Currently supported optional args:
+    @param pool: specify the pool of machines to use for scheduling purposes.
+                 Default: None
+    @param num: how many devices to reimage.
+                Default in global_config
+    @param skip_reimage: skip reimaging, used for testing purposes.
+                         Default: False
+    @param add_experimental: schedule experimental tests as well, or not.
+                             Default: True
+    @return a tuple of args set to provided (or default) values.
+    """
+    required_keywords = {'build': str,
+                         'board': str,
+                         'name': str,
+                         'job': base_job.base_job}
+    for key, expected in required_keywords.iteritems():
+        value = locals().get(key)
+        if not value or not isinstance(value, expected):
+            raise SuiteArgumentException("reimage_and_run() needs %s=<%r>" % (
+                key, expected))
+    return build, board, name, job, pool, num, skip_reimage, add_experimental
+
+
 def inject_vars(vars, control_file_in):
     """
-    Inject the contents of |vars| into |control_file_in|
+    Inject the contents of |vars| into |control_file_in|.
 
     @param vars: a dict to shoehorn into the provided control file string.
     @param control_file_in: the contents of a control file to munge.
@@ -35,6 +112,10 @@ def _image_url_pattern():
 
 def _package_url_pattern():
     return CONFIG.get_config_value('CROS', 'package_url_pattern', type=str)
+
+
+def skip_reimage(g):
+    return g.get('SKIP_IMAGE')
 
 
 class Reimager(object):
@@ -69,6 +150,7 @@ class Reimager(object):
 
 
     def skip(self, g):
+        """Deprecated in favor of dynamic_suite.skip_reimage()."""
         return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
 
 
