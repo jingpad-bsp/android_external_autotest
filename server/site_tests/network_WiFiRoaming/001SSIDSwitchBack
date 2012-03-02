@@ -6,9 +6,16 @@
 # to rejoin a previously connected AP when it loses connectivity to its
 # current AP.  To accomplish this, we join one AP (so we are sure that
 # this flimflam instance remembers it), then join a second AP which we
-# shut down while the DUT is connected to it.  We sit around and observe
+# yank while the DUT is connected to it.  We sit around and observe
 # if and how long it takes for the connection manager to re-acquire
 # connectivity to the first AP.
+#
+# Note that we yank the second AP (rather than shutting it down cleanly)
+# to avoid a race condition. With a clean shut down, the connection manager
+# may trigger a scan before the second AP is actually down. That causes
+# the connection manager to attempt to reconnect to the second AP, rather
+# than the first. (See crosbug.com/27148.)
+#
 { "name":"SwitchBack",
   "steps":[
     [ "create",         { "type":"hostap" } ],
@@ -28,7 +35,7 @@
                           "ssid_suffix": "t2"} ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
-    [ "deconfig" ],
+    [ "deconfig",             { "silent":None } ],  # Exit AP without DEAUTH
 
     # Shut down the second AP and bring the first on back up
     [ "config",         { "channel":"2462", "mode":"11b",
