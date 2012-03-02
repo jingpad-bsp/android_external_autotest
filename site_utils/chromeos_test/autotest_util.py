@@ -20,7 +20,8 @@ import common_util
 
 
 # Pre-built Autotest location. Does not contain [client/server]/site_tests.
-AUTOTEST_BIN_DIR = '/home/chromeos-test/autotest'
+AUTOTEST_BIN_DIR = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '..'))
 
 # Path to atest executable.
 ATEST_PATH = os.path.join(AUTOTEST_BIN_DIR, 'cli/atest')
