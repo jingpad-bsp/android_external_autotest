@@ -166,6 +166,26 @@ TEST_LIST = [
                 autotest_name='hardware_GPS'),
         ]),
 
+    AutomatedSequence(
+        label_en='EC',
+        label_zw='ec',
+        subtest_tag_prefix='ecfunctional',
+        kbd_shortcut='l',
+        subtest_list=[
+
+            AutomatedSubTest(
+                label_en='EC Functional Test',
+                label_zw='EC',
+                autotest_name='hardware_EC',
+                dargs={'num_temp_sensor': 10}),
+        ]),
+
+    OperatorTest(
+        label_en='KBBacklight',
+        label_zw='鍵盤背光',
+        autotest_name='factory_KeyboardBacklight',
+        kbd_shortcut='q'),
+
     OperatorTest(
         label_en='touchpad',
         label_zw='觸控板',
