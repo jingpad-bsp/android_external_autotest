@@ -102,7 +102,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
                 '%s is not an executable' % self._sox_path)
 
         super(desktopui_AudioFeedback, self).initialize()
-        self._test_url = 'http://127.0.0.1:8000/youtube.html'
+        self._test_url = 'http://localhost:8000/youtube.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
 

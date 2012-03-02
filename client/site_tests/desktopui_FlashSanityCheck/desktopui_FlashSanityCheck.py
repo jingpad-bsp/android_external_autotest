@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,7 +11,7 @@ class desktopui_FlashSanityCheck(cros_ui_test.UITest):
     version = 3
 
     def initialize(self):
-        self._test_url = 'http://127.0.0.1:8000/index.html'
+        self._test_url = 'http://localhost:8000/index.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
         super(desktopui_FlashSanityCheck, self).initialize()
