@@ -10,7 +10,7 @@ CELLS = {}
 
 # TODO(rochberg):  Need some way to subset this list for long/short tests
 
-GENERIC_GSM_TECHNOLOGIES = ['GPRS', 'EGPRS', 'WCDMA', 'HSDPA', 'HDUPA',
+GENERIC_GSM_TECHNOLOGIES = ['GPRS', 'EGPRS', 'WCDMA', 'HSDPA', 'HSUPA',
                             'HSDUPA', 'HSPA_PLUS',]
 
 GOBI_2000_TECHNOLOGIES = GENERIC_GSM_TECHNOLOGIES + ['CDMA_2000', 'EVDO_1X']

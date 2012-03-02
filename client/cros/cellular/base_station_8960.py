@@ -146,7 +146,7 @@ class BaseStation8960(base_station_interface.BaseStationInterface):
       cellular.Technology.EGPRS,
       cellular.Technology.WCDMA,
       cellular.Technology.HSDPA,
-      cellular.Technology.HDUPA,
+      cellular.Technology.HSUPA,
       cellular.Technology.HSDUPA,
       cellular.Technology.HSPA_PLUS,
       cellular.Technology.CDMA_2000,
@@ -306,7 +306,7 @@ class ConfigDictionaries(object):
 
       cellular.Technology.WCDMA: 'WCDMA',
       cellular.Technology.HSDPA: 'WCDMA',
-      cellular.Technology.HDUPA: 'WCDMA',
+      cellular.Technology.HSUPA: 'WCDMA',
       cellular.Technology.HSDUPA: 'WCDMA',
       cellular.Technology.HSPA_PLUS: 'WCDMA',
 
