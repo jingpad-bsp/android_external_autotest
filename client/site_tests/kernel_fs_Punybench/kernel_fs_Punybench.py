@@ -9,6 +9,8 @@ import optparse
 import os, shutil, re, string
 from autotest_lib.client.bin import utils, test
 
+re_float = r"[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
+
 class kernel_fs_Punybench(test.test):
     """Run a selected subset of the puny benchmarks
     """
@@ -79,9 +81,25 @@ class kernel_fs_Punybench(test.test):
           text: output from memcpy test.
         Returns:
           Best result from that sub-test.
+
+        Example input text:
+          memcpy (Meg = 2**20)
+          0. 4746.96 MiB/sec
+          1. 4748.99 MiB/sec
+          2. 4748.14 MiB/sec
+          3. 4748.59 MiB/sec
+          simple (Meg = 2**20)
+          0. 727.996 MiB/sec
+          1. 728.031 MiB/sec
+          2. 728.22 MiB/sec
+          3. 728.049 MiB/sec
+          32bit (Meg = 2**20)
+          0. 2713.16 MiB/sec
+          1. 2719.93 MiB/sec
+          2. 2724.33 MiB/sec
+          3. 2711.5 MiB/sec
         """
-        re_float = r"[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
-        r1 = re.search(tag + ".*\n(\d.*\n)+", text)
+        r1 = re.search(tag + ".*\n(\d.*sec\n)+", text)
         r2 = re.findall(r"\d+\. (" + re_float + r") M.*\n", r1.group(0))
         return max(float(result) for result in r2)
 
@@ -102,8 +120,28 @@ class kernel_fs_Punybench(test.test):
         result = self._run('memcpy', args)
 
         for tag in ['memcpy', '32bit', '64bit']:
-            max = self._find_max(tag, result)
-            self.write_perf_keyval({tag: max})
+            value = self._find_max(tag, result)
+            self.write_perf_keyval({tag + '_MiB_s': value})
+
+
+    @staticmethod
+    def _get_mib_s(tag, text):
+        """Extract the MiB/s for tag from text
+
+        Args:
+          tag: name of sub-test ot select from text
+
+        Example input text:
+          SDRAM:
+          memcpy_trivial:  (2097152 bytes copy) =  727.6 MiB/s /  729.9 MiB/s
+          memcpy        :  (2097152 bytes copy) = 4514.2 MiB/s / 4746.9 MiB/s
+          memcpy_trivial:  (3145728 bytes copy) =  727.7 MiB/s /  729.5 MiB/s
+          memcpy        :  (3145728 bytes copy) = 4489.5 MiB/s / 4701.5 MiB/s
+        """
+        r1 = re.search(tag + ".*\n.*\n.*", text)
+        r2 = re.search(r"[^\s]+ MiB/s$", r1.group(0))
+        r3 = re.search(re_float, r2.group(0))
+        return r3.group(0)
 
 
     def _memcpy_test(self):
@@ -112,17 +150,12 @@ class kernel_fs_Punybench(test.test):
         WARNING: test will have to be changed if cache sizes change.
         """
         result = self._run('memcpy_test', "")
-        r1 = re.search(r"L1 cache.*\n.*\n.*", result)
-        r2 = re.search(r"[^\s]+ MiB/s$", r1.group(0))
-        self.write_perf_keyval({'L1cache': r2.group()})
-
-        r1 = re.search(r"L2 cache.*\n.*\n.*", result)
-        r2 = re.search(r"[^\s]+ MiB/s$", r1.group(0))
-        self.write_perf_keyval({'L2cache': r2.group()})
-
-        r1 = re.search(r"SDRAM.*\n.*\n.*", result)
-        r2 = re.search(r"[^\s]+ MiB/s$", r1.group(0))
-        self.write_perf_keyval({'SDRAM': r2.group()})
+        self.write_perf_keyval({'L1cache_MiB_s':
+                               self._get_mib_s('L1 cache', result)})
+        self.write_perf_keyval({'L2cache_MiB_s':
+                               self._get_mib_s('L2 cache', result)})
+        self.write_perf_keyval({'SDRAM_MiB_s':
+                               self._get_mib_s('SDRAM', result)})
 
 
     def _threadtree(self, prefix, dir):
@@ -134,6 +167,16 @@ class kernel_fs_Punybench(test.test):
         Args:
           prefix: prefix to use on name/value pair for identifying results
           dir: directory path to use for test
+
+        Example results:
+          opens   =       3641
+          created =       2914
+          dirs    =       1456
+          files   =       1458
+          deleted =       4372
+          read    = 1046306816
+          written = 2095407104
+           51.7   2. timer avg= 57.9 stdv= 8.76
         """
         iterations = 4
         tasks = 2
@@ -143,9 +186,9 @@ class kernel_fs_Punybench(test.test):
                (dir, iterations, tasks, width, depth))
         result = self._run('threadtree', args)
         r1 = re.search(r"timer avg= *([^\s]*).*$", result)
-        timer_avg = float(r1.groups()[0])
+        timer_avg = float(r1.group(1))
         p = tasks * pow(width, depth + 1) / timer_avg
-        self.write_perf_keyval({prefix + 'threadtree': p})
+        self.write_perf_keyval({prefix + 'threadtree_ops': p})
 
 
     def _uread(self, prefix, file):
@@ -157,6 +200,10 @@ class kernel_fs_Punybench(test.test):
 
         The size should be picked so the file will
         not fit in memory.
+
+        Example results:
+          size=8589934592 n=1 55.5 3. timer avg= 55.5 stdv=0.0693 147.6 MiB/s
+          size=8589934592 n=1 55.6 4. timer avg= 55.5 stdv=0.0817 147.5 MiB/s
         """
         size = 8 * 1024 * 1024 * 1024
         loops = 4
@@ -164,9 +211,10 @@ class kernel_fs_Punybench(test.test):
         args = ('-f %s -z %d -i %d -l %d -b12' %
                (file, size, iterations, loops))
         result = self._run('uread', args)
-        r1 = re.search(r"([^\s]+ MiB/s).*$", result)
-        value = r1.groups()[0]
-        self.write_perf_keyval({prefix + 'uread': value})
+        r1 = re.search(r"[^\s]+ MiB/s.*$", result)
+        r2 = re.search(re_float, r1.group(0))
+        mib_s = r2.group(0)
+        self.write_perf_keyval({prefix + 'uread_MiB_s': mib_s})
 
 
     def _ureadrand(self, prefix, file):
@@ -175,6 +223,9 @@ class kernel_fs_Punybench(test.test):
         Args:
           prefix: prefix to use on name/value pair for identifying results
           file: file path to use for test
+        Example results (modified to fit in 80 columes):
+size=8589934592 n=10000 4.7 3. timer avg= 4 stdv= 4.6 9.1 MiB/s 2326 IOPs/sec
+size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
         """
         size = 8 * 1024 * 1024 * 1024
         loops = 4
@@ -182,9 +233,10 @@ class kernel_fs_Punybench(test.test):
         args = ('-f %s -z %d -i %d -l %d -b12' %
                (file, size, iterations, loops))
         result = self._run('ureadrand', args)
-        r1 = re.search(r"([^\s]+ MiB/s).*$", result)
-        value = r1.groups()[0]
-        self.write_perf_keyval({prefix + 'ureadrand': value})
+        r1 = re.search(r"([^\s]+ IOPs/sec).*$", result)
+        r2 = re.search(re_float, r1.group(0))
+        iops = r2.group(0)
+        self.write_perf_keyval({prefix + 'ureadrand_iops': iops})
 
 
     def _disk_tests(self, prefix,  dir, file):
