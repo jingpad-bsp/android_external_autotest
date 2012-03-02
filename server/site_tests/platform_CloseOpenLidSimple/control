@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
-NAME = "platform_CloseOpenLid"
+AUTHOR = "Chris Masone <cmasone@chromium.org>"
+NAME = "platform_CloseOpenLidSimple"
 PURPOSE = "Test suspend/resume in response to lid events."
+SUITE = "servo"
+DEPENDENCIES = "servo"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
@@ -16,7 +18,6 @@ verified by pinging."""
 
 def run_closeopenlid(machine):
     host = hosts.create_host(machine)
-    job.run_test("platform_CloseOpenLid", host=host, cmdline_args=args,
-                 disable_sysinfo=True)
+    job.run_test("platform_CloseOpenLidSimple", host=host, disable_sysinfo=True)
 
 parallel_simple(run_closeopenlid, machines)

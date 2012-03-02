@@ -1,0 +1,25 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "servo"
+PURPOSE = "To run all tests that leverage Servo."
+CRITERIA = "None."
+
+TIME = "SHORT"
+TEST_CATEGORY = "Servo"
+TEST_CLASS = "suite"
+TEST_TYPE = "Server"
+
+DOC = """
+This is a servo test suite.  It runs tests that require Servo device
+automation in order to verfiy that Servo is functioning normally.
+"""
+
+import common
+from autotest_lib.server.cros import dynamic_suite
+
+dynamic_suite.reimage_and_run(
+    build=build, board=board, name='servo', job=job, pool=pool,
+    add_experimental=True, skip_reimage=dynamic_suite.skip_reimage(globals()))

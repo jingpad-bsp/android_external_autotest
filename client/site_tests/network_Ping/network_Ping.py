@@ -1,10 +1,6 @@
-#!/usr/bin/python
-#
-# Copyright (c) 2010 The Chromium Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
-__author__ = 'kdlucas@chromium.org (Kelly Lucas)'
 
 import logging
 
@@ -41,20 +37,6 @@ class network_Ping(test.test):
         return address
 
 
-    def ping_remote(self, rhost):
-        """
-        Try to ping the remote host and report the status.
-        Args:
-            rhost: string, the remote hostname.
-        Returns:
-            integer: return code of ping command.
-        """
-        cmd = 'ping -c 5 %s' % rhost
-        status = utils.system(cmd)
-
-        return status
-
-
     def run_once(self):
         errors = 0
         remote_hosts = ['www.google.com']
@@ -66,7 +48,7 @@ class network_Ping(test.test):
             raise error.TestFail('Failure to get default gateway!')
 
         for rhost in remote_hosts:
-            if self.ping_remote(rhost):
+            if utils.ping(rhost, tries=5):
                 logging.error('Error pinging %s' % rhost)
                 errors += 1
 

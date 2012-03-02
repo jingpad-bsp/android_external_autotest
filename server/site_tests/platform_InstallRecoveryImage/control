@@ -1,9 +1,9 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "InstallRecoveryImage"
+NAME = "platform_InstallRecoveryImage"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Install"
 TEST_CLASS = "platform"
@@ -19,7 +19,6 @@ run_remote_tests --args='image=<recovery_image_path_on_host>'
                  --board=<board name>
                  platform_InstallRecoveryImage
 """
-from autotest_lib.client.common_lib import error
 
 # Convert autoserv args to a dictionary.
 opts = dict([[k, v] for (k, _, v) in [x.partition('=') for x in args]])

@@ -44,7 +44,25 @@ class Servo:
     # Time between an usb disk plugged-in and detected in the system.
     USB_DETECTION_DELAY = 10
 
-    def __init__(self, servo_host=None, servo_port=None,
+
+    @staticmethod
+    def create_simple(device_under_test_hostname):
+        """Instantiate a Servo for |device_under_test_hostname| in the lab.
+
+        Assuming that |device_under_test_hostname| is a device in the CrOS
+        test lab, create and return a Servo object pointed at the
+        servo attached to that DUT.  The servo in the test lab is assumed to
+        already have servod up and running on it.
+
+        @param device_under_test_hostname: device whose servo we want to target.
+        @return an appropriately configured Servo
+        """
+        host_parts = device_under_test_hostname.split('.')
+        host_parts[0] = host_parts[0] + '-servo'
+        return Servo(servo_host='.'.join(host_parts))
+
+
+    def __init__(self, servo_host=None, servo_port=9999,
                  xml_config=['servo.xml'], servo_vid=None, servo_pid=None,
                  servo_serial=None, cold_reset=False, servo_interfaces=[]):
         """Sets up the servo communication infrastructure.
@@ -64,8 +82,6 @@ class Servo:
         # launch servod
         self._servod = None
 
-        if not servo_port:
-            servo_port = 9999
         # TODO(tbroch) In case where servo h/w is not connected to the host
         # running the autotest server, servod will need to be launched by
         # another means (udev likely).  For now we can assume servo_host ==
