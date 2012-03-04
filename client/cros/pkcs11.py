@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,8 +11,7 @@ from autotest_lib.client.cros import constants
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 PKCS11_DIR = '/var/lib/opencryptoki'
-PKCS11_TOOL = '/usr/bin/pkcs11-tool '\
-    '--module /usr/lib/libchaps.so'
+PKCS11_TOOL = '/usr/bin/pkcs11-tool --module %s %s'
 USER_TOKEN_NAME = 'User-Specific TPM Token'
 USER_TOKEN_DIR= '/home/chronos/user/.tpm'
 
@@ -64,7 +63,10 @@ def ensure_tpm_owned():
 
 def __verify_tokenname():
     """Verify that the TPM token name is correct."""
-    pkcs11_label_cmd = PKCS11_TOOL + ' -L '
+    pkcs11_lib_path = '/usr/lib/libchaps.so'
+    if not os.path.exists(pkcs11_lib_path):
+        pkcs11_lib_path = '/usr/lib64/libchaps.so'
+    pkcs11_label_cmd = PKCS11_TOOL % (pkcs11_lib_path, '-L')
     pkcs11_cmd_output = __run_cmd(pkcs11_label_cmd)
     m = re.search(r"token label:\s+(.*)\s*$", pkcs11_cmd_output,
                   flags=re.MULTILINE)
