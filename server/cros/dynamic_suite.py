@@ -47,8 +47,8 @@ def reimage_and_run(**dargs):
                              Default: True
     """
     build, board, name, job, pool, num, skip_reimage, add_experimental = \
-        _vet_remage_and_run_args(**dargs)
-    reimager = Reimager(job.autodir, pool=pool)
+        _vet_reimage_and_run_args(**dargs)
+    reimager = Reimager(job.autodir, pool=pool, results_dir=job.resultdir)
     if skip_reimage or reimager.attempt(build, board, job.record, num=num):
         suite = Suite.create_from_name(name, build, pool=pool,
                                        results_dir=job.resultdir)
@@ -128,7 +128,8 @@ class Reimager(object):
     """
 
 
-    def __init__(self, autotest_dir, afe=None, tko=None, pool=None):
+    def __init__(self, autotest_dir, afe=None, tko=None, pool=None,
+                 results_dir=None):
         """
         Constructor
 
@@ -137,6 +138,9 @@ class Reimager(object):
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
+        @param results_dir: The directory where the job can write results to.
+                            This must be set if you want job_id of sub-jobs
+                            list in the job keyvals.
         """
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
@@ -145,6 +149,7 @@ class Reimager(object):
                                                          delay_sec=10,
                                                          debug=False)
         self._pool = pool
+        self._results_dir = results_dir
         self._cf_getter = control_file_getter.FileSystemGetter(
             [os.path.join(autotest_dir, 'server/site_tests')])
 
@@ -178,11 +183,12 @@ class Reimager(object):
         if pool:
           self._pool = pool
         logging.debug("scheduling reimaging across %d machines", num)
-        wrapper_job_name = 'try new image'
+        wrapper_job_name = 'try_new_image'
         record('START', None, wrapper_job_name)
         try:
             self._ensure_version_label(VERSION_PREFIX + build)
             canary = self._schedule_reimage_job(build, num, board)
+            self._record_job_if_possible(wrapper_job_name, canary)
             logging.debug('Created re-imaging job: %d', canary.id)
             while len(self._afe.get_jobs(id=canary.id, not_yet_run=True)) > 0:
                 time.sleep(10)
@@ -209,6 +215,17 @@ class Reimager(object):
 
         record('END FAIL', None, wrapper_job_name)
         return False
+
+
+    def _record_job_if_possible(self, test_name, job):
+        """
+        Record job id as keyval, if possible, so it can be referenced later.
+
+        If |self._results_dir| is None, then this is a NOOP.
+        """
+        if self._results_dir:
+            job_id_owner = '%s-%s' % (job.id, job.owner)
+            utils.write_keyval(self._results_dir, {test_name: job_id_owner})
 
 
     def _ensure_version_label(self, name):
@@ -528,7 +545,6 @@ class Suite(object):
     def _record_scheduled_jobs(self):
         """
         Record scheduled job ids as keyvals, so they can be referenced later.
-
         """
         for job in self._jobs:
             job_id_owner = '%s-%s' % (job.id, job.owner)
