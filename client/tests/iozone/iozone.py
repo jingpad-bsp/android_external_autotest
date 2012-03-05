@@ -36,16 +36,16 @@ class iozone(test.test):
         os.chdir(os.path.join(self.srcdir, 'src/current'))
         utils.system('patch -p3 < ../../../makefile.patch')
 
-        arch = utils.get_current_kernel_arch()
-        if (arch == 'ppc'):
-            utils.make('linux-powerpc')
-        elif (arch == 'ppc64'):
-            utils.make('linux-powerpc64')
-        elif (arch == 'x86_64'):
+        ctarget = os.getenv('CTARGET_default')
+
+        if (ctarget == 'armv7a-cros-linux-gnueabi'):
+            utils.make('linux-arm')
+        elif (ctarget == 'i686-pc-linux-gnu'):
+            utils.make('linux')
+        elif (ctarget == 'x86_64-cros-linux-gnu'):
             utils.make('linux-AMD64')
         else:
             utils.make('linux')
-
 
     def run_once(self, dir=None, args=None):
         """
