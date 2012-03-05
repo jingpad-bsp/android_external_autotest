@@ -158,9 +158,16 @@ class ReimagerTest(mox.MoxTestBase):
         """Should inject dict of varibles into provided strings."""
         def find_all_in(d, s):
             """Returns true if all key-value pairs in |d| are printed in |s|."""
-            return reduce(lambda b,i: "%s='%s'\n" % i in s, d.iteritems(), True)
+            for k,v in d.iteritems():
+                if isinstance(v, str):
+                    if "%s='%s'\n" % (k,v) not in s:
+                        return False
+                else:
+                    if "%s=%r\n" % (k,v) not in s:
+                        return False
+            return True
 
-        v = {'v1': 'one', 'v2': 'two'}
+        v = {'v1': 'one', 'v2': 'two', 'v3': None, 'v4': False, 'v5': 5}
         self.assertTrue(find_all_in(v, dynamic_suite.inject_vars(v, '')))
         self.assertTrue(find_all_in(v, dynamic_suite.inject_vars(v, 'ctrl')))
 

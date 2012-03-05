@@ -102,7 +102,11 @@ def inject_vars(vars, control_file_in):
     """
     control_file = ''
     for key, value in vars.iteritems():
-        control_file += "%s='%s'\n" % (key, value)
+        # None gets injected as 'None' without this check; same for digits.
+        if isinstance(value, str):
+            control_file += "%s='%s'\n" % (key, value)
+        else:
+            control_file += "%s=%r\n" % (key, value)
     return control_file + control_file_in
 
 
@@ -159,7 +163,7 @@ class Reimager(object):
         return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
 
 
-    def attempt(self, build, board, record, num=None, pool=None):
+    def attempt(self, build, board, record, num=None):
         """
         Synchronously attempt to reimage some machines.
 
@@ -174,14 +178,10 @@ class Reimager(object):
                        prototype:
                          record(status, subdir, name, reason)
         @param num: how many devices to reimage.
-        @param pool: Specify the pool of machines to use for scheduling
-                     purposes.
         @return True if all reimaging jobs succeed, false otherwise.
         """
         if not num:
             num = CONFIG.get_config_value('CROS', 'sharding_factor', type=int)
-        if pool:
-          self._pool = pool
         logging.debug("scheduling reimaging across %d machines", num)
         wrapper_job_name = 'try_new_image'
         record('START', None, wrapper_job_name)
