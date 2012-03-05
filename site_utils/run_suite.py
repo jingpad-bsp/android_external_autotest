@@ -110,7 +110,11 @@ def main():
 
                 log_links.append(generate_log_link(entry['test_name'],
                                                    job_name))
-                code = 1
+                if code == 0 and entry['status'] == 'WARN':
+                    # IFF this is the only error, and it's a warning...
+                    code = 2
+                else:
+                    code = 1
         for link in log_links:
             print link
         break

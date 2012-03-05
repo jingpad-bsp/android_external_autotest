@@ -20,6 +20,11 @@ class SuiteArgumentException(Exception):
     pass
 
 
+class InadequateHostsException(Exception):
+    """Raised when there are too few hosts to run a suite."""
+    pass
+
+
 def reimage_and_run(**dargs):
     """
     Backward-compatible API for dynamic_suite.
@@ -48,6 +53,9 @@ def reimage_and_run(**dargs):
     """
     build, board, name, job, pool, num, skip_reimage, add_experimental = \
         _vet_reimage_and_run_args(**dargs)
+    board = 'board:%s' % board
+    if pool:
+        pool = 'pool:%s' % pool
     reimager = Reimager(job.autodir, pool=pool, results_dir=job.resultdir)
     if skip_reimage or reimager.attempt(build, board, job.record, num=num):
         suite = Suite.create_from_name(name, build, pool=pool,
@@ -186,6 +194,10 @@ class Reimager(object):
         wrapper_job_name = 'try_new_image'
         record('START', None, wrapper_job_name)
         try:
+            labels = [l for l in [board, self._pool] if l is not None]
+            if num > self._count_usable_hosts(labels):
+                raise InadequateHostsException("Too few hosts with %r" % labels)
+
             self._ensure_version_label(VERSION_PREFIX + build)
             canary = self._schedule_reimage_job(build, num, board)
             self._record_job_if_possible(wrapper_job_name, canary)
@@ -197,6 +209,10 @@ class Reimager(object):
                 time.sleep(10)
             logging.debug('Re-imaging job finished.')
             canary.result = self._afe.poll_job_results(self._tko, canary, 0)
+        except InadequateHostsException as e:
+            logging.warning(e)
+            record('END WARN', None, wrapper_job_name, str(e))
+            return False
         except Exception as e:
             # catch Exception so we record the job as terminated no matter what.
             logging.error(e)
@@ -222,10 +238,27 @@ class Reimager(object):
         Record job id as keyval, if possible, so it can be referenced later.
 
         If |self._results_dir| is None, then this is a NOOP.
+
+        @param test_name: the test to record id/owner for.
+        @param job: the job object to pull info from.
         """
         if self._results_dir:
             job_id_owner = '%s-%s' % (job.id, job.owner)
             utils.write_keyval(self._results_dir, {test_name: job_id_owner})
+
+
+    def _count_usable_hosts(self, host_spec):
+        """
+        Given a set of host labels, count the live hosts that have them all.
+
+        @param host_spec: list of labels specifying a set of hosts.
+        @return the number of live hosts that satisfy |host_spec|.
+        """
+        count = 0
+        for h in self._afe.get_hosts(multiple_labels=host_spec):
+            if h.status not in ['Repair Failed', 'Repairing']:
+                count += 1
+        return count
 
 
     def _ensure_version_label(self, name):
@@ -256,12 +289,12 @@ class Reimager(object):
             self._cf_getter.get_control_file_contents_by_name('autoupdate'))
         job_deps = []
         if self._pool:
-            meta_host = 'pool:%s' % self._pool
-            board_label = 'board:%s' % board
+            meta_host = self._pool
+            board_label = board
             job_deps.append(board_label)
         else:
             # No pool specified use board.
-            meta_host = 'board:%s' % board
+            meta_host = board
 
         return self._afe.create_job(control_file=control_file,
                                     name=build + '-try',
@@ -462,7 +495,7 @@ class Suite(object):
         """
         job_deps = []
         if self._pool:
-            meta_hosts = 'pool:%s' % self._pool
+            meta_hosts = self._pool
             cros_label = VERSION_PREFIX + self._build
             job_deps.append(cros_label)
         else:

@@ -26,6 +26,12 @@ class FakeJob(object):
         self.statuses = statuses
 
 
+class FakeHost(object):
+    """Faked out RPC-client-side Host object."""
+    def __init__(self, status='Ready'):
+        self.status = status
+
+
 class DynamicSuiteTest(mox.MoxTestBase):
     """Unit tests for dynamic_suite module methods.
 
@@ -154,6 +160,30 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._ensure_version_label(name)
 
 
+    def testCountHostsByBoardAndPool(self):
+        """Should count available hosts by board and pool."""
+        spec = [self._BOARD, 'pool:bvt']
+        self.afe.get_hosts(multiple_labels=spec).AndReturn([FakeHost()])
+        self.mox.ReplayAll()
+        self.assertEquals(self.reimager._count_usable_hosts(spec), 1)
+
+
+    def testCountHostsByBoard(self):
+        """Should count available hosts by board."""
+        spec = [self._BOARD]
+        self.afe.get_hosts(multiple_labels=spec).AndReturn([FakeHost()] * 2)
+        self.mox.ReplayAll()
+        self.assertEquals(self.reimager._count_usable_hosts(spec), 2)
+
+
+    def testCountZeroHostsByBoard(self):
+        """Should count the available hosts, by board, getting zero."""
+        spec = [self._BOARD]
+        self.afe.get_hosts(multiple_labels=spec).AndReturn([])
+        self.mox.ReplayAll()
+        self.assertEquals(self.reimager._count_usable_hosts(spec), 0)
+
+
     def testInjectVars(self):
         """Should inject dict of varibles into provided strings."""
         def find_all_in(d, s):
@@ -254,7 +284,7 @@ class ReimagerTest(mox.MoxTestBase):
                                  mox.StrContains(self._URL % self._BUILD)),
             name=mox.StrContains(self._BUILD),
             control_type='Server',
-            meta_hosts=['board:'+self._BOARD] * self._NUM,
+            meta_hosts=[self._BOARD] * self._NUM,
             dependencies=[])
         self.mox.ReplayAll()
         self.reimager._schedule_reimage_job(self._BUILD, self._NUM, self._BOARD)
@@ -275,6 +305,10 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._schedule_reimage_job(self._BUILD,
                                             self._NUM,
                                             self._BOARD).AndReturn(canary)
+
+        self.mox.StubOutWithMock(self.reimager, '_count_usable_hosts')
+        self.reimager._count_usable_hosts(mox.IgnoreArg()).AndReturn(self._NUM)
+
         if success is not None:
             self.mox.StubOutWithMock(self.reimager, '_report_results')
             self.reimager._report_results(canary, mox.IgnoreArg())
@@ -332,6 +366,21 @@ class ReimagerTest(mox.MoxTestBase):
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END ERROR', mox.IgnoreArg(), mox.IgnoreArg(), ex_message)
+        self.mox.ReplayAll()
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+
+
+    def testReimageThatCouldNotSchedule(self):
+        """Should attempt a reimage that can't be scheduled."""
+        canary = FakeJob()
+
+        self.mox.StubOutWithMock(self.reimager, '_count_usable_hosts')
+        self.reimager._count_usable_hosts(mox.IgnoreArg()).AndReturn(0)
+
+        rjob = self.mox.CreateMock(base_job.base_job)
+        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
+        rjob.record('END WARN', mox.IgnoreArg(), mox.IgnoreArg(),
+                    mox.StrContains('Too few hosts'))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
 
