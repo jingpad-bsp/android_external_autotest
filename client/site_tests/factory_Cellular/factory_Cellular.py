@@ -18,7 +18,12 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import lan_scpi
-from autotest_lib.client.cros.rf import modem_commands
+try:
+    from autotest_lib.client.cros.rf import modem_commands
+except ImportError:
+    # modem_commands.py may not be available yet; let this pass so that the test
+    # can still compile.  TODO(jsalz): Remove this.
+    pass
 from autotest_lib.client.cros.rf.config import PluggableConfig
 
 
