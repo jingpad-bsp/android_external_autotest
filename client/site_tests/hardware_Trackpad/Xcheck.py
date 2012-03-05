@@ -8,6 +8,7 @@ import logging
 import time
 import utils
 
+import trackpad_util
 import Xevent
 
 from operator import le, ge, eq, lt, gt, ne, and_
@@ -226,9 +227,7 @@ class Xcheck:
         ''' Verify if the observed motions satisfy the criteria '''
         op, val = self._motion_criteria(crit_tot_movement)
         self.motion_flag = op(self.xevent.sum_move, val)
-        logging.info('        Verify motion: (%s)' %
-                     Xcheck.RESULT_STR[self.motion_flag])
-        logging.info('              Total movement = %d' % self.xevent.sum_move)
+        self.vlog.verify_motion_log(self.motion_flag, self.xevent.sum_move)
 
     def _verify_button(self, crit_button):
         ''' Verify if the observed buttons satisfy the criteria
@@ -259,19 +258,7 @@ class Xcheck:
         state_flag = reduce(and_, state_flags)
 
         self.button_flag = state_flag and count_flag
-
-        logging.info('        Verify button: (%s)' %
-                     Xcheck.RESULT_STR[self.button_flag])
-        button_msg_details = '              %s %d times'
-        count_flag = False
-        for idx, b in enumerate(self.button_labels):
-            if self.xevent.count_buttons[idx] > 0:
-                logging.info(button_msg_details %
-                             (b, self.xevent.count_buttons[idx]))
-                count_flag = True
-        if not count_flag:
-            logging.info('              No Button events detected.')
-
+        self.vlog.verify_button_log(self.button_flag, self.xevent.count_buttons)
 
     def _verify_select_delay(self, crit_delay):
         ''' Verify if the delay time satisfy the criteria
@@ -595,13 +582,8 @@ class Xcheck:
         if fail_msg is not None:
             self.seq_flag = False
 
-        logging.info('        Verify select sequence: (%s)' %
-                     Xcheck.RESULT_STR[self.seq_flag])
-        logging.info('              Detected event sequence')
-        for e in self.xevent.xevent_seq:
-            logging.info('                      ' + str(e))
-        if not self.seq_flag:
-            logging.info('              ' + fail_msg % fail_para)
+        self.vlog.verify_sequence_log(self.seq_flag, self.xevent.xevent_seq,
+                                      fail_msg, fail_para)
 
     def _verify_all_criteria(self):
         ''' A general verification method for all criteria
@@ -644,9 +626,10 @@ class Xcheck:
         self.gesture_file_name = tp_data.file_basename
         self.func_name_pos = 0 if tp_data.prefix is None else 1
         self.criteria = tp_func.criteria
+        self.vlog = trackpad_util.VerificationLog()
         if parse_result:
             self._set_flags()
             self._verify_all_criteria()
-            return self.result
+            return {'result': self.result, 'vlog': self.vlog.log}
         else:
             return False

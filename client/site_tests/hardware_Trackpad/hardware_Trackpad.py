@@ -17,7 +17,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui
 
 from trackpad_device import TrackpadDevice
-from trackpad_util import read_trackpad_test_conf, get_prefix
+from trackpad_util import read_trackpad_test_conf, get_prefix, KEY_LOG, KEY_SEQ
 from Xcapture import Xcapture
 from Xcheck import Xcheck
 
@@ -52,6 +52,9 @@ class hardware_Trackpad(test.test):
     of the functionality.
     '''
     version = 1
+
+    def initialize(self):
+        self.vlog = trackpad_util.VerificationLog()
 
     def read_gesture_files_path(self, local_path, name):
         pathname = read_trackpad_test_conf(name, local_path)
@@ -92,6 +95,9 @@ class hardware_Trackpad(test.test):
         tdata.fail_count = dict([(tp_func.name, 0)
                                  for tp_func in functionality_list])
         tdata.fail_count_fullname = {}
+        vlog_dict = {}
+        vlog_dict[KEY_LOG] = {}
+        vlog_dict[KEY_SEQ] = []
         logging.info('')
         logging.info('*** hardware_Trackpad autotest is started ***')
 
@@ -207,9 +213,16 @@ class hardware_Trackpad(test.test):
                     self.xcapture.stop()
 
                     # Check X events
-                    tdata.result = self.xcheck.run(tdata.func, tdata,
-                                                   self.xcapture.read()) and \
-                                   normal_timeout_flag
+                    xevent_str = self.xcapture.read()
+                    output = self.xcheck.run(tdata.func, tdata, xevent_str)
+                    tdata.result = output['result'] and normal_timeout_flag
+
+                    # Insert the verification log into the vlog dictionary
+                    self.vlog.insert_vlog_dict(vlog_dict, gesture_file,
+                                               output['result'], output['vlog'])
+
+                    logging.info('...................vlog.................')
+                    logging.info(str(output['vlog']))
 
                     # Initialization for this subname
                     fullname = trackpad_util.get_fullname(tdata.file_basename)
@@ -262,7 +275,8 @@ class hardware_Trackpad(test.test):
 
         msg = trackpad_summary.format_result_tail()
         self.ilog.write_result_log(msg)
-
+        self.ilog.write_result_log('Verification Log = %s' % vlog_dict)
+        self.ilog.write_result_log('\n\n\n')
         self.ilog.close_result_log()
         self.ilog.append_detailed_log(self.autodir)
 

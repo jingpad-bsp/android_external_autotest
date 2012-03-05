@@ -12,14 +12,21 @@ import time
 
 import common_util
 import cros_gestures_lib
+import Xevent
 
 
 record_program = 'evemu-record'
 trackpad_test_conf = 'trackpad_usability_test.conf'
 trackpad_device_file_hardcoded = '/dev/input/event6'
-autotest_program = '/usr/local/autotest/bin/autotest'
+autodir = '/usr/local/autotest'
+autotest_program = os.path.join(autodir, 'bin/autotest')
 autotest_log_subpath = 'results/default/debug/client.INFO'
 conf_file_executed = False
+
+# The following two key definitions will be used in verification log
+# related dictionaries: vlog_dict and gss_vlog_dict.
+KEY_LOG = 'log'
+KEY_SEQ = 'seq'
 
 
 class TrackpadTestFunctionality:
@@ -122,10 +129,81 @@ class IterationLog:
         detailed_log_path = os.path.join(autodir, autotest_log_subpath)
         append_cmd = 'cat %s >> %s' % (detailed_log_path, self.result_file)
         try:
-            utils.system(append_cmd)
+            common_util.simple_system(append_cmd)
             logging.info('Append detailed log: "%s"' % append_cmd)
         except:
             logging.warn('Warning: fail to execute "%s"' % append_cmd)
+
+
+class VerificationLog:
+    ''' Maintain the log when verifying various X events '''
+
+    def __init__(self):
+        self.button_labels = Xevent.XButton().get_supported_buttons()
+        self.RESULT_STR = {True : 'Pass', False : 'Fail'}
+        self.log = {}
+
+    def verify_motion_log(self, result_flag, sum_move):
+        result_str = self.RESULT_STR[result_flag]
+        logging.info('        Verify motion: (%s)' % result_str)
+        logging.info('              Total movement = %d' % sum_move)
+        if not result_flag:
+            self.log['motion'] = sum_move
+
+    def verify_button_log(self, result_flag, count_buttons):
+        result_str = self.RESULT_STR[result_flag]
+        logging.info('        Verify button: (%s)' % result_str)
+        button_msg_details = '              %s: %d times'
+        count_flag = False
+        button_log_dict = {}
+        for idx, b in enumerate(self.button_labels):
+            if count_buttons[idx] > 0:
+                logging.info(button_msg_details % (b, count_buttons[idx]))
+                button_log_dict[b] = count_buttons[idx]
+                count_flag = True
+        if not count_flag:
+            logging.info('              No Button events detected.')
+        if not result_flag:
+            self.log['button'] = button_log_dict
+
+    def verify_sequence_log(self, result_flag, seq, fail_msg, fail_para):
+        result_str = self.RESULT_STR[result_flag]
+        logging.info('        Verify select sequence: (%s)' % result_str)
+        logging.info('              Detected event sequence')
+        for e in seq:
+            logging.info('                      ' + str(e))
+        if not result_flag:
+            logging.info('              ' + fail_msg % fail_para)
+        if not result_flag:
+            self.log['sequence'] = seq
+
+    def insert_vlog_dict(self, vlog_dict, gesture_file, vlog_result, vlog_log):
+        ''' Insert the verification log in a dictionary '''
+        gesture_name = extract_gesture_name_from_file(gesture_file)
+        gesture_file_realpath = os.path.realpath(gesture_file)
+
+        # Keep the root_cause only when it failed.
+        if not vlog_result:
+            vlog_dict[KEY_LOG][gesture_name] = {}
+            vlog_dict[KEY_LOG][gesture_name]['file'] = gesture_file_realpath
+            vlog_dict[KEY_LOG][gesture_name]['root_cause'] = vlog_log
+
+        if gesture_name not in vlog_dict[KEY_SEQ]:
+            vlog_dict[KEY_SEQ].append(gesture_name)
+
+
+def extract_gesture_name_from_file(filename):
+    ''' Extract the functionality name plus subname from a gesture file
+
+    For example,
+    a file name:
+        click-no_cursor_wobble.physical_click-alex-mary-20111213_210402.dat
+    Its corresponding gesture name:
+        click-no_cursor_wobble.physical_click
+    '''
+    gesture_file_basename = os.path.basename(filename)
+    gesture_name = '-'.join(gesture_file_basename.split('-')[0:2])
+    return gesture_name
 
 
 def read_trackpad_test_conf(target_name, path):
@@ -158,14 +236,13 @@ def get_prefix(func):
 
 def file_exists(filename):
     ''' Verify the existence of a file '''
-    return filename if filename is not None and os.path.exists(filename) \
-                    else None
+    return (filename if filename is not None and os.path.exists(filename)
+                     else None)
 
 
 def _probe_trackpad_device_file():
     ''' Probe trackpad device file in /proc/bus/input/devices '''
     device_info = '/proc/bus/input/devices'
-    trackpad_str = ['trackpad', 'touchpad']
     if not os.path.exists(device_info):
         return None
     with open(device_info) as f:
@@ -220,7 +297,7 @@ def get_trackpad_device_file():
         msg = 'The device file in %s: %s' % (trackpad_test_conf, file_config)
     elif file_hardcoded is not None:
         trackpad_device_file = file_hardcoded
-        warn_msg = 'The device hard coded in trackpad_util: %s' % file_hardcoded
+        msg = 'The device hard coded in trackpad_util: %s' % file_hardcoded
     else:
         trackpad_device_file = None
         msg = 'The trackpad device file is not available!'
@@ -333,26 +410,3 @@ def write_symlink(source, link_name):
     if os.path.exists(link_name):
         os.remove(link_name)
     os.symlink(source, link_name)
-
-
-def hardware_trackpad_test_all(gss_path=None):
-    ''' Run all trackpad autotest analysis on all gesture sets (gss) '''
-    if gss_path is None:
-        gss_path = read_trackpad_test_conf('gesture_files_path_root', '.')
-
-    if not os.path.isdir(gss_path):
-        print 'Error: "%s" does not exist.' % gss_path
-        sys.exit(1)
-
-    print 'Gesture Sets: "%s"' % gss_path
-    autotest_link = read_trackpad_test_conf('gesture_files_path_autotest', '.')
-    for gs in glob.glob(os.path.join(gss_path, '*')):
-        if os.path.islink(gs):
-            print '  Skip the symbolic link "%s"' % gs
-            continue
-        print '  Test the gesture set "%s"' % gs
-        if os.path.islink(autotest_link):
-            os.remove(autotest_link)
-        os.symlink(gs, autotest_link)
-        cmd = '%s %s' % (autotest_program, 'control')
-        common_util.simple_system(cmd)
