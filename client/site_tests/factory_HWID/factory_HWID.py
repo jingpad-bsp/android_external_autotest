@@ -45,7 +45,7 @@ class factory_HWID(test.test):
     def shop_floor_thread(self):
         """Task thread for writing HWID by shop floor system."""
         def update_label(text):
-            with gtk.gdk.lock:
+            with ful.gtk_lock:
                 self.label.set_text(text)
         try:
             update_label("Fetching HWID information...")
