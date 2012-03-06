@@ -12,6 +12,8 @@ import gobject
 import gtk
 from gtk import gdk
 
+import select_task
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.cros import factory
@@ -19,8 +21,10 @@ from autotest_lib.client.cros.factory import shopfloor
 from autotest_lib.client.cros.factory import ui as ful
 
 
+_MESSAGE_PREPARE = "Preparing HWID..."
+
 class factory_HWID(test.test):
-    version = 1
+    version = 2
 
     def write_hwid(self, hwid):
         """Writes system HWID by assigned spec.
@@ -42,34 +46,65 @@ class factory_HWID(test.test):
             # write again.
             shell("flashrom -i GBB -w '%s' --fast-verify" % name)
 
-    def shop_floor_thread(self):
-        """Task thread for writing HWID by shop floor system."""
+    def worker_thread(self, data):
+        """Task thread for writing HWID."""
         def update_label(text):
             with ful.gtk_lock:
                 self.label.set_text(text)
         try:
-            update_label("Fetching HWID information...")
-            hwid = shopfloor.get_hwid()
+            if data is None:
+                update_label("Fetching HWID information...")
+                hwid = shopfloor.get_hwid()
+            else:
+                assert 'hwid' in data, "Missing HWID after selection."
+                hwid = data.get('hwid', None)
 
-            update_label("Writing HWID: [%s]" % hwid)
-            self.write_hwid(hwid)
+            if not hwid:
+                raise ValueError("Invalid empty HWID")
+            else:
+                update_label("Writing HWID: [%s]" % hwid)
+                self.write_hwid(hwid)
         except:
             self._fail_msg = "Failed writing HWID: %s" % sys.exc_info()[1]
-            logging.exception("Execption when writing HWID by shop floor")
+            logging.exception("Exception when writing HWID")
         finally:
             gobject.idle_add(gtk.main_quit)
 
     def run_shop_floor(self):
         """Runs with shop floor system."""
-        self.label = ful.make_label('Preparing HWID...')
-        test_widget = self.label
-        thread.start_new_thread(self.shop_floor_thread, ())
-        ful.run_test_widget(self.job, test_widget)
+        self.label = ful.make_label(_MESSAGE_PREPARE)
+        thread.start_new_thread(self.worker_thread, (None, ))
+        ful.run_test_widget(self.job, self.label)
+
+    def stop_task(self, task):
+        factory.log("Stopping task: %s" % task.__class__.__name__)
+        self.tasks.remove(task)
+        self.find_next_task()
+
+    def find_next_task(self):
+        if self.tasks:
+            task = self.tasks[0]
+            factory.log("Starting task: %s" % task.__class__.__name__)
+            task.start(self.window, self.container, self.stop_task)
+        else:
+            # No more tasks - try to write data.
+            self.label = ful.make_label(_MESSAGE_PREPARE)
+            self.container.add(self.label)
+            self.container.show_all()
+            thread.start_new_thread(self.worker_thread, (self.data, ))
 
     def run_interactively(self):
         """Runs interactively (without shop floor system)."""
-        # TODO(hungte) A complete user interface to select modules
-        self._fail_msg = "Interactive mode HWID probing is not implemented yet."
+        def register_window(window):
+            self.window = window
+            self.find_next_task()
+            return True
+        self.data = {'hwid': None}
+        self.container = gtk.VBox()
+        self.tasks = [select_task.SelectHwidTask(self.data)]
+        ful.run_test_widget(self.job, self.container,
+                            window_registration_callback=register_window)
+
 
     def run_once(self):
         factory.log('%s run_once' % self.__class__)
