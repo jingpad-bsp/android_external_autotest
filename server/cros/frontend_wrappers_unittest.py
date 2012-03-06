@@ -55,7 +55,7 @@ class FrontendWrappersTest(mox.MoxTestBase):
             raise Exception
 
         deadline = time.time() + timeout_sec
-        frontend_wrappers.try_noop_rpc().AndReturn(False)
+        frontend_wrappers.try_noop_rpc().MultipleTimes().AndReturn(False)
         self.mox.ReplayAll()
         self.assertTrue(flaky_succeed())
         self.assertTrue(time.time() < deadline)
@@ -72,7 +72,7 @@ class FrontendWrappersTest(mox.MoxTestBase):
             raise Exception()
 
         deadline = time.time() + timeout_sec
-        frontend_wrappers.try_noop_rpc().AndReturn(False)
+        frontend_wrappers.try_noop_rpc().MultipleTimes().AndReturn(False)
         self.mox.ReplayAll()
         self.assertRaises(Exception, fail)
         self.assertTrue(time.time() >= deadline)
@@ -89,7 +89,7 @@ class FrontendWrappersTest(mox.MoxTestBase):
             raise Exception()
 
         deadline = time.time() + timeout_sec
-        frontend_wrappers.try_noop_rpc().AndReturn(True)
+        frontend_wrappers.try_noop_rpc().MultipleTimes().AndReturn(True)
         self.mox.ReplayAll()
         self.assertRaises(Exception, fail)
         self.assertTrue(time.time() < deadline)
