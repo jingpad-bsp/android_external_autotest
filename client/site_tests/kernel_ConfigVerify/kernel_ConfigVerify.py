@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import logging, os, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
@@ -80,6 +80,20 @@ class kernel_ConfigVerify(test.test):
     def is_missing(self, name):
         self.has_value(name, None)
 
+    # Checks every config line for the regex, expecting a single match.
+    def has_match(self, regex, expected):
+        # Validate early to make sure we at least have the expected one.
+        self.has_builtin(expected)
+        # Now make sure nothing else with the specified regex exists.
+        regex = r'CONFIG_%s' % (regex)
+        expected = 'CONFIG_%s' % (expected)
+        for name in self._config:
+            if not re.match(regex, name):
+                continue
+            if name != expected:
+                self._failed('"%s" found for "%s" when only "%s" allowed' %
+                             (name, regex, expected))
+
     def load_configs(self, filename):
         # Make sure the given file actually exists.
         if not os.path.exists(filename):
@@ -143,6 +157,9 @@ class kernel_ConfigVerify(test.test):
         else:
             self.has_builtin('DEBUG_RODATA')
             self.has_builtin('DEBUG_SET_MODULE_RONX')
+
+        # Security; no surprise binary formats.
+        self.has_match(r'BINFMT_', 'BINFMT_ELF')
 
         # Raise a failure if anything unexpected was seen.
         if len(self._failures):
