@@ -14,7 +14,7 @@ This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
-import optparse, time, sys
+import getpass, optparse, time, sys
 import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros import frontend_wrappers
@@ -84,11 +84,16 @@ def main():
         if not afe.get_jobs(id=job_id, finished=True):
             time.sleep(1)
             continue
-        views = filter(status_is_relevant,
-                       TKO.run('get_detailed_test_views', afe_job_id=job_id))
+        views = TKO.run('get_detailed_test_views', afe_job_id=job_id)
         width = len(max(map(lambda x: x['test_name'], views), key=len)) + 3
+
+        relevant_views = filter(status_is_relevant, views)
+        if not relevant_views:
+           # The main suite job most likely failed in SERVER_JOB.
+           relevant_views = views
+
         log_links = []
-        for entry in views:
+        for entry in relevant_views:
             test_entry = entry['test_name'].ljust(width)
             print "%s%s" % (test_entry, get_pretty_status(entry['status']))
             if entry['status'] != 'GOOD':
@@ -97,9 +102,14 @@ def main():
                                       entry['reason'])
                 job_name = entry['test_name'].split('.')[0]
                 if 'job_keyvals' in entry and job_name in entry['job_keyvals']:
-                    log_links.append(
-                        generate_log_link(entry['test_name'],
-                                          entry['job_keyvals'][job_name]))
+                    job_name = entry['job_keyvals'][job_name]
+                else:
+                  # We are the main suite job since there is no keyval entry
+                  # for our job_name.
+                  job_name = '%s-%s' % (job_id, getpass.getuser())
+
+                log_links.append(generate_log_link(entry['test_name'],
+                                                   job_name))
                 code = 1
         for link in log_links:
             print link
