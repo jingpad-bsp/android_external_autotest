@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -16,6 +16,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import leds
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import lan_scpi
 try:
@@ -46,6 +47,11 @@ class factory_Cellular(test.test):
     version = 1
 
     def run_once(self, ext_host, dev='ttyUSB0', config_path=None):
+        with leds.Blinker(((leds.LED_NUM|leds.LED_CAP, 0.25),
+                           (leds.LED_CAP|leds.LED_SCR, 0.25))):
+            self._run(ext_host, dev, config_path)
+
+    def _run(self, ext_host, dev, config_path):
         config = base_config.Read(config_path)
 
         # Kill off modem manager, which might be holding the device open.

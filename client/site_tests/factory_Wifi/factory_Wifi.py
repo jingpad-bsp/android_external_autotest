@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -12,6 +12,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import leds
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import lan_scpi
 from autotest_lib.client.cros.rf.config import PluggableConfig
@@ -37,6 +38,13 @@ class factory_Wifi(test.test):
     version = 1
 
     def run_once(self, n4010a_host, config_path=None):
+        with leds.Blinker(((leds.LED_NUM, 0.25),
+                           (leds.LED_CAP, 0.25),
+                           (leds.LED_SCR, 0.25),
+                           (leds.LED_CAP, 0.25))):
+            self._run(n4010a_host, config_path)
+
+    def _run(self, n4010a_host, config_path):
         config = base_config.Read(config_path)
         n4010a = agilent_scpi.N4010ASCPI(n4010a_host, timeout=5)
 
