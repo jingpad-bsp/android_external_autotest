@@ -571,7 +571,7 @@ class UITest(pyauto_test.PyAutoTest):
                          (match.group(1) == constants.BROWSER or
                           match.group(1) == 'supplied_chrome') and
                          match.group(2) == 'sig 6')):
-                    self.job.record('WARN', self.tagged_testname,
+                    self.job.record('INFO', self.tagged_testname,
                                     line[match.start():])
 
 
