@@ -239,6 +239,55 @@ size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
         self.write_perf_keyval({prefix + 'ureadrand_iops': iops})
 
 
+    def _uwrite(self, prefix, file):
+        """Write a large file.
+
+        Args:
+          prefix: prefix to use on name/value pair for identifying results
+          file: file path to use for test
+
+        The size should be picked so the file will not fit in memory.
+
+        Example results:
+          size=8589934592 n=1 55.5 3. timer avg= 55.5 stdv=0.0693 147.6 MiB/s
+          size=8589934592 n=1 55.6 4. timer avg= 55.5 stdv=0.0817 147.5 MiB/s
+        """
+        size = 8 * 1024 * 1024 * 1024
+        loops = 4
+        iterations = 1
+        args = ('-f %s -z %d -i %d -l %d -b12' %
+               (file, size, iterations, loops))
+        result = self._run('uwrite', args)
+        r1 = re.search(r"avg=.*$", result)
+        r2 = re.search(re_float, r1.group(0))
+        secs = float(r2.group(0))
+        mib_s = size * iterations / secs / (1024 * 1024)
+        self.write_perf_keyval({prefix + 'uwrite_MiB_s': mib_s})
+
+
+    def _uwriterand(self, prefix, file, size):
+        """Write randomly a file
+
+        Args:
+          prefix: prefix to use on name/value pair for identifying results
+          file: file path to use for test
+          size: size of file - large files are much slower than small files
+        Example results (modified to fit in 80 columes):
+size=16777216 n=1000 13.4 1. timer avg= 13.4 stdv= 0 0.29 MiB/s 74.8 IOPs/sec
+size=16777216 n=1000 13.3 2. timer avg= 13.3 stdv=0.032 0.3 MiB/s 75.0 IOPs/sec
+
+        """
+        loops = 4
+        iterations = 1000
+        args = ('-f %s -z %d -i %d -l %d -b12' %
+                (file, size, iterations, loops))
+        result = self._run('uwriterand', args)
+        r1 = re.search(r"([^\s]+ IOPs/sec).*$", result)
+        r2 = re.search(re_float, r1.group(0))
+        iops = r2.group(0)
+        self.write_perf_keyval({prefix + 'uwriterand_iops': iops})
+
+
     def _disk_tests(self, prefix,  dir, file):
         """Run this collection of disk tests
 
@@ -250,6 +299,9 @@ size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
         self._threadtree(prefix, dir)
         self._uread(prefix, file)
         self._ureadrand(prefix, file)
+        self._uwrite(prefix, file)
+        self._uwriterand(prefix + '_large_', file, 8 * 1024 * 1024 * 1024)
+        self._uwriterand(prefix + '_small_', file, 8 * 1024)
 
 
     def _ecryptfs(self):
