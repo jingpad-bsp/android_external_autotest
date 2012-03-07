@@ -302,7 +302,7 @@ class FactoryInstallTest(test.test):
             raise error.TestFail("Expected statuses of %s but found %s" % (
                     expected_status_map, status_map))
 
-        dut_client.run("cd /usr/local/gooftool; "
+        dut_client.run("cd /usr/local/factory/bin; "
                        "./gooftool --prepare_wipe --verbose")
 
     def _complete_install(self):
