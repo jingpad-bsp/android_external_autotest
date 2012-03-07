@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,6 +10,7 @@ Autotest jobs.
 
 __author__ = 'dalecurtis@google.com (Dale Curtis)'
 
+import getpass
 import logging
 import optparse
 import os
@@ -20,8 +21,14 @@ import common_util
 
 
 # Pre-built Autotest location. Does not contain [client/server]/site_tests.
-AUTOTEST_BIN_DIR = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '..', '..'))
+if 'chromeos-test' == getpass.getuser():
+  # The Autotest user should use the local install directly.
+  AUTOTEST_BIN_DIR = os.path.abspath(os.path.join(
+          os.path.dirname(__file__), '..', '..'))
+else:
+  # All regular users need to use this for now.
+  # Until we can drop SSO this is required.
+  AUTOTEST_BIN_DIR = '/home/chromeos-test/autotest'
 
 # Path to atest executable.
 ATEST_PATH = os.path.join(AUTOTEST_BIN_DIR, 'cli/atest')
@@ -37,7 +44,8 @@ SYNC_DIRS = ['autotest/server', 'autotest/client']
 
 
 def CreateJob(name, control, platforms, labels=None, server=True,
-              sync=None, update_url=None, cli=ATEST_PATH, mail=None):
+              sync=None, update_url=None, cli=ATEST_PATH, mail=None,
+              priority='medium'):
   """Creates an Autotest job using the provided parameters.
 
   Uses the atest CLI tool to create a job for the given hosts with the given
@@ -47,12 +55,14 @@ def CreateJob(name, control, platforms, labels=None, server=True,
     name: Name of job to create.
     control: Path to Autotest control file to use.
     platforms: Platform labels to schedule job for.
-    labels: Only use hosts with these labels.
+    labels: Only use hosts with these labels. Can be a list or a comma delimited
+     str.
     server: Run the job as a server job? Defaults to true.
     sync: Number of hosts to process synchronously.
     update_url: Dev Server update URL each host should pull update from.
     cli: Path to atest (Autotest CLI) to use for this job.
     mail: Comma separated list of email addresses to notify upon job completion.
+    priority: The job priority (low, medium, high, urgent), default medium.
 
   Returns:
     Job id if successful.
@@ -71,11 +81,15 @@ def CreateJob(name, control, platforms, labels=None, server=True,
     cmd_list.append('--image ' + update_url)
   if mail:
     cmd_list.append('--email ' + mail)
+  if priority:
+    cmd_list.append('--priority %s' % priority.lower())
 
-  # Convert labels to comma separated list and escape labels w/ commas.
   if labels:
-    cmd_list.append('--dependencies ' + ','.join(
-        [label.replace(',', r'\\,') for label in labels]))
+    if isinstance(labels, list):
+      # Convert labels to comma separated list and escape labels w/ commas.
+      # if we were given a list.
+      labels = [label.replace(',', r'\\,') for label in labels]
+    cmd_list.append('--dependencies ' + labels)
 
   cmd_list.append(name)
   msg = 'Failed to create Autotest job %s !' % name
@@ -135,18 +149,36 @@ def ImportTests(hosts, staging_dir):
   return all_ok
 
 
-def GetPlatformList(cli=ATEST_PATH):
-  """Returns a list of platforms which are accessible by the current user."""
+def GetPlatformDict(cli=ATEST_PATH):
+  """Returns a dict of platforms + labels usable by the current user.
+
+  @returns a dict with platform as a key and value of a set representing labels
+  associated with a given platform.
+  """
+
   cmd = '%s host list --parse --user $USER' % cli
   msg = 'Failed to retrieve host list from Autotest.'
   output = common_util.RunCommand(cmd=cmd, error_msg=msg, output=True)
 
   # atest host list will return a tabular data set with columns separated by |
   # characters. From each line we only want the platform label.
+  platform_dict = {}
   if output:
-    return sorted(set(
-        [line.split('Platform=')[1].split('|')[0].strip()
-         for line in output.split('\n') if 'netbook' in line]))
+    for line in output.splitlines():
+      temp_dict = {}
+      for entry in line.split('|'):
+        key, values = entry.split('=', 1)
+        temp_dict[key.strip()] = values.strip()
+      platform = temp_dict.get('Platform', None)
+      if not platform:
+        continue
+      labels = temp_dict.get('Labels', '').split()
+      for label in labels:
+        if label.startswith('rps') or label.startswith('cros'):
+          continue
+        platform_dict.setdefault(platform, set()).add(label)
+
+  return platform_dict
 
 
 def GetHostList(cli=ATEST_PATH, acl=None, label=None, user=None, status=None):

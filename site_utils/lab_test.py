@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -204,14 +204,14 @@ def LogErrorAndExit(msg, *args, **kwargs):
 
 
 @KerberosExceptionHandler
-def GetPlatformList():
+def GetPlatformDict():
   """Return a list of Autotest platform labels accessible to current user."""
-  platform_list = autotest_util.GetPlatformList()
-  if not platform_list:
+  platform_dict = autotest_util.GetPlatformDict()
+  if not platform_dict:
     LogErrorAndExit('There are no platforms ACL accessible by you. Please'
                     ' contact the ChromeOS Autotest team'
-                    ' (chromeos-autotest@google.com).')
-  return platform_list
+                    ' (chromeos-lab-infrastructure@google.com).')
+  return platform_dict
 
 
 @KerberosExceptionHandler
@@ -251,8 +251,10 @@ def ParseOptions():
                     default=chromeos_test_common.CROS_DIR,
                     help=('Location of Chrome OS code base. Defaults to '
                           '"%default".'))
-  parser.add_option('-d', '--debug', dest='debug', action='store_true',
-                    default=False, help='Enable debugging output.')
+  parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
+                    default=False, help='Enable debugging/verbose output.')
+  parser.add_option('-d', '--deps', dest='deps', default=None,
+                    help='Comma deliminated list of dependencies.')
   parser.add_option('-f', '--force', dest='force', action='store_true',
                     default=False,
                     help='Force upload even if build already exists on server.')
@@ -291,12 +293,14 @@ def ParseOptions():
                           ' server even if it already exists. If tests aren\'t'
                           ' packaged, the versions on the Autotest server will'
                           ' be used.'))
+  parser.add_option('-x', '--priority', dest='priority', default='urgent',
+                    help='The priority of the job. default: [%default].')
   parser.add_option('--use_emerged', dest='use_emerged', action='store_true',
                     default=False,
                     help='Force use of emerged autotest packages')
   options, args = parser.parse_args()
 
-  if options.debug:
+  if options.verbose:
     logging.getLogger().setLevel(logging.DEBUG)
 
   # Make sure we're outside the chroot.
@@ -323,8 +327,10 @@ def ParseOptions():
     print Colors.Color(
         Colors.BOLD_BLUE,
         '\nGenerating list of valid platforms (this may take a few seconds):')
-    for platform in GetPlatformList():
-      print '  %s' % platform
+    format = '%-40s %-20s'
+    print format % ('Platform', 'Dependencies')
+    for platform, deps in GetPlatformDict().iteritems():
+      print format % (platform, ' '.join(deps))
     sys.exit(0)
 
   logging.info('Verifying command line options.')
@@ -411,12 +417,12 @@ def ParseOptions():
     sys.exit(ERROR_EXIT_CODE)
 
   # Verify the requested platforms.
-  platform_list = GetPlatformList()
+  platform_dict = GetPlatformDict()
 
   # Strip out any multipliers from the platform list.
   platform_split = options.platforms.split(',')
   platform_names = set(p.lstrip('0123456789* ') for p in platform_split)
-  bad_platforms = platform_names - set(platform_list)
+  bad_platforms = platform_names - set(platform_dict.keys())
   if bad_platforms:
     LogErrorAndExit('The following platforms are invalid: %s',
                     ', '.join(bad_platforms))
@@ -459,11 +465,14 @@ def main():
   try:
     # Parse options and find the requested control file.
     options, control_file, autotest_dir, config = ParseOptions()
+    start_str = 'Running %s on the following platforms: %s' % (
+        Colors.Color(Colors.BOLD_GREEN, control_file),
+        Colors.Color(Colors.BOLD_GREEN, options.platforms))
 
-    logging.info('Running %s on the following platforms: %s',
-                 Colors.Color(Colors.BOLD_GREEN, control_file),
-                 Colors.Color(Colors.BOLD_GREEN, options.platforms))
-
+    if options.deps:
+      start_str += ' with deps: %s' % Colors.Color(Colors.BOLD_GREEN,
+                                                   options.deps)
+    logging.info(start_str)
     # Load Dev Server configuration.
     dev_config = config['dev_server']
 
@@ -539,7 +548,7 @@ def main():
     job_id = autotest_util.CreateJob(
         name=job_name, control=os.path.join(autotest_dir, control_file),
         platforms=options.platforms, update_url=update_url, server=server,
-        mail=options.mail)
+        mail=options.mail, labels=options.deps, priority=options.priority)
 
     logging.info(
         Colors.Color(Colors.BOLD_GREEN, 'Job created successfully, URL: %s%s'),
@@ -550,7 +559,7 @@ def main():
 
     if isinstance(e, common_util.ChromeOSTestError):
       logging.error(Colors.Color(Colors.BOLD_RED, e[0]))
-      if not options or options.debug:
+      if not options or options.verbose:
         logging.exception(e)
     else:
       raise
