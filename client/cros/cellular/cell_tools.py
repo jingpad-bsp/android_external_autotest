@@ -59,6 +59,16 @@ def ConnectToCellular(flim, timeout=TIMEOUT):
     return (service, state)
 
 
+def FindLastGoodAPN(service, default=None):
+    if not service:
+        return default
+    props = service.GetProperties()
+    if 'Cellular.LastGoodAPN' not in props:
+        return default
+    last_good_apn = props['Cellular.LastGoodApn']
+    return last_good_apn.get('apn', default)
+
+
 def DisconnectFromCellularService(bs, flim, service):
     """Attempts to disconnect from the supplied cellular service.
 

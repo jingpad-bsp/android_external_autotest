@@ -27,8 +27,8 @@ class TechnologyCommands():
     def Disable(self):
         self.flim.DisableTechnology('cellular')
 
-    def Connect(self):
-        self.command_delegate.Connect()
+    def Connect(self, **kwargs):
+        self.command_delegate.Connect(**kwargs)
 
     def Disconnect(self):
         return self.command_delegate.Disconnect()
@@ -49,9 +49,9 @@ class ModemCommands():
     def Disable(self):
         self.modem.Enable(False)
 
-    def Connect(self):
-        connect_props = {'number': r'#777'}
-        self.simple_modem.Connect(connect_props)
+    def Connect(self, simple_connect_props):
+        logging.debug('Connecting with properties: %r' % simple_connect_props)
+        self.simple_modem.Connect(simple_connect_props)
 
     def Disconnect(self):
         """
@@ -95,7 +95,7 @@ class DeviceCommands():
         self.service = None
         self.device.SetProperty('Powered', False)
 
-    def Connect(self):
+    def Connect(self, **kwargs):
         self.GetService().Connect()
 
     def Disconnect(self):
@@ -130,10 +130,10 @@ class MixedRandomCommands():
         logging.info('Disable with %s' % cmds)
         cmds.Disable()
 
-    def Connect(self):
+    def Connect(self, **kwargs):
         cmds = self.PickRandomCommands()
         logging.info('Connect with %s' % cmds)
-        cmds.Connect()
+        cmds.Connect(**kwargs)
 
     def Disconnect(self):
         cmds = self.PickRandomCommands()
@@ -229,6 +229,7 @@ class network_3GModemControl(test.test):
                                              ['ready', 'portal', 'online']),
             error.TestFail('Service failed to connect.'))
 
+
     def TestCommands(self, commands):
         """
         Manipulate the modem using modem, device or technology commands.
@@ -247,6 +248,8 @@ class network_3GModemControl(test.test):
         commands.Enable()
         self.EnsureEnabled(check_idle=not self.autoconnect)
 
+        simple_connect_props = {'number': r'#777', 'apn': self.FindAPN()}
+
         logging.info('Disabling')
         commands.Disable()
         self.EnsureDisabled()
@@ -257,7 +260,7 @@ class network_3GModemControl(test.test):
 
         if not self.autoconnect:
             logging.info('Connecting')
-            commands.Connect()
+            commands.Connect(simple_connect_props=simple_connect_props)
         else:
             logging.info('Expecting AutoConnect to connect')
         self.EnsureConnected()
@@ -267,12 +270,16 @@ class network_3GModemControl(test.test):
         if not (self.autoconnect and will_autoreconnect):
             self.EnsureEnabled(check_idle=True)
             logging.info('Connecting manually, since AutoConnect was on')
-            commands.Connect()
+            commands.Connect(simple_connect_props=simple_connect_props)
         self.EnsureConnected()
 
         logging.info('Disabling')
         commands.Disable()
         self.EnsureDisabled()
+
+    def FindAPN(self):
+        return cell_tools.FindLastGoodAPN(self.flim.FindCellularService(),
+                                          default='epc.tmobile.com')
 
     def run_once(self, autoconnect, mixed_iterations=2,
                  config=None, technology=None):
