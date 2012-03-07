@@ -24,6 +24,7 @@ class ECControl(object):
     SET_FANSPEED_RE = "Fan target RPM set."
     TEMP_SENSOR_RE = "Reading temperature...([0-9]*)"
     TOGGLE_AUTO_FAN_RE = "Automatic fan control is now on"
+    BATTERY_RE = "Cycle count"
     def ec_command(self, cmd):
         full_cmd = 'ectool %s' % cmd
         result = utils.system_output(full_cmd)
@@ -63,6 +64,11 @@ class ECControl(object):
             return int(match)
         raise error.TestError('Unable to read temperature sensor %d.' % idx)
 
+    def get_battery(self):
+        response = self.ec_command('battery')
+        result = re.search(self.BATTERY_RE, response)
+        return (result != None)
+
 
 class hardware_EC(test.test):
     version = 1
@@ -95,3 +101,6 @@ class hardware_EC(test.test):
             temperature = ec.get_temperature(idx) - 273
             if temperature < 0 or temperature > 100:
                 raise error.TestError(TEMP_ERR_MSG % idx);
+
+        if not ec.get_battery():
+            raise error.TestError('Battery communication failed.')
