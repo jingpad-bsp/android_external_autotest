@@ -204,7 +204,8 @@ class network_3GModemControl(test.test):
             error.TestFail('Modem failed to enter state Enabled'))
         utils.poll_for_condition(
             lambda: self.CompareDevicePowerState(self.device, True),
-            error.TestFail('Device failed to enter state Powered=True.'))
+            error.TestFail('Device failed to enter state Powered=True.'),
+            timeout=30)
         # wait for service to appear
         service = self.flim.FindCellularService()
         if not service:
@@ -242,25 +243,34 @@ class network_3GModemControl(test.test):
         """
         logging.info('Testing using %s' % commands)
 
+        logging.info('Enabling')
         commands.Enable()
         self.EnsureEnabled(check_idle=not self.autoconnect)
 
+        logging.info('Disabling')
         commands.Disable()
         self.EnsureDisabled()
 
+        logging.info('Enabling again')
         commands.Enable()
         self.EnsureEnabled(check_idle=not self.autoconnect)
 
         if not self.autoconnect:
+            logging.info('Connecting')
             commands.Connect()
+        else:
+            logging.info('Expecting AutoConnect to connect')
         self.EnsureConnected()
 
+        logging.info('Disconnecting')
         will_autoreconnect = commands.Disconnect()
         if not (self.autoconnect and will_autoreconnect):
             self.EnsureEnabled(check_idle=True)
+            logging.info('Connecting manually, since AutoConnect was on')
             commands.Connect()
         self.EnsureConnected()
 
+        logging.info('Disabling')
         commands.Disable()
         self.EnsureDisabled()
 
