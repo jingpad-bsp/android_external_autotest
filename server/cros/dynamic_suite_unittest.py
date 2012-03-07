@@ -8,6 +8,7 @@
 
 import logging
 import mox
+import random
 import shutil
 import tempfile
 import time
@@ -21,6 +22,7 @@ class FakeJob(object):
     """Faked out RPC-client-side Job object."""
     def __init__(self, id=0, statuses=[]):
         self.id = id
+        self.hostname = 'host%d' % id
         self.owner = 'tester'
         self.name = 'Fake Job %d' % self.id
         self.statuses = statuses
@@ -30,6 +32,11 @@ class FakeHost(object):
     """Faked out RPC-client-side Host object."""
     def __init__(self, status='Ready'):
         self.status = status
+
+class FakeLabel(object):
+    """Faked out RPC-client-side Label object."""
+    def __init__(self, id=0):
+        self.id = id
 
 
 class DynamicSuiteTest(mox.MoxTestBase):
@@ -290,8 +297,22 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._schedule_reimage_job(self._BUILD, self._NUM, self._BOARD)
 
 
+    def expect_label_cleanup(self, build):
+        """Sets up |self.afe| to expect deletion of the version label.
+
+        @param build: the build the label is named after.
+        """
+        label = FakeLabel(id=random.randrange(0, 5))
+        self.afe.get_labels(
+            name__startswith=mox.StrContains(build)).AndReturn([label])
+        self.afe.run('delete_label', id=label.id)
+
+
     def expect_attempt(self, success, ex=None):
         """Sets up |self.reimager| to expect an attempt() that returns |success|
+
+        Also stubs out Reimger._clear_build_state(), should the caller wish
+        to set an expectation there as well.
 
         @param success: the value returned by poll_job_results()
         @param ex: if not None, |ex| is raised by get_jobs()
@@ -312,6 +333,8 @@ class ReimagerTest(mox.MoxTestBase):
         if success is not None:
             self.mox.StubOutWithMock(self.reimager, '_report_results')
             self.reimager._report_results(canary, mox.IgnoreArg())
+            canary.results_platform_map = {None: {'Total': [canary.hostname]}}
+
 
         self.afe.get_jobs(id=canary.id, not_yet_run=True).AndReturn([])
         if ex is not None:
@@ -320,6 +343,9 @@ class ReimagerTest(mox.MoxTestBase):
             self.afe.get_jobs(id=canary.id, finished=True).AndReturn([canary])
             self.afe.poll_job_results(mox.IgnoreArg(),
                                       canary, 0).AndReturn(success)
+
+        self.expect_label_cleanup(self._BUILD)
+        self.mox.StubOutWithMock(self.reimager, '_clear_build_state')
 
         return canary
 
@@ -331,8 +357,10 @@ class ReimagerTest(mox.MoxTestBase):
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
+        self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
     def testFailedReimage(self):
@@ -342,8 +370,10 @@ class ReimagerTest(mox.MoxTestBase):
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
+        self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
     def testReimageThatNeverHappened(self):
@@ -356,6 +386,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
     def testReimageThatRaised(self):
@@ -368,6 +399,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('END ERROR', mox.IgnoreArg(), mox.IgnoreArg(), ex_message)
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
     def testReimageThatCouldNotSchedule(self):
@@ -381,8 +413,10 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END WARN', mox.IgnoreArg(), mox.IgnoreArg(),
                     mox.StrContains('Too few hosts'))
+        self.expect_label_cleanup(self._BUILD)
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
 class SuiteTest(mox.MoxTestBase):

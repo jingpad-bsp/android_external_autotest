@@ -21,7 +21,7 @@ Assumes that a label including the image name has already been created.
 
 from autotest_lib.server import frontend
 
-vers = 'cros-version-'
+vers = 'cros-version:'
 repo_url = None
 if 'image_name' in locals():
     from autotest_lib.server.cros import dynamic_suite
@@ -31,6 +31,14 @@ if 'image_name' in locals():
 AFE = frontend.AFE(debug=False)
 
 def clear_version_labels(machine):
+    """Clear all build-specific labels, attributes from the target.
+
+    Copied from server/cros/dynamic_suite.py, because we can't be sure that
+    code will be available in all contexts in which this control file is
+    currently used.
+
+    @param machine: the host to clear labels, attributes from.
+    """
     labels = AFE.get_labels(name__startswith=vers)
     for label in labels: label.remove_hosts(hosts=[machine])
     AFE.set_host_attribute('job_repo_url', None, hostname=machine)

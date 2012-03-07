@@ -57,10 +57,13 @@ def reimage_and_run(**dargs):
     if pool:
         pool = 'pool:%s' % pool
     reimager = Reimager(job.autodir, pool=pool, results_dir=job.resultdir)
+
     if skip_reimage or reimager.attempt(build, board, job.record, num=num):
         suite = Suite.create_from_name(name, build, pool=pool,
                                        results_dir=job.resultdir)
         suite.run_and_wait(job.record, add_experimental=add_experimental)
+
+    reimager.clear_reimaged_host_state(build)
 
 
 def _vet_reimage_and_run_args(build=None, board=None, name=None, job=None,
@@ -162,6 +165,7 @@ class Reimager(object):
                                                          debug=False)
         self._pool = pool
         self._results_dir = results_dir
+        self._reimaged_hosts = {}
         self._cf_getter = control_file_getter.FileSystemGetter(
             [os.path.join(autotest_dir, 'server/site_tests')])
 
@@ -194,21 +198,25 @@ class Reimager(object):
         wrapper_job_name = 'try_new_image'
         record('START', None, wrapper_job_name)
         try:
+            # Determine if there are enough working hosts to run on.
             labels = [l for l in [board, self._pool] if l is not None]
             if num > self._count_usable_hosts(labels):
                 raise InadequateHostsException("Too few hosts with %r" % labels)
 
+            # Schedule job and record job metadata.
             self._ensure_version_label(VERSION_PREFIX + build)
-            canary = self._schedule_reimage_job(build, num, board)
-            self._record_job_if_possible(wrapper_job_name, canary)
-            logging.debug('Created re-imaging job: %d', canary.id)
-            while len(self._afe.get_jobs(id=canary.id, not_yet_run=True)) > 0:
-                time.sleep(10)
-            logging.debug('Re-imaging job running.')
-            while len(self._afe.get_jobs(id=canary.id, finished=True)) == 0:
-                time.sleep(10)
-            logging.debug('Re-imaging job finished.')
-            canary.result = self._afe.poll_job_results(self._tko, canary, 0)
+            canary_job = self._schedule_reimage_job(build, num, board)
+            self._record_job_if_possible(wrapper_job_name, canary_job)
+            logging.debug('Created re-imaging job: %d', canary_job.id)
+
+            # Poll until reimaging is complete.
+            self._wait_for_job_to_start(canary_job.id)
+            self._wait_for_job_to_finish(canary_job.id)
+
+            # Gather job results.
+            canary_job.result = self._afe.poll_job_results(self._tko,
+                                                           canary_job,
+                                                           0)
         except InadequateHostsException as e:
             logging.warning(e)
             record('END WARN', None, wrapper_job_name, str(e))
@@ -219,18 +227,86 @@ class Reimager(object):
             record('END ERROR', None, wrapper_job_name, str(e))
             return False
 
-        if canary.result is True:
-            self._report_results(canary, record)
+        self._remember_reimaged_hosts(build, canary_job)
+
+        if canary_job.result is True:
+            self._report_results(canary_job, record)
             record('END GOOD', None, wrapper_job_name)
             return True
 
-        if canary.result is None:
-            record('FAIL', None, canary.name, 're-imaging tasks did not run')
-        else:  # canary.result is False
-            self._report_results(canary, record)
+        if canary_job.result is None:
+            record('FAIL', None, canary_job.name, 'reimaging tasks did not run')
+        else:  # canary_job.result is False
+            self._report_results(canary_job, record)
 
         record('END FAIL', None, wrapper_job_name)
         return False
+
+
+    def _wait_for_job_to_start(self, job_id):
+        """
+        Wait for the job specified by |job_id| to start.
+
+        @param job_id: the job ID to poll on.
+        """
+        while len(self._afe.get_jobs(id=job_id, not_yet_run=True)) > 0:
+            time.sleep(10)
+        logging.debug('Re-imaging job running.')
+
+
+    def _wait_for_job_to_finish(self, job_id):
+        """
+        Wait for the job specified by |job_id| to finish.
+
+        @param job_id: the job ID to poll on.
+        """
+        while len(self._afe.get_jobs(id=job_id, finished=True)) == 0:
+            time.sleep(10)
+        logging.debug('Re-imaging job finished.')
+
+
+    def _remember_reimaged_hosts(self, build, canary_job):
+        """
+        Remember hosts that were reimaged with |build| as a part |canary_job|.
+
+        @param build: the build that was installed e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        @param canary_job: a completed frontend.Job object, possibly populated
+                           by frontend.AFE.poll_job_results.
+        """
+        if not hasattr(canary_job, 'results_platform_map'):
+            return
+        if not self._reimaged_hosts.get('build'):
+            self._reimaged_hosts[build] = []
+        for platform in canary_job.results_platform_map:
+            for host in canary_job.results_platform_map[platform]['Total']:
+                self._reimaged_hosts[build].append(host)
+
+
+    def clear_reimaged_host_state(self, build):
+        """
+        Clear per-host state created in the autotest DB for this job.
+
+        After reimaging a host, we label it and set some host attributes on it
+        that are then used by the suite scheduling code.  This call cleans
+        that up.
+
+        @param build: the build whose hosts we want to clean up e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        """
+        labels = self._afe.get_labels(name__startswith=VERSION_PREFIX + build)
+        for label in labels: self._afe.run('delete_label', id=label.id)
+        for host in self._reimaged_hosts.get('build', []):
+            self._clear_build_state(host)
+
+
+    def _clear_build_state(self, machine):
+        """
+        Clear all build-specific labels, attributes from the target.
+
+        @param machine: the host to clear labels, attributes from.
+        """
+        self._afe.set_host_attribute('job_repo_url', None, hostname=machine)
 
 
     def _record_job_if_possible(self, test_name, job):
