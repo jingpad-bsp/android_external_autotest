@@ -24,6 +24,9 @@ import gviz_api
 # Can only get date order from the db.
 DEFAULT_ORDER = 'ORDER BY test_started_time'
 
+# Narrow data to a set of known machines.
+HOSTNAME_QUERY_TEMPLATE = "AND hostname in ('%s')"
+
 
 ###############################################################################
 # Models
@@ -99,6 +102,10 @@ def GetRangedKeyByBuildLinechartData(request):
     raise ChartInputError('One interval-type parameter must be supplied.')
   query_list.append(ranged_queries[range_key](request))
   chrome_versions = chartutils.GetChromeVersions(request)
+  host_names = request.GET.get('hostnames')
+  if host_names:
+    query_list.append(HOSTNAME_QUERY_TEMPLATE %
+                      "','".join(host_names.split(',')))
   test_name, test_keys = chartutils.GetTestNameKeys(request.GET.get('testkey'))
   data_dict = GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions,
                                           ' '.join(query_list))
