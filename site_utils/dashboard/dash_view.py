@@ -246,22 +246,29 @@ class AutotestDashView(object):
           "                        'lmbench', 'logfile.monitor', 'repair', "
           "                        'sleeptest', 'tsc')")
       # Used in expression parsing - have slightly different captures.
+
+      # New test suite job regex.
+      #  (x86-zgb)-release/((R19)-1913.0.0-a1-b1539) \
+      #   /(bvt)/(network_DisableInterface)
+      self._jobname_testsuite_parse = re.compile(
+          '(.*?)-release/((R\d+)-.*?)/(.*?)/(.*)')
+
+      # x86-alex-r18-R18-1660.71.0-a1-b75_bvt
       self._jobname_parse = re.compile(
           '([\w-]*)-(.*[.-][\d]+\.[\d]+\.[\d]+-[ar][\w]+-b[\d]+)_([\w_]*)')
-      self._subjob_parse1 = re.compile(
-          '.*(0\.[\d]+\.[\d]+\.[\d]+-[ar][\w]+-b[\d]+)')
+      # x86-alex-r18-(R18-1660.71.0-a1-b75)_network_3g
       self._subjob_parse2 = re.compile(
           '.*(R[\d]+-[\d]+\.[\d]+\.[\d]+-[ar][\w]+-b[\d]+)')
+
       self._board_parse = re.compile(
           '(x86|tegra2)-(.+)-(r[\d]+)')
-      self._fullbuild_parse1 = re.compile(
-          '[\d]+\.([\d]+)\.[\d]+\.[\d]+-[ar][\w]+-b([\d]+)')
+      # R(19)-1914.0.0-a1-b(1748)
       self._fullbuild_parse2 = re.compile(
           'R([\d]+)-[\d]+\.[\d]+\.[\d]+-[ar][\w]+-b([\d]+)')
-      self._shortbuild_parse1 = re.compile(
-          '([\d]+\.[\d]+\.[\d]+\.[\d]+)-([ar][\w]+)-b([\d]+)')
+
       self._shortbuild_parse2 = re.compile(
           '(R[\d]+-[\d]+\.[\d]+\.[\d]+)-([ar][\w]+)-b([\d]+)')
+
       self._release_parse = re.compile('r[\d]')
 
       # Test creation info (author, path).
@@ -966,15 +973,26 @@ class AutotestDashView(object):
       Returns:
         Tuple of the board, a long build# and a possible job suffix (group).
       """
+      #  (x86-zgb)-release/((R19)-1913.0.0-a1-b1539) \
+      #   /(bvt)/(network_DisableInterface)
+      match = self._jobname_testsuite_parse.match(job_name)
+      if match:
+        board, build, milestone, suite, suffix = match.groups()
+        print match.groups()
+        # Put board in the format expected, e.g. x86-mario-r19.
+        board = '%s-%s' % (board, milestone.lower())
+        return board, build, suite
+
+      # Old suite style parsing.
       m = re.match(self._jobname_parse, job_name)
       if not m or not len(m.groups()) == 3:
         logging.warn("***Invalid job_name: %s.", job_name)
         return None, None, None
+
       board = m.group(1)
       # Subjob handles multi-build au test job names.
-      n = re.match(self._subjob_parse1, m.group(2))
-      if not n or not len(n.groups()) == 1:
-        n = re.match(self._subjob_parse2, m.group(2))
+      n = re.match(self._subjob_parse2, m.group(2))
+
       if not n or not len(n.groups()) == 1:
         full_build = None
       else:
@@ -997,11 +1015,11 @@ class AutotestDashView(object):
       """
       if not build:
         return None
-      m = re.search(self._fullbuild_parse1, build)
+
+      m = re.search(self._fullbuild_parse2, build)
       if not m or not len(m.groups()) == 2:
-        m = re.search(self._fullbuild_parse2, build)
-        if not m or not len(m.groups()) == 2:
-          return None
+        return None
+
       return str(int(m.group(1))*10000 + int(m.group(2)))
 
     def ParseSimpleBuild(self, build):
@@ -1017,9 +1035,7 @@ class AutotestDashView(object):
       Returns:
         The simple numeric build number.
       """
-      m = re.match(self._shortbuild_parse1, build)
-      if not m or not len(m.groups()) == 3:
-        m = re.match(self._shortbuild_parse2, build)
+      m = re.match(self._shortbuild_parse2, build)
       if not m or not len(m.groups()) == 3:
         parsed_build = build
       else:
@@ -1071,7 +1087,7 @@ class AutotestDashView(object):
           "SELECT name",
           "FROM afe_labels",
           "WHERE platform AND NOT invalid",
-          "  AND name REGEXP '(netbook|desktop)_.*'",
+          "  AND name REGEXP '.*'",
           "UNION",
           "SELECT distinct machine_group as name",
           "FROM tko_machines",

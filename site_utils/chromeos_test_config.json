@@ -48,7 +48,8 @@
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
             "build_pattern": "R19-*",
             "platforms": [
-                {"platform": "netbook_ALEX", "au_test": true},
+                {"platform": "netbook_ALEX", "au_test": true,
+                                             "test_suite": true},
                 {"platform": "netbook_ALEX",
                  "groups": ["network_3g", "network_3g_gobi", "audio", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_ALEX_enterprise",
@@ -83,7 +84,8 @@
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R19-*",
             "platforms": [
-                {"platform": "netbook_ACER_ZGB","au_test": true},
+                {"platform": "netbook_ACER_ZGB", "au_test": true,
+                                                 "test_suite": true},
                 {"platform": "netbook_ACER_ZGB",
                  "groups": ["network_3g", "audio", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_ACER_ZGB_enterprise",
@@ -118,7 +120,8 @@
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
             "build_pattern": "R19-*",
             "platforms": [
-                {"platform": "netbook_MARIO_MP", "au_test": true},
+                {"platform": "netbook_MARIO_MP", "au_test": true,
+                                                 "test_suite": true},
                 {"platform": "netbook_MARIO_MP",
                  "groups": ["network_3g_gobi", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_MARIO_MP_enterprise",
@@ -153,7 +156,8 @@
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
             "build_pattern": "R19-*",
             "platforms": [
-                {"platform": "desktop_STUMPY", "au_test": true},
+                {"platform": "desktop_STUMPY", "au_test": true,
+                                               "test_suite": true},
                 {"platform": "desktop_STUMPY",
                  "groups": ["desktopui_pyauto_perf_celeron", "enterprise"]}
             ]
@@ -217,6 +221,10 @@
 
     "default_groups": [
         "bvtx4", "build", "desktopui", "kernel", "pagecycler", "perfx3", "power"
+    ],
+
+    "default_tot_groups": [
+        "build", "desktopui", "kernel", "pagecycler", "perfx3", "power"
     ],
 
     "groups": {

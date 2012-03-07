@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -278,7 +278,13 @@ def main():
         if 'groups' in platform:
           full_groups += platform['groups']
         else:
-          full_groups += config['default_groups']
+          # Add default groups to the job since 'groups' was not defined.
+          # if test_suite is set to True use 'default_tot_groups' from the json
+          # configuration, otherwise use 'default_groups.'
+          if platform.get('test_suite'):
+            full_groups += config['default_tot_groups']
+          else:
+            full_groups += config['default_groups']
 
           if 'extra_groups' in platform:
             full_groups += platform['extra_groups']
