@@ -404,7 +404,18 @@ class AutoConnectContext(object):
         if not self.autoconnect_changed:
             return
 
-        self.PowerOnDevice(self.device)
+        try:
+            self.PowerOnDevice(self.device)
+        except Exception as e:
+            if exception:
+                logging.error(
+                    'Exiting AutoConnectContext with one exception, but ' +
+                    'PowerOnDevice raised another')
+                logging.error(
+                    'Swallowing PowerOnDevice exception %s' % e)
+                return False
+            else:
+                raise e
 
         # TODO(jglasgow): generalize to use services associated with
         # device, and restore state only on changed services
