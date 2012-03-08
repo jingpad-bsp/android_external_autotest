@@ -49,6 +49,12 @@ class site_suite_create(action_common.atest_create, site_suite):
                                     'x86-alex-release/R17-1412.144.0-a1-b115.'
                                     ' Required.',
                                metavar='BUILD')
+        self.parser.add_option('-c', '--check_hosts',
+                               default=False,
+                               help='Check that enough live hosts exist to '\
+                                    'run this suite. Default False.',
+                               action='store_true',
+                               metavar='CHECK_HOSTS')
         self.parser.add_option('-p', '--pool', help='Pool of machines to use.',
                                metavar='POOL')
 
@@ -58,13 +64,17 @@ class site_suite_create(action_common.atest_create, site_suite):
                                                   inline_option='board')
         build_info = topic_common.item_parse_info(attribute_name='build',
                                                   inline_option='build')
-        build_info = topic_common.item_parse_info(attribute_name='pool',
-                                                  inline_option='pool')
+        pool_info = topic_common.item_parse_info(attribute_name='pool',
+                                                 inline_option='pool')
+        check_info = topic_common.item_parse_info(attribute_name='check_hosts',
+                                                  inline_option='check_hosts')
         suite_info = topic_common.item_parse_info(attribute_name='name',
                                                   use_leftover=True)
 
-        options, leftover = site_suite.parse(self,
-            [suite_info, board_info, build_info], req_items='name')
+        options, leftover = site_suite.parse(
+            self,
+            [suite_info, board_info, build_info, pool_info, check_info],
+            req_items='name')
         self.data = {}
         name = getattr(self, 'name')
         if len(name) > 1:
@@ -72,6 +82,7 @@ class site_suite_create(action_common.atest_create, site_suite):
                                 'to receive suite name: %s' % name)
         self.data['suite_name'] = name[0]
         self.data['pool'] = options.pool  # None is OK.
+        self.data['check_hosts'] = options.check_hosts
         if options.board:
             self.data['board'] = options.board
         else:

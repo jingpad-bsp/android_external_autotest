@@ -31,7 +31,11 @@ def _rpc_utils():
     return rpc_utils
 
 
-def create_suite_job(suite_name, board, build, pool):
+def canonicalize_suite_name(suite_name):
+    return 'test_suites/control.%s' % suite_name
+
+
+def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -43,17 +47,18 @@ def create_suite_job(suite_name, board, build, pool):
     @param build: unique name by which to refer to the image from now on.
     @param pool: Specify the pool of machines to use for scheduling
             purposes.
+    @param check_hosts: require appropriate live hosts to exist in the lab.
 
-    @throws ControlFileNotFound if a unique suite control file doesn't exist.
-    @throws NoControlFileList if we can't list the control files at all.
-    @throws StageBuildFailure if the dev server throws 500 while staging build.
-    @throws ControlFileEmpty if the control file exists on the server, but
+    @raises ControlFileNotFound if a unique suite control file doesn't exist.
+    @raises NoControlFileList if we can't list the control files at all.
+    @raises StageBuildFailure if the dev server throws 500 while staging build.
+    @raises ControlFileEmpty if the control file exists on the server, but
                              can't be read.
 
     @return: the job ID of the suite; -1 on error.
     """
     # All suite names are assumed under test_suites/control.XX.
-    suite_name = 'test_suites/control.%s' % suite_name
+    suite_name = canonicalize_suite_name(suite_name)
     # Ensure |build| is staged is on the dev server.
     ds = dev_server.DevServer.create()
     if not ds.trigger_download(build):
@@ -68,6 +73,7 @@ def create_suite_job(suite_name, board, build, pool):
     # prepend build and board to the control file
     inject_dict = {'board': board,
                    'build': build,
+                   'check_hosts': check_hosts,
                    'pool': pool}
     control_file = dynamic_suite.inject_vars(inject_dict, control_file_in)
 

@@ -22,6 +22,7 @@ crash reporting, get updates, and allow a user to log in, among other things.
 @param board: The board to test on.  Ex: x86-mario
 @param pool: The pool of machines to utilize for scheduling. If pool=None
              board is used.
+@param check_hosts: require appropriate live hosts to exist in the lab.
 @param SKIP_IMAGE: (optional) If present and True, don't re-image devices.
 """
 
@@ -30,4 +31,5 @@ from autotest_lib.server.cros import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='bvt', job=job, pool=pool,
-    add_experimental=True, skip_reimage=dynamic_suite.skip_reimage(globals()))
+    check_hosts=check_hosts, add_experimental=True,
+    skip_reimage=dynamic_suite.skip_reimage(globals()))

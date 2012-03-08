@@ -55,12 +55,13 @@ class DynamicSuiteTest(mox.MoxTestBase):
                        'num': 1,
                        'pool': 'pool',
                        'skip_reimage': True,
+                       'check_hosts': False,
                        'add_experimental': False}
 
 
     def testVetRequiredReimageAndRunArgs(self):
         """Should verify only that required args are present and correct."""
-        build, board, name, job, _, _, _, _ = \
+        build, board, name, job, _, _, _, _,_ = \
             dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
         self.assertEquals(build, self._DARGS['build'])
         self.assertEquals(board, self._DARGS['board'])
@@ -102,10 +103,11 @@ class DynamicSuiteTest(mox.MoxTestBase):
 
     def testOverrideOptionalReimageAndRunArgs(self):
         """Should verify that optional args can be overridden."""
-        _, _, _, _, pool, num, skip, expr = \
+        _, _, _, _, pool, num, check, skip, expr = \
             dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
         self.assertEquals(pool, self._DARGS['pool'])
         self.assertEquals(num, self._DARGS['num'])
+        self.assertEquals(check, self._DARGS['check_hosts'])
         self.assertEquals(skip, self._DARGS['skip_reimage'])
         self.assertEquals(expr, self._DARGS['add_experimental'])
 
@@ -114,12 +116,14 @@ class DynamicSuiteTest(mox.MoxTestBase):
         """Should verify that optional args get defaults."""
         del(self._DARGS['pool'])
         del(self._DARGS['skip_reimage'])
+        del(self._DARGS['check_hosts'])
         del(self._DARGS['add_experimental'])
         del(self._DARGS['num'])
-        _, _, _, _, pool, num, skip, expr = \
+        _, _, _, _, pool, num, check, skip, expr = \
             dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
         self.assertEquals(pool, None)
         self.assertEquals(num, None)
+        self.assertEquals(check, True)
         self.assertEquals(skip, False)
         self.assertEquals(expr, True)
 
@@ -308,7 +312,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.afe.run('delete_label', id=label.id)
 
 
-    def expect_attempt(self, success, ex=None):
+    def expect_attempt(self, success, ex=None, check_hosts=True):
         """Sets up |self.reimager| to expect an attempt() that returns |success|
 
         Also stubs out Reimger._clear_build_state(), should the caller wish
@@ -326,9 +330,10 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._schedule_reimage_job(self._BUILD,
                                             self._NUM,
                                             self._BOARD).AndReturn(canary)
-
-        self.mox.StubOutWithMock(self.reimager, '_count_usable_hosts')
-        self.reimager._count_usable_hosts(mox.IgnoreArg()).AndReturn(self._NUM)
+        if check_hosts:
+            self.mox.StubOutWithMock(self.reimager, '_count_usable_hosts')
+            self.reimager._count_usable_hosts(
+                mox.IgnoreArg()).AndReturn(self._NUM)
 
         if success is not None:
             self.mox.StubOutWithMock(self.reimager, '_report_results')
@@ -352,59 +357,76 @@ class ReimagerTest(mox.MoxTestBase):
 
     def testSuccessfulReimage(self):
         """Should attempt a reimage and record success."""
-        canary = self.expect_attempt(True)
+        canary = self.expect_attempt(success=True)
 
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
     def testFailedReimage(self):
         """Should attempt a reimage and record failure."""
-        canary = self.expect_attempt(False)
+        canary = self.expect_attempt(success=False)
 
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
     def testReimageThatNeverHappened(self):
         """Should attempt a reimage and record that it didn't run."""
-        canary = self.expect_attempt(None)
+        canary = self.expect_attempt(success=None)
 
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('FAIL', mox.IgnoreArg(), canary.name, mox.IgnoreArg())
         rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
     def testReimageThatRaised(self):
         """Should attempt a reimage that raises an exception and record that."""
         ex_message = 'Oh no!'
-        canary = self.expect_attempt(None, Exception(ex_message))
+        canary = self.expect_attempt(success=None, ex=Exception(ex_message))
 
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END ERROR', mox.IgnoreArg(), mox.IgnoreArg(), ex_message)
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
+        self.reimager.clear_reimaged_host_state(self._BUILD)
+
+
+    def testSuccessfulReimageThatCouldNotScheduleRightAway(self):
+        """
+        Should attempt a reimage, ignoring host availability and record success.
+        """
+        canary = self.expect_attempt(success=True, check_hosts=False)
+
+        rjob = self.mox.CreateMock(base_job.base_job)
+        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
+        rjob.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
+        self.reimager._clear_build_state(mox.StrContains(canary.hostname))
+        self.mox.ReplayAll()
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, False)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
     def testReimageThatCouldNotSchedule(self):
         """Should attempt a reimage that can't be scheduled."""
         canary = FakeJob()
+        self.mox.StubOutWithMock(self.reimager, '_ensure_version_label')
+        self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
 
         self.mox.StubOutWithMock(self.reimager, '_count_usable_hosts')
         self.reimager._count_usable_hosts(mox.IgnoreArg()).AndReturn(0)
@@ -415,7 +437,7 @@ class ReimagerTest(mox.MoxTestBase):
                     mox.StrContains('Too few hosts'))
         self.expect_label_cleanup(self._BUILD)
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record)
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 

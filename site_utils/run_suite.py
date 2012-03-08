@@ -75,6 +75,7 @@ def main():
                      suite_name=options.name,
                      board=options.board,
                      build=options.build,
+                     check_hosts=True,
                      pool=options.pool)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)

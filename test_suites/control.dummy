@@ -21,5 +21,6 @@ import common
 from autotest_lib.server.cros import dynamic_suite
 
 dynamic_suite.reimage_and_run(
-    build=build, board=board, name='dummy', job=job, pool=pool, num=1,
-    add_experimental=True, skip_reimage=dynamic_suite.skip_reimage(globals()))
+    build=build, board=board, name='dummy', job=job, pool=pool, num=2,
+    check_hosts=check_hosts, add_experimental=True,
+    skip_reimage=dynamic_suite.skip_reimage(globals()))

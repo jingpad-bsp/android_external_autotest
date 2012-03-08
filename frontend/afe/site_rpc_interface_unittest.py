@@ -33,6 +33,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
 
     def setUp(self):
         super(SiteRpcInterfaceTest, self).setUp()
+        self._SUITE_NAME = site_rpc_interface.canonicalize_suite_name(
+            self._NAME)
         self.dev_server = self.mox.CreateMock(dev_server.DevServer)
         self.mox.StubOutWithMock(dev_server.DevServer, 'create')
         dev_server.DevServer.create().AndReturn(self.dev_server)
@@ -71,47 +73,52 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
                           site_rpc_interface.create_suite_job,
                           self._NAME,
                           self._BOARD,
-                          self._BUILD)
+                          self._BUILD,
+                          None)
 
 
     def testGetControlFileFail(self):
         """Ensure that a failure to get needed control file fails the RPC."""
         self._mockDevServerGetter()
         self.dev_server.trigger_download(self._BUILD).AndReturn(True)
-        self.getter.get_control_file_contents_by_name(self._NAME).AndReturn(
-            None)
+        self.getter.get_control_file_contents_by_name(
+            self._SUITE_NAME).AndReturn(None)
         self.mox.ReplayAll()
         self.assertRaises(site_rpc_interface.ControlFileEmpty,
                           site_rpc_interface.create_suite_job,
                           self._NAME,
                           self._BOARD,
-                          self._BUILD)
+                          self._BUILD,
+                          None)
 
 
     def testGetControlFileListFail(self):
         """Ensure that a failure to get needed control file fails the RPC."""
         self._mockDevServerGetter()
         self.dev_server.trigger_download(self._BUILD).AndReturn(True)
-        self.getter.get_control_file_contents_by_name(self._NAME).AndRaise(
-            control_file_getter.NoControlFileList())
+        self.getter.get_control_file_contents_by_name(
+            self._SUITE_NAME).AndRaise(control_file_getter.NoControlFileList())
         self.mox.ReplayAll()
         self.assertRaises(control_file_getter.NoControlFileList,
                           site_rpc_interface.create_suite_job,
                           self._NAME,
                           self._BOARD,
-                          self._BUILD)
+                          self._BUILD,
+                          None)
 
 
     def testCreateSuiteJobFail(self):
         """Ensure that failure to schedule the suite job fails the RPC."""
         self._mockDevServerGetter()
         self.dev_server.trigger_download(self._BUILD).AndReturn(True)
-        self.getter.get_control_file_contents_by_name(self._NAME).AndReturn('f')
+        self.getter.get_control_file_contents_by_name(
+            self._SUITE_NAME).AndReturn('f')
         self._mockRpcUtils(-1)
         self.mox.ReplayAll()
         self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
                                                               self._BOARD,
-                                                              self._BUILD),
+                                                              self._BUILD,
+                                                              None),
                           -1)
 
 
@@ -119,13 +126,32 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         """Ensures that success results in a successful RPC."""
         self._mockDevServerGetter()
         self.dev_server.trigger_download(self._BUILD).AndReturn(True)
-        self.getter.get_control_file_contents_by_name(self._NAME).AndReturn('f')
+        self.getter.get_control_file_contents_by_name(
+            self._SUITE_NAME).AndReturn('f')
         job_id = 5
         self._mockRpcUtils(job_id)
         self.mox.ReplayAll()
         self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
                                                               self._BOARD,
-                                                              self._BUILD),
+                                                              self._BUILD,
+                                                              None),
+                          job_id)
+
+
+    def testCreateSuiteJobNoHostCheckSuccess(self):
+        """Ensures that success results in a successful RPC."""
+        self._mockDevServerGetter()
+        self.dev_server.trigger_download(self._BUILD).AndReturn(True)
+        self.getter.get_control_file_contents_by_name(
+            self._SUITE_NAME).AndReturn('f')
+        job_id = 5
+        self._mockRpcUtils(job_id)
+        self.mox.ReplayAll()
+        self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
+                                                              self._BOARD,
+                                                              self._BUILD,
+                                                              None,
+                                                              False),
                           job_id)
 
 

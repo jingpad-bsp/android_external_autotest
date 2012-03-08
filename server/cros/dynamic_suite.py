@@ -46,19 +46,21 @@ def reimage_and_run(**dargs):
                  Default: None
     @param num: how many devices to reimage.
                 Default in global_config
+    @param check_hosts: require appropriate hosts to be available now.
     @param skip_reimage: skip reimaging, used for testing purposes.
                          Default: False
     @param add_experimental: schedule experimental tests as well, or not.
                              Default: True
     """
-    build, board, name, job, pool, num, skip_reimage, add_experimental = \
-        _vet_reimage_and_run_args(**dargs)
+    (build, board, name, job, pool, num, check_hosts, skip_reimage,
+     add_experimental) = _vet_reimage_and_run_args(**dargs)
     board = 'board:%s' % board
     if pool:
         pool = 'pool:%s' % pool
     reimager = Reimager(job.autodir, pool=pool, results_dir=job.resultdir)
 
-    if skip_reimage or reimager.attempt(build, board, job.record, num=num):
+    if skip_reimage or reimager.attempt(build, board, job.record, check_hosts,
+                                        num=num):
         suite = Suite.create_from_name(name, build, pool=pool,
                                        results_dir=job.resultdir)
         suite.run_and_wait(job.record, add_experimental=add_experimental)
@@ -67,8 +69,9 @@ def reimage_and_run(**dargs):
 
 
 def _vet_reimage_and_run_args(build=None, board=None, name=None, job=None,
-                              pool=None, num=None, skip_reimage=False,
-                              add_experimental=True, **dargs):
+                              pool=None, num=None, check_hosts=True,
+                              skip_reimage=False, add_experimental=True,
+                              **dargs):
     """
     Vets arguments for reimage_and_run().
 
@@ -85,6 +88,7 @@ def _vet_reimage_and_run_args(build=None, board=None, name=None, job=None,
                  Default: None
     @param num: how many devices to reimage.
                 Default in global_config
+    @param check_hosts: require appropriate hosts to be available now.
     @param skip_reimage: skip reimaging, used for testing purposes.
                          Default: False
     @param add_experimental: schedule experimental tests as well, or not.
@@ -100,7 +104,8 @@ def _vet_reimage_and_run_args(build=None, board=None, name=None, job=None,
         if not value or not isinstance(value, expected):
             raise SuiteArgumentException("reimage_and_run() needs %s=<%r>" % (
                 key, expected))
-    return build, board, name, job, pool, num, skip_reimage, add_experimental
+    return (build, board, name, job, pool, num, check_hosts, skip_reimage,
+            add_experimental)
 
 
 def inject_vars(vars, control_file_in):
@@ -175,7 +180,7 @@ class Reimager(object):
         return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
 
 
-    def attempt(self, build, board, record, num=None):
+    def attempt(self, build, board, record, check_hosts, num=None):
         """
         Synchronously attempt to reimage some machines.
 
@@ -189,6 +194,7 @@ class Reimager(object):
         @param record: callable that records job status.
                        prototype:
                          record(status, subdir, name, reason)
+        @param check_hosts: require appropriate hosts to be available now.
         @param num: how many devices to reimage.
         @return True if all reimaging jobs succeed, false otherwise.
         """
@@ -198,13 +204,12 @@ class Reimager(object):
         wrapper_job_name = 'try_new_image'
         record('START', None, wrapper_job_name)
         try:
-            # Determine if there are enough working hosts to run on.
-            labels = [l for l in [board, self._pool] if l is not None]
-            if num > self._count_usable_hosts(labels):
-                raise InadequateHostsException("Too few hosts with %r" % labels)
+            self._ensure_version_label(VERSION_PREFIX + build)
+
+            if check_hosts:
+                self._ensure_enough_hosts(board, self._pool, num)
 
             # Schedule job and record job metadata.
-            self._ensure_version_label(VERSION_PREFIX + build)
             canary_job = self._schedule_reimage_job(build, num, board)
             self._record_job_if_possible(wrapper_job_name, canary_job)
             logging.debug('Created re-imaging job: %d', canary_job.id)
@@ -241,6 +246,22 @@ class Reimager(object):
 
         record('END FAIL', None, wrapper_job_name)
         return False
+
+
+    def _ensure_enough_hosts(self, board, pool, num):
+        """
+        Determine if there are enough working hosts to run on.
+
+        Raises exception if there are not enough hosts.
+
+        @param board: which kind of devices to reimage.
+        @param pool: the pool of machines to use for scheduling purposes.
+        @param num: how many devices to reimage.
+        @raises InadequateHostsException: if too few working hosts.
+        """
+        labels = [l for l in [board, pool] if l is not None]
+        if num > self._count_usable_hosts(labels):
+            raise InadequateHostsException('Too few hosts with %r' % labels)
 
 
     def _wait_for_job_to_start(self, job_id):
