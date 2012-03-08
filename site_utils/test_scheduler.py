@@ -124,12 +124,18 @@ class TestRunner(object):
 
     # Create Autotest job using control file and image parameter.
     try:
+      # Inflate the priority of BVT runs.
+      if job_name.endswith('_bvt'):
+        priority = 'urgent'
+      else:
+        priority = 'medium'
+
       job_id = autotest_util.CreateJob(
           name=job_name, control=temp_fn,
           platforms='%d*%s' % (test['count'], platform), labels=test['labels'],
           sync=test['sync'],
           update_url=self._dev.GetUpdateUrl(self._board, build),
-          cli=self._cli)
+          cli=self._cli, priority=priority)
     finally:
       # Cleanup temporary control file. Autotest doesn't need it anymore.
       os.unlink(temp_fn)
