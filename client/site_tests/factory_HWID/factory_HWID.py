@@ -17,6 +17,7 @@ import select_task
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory import gooftools
 from autotest_lib.client.cros.factory import shopfloor
 from autotest_lib.client.cros.factory import ui as ful
 
@@ -31,20 +32,11 @@ class factory_HWID(test.test):
 
         @param hwid: A complete HWID, or BOM-VARIANT pair.
         """
-        # TODO(hungte) Replace this by gooftool, plus partial matching.
+        # TODO(hungte) Support partial matching by gooftools or hwid_tool.
         # When the input is not a complete HWID (i.e., BOM-VARIANT pair), select
         # and derive the complete ID from active HWIDs in current database.
         # Ex: input="BLUE A" => matched to "MARIO BLUE A-B 6868".
-        def shell(command):
-            factory.log(command)
-            utils.system(command)
-        with tempfile.NamedTemporaryFile() as temp_file:
-            name = temp_file.name
-            shell("flashrom -i GBB -r '%s'" % name)
-            shell("gbb_utility -s --hwid='%s' '%s'" % (hwid, name))
-            # TODO(hungte) If the HWID is already set correctly, no need to
-            # write again.
-            shell("flashrom -i GBB -w '%s' --fast-verify" % name)
+        gooftools.run("gooftool --write_hwid --hwid '%s'" % hwid)
 
     def worker_thread(self, data):
         """Task thread for writing HWID."""
