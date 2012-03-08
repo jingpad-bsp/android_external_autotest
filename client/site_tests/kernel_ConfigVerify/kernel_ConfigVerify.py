@@ -48,6 +48,63 @@ class kernel_ConfigVerify(test.test):
         # Dangerous; allows replacement of running kernel.
         'HIBERNATION',
     ]
+    IS_EXCLUSIVE = [
+        # Security; no surprise binary formats.
+        {
+            'regex': 'BINFMT_',
+            'builtin': [
+                'BINFMT_ELF',
+            ],
+            'module': [
+            ],
+            'missing': [
+                # Sanity checks; one disabled, one does not exist.
+                'BINFMT_MISC',
+                'BINFMT_IMPOSSIBLE',
+            ],
+        },
+        # Security; no surprise filesystem formats.
+        {
+            'regex': '.*_FS$',
+            'builtin': [
+                'DEBUG_FS',
+                'ECRYPT_FS',
+                'EXT2_FS',
+                'EXT3_FS',
+                'EXT4_FS',
+                'PROC_FS',
+                'SCSI_PROC_FS',
+            ],
+            'module': [
+                'FAT_FS',
+                'FUSE_FS',
+                'HFSPLUS_FS',
+                'ISO9660_FS',
+                'UDF_FS',
+                'VFAT_FS',
+            ],
+            'missing': [
+                # Sanity checks; one disabled, one does not exist.
+                'XFS_FS',
+                'IMPOSSIBLE_FS',
+            ],
+        },
+        # Security; no surprise partition formats.
+        {
+            'regex': '.*_PARTITION$',
+            'builtin': [
+                'EFI_PARTITION',
+                'MSDOS_PARTITION',
+            ],
+            'module': [
+            ],
+            'missing': [
+                # Sanity checks; one disabled, one does not exist.
+                'LDM_PARTITION',
+                'IMPOSSIBLE_PARTITION',
+            ],
+        },
+    ]
 
     def _passed(self, msg):
         logging.info('ok: %s' % (msg))
@@ -80,19 +137,27 @@ class kernel_ConfigVerify(test.test):
     def is_missing(self, name):
         self.has_value(name, None)
 
-    # Checks every config line for the regex, expecting a single match.
-    def has_match(self, regex, expected):
-        # Validate early to make sure we at least have the expected one.
-        self.has_builtin(expected)
+    # Checks every config line for the exclusive regex and validate existence
+    # of expected entries.
+    def is_exclusive(self, exclusive):
+        expected = set()
+        for name in exclusive['missing']:
+            self.is_missing(name)
+        for name in exclusive['builtin']:
+            self.has_builtin(name)
+            expected.add('CONFIG_%s' % (name))
+        for name in exclusive['module']:
+            self.has_module(name)
+            expected.add('CONFIG_%s' % (name))
+
         # Now make sure nothing else with the specified regex exists.
-        regex = r'CONFIG_%s' % (regex)
-        expected = 'CONFIG_%s' % (expected)
+        regex = r'CONFIG_%s' % (exclusive['regex'])
         for name in self._config:
             if not re.match(regex, name):
                 continue
-            if name != expected:
+            if not name in expected:
                 self._failed('"%s" found for "%s" when only "%s" allowed' %
-                             (name, regex, expected))
+                             (name, regex, "|".join(expected)))
 
     def load_configs(self, filename):
         # Make sure the given file actually exists.
@@ -129,6 +194,7 @@ class kernel_ConfigVerify(test.test):
         map(self.has_builtin, self.IS_BUILTIN)
         map(self.has_module, self.IS_MODULE)
         map(self.is_missing, self.IS_MISSING)
+        map(self.is_exclusive, self.IS_EXCLUSIVE)
 
         # Run the dynamic checks.
 
@@ -157,9 +223,6 @@ class kernel_ConfigVerify(test.test):
         else:
             self.has_builtin('DEBUG_RODATA')
             self.has_builtin('DEBUG_SET_MODULE_RONX')
-
-        # Security; no surprise binary formats.
-        self.has_match(r'BINFMT_', 'BINFMT_ELF')
 
         # Raise a failure if anything unexpected was seen.
         if len(self._failures):
