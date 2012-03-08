@@ -19,12 +19,7 @@ from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import leds
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import lan_scpi
-try:
-    from autotest_lib.client.cros.rf import modem_commands
-except ImportError:
-    # modem_commands.py may not be available yet; let this pass so that the test
-    # can still compile.  TODO(jsalz): Remove this.
-    pass
+from autotest_lib.client.cros.rf import rf_utils
 from autotest_lib.client.cros.rf.config import PluggableConfig
 
 
@@ -43,15 +38,30 @@ base_config = PluggableConfig({
 })
 
 
+# Modem commands.
+ENABLE_FACTORY_TEST_MODE_COMMAND = 'AT+CFUN=5'
+DISABLE_FACTORY_TEST_MODE_COMMAND = 'AT+CFUN=1'
+
+START_TX_TEST_COMMAND = 'AT+ALLUP="%s",%d,"on",75'
+START_TX_TEST_RESPONSE = 'ALLUP: ON'
+
+READ_RSSI_COMMAND = 'AT+AGC="%s",%d,"%s"'
+READ_RSSI_RESPONSE = r'RSSI: ([-\d]+)'
+
+
 class factory_Cellular(test.test):
     version = 1
 
-    def run_once(self, ext_host, dev='ttyUSB0', config_path=None):
+    def run_once(self, ext_host, dev='ttyUSB0', config_path=None,
+                 set_interface_ip=None):
+        if set_interface_ip:
+            rf_utils.SetInterfaceIp(*set_interface_ip)
+
         with leds.Blinker(((leds.LED_NUM|leds.LED_CAP, 0.25),
                            (leds.LED_CAP|leds.LED_SCR, 0.25))):
             self._run(ext_host, dev, config_path)
 
-    def _run(self, ext_host, dev, config_path):
+    def _run(self, ext_host, dev, config_path, set_interface_ip=None):
         config = base_config.Read(config_path)
 
         # Kill off modem manager, which might be holding the device open.
@@ -107,7 +117,7 @@ class factory_Cellular(test.test):
 
         # Put in factory test mode
         try:
-            SendCommand(modem_commands.ENABLE_FACTORY_TEST_MODE)
+            SendCommand(ENABLE_FACTORY_TEST_MODE_COMMAND)
             ExpectLine('OK')
 
             failures = []
@@ -119,8 +129,8 @@ class factory_Cellular(test.test):
                  min_power, max_power) in config['tx_channels']:
                 channel_id = (band_name, channel)
 
-                SendCommand(modem_commands.START_TX_TEST % (band_name, channel))
-                ExpectLine(modem_commands.START_TX_TEST_RESPONSE)
+                SendCommand(START_TX_TEST_COMMAND % (band_name, channel))
+                ExpectLine(START_TX_TEST_RESPONSE)
                 ExpectLine('')
                 ExpectLine('OK')
 
@@ -150,10 +160,10 @@ class factory_Cellular(test.test):
                     # up the new RSSI
                     power_readings = []
                     def IsPowerInRange():
-                        SendCommand(modem_commands.READ_RSSI % (
+                        SendCommand(READ_RSSI_COMMAND % (
                                 band_name, channel, antenna))
                         line = ReadLine()
-                        match = re.match(modem_commands.READ_RSSI_RESPONSE,
+                        match = re.match(READ_RSSI_RESPONSE,
                                          line)
                         if not match:
                             raise error.TestError(
@@ -184,4 +194,4 @@ class factory_Cellular(test.test):
             if failures:
                 raise error.TestError('; '.join(failures))
         finally:
-            SendCommand(modem_commands.DISABLE_FACTORY_TEST_MODE)
+            SendCommand(DISABLE_FACTORY_TEST_MODE_COMMAND)
