@@ -28,11 +28,7 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["desktopui_pyauto_perf"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI2K",
-                 "groups": ["network_3g_gobi"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI3K",
-                 "groups": ["network_3g_gobi"]}
+                 "groups": ["network_3g", "network_3g_gobi", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -43,15 +39,7 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["audio", "desktopui_pyauto_perf"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI2K",
-                 "groups": ["network_3g_gobi"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI3K",
-                 "groups": ["network_3g_gobi"]},
-                {"platform": "netbook_ALEX_GSM_Y3300",
-                 "groups": ["network_3g"]},
-                {"platform": "netbook_ALEX_GSM_Y3400",
-                 "groups": ["network_3g"]}
+                 "groups": ["network_3g", "network_3g_gobi", "audio", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -62,15 +50,7 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["audio", "desktopui_pyauto_perf", "enterprise"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI2K",
-                 "groups": ["network_3g_gobi"]},
-                {"platform": "netbook_ALEX_CDMA_GOBI3K",
-                 "groups": ["network_3g_gobi"]},
-                {"platform": "netbook_ALEX_GSM_Y3300",
-                 "groups": ["network_3g"]},
-                {"platform": "netbook_ALEX_GSM_Y3400",
-                 "groups": ["network_3g"]},
+                 "groups": ["network_3g", "network_3g_gobi", "audio", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_ALEX_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -94,9 +74,7 @@
             "platforms": [
                 {"platform": "netbook_ACER_ZGB","au_test": true},
                 {"platform": "netbook_ACER_ZGB",
-                 "groups": ["audio", "desktopui_pyauto_perf"]},
-                {"platform": "netbook_ACER_ZGB_CDMA_GOBI2K",
-                 "groups": ["network_3g"]}
+                 "groups": ["network_3g", "audio", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -107,9 +85,7 @@
             "platforms": [
                 {"platform": "netbook_ACER_ZGB","au_test": true},
                 {"platform": "netbook_ACER_ZGB",
-                 "groups": ["audio", "desktopui_pyauto_perf", "enterprise"]},
-                {"platform": "netbook_ACER_ZGB_CDMA_GOBI2K",
-                 "groups": ["network_3g"]},
+                 "groups": ["network_3g", "audio", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_ACER_ZGB_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -122,9 +98,7 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP",
-                 "groups": ["desktopui_pyauto_perf"]},
-                {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
-                 "groups": ["network_3g_gobi"]}
+                 "groups": ["network_3g_gobi", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -135,9 +109,7 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP",
-                 "groups": ["desktopui_pyauto_perf"]},
-                {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
-                 "groups": ["network_3g_gobi"]}
+                 "groups": ["network_3g_gobi", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -148,9 +120,7 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP",
-                 "groups": ["desktopui_pyauto_perf", "enterprise"]},
-                {"platform": "netbook_MARIO_MP_CDMA_GOBI2K",
-                 "groups": ["network_3g_gobi"]},
+                 "groups": ["network_3g_gobi", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_MARIO_MP_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -304,7 +274,7 @@
         "desktopui_pyauto_perf_celeron": [
             {"name": "pyauto_perf",
              "control": "server/site_tests/suites/control.desktopui_pyauto_perf",
-             "labels": ["CPU-Celeron"]}
+             "labels": ["cpu:celeron"]}
         ],
 
         "desktopui_tegra2": [
@@ -341,14 +311,30 @@
 
         "network_3g": [
             {"name": "network_3g",
-             "control": "server/site_tests/suites/control.network_3g"}
+             "control": "server/site_tests/suites/control.network_3g",
+             "labels": ["modem:y3300"]},
+
+            {"name": "network_3g",
+             "control": "server/site_tests/suites/control.network_3g",
+             "labels": ["modem:y3400"]},
+
+            {"name": "network_3g",
+             "control": "server/site_tests/suites/control.network_3g",
+             "labels": ["modem:gobi2k"]},
+
+            {"name": "network_3g",
+             "control": "server/site_tests/suites/control.network_3g",
+             "labels": ["modem:gobi3k"]}
         ],
 
         "network_3g_gobi": [
-            {"name": "network_3g",
-             "control": "server/site_tests/suites/control.network_3g"},
             {"name": "network_3g_gobi",
-             "control": "server/site_tests/suites/control.network_3g_gobi"}
+             "control": "server/site_tests/suites/control.network_3g_gobi",
+             "labels": ["modem:gobi2k"]},
+
+            {"name": "network_3g_gobi",
+             "control": "server/site_tests/suites/control.network_3g_gobi",
+             "labels": ["modem:gobi3k"]}
         ],
 
         "network_wifi": [
@@ -357,6 +343,11 @@
         ],
 
         "pagecycler": [
+            {"name": "pagecycler",
+             "control": "server/site_tests/suites/control.pagecycler"}
+        ],
+
+        "pagecycler_celeron": [
             {"name": "pagecycler",
              "control": "server/site_tests/suites/control.pagecycler"}
         ],
