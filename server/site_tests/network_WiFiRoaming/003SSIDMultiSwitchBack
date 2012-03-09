@@ -52,6 +52,9 @@
                                               # service to transition to "ready"
     [ "client_ping",    { "count":"10" } ],
 
+    # Verify that the client roamed to the 5GHz band.
+    [ "client_check_frequency", [ "5240" ] ],
+
     # Return AP to auto transmit power
     [ "set_txpower",    { "power":"auto" } ],
 
