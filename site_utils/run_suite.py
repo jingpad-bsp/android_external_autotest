@@ -26,6 +26,8 @@ def parse_options():
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-b", "--board", dest="board")
     parser.add_option("-i", "--build", dest="build")
+    parser.add_option("-c", "--check_hosts", dest="check_hosts", default=False,
+                      action="store_true")
     parser.add_option("-p", "--pool", dest="pool", default=None)
     parser.add_option("-s", "--suite_name", dest="name")
     parser.add_option("-t", "--timeout_min", dest="timeout_min", default=30)
@@ -75,7 +77,7 @@ def main():
                      suite_name=options.name,
                      board=options.board,
                      build=options.build,
-                     check_hosts=True,
+                     check_hosts=options.check_hosts,
                      pool=options.pool)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
