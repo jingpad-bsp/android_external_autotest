@@ -28,7 +28,7 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["network_3g", "network_3g_gobi", "desktopui_pyauto_perf"]}
+                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -39,7 +39,7 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["network_3g", "network_3g_gobi", "audio", "desktopui_pyauto_perf"]}
+                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -51,7 +51,7 @@
                 {"platform": "netbook_ALEX", "au_test": true,
                                              "test_suite": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["network_3g", "network_3g_gobi", "audio", "desktopui_pyauto_perf", "enterprise"]},
+                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_ALEX_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -75,7 +75,7 @@
             "platforms": [
                 {"platform": "netbook_ACER_ZGB","au_test": true},
                 {"platform": "netbook_ACER_ZGB",
-                 "groups": ["network_3g", "audio", "desktopui_pyauto_perf"]}
+                 "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -87,7 +87,7 @@
                 {"platform": "netbook_ACER_ZGB", "au_test": true,
                                                  "test_suite": true},
                 {"platform": "netbook_ACER_ZGB",
-                 "groups": ["network_3g", "audio", "desktopui_pyauto_perf", "enterprise"]},
+                 "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_ACER_ZGB_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -100,7 +100,7 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP",
-                 "groups": ["network_3g_gobi", "desktopui_pyauto_perf"]}
+                 "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -111,7 +111,7 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP",
-                 "groups": ["network_3g_gobi", "desktopui_pyauto_perf"]}
+                 "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf"]}
             ]
         },
 
@@ -123,7 +123,7 @@
                 {"platform": "netbook_MARIO_MP", "au_test": true,
                                                  "test_suite": true},
                 {"platform": "netbook_MARIO_MP",
-                 "groups": ["network_3g_gobi", "desktopui_pyauto_perf", "enterprise"]},
+                 "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf", "enterprise"]},
                 {"platform": "netbook_MARIO_MP_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -317,29 +317,37 @@
              "sync": true}
         ],
 
-        "network_3g": [
+        "network_3g_modem_y3300": [
             {"name": "network_3g",
              "control": "server/site_tests/suites/control.network_3g",
              "labels": ["modem:y3300"]},
+        ],
 
+        "network_3g_modem_y3400": [
             {"name": "network_3g",
              "control": "server/site_tests/suites/control.network_3g",
              "labels": ["modem:y3400"]},
+        ],
 
+        "network_3g_modem_gobi2k": [
             {"name": "network_3g",
              "control": "server/site_tests/suites/control.network_3g",
              "labels": ["modem:gobi2k"]},
+        ],
 
+        "network_3g_modem_gobi3k": [
             {"name": "network_3g",
              "control": "server/site_tests/suites/control.network_3g",
              "labels": ["modem:gobi3k"]}
         ],
 
-        "network_3g_gobi": [
+        "network_3g_gobi_test_gobi2k": [
             {"name": "network_3g_gobi",
              "control": "server/site_tests/suites/control.network_3g_gobi",
              "labels": ["modem:gobi2k"]},
+        ],
 
+        "network_3g_gobi_test_gobi3k": [
             {"name": "network_3g_gobi",
              "control": "server/site_tests/suites/control.network_3g_gobi",
              "labels": ["modem:gobi3k"]}
@@ -358,6 +366,7 @@
         "pagecycler_celeron": [
             {"name": "pagecycler",
              "control": "server/site_tests/suites/control.pagecycler"}
+             "labels": ["cpu:celeron"]}
         ],
 
         "kernel": [
