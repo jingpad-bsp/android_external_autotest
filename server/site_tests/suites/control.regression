@@ -92,6 +92,8 @@ TESTS = [
   ('platform_FileSize', {}),
   ('platform_KernelVersion', {}),
   ('platform_MemCheck', {}),
+  ('platform_Pkcs11InitOnLogin', {}),
+  ('platform_Pkcs11InitUnderErrors', {}),
   ('platform_ProcessPrivileges', {}),
   ('platform_Rootdev', {}),
   ('platform_SessionManagerTerm', {}),
