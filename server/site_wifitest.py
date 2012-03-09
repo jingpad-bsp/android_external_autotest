@@ -1493,8 +1493,9 @@ class WiFiTest(object):
             opts += " BgscanSignalThreshold=%s" % signal
         if params.get('method', None):
             opts += " BgscanMethod=%s" % params['method']
-        self.client.run('%s/test/set-bgscan %s' %
-                        (self.client_cmd_flimflam_lib, opts))
+        self.client.run('%s/test/set-bgscan --interface %s %s' %
+                        (self.client_cmd_flimflam_lib, self.client_wlanif,
+                         opts))
 
 
     def bgscan_disable(self, params):
