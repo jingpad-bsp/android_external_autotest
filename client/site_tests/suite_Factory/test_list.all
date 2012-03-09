@@ -24,22 +24,13 @@ _REBOOT_SEQ_ITERATIONS = 2
 # Change this to the duration of SAT during run-in (suggested 10+ mins).
 _SAT_DURATION_SECS = 60
 
-# Change this to True if you want and secure wipe (very slower).
+# Change this to True if you want secure wipe (very slow).
 _ENABLE_FACTORY_SECURE_WIPE = False
 
-# True to force automatically detecting HWID without manually selection;
-# False for operator to select from a list of HWIDs (and get more precise error
-# messages when not matched, useful for debugging and RMA).
-_ENABLE_AUTODETECT_HWID = True
-
-# Change this to True if you want to make sure every tests has been already
-# passed before running finalization.
-# RECOMMENDED FOR SHIPPING DEVICES.
-_ENABLE_CHECK_ALL_TEST_PASSED = False
-
-# Change this to enable firmware write protection on finalize.
-# THIS IS REQUIRED TO BE TRUE FOR SHIPPING DEVICES.
-_ENABLE_FW_WP = False # WARNING: False is ONLY ALLOWED FOR DEBUGGING.
+# Change this to False to enable developer-friendly finalization.
+# Firmware write protection and dev-switch check are bypassed in developer mode.
+# THIS IS REQUIRED TO BE FALSE FOR SHIPPING DEVICES.
+_ENABLE_DEVELOPER_MODE = True  # WARNING: True is ONLY ALLOWED FOR DEBUGGING.
 
 # Change this to enable checking external power (AC) before starting test.
 _ENABLE_CHECK_EXTERNAL_POWER = False
@@ -296,8 +287,7 @@ TEST_LIST = [
                 label_zw='最終程序',
                 autotest_name='factory_Finalize',
                 dargs={
-                    'check_required_tests': _ENABLE_CHECK_ALL_TEST_PASSED,
-                    'check_and_enable_write_protect': _ENABLE_FW_WP,
+                    'developer_mode': _ENABLE_DEVELOPER_MODE,
                     'upload_method': _REPORT_UPLOAD_METHOD,
                     'secure_wipe': _ENABLE_FACTORY_SECURE_WIPE,
                 })]),

@@ -18,21 +18,16 @@ from autotest_lib.client.cros.factory import gooftools
 class factory_Finalize(test.test):
     version = 1
 
-    def alert_bypassed(self, target, times=3):
-        """ Alerts user that a required test is bypassed. """
+    def alert(self, message, times=3):
+        """Alerts user for given message."""
         for i in range(times, 0, -1):
-            factory.log(('WARNING: Factory Finalize: <%s> IS BYPASSED. ' +
+            factory.log(('WARNING: Factory Finalize: %s. ' +
                          'THIS DEVICE CANNOT BE QUALIFIED. ' +
-                         '(continue in %d seconds)') % (target, i))
+                         '(continue in %d seconds)') % (message, i))
             time.sleep(1)
 
-    def check_google_required_tests(self, do_check, status_file,
-                                    test_list_path):
+    def check_google_required_tests(self, status_file, test_list_path):
         """ Checks if all previous and Google Required Tests are passed. """
-        if not do_check:
-            self.alert_bypassed('REQUIRED TESTS')
-            return
-
         # check if all previous tests are passed.
         test_list = factory.read_test_list(test_list_path)
         state_map = test_list.get_state_map()
@@ -86,18 +81,19 @@ class factory_Finalize(test.test):
         return method
 
     def run_once(self,
-                 check_required_tests=True,
-                 check_and_enable_write_protect=True,
+                 developer_mode=False,
                  secure_wipe=False,
                  upload_method='none',
                  subtest_tag=None,
                  status_file_path=None,
                  test_list_path=None):
 
-        # verify previous test results
-        self.check_google_required_tests(check_required_tests,
-                                         status_file_path,
-                                         test_list_path)
+        if developer_mode:
+            self.alert('DEVELOPER MODE ENABLED')
+        else:
+            # verify previous test results
+            self.check_google_required_tests(status_file_path, test_list_path)
+
         # solve upload file names
         upload_method = self.normalize_upload_method(upload_method)
 
@@ -105,15 +101,12 @@ class factory_Finalize(test.test):
         hwid_cfg = factory.get_shared_data('hwid_cfg')
 
         args = ['gooftool',
-                '--finalize',
+                '--developer_finalize' if developer_mode else '--finalize',
                 '--verbose',
                 '--wipe_method "%s"' % ('secure' if secure_wipe else 'fast'),
                 '--report_tag "%s"' % hwid_cfg,
                 '--upload_method "%s"' % upload_method,
                 ]
-        if not check_and_enable_write_protect:
-            self.alert_bypassed('WRITE PROTECTION')
-            args.append('--debug_dryrun_wpfw')
 
         cmd = ' '.join(args)
         gooftools.run(cmd)
