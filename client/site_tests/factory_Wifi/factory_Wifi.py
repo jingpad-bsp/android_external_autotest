@@ -35,6 +35,8 @@ base_config = PluggableConfig({
         ]
 })
 
+SET_BGSCAN = "/usr/local/lib/flimflam/test/set-bgscan"
+
 
 class factory_Wifi(test.test):
     version = 1
@@ -47,10 +49,14 @@ class factory_Wifi(test.test):
             rf_utils.SetInterfaceIp(*set_interface_ip)
 
         try:
+            kernel_release = utils.system_output('uname -r').strip()
+
             if module_paths:
                 for path in module_paths:
-                    assert os.path.exists(path)
-                    assert path.endswith('.ko')
+                    path = path.replace('${kernel_release}', kernel_release)
+
+                    assert os.path.exists(path), path
+                    assert path.endswith('.ko'), path
                     # Remove .ko suffix to get the module name
                     module_names.append(os.path.splitext(
                             os.path.basename(path))[0])
@@ -62,10 +68,9 @@ class factory_Wifi(test.test):
                 for module in module_paths:
                     utils.system('insmod %s' % module)
 
-            set_bgscan = "/usr/local/lib/flimflam/test/set-bgscan"
             # Disable Flimflam background scans, which may interrupt
             # our test.
-            utils.system("%s ScanInterval=10000" % set_bgscan,
+            utils.system("%s ScanInterval=10000" % SET_BGSCAN,
                          ignore_status=True)
 
             with leds.Blinker(((leds.LED_NUM, 0.25),
@@ -82,7 +87,7 @@ class factory_Wifi(test.test):
                 for module_name in module_names:
                     utils.system('modprobe %s' % module_name,
                                  ignore_status=True)
-            utils.system("%s ScanInterval=180" % set_bgscan,
+            utils.system("%s ScanInterval=180" % SET_BGSCAN,
                          ignore_status=True)
 
     def _run(self, n4010a_host, n4010a_port, config_path):
