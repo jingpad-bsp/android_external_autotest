@@ -53,15 +53,16 @@ class factory_Cellular(test.test):
     version = 1
 
     def run_once(self, ext_host, dev='ttyUSB0', config_path=None,
+                 use_rfio2_for_aux=False,
                  set_interface_ip=None):
         if set_interface_ip:
             rf_utils.SetInterfaceIp(*set_interface_ip)
 
         with leds.Blinker(((leds.LED_NUM|leds.LED_CAP, 0.25),
                            (leds.LED_CAP|leds.LED_SCR, 0.25))):
-            self._run(ext_host, dev, config_path)
+            self._run(ext_host, dev, config_path, use_rfio2_for_aux)
 
-    def _run(self, ext_host, dev, config_path, set_interface_ip=None):
+    def _run(self, ext_host, dev, config_path, use_rfio2_for_aux):
         config = base_config.Read(config_path)
 
         # Kill off modem manager, which might be holding the device open.
@@ -149,8 +150,10 @@ class factory_Cellular(test.test):
 
             rx_power_by_channel = {}
 
-            for antenna, port in (('MAIN', ext.PORTS.RFIO1),
-                                  ('AUX', ext.PORTS.RFIO2)):
+            for antenna, port in (
+                ('MAIN', ext.PORTS.RFIO1),
+                ('AUX',
+                 ext.PORTS.RFIO2 if use_rfio2_for_aux else ext.PORTS.RFIO1)):
                 for (band_name, channel, freq,
                      min_power, max_power) in config['rx_channels']:
                     channel_id = (band_name, channel)
