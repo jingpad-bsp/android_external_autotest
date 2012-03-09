@@ -123,7 +123,7 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
         import pyauto_errors
 
         credentials = self.pyauto.GetPrivateInfo()[
-            'test_enterprise_disabled_domain']
+            'prod_enterprise_disabled_domain']
 
         try:
             self.pyauto.EnrollEnterpriseDevice(credentials['username'],
@@ -140,7 +140,7 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
         import pyauto_errors
 
         credentials = self.pyauto.GetPrivateInfo()[
-            'test_enterprise_executive_user']
+            'prod_enterprise_executive_user']
 
         try:
             self.pyauto.EnrollEnterpriseDevice(credentials['username'],
