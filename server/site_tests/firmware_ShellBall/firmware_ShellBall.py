@@ -46,7 +46,7 @@ class firmware_ShellBall(FAFTSequence):
         # Get BIOS version from shellball.
         [self._shellball_fwid] = self.faft_client.run_shell_command_get_output(
                                                  '%s -V | grep "BIOS version"' \
-                                                 ' | sed "s/BIOS version:' \
+                                                 ' | sed "s/BIOS version: ' \
                                                  '\(.*\)/\\1/" '
                                                  % self._shellball_name)
 
@@ -79,7 +79,21 @@ class firmware_ShellBall(FAFTSequence):
                 'userspace_action': (self.install_original_firmware),
                 'firmware_action': (self.wait_fw_screen_and_ctrl_d),
             },
-            { # Step 4, verify the old firmware id.
+            { # Step 4, verify the old firmware id and test factory_install.
+                'state_checker': (self.crossystem_checker, {
+                    'fwid': self._current_fwid
+                }),
+                'userspace_action': (self.update_firmware, 'factory_install'),
+                'firmware_action': (self.wait_fw_screen_and_ctrl_d),
+            },
+            { # Step 5, verify fwid and install original firmware.
+                'state_checker': (self.crossystem_checker, {
+                    'fwid': self._shellball_fwid
+                }),
+                'userspace_action': (self.install_original_firmware),
+                'firmware_action': (self.wait_fw_screen_and_ctrl_d),
+            },
+            { # Step 6, verify old fwid.
                 'state_checker': (self.crossystem_checker, {
                     'fwid': self._current_fwid
                 }),
