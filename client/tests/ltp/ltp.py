@@ -40,6 +40,8 @@ class ltp(test.test):
         ltpbin_dir = os.path.join(self.srcdir, 'bin')
         os.mkdir(ltpbin_dir)
 
+        utils.system('patch -p1 < ../getdents.patch')
+        utils.system('patch -p1 < ../cpuid.patch')
         utils.make('autotools')
         utils.configure('--prefix=%s' % ltpbin_dir)
         utils.make('-j %d all' % utils.count_cpus())
