@@ -12,11 +12,112 @@ import re
 import constants
 import trackpad_util
 
-from common_util import simple_system_output
+from common_util import simple_system, simple_system_output
 
 
 # Declare NOP as a instance containing NOP related constants
 NOP = constants.NOP()
+
+
+class Xinput(object):
+    ''' Manipulation of xinput properties
+
+    An example usage for instantiating a trackpad xinput device:
+    xi = Xinput('t(?:ouch|rack)pad')
+    '''
+
+    def __init__(self, device_re_str):
+        self.device_re_str = device_re_str
+        self.xinput_str = 'DISPLAY=:0 xinput %s'
+
+        # list command looks like
+        #   DISPLAY=:0 xinput list
+        self.xinput_list_cmd = self.xinput_str % 'list'
+        self.dev_id = self.lookup_device_id()
+
+        # list-props command looks like
+        #   DISPLAY=:0 xinput list-props 11
+        list_props_str = 'list-props %s' % self.dev_id
+        self.xinput_list_props_cmd = self.xinput_str % list_props_str
+
+    def device_exists(self):
+        ''' Indicating whether the device exists or not. '''
+        return self.dev_id is not None
+
+    def lookup_device_id(self):
+        ''' Look up device id with the specified device string
+
+        For example, a trackpad device looks like
+        SynPS/2 Synaptics TouchPad         id=11   [slave  pointer  (2)]
+        '''
+        dev_patt_str = '%s\s*id=(\d+)\s*\[' % self.device_re_str
+        dev_patt = re.compile(dev_patt_str, re.I)
+        dev_list = simple_system_output(self.xinput_list_cmd)
+        if dev_list:
+            for line in dev_list.splitlines():
+                result = dev_patt.search(line)
+                if result is not None:
+                    return result.group(1)
+        return None
+
+    def lookup_int_prop_id_and_value(self, prop_name):
+        ''' Look up integer property id based on property name
+
+        For example, a property looks like
+        Scroll Buttons (271):   0
+        '''
+        prop_re_str = '\s*%s\s*\((\d+)\):\s*(\d+)' % prop_name
+        prop_patt = re.compile(prop_re_str, re.I)
+        prop_list = simple_system_output(self.xinput_list_props_cmd)
+        if prop_list:
+            for line in prop_list.splitlines():
+                result = prop_patt.search(line)
+                if result:
+                    return (result.group(1), int(result.group(2)))
+        return (None, None)
+
+    def set_int_prop_value(self, prop_id, prop_val):
+        ''' Set integer property value
+
+        For example, to enable Scroll Buttons (id=271) at device 11
+        DISPLAY=:0 xinput set-prop 11 271 1
+        '''
+        # set-prop command looks like
+        #   DISPLAY=:0 xinput set-prop 11 271 1
+        set_int_prop_str = 'set-prop %s %s %d' % (self.dev_id, prop_id,
+                                                  prop_val)
+        self.xinput_set_int_prop_cmd = self.xinput_str % set_int_prop_str
+        simple_system(self.xinput_set_int_prop_cmd)
+
+
+class XScrollButtons(Xinput):
+    ''' A special class to manipulate xinput Scroll Buttons '''
+    SCROLL_BUTTONS = 'Scroll Buttons'
+    TRACKPAD_RE_STR = 't(?:ouch|rack)pad'
+
+    def __init__(self):
+        ''' Look up the id and value of the Scroll Buttons property '''
+        super(XScrollButtons, self).__init__(self.TRACKPAD_RE_STR)
+        # Look up the property only when the device exists
+        if self.device_exists():
+            self.sb_id, self.sb_orig_val = self.lookup_int_prop_id_and_value(
+                                           self.SCROLL_BUTTONS)
+        else:
+            self.sb_id = self.sb_orig_val = None
+
+    def scroll_buttons_exists(self):
+        ''' Indicating whether the Scroll Buttons property exists or not. '''
+        return self.sb_id is not None
+
+    def set_scroll_buttons(self):
+        ''' Enable Scroll Buttons if it is not enabled yet. '''
+        if self.sb_orig_val == 0:
+            self.set_int_prop_value(self.sb_id, 1)
+
+    def reset_scroll_buttons(self):
+        ''' Disable Scroll Buttons if it was originally disabled. '''
+        if self.sb_orig_val == 0:
+            self.set_int_prop_value(self.sb_id, 0)
 
 
 class XButton:

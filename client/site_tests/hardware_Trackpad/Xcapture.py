@@ -13,6 +13,7 @@ import time
 
 import common_util
 import trackpad_util
+import Xevent
 
 from trackpad_util import Display, read_trackpad_test_conf
 
@@ -59,12 +60,12 @@ class Mtplot:
 
     def __init__(self, display):
         display.set_environ()
-        self._create_mtplot_window(display)
+        self._create_mtplot_window()
         self.id = self._get_mtplot_win_id()
         if self.id is None:
             raise error.TestError('Failure on deriving window id in focus.')
 
-    def _create_mtplot_window(self, display):
+    def _create_mtplot_window(self):
         trackpad_device_file, msg = trackpad_util.get_trackpad_device_file()
         mtplot_cmd = 'mtplot %s' % trackpad_device_file
         self.null_file = open('/dev/null')
@@ -73,13 +74,13 @@ class Mtplot:
             self.proc = subprocess.Popen(mtplot_cmd.split(),
                                          stdout=self.null_file)
         except:
-            err_msg = 'Cannot start program: %s' % self.mtplot_cmd
+            err_msg = 'Cannot start program: %s' % mtplot_cmd
             raise self.error.TestError(err_msg)
 
         time.sleep(0.1)
         if self.proc.poll() is not None:
             raise error.TestError('Failure on "%s" [%d]' %
-                                  (self.mtplot_cmd, self.proc.returncode))
+                                  (mtplot_cmd, self.proc.returncode))
 
         logging.info('"%s" has been launched.' % mtplot_cmd)
 
@@ -185,6 +186,14 @@ class Xcapture:
         self.fd_all = tempfile.NamedTemporaryFile()
         self.xcapture_file_all = self.fd_all.name
 
+        # Enable xinput Scroll Buttons if it is not enabled yet
+        self.scroll_butons = Xevent.XScrollButtons()
+        if self.scroll_butons.scroll_buttons_exists():
+            self.scroll_butons.set_scroll_buttons()
+            logging.info('  Scroll Buttons property has been set.')
+        else:
+            logging.info('  Scroll Buttons property does not exist.')
+
         # Create a window to listen to the X events
         mtplot_gui = read_trackpad_test_conf('mtplot_gui', conf_path)
         if mtplot_gui:
@@ -246,7 +255,7 @@ class Xcapture:
             while (now - start_time <= max_post_replay_time):
                 time.sleep(interval)
                 now = time.time()
-                if fd_all.read() != '':
+                if fd_all.read():
                     latest_event_time = now
                 # Cond1: if cond1_normal_timeout occurs, exit the loop
                 if (now - latest_event_time > timeout):
@@ -293,3 +302,8 @@ class Xcapture:
         # Destroy the popup window
         self.win.destroy()
         self.ax.sync()
+
+        # Reset X Scroll Buttons if it was disabled originally.
+        if self.scroll_butons.scroll_buttons_exists():
+            self.scroll_butons.reset_scroll_buttons()
+            logging.info('  Scroll Buttons property has been reset.')
