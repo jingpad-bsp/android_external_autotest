@@ -108,7 +108,7 @@ def make_prepare_widget(message, on_key_enter, on_key_tab=None):
 
 
 class factory_Antenna(test.test):
-    version = 2
+    version = 3
 
     # The state goes from _STATE_INITIAL to _STATE_RESULT_TAB then jumps back
     # to _STATE_PREPARE_PANEL for another testing cycle.
@@ -197,14 +197,24 @@ class factory_Antenna(test.test):
 
     def test_main_antennas(self, skip_flag):
         if not skip_flag:
-            self._test_main_cell_antennas()
-            self._test_main_wifi_antennas()
+            freqs = set()
+            self._add_required_freqs('cell', freqs)
+            self._add_required_freqs('wifi', freqs)
+            ret = self._get_traces(freqs, ['S11', 'S22'],
+                                   purpose='test_main_antennas')
+            self._test_main_cell_antennas(ret)
+            self._test_main_wifi_antennas(ret)
         self.advance_state()
 
     def test_aux_antennas(self, skip_flag):
         if not skip_flag:
-            self._test_aux_cell_antennas()
-            self._test_aux_wifi_antennas()
+            freqs = set()
+            self._add_required_freqs('cell', freqs)
+            self._add_required_freqs('wifi', freqs)
+            ret = self._get_traces(freqs, ['S11', 'S22'],
+                                   purpose='test_aux_antennas')
+            self._test_aux_cell_antennas(ret)
+            self._test_aux_wifi_antennas(ret)
         self.generate_final_result()
         self.advance_state()
 
@@ -218,25 +228,25 @@ class factory_Antenna(test.test):
         assert result in result_map, "Unknown result"
         self.display_dict[row_name]['status'] = result_map[result]
 
-    def _test_main_cell_antennas(self):
+    def _test_main_cell_antennas(self, traces):
         self._update_status(
             'cell_main',
-            self._test_sweep_segment('cell', 1, 'cell_main', 'S11'))
+            self._compare_traces(traces, 'cell', 1, 'cell_main', 'S11'))
 
-    def _test_main_wifi_antennas(self):
+    def _test_main_wifi_antennas(self, traces):
         self._update_status(
             'wifi_main',
-            self._test_sweep_segment('wifi', 1, 'wifi_main', 'S22'))
+            self._compare_traces(traces, 'wifi', 1, 'wifi_main', 'S22'))
 
-    def _test_aux_cell_antennas(self):
+    def _test_aux_cell_antennas(self, traces):
         self._update_status(
             'cell_aux',
-            self._test_sweep_segment('cell', 3, 'cell_aux', 'S11'))
+            self._compare_traces(traces, 'cell', 3, 'cell_aux', 'S11'))
 
-    def _test_aux_wifi_antennas(self):
+    def _test_aux_wifi_antennas(self, traces):
         self._update_status(
             'wifi_aux',
-            self._test_sweep_segment('wifi', 1, 'wifi_aux', 'S22'))
+            self._compare_traces(traces, 'wifi', 3, 'wifi_aux', 'S22'))
 
     def generate_final_result(self):
         self._result = all(
@@ -248,6 +258,8 @@ class factory_Antenna(test.test):
 
     def save_log(self):
         # TODO(itspeter): Dump more details upon RF teams' request.
+        self.log_to_file.write("\n\nRaw traces:\n%s\n" %
+                               pprint.pformat(self._raw_traces))
         return self.write_to_usb(
                 self.serial_number + ".txt", self.log_to_file.getvalue())
 
@@ -258,40 +270,57 @@ class factory_Antenna(test.test):
         else:
             return False
 
-    def _test_sweep_segment(self, antenna_type, column,
-                            log_title, ena_parameters):
-        """Converts needs to ENA host protocols.
+    def _add_required_freqs(self, antenna_type, freqs_set):
+        """Reads the required frequencies and add it to freqs_set.
 
         Format of antenna.params:
         {'vswr_max': {antenna_type: [(freq, main, coupling, aux), ...
         For example: {'vswr_max': {'cell': [(746, -6, -10, -6),
 
         Usage example:
-            self._test_sweep_segment('cell', 1, 'cell_main', 'S11')
+            self._add_required_freqs('cell', freqs)
         """
+        for config_tuple in self.config['vswr_max'][antenna_type]:
+            freqs_set.add(config_tuple[0])
 
+    def _get_traces(self, freqs_set, parameters, purpose="unspecified"):
+        """This function is a wrapper for GetTraces in order to log details."""
+        # Generate the sweep tuples.
+        freqs = sorted(freqs_set)
+        segments = [(freq_min * 1e6, freq_max * 1e6, 2) for
+                    freq_min, freq_max in
+                    zip(freqs, freqs[1:])]
+
+        self.ena.SetSweepSegments(segments)
+        ret = self.ena.GetTraces(parameters)
+        self._raw_traces[purpose] = ret
+        return ret
+
+    def _compare_traces(self, traces, antenna_type, column,
+                        log_title, ena_parameter):
+        """Compares whether returned traces and the spec are aligned.
+
+        Usage example:
+            self._test_sweep_segment(traces, 'cell', 1, 'cell_main', 'S11')
+        """
         self.log_to_file.write(
             "Start measurement [%s], with profile[%s,col %s], from ENA-%s\n" %
-            (log_title, antenna_type, column, ena_parameters))
+            (log_title, antenna_type, column, ena_parameter))
         # Generate the sweep tuples.
         freqs = [atuple[0] * 1e6 for atuple in
                  self.config['vswr_max'][antenna_type]]
         standards = [atuple[column] for atuple in
                      self.config['vswr_max'][antenna_type]]
-        segments = [(freq_min, freq_max, 2) for freq_min, freq_max in
-                    zip(freqs, freqs[1:])]
-        self.ena.SetSweepSegments(segments)
-        ret = self.ena.GetTraces([ena_parameters])
-        self.log_to_file.write("Raw traces:\n%s\n" % pprint.pformat(ret))
-
-        freqs_responses = [ret.GetFreqResponse(freq, ena_parameters) for
+        freqs_responses = [traces.GetFreqResponse(freq, ena_parameter) for
                            freq in freqs]
         results = [self._check_measurement(std_val, ext_val) for
                    std_val, ext_val in
                    zip(standards, freqs_responses)]
         logs = zip(freqs, standards, freqs_responses, results)
-        logs.insert(0, ("Frequency", "ENA-%s" % ena_parameters,
-                        "Column %s" % column, "Result"))
+        logs.insert(0, ("Frequency",
+                        "Column-%s" % column,
+                        "ENA-%s" % ena_parameter,
+                        "Result"))
         self.log_to_file.write("%s results:\n%s\n" %
                                (log_title, pprint.pformat(logs)))
         return all(results)
@@ -304,6 +333,7 @@ class factory_Antenna(test.test):
         to change current UI to the first widget.
         """
         self.log_to_file = StringIO.StringIO()
+        self._raw_traces = {}
         self.sn_input_widget.get_entry().set_text('')
         for var in self._STATUS_NAMES:
             self._update_status(var, None)
