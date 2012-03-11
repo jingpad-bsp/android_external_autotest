@@ -320,19 +320,19 @@
         "network_3g_modem_y3300": [
             {"name": "network_3g",
              "control": "server/site_tests/suites/control.network_3g",
-             "labels": ["modem:y3300"]},
+             "labels": ["modem:y3300"]}
         ],
 
         "network_3g_modem_y3400": [
             {"name": "network_3g",
              "control": "server/site_tests/suites/control.network_3g",
-             "labels": ["modem:y3400"]},
+             "labels": ["modem:y3400"]}
         ],
 
         "network_3g_modem_gobi2k": [
             {"name": "network_3g",
              "control": "server/site_tests/suites/control.network_3g",
-             "labels": ["modem:gobi2k"]},
+             "labels": ["modem:gobi2k"]}
         ],
 
         "network_3g_modem_gobi3k": [
@@ -344,7 +344,7 @@
         "network_3g_gobi_test_gobi2k": [
             {"name": "network_3g_gobi",
              "control": "server/site_tests/suites/control.network_3g_gobi",
-             "labels": ["modem:gobi2k"]},
+             "labels": ["modem:gobi2k"]}
         ],
 
         "network_3g_gobi_test_gobi3k": [
@@ -365,7 +365,7 @@
 
         "pagecycler_celeron": [
             {"name": "pagecycler",
-             "control": "server/site_tests/suites/control.pagecycler"}
+             "control": "server/site_tests/suites/control.pagecycler",
              "labels": ["cpu:celeron"]}
         ],
 
