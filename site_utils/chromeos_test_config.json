@@ -370,11 +370,11 @@
         ],
 
         "kernel": [
-            {"name": "kernel_fs_performance",
-             "control": "server/site_tests/suites/control.kernel_fs_performance"},
+            {"name": "kernel_per_build_benchmarks",
+             "control": "server/site_tests/suites/control.kernel_per_build_benchmarks"},
 
-            {"name": "kernel_main_functional",
-             "control": "server/site_tests/suites/control.kernel_main_functional"}
+            {"name": "kernel_per_build_regression",
+             "control": "server/site_tests/suites/control.kernel_per_build_regression"}
         ],
 
         "sbstage": [
