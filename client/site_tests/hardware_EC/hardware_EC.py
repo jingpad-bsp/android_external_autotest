@@ -100,7 +100,7 @@ class hardware_EC(test.test):
         for idx in xrange(0, num_temp_sensor):
             temperature = ec.get_temperature(idx) - 273
             if temperature < 0 or temperature > 100:
-                raise error.TestError(TEMP_ERR_MSG % idx);
+                raise error.TestError(self.TEMP_ERR_MSG % idx);
 
         if not ec.get_battery():
             raise error.TestError('Battery communication failed.')
