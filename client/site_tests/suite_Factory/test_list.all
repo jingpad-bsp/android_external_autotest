@@ -43,7 +43,9 @@ _ENABLE_SHOP_FLOOR = False
 _SHOP_FLOOR_SERVER_URL = ''
 
 # Change this to match your local report upload site.
-_REPORT_UPLOAD_METHOD = 'none'  # WARNING: none is ONLY ALLOWED FOR DEBUGGING.
+# Default is to use shopfloor if available, otherwise None to discard reports.
+# WARNING: None is ONLY ALLOWED FOR DEBUGGING.
+_REPORT_UPLOAD_METHOD = 'shopfloor' if _ENABLE_SHOP_FLOOR else None
 #
 # * For LAN environments, setup a FTP server and build FTP URL.
 #   Example: ftp://user:pass@host:port/directory/

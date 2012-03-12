@@ -11,8 +11,9 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import ui as ful
 from autotest_lib.client.cros.factory import gooftools
+from autotest_lib.client.cros.factory import shopfloor
+from autotest_lib.client.cros.factory import ui as ful
 
 
 class factory_Finalize(test.test):
@@ -38,44 +39,17 @@ class factory_Finalize(test.test):
             raise error.TestFail('Some previous tests failed: %s' % failed)
         factory.log('All previous tests are PASSED.')
 
-    def collect_vpd_values(self):
-        ''' Collects VPD properties and return as dictionary '''
-        vpd_dict = {}
-        vpd_data = utils.system_output(
-                "(vpd -l -i RO_VPD; vpd -l -i RW_VPD) | grep '\"=\"'",
-                ignore_status=True).strip()
-        # the output of vpd is "A"="B"
-
-        for line in vpd_data.splitlines():
-            matched = re.match('"(.*)"="(.*)"$', line)
-            if not matched:
-                continue
-            vpd_dict['vpd_' + matched.group(1)] = matched.group(2)
-        return vpd_dict
-
     def normalize_upload_method(self, original_method):
         """ Build the report file name and solve variables. """
 
         method = original_method
-        if method.startswith('none'):
-            return method
+        if method in [None, 'none']:
+            # gooftool accepts only 'none', not empty string.
+            return 'none'
 
-        if method.startswith('ftp') and method.endswith('/'):
-            # Need a unique file name. Simulte old method to create a hash.
-            method = method + '%(hash).log%(gz)'
-
-        filename_params = {
-                'gz': '.gz',
-                'hash': hashlib.sha1(
-                        open(factory.LOG_PATH, 'rb').read()).hexdigest(),
-        }
-        if method.find('%(vpd_') >= 0:
-            factory.log('Upload target has VPD variables. Collecting VPD...')
-            filename_params.update(self.collect_vpd_values())
-
-        # To match python syntax, postfix every variable with 's'.
-        method = re.sub('(%\([^)]*\))', r'\1s', method)
-        method = method % filename_params
+        if method == 'shopfloor':
+            method = 'shopfloor:%s#%s' % (shopfloor.get_server_url(),
+                                          shopfloor.get_serial_number())
 
         factory.log('norm_upload_method: %s -> %s' % (original_method, method))
         return method
