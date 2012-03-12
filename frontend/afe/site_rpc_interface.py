@@ -9,10 +9,6 @@ import logging
 import sys
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
-# rpc_utils initializes django, which we can't do in unit tests.
-if 'unittest' not in sys.modules.keys():
-    # So, only load that module if we're not running unit tests.
-    from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server.cros import control_file_getter, dynamic_suite
 
 
@@ -27,7 +23,15 @@ class ControlFileEmpty(Exception):
 
 
 def _rpc_utils():
-    """Returns the rpc_utils module.  MUST be mocked for unit tests."""
+    """Returns the rpc_utils module.  MUST be mocked for unit tests.
+
+    rpc_utils initializes django, which we can't do in unit tests.
+    This layer of indirection allows us to only load that module if we're
+    not running unit tests.
+
+    @return: autotest_lib.frontend.afe.rpc_utils
+    """
+    from autotest_lib.frontend.afe import rpc_utils
     return rpc_utils
 
 
