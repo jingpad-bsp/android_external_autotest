@@ -249,26 +249,15 @@ TEST_LIST = [
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
-    AutomatedSequence(
-        id='Final',
-        label_zw='最終步驟',
+    OperatorTest(
+        label_zw='最終程序',
+        autotest_name='factory_Finalize',
         kbd_shortcut='f',
-        subtest_list=[
-            # The pre-flight is to help operators checking if everything is OK.
-            # You can remove the step if you want a fully automated process.
-            OperatorTest(
-                label_zw='就緒檢查',
-                autotest_name='factory_PreFinalCheck'),
-            # The finalize is required for every products.
-            # You can't remove this step.
-            OperatorTest(
-                label_zw='最終程序',
-                autotest_name='factory_Finalize',
-                dargs={
-                    'developer_mode': _ENABLE_DEVELOPER_MODE,
-                    'upload_method': _REPORT_UPLOAD_METHOD,
-                    'secure_wipe': _ENABLE_FACTORY_SECURE_WIPE,
-                })]),
+        dargs={
+            'developer_mode': _ENABLE_DEVELOPER_MODE,
+            'upload_method': _REPORT_UPLOAD_METHOD,
+            'secure_wipe': _ENABLE_FACTORY_SECURE_WIPE,
+        }),
 
     InformationScreen(
         label_zw='報告',
