@@ -18,11 +18,11 @@ import socket
 import subprocess
 import tempfile
 
-from autotest_lib.client.bin import factory
-from autotest_lib.client.bin import factory_ui_lib as ful
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.audio import audio_helper
+from autotest_lib.client.cros.factory import ui as ful
 
 # Host test machine crossover connected to DUT, fix local ip and port for
 # communication in between.
