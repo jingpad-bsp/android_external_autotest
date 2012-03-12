@@ -521,7 +521,8 @@ class UITest(pyauto_test.PyAutoTest):
                 self.pyauto.LoginAsGuest()
                 logging.info('Logged in as guest.')
         except:
-            self._take_screenshot(fname_prefix='login-fail-screenshot')
+            # TODO(frankf): Enable once crbug.com/117843 is implemented.
+            #self._take_screenshot(fname_prefix='login-fail-screenshot')
             raise
         finally:
             self.stop_tcpdump(fname_prefix='tcpdump-lo--till-login')
