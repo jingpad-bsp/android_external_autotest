@@ -98,6 +98,8 @@ class platform_ToolchainOptions(test.test):
                     # be skipped.
                     " -wholename '/home/chronos' -prune -o "
                     " %s "
+                    " -not -name 'libstdc++.so.*' "
+                    " -not -name 'libgcc_s.so.*' "
                     " -type f -executable -exec "
                     "sh -c '%s "
                     "{} | grep -q ELF && "
