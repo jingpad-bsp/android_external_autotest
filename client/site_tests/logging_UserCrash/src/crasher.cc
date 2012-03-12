@@ -1,13 +1,12 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "base/file_path.h"
-#include "base/logging.h"
 
 int recbomb(int n);
 void PrepareBelow(int argc, char *argv[]);

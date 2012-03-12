@@ -162,7 +162,7 @@ class logging_UserCrash(crash_test.CrashTest):
 
         # Should identify main line
         if not self._is_frame_in_stack(16, basename, 'main',
-                                       'crasher.cc', 21, stack):
+                                       'crasher.cc', 20, stack):
             raise error.TestFail('Did not show main on stack')
 
 
