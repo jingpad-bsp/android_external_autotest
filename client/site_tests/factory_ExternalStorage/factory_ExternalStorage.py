@@ -210,6 +210,10 @@ class factory_ExternalStorage(test.test):
 
         factory.log('%s run_once' % self.__class__)
 
+        # If not provided, set subtest tag based on the media type.
+        if subtest_tag is None and media:
+            subtest_tag = media.lower()
+
         self._error = ''
         self._target_device = None
 
