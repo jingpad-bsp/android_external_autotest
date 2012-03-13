@@ -90,6 +90,12 @@ class hardware_Trackpad(test.test):
         logging.info('  gesture_files_path_autotest: %s' %
                      gesture_files_path_autotest)
 
+        # Exit if the gesture files path for autotest does not exist.
+        if not os.path.exists(gesture_files_path_autotest):
+            logging.warn('  The gesture files path does not exist: %s.' %
+                         gesture_files_path_autotest)
+            return
+
         gesture_files_path_results = self.read_gesture_files_path(local_path,
                                      'gesture_files_path_results')
 
