@@ -26,8 +26,9 @@ def parse_options():
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-b", "--board", dest="board")
     parser.add_option("-i", "--build", dest="build")
-    parser.add_option("-n", "--no_wait", dest="wait", default=True,
-                      action="store_false")
+    #  This should just be a boolean flag, but the autotest "proxy" code
+    #  can't handle flags that don't take arguments.
+    parser.add_option("-n", "--no_wait", dest="no_wait", default=None)
     parser.add_option("-p", "--pool", dest="pool", default=None)
     parser.add_option("-s", "--suite_name", dest="name")
     parser.add_option("-t", "--timeout_min", dest="timeout_min", default=30)
@@ -73,17 +74,20 @@ def main():
         return
     afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
+
+    wait = options.no_wait is None
+
     job_id = afe.run('create_suite_job',
                      suite_name=options.name,
                      board=options.board,
                      build=options.build,
-                     check_hosts=options.wait,
+                     check_hosts=wait,
                      pool=options.pool)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     # Return code that will be sent back to autotest_rpc_server.py
     code = 0
-    while options.wait and True:
+    while wait and True:
         if not afe.get_jobs(id=job_id, finished=True):
             time.sleep(1)
             continue
