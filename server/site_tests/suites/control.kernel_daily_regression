@@ -19,6 +19,8 @@ from autotest_lib.client.cros import cros_logging
 CLIENT_TESTS = [
     # Memory stress.
     ('hardware_SAT', {}),
+    # Trackpad regression test
+    ('hardware_Trackpad', {'test_set': 'regression'}),
     # Call every syscall sequentially with special value in a single
     # register.  The special value will be rotated through each
     # register parameter.
