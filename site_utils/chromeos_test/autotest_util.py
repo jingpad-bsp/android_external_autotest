@@ -88,7 +88,7 @@ def CreateJob(name, control, platforms, labels=None, server=True,
     if isinstance(labels, list):
       # Convert labels to comma separated list and escape labels w/ commas.
       # if we were given a list.
-      labels = [label.replace(',', r'\\,') for label in labels]
+      labels = ','.join([label.replace(',', r'\\,') for label in labels])
     cmd_list.append('--dependencies ' + labels)
 
   cmd_list.append(name)
