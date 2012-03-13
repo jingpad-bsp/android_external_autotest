@@ -24,7 +24,7 @@ or unexpected values for sysctls:
   - net/ipv4/tcp_syncookies
   - vm/mmap_min_addr
 """
-SUITE = "bvt, kernel.main.smoketest"
+SUITE = "bvt, smoke, kernel.main.smoketest"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
