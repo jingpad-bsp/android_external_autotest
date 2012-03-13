@@ -76,6 +76,7 @@ TEST_LIST = [
     OperatorTest(
         label_zw='開始',
         autotest_name='factory_Start',
+        never_fails=True,
         kbd_shortcut='e',
         # 'press_to_continue' can be disabled by default when the configuration
         # includes other explicit prompts, like _ENABLE_SHOP_FLOOR (operator
