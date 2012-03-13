@@ -11,7 +11,7 @@ from autotest_lib.client.cros import enterprise_ui_test
 class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
     version = 1
     _POLICY_EXPECTED_FILE = os.path.join('chromeos', 'enterprise',
-                                         'policy_user')
+                                         'policies')
 
 
     def _compare_policies(self, expected_policy, actual_policy):
@@ -186,9 +186,25 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
                                  diff)
 
 
-    def test_qa_device_policies(self):
-        self._test_device_policies('test_enterprise_executive_user')
+    def test_crosqa2_device_policies(self):
+        self._test_device_policies('test_enterprise_crosqa2_user')
 
 
-    def test_prod_device_policies(self):
-        self._test_device_policies('prod_enterprise_executive_user')
+    def test_crosqa3_device_policies(self):
+        self._test_device_policies('test_enterprise_crosqa3_user')
+
+
+    def test_crosqa4_device_policies(self):
+        self._test_device_policies('test_enterprise_crosqa4_user')
+
+
+    def test_crosprqa2_device_policies(self):
+        self._test_device_policies('prod_enterprise_crosprqa2_user')
+
+
+    def test_crosprqa3_device_policies(self):
+        self._test_device_policies('prod_enterprise_crosprqa3_user')
+
+
+    def test_crosprqa4_device_policies(self):
+        self._test_device_policies('prod_enterprise_crosprqa4_user')
