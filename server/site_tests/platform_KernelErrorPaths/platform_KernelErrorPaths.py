@@ -7,6 +7,7 @@ import logging, os, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.crash_test import CrashTest as CrashTestDefs
 from autotest_lib.server import test
+from autotest_lib.client.bin import utils
 
 class platform_KernelErrorPaths(test.test):
     version = 1
@@ -98,7 +99,7 @@ class platform_KernelErrorPaths(test.test):
             ('softlockup', 'BUG: soft lockup', 25, False),
             ('bug', 'kernel BUG at', 10, False),
             ('hungtask', 'hung_task: blocked tasks', 300, False),
-            ('nmiwatchdog', 'Watchdog detected hard LOCKUP', 15, False),
+            ('nmilockup', 'Watchdog detected hard LOCKUP', 50, False),
             ('nullptr',
              'BUG: unable to handle kernel NULL pointer dereference at', 10,
              True),
@@ -112,6 +113,12 @@ class platform_KernelErrorPaths(test.test):
         no_cpus = 1
 
         for action, text, timeout, all_cpu in test_tuples:
+            if action == "nmilockup":
+                # Pre-3.2 kernels use "nmiwatchdog" rather than "nmilookup".
+                ver = self.client.get_kernel_ver();
+                if utils.compare_versions(ver, "3.2") == -1:
+                    action="nmiwatchdog"
+
             if not all_cpu:
                 no_cpus = 1
             else:
