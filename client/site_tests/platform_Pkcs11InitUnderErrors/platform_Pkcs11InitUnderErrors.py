@@ -87,6 +87,8 @@ class platform_Pkcs11InitUnderErrors(test.test):
 
 
     def run_once(self):
+        if pkcs11.is_chaps_enabled():
+            return
         self.__test_erase_everything()
         self.__test_erase_token()
         self.__test_erase_pkcs11dir()

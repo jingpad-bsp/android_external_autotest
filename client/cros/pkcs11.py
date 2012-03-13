@@ -191,3 +191,8 @@ def verify_pkcs11_initialized():
         verify_result = False
 
     return verify_result
+
+def is_chaps_enabled():
+    """Check if the Chaps PKCS #11 implementation is enabled."""
+    enabled_magic_file = '/home/chronos/.enable_chaps'
+    return os.path.exists(enabled_magic_file)
