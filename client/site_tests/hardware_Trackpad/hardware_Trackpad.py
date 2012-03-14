@@ -61,10 +61,10 @@ class hardware_Trackpad(test.test):
         logging.info('Path of %s: %s' % (name, pathname))
         return pathname
 
-    def run_once(self, test_type='localhost'):
-        ''' test_type determines the path of gesture files.
+    def run_once(self, test_set='localhost'):
+        ''' test_set determines the path of gesture files.
 
-        The test _type could be
+        The test_set could be
             localhost: run locally from the client side
             regression: run by control.regression
         '''
@@ -78,7 +78,7 @@ class hardware_Trackpad(test.test):
         functionality_list = read_trackpad_test_conf('functionality_list',
                                                      local_path)
 
-        if test_type == 'regression':
+        if test_set == 'regression':
             gesture_files_subpath_regression = self.read_gesture_files_path(
                     local_path, 'gesture_files_subpath_regression')
             gesture_files_path_autotest = os.path.join(local_path,
@@ -86,7 +86,7 @@ class hardware_Trackpad(test.test):
         else:
             gesture_files_path_autotest = self.read_gesture_files_path(
                     local_path, 'gesture_files_path_autotest')
-        logging.info('  test_type: %s is used' % test_type)
+        logging.info('  test_set: %s is used' % test_set)
         logging.info('  gesture_files_path_autotest: %s' %
                      gesture_files_path_autotest)
 
