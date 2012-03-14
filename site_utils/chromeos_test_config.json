@@ -251,11 +251,6 @@
         ],
 
         "build": [
-            {"name": "regression",
-             "control": "server/site_tests/suites/control.regression",
-             "count": 2,
-             "sync": true},
-
             {"name": "security",
              "control": "server/site_tests/suites/control.security"}
         ],
