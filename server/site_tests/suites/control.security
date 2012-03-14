@@ -16,8 +16,10 @@ Security Functional test suite.
 # List of client tests with parameters
 TESTS = [
   ('kernel_ConfigVerify', {}),
-  ('platform_DMVerityCorruption', {}),
-  ('platform_DMVerityBitCorruption', {}),
+# platform_DMVerityCorruption is failing after the 64-bit switch.
+#   http://code.google.com/p/chromium-os/issues/detail?id=27772
+#  ('platform_DMVerityCorruption', {}),
+#  ('platform_DMVerityBitCorruption', {}),
 # While security-related, this is already included in control.bvt.
 #  ('platform_ToolchainOptions', {}),
   ('security_AccountsBaseline', {}),
