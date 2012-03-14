@@ -46,7 +46,7 @@ class Servo:
 
     def __init__(self, servo_host=None, servo_port=None,
                  xml_config=['servo.xml'], servo_vid=None, servo_pid=None,
-                 servo_serial=None, cold_reset=False):
+                 servo_serial=None, cold_reset=False, servo_interfaces=[]):
         """Sets up the servo communication infrastructure.
 
         Args:
@@ -73,7 +73,7 @@ class Servo:
         if not servo_host or servo_host == 'localhost':
             servo_host = 'localhost'
             self._launch_servod(servo_host, servo_port, xml_config, servo_vid,
-                                servo_pid, servo_serial)
+                                servo_pid, servo_serial, servo_interfaces)
         else:
             logging.info('servod should already be running on host = %s',
                          servo_host)
@@ -335,7 +335,8 @@ class Servo:
 
 
     def install_recovery_image(self, image_path=None, usb_dev=None,
-                               wait_for_completion=True):
+                               wait_for_completion=True,
+                               wait_timeout=RECOVERY_INSTALL_DELAY):
         """Install the recovery image specied by the path onto the DUT.
 
         This method uses google recovery mode to install a recovery image
@@ -351,28 +352,33 @@ class Servo:
             wait_for_completion: Whether to wait for completion of the
                                  factory install and disable the USB hub
                                  before returning.  Currently this is just
-                                 a hardcoded wait of RECOVERY_INSTALL_DELAY
-                                 (for the recovery process to complete).
+                                 waiting for a predetermined timeout period.
+            wait_timeout: How long to wait for completion; default is
+                          determined by a constant.
         """
+        # Turn the device off. This should happen before USB key detection, to
+        # prevent a recovery destined DUT from sensing the USB key due to the
+        # autodetection procedure.
+        self.power_long_press()
+
         # Set up Servo's usb mux.
         self.set('prtctl4_pwren', 'on')
         self.enable_usb_hub(host=True)
         if image_path:
             if not usb_dev:
+                logging.info('Detecting USB stick device...')
                 usb_dev = self.probe_host_usb_dev()
+                if not usb_dev:
+                  raise Exception('USB device not found')
+                logging.info('Found %s' % usb_dev)
             logging.info('Installing image onto usb stick. '
                          'This takes a while...')
             client_utils.poll_for_condition(
                 lambda: os.path.exists(usb_dev),
                 timeout=Servo.USB_DETECTION_DELAY,
                 desc="%s exists" % usb_dev)
-            utils.system(' '.join(
-                             ['sudo', 'dd', 'if=%s' % image_path,
-                              'of=%s' % usb_dev, 'bs=4M']))
-
-        # Turn the device off.
-        self.power_normal_press()
-        time.sleep(Servo.SLEEP_DELAY)
+            utils.system('sudo dd if=%s of=%s bs=4M status=noxfer' %
+                         (image_path, usb_dev))
 
         # Boot in recovery mode.
         try:
@@ -386,8 +392,8 @@ class Servo:
                 # Enable recovery installation.
                 logging.info('Running the recovery process on the DUT. '
                              'Waiting %d seconds for recovery to complete ...',
-                             Servo.RECOVERY_INSTALL_DELAY)
-                time.sleep(Servo.RECOVERY_INSTALL_DELAY)
+                             wait_timeout)
+                time.sleep(wait_timeout)
 
                 # Go back into normal mode and reboot.
                 # Machine automatically reboots after the usb key is removed.
@@ -425,7 +431,7 @@ class Servo:
 
 
     def _launch_servod(self, servo_host, servo_port, xml_config, servo_vid,
-                       servo_pid, servo_serial):
+                       servo_pid, servo_serial, servo_interfaces):
         """Launch the servod process.
 
         Args:
@@ -437,6 +443,8 @@ class Servo:
           servo_serial: USB serial id in device descriptor to host to
             distinguish and control multiple servos.  Note servo's EEPROM must
             be programmed to use this feature.
+          servo_interfaces: a list of servo interface names out of 'gpio',
+            'i2c', 'uart', 'gpiouart' and 'dummy'.
         """
         cmdlist = ['sudo', 'servod']
         for config in xml_config:
@@ -451,6 +459,8 @@ class Servo:
             cmdlist.append('--product=%s' % str(servo_pid))
         if servo_serial is not None:
             cmdlist.append('--serialname=%s' % str(servo_serial))
+        if servo_interfaces:
+            cmdlist.append('--interfaces=%s' % ' '.join(servo_interfaces))
         logging.info('starting servod w/ cmd :: %s' % ' '.join(cmdlist))
         self._servod = subprocess.Popen(cmdlist, 0, None, None, None,
                                         subprocess.PIPE)
