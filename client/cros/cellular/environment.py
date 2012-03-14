@@ -32,12 +32,14 @@ class EmulatedEnvironment(object):
     def __init__(self, config, flim=None):
         self.config = config
         self.flim = flim
+        self.emulator = None
 
     def __enter__(self):
         return self
 
     def __exit__(self, exception, value, traceback):
-        self.emulator.Close()
+        if self.emulator:
+            self.emulator.Close()
         return False
 
     def StartDefault(self, technology):
