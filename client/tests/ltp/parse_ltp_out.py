@@ -24,6 +24,7 @@ import re
 import sys
 
 
+SUMMARY_BORDER = 80 * '-'
 # Prefix char used in summaries:
 # +: sums into 'passing'
 # -: sums into 'notpassing'
@@ -45,20 +46,25 @@ def parse_args(argv):
     parser.add_option(
         '-l', '--ltp-out-file',
         help='[required] Path and file name for ltp.out [default: %default]',
-        dest='ltpoutfile',
+        dest='ltp_out_file',
         default=None)
+    parser.add_option(
+        '-t', '--timings',
+        help='Show test timings in buckets [default: %default]',
+        dest='test_timings', action='store_true',
+        default=False)
     options, args = parser.parse_args()
-    if not options.ltpoutfile:
+    if not options.ltp_out_file:
         parser.error('You must supply a value for --ltp-out-file.')
 
     return options
 
 
-def _filter_and_count(ltpoutfile, test_filters):
+def _filter_and_count(ltp_out_file, test_filters):
     """Utility function to count lines that match certain filters.
 
     Args:
-        ltpoutfile: human-readable output file from LTP -p (ltp.out).
+        ltp_out_file: human-readable output file from LTP -p (ltp.out).
         test_filters: dict of the tags to match and corresponding print tags.
 
     Returns:
@@ -75,7 +81,7 @@ def _filter_and_count(ltpoutfile, test_filters):
 
     # Simple 2-state state machine.
     state_test_active = False
-    with open(ltpoutfile) as f:
+    with open(ltp_out_file) as f:
         for line in f:
             state_index = int(state_test_active)
             if re.match(parse_states[state_index]['terminator'], line):
@@ -98,16 +104,15 @@ def _print_summary(filters, accumulator):
         filters: map of tags sought and corresponding print headers.
         accumulator: counts of test results with same keys as filters.
     """
-    border = 80 * '-'
-    print border
+    print SUMMARY_BORDER
     print 'Linux Test Project (LTP) Run Summary:'
-    print border
+    print SUMMARY_BORDER
     # Size the header to the largest printable tag.
     fmt = '%%%ss: %%s' % max(map(lambda x: len(x), filters.values()))
     for k in sorted(filters):
          print fmt % (filters[k], accumulator[k])
 
-    print border
+    print SUMMARY_BORDER
     # These calculations from ltprun-summary.sh script.
     pass_count = sum([accumulator[k] for k in filters if filters[k][0] == '+'])
     notpass_count = sum([accumulator[k] for k in filters
@@ -118,23 +123,89 @@ def _print_summary(filters, accumulator):
     else:
       score = 0.0
     print 'SCORE.ltp: %.2f' % score
-    print border
+    print SUMMARY_BORDER
 
 
-def summarize(ltpoutfile):
+def _filter_times(ltp_out_file):
+    """Utility function to count lines that match certain filters.
+
+    Args:
+        ltp_out_file: human-readable output file from LTP -p (ltp.out).
+
+    Returns:
+        A dictionary with test tags and corresponding times.  The dictionary is
+        a set of buckets of tests based on the test duration:
+          0: [tests that recoreded 0sec runtimes],
+          1: [tests that recorded runtimes from 0-60sec], ...
+          2: [tests that recorded runtimes from 61-120sec], ...
+    """
+    test_tag_line_re = re.compile('^tag=(\w+)\s+stime=(\d+)$')
+    test_duration_line_re = re.compile('^duration=(\d+)\s+.*')
+    filter_accumulator = {}
+    with open(ltp_out_file) as f:
+        previous_tag = None
+        previous_time_s = 0
+        recorded_tags = set()
+        for line in f:
+            tag_matches = re.match(test_tag_line_re, line)
+            if tag_matches:
+                current_tag = tag_matches.group(1)
+                if previous_tag:
+                    if previous_tag in recorded_tags:
+                        print 'WARNING: duplicate tag found: %s.' % previous_tag
+                previous_tag = current_tag
+                continue
+            duration_matches = re.match(test_duration_line_re, line)
+            if duration_matches:
+                duration = int(duration_matches.group(1))
+                if not previous_tag:
+                    print 'WARNING: duration without a tag: %s.' % duration
+                    continue
+                if duration != 0:
+                    duration = int(duration / 60) + 1
+                test_list = filter_accumulator.setdefault(duration, [])
+                test_list.append(previous_tag)
+    return filter_accumulator
+
+
+def _print_timings(accumulator):
+    """Utility function to print the summary of the parsing of ltp.out.
+
+    Prints a count of each type of test result, then a %pass-rate score.
+
+    Args:
+        filters: map of tags sought and corresponding print headers.
+        accumulator: counts of test results with same keys as filters.
+    """
+    print SUMMARY_BORDER
+    print 'Linux Test Project (LTP) Timing Summary:'
+    print SUMMARY_BORDER
+    for test_limit in sorted(accumulator.keys()):
+        print '<=%smin: %s tags: %s' % (
+            test_limit, len(accumulator[test_limit]),
+            ', '.join(sorted(accumulator[test_limit])))
+        print ''
+    print SUMMARY_BORDER
+    return
+
+
+def summarize(ltp_out_file, test_timings=None):
     """Scan detailed output from LTP run for summary test status reporting.
 
     Looks for all possible test result types know to LTP: pass, fail, broken,
     config error, retired and warning.  Prints a summary.
 
     Args:
-        ltpoutfile: human-readable output file from LTP -p (ltp.out).
+        ltp_out_file: human-readable output file from LTP -p (ltp.out).
+        test_timings: if True, emit an ordered summary of run timings of tests.
     """
-    if not os.path.isfile(ltpoutfile):
-        print 'Unable to locate %s.' % ltpoutfile
+    if not os.path.isfile(ltp_out_file):
+        print 'Unable to locate %s.' % ltp_out_file
         return
 
-    _print_summary(TEST_FILTERS, _filter_and_count(ltpoutfile, TEST_FILTERS))
+    _print_summary(TEST_FILTERS, _filter_and_count(ltp_out_file, TEST_FILTERS))
+    if test_timings:
+      _print_timings(_filter_times(ltp_out_file))
 
 
 def main(argv):
@@ -144,7 +215,7 @@ def main(argv):
         argv: command-line arguments.
     """
     options = parse_args(argv)
-    summarize(options.ltpoutfile)
+    summarize(options.ltp_out_file, options.test_timings)
 
 
 if __name__ == '__main__':
