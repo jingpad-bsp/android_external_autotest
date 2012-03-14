@@ -20,6 +20,7 @@ from camera_utils import Pod
 from camera_utils import Pad
 from camera_utils import Unpad
 
+_CORNER_MAX_NUM = 1000000
 _CORNER_QUALITY_RATIO = 0.20
 _CORNER_MIN_DISTANCE_RATIO = 0.02
 
@@ -182,7 +183,7 @@ def PrepareTest(pat_file):
     min_corner_dist = diag_len * _CORNER_MIN_DISTANCE_RATIO
 
     ret.corners = Unpad(
-        cv2.goodFeaturesToTrack(pat, sys.maxint, _CORNER_QUALITY_RATIO,
+        cv2.goodFeaturesToTrack(pat, _CORNER_MAX_NUM, _CORNER_QUALITY_RATIO,
                                 min_corner_dist))
 
     ret.pmatch_tol = diag_len * _POINT_MATCHING_MAX_TOLERANCE_RATIO
