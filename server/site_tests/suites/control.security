@@ -25,6 +25,7 @@ TESTS = [
   ('security_AccountsBaseline', {}),
   ('security_DbusOwners', {}),
   ('security_HardlinkRestrictions', {}),
+  ('security_HtpdateHTTP', {}),
   ('security_NetworkListeners', {}),
   ('security_ptraceRestrictions', {}),
   ('security_RendererSandbox', {}),
