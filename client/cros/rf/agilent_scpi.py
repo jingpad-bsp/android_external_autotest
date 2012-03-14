@@ -191,14 +191,16 @@ class N4010ASCPI(AgilentSCPI):
 
         return ret
 
-    def MeasurePower(self, freq):
+    def MeasurePower(self, freq, range=19, level=-14):
         '''
-        Returns and object containing avg and peak power.
+        Returns an object containing avg and peak power.
 
         Attributes of the returned object:
 
           avg_power: Average power (dBm)
           peak_power: Peak power (dBm)
+          range: ADC max range (dBm)
+          level: Trigger level (dBm)
         '''
         try:
             self.Send('DIAG:HW:SCAR:LCOM:COUP ON')
@@ -212,11 +214,11 @@ class N4010ASCPI(AgilentSCPI):
             [
              'DIAG:HW:BAND 22e6',
              'DIAG:HW:FEA:FREQ %d' % freq,
-             'DIAG:HW:FEA:RANG 19',
+             'DIAG:HW:FEA:RANG %d' % range,
              'DIAG:HW:DAP:ACQ:TIME  0.0002',
              'DIAG:HW:DAP:TRIG:SOUR BURSt',
              'DIAG:HW:DAP:TRIG:SLOPe POS',
-             'DIAG:HW:DAP:TRIG:LEVel -14',
+             'DIAG:HW:DAP:TRIG:LEVel %d' % level,
              'DIAG:HW:DAP:TRIG:DELay 0',
              'DIAG:HW:DAP:TRIG:IDLE 1E-06',
              'DIAG:HW:DAP:MEAS:RESULTS 0,0',
