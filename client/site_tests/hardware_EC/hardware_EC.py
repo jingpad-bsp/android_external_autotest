@@ -58,7 +58,7 @@ class ECControl(object):
         return (result != None)
 
     def get_temperature(self, idx):
-        response = self.ec_command('temps %d' % idx)
+        response = self.ec_command('tempread %d' % idx)
         match = re.search(self.TEMP_SENSOR_RE, response).group(1)
         if match:
             return int(match)
