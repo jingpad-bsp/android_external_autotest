@@ -373,7 +373,8 @@ def CheckVisualCorrectness(sample, ref_data, register_grid = False):
 def CheckSharpness(sample, edges,
                    min_pass_mtf=_MTF_DEFAULT_CHECK_PASS_VALUE,
                    mtf_sample_count=_MTF_DEFAULT_MAX_CHECK_NUM,
-                   mtf_patch_width=_MTF_DEFAULT_PATCH_WIDTH):
+                   mtf_patch_width=_MTF_DEFAULT_PATCH_WIDTH,
+                   use_50p=True):
     '''Check if the captured image is sharp.
 
     Args:
@@ -384,6 +385,7 @@ def CheckSharpness(sample, edges,
         mtf_sample_count: How many edges we are going to compute MTF values.
         mtf_patch_width: The desired margin on the both side of an edge. Larger
                          margins provides more precise MTF values.
+        use_50p: Compute whether the MTF50P value or the MTF50 value.
 
     Returns:
         1: Pass or Fail.
@@ -407,7 +409,7 @@ def CheckSharpness(sample, edges,
     mids = (line_start + line_end) / 2
     perm = _StratifiedSample2D(mids, n_check, sample.shape)
     mtfs = [mtf_calculator.Compute(sample, line_start[t], line_end[t],
-                                   mtf_patch_width)[0] for t in perm]
+                                   mtf_patch_width, use_50p)[0] for t in perm]
 
     # CHECK 1:
     # Check if the median of MTF values pass the threshold.
