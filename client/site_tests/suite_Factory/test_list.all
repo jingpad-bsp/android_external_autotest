@@ -74,7 +74,6 @@ _REPORT_UPLOAD_METHOD = 'shopfloor' if _ENABLE_SHOP_FLOOR else None
 TEST_LIST = [
 
     OperatorTest(
-        label_en='start',
         label_zw='開始',
         autotest_name='factory_Start',
         kbd_shortcut='e',
@@ -101,9 +100,8 @@ TEST_LIST = [
     # Suggested tests (optional): ---------------------------------------------
 
     AutomatedSequence(
-        label_en='memory',
+        id='Memory',
         label_zw='記憶體',
-        subtest_tag_prefix='memoryrunin',
         kbd_shortcut='r',
         subtest_list=[
 
@@ -116,22 +114,19 @@ TEST_LIST = [
         ]),
 
     AutomatedSequence(
-        label_en='graphics',
+        id='Graphics',
         label_zw='圖型',
-        subtest_tag_prefix='graphicsrunin',
         kbd_shortcut='3',
         subtest_list=[
 
             AutomatedSubTest(
-                label_en='graphics',
                 label_zw='圖型',
                 autotest_name='graphics_GLBench'),
         ]),
 
     AutomatedSequence(
-        label_en='restart',
+        id='Restart',
         label_zw='燒機測試',
-        subtest_tag_prefix='restartrunin',
         kbd_shortcut='p',
         subtest_list=[
 
@@ -147,52 +142,44 @@ TEST_LIST = [
         ]),
 
     AutomatedSequence(
-        label_en='gps',
+        id='GPS',
         label_zw='GPS 硬體',
-        subtest_tag_prefix='gpspresence',
         kbd_shortcut='g',
         subtest_list=[
 
             AutomatedSubTest(
-                label_en='GPS hardware',
                 label_zw='GPS 硬體',
                 autotest_name='hardware_GPS'),
         ]),
 
     AutomatedSequence(
-        label_en='EC',
-        label_zw='ec',
-        subtest_tag_prefix='ecfunctional',
+        id='EC',
         kbd_shortcut='l',
         subtest_list=[
 
             AutomatedSubTest(
                 label_en='EC Functional Test',
-                label_zw='EC',
                 autotest_name='hardware_EC',
                 dargs={'num_temp_sensor': 10}),
         ]),
 
     OperatorTest(
-        label_en='KBBacklight',
+        id="KbBacklight",
         label_zw='鍵盤背光',
         autotest_name='factory_KeyboardBacklight',
         kbd_shortcut='q'),
 
     OperatorTest(
-        label_en='touchpad',
         label_zw='觸控板',
         autotest_name='factory_Touchpad',
         kbd_shortcut='t'),
 
     OperatorTest(
-        label_en='display',
         label_zw='顯示',
         autotest_name='factory_Display',
         kbd_shortcut='m'),
 
     OperatorTest(
-        label_en='x-display',
         label_zw='外接顯示',
         autotest_name='factory_ExtDisplay',
         kbd_shortcut='n',
@@ -200,13 +187,11 @@ TEST_LIST = [
                'audio_sample_path':'site_tests/suite_Factory/fhorn.wav'}),
 
     OperatorTest(
-        label_en='camera',
         label_zw='相機',
         autotest_name='factory_Camera',
         kbd_shortcut='c'),
 
     OperatorTest(
-        label_en='audio',
         label_zw='音源裝置',
         autotest_name='factory_Audio',
         kbd_shortcut='a',
@@ -214,26 +199,22 @@ TEST_LIST = [
 
     OperatorTest(
         id='usb',
-        label_en='usb',
         autotest_name='factory_ExternalStorage',
         kbd_shortcut='u',
         dargs={'media':'USB', 'min_read_speed': 20, 'min_write_speed': 10}),
 
     OperatorTest(
         id='sd',
-        label_en='sd',
         autotest_name='factory_ExternalStorage',
         kbd_shortcut='d',
         dargs={'media':'SD', 'min_read_speed': 6, 'min_write_speed': 2}),
 
     OperatorTest(
-        label_en='light sensor',
         label_zw='光感應器',
         autotest_name='factory_LightSensor',
         kbd_shortcut='i'),
 
     OperatorTest(
-        label_en='keyboard',
         label_zw='鍵盤',
         autotest_name='factory_Keyboard',
         kbd_shortcut='k'),
@@ -244,7 +225,7 @@ TEST_LIST = [
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
     OperatorTest(
-        label_en='devrec',
+        id='DevRec',
         label_zw='還原模式',
         autotest_name='factory_DeveloperRecovery',
         kbd_shortcut='b',
@@ -254,7 +235,6 @@ TEST_LIST = [
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
     OperatorTest(
-        label_en='VPD',
         label_zw='產品資訊',
         autotest_name='factory_VPD',
         kbd_shortcut='v'),
@@ -263,7 +243,6 @@ TEST_LIST = [
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
     OperatorTest(
-        label_en='HWID',
         label_zw='硬體代號',
         autotest_name='factory_HWID',
         kbd_shortcut='h'),
@@ -271,21 +250,18 @@ TEST_LIST = [
     # THIS IS A GOOGLE REQUIRED TEST.
     # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
     AutomatedSequence(
-        label_en='final',
+        id='Final',
         label_zw='最終步驟',
-        subtest_tag_prefix='finalize',
         kbd_shortcut='f',
         subtest_list=[
             # The pre-flight is to help operators checking if everything is OK.
             # You can remove the step if you want a fully automated process.
             OperatorTest(
-                label_en='pre flight',
                 label_zw='就緒檢查',
                 autotest_name='factory_PreFinalCheck'),
             # The finalize is required for every products.
             # You can't remove this step.
             OperatorTest(
-                label_en='finalize',
                 label_zw='最終程序',
                 autotest_name='factory_Finalize',
                 dargs={
@@ -295,9 +271,7 @@ TEST_LIST = [
                 })]),
 
     InformationScreen(
-        label_en='review',
         label_zw='報告',
         autotest_name='factory_Review',
-        unique_name='ReviewInformation',  # REVIEW_INFORMATION_TEST_UNIQUE_NAME
         kbd_shortcut='z'),
 ]

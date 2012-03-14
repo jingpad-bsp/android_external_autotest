@@ -9,16 +9,14 @@
 
 TEST_LIST = [
     OperatorTest(
-        label_en='start',
         label_zw='開始',
         autotest_name='factory_Start',
         kbd_shortcut='e',
         dargs={'press_to_continue': False}),
 
     AutomatedSequence(
-        label_en='memory',
+        id='Memory',
         label_zw='記憶體',
-        subtest_tag_prefix='memoryrunin',
         kbd_shortcut='r',
         subtest_list=[
             AutomatedSubTest(
@@ -30,9 +28,7 @@ TEST_LIST = [
         ]),
 
     InformationScreen(
-        label_en='review',
         label_zw='報告',
         autotest_name='factory_Review',
-        unique_name='ReviewInformation',
         kbd_shortcut='z'),
 ]
