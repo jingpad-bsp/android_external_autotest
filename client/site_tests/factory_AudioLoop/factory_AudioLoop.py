@@ -90,7 +90,8 @@ class factory_AudioLoop(test.test):
         m = _AUDIOFUNTEST_STOP_RE.match(line)
         if m is not None:
             glib.source_remove(self._gio_tag)
-            if hasattr(self, '_last_success_rate') and self._last_success_rate:
+            if (hasattr(self, '_last_success_rate') and
+                    self._last_success_rate is not None):
                 self._result = self._last_success_rate > 50.0
                 gtk.main_quit()
 
