@@ -74,10 +74,9 @@ _REPORT_UPLOAD_METHOD = 'shopfloor' if _ENABLE_SHOP_FLOOR else None
 TEST_LIST = [
 
     OperatorTest(
-        label_zw='開始',
         autotest_name='factory_Start',
+        label_zh='開始',
         never_fails=True,
-        kbd_shortcut='e',
         # 'press_to_continue' can be disabled by default when the configuration
         # includes other explicit prompts, like _ENABLE_SHOP_FLOOR (operator
         # must input one string), so the value is "not _ENABLE_SHOP_FLOOR".
@@ -92,7 +91,7 @@ TEST_LIST = [
     # to sync-up with the assembly line IT system.
     # OperatorTest(
     #    label_en='sync',
-    #    label_zw='同步',
+    #    label_zh='同步',
     #    autotest_name='factory_ScriptWrapper',
     #    kbd_shortcut='s',
     #    dargs={'cmdline': job.autodir +
@@ -102,60 +101,54 @@ TEST_LIST = [
 
     AutomatedSequence(
         id='Memory',
-        label_zw='記憶體',
-        kbd_shortcut='r',
-        subtest_list=[
+        label_zh='記憶體',
+        subtests=[
 
-            AutomatedSubTest(
-                label_zw='壓力測試',
+            OperatorTest(
                 autotest_name='factory_StressTest',
-                dargs={'seconds': _SAT_DURATION_SECS},
-                drop_caches=True),
+                label_zh='壓力測試',
+                dargs={'seconds': _SAT_DURATION_SECS}),
         ]),
 
     AutomatedSequence(
         id='Graphics',
-        label_zw='圖型',
-        kbd_shortcut='3',
-        subtest_list=[
+        label_zh='圖型',
+        subtests=[
 
             AutomatedSubTest(
-                label_zw='圖型',
-                autotest_name='graphics_GLBench'),
+                autotest_name='graphics_GLBench',
+                label_zh='圖型'),
         ]),
 
     AutomatedSequence(
         id='Restart',
-        label_zw='燒機測試',
-        kbd_shortcut='p',
-        subtest_list=[
+        label_zh='燒機測試',
+        subtests=[
 
             AutomatedSubTest(
                 label_en='sleep / wake',
-                label_zw='睡眠 / 喚醒',
+                label_zh='睡眠 / 喚醒',
                 autotest_name='power_Resume'),
 
             AutomatedRebootSubTest(
                 label_en='reboot (%s times)' % _REBOOT_SEQ_ITERATIONS,
-                label_zw='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
+                label_zh='重新開機 (%s 次)' % _REBOOT_SEQ_ITERATIONS,
                 iterations=_REBOOT_SEQ_ITERATIONS),
         ]),
 
     AutomatedSequence(
         id='GPS',
-        label_zw='GPS 硬體',
-        kbd_shortcut='g',
-        subtest_list=[
+        label_zh='GPS 硬體',
+        subtests=[
 
             AutomatedSubTest(
-                label_zw='GPS 硬體',
-                autotest_name='hardware_GPS'),
+                autotest_name='hardware_GPS',
+                label_zh='GPS 硬體'),
         ]),
 
     AutomatedSequence(
         id='EC',
-        kbd_shortcut='l',
-        subtest_list=[
+        subtests=[
 
             AutomatedSubTest(
                 label_en='EC Functional Test',
@@ -165,58 +158,49 @@ TEST_LIST = [
 
     OperatorTest(
         id="KbBacklight",
-        label_zw='鍵盤背光',
         autotest_name='factory_KeyboardBacklight',
-        kbd_shortcut='q'),
+        label_zh='鍵盤背光'),
 
     OperatorTest(
-        label_zw='觸控板',
         autotest_name='factory_Touchpad',
-        kbd_shortcut='t'),
+        label_zh='觸控板'),
 
     OperatorTest(
-        label_zw='顯示',
         autotest_name='factory_Display',
-        kbd_shortcut='m'),
+        label_zh='顯示'),
 
     OperatorTest(
-        label_zw='外接顯示',
         autotest_name='factory_ExtDisplay',
-        kbd_shortcut='n',
+        label_zh='外接顯示',
         dargs={'has_audio':True,
                'audio_sample_path':'site_tests/suite_Factory/fhorn.wav'}),
 
     OperatorTest(
-        label_zw='相機',
         autotest_name='factory_Camera',
-        kbd_shortcut='c'),
+        label_zh='相機'),
 
     OperatorTest(
-        label_zw='音源裝置',
         autotest_name='factory_Audio',
-        kbd_shortcut='a',
+        label_zh='音源裝置',
         dargs={'audio_sample_path':'site_tests/suite_Factory/fhorn.wav'}),
 
     OperatorTest(
         id='usb',
         autotest_name='factory_ExternalStorage',
-        kbd_shortcut='u',
         dargs={'media':'USB', 'min_read_speed': 20, 'min_write_speed': 10}),
 
     OperatorTest(
         id='sd',
         autotest_name='factory_ExternalStorage',
-        kbd_shortcut='d',
         dargs={'media':'SD', 'min_read_speed': 6, 'min_write_speed': 2}),
 
     OperatorTest(
-        label_zw='光感應器',
         autotest_name='factory_LightSensor',
-        kbd_shortcut='i'),
+        label_zh='光感應器'),
 
     OperatorTest(
-        label_zw='鍵盤',
         autotest_name='factory_Keyboard',
+        label_zh='鍵盤',
         kbd_shortcut='k'),
 
     # Required tests (mandatory): ----------------------------------------------
@@ -226,32 +210,31 @@ TEST_LIST = [
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
     OperatorTest(
         id='DevRec',
-        label_zw='還原模式',
         autotest_name='factory_DeveloperRecovery',
-        kbd_shortcut='b',
+        label_zh='還原模式',
         dargs={'layout':'devrec'}),
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
     OperatorTest(
-        label_zw='產品資訊',
         autotest_name='factory_VPD',
+        label_zh='產品資訊',
         kbd_shortcut='v'),
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
     # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
     OperatorTest(
-        label_zw='硬體代號',
         autotest_name='factory_HWID',
+        label_zh='硬體代號',
         kbd_shortcut='h'),
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # PLEASE DO NOT REMOVE THIS TEST IN PRODUCTION RELEASES.
     OperatorTest(
-        label_zw='最終程序',
         autotest_name='factory_Finalize',
+        label_zh='最終程序',
         kbd_shortcut='f',
         dargs={
             'developer_mode': _ENABLE_DEVELOPER_MODE,
@@ -260,7 +243,7 @@ TEST_LIST = [
         }),
 
     InformationScreen(
-        label_zw='報告',
         autotest_name='factory_Review',
+        label_zh='報告',
         kbd_shortcut='z'),
 ]

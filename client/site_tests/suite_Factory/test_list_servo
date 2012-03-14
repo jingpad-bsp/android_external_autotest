@@ -9,26 +9,23 @@
 
 TEST_LIST = [
     OperatorTest(
-        label_zw='開始',
         autotest_name='factory_Start',
-        kbd_shortcut='e',
+        label_zh='開始',
         dargs={'press_to_continue': False}),
 
     AutomatedSequence(
         id='Memory',
-        label_zw='記憶體',
-        kbd_shortcut='r',
-        subtest_list=[
+        label_zh='記憶體',
+        subtests=[
             AutomatedSubTest(
                 label_en='system stress',
-                label_zw='壓力測試',
+                label_zh='壓力測試',
                 autotest_name='hardware_SAT',
                 dargs={'seconds': 2},
                 drop_caches=True),
         ]),
 
     InformationScreen(
-        label_zw='報告',
         autotest_name='factory_Review',
-        kbd_shortcut='z'),
+        label_zh='報告'),
 ]
