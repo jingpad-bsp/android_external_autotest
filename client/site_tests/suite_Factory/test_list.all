@@ -107,9 +107,8 @@ TEST_LIST = [
         subtest_list=[
 
             AutomatedSubTest(
-                label_en='system stress',
                 label_zw='壓力測試',
-                autotest_name='hardware_SAT',
+                autotest_name='factory_StressTest',
                 dargs={'seconds': _SAT_DURATION_SECS},
                 drop_caches=True),
         ]),
