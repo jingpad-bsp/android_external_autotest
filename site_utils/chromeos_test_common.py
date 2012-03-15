@@ -16,6 +16,6 @@ import sys
 # Figure out our absolute path so we can simplify configuration.
 CURRENT_DIR = os.path.realpath(os.path.abspath(os.path.join(
     os.getcwd(), os.path.dirname(__file__))))
-CROS_DIR = os.path.abspath(os.path.join(CURRENT_DIR, '../../../..'))
-CRON_DIR = os.path.join(CURRENT_DIR, '../cron/')
+CROS_DIR = os.path.abspath(os.path.join(CURRENT_DIR, '../../../../..'))
+CRON_DIR = CURRENT_DIR
 sys.path.append(CRON_DIR)
