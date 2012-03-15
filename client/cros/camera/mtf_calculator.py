@@ -143,7 +143,10 @@ def _GetResponse(psf, angle):
 def _FindMTF50P(freqs, attns, use_50p):
     '''Locate the MTF50P given the MTF curve.'''
     peak50 = (attns.max() if use_50p else 1.0) / 2.0
-    idx = np.nonzero(attns < peak50)[0][0]
+    idx = np.nonzero(attns < peak50)[0]
+    if idx.shape[0] == 0:
+        return freqs[-1]
+    idx = idx[0]
 
     # Linear interpolation.
     ratio = (peak50 - attns[idx - 1]) / (attns[idx] - attns[idx - 1])
