@@ -195,12 +195,15 @@ class N4010ASCPI(AgilentSCPI):
         '''
         Returns an object containing avg and peak power.
 
-        Attributes of the returned object:
+        Args:
+            freq: frequency at which to measure power.
+            range: ADC max range (dBm).
+            level: Trigger level (dBm).
 
-          avg_power: Average power (dBm)
-          peak_power: Peak power (dBm)
-          range: ADC max range (dBm)
-          level: Trigger level (dBm)
+        Returns:
+            An object with the following attributes:
+                avg_power: Average power (dBm).
+                peak_power: Peak power (dBm).
         '''
         try:
             self.Send('DIAG:HW:SCAR:LCOM:COUP ON')
