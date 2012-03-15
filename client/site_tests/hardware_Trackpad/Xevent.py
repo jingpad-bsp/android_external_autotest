@@ -15,6 +15,10 @@ import trackpad_util
 from common_util import simple_system, simple_system_output
 
 
+# Declare X property names
+X_PROP_SCROLL_BUTTONS = 'Scroll Buttons'
+X_PROP_TAP_ENABLE = 'Tap Enable'
+
 # Declare NOP as a instance containing NOP related constants
 NOP = constants.NOP()
 
@@ -90,34 +94,52 @@ class Xinput(object):
         simple_system(self.xinput_set_int_prop_cmd)
 
 
-class XScrollButtons(Xinput):
-    ''' A special class to manipulate xinput Scroll Buttons '''
-    SCROLL_BUTTONS = 'Scroll Buttons'
+class XIntProp(Xinput):
+    ''' A special class to manipulate xinput Int Property. '''
     TRACKPAD_RE_STR = 't(?:ouch|rack)pad'
 
-    def __init__(self):
-        ''' Look up the id and value of the Scroll Buttons property '''
-        super(XScrollButtons, self).__init__(self.TRACKPAD_RE_STR)
+    def __init__(self, prop_name):
+        ''' Look up the id and value of the X int property '''
+        self.name = prop_name
+        super(XIntProp, self).__init__(self.TRACKPAD_RE_STR)
         # Look up the property only when the device exists
         if self.device_exists():
-            self.sb_id, self.sb_orig_val = self.lookup_int_prop_id_and_value(
-                                           self.SCROLL_BUTTONS)
+            prop_result = self.lookup_int_prop_id_and_value(prop_name)
+            self.prop_id, self.orig_prop_val = prop_result
         else:
-            self.sb_id = self.sb_orig_val = None
+            self.prop_id = self.orig_prop_val = None
 
-    def scroll_buttons_exists(self):
-        ''' Indicating whether the Scroll Buttons property exists or not. '''
-        return self.sb_id is not None
+    def exists(self):
+        ''' Indicating whether the property exists or not. '''
+        return self.prop_id is not None
 
-    def set_scroll_buttons(self):
-        ''' Enable Scroll Buttons if it is not enabled yet. '''
-        if self.sb_orig_val == 0:
-            self.set_int_prop_value(self.sb_id, 1)
+    def set_prop(self):
+        ''' Enable the int property if it is not enabled yet. '''
+        if self.orig_prop_val == 0:
+            self.set_int_prop_value(self.prop_id, 1)
 
-    def reset_scroll_buttons(self):
-        ''' Disable Scroll Buttons if it was originally disabled. '''
-        if self.sb_orig_val == 0:
-            self.set_int_prop_value(self.sb_id, 0)
+    def reset_prop(self):
+        ''' Disable the int property if it was originally disabled. '''
+        if self.orig_prop_val == 0:
+            self.set_int_prop_value(self.prop_id, 0)
+
+
+def set_x_input_prop(prop_name):
+    ''' Enable the specified property if it is not enabled yet. '''
+    prop = XIntProp(prop_name)
+    if prop.exists():
+        prop.set_prop()
+        logging.info('  The property %s has been set.' % prop_name)
+    else:
+        logging.info('  The property %s does not exist.' % prop_name)
+    return prop
+
+
+def reset_x_input_prop(prop):
+    ''' Disable the specified property if it was originally disabled. '''
+    if prop.exists():
+        prop.reset_prop()
+        logging.info('  The property %s has been reset.' % prop.name)
 
 
 class XButton:
@@ -479,7 +501,7 @@ class XEvent:
             (7) event_name == 'Motion':
                 if (self.motion_trace_state == 'ButtonRelease' and
                     len(self.motion_trace) >= self.motion_trace_len - 1):
-                    _append_motion(self, event_coord, event_time)
+                    _append_motion(self)
                     self.motion_trace_len = self.LONG_MOTIOIN_TRACE
                     self.motion_trace_state = 'ButtonRelease.TraceAfterDone'
                     Note: Next state could be either 'Device Mouse Click Press'
@@ -528,26 +550,26 @@ class XEvent:
 
             elif state == 'Device Mouse Click Press':
                 _reduce_motion_trace(self, self.motion_trace_before)
-                _append_motion(self, event_coord, event_time)
+                _append_motion(self)
                 self.motion_trace_len = self.LONG_MOTIOIN_TRACE
                 self.motion_trace_state = state
 
             elif state == 'ButtonPress':
                 _insert_motion_trace_entry(self, event_coord, event_time)
-                _append_motion(self, event_coord, event_time)
+                _append_motion(self)
                 self.motion_trace_len = self.LONG_MOTIOIN_TRACE
                 self.motion_trace_state = state
 
             elif state == 'ButtonRelease':
                 _insert_motion_trace_entry(self, event_coord, event_time)
-                _append_motion(self, event_coord, event_time)
+                _append_motion(self)
                 self.motion_trace_len = self.motion_trace_after
                 self.motion_trace_state = state
 
             elif state == 'Finger Off':
                 # if the state is not 'ButtonRelease.TraceAfterDone' yet
                 if self.motion_trace_state == 'ButtonRelease':
-                    _append_motion(self, event_coord, event_time)
+                    _append_motion(self)
                 self.motion_trace_len = self.LONG_MOTIOIN_TRACE
                 self.motion_trace_state = state
 
@@ -555,7 +577,7 @@ class XEvent:
                 _insert_motion_trace_entry(self, event_coord, event_time)
                 if (self.motion_trace_state == 'ButtonRelease' and
                     len(self.motion_trace) >= self.motion_trace_len - 1):
-                    _append_motion(self, event_coord, event_time)
+                    _append_motion(self)
                     self.motion_trace_len = self.LONG_MOTIOIN_TRACE
                     self.motion_trace_state = 'ButtonRelease.TraceAfterDone'
 
@@ -565,7 +587,7 @@ class XEvent:
             indent = ' ' * 14
             logging.info(indent + str(event))
 
-        def _append_motion(self, event_coord, event_time):
+        def _append_motion(self):
             ''' Append Motion events to xevent_seq '''
             if not self.motion_trace:
                 return
@@ -651,8 +673,6 @@ class XEvent:
         _reset_motion_trace(self)
 
         indent = ' ' * 8
-        precede_state = {'ButtonPress': 'ButtonRelease',
-                         'ButtonRelease': 'ButtonPress'}
         logging.info(indent + 'X events detected:')
 
         for line in self.xevent_data:
@@ -700,7 +720,6 @@ class XEvent:
             elif event_name.startswith('Button'):
                 seg_move_time = _reset_time_interval()
                 button_label = self.xbutton.get_label(event_button)
-                pre_button_state = self.button_states[event_button]
                 self.button_states[event_button] = event_name
 
                 if button_label == pre_button_label:
@@ -740,7 +759,7 @@ class XEvent:
 
         # Append aggregated button wheel events and motion events
         _append_button_wheel(button_label, event_button, button_time)
-        _append_motion(self, event_coord, event_time)
+        _append_motion(self)
 
         # Convert dictionary to tuple
         self.button_states = tuple(self.button_states.values())

@@ -16,6 +16,7 @@ import trackpad_util
 import Xevent
 
 from trackpad_util import Display, read_trackpad_test_conf
+from Xevent import reset_x_input_prop, set_x_input_prop
 
 
 def create_popup_window(display, ax):
@@ -186,13 +187,9 @@ class Xcapture:
         self.fd_all = tempfile.NamedTemporaryFile()
         self.xcapture_file_all = self.fd_all.name
 
-        # Enable xinput Scroll Buttons if it is not enabled yet
-        self.scroll_butons = Xevent.XScrollButtons()
-        if self.scroll_butons.scroll_buttons_exists():
-            self.scroll_butons.set_scroll_buttons()
-            logging.info('  Scroll Buttons property has been set.')
-        else:
-            logging.info('  Scroll Buttons property does not exist.')
+        # Enable X Scroll Buttons and Tap Enable if they are not enabled yet
+        self.scroll_butons = set_x_input_prop(Xevent.X_PROP_SCROLL_BUTTONS)
+        self.tap_enable = set_x_input_prop(Xevent.X_PROP_TAP_ENABLE)
 
         # Create a window to listen to the X events
         mtplot_gui = read_trackpad_test_conf('mtplot_gui', conf_path)
@@ -303,7 +300,6 @@ class Xcapture:
         self.win.destroy()
         self.ax.sync()
 
-        # Reset X Scroll Buttons if it was disabled originally.
-        if self.scroll_butons.scroll_buttons_exists():
-            self.scroll_butons.reset_scroll_buttons()
-            logging.info('  Scroll Buttons property has been reset.')
+        # Reset X Scroll Buttons and Tap Enable if they were disabled originally
+        reset_x_input_prop(self.scroll_butons)
+        reset_x_input_prop(self.tap_enable)
