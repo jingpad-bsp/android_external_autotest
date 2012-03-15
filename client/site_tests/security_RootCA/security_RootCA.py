@@ -58,9 +58,8 @@ class security_RootCA(test.test):
         child.close()
 
         # Add the certs found in the compiled NSS shlib to a new module in DB.
-        cmd = ('"%s" -add testroots '
-               '-libfile /usr/lib/libnssckbi.so'
-               ' -dbdir %s' % (NSSMODUTIL, tmpdir))
+        cmd = ('"%s" -add testroots -libfile %s -dbdir %s' %
+               (NSSMODUTIL, glob.glob('/usr/lib*/libnssckbi.so')[0], tmpdir))
         nssmodutil = pexpect.spawn(cmd)
         nssmodutil.expect('\'q <enter>\' to abort, or <enter> to continue:')
         nssmodutil.sendline('\n')
