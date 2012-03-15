@@ -28,11 +28,13 @@
 /usr/bin/cros_installer
 /usr/lib64/opengl/xorg-x11/extensions/libglx.so
 /usr/lib64/opengl/xorg-x11/lib/libGL.so.1.2
+/usr/lib64/opengl/xorg-x11/lib/libGL.so.1.2.0
 /usr/lib/cromo/plugins/madison.so
 /usr/lib/libGL.so.1.2
 /usr/lib/libQCWWAN2k.so
 /usr/lib/opengl/xorg-x11/extensions/libglx.so
 /usr/lib/opengl/xorg-x11/lib/libGL.so.1.2
+/usr/lib/opengl/xorg-x11/lib/libGL.so.1.2.0
 /usr/lib/xorg/modules/input/syntp_drv.so
 /usr/sbin/iotools
 /usr/sbin/vpd
