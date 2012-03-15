@@ -52,9 +52,11 @@ class factory_Wifi(test.test):
             kernel_release = utils.system_output('uname -r').strip()
 
             if module_paths:
-                for path in module_paths:
-                    path = path.replace('${kernel_release}', kernel_release)
+                module_paths = [
+                    path.replace('${kernel_release}', kernel_release)
+                    for path in module_paths]
 
+                for path in module_paths:
                     assert os.path.exists(path), path
                     assert path.endswith('.ko'), path
                     # Remove .ko suffix to get the module name
