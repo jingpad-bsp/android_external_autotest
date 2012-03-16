@@ -5,11 +5,12 @@
 import gtk
 import os
 from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import ui as ful
 from autotest_lib.client.cros.factory import gooftools
+from autotest_lib.client.cros.factory import task
+from autotest_lib.client.cros.factory import ui
 
 
-class SelectHwidTask(object):
+class SelectHwidTask(task.FactoryTask):
 
     SELECTION_PER_PAGE = 10
     HWID_AUTODETECT = None
@@ -23,7 +24,6 @@ class SelectHwidTask(object):
 
         (stdout, _, result) = gooftools.run("hwid_tool.py list_hwids",
                                             ignore_status=True)
-
         known_list = stdout.splitlines()
         if (not known_list) or (result != 0):
             factory.log('Warning: No valid HWID database in system.')
@@ -35,7 +35,7 @@ class SelectHwidTask(object):
         hwids += [(hwid, hwid) for hwid in known_list]
         return hwids
 
-    def key_press_callback(self, widget, event):
+    def window_key_press(self, widget, event):
         # Process page navigation
         KEY_PREV = [65361, 65362, ord('h'), ord('k')]  # Left, Up
         KEY_NEXT = [65363, 65364, ord('l'), ord('j')]  # Right, Down
@@ -76,10 +76,6 @@ class SelectHwidTask(object):
         self.stop()
         return True
 
-    def register_callbacks(self, window):
-        window.connect('key-press-event', self.key_press_callback)
-        window.add_events(gtk.gdk.KEY_PRESS_MASK)
-
     def render_page(self):
         msg = 'Choose a HWID:\n\n'
         start = self.page_index * self.SELECTION_PER_PAGE
@@ -91,10 +87,7 @@ class SelectHwidTask(object):
                     self.page_index + 1, self.pages)
         self.label.set_text(msg)
 
-    def start(self, window, container, on_stop):
-        self.on_stop = on_stop
-        self.container = container
-
+    def start(self):
         self.page_index = 0
         self.pages = 0
 
@@ -103,22 +96,7 @@ class SelectHwidTask(object):
         if len(self.hwid_list) % self.SELECTION_PER_PAGE:
             self.pages += 1
 
-        self.label = ful.make_label('')
-        widget = gtk.EventBox()
-        widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        widget.add(self.label)
+        self.label = ui.make_label('')
+        self.add_widget(self.label)
         self.render_page()
-
-        self.callback = (window, window.connect('key-press-event',
-                                                self.key_press_callback))
-        window.add_events(gtk.gdk.KEY_PRESS_MASK)
-
-        self.widget = widget
-        container.add(widget)
-        container.show_all()
-
-    def stop(self):
-        (window, callback_id) = self.callback
-        window.disconnect(callback_id)
-        self.container.remove(self.widget)
-        self.on_stop(self)
+        self.connect_window('key-press-event', self.window_key_press)

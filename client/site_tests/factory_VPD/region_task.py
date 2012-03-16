@@ -6,7 +6,8 @@
 
 import gtk
 from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.cros.factory import task
+from autotest_lib.client.cros.factory import ui
 
 # References
 # - Keyboard: http://gerrit.chromium.org/gerrit/gitweb?p=chromium/src.git;a=blob;f=chrome/browser/chromeos/input_method/ibus_input_methods.txt
@@ -383,7 +384,7 @@ def build_region_information(region_data):
     return (locale, layout, timezone, description)
 
 
-class SelectRegionTask(object):
+class SelectRegionTask(task.FactoryTask):
 
     SELECTION_PER_PAGE = 10
 
@@ -409,10 +410,7 @@ class SelectRegionTask(object):
                     self.page_index + 1, self.pages)
         self.label.set_text(msg)
 
-    def start(self, window, container, on_stop):
-        self.on_stop = on_stop
-        self.container = container
-
+    def start(self):
         self.page_index = 0
         self.pages = 0
 
@@ -425,27 +423,12 @@ class SelectRegionTask(object):
         if len(self.region_list) % self.SELECTION_PER_PAGE:
             self.pages += 1
 
-        self.label = ful.make_label('')
-        widget = gtk.EventBox()
-        widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        widget.add(self.label)
+        self.label = ui.make_label('')
+        self.add_widget(self.label)
+        self.connect_window('key-press-event', self.window_key_press)
         self.render_page()
 
-        self.callback = (window, window.connect('key-press-event',
-                                                self.key_press_callback))
-        window.add_events(gtk.gdk.KEY_PRESS_MASK)
-
-        self.widget = widget
-        container.add(widget)
-        container.show_all()
-
-    def stop(self):
-        (window, callback_id) = self.callback
-        window.disconnect(callback_id)
-        self.container.remove(self.widget)
-        self.on_stop(self)
-
-    def key_press_callback(self, widget, event):
+    def window_key_press(self, widget, event):
         # Process page navigation
         KEY_PREV = [65361, 65362]  # Left, Up
         KEY_NEXT = [65363, 65364]  # Right, Down

@@ -8,9 +8,10 @@ Partners should fill this in with the correct serial number
 printed on the box and physical device.
 """
 
-import datetime
 import gtk
-from autotest_lib.client.cros.factory import ui as ful
+
+from autotest_lib.client.cros.factory import task
+from autotest_lib.client.cros.factory import ui
 
 
 # The "ESC" is available primarily for RMA and testing process, when operator
@@ -22,7 +23,7 @@ _MESSAGE_PROMPT = ('Enter Serial Number:\n'
                    ' (ESC to leave current serial number unmodified)')
 
 
-class SerialNumberTask(object):
+class SerialNumberTask(task.FactoryTask):
 
     def __init__(self, vpd):
         self.vpd = vpd
@@ -31,21 +32,13 @@ class SerialNumberTask(object):
         self.vpd['ro']['serial_number'] = serial_number.strip()
         self.stop()
 
-    def on_keypress(self, entry, key):
+    def on_entry_keypress(self, entry, key):
         if key.keyval == gtk.keysyms.Escape:
             self.stop()
             return True
         return False
 
-    def start(self, window, container, on_stop):
-        self.on_stop = on_stop
-        self.container = container
-        self.widget = ful.make_input_window(prompt=_MESSAGE_PROMPT,
-                                            on_keypress=self.on_keypress,
-                                            on_complete=self.on_complete)
-        container.add(self.widget)
-        container.show_all()
-
-    def stop(self):
-        self.container.remove(self.widget)
-        self.on_stop(self)
+    def start(self):
+        self.add_widget(ui.make_input_window(prompt=_MESSAGE_PROMPT,
+                                             on_keypress=self.on_entry_keypress,
+                                             on_complete=self.on_complete))

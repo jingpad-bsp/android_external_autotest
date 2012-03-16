@@ -19,86 +19,63 @@ from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import gooftools
 from autotest_lib.client.cros.factory import shopfloor
-from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.cros.factory import task
+from autotest_lib.client.cros.factory import ui
+
+_MESSAGE_FETCH_FROM_SHOP_FLOOR = "Fetching HWID from shop floor server..."
+_MESSAGE_WRITING = "Writing HWID:"
 
 
-_MESSAGE_PREPARE = "Preparing HWID..."
+class WriteHwidTask(task.FactoryTask):
 
-class factory_HWID(test.test):
-    version = 2
+    def __init__(self, data):
+        self.data = data
 
-    def write_hwid(self, hwid):
-        """Writes system HWID by assigned spec.
-
-        @param hwid: A complete HWID, or BOM-VARIANT pair.
-        """
+    def write_hwid(self):
         # TODO(hungte) Support partial matching by gooftools or hwid_tool.
         # When the input is not a complete HWID (i.e., BOM-VARIANT pair), select
         # and derive the complete ID from active HWIDs in current database.
         # Ex: input="BLUE A" => matched to "MARIO BLUE A-B 6868".
+        hwid = self.data['hwid']
+        assert hwid
         gooftools.run("gooftool --write_hwid --hwid '%s'" % hwid)
+        self.stop()
 
-    def worker_thread(self, data):
-        """Task thread for writing HWID."""
-        def update_label(text):
-            with ful.gtk_lock:
-                self.label.set_text(text)
-        if data is None:
-            update_label("Fetching HWID information...")
-            hwid = shopfloor.get_hwid()
-        else:
-            assert 'hwid' in data, "Missing HWID after selection."
-            hwid = data.get('hwid', None)
+    def start(self):
+        assert 'hwid' in self.data, "Missing HWID in data."
+        hwid = self.data.get('hwid', None)
 
         if not hwid:
             raise ValueError("Invalid empty HWID")
-        else:
-            update_label("Writing HWID: [%s]" % hwid)
-            self.write_hwid(hwid)
+        self.add_widget(ui.make_label("%s\n%s" % (_MESSAGE_WRITING, hwid)))
+        task.schedule(self.write_hwid)
 
-    def run_shop_floor(self):
-        """Runs with shop floor system."""
-        self.label = ful.make_label(_MESSAGE_PREPARE)
-        thread.start_new_thread(self.worker_thread, (None, ))
-        ful.run_test_widget(self.job, self.label)
 
-    def stop_task(self, task):
-        factory.log("Stopping task: %s" % task.__class__.__name__)
-        self.tasks.remove(task)
-        self.find_next_task()
+class ShopFloorHwidTask(task.FactoryTask):
 
-    def find_next_task(self):
-        if self.tasks:
-            task = self.tasks[0]
-            factory.log("Starting task: %s" % task.__class__.__name__)
-            task.start(self.window, self.container, self.stop_task)
-        else:
-            # No more tasks - try to write data.
-            self.label = ful.make_label(_MESSAGE_PREPARE)
-            self.container.add(self.label)
-            self.container.show_all()
-            thread.start_new_thread(self.worker_thread, (self.data, ))
+    def __init__(self, data):
+        self.data = data
 
-    def run_interactively(self):
-        """Runs interactively (without shop floor system)."""
-        def register_window(window):
-            self.window = window
-            self.find_next_task()
-            return True
-        self.data = {'hwid': None}
-        self.container = gtk.VBox()
-        self.tasks = [select_task.SelectHwidTask(self.data)]
-        ful.run_test_widget(self.job, self.container,
-                            window_registration_callback=register_window)
+    def start(self):
+        self.add_widget(ui.make_label(_MESSAGE_FETCH_FROM_SHOP_FLOOR))
+        task.schedule(self.fetch_hwid)
 
+    def fetch_hwid(self):
+        self.data['hwid'] = shopfloor.get_hwid()
+        self.stop()
+
+
+class factory_HWID(test.test):
+    version = 3
 
     def run_once(self):
         factory.log('%s run_once' % self.__class__)
 
-        gtk.gdk.threads_init()
-        if shopfloor.is_enabled():
-            self.run_shop_floor()
-        else:
-            self.run_interactively()
+        self.data = {'hwid': None}
+        self.tasks = [
+                ShopFloorHwidTask(self.data) if shopfloor.is_enabled() else
+                select_task.SelectHwidTask(self.data),
+                WriteHwidTask(self.data)]
+        task.run_factory_tasks(self.job, self.tasks)
 
         factory.log('%s run_once finished' % repr(self.__class__))

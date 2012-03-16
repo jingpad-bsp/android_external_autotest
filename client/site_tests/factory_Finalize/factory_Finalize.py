@@ -9,7 +9,6 @@ import sys
 import thread
 import time
 
-import gobject
 import gtk
 
 from autotest_lib.client.bin import test
@@ -17,10 +16,14 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import gooftools
 from autotest_lib.client.cros.factory import shopfloor
+from autotest_lib.client.cros.factory import task
 from autotest_lib.client.cros.factory import ui
 
 
-class PreflightChecker(object):
+_MSG_FINALIZING = 'Finalizing, please wait...'
+
+
+class PreflightTask(task.FactoryTask):
     """Checks if the system is ready for finalization."""
 
     # User interface theme
@@ -83,6 +86,7 @@ class PreflightChecker(object):
                        for x in state_map.values())
 
     def update_results(self):
+        # TODO(hungte) Rewrite in tasklet.
         # Change system to "checking" state.
         for _, label in self.items:
             label.modify_fg(gtk.STATE_NORMAL, self.COLOR_DISABLED)
@@ -108,7 +112,7 @@ class PreflightChecker(object):
             gtk.main_iteration(False)
         self.label_status.set_label(result_message)
 
-    def key_press_callback(self, widget, event):
+    def window_key_press(self, widget, event):
         stop_preflight = False
         if event.keyval == ord('f'):
             factory.log("WARNING: Operator manually forced finalization.")
@@ -120,13 +124,12 @@ class PreflightChecker(object):
                 self.update_results()
         else:
             return False
+
         if stop_preflight:
             self.stop()
         return True
 
-    def start(self, window, container, on_stop):
-        self.on_stop = on_stop
-        self.container = container
+    def start(self):
         self.results = [False]
 
         # Build main window.
@@ -136,26 +139,18 @@ class PreflightChecker(object):
         vbox.pack_start(self.label_status, False, False)
         for _, label in self.items:
             vbox.pack_start(label, False, False)
-        widget = gtk.EventBox()
         self.widget = vbox
-        container.add(self.widget)
-        container.show_all()
-        window.add_events(gtk.gdk.KEY_PRESS_MASK)
-        self.callback = (window, window.connect('key-press-event',
-                                                self.key_press_callback))
-        gtk.main_iteration(True)
-        self.update_results()
-
-    def stop(self):
-        (window, callback_id) = self.callback
-        self.container.remove(self.widget)
-        self.on_stop(self)
+        self.add_widget(self.widget)
+        task.schedule(self.update_results)
+        self.connect_window('key-press-event', self.window_key_press)
 
 
-class factory_Finalize(test.test):
-    version = 2
+class FinalizeTask(task.FactoryTask):
 
-    MESSAGE_FINALIZING = 'Finalizing, please wait...'
+    def __init__(self, developer_mode, secure_wipe, upload_method):
+        self.developer_mode = developer_mode
+        self.secure_wipe = secure_wipe
+        self.upload_method = upload_method
 
     def alert(self, message, times=3):
         """Alerts user that a required test is bypassed."""
@@ -167,7 +162,6 @@ class factory_Finalize(test.test):
 
     def normalize_upload_method(self, original_method):
         """Build the report file name and solve variables."""
-
         method = original_method
         if method in [None, 'none']:
             # gooftool accepts only 'none', not empty string.
@@ -180,51 +174,11 @@ class factory_Finalize(test.test):
         factory.log('norm_upload_method: %s -> %s' % (original_method, method))
         return method
 
-    def stop_task(self, task):
-        factory.log("Stopping task: %s" % task.__class__.__name__)
-        self.tasks.remove(task)
-        self.find_next_task()
+    def start(self):
+        self.add_widget(ui.make_label(_MSG_FINALIZING))
+        task.schedule(self.do_finalize)
 
-    def find_next_task(self):
-        if self.tasks:
-            task = self.tasks[0]
-            factory.log("Starting task: %s" % task.__class__.__name__)
-            task.start(self.window, self.container, self.stop_task)
-        else:
-            # No more tasks - try to do finalize.
-            self.label = ui.make_label(self.MESSAGE_FINALIZING)
-            self.container.add(self.label)
-            self.container.show_all()
-
-            thread.start_new_thread(self.worker_thread, ())
-
-    def run_once(self,
-                 developer_mode=False,
-                 secure_wipe=False,
-                 upload_method='none',
-                 test_list_path=None):
-
-        factory.log('%s run_once' % self.__class__)
-        gtk.gdk.threads_init()
-
-        self.developer_mode = developer_mode
-        self.secure_wipe = secure_wipe
-        self.upload_method = upload_method
-        test_list = factory.read_test_list(test_list_path)
-
-        def register_window(window):
-            self.window = window
-            self.find_next_task()
-            return True
-
-        self.container = gtk.VBox()
-        self.tasks = [PreflightChecker(test_list, developer_mode)]
-        ui.run_test_widget(self.job, self.container,
-                            window_registration_callback=register_window)
-
-        factory.log('%s run_once finished' % repr(self.__class__))
-
-    def worker_thread(self):
+    def do_finalize(self):
         upload_method = self.normalize_upload_method(self.upload_method)
         hwid_cfg = factory.get_shared_data('hwid_cfg')
 
@@ -245,6 +199,28 @@ class factory_Finalize(test.test):
         cmd = ' '.join(args)
         gooftools.run(cmd)
 
-        # TODO(hungte) use Reboot in test list to replace this?
+        # TODO(hungte) Use Reboot in test list to replace this, or add a
+        # key-press check in developer mode.
         os.system("sync; sync; sync; shutdown -r now")
-        gobject.idle_add(gtk.main_quit)
+        self.stop()
+
+
+class factory_Finalize(test.test):
+
+    version = 3
+
+    def run_once(self,
+                 developer_mode=False,
+                 secure_wipe=False,
+                 upload_method='none',
+                 test_list_path=None):
+
+        factory.log('%s run_once' % self.__class__)
+
+        test_list = factory.read_test_list(test_list_path)
+        self.tasks = [PreflightTask(test_list, developer_mode),
+                      FinalizeTask(developer_mode, secure_wipe, upload_method)]
+
+        task.run_factory_tasks(self.job, self.tasks)
+
+        factory.log('%s run_once finished' % repr(self.__class__))

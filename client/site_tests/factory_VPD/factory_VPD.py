@@ -19,15 +19,19 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import shopfloor
-from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.cros.factory import task
+from autotest_lib.client.cros.factory import ui
+
+_MESSAGE_FETCH_FROM_SHOP_FLOOR = "Fetching VPD from shop floor server..."
+_MESSAGE_WRITING = "Writing VPD:"
 
 
-_MESSAGE_PREPARE_VPD = "Preparing VPD..."
+class WriteVpdTask(task.FactoryTask):
 
-class factory_VPD(test.test):
-    version = 2
+    def __init__(self, vpd):
+        self.vpd = vpd
 
-    def write_vpd(self, vpd):
+    def write_vpd(self):
         """Writes a VPD structure into system.
 
         @param vpd: A dictionary with 'ro' and 'rw' keys, each associated with a
@@ -44,6 +48,7 @@ class factory_VPD(test.test):
             return ' '.join(('-s "%s"="%s"' % (key, vpd_dict[key])
                              for key in sorted(vpd_dict)))
 
+        vpd = self.vpd
         VPD_LIST = (('RO_VPD', 'ro'), ('RW_VPD', 'rw'))
         with tempfile.NamedTemporaryFile() as temp_file:
             name = temp_file.name
@@ -52,69 +57,49 @@ class factory_VPD(test.test):
                     continue
                 parameter = format_vpd_parameter(vpd[vpd_type])
                 shell('vpd -i %s %s' % (section, parameter))
+        self.stop()
 
-    def worker_thread(self, vpd):
-        """Task thread for writing VPD."""
-        def update_label(text):
-            with ful.gtk_lock:
-                self.label.set_text(text)
-        if vpd is None:
-            update_label("Fetching VPD information...")
-            vpd = shopfloor.get_vpd()
-
+    def start(self):
         # Flatten key-values in VPD dictionary.
+        vpd = self.vpd
         vpd_list = []
         for vpd_type in ('ro', 'rw'):
             vpd_list += ['%s: %s = %s' % (vpd_type, key, vpd[vpd_type][key])
                          for key in sorted(vpd[vpd_type])]
 
-        update_label("Writing VPD:\n%s" % '\n'.join(vpd_list))
-        self.write_vpd(vpd)
+        self.add_widget(ui.make_label("%s\n%s" % (_MESSAGE_WRITING,
+                                                  '\n'.join(vpd_list))))
+        task.schedule(self.write_vpd)
 
-    def run_shop_floor(self):
-        """Runs with shop floor system."""
-        self.label = ful.make_label(_MESSAGE_PREPARE_VPD)
-        thread.start_new_thread(self.worker_thread, (None, ))
-        ful.run_test_widget(self.job, self.label)
 
-    def stop_task(self, task):
-        factory.log("Stopping task: %s" % task.__class__.__name__)
-        self.tasks.remove(task)
-        self.find_next_task()
+class ShopFloorVpdTask(task.FactoryTask):
 
-    def find_next_task(self):
-        if self.tasks:
-            task = self.tasks[0]
-            factory.log("Starting task: %s" % task.__class__.__name__)
-            task.start(self.window, self.container, self.stop_task)
-        else:
-            # No more tasks - try to write into VPD.
-            self.label = ful.make_label(_MESSAGE_PREPARE_VPD)
-            self.container.add(self.label)
-            self.container.show_all()
-            thread.start_new_thread(self.worker_thread, (self.vpd, ))
+    def __init__(self, vpd):
+        self.vpd = vpd
 
-    def run_interactively(self):
-        """Runs interactively (without shop floor system)."""
-        def register_window(window):
-            self.window = window
-            self.find_next_task()
-            return True
-        self.vpd = {'ro': {}, 'rw': {}}
-        self.container = gtk.VBox()
-        self.tasks = [serial_task.SerialNumberTask(self.vpd),
-                      region_task.SelectRegionTask(self.vpd)]
-        ful.run_test_widget(self.job, self.container,
-                            window_registration_callback=register_window)
+    def start(self):
+        self.add_widget(ui.make_label(_MESSAGE_FETCH_FROM_SHOP_FLOOR))
+        task.schedule(self.fetch_vpd)
 
+    def fetch_vpd(self):
+        self.vpd.update(shopfloor.get_vpd())
+        self.stop()
+
+
+class factory_VPD(test.test):
+    version = 5
 
     def run_once(self):
         factory.log('%s run_once' % self.__class__)
+        self.tasks = []
+        self.vpd = {'ro': {}, 'rw': {}}
 
-        gtk.gdk.threads_init()
         if shopfloor.is_enabled():
-            self.run_shop_floor()
+            self.tasks += [ShopFloorVpdTask(self.vpd)]
         else:
-            self.run_interactively()
+            self.tasks += [serial_task.SerialNumberTask(self.vpd),
+                           region_task.SelectRegionTask(self.vpd)]
+        self.tasks += [WriteVpdTask(self.vpd)]
+        task.run_factory_tasks(self.job, self.tasks)
 
         factory.log('%s run_once finished' % repr(self.__class__))

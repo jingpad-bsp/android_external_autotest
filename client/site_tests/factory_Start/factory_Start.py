@@ -28,8 +28,9 @@ import pango
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import ui as ful
 from autotest_lib.client.cros.factory import shopfloor
+from autotest_lib.client.cros.factory import task
+from autotest_lib.client.cros.factory import ui
 
 
 # Messages for tasks
@@ -57,37 +58,14 @@ _MSG_NO_SHOP_FLOOR_SERVER_URL = (
 _LABEL_FONT = pango.FontDescription('courier new condensed 24')
 
 
-class Task(object):
-    def __init__(self, ui):
-        self._ui = ui
+class PressSpaceTask(task.FactoryTask):
 
     def start(self):
-        """Initializes task and returns a widget for display, if available."""
-        return None
+        self.add_widget(
+                ui.make_label(_MSG_TASK_SPACE, font=ui.LABEL_LARGE_FONT))
+        self.connect_window('key-press-event', self.window_key_press)
 
-    def stop(self):
-        """Notifies the test backend current task is finished."""
-        return self._ui.stop_task(self)
-
-    def get_window(self):
-        """Returns UI top level window."""
-        return self._ui.get_window()
-
-
-class PressSpaceTask(Task):
-    def start(self):
-        window = self._ui.get_window()
-        window.add_events(gtk.gdk.KEY_PRESS_MASK)
-        self.callback = (window, window.connect('key-press-event',
-                                                self.check_space))
-        return ful.make_label(_MSG_TASK_SPACE, font=ful.LABEL_LARGE_FONT)
-
-    def stop(self):
-        (window, callback_id) = self.callback
-        window.disconnect(callback_id)
-        Task.stop(self)
-
-    def check_space(self, window, event):
+    def window_key_press(self, window, event):
         if event.keyval == gtk.keysyms.space:
             self.stop()
         else:
@@ -95,26 +73,23 @@ class PressSpaceTask(Task):
         return True
 
 
-class ExternalPowerTask(Task):
+class ExternalPowerTask(task.FactoryTask):
 
     AC_CONNECTED = 1
     AC_DISCONNECTED = 2
     AC_CHECK_PERIOD = 500
 
     def start(self):
-        widget = ful.make_label(_MSG_TASK_POWER, font=ful.LABEL_LARGE_FONT)
-        self._timeout = gobject.timeout_add(self.AC_CHECK_PERIOD,
-                                            self.check_event, widget)
-        self._active = True
-        return widget
+        self.active = True
+        widget = ui.make_label(_MSG_TASK_POWER, font=ui.LABEL_LARGE_FONT)
+        self.add_widget(widget)
+        self.add_timeout(self.AC_CHECK_PERIOD, self.check_event, widget)
 
     def stop(self):
-        self._active = False
-        gobject.source_remove(self._timeout)
-        Task.stop(self)
+        self.active = False
 
     def check_event(self, label):
-        if not self._active:
+        if not self.active:
             return True
         state = self.get_external_power_state()
         if state == self.AC_CONNECTED:
@@ -141,9 +116,8 @@ class ExternalPowerTask(Task):
         raise IOError('Unable to determine external power state.')
 
 
-class ShopFloorTask(Task):
-    def __init__(self, ui, server_url):
-        Task.__init__(self, ui)
+class ShopFloorTask(task.FactoryTask):
+    def __init__(self, server_url):
         self.server_url = server_url or shopfloor.detect_default_server_url()
 
     def start(self):
@@ -151,14 +125,15 @@ class ShopFloorTask(Task):
         # mini-omaha server, so we should either alert and fail, or ask for
         # server address.
         if not self.server_url:
-            return ful.make_label(_MSG_NO_SHOP_FLOOR_SERVER_URL,
-                    fg=ful.RED)
+            self.add_widget(ui.make_label(_MSG_NO_SHOP_FLOOR_SERVER_URL,
+                                          fg=ui.RED))
+            return
 
         shopfloor.set_server_url(self.server_url)
-        return ful.make_input_window(
+        self.add_widget(ui.make_input_window(
                 prompt=_MSG_TASK_SERIAL,
                 on_validate=self.validate_serial_number,
-                on_complete=self.complete_serial_task)
+                on_complete=self.complete_serial_task))
 
     def validate_serial_number(self, serial):
         # This is a callback function for widgets created by make_input_window.
@@ -171,18 +146,18 @@ class ShopFloorTask(Task):
             return True
         except shopfloor.Fault as e:
             logging.exception("ServerFault:")
-            raise ful.InputError("Server error:\n%s" %
+            raise ui.InputError("Server error:\n%s" %
                              e.faultString.partition(':')[2])
         except ValueError as e:
             logging.exception("ValueError:")
-            raise ful.InputError(e.message)
+            raise ui.InputError(e.message)
         except socket.gaierror as e:
-            raise ful.InputError("Network failure (address error).")
+            raise ui.InputError("Network failure (address error).")
         except socket.error as e:
-            raise ful.InputError("Network failure:\n%s" % e[1])
+            raise ui.InputError("Network failure:\n%s" % e[1])
         except:
             logging.exception("UnknownException:")
-            raise ful.InputError(sys.exc_info()[1])
+            raise ui.InputError(sys.exc_info()[1])
         return False
 
     def complete_serial_task(self, serial):
@@ -195,34 +170,6 @@ class ShopFloorTask(Task):
 
 class factory_Start(test.test):
     version = 2
-
-    def get_window(self):
-        return self._window
-
-    def stop_task(self, task):
-        # Remove all active widgets and registered callbacks
-        factory.log('factory_Start: Stopping task: %s' %
-                    task.__class__.__name__)
-        for widget in self._test_widget.get_children():
-            self._test_widget.remove(widget)
-        self._task_list.remove(task)
-        self.find_next_task()
-
-    def find_next_task(self):
-        if self._task_list:
-            task = self._task_list[0]
-            factory.log('factory_Start: Starting task: %s' %
-                        task.__class__.__name__)
-            self._test_widget.add(task.start())
-            self._test_widget.show_all()
-        else:
-            gtk.main_quit()
-
-    def register_window(self, window):
-        """Registers top-level window for tasks."""
-        self._window = window
-        self.find_next_task()
-        return True
 
     def run_once(self,
                  press_to_continue=True,
@@ -241,17 +188,13 @@ class factory_Start(test.test):
             shopfloor.set_enabled(require_shop_floor)
 
         if require_shop_floor:
-            self._task_list.append(ShopFloorTask(self, shop_floor_server_url))
+            self._task_list.append(ShopFloorTask(shop_floor_server_url))
         if require_external_power:
-            self._task_list.append(ExternalPowerTask(self))
+            self._task_list.append(ExternalPowerTask())
         if press_to_continue:
-            self._task_list.append(PressSpaceTask(self))
+            self._task_list.append(PressSpaceTask())
 
         if self._task_list:
-            # Creates user interface.
-            self._test_widget = gtk.VBox()
-            ful.run_test_widget(
-                    self.job, self._test_widget,
-                    window_registration_callback=self.register_window)
+            task.run_factory_tasks(self.job, self._task_list)
 
         factory.log('%s run_once finished' % repr(self.__class__))
