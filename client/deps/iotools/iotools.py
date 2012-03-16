@@ -16,7 +16,7 @@ def setup(tarball, topdir):
     # 'Add' arm support.
     os.chdir(srcdir)
     utils.system('patch -p0 < ../iotools.arm.patch')
-    if utils.target_is_x86_pie():
+    if utils.target_is_pie():
         utils.system('patch -p0 < ../iotools.nopie.patch')
 
     utils.system('CROSS_COMPILE=${CTARGET_default}- make')

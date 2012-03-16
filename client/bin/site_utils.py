@@ -185,24 +185,23 @@ def verify_mesg_set(mesg, regex, whitelist):
     return '\n'.join(rv)
 
 
-def target_is_x86_pie():
-    """Returns whether the toolchain produces an x86 PIE (position independent
+def target_is_pie():
+    """Returns whether the toolchain produces a PIE (position independent
     executable) by default.
 
     Arguments:
       None
 
     Returns:
-      True if the target toolchain produces an x86 PIE by default.
+      True if the target toolchain produces a PIE by default.
       False otherwise.
     """
 
 
-    command = "echo \"int main(){return 0;}\" | ${CC} -o /tmp/a.out -xc -"
-    command += "&& file /tmp/a.out"
+    command = 'echo | ${CC} -E -dD -P - | grep -i pie'
     result = utils.system_output(command, retain_output=True,
                                  ignore_status=True)
-    if re.search("80\d86", result) and re.search("shared object", result):
+    if re.search('#define __PIE__', result):
         return True
     else:
         return False
@@ -219,11 +218,10 @@ def target_is_x86():
     """
 
 
-    command = "echo \"int main(){return 0;}\" | ${CC} -o /tmp/a.out -xc -"
-    command += "&& file /tmp/a.out"
+    command = 'echo | ${CC} -E -dD -P - | grep -i 86'
     result = utils.system_output(command, retain_output=True,
                                  ignore_status=True)
-    if re.search("80\d86", result) or re.search("x86-64", result):
+    if re.search('__i386__', result) or re.search('__x86_64__', result):
         return True
     else:
         return False

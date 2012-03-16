@@ -24,7 +24,7 @@ class hardware_SAT(test.test):
         cflags = '-I' + self.autodir + '/deps/libaio/include'
         # Add paths to libaio files.
         var_flags = 'LDFLAGS="' + ldflags + '"'
-        if utils.target_is_x86_pie():
+        if utils.target_is_pie():
             var_flags += ' CXXFLAGS="-nopie ' + cflags + '"'
             var_flags += ' CFLAGS="-nopie ' + cflags + '"'
         else:
