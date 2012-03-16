@@ -128,7 +128,7 @@ class Modem(object):
         except dbus.exceptions.DBusException, e:
             pass
 
-        cdma_modem = manager.CdmaModem()
+        cdma_modem = self.CdmaModem()
         try:
             cdma, evdo = cdma_modem.GetRegistrationState()
             return cdma > 0 or evdo > 0

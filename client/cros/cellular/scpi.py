@@ -100,6 +100,11 @@ class Scpi(object):
         # really only accept -420 if the underlying driver is in a
         # mode that is known to cause this
         continue
+      if '+292' in error and 'Data arrived on unknown SAPI' in error:
+        # This may be benign; It is known to occur when we do a switch
+        # from GPRS to WCDMA
+        continue
+
       else:
         errors.append(error)
     self.Send('*CLS')           # Clear status
