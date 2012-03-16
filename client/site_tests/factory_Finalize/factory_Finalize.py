@@ -3,9 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections
+import logging
 import os
-import re
+import sys
 import thread
 import time
 
@@ -13,7 +13,6 @@ import gobject
 import gtk
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import gooftools
