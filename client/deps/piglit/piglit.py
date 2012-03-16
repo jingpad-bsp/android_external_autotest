@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, shutil
+import common, logging, os, re, shutil
 from autotest_lib.client.bin import test, utils
 
 # changing this version number will force a delete of piglit/ and remake
