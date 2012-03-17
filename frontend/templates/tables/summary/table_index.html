@@ -1,7 +1,7 @@
 {% extends "tables/base.html" %}
 {% comment %}
 
-Copyright 2011 Google Inc. All Rights Reserved.
+Copyright 2012 Google Inc. All Rights Reserved.
 
 This template builds the main summary page for the ChromeOS
 Test Dashboard.
@@ -47,7 +47,7 @@ the status cells are hyperlinks to details pages.
     <th class="roundedheader tableheader">
       <table>
       <tr>
-        <td colspan=3>{{ netbook|slice:"8:" }}</td>
+        <td colspan=3>{{ netbook }}</td>
       </tr>
       <tr>
         <td>
@@ -55,7 +55,7 @@ the status cells are hyperlinks to details pages.
            onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
           combined
           <span style="width:300px">
-            View test and performance results for {{ board }} on {{ netbook|slice:"8:" }}
+            View test and performance results for {{ board }} on {{ netbook }}
           </span>
         </a>
         </td>
@@ -64,7 +64,7 @@ the status cells are hyperlinks to details pages.
            onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
           bvt
           <span style="width:300px">
-            View performance plots for {{ board }} on {{ netbook|slice:"8:" }}
+            View performance plots for {{ board }} on {{ netbook }}
           </span>
         </a>
         </td>
@@ -73,7 +73,7 @@ the status cells are hyperlinks to details pages.
            onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
           perf
           <span style="width:300px">
-            View performance plots for {{ board }} on {{ netbook|slice:"8:" }}
+            View performance plots for {{ board }} on {{ netbook }}
           </span>
         </a>
         </td>
@@ -105,7 +105,7 @@ the status cells are hyperlinks to details pages.
                onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
               {{ passed }}/{{ total }}
               <span style="width:300px">
-                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook }}
               </span>
             </a>
         </td>
@@ -117,7 +117,7 @@ the status cells are hyperlinks to details pages.
                onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
               {{ passed }}/{{ total }}
               <span style="width:300px">
-                View bvt test results for {{ board }} on {{ netbook|slice:"8:" }}
+                View bvt test results for {{ board }} on {{ netbook }}
               </span>
             </a>
             {% else %}
@@ -127,7 +127,7 @@ the status cells are hyperlinks to details pages.
                onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
               {{ passed }}/{{ total }}
               <span style="width:300px">
-                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook }}
               </span>
             </a>
             {% endif %}
@@ -137,7 +137,7 @@ the status cells are hyperlinks to details pages.
              onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
             {{ passed }}/{{ total }}
             <span style="width:300px">
-              View bvt test results for {{ board }} on {{ netbook|slice:"8:" }}
+              View bvt test results for {{ board }} on {{ netbook }}
             </span>
           </a>
           {% endifequal %}

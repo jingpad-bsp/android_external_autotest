@@ -1,7 +1,7 @@
 {% extends "tables/base.html" %}
 {% comment %}
 
-Copyright 2010 Google Inc. All Rights Reserved.
+Copyright 2012 Google Inc. All Rights Reserved.
 
 Aggregates bvt results with dynamically plotted perf charts.
 {% endcomment %}
@@ -10,7 +10,7 @@ Aggregates bvt results with dynamically plotted perf charts.
 <iframe src="bvt.html" name="ifm" id="ifm"
         style="height:48%; width:99%; float:top; border:0;"></iframe>
 <hr>
-<iframe src="http://cros-reports/croschart/server/chartreport?board={{ tpl_board }}&system={{ tpl_netbook|slice:"8:" }}&interval=2,week"
+<iframe src="http://cros-reports/croschart/server/chartreport?board={{ tpl_board }}&system={{ tpl_netbook }}&interval=2,week"
         name="ifm2" id="ifm2"
         style="height:49%; width:99%; float:top; border:0;"></iframe>
 {% endblock %}

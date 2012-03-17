@@ -39,6 +39,7 @@ GTEST_SUFFIXES = ["audio", "browsertests", "enterprise", "pagecycler", "pyauto",
 SUFFIXES_TO_SHOW = ["bvt", "flaky", "hwqual", "regression",
                     KERNELTEST_TAG] + GTEST_SUFFIXES
 SERVER_JOB = "SERVER_JOB"
+LEGACY_PLATFORM_PREFIXES = ('netbook_', 'desktop_')
 
 
 class CrashDashView(object):
@@ -1081,20 +1082,37 @@ class AutotestDashView(object):
       for (name, path, author) in self._cursor.fetchall():
         self._autotests[name] = [author, path]
 
+    def ScrubNetbook(self, netbook):
+      """Remove deprecated platform prefixes.
+
+      If present, older prefixes are removed
+      and the string is lower-cased for one
+      common platform convention.
+
+      Args:
+        netbook: platform from Autotest (e.g. ALEX).
+
+      Returns:
+        String with a 'scrubbed' netbook value.
+      """
+      for prefix in LEGACY_PLATFORM_PREFIXES:
+        if netbook.startswith(prefix):
+          netbook = netbook[len(prefix):]
+      return netbook.lower()
+
     def QueryNetbooks(self):
       """Get the netbooks know the to database."""
       query = [
           "SELECT name",
           "FROM afe_labels",
           "WHERE platform AND NOT invalid",
-          "  AND name REGEXP '.*'",
           "UNION",
           "SELECT distinct machine_group as name",
           "FROM tko_machines",
-          "WHERE machine_group REGEXP '(netbook|desktop)_.*'",
           "ORDER BY name"]
       self._cursor.execute(" ".join(query))
       for (netbook,) in self._cursor.fetchall():
+        netbook = self.ScrubNetbook(netbook)
         self._test_tree[netbook] = {}
         self._ui_categories[netbook] = {}
         self._build_tree[netbook] = {}
@@ -1185,6 +1203,7 @@ class AutotestDashView(object):
       results = self._cursor.fetchall()
       for (idx, test_name, job_name, job_tag, job_id, netbook,
            hostname, status, start_time, finish_time, reason) in results:
+        netbook = self.ScrubNetbook(netbook)
         if not netbook in self.netbooks:
           continue
         board, full_build, job_suffix = self.ParseJobName(job_name)
@@ -1295,6 +1314,7 @@ class AutotestDashView(object):
         board, full_build, _ = self.ParseJobName(job_name)
         if not board or not full_build:
           continue
+        netbook = self.ScrubNetbook(netbook)
         sequence = self.ParseShortFromBuild(full_build)
         board_dict = self._perf_keyvals.setdefault(netbook, {})
         test_dict = board_dict.setdefault(board, {})

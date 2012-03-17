@@ -19,7 +19,7 @@ COMMON_REGEXP = "'(%s).*'"
 #          e.g. GetBuildRangedChartQuery() depends on
 #               GetBasePerfQuery() for efficiency.
 PLATFORM_QUERY_TEMPLATE = """
-  AND platform REGEXP '(desktop|netbook)_%(platform)s'"""
+  AND platform LIKE '%%%(platform)s%%'"""
 
 COMMON_PERF_QUERY_TEMPLATE = """
 SELECT %(select_keys)s

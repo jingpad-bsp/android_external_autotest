@@ -1,7 +1,7 @@
 {% extends "tables/base.html" %}
 {% comment %}
 
-Copyright 2011 Google Inc. All Rights Reserved.
+Copyright 2012 Google Inc. All Rights Reserved.
 
 This template builds the kernel test summary as a single table for the
 Test Dashboard.
@@ -28,17 +28,17 @@ the status cells are hyperlinks to details pages.
 <table class="standalone top">
   <tr>
     <th class="roundedheader tableheader">Build</th>
-    {% for board, netbook, formatted_netbook in tpl_summary_data.platforms %}
+    {% for board, netbook in tpl_summary_data.platforms %}
     <th class="roundedheader tableheader">
       {{ board }}<br>
-      {{ formatted_netbook|slice:"8:" }}<br>
+      {{ netbook }}<br>
     </th>
     {% endfor %}
   </tr>
   {% for release in tpl_summary_data.releases %}
   <tr>
     <td style="text-align:center;">{{ release }}</td>
-    {% for board, netbook, formatted_netbook in tpl_summary_data.platforms %}
+    {% for board, netbook in tpl_summary_data.platforms %}
     <td style="text-align:center;">
       {% if board in tpl_summary_data.irregular %}
       <a class="info" href="{{ netbook }}/{{ board }}"
@@ -48,9 +48,9 @@ the status cells are hyperlinks to details pages.
          onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
         combined
         {% if board in tpl_summary_data.irregular %}
-        <span style="width:300px">View test and performance results for {{ board }} on {{ netbook|slice:"8:" }}
+        <span style="width:300px">View test and performance results for {{ board }} on {{ netbook }}
         {% else %}
-        <span style="width:300px">View test and performance results for {{ board }}-{{ release }} on {{ netbook|slice:"8:" }}
+        <span style="width:300px">View test and performance results for {{ board }}-{{ release }} on {{ netbook }}
         {% endif %}
         </span>
       </a>
@@ -63,9 +63,9 @@ the status cells are hyperlinks to details pages.
          onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
         perf
         {% if board in tpl_summary_data.irregular %}
-        <span style="width:300px">View performance plots for {{ board }} on {{ netbook|slice:"8:" }}
+        <span style="width:300px">View performance plots for {{ board }} on {{ netbook }}
         {% else %}
-        <span style="width:300px">View performance plots for {{ board }}-{{ release }} on {{ netbook|slice:"8:" }}
+        <span style="width:300px">View performance plots for {{ board }}-{{ release }} on {{ netbook }}
         {% endif %}
         </span>
         </span>
@@ -85,10 +85,10 @@ the status cells are hyperlinks to details pages.
   <tr>
     <th class="roundedheader tableheader">Build</th>
     <th class="roundedheader tableheader">Start Time</th>
-    {% for board, netbook, formatted_netbook in tpl_summary_data.platforms %}
+    {% for board, netbook in tpl_summary_data.platforms %}
     <th class="roundedheader tableheader">
       {{ board }}<br>
-      {{ formatted_netbook|slice:"8:" }}<br>
+      {{ netbook }}<br>
     </th>
   {% endfor %}
   </tr>
@@ -111,7 +111,7 @@ the status cells are hyperlinks to details pages.
       {{ build }}
     </td>
     <td class="build buildborder">{{ start_time }}</td>
-    {% for board, netbook, full_build, job_attempted, job_good, passed, total, kernel, failed_tests, crashes, crash_count, crash_cat in build_results %}
+    {% for board, pure_board, netbook, full_build, job_attempted, job_good, passed, total, kernel, failed_tests, crashes, crash_count, crash_cat in build_results %}
       {% if job_attempted %}
         {% ifequal total 0 %}
         <td align="center" class="failure"">
@@ -129,7 +129,7 @@ the status cells are hyperlinks to details pages.
                 {% endif %}
               </tr></tbody></table>
               <span style="width:300px">
-                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook }}
                 {% if kernel %}
                   (Kernel: {{ kernel }})
                 {% endif %}
@@ -162,7 +162,7 @@ the status cells are hyperlinks to details pages.
                 {% endif %}
               </tr></tbody></table>
               <span style="width:300px">
-                View kernel test results for {{ board }} on {{ netbook|slice:"8:" }}
+                View kernel test results for {{ board }} on {{ netbook }}
                 {% if kernel %}
                   (Kernel: {{ kernel }})
                 {% endif %}
@@ -193,7 +193,7 @@ the status cells are hyperlinks to details pages.
                 {% endif %}
               </tr></tbody></table>
               <span style="width:300px">
-                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook|slice:"8:" }}
+                View CAutotest job details for {{ build }} and {{ board }} on {{ netbook }}
                 {% if kernel %}
                   (Kernel: {{ kernel }})
                 {% endif %}
@@ -225,7 +225,7 @@ the status cells are hyperlinks to details pages.
             </tr></tbody></table>
             <span style="width:300px">
               <div style="color:red;"><b>Failed Tests:</b> {{ failed_tests }}.</div>
-              View kernel test results for {{ board }} on {{ netbook|slice:"8:" }}
+              View kernel test results for {{ board }} on {{ netbook }}
               {% if kernel %}
                 (Kernel: {{ kernel }})
               {% endif %}

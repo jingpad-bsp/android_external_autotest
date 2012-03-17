@@ -1,7 +1,7 @@
 {% extends "tables/base.html" %}
 {% comment %}
 
-Copyright 2010 Google Inc. All Rights Reserved.
+Copyright 2012 Google Inc. All Rights Reserved.
 
 This template builds a complicated timing page for the ChromeOS
 Test Dashboard.
@@ -47,9 +47,9 @@ but include hovertext popups that make the elements a little longer.
     <th class="roundedheader tableheader" colspan=2 style="text-align:center;">
       <a class="info" href="{{ netbook }}/{{ board }}"
          onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
-        {{ netbook|slice:"8:" }}
+        {{ netbook }}
         <span style="width:300px">
-          View test and performance results for {{ board }} on {{ netbook|slice:"8:" }}
+          View test and performance results for {{ board }} on {{ netbook }}
         </span>
       </a>
     </th>

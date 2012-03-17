@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -164,6 +164,11 @@ def _GetLandingDetails(dash_view, summary_ranges, netbook, board, category,
                        build):
   """Gather the summary details for one build (row).
 
+  If the dashboard presented results from one source this
+  would not be needed.  Since we grab data from test results,
+  test attributes and crash summaries this sort of function
+  is needed to collect distributed data for one build and category.
+
   Args:
     dash_view: data model with all test result details.
     summary_ranges: limits for data queries in this summary.
@@ -185,8 +190,15 @@ def _GetLandingDetails(dash_view, summary_ranges, netbook, board, category,
   crashes, crash_count, crash_category = (
       dash_view.GetCrashes().GetBuildCrashSummary(netbook, board, build,
                                                   category))
-  return (board, netbook, build, job_attempted, job_good, passed, total, kernel,
-          failed_tests, crashes, crash_count, crash_category)
+  # x86-alex-r18 -> x86-alex
+  # x86-generic-full -> x86-generic-full
+  release_index = board.rfind('-r')
+  if release_index > 0:
+    pure_board = board[:release_index]
+  else:
+    pure_board = board
+  return (board, pure_board, netbook, build, job_attempted, job_good, passed,
+          total, kernel, failed_tests, crashes, crash_count, crash_category)
 
 
 def BuildLandingSummaries(dash_view, category, tots, branches, summary_ranges):
@@ -222,7 +234,7 @@ def BuildLandingSummaries(dash_view, category, tots, branches, summary_ranges):
       build_results = results_dict.setdefault(parsed_build, {})
       for netbook in summary_ranges.GetNetbooks(board):
         # Aggregate the test summaries for each platform.
-        platform = (parsed_board, netbook, netbook.replace('_', ' '))
+        platform = (parsed_board, netbook)
         if not platform in platforms:
           platforms.append(platform)
         if build_results.get(platform):
