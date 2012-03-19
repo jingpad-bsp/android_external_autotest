@@ -81,7 +81,7 @@ class ServoTest(test.test):
         # Assign default arguments for servo invocation.
         args = {
             'servo_host': 'localhost', 'servo_port': 9999,
-            'xml_config': ['servo.xml'], 'servo_vid': None, 'servo_pid': None,
+            'xml_config': [], 'servo_vid': None, 'servo_pid': None,
             'servo_serial': None, 'use_pyauto': False}
 
         # Parse arguments from AFE and override servo defaults above.
