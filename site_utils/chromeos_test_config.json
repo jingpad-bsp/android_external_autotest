@@ -44,7 +44,7 @@
         },
 
         "x86-alex-r19": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-alex",
+            "archive_server": "gs://chromeos-releases/canary-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
             "build_pattern": "R19-*",
             "platforms": [
@@ -80,7 +80,7 @@
         },
 
         "x86-zgb-r19": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-zgb",
+            "archive_server": "gs://chromeos-releases/canary-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
             "build_pattern": "R19-*",
             "platforms": [
@@ -152,7 +152,7 @@
         },
 
        "stumpy-r19": {
-            "archive_server": "gs://chromeos-releases/dev-channel/stumpy",
+            "archive_server": "gs://chromeos-releases/canary-channel/stumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
             "build_pattern": "R19-*",
             "platforms": [
@@ -186,7 +186,7 @@
         },
 
        "lumpy-r19": {
-            "archive_server": "gs://chromeos-releases/dev-channel/lumpy",
+            "archive_server": "gs://chromeos-releases/canary-channel/lumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
             "build_pattern": "R19-*",
             "platforms": [
