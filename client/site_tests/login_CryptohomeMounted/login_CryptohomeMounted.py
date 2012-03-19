@@ -24,6 +24,7 @@ class login_CryptohomeMounted(cros_ui_test.UITest):
         cryptohome.remove_vault(TEST_USER)
         cryptohome.mount_vault(TEST_USER, TEST_PASS, create=True)
         open(TEST_FILE, 'w').close()
+        cryptohome.unmount_vault(TEST_USER)
         self.login()
         login.wait_for_cryptohome()
         self.assert_(not os.path.exists(TEST_FILE))
