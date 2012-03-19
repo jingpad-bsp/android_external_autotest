@@ -16,10 +16,18 @@ dynamic suite infrastructure in server/cros/dynamic_suite.py.
 
 import getpass, optparse, time, sys
 import common
+import logging
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros import frontend_wrappers
+from autotest_lib.client.common_lib import logging_config, logging_manager
 
 CONFIG = global_config.global_config
+
+
+class RunSuiteLoggingConfig(logging_config.LoggingConfig):
+    def configure_logging(self, verbose=False):
+        super(RunSuiteLoggingConfig, self).configure_logging(use_console=True)
+
 
 def parse_options():
     usage = "usage: %prog [options] control_file"
@@ -72,6 +80,9 @@ def main():
     if args or not options.build or not options.board or not options.name:
         parser.print_help()
         return
+
+    logging_manager.configure_logging(RunSuiteLoggingConfig())
+
     afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
 
