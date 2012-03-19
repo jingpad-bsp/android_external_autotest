@@ -28,7 +28,7 @@
 
 int main(int argc, char * argv[])
 {
-    int pid;
+    long pid;
 
     if (argc<3) {
         fprintf(stderr,"Usage: %s TRACER_PID SLEEP_SECONDS\n", argv[0]);
@@ -39,7 +39,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    pid = atoi(argv[1]);
+    pid = strtol(argv[1], NULL, 10);
     if (pid != -2) {
         if (prctl(PR_SET_PTRACER, pid, 0, 0, 0)) {
             perror("prctl");

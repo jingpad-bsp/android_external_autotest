@@ -6,7 +6,6 @@
 # Copyright (C) 2010-2011 Canonical Ltd.
 # License: GPLv3
 # Author: Kees Cook <kees.cook@canonical.com>
-set -x
 set -e
 if [ "$(whoami)" = "root" ]; then
     echo "Cannot be root for this test" >&2
