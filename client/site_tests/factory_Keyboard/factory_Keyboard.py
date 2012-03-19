@@ -108,7 +108,7 @@ class KeyboardTest:
         self.successful_keys = set()
 
     def calc_missing_string(self):
-        missing_keys = sorted(gdk.keyval_name(k) for k in
+        missing_keys = sorted((gdk.keyval_name(k) or '<0x%x>' % k)for k in
                               set(self._bindings) - self.successful_keys)
         if not missing_keys:
             return ''
