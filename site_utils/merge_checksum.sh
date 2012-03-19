@@ -7,7 +7,7 @@
 # This script takes a checksum file and merges it into the packages
 # checksum file in ../packages/packages.checksum.
 
-# This script is thread safe.
+# This script is thread-safe.
 
 set -e
 
@@ -24,7 +24,7 @@ function main () {
     return
   fi
 
-  # This operation is done using an flock on the packages dir
+  # This operation is performed using an flock on the packages dir
   # to allow it to run concurrently.
   flock "${packages_dir}" \
     -c "sort -k2,2 -u ${merge_file} ${checksum_file} -o ${checksum_file}"
