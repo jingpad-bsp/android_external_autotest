@@ -1,5 +1,4 @@
-
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,7 +7,8 @@ NAME = 'kernel_fs_Inplace'
 DOC = '''
 Does inplace preads and pwrites.
 '''
-SUITE = "kernel.main.smoketest"
+SUITE = "bvt"
+EXPERIMENTAL = "True"
 TIME = 'SHORT'
 TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Performance'

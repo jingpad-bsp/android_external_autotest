@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -24,7 +24,7 @@ or unexpected values for sysctls:
   - net/ipv4/tcp_syncookies
   - vm/mmap_min_addr
 """
-SUITE = "bvt, smoke, kernel.main.smoketest"
+SUITE = "bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

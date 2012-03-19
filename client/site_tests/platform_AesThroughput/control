@@ -1,4 +1,4 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,7 +10,8 @@ This test is a benchmark.
 
 This test will fail if the output of openssl cannot be parsed.
 """
-SUITE = "kernel.main.smoketest"
+SUITE = "kernel.per_build.benchmarks"
+EXPERIMENTAL = "True"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "platform"

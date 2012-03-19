@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,7 +6,7 @@ NAME = 'hardware_MemoryTotalSize'
 AUTHOR = 'The Chromium OS Authors'
 PURPOSE = 'Verify there is enough memory to run Chrome OS.'
 CRITERIA = 'Fails if memory size >= 1G.'
-SUITE = "kernel.main.smoketest"
+SUITE = "bvt"
 TIME='SHORT'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "hardware"

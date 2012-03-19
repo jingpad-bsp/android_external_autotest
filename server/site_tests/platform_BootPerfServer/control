@@ -1,10 +1,11 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
 NAME = "BootPerfServer"
-SUITE = "kernel.main.smoketest"
+SUITE = "kernel.per_build.benchmarks"
+EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "platform"

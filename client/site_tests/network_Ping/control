@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,7 +7,7 @@ DOC = "Verifies we can ping internal and external hosts."
 NAME = "network_Ping"
 PURPOSE = "Verify networked hosts respond to ping."
 CRITERIA = "Fails if www.google.com or default gateway fail to respond to ping."
-SUITE = "bvt, kernel.main.smoketest"
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
