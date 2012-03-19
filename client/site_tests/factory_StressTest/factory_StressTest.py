@@ -34,14 +34,11 @@ class factory_StressTest(test.test):
 
     def thread_SAT(self, seconds):
         try:
-            self._error = 'Unexpected error'
             result = self.job.run_test('hardware_SAT',
                                        drop_caches=True,
                                        seconds=seconds)
-            if result:
-                self._error = None
-            else:
-                self._error = 'Failed running hardware_SAT'
+            if not result:
+                raise error.TestError('Failed running hardware_SAT')
         finally:
             self._complete = True
 
@@ -79,7 +76,6 @@ class factory_StressTest(test.test):
 
     def run_once(self, sat_seconds=60):
         factory.log('%s run_once' % self.__class__)
-        self._error = None
         self._complete = False
         # Add 3 seconds leading time (for autotest / process to start).
         self._start_time = time.time() + 3
@@ -101,8 +97,5 @@ class factory_StressTest(test.test):
 
         thread.start_new_thread(self.thread_SAT, (sat_seconds, ))
         ui.run_test_widget(self.job, vbox)
-
-        if self._error:
-            raise error.TestFail(self._error)
 
         factory.log('%s run_once finished' % self.__class__)

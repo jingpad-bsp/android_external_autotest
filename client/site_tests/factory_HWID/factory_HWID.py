@@ -43,24 +43,18 @@ class factory_HWID(test.test):
         def update_label(text):
             with ful.gtk_lock:
                 self.label.set_text(text)
-        try:
-            if data is None:
-                update_label("Fetching HWID information...")
-                hwid = shopfloor.get_hwid()
-            else:
-                assert 'hwid' in data, "Missing HWID after selection."
-                hwid = data.get('hwid', None)
+        if data is None:
+            update_label("Fetching HWID information...")
+            hwid = shopfloor.get_hwid()
+        else:
+            assert 'hwid' in data, "Missing HWID after selection."
+            hwid = data.get('hwid', None)
 
-            if not hwid:
-                raise ValueError("Invalid empty HWID")
-            else:
-                update_label("Writing HWID: [%s]" % hwid)
-                self.write_hwid(hwid)
-        except:
-            self._fail_msg = "Failed writing HWID: %s" % sys.exc_info()[1]
-            logging.exception("Exception when writing HWID")
-        finally:
-            gobject.idle_add(gtk.main_quit)
+        if not hwid:
+            raise ValueError("Invalid empty HWID")
+        else:
+            update_label("Writing HWID: [%s]" % hwid)
+            self.write_hwid(hwid)
 
     def run_shop_floor(self):
         """Runs with shop floor system."""
@@ -100,7 +94,6 @@ class factory_HWID(test.test):
 
     def run_once(self):
         factory.log('%s run_once' % self.__class__)
-        self._fail_msg = None
 
         gtk.gdk.threads_init()
         if shopfloor.is_enabled():
@@ -109,5 +102,3 @@ class factory_HWID(test.test):
             self.run_interactively()
 
         factory.log('%s run_once finished' % repr(self.__class__))
-        if self._fail_msg:
-            raise error.TestFail(self._fail_msg)

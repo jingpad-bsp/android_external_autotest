@@ -50,8 +50,7 @@ class factory_AudioInternalLoopback(test.test):
         if event.keyval == gtk.keysyms.Return:
             gtk.main_quit()
         if event.keyval == gtk.keysyms.Tab:
-            self._test_failed = True
-            gtk.main_quit()
+            raise error.TestFail('Test Failed')
         return True
 
     def register_callbacks(self, window):
@@ -64,8 +63,6 @@ class factory_AudioInternalLoopback(test.test):
 
         label = ful.make_label(_MESSAGE_STR)
 
-        self._test_failed = False
-
         self.start_audioloop(indev, outdev)
 
         test_widget = gtk.EventBox()
@@ -76,8 +73,5 @@ class factory_AudioInternalLoopback(test.test):
             window_registration_callback=self.register_callbacks)
 
         self.stop_audioloop()
-
-        if self._test_failed:
-            raise error.TestFail('Test Failed')
 
         factory.log('%s run_once finished' % repr(self.__class__))

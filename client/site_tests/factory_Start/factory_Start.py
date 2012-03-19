@@ -73,10 +73,6 @@ class Task(object):
         """Returns UI top level window."""
         return self._ui.get_window()
 
-    def set_error_and_quit(self, message):
-        """Sets error message and requests for quiting entire test."""
-        return self._ui.set_error_and_quit(message)
-
 
 class PressSpaceTask(Task):
     def start(self):
@@ -120,16 +116,9 @@ class ExternalPowerTask(Task):
     def check_event(self, label):
         if not self._active:
             return True
-        try:
-            state = self.get_external_power_state()
-        except (IOError, ValueError) as details:
-            self.set_error_and_quit('ExternalPowerTask: %s' % details)
-        except:
-            self.set_error_and_quit('ExternalPowerTask: Unknown exception: %s' %
-                                    sys.exc_info()[0])
-        else:
-            if state == self.AC_CONNECTED:
-                self.stop()
+        state = self.get_external_power_state()
+        if state == self.AC_CONNECTED:
+            self.stop()
         return True
 
     def get_external_power_state(self):
@@ -207,11 +196,6 @@ class ShopFloorTask(Task):
 class factory_Start(test.test):
     version = 2
 
-    def set_error_and_quit(self, message):
-        self._error = True
-        self._error_message = message
-        gtk.main_quit()
-
     def get_window(self):
         return self._window
 
@@ -247,9 +231,6 @@ class factory_Start(test.test):
                  shop_floor_server_url=None):
         factory.log('%s run_once' % self.__class__)
 
-        self._error = False
-        self._error_message = 'An unspecified error occurred.'
-
         self._task_list = []
         shopfloor.reset()
         shopfloor.set_enabled(require_shop_floor)
@@ -266,8 +247,5 @@ class factory_Start(test.test):
             ful.run_test_widget(
                     self.job, self._test_widget,
                     window_registration_callback=self.register_window)
-
-        if self._error:
-            raise error.TestError(self._error_message)
 
         factory.log('%s run_once finished' % repr(self.__class__))

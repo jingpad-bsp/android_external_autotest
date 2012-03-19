@@ -205,7 +205,6 @@ class factory_Finalize(test.test):
                  test_list_path=None):
 
         factory.log('%s run_once' % self.__class__)
-        self._fail_msg = None
         gtk.gdk.threads_init()
 
         self.developer_mode = developer_mode
@@ -224,35 +223,28 @@ class factory_Finalize(test.test):
                             window_registration_callback=register_window)
 
         factory.log('%s run_once finished' % repr(self.__class__))
-        if self._fail_msg:
-            raise error.TestFail(self._fail_msg)
 
     def worker_thread(self):
-        try:
-            upload_method = self.normalize_upload_method(self.upload_method)
-            hwid_cfg = factory.get_shared_data('hwid_cfg')
+        upload_method = self.normalize_upload_method(self.upload_method)
+        hwid_cfg = factory.get_shared_data('hwid_cfg')
 
-            command = '--finalize'
-            if self.developer_mode:
-                self.alert('DEVELOPER MODE ENABLED')
-                command = '--developer_finalize'
+        command = '--finalize'
+        if self.developer_mode:
+            self.alert('DEVELOPER MODE ENABLED')
+            command = '--developer_finalize'
 
-            args = ['gooftool',
-                    command,
-                    '--verbose',
-                    '--wipe_method "%s"' % ('secure' if self.secure_wipe else
-                                            'fast'),
-                    '--report_tag "%s"' % hwid_cfg,
-                    '--upload_method "%s"' % upload_method,
-                    ]
+        args = ['gooftool',
+                command,
+                '--verbose',
+                '--wipe_method "%s"' % ('secure' if self.secure_wipe else
+                                        'fast'),
+                '--report_tag "%s"' % hwid_cfg,
+                '--upload_method "%s"' % upload_method,
+                ]
 
-            cmd = ' '.join(args)
-            gooftools.run(cmd)
+        cmd = ' '.join(args)
+        gooftools.run(cmd)
 
-            # TODO(hungte) use Reboot in test list to replace this?
-            os.system("sync; sync; sync; shutdown -r now")
-        except:
-            self._fail_msg = "Failed in finalization: %s" % sys.exc_info()[1]
-            logging.exception("Exception when finalizing.")
-        finally:
-            gobject.idle_add(gtk.main_quit)
+        # TODO(hungte) use Reboot in test list to replace this?
+        os.system("sync; sync; sync; shutdown -r now")
+        gobject.idle_add(gtk.main_quit)

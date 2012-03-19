@@ -58,24 +58,18 @@ class factory_VPD(test.test):
         def update_label(text):
             with ful.gtk_lock:
                 self.label.set_text(text)
-        try:
-            if vpd is None:
-                update_label("Fetching VPD information...")
-                vpd = shopfloor.get_vpd()
+        if vpd is None:
+            update_label("Fetching VPD information...")
+            vpd = shopfloor.get_vpd()
 
-            # Flatten key-values in VPD dictionary.
-            vpd_list = []
-            for vpd_type in ('ro', 'rw'):
-                vpd_list += ['%s: %s = %s' % (vpd_type, key, vpd[vpd_type][key])
-                             for key in sorted(vpd[vpd_type])]
+        # Flatten key-values in VPD dictionary.
+        vpd_list = []
+        for vpd_type in ('ro', 'rw'):
+            vpd_list += ['%s: %s = %s' % (vpd_type, key, vpd[vpd_type][key])
+                         for key in sorted(vpd[vpd_type])]
 
-            update_label("Writing VPD:\n%s" % '\n'.join(vpd_list))
-            self.write_vpd(vpd)
-        except:
-            self._fail_msg = "Failed writing VPD: %s" % sys.exc_info()[1]
-            logging.exception("Exception when writing VPD")
-        finally:
-            gobject.idle_add(gtk.main_quit)
+        update_label("Writing VPD:\n%s" % '\n'.join(vpd_list))
+        self.write_vpd(vpd)
 
     def run_shop_floor(self):
         """Runs with shop floor system."""
@@ -116,7 +110,6 @@ class factory_VPD(test.test):
 
     def run_once(self):
         factory.log('%s run_once' % self.__class__)
-        self._fail_msg = None
 
         gtk.gdk.threads_init()
         if shopfloor.is_enabled():
@@ -125,5 +118,3 @@ class factory_VPD(test.test):
             self.run_interactively()
 
         factory.log('%s run_once finished' % repr(self.__class__))
-        if self._fail_msg:
-            raise error.TestFail(self._fail_msg)
