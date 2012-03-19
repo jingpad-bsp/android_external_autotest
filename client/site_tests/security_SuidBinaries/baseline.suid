@@ -1,5 +1,4 @@
 /usr/libexec/dbus-daemon-launch-helper
-/usr/lib/misc/ssh-keysign
 /usr/sbin/pppd
 /usr/sbin/traceroute6
 /usr/bin/chsh
