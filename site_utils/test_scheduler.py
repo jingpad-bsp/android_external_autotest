@@ -32,6 +32,12 @@ from chromeos_test import dev_server
 from chromeos_test import log_util
 from chromeos_test import test_config
 
+# Autotest imports
+
+import common
+
+from autotest_lib.client.common_lib.cros import dev_server as new_dev_server
+
 
 # RegEx for extracting versions from build strings.
 _3_TUPLE_VERSION_RE = re.compile('R\d+-(\d+\.\d+\.\d+)')
@@ -271,7 +277,10 @@ def main():
       logging.info('----[ Processing board %s, platform %s ]----',
                    board, platform['platform'])
       try:
-        build = dev.GetLatestBuildVersion(board)
+        new_dev = new_dev_server.DevServer()
+        # The variable board is akin to target in the new nomenclature. This is
+        # the old style and the new style clashing.
+        build = new_dev.get_latest_build(board)
         if not build:
           continue
 

@@ -122,3 +122,28 @@ class DevServer(object):
                 return None
             else:
                 raise
+
+    def get_latest_build(self, target, milestone=None):
+        """Ask the dev server for the latest build for a given target.
+
+        Ask the dev server at |self._dev_server|for the latest build for
+        |target|.
+
+        @param target: The build target, typically a combination of the board
+                       and the type of build e.g. x86-mario-release.
+        @param milestone:  For latest build set to None, for builds only in a
+                           specific milestone set to a str of format Rxx
+                           (e.g. R16). Default: None.
+        @return A string of the returned build e.g. R18-1586.0.0-a1-b1514
+                or None.
+        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        """
+        try:
+            call = self._build_call('latestbuild', target=target,
+                                    milestone=milestone)
+            return urllib2.urlopen(call).read()
+        except urllib2.HTTPError as e:
+            if e.code == httplib.INTERNAL_SERVER_ERROR:
+                return None
+            else:
+                raise

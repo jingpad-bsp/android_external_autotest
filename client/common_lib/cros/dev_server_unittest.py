@@ -136,3 +136,15 @@ class DevServerTest(mox.MoxTestBase):
         self.assertRaises(urllib2.HTTPError,
                           self.dev_server.get_control_file,
                           '', '')
+
+    def testGetLatestBuild(self):
+        """Should successfully return a build for a given target."""
+        target = 'x86-generic-release'
+        build_string = 'R18-1586.0.0-a1-b1514'
+        self.mox.StubOutWithMock(urllib2, 'urlopen')
+        to_return = StringIO.StringIO(build_string)
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(target))).AndReturn(to_return)
+        self.mox.ReplayAll()
+        build = self.dev_server.get_latest_build(target)
+        self.assertEquals(build_string, build)
