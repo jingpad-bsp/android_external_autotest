@@ -23,8 +23,4 @@ TEST_LIST = [
                 autotest_name='hardware_SAT',
                 dargs={'seconds': 2}),
         ]),
-
-    InformationScreen(
-        autotest_name='factory_Review',
-        label_zh='報告'),
 ]

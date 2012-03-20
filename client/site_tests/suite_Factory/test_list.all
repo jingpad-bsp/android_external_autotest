@@ -241,9 +241,4 @@ TEST_LIST = [
             'upload_method': _REPORT_UPLOAD_METHOD,
             'secure_wipe': _ENABLE_FACTORY_SECURE_WIPE,
         }),
-
-    InformationScreen(
-        autotest_name='factory_Review',
-        label_zh='報告',
-        kbd_shortcut='z'),
 ]
