@@ -33,10 +33,6 @@ class EthernetDongle(object):
     def GetParam(self, parameter):
         return self.expected_parameters[parameter]
 
-# Supported ethernet dongles and their expect states.
-CISCO_300M = EthernetDongle(expect_speed='100',
-                            expect_duplex='full')
-
 class network_EthernetStressPlug(test.test):
     version = 1
 
@@ -56,8 +52,8 @@ class network_EthernetStressPlug(test.test):
                     if net_path:
                         return net_path.groups()[0]
 
-            raise error.TestError('No ethernet device with name %s found.'
-                                  % device)
+            raise error.TestError('%s was not found or could not be '
+                                  'for this test.' % device)
 
         self.interface = 'eth0'
         self.eth_syspath = get_net_device_path(self.interface)
@@ -70,12 +66,7 @@ class network_EthernetStressPlug(test.test):
             'last_wait': 0
         }
 
-        # Todo:  Increased the failure time to 10 seconds because
-        # of crosbug.com/26343.  Change this back to 5 secs once the
-        # lab has been fixed.
-        # Represents the number of seconds it can take
-        # for ethernet to fully come up before we flag a warning.
-        self.secs_before_warning = 10
+        self.secs_before_warning = 5
 
         # Represents the current number of instances in which ethernet
         # took longer than dhcp_warning_level to come up.
@@ -115,11 +106,12 @@ class network_EthernetStressPlug(test.test):
                 pass
             return val
 
+        eth_out = self.ParseEthTool()
         ethernet_status = {
             'ifconfig_status': utils.system('ifconfig %s' % self.interface,
                                             ignore_status=True),
-            'duplex': ReadEthVal('duplex'),
-            'speed': ReadEthVal('speed'),
+            'duplex': eth_out.get('Duplex'),
+            'speed': eth_out.get('Speed'),
             'mac_address': ReadEthVal('address'),
             'ipaddress': self.GetIPAddress()
         }
@@ -216,15 +208,154 @@ class network_EthernetStressPlug(test.test):
         self.test_status['last_wait'] = duration
         time.sleep(duration)
 
-    def GetDongle(self):
-        """ Todo: Logic to determine the type of dongle we are testing with.
-                  For now, just return the CISCO 300M USB.
+    def _ParseEthTool_LinkModes(self, line):
+        """ Parses Ethtool Link Mode Entries.
+
+        Inputs:
+            line: Space separated string of link modes that have the format
+                  (\d+)baseT/(Half|Full) (eg. 100baseT/Full).
+
+        Outputs:
+            List of dictionaries where each dictionary has the format
+            { 'Speed': '<speed>', 'Duplex': '<duplex>' }
         """
-        return CISCO_300M
+        parameters = []
+        for speed_to_parse in line.split():
+            speed_duplex = speed_to_parse.split('/')
+            parameters.append(
+                {
+                    'Speed': re.search('(\d*)', speed_duplex[0]).groups()[0],
+                    'Duplex': speed_duplex[1],
+                }
+            )
+        return parameters
+
+    def ParseEthTool(self):
+        """
+        Parses the output of Ethtools into a dictionary and returns
+        the dictionary with some cleanup in the below areas:
+            Speed: Remove the unit of speed.
+            Supported link modes: Construct a list of dictionaries.
+                                  The list is ordered (relying on ethtool)
+                                  and each of the dictionaries contains a Speed
+                                  kvp and a Duplex kvp.
+            Advertised link modes: Same as 'Supported link modes'.
+
+        Sample Ethtool Output:
+            Supported ports: [ TP MII ]
+            Supported link modes:   10baseT/Half 10baseT/Full
+                                    100baseT/Half 100baseT/Full
+                                    1000baseT/Half 1000baseT/Full
+            Supports auto-negotiation: Yes
+            Advertised link modes:  10baseT/Half 10baseT/Full
+                                    100baseT/Half 100baseT/Full
+                                    1000baseT/Full
+            Advertised auto-negotiation: Yes
+            Speed: 1000Mb/s
+            Duplex: Full
+            Port: MII
+            PHYAD: 2
+            Transceiver: internal
+            Auto-negotiation: on
+            Supports Wake-on: pg
+            Wake-on: d
+            Current message level: 0x00000007 (7)
+            Link detected: yes
+
+        Returns:
+          A dictionary representation of the above ethtool output, or an empty
+          dictionary if no ethernet dongle is present.
+          Eg.
+            {
+              'Supported ports': '[ TP MII ]',
+              'Supported link modes': [{'Speed': '10', 'Duplex': 'Half'},
+                                       {...},
+                                       {'Speed': '1000', 'Duplex': 'Full'}],
+              'Supports auto-negotiation: 'Yes',
+              'Advertised link modes': [{'Speed': '10', 'Duplex': 'Half'},
+                                        {...},
+                                        {'Speed': '1000', 'Duplex': 'Full'}],
+              'Advertised auto-negotiation': 'Yes'
+              'Speed': '1000',
+              'Duplex': 'Full',
+              'Port': 'MII',
+              'PHYAD': '2',
+              'Transceiver': 'internal',
+              'Auto-negotiation': 'on',
+              'Supports Wake-on': 'pg',
+              'Wake-on': 'd',
+              'Current message level': '0x00000007 (7)',
+              'Link detected': 'yes',
+            }
+        """
+        parameters = {}
+        ethtool_out = os.popen('ethtool %s' % self.interface).read().split('\n')
+        if 'No data available' in ethtool_out:
+            return parameters
+
+        # For multiline entries, keep track of the key they belong to.
+        current_key = ''
+        for line in ethtool_out:
+            current_line = line.strip().partition(':')
+            if current_line[1] == ':':
+                current_key = current_line[0]
+
+                # Assumes speed does not span more than one line.
+                # Also assigns empty string if speed field
+                # is not available.
+                if current_key == 'Speed':
+                    speed = re.search('^\s*(\d*)', current_line[2])
+                    parameters[current_key] = ''
+                    if speed:
+                        parameters[current_key] = speed.groups()[0]
+                elif (current_key == 'Supported link modes' or
+                      current_key == 'Advertised link modes'):
+                    parameters[current_key] = []
+                    parameters[current_key] += \
+                        self._ParseEthTool_LinkModes(current_line[2])
+                else:
+                    parameters[current_key] = current_line[2].strip()
+            else:
+              if (current_key == 'Supported link modes' or
+                  current_key == 'Advertised link modes'):
+                  parameters[current_key] += \
+                      self._ParseEthTool_LinkModes(current_line[0])
+              else:
+                  parameters[current_key]+=current_line[0].strip()
+
+        return parameters
+
+    def GetDongle(self):
+        """ Returns the ethernet dongle object associated with what's connected.
+
+        Dongle uniqueness is retrieved from the 'product' file that is
+        associated with each usb dongle in
+        /sys/devices/pci.*/0000.*/usb.*/.*-.*/product.  The correct
+        dongle object is determined and returned.
+
+        Returns:
+          Object of type EthernetDongle.
+
+        Raises:
+          error.TestFail if ethernet dongle is not found.
+        """
+        ethtool_dict = self.ParseEthTool()
+
+        if not ethtool_dict:
+            raise error.TestFail('Unable to parse ethtool output for %s.' %
+                                 self.interface)
+
+        # Ethtool output is ordered in terms of speed so this obtains the
+        # fastest speed supported by dongle.
+        max_link = ethtool_dict['Supported link modes'][-1]
+
+        return EthernetDongle(expect_speed=max_link['Speed'],
+                              expect_duplex=max_link['Duplex'])
 
     def run_once(self, num_iterations=1):
         try:
             self.dongle = self.GetDongle()
+
             #Sleep for a random duration between .5 and 2 seconds
             #for unplug and plug scenarios.
             for i in range(num_iterations):
