@@ -1,0 +1,22 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "ChromeOS Team"
+NAME = "network_3GRebootStress"
+PURPOSE = "Repeatedly reboot modem and ensure it reappears properly"
+CRITERIA = """
+This test will fail if the modem fails to reappear after being rebooted.
+"""
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "network"
+TEST_TYPE = "client"
+
+DOC = """
+  Tests that the modem properly disappears and reappears in the modem manager
+  when the USB device appears and disappears.  This is useful to flush out
+  race conditions in the modem manager or kernel driver.
+"""
+
+job.run_test('network_3GRebootStress')
