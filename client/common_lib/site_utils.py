@@ -28,5 +28,5 @@ def ping(host, deadline=None, tries=None, timeout=60):
         args.append('-c%d' % tries)
     return base_utils.run('ping', args=args,
                           ignore_status=True, timeout=timeout,
-                          stdout_tee=utils.TEE_TO_LOGS,
-                          stderr_tee=utils.TEE_TO_LOGS).exit_status
+                          stdout_tee=base_utils.TEE_TO_LOGS,
+                          stderr_tee=base_utils.TEE_TO_LOGS).exit_status

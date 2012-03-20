@@ -37,7 +37,7 @@ class SiteAutotest(installable_object.InstallableObject):
             if self.host:
                 afe = frontend.AFE(debug=False)
                 hosts = afe.get_hosts(hostname=self.host.hostname)
-                if 'job_repo_url' in hosts[0].attributes:
+                if hosts and 'job_repo_url' in hosts[0].attributes:
                     return hosts[0].attributes['job_repo_url']
                 logging.warning("No job_repo_url for %s", self.host)
         except ImportError:
