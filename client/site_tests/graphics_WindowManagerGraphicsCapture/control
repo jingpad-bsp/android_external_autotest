@@ -8,6 +8,7 @@ PURPOSE = 'Verify the window manager can capture graphics from applications.'
 CRITERIA = """
 This test fails if application screen shots cannot capture the screen output.
 """
+SUITE='graphics'
 TIME='SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "graphics"
