@@ -288,6 +288,28 @@ size=16777216 n=1000 13.3 2. timer avg= 13.3 stdv=0.032 0.3 MiB/s 75.0 IOPs/sec
         self.write_perf_keyval({prefix + 'uwriterand_iops': iops})
 
 
+    def _uwritesync(self, prefix, file):
+        """Synchronously writes a file
+
+        Args:
+          prefix: prefix to use on name/value pair for identifying results
+          file: file path to use for test
+        Example results (modified to fit in 80 columes):
+size=409600 n=100 4.58 3. timer avg= 4.41 stdv=0.195 0.0887 MiB/s 22.7 IOPs/sec
+size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
+        """
+        loops = 4  # minimum loops to average or see trends
+        num_blocks_to_write = 100  # Because sync writes are slow,
+                                   # don't do too many
+        args = ('-f %s -z %d -l %d -b12' %
+                (file, num_blocks_to_write, loops))
+        result = self._run('uwritesync', args)
+        r1 = re.search(r"([^\s]+ IOPs/sec).*$", result)
+        r2 = re.search(re_float, r1.group(0))
+        iops = r2.group(0)
+        self.write_perf_keyval({prefix + 'uwritesync_iops': iops})
+
+
     def _disk_tests(self, prefix,  dir, file):
         """Run this collection of disk tests
 
@@ -301,7 +323,9 @@ size=16777216 n=1000 13.3 2. timer avg= 13.3 stdv=0.032 0.3 MiB/s 75.0 IOPs/sec
         self._ureadrand(prefix, file)
         self._uwrite(prefix, file)
         self._uwriterand(prefix + '_large_', file, 8 * 1024 * 1024 * 1024)
-        self._uwriterand(prefix + '_small_', file, 8 * 1024)
+        # This tests sometimes gives invalid results
+        # self._uwriterand(prefix + '_small_', file, 8 * 1024)
+        self._uwritesync(prefix, file)
 
 
     def _ecryptfs(self):
