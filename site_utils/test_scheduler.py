@@ -57,7 +57,7 @@ def _ParseVersion(build):
 class TestRunner(object):
   """Helper class for scheduling jobs from tests and groups."""
 
-  def __init__(self, board, build, cli, config, dev, upload=False):
+  def __init__(self, board, build, cli, config, dev, new_dev, upload=False):
     """Initializes class variables.
 
     Args:
@@ -66,6 +66,7 @@ class TestRunner(object):
       cli: Path to Autotest CLI.
       config: Dictionary of configuration as loaded from JSON.
       dev: An initialized DevServer() instance.
+      new_dev: new dev_server interface under client/common_lib/cros.
       upload: Whether to upload created job information to appengine.
     """
     self._board = board
@@ -73,6 +74,7 @@ class TestRunner(object):
     self._config = config
     self._cli = cli
     self._dev = dev
+    self._new_dev = new_dev
     self._upload = upload
 
   def RunTest(self, job_name, platform, test, build=None, control_mods=None):
@@ -111,8 +113,20 @@ class TestRunner(object):
 
     # Pull control file from Dev Server.
     try:
-      control_file_data = self._dev.GetControlFile(
-          self._board, build, test['control'])
+      # Use new style for TOT boards.
+      if 'release' in self._board:
+        image = '%s/%s' % (self._board, build)
+        # Make sure the latest board is already staged. This will hang until
+        # the image is properly staged or return immediately if it is already
+        # staged. This will have little impact on the rest of this process and
+        # ensures we properly launch tests while straddling the old and the new
+        # styles.
+        self._new_dev.trigger_download(image)
+        control_file_data = self._new_dev.get_control_file(image,
+                                                           test['control'])
+      else:
+        control_file_data = self._dev.GetControlFile(self._board, build,
+                                                     test['control'])
     except common_util.ChromeOSTestError:
       logging.error('Missing %s for %s on %s.', test['control'], job_name,
                     platform)
@@ -283,10 +297,9 @@ def main():
         build = new_dev.get_latest_build(board)
         if not build:
           continue
-
         test_runner = TestRunner(
             board=board, build=build, cli=options.cli, config=config, dev=dev,
-            upload=True)
+            new_dev=new_dev, upload=True)
 
         # Determine which groups to run.
         full_groups = []

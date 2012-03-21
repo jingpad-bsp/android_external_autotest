@@ -43,10 +43,7 @@
             ]
         },
 
-        "x86-alex-r19": {
-            "archive_server": "gs://chromeos-releases/canary-channel/x86-alex",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R19-*",
+        "x86-alex-release": {
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true,
                                              "test_suite": true},
@@ -79,10 +76,7 @@
             ]
         },
 
-        "x86-zgb-r19": {
-            "archive_server": "gs://chromeos-releases/canary-channel/x86-zgb",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "R19-*",
+        "x86-zgb-release": {
             "platforms": [
                 {"platform": "netbook_ACER_ZGB", "au_test": true,
                                                  "test_suite": true},
@@ -115,10 +109,7 @@
             ]
         },
 
-        "x86-mario-r19": {
-            "archive_server": "gs://chromeos-releases/dev-channel/x86-mario",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
-            "build_pattern": "R19-*",
+        "x86-mario-release": {
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true,
                                                  "test_suite": true},
@@ -151,10 +142,7 @@
             ]
         },
 
-       "stumpy-r19": {
-            "archive_server": "gs://chromeos-releases/canary-channel/stumpy",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
-            "build_pattern": "R19-*",
+       "stumpy-release": {
             "platforms": [
                 {"platform": "desktop_STUMPY", "au_test": true,
                                                "test_suite": true},
@@ -185,7 +173,8 @@
             ]
         },
 
-       "lumpy-r19": {
+       "lumpy-release": {
+            "download_devserver": true,
             "archive_server": "gs://chromeos-releases/canary-channel/lumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
             "build_pattern": "R19-*",
@@ -207,7 +196,8 @@
             ]
         },
 
-        "tegra2-kaen-r19": {
+        "tegra2-kaen-release": {
+            "download_devserver": true,
             "archive_server": "gs://chromeos-releases/dev-channel/tegra2-kaen",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-kaen.zip",
             "build_pattern": "R19-*",

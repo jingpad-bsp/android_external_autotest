@@ -123,7 +123,7 @@ class DevServer(object):
             else:
                 raise
 
-    def get_latest_build(self, target, milestone=None):
+    def get_latest_build(self, target, milestone=''):
         """Ask the dev server for the latest build for a given target.
 
         Ask the dev server at |self._dev_server|for the latest build for
@@ -131,9 +131,12 @@ class DevServer(object):
 
         @param target: The build target, typically a combination of the board
                        and the type of build e.g. x86-mario-release.
-        @param milestone:  For latest build set to None, for builds only in a
+        @param milestone:  For latest build set to '', for builds only in a
                            specific milestone set to a str of format Rxx
-                           (e.g. R16). Default: None.
+                           (e.g. R16). Default: ''. Since we are dealing with a
+                           webserver sending an empty string, '', ensures that
+                           the variable in the URL is ignored as if it was set
+                           to None.
         @return A string of the returned build e.g. R18-1586.0.0-a1-b1514
                 or None.
         @throws urllib2.HTTPError upon any return code that's not 200 or 500.

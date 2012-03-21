@@ -36,6 +36,12 @@ from chromeos_test import dev_server
 from chromeos_test import log_util
 from chromeos_test import test_config
 
+# Autotest imports
+
+import common
+
+from autotest_lib.client.common_lib.cros import dev_server as new_dev_server
+
 
 # Default location of ChromeOS source checkout.
 DEFAULT_CROS_PATH = os.path.join('/usr/local/google/home',
@@ -75,21 +81,26 @@ class Downloader(object):
 
     # Initialize Dev Server utility class.
     dev = dev_server.DevServer(**self._config['dev_server'])
+    new_dev = new_dev_server.DevServer()
 
     # Main processing loop. Look for new builds of each board.
     for board in boards:
+      # |board| is the same as target in the new nomenclature, i.e.
+      # x86-alex-release. this also uses old style; R18, R16, etc.
       board_cfg = boards[board]
       board_cfg.setdefault('archive_path', None)
       board_cfg.setdefault('build_pattern', None)
       board_cfg.setdefault('boto', None)
       board_cfg.setdefault('import_tests', False)
+      if not board_cfg.get('archive_server'):
+        logging.info('Skipping %s, devserver handles the download.', board)
+        continue
 
       # Bind remote_dir and staging_dir here so we can tell if we need to do any
       # cleanup after an exception occurs before remote_dir is set.
       remote_dir = staging_dir = None
       try:
         logging.info('------------[ Processing board %s ]------------', board)
-
         # Retrieve the latest build version for this board.
         if not self._options.build:
           build = build_util.GetLatestBuildbotBuildVersion(
@@ -104,6 +115,13 @@ class Downloader(object):
           logging.info('Latest build available on Buildbot is %s .', build)
         else:
           build = self._options.build
+
+        if board_cfg.get('download_devserver'):
+          # Use new dev server download pathway for staging image.
+          image = '%s/%s' % (board, build)
+          logging.info('Downloading %s using the dev server.', image)
+          new_dev.trigger_download(image)
+          continue
 
         # Create Dev Server directory for this build and tell other Downloader
         # instances we're working on this build.
