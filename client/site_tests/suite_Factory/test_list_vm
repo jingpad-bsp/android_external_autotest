@@ -21,8 +21,7 @@ TEST_LIST = [
                 label_en='system stress',
                 label_zh='壓力測試',
                 autotest_name='hardware_SAT',
-                dargs={'seconds': 2},
-                drop_caches=True),
+                dargs={'seconds': 2}),
         ]),
 
     InformationScreen(
