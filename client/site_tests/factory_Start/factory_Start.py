@@ -227,13 +227,19 @@ class factory_Start(test.test):
     def run_once(self,
                  press_to_continue=True,
                  require_external_power=False,
-                 require_shop_floor=False,
+                 require_shop_floor=None,
                  shop_floor_server_url=None):
         factory.log('%s run_once' % self.__class__)
 
         self._task_list = []
-        shopfloor.reset()
-        shopfloor.set_enabled(require_shop_floor)
+
+        # Reset shop floor data only if require_shop_floor is explicitly
+        # defined, for test lists using factory_Start multiple times between
+        # groups (ex, to prompt for space or check power adapter).
+        if require_shop_floor is not None:
+            shopfloor.reset()
+            shopfloor.set_enabled(require_shop_floor)
+
         if require_shop_floor:
             self._task_list.append(ShopFloorTask(self, shop_floor_server_url))
         if require_external_power:
