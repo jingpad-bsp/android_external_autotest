@@ -301,7 +301,7 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
         loops = 4  # minimum loops to average or see trends
         num_blocks_to_write = 100  # Because sync writes are slow,
                                    # don't do too many
-        args = ('-f %s -z %d -l %d -b12' %
+        args = ('-f %s -i %d -l %d -b12' %
                 (file, num_blocks_to_write, loops))
         result = self._run('uwritesync', args)
         r1 = re.search(r"([^\s]+ IOPs/sec).*$", result)
