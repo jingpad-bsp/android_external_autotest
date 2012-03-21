@@ -5,7 +5,7 @@
 # Expects to be run in an environment with sudo and no interactive password
 # prompt, such as within the Chromium OS development chroot.
 
-import logging, os, subprocess, time, xmlrpclib
+import logging, os, select, subprocess, sys, time, xmlrpclib
 from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.server import utils
 
@@ -44,6 +44,12 @@ class Servo:
     # Time between an usb disk plugged-in and detected in the system.
     USB_DETECTION_DELAY = 10
 
+    KEY_MATRIX = {
+        'm1': {'ctrl_r': ['0', '0'], 'd': ['0', '1'],
+               'enter': ['1', '0'], 'none': ['1', '1']},
+        'm2': {'ctrl': ['0', '0'], 'refresh': ['0', '1'],
+               'unused': ['1', '0'], 'none': ['1', '1']}
+        }
 
     @staticmethod
     def create_simple(device_under_test_hostname):
@@ -63,7 +69,7 @@ class Servo:
 
 
     def __init__(self, servo_host=None, servo_port=9999,
-                 xml_config=['servo.xml'], servo_vid=None, servo_pid=None,
+                 xml_config=[], servo_vid=None, servo_pid=None,
                  servo_serial=None, cold_reset=False, servo_interfaces=[]):
         """Sets up the servo communication infrastructure.
 
@@ -138,7 +144,7 @@ class Servo:
             value = self.get('pwr_button')
             if value == 'release' or retry > Servo.RELEASE_RETRY_MAX:
                 break
-            logging.info('Waiting for pwr_button to release, retry %d.' % retry)
+            logging.info('Waiting for pwr_button to release, retry %d.', retry)
             retry += 1
             time.sleep(Servo.SHORT_DELAY)
 
@@ -157,14 +163,24 @@ class Servo:
         time.sleep(Servo.SLEEP_DELAY)
 
 
-    def _press_and_release_keys(self, m1, m2, press_secs=None):
+    def _press_and_release_keys(self, m1, m2,
+                                press_secs=SERVO_SEND_SIGNAL_DELAY):
         """Simulate button presses."""
-        if press_secs is None:
-            press_secs = Servo.SERVO_SEND_SIGNAL_DELAY
+        # set keys to none
+        (m2_a1, m2_a0) = self.KEY_MATRIX['m2']['none']
+        (m1_a1, m1_a0) = self.KEY_MATRIX['m1']['none']
+        self.set_nocheck('kbd_m2_a0', m2_a0)
+        self.set_nocheck('kbd_m2_a1', m2_a1)
+        self.set_nocheck('kbd_m1_a0', m1_a0)
+        self.set_nocheck('kbd_m1_a1', m1_a1)
 
+        (m2_a1, m2_a0) = self.KEY_MATRIX['m2'][m2]
+        (m1_a1, m1_a0) = self.KEY_MATRIX['m1'][m1]
         self.set_nocheck('kbd_en', 'on')
-        self.set_nocheck('kbd_m1', m1)
-        self.set_nocheck('kbd_m2', m2)
+        self.set_nocheck('kbd_m2_a0', m2_a0)
+        self.set_nocheck('kbd_m2_a1', m2_a1)
+        self.set_nocheck('kbd_m1_a0', m1_a0)
+        self.set_nocheck('kbd_m1_a1', m1_a1)
         time.sleep(press_secs)
         self.set_nocheck('kbd_en', 'off')
 
@@ -172,6 +188,11 @@ class Servo:
     def ctrl_d(self):
         """Simulate Ctrl-d simultaneous button presses."""
         self._press_and_release_keys('d', 'ctrl')
+
+
+    def ctrl_enter(self):
+        """Simulate Ctrl-enter simultaneous button presses."""
+        self._press_and_release_keys('enter', 'ctrl')
 
 
     def d_key(self):
@@ -234,10 +255,10 @@ class Servo:
         """
         self.set('dut_hub_pwren', 'on')
         if host:
-          self.set('usb_mux_oe1', 'on')
-          self.set('usb_mux_sel1', 'servo_sees_usbkey')
+            self.set('usb_mux_oe1', 'on')
+            self.set('usb_mux_sel1', 'servo_sees_usbkey')
         else:
-          self.set('dut_hub_sel', 'dut_sees_hub')
+            self.set('dut_hub_sel', 'dut_sees_hub')
 
         self.set('dut_hub_on', 'yes')
 
@@ -306,7 +327,7 @@ class Servo:
     def set_nocheck(self, gpio_name, gpio_value):
         """Set the value of a gpio using Servod."""
         assert gpio_name and gpio_value
-        logging.info('Setting %s to %s' % (gpio_name, gpio_value))
+        logging.info('Setting %s to %s', gpio_name, gpio_value)
         self._server.set(gpio_name, gpio_value)
 
 
@@ -385,8 +406,8 @@ class Servo:
                 logging.info('Detecting USB stick device...')
                 usb_dev = self.probe_host_usb_dev()
                 if not usb_dev:
-                  raise Exception('USB device not found')
-                logging.info('Found %s' % usb_dev)
+                    raise Exception('USB device not found')
+                logging.info('Found %s', usb_dev)
             logging.info('Installing image onto usb stick. '
                          'This takes a while...')
             client_utils.poll_for_condition(
@@ -477,21 +498,37 @@ class Servo:
             cmdlist.append('--serialname=%s' % str(servo_serial))
         if servo_interfaces:
             cmdlist.append('--interfaces=%s' % ' '.join(servo_interfaces))
-        logging.info('starting servod w/ cmd :: %s' % ' '.join(cmdlist))
+        logging.info('starting servod w/ cmd :: %s', ' '.join(cmdlist))
         self._servod = subprocess.Popen(cmdlist, 0, None, None, None,
                                         subprocess.PIPE)
         # wait for servod to initialize
         timeout = Servo.MAX_SERVO_STARTUP_DELAY
-        while ('Listening' not in self._servod.stderr.readline() and
-               self._servod.returncode is None and timeout > 0):
-            time.sleep(1)
-            timeout -= 1
-        assert self._servod.returncode is None and timeout
+        start_time = time.time()
+        listening = False
+        while (time.time() - start_time) < timeout and \
+                self._servod.returncode is None:
+            (rfds, _, _) = select.select([self._servod.stderr], [], [], 0)
+            if len(rfds) > 0:
+                if 'Listening' in rfds[0].readline():
+                    listening = True
+                    break
+
+        if not listening:
+            logging.fatal("Unable to successfully launch servod")
+            sys.exit(-1)
 
 
     def _init_seq(self):
         """Initiate starting state for servo."""
-        self.set('tx_dir', 'input')
+        # TODO(tbroch) This is only a servo V1 control.  Need to add ability in
+        # servod to easily identify version so I can make this conditional not
+        # try and fail quietly
+        try:
+            self.set('tx_dir', 'input')
+        except:
+            logging.warning("Failed to set tx_dir.  This is ok if not servo V1")
+
+
         # TODO(tbroch) Investigate method to determine DUT's type so we can
         # conditionally set lid if applicable
         self.set_nocheck('lid_open', 'yes')
