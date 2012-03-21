@@ -7,11 +7,12 @@
 import glob
 import logging
 import os
+import shutil
 
 import trackpad_util
 import trackpad_summary
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui
 
@@ -54,6 +55,7 @@ class hardware_Trackpad(test.test):
 
     def initialize(self):
         self.vlog = trackpad_util.VerificationLog()
+        self.local_path = self.bindir
 
     def read_gesture_files_path(self, local_path, name):
         ''' Read gesture file path from config file. '''
@@ -61,7 +63,47 @@ class hardware_Trackpad(test.test):
         logging.info('Path of %s: %s' % (name, pathname))
         return pathname
 
-    def run_once(self, test_set='localhost'):
+    def _setup_regression_path(self, subset):
+        ''' Extract files from the regression tarball and set up its path. '''
+        # Set up an empty work directory
+        gesture_files_path_work = self.read_gesture_files_path(
+                self.local_path, 'gesture_files_path_work')
+        if os.path.isdir(gesture_files_path_work):
+            shutil.rmtree(gesture_files_path_work, True)
+        if not os.path.isdir(gesture_files_path_work):
+            os.makedirs(gesture_files_path_work)
+            logging.info('  The working path "%s" is created successfully.' %
+                         gesture_files_path_work)
+
+        # Extract files from the tarball
+        if subset not in self.regression_subset_list:
+            subset = self.regression_default_subset
+        regression_tarball = 'regression_files_%s.tar.bz2' % subset
+        gesture_files_subpath_regression = self.read_gesture_files_path(
+                self.local_path, 'gesture_files_subpath_regression')
+        regression_tarball_path = os.path.join(self.local_path,
+                gesture_files_subpath_regression, regression_tarball)
+
+        if not os.path.isfile(regression_tarball_path):
+            logging.warn('  The regression tarball does not exist: "%s"' %
+                         regression_tarball_path)
+            return None
+
+        strip_level = 0 if subset == 'short' else 1
+        untar_cmd = ('tar --strip-components %d -jxvf %s -C %s' %
+                     (strip_level,
+                      regression_tarball_path,
+                      gesture_files_path_work))
+        rc = utils.system(untar_cmd)
+        if rc != 0:
+            logging.warn('  Failed in executing "%s".' % untar_cmd)
+            return None
+        logging.info('  Succeeded in executing "%s".' % untar_cmd)
+
+        return gesture_files_path_work
+
+
+    def run_once(self, test_set='localhost', subset=None):
         ''' test_set determines the path of gesture files.
 
         The test_set could be
@@ -72,29 +114,30 @@ class hardware_Trackpad(test.test):
         tdata.file_basename = None
         tdata.chrome_request = 0
         tdata.report_finished = False
+        local_path = self.local_path
 
-        # Get functionality_list, and gesture_files_path from config file
-        local_path = self.bindir
+        # Get some parameters from the config file
+        self.regression_subset_list = read_trackpad_test_conf(
+                'regression_subset_list', local_path)
+        self.regression_default_subset = read_trackpad_test_conf(
+                'regression_default_subset', local_path)
         functionality_list = read_trackpad_test_conf('functionality_list',
                                                      local_path)
 
         if test_set == 'regression':
-            gesture_files_subpath_regression = self.read_gesture_files_path(
-                    local_path, 'gesture_files_subpath_regression')
-            gesture_files_path_autotest = os.path.join(local_path,
-                    gesture_files_subpath_regression)
+            gesture_files_path_autotest = self._setup_regression_path(subset)
         else:
             gesture_files_path_autotest = self.read_gesture_files_path(
                     local_path, 'gesture_files_path_autotest')
-        logging.info('  test_set: %s is used' % test_set)
+        logging.info('  test_set: %s' % test_set)
+        logging.info('  subset: : %s' % subset)
         logging.info('  gesture_files_path_autotest: %s' %
                      gesture_files_path_autotest)
 
         # Exit if the gesture files path for autotest does not exist.
         if not os.path.exists(gesture_files_path_autotest):
-            logging.warn('  The gesture files path does not exist: %s.' %
-                         gesture_files_path_autotest)
-            return
+            raise error.TestError('  The autotest path does not exist: %s.' %
+                                  gesture_files_path_autotest)
 
         gesture_files_path_results = self.read_gesture_files_path(local_path,
                                      'gesture_files_path_results')
