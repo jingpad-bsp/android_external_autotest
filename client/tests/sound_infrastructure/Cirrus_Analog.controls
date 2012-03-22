@@ -1,21 +1,22 @@
 numid=1,iface=MIXER,name='Master Playback Switch'
 numid=2,iface=MIXER,name='Master Playback Volume'
-numid=21,iface=MIXER,name='PCM Playback Volume'
-numid=8,iface=MIXER,name='Mic Capture Volume'
-numid=6,iface=MIXER,name='Capture Switch'
-numid=7,iface=MIXER,name='Capture Volume'
-numid=9,iface=MIXER,name='IEC958 Playback Con Mask'
-numid=13,iface=MIXER,name='IEC958 Playback Con Mask',index=1
+numid=22,iface=MIXER,name='PCM Playback Volume'
+numid=6,iface=MIXER,name='Mic Capture Volume'
+numid=4,iface=MIXER,name='Capture Switch'
+numid=5,iface=MIXER,name='Capture Volume'
+numid=7,iface=MIXER,name='IEC958 Playback Con Mask'
+numid=12,iface=MIXER,name='IEC958 Playback Con Mask',index=1
 numid=17,iface=MIXER,name='IEC958 Playback Con Mask',index=2
-numid=10,iface=MIXER,name='IEC958 Playback Pro Mask'
-numid=14,iface=MIXER,name='IEC958 Playback Pro Mask',index=1
+numid=8,iface=MIXER,name='IEC958 Playback Pro Mask'
+numid=13,iface=MIXER,name='IEC958 Playback Pro Mask',index=1
 numid=18,iface=MIXER,name='IEC958 Playback Pro Mask',index=2
-numid=11,iface=MIXER,name='IEC958 Playback Default'
-numid=15,iface=MIXER,name='IEC958 Playback Default',index=1
+numid=9,iface=MIXER,name='IEC958 Playback Default'
+numid=14,iface=MIXER,name='IEC958 Playback Default',index=1
 numid=19,iface=MIXER,name='IEC958 Playback Default',index=2
-numid=12,iface=MIXER,name='IEC958 Playback Switch'
-numid=16,iface=MIXER,name='IEC958 Playback Switch',index=1
+numid=10,iface=MIXER,name='IEC958 Playback Switch'
+numid=15,iface=MIXER,name='IEC958 Playback Switch',index=1
 numid=20,iface=MIXER,name='IEC958 Playback Switch',index=2
-numid=3,iface=MIXER,name='HP/Speakers Playback Switch'
-numid=4,iface=MIXER,name='HP/Speakers Playback Volume'
-numid=5,iface=MIXER,name='Speaker Boost Playback Volume'
+numid=3,iface=MIXER,name='Speaker Boost Playback Volume'
+numid=11,iface=PCM,name='ELD',device=3
+numid=16,iface=PCM,name='ELD',device=7
+numid=21,iface=PCM,name='ELD',device=8
