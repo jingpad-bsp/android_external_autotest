@@ -18,9 +18,9 @@ FIELD_SEPARATOR = ','
 BUILD_PART_SEPARATOR = ' '
 
 BUILD_PATTERN1 = re.compile(
-    '([\w\-]+-r[c0-9]+)-([\d]+\.[\d]+\.[\d]+\.[\d]+)-([ar][\w]*)-(b[\d]+)')
+    '([\w\-]+-r[c0-9]+)-([\d.]+)-([ar][\w]*)-(b[\d]+)')
 BUILD_PATTERN2 = re.compile(
-    '([\w\-]+-r[c0-9]+)-(R[\d]+-[\d]+\.[\d]+\.[\d]+)-([ar][\w]*)-(b[\d]+)')
+    '([\w\-]+-r[\w]+)-(R[\d]+-[\d]+\.[\d]+\.[\d]+)-([ar][\w]*)-(b[\d]+)')
 
 
 def AbbreviateBuild(build, chrome_versions, with_board=False):

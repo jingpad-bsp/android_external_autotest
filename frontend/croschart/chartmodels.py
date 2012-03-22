@@ -19,7 +19,7 @@ COMMON_REGEXP = "'(%s).*'"
 #          e.g. GetBuildRangedChartQuery() depends on
 #               GetBasePerfQuery() for efficiency.
 PLATFORM_QUERY_TEMPLATE = """
-  AND platform LIKE '%%%(platform)s%%'"""
+  AND UPPER(platform) LIKE '%%%(platform)s%%'"""
 
 COMMON_PERF_QUERY_TEMPLATE = """
 SELECT %(select_keys)s
@@ -44,11 +44,38 @@ AND test_started_time >= (%(min_query)s)
 AND test_started_time <= (%(max_query)s)"""
 
 
+def _AddNewStyleBoards(boards):
+  """Massage boards to match new jobname convention.
+
+  Before R19, job names started with a representation
+  of the board and release like this:
+    x86-mario-r17
+  Starting in R19, job names start with a different
+  representation like this:
+    x86-mario-release-R19
+
+  Args:
+    boards: list of old-style boards requested.
+
+  Returns:
+    A list of the old-style boards with new-style boards
+    appended for those that have releases > R19.
+  """
+  new_board_list = boards[:]
+  for board in boards:
+    parts = board.split('-')
+    if parts[-1][0] == 'r' and int(parts[-1][1:]) >= 19:
+      parts.insert(-1, 'release')
+      parts[-1] = parts[-1].upper()
+      new_board_list.append('-'.join(parts))
+  return new_board_list
+
+
 def GetBasePerfQueryParts(request):
   """Fully populates and returns a base query string."""
   query = COMMON_PERF_QUERY_TEMPLATE + CHART_QUERY_KEYS
 
-  boards = '|'.join(request.GET.getlist('board'))
+  boards = '|'.join(_AddNewStyleBoards(request.GET.getlist('board')))
   platform = request.GET.get('system').upper()
   test_name, test_keys = chartutils.GetTestNameKeys(request.GET.get('testkey'))
 
