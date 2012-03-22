@@ -130,8 +130,20 @@ class factory_Cellular(test.test):
                  min_power, max_power) in config['tx_channels']:
                 channel_id = (band_name, channel)
 
-                SendCommand(START_TX_TEST_COMMAND % (band_name, channel))
-                ExpectLine(START_TX_TEST_RESPONSE)
+                def StartTxTest():
+                    SendCommand(START_TX_TEST_COMMAND % (band_name, channel))
+                    line = ReadLine()
+                    if 'restricted to FTM' in line:
+                        logging.info('Factory test mode not ready: %r' % line)
+                        return False
+                    return True
+
+                # This may fail the first time if the modem isn't ready;
+                # try a few more times.
+                utils.poll_for_condition(
+                    StartTxTest, timeout=5, sleep_interval=0.5,
+                    desc='Start TX test')
+
                 ExpectLine('')
                 ExpectLine('OK')
 
