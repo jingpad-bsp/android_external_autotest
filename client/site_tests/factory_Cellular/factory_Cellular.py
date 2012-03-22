@@ -26,14 +26,14 @@ from autotest_lib.client.cros.rf.config import PluggableConfig
 # See http://niviuk.free.fr/umts_band.php for band calculations.
 base_config = PluggableConfig({
     'tx_channels': [
-        # band_name, channel, freq, min_power, max_power
-        ('WCDMA_IMT_BC1',   9750, 1950.0e6,  7.6,  9.6),
-        ('WCDMA_1900_BC2',  9400, 1880.0e6,    4,    8),
-        ('WCDMA_800_BC5',   4180,  836.0e6, 13.5, 17.5),
-        #('WCDMA_900_BC8',   2787,  897.4e6,    0,    0),
+        # band_name, channel, freq, power_adjustment, min_power, max_power
+        ('WCDMA_IMT_BC1',   9750, 1950.0e6, -31, None, None),
+        ('WCDMA_1900_BC2',  9400, 1880.0e6, -31, None, None),
+        ('WCDMA_800_BC5',   4180,  836.0e6, -20, None, None),
+        #('WCDMA_900_BC8',  2787,  897.4e6,   0, None, None),
     ],
     'rx_channels': [
-        ('WCDMA_800', 4405, 881e6, -55, -40),
+        ('WCDMA_800',       4405,    881e6, -20, None, None),
     ],
 })
 
@@ -127,7 +127,8 @@ class factory_Cellular(test.test):
 
             # Start continuous transmit
             for (band_name, channel, freq,
-                 min_power, max_power) in config['tx_channels']:
+                 power_adjustment, min_power, max_power
+                 ) in config['tx_channels']:
                 channel_id = (band_name, channel)
 
                 def StartTxTest():
@@ -148,10 +149,10 @@ class factory_Cellular(test.test):
                 ExpectLine('OK')
 
                 # Get channel power from the EXT
-                power = ext.MeasureChannelPower('WCDMA', freq,
-                                                port=ext.PORTS.RFIO1)
+                power = ext.MeasureChannelPower(
+                    'WCDMA', freq, port=ext.PORTS.RFIO1) - power_adjustment
                 tx_power_by_channel[channel_id] = power
-                if power < min_power or power > max_power:
+                if not rf_utils.IsInRange(power, min_power, max_power):
                     failures.append(
                         'Power for channel %s is %g, out of range (%g,%g)' %
                         (channel_id, power, min_power, max_power))
@@ -166,7 +167,7 @@ class factory_Cellular(test.test):
                 ('MAIN', ext.PORTS.RFIO1),
                 ('AUX',
                  ext.PORTS.RFIO2 if use_rfio2_for_aux else ext.PORTS.RFIO1)):
-                for (band_name, channel, freq,
+                for (band_name, channel, freq, power_adjustment,
                      min_power, max_power) in config['rx_channels']:
                     channel_id = (band_name, channel)
 
@@ -183,13 +184,16 @@ class factory_Cellular(test.test):
                         if not match:
                             raise error.TestError(
                                 'Expected RSSI value but got %r' % line)
-                        power = int(match.group(1))
+                        power = int(match.group(1)) - power_adjustment
                         power_readings.append(power)
                         ExpectLine('')
                         ExpectLine('OK')
-                        if power >= min_power and power <= max_power:
-                            return power
+                        return power if rf_utils.IsInRange(
+                            power, min_power, max_power) else None
 
+                    # Wait a moment to give the modem a chance to pick
+                    # up the new RSSI
+                    time.sleep(2)
                     try:
                         utils.poll_for_condition(IsPowerInRange,
                                                  timeout=5, sleep_interval=0.5)

@@ -22,3 +22,14 @@ def SetInterfaceIp(interface, ip):
                      'already set to %s' % (interface, match.group(1)))
         return
     utils.system('ifconfig %s %s' % (interface, ip))
+
+def IsInRange(observed, min, max):
+    '''Returns True if min <= observed <= max.
+
+    If either min or max is None, then the comparison will always succeed.
+    '''
+    if min and observed < min:
+        return False
+    if max and observed > max:
+        return False
+    return True

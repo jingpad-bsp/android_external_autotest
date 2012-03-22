@@ -22,16 +22,17 @@ from autotest_lib.client.cros.rf.config import PluggableConfig
 
 base_config = PluggableConfig({
     'channels': [
-        # channel, freq, fixed_rate, range, level, min_avg_power, max_avg_power
+        # channel, freq, fixed_rate, range, level,
+        # power_adjustment, min_avg_power, max_avg_power
         #
         # The test will fail if the observed average power is not
         # between min_avg_power and max_avg_power.
-        (  1, 2412e6, 11,   0, -14,  7.0,  9.0),
-        (  6, 2437e6, 11,   0, -14, 10.5, 12.5),
-        ( 11, 2462e6, 11,   0, -14,  8.0, 10.0),
-        ( 36, 5180e6,  7, -10, -40,  5.0,  7.0),
-        ( 64, 5320e6,  7, -10, -40,  7.0,  9.0),
-        (157, 5785e6,  7, -10, -40,  3.5,  5.5),
+        (  1, 2412e6, 11,   0, -14, -28, None, None),
+        (  6, 2437e6, 11,   0, -14, -28, None, None),
+        ( 11, 2462e6, 11,   0, -14, -28, None, None),
+        ( 36, 5180e6,  7, -10, -40, -28, None, None),
+        ( 64, 5320e6,  7, -10, -40, -32, None, None),
+        (157, 5785e6,  7, -10, -40, -40, None, None),
         ]
 })
 
@@ -109,7 +110,7 @@ class factory_Wifi(test.test):
                                       % (pattern, matches))
             ath9k = matches[0]
             for channel_info in config['channels']:
-                (channel, freq, fixed_rate, range, level,
+                (channel, freq, fixed_rate, range, level, power_adjustment,
                  min_avg_power, max_avg_power) = channel_info
 
                 utils.system("echo 0 > %s/tx99" % ath9k,
@@ -120,8 +121,10 @@ class factory_Wifi(test.test):
                 utils.system("echo 1 > %s/tx99" % ath9k)
                 try:
                     power = n4010a.MeasurePower(freq, range=range, level=level)
-                    if (power.avg_power < min_avg_power or
-                        power.avg_power > max_avg_power):
+                    power.avg_power -= power_adjustment
+                    power.peak_power -= power_adjustment
+                    if not rf_utils.IsInRange(
+                        power.avg_power, min_avg_power, max_avg_power):
                         failures.append(
                             'Power for channel %d is %g, out of range (%g,%g)' %
                             (channel, power.avg_power,
