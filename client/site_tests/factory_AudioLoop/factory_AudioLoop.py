@@ -60,7 +60,8 @@ class factory_AudioLoop(test.test):
             else:
                 self._result = self.job.run_test(
                         'audiovideo_LineOutToMicInLoopback',
-                        tag=self._subtest_tag)
+                        tag=self._subtest_tag,
+                        **self._args)
                 gtk.main_quit()
 
         return True
@@ -103,10 +104,13 @@ class factory_AudioLoop(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-    def run_once(self, audiofuntest=False, subtest_tag=None):
+    def run_once(self, audiofuntest=False, subtest_tag=None, **args):
         factory.log('%s run_once' % self.__class__)
         self._subtest_tag = subtest_tag
         self._audiofuntest = audiofuntest
+
+        # Arguments to be passed to audiovideo_LineOutToMicInLoopback
+        self._args = args
 
         # Setup dependencies
         dep = 'test_tones'

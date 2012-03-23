@@ -18,6 +18,13 @@ _CONTROL_DIGITAL = "'Digital Capture Volume'"
 _CONTROL_CAPTURE_SWITCH = "'Capture Switch'"
 
 # Default test configuration.
+_DEFAULT_TONE_CONFIG = {'type': 'tone',
+                        'frequency': 1000,
+                        'tone_length_sec': 1.0,
+                        'tone_volume': 1.0,
+                        'channels': 2,
+                        'active_channel': None,
+                        'alsa_device': 'default'}
 _DEFAULT_CARD = '0'
 _DEFAULT_FREQUENCY = 1000
 _DEFAULT_MIXER_SETTINGS = [{'name':_CONTROL_MASTER, 'value': "100%"},
@@ -39,6 +46,8 @@ _SOX_RMS_AMPLITUDE_RE = re.compile('RMS\s+amplitude:\s+(.+)')
 # Format used in sox commands.
 _SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 
+_DEFAULT_INPUT = 'default'
+_DEFAULT_OUTPUT = 'default'
 
 class RecordSampleThread(threading.Thread):
     """Wraps the running of arecord in a thread."""
@@ -61,20 +70,24 @@ class audiovideo_LineOutToMicInLoopback(test.test):
 
 
     def initialize(self,
-                   card = _DEFAULT_CARD,
-                   frequency = _DEFAULT_FREQUENCY,
-                   mixer_settings = _DEFAULT_MIXER_SETTINGS,
-                   num_channels = _DEFAULT_NUM_CHANNELS,
-                   record_duration = _DEFAULT_RECORD_DURATION,
-                   sox_min_rms = _DEFAULT_SOX_RMS_THRESHOLD):
+                   card=_DEFAULT_CARD,
+                   frequency=_DEFAULT_FREQUENCY,
+                   input=_DEFAULT_INPUT,
+                   mixer_settings=_DEFAULT_MIXER_SETTINGS,
+                   num_channels=_DEFAULT_NUM_CHANNELS,
+                   output=_DEFAULT_OUTPUT,
+                   record_duration=_DEFAULT_RECORD_DURATION,
+                   sox_min_rms=_DEFAULT_SOX_RMS_THRESHOLD):
         """ Setup the deps for the test.
 
         Args:
             card: The index of the sound card to use.
             frequency: The frequency of the test tone that is looped back.
+            input: The input device to capture audio from.
             mixer_settings: Alsa control settings to apply to the mixer before
                 starting the test.
             num_channels: The number of channels on the device to test.
+            output: The output device to play audio to.
             record_duration: How long of a sample to record.
             sox_min_rms: The minimum RMS value to consider a pass.
 
@@ -82,8 +95,10 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         """
         self._card = card
         self._frequency = frequency
+        self._input = input
         self._mixer_settings = mixer_settings
         self._num_channels = num_channels
+        self._output = output
         self._record_duration = record_duration
         self._sox_min_rms = sox_min_rms
         dep = 'test_tones'
@@ -138,10 +153,11 @@ class audiovideo_LineOutToMicInLoopback(test.test):
             noise_file: Noise profile to use for filtering, None to skip noise
                 filtering.
         """
-        config = self.default_tone_config()
+        config = _DEFAULT_TONE_CONFIG.copy()
         config['tone_length_sec'] = self._record_duration
         config['active_channel'] = '%d' % channel
         config['frequency'] = self._frequency
+        config['alsa_device'] = self._output
 
         tmpfile = os.path.join(self.tmpdir, os.tmpnam())
         record_thread = RecordSampleThread(self, self._record_duration, tmpfile)
@@ -169,8 +185,9 @@ class audiovideo_LineOutToMicInLoopback(test.test):
             duration: How long to record in seconds.
             tmpfile: The file to record to.
         """
-        cmd_rec = 'arecord -d %f -f dat %s' % (duration, tmpfile)
-        logging.info('Record now (%fs)' % duration)
+        cmd_rec = 'arecord -D %s -d %f -f dat %s' % (self._input,
+                duration, tmpfile)
+        logging.info('Command %s recording now (%fs)' % (cmd_rec, duration))
         utils.system(cmd_rec)
 
 
@@ -189,18 +206,6 @@ class audiovideo_LineOutToMicInLoopback(test.test):
                 # A card is allowed not to support all the controls, so don't
                 # fail the test here if we get an error.
                 logging.info('amixer command failed: %s' % cmd)
-
-
-    def default_tone_config(self):
-        return { 'type': 'tone',
-                 'frequency': 1000,
-                 'tone_length_sec': 1.0,
-                 'tone_volume': 1.0,
-                 'channels': 2,
-                 'active_channel': None,
-                 'alsa_device': 'default'
-                 }
-
 
     def run_test_tones(self, args):
         """Runs the tone generator executable.
@@ -236,6 +241,7 @@ class audiovideo_LineOutToMicInLoopback(test.test):
             cmd += ' -d %s' % args['alsa_device']
         elif args['type'] == 'scale':
             logging.info('[A# harmonic minor scale]')
+        logging.info(cmd)
         utils.system(cmd)
 
 
