@@ -13,10 +13,12 @@ chapsd,root,No,No,No,No,No
 cryptohomed,root,No,No,No,No,No
 powerd,chronos,Yes,No,No,No,No
 modem-manager,root,No,No,No,No,No
-gavd,root,No,No,No,No,No
+gavd,gavd,Yes,Yes,No,No,No
 dhcpcd,root,No,No,No,No,No
 metrics_daemon,root,No,No,No,No,No
 disks,root,No,No,No,No,No
 update_engine,root,No,No,No,No,No
 bluetoothd,bluetooth,Yes,Yes,No,Yes,No
 debugd,debugd,No,No,No,No,No
+cras,cras,Yes,Yes,No,No,No
+keyboard_touchp,root,No,No,No,No,No
