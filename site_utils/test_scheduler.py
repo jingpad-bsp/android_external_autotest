@@ -124,6 +124,9 @@ class TestRunner(object):
         self._new_dev.trigger_download(image)
         control_file_data = self._new_dev.get_control_file(image,
                                                            test['control'])
+        if 'Unknown control path' in control_file_data:
+          raise common_util.ChromeOSTestError(
+              'Control file %s not yet staged, skipping' % test['control'])
       else:
         control_file_data = self._dev.GetControlFile(self._board, build,
                                                      test['control'])
