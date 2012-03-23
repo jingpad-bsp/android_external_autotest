@@ -10,12 +10,15 @@
 # Basic stress (CPU, memory, ...) factory test.
 
 
+import datetime
 import gobject
 import gtk
+import logging
+import re
 import thread
 import time
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import ui
@@ -28,6 +31,35 @@ _MESSAGE_COUNTDOWN = 'ETA / 剩餘時間: '
 _MESSAGE_LOADAVG = 'System Load: '
 
 _MESSAGE_FAILED_LOADAVG = 'Failed to retrieve system load.'
+
+_SYSTEM_MONITOR_LOG_FORMAT = 'SYSTEM MONITOR [%s] %s: %d'
+
+
+class ECControl(object):
+    GET_FANSPEED_RE = 'Current fan RPM: ([0-9]*)'
+    TEMP_SENSOR_RE = 'Reading temperature...([0-9]*)'
+
+    def ec_command(self, cmd):
+        full_cmd = 'ectool %s' % cmd
+        result = utils.system_output(full_cmd)
+        logging.debug('Command: %s', full_cmd)
+        logging.debug('Result: %s', result)
+        return result
+
+    def get_fanspeed(self):
+        response = self.ec_command('pwmgetfanrpm')
+        try:
+            return int(re.findall(self.GET_FANSPEED_RE, response)[0])
+        except Exception:
+            raise error.TestError('Unable to read fan speed.')
+
+    def get_temperature(self, idx):
+        response = self.ec_command('tempread %d' % idx)
+        try:
+            return int(re.findall(self.TEMP_SENSOR_RE, response)[0])
+        except Exception:
+            raise error.TestError('Unable to read temperature sensor %d.' % idx)
+
 
 class factory_StressTest(test.test):
     version = 1
@@ -74,7 +106,25 @@ class factory_StressTest(test.test):
             load_label.modify_fg(gtk.STATE_NORMAL, ui.RED)
         return True
 
-    def run_once(self, sat_seconds=60):
+    def log_system_status(self, ectool, num_temp_sensor):
+        factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
+            datetime.datetime.now().isoformat(),
+            'Fan RPM',
+            ectool.get_fanspeed()))
+        for i in xrange(num_temp_sensor):
+            factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
+                datetime.datetime.now().isoformat(),
+                'Temp%d' % i,
+                ectool.get_temperature(i)))
+
+    def monitor_event(self, ectool, num_temp_sensor):
+        self.log_system_status(ectool, num_temp_sensor)
+        return True
+
+    def run_once(self,
+                 sat_seconds=60,
+                 monitor_interval=None,
+                 num_temp_sensor=1):
         factory.log('%s run_once' % self.__class__)
         self._complete = False
         # Add 3 seconds leading time (for autotest / process to start).
@@ -90,6 +140,13 @@ class factory_StressTest(test.test):
         load_label = ui.make_label(_MESSAGE_STARTING, fg=ui.BLUE)
         gobject.timeout_add(1000, self.timer_event, timer_label,
                             countdown_label, load_label)
+        if monitor_interval:
+            ectool = ECControl()
+            self.log_system_status(ectool, num_temp_sensor)
+            gobject.timeout_add(1000 * monitor_interval,
+                                self.monitor_event,
+                                ectool,
+                                num_temp_sensor)
         vbox.add(ui.make_label(_MESSAGE_PROMPT, font=ui.LABEL_LARGE_FONT))
         vbox.pack_start(timer_widget, padding=10)
         vbox.pack_start(load_label, padding=20)
