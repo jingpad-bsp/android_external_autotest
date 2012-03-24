@@ -70,6 +70,7 @@ class CrashDashView(object):
     """
     job_cache_dir = os.path.join(dash_base_dir, LOCAL_TMP_DIR, JOB_RESULT_DIR)
     dash_util.MakeChmodDirs(job_cache_dir)
+    dash_util.PruneOldDirs(job_cache_dir)
     self._test_summaries = test_summary.TestSummaryInfo(job_cache_dir)
     self._crashes = {}
 
@@ -257,12 +258,14 @@ class AutotestDashView(object):
       # x86-alex-r18-R18-1660.71.0-a1-b75_bvt
       self._jobname_parse = re.compile(
           '([\w-]*)-(.*[.-][\d]+\.[\d]+\.[\d]+-[ar][\w]+-b[\d]+)_([\w_]*)')
+
       # x86-alex-r18-(R18-1660.71.0-a1-b75)_network_3g
       self._subjob_parse2 = re.compile(
           '.*(R[\d]+-[\d]+\.[\d]+\.[\d]+-[ar][\w]+-b[\d]+)')
 
       self._board_parse = re.compile(
           '(x86|tegra2)-(.+)-(r[\d]+)')
+
       # R(19)-1914.0.0-a1-b(1748)
       self._fullbuild_parse2 = re.compile(
           'R([\d]+)-[\d]+\.[\d]+\.[\d]+-[ar][\w]+-b([\d]+)')
@@ -990,15 +993,26 @@ class AutotestDashView(object):
         logging.warn("***Invalid job_name: %s.", job_name)
         return None, None, None
 
-      board = m.group(1)
-      # Subjob handles multi-build au test job names.
-      n = re.match(self._subjob_parse2, m.group(2))
+      board, subjob, suffix = m.group(1, 2, 3)
 
+      # Subjob handles multi-build au test job names.
+      n = re.match(self._subjob_parse2, subjob)
+
+      # full_build is: build#-token-build_sequence#.
+      # To save in-memory space, the sequence# is used for per-board
+      # lookups so it is not trimmed here:
+      #  e.g. R19-1979.0.0-a1-b1798
       if not n or not len(n.groups()) == 1:
         full_build = None
       else:
         full_build = n.group(1)
-      suffix = m.group(3)
+
+      # Translate new -release naming into old x86-mario-r19 style.
+      #  x86-alex-release-R19-1979.0.0-a1-b1798_security =>
+      #  x86-alex-r19-R19-1979.0.0-a1-b1798_security.
+      if board.endswith('-release'):
+        board = board.replace('-release', '-r' + full_build.split('-')[0][1:])
+
       return board, full_build, suffix
 
     def ParseShortFromBuild(self, build):

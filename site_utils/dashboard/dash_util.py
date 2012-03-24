@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 
    Functions: BuildNumberCmp
               MakeChmodDirs
+              PruneOldDirs
               SaveHTML
               ShowList
               ShowDict
@@ -25,8 +26,11 @@ import decimal
 import inspect
 import logging
 import os
+import shutil
 import urllib
 import urlparse
+
+from time import time
 
 
 def SplitBuild(build):
@@ -53,6 +57,31 @@ def BuildNumberCmp(build_number1, build_number2):
     return -cmp(build1, build2)
   else:
     return -cmp(int(b1[1:]), int(b2[1:]))
+
+
+def PruneOldDirs(path, older_than_days=60):
+  """Helper to prune dirs that are older.
+
+  Job cache directory can easily exceed 32k limit.
+  Prune older jobs.
+
+  The waterfall/test displays of crash data do not
+  generally exceed 3 weeks of results so choosing
+  60 days is reasonable with a buffer.
+
+  Args:
+    path: parent container directory to scan/prune.
+    older_than: prune dirs older than this many days.
+  """
+  target_timedelta = datetime.timedelta(days=older_than_days)
+  now_seconds = time()
+  for each_dir in os.listdir(path):
+    each_dir = os.path.join(path, each_dir)
+    dir_alive_seconds = now_seconds - os.path.getmtime(each_dir)
+    if (os.path.isdir(each_dir) and
+        datetime.timedelta(seconds=dir_alive_seconds) > target_timedelta):
+      # Removes directories with last_modified times greater than needed.
+      shutil.rmtree(each_dir)
 
 
 def MakeChmodDirs(path):
