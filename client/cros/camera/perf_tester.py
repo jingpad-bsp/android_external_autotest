@@ -21,14 +21,14 @@ from camera_utils import Pad
 from camera_utils import Unpad
 
 _CORNER_MAX_NUM = 1000000
-_CORNER_QUALITY_RATIO = 0.20
-_CORNER_MIN_DISTANCE_RATIO = 0.02
+_CORNER_QUALITY_RATIO = 0.05
+_CORNER_MIN_DISTANCE_RATIO = 0.016
 
 _EDGE_LINK_THRESHOLD = 2000
 _EDGE_DETECT_THRESHOLD = 4000
-_EDGE_MIN_SQUARE_SIZE_RATIO = 0.03
+_EDGE_MIN_SQUARE_SIZE_RATIO = 0.024
 
-_POINT_MATCHING_MAX_TOLERANCE_RATIO = 0.025
+_POINT_MATCHING_MAX_TOLERANCE_RATIO = 0.020
 
 _MTF_DEFAULT_MAX_CHECK_NUM = 40
 _MTF_DEFAULT_PATCH_WIDTH = 20
@@ -261,7 +261,7 @@ def CheckLensShading(sample, check_low_freq=True,
 
     # Check if any pixel on the boundary is lower than the threshold.
     # A little smoothing to deal with the possible noise.
-    k_size = (1, 7)
+    k_size = (7, 7)
     ret.msg = 'Found dark pixels on the boundary.'
     if np.any(cv2.blur(img[0, :], k_size) < pass_value):
         return False, ret
