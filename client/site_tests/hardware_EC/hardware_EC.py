@@ -62,7 +62,7 @@ class ECControl(object):
         match = re.search(self.TEMP_SENSOR_RE, response).group(1)
         if match:
             return int(match)
-        raise error.TestError('Unable to read temperature sensor %d.' % idx)
+        raise error.TestError('Unable to read temperature sensor %d' % idx)
 
     def get_battery(self):
         response = self.ec_command('battery')
@@ -73,34 +73,45 @@ class ECControl(object):
 class hardware_EC(test.test):
     version = 1
     FAN_DELAY = 3
-    TEMP_ERR_MSG = 'Abnormal temperature reading on sensor %d.'
 
-    def run_once(self, num_temp_sensor = 1):
+    def run_once(self,
+                 num_temp_sensor=1,
+                 temp_sensor_to_test=None,
+                 test_fan=True,
+                 test_battery=True):
         ec = ECControl()
 
         if not ec.hello():
-            raise error.TestError('EC communication failed.')
+            raise error.TestError('EC communication failed')
 
-        try:
-            ec.set_fanspeed(10000)
-            time.sleep(self.FAN_DELAY)
-            max_reading = ec.get_fanspeed()
-            if max_reading == 0:
-                raise error.TestError('Unable to start fan.')
+        if test_fan:
+            try:
+                ec.set_fanspeed(10000)
+                time.sleep(self.FAN_DELAY)
+                max_reading = ec.get_fanspeed()
+                if max_reading == 0:
+                    raise error.TestError('Unable to start fan')
 
-            ec.set_fanspeed(max_reading / 2)
-            time.sleep(self.FAN_DELAY)
-            current_reading = ec.get_fanspeed()
-            if (current_reading < max_reading / 2 or
-                current_reading >= max_reading):
-                raise error.TestError('Unable to set fan speed.')
-        finally:
-            ec.auto_fan_ctrl()
+                ec.set_fanspeed(max_reading / 2)
+                time.sleep(self.FAN_DELAY)
+                current_reading = ec.get_fanspeed()
 
-        for idx in xrange(0, num_temp_sensor):
+                # Sometimes the actual fan speed is close but not equal to
+                # the target speed, so we add 30-rpm error margin here.
+                if (current_reading < max_reading / 2 - 30 or
+                    current_reading >= max_reading + 30):
+                    raise error.TestError('Unable to set fan speed')
+            finally:
+                ec.auto_fan_ctrl()
+
+        if temp_sensor_to_test is None:
+            temp_sensor_to_test = list(range(num_temp_sensor))
+
+        for idx in temp_sensor_to_test:
             temperature = ec.get_temperature(idx) - 273
             if temperature < 0 or temperature > 100:
-                raise error.TestError(self.TEMP_ERR_MSG % idx);
+                raise error.TestError(
+                        'Abnormal temperature reading on sensor %d' % idx);
 
-        if not ec.get_battery():
-            raise error.TestError('Battery communication failed.')
+        if test_battery and not ec.get_battery():
+            raise error.TestError('Battery communication failed')

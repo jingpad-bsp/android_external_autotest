@@ -151,9 +151,37 @@ TEST_LIST = [
         subtests=[
 
             AutomatedSubTest(
-                label_en='EC Functional Test',
+                id='ECComm',
+                label_en='EC Communication Test',
+                label_zh='EC',
                 autotest_name='hardware_EC',
-                dargs={'num_temp_sensor': 10}),
+                dargs={'num_temp_sensor': 0,
+                       'test_fan': False,
+                       'test_battery': False}),
+            AutomatedSubTest(
+                id='ECFan',
+                label_en='Fan Test',
+                label_zh='Fan',
+                autotest_name='hardware_EC',
+                dargs={'num_temp_sensor': 0,
+                       'test_fan': True,
+                       'test_battery': False}),
+            AutomatedSubTest(
+                id='ECTemp',
+                label_en='Temp Sensor Test',
+                label_zh='Sensor',
+                autotest_name='hardware_EC',
+                dargs={'num_temp_sensor': 10,
+                       'test_fan': False,
+                       'test_battery': False}),
+            AutomatedSubTest(
+                id='ECBattery',
+                label_en='Battery Test',
+                label_zh='Battery',
+                autotest_name='hardware_EC',
+                dargs={'num_temp_sensor': 0,
+                       'test_fan': False,
+                       'test_battery': True}),
         ]),
 
     OperatorTest(
