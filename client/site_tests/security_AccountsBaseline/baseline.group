@@ -13,7 +13,7 @@ floppy::11:root
 news::13:news
 uucp::14:uucp
 console::17:
-audio::18:chronos,cras
+audio::18:cras,gavd,chronos
 cdrom::19:
 tape::26:root
 video::27:root,chronos
@@ -25,14 +25,14 @@ utmp:x:406:
 nogroup::65533:
 nobody::65534:
 chronos:x:1000:
-chronos-access:x:1001:root,ipsec,chronos,ntfs-3g,avfs
+chronos-access:x:1001:root,ipsec,chronos,ntfs-3g,avfs,chaps
 messagebus:x:201:
 syslog:x:202:
 ntp:x:203:
 sshd:x:204:
 polkituser:x:206:
 tss:x:207:
-pkcs11:x:208:root,ipsec,chronos
+pkcs11:x:208:root,ipsec,chronos,chaps,wpa
 qdlservice:x:209:
 cromo:x:210:
 cashew:x:211:
@@ -43,7 +43,10 @@ tcpdump:x:215:
 debugd:x:216:
 openvpn:x:217:
 bluetooth:x:218:
-cras:x:220:chronos
 wpa:x:219:root
+cras:x:220:gavd,chronos
+gavd:x:221:
+input:x:222:gavd
+chaps:x:223:
 ntfs-3g:x:300:
 avfs:x:301:

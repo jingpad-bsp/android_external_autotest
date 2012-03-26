@@ -32,5 +32,8 @@ openvpn:*:217:217::/dev/null:/bin/false
 bluetooth:*:218:218::/dev/null:/bin/false
 wpa:*:219:219::/dev/null:/bin/false
 cras:*:220:220::/dev/null:/bin/false
+gavd:*:221:221::/dev/null:/bin/false
+input:*:222:222::/dev/null:/bin/false
+chaps:*:223:223::/dev/null:/bin/false
 ntfs-3g:*:300:300::/dev/null:/bin/false
 avfs:*:301:301::/dev/null:/bin/false
