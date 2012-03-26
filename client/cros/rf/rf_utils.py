@@ -8,12 +8,17 @@ import rf_common
 
 from autotest_lib.client.bin import utils
 
-def SetInterfaceIp(interface, ip):
-    '''Sets the IP address for a network interface.
+def SetEthernetIp(ip):
+    '''Sets the IP address of the first active Ethernet interface.
 
     The address is set only if the interface does not already have an
     assigned IP address.
     '''
+    match = re.match('^(eth\d+)', utils.system_output('ifconfig'))
+    if not match:
+        raise error.TestError('No Ethernet interface available')
+    interface = match.group(1)
+
     ip_output = utils.system_output(
         'ip addr show dev %s' % interface)
     match = re.search('^\s+inet ([.0-9]+)', ip_output, re.MULTILINE)

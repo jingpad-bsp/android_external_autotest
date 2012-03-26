@@ -54,9 +54,9 @@ class factory_Cellular(test.test):
 
     def run_once(self, ext_host, dev='ttyUSB0', config_path=None,
                  use_rfio2_for_aux=False,
-                 set_interface_ip=None):
-        if set_interface_ip:
-            rf_utils.SetInterfaceIp(*set_interface_ip)
+                 set_ethernet_ip=None):
+        if set_ethernet_ip:
+            rf_utils.SetEthernetIp(set_ethernet_ip)
 
         with leds.Blinker(((leds.LED_NUM|leds.LED_CAP, 0.25),
                            (leds.LED_CAP|leds.LED_SCR, 0.25))):

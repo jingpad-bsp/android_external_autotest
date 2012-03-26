@@ -43,11 +43,11 @@ class factory_Wifi(test.test):
     version = 1
 
     def run_once(self, n4010a_host, n4010a_port=5025, module_paths=None,
-                 config_path=None, set_interface_ip=None):
+                 config_path=None, set_ethernet_ip=None):
         module_names = []
 
-        if set_interface_ip:
-            rf_utils.SetInterfaceIp(*set_interface_ip)
+        if set_ethernet_ip:
+            rf_utils.SetEthernetIp(set_ethernet_ip)
 
         try:
             kernel_release = utils.system_output('uname -r').strip()
