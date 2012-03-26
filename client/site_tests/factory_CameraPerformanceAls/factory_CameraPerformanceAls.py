@@ -260,7 +260,7 @@ class factory_CameraPerformanceAls(test.test):
 
     def _test_camera_functionality(self):
         # Initialize the camera with OpenCV.
-        self.cam = cam = cv2.VideoCapture(self._DEVICE_INDEX)
+        cam = cv2.VideoCapture(self._DEVICE_INDEX)
         if not cam.isOpened():
             self._update_status('cam_stat', False)
             self.log('Failed to initialize the camera.\n')
@@ -275,6 +275,7 @@ class factory_CameraPerformanceAls(test.test):
         # lighting condition.
         time.sleep(2.0)
         success, img = cam.read()
+        cam.release()
         if not success:
             self._update_status('cam_stat', False)
             self.log("Failed to capture an image with the camera.\n")
@@ -295,7 +296,10 @@ class factory_CameraPerformanceAls(test.test):
         conf = self.config['cam_vc']
         success, tar_data = camperf.CheckVisualCorrectness(
             self.target, ref_data,
-            register_grid=conf['register_grid'])
+            register_grid=conf['register_grid'],
+            min_corner_quality_ratio=conf['min_corner_quality_ratio'],
+            min_square_size_ratio=conf['min_square_size_ratio'],
+            min_corner_distance_ratio=conf['min_corner_distance_ratio'])
 
         self._update_status('cam_vc', success)
         if not success:

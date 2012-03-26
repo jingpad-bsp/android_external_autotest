@@ -92,10 +92,10 @@ def _CheckSquareness(contour, min_square_area):
     return True
 
 
-def _ExtractEdgeSegments(edge_map):
+def _ExtractEdgeSegments(edge_map, min_square_size_ratio):
     '''Extract robust edges of squares from a binary edge map.'''
     diag_len = math.sqrt(edge_map.shape[0] ** 2 + edge_map.shape[1] ** 2)
-    min_square_area = int(round(diag_len * _EDGE_MIN_SQUARE_SIZE_RATIO)) ** 2
+    min_square_area = int(round(diag_len * min_square_size_ratio)) ** 2
 
     # Dilate the output from Canny to fix broken edge segments.
     edge_map = edge_map.copy()
@@ -196,7 +196,7 @@ def PrepareTest(pat_file):
     edge_map = cv2.Canny(pat, _EDGE_LINK_THRESHOLD, _EDGE_DETECT_THRESHOLD,
                          apertureSize=5)
 
-    ret.edges = _ExtractEdgeSegments(edge_map)
+    ret.edges = _ExtractEdgeSegments(edge_map, _EDGE_MIN_SQUARE_SIZE_RATIO)
     return ret
 
 
@@ -276,7 +276,11 @@ def CheckLensShading(sample, check_low_freq=True,
     return True, ret
 
 
-def CheckVisualCorrectness(sample, ref_data, register_grid = False):
+def CheckVisualCorrectness(
+    sample, ref_data, register_grid=False,
+    min_corner_quality_ratio=_CORNER_QUALITY_RATIO,
+    min_square_size_ratio=_EDGE_MIN_SQUARE_SIZE_RATIO,
+    min_corner_distance_ratio=_CORNER_MIN_DISTANCE_RATIO):
     '''Check if the test pattern is present.
 
     Args:
@@ -285,6 +289,12 @@ def CheckVisualCorrectness(sample, ref_data, register_grid = False):
                   reference pattern using PrepareTest.
         register_grid: Check if the point grid can be matched to the reference
                        one, i.e. whether they are of the same type.
+        min_corner_quality_ratio: Minimum acceptable relative corner quality
+                                  difference.
+        min_square_size_ratio: Minimum allowed square edge length in relative
+                               to the image diagonal length.
+        min_corner_distance_ratio: Minimum allowed corner distance in relative
+                                   to the image diagonal length.
 
     Returns:
         1: Pass or Fail.
@@ -303,10 +313,10 @@ def CheckVisualCorrectness(sample, ref_data, register_grid = False):
     edge_mask = cv2.dilate(edge_map, dilator)
 
     diag_len = math.sqrt(sample.shape[0] ** 2 + sample.shape[1] ** 2)
-    min_corner_dist = diag_len * _CORNER_MIN_DISTANCE_RATIO
+    min_corner_dist = diag_len * min_corner_distance_ratio
 
     sample_corners = cv2.goodFeaturesToTrack(sample, ref_data.corners.shape[0],
-                                             _CORNER_QUALITY_RATIO,
+                                             min_corner_quality_ratio,
                                              min_corner_dist, mask=edge_mask)
     if sample_corners is None:
         ret.msg = "Can't find strong corners."
@@ -360,7 +370,7 @@ def CheckVisualCorrectness(sample, ref_data, register_grid = False):
         ret.homography = homography
 
     # Find squares on the edge map.
-    edges = _ExtractEdgeSegments(edge_map)
+    edges = _ExtractEdgeSegments(edge_map, min_square_size_ratio)
 
     # CHECK 3:
     # Check if we can find the same amount of edges on the target.
@@ -408,7 +418,9 @@ def CheckSharpness(sample, edges,
     # Random sample a few edges to work on.
     n_check = min(ln, mtf_sample_count)
     mids = (line_start + line_end) / 2
-    perm = _StratifiedSample2D(mids, n_check, sample.shape)
+    mids = mids - np.amin(mids, axis=0)
+    new_dim = np.amax(mids, axis=0) + 1
+    perm = _StratifiedSample2D(mids, n_check, tuple([new_dim[1], new_dim[0]]))
     mtfs = [mtf_calculator.Compute(sample, line_start[t], line_end[t],
                                    mtf_patch_width, use_50p)[0] for t in perm]
 
