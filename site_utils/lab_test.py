@@ -308,12 +308,6 @@ def ParseOptions():
     LogErrorAndExit(
         'LabTest must be run outside the chroot to access corp resources.')
 
-  # Make sure we have prodaccess.
-  try:
-    common_util.RunCommand(cmd='prodcertstatus')
-  except common_util.ChromeOSTestError:
-    LogErrorAndExit('LabTest needs production access. Please run prodaccess.')
-
   if options.list_machines:
     parser.print_help()
     print Colors.Color(

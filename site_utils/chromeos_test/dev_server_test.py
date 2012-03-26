@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -64,13 +64,6 @@ class DevServerTest(unittest.TestCase):
 
   def tearDown(self):
     shutil.rmtree(self._test_path)
-
-  def testGetLatestBuildVersion(self):
-    with open(os.path.join(self._board_path, self._dev.LATEST), 'w') as f:
-      f.write(TEST_BUILD)
-
-    self.assertEquals(self._dev.GetLatestBuildVersion(TEST_BOARD_NAME),
-                      TEST_BUILD)
 
   def testUploadBuildComponents(self):
     # Write text to file so we can verify later, any text will do.

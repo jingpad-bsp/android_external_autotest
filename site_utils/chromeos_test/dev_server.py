@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -16,6 +16,10 @@ __author__ = 'dalecurtis@google.com (Dale Curtis)'
 import logging
 import os
 import posixpath
+
+# Autotest imports
+import common
+from autotest_lib.client.common_lib.cros import dev_server
 
 import common_util
 
@@ -65,22 +69,26 @@ class DevServer(object):
   def GetLatestBuildVersion(self, board):
     """Retrieves the latest build version from Dev Server for a given board.
 
-    Looks for the file '<image_dir>/<board>/LATEST'.
+    Sends a request to http://devserver/latestbuild?target=x86-mario-release to
+    find the latest build for a given target.
 
     Args:
       board: Board name for this build; e.g., x86-generic-rel
 
     Returns:
-      Contents of the LATEST file, which is expected to contain a full build
-      string; e.g., 0.8.61.0-r1cf43296-b269.
+      The returned string from the devserver.
 
     Raises:
       common_util.ChromeOSTestError: If the build version can't be retrieved.
     """
-    cmd = 'cat %s' % posixpath.join(self._images, board, self.LATEST)
-    msg = ('Could not retrieve latest build version from Dev Server for board'
-           ' %s.' % board)
-    return self.RemoteCommand(cmd, error_msg=msg, output=True)
+    new_dev_server = dev_server.DevServer()
+    latest_build = new_dev_server.get_latest_build(board)
+    if not latest_build:
+      # Raise this to keep the previously established API.
+      raise common_util.ChromeOSTestError(
+          'Unable to determine the latest build for %s' % board)
+
+    return latest_build
 
   def UploadAutotestPackages(self, remote_dir, staging_dir):
     """Uploads Autotest packages from staging directory to Dev Server.
