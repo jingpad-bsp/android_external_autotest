@@ -78,6 +78,7 @@ class hardware_EC(test.test):
                  num_temp_sensor=1,
                  temp_sensor_to_test=None,
                  test_fan=True,
+                 fan_rpm_error_margin=200,
                  test_battery=True):
         ec = ECControl()
 
@@ -97,9 +98,9 @@ class hardware_EC(test.test):
                 current_reading = ec.get_fanspeed()
 
                 # Sometimes the actual fan speed is close but not equal to
-                # the target speed, so we add 30-rpm error margin here.
-                if (current_reading < max_reading / 2 - 30 or
-                    current_reading >= max_reading + 30):
+                # the target speed, so we add some error margin here.
+                if (current_reading < max_reading / 2 - fan_rpm_error_margin or
+                    current_reading >= max_reading + fan_rpm_error_margin):
                     raise error.TestError('Unable to set fan speed')
             finally:
                 ec.auto_fan_ctrl()
