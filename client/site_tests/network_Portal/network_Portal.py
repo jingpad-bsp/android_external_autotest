@@ -99,6 +99,7 @@ class network_Portal(test.test):
             # Getting to the ready state on an encrypted network can
             # be slow.
             self.flim = flimflam.FlimFlam()
+            self.flim.SetDebugTags('portal+service')
             utils.poll_for_condition(
                 lambda: self.GetConnectedService(service_name),
                 error.TestFail(
@@ -143,3 +144,15 @@ class network_Portal(test.test):
 
                 if state != 'online':
                     raise error.TestFail('Failed to enter state online')
+
+                # Check that we recheck and find a portal if the
+                # PortalList changes
+                with cell_tools.BlackholeContext(hosts):
+                    self.flim.SetCheckPortalList('wifi,ethernet,cellular')
+                    state = self.flim.WaitForServiceState(
+                        service=self.service,
+                        expected_states=['portal'],
+                        timeout=60)[0]
+
+                    if state != 'portal':
+                        raise error.TestFail('Expected to enter state portal')
