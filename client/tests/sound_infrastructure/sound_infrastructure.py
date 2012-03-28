@@ -1,9 +1,9 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import test, utils
+import logging
 import os
 
 class sound_infrastructure(test.test):
@@ -137,11 +137,15 @@ class sound_infrastructure(test.test):
 
     def pathname_must_exist(self, pathname):
         if not os.path.exists(pathname):
-            raise error.TestError("File missing: '%s'" % (pathname))
+            logging.error("File missing: '%s'", pathname)
+            return False
+        return True
 
     def control_must_exist(self, control):
         if self.exec_cmd("amixer controls|grep -e \"%s\"" % (control)) != 0:
-            raise error.TestError("Control missing: '%s'" % (control))
+            logging.error("Control missing: '%s'", control)
+            return False
+        return True
 
     def get_codec(self):
         # When the codec cannot be determined, the whole test cannot
@@ -165,27 +169,42 @@ class sound_infrastructure(test.test):
         return os.path.join(self.bindir, filename)
 
     def validate_files(self, files_list):
+        errors = 0
         for f in files_list:
-            self.pathname_must_exist(f)
+            if not self.pathname_must_exist(f):
+                errors += 1
+        return errors
 
     def validate_controls(self, controls_list):
+        errors = 0
         for c in controls_list:
-            self.control_must_exist(c)
+            if not self.control_must_exist(c):
+                errors += 1
+        return errors
 
     def validate_codec(self, codec):
-        self.validate_files(codec['files'])
-        self.validate_controls(codec['controls'])
+        err_str = ''
+        errors = self.validate_files(codec['files'])
+        if errors:
+            err_str += " files: %d" % errors
+
+        errors = self.validate_controls(codec['controls'])
+        if errors:
+            err_str += " controls: %d" % errors
+        if err_str != '':
+            err_str = "(%s)%s" % (self._codec_basename, err_str)
+        return err_str
 
     def read_codec_data(self, codec):
-        codec_basename = self.get_codec_basename(codec)
+        self._codec_basename = self.get_codec_basename(codec)
 
         # Read controls which must be present.
-        pathname = self.get_data_pathname(codec_basename + ".controls")
+        pathname = self.get_data_pathname(self._codec_basename + ".controls")
         self.codec_info[codec]['controls'] = [line.strip() for line in
                                               open(pathname)]
 
         # Read files which must be present.
-        pathname = self.get_data_pathname(codec_basename + ".files")
+        pathname = self.get_data_pathname(self._codec_basename + ".files")
         self.codec_info[codec]['files'] = [line.strip() for line in
                                            open(pathname)]
 
@@ -196,9 +215,13 @@ class sound_infrastructure(test.test):
     def run_once(self):
         codec = self.get_codec()
         self.read_codec_data(codec)
+        err_str = ''
         if codec in self.codec_info:
-            self.validate_codec(self.codec_info['ALL'])
-            self.validate_codec(self.codec_info[codec])
+            err_str += self.validate_codec(self.codec_info['ALL'])
+            err_str += self.validate_codec(self.codec_info[codec])
+            if err_str != '':
+                raise error.TestError("codec validation failed.  %s" %
+                                      (err_str))
         else:
             raise error.TestError("No test info for codec '%s'." % (codec))
         self.load_asound_state()
