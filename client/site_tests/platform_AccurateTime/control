@@ -11,6 +11,8 @@ This test will fail under any of the following conditions:
   - the NTP offset is not found
   - if seconds_offset constraint is exceeded
 """
+SUITE = "bvt"
+EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
