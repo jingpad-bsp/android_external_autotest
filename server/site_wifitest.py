@@ -1567,7 +1567,7 @@ class WiFiTest(object):
             label = 'vpn'
             nss_dir = '/home/chronos/user/.pki/nssdb'
             ca_nickname = 'test_nickname'
-            pkcs11_lib = '/usr/lib/libchaps.so'
+            pkcs11_lib = 'libchaps.so'
             slot_id = '07'
             user_pin = '111111'
 

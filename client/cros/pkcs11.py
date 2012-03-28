@@ -63,9 +63,7 @@ def ensure_tpm_owned():
 
 def __verify_tokenname():
     """Verify that the TPM token name is correct."""
-    pkcs11_lib_path = '/usr/lib/libchaps.so'
-    if not os.path.exists(pkcs11_lib_path):
-        pkcs11_lib_path = '/usr/lib64/libchaps.so'
+    pkcs11_lib_path = 'libchaps.so'
     pkcs11_label_cmd = PKCS11_TOOL % (pkcs11_lib_path, '-L')
     pkcs11_cmd_output = __run_cmd(pkcs11_label_cmd)
     m = re.search(r"token label:\s+(.*)\s*$", pkcs11_cmd_output,
