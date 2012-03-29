@@ -71,6 +71,9 @@ _LABEL_SIZE = (300, 30)
 _TEST_TYPE_AB = 'AB'
 _TEST_TYPE_FULL = 'Full'
 
+# Content type constants:
+_CONTENT_IMG = 'image'
+_CONTENT_TXT = 'text'
 
 def make_prepare_widget(message, on_key_enter, on_key_tab=None):
     """Returns a widget that display the message and bind proper functions."""
@@ -249,13 +252,19 @@ class factory_CameraPerformanceAls(test.test):
 
     @staticmethod
     def check_sn_format(sn):
-        # TODO(itspeter): Check SN according to the spec in factory.
-        return sn == _TEST_SN_NUMBER
+        # TODO(sheckylin): Check SN according to the spec in factory.
+        # We may replace this with a regular expression that can be
+        # read from the USB disk so the user can configure it on the
+        # fly.
+        return True
 
-    def write_to_usb(self, filename, content):
+    def write_to_usb(self, filename, content, content_type=_CONTENT_TXT):
         with MountedMedia(self.dev_path, 1) as mount_dir:
-            with open(os.path.join(mount_dir, filename), 'w') as f:
-                f.write(content)
+            if content_type == _CONTENT_TXT:
+                with open(os.path.join(mount_dir, filename), 'w') as f:
+                    f.write(content)
+            elif content_type == _CONTENT_IMG:
+                cv2.imwrite(os.path.join(mount_dir, filename), content)
         return True
 
     def _test_camera_functionality(self):
@@ -263,17 +272,25 @@ class factory_CameraPerformanceAls(test.test):
         cam = cv2.VideoCapture(self._DEVICE_INDEX)
         if not cam.isOpened():
             self._update_status('cam_stat', False)
-            self.log('Failed to initialize the camera.\n')
+            self.log('Failed to initialize the camera. '
+                     'Could be bad module, bad connection or '
+                     'insufficient USB bandwidth.\n')
             return False
 
         # Set resolution.
         conf = self.config['cam_stat']
         cam.set(cv.CV_CAP_PROP_FRAME_WIDTH, conf['img_width'])
         cam.set(cv.CV_CAP_PROP_FRAME_HEIGHT, conf['img_height'])
+        if (conf['img_width'] != cam.get(cv.CV_CAP_PROP_FRAME_WIDTH) or
+            conf['img_height'] != cam.get(cv.CV_CAP_PROP_FRAME_HEIGHT)):
+            self._update_status('cam_stat', False)
+            self.log("Can't set the image size. "
+                     "Possibly caused by insufficient USB bandwidth.\n")
+            return False
 
         # Let the camera's auto-exposure algorithm adjust to the fixture
         # lighting condition.
-        time.sleep(2.0)
+        time.sleep(conf['buf_time'])
         success, img = cam.read()
         cam.release()
         if not success:
@@ -413,10 +430,19 @@ class factory_CameraPerformanceAls(test.test):
                  pprint.pformat(self.display_dict))
 
     def save_log(self):
+        # Save an image for further analysis in case of the camera
+        # performance fail.
+        cam_perf_pass = all(ful.PASSED == self.display_dict[var]['status']
+                            for var in ['cam_vc', 'cam_ls', 'cam_mtf'])
+        if (not cam_perf_pass) and (self.target is not None):
+            if not self.write_to_usb(self.serial_number + ".bmp",
+                                     self.target, _CONTENT_IMG):
+                return False
         return self.write_to_usb(
             self.serial_number + ".txt", self.log_to_file.getvalue())
 
     def reset_data(self):
+        self.target = None
         if self.type == _TEST_TYPE_FULL:
             self.log = logging.info
         else:
