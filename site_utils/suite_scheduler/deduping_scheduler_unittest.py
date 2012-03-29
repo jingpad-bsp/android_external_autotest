@@ -20,11 +20,14 @@ class DedupingSchedulerTest(mox.MoxTestBase):
 
     @var _BUILD: fake build
     @var _BOARD: fake board to reimage
+    @var _SUITE: fake suite name
+    @var _POOL: fake machine pool name
     """
 
     _BUILD = 'build'
     _BOARD = 'board'
     _SUITE = 'suite'
+    _POOL = 'pool'
 
 
     def setUp(self):
@@ -39,18 +42,17 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self.afe.get_jobs(name__startswith=self._BUILD,
                           name__endswith=self._SUITE).AndReturn([])
         # Expect an attempt to schedule; allow it to succeed.
-        pool = 'pool'
         self.afe.run('create_suite_job',
                      suite_name=self._SUITE,
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,
-                     pool=pool).AndReturn(7)
+                     pool=self._POOL).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
                                                      self._BUILD,
-                                                     pool))
+                                                     self._POOL))
 
 
     def testShouldNotScheduleSuite(self):
@@ -61,7 +63,25 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
                                                       self._BOARD,
-                                                      self._BUILD))
+                                                      self._BUILD,
+                                                      self._POOL))
+
+
+    def testForceScheduleSuite(self):
+        """Test a successful de-dup, but force scheduling the suite."""
+        # Expect an attempt to schedule; allow it to succeed.
+        self.afe.run('create_suite_job',
+                     suite_name=self._SUITE,
+                     board=self._BOARD,
+                     build=self._BUILD,
+                     check_hosts=False,
+                     pool=self._POOL).AndReturn(7)
+        self.mox.ReplayAll()
+        self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
+                                                     self._BOARD,
+                                                     self._BUILD,
+                                                     self._POOL,
+                                                     force=True))
 
 
     def testShouldScheduleSuiteExplodes(self):
@@ -74,7 +94,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self.scheduler.ScheduleSuite,
                           self._SUITE,
                           self._BOARD,
-                          self._BUILD)
+                          self._BUILD,
+                          self._POOL)
 
 
     def testScheduleFail(self):
@@ -94,7 +115,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self.scheduler.ScheduleSuite,
                           self._SUITE,
                           self._BOARD,
-                          self._BUILD)
+                          self._BUILD,
+                          None)
 
 
     def testScheduleExplodes(self):
@@ -114,7 +136,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self.scheduler.ScheduleSuite,
                           self._SUITE,
                           self._BOARD,
-                          self._BUILD)
+                          self._BUILD,
+                          None)
 
 
 if __name__ == '__main__':

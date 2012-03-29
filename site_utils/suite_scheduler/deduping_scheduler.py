@@ -27,10 +27,17 @@ class DedupingScheduler(object):
 
     Includes logic to check whether or not a given (suite, board, build)
     has already been run.  If so, it will skip scheduling that suite.
+
+    @var _afe: a frontend.AFE instance used to talk to autotest.
     """
 
 
     def __init__(self, afe=None):
+        """Constructor
+
+        @param afe: an instance of AFE as defined in server/frontend.py.
+                    Defaults to a frontend_wrappers.RetryingAFE instance.
+        """
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
@@ -83,7 +90,7 @@ class DedupingScheduler(object):
             raise ScheduleException(e)
 
 
-    def ScheduleSuite(self, suite, board, build, pool=None, force=False):
+    def ScheduleSuite(self, suite, board, build, pool, force=False):
         """Schedule |suite|, if it hasn't already been run.
 
         If |suite| has not already been run against |build| on |board|,
@@ -94,7 +101,6 @@ class DedupingScheduler(object):
         @param build: the build to install e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param pool: the pool of machines to use for scheduling purposes.
-                     Default: None
         @param force: Always schedule the suite.
         @return True if the suite got scheduled, False if not
         @raise DedupException if we can't check for dups.
