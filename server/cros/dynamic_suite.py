@@ -15,6 +15,12 @@ VERSION_PREFIX = 'cros-version:'
 CONFIG = global_config.global_config
 
 
+class AsynchronousBuildFailure(Exception):
+    """Raised when the dev server throws 500 while finishing staging of a build.
+    """
+    pass
+
+
 class SuiteArgumentException(Exception):
     """Raised when improper arguments are used to run a suite."""
     pass
@@ -51,6 +57,8 @@ def reimage_and_run(**dargs):
                          Default: False
     @param add_experimental: schedule experimental tests as well, or not.
                              Default: True
+    @raises AsynchronousBuildFailure: if there was an issue finishing staging
+                                      from the devserver.
     """
     (build, board, name, job, pool, num, check_hosts, skip_reimage,
      add_experimental) = _vet_reimage_and_run_args(**dargs)
@@ -61,6 +69,13 @@ def reimage_and_run(**dargs):
 
     if skip_reimage or reimager.attempt(build, board, job.record, check_hosts,
                                         num=num):
+
+        # Ensure that the image's artifacts have completed downloading.
+        ds = dev_server.DevServer.create()
+        if not ds.finish_download(build):
+            raise AsynchronousBuildFailure(
+                "Server error completing staging for " + build)
+
         suite = Suite.create_from_name(name, build, pool=pool,
                                        results_dir=job.resultdir)
         suite.run_and_wait(job.record, add_experimental=add_experimental)

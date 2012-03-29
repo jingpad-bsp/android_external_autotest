@@ -67,7 +67,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
 
     def testStageBuildFail(self):
         """Ensure that a failure to stage the desired build fails the RPC."""
-        self.dev_server.trigger_download(self._BUILD).AndReturn(False)
+        self.dev_server.trigger_download(self._BUILD,
+                                         synchronous=False).AndReturn(False)
         self.mox.ReplayAll()
         self.assertRaises(site_rpc_interface.StageBuildFailure,
                           site_rpc_interface.create_suite_job,
@@ -80,7 +81,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
     def testGetControlFileFail(self):
         """Ensure that a failure to get needed control file fails the RPC."""
         self._mockDevServerGetter()
-        self.dev_server.trigger_download(self._BUILD).AndReturn(True)
+        self.dev_server.trigger_download(self._BUILD,
+                                         synchronous=False).AndReturn(True)
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn(None)
         self.mox.ReplayAll()
@@ -95,7 +97,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
     def testGetControlFileListFail(self):
         """Ensure that a failure to get needed control file fails the RPC."""
         self._mockDevServerGetter()
-        self.dev_server.trigger_download(self._BUILD).AndReturn(True)
+        self.dev_server.trigger_download(self._BUILD,
+                                         synchronous=False).AndReturn(True)
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndRaise(control_file_getter.NoControlFileList())
         self.mox.ReplayAll()
@@ -110,7 +113,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
     def testCreateSuiteJobFail(self):
         """Ensure that failure to schedule the suite job fails the RPC."""
         self._mockDevServerGetter()
-        self.dev_server.trigger_download(self._BUILD).AndReturn(True)
+        self.dev_server.trigger_download(self._BUILD,
+                                         synchronous=False).AndReturn(True)
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
         self._mockRpcUtils(-1)
@@ -119,13 +123,14 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
                                                               self._BOARD,
                                                               self._BUILD,
                                                               None),
-                          -1)
+                          - 1)
 
 
     def testCreateSuiteJobSuccess(self):
         """Ensures that success results in a successful RPC."""
         self._mockDevServerGetter()
-        self.dev_server.trigger_download(self._BUILD).AndReturn(True)
+        self.dev_server.trigger_download(self._BUILD,
+                                         synchronous=False).AndReturn(True)
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
         job_id = 5
@@ -141,7 +146,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
     def testCreateSuiteJobNoHostCheckSuccess(self):
         """Ensures that success results in a successful RPC."""
         self._mockDevServerGetter()
-        self.dev_server.trigger_download(self._BUILD).AndReturn(True)
+        self.dev_server.trigger_download(self._BUILD,
+                                         synchronous=False).AndReturn(True)
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
         job_id = 5

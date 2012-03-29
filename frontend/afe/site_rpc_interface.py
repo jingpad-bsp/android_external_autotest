@@ -63,9 +63,11 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     """
     # All suite names are assumed under test_suites/control.XX.
     suite_name = canonicalize_suite_name(suite_name)
-    # Ensure |build| is staged is on the dev server.
+    # Ensure components of |build| necessary for installing images are staged
+    # on the dev server. However set synchronous to False to allow other
+    # components to be downloaded in the background.
     ds = dev_server.DevServer.create()
-    if not ds.trigger_download(build):
+    if not ds.trigger_download(build, synchronous=False):
         raise StageBuildFailure("Server error while staging " + build)
 
     getter = control_file_getter.DevServerGetter.create(build, ds)

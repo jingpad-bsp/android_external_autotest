@@ -49,15 +49,36 @@ class DevServerTest(mox.MoxTestBase):
         urllib2.urlopen(mox.IgnoreArg()).AndRaise(e403)
 
 
-    def testSuccessfulTriggerDownload(self):
-        """Should successfully call the dev server's download method."""
+    def testSuccessfulTriggerDownloadSync(self):
+        """Call the dev server's download method with synchronous=True."""
         name = 'fake/image'
         self.mox.StubOutWithMock(urllib2, 'urlopen')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'finish_download')
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(name))).AndReturn(to_return)
+        self.dev_server.finish_download(name).AndReturn(True)
+
+        # Synchronous case requires a call to finish download.
         self.mox.ReplayAll()
-        self.assertTrue(self.dev_server.trigger_download(name))
+        self.assertTrue(self.dev_server.trigger_download(name,
+                                                         synchronous=True))
+        self.mox.VerifyAll()
+
+
+    def testSuccessfulTriggerDownloadASync(self):
+        """Call the dev server's download method with synchronous=False."""
+        name = 'fake/image'
+        self.mox.StubOutWithMock(urllib2, 'urlopen')
+        self.mox.StubOutWithMock(dev_server.DevServer, 'finish_download')
+        to_return = StringIO.StringIO('Success')
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(name))).AndReturn(to_return)
+
+        self.mox.ReplayAll()
+        self.assertTrue(self.dev_server.trigger_download(name,
+                                                         synchronous=False))
+        self.mox.VerifyAll()
 
 
     def testFailedTriggerDownload(self):
@@ -74,6 +95,28 @@ class DevServerTest(mox.MoxTestBase):
         self.assertRaises(urllib2.HTTPError,
                           self.dev_server.trigger_download,
                           '')
+
+
+    def testSuccessfulFinishDownload(self):
+        """Should successfully call the dev server's finish download method."""
+        name = 'fake/image'
+        self.mox.StubOutWithMock(urllib2, 'urlopen')
+        to_return = StringIO.StringIO('Success')
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(name))).AndReturn(to_return)
+
+        # Synchronous case requires a call to finish download.
+        self.mox.ReplayAll()
+        self.assertTrue(self.dev_server.finish_download(name))
+        self.mox.VerifyAll()
+
+
+    def testFailedTriggerDownload(self):
+        """Should call the dev server's finish download method, fail gracefully.
+        """
+        self._returnHttpServerError()
+        self.mox.ReplayAll()
+        self.assertFalse(self.dev_server.finish_download(''))
 
 
     def testListControlFiles(self):
