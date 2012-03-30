@@ -1,8 +1,9 @@
 # Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import socket
 
-from autotest_lib.client.common_lib import base_utils
+from autotest_lib.client.common_lib import base_utils, global_config
 
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
@@ -30,3 +31,20 @@ def ping(host, deadline=None, tries=None, timeout=60):
                           ignore_status=True, timeout=timeout,
                           stdout_tee=base_utils.TEE_TO_LOGS,
                           stderr_tee=base_utils.TEE_TO_LOGS).exit_status
+
+
+def host_is_in_lab_zone(hostname):
+    """Check if the host is in the CROS.dns_zone.
+
+    @param hostname: The hostname to check.
+    @returns True if hostname.dns_zone resolves, otherwise False.
+    """
+    host_parts = hostname.split('.')
+    dns_zone = global_config.global_config.get_config_value('CROS', 'dns_zone',
+                                                            default=None)
+    fqdn = '%s.%s' % (host_parts[0], dns_zone)
+    try:
+        socket.gethostbyname(fqdn)
+        return True
+    except socket.gaierror:
+      return False

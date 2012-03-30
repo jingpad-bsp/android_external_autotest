@@ -25,6 +25,7 @@ from autotest_lib.server import site_host_route
 from autotest_lib.server import site_eap_certs
 from autotest_lib.server import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 
 class NotImplemented(Exception):
     def __init__(self, what):
@@ -1891,8 +1892,16 @@ def run_test_dir(test_name, job, args, machine):
 
     config_file = opts.get('config_file', 'wifi_testbed_config')
     test_pat = opts.get('test_pat', '[0-9]*')
-    router_addr = opts.get('router_addr', None)
-    server_addr = opts.get('server_addr', None)
+    if utils.host_is_in_lab_zone(machine):
+        # If we are in the lab use the names for the server, AKA rspro,
+        # and the router as defined in:
+        # go/chromeos-lab-hostname-convention
+        server_addr = '%s-rspro' % machine
+        router_addr = '%s-router' % machine
+    else:
+        server_addr = opts.get('server_addr', None)
+        router_addr = opts.get('router_addr', None)
+
     run_options = opts.get('run_options', '').split(',')
 
     config = read_wifi_testbed_config(
