@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -39,8 +39,6 @@ from dash_strings import STATUS_PASSED
 from dash_strings import TEST_CHECKED_PREFIX
 from dash_strings import TEST_EMAIL_DIR
 from dash_strings import TESTS_STATUS_FILE
-from dash_strings import TREE_CLOSER
-from dash_strings import TREE_CLOSER_MSG
 
 
 def _ParseVersion(build):
@@ -55,7 +53,7 @@ class DashEmailNotifier(EmailNotifier):
   """Class to check for failed tests and send emails."""
 
   def __init__(self, base_dir, netbook, board_type, categories,
-               use_sheriffs, extra_emails, trigger, tree_closer):
+               use_sheriffs, extra_emails, trigger, prefix):
     """Specialize EmailNotifier and set a few of our own variables.
 
     Args:
@@ -66,11 +64,11 @@ class DashEmailNotifier(EmailNotifier):
       use_sheriffs: Indicates send email to the sheriffs
       extra_emails: Add others to receive the email
       trigger: Send email on test finished, failed or result state changed
-      tree_closer: Should the tree be closed on failure?
+      prefix: Custom prefix for cache tracking.
     """
     super(DashEmailNotifier, self).__init__(
         base_dir, netbook, board_type, use_sheriffs, extra_emails,
-        TEST_CHECKED_PREFIX, TEST_EMAIL_DIR)
+        prefix, TEST_EMAIL_DIR)
     self._categories = categories
     self._trigger = trigger
     self._state_changed = {}
@@ -78,7 +76,6 @@ class DashEmailNotifier(EmailNotifier):
     self._failed_categories = set()
     self._crash_summaries = self._dash_view.GetCrashes().GetTestSummaries()
     self._crashes = {}
-    self._tree_closer = tree_closer
     self._previous_build = {}
 
   def _FindTestFailures(self, build, category, test_name):
@@ -166,7 +163,7 @@ class DashEmailNotifier(EmailNotifier):
     return state_changed
 
   def CheckItems(self, items):
-    """Finds failed tests and crashes in the specified categories (items).
+    """Finds failed tests and crashes in the specified categories.
 
     CheckItems checks the latest build for a given category for any crashes or
     test failures. Failing tests are stored in self._failed_tests and crashes
@@ -176,9 +173,10 @@ class DashEmailNotifier(EmailNotifier):
     and any differences are recorded in self._state_changed.
 
     Args:
-      items: List of categories to check results for.
+      items: Tuple of (category list, test_regex) to use for checks.
     """
-    for category in items:
+    categories, test_regex = items
+    for category in categories:
       # Retrieve the last two builds for this category.
       builds = self.GetBuilds(category, build_count=2)
       if not builds:
@@ -191,7 +189,7 @@ class DashEmailNotifier(EmailNotifier):
       if self.Checked(category, build):
         continue
 
-      for test_name in self.GetTestNamesInBuild(category, build):
+      for test_name in self.GetTestNamesInBuild(category, build, test_regex):
         # Scan the test details for failures. Fills out self._failed_tests and
         # self._crashes.
         test_status = self._FindTestFailures(build, category, test_name)
@@ -273,47 +271,46 @@ class DashEmailNotifier(EmailNotifier):
               tpl_split_failed_tests.append([])
 
         if tpl_failed_tests or tpl_crashes:
-          tpl_tree_closer = self._tree_closer
           categories = ', '.join(sorted(list(self._failed_categories)))
           status = STATUS_FAILED
         template_file = TESTS_STATUS_FILE % status
 
+        tpl_subject = EMAIL_TESTS_SUBJECT % {
+            'board': tpl_board,
+            'build': tpl_build,
+            'categories': categories,
+            'netbook': tpl_netbook[8:].lower(),
+            'status': status.lower()}
         body = render_to_response(
             os.path.join('emails', template_file), locals()).content
-        email_url = self.SendEmail(
-            EMAIL_TESTS_SUBJECT % {
-                'board': tpl_board,
-                'build': tpl_build,
-                'categories': categories,
-                'netbook': tpl_netbook[8:].lower(),
-                'status': status.lower()},
-            body)
-        if tpl_failed_tests and self._tree_closer:
-          # Close the tree.
-          message = TREE_CLOSER_MSG % email_url
-          logging.info(
-              'Closing the Chrome OS source tree with message "%s"', message)
-          return_code = subprocess.call([TREE_CLOSER, message])
-          if return_code != 0:
-            logging.error('Unable to close the Chrome OS source tree.')
+        self.SendEmail(tpl_subject, body)
 
 
-def EmailAll(dash_base_dir, dash_view, email_options):
+def EmailFromConfig(dash_base_dir, dash_view, email_options,
+                    prefix=TEST_CHECKED_PREFIX):
   """All the work of checking and sending email.
+
+  Emails test failure summary based on entries in the dash config:
+  -For boards/platforms specified
+  -For only certain releases if desired
+  -For groups (suites)/tests specified
+  -To users/sheriffs specified
 
   Args:
     dash_base_dir: Base dir of the output files.
     dash_view: Reference to our data model.
     email_options: From email_config.json.
+    prefix: String to uniquely identify sent emails in the cache.
   """
   triggers = [
       EMAIL_TRIGGER_COMPLETED, EMAIL_TRIGGER_FAILED, EMAIL_TRIGGER_CHANGED]
+
   for mailer in email_options['resultmail']:
     if not 'platforms' in mailer or not 'filters' in mailer:
       logging.warning('Emailer requires platforms and filters.')
       continue
-    for netbook, boards in mailer['platforms'].iteritems():
-      for board in boards:
+    for board, netbooks in mailer['platforms'].iteritems():
+      for netbook in netbooks:
         for filter_ in mailer['filters']:
           use_sheriffs = filter_.get('sheriffs', False)
           cc = filter_.get('cc', None)
@@ -325,14 +322,45 @@ def EmailAll(dash_base_dir, dash_view, email_options):
             logging.warning('Unknown trigger encountered, using default %s.',
                             EMAIL_TRIGGER_FAILED)
             trigger = EMAIL_TRIGGER_FAILED
-          tree_closer = filter_.get('tree_closer', False)
-          categories = filter_.get('categories',
-                                   dash_view.GetCategories(netbook, board))
+          categories = dash_view.GetCategories(netbook, board,
+                                               regex=filter_.get('categories'))
           notifier = DashEmailNotifier(dash_base_dir, netbook, board,
                                        categories, use_sheriffs, cc, trigger,
-                                       tree_closer)
-          notifier.CheckItems(categories)
+                                       prefix + trigger)
+          notifier.CheckItems((categories, filter_.get('tests')))
           notifier.GenerateEmail()
+
+
+def EmailAllFailures(dash_base_dir, dash_view):
+  """All the work of checking and sending email.
+
+  Emails test failure summary for any test failure on any board to a common
+  Google group.  Subscribers may then choose to receive and filter email
+  of their own accord instead of maintaining a config file.
+
+  Re-uses existing emailer code by hand-building a config file surrogate.
+
+  Args:
+    dash_base_dir: Base dir of the output files.
+    dash_view: Reference to our data model.
+  """
+  platform_configs = {}
+  categories = set()
+  for netbook in dash_view.netbooks:
+    if not netbook.strip() or not dash_view.GetNetbookBoardTypes(netbook):
+      continue
+    for board in dash_view.GetNetbookBoardTypes(netbook):
+      platform_configs.setdefault(board, []).append(netbook)
+      categories |= set(dash_view.GetCategories(netbook, board))
+
+  filter_configs = [{'categories': category,
+                     'cc': ['chromeos-automated-test-failures@google.com']}
+                    for category in sorted(categories)]
+
+  surrogate_config = {'resultmail': [{'platforms': platform_configs,
+                                      'filters': filter_configs}]}
+  EmailFromConfig(dash_base_dir, dash_view, surrogate_config,
+                  '.tmp_allemailed_')
 
 
 if __name__ == '__main__':

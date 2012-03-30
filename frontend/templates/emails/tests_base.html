@@ -1,14 +1,11 @@
 {% comment %}
 
-Copyright 2010 Google Inc. All Rights Reserved.
+Copyright 2012 Google Inc. All Rights Reserved.
 
 This template builds an email with details of test(s) that failed.
 {% endcomment %}
 <html>
 <body>
-{% if tpl_tree_closer %}
-Automatically closing tree due to test failures.<p>
-{% endif %}
 A recent <b>{{ tpl_board }}</b> build, <b>{{ tpl_build }}</b>, running on
 <b>{{ tpl_netbook }}</b>, has {% block status_block %}{% endblock %}
 testing. Please read through the information below and take action
@@ -25,10 +22,6 @@ Click here for the Chrome OS test dashboard to check historical results.</a>
 <li>
 <a href="{{ tpl_images_link }}">Click here for the build logs and image
 binaries.</a>
-</li>
-<li>
-<a href="{{ tpl_buildbot_link }}">Click here for the Buildbot which produced
-this build.</a>
 </li>
 {% if tpl_changelog_link %}
 <li>
@@ -49,6 +42,7 @@ Sincerely,<br>
 Your test farm friends<br>
 From Mountain View, CA<br>
 <br>
-<small>[<a href="__email_url__">permalink</a>]</small>
+<small>[<a
+href="https://groups.google.com/a/google.com/forum/?fromgroups#!topicsearchin/chromeos-automated-test-failures/%22{{ tpl_subject|urlencode }}%22">permalink</a>]</small>
 </body>
 </html>

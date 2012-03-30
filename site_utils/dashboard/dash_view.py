@@ -68,7 +68,7 @@ class CrashDashView(object):
     """
     job_cache_dir = os.path.join(dash_base_dir, LOCAL_TMP_DIR, JOB_RESULT_DIR)
     dash_util.MakeChmodDirs(job_cache_dir)
-    dash_util.PruneOldDirs(job_cache_dir)
+    dash_util.PruneOldDirsFiles(job_cache_dir)
     self._test_summaries = test_summary.TestSummaryInfo(job_cache_dir)
     self._crashes = {}
 
@@ -558,20 +558,24 @@ class AutotestDashView(object):
       """
       return list(self._ui_categories[netbook][board])
 
-    def GetCategories(self, netbook, board):
+    def GetCategories(self, netbook, board, regex=None):
       """Return categories of tests run in netbook - board.
 
       Args:
         netbook: one of our netbooks with the netbook_ prefix:
                  netbook_DELL_L13, netbook_ANDRETTI, ...
         board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
+        regex: optional match filter for categories.
 
       Returns:
         Unsorted List of the categories (bvt, desktopui, ...) of tests
         with completed results run against the given netbook and board.
       """
       if netbook in self._test_tree and board in self._test_tree[netbook]:
-        return self._test_tree[netbook][board].keys()
+        if not regex:
+          return self._test_tree[netbook][board].keys()
+        return [c for c in self._test_tree[netbook][board].keys()
+                if re.match(regex, c)]
       else:
         return []
 
@@ -593,7 +597,7 @@ class AutotestDashView(object):
         return []
       return self._test_tree[netbook][board][category].keys()
 
-    def GetTestNamesInBuild(self, netbook, board, category, build):
+    def GetTestNamesInBuild(self, netbook, board, category, build, regex=None):
       """Return the unique test names like GetTestNames() but for 1 build.
 
       Args:
@@ -602,6 +606,7 @@ class AutotestDashView(object):
         board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
         category: a test group: bvt, regression, desktopui, graphics, ...
         build: a full build string: 0.8.73.0.
+        regex: optional match filter for test name.
 
       Returns:
         Sorted or empty List of the test names in the given category and
@@ -612,10 +617,12 @@ class AutotestDashView(object):
       try:
         for t, b in self._test_tree[netbook][board][category].iteritems():
           if build in b:
+            if regex and not re.match(regex, t):
+              continue
             results.append(t)
         results.sort()
       except KeyError:
-        logging.warn("***KeyError: %s, %s, %s.", netbook, board, category)
+        logging.debug("***KeyError: %s, %s, %s.", netbook, board, category)
       return results
 
     def GetCategorySummary(self, netbook, board, category, build):

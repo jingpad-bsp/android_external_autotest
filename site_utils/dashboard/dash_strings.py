@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -107,14 +107,6 @@ EMAIL_ALERT_DELTA_TABLE_ROW = """
 # PLOT PAGE templates
 PLOT_ANCHOR = """
 <hr><center><a name="%(test_name)s">%(test_name)s</a><center><br>"""
-
-# URL base for email links.
-EMAIL_URL_BASE = 'http://goto/chromeos-dash/'
-
-# Tree closing utility and message format.
-TREE_CLOSER = '/usr/local/autotest/utils/set_tree_status.py'
-TREE_CLOSER_MSG = (
-    'Tree is closed (Automatic tree closure due to failing tests. %s)')
 
 CHANGELOG_URL = 'http://chromeos-images/diff/report?from=%s&to=%s'
 CHROME_CHANGELOG_URL = (

@@ -8,7 +8,7 @@
 
    Functions: BuildNumberCmp
               MakeChmodDirs
-              PruneOldDirs
+              PruneOldDirsFiles
               SaveHTML
               ShowList
               ShowDict
@@ -65,7 +65,7 @@ def BuildNumberCmp(build1, build2):
   return -cmp(build1, build2)
 
 
-def PruneOldDirs(path, older_than_days=60):
+def PruneOldDirsFiles(path, dirs=True, older_than_days=60):
   """Helper to prune dirs that are older.
 
   Job cache directory can easily exceed 32k limit.
@@ -77,18 +77,19 @@ def PruneOldDirs(path, older_than_days=60):
 
   Args:
     path: parent container directory to scan/prune.
+    dirs: True to prune dirs, False to prune files.
     older_than: prune dirs older than this many days.
   """
   target_timedelta = datetime.timedelta(days=older_than_days)
   now_seconds = time()
-  for each_dir in os.listdir(path):
-    each_dir = os.path.join(path, each_dir)
-    dir_alive_seconds = now_seconds - os.path.getmtime(each_dir)
-    if (os.path.isdir(each_dir) and
-        datetime.timedelta(seconds=dir_alive_seconds) > target_timedelta):
-      # Removes directories with last_modified times greater than needed.
-      shutil.rmtree(each_dir)
-
+  for entry in os.listdir(path):
+    entry = os.path.join(path, entry)
+    alive_seconds = now_seconds - os.path.getmtime(entry)
+    if datetime.timedelta(seconds=alive_seconds) > target_timedelta:
+      if dirs and os.path.isdir(entry):
+        shutil.rmtree(entry)
+      if not dirs and os.path.isfile(entry):
+        os.remove(entry)
 
 def MakeChmodDirs(path):
   """Helper to make and chmod dirs."""

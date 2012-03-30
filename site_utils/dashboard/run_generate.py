@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -20,7 +20,8 @@ from dash_view import AutotestDashView
 
 from alert_email import AlertAll
 from build_info import BuildInfo
-from dash_email import EmailAll
+from dash_email import EmailAllFailures
+from dash_email import EmailFromConfig
 from plot_gen import BuildAllPlots
 from table_gen import BuildAllTables
 
@@ -160,7 +161,9 @@ def DoWork(options, base_dir):
   if options.mailgenerate:
     logging.info("Generating email.")
     if not options.noexecute:
-      EmailAll(dash_base_dir, dash_view, dash_options)
+      EmailFromConfig(dash_base_dir, dash_view, dash_options)
+    if not options.noexecute:
+      EmailAllFailures(dash_base_dir, dash_view)
 
   if options.plotgenerate:
     logging.info("Generating plots.")

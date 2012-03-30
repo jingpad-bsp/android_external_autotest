@@ -1,7 +1,7 @@
 {% extends "tables/base.html" %}
 {% comment %}
 
-Copyright 2010 Google Inc. All Rights Reserved.
+Copyright 2012 Google Inc. All Rights Reserved.
 
 This template builds a page to show the emails produced for the Chrome OS
 Test Dashboard.
@@ -16,6 +16,23 @@ one planel to show test emails and the other to show performance emails.
 {% endblock %}
 
 {% block html_block %}
+<h3>Receiving test failure emails:</h3>
+<p>Interested test owners can react to test failures in the automated test lab
+by 'registering' their email address with the ChromeOS test emailer.  The
+test emailer registration can be configured to send email for only one of the
+following conditions:
+<ol>
+  <li>a test in the selected suite <b>fails</b></li>
+  <li>a test changes state e.g. <b>passing->failing</b>,
+      <b>failing->passing</b></li>
+  <li>a test completes (most verbose)</li>
+</ol>
+To register an e-mail address with the ChromeOS test emailer, modify the
+<i>resultmail</i> section of the <i><a
+href="https://gerrit.chromium.org/gerrit/gitweb?p=chromiumos/third_party/autotest.git;a=blob;f=site_utils/dashboard/dash_config.json"
+target="_blank">site_utils/dashboard/dash_config.json
+</a></i> file in the autotest repo to create a registration entry.
+</p>
 <iframe src ="emails/test" name="test_html" id="test_html" scrolling=yes
         style="height:45%; width:100%; float:left;"></iframe>
 <iframe src ="emails/performance"
