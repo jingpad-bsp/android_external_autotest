@@ -6,11 +6,11 @@ import deduping_scheduler
 import logging
 
 
-class TriggerableEvent(object):
+class Task(object):
     """Represents an entry from the scheduler config.  Can schedule itself.
 
     Each entry from the scheduler config file maps one-to-one to a
-    TriggerableEvent.  Each instance has enough info to schedule itself
+    Task.  Each instance has enough info to schedule itself
     on-demand with the AFE.
 
     This class also overrides __hash__() and all comparitor methods to enable
@@ -87,17 +87,17 @@ class TriggerableEvent(object):
         return hash(str(self))
 
 
-    def Trigger(self, scheduler, force=False):
-        """Trigger this job.  Returns False if it should be destroyed.
+    def Run(self, scheduler, force=False):
+        """Run this task.  Returns False if it should be destroyed.
 
-        Fire this job's trigger.  Attempt to schedule the associated suite.
-        Return True if this trigger should be kept around, False if it
-        should be destroyed.  This allows for one-shot TriggerableEvents.
+        Execute this task.  Attempt to schedule the associated suite.
+        Return True if this task should be kept around, False if it
+        should be destroyed.  This allows for one-shot Tasks.
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
         @param force: Always schedule the suite.
-        @return True if the job should be kept, False if not
+        @return True if the task should be kept, False if not
         """
         try:
             if not scheduler.ScheduleSuite(self._suite, self._board,
@@ -108,20 +108,20 @@ class TriggerableEvent(object):
         return True
 
 
-class OneShotEvent(TriggerableEvent):
-    """A job that can be triggered only once.  Can schedule itself."""
+class OneShotTask(Task):
+    """A Task that can be run only once.  Can schedule itself."""
 
 
-    def Trigger(self, scheduler, force=False):
-        """Trigger this job.  Returns False, indicating it should be destroyed.
+    def Run(self, scheduler, force=False):
+        """Run this task.  Returns False, indicating it should be destroyed.
 
-        Fire this job's trigger.  Attempt to schedule the associated suite.
-        Return False, indicating to the caller that it should discard this job.
+        Run this task.  Attempt to schedule the associated suite.
+        Return False, indicating to the caller that it should discard this task.
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
         @param force: Always schedule the suite.
         @return False
         """
-        super(OneShotEvent, self).Trigger(scheduler, force)
+        super(OneShotTask, self).Run(scheduler, force)
         return False

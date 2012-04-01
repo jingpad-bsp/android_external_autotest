@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for site_utils/trigger.py.
+"""Unit tests for site_utils/event.py.
 
 See http://crosbug.com/28739 for why this file isn't trigger_unittest.py
 """
@@ -15,24 +15,24 @@ import mox
 import unittest
 
 import deduping_scheduler
-import trigger
-import triggerable_event
+import event
+import task
 
 
-class FakeTriggerable(triggerable_event.TriggerableEvent):
-    """A mock TriggerableEvent that can optionally expect triggering."""
+class FakeTask(task.Task):
+    """A mock Task that can optionally expect triggering."""
     def __init__(self, suite, board, build, pool, pymox):
-        super(FakeTriggerable, self).__init__(suite, board, build, pool)
-        pymox.StubOutWithMock(self, 'Trigger')
+        super(FakeTask, self).__init__(suite, board, build, pool)
+        pymox.StubOutWithMock(self, 'Run')
 
 
     def Arm(self):
-        """Expect to be triggered along with any other FakeTriggerables."""
-        self.Trigger(mox.IgnoreArg(),
-                     mox.IgnoreArg()).InAnyOrder('events').AndReturn(True)
+        """Expect to be triggered along with any other FakeTasks."""
+        self.Run(mox.IgnoreArg(),
+                 mox.IgnoreArg()).InAnyOrder('tasks').AndReturn(True)
 
 
-class FakeOneShot(FakeTriggerable):
+class FakeOneShot(FakeTask):
     """A mock OneShotEvent that can be optionally set to expect triggering."""
     def __init__(self, suite, board, build, pool, pymox):
         super(FakeOneShot, self).__init__(suite, board, build, pool, pymox)
@@ -40,88 +40,88 @@ class FakeOneShot(FakeTriggerable):
 
     def Arm(self):
         """Expect to be triggered once, and to ask for self-destruction."""
-        self.Trigger(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(False)
+        self.Run(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(False)
 
 
-class BaseTriggerTest(mox.MoxTestBase):
-    """Unit tests for BaseTrigger.
+class BaseEventTest(mox.MoxTestBase):
+    """Unit tests for BaseEvent.
 
-    @var _EVENTS: Specs for several events to trigger.
+    @var _TASKS: Specs for several tasks to run.
     """
 
 
-    _EVENTS = [('suite1', 'board1', 'build1', 'pool'),
-               ('suite2', 'board2', 'build2', None),
-               ('suite2', 'board2', 'build3', None),
-               ('suite3', 'board2', 'build2', None)]
+    _TASKS = [('suite1', 'board1', 'build1', 'pool'),
+              ('suite2', 'board2', 'build2', None),
+              ('suite2', 'board2', 'build3', None),
+              ('suite3', 'board2', 'build2', None)]
 
 
     def setUp(self):
-        super(BaseTriggerTest, self).setUp()
+        super(BaseEventTest, self).setUp()
         self.sched = self.mox.CreateMock(deduping_scheduler.DedupingScheduler)
 
 
     def testEventDeduping(self):
-        """Tests that events are de-duped at BaseTrigger creation."""
-        events = [FakeTriggerable(*e, pymox=self.mox) for e in self._EVENTS]
-        events.append(FakeTriggerable(*self._EVENTS[0], pymox=self.mox))
+        """Tests that tasks are de-duped at BaseEvent creation."""
+        tasks = [FakeTask(*task, pymox=self.mox) for task in self._TASKS]
+        tasks.append(FakeTask(*self._TASKS[0], pymox=self.mox))
         self.mox.ReplayAll()
 
-        self.assertEquals(len(trigger.BaseTrigger('new_build', events)._events),
-                          len(self._EVENTS))
+        self.assertEquals(len(event.BaseEvent('new_build', tasks)._tasks),
+                          len(self._TASKS))
 
 
-    def testRecurringEvents(self):
-        """Tests that events are all run on Fire()."""
-        events = [FakeTriggerable(*e, pymox=self.mox) for e in self._EVENTS]
-        for event in events: event.Arm()
+    def testRecurringTasks(self):
+        """Tests that tasks are all run on Fire()."""
+        tasks = [FakeTask(*task, pymox=self.mox) for task in self._TASKS]
+        for task in tasks: task.Arm()
         self.mox.ReplayAll()
 
-        new_build = trigger.BaseTrigger('new_build', events)
+        new_build = event.BaseEvent('new_build', tasks)
         new_build.Fire(self.sched)
         self.mox.VerifyAll()
 
-        # Ensure that all the events are still around and can Fire again.
+        # Ensure that all the tasks are still around and can Fire again.
         self.mox.ResetAll()
-        for event in events: event.Arm()
+        for task in tasks: task.Arm()
         self.mox.ReplayAll()
         new_build.Fire(self.sched)
 
 
-    def testOneShotWithRecurringEvents(self):
-        """Tests that one-shot events are destroyed correctly."""
-        events = [FakeTriggerable(*e, pymox=self.mox) for e in self._EVENTS]
-        all_events = events + [FakeOneShot(*self._EVENTS[0], pymox=self.mox)]
-        for event in all_events: event.Arm()
+    def testOneShotWithRecurringTasks(self):
+        """Tests that one-shot tasks are destroyed correctly."""
+        tasks = [FakeTask(*task, pymox=self.mox) for task in self._TASKS]
+        all_tasks = tasks + [FakeOneShot(*self._TASKS[0], pymox=self.mox)]
+        for task in all_tasks: task.Arm()
         self.mox.ReplayAll()
 
-        new_build = trigger.BaseTrigger('new_build', all_events)
+        new_build = event.BaseEvent('new_build', all_tasks)
         new_build.Fire(self.sched)
         self.mox.VerifyAll()
 
-        # Ensure that only recurring events are still around and can Fire again.
+        # Ensure that only recurring tasks are still around and can Fire again.
         self.mox.ResetAll()
-        for event in events: event.Arm()
+        for task in tasks: task.Arm()
         self.mox.ReplayAll()
         new_build.Fire(self.sched)
 
 
-class TimedTriggerTestBase(mox.MoxTestBase):
-    """Base class for TimedTrigger unit test classes."""
+class TimedEventTestBase(mox.MoxTestBase):
+    """Base class for TimedEvent unit test classes."""
 
 
     def setUp(self):
-        super(TimedTriggerTestBase, self).setUp()
-        self.mox.StubOutWithMock(trigger.TimedTrigger, '_now')
+        super(TimedEventTestBase, self).setUp()
+        self.mox.StubOutWithMock(event.TimedEvent, '_now')
 
 
     def BaseTime(self):
-        """Return the TimedTrigger trigger-time as a datetime instance."""
+        """Return the TimedEvent trigger-time as a datetime instance."""
         raise NotImplementedError()
 
 
     def CreateTrigger(self):
-        """Return an instance of the TimedTrigger subclass being tested."""
+        """Return an instance of the TimedEvent subclass being tested."""
         raise NotImplementedError()
 
 
@@ -137,7 +137,7 @@ class TimedTriggerTestBase(mox.MoxTestBase):
 
     def doTestDeadlineInFuture(self):
         fake_now = self.TimeBefore(self.BaseTime())
-        trigger.TimedTrigger._now().MultipleTimes().AndReturn(fake_now)
+        event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
 
         t = self.CreateTrigger()  # Deadline gets set for a future time.
@@ -146,14 +146,14 @@ class TimedTriggerTestBase(mox.MoxTestBase):
 
         self.mox.ResetAll()
         fake_now = self.TimeLaterThan(fake_now)  # Jump past that future time.
-        trigger.TimedTrigger._now().MultipleTimes().AndReturn(fake_now)
+        event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
         self.assertTrue(t.ShouldFire())
 
 
     def doTestDeadlineIsNow(self):
         """We happened to create the trigger at the exact right time."""
-        trigger.TimedTrigger._now().MultipleTimes().AndReturn(self.BaseTime())
+        event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
         to_test = self.CreateTrigger()
         self.assertTrue(to_test.ShouldFire())
@@ -163,8 +163,8 @@ class TimedTriggerTestBase(mox.MoxTestBase):
         """Even if deadline passes during initialization, trigger must fire."""
         init_now = self.BaseTime() - datetime.timedelta(seconds=1)
         fire_now = self.BaseTime() + datetime.timedelta(seconds=1)
-        trigger.TimedTrigger._now().AndReturn(init_now)
-        trigger.TimedTrigger._now().AndReturn(fire_now)
+        event.TimedEvent._now().AndReturn(init_now)
+        event.TimedEvent._now().AndReturn(fire_now)
         self.mox.ReplayAll()
 
         t = self.CreateTrigger()  # Deadline gets set for later tonight...
@@ -172,7 +172,7 @@ class TimedTriggerTestBase(mox.MoxTestBase):
         self.assertTrue(t.ShouldFire())
 
 
-class NightlyTest(TimedTriggerTestBase):
+class NightlyTest(TimedEventTestBase):
     """Unit tests for Weekly.
 
     @var _HOUR: The time of night to use in these unit tests.
@@ -191,14 +191,14 @@ class NightlyTest(TimedTriggerTestBase):
 
 
     def CreateTrigger(self):
-        """Return an instance of trigger.Nightly."""
-        return trigger.Nightly(self._HOUR, [])
+        """Return an instance of event.Nightly."""
+        return event.Nightly(self._HOUR, [])
 
 
     def testDeadlineInPast(self):
         """Ensure we work if the deadline aready passed today."""
         fake_now = self.BaseTime() + datetime.timedelta(hours=1)
-        trigger.TimedTrigger._now().MultipleTimes().AndReturn(fake_now)
+        event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
 
         nightly = self.CreateTrigger()  # Deadline gets set for tomorrow night.
@@ -207,7 +207,7 @@ class NightlyTest(TimedTriggerTestBase):
 
         self.mox.ResetAll()
         fake_now += datetime.timedelta(days=1)  # Jump to tomorrow night.
-        trigger.TimedTrigger._now().MultipleTimes().AndReturn(fake_now)
+        event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
         self.assertTrue(nightly.ShouldFire())
 
@@ -235,7 +235,7 @@ class NightlyTest(TimedTriggerTestBase):
         self.doTestTOCTOU()
 
 
-class WeeklyTest(TimedTriggerTestBase):
+class WeeklyTest(TimedEventTestBase):
     """Unit tests for Weekly.
 
     @var _DAY: The day of the week to use in these unit tests.
@@ -258,14 +258,14 @@ class WeeklyTest(TimedTriggerTestBase):
 
 
     def CreateTrigger(self):
-        """Return an instance of trigger.Weekly."""
-        return trigger.Weekly(self._DAY, self._HOUR, [])
+        """Return an instance of event.Weekly."""
+        return event.Weekly(self._DAY, self._HOUR, [])
 
 
     def testDeadlineInPast(self):
         """Ensure we work if the deadline already passed this week."""
         fake_now = self.BaseTime() + datetime.timedelta(days=1)
-        trigger.TimedTrigger._now().MultipleTimes().AndReturn(fake_now)
+        event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
 
         weekly = self.CreateTrigger()  # Deadline gets set for next week.
@@ -274,14 +274,14 @@ class WeeklyTest(TimedTriggerTestBase):
 
         self.mox.ResetAll()
         fake_now += datetime.timedelta(days=1)  # Jump to tomorrow.
-        trigger.TimedTrigger._now().MultipleTimes().AndReturn(fake_now)
+        event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
         self.assertFalse(weekly.ShouldFire())
         self.mox.VerifyAll()
 
         self.mox.ResetAll()
         fake_now += datetime.timedelta(days=7)  # Jump to next week.
-        trigger.TimedTrigger._now().MultipleTimes().AndReturn(fake_now)
+        event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
         self.assertTrue(weekly.ShouldFire())
 
