@@ -231,7 +231,8 @@ class StateHandler(object):
       elapsed_time = time.time() - self.step_start_time
       if self.WaitForState(svc, self.step_timeout - elapsed_time):
         self.results.append('%.3f' % elapsed_time)
-        return self.NextState()
+        if not self.NextState():
+          self.runloop.quit()
     elif self.failure:
       self.results.append('ERR_FAILURE')
       self.runloop.quit()
