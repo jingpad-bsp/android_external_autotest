@@ -74,7 +74,7 @@ class sound_infrastructure(test.test):
 
         Execute the following on the DUT:
 
-          amixer controls >{codec-name}.controls
+          amixer controls | cut -d ',' -f 2- | sort >{codec-name}.controls
 
         {codec-name} should be replaced with the name of the codec.
         Replace spaces in the codec name with '_'.
