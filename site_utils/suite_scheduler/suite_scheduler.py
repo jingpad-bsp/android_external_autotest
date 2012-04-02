@@ -33,17 +33,21 @@ and 'nightly' triggers, for example), and configures all the Tasks
 that will be in play.
 """
 
-import logging, optparse, sys, time
+import logging, optparse
 import common
+import driver, forgiving_config_parser
 from autotest_lib.client.common_lib import logging_config, logging_manager
+from autotest_lib.server.cros import frontend_wrappers
 
 
 class SchedulerLoggingConfig(logging_config.LoggingConfig):
     GLOBAL_LEVEL = logging.INFO
 
+
     @classmethod
     def get_log_name(cls):
-        return cls.get_timestamped_log_name('scheduler')
+        return cls.get_timestamped_log_name('suite_scheduler')
+
 
     def configure_logging(self, log_dir=None):
         super(SchedulerLoggingConfig, self).configure_logging(use_console=True)
@@ -60,13 +64,14 @@ def parse_options():
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('-f', '--config_file', dest='config_file',
                       metavar='/path/to/config', default='suite_scheduler.ini',
-                      help='Scheduler config.  Defaults to suite_scheduler.ini')
+                      help='Scheduler config. Defaults to suite_scheduler.ini')
     parser.add_option('-e', '--events', dest='events',
                       metavar='list,of,events',
                       help='Handle listed events once each, then exit.  '\
                         'Must also specify a build to test.')
     parser.add_option('-i', '--build', dest='build',
-                      help='If handling a list of events, the build to test.')
+                      help='If handling a list of events, the build to test.'\
+                        ' Ignored otherwise.')
     parser.add_option('-d', '--log_dir', dest='log_dir',
                       help='Log to a file in the specified directory.')
     parser.add_option('-l', '--list_events', dest='list',
@@ -82,12 +87,20 @@ def main():
         parser.print_help()
         return
 
-    logging_manager.configure_logging(SchedulerLoggingConfig(options.log_dir))
+    logging_manager.configure_logging(SchedulerLoggingConfig(),
+                                      log_dir=options.log_dir)
     if not options.log_dir:
         logging.info('Not logging to a file, as --log_dir was not passed.')
 
-    return 0
+    config = forgiving_config_parser.ForgivingConfigParser()
+    config.read(options.config_file)
+
+    afe = frontend_wrappers.RetryingAFE(timeout_min=30,
+                                        delay_sec=10,
+                                        debug=False)
+    d = driver.Driver(afe, config)
+    d.RunForever()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

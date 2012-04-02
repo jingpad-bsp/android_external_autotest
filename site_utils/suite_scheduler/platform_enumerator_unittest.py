@@ -27,6 +27,7 @@ class PlatformEnumeratorTest(mox.MoxTestBase):
 
 
     def _CreateMockLabel(self, name):
+        """Creates a mock frontend.Label, with the given name."""
         mock = self.mox.CreateMock(frontend.Label)
         mock.name = name
         return mock
