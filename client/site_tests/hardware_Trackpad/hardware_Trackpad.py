@@ -78,7 +78,7 @@ class hardware_Trackpad(test.test):
         # Extract files from the tarball
         if subset not in self.regression_subset_list:
             subset = self.regression_default_subset
-        regression_tarball = 'regression_files_%s.tar.bz2' % subset
+        regression_tarball = 'regression_files_%s.tar' % subset
         gesture_files_subpath_regression = self.read_gesture_files_path(
                 self.local_path, 'gesture_files_subpath_regression')
         regression_tarball_path = os.path.join(self.local_path,
@@ -90,7 +90,7 @@ class hardware_Trackpad(test.test):
             return None
 
         strip_level = 0 if subset == 'short' else 1
-        untar_cmd = ('tar --strip-components %d -jxvf %s -C %s' %
+        untar_cmd = ('tar --strip-components %d -xvf %s -C %s' %
                      (strip_level,
                       regression_tarball_path,
                       gesture_files_path_work))
