@@ -4,7 +4,7 @@
 
 import ConfigParser, logging, time
 
-import deduping_scheduler, timed_event, platform_enumerator
+import deduping_scheduler, timed_event, board_enumerator
 
 
 class Driver(object):
@@ -28,7 +28,7 @@ class Driver(object):
         @param config: an instance of ForgivingConfigParser.
         """
         self._scheduler = deduping_scheduler.DedupingScheduler(afe)
-        self._enumerator = platform_enumerator.PlatformEnumerator(afe)
+        self._enumerator = board_enumerator.PlatformEnumerator(afe)
 
         # TODO(cmasone): populate this from |config|.
         tasks = []
@@ -46,8 +46,8 @@ class Driver(object):
 
     def HandleEventsOnce(self):
         """One turn through the loop.  Separated out for unit testing."""
-        # TODO(cmasone): Make Handle() deal with platforms.
-        platforms = self._enumerator.Enumerate()
+        # TODO(cmasone): Make Handle() deal with boards.
+        boards = self._enumerator.Enumerate()
 
         for e in self._events:
             if e.ShouldHandle():

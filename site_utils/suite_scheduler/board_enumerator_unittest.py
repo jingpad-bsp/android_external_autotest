@@ -4,13 +4,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for site_utils/platform_enumerator.py."""
+"""Unit tests for site_utils/board_enumerator.py."""
 
 import logging
 import mox
 import unittest
 
-import platform_enumerator
+import board_enumerator
 
 from autotest_lib.server import frontend
 
@@ -22,7 +22,7 @@ class PlatformEnumeratorTest(mox.MoxTestBase):
     def setUp(self):
         super(PlatformEnumeratorTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
-        self.enumerator = platform_enumerator.PlatformEnumerator(afe=self.afe)
+        self.enumerator = board_enumerator.PlatformEnumerator(afe=self.afe)
         self.prefix = self.enumerator._LABEL_PREFIX
 
 
@@ -33,7 +33,7 @@ class PlatformEnumeratorTest(mox.MoxTestBase):
         return mock
 
 
-    def testEnumeratePlatforms(self):
+    def testEnumerateBoards(self):
         """Test successful platform enumeration."""
         labels = ['platform1', 'platform2', 'platform3']
         self.afe.get_labels(name__startswith=self.prefix).AndReturn(
@@ -46,7 +46,7 @@ class PlatformEnumeratorTest(mox.MoxTestBase):
         """Test successful platform enumeration, but there are no platforms."""
         self.afe.get_labels(name__startswith=self.prefix).AndReturn([])
         self.mox.ReplayAll()
-        self.assertRaises(platform_enumerator.NoPlatformException,
+        self.assertRaises(board_enumerator.NoPlatformException,
                           self.enumerator.Enumerate)
 
 
@@ -54,7 +54,7 @@ class PlatformEnumeratorTest(mox.MoxTestBase):
         """Listing platforms raises an exception from the AFE."""
         self.afe.get_labels(name__startswith=self.prefix).AndRaise(Exception())
         self.mox.ReplayAll()
-        self.assertRaises(platform_enumerator.EnumerateException,
+        self.assertRaises(board_enumerator.EnumerateException,
                           self.enumerator.Enumerate)
 
 

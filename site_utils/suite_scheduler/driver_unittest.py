@@ -4,13 +4,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for site_utils/platform_enumerator.py."""
+"""Unit tests for site_utils/board_enumerator.py."""
 
 import logging
 import mox
 import unittest
 
-import driver, timed_event, platform_enumerator
+import driver, timed_event, board_enumerator
 
 from autotest_lib.server import frontend
 
@@ -42,9 +42,9 @@ class DriverTest(mox.MoxTestBase):
 
     def _ExpectEnumeration(self):
         """Expect one call to PlatformEnumerator.Enumerate()."""
-        prefix = platform_enumerator.PlatformEnumerator._LABEL_PREFIX
+        prefix = board_enumerator.PlatformEnumerator._LABEL_PREFIX
         mock = self.mox.CreateMock(frontend.Label)
-        mock.name = prefix + 'supported-platform'
+        mock.name = prefix + 'supported-board'
         self.afe.get_labels(name__startswith=prefix).AndReturn([mock])
 
 
