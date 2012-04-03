@@ -39,14 +39,15 @@ class BaseEvent(object):
         raise NotImplementedError()
 
 
-    def Handle(self, scheduler, force=False):
+    def Handle(self, scheduler, boards, force=False):
         """Runs all tasks in self._tasks.
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
+        @param boards: the boards against which to Run() all of self._tasks.
         @param force: Tell every job to always trigger.
         """
         # we need to iterate over an immutable copy of self._tasks
         for task in list(self._tasks):
-            if not task.Run(scheduler, force):
+            if not task.Run(scheduler, boards, force):
                 self._tasks.remove(task)

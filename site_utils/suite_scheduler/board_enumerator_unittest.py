@@ -15,14 +15,14 @@ import board_enumerator
 from autotest_lib.server import frontend
 
 
-class PlatformEnumeratorTest(mox.MoxTestBase):
-    """Unit tests for PlatformEnumerator."""
+class BoardEnumeratorTest(mox.MoxTestBase):
+    """Unit tests for BoardEnumerator."""
 
 
     def setUp(self):
-        super(PlatformEnumeratorTest, self).setUp()
+        super(BoardEnumeratorTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
-        self.enumerator = board_enumerator.PlatformEnumerator(afe=self.afe)
+        self.enumerator = board_enumerator.BoardEnumerator(afe=self.afe)
         self.prefix = self.enumerator._LABEL_PREFIX
 
 
@@ -34,24 +34,24 @@ class PlatformEnumeratorTest(mox.MoxTestBase):
 
 
     def testEnumerateBoards(self):
-        """Test successful platform enumeration."""
-        labels = ['platform1', 'platform2', 'platform3']
+        """Test successful board enumeration."""
+        labels = ['board1', 'board2', 'board3']
         self.afe.get_labels(name__startswith=self.prefix).AndReturn(
             map(lambda p: self._CreateMockLabel(self.prefix+p), labels))
         self.mox.ReplayAll()
         self.assertEquals(labels, self.enumerator.Enumerate())
 
 
-    def testEnumerateNoPlatforms(self):
-        """Test successful platform enumeration, but there are no platforms."""
+    def testEnumerateNoBoards(self):
+        """Test successful board enumeration, but there are no boards."""
         self.afe.get_labels(name__startswith=self.prefix).AndReturn([])
         self.mox.ReplayAll()
-        self.assertRaises(board_enumerator.NoPlatformException,
+        self.assertRaises(board_enumerator.NoBoardException,
                           self.enumerator.Enumerate)
 
 
-    def testEnumeratePlatformsExplodes(self):
-        """Listing platforms raises an exception from the AFE."""
+    def testEnumerateBoardsExplodes(self):
+        """Listing boards raises an exception from the AFE."""
         self.afe.get_labels(name__startswith=self.prefix).AndRaise(Exception())
         self.mox.ReplayAll()
         self.assertRaises(board_enumerator.EnumerateException,

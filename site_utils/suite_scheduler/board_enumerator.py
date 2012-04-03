@@ -16,16 +16,16 @@ class EnumerateException(EnumeratorException):
     pass
 
 
-class NoPlatformException(EnumeratorException):
+class NoBoardException(EnumeratorException):
     """Raised when an error is returned from the AFE during enumeration."""
 
 
     def __init__(self):
-        super(NoPlatformException, self).__init__('No supported platforms.')
+        super(NoBoardException, self).__init__('No supported boards.')
 
 
-class PlatformEnumerator(object):
-    """Talks to the AFE and enumerates the platforms it knows about.
+class BoardEnumerator(object):
+    """Talks to the AFE and enumerates the boards it knows about.
 
     @var _afe: a frontend.AFE instance used to talk to autotest.
     """
@@ -42,12 +42,12 @@ class PlatformEnumerator(object):
 
 
     def Enumerate(self):
-        """Enumerate currently supported platforms.
+        """Enumerate currently supported boards.
 
         Lists all labels known to the AFE that start with self._LABEL_PREFIX,
-        as this is the way that we define 'platforms' in the AFE today.
+        as this is the way that we define 'boards' in the AFE today.
 
-        @return list of platform names, e.g. 'x86-mario'
+        @return list of board names, e.g. 'x86-mario'
         """
         try:
             labels = self._afe.get_labels(name__startswith=self._LABEL_PREFIX)
@@ -55,6 +55,6 @@ class PlatformEnumerator(object):
             raise EnumerateException(e)
 
         if not labels:
-            raise NoPlatformException()
+            raise NoBoardException()
 
         return map(lambda l: l.name.split(':', 1)[1], labels)

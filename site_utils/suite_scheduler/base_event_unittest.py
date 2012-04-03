@@ -17,26 +17,29 @@ import task
 
 class FakeTask(task.Task):
     """A mock Task that can optionally expect triggering."""
-    def __init__(self, suite, board, build, pool, pymox):
-        super(FakeTask, self).__init__(suite, board, build, pool)
+    def __init__(self, suite, build, pool, pymox):
+        super(FakeTask, self).__init__(suite, build, pool)
         pymox.StubOutWithMock(self, 'Run')
 
 
     def Arm(self):
         """Expect to be triggered along with any other FakeTasks."""
         self.Run(mox.IgnoreArg(),
+                 mox.IgnoreArg(),
                  mox.IgnoreArg()).InAnyOrder('tasks').AndReturn(True)
 
 
 class FakeOneShot(FakeTask):
     """A mock OneShotEvent that can be optionally set to expect triggering."""
-    def __init__(self, suite, board, build, pool, pymox):
-        super(FakeOneShot, self).__init__(suite, board, build, pool, pymox)
+    def __init__(self, suite, build, pool, pymox):
+        super(FakeOneShot, self).__init__(suite, build, pool, pymox)
 
 
     def Arm(self):
         """Expect to be triggered once, and to ask for self-destruction."""
-        self.Run(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(False)
+        self.Run(mox.IgnoreArg(),
+                 mox.IgnoreArg(),
+                 mox.IgnoreArg()).AndReturn(False)
 
 
 class BaseEventTest(mox.MoxTestBase):
@@ -46,10 +49,10 @@ class BaseEventTest(mox.MoxTestBase):
     """
 
 
-    _TASKS = [('suite1', 'board1', 'build1', 'pool'),
-              ('suite2', 'board2', 'build2', None),
-              ('suite2', 'board2', 'build3', None),
-              ('suite3', 'board2', 'build2', None)]
+    _TASKS = [('suite1', 'build1', 'pool'),
+              ('suite2', 'build2', None),
+              ('suite2', 'build3', None),
+              ('suite3', 'build2', None)]
 
 
     def setUp(self):
@@ -74,14 +77,14 @@ class BaseEventTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         new_build = base_event.BaseEvent('new_build', tasks)
-        new_build.Handle(self.sched)
+        new_build.Handle(self.sched, [])
         self.mox.VerifyAll()
 
         # Ensure that all tasks are still around and can be Handle()'d again.
         self.mox.ResetAll()
         for task in tasks: task.Arm()
         self.mox.ReplayAll()
-        new_build.Handle(self.sched)
+        new_build.Handle(self.sched, [])
 
 
     def testOneShotWithRecurringTasks(self):
@@ -92,11 +95,11 @@ class BaseEventTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         new_build = base_event.BaseEvent('new_build', all_tasks)
-        new_build.Handle(self.sched)
+        new_build.Handle(self.sched, [])
         self.mox.VerifyAll()
 
         # Ensure that only recurring tasks can get Handle()'d again.
         self.mox.ResetAll()
         for task in tasks: task.Arm()
         self.mox.ReplayAll()
-        new_build.Handle(self.sched)
+        new_build.Handle(self.sched, [])

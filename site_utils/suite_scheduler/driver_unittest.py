@@ -41,8 +41,8 @@ class DriverTest(mox.MoxTestBase):
 
 
     def _ExpectEnumeration(self):
-        """Expect one call to PlatformEnumerator.Enumerate()."""
-        prefix = board_enumerator.PlatformEnumerator._LABEL_PREFIX
+        """Expect one call to BoardEnumerator.Enumerate()."""
+        prefix = board_enumerator.BoardEnumerator._LABEL_PREFIX
         mock = self.mox.CreateMock(frontend.Label)
         mock.name = prefix + 'supported-board'
         self.afe.get_labels(name__startswith=prefix).AndReturn([mock])
@@ -52,9 +52,11 @@ class DriverTest(mox.MoxTestBase):
         """Test that all events being ready is handled correctly."""
         self._ExpectEnumeration()
         self.nightly.ShouldHandle().InAnyOrder('events').AndReturn(True)
-        self.nightly.Handle(mox.IgnoreArg()).InAnyOrder('events')
+        self.nightly.Handle(mox.IgnoreArg(),
+                            mox.IgnoreArg()).InAnyOrder('events')
         self.weekly.ShouldHandle().InAnyOrder('events').AndReturn(True)
-        self.weekly.Handle(mox.IgnoreArg()).InAnyOrder('events')
+        self.weekly.Handle(mox.IgnoreArg(),
+                           mox.IgnoreArg()).InAnyOrder('events')
         self.mox.ReplayAll()
 
         self.driver.HandleEventsOnce()
@@ -65,7 +67,8 @@ class DriverTest(mox.MoxTestBase):
         self._ExpectEnumeration()
         self.weekly.ShouldHandle().InAnyOrder('events').AndReturn(False)
         self.nightly.ShouldHandle().InAnyOrder('events').AndReturn(True)
-        self.nightly.Handle(mox.IgnoreArg()).InAnyOrder('events')
+        self.nightly.Handle(mox.IgnoreArg(),
+                            mox.IgnoreArg()).InAnyOrder('events')
         self.mox.ReplayAll()
 
         self.driver.HandleEventsOnce()

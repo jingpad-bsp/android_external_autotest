@@ -13,7 +13,7 @@ class Driver(object):
     @var _LOOP_INTERVAL: time to wait between loop iterations.
 
     @var _scheduler: a DedupingScheduler, used to schedule jobs with the AFE.
-    @var _enumerator: a PlatformEnumerator, used to list plaforms known to
+    @var _enumerator: a BoardEnumerator, used to list plaforms known to
                       the AFE
     @var _events: list of BaseEvents to be handled each time through main loop.
     """
@@ -28,7 +28,7 @@ class Driver(object):
         @param config: an instance of ForgivingConfigParser.
         """
         self._scheduler = deduping_scheduler.DedupingScheduler(afe)
-        self._enumerator = board_enumerator.PlatformEnumerator(afe)
+        self._enumerator = board_enumerator.BoardEnumerator(afe)
 
         # TODO(cmasone): populate this from |config|.
         tasks = []
@@ -46,9 +46,8 @@ class Driver(object):
 
     def HandleEventsOnce(self):
         """One turn through the loop.  Separated out for unit testing."""
-        # TODO(cmasone): Make Handle() deal with boards.
         boards = self._enumerator.Enumerate()
 
         for e in self._events:
             if e.ShouldHandle():
-                e.Handle(self._scheduler)
+                e.Handle(self._scheduler, boards)

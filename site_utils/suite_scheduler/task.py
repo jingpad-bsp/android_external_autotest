@@ -18,25 +18,23 @@ class Task(object):
     """
 
 
-    def __init__(self, suite, board, build, pool=None):
+    def __init__(self, suite, build, pool=None):
         """Constructor
 
         @param suite: the name of the suite to run, e.g. 'bvt'
-        @param board: the board to run the suite on, e.g. x86-alex
         @param build: the build to install e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param pool: the pool of machines to use for scheduling purposes.
                      Default: None
         """
         self._suite = suite
-        self._board = board
         self._build = build
         self._pool = pool
         # Since we expect __hash__() and other comparitor methods to be used
         # frequently by set operations, and they use str() a lot, pre-compute
         # the string representation of this object.
-        self._str = '%s: %s on %s against %s' % (self.__class__.__name__, suite,
-                                                 build, board)
+        self._str = '%s: %s on %s with pool %s' % (self.__class__.__name__,
+                                                   suite, build, pool)
 
 
     @property
@@ -50,8 +48,8 @@ class Task(object):
 
 
     @property
-    def board(self):
-        return self._board
+    def pool(self):
+        return self._pool
 
 
     def __str__(self):
@@ -87,7 +85,7 @@ class Task(object):
         return hash(str(self))
 
 
-    def Run(self, scheduler, force=False):
+    def Run(self, scheduler, boards, force=False):
         """Run this task.  Returns False if it should be destroyed.
 
         Execute this task.  Attempt to schedule the associated suite.
@@ -96,15 +94,18 @@ class Task(object):
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
+        @param boards: the boards against which to run self._suite.
         @param force: Always schedule the suite.
         @return True if the task should be kept, False if not
         """
-        try:
-            if not scheduler.ScheduleSuite(self._suite, self._board,
-                                           self._build, self._pool, force):
-                logging.info('Skipping scheduling on %s', self)
-        except deduping_scheduler.DedupingSchedulerException as e:
-            logging.error(e)
+        for board in boards:
+            try:
+                if not scheduler.ScheduleSuite(self._suite, board, self._build,
+                                               self._pool, force):
+                    logging.info('Skipping scheduling %s for board %s',
+                                 self, board)
+            except deduping_scheduler.DedupingSchedulerException as e:
+                logging.error(e)
         return True
 
 
@@ -112,7 +113,7 @@ class OneShotTask(Task):
     """A Task that can be run only once.  Can schedule itself."""
 
 
-    def Run(self, scheduler, force=False):
+    def Run(self, scheduler, boards, force=False):
         """Run this task.  Returns False, indicating it should be destroyed.
 
         Run this task.  Attempt to schedule the associated suite.
@@ -120,8 +121,9 @@ class OneShotTask(Task):
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
+        @param boards: the boards against which to run self._suite.
         @param force: Always schedule the suite.
         @return False
         """
-        super(OneShotTask, self).Run(scheduler, force)
+        super(OneShotTask, self).Run(scheduler, boards, force)
         return False
