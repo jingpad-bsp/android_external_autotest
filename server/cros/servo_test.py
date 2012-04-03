@@ -43,10 +43,10 @@ class ServoTest(test.test):
             # Client test for installing dependency.
             'client_test': 'desktopui_ServoPyAuto',
             # The remote command to be run.
-            'remote_command': 'python /usr/local/autotest/cros/servo_pyauto.py'
+            'remote_command': 'python /usr/local/autotest/cros/remote_pyauto.py'
                               ' --no-http-server',
             # The short form of remote command, used by pkill.
-            'remote_command_short': 'servo_pyauto',
+            'remote_command_short': 'remote_pyauto',
             # The remote process info.
             'remote_process': None,
             # The ssh tunnel process info.
