@@ -31,8 +31,7 @@ autotest_start() {
   log_daemon_msg "Starting monitor_db_babysitter"
   ( ulimit -v 2048000 ; PATH=$PATH_EXTRAS USER=$BECOME_USER USERNAME=$USER \
     start-stop-daemon --start --quiet --chuid $BECOME_USER \
-      --background --exec /usr/local/scripts/runcron \
-      $BASE_DIR/scheduler/monitor_db_babysitter )
+      --background --exec $BASE_DIR/scheduler/monitor_db_babysitter )
 }
 
 stop_daemon() {

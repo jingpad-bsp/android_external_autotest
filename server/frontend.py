@@ -71,9 +71,8 @@ class RpcClient(object):
         self.print_log = print_log
         self.debug = debug
         self.reply_debug = reply_debug
-        http_server = 'http://' + server
-        headers = rpc_client_lib.authorization_headers(user, http_server)
-        rpc_server = http_server + path
+        headers = {'AUTHORIZATION': self.user}
+        rpc_server = 'http://' + server + path
         if debug:
             print 'SERVER: %s' % rpc_server
             print 'HEADERS: %s' % headers
@@ -116,7 +115,7 @@ class Planner(RpcClient):
 class TKO(RpcClient):
     def __init__(self, user=None, server=None, print_log=True, debug=False,
                  reply_debug=False):
-        super(TKO, self).__init__(path='/new_tko/server/rpc/',
+        super(TKO, self).__init__(path='/new_tko/server/noauth/rpc/',
                                   user=user,
                                   server=server,
                                   print_log=print_log,
@@ -135,7 +134,7 @@ class AFE(RpcClient):
     def __init__(self, user=None, server=None, print_log=True, debug=False,
                  reply_debug=False, job=None):
         self.job = job
-        super(AFE, self).__init__(path='/afe/server/rpc/',
+        super(AFE, self).__init__(path='/afe/server/noauth/rpc/',
                                   user=user,
                                   server=server,
                                   print_log=print_log,

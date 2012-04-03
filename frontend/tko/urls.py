@@ -16,9 +16,9 @@ resource_patterns = defaults.patterns(
 
 urlpatterns += defaults.patterns(
         '',
-        (r'^jsonp_rpc/', 'frontend.tko.views.handle_jsonp_rpc'),
-        (r'^csv/', 'frontend.tko.views.handle_csv'),
-        (r'^plot/', 'frontend.tko.views.handle_plot'),
+        (r'^(?:|noauth/)jsonp_rpc/', 'frontend.tko.views.handle_jsonp_rpc'),
+        (r'^(?:|noauth/)csv/', 'frontend.tko.views.handle_csv'),
+        (r'^(?:|noauth/)plot/', 'frontend.tko.views.handle_plot'),
 
         (r'^resources/', defaults.include(resource_patterns)))
 

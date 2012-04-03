@@ -9,8 +9,8 @@ from autotest_lib.client.common_lib import global_config, utils
 
 GLOBAL_CONFIG = global_config.global_config
 DEFAULT_SERVER = 'autotest'
-AFE_RPC_PATH = '/afe/server/rpc/'
-TKO_RPC_PATH = '/new_tko/server/rpc/'
+AFE_RPC_PATH = '/afe/server/noauth/rpc/'
+TKO_RPC_PATH = '/new_tko/server/noauth/rpc/'
 
 
 class AuthError(Exception):
