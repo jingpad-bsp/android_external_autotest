@@ -140,11 +140,11 @@
             ]
         },
 
-        "tegra2-kaen-release": {
+        "arm-tegra2_kaen-release": {
             "download_devserver": true,
             "archive_server": "gs://chromeos-releases/dev-channel/tegra2-kaen",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-kaen.zip",
-            "build_pattern": "R19-*",
+            "build_pattern": "R*",
             "platforms": [
                 {"platform": "netbook_KAEN",
                  "groups": ["bvt", "build", "desktopui", "desktopui_tegra2",
