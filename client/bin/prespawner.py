@@ -36,72 +36,68 @@ from Queue import Queue
 NUM_PRESPAWNED_PROCESSES = 1
 
 
-_prespawned = Queue(NUM_PRESPAWNED_PROCESSES)
-_thread = None
-_terminated = False
+class Prespawner():
+    def __init__(self):
+        self.prespawned = Queue(NUM_PRESPAWNED_PROCESSES)
+        self.thread = None
+        self.terminated = False
 
+    def spawn(self, args, env_additions=None):
+        '''
+        Spawns a new autotest (reusing an prespawned process if available).
 
-def spawn(args, env_additions=None):
-    '''
-    Spawns a new autotest (reusing an prespawned process if available).
+        @param args: A list of arguments (sys.argv)
+        @param env_additions: Items to add to the current environment
+        '''
+        new_env = dict(os.environ)
+        if env_additions:
+            new_env.update(env_additions)
 
-    @param args: A list of arguments (sys.argv)
-    @param env_additions: Items to add to the current environment
-    '''
-    new_env = dict(os.environ)
-    if env_additions:
-        new_env.update(env_additions)
-
-    process = _prespawned.get()
-    # Write the environment and argv to the process's stdin; it will launch
-    # autotest once these are received.
-    pickle.dump((new_env, args), process.stdin, protocol=2)
-    process.stdin.close()
-    return process
-
-
-def start():
-    '''
-    Starts a thread to pre-spawn autotests.
-    '''
-    def run():
-        while not _terminated:
-            process = subprocess.Popen(
-                ['python', '-u', os.path.realpath(__file__),
-                 '--prespawn_autotest'],
-                cwd=os.path.dirname(os.path.realpath(__file__)),
-                stdin=subprocess.PIPE)
-            logging.debug('Pre-spawned an autotest process %d', process.pid)
-            _prespawned.put(process)
-
-        # Let stop() know that we are done
-        _prespawned.put(None)
-
-    global _thread  # pylint: disable=W0603
-    if not _thread:
-        _thread = threading.Thread(target=run)
-        _thread.start()
-
-
-def stop():
-    '''
-    Stops the pre-spawn thread gracefully.
-    '''
-    global _thread
-    if not _thread:
-        # Never started
-        return
-
-    global _terminated  # pylint: disable=W0603
-    _terminated = True
-    # Wait for any existing prespawned processes.
-    while True:
-        process = _prespawned.get()
-        if not process:
-            break
-        # Send a 'None' environment and arg list to tell the prespawner
-        # processes to exit.
-        pickle.dump((None, None), process.stdin, protocol=2)
+        process = self.prespawned.get()
+        # Write the environment and argv to the process's stdin; it will launch
+        # autotest once these are received.
+        pickle.dump((new_env, args), process.stdin, protocol=2)
         process.stdin.close()
-        process.wait()
-    _thread = None
+        return process
+
+    def start(self):
+        '''
+        Starts a thread to pre-spawn autotests.
+        '''
+        def run():
+            while not self.terminated:
+                process = subprocess.Popen(
+                    ['python', '-u', os.path.realpath(__file__),
+                     '--prespawn_autotest'],
+                    cwd=os.path.dirname(os.path.realpath(__file__)),
+                    stdin=subprocess.PIPE)
+                logging.debug('Pre-spawned an autotest process %d', process.pid)
+                self.prespawned.put(process)
+
+            # Let stop() know that we are done
+            self.prespawned.put(None)
+
+        if not self.thread:
+            self.thread = threading.Thread(target=run, name='Prespawner')
+            self.thread.start()
+
+    def stop(self):
+        '''
+        Stops the pre-spawn thread gracefully.
+        '''
+        if not self.thread:
+            # Never started
+            return
+
+        self.terminated = True
+        # Wait for any existing prespawned processes.
+        while True:
+            process = self.prespawned.get()
+            if not process:
+                break
+            # Send a 'None' environment and arg list to tell the prespawner
+            # processes to exit.
+            pickle.dump((None, None), process.stdin, protocol=2)
+            process.stdin.close()
+            process.wait()
+        self.thread = None
