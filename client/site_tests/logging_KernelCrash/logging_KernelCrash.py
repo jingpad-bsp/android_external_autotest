@@ -30,8 +30,12 @@ class logging_KernelCrash(crash_test.CrashTest):
 
 
     def _is_signature_match(self, signature):
-        return (re.match(r'kernel-(write_breakme|breakme_do_bug)-[0-9A-F]{8}$',
-                         signature) is not None)
+        # Update these as kernels evolve:
+        matches = r'write_breakme'    # for 2.6.38 kernels and 3.0.13 x86
+        matches += r'|breakme_do_bug' # for 3.2 kernels
+        matches += r'|__bug'          # for 3.0.13 ARM
+        regex = r'kernel-(' + matches + r')-[0-9A-F]{8}$'
+        return (re.match(regex, signature) is not None)
 
     def _is_handled_reason(self, reason):
         return (re.match(r'(handling|developer build - always dumping)$',
