@@ -78,14 +78,16 @@ def start():
         _prespawned.put(None)
 
     global _thread  # pylint: disable=W0603
-    _thread = threading.Thread(target=run)
-    _thread.start()
+    if not _thread:
+        _thread = threading.Thread(target=run)
+        _thread.start()
 
 
 def stop():
     '''
     Stops the pre-spawn thread gracefully.
     '''
+    global _thread
     if not _thread:
         # Never started
         return
@@ -102,3 +104,4 @@ def stop():
         pickle.dump((None, None), process.stdin, protocol=2)
         process.stdin.close()
         process.wait()
+    _thread = None
