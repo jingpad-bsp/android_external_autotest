@@ -2,14 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re
 import dbus
 import common
 import constants as chromeos_constants
+import logging
+import os
+import re
+import shutil
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
+SHADOW_ROOT = '/home/.shadow'
 
 class ChromiumOSError(error.InstallError):
     """Generic error for ChromiumOS-specific exceptions."""
@@ -70,8 +74,20 @@ def remove_vault(user):
     cmd = CRYPTOHOME_CMD + ' --action=remove --force --user=%s' % user
     __run_cmd(cmd)
     # Ensure that the user directory does not exist
-    if os.path.exists(os.path.join('/home/.shadow/', user_hash)):
+    if os.path.exists(os.path.join(SHADOW_ROOT, user_hash)):
         raise ChromiumOSError('Cryptohome could not remove the test user.')
+
+
+def remove_all_vaults():
+    """Remove any existing vaults from the shadow directory.
+
+    This function must be run with root privileges.
+    """
+    for item in os.listdir(SHADOW_ROOT):
+        abs_item = os.path.join(SHADOW_ROOT, item)
+        if os.path.isdir(os.path.join(abs_item, 'vault')):
+            logging.debug('Removing vault for user with hash %s' % item)
+            shutil.rmtree(abs_item)
 
 
 def mount_vault(user, password, create=False):
@@ -82,7 +98,7 @@ def mount_vault(user, password, create=False):
     __run_cmd(cmd)
     # Ensure that the user directory exists
     user_hash = get_user_hash(user)
-    if not os.path.exists(os.path.join('/home/.shadow/', user_hash)):
+    if not os.path.exists(os.path.join(SHADOW_ROOT, user_hash)):
         raise ChromiumOSError('Cryptohome vault not found after mount.')
     # Ensure that the user directory is mounted
     if not is_mounted(allow_fail=True):
@@ -168,8 +184,10 @@ def canonicalize(credential):
         name = name.replace('.', '')
     return '@'.join([name, domain]).lower()
 
+
 def user_path(user):
     return utils.system_output('cryptohome-path user %s' % user)
+
 
 def system_path(user):
     return utils.system_output('cryptohome-path system %s' % user)
