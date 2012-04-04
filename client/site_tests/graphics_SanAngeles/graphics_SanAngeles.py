@@ -33,8 +33,6 @@ class graphics_SanAngeles(cros_ui_test.UITest):
             raise error.TestFail('Failed to locate SanAngeles executable (' +
                                  cmd + '). Test setup error.')
 
-        # Make sure SanAngeles comes up second and is in the foreground.
-        login.wait_for_initial_chrome_window()
         cmd = cros_ui.xcommand(cmd)
         result = utils.run(cmd, ignore_status = True)
 

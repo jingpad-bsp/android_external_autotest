@@ -15,8 +15,6 @@ BROWSER_EXE = '/opt/google/chrome/' + BROWSER
 
 CHROME_CORE_MAGIC_FILE = '/mnt/stateful_partition/etc/collect_chrome_crashes'
 CHROME_LOG_DIR = '/var/log/chrome'
-CHROME_WINDOW_MAPPED_MAGIC_FILE = \
-    '/var/run/state/windowmanager/initial-chrome-window-mapped'
 
 CLEANUP_LOGS_PAUSED_FILE = '/var/lib/cleanup_logs_paused'
 

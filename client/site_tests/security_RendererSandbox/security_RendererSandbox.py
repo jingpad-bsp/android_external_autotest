@@ -44,8 +44,6 @@ class security_RendererSandbox(cros_ui_test.UITest):
 
 
     def run_once(self, time_to_wait=20):
-        # open a browser window
-        login.wait_for_initial_chrome_window()
 
         # wait till the page is loaded and poll for the renderer pid
         # if renderer pid is found, it is stored in self.render_pid

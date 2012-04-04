@@ -41,8 +41,6 @@ class graphics_Piglit(cros_ui_test.UITest):
         if (os.path.exists(os.path.join(piglit_path, 'piglit-run.py')) and
             os.path.exists(bin_path) and
             os.listdir(bin_path)):
-            # Make sure Piglit comes up second and is in the foreground.
-            login.wait_for_initial_chrome_window()
             os.chdir(piglit_path)
             cmd = 'python piglit-run.py'
             cmd = cmd + ' tests/cros-driver.tests'

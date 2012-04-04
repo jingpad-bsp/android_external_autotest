@@ -39,7 +39,6 @@ class security_ProfilePermissions(cros_ui_test.UITest):
     def run_once(self):
         """Check permissions within cryptohome for anything too permissive."""
         passes = []
-        login.wait_for_initial_chrome_window()
 
         homepath = "/home/chronos"
         passes.append(self.check_owner_mode(homepath, "chronos", 0755))

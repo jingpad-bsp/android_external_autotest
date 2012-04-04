@@ -104,29 +104,6 @@ def wait_for_window_manager(timeout=cros_ui.DEFAULT_TIMEOUT):
         timeout=timeout)
 
 
-def wait_for_initial_chrome_window(timeout=cros_ui.DEFAULT_TIMEOUT):
-    """Wait until the initial Chrome window is mapped.
-
-    Args:
-      timeout: float number of seconds to wait
-
-    Raises:
-        TimeoutError: Chrome window wasn't mapped before timeout
-    """
-    # Mark /var/log/messages now; we'll run through all subsequent log messages
-    # if we couldn't get the browser up to see if the browser crashed.
-    log_reader = cros_logging.LogReader()
-    log_reader.set_start_by_current()
-    wait_for_condition(
-        lambda: os.access(
-            constants.CHROME_WINDOW_MAPPED_MAGIC_FILE, os.F_OK),
-        'Timed out waiting for initial Chrome window',
-        timeout=timeout,
-        process='chrome',
-        log_reader=log_reader,
-        crash_msg='Chrome crashed before first tab rendered.')
-
-
 def wait_for_ownership(timeout=constants.DEFAULT_OWNERSHIP_TIMEOUT):
     log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
@@ -137,18 +114,3 @@ def wait_for_ownership(timeout=constants.DEFAULT_OWNERSHIP_TIMEOUT):
         process=constants.BROWSER,
         log_reader=log_reader,
         crash_msg='Chrome crashed before ownership could be taken.')
-
-
-def refresh_window_manager(timeout=cros_ui.DEFAULT_TIMEOUT):
-    """Clear state that tracks what WM has done, kill it, and wait until
-    the window manager is running.
-
-    Args:
-        timeout: float number of seconds to wait
-
-    Raises:
-        TimeoutError: window manager didn't start before timeout
-    """
-    os.unlink(constants.CHROME_WINDOW_MAPPED_MAGIC_FILE)
-    utils.nuke_process_by_name(constants.WINDOW_MANAGER)
-    wait_for_window_manager()
