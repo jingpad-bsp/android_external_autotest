@@ -34,7 +34,6 @@ TESTS = [
   ('desktopui_KillRestart', {'binary': '^session_manager$',
                              'tag': 'session'}),
   ('desktopui_ScreenLocker', {}),
-  ('graphics_WindowManagerGraphicsCapture', {}),
   ('logging_CrashSender', {}),
   ('logging_UserCrash', {}),
   ('login_BadAuthentication', {}),
