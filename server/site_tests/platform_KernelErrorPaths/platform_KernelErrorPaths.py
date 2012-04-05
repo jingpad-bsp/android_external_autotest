@@ -101,7 +101,8 @@ class platform_KernelErrorPaths(test.test):
             ('hungtask', 'hung_task: blocked tasks', 300, False),
             ('nmilockup', 'Watchdog detected hard LOCKUP', 50, False),
             ('nullptr',
-             'BUG: unable to handle kernel NULL pointer dereference at', 10,
+             # x86 gives "BUG: unable to" while ARM gives "Unable to".
+             'nable to handle kernel NULL pointer dereference at', 10,
              True),
             ('panic', 'Kernel panic - not syncing:', 10, True),
             )
@@ -114,6 +115,14 @@ class platform_KernelErrorPaths(test.test):
 
         for action, text, timeout, all_cpu in test_tuples:
             if action == "nmilockup":
+                # ARM systems do not (presently) have NMI, so skip them for now.
+                arch = self.client.get_arch()
+                if arch.startswith('arm'):
+                    logging.info("Skipping %s on architecture %s." %
+                                 (action, arch))
+                    continue;
+                logging.info("Did not skip %s on architecture %s." %
+                             (action, arch))
                 # Pre-3.2 kernels use "nmiwatchdog" rather than "nmilookup".
                 ver = self.client.get_kernel_ver();
                 if utils.compare_versions(ver, "3.2") == -1:
