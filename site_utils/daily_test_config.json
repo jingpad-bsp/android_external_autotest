@@ -112,7 +112,7 @@
         }
     },
 
-    "default_groups": ["daily", "network", "power_daily"],
+    "default_groups": ["daily", "power_daily"],
 
     "groups": {
         "daily": [
@@ -131,23 +131,6 @@
 
             {"name": "kernel_daily_benchmarks",
              "control": "server/site_tests/suites/control.kernel_daily_benchmarks"}
-        ],
-
-        "network": [
-            {"name": "iperf",
-             "control": "server/tests/iperf/control.stress.srv",
-             "count": 2,
-             "sync": true},
-
-            {"name": "netperf2",
-             "control": "server/tests/netperf2/control.stress.srv",
-             "count": 2,
-             "sync": true},
-
-            {"name": "netpipe",
-             "control": "server/tests/netpipe/control.stress.srv",
-             "count": 2,
-             "sync": true}
         ],
 
        "power_daily": [
