@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,7 +9,7 @@ import shutil
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import cryptohome
+from autotest_lib.client.cros import constants, cryptohome
 
 class platform_CryptohomeTestAuth(test.test):
     version = 1
@@ -25,7 +25,7 @@ class platform_CryptohomeTestAuth(test.test):
         # Ensure that the user directory is unmounted and does not exist.
         cryptohome.unmount_vault()
         cryptohome.remove_vault(test_user)
-        if os.path.exists(os.path.join('/home/.shadow', user_hash)):
+        if os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
             raise error.TestFail('Could not remove the test user.')
 
         # Mount the test user account, which ensures that the vault is
@@ -45,7 +45,7 @@ class platform_CryptohomeTestAuth(test.test):
         # Unmount the directory
         cryptohome.unmount_vault()
         # Ensure that the user directory is not mounted
-        if cryptohome.is_mounted(allow_fail=True):
+        if cryptohome.is_vault_mounted(user=test_user, allow_fail=True):
             raise error.TestFail('Cryptohome did not unmount the user.')
 
         # Test valid credentials when the user's directory is not mounted
@@ -62,11 +62,8 @@ class platform_CryptohomeTestAuth(test.test):
         # Re-mount existing test user vault, verifying that the mount succeeds.
         cryptohome.mount_vault(test_user, test_password)
 
-        # Remove the test user account.
-        cryptohome.remove_vault(test_user)
-
         # Finally, unmount and destroy the vault again.
         cryptohome.unmount_vault()
         cryptohome.remove_vault(test_user)
-        if os.path.exists(os.path.join('/home/.shadow', user_hash)):
+        if os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
             raise error.TestFail('Could not destroy the vault.')

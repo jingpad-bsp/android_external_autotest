@@ -17,6 +17,9 @@ in less than 30 minutes and should maximize coverage.
 
 TESTS = [
   ('platform_AccurateTime', {}),
+  ('platform_CryptohomeChangePassword', {}),
+  ('platform_CryptohomeMount', {}),
+  ('platform_CryptohomeTestAuth', {}),
   ('platform_FilePerms', {}),
   ('platform_HighResTimers', {}),
   ('platform_KernelVersion', {}),

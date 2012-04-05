@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,6 +9,7 @@ import shutil
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.cros import constants
 
 class platform_CryptohomeChangePassword(test.test):
     version = 1
@@ -32,15 +33,15 @@ class platform_CryptohomeChangePassword(test.test):
                + test_user)
         self.__run_cmd(cmd)
         # Ensure that the user directory does not exist
-        if os.path.exists('/home/.shadow/' + user_hash):
+        if os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
           raise error.TestFail('Cryptohome could not remove the test user.')
 
         # Mount the test user account
         cmd = ('/usr/sbin/cryptohome --action=mount --user=' + test_user
-               + ' --password=' + test_password)
+               + ' --password=' + test_password + ' --create')
         self.__run_cmd(cmd)
         # Ensure that the user directory exists
-        if not os.path.exists('/home/.shadow/' + user_hash):
+        if not os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
           raise error.TestFail('Cryptohome could not create the test user.')
         # Ensure that the user directory is mounted
         cmd = ('/usr/sbin/cryptohome --action=is_mounted')

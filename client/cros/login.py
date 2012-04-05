@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -81,7 +81,7 @@ def wait_for_cryptohome(timeout=cros_ui.DEFAULT_TIMEOUT):
     log_reader = cros_logging.LogReader()
     log_reader.set_start_by_current()
     wait_for_condition(
-        condition=lambda: cryptohome.is_mounted(),
+        condition=lambda: cryptohome.is_vault_mounted(),
         timeout_msg='Timed out waiting for cryptohome to be mounted',
         timeout=timeout,
         process='cryptohomed',

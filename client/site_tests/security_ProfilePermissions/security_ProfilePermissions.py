@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -96,10 +96,11 @@ class security_ProfilePermissions(cros_ui_test.UITest):
 
         # This next section only applies if we have a real vault mounted
         # (ie, not a BWSI tmpfs).
-        if cryptohome.is_mounted():
+        if cryptohome.is_vault_mounted(
+                device_regex=constants.CRYPTOHOME_DEV_REGEX_REGULAR_USER):
             # Also check the permissions of the underlying vault and
             # supporting directory structure.
-            vaultpath = cryptohome.current_mounted_vault()
+            vaultpath = cryptohome.get_mounted_vault_devices()[0]
 
             passes.append(self.check_owner_mode(vaultpath, "root", 0700))
             passes.append(self.check_owner_mode(vaultpath + "/../master.0",

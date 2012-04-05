@@ -1,9 +1,8 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants as chromeos_constants
 from autotest_lib.client.cros import auth_server, cros_ui_test, cryptohome
 
 class login_CryptohomeIncognitoUnmounted(cros_ui_test.UITest):
@@ -25,12 +24,10 @@ class login_CryptohomeIncognitoUnmounted(cros_ui_test.UITest):
 
 
     def run_once(self):
-        if (cryptohome.is_mounted(allow_fail=True) or
-            not cryptohome.is_mounted_on_tmpfs(
-                     device=chromeos_constants.CRYPTOHOME_INCOGNITO)):
-            raise error.TestFail('CryptohomeIsMountedOnTmpfs should return '
-                                 'True.')
+        if not cryptohome.is_guest_vault_mounted():
+            raise error.TestFail('Expected to find a guest vault mounted via '
+                                 'tmpfs.')
         self.logout()
-        # allow the command to fail, so we can handle the error here
-        if cryptohome.is_mounted(allow_fail=True):
-            raise error.TestFail('Expected cryptohome NOT to be mounted')
+        # Allow the command to fail, so we can handle the error here.
+        if cryptohome.is_guest_vault_mounted(allow_fail=True):
+            raise error.TestFail('Expected to NOT find a guest vault mounted.')

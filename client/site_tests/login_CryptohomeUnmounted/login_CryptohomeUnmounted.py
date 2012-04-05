@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -13,11 +13,12 @@ class login_CryptohomeUnmounted(cros_ui_test.UITest):
 
 
     def run_once(self):
-        if not cryptohome.is_mounted(allow_fail=False):
-            raise error.TestFail('Expected cryptohome to be mounted')
+        if not cryptohome.is_vault_mounted(user=self.username,
+                                           allow_fail=False):
+            raise error.TestFail('Expected to find a mounted vault.')
 
         self.logout()
 
-        # allow the command to fail, so we can handle the error here
-        if cryptohome.is_mounted(allow_fail=True):
-            raise error.TestFail('Expected cryptohome NOT to be mounted')
+        # Allow the command to fail, so we can handle the error here.
+        if cryptohome.is_vault_mounted(user=self.username, allow_fail=True):
+            raise error.TestFail('Expected to NOT find a mounted vault.')

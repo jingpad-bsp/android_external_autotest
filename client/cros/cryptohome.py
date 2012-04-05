@@ -3,17 +3,15 @@
 # found in the LICENSE file.
 
 import dbus
-import common
-import constants as chromeos_constants
+import constants
 import logging
 import os
 import re
 import shutil
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
-SHADOW_ROOT = '/home/.shadow'
 
 class ChromiumOSError(error.InstallError):
     """Generic error for ChromiumOS-specific exceptions."""
@@ -26,9 +24,19 @@ def __run_cmd(cmd):
 
 
 def get_user_hash(user):
-    """Get the hash for the test user account."""
+    """Get the user hash for the given user."""
     hash_cmd = CRYPTOHOME_CMD + ' --action=obfuscate_user --user=%s' % user
     return __run_cmd(hash_cmd)
+
+
+def user_path(user):
+    """Get the user mount point for the given user."""
+    return utils.system_output('cryptohome-path user %s' % user)
+
+
+def system_path(user):
+    """Get the system mount point for the given user."""
+    return utils.system_output('cryptohome-path system %s' % user)
 
 
 def get_tpm_status():
@@ -67,15 +75,15 @@ def take_tpm_ownership():
 
 
 def remove_vault(user):
-    """Remove the test user account."""
+    """Remove the given user's vault from the shadow directory."""
     logging.debug('user is %s', user)
     user_hash = get_user_hash(user)
-    logging.debug('Removing vault for user %s - %s' % (user, user_hash))
+    logging.debug('Removing vault for user %s with hash %s' % (user, user_hash))
     cmd = CRYPTOHOME_CMD + ' --action=remove --force --user=%s' % user
     __run_cmd(cmd)
-    # Ensure that the user directory does not exist
-    if os.path.exists(os.path.join(SHADOW_ROOT, user_hash)):
-        raise ChromiumOSError('Cryptohome could not remove the test user.')
+    # Ensure that the vault does not exist.
+    if os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
+        raise ChromiumOSError('Cryptohome could not remove the user''s vault.')
 
 
 def remove_all_vaults():
@@ -83,26 +91,30 @@ def remove_all_vaults():
 
     This function must be run with root privileges.
     """
-    for item in os.listdir(SHADOW_ROOT):
-        abs_item = os.path.join(SHADOW_ROOT, item)
+    for item in os.listdir(constants.SHADOW_ROOT):
+        abs_item = os.path.join(constants.SHADOW_ROOT, item)
         if os.path.isdir(os.path.join(abs_item, 'vault')):
             logging.debug('Removing vault for user with hash %s' % item)
             shutil.rmtree(abs_item)
 
 
 def mount_vault(user, password, create=False):
+    """Mount the given user's vault."""
     cmd = (CRYPTOHOME_CMD + ' --action=mount --user=%s --password=%s' %
            (user, password))
     if create:
         cmd += ' --create'
     __run_cmd(cmd)
-    # Ensure that the user directory exists
+    # Ensure that the vault exists in the shadow directory.
     user_hash = get_user_hash(user)
-    if not os.path.exists(os.path.join(SHADOW_ROOT, user_hash)):
+    if not os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
         raise ChromiumOSError('Cryptohome vault not found after mount.')
-    # Ensure that the user directory is mounted
-    if not is_mounted(allow_fail=True):
-        raise ChromiumOSError('Cryptohome created the user but did not mount.')
+    # Ensure that the vault is mounted.
+    if not is_vault_mounted(
+            user=user,
+            device_regex=constants.CRYPTOHOME_DEV_REGEX_REGULAR_USER,
+            allow_fail=True):
+        raise ChromiumOSError('Cryptohome created a vault but did not mount.')
 
 
 def test_auth(user, password):
@@ -112,63 +124,91 @@ def test_auth(user, password):
 
 
 def unmount_vault(user=None):
-    """
-    Unmount the directory. Once unmount-by-user is supported, the user
-    parameter will name the target user. See crosbug.com/20778
+    """Unmount the given user's vault.
+
+    Once unmounting for a specific user is supported, the user parameter will
+    name the target user. See crosbug.com/20778.
     """
     cmd = (CRYPTOHOME_CMD + ' --action=unmount')
     __run_cmd(cmd)
-    # Ensure that the user directory is not mounted
-    if is_mounted(allow_fail=True):
+    # Ensure that the vault is not mounted.
+    if is_vault_mounted(allow_fail=True):
         raise ChromiumOSError('Cryptohome did not unmount the user.')
 
 
-def __get_mount_parts(expected_mountpt=chromeos_constants.CRYPTOHOME_MOUNT_PT,
-                      allow_fail = False):
+def __get_mount_info(mount_point, allow_fail=False):
+    """Get information about the active mount at a given mount point."""
     mount_line = utils.system_output(
-        'grep %s /proc/$(pgrep cryptohomed)/mounts' % expected_mountpt,
-        ignore_status = allow_fail)
+        'grep %s /proc/$(pgrep cryptohomed)/mounts' % mount_point,
+        ignore_status=allow_fail)
     return mount_line.split()
 
 
-def current_mounted_vault(device=chromeos_constants.CRYPTOHOME_DEVICE_REGEX,
-                          expected_mountpt=
-                          chromeos_constants.CRYPTOHOME_MOUNT_PT,
-                          allow_fail=False):
-    mount_line = utils.system_output(
-        'grep %s /proc/$(pgrep cryptohomed)/mounts' % expected_mountpt,
-        ignore_status=allow_fail)
-    mount_parts = mount_line.split()
-    if len(mount_parts) > 0 and re.match(device, mount_parts[0]):
-        return mount_parts[0]
+def __get_user_mount_info(user=None, allow_fail=False):
+    """Get information about the active mounts for a given user.
+
+    Returns the active mounts at the user's user and system mount points. If no
+    user is given, the active mount at the shared mount point is returned
+    (regular users have a bind-mount at this mount point for backwards
+    compatibility; the guest user has a mount at this mount point only).
+    """
+    if user:
+        return [__get_mount_info(mount_point=user_path(user),
+                                 allow_fail=allow_fail),
+                __get_mount_info(mount_point=system_path(user),
+                                 allow_fail=allow_fail)]
     else:
-        return None
+        return [__get_mount_info(mount_point=constants.CRYPTOHOME_MOUNT_PT,
+                                 allow_fail=allow_fail)]
 
 
-def is_mounted(device=chromeos_constants.CRYPTOHOME_DEVICE_REGEX,
-               expected_mountpt=chromeos_constants.CRYPTOHOME_MOUNT_PT,
-               allow_fail=False):
-    return None != current_mounted_vault(device=device,
-                                         expected_mountpt=expected_mountpt,
-                                         allow_fail=allow_fail)
+def is_vault_mounted(
+        user=None,
+        device_regex=constants.CRYPTOHOME_DEV_REGEX_ANY,
+        fs_regex=constants.CRYPTOHOME_FS_REGEX_ANY,
+        allow_fail=False):
+    """Check whether a vault is mounted for the given user.
+
+    If no user is given, the shared mount point is checked, determining whether
+    a vault is mounted for any user.
+    """
+    user_mount_info = __get_user_mount_info(user=user, allow_fail=allow_fail)
+    for mount_info in user_mount_info:
+        if (len(mount_info) < 3 or
+                not re.match(device_regex, mount_info[0]) or
+                not re.match(fs_regex, mount_info[2])):
+            return False
+    return True
 
 
-def is_mounted_on_tmpfs(device = chromeos_constants.CRYPTOHOME_INCOGNITO,
-                        expected_mountpt =
-                            chromeos_constants.CRYPTOHOME_MOUNT_PT,
-                        allow_fail = False):
-    mount_parts = __get_mount_parts(device, allow_fail)
-    return (len(mount_parts) > 2 and device == mount_parts[0] and
-            'tmpfs' == mount_parts[2])
+def is_guest_vault_mounted(allow_fail=False):
+    """Check whether a vault backed by tmpfs is mounted for the guest user."""
+    return is_vault_mounted(
+        user=None,
+        device_regex=constants.CRYPTOHOME_DEV_REGEX_GUEST,
+        fs_regex=constants.CRYPTOHOME_FS_REGEX_TMPFS,
+        allow_fail=allow_fail)
+
+
+def get_mounted_vault_devices(user=None, allow_fail=False):
+    """Get the device(s) backing the vault mounted for the given user.
+
+    Returns the devices mounted at the user's user and system mount points. If
+    no user is given, the device mounted at the shared mount point is returned.
+    """
+    return [mount_info[0]
+            for mount_info
+            in __get_user_mount_info(user=user, allow_fail=allow_fail)
+            if len(mount_info)]
 
 
 def canonicalize(credential):
-    """Perform basic canonicalization of |email_address|
+    """Perform basic canonicalization of |email_address|.
 
-    Perform basic canonicalization of |email_address|, taking
-    into account that gmail does not consider '.' or caps inside a
-    username to matter.  It also ignores everything after a '+'.
-    For example, c.masone+abc@gmail.com == cMaSone@gmail.com, per
+    Perform basic canonicalization of |email_address|, taking into account that
+    gmail does not consider '.' or caps inside a username to matter. It also
+    ignores everything after a '+'. For example,
+    c.masone+abc@gmail.com == cMaSone@gmail.com, per
     http://mail.google.com/support/bin/answer.py?hl=en&ctx=mail&answer=10313
     """
     if not credential:
@@ -176,21 +216,13 @@ def canonicalize(credential):
 
     parts = credential.split('@')
     if len(parts) != 2:
-      raise error.TestError('Malformed email: ' + credential)
+        raise error.TestError('Malformed email: ' + credential)
 
     (name, domain) = parts
     name = name.partition('+')[0]
-    if (domain == chromeos_constants.SPECIAL_CASE_DOMAIN):
+    if (domain == constants.SPECIAL_CASE_DOMAIN):
         name = name.replace('.', '')
     return '@'.join([name, domain]).lower()
-
-
-def user_path(user):
-    return utils.system_output('cryptohome-path user %s' % user)
-
-
-def system_path(user):
-    return utils.system_output('cryptohome-path system %s' % user)
 
 
 class CryptohomeProxy:

@@ -32,12 +32,19 @@ CREDENTIALS = {
     '$backdoor': ['chronos@gmail.com', 'chronos'],
 }
 
-# TODO(fes): With the switch to ecryptfs, the cryptohome device is no longer
-# static--it includes a system-specific hash of the username whose vault is
-# mounted.  seano points out that this is no longer a constant, and we may want
-# to change the way tests dependent on this value work.
-CRYPTOHOME_DEVICE_REGEX = r'^/home/\.shadow/.*/vault$'
-CRYPTOHOME_INCOGNITO = 'guestfs'
+SHADOW_ROOT = '/home/.shadow'
+
+CRYPTOHOME_DEV_REGEX_ANY = r'.*'
+CRYPTOHOME_DEV_REGEX_REGULAR_USER_SHADOW = r'^/home/\.shadow/.*/vault$'
+CRYPTOHOME_DEV_REGEX_REGULAR_USER_EPHEMERAL = r'^ephemeralfs/.*$'
+CRYPTOHOME_DEV_REGEX_REGULAR_USER = r'(%s|%s)' % (
+    CRYPTOHOME_DEV_REGEX_REGULAR_USER_SHADOW,
+    CRYPTOHOME_DEV_REGEX_REGULAR_USER_EPHEMERAL)
+CRYPTOHOME_DEV_REGEX_GUEST = r'^guestfs$'
+
+CRYPTOHOME_FS_REGEX_ANY = r'.*'
+CRYPTOHOME_FS_REGEX_TMPFS = r'^tmpfs$'
+
 CRYPTOHOME_MOUNT_PT = USER_DATA_DIR + '/user'
 
 CRYPTOHOMED_LOG = '/var/log/cryptohomed.log'
