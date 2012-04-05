@@ -1,8 +1,8 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, urllib
+import logging, os, re, urllib
 
 # If you create site_remote_power_config.py and remote_power_switch_machines
 # there, we will use it to configure the power switch.
@@ -55,6 +55,69 @@ def RemotePower(host):
                 return ParseConfig(name)
 
     return None
+
+class SentrySwitchedCDU(object):
+    """
+    This class implements power control for Sentry Switched CDU
+    http://www.servertech.com/products/switched-pdus/
+
+    It assumes that machine
+    chromeos-rackX-hostY
+    is controlled by an RPM at
+    chromeos-rackX-rpm1.
+
+    Example usage:
+      switch = SentrySwitchedCDU('chromeos-rack7-host3')
+      switch.set_power_off()
+      switch.set_power_on()
+    """
+
+
+    def __init__(self, machine):
+        self.machine = machine
+        self.rpm_host = re.sub('host[^.]*', 'rpm1', machine, count=1)
+
+
+    def set_power_on(self):
+        self._set_power('on')
+
+
+    def set_power_off(self):
+        self._set_power('off')
+
+
+    def _set_power(self, command):
+        from autotest_lib.client.common_lib import pexpect
+        from autotest_lib.client.common_lib import global_config
+        password = global_config.global_config.get_config_value(
+                'CROS', 'rpm_sentry_password', type=str)
+        username = global_config.global_config.get_config_value(
+                'CROS', 'rpm_sentry_username', type=str)
+        rpm_host = self.rpm_host
+        # In case machine comes with a full domain name, cut it off
+        machine_name = self.machine.split('.', 1)[0]
+        prompt = 'Switched CDU:'
+        cmd = ('ssh -l %s '
+               '-o StrictHostKeyChecking=no '
+               '-o UserKnownHostsFile=/dev/null '
+               '%s' % (username, rpm_host))
+        ssh = pexpect.spawn(cmd)
+        ssh.expect('Password:', timeout=30)
+        ssh.sendline(password)
+        ssh.expect(prompt, timeout=30)
+        logging.info('Connecting to power switch (%s@%s)', username, rpm_host)
+        # Command looks like: off chromeos-rack7-host3
+        ssh.sendline('%s %s' %(command, machine_name))
+        try:
+            ssh.expect('Command successful', timeout=30)
+        except pexpect.TIMEOUT:
+            logging.error('Timed out while switching AC power %s for host %s',
+                    command, machine_name)
+            raise
+        finally:
+            ssh.sendline('logout')
+        logging.info('Power turned %s for %s', command, machine_name)
+
 
 class CycladesACSRemotePowerSwitch(object):
     """
