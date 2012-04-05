@@ -15,20 +15,45 @@ class BaseEvent(object):
     """
 
 
-    def __init__(self, keyword, tasks):
+    @classmethod
+    def CreateFromConfig(cls, config):
+        """Instantiate a cls object, options from |config|."""
+        return cls(**cls._ParseConfig(config))
+
+
+    @classmethod
+    def _ParseConfig(cls, config):
+        """Parse config and return a dict of parameters for this event."""
+        raise NotImplementedError()
+
+
+    def __init__(self, keyword):
         """Constructor.
 
         @param keyword: the keyword/name of this event, e.g. nightly.
-        @param tasks: list of Task instances that can fire on this.
         """
         self._keyword = keyword
-        self._tasks = set(tasks)
+        self._tasks = set()
 
 
     @property
     def keyword(self):
         """Getter for private |self._keyword| property."""
         return self._keyword
+
+
+    @property
+    def tasks(self):
+        return self._tasks
+
+
+    @tasks.setter
+    def tasks(self, iterable_of_tasks):
+        """Set the tasks property with an iterable.
+
+        @param iterable_of_tasks: list of Task instances that can fire on this.
+        """
+        self._tasks = set(iterable_of_tasks)
 
 
     def ShouldHandle(self):
@@ -39,15 +64,19 @@ class BaseEvent(object):
         raise NotImplementedError()
 
 
-    def Handle(self, scheduler, boards, force=False):
+    def Handle(self, scheduler, branch_builds, board, force=False):
         """Runs all tasks in self._tasks.
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
-        @param boards: the boards against which to Run() all of self._tasks.
-        @param force: Tell every job to always trigger.
+        @param branch_builds: a dict mapping branch name to the build to
+                              install for that branch, e.g.
+                              {'R18': 'x86-alex-release/R18-1655.0.0-a1-b1584',
+                               'R19': 'x86-alex-release/R19-2077.0.0-a1-b2056'}
+        @param board: the board against which to Run() all of self._tasks.
+        @param force: Tell every Task to always Run().
         """
         # we need to iterate over an immutable copy of self._tasks
-        for task in list(self._tasks):
-            if not task.Run(scheduler, boards, force):
+        for task in list(self.tasks):
+            if not task.Run(scheduler, branch_builds, board, force):
                 self._tasks.remove(task)

@@ -24,6 +24,13 @@ class ForgivingConfigParser(ConfigParser.SafeConfigParser):
 
 
     @forgive_config_error
+    def getstring(self, section, option):
+        """Can't override get(), as it breaks the other getters to have get()
+        return None sometimes."""
+        return ConfigParser.SafeConfigParser.get(self, section, option)
+
+
+    @forgive_config_error
     def getint(self, section, option):
         return ConfigParser.SafeConfigParser.getint(self, section, option)
 

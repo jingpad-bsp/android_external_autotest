@@ -6,11 +6,9 @@
 
 """Unit tests for site_utils/board_enumerator.py."""
 
-import logging
-import mox
-import unittest
+import logging, mox,  unittest
 
-import driver, timed_event, board_enumerator
+import driver, forgiving_config_parser, timed_event, board_enumerator
 
 from autotest_lib.server import frontend
 
@@ -22,22 +20,22 @@ class DriverTest(mox.MoxTestBase):
     def setUp(self):
         super(DriverTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
+        self.config = forgiving_config_parser.ForgivingConfigParser()
         self.nightly = self.mox.CreateMock(timed_event.Nightly)
+        self.nightly.keyword = timed_event.Nightly.KEYWORD
         self.weekly = self.mox.CreateMock(timed_event.Weekly)
+        self.weekly.keyword = timed_event.Weekly.KEYWORD
 
+        self.driver = driver.Driver(afe=self.afe)
+
+
+    def _ExpectSetup(self):
         self.mox.StubOutWithMock(timed_event.Nightly, 'CreateFromConfig')
         self.mox.StubOutWithMock(timed_event.Weekly, 'CreateFromConfig')
         timed_event.Nightly.CreateFromConfig(
-            mox.IgnoreArg(),
             mox.IgnoreArg()).AndReturn(self.nightly)
         timed_event.Weekly.CreateFromConfig(
-            mox.IgnoreArg(),
             mox.IgnoreArg()).AndReturn(self.weekly)
-        self.mox.ReplayAll()
-
-        self.driver = driver.Driver(afe=self.afe, config=None)
-        self.mox.VerifyAll()
-        self.mox.ResetAll()
 
 
     def _ExpectEnumeration(self):
@@ -48,29 +46,36 @@ class DriverTest(mox.MoxTestBase):
         self.afe.get_labels(name__startswith=prefix).AndReturn([mock])
 
 
+    def testTasksFromConfig(self):
+        pass
+
     def testHandleAllEventsOnce(self):
         """Test that all events being ready is handled correctly."""
+        self._ExpectSetup()
         self._ExpectEnumeration()
         self.nightly.ShouldHandle().InAnyOrder('events').AndReturn(True)
-        self.nightly.Handle(mox.IgnoreArg(),
+        self.nightly.Handle(mox.IgnoreArg(), mox.IgnoreArg(),
                             mox.IgnoreArg()).InAnyOrder('events')
         self.weekly.ShouldHandle().InAnyOrder('events').AndReturn(True)
-        self.weekly.Handle(mox.IgnoreArg(),
+        self.weekly.Handle(mox.IgnoreArg(), mox.IgnoreArg(),
                            mox.IgnoreArg()).InAnyOrder('events')
         self.mox.ReplayAll()
 
+        self.driver.SetUpEventsAndTasks(self.config)
         self.driver.HandleEventsOnce()
 
 
     def testHandleNightlyEventOnce(self):
         """Test that one ready event is handled correctly."""
+        self._ExpectSetup()
         self._ExpectEnumeration()
         self.weekly.ShouldHandle().InAnyOrder('events').AndReturn(False)
         self.nightly.ShouldHandle().InAnyOrder('events').AndReturn(True)
-        self.nightly.Handle(mox.IgnoreArg(),
+        self.nightly.Handle(mox.IgnoreArg(), mox.IgnoreArg(),
                             mox.IgnoreArg()).InAnyOrder('events')
         self.mox.ReplayAll()
 
+        self.driver.SetUpEventsAndTasks(self.config)
         self.driver.HandleEventsOnce()
 
 

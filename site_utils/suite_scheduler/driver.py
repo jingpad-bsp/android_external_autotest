@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ConfigParser, logging, time
+import logging, time
 
-import deduping_scheduler, timed_event, board_enumerator
+import deduping_scheduler, forgiving_config_parser, board_enumerator
+import task, timed_event
 
 
 class Driver(object):
@@ -21,7 +22,7 @@ class Driver(object):
     _LOOP_INTERVAL = 5
 
 
-    def __init__(self, afe, config):
+    def __init__(self, afe):
         """Constructor
 
         @param afe: an instance of AFE as defined in server/frontend.py.
@@ -30,11 +31,45 @@ class Driver(object):
         self._scheduler = deduping_scheduler.DedupingScheduler(afe)
         self._enumerator = board_enumerator.BoardEnumerator(afe)
 
-        # TODO(cmasone): populate this from |config|.
-        tasks = []
 
-        self._events = [timed_event.Nightly.CreateFromConfig(config, tasks),
-                        timed_event.Weekly.CreateFromConfig(config, tasks)]
+    def SetUpEventsAndTasks(self, config):
+        """Constructor
+        @param config: an instance of ForgivingConfigParser.
+        """
+        self._events = [timed_event.Nightly.CreateFromConfig(config),
+                        timed_event.Weekly.CreateFromConfig(config)]
+
+        tasks = self.TasksFromConfig(config)
+
+        for event in self._events:
+            if event.keyword in tasks:
+                event.tasks = tasks[event.keyword]
+        # TODO(cmasone): warn about unknown keywords?
+
+
+    def TasksFromConfig(self, config):
+        """Generate a dict of {event_keyword: [tasks]} mappings from |config|.
+
+        For each section in |config| that encodes a Task, instantiate a Task
+        object.  Determine the event that Task is supposed to run_on and
+        append the object to a list associated with the appropriate event
+        keyword.  Return a dictionary of these keyword: list of task mappings.
+
+        @param config: a ForgivingConfigParser containing tasks to be parsed.
+        @return dict of {event_keyword: [tasks]} mappings.
+        @raise MalformedConfigEntry on a task parsing error.
+        """
+        tasks = {}
+        for section in config.sections():
+            if not timed_event.TimedEvent.HonorsSection(section):
+                try:
+                    keyword, new_task = task.Task.CreateFromConfigSection(
+                        config, section)
+                except task.MalformedConfigEntry as e:
+                    logging.warn('%s is malformed: %s', section, e)
+                    continue
+                tasks.setdefault(keyword, []).append(new_task)
+        return tasks
 
 
     def RunForever(self):
@@ -48,6 +83,10 @@ class Driver(object):
         """One turn through the loop.  Separated out for unit testing."""
         boards = self._enumerator.Enumerate()
 
+        branch_builds = {}
+
         for e in self._events:
             if e.ShouldHandle():
-                e.Handle(self._scheduler, boards)
+                for board in boards:
+                    # TODO(cmasone): determine branch_builds per board.
+                    e.Handle(self._scheduler, branch_builds, board)

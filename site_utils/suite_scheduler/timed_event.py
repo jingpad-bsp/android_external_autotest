@@ -11,29 +11,17 @@ class TimedEvent(base_event.BaseEvent):
     _SECTION_SUFFIX = '_params'
 
 
-    @classmethod
-    def CreateFromConfig(cls, config, tasks):
-        """Instantiate a cls object, with |tasks| and options from |config|."""
-        return cls(tasks=tasks, **cls._ParseConfig(config))
-
-
-    @classmethod
-    def _ParseConfig(cls, config):
-        """Parse config and return a dict of parameters."""
-        raise NotImplementedError()
-
-
-    def __init__(self, keyword, deadline, tasks):
-        super(TimedEvent, self).__init__(keyword, tasks)
+    def __init__(self, keyword, deadline):
+        super(TimedEvent, self).__init__(keyword)
         self._deadline = deadline
 
 
     def __ne__(self, other):
-        return self._deadline != other._deadline or self._tasks != other._tasks
+        return self._deadline != other._deadline or self.tasks != other.tasks
 
 
     def __eq__(self, other):
-        return self._deadline == other._deadline and self._tasks == other._tasks
+        return self._deadline == other._deadline and self.tasks == other.tasks
 
 
     @staticmethod
@@ -45,6 +33,12 @@ class TimedEvent(base_event.BaseEvent):
     @staticmethod
     def _now():
         return datetime.datetime.now()
+
+
+    @staticmethod
+    def HonorsSection(section):
+        """Returns True if section is something _ParseConfig() might consume."""
+        return section.endswith(TimedEvent._SECTION_SUFFIX)
 
 
     def ShouldHandle(self):
@@ -66,7 +60,7 @@ class Nightly(TimedEvent):
         return {'event_time': event_time}
 
 
-    def __init__(self, event_time, tasks):
+    def __init__(self, event_time):
         # determine if we're past today's nightly event and set the
         # next deadline for this suite appropriately.
         now = self._now()
@@ -76,7 +70,7 @@ class Nightly(TimedEvent):
             deadline = tonight
         else:
             deadline = tonight + datetime.timedelta(days=1)
-        super(Nightly, self).__init__(self.KEYWORD, deadline, tasks)
+        super(Nightly, self).__init__(self.KEYWORD, deadline)
 
 
 class Weekly(TimedEvent):
@@ -95,7 +89,7 @@ class Weekly(TimedEvent):
         return {'event_time': event_time, 'event_day': event_day}
 
 
-    def __init__(self, event_day, event_time, tasks):
+    def __init__(self, event_day, event_time):
         # determine if we're past this week's event and set the
         # next deadline for this suite appropriately.
         now = self._now()
@@ -109,4 +103,4 @@ class Weekly(TimedEvent):
             deadline = this_week_deadline
         else:
             deadline = this_week_deadline + datetime.timedelta(days=7)
-        super(Weekly, self).__init__(self.KEYWORD, deadline, tasks)
+        super(Weekly, self).__init__(self.KEYWORD, deadline)

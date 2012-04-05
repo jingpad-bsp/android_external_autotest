@@ -6,15 +6,9 @@
 
 """Unit tests for site_utils/timed_event.py."""
 
-import datetime
-import logging
-import mox
-import unittest
+import datetime, logging, mox,  unittest
 
-import forgiving_config_parser
-import deduping_scheduler
-import task
-import timed_event
+import deduping_scheduler, forgiving_config_parser, task, timed_event
 
 
 class TimedEventTestBase(mox.MoxTestBase):
@@ -102,7 +96,7 @@ class NightlyTest(TimedEventTestBase):
 
     def CreateTrigger(self):
         """Return an instance of timed_event.Nightly."""
-        return timed_event.Nightly(self._HOUR, [])
+        return timed_event.Nightly(self._HOUR)
 
 
     def testCreateFromConfig(self):
@@ -116,8 +110,8 @@ class NightlyTest(TimedEventTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
-        self.assertEquals(timed_event.Nightly(self._HOUR, []),
-                          timed_event.Nightly.CreateFromConfig(config, []))
+        self.assertEquals(timed_event.Nightly(self._HOUR),
+                          timed_event.Nightly.CreateFromConfig(config))
 
 
     def testCreateFromEmptyConfig(self):
@@ -128,8 +122,8 @@ class NightlyTest(TimedEventTestBase):
         self.mox.ReplayAll()
 
         self.assertEquals(
-            timed_event.Nightly(timed_event.Nightly._DEFAULT_HOUR, []),
-            timed_event.Nightly.CreateFromConfig(config, []))
+            timed_event.Nightly(timed_event.Nightly._DEFAULT_HOUR),
+            timed_event.Nightly.CreateFromConfig(config))
 
 
     def testDeadlineInPast(self):
@@ -195,7 +189,7 @@ class WeeklyTest(TimedEventTestBase):
 
     def CreateTrigger(self):
         """Return an instance of timed_event.Weekly."""
-        return timed_event.Weekly(self._DAY, self._HOUR, [])
+        return timed_event.Weekly(self._DAY, self._HOUR)
 
 
     def testCreateFromConfig(self):
@@ -210,8 +204,8 @@ class WeeklyTest(TimedEventTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
-        self.assertEquals(timed_event.Weekly(self._DAY, self._HOUR, []),
-                          timed_event.Weekly.CreateFromConfig(config, []))
+        self.assertEquals(timed_event.Weekly(self._DAY, self._HOUR),
+                          timed_event.Weekly.CreateFromConfig(config))
 
 
     def testDeadlineInPast(self):
