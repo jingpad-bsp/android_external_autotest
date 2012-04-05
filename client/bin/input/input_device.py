@@ -432,6 +432,12 @@ class InputDevice:
                 (BTN_TOOL_FINGER in self.events[EV_KEY]) and
                 (EV_ABS in self.events))
 
+    def is_touchscreen(self):
+        return ((EV_KEY in self.events) and
+                (BTN_TOUCH in self.events[EV_KEY]) and
+                (not BTN_TOOL_FINGER in self.events[EV_KEY]) and
+                (EV_ABS in self.events))
+
     def is_mt_b(self):
         return self.is_mt() and ABS_MT_SLOT in self.events[EV_ABS]
 
