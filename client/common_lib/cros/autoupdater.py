@@ -4,7 +4,6 @@
 
 import httplib
 import logging
-import multiprocessing
 import os
 import re
 import urlparse
@@ -27,16 +26,6 @@ class ChromiumOSError(error.InstallError):
     pass
 
 
-class RootFSUpdateError(ChromiumOSError):
-    """Raised when the RootFS fails to update."""
-    pass
-
-
-class StatefulUpdateError(ChromiumOSError):
-    """Raised when the stateful partition fails to update."""
-    pass
-
-
 def url_to_version(update_url):
     # The Chrome OS version is generally the last element in the URL. The only
     # exception is delta update URLs, which are rooted under the version; e.g.,
@@ -54,7 +43,6 @@ class ChromiumOSUpdater():
     def __init__(self, update_url, host=None):
         self.host = host
         self.update_url = update_url
-        self._update_error_queue = multiprocessing.Queue(2)
         self.update_version = url_to_version(update_url)
 
 
@@ -129,7 +117,8 @@ class ChromiumOSUpdater():
 
 
     def _update_root(self):
-        logging.info('Updating root partition...')
+        # Reset update_engine's state & check that update_engine is idle.
+        self.reset_update_engine()
 
         # Run update_engine using the specified URL.
         try:
@@ -137,22 +126,17 @@ class ChromiumOSUpdater():
                 UPDATER_BIN, self.update_url)
             self._run(autoupdate_cmd, timeout=900)
         except error.AutoservRunError:
-            update_error = RootFSUpdateError('update-engine failed on %s' %
-                                             self.host.hostname)
-            self._update_error_queue.put(update_error)
-            raise update_error
+            raise ChromiumOSError('update-engine failed on %s' %
+                                  self.host.hostname)
 
         # Check that the installer completed as expected.
         status = self.check_update_status()
         if status != UPDATER_NEED_REBOOT:
-            update_error = RootFSUpdateError('update-engine error on %s: %s' %
-                                             (self.host.hostname, status))
-            self._update_error_queue.put(update_error)
-            raise update_error
+            raise ChromiumOSError('update-engine error on %s: %s' %
+                                  (self.host.hostname, status))
 
 
     def _update_stateful(self):
-        logging.info('Updating stateful partition...')
         # Attempt stateful partition update; this must succeed so that the newly
         # installed host is testable after update.
         statefuldev_url = self.update_url.replace('update', 'static/archive')
@@ -176,10 +160,9 @@ class ChromiumOSUpdater():
         try:
             self._run(' '.join(statefuldev_cmd), timeout=600)
         except error.AutoservRunError:
-            update_error = StatefulUpdateError('stateful_update failed on %s' %
-                                               self.host.hostname)
-            self._update_error_queue.put(update_error)
-            raise update_error
+            self.revert_boot_partition()
+            raise ChromiumOSError('stateful_update failed on %s' %
+                                  self.host.hostname)
 
 
     def run_update(self, force_update):
@@ -201,27 +184,15 @@ class ChromiumOSUpdater():
             raise ChromiumOSError(
                 'Update server at %s not available' % auserver_host)
 
-        logging.info('Installing from %s to: %s', self.update_url,
-                     self.host.hostname)
-
-        # Reset update_engine's state & check that update_engine is idle.
-        self.reset_update_engine()
+        logging.info(
+            'Installing from %s to: %s', self.update_url, self.host.hostname)
 
         try:
-            updaters = [
-                multiprocessing.process.Process(target=self._update_root),
-                multiprocessing.process.Process(target=self._update_stateful)
-                ]
+            logging.info('Updating root partition...')
+            self._update_root()
 
-            # Run the updaters in parallel.
-            for updater in updaters: updater.start()
-            for updater in updaters: updater.join()
-
-            # Re-raise the first error that occurred.
-            update_error = self._update_error_queue.get()
-            if update_error:
-                self.revert_boot_partition()
-                raise update_error
+            logging.info('Updating stateful partition...')
+            self._update_stateful()
 
             logging.info('Update complete.')
             return True
