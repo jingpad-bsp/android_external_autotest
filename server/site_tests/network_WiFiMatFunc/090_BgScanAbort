@@ -1,0 +1,32 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Purpose: This test case verifies that bgscan is aborted when there is
+# consistent outgoing traffic.
+{ "name":"BG_Scan_With_Outgoing_Traffic",
+  "steps":[
+    [ "create",                { "type":"hostap" } ],
+    [ "config",                { "channel":"2412", "mode":"11g" } ],
+
+    [ "bgscan_enable" ],
+    [ "bgscan_set",            { "short_interval": "10",
+                                 "long_interval": "10" } ],
+
+    [ "connect",               { "security":"none" } ],
+    [ "client_ping_bg",        { "interval":".1" } ],
+
+    [ "iw_event_scan" ],
+    [ "sleep"         ,        { "time": "20" } ],
+
+    [ "iw_event_scan_stop" ],
+    [ "client_ping_bg_stop" ],
+
+    [ "search_iw_events",      { "match": [ "scan started", "scan aborted"] } ],
+    [ "!search_iw_events",     { "match": [ "scan finished" ] } ],
+
+    [ "disconnect" ],
+    [ "deconfig" ],
+    [ "destroy" ],
+  ],
+}

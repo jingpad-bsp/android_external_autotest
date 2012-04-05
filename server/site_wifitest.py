@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -849,6 +849,52 @@ class WiFiTest(object):
              stats['min'], stats['avg'], stats['max'])
 
 
+    def iw_event_scan(self, params):
+        """ Obtain the event scan output and store it
+
+        Params:
+            duration: Indicates time in seconds.  If no duration
+                      provided, iw even runs until iw_even_scan_stop
+                      is called.
+        """
+        duration = params.get('duration', 0)
+        cmd = '%s event -f' % self.client_cmd_iw
+        self.iw_event_thread = HelperThread(self.client, cmd)
+        self.iw_event_thread.start()
+
+        if duration:
+            time.sleep(float(duration))
+            self.iw_event_thread_stop({})
+
+
+    def iw_event_scan_stop(self, params):
+        """ Stops the iw event thread """
+        self.client.run('pkill %s' % os.path.basename(self.client_cmd_iw))
+        self.iw_event_thread.join()
+        self.iw_event_thread_output = self.iw_event_thread.result.stdout
+        logging.debug('Output of iw scan is %s' % self.iw_event_thread_output)
+
+
+    def search_iw_events(self, params):
+        """ Searches through the last run iw event scan for strings
+
+        Params:
+            match: A list of strings to match.
+
+        Raises:
+            error.TestFail if any strings in match are not found in
+                iw event output.
+        """
+        match_list = params.get('match', [])
+        if not hasattr(self, 'iw_event_thread_output'):
+            return
+
+        for match in match_list:
+            if match not in self.iw_event_thread_output:
+                raise error.TestFail("Expecting %s in iw event output but "
+                               "it wasn't present.")
+
+
     def client_ping(self, params):
         """ Ping the server from the client """
         if 'ping_ip' in params:
@@ -891,7 +937,7 @@ class WiFiTest(object):
 
     def client_ping_bg_stop(self, params):
         if self.ping_thread is not None:
-            self.client.run("pkill %s", os.path.basename(self.client_cmd_ping))
+            self.client.run("pkill %s" % os.path.basename(self.client_cmd_ping))
             self.ping_thread.join()
             self.ping_thread = None
 
