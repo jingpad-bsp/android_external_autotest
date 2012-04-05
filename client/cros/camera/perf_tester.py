@@ -9,6 +9,7 @@ try:
 except ImportError:
     pass
 
+import itertools
 import math
 import numpy as np
 import sys
@@ -19,6 +20,7 @@ import grid_mapper
 from camera_utils import Pod
 from camera_utils import Pad
 from camera_utils import Unpad
+from multiprocessing import Pool
 
 _CORNER_MAX_NUM = 1000000
 _CORNER_QUALITY_RATIO = 0.05
@@ -33,12 +35,19 @@ _POINT_MATCHING_MAX_TOLERANCE_RATIO = 0.020
 _MTF_DEFAULT_MAX_CHECK_NUM = 40
 _MTF_DEFAULT_PATCH_WIDTH = 20
 _MTF_DEFAULT_CHECK_PASS_VALUE = 0.30
+_MTF_DEFAULT_CHECK_PASS_VALUE_LOWEST = 0.10
+_MTF_DEFAULT_THREAD_COUNT = 4
 
 _SHADING_DOWNSAMPLE_SIZE = 250.0
 _SHADING_BILATERAL_SPATIAL_SIGMA = 20
 _SHADING_BILATERAL_RANGE_SIGMA = 0.15
 _SHADING_DEFAULT_MAX_RESPONSE = 0.01
 _SHADING_DEFAULT_MAX_TOLERANCE_RATIO = 0.15
+
+
+def _MTFComputeWrapper(args):
+  '''Parallel MTF computation wrapper function.'''
+  return mtf_calculator.Compute(*args)[0]
 
 
 def _FindCornersOnConvexHull(hull):
@@ -383,20 +392,24 @@ def CheckVisualCorrectness(
 
 def CheckSharpness(sample, edges,
                    min_pass_mtf=_MTF_DEFAULT_CHECK_PASS_VALUE,
+                   min_pass_lowest_mtf=_MTF_DEFAULT_CHECK_PASS_VALUE_LOWEST,
                    mtf_sample_count=_MTF_DEFAULT_MAX_CHECK_NUM,
                    mtf_patch_width=_MTF_DEFAULT_PATCH_WIDTH,
-                   use_50p=True):
+                   use_50p=True,
+                   n_thread=_MTF_DEFAULT_THREAD_COUNT):
     '''Check if the captured image is sharp.
 
     Args:
         sample: The test target image. It needs to be single-channel.
         edges: A list of edges on the test image. Should be extracted with
                CheckVisualCorrectness.
-        min_pass_mtf: Minimum acceptable MTF value.
+        min_pass_mtf: Minimum acceptable (median) MTF value.
+        min_pass_lowest_mtf: Minimum acceptable lowest MTF value.
         mtf_sample_count: How many edges we are going to compute MTF values.
         mtf_patch_width: The desired margin on the both side of an edge. Larger
                          margins provides more precise MTF values.
         use_50p: Compute whether the MTF50P value or the MTF50 value.
+        n_thread: Number of threads to use to compute MTF values.
 
     Returns:
         1: Pass or Fail.
@@ -421,13 +434,33 @@ def CheckSharpness(sample, edges,
     mids = mids - np.amin(mids, axis=0)
     new_dim = np.amax(mids, axis=0) + 1
     perm = _StratifiedSample2D(mids, n_check, tuple([new_dim[1], new_dim[0]]))
-    mtfs = [mtf_calculator.Compute(sample, line_start[t], line_end[t],
-                                   mtf_patch_width, use_50p)[0] for t in perm]
+
+    # Multi-threading to speed up the computation.
+    if n_thread > 1:
+        pool = Pool(processes=min(n_thread, n_check))
+        mtfs = pool.map(_MTFComputeWrapper, itertools.izip(
+            itertools.repeat(sample), line_start[perm], line_end[perm],
+            itertools.repeat(mtf_patch_width),
+            itertools.repeat(use_50p)))
+        pool.close()
+        pool.join()
+    else:
+        mtfs = [mtf_calculator.Compute(sample, line_start[t], line_end[t],
+                                       mtf_patch_width,
+                                       use_50p)[0] for t in perm]
 
     # CHECK 1:
     # Check if the median of MTF values pass the threshold.
-    ret.mtf = np.median(np.array(mtfs))
+    mtfs = np.array(mtfs)
+    ret.mtf = np.median(mtfs)
     if  ret.mtf < min_pass_mtf:
         ret.msg = 'The MTF values are too low.'
+        return False, ret
+
+    # CHECK 2:
+    # Check if the minimum of MTF values pass the threshold.
+    ret.min_mtf = np.amin(mtfs)
+    if  ret.min_mtf < min_pass_lowest_mtf:
+        ret.msg = 'The min MTF value is too low.'
         return False, ret
     return True, ret

@@ -16,6 +16,7 @@ import gtk
 import logging
 import os
 import pprint
+import re
 import StringIO
 import time
 
@@ -203,8 +204,14 @@ class factory_CameraPerformanceAls(test.test):
                 self._state = self._state + 1
         self.switch_widget(self._state_widget[self._state])
 
+    def prepare_test(self):
+        self.ref_data = camperf.PrepareTest(self._TEST_CHART_FILE)
+
     def on_usb_insert(self, dev_path):
         if self._state == self._STATE_WAIT_USB:
+            # Initialize common test reference data.
+            self.prepare_test()
+            # Load config files and reset test results.
             self.dev_path = dev_path
             with MountedMedia(dev_path, 1) as config_dir:
                 config_path = os.path.join(config_dir, 'camera.params')
@@ -250,13 +257,10 @@ class factory_CameraPerformanceAls(test.test):
         self._update_status('sn', self.check_sn_format(serial_number))
         self.advance_state()
 
-    @staticmethod
-    def check_sn_format(sn):
-        # TODO(sheckylin): Check SN according to the spec in factory.
-        # We may replace this with a regular expression that can be
-        # read from the USB disk so the user can configure it on the
-        # fly.
-        return True
+    def check_sn_format(self, sn):
+        if re.search(self.config['sn_format'], sn):
+            return True
+        return False
 
     def write_to_usb(self, filename, content, content_type=_CONTENT_TXT):
         with MountedMedia(self.dev_path, 1) as mount_dir:
@@ -308,15 +312,8 @@ class factory_CameraPerformanceAls(test.test):
             return
 
         # Check the captured test pattern image validity.
-        ref_data = camperf.PrepareTest(self._TEST_CHART_FILE)
-
-        conf = self.config['cam_vc']
         success, tar_data = camperf.CheckVisualCorrectness(
-            self.target, ref_data,
-            register_grid=conf['register_grid'],
-            min_corner_quality_ratio=conf['min_corner_quality_ratio'],
-            min_square_size_ratio=conf['min_square_size_ratio'],
-            min_corner_distance_ratio=conf['min_corner_distance_ratio'])
+            self.target, self.ref_data, **self.config['cam_vc'])
 
         self._update_status('cam_vc', success)
         if not success:
@@ -330,12 +327,8 @@ class factory_CameraPerformanceAls(test.test):
             return
 
         # Check if the lens shading is present.
-        conf = self.config['cam_ls']
         success, tar_ls = camperf.CheckLensShading(
-            self.target,
-            check_low_freq=conf['check_low_freq'],
-            max_response=conf['max_response'],
-            max_shading_ratio=conf['max_shading_ratio'])
+            self.target, **self.config['cam_ls'])
 
         self._update_status('cam_ls', success)
         if tar_ls.check_low_freq:
@@ -346,16 +339,13 @@ class factory_CameraPerformanceAls(test.test):
             return
 
         # Check the image sharpness.
-        conf = self.config['cam_mtf']
         success, tar_mtf = camperf.CheckSharpness(
-            self.target, tar_data.edges,
-            min_pass_mtf=conf['min_pass_mtf'],
-            mtf_sample_count=conf['mtf_sample_count'],
-            mtf_patch_width=conf['mtf_patch_width'],
-            use_50p=conf['use_50p'])
+            self.target, tar_data.edges, **self.config['cam_mtf'])
 
         self._update_status('cam_mtf', success)
         self.log('MTF value: %f\n' % tar_mtf.mtf)
+        if hasattr(tar_mtf, 'min_mtf'):
+            self.log('Lowest MTF value: %f\n' % tar_mtf.min_mtf)
         if not success:
             self.log('Sharpness: %s\n' % tar_mtf.msg)
         return
@@ -525,7 +515,7 @@ class factory_CameraPerformanceAls(test.test):
 
         self.sn_input_widget = ful.make_input_window(
             prompt='Enter Serial Number (TAB to use testing sample SN):',
-            on_validate=None,
+            on_validate=self.check_sn_format,
             on_keypress=self.on_sn_keypress,
             on_complete=self.on_sn_complete)
 
