@@ -121,7 +121,7 @@
             "download_devserver": true,
             "archive_server": "gs://chromeos-releases/canary-channel/lumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
-            "build_pattern": "R19-*",
+            "build_pattern": "R*",
             "platforms": [
                 {"platform": "netbook_LUMPY",
                  "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron"]},
