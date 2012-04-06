@@ -22,6 +22,8 @@ from autotest_lib.server.cros import frontend_wrappers
 from autotest_lib.client.common_lib import logging_config, logging_manager
 
 CONFIG = global_config.global_config
+# This is the prefix that is used to denote an experimental test.
+EXPERIMENTAL_PREFIX = 'experimental_'
 
 
 class RunSuiteLoggingConfig(logging_config.LoggingConfig):
@@ -52,6 +54,12 @@ def get_pretty_status(status):
         return '[ PASSED ]'
     return '[ FAILED ]'
 
+def is_fail_status(status):
+    # All the statuses tests can have when they fail.
+    if status in ['FAIL', 'ERROR', 'TEST_NA']:
+        return True
+    return False
+
 
 def status_is_relevant(status):
     """
@@ -74,6 +82,31 @@ def generate_log_link(anchor, job_string):
     host = CONFIG.get_config_value('SERVER', 'hostname', type=str)
     pattern = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
     return "@@@STEP_LINK@%s@%s@@@" % (anchor, pattern % (host, job_string))
+
+
+def get_view_info(suite_job_id, view):
+    """
+    Parse a view for the slave job name and job_id.
+
+    @param suite_job_id: The job id of our master suite job.
+    @param view: Test result view.
+    @return A tuple job_name, experimental of the slave test run
+            described by view.
+    """
+    # By default, we are the main suite job since there is no
+    # keyval entry for our job_name.
+    job_name = '%s-%s' % (suite_job_id, getpass.getuser())
+    experimental = False
+    if 'job_keyvals' in view:
+        # The job name depends on whether it's experimental or not.
+        std_job_name = view['test_name'].split('.')[0]
+        exp_job_name = EXPERIMENTAL_PREFIX + std_job_name
+        if std_job_name in view['job_keyvals']:
+            job_name = view['job_keyvals'][std_job_name]
+        elif exp_job_name in view['job_keyvals']:
+            experimental = True
+            job_name = view['job_keyvals'][exp_job_name]
+    return job_name, experimental
 
 
 def main():
@@ -101,6 +134,9 @@ def main():
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     # Return code that will be sent back to autotest_rpc_server.py
+    # 0 = OK
+    # 1 = ERROR
+    # 2 = WARNING
     code = 0
     while wait and True:
         if not afe.get_jobs(id=job_id, finished=True):
@@ -111,8 +147,8 @@ def main():
 
         relevant_views = filter(status_is_relevant, views)
         if not relevant_views:
-           # The main suite job most likely failed in SERVER_JOB.
-           relevant_views = views
+            # The main suite job most likely failed in SERVER_JOB.
+            relevant_views = views
 
         log_links = []
         for entry in relevant_views:
@@ -124,18 +160,17 @@ def main():
                 print "%s  %s: %s" % (test_entry,
                                       entry['status'],
                                       entry['reason'])
-                job_name = entry['test_name'].split('.')[0]
-                if 'job_keyvals' in entry and job_name in entry['job_keyvals']:
-                    job_name = entry['job_keyvals'][job_name]
-                else:
-                  # We are the main suite job since there is no keyval entry
-                  # for our job_name.
-                  job_name = '%s-%s' % (job_id, getpass.getuser())
+                job_name, experimental = get_view_info(job_id, entry)
 
                 log_links.append(generate_log_link(entry['test_name'],
                                                    job_name))
-                if code == 0 and entry['status'] == 'WARN':
-                    # IFF this is the only error, and it's a warning...
+                if code == 1:
+                    # Failed already, no need to worry further.
+                    continue
+                if (entry['status'] == 'WARN' or
+                    (is_fail_status(entry['status']) and experimental)):
+                    # Failures that produce a warning. Either a test with WARN
+                    # status or any experimental test failure.
                     code = 2
                 else:
                     code = 1
