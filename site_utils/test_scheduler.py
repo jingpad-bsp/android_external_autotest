@@ -297,38 +297,39 @@ def main():
         new_dev = new_dev_server.DevServer()
         # The variable board is akin to target in the new nomenclature. This is
         # the old style and the new style clashing.
-        build = new_dev.get_latest_build(board)
-        if not build:
-          continue
-        test_runner = TestRunner(
-            board=board, build=build, cli=options.cli, config=config, dev=dev,
-            new_dev=new_dev, upload=True)
+        for milestone in ['r18', 'r19', 'r20']:
+          build = new_dev.get_latest_build(board, milestone=milestone)
+          if not build:
+            continue
+          test_runner = TestRunner(
+              board=board, build=build, cli=options.cli, config=config,
+              dev=dev, new_dev=new_dev, upload=True)
 
-        # Determine which groups to run.
-        full_groups = []
-        if 'groups' in platform:
-          full_groups += platform['groups']
-        else:
-          # Add default groups to the job since 'groups' was not defined.
-          # if test_suite is set to True use 'default_tot_groups' from the json
-          # configuration, otherwise use 'default_groups.'
-          if platform.get('test_suite'):
-            full_groups += config['default_tot_groups']
+          # Determine which groups to run.
+          full_groups = []
+          if 'groups' in platform:
+            full_groups += platform['groups']
           else:
-            full_groups += config['default_groups']
+            # Add default groups to the job since 'groups' was not defined.
+            # if test_suite is set to True use 'default_tot_groups' from the
+            # json configuration, otherwise use 'default_groups.'
+            if platform.get('test_suite'):
+              full_groups += config['default_tot_groups']
+            else:
+              full_groups += config['default_groups']
 
-          if 'extra_groups' in platform:
-            full_groups += platform['extra_groups']
+            if 'extra_groups' in platform:
+              full_groups += platform['extra_groups']
 
-        test_runner.RunTestGroups(
-            groups=full_groups, platform=platform['platform'])
+          test_runner.RunTestGroups(
+              groups=full_groups, platform=platform['platform'])
 
-        # Skip platforms which are not marked for AU testing.
-        if not platform.get('au_test', False):
-          continue
+          # Skip platforms which are not marked for AU testing.
+          if not platform.get('au_test', False):
+            continue
 
-        # Process AU targets.
-        test_runner.RunAutoupdateTests(platform)
+          # Process AU targets.
+          test_runner.RunAutoupdateTests(platform)
       except common_util.ChromeOSTestError, e:
         logging.exception(e)
         logging.warning('Exception encountered during processing. Skipping.')
