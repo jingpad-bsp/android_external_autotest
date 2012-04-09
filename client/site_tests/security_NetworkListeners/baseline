@@ -2,4 +2,3 @@
 # list, consider offsetting it with a blacklist in
 # ensure_no_nonrelease_files.config.
 sshd *:ssh
-endpoint *:10115
