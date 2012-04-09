@@ -2,16 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import os
-import sys
-import tempfile
-import thread
-
-import gobject
-import gtk
-from gtk import gdk
-
 import select_task
 
 from autotest_lib.client.bin import test

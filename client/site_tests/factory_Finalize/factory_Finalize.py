@@ -6,7 +6,6 @@
 import logging
 import os
 import sys
-import thread
 import time
 
 import gtk
@@ -47,6 +46,7 @@ class PreflightTask(task.FactoryTask):
         def create_label(message):
             return ui.make_label(message, fg=self.COLOR_DISABLED,
                                  alignment=(0, 0.5))
+        self.updating = False
         self.developer_mode = developer_mode
         self.test_list = test_list
         self.items = [(self.check_required_tests,
@@ -86,47 +86,49 @@ class PreflightTask(task.FactoryTask):
                        for x in state_map.values())
 
     def update_results(self):
-        # TODO(hungte) Rewrite in tasklet.
-        # Change system to "checking" state.
+        self.updating = True
         for _, label in self.items:
             label.modify_fg(gtk.STATE_NORMAL, self.COLOR_DISABLED)
-            gtk.main_iteration(False)
         self.label_status.set_label(self.MSG_CHECKING)
-        gtk.main_iteration(False)
 
-        # In developer mode, provide more visual feedback.
-        if self.developer_mode:
-            gtk.main_iteration(False)
-            time.sleep(.5)
+        def update_summary():
+            self.updating = False
+            self.label_status.set_label(
+                    self.MSG_READY if all(self.results) else self.MSG_PENDING)
+            # In developer mode, provide more visual feedback.
+            if self.developer_mode:
+                time.sleep(.5)
 
-        self.results = []
-        result_message = self.MSG_READY
-
-        for checker, label in self.items:
+        def next_test():
+            if not items:
+                update_summary()
+                return
+            checker, label = items.pop(0)
             result = checker()
-            if not result:
-                result_message = self.MSG_PENDING
             label.modify_fg(gtk.STATE_NORMAL,
                             self.COLOR_PASSED if result else self.COLOR_FAILED)
             self.results.append(result)
-            gtk.main_iteration(False)
-        self.label_status.set_label(result_message)
+            task.schedule(next_test)
+
+        # Perform all tests
+        items = self.items[:]
+        self.results = []
+        task.schedule(next_test)
 
     def window_key_press(self, widget, event):
-        stop_preflight = False
+        if self.updating:
+            return True
+
         if event.keyval == ord('f'):
             factory.log("WARNING: Operator manually forced finalization.")
-            stop_preflight= True
         elif event.keyval == ord(' '):
-            if all(self.results):
-                stop_preflight = True
-            else:
+            if not all(self.results):
                 self.update_results()
+                return True
         else:
             return False
 
-        if stop_preflight:
-            self.stop()
+        self.stop()
         return True
 
     def start(self):

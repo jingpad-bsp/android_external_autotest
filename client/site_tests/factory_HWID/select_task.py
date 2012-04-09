@@ -67,8 +67,6 @@ class SelectHwidTask(task.FactoryTask):
         hwid = data[1]
         factory.log('Selected: %s' % ', '.join(data).replace('\n', ' '))
 
-        self.label.set_text('Checking selected HWID [%s]...' % hwid)
-        gtk.main_iteration(False)  # try to update screen
         # TODO(tammo) Use hwid_tool or probe to quick probe if selected HWID
         # matches current system, by checking non-firmware components.
 

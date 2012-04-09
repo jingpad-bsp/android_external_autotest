@@ -115,7 +115,6 @@ class factory_LightSensor(test.test):
     def next_subtest(self):
         self._tested += 1
         if self._tested >= len(self._subtest_list):
-            gtk.main_iteration(False)
             gtk.main_quit()
             return False
         self._active_subtest = self._subtest_list[self._tested]
@@ -199,7 +198,6 @@ class factory_LightSensor(test.test):
 
         sensor_value.set_text('%d' % val)
         sensor_value.queue_draw()
-        gtk.main_iteration(False)
         return True
 
     def label_status_expose(self, widget, event, name):

@@ -11,20 +11,17 @@
 
 
 import cairo
-import glob
-import gobject
 import gtk
 import pango
 import pyudev
-import pyudev.glib
 import os
-import sys
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.cros.factory import task
+from autotest_lib.client.cros.factory import ui
 
 
 _STATE_WAIT_INSERT = 1
@@ -115,11 +112,13 @@ class factory_ExternalStorage(test.test):
         return 'USB'
 
     def test_read_write(self, subtest_tag):
-        devpath = self._target_device
-        self._prompt.set_text(_TESTING_FMT_STR(devpath))
+        self._prompt.set_text(_TESTING_FMT_STR(self._target_device))
         self._image = self.testing_image
         self._pictogram.queue_draw()
-        gtk.main_iteration()
+        task.schedule(self._invoke_test_read_write, subtest_tag)
+
+    def _invoke_test_read_write(self, subtest_tag):
+        devpath = self._target_device
         requirement = {'read_write_verify': ['read_bw', 'write_bw']}
         constraint = list()
         if self._min_read_speed is not None:
@@ -144,11 +143,13 @@ class factory_ExternalStorage(test.test):
         self._pictogram.queue_draw()
 
     def test_lock(self, subtest_tag):
-        devpath = self._target_device
-        self._prompt.set_text(_TESTING_FMT_STR(devpath))
+        self._prompt.set_text(_TESTING_FMT_STR(self._target_device))
         self._image = self.testing_image
         self._pictogram.queue_draw()
-        gtk.main_iteration()
+        task.schedule(self._invoke_test_lock, subtest_tag)
+
+    def _invoke_test_lock(self, subtest_tag):
+        devpath = self._target_device
         requirement = {'read_write_verify': list()}
         result = self.job.run_test('hardware_StorageFio',
                                    dev=devpath,
@@ -283,7 +284,7 @@ class factory_ExternalStorage(test.test):
         test_widget.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse('black'))
         test_widget.add(vbox)
 
-        ful.run_test_widget(self.job, test_widget)
+        ui.run_test_widget(self.job, test_widget)
 
         if self._error:
             raise error.TestFail(self._error)

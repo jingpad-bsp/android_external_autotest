@@ -75,7 +75,6 @@ class factory_LidSwitch(test.test):
 
     countdown_label.set_text('%d' % time_remaining)
     countdown_label.queue_draw()
-    gtk.main_iteration(False)
     return True
 
   def register_callbacks(self, window):
