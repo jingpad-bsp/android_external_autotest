@@ -40,8 +40,8 @@ class graphics_WindowManagerGraphicsCapture(cros_ui_test.UITest):
         options = ' --screenshot1_sec 2'
         options += ' --screenshot2_sec 1'
         options += ' --cooldown_sec 1'
-        options += ' --screenshot1_cmd "screenshot %s"' % screenshot1_generated
-        options += ' --screenshot2_cmd "screenshot %s"' % screenshot2_generated
+        options += ' --screenshot1_cmd "DISPLAY=:0 xwd -root | convert - %s"' % screenshot1_generated
+        options += ' --screenshot2_cmd "DISPLAY=:0 xwd -root | convert - %s"' % screenshot2_generated
 
         utils.system(exefile + " " + options)
 
