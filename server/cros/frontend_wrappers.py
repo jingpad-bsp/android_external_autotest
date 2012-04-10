@@ -23,17 +23,6 @@ def jittered_delay(delay):
     return delay + random.choice([-1, 1]) * random.random() * .5 * delay
 
 
-def try_noop_rpc():
-    """Try a simple RPC to the AFE to see if RPCs in general are succeeding.
-
-    @return True if we can send an RPC and get a response.  False otherwise."""
-    try:
-        frontend.AFE().get_labels()
-    except Exception:
-        return False
-    return True
-
-
 def retry(ExceptionToCheck, timeout_min=1, delay_sec=3):
     """Retry calling the decorated function using a delay with jitter.
 
@@ -57,18 +46,12 @@ def retry(ExceptionToCheck, timeout_min=1, delay_sec=3):
                     return func(*args, **kwargs)
                     break
                 except ExceptionToCheck, e:
-                    if try_noop_rpc() is True:
-                        # We can send RPCs in general, so there must be a
-                        # problem with our call in particular.
-                        raise e
-
                     msg = "%s(%s), Retrying in %f seconds..." % (e.__class__,
                                                                  e,
                                                                  delay)
                     logging.warning(msg)
                     time.sleep(delay)
             else:
-                # On the last try, run func() and allow exceptions to escape.
                 return func(*args, **kwargs)
             return
         return func_retry  # true decorator
