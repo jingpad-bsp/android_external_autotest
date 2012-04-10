@@ -58,7 +58,7 @@ class FrontendWrappersTest(mox.MoxTestBase):
         self.assertTrue(time.time() < deadline)
 
 
-    def testRetryDecoratorFailss(self):
+    def testRetryDecoratorFails(self):
         """Tests that a wrapped function retries til the timeout, then fails."""
         timeout_min = .01
         timeout_sec = timeout_min * 60

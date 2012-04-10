@@ -52,6 +52,7 @@ def retry(ExceptionToCheck, timeout_min=1, delay_sec=3):
                     logging.warning(msg)
                     time.sleep(delay)
             else:
+                # On the last try, run func() and allow exceptions to escape.
                 return func(*args, **kwargs)
             return
         return func_retry  # true decorator
