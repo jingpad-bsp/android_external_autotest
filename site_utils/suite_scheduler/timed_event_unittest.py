@@ -9,6 +9,7 @@
 import datetime, logging, mox,  unittest
 
 import deduping_scheduler, forgiving_config_parser, task, timed_event
+import manifest_versions
 
 
 class TimedEventTestBase(mox.MoxTestBase):
@@ -18,6 +19,7 @@ class TimedEventTestBase(mox.MoxTestBase):
     def setUp(self):
         super(TimedEventTestBase, self).setUp()
         self.mox.StubOutWithMock(timed_event.TimedEvent, '_now')
+        self.mv = self.mox.CreateMock(manifest_versions.ManifestVersions)
 
 
     def BaseTime(self):
@@ -25,7 +27,7 @@ class TimedEventTestBase(mox.MoxTestBase):
         raise NotImplementedError()
 
 
-    def CreateTrigger(self):
+    def CreateEvent(self):
         """Return an instance of the TimedEvent subclass being tested."""
         raise NotImplementedError()
 
@@ -45,7 +47,7 @@ class TimedEventTestBase(mox.MoxTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
 
-        t = self.CreateTrigger()  # Deadline gets set for a future time.
+        t = self.CreateEvent()  # Deadline gets set for a future time.
         self.assertFalse(t.ShouldHandle())
         self.mox.VerifyAll()
 
@@ -60,7 +62,7 @@ class TimedEventTestBase(mox.MoxTestBase):
         """We happened to create the trigger at the exact right time."""
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
-        to_test = self.CreateTrigger()
+        to_test = self.CreateEvent()
         self.assertTrue(to_test.ShouldHandle())
 
 
@@ -72,9 +74,30 @@ class TimedEventTestBase(mox.MoxTestBase):
         timed_event.TimedEvent._now().AndReturn(fire_now)
         self.mox.ReplayAll()
 
-        t = self.CreateTrigger()  # Deadline gets set for later tonight...
+        t = self.CreateEvent()  # Deadline gets set for later tonight...
         # ...but has passed by the time we get around to firing.
         self.assertTrue(t.ShouldHandle())
+
+
+    def doTestGetBranchBuilds(self, days):
+        board = 'faux_board'
+        branch_manifests = {('factory','16'): ['last16'],
+                            ('release','17'): ['first17', 'last17']}
+        self.mv.ManifestsSince(days, board).AndReturn(branch_manifests)
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
+        self.mox.ReplayAll()
+
+        branch_builds = self.CreateEvent().GetBranchBuildsForBoard(board,
+                                                                   self.mv)
+        for (type, milestone), manifests in branch_manifests.iteritems():
+            build = None
+            if type in task.Task.BARE_BRANCHES:
+                build = branch_builds[type]
+                self.assertTrue(build.startswith('%s-%s' % (board, type)))
+            else:
+                build = branch_builds[milestone]
+                self.assertTrue(build.startswith('%s-release' % board))
+            self.assertTrue('R%s-%s' % (milestone, manifests[-1]) in build)
 
 
 class NightlyTest(TimedEventTestBase):
@@ -94,7 +117,7 @@ class NightlyTest(TimedEventTestBase):
         return datetime.datetime(2012, 1, 1, self._HOUR)
 
 
-    def CreateTrigger(self):
+    def CreateEvent(self):
         """Return an instance of timed_event.Nightly."""
         return timed_event.Nightly(self._HOUR)
 
@@ -132,7 +155,7 @@ class NightlyTest(TimedEventTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
 
-        nightly = self.CreateTrigger()  # Deadline gets set for tomorrow night.
+        nightly = self.CreateEvent()  # Deadline gets set for tomorrow night.
         self.assertFalse(nightly.ShouldHandle())
         self.mox.VerifyAll()
 
@@ -166,6 +189,11 @@ class NightlyTest(TimedEventTestBase):
         self.doTestTOCTOU()
 
 
+    def testGetBranchBuilds(self):
+        """Ensure Nightly gets most recent builds in last day."""
+        self.doTestGetBranchBuilds(days=1)
+
+
 class WeeklyTest(TimedEventTestBase):
     """Unit tests for Weekly.
 
@@ -187,7 +215,7 @@ class WeeklyTest(TimedEventTestBase):
         return basetime
 
 
-    def CreateTrigger(self):
+    def CreateEvent(self):
         """Return an instance of timed_event.Weekly."""
         return timed_event.Weekly(self._DAY, self._HOUR)
 
@@ -214,7 +242,7 @@ class WeeklyTest(TimedEventTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
 
-        weekly = self.CreateTrigger()  # Deadline gets set for next week.
+        weekly = self.CreateEvent()  # Deadline gets set for next week.
         self.assertFalse(weekly.ShouldHandle())
         self.mox.VerifyAll()
 
@@ -253,6 +281,11 @@ class WeeklyTest(TimedEventTestBase):
     def testTOCTOU(self):
         """Even if deadline passes during initialization, trigger must fire."""
         self.doTestTOCTOU()
+
+
+    def testGetBranchBuilds(self):
+        """Ensure Weekly gets most recent builds in last 7 days."""
+        self.doTestGetBranchBuilds(days=7)
 
 
 if __name__ == '__main__':

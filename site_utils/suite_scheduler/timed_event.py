@@ -7,6 +7,11 @@ import base_event, forgiving_config_parser, task
 
 
 class TimedEvent(base_event.BaseEvent):
+    """Base class for events that trigger based on time/day.
+
+    @var _SECTION_SUFFIX: suffix of config file sections that apply to derived
+                          classes of TimedEvent.
+    """
 
     _SECTION_SUFFIX = '_params'
 
@@ -46,8 +51,44 @@ class TimedEvent(base_event.BaseEvent):
         return self._now() >= self._deadline
 
 
-class Nightly(TimedEvent):
+    def _BuildName(self, board, type, milestone, manifest):
+        """Format a build name, given board, type, milestone, and manifest num.
 
+        @param board: board the manifest is for, e.g. x86-alex.
+        @param type: one of 'release', 'factory', or 'firmware'
+        @param milestone: (numeric) milestone the manifest was associated with.
+        @param manifest: manifest number, e.g. '2015.0.0'
+        @return a build name, e.g. 'x86-alex-release/R20-2015.0.0'
+        """
+        return "%s-%s/R%s-%s" % (board, type, milestone, manifest)
+
+
+    def _LatestPerBranchBuildsSince(self, board, days_ago, manifest_versions):
+        """Get latest per-branch, per-board builds from last |days_ago| days.
+
+        @param board: the board whose builds we want.
+        @param days_ago: how many days back to look for manifests.
+        @param manifest_versions: ManifestVersions instance to use for querying.
+        @return {branch: build-name}
+        """
+        all_branch_manifests = manifest_versions.ManifestsSince(days_ago, board)
+        latest_branch_manifests = {}
+        for (type, milestone), manifests in all_branch_manifests.iteritems():
+            build = self._BuildName(board, type, milestone, manifests[-1])
+            if type in task.Task.BARE_BRANCHES:
+                latest_branch_manifests[type] = build
+            else:
+                latest_branch_manifests[milestone] = build
+        return latest_branch_manifests
+
+
+class Nightly(TimedEvent):
+    """A TimedEvent that happens every night.
+
+    @var KEYWORD: the keyword to use in a run_on option to associate a task
+                  with the Nightly event.
+    @var _DEFAULT_HOUR: can be overridden in the "nightly_params" config section
+    """
 
     KEYWORD = 'nightly'
     _DEFAULT_HOUR = 21
@@ -73,8 +114,18 @@ class Nightly(TimedEvent):
         super(Nightly, self).__init__(self.KEYWORD, deadline)
 
 
-class Weekly(TimedEvent):
+    def GetBranchBuildsForBoard(self, board, manifest_versions):
+        return self._LatestPerBranchBuildsSince(board, 1, manifest_versions)
 
+
+class Weekly(TimedEvent):
+    """A TimedEvent that happens every week.
+
+    @var KEYWORD: the keyword to use in a run_on option to associate a task
+                  with the Weekly event.
+    @var _DEFAULT_DAY: can be overridden in the "weekly_params" config section.
+    @var _DEFAULT_HOUR: can be overridden in the "weekly_params" config section.
+    """
 
     KEYWORD = 'weekly'
     _DEFAULT_DAY = 5  # Saturday
@@ -104,3 +155,7 @@ class Weekly(TimedEvent):
         else:
             deadline = this_week_deadline + datetime.timedelta(days=7)
         super(Weekly, self).__init__(self.KEYWORD, deadline)
+
+
+    def GetBranchBuildsForBoard(self, board, manifest_versions):
+        return self._LatestPerBranchBuildsSince(board, 7, manifest_versions)

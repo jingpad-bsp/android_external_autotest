@@ -56,6 +56,16 @@ class BaseEvent(object):
         self._tasks = set(iterable_of_tasks)
 
 
+    def GetBranchBuildsForBoard(self, board, manifest_versions):
+        """Get per-branch, per-board builds since last Weekly run.
+
+        @param board: the board whose builds we want.
+        @param manifest_versions: ManifestVersions instance to use for querying.
+        @return {branch: build-name}
+        """
+        raise NotImplementedError()
+
+
     def ShouldHandle(self):
         """Returns True if this BaseEvent should be fired, False if not.
 

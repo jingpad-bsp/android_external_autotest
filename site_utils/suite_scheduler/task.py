@@ -22,7 +22,7 @@ class Task(object):
     correct use in dicts, sets, etc.
     """
 
-    _BARE_BRANCHES = ['factory', 'firmware']
+    BARE_BRANCHES = ['factory', 'firmware']
 
 
     @staticmethod
@@ -60,7 +60,7 @@ class Task(object):
     def CheckBranchSpecs(branch_specs):
         """Make sure entries in the list branch_specs are correctly formed.
 
-        We accept any of Task._BARE_BRANCHES in |branch_specs|, as
+        We accept any of Task.BARE_BRANCHES in |branch_specs|, as
         well as _one_ string of the form '>=RXX', where 'RXX' is a
         CrOS milestone number.
 
@@ -69,7 +69,7 @@ class Task(object):
         """
         have_seen_numeric_constraint = False
         for branch in branch_specs:
-            if branch in Task._BARE_BRANCHES:
+            if branch in Task.BARE_BRANCHES:
                 continue
             if branch.startswith('>=R') and not have_seen_numeric_constraint:
                 have_seen_numeric_constraint = True

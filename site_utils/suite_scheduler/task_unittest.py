@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for site_utils/triggerable_job.py."""
+"""Unit tests for site_utils/task.py."""
 
 import logging, mox, unittest
 
