@@ -31,6 +31,11 @@ class InadequateHostsException(Exception):
     pass
 
 
+class NoHostsException(Exception):
+    """Raised when there are no healthy hosts to run a suite."""
+    pass
+
+
 def reimage_and_run(**dargs):
     """
     Backward-compatible API for dynamic_suite.
@@ -275,7 +280,10 @@ class Reimager(object):
         @raises InadequateHostsException: if too few working hosts.
         """
         labels = [l for l in [board, pool] if l is not None]
-        if num > self._count_usable_hosts(labels):
+        available = self._count_usable_hosts(labels)
+        if available == 0:
+            raise NoHostsException('All hosts with %r are dead!' % labels)
+        elif num > available:
             raise InadequateHostsException('Too few hosts with %r' % labels)
 
 

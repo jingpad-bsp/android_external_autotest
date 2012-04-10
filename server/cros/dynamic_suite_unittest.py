@@ -424,7 +424,24 @@ class ReimagerTest(mox.MoxTestBase):
 
     def testReimageThatCouldNotSchedule(self):
         """Should attempt a reimage that can't be scheduled."""
-        canary = FakeJob()
+        self.mox.StubOutWithMock(self.reimager, '_ensure_version_label')
+        self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
+
+        self.mox.StubOutWithMock(self.reimager, '_count_usable_hosts')
+        self.reimager._count_usable_hosts(mox.IgnoreArg()).AndReturn(1)
+
+        rjob = self.mox.CreateMock(base_job.base_job)
+        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
+        rjob.record('END WARN', mox.IgnoreArg(), mox.IgnoreArg(),
+                    mox.StrContains('Too few hosts'))
+        self.expect_label_cleanup(self._BUILD)
+        self.mox.ReplayAll()
+        self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
+        self.reimager.clear_reimaged_host_state(self._BUILD)
+
+
+    def testReimageWithNoAvailableHosts(self):
+        """Should attempt a reimage while all hosts are dead."""
         self.mox.StubOutWithMock(self.reimager, '_ensure_version_label')
         self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
 
@@ -433,8 +450,8 @@ class ReimagerTest(mox.MoxTestBase):
 
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
-        rjob.record('END WARN', mox.IgnoreArg(), mox.IgnoreArg(),
-                    mox.StrContains('Too few hosts'))
+        rjob.record('END ERROR', mox.IgnoreArg(), mox.IgnoreArg(),
+                    mox.StrContains('All hosts'))
         self.expect_label_cleanup(self._BUILD)
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
