@@ -35,6 +35,7 @@
   ["desktopui_PyAutoPerfTests", "score_V8Benchmark"],
   ["desktopui_PyAutoPerfTests",
    "score_V8Benchmark-Richards,score_V8Benchmark-DeltaBlue,score_V8Benchmark-Crypto,score_V8Benchmark-RayTrace,score_V8Benchmark-EarleyBoyer,score_V8Benchmark-RegExp,score_V8Benchmark-Splay"],
+  # Do not remove any flash tests without asking ihf.
   ["desktopui_PyAutoPerfTests",
    "FPS_ScrollBlankPage,FPS_ScrollTextPage,FPS_ScrollGooglePlusPage,FPS_ScrollGmail"],
   ["desktopui_PyAutoPerfTests", "FPS_FlashGaming,FPS_FlashText"],
@@ -56,5 +57,11 @@
   ["desktopui_PyAutoPerfTests",
    "fps_WebGLAquarium,fps_WebGLField,fps_WebGLSpaceRocks"],
   ["desktopui_PyAutoPerfTests", "Fraction_AngryBirdsCpuBusy"],
-  ["desktopui_PyAutoPerfTests", "MB_AngryBirdsV8HeapSize"]
+  ["desktopui_PyAutoPerfTests", "MB_AngryBirdsV8HeapSize"],
+  # Do not remove graphics_* tests without asking [ihf|marcheu|sabercrombie].
+  ["graphics_GLBench",
+   "1280x768_fps_compositing,mpixels_sec_clear_colordepthstencil,mpixels_sec_fill_solid_depth_never,mpixels_sec_varyings_shader_1,mpixels_sec_yuv_shader_4,mtexel_sec_texture_update_teximage2d_256,mtexel_sec_texture_update_texsubimage2d_256,mtri_sec_triangle_setup_half_culled,mvtx_sec_attribute_fetch_shader_8_attr"],
+  ["graphics_Piglit", "count_subtests_pass,count_subtests_fail"],
+  ["graphics_WebGLConformance", "count_tests_fail,count_tests_pass,count_tests_timeout"],
+  ["graphics_WebGLPerformance", "time_ms_geom_mean"]
 ]
