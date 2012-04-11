@@ -19,22 +19,20 @@ class network_Ping(test.test):
         Returns:
             string, dotted ip address of gateway.
         """
-        gateway = 'UGH'
-        cmd = 'netstat -nr'
-        address = None
+        cmd = 'ip route'
         output = utils.system_output('%s' % cmd)
 
-        linesout = output.splitlines()
+        linesout = output.split('\n')
         for line in linesout:
-            if gateway in line:
+            if 'default' in line:
                 s = line.split()
-                address = s[1]
-                break
+                ipaddress = s[2]
 
-        if not address:
+        if ipaddress:
+            return ipaddress
+        else:
             logging.error('Error determining default gateway!')
-
-        return address
+            return None
 
 
     def run_once(self):
