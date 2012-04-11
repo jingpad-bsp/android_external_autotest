@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, mm, time
+import dbus, logging, time
 
 import common, flimflam_test_path
 from autotest_lib.client.common_lib import utils
+import mm # Requires flimflam_test_path to be imported first.
 
 def _Bug24628WorkaroundEnable(modem):
     """Enable a modem.  Try again if a SerialResponseTimeout is received."""
