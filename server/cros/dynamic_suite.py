@@ -713,8 +713,7 @@ class Suite(object):
         if add_experimental:
             # TODO(cmasone): ensure I can log results from these differently.
             for test in self.unstable_tests():
-                logging.debug('Scheduling experimental %s', test.name)
-                test.name = 'experimental_' + test.name
+                logging.debug('Scheduling %s', test.name)
                 self._jobs.append(self._create_job(test))
         if self._results_dir:
             self._record_scheduled_jobs()
