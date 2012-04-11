@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,35 +8,28 @@ from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_remote_power
-from autotest_lib.server.hosts import base_classes
+from autotest_lib.server.hosts import remote
 
 
-parser = autoserv_parser.autoserv_parser
+class SiteHost(remote.RemoteHost):
+    """Chromium OS specific subclass of Host."""
 
-# Time to wait for new kernel to be marked successful.
-_KERNEL_UPDATE_TIMEOUT = 60
+    _parser = autoserv_parser.autoserv_parser
 
-# Ephemeral file to indicate that an update has just occurred.
-_JUST_UPDATED_FLAG = '/tmp/just_updated'
+    # Time to wait for new kernel to be marked successful.
+    _KERNEL_UPDATE_TIMEOUT = 60
 
+    # Ephemeral file to indicate that an update has just occurred.
+    _JUST_UPDATED_FLAG = '/tmp/just_updated'
 
-class ChromiumOSHost(base_classes.Host):
-    """ChromiumOSHost is a special subclass of SSHHost that supports
-    additional install methods.
-    """
-    def __initialize(self, hostname, *args, **dargs):
-        """
-        Construct a ChromiumOSHost object
-
-        Args:
-             hostname: network hostname or address of remote machine
-        """
-        super(ChromiumOSHost, self)._initialize(hostname, *args, **dargs)
+    def _initialize(self, hostname, *args, **dargs):
+        super(SiteHost, self)._initialize(hostname=hostname,
+                                          *args, **dargs)
 
 
     def machine_install(self, update_url=None, force_update=False):
-        if not update_url and parser.options.image:
-            update_url = parser.options.image
+        if not update_url and self._parser.options.image:
+            update_url = self._parser.options.image
         elif not update_url:
             raise autoupdater.ChromiumOSError(
                 'Update failed. No update URL provided.')
@@ -79,7 +72,7 @@ class ChromiumOSHost(base_classes.Host):
                     exception=autoupdater.ChromiumOSError(
                         'Update failed. Timed out waiting for system to mark'
                         ' new kernel as successful.'),
-                    timeout=_KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
+                    timeout=self._KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
 
             # TODO(dalecurtis): Hack for R12 builds to make sure BVT runs of
             # platform_Shutdown pass correctly.
@@ -88,7 +81,7 @@ class ChromiumOSHost(base_classes.Host):
 
             # Mark host as recently updated. Hosts are rebooted at the end of
             # every test cycle which will remove the file.
-            self.run('touch %s' % _JUST_UPDATED_FLAG)
+            self.run('touch %s' % self._JUST_UPDATED_FLAG)
 
         # Clean up any old autotest directories which may be lying around.
         for path in global_config.global_config.get_config_value(
@@ -101,25 +94,18 @@ class ChromiumOSHost(base_classes.Host):
         # Check for the existence of the just updated flag file.
         return self.run(
             '[ -f %s ] && echo T || echo F'
-            % _JUST_UPDATED_FLAG).stdout.strip() == 'T'
+            % self._JUST_UPDATED_FLAG).stdout.strip() == 'T'
 
 
     def cleanup(self):
         """Special cleanup method to make sure hosts always get power back."""
-        super(ChromiumOSHost, self).cleanup()
+        super(SiteHost, self).cleanup()
         remote_power = site_remote_power.RemotePower(self.hostname)
         if remote_power:
             remote_power.set_power_on()
 
 
-    def verify(self):
-        """Override to ensure only our version of verify_software() is run."""
-        self.verify_hardware()
-        self.verify_connectivity()
-        self.__verify_software()
-
-
-    def __verify_software(self):
+    def verify_software(self):
         """Ensure the stateful partition has space for Autotest and updates.
 
         Similar to what is done by AbstractSSH, except instead of checking the
@@ -130,7 +116,7 @@ class ChromiumOSHost(base_classes.Host):
         writable. We still want to pass verify in this state since the partition
         will be recovered with the next install.
         """
-        super(ChromiumOSHost, self).verify_software()
+        super(SiteHost, self).verify_software()
         self.check_diskspace(
             '/mnt/stateful_partition',
             global_config.global_config.get_config_value(

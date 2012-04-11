@@ -1,6 +1,9 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+from autotest_lib.server.hosts.chromiumos_host import SiteHost
+
 
 def make_ssh_command(user='root', port=22, opts='', hosts_file=None,
                      connect_timeout=None, alive_interval=None):
