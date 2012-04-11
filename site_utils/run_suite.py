@@ -41,6 +41,8 @@ def parse_options():
     parser.add_option("-s", "--suite_name", dest="name")
     parser.add_option("-t", "--timeout_min", dest="timeout_min", default=30)
     parser.add_option("-d", "--delay_sec", dest="delay_sec", default=10)
+    parser.add_option("-m", "--mock_job_id", dest="mock_job_id",
+                      help="Skips running suite; creates report for given ID.")
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -58,8 +60,7 @@ def status_is_relevant(status):
     @param status: frontend.TestStatus object to look at.
     @return True if this is a test result worth looking at further.
     """
-    return not (status['test_name'].startswith('SERVER_JOB') or
-                status['test_name'].startswith('CLIENT_JOB'))
+    return not status['test_name'].startswith('CLIENT_JOB')
 
 
 def generate_log_link(anchor, job_string):
@@ -77,9 +78,10 @@ def generate_log_link(anchor, job_string):
 
 def main():
     parser, options, args = parse_options()
-    if args or not options.build or not options.board or not options.name:
-        parser.print_help()
-        return
+    if not options.mock_job_id:
+        if args or not options.build or not options.board or not options.name:
+            parser.print_help()
+            return
 
     logging_manager.configure_logging(RunSuiteLoggingConfig())
 
@@ -87,13 +89,15 @@ def main():
                                         delay_sec=options.delay_sec)
 
     wait = options.no_wait is None
-
-    job_id = afe.run('create_suite_job',
-                     suite_name=options.name,
-                     board=options.board,
-                     build=options.build,
-                     check_hosts=wait,
-                     pool=options.pool)
+    if options.mock_job_id:
+        job_id = int(options.mock_job_id)
+    else:
+        job_id = afe.run('create_suite_job',
+                         suite_name=options.name,
+                         board=options.board,
+                         build=options.build,
+                         check_hosts=wait,
+                         pool=options.pool)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     # Return code that will be sent back to autotest_rpc_server.py
@@ -112,6 +116,8 @@ def main():
 
         log_links = []
         for entry in relevant_views:
+            entry['test_name'] = entry['test_name'].replace('SERVER_JOB',
+                                                            'Suite prep')
             test_entry = entry['test_name'].ljust(width)
             print "%s%s" % (test_entry, get_pretty_status(entry['status']))
             if entry['status'] != 'GOOD':
