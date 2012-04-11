@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 import os, shutil
-import constants, httpd, ownership
 
+import common, constants, httpd, ownership
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 

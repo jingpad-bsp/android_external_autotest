@@ -1,11 +1,10 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import httplib, logging, os, socket, stat, time
 
-import common
-import constants, cryptohome, httpd
+import common, constants, cryptohome, httpd
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 

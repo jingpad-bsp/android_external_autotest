@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -6,8 +5,8 @@
 """A tool to measure single-stream link bandwidth using HTTP connections."""
 
 import logging, random, time, urllib2
-import numpy.random
 
+import numpy.random
 
 TIMEOUT = 30
 

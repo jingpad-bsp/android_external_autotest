@@ -2,12 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
-import constants
-import logging
-import os
-import re
-import shutil
+import dbus, logging, os, re, shutil
+
+import common, constants
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 

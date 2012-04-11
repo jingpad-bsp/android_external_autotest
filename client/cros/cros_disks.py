@@ -1,18 +1,15 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
-import gobject
-import logging
-import os
-import stat
+import dbus, gobject, logging, os, stat
+from dbus.mainloop.glib import DBusGMainLoop
 
+import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import autotemp, error
-from autotest_lib.client.cros.mainloop import ExceptionForward
-from autotest_lib.client.cros.mainloop import GenericTesterMainLoop
-from dbus.mainloop.glib import DBusGMainLoop
+from mainloop import ExceptionForward
+from mainloop import GenericTesterMainLoop
 
 
 """This module contains several helper classes for writing tests to verify the

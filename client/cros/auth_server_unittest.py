@@ -1,6 +1,4 @@
-#!/usr/bin/python
-
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,8 +6,7 @@
 
 import logging, os, sys, threading, time, unittest, urllib
 
-import common
-import auth_server, constants as chromeos_constants
+import constants as chromeos_constants
 from auth_server import GoogleAuthServer
 
 class test_auth_server(unittest.TestCase):

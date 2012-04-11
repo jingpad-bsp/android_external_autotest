@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -21,15 +21,10 @@ It's instantiated as part of the control file sent from the autotest
 server when invoking the client tests.
 """
 
-import logging
-import os
-import re
-import stat
-import subprocess
-import urllib2
+import logging, os, re, stat, subprocess, urllib2
 
+import common, constants
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants
 
 
 class RecallServer(object):

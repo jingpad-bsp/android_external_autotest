@@ -2,14 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob
-import logging
-import os
-import shutil
+import glob, logging, os, shutil
 
+import common, cros_ui, cros_ui_test, cryptohome
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, pexpect
-from autotest_lib.client.cros import cros_ui, cros_ui_test, cryptohome
 
 
 class EnterpriseUITest(cros_ui_test.UITest):

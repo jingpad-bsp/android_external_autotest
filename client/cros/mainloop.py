@@ -1,7 +1,10 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 import gobject, logging, sys, traceback
+
+import common
 from autotest_lib.client.common_lib import error
 
 # TODO(rochberg): Take another shot at fixing glib to allow this

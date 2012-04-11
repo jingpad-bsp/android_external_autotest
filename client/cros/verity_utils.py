@@ -1,11 +1,10 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import mmap
-import os
-import time
+import logging, mmap, os, time
+
+import common
 from autotest_lib.client.bin import os_dep, test
 from autotest_lib.client.common_lib import error, logging_manager, utils
 

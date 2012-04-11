@@ -1,9 +1,10 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import logging, os, re, shutil, stat, subprocess, tempfile
-import constants, cros_ui
+
+import common, constants, cros_ui
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 

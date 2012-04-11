@@ -3,15 +3,13 @@
 # found in the LICENSE file.
 
 import dbus, glob, logging, os, re, shutil, socket, stat, subprocess, sys, time
-import auth_server, constants, cryptohome, dns_server
-import cros_logging, cros_ui, login, ownership, pyauto_test
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
 from dbus.mainloop.glib import DBusGMainLoop
 
-from autotest_lib.client.cros import flimflam_test_path
-import flimflam
-
+import auth_server, common, constants, cros_logging, cros_ui, cryptohome
+import dns_server, flimflam_test_path, login, ownership, pyauto_test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+import flimflam # Requires flimflam_test_path to be imported first.
 
 class UITest(pyauto_test.PyAutoTest):
     """Base class for tests that drive some portion of the user interface.

@@ -1,6 +1,4 @@
-#!/usr/bin/python
-
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,8 +9,8 @@
    http://localhost:nnnn/?status="Browser started!"
 """
 
-import cgi, errno, logging, os, posixpath, SimpleHTTPServer, socket
-import socket, ssl, sys, threading, urllib, urlparse
+import cgi, errno, logging, os, posixpath, SimpleHTTPServer, socket, ssl, sys
+import threading, urllib, urlparse
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from SocketServer import BaseServer, ThreadingMixIn
 

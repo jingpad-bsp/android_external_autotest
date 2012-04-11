@@ -4,10 +4,10 @@
 
 # Utility functions used for PKCS#11 library testing.
 
-import logging, os, re, stat, pwd, grp
+import grp, logging, os, pwd, re, stat
 
+import common, constants
 from autotest_lib.client.bin import utils
-from autotest_lib.client.cros import constants
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 PKCS11_DIR = '/var/lib/opencryptoki'

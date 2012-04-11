@@ -1,12 +1,11 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time
-from autotest_lib.client.common_lib import utils
-from autotest_lib.client.cros import flimflam_test_path
-import dbus, mm
+import dbus, logging, mm, time
 
+import common, flimflam_test_path
+from autotest_lib.client.common_lib import utils
 
 def _Bug24628WorkaroundEnable(modem):
     """Enable a modem.  Try again if a SerialResponseTimeout is received."""

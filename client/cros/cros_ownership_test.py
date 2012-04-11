@@ -1,13 +1,10 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import cros_ui
-import dbus
-import sys
-import login
-import ownership
+import dbus, sys
 
+import common, cros_ui, login, ownership
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 

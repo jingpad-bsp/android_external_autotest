@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os
+
 import constants, cros_logging, cros_ui, cryptohome
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error

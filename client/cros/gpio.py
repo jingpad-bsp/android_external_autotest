@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,10 +11,7 @@ values on a Chrome OS compatible device.
 See help(Gpio) for more information.
 '''
 
-import os
-import shutil
-import sys
-import tempfile
+import os, shutil, sys, tempfile
 
 
 class Gpio(object):
