@@ -23,7 +23,10 @@ class BaseEvent(object):
 
     @classmethod
     def _ParseConfig(cls, config):
-        """Parse config and return a dict of parameters for this event."""
+        """Parse config and return a dict of parameters for this event.
+
+        Must be implemented by subclasses.
+        """
         raise NotImplementedError()
 
 
@@ -57,11 +60,13 @@ class BaseEvent(object):
 
 
     def GetBranchBuildsForBoard(self, board, manifest_versions):
-        """Get per-branch, per-board builds since last Weekly run.
+        """Get per-branch, per-board builds since last run of this event.
 
         @param board: the board whose builds we want.
         @param manifest_versions: ManifestVersions instance to use for querying.
         @return {branch: build-name}
+
+        Must be implemented by subclasses.
         """
         raise NotImplementedError()
 
@@ -81,8 +86,9 @@ class BaseEvent(object):
                           deduping_scheduler.py
         @param branch_builds: a dict mapping branch name to the build to
                               install for that branch, e.g.
-                              {'R18': 'x86-alex-release/R18-1655.0.0-a1-b1584',
-                               'R19': 'x86-alex-release/R19-2077.0.0-a1-b2056'}
+                              {'R18': 'x86-alex-release/R18-1655.0.0',
+                               'R19': 'x86-alex-release/R19-2077.0.0',
+                               'factory': 'x86-alex-factory/R19-2077.0.5'}
         @param board: the board against which to Run() all of self._tasks.
         @param force: Tell every Task to always Run().
         """

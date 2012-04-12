@@ -4,14 +4,14 @@
 
 import logging, time
 
-import deduping_scheduler, forgiving_config_parser, board_enumerator
-import task, timed_event
+import board_enumerator, deduping_scheduler, forgiving_config_parser
+import manifest_versions, task, timed_event
 
 
 class Driver(object):
     """Implements the main loop of the suite_scheduler.
 
-    @var _LOOP_INTERVAL: time to wait between loop iterations.
+    @var _LOOP_INTERVAL_SECONDS: seconds to wait between loop iterations.
 
     @var _scheduler: a DedupingScheduler, used to schedule jobs with the AFE.
     @var _enumerator: a BoardEnumerator, used to list plaforms known to
@@ -19,7 +19,7 @@ class Driver(object):
     @var _events: list of BaseEvents to be handled each time through main loop.
     """
 
-    _LOOP_INTERVAL = 5
+    _LOOP_INTERVAL_SECONDS = 5 * 60
 
 
     def __init__(self, afe):
@@ -30,6 +30,7 @@ class Driver(object):
         """
         self._scheduler = deduping_scheduler.DedupingScheduler(afe)
         self._enumerator = board_enumerator.BoardEnumerator(afe)
+        self._mv = manifest_versions.ManifestVersions()
 
 
     def SetUpEventsAndTasks(self, config):
@@ -74,19 +75,19 @@ class Driver(object):
 
     def RunForever(self):
         """Main loop of the scheduler.  Runs til the process is killed."""
+        self._mv.Initialize()
         while True:
             self.HandleEventsOnce()
-            time.sleep(self._LOOP_INTERVAL)
+            self._mv.Update()
+            time.sleep(self._LOOP_INTERVAL_SECONDS)
 
 
     def HandleEventsOnce(self):
         """One turn through the loop.  Separated out for unit testing."""
         boards = self._enumerator.Enumerate()
 
-        branch_builds = {}
-
         for e in self._events:
             if e.ShouldHandle():
                 for board in boards:
-                    # TODO(cmasone): determine branch_builds per board.
+                    branch_builds = e.GetBranchBuildsForBoard(board, self._mv)
                     e.Handle(self._scheduler, branch_builds, board)

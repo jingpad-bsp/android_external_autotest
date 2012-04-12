@@ -8,7 +8,8 @@
 
 import logging, mox,  unittest
 
-import driver, forgiving_config_parser, timed_event, board_enumerator
+import board_enumerator, driver, forgiving_config_parser, manifest_versions
+import task, timed_event
 
 from autotest_lib.server import frontend
 
@@ -25,8 +26,10 @@ class DriverTest(mox.MoxTestBase):
         self.nightly.keyword = timed_event.Nightly.KEYWORD
         self.weekly = self.mox.CreateMock(timed_event.Weekly)
         self.weekly.keyword = timed_event.Weekly.KEYWORD
+        self.mv = self.mox.CreateMock(manifest_versions.ManifestVersions)
 
         self.driver = driver.Driver(afe=self.afe)
+        self.driver._mv = self.mv
 
 
     def _ExpectSetup(self):
@@ -46,19 +49,42 @@ class DriverTest(mox.MoxTestBase):
         self.afe.get_labels(name__startswith=prefix).AndReturn([mock])
 
 
+    def _ExpectHandle(self, event, group):
+        """Make event report that it's handle-able, and expect it to be handle.
+
+        @param event: the mock event that expectations will be set on.
+        @param group: group to put new expectations in.
+        """
+        bbs = {'branch': 'build-string'}
+        event.ShouldHandle().InAnyOrder(group).AndReturn(True)
+        event.GetBranchBuildsForBoard(mox.IgnoreArg(),
+                                      self.mv).InAnyOrder(group).AndReturn(bbs)
+        event.Handle(mox.IgnoreArg(), bbs, mox.IgnoreArg()).InAnyOrder(group)
+
+
     def testTasksFromConfig(self):
-        pass
+        """Test that we can build a list of Tasks from a config."""
+        self.config.add_section(self.nightly.keyword)
+        self.config.add_section(self.weekly.keyword)
+        self.mox.StubOutWithMock(task.Task, 'CreateFromConfigSection')
+        task.Task.CreateFromConfigSection(
+            self.config, self.nightly.keyword).InAnyOrder().AndReturn(
+                (self.nightly.keyword, self.nightly))
+        task.Task.CreateFromConfigSection(
+            self.config, self.weekly.keyword).InAnyOrder().AndReturn(
+                (self.weekly.keyword, self.weekly))
+        self.mox.ReplayAll()
+        tasks = self.driver.TasksFromConfig(self.config)
+        self.assertTrue(self.nightly in tasks[self.nightly.keyword])
+        self.assertTrue(self.weekly in tasks[self.weekly.keyword])
+
 
     def testHandleAllEventsOnce(self):
         """Test that all events being ready is handled correctly."""
         self._ExpectSetup()
         self._ExpectEnumeration()
-        self.nightly.ShouldHandle().InAnyOrder('events').AndReturn(True)
-        self.nightly.Handle(mox.IgnoreArg(), mox.IgnoreArg(),
-                            mox.IgnoreArg()).InAnyOrder('events')
-        self.weekly.ShouldHandle().InAnyOrder('events').AndReturn(True)
-        self.weekly.Handle(mox.IgnoreArg(), mox.IgnoreArg(),
-                           mox.IgnoreArg()).InAnyOrder('events')
+        self._ExpectHandle(self.nightly, 'events')
+        self._ExpectHandle(self.weekly, 'events')
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config)
@@ -69,10 +95,8 @@ class DriverTest(mox.MoxTestBase):
         """Test that one ready event is handled correctly."""
         self._ExpectSetup()
         self._ExpectEnumeration()
+        self._ExpectHandle(self.nightly, 'events')
         self.weekly.ShouldHandle().InAnyOrder('events').AndReturn(False)
-        self.nightly.ShouldHandle().InAnyOrder('events').AndReturn(True)
-        self.nightly.Handle(mox.IgnoreArg(), mox.IgnoreArg(),
-                            mox.IgnoreArg()).InAnyOrder('events')
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config)

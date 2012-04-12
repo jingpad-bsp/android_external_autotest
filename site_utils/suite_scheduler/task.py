@@ -203,7 +203,7 @@ class Task(object):
         @return True if the task should be kept, False if not
         """
         builds = []
-        for branch,build in branch_builds.iteritems():
+        for branch, build in branch_builds.iteritems():
             if self._FitsSpec(branch):
                 builds.append(build)
         for build in builds:
