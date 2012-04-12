@@ -1,25 +1,5 @@
 {
     "boards": {
-        "x86-generic-full": {
-            "archive_server": "gs://chromeos-image-archive/x86-generic-full",
-            "archive_path": "%(build)s/image.zip",
-            "build_pattern": "R*",
-            "platforms": [
-                {"platform": "netbook_SANDY_BRIDGE",
-                 "groups": ["bvt", "desktopui"]}
-            ]
-        },
-
-        "x86_64-generic-full": {
-            "archive_server": "gs://chromeos-image-archive/amd64-generic-full",
-            "archive_path": "%(build)s/image.zip",
-            "build_pattern": "R*",
-            "platforms": [
-                {"platform": "netbook_MARIO_64",
-                 "groups": ["bvt"]}
-            ]
-        },
-
         "x86-alex-r18": {
             "archive_server": "gs://chromeos-releases/beta-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
@@ -118,14 +98,10 @@
         },
 
        "lumpy-release": {
-            "download_devserver": true,
-            "archive_server": "gs://chromeos-releases/canary-channel/lumpy",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
-            "build_pattern": "R*",
             "platforms": [
                 {"platform": "netbook_LUMPY",
                  "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron"]},
-                {"platform": "netbook_LUMPY", "au_test": true}
+                {"platform": "netbook_LUMPY", "au_test": true, "test_suite": true}
             ]
         },
 
@@ -141,13 +117,9 @@
         },
 
         "arm-tegra2_kaen-release": {
-            "download_devserver": true,
-            "archive_server": "gs://chromeos-releases/dev-channel/tegra2-kaen",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-kaen.zip",
-            "build_pattern": "R*",
             "platforms": [
-                {"platform": "netbook_KAEN",
-                 "groups": ["bvt", "build", "desktopui", "desktopui_tegra2",
+                {"platform": "netbook_KAEN", "test_suite": true,
+                 "groups": ["build", "desktopui", "desktopui_tegra2",
                             "enterprise", "kernel", "pagecycler", "perfx3", "power"]}
             ]
         }
