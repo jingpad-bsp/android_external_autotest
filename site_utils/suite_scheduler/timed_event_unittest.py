@@ -91,7 +91,7 @@ class TimedEventTestBase(mox.MoxTestBase):
                                                                    self.mv)
         for (type, milestone), manifests in branch_manifests.iteritems():
             build = None
-            if type in task.Task.BARE_BRANCHES:
+            if type in task.BARE_BRANCHES:
                 build = branch_builds[type]
                 self.assertTrue(build.startswith('%s-%s' % (board, type)))
             else:

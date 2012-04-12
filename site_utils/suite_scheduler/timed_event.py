@@ -51,18 +51,6 @@ class TimedEvent(base_event.BaseEvent):
         return self._now() >= self._deadline
 
 
-    def _BuildName(self, board, type, milestone, manifest):
-        """Format a build name, given board, type, milestone, and manifest num.
-
-        @param board: board the manifest is for, e.g. x86-alex.
-        @param type: one of 'release', 'factory', or 'firmware'
-        @param milestone: (numeric) milestone the manifest was associated with.
-        @param manifest: manifest number, e.g. '2015.0.0'
-        @return a build name, e.g. 'x86-alex-release/R20-2015.0.0'
-        """
-        return "%s-%s/R%s-%s" % (board, type, milestone, manifest)
-
-
     def _LatestPerBranchBuildsSince(self, board, days_ago, manifest_versions):
         """Get latest per-branch, per-board builds from last |days_ago| days.
 
@@ -72,14 +60,11 @@ class TimedEvent(base_event.BaseEvent):
         @return {branch: build-name}
         """
         all_branch_manifests = manifest_versions.ManifestsSince(days_ago, board)
-        latest_branch_manifests = {}
+        latest_branch_builds = {}
         for (type, milestone), manifests in all_branch_manifests.iteritems():
-            build = self._BuildName(board, type, milestone, manifests[-1])
-            if type in task.Task.BARE_BRANCHES:
-                latest_branch_manifests[type] = build
-            else:
-                latest_branch_manifests[milestone] = build
-        return latest_branch_manifests
+            build = base_event.BuildName(board, type, milestone, manifests[-1])
+            latest_branch_builds[task.PickBranchName(type, milestone)] = build
+        return latest_branch_builds
 
 
 class Nightly(TimedEvent):

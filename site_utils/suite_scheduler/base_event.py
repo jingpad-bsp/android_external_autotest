@@ -2,7 +2,40 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import re
 import task
+
+
+class ParseBuildNameException(Exception):
+    """Raised when _ParseBuildName() cannot parse a build name."""
+    pass
+
+
+def ParseBuildName(name):
+    """Format a build name, given board, type, milestone, and manifest num.
+
+    @param name: a build name, e.g. 'x86-alex-release/R20-2015.0.0'
+    @return board: board the manifest is for, e.g. x86-alex.
+    @return type: one of 'release', 'factory', or 'firmware'
+    @return milestone: (numeric) milestone the manifest was associated with.
+    @return manifest: manifest number, e.g. '2015.0.0'
+    """
+    match = re.match(r'([\w-]+)-(\w+)/R(\d+)-([\d.ab-]+)', name)
+    if match and len(match.groups()) == 4:
+        return match.groups()
+    raise ParseBuildNameException('%s is a malformed build name.' % name)
+
+
+def BuildName(board, type, milestone, manifest):
+    """Format a build name, given board, type, milestone, and manifest number.
+
+    @param board: board the manifest is for, e.g. x86-alex.
+    @param type: one of 'release', 'factory', or 'firmware'
+    @param milestone: (numeric) milestone the manifest was associated with.
+    @param manifest: manifest number, e.g. '2015.0.0'
+    @return a build name, e.g. 'x86-alex-release/R20-2015.0.0'
+    """
+    return '%s-%s/R%s-%s' % (board, type, milestone, manifest)
 
 
 class BaseEvent(object):

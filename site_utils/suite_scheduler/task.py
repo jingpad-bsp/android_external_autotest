@@ -2,13 +2,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import deduping_scheduler, forgiving_config_parser
+
 import logging, re
+import deduping_scheduler, forgiving_config_parser
+from distutils import version
 
 
 class MalformedConfigEntry(Exception):
     """Raised to indicate a failure to parse a Task out of a config."""
     pass
+
+
+BARE_BRANCHES = ['factory', 'firmware']
+
+
+def PickBranchName(type, milestone):
+    if type in BARE_BRANCHES:
+        return type
+    return milestone
 
 
 class Task(object):
@@ -22,8 +33,6 @@ class Task(object):
     correct use in dicts, sets, etc.
     """
 
-    BARE_BRANCHES = ['factory', 'firmware']
-
 
     @staticmethod
     def CreateFromConfigSection(config, section):
@@ -35,6 +44,8 @@ class Task(object):
         run_on: event_on which to run  # Required
         branch_specs: factory,firmware,>=R12  # Optional
         pool: pool_of_devices  # Optional
+
+        By default, Tasks run on all release branches, not factory or firmware.
 
         @param config: a ForgivingConfigParser.
         @param section: the section to parse into a Task.
@@ -60,7 +71,7 @@ class Task(object):
     def CheckBranchSpecs(branch_specs):
         """Make sure entries in the list branch_specs are correctly formed.
 
-        We accept any of Task.BARE_BRANCHES in |branch_specs|, as
+        We accept any of BARE_BRANCHES in |branch_specs|, as
         well as _one_ string of the form '>=RXX', where 'RXX' is a
         CrOS milestone number.
 
@@ -69,7 +80,7 @@ class Task(object):
         """
         have_seen_numeric_constraint = False
         for branch in branch_specs:
-            if branch in Task.BARE_BRANCHES:
+            if branch in BARE_BRANCHES:
                 continue
             if branch.startswith('>=R') and not have_seen_numeric_constraint:
                 have_seen_numeric_constraint = True
@@ -109,12 +120,17 @@ class Task(object):
         self._pool = pool
 
         self._bare_branches = []
-        self._numeric_constraint = ''
-        for spec in branch_specs:
-            if spec.startswith('>='):
-                self._numeric_constraint = spec.lstrip('>=')
-            else:
-                self._bare_branches.append(spec)
+        if not branch_specs:
+            # Any milestone is OK.
+            self._numeric_constraint = version.LooseVersion('0')
+        else:
+            self._numeric_constraint = None
+            for spec in branch_specs:
+                if spec.startswith('>='):
+                    self._numeric_constraint = version.LooseVersion(
+                        spec.lstrip('>=R'))
+                else:
+                    self._bare_branches.append(spec)
 
         # Since we expect __hash__() and other comparitor methods to be used
         # frequently by set operations, and they use str() a lot, pre-compute
@@ -134,7 +150,8 @@ class Task(object):
         @return True if b 'fits' with stored specs, False otherwise.
         """
         return (branch in self._bare_branches or
-                branch >= self._numeric_constraint)
+                (self._numeric_constraint and
+                 version.LooseVersion(branch) >= self._numeric_constraint))
 
 
     @property
@@ -204,6 +221,8 @@ class Task(object):
         """
         builds = []
         for branch, build in branch_builds.iteritems():
+            logging.debug('Checking if %s fits spec %r',
+                          branch, self.branch_specs)
             if self._FitsSpec(branch):
                 builds.append(build)
         for build in builds:

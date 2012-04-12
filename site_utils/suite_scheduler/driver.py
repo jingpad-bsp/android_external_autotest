@@ -5,7 +5,7 @@
 import logging, time
 
 import board_enumerator, deduping_scheduler, forgiving_config_parser
-import manifest_versions, task, timed_event
+import manifest_versions, task, base_event, timed_event
 
 
 class Driver(object):
@@ -22,19 +22,19 @@ class Driver(object):
     _LOOP_INTERVAL_SECONDS = 5 * 60
 
 
-    def __init__(self, afe):
+    def __init__(self, scheduler, enumerator):
         """Constructor
 
-        @param afe: an instance of AFE as defined in server/frontend.py.
-        @param config: an instance of ForgivingConfigParser.
+        @param scheduler: an instance of deduping_scheduler.DedupingScheduler.
+        @param enumerator: an instance of board_enumerator.BoardEnumerator.
         """
-        self._scheduler = deduping_scheduler.DedupingScheduler(afe)
-        self._enumerator = board_enumerator.BoardEnumerator(afe)
-        self._mv = manifest_versions.ManifestVersions()
+        self._scheduler = scheduler
+        self._enumerator = enumerator
 
 
     def SetUpEventsAndTasks(self, config):
-        """Constructor
+        """Populate self._events and create task lists from config.
+
         @param config: an instance of ForgivingConfigParser.
         """
         self._events = [timed_event.Nightly.CreateFromConfig(config),
@@ -73,21 +73,43 @@ class Driver(object):
         return tasks
 
 
-    def RunForever(self):
-        """Main loop of the scheduler.  Runs til the process is killed."""
-        self._mv.Initialize()
+    def RunForever(self, mv):
+        """Main loop of the scheduler.  Runs til the process is killed.
+
+        @param mv: an instance of manifest_versions.ManifestVersions.
+        """
         while True:
-            self.HandleEventsOnce()
-            self._mv.Update()
+            self.HandleEventsOnce(mv)
+            mv.Update()
+            # TODO(cmasone): Do we want to run every _LOOP_INTERVAL_SECONDS?
+            #                Or is it OK to wait that long between every run?
             time.sleep(self._LOOP_INTERVAL_SECONDS)
 
 
-    def HandleEventsOnce(self):
-        """One turn through the loop.  Separated out for unit testing."""
+    def HandleEventsOnce(self, mv):
+        """One turn through the loop.  Separated out for unit testing.
+
+        @param mv: an instance of manifest_versions.ManifestVersions.
+        """
         boards = self._enumerator.Enumerate()
 
         for e in self._events:
             if e.ShouldHandle():
                 for board in boards:
-                    branch_builds = e.GetBranchBuildsForBoard(board, self._mv)
+                    branch_builds = e.GetBranchBuildsForBoard(board, mv)
                     e.Handle(self._scheduler, branch_builds, board)
+
+
+    def ForceEventsOnceForBuild(self, keywords, build_name):
+        """Force events with provided keywords to happen, with given build.
+
+        @param keywords: iterable of event keywords to force
+        @param build_name: instead of looking up builds to test, test this one.
+        """
+        board, type, milestone, manifest = base_event.ParseBuildName(build_name)
+        branch_builds = {task.PickBranchName(type, milestone): build_name}
+        logging.info('Testing build %s-%s on %s' % (milestone, manifest, board))
+
+        for e in self._events:
+            if e.keyword in keywords:
+                e.Handle(self._scheduler, branch_builds, board, force=True)

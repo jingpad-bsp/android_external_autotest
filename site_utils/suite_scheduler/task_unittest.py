@@ -25,8 +25,8 @@ class TaskTestBase(mox.MoxTestBase):
 
     _BUILD = 'build'
     _BOARD = 'board1'
-    _BRANCH = 'R20'
-    _BRANCH_SPEC = '>=' + _BRANCH
+    _BRANCH = '20'
+    _BRANCH_SPEC = '>=R' + _BRANCH
     _MAP = {_BRANCH: _BUILD}
     _POOL = 'fake_pool'
     _SUITE = 'suite'
@@ -66,7 +66,7 @@ class TaskCreateTest(TaskTestBase):
         self.assertEquals(
             new_task, task.Task(self._SUITE, [self._BRANCH_SPEC], self._POOL))
         self.assertTrue(new_task._FitsSpec(self._BRANCH))
-        self.assertFalse(new_task._FitsSpec('R12'))
+        self.assertFalse(new_task._FitsSpec('12'))
 
 
     def testCreateFromConfigNoBranch(self):
@@ -140,6 +140,22 @@ class TaskTest(TaskTestBase):
                                  None, False).AndReturn(False)
         self.mox.ReplayAll()
         self.assertTrue(self.job.Run(self.sched, self._MAP, self._BOARD))
+
+
+    def testNoRunBranchMismatch(self):
+        """Test running a recurring task with no matching builds."""
+        t = task.Task(self._SUITE, task.BARE_BRANCHES)
+        self.mox.ReplayAll()
+        self.assertTrue(t.Run(self.sched, self._MAP, self._BOARD))
+
+
+    def testRunNoSpec(self):
+        """Test running a recurring task with default branch specs."""
+        t = task.Task(self._SUITE, [])
+        self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
+                                 None, False).AndReturn(True)
+        self.mox.ReplayAll()
+        self.assertTrue(t.Run(self.sched, self._MAP, self._BOARD))
 
 
     def testRunExplodes(self):

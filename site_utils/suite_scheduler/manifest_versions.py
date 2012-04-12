@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import re, os
+import logging, re, os
 import task
 from autotest_lib.client.common_lib import autotemp, utils
-from distutils.version import LooseVersion
+from distutils import version
 
 
 class ManifestVersionsException(Exception):
@@ -41,6 +41,43 @@ class ManifestVersions(object):
     def __init__(self):
         self._git = utils.system_output('which git')
         self._tempdir = autotemp.tempdir(unique_id='_suite_scheduler')
+
+
+    def Initialize(self):
+        """Set up internal state.  Must be called before other methods.
+
+        Clone manifest-versions.git into tempdir managed by this instace.
+        """
+        logging.debug('Cloning manifest-versions.git.')
+        self._Clone()
+        logging.debug('manifest-versions.git cloned.')
+
+
+    def ManifestsSince(self, days_ago, board):
+        """Return map of branch:manifests for |board| for last |days_ago| days.
+
+        To fully specify a 'branch', one needs both the type and the numeric
+        milestone the branch was cut for, e.g. ('release', '19') or
+        ('factory', '17').
+
+        @param days_ago: return all manifest files from today back to |days_ago|
+                         days ago.
+        @param board: the board whose manifests we want to check for.
+        @return {(branch_type, milestone): [manifests, oldest, to, newest]}
+        """
+        branch_manifests = {}
+        parser = re.compile(self._BOARD_MANIFEST_RE_PATTERN % board)
+        for manifest_path in self._QueryManifestsSinceDays(days_ago, board):
+            type, milestone, manifest = parser.match(manifest_path).groups()
+            branch_manifests.setdefault((type, milestone), []).append(manifest)
+        for manifest_list in branch_manifests.itervalues():
+            manifest_list.sort(key=version.LooseVersion)
+        return branch_manifests
+
+
+    def Update(self):
+        """Get latest manifest information."""
+        return utils.system(self._BuildCommand('fetch'))
 
 
     def _BuildCommand(self, command, *args):
@@ -117,38 +154,3 @@ class ManifestVersions(object):
         except (IOError, OSError) as e:
             raise QueryException(e)
         return [m for m in re.split('\s+', manifests) if m]
-
-
-    def Initialize(self):
-        """Set up internal state.  Must be called before other methods.
-
-        Clone manifest-versions.git into tempdir managed by this instace.
-        """
-        self._Clone()
-
-
-    def ManifestsSince(self, days_ago, board):
-        """Return map of branch:manifests for |board| for last |days_ago| days.
-
-        To fully specify a 'branch', one needs both the type and the numeric
-        milestone the branch was cut for, e.g. ('release', '19') or
-        ('factory', '17').
-
-        @param days_ago: return all manifest files from today back to |days_ago|
-                         days ago.
-        @param board: the board whose manifests we want to check for.
-        @return {(branch_type, milestone): [manifests, oldest, to, newest]}
-        """
-        branch_manifests = {}
-        parser = re.compile(self._BOARD_MANIFEST_RE_PATTERN % board)
-        for manifest_path in self._QueryManifestsSinceDays(days_ago, board):
-            type, milestone, manifest = parser.match(manifest_path).groups()
-            branch_manifests.setdefault((type, milestone), []).append(manifest)
-        for manifest_list in branch_manifests.itervalues():
-            manifest_list.sort(key=LooseVersion)
-        return branch_manifests
-
-
-    def Update(self):
-        """Get latest manifest information."""
-        return utils.system(self._BuildCommand('fetch'))

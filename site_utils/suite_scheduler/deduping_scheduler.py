@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-
+import logging
 from autotest_lib.server.cros import frontend_wrappers
 from autotest_lib.server import frontend
 
@@ -76,6 +76,8 @@ class DedupingScheduler(object):
         @raise ScheduleException if an error occurs while scheduling.
         """
         try:
+            logging.info('Scheduling %s on %s against %s (pool: %s)',
+                         suite, build, board, pool)
             if self._afe.run('create_suite_job',
                              suite_name=suite,
                              board=board,

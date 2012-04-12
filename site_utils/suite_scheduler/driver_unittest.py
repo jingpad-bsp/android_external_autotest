@@ -6,10 +6,10 @@
 
 """Unit tests for site_utils/board_enumerator.py."""
 
-import logging, mox,  unittest
+import logging, mox, unittest
 
-import board_enumerator, driver, forgiving_config_parser, manifest_versions
-import task, timed_event
+import base_event, board_enumerator, deduping_scheduler, driver
+import forgiving_config_parser, manifest_versions, task, timed_event
 
 from autotest_lib.server import frontend
 
@@ -21,15 +21,17 @@ class DriverTest(mox.MoxTestBase):
     def setUp(self):
         super(DriverTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
+        self.be = board_enumerator.BoardEnumerator(self.afe)
+        self.ds = deduping_scheduler.DedupingScheduler(self.afe)
+        self.mv = self.mox.CreateMock(manifest_versions.ManifestVersions)
+
         self.config = forgiving_config_parser.ForgivingConfigParser()
         self.nightly = self.mox.CreateMock(timed_event.Nightly)
         self.nightly.keyword = timed_event.Nightly.KEYWORD
         self.weekly = self.mox.CreateMock(timed_event.Weekly)
         self.weekly.keyword = timed_event.Weekly.KEYWORD
-        self.mv = self.mox.CreateMock(manifest_versions.ManifestVersions)
 
-        self.driver = driver.Driver(afe=self.afe)
-        self.driver._mv = self.mv
+        self.driver = driver.Driver(self.ds, self.be)
 
 
     def _ExpectSetup(self):
@@ -88,7 +90,7 @@ class DriverTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config)
-        self.driver.HandleEventsOnce()
+        self.driver.HandleEventsOnce(self.mv)
 
 
     def testHandleNightlyEventOnce(self):
@@ -100,7 +102,26 @@ class DriverTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config)
-        self.driver.HandleEventsOnce()
+        self.driver.HandleEventsOnce(self.mv)
+
+
+    def testForceOnceForBuild(self):
+        """Test that one event being forced is handled correctly."""
+        self._ExpectSetup()
+
+        board = 'board'
+        type = 'release'
+        milestone = '00'
+        manifest = '200.0.02'
+        build = base_event.BuildName(board, type, milestone, manifest)
+
+        self.nightly.Handle(mox.IgnoreArg(), {milestone: build}, board,
+                            force=True)
+        self.mox.ReplayAll()
+
+        self.driver.SetUpEventsAndTasks(self.config)
+        self.driver.ForceEventsOnceForBuild([self.nightly.keyword], build)
+
 
 
 if __name__ == '__main__':

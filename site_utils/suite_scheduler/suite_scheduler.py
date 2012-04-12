@@ -33,9 +33,10 @@ and 'nightly' triggers, for example), and configures all the Tasks
 that will be in play.
 """
 
-import logging, optparse, signal, sys
+import logging, optparse, re, signal, sys
 import common
-import driver, forgiving_config_parser
+import board_enumerator, deduping_scheduler, driver, forgiving_config_parser
+import manifest_versions
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.server.cros import frontend_wrappers
 
@@ -46,7 +47,7 @@ def signal_handler(signal, frame):
 
 
 class SchedulerLoggingConfig(logging_config.LoggingConfig):
-    GLOBAL_LEVEL = logging.INFO
+    GLOBAL_LEVEL = logging.DEBUG
 
 
     @classmethod
@@ -107,8 +108,20 @@ def main():
     afe = frontend_wrappers.RetryingAFE(timeout_min=30,
                                         delay_sec=10,
                                         debug=False)
-    d = driver.Driver(afe, config)
-    d.RunForever()
+    enumerator = board_enumerator.BoardEnumerator(afe)
+    scheduler = deduping_scheduler.DedupingScheduler(afe)
+    d = driver.Driver(scheduler, enumerator)
+    d.SetUpEventsAndTasks(config)
+
+    if options.events:
+        # Act as though listed events have just happened.
+        keywords = re.split('\s*,\s*', options.events)
+        logging.info('Forcing events: %r' % keywords)
+        d.ForceEventsOnceForBuild(keywords, options.build)
+    else:
+        mv = manifest_versions.ManifestVersions()
+        mv.Initialize()
+        d.RunForever(mv)
 
 
 if __name__ == "__main__":
