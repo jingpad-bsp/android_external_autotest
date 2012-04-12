@@ -66,7 +66,7 @@ class network_EthernetStressPlug(test.test):
             'last_wait': 0
         }
 
-        self.secs_before_warning = 5
+        self.secs_before_warning = 10
 
         # Represents the current number of instances in which ethernet
         # took longer than dhcp_warning_level to come up.
