@@ -33,11 +33,16 @@ and 'nightly' triggers, for example), and configures all the Tasks
 that will be in play.
 """
 
-import logging, optparse
+import logging, optparse, signal, sys
 import common
 import driver, forgiving_config_parser
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.server.cros import frontend_wrappers
+
+
+def signal_handler(signal, frame):
+    logging.info('Signal %d received.  Exiting gracefully...', signal)
+    sys.exit(0)
 
 
 class SchedulerLoggingConfig(logging_config.LoggingConfig):
@@ -82,6 +87,10 @@ def parse_options():
 
 
 def main():
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGHUP, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     parser, options, args = parse_options()
     if args or options.events and not options.build:
         parser.print_help()
