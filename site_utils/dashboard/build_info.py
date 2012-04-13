@@ -15,7 +15,6 @@ import urllib
 import dash_util
 
 # String resources.
-from dash_strings import BUILDBOT_URLS
 from dash_strings import BUILDTIME_PREFIX
 from dash_strings import LOCAL_TMP_DIR
 from dash_strings import WGET_CMD
@@ -97,27 +96,6 @@ class BuildInfo(object):
       self._formatted_time_cache[time_key] = result
       return result
 
-    def GetBotURL(self, board_type, build, json_sub=''):
-      """Compose URL to retrieve build waterfall for each build type."""
-      buildbot_url = ''
-      if board_type in BUILDBOT_URLS:
-        buildbot_url = BUILDBOT_URLS[board_type] % json_sub
-        if json_sub:
-          buildbot_url = urllib.quote(buildbot_url, '/%:')
-      else:
-        logging.warn('Cannot find %s URL!', board_type)
-      sequence = build.split('-')[-1][1:]
-      return '%s/%s' % (buildbot_url, sequence)
-
-    def FetchBuildLog(self, board_type, build, use_json):
-      """Get build log to embed in email or as json for build times."""
-      json_sub = ''
-      if use_json:
-        json_sub = 'json/'
-      command = '%s "%s"' % (
-          WGET_CMD, self.GetBotURL(board_type, build, json_sub))
-      return commands.getoutput(command)
-
     def FetchChromeVersion(self, full_build):
       """Grab the Chrome version from the chromeos-images version map."""
       chromeos_build = full_build.split('_')[-1].split('-')[0]
@@ -167,27 +145,7 @@ class BuildInfo(object):
         else:
           if not os.path.exists(LOCAL_TMP_DIR):
             os.makedirs(LOCAL_TMP_DIR, 0755)
-          build_log_text = self.FetchBuildLog(board, build, True)
-          if build_log_text:
-            build_log_json = json.loads(build_log_text)
-            if not 'chrome_version' in build_log_json:
-              build_log_json['chrome_version'] = self.FetchChromeVersion(build)
-            dash_util.SaveHTML(cache_filename, json.dumps(build_log_json))
-          else:
-            dash_util.SaveHTML(cache_filename, '')
-
-        if build_log_json:
-          if 'steps' in build_log_json:
-            current = build_log_json['steps'][0]['times'][0]
-            if current:
-              build_keys['started_time'] = current
-            current = build_log_json['steps'][-1]['times'][1]
-            if current:
-              build_keys['finished_time'] = current
-
-          build_log_chrome_version = build_log_json.get('chrome_version')
-          if build_log_chrome_version and len(build_log_chrome_version) > 1:
-            build_keys['chrome_version'] = build_log_chrome_version
+          dash_util.SaveHTML(cache_filename, '')
 
     def PruneTmpFiles(self, dash_view):
       """Remove cached build_time data that is no longer useful."""

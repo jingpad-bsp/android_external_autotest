@@ -53,69 +53,6 @@ SUMMARY_TABLE_ROW_LIMIT = 50  # display max of the latest n test builds.
 EMAIL_BUILDS_TO_CHECK = 2
 EMAIL_TESTS_PER_ROW = 4
 
-# Buildbot URLS.
-BUILDBOT_URLS = {
-    'x86-generic-full':
-      ('http://buildbot.jail.google.com/i/chromiumos/%sbuilders/'
-       'x86 generic full/builds'),
-    'x86-alex-r17':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'x86-alex canary/builds'),
-    'x86-alex-r16':
-      ('http://buildbot.jail.google.com/i/chromiumos.release/%sbuilders/'
-       'x86-alex full release-R16-1193.B/builds'),
-    'x86-alex-r15':
-      ('http://buildbot.jail.google.com/i/chromiumos.release/%sbuilders/'
-       'x86-alex full release-1011.B/builds'),
-    'x86-alex-r14':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'x86-alex release 0.14.811.B/builds'),
-    'x86-mario-r17':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'x86-mario canary/builds'),
-    'x86-mario-r16':
-      ('http://buildbot.jail.google.com/i/chromiumos.release/%sbuilders/'
-       'x86-mario full release-R16-1193.B/builds'),
-    'x86-mario-r15':
-      ('http://buildbot.jail.google.com/i/chromiumos.release/%sbuilders/'
-       'x86-mario full release-1011.B/builds'),
-    'x86-mario-r14':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'x86-mario release 0.14.811.B/builds'),
-    'stumpy-r16':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'stumpy canary/builds'),
-    'stumpy-r17':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'stumpy canary/builds'),
-    'tegra2-seaboard-r16':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'tegra2_seaboard canary/builds'),
-    'tegra2-seaboard-cosine-r17':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'tegra2_seaboard-tangent canary/builds'),
-    'tegra2-kaen-r16':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'tegra2_kaen canary/builds'),
-    'tegra2-kaen-r17':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'tegra2_kaen canary/builds'),
-    'x86-zgb-r17':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'x86-zgb canary/builds'),
-    'x86-zgb-r16':
-      ('http://buildbot.jail.google.com/i/chromiumos.release/%sbuilders/'
-       'x86-zgb full release-R16-1193.B/builds'),
-    'x86-zgb-r15':
-      ('http://buildbot.jail.google.com/i/chromiumos.release/%sbuilders/'
-       'x86-zgb full release-1011.B/builds'),
-    'x86-zgb-r14':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'x86-zgb release 0.14.811.B/builds'),
-    'x86-zgb-r13':
-      ('http://chromeos-botmaster.mtv.corp.google.com:8026/%sbuilders/'
-       'x86-zgb release 0.13.587.B/builds')}
-
 # Image URLs.
 IMAGE_URLS = {
     'default':

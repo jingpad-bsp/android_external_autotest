@@ -101,10 +101,8 @@ class AlertEmailNotifier(EmailNotifier):
     categories, test_name, perf_checks = items
     for category in categories:
       for build in self.GetBuilds(category):
-        short_build = self._dash_view.ParseShortFromBuild(build)
         if not self.Checked(category, build):
-          regressed_tests = self._regressed_tests.setdefault(
-              build, {})
+          regressed_tests = self._regressed_tests.setdefault(build, {})
           for alert_key, alert_checks in perf_checks.iteritems():
             vals = self._dash_view.GetTestPerfVals(
                 self._netbook, self._board_type, test_name, alert_key)
@@ -114,7 +112,7 @@ class AlertEmailNotifier(EmailNotifier):
                   '%s, %s, %s, %s.',
                   self._board_type, self._netbook, test_name, alert_key)
               continue
-            if not short_build in vals:
+            if not build in vals:
               logging.debug(
                   'No keyval found for configuration requested and build: '
                   '%s, %s, %s, %s, %s.',
@@ -123,7 +121,7 @@ class AlertEmailNotifier(EmailNotifier):
               continue
             for fn_name, fn_params in alert_checks.iteritems():
               stats_result, stats_data = self.InvokeStats(
-                  fn_name, fn_params, vals, short_build)
+                  fn_name, fn_params, vals, build)
               if stats_result:
                 regressed_keys = regressed_tests.setdefault(test_name, {})
                 regressed_stats = regressed_keys.setdefault(alert_key, {})
@@ -184,8 +182,7 @@ class AlertEmailNotifier(EmailNotifier):
 
       # Inline build log.
       use_json = False
-      tpl_build_log = self._build_info.FetchBuildLog(
-          self._board_type, tpl_build, use_json)
+      tpl_build_log = ''
 
       # Assemble the final email.
       tpl_board = self._board_type

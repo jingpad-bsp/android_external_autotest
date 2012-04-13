@@ -66,8 +66,7 @@ class EmailNotifier(object):
 
   def GetTestDetails(self, category, test_name, build):
     return self._dash_view.GetTestDetails(
-        self._netbook, self._board_type, category, test_name,
-        self._dash_view.ParseShortFromBuild(build))
+        self._netbook, self._board_type, category, test_name, build)
 
   def GetTestErrorLog(self, log_url):
     diag = dash_util.DebugTiming()

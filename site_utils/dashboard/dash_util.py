@@ -26,37 +26,43 @@ import decimal
 import inspect
 import logging
 import os
+import re
 import shutil
 import urllib
 import urlparse
 
 from time import time
 
+BUILD_PARSE = re.compile('((?:[\d]+\.)?[\d]+\.[\d]+\.[\d]+)')
+
 
 def SplitBuild(build):
-  """Switch from Rww-xx.yy.zz to ww.xx.yy.zz"""
-  build_parts = build.split('-')
-  if len(build_parts) == 3:
-    return build_parts[0], build_parts[2]
+  """Find and split pure version number.
+
+  From R18-xx.yy.zz => ['xx', 'yy', 'zz]
+  From R18-xx.yy.zz-a1-b2 => ['xx', 'yy', 'zz]
+  From 0.xx.yy.zz-a1-b2 => ['xx', 'yy', 'zz]
+
+  Ignores old '-a1-bXXX' fields.
+  """
+  m = re.search(BUILD_PARSE, build)
+  if m:
+    return m.group(1).split('.')
   else:
-    return '%s.%s' % (build_parts[0][1:], build_parts[1]), build_parts[3]
+    logging.debug('Unexpected build: %s.', build)
+  return build
 
 
-def BuildNumberCmp(build_number1, build_number2):
+def BuildNumberCmp(build1, build2):
   """Compare build numbers and return in descending order."""
-  build1, b1 = SplitBuild(build_number1)
-  build2, b2 = SplitBuild(build_number2)
+  major1 = SplitBuild(build1)
+  major2 = SplitBuild(build2)
 
-  if build1 != build2:
-    major1 = build1.split('.')
-    major2 = build2.split('.')
-    major_len = min([len(major1), len(major2)])
-    for i in xrange(major_len):
-      if major1[i] != major2[i]:
-        return -cmp(int(major1[i]), int(major2[i]))
-    return -cmp(build1, build2)
-  else:
-    return -cmp(int(b1[1:]), int(b2[1:]))
+  major_len = min([len(major1), len(major2)])
+  for i in xrange(major_len):
+    if major1[i] != major2[i]:
+      return -cmp(int(major1[i]), int(major2[i]))
+  return -cmp(build1, build2)
 
 
 def PruneOldDirs(path, older_than_days=60):

@@ -147,7 +147,7 @@ def BuildTestSummaries(dash_view, category, tots, branches, summary_ranges):
           build_details.append((netbook, job_attempted, job_good, passed, total,
                                 kernel))
         rows.append((
-            build_info.GetBotURL(board, build_number), build_number,
+            '', build_number,
             build_info.GetFormattedStartedTime(board, build_number),
             build_info.GetFormattedFinishedTime(board, build_number),
             build_info.GetFormattedFinishedTime(board, build_number, True),
@@ -230,28 +230,25 @@ def BuildLandingSummaries(dash_view, category, tots, branches, summary_ranges):
     else:
       irregular_releases.add(board)
     for build_number in summary_ranges.GetBuildNumbers(board):
-      parsed_build, seq = dash_view.ParseSimpleBuild(build_number)
-      build_results = results_dict.setdefault(parsed_build, {})
+      build_results = results_dict.setdefault(build_number, {})
       for netbook in summary_ranges.GetNetbooks(board):
         # Aggregate the test summaries for each platform.
         platform = (parsed_board, netbook)
         if not platform in platforms:
           platforms.append(platform)
         if build_results.get(platform):
-          logging.info('Multiple results for %s, %s', parsed_build, platform)
+          logging.info('Multiple results for %s, %s', build_number, platform)
           continue
         build_results[platform] = _GetLandingDetails(
             dash_view, summary_ranges, netbook, board, category, build_number)
         # Keep track of earliest test job start time for each build.
-        if not seq:
-          continue
-        time_key = (netbook, board, category, seq)
+        time_key = (netbook, board, category, build_number)
         start_time, _, _ = dash_view.GetJobTimesNone(*time_key)
         if not start_time:
           continue
-        early_start = builds.setdefault(parsed_build, (start_time, time_key))
+        early_start = builds.setdefault(build_number, (start_time, time_key))
         if start_time < early_start[0]:
-          builds[parsed_build] = (start_time, time_key)
+          builds[build_number] = (start_time, time_key)
 
   # Include the earliest job date among the platforms to be shown as the
   # overall 'release' (r15) test start date-time.
@@ -306,13 +303,12 @@ def BuildTimingSummaries(dash_view, category, tots, branches, summary_ranges):
     for board in boards:
       rows = []
       for build_number in summary_ranges.GetBuildNumbers(board):
-        sequence = dash_view.ParseShortFromBuild(build_number)
         build_details = []
         for netbook in summary_ranges.GetNetbooks(board):
           started, _, _ = dash_view.GetJobTimes(
-              netbook, board, category, sequence)
+              netbook, board, category, build_number)
           started_s, finished_s, elapsed_s = dash_view.GetFormattedJobTimes(
-              netbook, board, category, sequence)
+              netbook, board, category, build_number)
           build_finished = datetime.datetime.fromtimestamp(
               build_info.GetFinishedTime(board, build_number))
           if elapsed_s == UNKNOWN_TIME_STR:
@@ -325,9 +321,8 @@ def BuildTimingSummaries(dash_view, category, tots, branches, summary_ranges):
               started_s, finished_s, elapsed_s, delayed_s))
         fstarted, ffinished, felapsed, ffinished_short = (
             build_info.GetFormattedBuildTimes(board, build_number))
-        rows.append((
-            build_info.GetBotURL(board, build_number), build_number,
-            fstarted, ffinished, ffinished_short, build_details))
+        rows.append(('', build_number, fstarted, ffinished, ffinished_short,
+                     build_details))
       timing_divs.append((
           board,
           summary_ranges.GetNetbooks(board),

@@ -36,9 +36,8 @@ class TableBuilder(object):
     failed_list = []  # Maintains order discovered.
 
     for build in self._build_numbers:
-      sequence = self._dash_view.ParseShortFromBuild(build)
       for test_name in self._test_list:
-        test_details = self._GetTestDetails(test_name, sequence)
+        test_details = self._GetTestDetails(test_name, build)
         if test_details:
           for t in test_details:
             test_status = t['status']
@@ -59,19 +58,19 @@ class TableBuilder(object):
                            author))
     return table_header
 
-  def _GetBuildMetadata(self, build, sequence):
+  def _GetBuildMetadata(self, build):
     """Retrieve info used to populate build header popups."""
     started, finished, elapsed = self._dash_view.GetFormattedJobTimes(
-        self._netbook, self._board_type, self._category, sequence)
+        self._netbook, self._board_type, self._category, build)
     fstarted, ffinished, felapsed, ffinished_short = (
         self._build_info.GetFormattedBuildTimes(self._board_type, build))
     return (fstarted, ffinished, felapsed,
             started, finished, elapsed,
             self._dash_view.GetFormattedLastUpdated())
 
-  def _GetTestDetails(self, test_name, sequence):
+  def _GetTestDetails(self, test_name, build):
     return self._dash_view.GetTestDetails(
-        self._netbook, self._board_type, self._category, test_name, sequence)
+        self._netbook, self._board_type, self._category, test_name, build)
 
   def _BuildTableBody(self, test_list):
     """Generate table body with test results in cells."""
@@ -80,13 +79,12 @@ class TableBuilder(object):
     for build in self._build_numbers:
       chrome_version = self._build_info.GetChromeVersion(self._board_type,
                                                          build)
-      sequence = self._dash_view.ParseShortFromBuild(build)
       test_status_list = []
       for test_name in test_list:
         # Include either the good details or the details of the
         # first failure in the list (last chronological failure).
         cell_content = []
-        test_details = self._GetTestDetails(test_name, sequence)
+        test_details = self._GetTestDetails(test_name, build)
         if test_details:
           total_tests = len(test_details)
           passed_tests = 0
@@ -127,10 +125,8 @@ class TableBuilder(object):
                     self._netbook, self._board_type, build, test_name))
             cell_content.extend(test_summaries)
         test_status_list.append(cell_content)
-      popup = self._GetBuildMetadata(build, sequence)
-      table_body.append((
-          self._build_info.GetBotURL(self._board_type, build),
-          build, popup, test_status_list, chrome_version))
+      popup = self._GetBuildMetadata(build)
+      table_body.append(('', build, popup, test_status_list, chrome_version))
     return table_body
 
   def BuildTables(self):
@@ -154,9 +150,8 @@ class TableBuilder(object):
     if self._build_numbers:
       failed_list = []
       build = self._build_numbers[0]
-      sequence = self._dash_view.ParseShortFromBuild(build)
       for test_name in self._test_list:
-        test_details = self._GetTestDetails(test_name, sequence)
+        test_details = self._GetTestDetails(test_name, build)
         if test_details:
           for t in test_details:
             test_status = t['status']

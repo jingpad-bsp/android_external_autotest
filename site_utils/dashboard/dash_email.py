@@ -244,8 +244,6 @@ class DashEmailNotifier(EmailNotifier):
               IMAGE_URLS[tpl_board].rstrip('/'), _ParseVersion(tpl_build)))
         else:
           tpl_images_link = IMAGE_URLS['default']
-        tpl_buildbot_link = dash_util.UrlFix(buildinfo.GetBotURL(
-            tpl_board, tpl_build))
         if tpl_build in self._previous_build:
           tpl_changelog_link = dash_util.UrlFix(CHANGELOG_URL % (
               _ParseVersion(self._previous_build[tpl_build]),

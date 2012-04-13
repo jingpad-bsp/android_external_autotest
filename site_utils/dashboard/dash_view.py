@@ -31,9 +31,7 @@ from dash_strings import LAST_N_JOBS_LIMIT
 from dash_strings import LOCAL_TMP_DIR
 from dash_strings import UNKNOWN_TIME_STR
 
-# This used in SQL job matching.
-JOB_MATCH = ("[-.][[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+-"
-             "[ar][[:alnum:]]*-b")
+
 GTEST_SUFFIXES = ["audio", "browsertests", "enterprise", "pagecycler", "pyauto",
                   "pyauto_basic", "pyauto_perf", "sync"]
 SUFFIXES_TO_SHOW = ["bvt", "flaky", "hwqual", "regression",
@@ -238,8 +236,7 @@ class AutotestDashView(object):
       self._dash_config = None
       self._cursor = readonly_connection.connection().cursor()
       self._common_where = (
-          "WHERE job_name REGEXP %s"
-          "  AND job_owner = %s"
+          "WHERE job_owner = %s"
           "  AND NOT ISNULL(test_finished_time)"
           "  AND NOT ISNULL(job_finished_time)"
           "  AND NOT test_name REGEXP 'CLIENT_JOB.*'"
@@ -247,6 +244,7 @@ class AutotestDashView(object):
           "  AND NOT test_name IN ('Autotest.install', 'cleanup_test', "
           "                        'lmbench', 'logfile.monitor', 'repair', "
           "                        'sleeptest', 'tsc')")
+
       # Used in expression parsing - have slightly different captures.
 
       # New test suite job regex.
@@ -255,23 +253,25 @@ class AutotestDashView(object):
       self._jobname_testsuite_parse = re.compile(
           '(.*?)-release/((R\d+)-.*?)/(.*?)/(.*)')
 
-      # x86-alex-r18-R18-1660.71.0-a1-b75_bvt
+      # (x86-alex-r18)-(R18-1660.71.0-a1-b75)_(bvt)
+      # (x86-generic-full)-(R20-2112.0.0-a1-b2686)_(browsertests)
       self._jobname_parse = re.compile(
-          '([\w-]*)-(.*[.-][\d]+\.[\d]+\.[\d]+-[ar][\w]+-b[\d]+)_([\w_]*)')
+          '([\w-]+-[fr][\w]+)-(.*[.-][\d]+\.[\d]+\.[\d]+)(?:-[ar][\w]+-b[\d]+)?'
+          '_([\w_]*)')
 
-      # x86-alex-r18-(R18-1660.71.0-a1-b75)_network_3g
-      self._subjob_parse2 = re.compile(
-          '.*(R[\d]+-[\d]+\.[\d]+\.[\d]+-[ar][\w]+-b[\d]+)')
+      # (R18-1660.71.0)-a1-b75
+      # r18-1660.122.0_to_(R18-1660.122.0)-a1-b146
+      self._subjob_parse = re.compile(
+          '.*(R[\d]+-[\d]+\.[\d]+\.[\d]+)')
 
       self._board_parse = re.compile(
           '(x86|tegra2)-(.+)-(r[\d]+)')
 
-      # R(19)-1914.0.0-a1-b(1748)
-      self._fullbuild_parse2 = re.compile(
-          'R([\d]+)-[\d]+\.[\d]+\.[\d]+-[ar][\w]+-b([\d]+)')
-
-      self._shortbuild_parse2 = re.compile(
-          '(R[\d]+-[\d]+\.[\d]+\.[\d]+)-([ar][\w]+)-b([\d]+)')
+      # (R19-1913.0.0)
+      # (R19-1913.0.0)-a1-b1539
+      # (0.8.73.0)-r3ed8d12f-b719.
+      self._shortbuild1_parse = re.compile('(R[\d]+-[\d]+\.[\d]+\.[\d]+)')
+      self._shortbuild2_parse = re.compile('([\d]+\.[\d]+\.[\d]+\.[\d]+)')
 
       self._release_parse = re.compile('r[\d]')
 
@@ -601,7 +601,7 @@ class AutotestDashView(object):
                  netbook_DELL_L13, netbook_ANDRETTI, ...
         board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
         category: a test group: bvt, regression, desktopui, graphics, ...
-        build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+        build: a full build string: 0.8.73.0.
 
       Returns:
         Sorted or empty List of the test names in the given category and
@@ -610,9 +610,8 @@ class AutotestDashView(object):
       """
       results = []
       try:
-        sequence = self.ParseShortFromBuild(build)
         for t, b in self._test_tree[netbook][board][category].iteritems():
-          if sequence in b:
+          if build in b:
             results.append(t)
         results.sort()
       except KeyError:
@@ -627,7 +626,7 @@ class AutotestDashView(object):
                  netbook_DELL_L13, netbook_ANDRETTI, ...
         board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
         category: a test group: bvt, regression, desktopui, graphics, ...
-        build: a full build string: 0.8.73.0-r3ed8d12f-b719.
+        build: a full build string: 0.8.73.0.
 
       Returns:
         4-Tuple:
@@ -640,9 +639,8 @@ class AutotestDashView(object):
       ntotal = 0
       job_attempted = False
       job_good = False
-      sequence = self.ParseShortFromBuild(build)
-      if sequence in self._build_tree[netbook][board][category]:
-        job = self._build_tree[netbook][board][category][sequence]
+      if build in self._build_tree[netbook][board][category]:
+        job = self._build_tree[netbook][board][category][build]
         ngood = job["ngood"]
         ntotal = job["ntotal"]
         job_good = job["server_good"]
@@ -665,9 +663,9 @@ class AutotestDashView(object):
       tests = self.GetTestNamesInBuild(netbook, board, category, build)
       if not tests:
         return
-      seq = self.ParseShortFromBuild(build)
       for test in tests:
-        test_details = self.GetTestDetails(netbook, board, category, test, seq)
+        test_details = self.GetTestDetails(netbook, board, category, test,
+                                           build)
         if not test_details:
           continue
         for t in test_details:
@@ -711,7 +709,7 @@ class AutotestDashView(object):
           failed_tests.add(t['test_name'])
       return ', '.join(sorted(failed_tests))
 
-    def GetJobTimes(self, netbook, board, category, seq):
+    def GetJobTimes(self, netbook, board, category, build):
       """Return job_start_time,  job_end_time and elapsed for the given job.
 
       Args:
@@ -719,7 +717,7 @@ class AutotestDashView(object):
                  netbook_DELL_L13, netbook_ANDRETTI, ...
         board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
         category: a test group: bvt, regression, desktopui, graphics, ...
-        seq: a short sequence from a build on this netbook and board.
+        build: a build on this netbook and board.
 
       Returns:
         3-Tuple of Python datetime.datetime,datetime.datetime,datetime.timedelta
@@ -730,17 +728,17 @@ class AutotestDashView(object):
       job_started = self._null_datetime
       job_finished = self._null_datetime
       job_elapsed = self._null_timedelta
-      if seq in self._build_tree[netbook][board][category]:
-        job = self._build_tree[netbook][board][category][seq]
+      if build in self._build_tree[netbook][board][category]:
+        job = self._build_tree[netbook][board][category][build]
         job_started = job["start"]
         job_finished = job["finish"]
         job_elapsed = job_finished - job_started
       return job_started, job_finished, job_elapsed
 
-    def GetJobTimesNone(self, netbook, board, category, seq):
+    def GetJobTimesNone(self, netbook, board, category, build):
       """Translate null_datetime from GetJobTimes() to None."""
       job_started, job_finished, job_elapsed = self.GetJobTimes(
-          netbook, board, category, seq)
+          netbook, board, category, build)
       if job_started == self._null_datetime:
         job_started = None
       if job_finished == self._null_datetime:
@@ -749,7 +747,7 @@ class AutotestDashView(object):
         job_elapsed = None
       return job_started, job_finished, job_elapsed
 
-    def GetFormattedJobTimes(self, netbook, board, category, seq):
+    def GetFormattedJobTimes(self, netbook, board, category, build):
       """Return job_start_time, job_end_time and elapsed in datetime format.
 
       Args:
@@ -757,14 +755,14 @@ class AutotestDashView(object):
                  netbook_DELL_L13, netbook_ANDRETTI, ...
         board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
         category: a test group: bvt, regression, desktopui, graphics, ...
-        seq: a short sequence from a build on this netbook and board.
+        build: a build on this netbook and board.
 
       Returns:
         3-Tuple of stringified started_datetime, finished_datetime, and
         elapsed_datetime. Returns a common string when invalid or no datetime
         was found.
       """
-      time_key = (netbook, board, category, seq)
+      time_key = (netbook, board, category, build)
       if time_key in self._formatted_time_cache:
         return self._formatted_time_cache[time_key]
       job_started_str = UNKNOWN_TIME_STR
@@ -785,7 +783,7 @@ class AutotestDashView(object):
       """Return a string used to date-time stamp our reports."""
       return self._last_updated
 
-    def GetTestDetails(self, netbook, board, category, test_name, seq):
+    def GetTestDetails(self, netbook, board, category, test_name, build):
       """Return tests details for a given test_name x build cell.
 
       Args:
@@ -794,7 +792,7 @@ class AutotestDashView(object):
         board: one of our boards: x86-generic-full, x86-mario-full-chromeos, ...
         category: a test group: bvt, regression, desktopui, graphics, ...
         test_name: test_name of Autotest test.
-        seq: a short sequence from a build on this netbook and board.
+        build: a build on this netbook and board.
 
       Returns:
         Sorted or empty List of multiple test dictionaries for test instances
@@ -804,9 +802,9 @@ class AutotestDashView(object):
         of varying attributes under 'attr'.
       """
       test_details = []
-      if seq in self._test_tree[netbook][board][category][test_name]:
+      if build in self._test_tree[netbook][board][category][test_name]:
         test_index_list = (list(
-            self._test_tree[netbook][board][category][test_name][seq][0]))
+            self._test_tree[netbook][board][category][test_name][build][0]))
         test_index_list.sort(reverse=True)
         for i in test_index_list:
           test_details.append(self._tests[i])
@@ -982,26 +980,24 @@ class AutotestDashView(object):
       match = self._jobname_testsuite_parse.match(job_name)
       if match:
         board, build, milestone, suite, suffix = match.groups()
-        print match.groups()
         # Put board in the format expected, e.g. x86-mario-r19.
         board = '%s-%s' % (board, milestone.lower())
+        # Remove possible sequence artifacts, e.g.'-a1-b1539'
+        build = self.ParseSimpleBuild(build)
         return board, build, suite
 
       # Old suite style parsing.
       m = re.match(self._jobname_parse, job_name)
       if not m or not len(m.groups()) == 3:
-        logging.warn("***Invalid job_name: %s.", job_name)
         return None, None, None
 
       board, subjob, suffix = m.group(1, 2, 3)
 
       # Subjob handles multi-build au test job names.
-      n = re.match(self._subjob_parse2, subjob)
+      n = re.match(self._subjob_parse, subjob)
 
-      # full_build is: build#-token-build_sequence#.
-      # To save in-memory space, the sequence# is used for per-board
-      # lookups so it is not trimmed here:
-      #  e.g. R19-1979.0.0-a1-b1798
+      # Old full_build is: build#-token-build_sequence#.
+      # Trim token-buildsequence since it's not used anymore.
       if not n or not len(n.groups()) == 1:
         full_build = None
       else:
@@ -1010,39 +1006,22 @@ class AutotestDashView(object):
       # Translate new -release naming into old x86-mario-r19 style.
       #  x86-alex-release-R19-1979.0.0-a1-b1798_security =>
       #  x86-alex-r19-R19-1979.0.0-a1-b1798_security.
-      if board.endswith('-release'):
-        board = board.replace('-release', '-r' + full_build.split('-')[0][1:])
+      # Also change x86-generic-full-R19... to x86-generic-full-r19.
+      for terminator, replacement in [('-release', '-r'), ('-full', '-full-r')]:
+        if board.endswith(terminator):
+          board = board.replace(terminator,
+                                replacement + full_build.split('-')[0][1:])
 
       return board, full_build, suffix
-
-    def ParseShortFromBuild(self, build):
-      """Return the short build sequence number from the full build.
-
-      A full build string: 0.8.73.0-r3ed8d12f-b719 includes a version
-      (the 8) and a sequence (719) that are very useful. We aggregate
-      the two to form a 'short' but unambiguous build#.
-
-      Args:
-        build: long/full build string.
-
-      Returns:
-        Short build sequence.
-      """
-      if not build:
-        return None
-
-      m = re.search(self._fullbuild_parse2, build)
-      if not m or not len(m.groups()) == 2:
-        return None
-
-      return str(int(m.group(1))*10000 + int(m.group(2)))
 
     def ParseSimpleBuild(self, build):
       """Strip out the 0.x.y.z portion of the build.
 
-      A full build string: 0.8.73.0-r3ed8d12f-b719 includes a useful
-      short build (0.8.73.0) and a sequence (719).  These are used in
-      summaries.
+      Strip the core build string (1913.0.0 or 0.8.73.0) from a full build
+      string:
+      -(R19-1913.0.0)
+      -(R19-1913.0.0)-a1-b1539
+      -(0.8.73.0)-r3ed8d12f-b719.
 
       Args:
         build: long/full build string.
@@ -1050,12 +1029,15 @@ class AutotestDashView(object):
       Returns:
         The simple numeric build number.
       """
-      m = re.match(self._shortbuild_parse2, build)
-      if not m or not len(m.groups()) == 3:
-        parsed_build = build
-      else:
+      for p in [self._shortbuild1_parse, self._shortbuild2_parse]:
+        m = re.match(p, build)
+        if m:
+          break
+      if m:
         parsed_build = m.group(1)
-      return parsed_build, self.ParseShortFromBuild(build)
+      else:
+        parsed_build = build
+      return parsed_build
 
     def LoadFromDB(self, job_limit=None):
       """Initial queries from the db for test tables.
@@ -1141,12 +1123,12 @@ class AutotestDashView(object):
           "SELECT j.id, j.name, complete",
           "FROM afe_jobs AS j",
           "INNER JOIN afe_host_queue_entries AS q ON j.id = q.job_id",
-          "WHERE name REGEXP %s AND owner = %s",
+          "WHERE owner = %s",
           "ORDER BY created_on DESC",
           "LIMIT %s"]
       if not job_limit:
         job_limit = LAST_N_JOBS_LIMIT
-      params = [".*%s.*" % JOB_MATCH, AUTOTEST_USER, job_limit]
+      params = [AUTOTEST_USER, job_limit]
       self._cursor.execute(" ".join(query), params)
 
       incomplete_jobnames = set()
@@ -1168,9 +1150,8 @@ class AutotestDashView(object):
           continue
         str_job_id = str(job_id)
         self._job_ids.add(str_job_id)
-        sequence = self.ParseShortFromBuild(full_build)
         build_list_dict = self._builds.setdefault(board, {})
-        build_list_dict.setdefault(sequence, full_build)
+        build_list_dict.setdefault(full_build, full_build)
         # Track job_id's to later prune incomplete jobs.
         # Use a name common to all the jobs.
         tracking_name = "%s-%s" % (board, full_build)
@@ -1195,9 +1176,8 @@ class AutotestDashView(object):
               self._job_ids.remove(str_job_id)
           del jobname_to_jobid[tracking_name][suffix]
         if not jobname_to_jobid[tracking_name]:
-          sequence = self.ParseShortFromBuild(full_build)
-          if sequence in self._builds[board]:
-            del self._builds[board][sequence]
+          if full_build in self._builds[board]:
+            del self._builds[board][full_build]
 
     def QueryTests(self):
       """Get and stash the test data and attributes."""
@@ -1211,8 +1191,7 @@ class AutotestDashView(object):
           self._common_where,
           "  AND afe_job_id IN (%s)" % ",".join(self._job_ids),
           "ORDER BY job_idx DESC"]
-      job_match = ".*%s.*" % JOB_MATCH
-      params = [job_match, AUTOTEST_USER]
+      params = [AUTOTEST_USER]
       self._cursor.execute(" ".join(query), params)
       results = self._cursor.fetchall()
       for (idx, test_name, job_name, job_tag, job_id, netbook,
@@ -1223,7 +1202,6 @@ class AutotestDashView(object):
         board, full_build, job_suffix = self.ParseJobName(job_name)
         if not board or not full_build or not job_suffix:
           continue
-        sequence = self.ParseShortFromBuild(full_build)
         category = self.ParseTestName(test_name)
         ui_categories = self._ui_categories[netbook].setdefault(board, set())
         if job_suffix.startswith('kernel_'):
@@ -1261,7 +1239,7 @@ class AutotestDashView(object):
           build_board_dict = self._build_tree[netbook].setdefault(
               board, {})
           build_category_dict = build_board_dict.setdefault(c, {})
-          build_info = build_category_dict.setdefault(sequence, {
+          build_info = build_category_dict.setdefault(full_build, {
               "start": datetime.datetime.now(),
               "finish": datetime.datetime(2010, 1, 1),
               "ngood": 0,
@@ -1280,7 +1258,7 @@ class AutotestDashView(object):
 
           test_dict = category_dict.setdefault(c, {})
           build_dict = test_dict.setdefault(test_name, {})
-          test_index_list = build_dict.setdefault(sequence, [set(), None])
+          test_index_list = build_dict.setdefault(full_build, [set(), None])
 
           test_index_list[0].add(str(idx))
           if not test_index_list[1]:
@@ -1317,8 +1295,7 @@ class AutotestDashView(object):
           "AND NOT ISNULL(iteration_value)",
           "ORDER BY platform, job_name, test_name, iteration_key, ",
           "test_idx, iteration"]
-      job_match = ".*%s.*" % JOB_MATCH
-      params = [job_match, AUTOTEST_USER]
+      params = [AUTOTEST_USER]
       self._cursor.execute(" ".join(query), params)
       results = self._cursor.fetchall()
       for (netbook, job_name, hostname, test_idx, test_name,
@@ -1329,12 +1306,11 @@ class AutotestDashView(object):
         if not board or not full_build:
           continue
         netbook = self.ScrubNetbook(netbook)
-        sequence = self.ParseShortFromBuild(full_build)
         board_dict = self._perf_keyvals.setdefault(netbook, {})
         test_dict = board_dict.setdefault(board, {})
         key_dict = test_dict.setdefault(test_name, {})
         build_dict = key_dict.setdefault(iteration_key, {})
-        value_list = build_dict.setdefault(sequence, ([], [], [], []))
+        value_list = build_dict.setdefault(full_build, ([], [], [], []))
         value_list[0].append(iteration_value)
         # Save test_idx to retrieve job details from data point.
         value_list[1].append(test_idx)
