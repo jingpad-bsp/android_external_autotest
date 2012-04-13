@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_remote_power
+from autotest_lib.server.cros import servo
 from autotest_lib.server.hosts import remote
 
 
@@ -53,9 +54,21 @@ class SiteHost(remote.RemoteHost):
     # Ephemeral file to indicate that an update has just occurred.
     _JUST_UPDATED_FLAG = '/tmp/just_updated'
 
+    @classmethod
+    def _make_servo_hostname(cls, hostname):
+        host_parts = hostname.split('.')
+        host_parts[0] = host_parts[0] + '-servo'
+        return '.'.join(host_parts)
+
+
     def _initialize(self, hostname, *args, **dargs):
         super(SiteHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
+        servo_host = self._make_servo_hostname(hostname)
+        if utils.host_is_in_lab_zone(servo_host):
+            self.servo = servo.Servo(servo_host)
+        else:
+            self.servo = None
 
 
     def machine_install(self, update_url=None, force_update=False):
