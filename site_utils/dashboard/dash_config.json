@@ -161,7 +161,7 @@
             "filters": [
                 {"categories": ["enterprise"],
                  "cc": ["chromeos-autotest@google.com",
-                        "frankf@google.com",
+                        "craigdh@google.com",
                         "scunningham@google.com"]}]},
         {
             "platforms": {
