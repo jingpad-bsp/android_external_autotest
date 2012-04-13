@@ -21,7 +21,7 @@ class pgo(profiler.profiler):
     version = 1
 
     def initialize(self,
-                   source_dir='var/cache/distfiles/target/chrome-src/src/c'):
+                   source_dir='/var/cache/distfiles/target/chrome-src/src/c'):
         self._source_dir = source_dir
 
 
