@@ -6,7 +6,7 @@
 
 """Unit tests for site_utils/manifest_versions.py."""
 
-import logging, mox, unittest
+import logging, mox, os, unittest
 
 from autotest_lib.client.common_lib import utils
 import manifest_versions
@@ -55,15 +55,25 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
 
     def setUp(self):
         super(ManifestVersionsTest, self).setUp()
-        self.manifest_versions = manifest_versions.ManifestVersions()
+        self.mv = manifest_versions.ManifestVersions()
 
 
     def testInitialize(self):
         """Ensure we can initialize a ManifestVersions."""
-        self.mox.StubOutWithMock(self.manifest_versions, '_Clone')
-        self.manifest_versions._Clone()
+        self.mox.StubOutWithMock(self.mv, '_Clone')
+        self.mv._Clone()
         self.mox.ReplayAll()
-        self.manifest_versions.Initialize()
+        self.mv.Initialize()
+
+
+    def testGlobs(self):
+        """Ensure that we expand globs correctly."""
+        desired_paths = ['one/path', 'two/path', 'three/path']
+        tempdir = self.mv._tempdir.name
+        for path in desired_paths:
+            os.makedirs(os.path.join(tempdir, path))
+        for path in self.mv._ExpandGlobMinusPrefix(tempdir, '*/path'):
+            self.assertTrue(path in desired_paths)
 
 
     def testManifestsSince(self):
@@ -71,15 +81,27 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         days_ago = 7
         board = 'x86-alex'
         self.mox.StubOutWithMock(utils, 'system_output')
-        utils.system_output(mox.StrContains('git log')).AndReturn(
-            self._MANIFESTS_STRING)
+        utils.system_output(
+            mox.StrContains('git log')).MultipleTimes().AndReturn(
+                self._MANIFESTS_STRING)
         self.mox.ReplayAll()
-        br_man = self.manifest_versions.ManifestsSince(days_ago, board)
+        br_man = self.mv.ManifestsSince(days_ago, board)
         for pair in br_man.keys():
             self.assertTrue(pair, self._BRANCHES)
         for manifest_list in br_man.itervalues():
             self.assertTrue(manifest_list)
         self.assertEquals(br_man[('release', '20')][-1], '2057.0.10')
+
+
+    def testNoManifestsSince(self):
+        """Ensure we can deal with no manifests since N days ago."""
+        days_ago = 7
+        board = 'x86-alex'
+        self.mox.StubOutWithMock(utils, 'system_output')
+        utils.system_output(mox.StrContains('git log')).AndReturn([])
+        self.mox.ReplayAll()
+        br_man = self.mv.ManifestsSince(days_ago, board)
+        self.assertEquals(br_man, {})
 
 
     def testManifestsSinceExplodes(self):
@@ -91,8 +113,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
             manifest_versions.QueryException())
         self.mox.ReplayAll()
         self.assertRaises(manifest_versions.QueryException,
-                          self.manifest_versions.ManifestsSince,
-                          days_ago, board)
+                          self.mv.ManifestsSince, days_ago, board)
 
 
 if __name__ == '__main__':

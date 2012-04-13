@@ -47,9 +47,6 @@ def signal_handler(signal, frame):
 
 
 class SchedulerLoggingConfig(logging_config.LoggingConfig):
-    GLOBAL_LEVEL = logging.DEBUG
-
-
     @classmethod
     def get_log_name(cls):
         return cls.get_timestamped_log_name('suite_scheduler')

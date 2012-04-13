@@ -83,10 +83,11 @@ class Nightly(TimedEvent):
     def _ParseConfig(cls, config):
         section = cls.section_name(cls.KEYWORD)
         event_time = config.getint(section, 'hour') or cls._DEFAULT_HOUR
-        return {'event_time': event_time}
+        return {'event_time': event_time,
+                'always_handle': config.getboolean(section, 'always')}
 
 
-    def __init__(self, event_time):
+    def __init__(self, event_time, always_handle=False):
         # determine if we're past today's nightly event and set the
         # next deadline for this suite appropriately.
         now = self._now()
@@ -97,6 +98,8 @@ class Nightly(TimedEvent):
         else:
             deadline = tonight + datetime.timedelta(days=1)
         super(Nightly, self).__init__(self.KEYWORD, deadline)
+        if always_handle:
+            self.ShouldHandle = lambda: True
 
 
     def GetBranchBuildsForBoard(self, board, manifest_versions):
@@ -122,10 +125,11 @@ class Weekly(TimedEvent):
         section = cls.section_name(cls.KEYWORD)
         event_time = config.getint(section, 'hour') or cls._DEFAULT_HOUR
         event_day = config.getint(section, 'day') or cls._DEFAULT_DAY
-        return {'event_time': event_time, 'event_day': event_day}
+        return {'event_time': event_time, 'event_day': event_day,
+                'always_handle': config.getboolean(section, 'always')}
 
 
-    def __init__(self, event_day, event_time):
+    def __init__(self, event_day, event_time, always_handle=False):
         # determine if we're past this week's event and set the
         # next deadline for this suite appropriately.
         now = self._now()
@@ -140,6 +144,8 @@ class Weekly(TimedEvent):
         else:
             deadline = this_week_deadline + datetime.timedelta(days=7)
         super(Weekly, self).__init__(self.KEYWORD, deadline)
+        if always_handle:
+            self.ShouldHandle = lambda: True
 
 
     def GetBranchBuildsForBoard(self, board, manifest_versions):

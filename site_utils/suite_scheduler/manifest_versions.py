@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re, os
+import glob, logging, re, os
 import task
 from autotest_lib.client.common_lib import autotemp, utils
 from distutils import version
@@ -68,6 +68,7 @@ class ManifestVersions(object):
         branch_manifests = {}
         parser = re.compile(self._BOARD_MANIFEST_RE_PATTERN % board)
         for manifest_path in self._QueryManifestsSinceDays(days_ago, board):
+            logging.debug('parsing manifest path %s', manifest_path)
             type, milestone, manifest = parser.match(manifest_path).groups()
             branch_manifests.setdefault((type, milestone), []).append(manifest)
         for manifest_list in branch_manifests.itervalues():
@@ -133,6 +134,24 @@ class ManifestVersions(object):
                                          board)
 
 
+    def _ExpandGlobMinusPrefix(self, prefix, path_glob):
+        """Expand |path_glob| under dir |prefix|, then remove |prefix|.
+
+        Path-concatenate prefix and path_glob, then expand the resulting glob.
+        Take the results and remove |prefix| (and path separator) from each.
+        Return the resulting list.
+
+        Assuming /tmp/foo/baz and /tmp/bar/baz both exist,
+        _ExpandGlobMinusPrefix('/tmp', '*/baz')  # ['bar/baz', 'foo/baz']
+
+        @param prefix: a path under which to expand |path_glob|.
+        @param path_glob: the glob to expand.
+        @return a list of paths relative to |prefix|, based on |path_glob|.
+        """
+        full_glob = os.path.join(prefix, path_glob)
+        return [p[len(prefix)+1:] for p in glob.iglob(full_glob)]
+
+
     def _QueryManifestsSince(self, since_spec, board):
         """Return list of manifest files for |board|, since |since_spec|.
 
@@ -142,15 +161,21 @@ class ManifestVersions(object):
         @param board: the board whose manifests we want to check for.
         @raise QueryException if git log or git show errors occur.
         """
-        glob_path = self._BOARD_MANIFEST_GLOB_PATTERN % board
+        manifest_paths = self._ExpandGlobMinusPrefix(
+            self._tempdir.name, self._BOARD_MANIFEST_GLOB_PATTERN % board)
         log_cmd = self._BuildCommand('log',
                                      since_spec,
                                      '--pretty="format:%H"',
                                      '--',
-                                     glob_path)
+                                     ' '.join(manifest_paths))
         try:
+            # If we pass nothing to git show, we get unexpected results.
+            # So, return early if git log is going to give us nothing.
+            if not utils.system_output(log_cmd):
+                return []
             manifests = utils.system_output('%s|xargs %s' % (log_cmd,
                                                              self._ShowCmd()))
         except (IOError, OSError) as e:
             raise QueryException(e)
+        logging.debug('found %s', manifests)
         return [m for m in re.split('\s+', manifests) if m]

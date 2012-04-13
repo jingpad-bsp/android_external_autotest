@@ -92,7 +92,7 @@ class Driver(object):
         @param mv: an instance of manifest_versions.ManifestVersions.
         """
         boards = self._enumerator.Enumerate()
-
+        logging.info('Running suites for boards: %r', boards)
         for e in self._events:
             if e.ShouldHandle():
                 for board in boards:
