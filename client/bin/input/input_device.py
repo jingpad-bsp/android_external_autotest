@@ -17,6 +17,8 @@ import copy
 import fcntl
 import os.path
 import struct
+import time
+
 from linux_input import *
 
 
@@ -52,17 +54,24 @@ class InputEvent:
         code
         value
     """
-    def __init__(self):
+    def __init__(self, tv_sec=0, tv_usec=0, type=0, code=0, value=0):
         self.format = input_event_t
         self.format_size = struct.calcsize(self.format)
         (self.tv_sec, self.tv_usec, self.type, self.code,
-         self.value) = (0, 0, 0, 0, 0)
+         self.value) = (tv_sec, tv_usec, type, code, value)
 
     def read(self, stream):
         """ Read an input event from the provided stream and unpack it. """
         packed = stream.read(self.format_size)
         (self.tv_sec, self.tv_usec, self.type, self.code,
          self.value) = struct.unpack(self.format, packed)
+
+    def write(self, stream):
+        """ Pack an input event and write it to the provided stream. """
+        packed = struct.pack(self.format, self.tv_sec, self.tv_usec, self.type,
+                             self.code, self.value)
+        stream.write(packed)
+        stream.flush()
 
     def __str__(self):
         t = EV_TYPES.get(self.type, self.type)
@@ -137,7 +146,7 @@ class InputDevice:
 
         # Open the device node, and use ioctls to probe its properties
         self.f = None
-        self.f = open(path, 'r')
+        self.f = open(path, 'r+')
         self._ioctl_version()
         self._ioctl_id()
         self._ioctl_name()
