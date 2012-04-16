@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -9,7 +9,7 @@ import logging, os, select, subprocess, sys, time, xmlrpclib
 from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.server import utils
 
-class Servo:
+class Servo(object):
     """Manages control of a Servo board.
 
     Servo is a board developed by hardware group to aide in the debug and
@@ -19,9 +19,6 @@ class Servo:
     process. It provides both high-level functions for common servo tasks and
     low-level functions for directly setting and reading gpios.
     """
-
-    _server = None
-    _servod = None
 
     # Power button press delays in seconds.
     LONG_DELAY = 8
@@ -85,13 +82,13 @@ class Servo:
           cold_reset: If True, cold reset device and boot during init,
                       otherwise perform init with device running.
         """
-        # launch servod
         self._servod = None
+        self._server = None
 
         # TODO(tbroch) In case where servo h/w is not connected to the host
         # running the autotest server, servod will need to be launched by
-        # another means (udev likely).  For now we can assume servo_host ==
-        # localhost as one hueristic way of determining this.
+        # another means (udev likely).  For now we can use servo_host ==
+        # localhost as a heuristic for determining this.
         if not servo_host or servo_host == 'localhost':
             servo_host = 'localhost'
             self._launch_servod(servo_host, servo_port, xml_config, servo_vid,
