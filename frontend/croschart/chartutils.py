@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -15,36 +15,37 @@ import re
 
 
 FIELD_SEPARATOR = ','
-BUILD_PART_SEPARATOR = ' '
 
 BUILD_PATTERN1 = re.compile(
-    '([\w\-]+-r[c0-9]+)-([\d.]+)-([ar][\w]*)-(b[\d]+)')
+    '([\w\-]+-r[\w]+)-(R[\d]+-[\d]+\.[\d]+\.[\d]+)(?:-[ar][\w]+-b[\d]+)?')
 BUILD_PATTERN2 = re.compile(
-    '([\w\-]+-r[\w]+)-(R[\d]+-[\d]+\.[\d]+\.[\d]+)-([ar][\w]*)-(b[\d]+)')
+    '([\w\-]+-r[c0-9]+)-([\d.]+)(?:-[ar][\w]+-b[\d]+)?')
 
 
 def AbbreviateBuild(build, chrome_versions, with_board=False):
-  """Condense full build string for x-axis representation."""
+  """Condense full build string for x-axis representation.
+
+  Old full build strings were w.x.y.z-a#-b#.
+  New full build strings are R#-x.y.z-a#-b#.
+  Newest full build strings are R#-x.y.z.
+  """
   m = re.match(BUILD_PATTERN1, build)
-  if not m or not len(m.groups()) == 4:
+  if not m:
     m = re.match(BUILD_PATTERN2, build)
-  if not m or not len(m.groups()) == 4:
+  if not m:
     logging.warning('Skipping poorly formatted build: %s.', build)
     return None
   chrome_version = ''
-  release_part, build_part, sequence_part = m.group(1, 2, 4)
+  release_part, build_part = m.group(1, 2)
   if build_part[0] == 'R':
     chrome_lookup = build_part.split('-')[1]
   else:
     chrome_lookup = build_part
   if chrome_versions and chrome_lookup in chrome_versions:
-    chrome_version = '%s(%s)' % (BUILD_PART_SEPARATOR,
-                                 chrome_versions[chrome_lookup])
+    chrome_version = '%s(%s)' % (' ', chrome_versions[chrome_lookup])
+  new_build = '%s%s' % (build_part, chrome_version)
   if with_board:
-    new_build = '%s%s%s-%s%s' % (release_part, BUILD_PART_SEPARATOR,
-                                 build_part, sequence_part, chrome_version)
-  else:
-    new_build = '%s-%s%s' % (build_part, sequence_part, chrome_version)
+    new_build = '%s%s%s' % (release_part, '_', new_build)
 
   return new_build
 
@@ -71,7 +72,10 @@ def GetChromeVersions(request):
     map_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                             'chromeos-chrome-version.json')
     if os.path.exists(map_file):
-      chrome_versions = json.load(open(map_file))
+      try:
+        chrome_versions = json.load(open(map_file))
+      except ValueError:
+        logging.warning('Invalid version map JSON: %s.', map_file)
   return chrome_versions
 
 

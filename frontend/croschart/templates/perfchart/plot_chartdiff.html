@@ -1,15 +1,20 @@
 {% extends "perfchart/plot_chart_base.html" %}
 {% comment %}
 
-Copyright 2010 Google Inc. All Rights Reserved.
+Copyright 2012 Google Inc. All Rights Reserved.
 
 This template implements an iframe diff-view with click-to-change the diff.
 {% endcomment %}
 {% block body_block_header %}<body style="width:99%; height:100%;">{% endblock %}
     {% block add_listener %}
-    function chromeos_version(full_version){
-      vers = full_version.split('(', 1)[0].replace(/\s*$/, "").split(' ', 2);
-      return vers[Math.min(vers.length, 2) - 1].split('-', 1);
+    function chromeos_version(full_version) {
+      if (full_version.indexOf('_') > -1) {
+        full_version = full_version.split('_')[1];
+      }
+      if (full_version.indexOf('-') > -1) {
+        full_version = full_version.split('-')[1];
+      }
+      return full_version.split(' ')[0];
     }
     diff_url = 'http://chromeos-images/diff/report';
     from_ver = chromeos_version(json_data.getValue(0, 0));
