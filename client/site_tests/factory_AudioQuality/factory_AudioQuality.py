@@ -267,14 +267,11 @@ class factory_AudioQuality(test.test):
         self._loop_status_label = ful.make_label('No audio loop', fg=ful.WHITE)
         self._main_widget.add(self._loop_status_label)
 
-        try:
-            ful.run_test_widget(self.job, self._main_widget,
-                    window_registration_callback=self.register_callbacks)
-
-            if not self._test_passed:
-                factory.log(self._detail_log)
-                raise error.TestError('Test failed.')
-        finally:
-            self.on_test_complete()
+        ful.run_test_widget(self.job, self._main_widget,
+                window_registration_callback=self.register_callbacks,
+                cleanup_callback=self.on_test_complete)
+        if not self._test_passed:
+            factory.log(self._detail_log)
+            raise error.TestError('Test failed.')
 
         factory.log('%s run_once finished' % self.__class__)
