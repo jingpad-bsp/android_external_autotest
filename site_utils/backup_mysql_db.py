@@ -31,7 +31,7 @@ from autotest_lib.utils import test_importer
 
 _ATTEMPTS = 3
 _GSUTIL_BIN = 'gsutil'
-_GS_BUCKET = 'gs://chomeos-lab/backup/database'
+_GS_BUCKET = 'gs://chromeos-lab/backup/database'
 
 
 _DAILY = 'daily'
@@ -115,12 +115,10 @@ class MySqlArchiver(object):
         # Helpful code to allow us to test without gs.
         assert cmd in ['rm', 'ls']
         gs_bin = _GSUTIL_BIN
-        if not self._gs_dir.startswith('gs://'):
-            gs_bin = None
-
-        cmd_array = [cmd]
-        if gs_bin:
-            cmd_array = gs_bin + cmd_array
+        if self._gs_dir.startswith('gs://'):
+            cmd_array = [gs_bin, cmd]
+        else:
+            cmd_array = [cmd]
 
         return cmd_array
 
