@@ -258,3 +258,10 @@ class CryptohomeProxy:
         """Raises a test failure if a user's cryptohome is not mounted."""
         utils.require_mountpoint(user_path(user))
         utils.require_mountpoint(system_path(user))
+
+    def migrate(self, user, oldkey, newkey):
+        """Migrates the specified user's cryptohome from one key to another."""
+        return self.iface.MigrateKey(user, oldkey, newkey)
+
+    def remove(self, user):
+        return self.iface.Remove(user)
