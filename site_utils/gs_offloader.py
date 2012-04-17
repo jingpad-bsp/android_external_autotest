@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -17,14 +17,16 @@ import re
 import shutil
 import subprocess
 import sys
-import time
+
+import is_job_complete
 
 
 # Google Storage bucket URI to store results in.
 GS_URI = 'gs://chromeos-autotest-results'
 
-# Maximum age in days; all older results will be archived.
-MAX_AGE_DAYS = 7
+# Set this to True to enable rsync otherwise results are offloaded to GS.
+USE_RSYNC = False
+RSYNC = "chromeos-sam1:/usr/local/autotest/results/"
 
 # Nice setting for process, the higher the number the lower the priority.
 NICENESS = 10
@@ -33,23 +35,12 @@ NICENESS = 10
 RESULTS_DIR = '/usr/local/autotest/results'
 
 
-def main():
-  max_age = MAX_AGE_DAYS
-  if len(sys.argv) > 1:
-    if sys.argv[1].lower() in ('--help', '-h', '-?'):
-      print __help__
-      print 'Defaults:'
-      print '  Destination: ' + GS_URI
-      print '  Max Log Age: %s days' % max_age
-      print '  Results path: ' + RESULTS_DIR
-      print '\nUsage:'
-      print '  ./gs_offloader.py [max log age in days]\n'
-      sys.exit(0)
-    else:
-      max_age = int(sys.argv[1])
+def offload_files(results_dir):
+  """
+  Offload files to Google Storage or the RSYNC host if USE_RSYNC is True.
 
-  max_age = time.time() - 60 * 60 * 24 * max_age
-
+  @param results_dir: The Autotest results dir to look for dirs to offload.
+  """
   # Nice our process (carried to subprocesses) so we don't kill the system.
   os.nice(NICENESS)
 
@@ -62,12 +53,29 @@ def main():
 
   # Iterate over all directories in RESULTS_DIR.
   for d in os.listdir('.'):
-    if (job_matcher.match(d) and os.path.isdir(d)
-        and os.stat(d).st_mtime < max_age):
+    print 'Processing %s' % d
+    if not job_matcher.match(d):
+      print 'Skipping %s' % d
+      continue
+    job_id = os.path.basename(d).split('-')[0]
+    if is_job_complete(job_id) != 0:
+      print 'Job %s is not yet complete skipping' % d
+      continue
+    if (job_matcher.match(d) and os.path.isdir(d)):
       # Update command list.
-      cmd_list = ['gsutil', '-m', 'cp', '-eR', '-a', 'project-private', d,
-                  GS_URI]
+      print 'Offloading %s' % d
+      # The way we collect results, currently, is naive and resulst in a lot of
+      # extra data collection. Clear these for now until we can be more
+      # exact about what logs we care about. crosbug.com/26784.
+      print 'Cleaning'
+      cmd_clean = 'find %s -iname chrome_2012\* -exec rm {} \;' % d
+      os.system(cmd_clean)
 
+      if USE_RSYNC:
+        cmd_list = ['rsync', '-a', d, RSYNC]
+      else:
+        cmd_list = ['gsutil', '-m', 'cp', '-eR', '-a', 'project-private', d,
+                    GS_URI]
       # Save stdout and stderr in case of failure.
       process = subprocess.Popen(
           cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -79,6 +87,19 @@ def main():
       else:
         # Copy failed, dump logs and continue to the next directory.
         print output
+
+
+def main():
+  if len(sys.argv) > 1:
+    print __help__
+    print 'Defaults:'
+    print '  Destination: ' + GS_URI
+    print '  Results path: ' + RESULTS_DIR
+    print '\nUsage:'
+    print '  ./gs_offloader.py\n'
+    sys.exit(0)
+
+  offload_files(RESULTS_DIR)
 
 
 if __name__ == '__main__':
