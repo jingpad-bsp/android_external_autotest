@@ -27,7 +27,7 @@ class TaskTestBase(mox.MoxTestBase):
     _BOARD = 'board1'
     _BRANCH = '20'
     _BRANCH_SPEC = '>=R' + _BRANCH
-    _MAP = {_BRANCH: _BUILD}
+    _MAP = {_BRANCH: [_BUILD]}
     _POOL = 'fake_pool'
     _SUITE = 'suite'
 

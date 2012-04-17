@@ -97,7 +97,7 @@ class BaseEvent(object):
 
         @param board: the board whose builds we want.
         @param manifest_versions: ManifestVersions instance to use for querying.
-        @return {branch: build-name}
+        @return {branch: [build-name]}
 
         Must be implemented by subclasses.
         """
@@ -119,9 +119,9 @@ class BaseEvent(object):
                           deduping_scheduler.py
         @param branch_builds: a dict mapping branch name to the build to
                               install for that branch, e.g.
-                              {'R18': 'x86-alex-release/R18-1655.0.0',
-                               'R19': 'x86-alex-release/R19-2077.0.0',
-                               'factory': 'x86-alex-factory/R19-2077.0.5'}
+                              {'R18': ['x86-alex-release/R18-1655.0.0'],
+                               'R19': ['x86-alex-release/R19-2077.0.0']
+                               'factory': ['x86-alex-factory/R19-2077.0.5']}
         @param board: the board against which to Run() all of self._tasks.
         @param force: Tell every Task to always Run().
         """

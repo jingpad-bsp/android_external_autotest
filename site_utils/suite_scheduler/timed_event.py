@@ -57,12 +57,12 @@ class TimedEvent(base_event.BaseEvent):
         @param board: the board whose builds we want.
         @param days_ago: how many days back to look for manifests.
         @param manifest_versions: ManifestVersions instance to use for querying.
-        @return {branch: build-name}
+        @return {branch: [build-name]}
         """
         all_branch_manifests = manifest_versions.ManifestsSince(days_ago, board)
         latest_branch_builds = {}
         for (type, milestone), manifests in all_branch_manifests.iteritems():
-            build = base_event.BuildName(board, type, milestone, manifests[-1])
+            build = base_event.BuildName(board, type, milestone, manifests[-1:])
             latest_branch_builds[task.PickBranchName(type, milestone)] = build
         return latest_branch_builds
 

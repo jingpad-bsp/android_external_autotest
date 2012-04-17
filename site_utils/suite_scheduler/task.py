@@ -211,10 +211,10 @@ class Task(object):
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
-        @param branch_builds: a dict mapping branch name to the build to
+        @param branch_builds: a dict mapping branch name to the build(s) to
                               install for that branch, e.g.
-                              {'R18': 'x86-alex-release/R18-1655.0.0-a1-b1584',
-                               'R19': 'x86-alex-release/R19-2077.0.0-a1-b2056'}
+                              {'R18': ['x86-alex-release/R18-1655.0.0'],
+                               'R19': ['x86-alex-release/R19-2077.0.0']}
         @param board: the board against which to run self._suite.
         @param force: Always schedule the suite.
         @return True if the task should be kept, False if not
@@ -224,7 +224,7 @@ class Task(object):
             logging.debug('Checking if %s fits spec %r',
                           branch, self.branch_specs)
             if self._FitsSpec(branch):
-                builds.append(build)
+                builds.extend(build)
         for build in builds:
             try:
                 if not scheduler.ScheduleSuite(self._suite, board, build,
@@ -248,10 +248,10 @@ class OneShotTask(Task):
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
-        @param branch_builds: a dict mapping branch name to the build to
+        @param branch_builds: a dict mapping branch name to the build(s) to
                               install for that branch, e.g.
-                              {'beta': 'x86-alex-release/R18-1655.0.0-a1-b1584',
-                               'dev': 'x86-alex-release/R19-2077.0.0-a1-b2056'}
+                              {'R18': ['x86-alex-release/R18-1655.0.0'],
+                               'R19': ['x86-alex-release/R19-2077.0.0']}
         @param board: the board against which to run self._suite.
         @param force: Always schedule the suite.
         @return False

@@ -97,7 +97,7 @@ class TimedEventTestBase(mox.MoxTestBase):
             else:
                 build = branch_builds[milestone]
                 self.assertTrue(build.startswith('%s-release' % board))
-            self.assertTrue('R%s-%s' % (milestone, manifests[-1]) in build)
+            self.assertTrue('R%s-%s' % (milestone, manifests[-1:]) in build)
 
 
 class NightlyTest(TimedEventTestBase):
