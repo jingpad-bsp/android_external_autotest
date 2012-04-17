@@ -13,8 +13,8 @@ class hardware_RealtekCardReader(test.test):
     def run_once(self):
         # Look for the Realtek USB card reader.
         # This requires a plugged in SD card.
-        lsusb_output = utils.system_output("lsusb")
-        if not "0bda:0138 Realtek" in lsusb_output:
+        lsusb_output = utils.system_output("lsusb -t")
+        if not "Driver=ums-realtek" in lsusb_output:
             raise error.TestFail("The Realtek card reader USB device was not "
                                  "detected.  This test requires an SD card to "
                                  "be inserted to detect the USB device.")
