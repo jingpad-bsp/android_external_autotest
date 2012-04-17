@@ -155,12 +155,18 @@ class XButton:
     Wheel_Right = 7
     Mouse_Wheel_Up = 8
     Mouse_Wheel_Down = 9
+    DEFAULT_BUTTON_LABELS = (
+        'Button Left', 'Button Middle', 'Button Right',
+        'Button Wheel Up', 'Button Wheel Down',
+        'Button Horiz Wheel Left', 'Button Horiz Wheel Right',
+        'Button 0', 'Button 1', 'Button 2', 'Button 3',
+        'Button 4', 'Button 5', 'Button 6', 'Button 7')
 
     def __init__(self):
         self.display_environ = trackpad_util.Display().get_environ()
-        self.xinput_list_cmd = ' '.join([self.display_environ, 'xinput --list'])
+        self.xinput_list_cmd = ' '.join([self.display_environ, 'xinput list'])
         self.xinput_dev_cmd = ' '.join([self.display_environ,
-                                        'xinput --list --long %s'])
+                                        'xinput list --long %s'])
         self.trackpad_dev_id = self._get_trackpad_dev_id()
         self.button_labels = None
         self.get_supported_buttons()
@@ -183,37 +189,35 @@ class XButton:
     def get_supported_buttons(self):
         ''' Get supported button labels from xinput
 
-        a device returned from 'xinput --list' looks like:
+        a device returned from 'xinput list' looks like:
         |   SynPS/2 Synaptics TouchPad       id=11   [slave  pointer (2)]
 
-        Button labels returned from 'xinput --list <device_id>' looks like:
+        Button labels returned from 'xinput list <device_id>' looks like:
         Button labels: Button Left Button Middle Button Right Button Wheel Up
         Button Wheel Down Button Horiz Wheel Left Button Horiz Wheel Right
         Button 0 Button 1 Button 2 Button 3 Button 4 Button 5 Button 6
         Button 7
         '''
+
         if self.button_labels is not None:
             return self.button_labels
-
-        DEFAULT_BUTTON_LABELS = (
-            'Button Left', 'Button Middle', 'Button Right',
-            'Button Wheel Up', 'Button Wheel Down',
-            'Button Horiz Wheel Left', 'Button Horiz Wheel Right',
-            'Button 0', 'Button 1', 'Button 2', 'Button 3',
-            'Button 4', 'Button 5', 'Button 6', 'Button 7')
 
         if self.trackpad_dev_id is not None:
             xinput_dev_cmd = self.xinput_dev_cmd % self.trackpad_dev_id
             features = simple_system_output(xinput_dev_cmd)
-            button_labels_str = [line for line in features.splitlines()
-                                 if line.lstrip().startswith('Button labels:')]
-            strip_str = button_labels_str[0].lstrip().lstrip('Button labels:')
-            self.button_labels = tuple(['Button ' + b.strip() for b in
-                                        strip_str.split('Button') if b])
-        else:
+            if features is not None:
+                button_labels_list = [line.lstrip().lstrip('Button labels:')
+                    for line in features.splitlines()
+                    if line.lstrip().startswith('Button labels:')]
+                button_labels = button_labels_list[0]
+                self.button_labels = tuple(['Button ' + b.strip() for b in
+                                            button_labels.split('Button') if b])
+
+        if self.button_labels is None:
             logging.warn('Cannot find trackpad device in xinput. '
                          'Using default Button Labels instead.')
-            self.button_labels = DEFAULT_BUTTON_LABELS
+            self.button_labels = self.DEFAULT_BUTTON_LABELS
+
         logging.info('Button Labels (%d) in the trackpad: %s' %
                      (len(self.button_labels), self.button_labels))
 
