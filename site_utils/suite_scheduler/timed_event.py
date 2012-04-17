@@ -62,8 +62,8 @@ class TimedEvent(base_event.BaseEvent):
         all_branch_manifests = manifest_versions.ManifestsSince(days_ago, board)
         latest_branch_builds = {}
         for (type, milestone), manifests in all_branch_manifests.iteritems():
-            build = base_event.BuildName(board, type, milestone, manifests[-1:])
-            latest_branch_builds[task.PickBranchName(type, milestone)] = build
+            build = base_event.BuildName(board, type, milestone, manifests[-1])
+            latest_branch_builds[task.PickBranchName(type, milestone)] = [build]
         return latest_branch_builds
 
 

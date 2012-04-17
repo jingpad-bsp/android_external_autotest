@@ -92,12 +92,14 @@ class TimedEventTestBase(mox.MoxTestBase):
         for (type, milestone), manifests in branch_manifests.iteritems():
             build = None
             if type in task.BARE_BRANCHES:
-                build = branch_builds[type]
+                self.assertEquals(len(branch_builds[type]), 1)
+                build = branch_builds[type][0]
                 self.assertTrue(build.startswith('%s-%s' % (board, type)))
             else:
-                build = branch_builds[milestone]
+                self.assertEquals(len(branch_builds[milestone]), 1)
+                build = branch_builds[milestone][0]
                 self.assertTrue(build.startswith('%s-release' % board))
-            self.assertTrue('R%s-%s' % (milestone, manifests[-1:]) in build)
+            self.assertTrue('R%s-%s' % (milestone, manifests[-1]) in build)
 
 
 class NightlyTest(TimedEventTestBase):
