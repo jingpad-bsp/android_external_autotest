@@ -22,7 +22,8 @@ class ServoTest(test.test):
         If use_faft flag is Ture, a remote FAFT client will be launched.
     """
     version = 2
-
+    # Abstracts access to all Servo functions.
+    servo = None
     # Exposes RPC access to a remote PyAuto client.
     pyauto = None
     # Exposes RPC access to a remote FAFT client.
@@ -70,19 +71,13 @@ class ServoTest(test.test):
         },
     }
 
-    def _init_servo(self, host, cmdline_args):
-        """Initialize `self.servo`.
+    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
+        """Create a Servo object and install the dependency.
 
-        If the host has an attached servo object, use that.
-        Otherwise assume that there's a locally attached servo
-        device, and start servod on localhost.
-
+        If use_pyauto/use_faft is True the PyAuto/FAFTClient dependency is
+        installed on the client and a remote PyAuto/FAFTClient server is
+        launched and connected.
         """
-        if host.servo:
-            self.servo = host.servo
-            self._servo_is_local = False
-            return
-
         # Assign default arguments for servo invocation.
         args = {
             'servo_host': 'localhost', 'servo_port': 9999,
@@ -107,40 +102,21 @@ class ServoTest(test.test):
                 else:
                     args[key] = val
 
-        self.servo = servo.Servo(
-            args['servo_host'], args['servo_port'], args['xml_config'],
-            args['servo_vid'], args['servo_pid'], args['servo_serial'])
-        self._servo_is_local = True
-
-
-    def _release_servo(self):
-        """Clean up `self.servo` if it is locally attached."""
-        if self._servo_is_local:
-            del self.servo
-        self._servo_is_local = False
-
-
-    def initialize(self, host, cmdline_args, use_pyauto=False, use_faft=False):
-        """Create a Servo object and install the dependency.
-
-        If use_pyauto/use_faft is True the PyAuto/FAFTClient dependency is
-        installed on the client and a remote PyAuto/FAFTClient server is
-        launched and connected.
-        """
         # Initialize servotest args.
         self._client = host;
         self._remote_infos['pyauto']['used'] = use_pyauto
         self._remote_infos['faft']['used'] = use_faft
 
-        self._init_servo(host, cmdline_args)
-
+        self.servo = servo.Servo(
+            args['servo_host'], args['servo_port'], args['xml_config'],
+            args['servo_vid'], args['servo_pid'], args['servo_serial'])
         # Initializes dut, may raise AssertionError if pre-defined gpio
         # sequence to set GPIO's fail.  Autotest does not handle exception
         # throwing in initialize and will cause a test to hang.
         try:
             self.servo.initialize_dut()
         except (AssertionError, xmlrpclib.Fault) as e:
-            self._release_servo()
+            del self.servo
             raise error.TestFail(e)
 
         # Install PyAuto/FAFTClient dependency.
@@ -265,7 +241,8 @@ class ServoTest(test.test):
 
     def cleanup(self):
         """Delete the Servo object, call remote cleanup, and kill ssh."""
-        self._release_servo()
+        if self.servo:
+            del self.servo
         for info in self._remote_infos.itervalues():
             if info['remote_process'] and info['remote_process'].poll() is None:
                 remote_object = getattr(self, info['ref_name'])
