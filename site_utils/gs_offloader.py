@@ -58,7 +58,7 @@ def offload_files(results_dir):
       print 'Skipping %s' % d
       continue
     job_id = os.path.basename(d).split('-')[0]
-    if is_job_complete(job_id) != 0:
+    if is_job_complete.is_job_complete(job_id) != 0:
       print 'Job %s is not yet complete skipping' % d
       continue
     if (job_matcher.match(d) and os.path.isdir(d)):
