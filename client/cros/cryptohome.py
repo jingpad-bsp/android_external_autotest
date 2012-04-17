@@ -117,6 +117,7 @@ def mount_vault(user, password, create=False):
 def test_auth(user, password):
     cmd = (CRYPTOHOME_CMD + ' --action=test_auth --user=%s --password=%s' %
            (user, password))
+    cmd += ' --async'
     return 'Authentication succeeded' in __run_cmd(cmd)
 
 
