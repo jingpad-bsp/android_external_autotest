@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, threading, utils, tempfile
+import logging, utils, tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -45,17 +45,6 @@ _DEFAULT_SOX_RMS_THRESHOLD = 0.5
 _DEFAULT_INPUT = 'default'
 _DEFAULT_OUTPUT = 'default'
 
-class RecordSampleThread(threading.Thread):
-    """Wraps the running of arecord in a thread."""
-    def __init__(self, ah, duration, recordfile):
-        threading.Thread.__init__(self)
-        self.ah = ah
-        self.duration = duration
-        self.recordfile = recordfile
-
-    def run(self):
-        self.ah.record_sample(self.duration, self.recordfile)
-
 
 class audiovideo_LineOutToMicInLoopback(test.test):
     version = 1
@@ -92,15 +81,14 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         self._record_duration = record_duration
         self._sox_min_rms = sox_min_rms
 
-        self._ah = audio_helper.AudioHelper(self, input_device=input)
+        self._ah = audio_helper.AudioHelper(self, input_device=input,
+                record_duration=record_duration,
+                num_channels=num_channels)
         self._ah.setup_deps(['sox', 'test_tones'])
 
         super(audiovideo_LineOutToMicInLoopback, self).initialize()
 
     def run_once(self):
-        self.do_loopback_test()
-
-    def do_loopback_test(self):
         """Runs the loopback test.
         """
         self._ah.set_mixer_controls(self._mixer_settings, self._card)
@@ -108,20 +96,18 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s' % noise_file.name)
-            self._ah.record_sample(1, noise_file.name)
+            self._ah.record_sample(noise_file.name)
 
-            # Test each channel separately. Assume two channels.
-            for channel in xrange(0, self._num_channels):
-                self.loopback_test_one_channel(channel, noise_file.name)
+            self._ah.loopback_test_channels(noise_file,
+                    self.loopback_test_one_channel,
+                    self.check_recorded_audio)
 
 
-    def loopback_test_one_channel(self, channel, noise_file):
+    def loopback_test_one_channel(self, channel):
         """Test loopback for a given channel.
 
         Args:
             channel: The channel to test loopback on.
-            noise_file: Noise profile to use for filtering, None to skip noise
-                filtering.
         """
         config = _DEFAULT_TONE_CONFIG.copy()
         config['tone_length_sec'] = self._record_duration
@@ -129,20 +115,8 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         config['frequency'] = self._frequency
         config['alsa_device'] = self._output
 
-        # Temp file for the final noise-reduced file.
-        with tempfile.NamedTemporaryFile(mode='w+t') as reduced_file:
-            # Temp file that records before noise reduction.
-            with tempfile.NamedTemporaryFile(mode='w+t') as tmpfile:
-                record_thread = RecordSampleThread(self._ah,
-                        self._record_duration, tmpfile.name)
-                record_thread.start()
-                self.run_test_tones(config)
-                record_thread.join()
+        self.run_test_tones(config)
 
-                self._ah.noise_reduce_file(tmpfile.name, noise_file,
-                                           reduced_file.name)
-
-            self.check_recorded_audio(reduced_file.name, channel)
 
     def run_test_tones(self, args):
         """Runs the tone generator executable.
@@ -182,18 +156,16 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         utils.system(cmd)
 
 
-    def check_recorded_audio(self, infile, channel):
-        """ Runs the sox command to check if we captured audio.
+    def check_recorded_audio(self, rms_val):
+        """Checks if the calculated RMS value is expected.
 
         Args:
-            infile: The file to test for audio in.
-            channel: The audio channel to test.
+            rms_val: The calculated RMS value.
 
         Raises:
             error.TestFail if the RMS amplitude of the recording isn't above
                 the threshold.
         """
-        rms_val = self._ah.get_audio_rms(infile, channel)
         logging.info('Got RMS value of %f' % rms_val)
         if rms_val < self._sox_min_rms:
             raise error.TestError( 'RMS value %f too low.' % rms_val)

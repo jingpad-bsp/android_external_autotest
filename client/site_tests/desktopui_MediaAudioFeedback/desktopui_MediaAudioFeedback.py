@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, tempfile, threading
+import logging, tempfile
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -42,18 +42,6 @@ _DEFAULT_SOX_RMS_THRESHOLD = 0.30
 _MEDIA_FORMATS = ['BBB.mp3', 'BBB.mp4', 'BBB_mulaw.wav', 'BBB.ogv', 'BBB.webm']
 
 
-class RecordSampleThread(threading.Thread):
-    """Wraps the execution of arecord in a thread."""
-    def __init__(self, audio, duration, recordfile):
-        threading.Thread.__init__(self)
-        self._audio = audio
-        self._duration = duration
-        self._recordfile = recordfile
-
-    def run(self):
-        self._audio.record_sample(self._duration, self._recordfile)
-
-
 class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
     version = 1
 
@@ -78,11 +66,11 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         """
         self._card = card
         self._mixer_settings = mixer_settings
-        self._num_channels = num_channels
-        self._record_duration = record_duration
         self._sox_min_rms = sox_min_rms
 
-        self._ah = audio_helper.AudioHelper(self)
+        self._ah = audio_helper.AudioHelper(self,
+                record_duration=record_duration,
+                num_channels=num_channels)
         self._ah.setup_deps(['sox'])
 
         super(desktopui_MediaAudioFeedback, self).initialize()
@@ -104,11 +92,12 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s' % noise_file.name)
-            self._ah.record_sample(self._record_duration, noise_file.name)
+            self._ah.record_sample(noise_file.name)
+            # Test each media file for all channels.
             for media_file in _MEDIA_FORMATS:
-                for channel in xrange(0, self._num_channels):
-                    self.loopback_test_one_channel(channel, noise_file.name,
-                                                   media_file)
+                self._ah.loopback_test_channels(noise_file,
+                        lambda channel: self.play_media(media_file),
+                        self.check_recorded)
 
     def play_media(self, media_file):
         """Plays a media file in Chromium.
@@ -119,49 +108,17 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         logging.info('Playing back now media file %s.' % media_file)
         self.pyauto.NavigateToURL(self._test_url + media_file)
 
-    def loopback_test_one_channel(self, channel, noise_file, media_file):
-        """Test loopback for a given channel.
+    def check_recorded(self, rms_val):
+        """Checks if the calculated RMS value is expected.
 
         Args:
-            channel: The channel to test loopback on.
-            noise_file: Noise profile to use for filtering, None to skip noise
-                filtering.
-            media_file: Media file to test.
-        """
-        # Temp file for the final noise-reduced file.
-        with tempfile.NamedTemporaryFile(mode='w+t') as reduced_file:
-            # Temp file that records before noise reduction.
-            with tempfile.NamedTemporaryFile(mode='w+t') as tmpfile:
-                record_thread = RecordSampleThread(self._ah,
-                        self._record_duration, tmpfile.name)
-                record_thread.start()
-                self.play_media(media_file)
-                record_thread.join()
-
-                self._ah.noise_reduce_file(tmpfile.name, noise_file,
-                        reduced_file.name)
-
-            self.check_recorded_audio(reduced_file.name, channel)
-
-    def check_recorded_audio(self, infile, channel):
-        """Runs the sox command to check if we captured audio.
-
-        Note: if we captured any sufficient loud audio which can generate
-        the rms_value greater than the threshold value, test will pass.
-        TODO (rohitbm) : find a way to compare the recorded audio with
-                         an actual sample file.
-
-        Args:
-            infile: The file is to test for (strong) audio content via the RMS
-                    method.
-            channel: The audio channel to test.
+            rms_val: The calculated RMS value.
 
         Raises:
             error.TestFail if the RMS amplitude of the recording isn't above
                 the threshold.
         """
-        rms_val = self._ah.get_audio_rms(infile, channel)
-        # In case sox didn't return an RMS value.
+        # In case we don't get a valid RMS value.
         if rms_val is None:
             raise error.TestError(
                 'Failed to generate an audio RMS value from playback.')
