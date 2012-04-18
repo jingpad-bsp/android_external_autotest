@@ -95,6 +95,7 @@ class Driver(object):
         logging.info('Running suites for boards: %r', boards)
         for e in self._events:
             if e.ShouldHandle():
+                logging.debug('Handling %s event', e.keyword)
                 for board in boards:
                     branch_builds = e.GetBranchBuildsForBoard(board, mv)
                     e.Handle(self._scheduler, branch_builds, board)

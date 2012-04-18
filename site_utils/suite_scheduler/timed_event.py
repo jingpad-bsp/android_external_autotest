@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime
+import datetime, logging
 import base_event, forgiving_config_parser, task
 
 
@@ -64,6 +64,8 @@ class TimedEvent(base_event.BaseEvent):
         for (type, milestone), manifests in all_branch_manifests.iteritems():
             build = base_event.BuildName(board, type, milestone, manifests[-1])
             latest_branch_builds[task.PickBranchName(type, milestone)] = [build]
+        logging.debug('%s event found candidate builds: %r',
+                      self.keyword, latest_branch_builds)
         return latest_branch_builds
 
 
@@ -81,10 +83,17 @@ class Nightly(TimedEvent):
 
     @classmethod
     def _ParseConfig(cls, config):
+        """Create args to pass to __init__ by parsing |config|.
+
+        Example:
+        [nightly_params]
+        hour: 20  # 24 hour clock.
+        always_handle: True  # ShouldHandle() will always return True.
+        """
         section = cls.section_name(cls.KEYWORD)
         event_time = config.getint(section, 'hour') or cls._DEFAULT_HOUR
         return {'event_time': event_time,
-                'always_handle': config.getboolean(section, 'always')}
+                'always_handle': config.getboolean(section, 'always_handle')}
 
 
     def __init__(self, event_time, always_handle=False):
@@ -122,11 +131,19 @@ class Weekly(TimedEvent):
 
     @classmethod
     def _ParseConfig(cls, config):
+        """Create args to pass to __init__ by parsing |config|.
+
+        Example:
+        [weekly_params]
+        hour: 20  # 24 hour clock.
+        day: 5  # 0-indexed 7 day week.
+        always_handle: True  # ShouldHandle() will always return True.
+        """
         section = cls.section_name(cls.KEYWORD)
         event_time = config.getint(section, 'hour') or cls._DEFAULT_HOUR
         event_day = config.getint(section, 'day') or cls._DEFAULT_DAY
         return {'event_time': event_time, 'event_day': event_day,
-                'always_handle': config.getboolean(section, 'always')}
+                'always_handle': config.getboolean(section, 'always_handle')}
 
 
     def __init__(self, event_day, event_time, always_handle=False):

@@ -33,7 +33,7 @@ and 'nightly' triggers, for example), and configures all the Tasks
 that will be in play.
 """
 
-import logging, optparse, re, signal, sys
+import logging, optparse, os, re, signal, sys
 import common
 import board_enumerator, deduping_scheduler, driver, forgiving_config_parser
 import manifest_versions
@@ -92,7 +92,12 @@ def main():
     parser, options, args = parse_options()
     if args or options.events and not options.build:
         parser.print_help()
-        return
+        return 1
+
+    if options.config_file and not os.path.exists(options.config_file):
+        logging.error('Specified config file %s does not exist.',
+                      options.config_file)
+        return 1
 
     logging_manager.configure_logging(SchedulerLoggingConfig(),
                                       log_dir=options.log_dir)
@@ -122,4 +127,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
