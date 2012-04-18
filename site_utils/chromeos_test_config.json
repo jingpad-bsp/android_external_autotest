@@ -7,7 +7,7 @@
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf"]}
+                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf", "pagecycler"]}
             ]
         },
 
@@ -16,7 +16,7 @@
                 {"platform": "netbook_ALEX", "au_test": true,
                                              "test_suite": true},
                 {"platform": "netbook_ALEX",
-                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf", "enterprise"]},
+                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
                 {"platform": "netbook_ALEX_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -29,7 +29,7 @@
             "platforms": [
                 {"platform": "netbook_ACER_ZGB","au_test": true},
                 {"platform": "netbook_ACER_ZGB",
-                 "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf"]}
+                 "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf", "pagecycler"]}
             ]
         },
 
@@ -38,7 +38,7 @@
                 {"platform": "netbook_ACER_ZGB", "au_test": true,
                                                  "test_suite": true},
                 {"platform": "netbook_ACER_ZGB",
-                 "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf", "enterprise"]},
+                 "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
                 {"platform": "netbook_ACER_ZGB_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -51,7 +51,7 @@
             "platforms": [
                 {"platform": "netbook_MARIO_MP", "au_test": true},
                 {"platform": "netbook_MARIO_MP",
-                 "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf"]}
+                 "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf", "pagecycler"]}
             ]
         },
 
@@ -60,7 +60,7 @@
                 {"platform": "netbook_MARIO_MP", "au_test": true,
                                                  "test_suite": true},
                 {"platform": "netbook_MARIO_MP",
-                 "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf", "enterprise"]},
+                 "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
                 {"platform": "netbook_MARIO_MP_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -72,7 +72,7 @@
             "build_pattern": "R18-*",
             "platforms": [
                 {"platform": "desktop_STUMPY",
-                 "groups": ["desktopui_pyauto_perf_celeron", "pagecycler_celeron"]},
+                 "groups": ["desktopui_pyauto_perf_celeron", "pagecycler_celeron", "audio"]},
                 {"platform": "desktop_STUMPY", "au_test": true}
             ]
         },
@@ -80,7 +80,7 @@
        "stumpy-release": {
             "platforms": [
                 {"platform": "desktop_STUMPY",
-                 "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron"]},
+                 "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron", "audio"]},
                 {"platform": "desktop_STUMPY", "au_test": true,
                                                "test_suite": true}
             ]
@@ -92,7 +92,7 @@
             "build_pattern": "R18-*",
             "platforms": [
                 {"platform": "netbook_LUMPY",
-                 "groups": ["desktopui_pyauto_perf_celeron", "pagecycler_celeron"]},
+                 "groups": ["desktopui_pyauto_perf_celeron", "pagecycler_celeron", "audio"]},
                 {"platform": "netbook_LUMPY", "au_test": true}
             ]
         },
@@ -100,7 +100,7 @@
        "lumpy-release": {
             "platforms": [
                 {"platform": "netbook_LUMPY",
-                 "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron"]},
+                 "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron", "audio"]},
                 {"platform": "netbook_LUMPY", "au_test": true, "test_suite": true}
             ]
         },
@@ -126,7 +126,7 @@
     },
 
     "default_groups": [
-        "bvtx4", "build", "desktopui", "kernel", "pagecycler", "perfx3", "power"
+        "bvtx4", "build", "desktopui", "kernel", "perfx3", "power"
     ],
 
     "default_tot_groups": [
