@@ -11,6 +11,7 @@
 # UI based heavily on factory_Display/factory_Audio
 
 
+import gobject
 import gtk
 import logging
 import os
@@ -32,18 +33,27 @@ _VERBOSE = False
 
 _SUBTEST_LIST = [
     ('External Display Video',
-     {'msg' : 'Do you see video on External Display\n\n' + \
+     {'msg' : 'Do you see video on External Display\n' + \
+          '請檢查外接螢幕是否有顯示畫面\n\n' + \
           _LABEL_RESPONSE_STR,
       'cfg_disp' : True,
       }),
     ]
 _OPTIONAL = ('External Display Audio',
-             {'msg' : 'Do you hear audio from External Display\n\n' + \
+             {'msg' : 'Do you hear audio from External Display\n' + \
+                  '請檢查是否有聽到聲音\n\n' + \
                   _LABEL_RESPONSE_STR,
               'cfg':['amixer -c 0 cset name="IEC958 Playback Switch" on'],
               'cmd':'aplay -q',
               'postcfg':['amixer -c 0 cset name="IEC958 Playback Switch" off'],
               })
+_CLEANUP = ('Disconnect Display',
+            {'msg':'Disconnect external display\n' + \
+                 '移除外接螢幕\n\n' + \
+                 'Or press TAB to fail\n' + \
+                 '若無法通過測試請按TAB',
+                 'cond':'[ $(xrandr -d :0 | grep " connected" | wc -l) == "1" ]'
+            })
 
 class factory_ExtDisplay(test.test):
     version = 1
@@ -77,6 +87,8 @@ class factory_ExtDisplay(test.test):
                 except error.CmdError:
                     raise error.TestNAError('Setup failed\nCmd: %s' % cfg)
                 factory.log("cmd: " + cfg)
+        if 'cond' in subtest_cfg:
+            self._timer = gobject.timeout_add(500, self.timer_callback)
         if 'cfg_disp' in subtest_cfg:
             if (self._main_display is not None and
                 self._ext_display is not None):
@@ -105,6 +117,9 @@ class factory_ExtDisplay(test.test):
                     raise error.TestNAError('Setup failed\nCmd: %s' % cfg)
                 factory.log("cmd: " + cfg)
         self.close_bgjob(subtest_cfg)
+        if self._timer is not None:
+            gobject.source_remove(self._timer)
+            self._timer = None
 
     def key_press_callback(self, widget, event):
         subtest_name, subtest_cfg = self._current_subtest
@@ -125,7 +140,8 @@ class factory_ExtDisplay(test.test):
             self.finish_subtest()
             self.goto_next_subtest()
         elif event.keyval == gtk.keysyms.Return and \
-                self._status_map[subtest_name] is ful.ACTIVE:
+                self._status_map[subtest_name] is ful.ACTIVE and \
+                'cond' not in subtest_cfg:
             self._status_map[subtest_name] = ful.PASSED
             self.finish_subtest()
             self.goto_next_subtest()
@@ -139,6 +155,18 @@ class factory_ExtDisplay(test.test):
             self._prompt_label.set_text(subtest_cfg['msg'])
 
         self._test_widget.queue_draw()
+        return True
+
+    def timer_callback(self):
+        subtest_name, subtest_cfg = self._current_subtest
+        cond = subtest_cfg['cond']
+        exit_code = utils.system(command=cond, ignore_status=True)
+        if exit_code == 0:
+            self._status_map[subtest_name] = ful.PASSED
+            self.finish_subtest()
+            self.goto_next_subtest()
+            self._test_widget.queue_draw()
+            return False
         return True
 
     def label_status_expose(self, widget, event, name=None):
@@ -194,10 +222,12 @@ class factory_ExtDisplay(test.test):
         self._ext_display = ext_display
 
         self._started = False
+        self._timer = None
 
         if has_audio:
             self.locate_audio_sample(audio_sample_path)
             _SUBTEST_LIST.append(_OPTIONAL)
+        _SUBTEST_LIST.append(_CLEANUP)
 
         self._subtest_queue = [x for x in reversed(_SUBTEST_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n, c in _SUBTEST_LIST)
