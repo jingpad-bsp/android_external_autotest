@@ -1,0 +1,14 @@
+# Copyright (c) 2012 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file contains a dictonary describing the wireless access point
+# information used in the building 2000 wifi lab.
+
+# The dictionary contains the following pair:
+#   * The class name of the wireless access point configurator.
+#   * The ip of the administrative web interface.
+{
+  'LinksysAPConfigurator': '172.22.12.107',
+  'DLinkAPConfigurator': '172.22.12.124',
+}
