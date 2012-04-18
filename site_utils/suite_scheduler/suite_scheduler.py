@@ -112,8 +112,9 @@ def main():
                                         debug=False)
     enumerator = board_enumerator.BoardEnumerator(afe)
     scheduler = deduping_scheduler.DedupingScheduler(afe)
+    mv = manifest_versions.ManifestVersions()
     d = driver.Driver(scheduler, enumerator)
-    d.SetUpEventsAndTasks(config)
+    d.SetUpEventsAndTasks(config, mv)
 
     if options.events:
         # Act as though listed events have just happened.
@@ -121,7 +122,6 @@ def main():
         logging.info('Forcing events: %r' % keywords)
         d.ForceEventsOnceForBuild(keywords, options.build)
     else:
-        mv = manifest_versions.ManifestVersions()
         mv.Initialize()
         d.RunForever(mv)
 

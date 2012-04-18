@@ -38,9 +38,9 @@ class DriverTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(timed_event.Nightly, 'CreateFromConfig')
         self.mox.StubOutWithMock(timed_event.Weekly, 'CreateFromConfig')
         timed_event.Nightly.CreateFromConfig(
-            mox.IgnoreArg()).AndReturn(self.nightly)
+            mox.IgnoreArg(), self.mv).AndReturn(self.nightly)
         timed_event.Weekly.CreateFromConfig(
-            mox.IgnoreArg()).AndReturn(self.weekly)
+            mox.IgnoreArg(), self.mv).AndReturn(self.weekly)
 
 
     def _ExpectEnumeration(self):
@@ -89,7 +89,7 @@ class DriverTest(mox.MoxTestBase):
         self._ExpectHandle(self.weekly, 'events')
         self.mox.ReplayAll()
 
-        self.driver.SetUpEventsAndTasks(self.config)
+        self.driver.SetUpEventsAndTasks(self.config, self.mv)
         self.driver.HandleEventsOnce(self.mv)
 
 
@@ -101,7 +101,7 @@ class DriverTest(mox.MoxTestBase):
         self.weekly.ShouldHandle().InAnyOrder('events').AndReturn(False)
         self.mox.ReplayAll()
 
-        self.driver.SetUpEventsAndTasks(self.config)
+        self.driver.SetUpEventsAndTasks(self.config, self.mv)
         self.driver.HandleEventsOnce(self.mv)
 
 
@@ -119,7 +119,7 @@ class DriverTest(mox.MoxTestBase):
                             force=True)
         self.mox.ReplayAll()
 
-        self.driver.SetUpEventsAndTasks(self.config)
+        self.driver.SetUpEventsAndTasks(self.config, self.mv)
         self.driver.ForceEventsOnceForBuild([self.nightly.keyword], build)
 
 

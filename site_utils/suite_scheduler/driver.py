@@ -4,8 +4,8 @@
 
 import logging, time
 
-import board_enumerator, deduping_scheduler, forgiving_config_parser
-import manifest_versions, task, base_event, timed_event
+import base_event, board_enumerator, build_event, deduping_scheduler
+import forgiving_config_parser, manifest_versions, task, timed_event
 
 
 class Driver(object):
@@ -32,13 +32,15 @@ class Driver(object):
         self._enumerator = enumerator
 
 
-    def SetUpEventsAndTasks(self, config):
+    def SetUpEventsAndTasks(self, config, mv):
         """Populate self._events and create task lists from config.
 
         @param config: an instance of ForgivingConfigParser.
+        @param mv: an instance of ManifestVersions.
         """
-        self._events = [timed_event.Nightly.CreateFromConfig(config),
-                        timed_event.Weekly.CreateFromConfig(config)]
+        self._events = [timed_event.Nightly.CreateFromConfig(config, mv),
+                        timed_event.Weekly.CreateFromConfig(config, mv),
+                        build_event.NewBuild.CreateFromConfig(config, mv)]
 
         tasks = self.TasksFromConfig(config)
 
@@ -62,7 +64,7 @@ class Driver(object):
         """
         tasks = {}
         for section in config.sections():
-            if not timed_event.TimedEvent.HonorsSection(section):
+            if not base_event.HonoredSection(section):
                 try:
                     keyword, new_task = task.Task.CreateFromConfigSection(
                         config, section)

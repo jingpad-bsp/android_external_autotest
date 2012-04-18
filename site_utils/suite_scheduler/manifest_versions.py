@@ -33,6 +33,7 @@ class ManifestVersions(object):
 
     _MANIFEST_VERSIONS_URL = ('ssh://gerrit-int.chromium.org:29419/'
                               'chromeos/manifest-versions.git')
+    _ANY_MANIFEST_GLOB_PATTERN = 'build-name/*/pass/'
     _BOARD_MANIFEST_GLOB_PATTERN = 'build-name/%s-*/pass/'
     _BOARD_MANIFEST_RE_PATTERN = (r'build-name/%s-([^-]+)(?:-group)?/pass/'
                                   '(\d+)/([0-9.]+)\.xml')
@@ -41,6 +42,22 @@ class ManifestVersions(object):
     def __init__(self):
         self._git = utils.system_output('which git')
         self._tempdir = autotemp.tempdir(unique_id='_suite_scheduler')
+
+
+    def AnyManifestsSinceRev(self, revision):
+      """Determine if any builds passed since git |revision|.
+
+      @param revision: the git revision to look back to.
+      @return True if any builds have passed; False otherwise.
+      """
+      manifest_paths = self._ExpandGlobMinusPrefix(
+          self._tempdir.name, self._ANY_MANIFEST_GLOB_PATTERN)
+      log_cmd = self._BuildCommand('log',
+                                   revision + '..HEAD',
+                                   '--pretty="format:%H"',
+                                   '--',
+                                   ' '.join(manifest_paths))
+      return utils.system_output(log_cmd).strip() != ''
 
 
     def Initialize(self):
@@ -53,7 +70,7 @@ class ManifestVersions(object):
         logging.debug('manifest-versions.git cloned.')
 
 
-    def ManifestsSince(self, days_ago, board):
+    def ManifestsSinceDays(self, days_ago, board):
         """Return map of branch:manifests for |board| for last |days_ago| days.
 
         To fully specify a 'branch', one needs both the type and the numeric
@@ -65,20 +82,66 @@ class ManifestVersions(object):
         @param board: the board whose manifests we want to check for.
         @return {(branch_type, milestone): [manifests, oldest, to, newest]}
         """
+        return self._GetManifests(
+            re.compile(self._BOARD_MANIFEST_RE_PATTERN % board),
+            self._QueryManifestsSinceDays(days_ago, board))
+
+
+    def ManifestsSinceRev(self, rev, board):
+        """Return map of branch:manifests for |board| since git |rev|.
+
+        To fully specify a 'branch', one needs both the type and the numeric
+        milestone the branch was cut for, e.g. ('release', '19') or
+        ('factory', '17').
+
+        @param rev: return all manifest files from |rev| up to HEAD.
+        @param board: the board whose manifests we want to check for.
+        @return {(branch_type, milestone): [manifests, oldest, to, newest]}
+        """
+        return self._GetManifests(
+            re.compile(self._BOARD_MANIFEST_RE_PATTERN % board),
+            self._QueryManifestsSinceRev(rev, board))
+
+
+    def _GetManifests(self, matcher, manifest_paths):
+        """Parse a list of manifest_paths into a map of branch:manifests.
+
+        Given a regexp |matcher| and a list of paths to manifest files,
+        parse the paths and build up a map of branches to manifests of
+        builds on those branches.
+
+        To fully specify a 'branch', one needs both the type and the numeric
+        milestone the branch was cut for, e.g. ('release', '19') or
+        ('factory', '17').
+
+        @param matcher: a compiled regexp that can be used to parse info
+                        out of the path to a manifest file.
+        @param manifest_paths: an iterable of paths to manifest files.
+        @return {(branch_type, milestone): [manifests, oldest, to, newest]}
+        """
         branch_manifests = {}
-        parser = re.compile(self._BOARD_MANIFEST_RE_PATTERN % board)
-        for manifest_path in self._QueryManifestsSinceDays(days_ago, board):
+        for manifest_path in manifest_paths:
             logging.debug('parsing manifest path %s', manifest_path)
-            type, milestone, manifest = parser.match(manifest_path).groups()
+            type, milestone, manifest = matcher.match(manifest_path).groups()
             branch_manifests.setdefault((type, milestone), []).append(manifest)
         for manifest_list in branch_manifests.itervalues():
             manifest_list.sort(key=version.LooseVersion)
         return branch_manifests
 
 
+    def GetCheckpoint(self):
+        """Return the latest checked-out git revision in manifest-versions.git.
+
+        @return the git hash of the latest git revision.
+        """
+        return utils.system_output(self._BuildCommand('log',
+                                                      '--pretty="format:%H"',
+                                                      '-n=1')).strip()
+
+
     def Update(self):
         """Get latest manifest information."""
-        return utils.system(self._BuildCommand('fetch'))
+        return utils.system(self._BuildCommand('pull'))
 
 
     def _BuildCommand(self, command, *args):
@@ -111,15 +174,15 @@ class ManifestVersions(object):
                                   '--diff-filter=A')
 
 
-    def _QueryManifestsSinceHash(self, git_hash, board):
-        """Get manifest filenames for |board|, since |git_hash|.
+    def _QueryManifestsSinceRev(self, git_rev, board):
+        """Get manifest filenames for |board|, since |git_rev|.
 
-        @param git_hash: check for manifests newer than this git commit.
+        @param git_rev: check for manifests newer than this git commit.
         @param board: the board whose manifests we want to check for.
         @return whitespace-delineated
         @raise QueryException if errors occur.
         """
-        return self._QueryManifestsSince(git_hash + '..HEAD', board)
+        return self._QueryManifestsSince(git_rev + '..HEAD', board)
 
 
     def _QueryManifestsSinceDays(self, days_ago, board):

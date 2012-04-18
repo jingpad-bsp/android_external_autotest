@@ -6,10 +6,10 @@
 
 """Unit tests for site_utils/timed_event.py."""
 
-import datetime, logging, mox,  unittest
+import datetime, logging, mox, unittest
 
-import deduping_scheduler, forgiving_config_parser, task, timed_event
-import manifest_versions
+import base_event, deduping_scheduler, forgiving_config_parser
+import manifest_versions, task, timed_event
 
 
 class TimedEventTestBase(mox.MoxTestBase):
@@ -83,7 +83,7 @@ class TimedEventTestBase(mox.MoxTestBase):
         board = 'faux_board'
         branch_manifests = {('factory','16'): ['last16'],
                             ('release','17'): ['first17', 'last17']}
-        self.mv.ManifestsSince(days, board).AndReturn(branch_manifests)
+        self.mv.ManifestsSinceDays(days, board).AndReturn(branch_manifests)
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
@@ -121,22 +121,21 @@ class NightlyTest(TimedEventTestBase):
 
     def CreateEvent(self):
         """Return an instance of timed_event.Nightly."""
-        return timed_event.Nightly(self._HOUR)
+        return timed_event.Nightly(self.mv, False, self._HOUR)
 
 
     def testCreateFromConfig(self):
         """Test that creating from config is equivalent to using constructor."""
         config = forgiving_config_parser.ForgivingConfigParser()
-        section = timed_event.TimedEvent.section_name(
-            timed_event.Nightly.KEYWORD)
+        section = base_event.SectionName(timed_event.Nightly.KEYWORD)
         config.add_section(section)
         config.set(section, 'hour', '%d' % self._HOUR)
 
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
-        self.assertEquals(timed_event.Nightly(self._HOUR),
-                          timed_event.Nightly.CreateFromConfig(config))
+        self.assertEquals(self.CreateEvent(),
+                          timed_event.Nightly.CreateFromConfig(config, self.mv))
 
 
     def testCreateFromEmptyConfig(self):
@@ -147,8 +146,9 @@ class NightlyTest(TimedEventTestBase):
         self.mox.ReplayAll()
 
         self.assertEquals(
-            timed_event.Nightly(timed_event.Nightly._DEFAULT_HOUR),
-            timed_event.Nightly.CreateFromConfig(config))
+            timed_event.Nightly(self.mv, False,
+                                timed_event.Nightly._DEFAULT_HOUR),
+            timed_event.Nightly.CreateFromConfig(config, self.mv))
 
 
     def testDeadlineInPast(self):
@@ -219,14 +219,13 @@ class WeeklyTest(TimedEventTestBase):
 
     def CreateEvent(self):
         """Return an instance of timed_event.Weekly."""
-        return timed_event.Weekly(self._DAY, self._HOUR)
+        return timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
 
 
     def testCreateFromConfig(self):
         """Test that creating from config is equivalent to using constructor."""
         config = forgiving_config_parser.ForgivingConfigParser()
-        section = timed_event.TimedEvent.section_name(
-            timed_event.Weekly.KEYWORD)
+        section = base_event.SectionName(timed_event.Weekly.KEYWORD)
         config.add_section(section)
         config.set(section, 'day', '%d' % self._DAY)
         config.set(section, 'hour', '%d' % self._HOUR)
@@ -234,8 +233,8 @@ class WeeklyTest(TimedEventTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
-        self.assertEquals(timed_event.Weekly(self._DAY, self._HOUR),
-                          timed_event.Weekly.CreateFromConfig(config))
+        self.assertEquals(self.CreateEvent(),
+                          timed_event.Weekly.CreateFromConfig(config, self.mv))
 
 
     def testDeadlineInPast(self):

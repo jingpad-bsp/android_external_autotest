@@ -9,15 +9,20 @@ import base_event, forgiving_config_parser, task
 class TimedEvent(base_event.BaseEvent):
     """Base class for events that trigger based on time/day.
 
-    @var _SECTION_SUFFIX: suffix of config file sections that apply to derived
-                          classes of TimedEvent.
+    @var _deadline: If this time has passed, ShouldHandle() returns True.
     """
 
-    _SECTION_SUFFIX = '_params'
 
+    def __init__(self, keyword, manifest_versions, always_handle, deadline):
+        """Constructor.
 
-    def __init__(self, keyword, deadline):
-        super(TimedEvent, self).__init__(keyword)
+        @param keyword: the keyword/name of this event, e.g. nightly.
+        @param manifest_versions: ManifestVersions instance to use for querying.
+        @param always_handle: If True, make ShouldHandle() always return True.
+        @param deadline: This instance's initial |_deadline|.
+        """
+        super(TimedEvent, self).__init__(keyword, manifest_versions,
+                                         always_handle)
         self._deadline = deadline
 
 
@@ -30,20 +35,8 @@ class TimedEvent(base_event.BaseEvent):
 
 
     @staticmethod
-    def section_name(keyword):
-        """Generate a section name for a TimedEvent config stanza."""
-        return keyword + TimedEvent._SECTION_SUFFIX
-
-
-    @staticmethod
     def _now():
         return datetime.datetime.now()
-
-
-    @staticmethod
-    def HonorsSection(section):
-        """Returns True if section is something _ParseConfig() might consume."""
-        return section.endswith(TimedEvent._SECTION_SUFFIX)
 
 
     def ShouldHandle(self):
@@ -59,7 +52,8 @@ class TimedEvent(base_event.BaseEvent):
         @param manifest_versions: ManifestVersions instance to use for querying.
         @return {branch: [build-name]}
         """
-        all_branch_manifests = manifest_versions.ManifestsSince(days_ago, board)
+        all_branch_manifests = manifest_versions.ManifestsSinceDays(days_ago,
+                                                                    board)
         latest_branch_builds = {}
         for (type, milestone), manifests in all_branch_manifests.iteritems():
             build = base_event.BuildName(board, type, milestone, manifests[-1])
@@ -85,18 +79,26 @@ class Nightly(TimedEvent):
     def _ParseConfig(cls, config):
         """Create args to pass to __init__ by parsing |config|.
 
-        Example:
-        [nightly_params]
-        hour: 20  # 24 hour clock.
-        always_handle: True  # ShouldHandle() will always return True.
+        Calls super class' _ParseConfig() method, then parses these additonal
+        options:
+          hour: Integer hour, on a 24 hour clock.
         """
-        section = cls.section_name(cls.KEYWORD)
+        from_base = super(Nightly, cls)._ParseConfig(config)
+
+        section = base_event.SectionName(cls.KEYWORD)
         event_time = config.getint(section, 'hour') or cls._DEFAULT_HOUR
-        return {'event_time': event_time,
-                'always_handle': config.getboolean(section, 'always_handle')}
+
+        from_base.update({'event_time': event_time})
+        return from_base
 
 
-    def __init__(self, event_time, always_handle=False):
+    def __init__(self, manifest_versions, always_handle, event_time):
+        """Constructor.
+
+        @param manifest_versions: ManifestVersions instance to use for querying.
+        @param always_handle: If True, make ShouldHandle() always return True.
+        @param event_time: The hour of the day to set |self._deadline| at.
+        """
         # determine if we're past today's nightly event and set the
         # next deadline for this suite appropriately.
         now = self._now()
@@ -106,9 +108,8 @@ class Nightly(TimedEvent):
             deadline = tonight
         else:
             deadline = tonight + datetime.timedelta(days=1)
-        super(Nightly, self).__init__(self.KEYWORD, deadline)
-        if always_handle:
-            self.ShouldHandle = lambda: True
+        super(Nightly, self).__init__(self.KEYWORD, manifest_versions,
+                                      always_handle, deadline)
 
 
     def GetBranchBuildsForBoard(self, board, manifest_versions):
@@ -133,20 +134,29 @@ class Weekly(TimedEvent):
     def _ParseConfig(cls, config):
         """Create args to pass to __init__ by parsing |config|.
 
-        Example:
-        [weekly_params]
-        hour: 20  # 24 hour clock.
-        day: 5  # 0-indexed 7 day week.
-        always_handle: True  # ShouldHandle() will always return True.
+        Calls super class' _ParseConfig() method, then parses these additonal
+        options:
+          hour: Integer hour, on a 24 hour clock.
+          day: Integer day, in a 0-indexed 7 day week, e.g. 5 == Saturday.
         """
-        section = cls.section_name(cls.KEYWORD)
+        from_base = super(Weekly, cls)._ParseConfig(config)
+
+        section = base_event.SectionName(cls.KEYWORD)
         event_time = config.getint(section, 'hour') or cls._DEFAULT_HOUR
         event_day = config.getint(section, 'day') or cls._DEFAULT_DAY
-        return {'event_time': event_time, 'event_day': event_day,
-                'always_handle': config.getboolean(section, 'always_handle')}
+
+        from_base.update({'event_time': event_time, 'event_day': event_day})
+        return from_base
 
 
-    def __init__(self, event_day, event_time, always_handle=False):
+    def __init__(self, manifest_versions, always_handle, event_day, event_time):
+        """Constructor.
+
+        @param manifest_versions: ManifestVersions instance to use for querying.
+        @param always_handle: If True, make ShouldHandle() always return True.
+        @param event_day: The day of the week to set |self._deadline| at.
+        @param event_time: The hour of the day to set |self._deadline| at.
+        """
         # determine if we're past this week's event and set the
         # next deadline for this suite appropriately.
         now = self._now()
@@ -160,9 +170,8 @@ class Weekly(TimedEvent):
             deadline = this_week_deadline
         else:
             deadline = this_week_deadline + datetime.timedelta(days=7)
-        super(Weekly, self).__init__(self.KEYWORD, deadline)
-        if always_handle:
-            self.ShouldHandle = lambda: True
+        super(Weekly, self).__init__(self.KEYWORD, manifest_versions,
+                                     always_handle, deadline)
 
 
     def GetBranchBuildsForBoard(self, board, manifest_versions):

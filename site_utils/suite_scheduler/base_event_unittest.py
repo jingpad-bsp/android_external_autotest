@@ -62,13 +62,18 @@ class BaseEventTest(mox.MoxTestBase):
         self.sched = self.mox.CreateMock(deduping_scheduler.DedupingScheduler)
 
 
+    def CreateEvent(self):
+        """Return an instance of base_event.BaseEvent."""
+        return base_event.BaseEvent('event', None, False)
+
+
     def testEventDeduping(self):
         """Tests that tasks are de-duped at BaseEvent creation."""
         tasks = [FakeTask(*task, pymox=self.mox) for task in self._TASKS]
         tasks.append(FakeTask(*self._TASKS[0], pymox=self.mox))
         self.mox.ReplayAll()
 
-        event = base_event.BaseEvent('new_build')
+        event = self.CreateEvent()
         event.tasks = tasks
         self.assertEquals(len(event.tasks), len(self._TASKS))
 
@@ -79,16 +84,16 @@ class BaseEventTest(mox.MoxTestBase):
         for task in tasks: task.Arm()
         self.mox.ReplayAll()
 
-        new_build = base_event.BaseEvent('new_build')
-        new_build.tasks = tasks
-        new_build.Handle(self.sched, {}, [])
+        event = self.CreateEvent()
+        event.tasks = tasks
+        event.Handle(self.sched, {}, [])
         self.mox.VerifyAll()
 
         # Ensure that all tasks are still around and can be Handle()'d again.
         self.mox.ResetAll()
         for task in tasks: task.Arm()
         self.mox.ReplayAll()
-        new_build.Handle(self.sched, {}, [])
+        event.Handle(self.sched, {}, [])
 
 
     def testOneShotWithRecurringTasks(self):
@@ -98,13 +103,13 @@ class BaseEventTest(mox.MoxTestBase):
         for task in all_tasks: task.Arm()
         self.mox.ReplayAll()
 
-        new_build = base_event.BaseEvent('new_build')
-        new_build.tasks = all_tasks
-        new_build.Handle(self.sched, {}, [])
+        event = self.CreateEvent()
+        event.tasks = all_tasks
+        event.Handle(self.sched, {}, [])
         self.mox.VerifyAll()
 
         # Ensure that only recurring tasks can get Handle()'d again.
         self.mox.ResetAll()
         for task in tasks: task.Arm()
         self.mox.ReplayAll()
-        new_build.Handle(self.sched, {}, [])
+        event.Handle(self.sched, {}, [])

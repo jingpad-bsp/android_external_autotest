@@ -5,10 +5,29 @@
 import re
 import task
 
+"""Module containing base class and methods for working with scheduler events.
+
+@var _SECTION_SUFFIX: suffix of config file sections that apply to derived
+                      classes of TimedEvent.
+"""
+
+
+_SECTION_SUFFIX = '_params'
+
 
 class ParseBuildNameException(Exception):
-    """Raised when _ParseBuildName() cannot parse a build name."""
+    """Raised when ParseBuildName() cannot parse a build name."""
     pass
+
+
+def SectionName(keyword):
+    """Generate a section name for a *Event config stanza."""
+    return keyword + _SECTION_SUFFIX
+
+
+def HonoredSection(section):
+    """Returns True if section is something _ParseConfig() might consume."""
+    return section.endswith(_SECTION_SUFFIX)
 
 
 def ParseBuildName(name):
@@ -42,6 +61,7 @@ class BaseEvent(object):
     """Represents a supported scheduler event.
 
     @var _keyword: the keyword/name of this event, e.g. new_build, nightly.
+    @var _mv: ManifestVersions instance used to query for new builds, etc.
     @var _tasks: set of Task instances that run on this event.
                  Use a set so that instances that encode logically equivalent
                  Tasks get de-duped before we even try to schedule them.
@@ -49,27 +69,37 @@ class BaseEvent(object):
 
 
     @classmethod
-    def CreateFromConfig(cls, config):
+    def CreateFromConfig(cls, config, manifest_versions):
         """Instantiate a cls object, options from |config|."""
-        return cls(**cls._ParseConfig(config))
+        return cls(manifest_versions, **cls._ParseConfig(config))
 
 
     @classmethod
     def _ParseConfig(cls, config):
         """Parse config and return a dict of parameters for this event.
 
-        Must be implemented by subclasses.
+        Uses cls.KEYWORD to determine which section to look at, and parses
+        the following options:
+          always_handle: If True, ShouldHandle() must always return True.
+
+        @param config: a ForgivingConfigParser instance.
         """
-        raise NotImplementedError()
+        section = SectionName(cls.KEYWORD)
+        return {'always_handle': config.getboolean(section, 'always_handle')}
 
 
-    def __init__(self, keyword):
+    def __init__(self, keyword, manifest_versions, always_handle):
         """Constructor.
 
         @param keyword: the keyword/name of this event, e.g. nightly.
+        @param manifest_versions: ManifestVersions instance to use for querying.
+        @param always_handle: If True, make ShouldHandle() always return True.
         """
         self._keyword = keyword
+        self._mv = manifest_versions
         self._tasks = set()
+        if always_handle:
+            self.ShouldHandle = lambda: True
 
 
     @property
