@@ -162,8 +162,7 @@ class desktopui_EnterprisePolicy(enterprise_ui_test.EnterpriseUITest):
             self.pyauto.EnrollEnterpriseDevice(credentials['username'],
                                                credentials['password'])
         except:
-            # TODO(frankf): Enable once crbug.com/117843 is implemented.
-            #self._take_screenshot(fname_prefix='enrollment-fail-screenshot')
+            self.take_screenshot(fname_prefix='enrollment-fail-screenshot')
             raise
 
         if not self.pyauto.IsEnterpriseDevice():

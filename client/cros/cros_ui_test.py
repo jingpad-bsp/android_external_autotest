@@ -463,7 +463,7 @@ class UITest(pyauto_test.PyAutoTest):
         return [cryptohome.canonicalize(name), passwd]
 
 
-    def _take_screenshot(self, fname_prefix):
+    def take_screenshot(self, fname_prefix):
       """Take screenshot and save to a new file in the results dir.
 
       Args:
@@ -475,7 +475,7 @@ class UITest(pyauto_test.PyAutoTest):
           self.resultsdir, '%s-%d.png' % (fname_prefix, next_index))
       logging.info('Saving screenshot to %s.' % screenshot_file)
       utils.system('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
-                   'screenshot %s' % screenshot_file)
+                   '/usr/local/bin/import -window root %s' % screenshot_file)
 
 
     def login(self, username=None, password=None):
@@ -519,8 +519,7 @@ class UITest(pyauto_test.PyAutoTest):
                 self.pyauto.LoginAsGuest()
                 logging.info('Logged in as guest.')
         except:
-            # TODO(frankf): Enable once crbug.com/117843 is implemented.
-            #self._take_screenshot(fname_prefix='login-fail-screenshot')
+            self.take_screenshot(fname_prefix='login-fail-screenshot')
             raise
         finally:
             self.stop_tcpdump(fname_prefix='tcpdump-lo--till-login')
