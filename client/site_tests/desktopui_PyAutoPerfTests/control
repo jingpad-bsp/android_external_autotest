@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -38,6 +38,11 @@ Sample usage:
   # (use "args" for the key, and the argument string as the value).
   ('desktopui_PyAutoPerfTests', \
    {'args': 'perf.ScrollTest.testTextScroll --iterations=10'})
+
+  # Run the PGO testsuite under PGO mode (--no-sandbox, --renderer-clean-exit,
+  # etc.)
+  ./run_remote_tests.sh --remote=<DEVICE_IP> desktopui_PyAutoPerfTests \
+      -a '--pgo --suite=PGO'
 """
 
 job.run_test('desktopui_PyAutoPerfTests', args=args)

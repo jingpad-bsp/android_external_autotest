@@ -81,6 +81,11 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
                           help='Name of the suite to run, as specified in the '
                                '"PYAUTO_TESTS" suite file. Defaults to '
                                '%default, which runs all perf tests.')
+        parser.add_option('--pgo', dest='pgo', action='store_true',
+                          default=False,
+                          help='Run the suite under PGO mode. In the PGO '
+                               'mode, the renderer cleanly exits and '
+                               'sandbox is turned off.')
         # Preprocess the args to remove quotes before/after each one if they
         # exist.  This is necessary because arguments passed via
         # run_remote_tests.sh may be individually quoted, and those quotes must
@@ -123,6 +128,9 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
 
         if options.max_timeouts:
           environment['MAX_TIMEOUT_COUNT'] = str(options.max_timeouts)
+
+        if options.pgo:
+          environment['USE_PGO'] = 1
 
         proc = subprocess.Popen(
             functional_cmd, shell=True, stdout=subprocess.PIPE,
