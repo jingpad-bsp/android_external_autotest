@@ -20,8 +20,7 @@ from autotest_lib.client.bin import profiler
 class pgo(profiler.profiler):
     version = 1
 
-    def initialize(self,
-                   source_dir='/var/cache/distfiles/target/chrome-src/src/c'):
+    def initialize(self, source_dir='/tmp/pgo/chrome'):
         self._source_dir = source_dir
 
 
