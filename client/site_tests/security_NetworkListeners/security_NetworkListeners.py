@@ -34,7 +34,9 @@ class security_NetworkListeners(cros_ui_test.UITest):
         Compare a list of processes, listening on TCP ports, to a
         baseline. Test fails if there are mismatches.
         """
-        cmd = 'lsof -n -i -sTCP:LISTEN'
+        cmd = (r'lsof -n -i -sTCP:LISTEN | '
+               # Workaround for crosbug.com/28235 using a dynamic port #.
+               r'sed "s/\\(shill.*127.0.0.1\\):.*/\1:DYNAMIC LISTEN/g"')
         cmd_output = utils.system_output(cmd, ignore_status=True)
         # Use the [1:] slice to discard line 0, the lsof output header.
         lsof_lines = cmd_output.splitlines()[1:]
