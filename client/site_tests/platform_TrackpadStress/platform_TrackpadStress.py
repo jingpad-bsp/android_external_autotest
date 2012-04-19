@@ -17,7 +17,7 @@ class platform_TrackpadStress(test.test):
         log_reader.set_start_by_reboot(-1)
 
         # Verify the synaptics kernel driver successfully probed the trackpad
-        check_string = 'Synaptics Touchpad, model: 1, fw:'
+        check_string = 'psmouse serio2: synaptics: Touchpad model: 1, fw:'
         if not log_reader.can_find(check_string):
             raise error.TestFail('Pre-check 1: Unable to locate trackpad '
                                  'logging string: %s' % check_string)
