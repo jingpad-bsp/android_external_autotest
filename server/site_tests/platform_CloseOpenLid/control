@@ -14,9 +14,9 @@ DOC = """
 This test uses servo to simulate lid close and open events. Device state is
 verified by pinging."""
 
-def run_closeopenlid(machine):
-    host = hosts.create_host(machine)
-    job.run_test("platform_CloseOpenLid", host=host, cmdline_args=args,
+def run(machine):
+    host = hosts.create_host(machine, require_servo=True)
+    job.run_test("platform_CloseOpenLid", host=host, cmdline_args=None,
                  disable_sysinfo=True)
 
-parallel_simple(run_closeopenlid, machines)
+parallel_simple(run, machines)

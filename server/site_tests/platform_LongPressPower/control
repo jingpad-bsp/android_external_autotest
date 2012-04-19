@@ -17,9 +17,9 @@ This test uses servo to press and hold the device power button and uses ping
 to validate behavior.
 """
 
-def run_longpresspower(machine):
-    host = hosts.create_host(machine)
-    job.run_test("platform_LongPressPower", host=host, cmdline_args=args,
+def run(machine):
+    host = hosts.create_host(machine, require_servo=True)
+    job.run_test("platform_LongPressPower", host=host, cmdline_args=None,
                  disable_sysinfo=True)
 
-parallel_simple(run_longpresspower, machines)
+parallel_simple(run, machines)

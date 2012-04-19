@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_remote_power
+from autotest_lib.server.cros import servo
 from autotest_lib.server.hosts import remote
 
 
@@ -53,9 +54,23 @@ class SiteHost(remote.RemoteHost):
     # Ephemeral file to indicate that an update has just occurred.
     _JUST_UPDATED_FLAG = '/tmp/just_updated'
 
-    def _initialize(self, hostname, *args, **dargs):
+    def _initialize(self, hostname, require_servo=False, *args, **dargs):
+        """Initialize superclasses, and |self.servo|.
+
+        For creating the host servo object, there are three
+        possibilities:  First, if the host is a lab system known to
+        have a servo board, we connect to that servo unconditionally.
+        Second, if we're called from a control file that requires
+        servo features for testing, it will pass |require_servo| set
+        to |True|, and we will start a local servod.  If neither of
+        these cases apply, |self.servo| will be |None|.
+
+        """
         super(SiteHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
+        self.servo = servo.Servo.get_lab_servo(hostname)
+        if not self.servo and require_servo:
+            self.servo = servo.Servo()
 
 
     def machine_install(self, update_url=None, force_update=False):

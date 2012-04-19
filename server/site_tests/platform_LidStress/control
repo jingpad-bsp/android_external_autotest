@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -23,9 +23,9 @@ Test takes ~20min to run with default configuration of 50 lid cycles while
 visiting top 50 sites.
 """
 
-def run_it(machine):
-    host = hosts.create_host(machine)
-    job.run_test("platform_LidStress", host=host, cmdline_args=args,
+def run(machine):
+    host = hosts.create_host(machine, require_servo=True)
+    job.run_test("platform_LidStress", host=host, cmdline_args=None,
                  use_pyauto=True, disable_sysinfo=True)
 
-job.parallel_simple(run_it, machines)
+parallel_simple(run, machines)

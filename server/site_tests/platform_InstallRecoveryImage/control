@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "platform_InstallRecoveryImage"
 TIME = "MEDIUM"
@@ -20,16 +22,14 @@ run_remote_tests --args='image=<recovery_image_path_on_host>'
                  platform_InstallRecoveryImage
 """
 
-# Convert autoserv args to a dictionary.
-opts = dict([[k, v] for (k, _, v) in [x.partition('=') for x in args]])
-
-def run_install_recovery_image(machine):
+def run(machine):
+    opts = utils.args_to_dict(args)
     image = opts.get('image')
     usb = opts.get('usb', None)
 
     # Setup the client machine.
-    host = hosts.create_host(machine)
-    job.run_test("platform_InstallRecoveryImage", host=host, cmdline_args=args,
+    host = hosts.create_host(machine, require_servo=True)
+    job.run_test("platform_InstallRecoveryImage", host=host, cmdline_args=None,
                  use_pyauto=False, disable_sysinfo=True, image=image, usb=usb)
 
-parallel_simple(run_install_recovery_image, machines)
+parallel_simple(run, machines)
