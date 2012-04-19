@@ -9,7 +9,7 @@ flimflamd,root,No,No,No,No,No
 X,root,No,No,No,No,No
 htpdate,ntp,No,No,No,No,No
 cashewd,cashew,Yes,Yes,No,No,No
-chapsd,root,No,No,No,No,No
+chapsd,chaps,No,No,No,No,No
 cryptohomed,root,No,No,No,No,No
 powerd,chronos,Yes,No,No,No,No
 modem-manager,root,No,No,No,No,No
