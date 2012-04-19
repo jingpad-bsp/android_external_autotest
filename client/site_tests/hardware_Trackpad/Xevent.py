@@ -96,18 +96,22 @@ class Xinput(object):
 
 class XIntProp(Xinput):
     ''' A special class to manipulate xinput Int Property. '''
-    TRACKPAD_RE_STR = 't(?:ouch|rack)pad'
 
     def __init__(self, prop_name):
         ''' Look up the id and value of the X int property '''
         self.name = prop_name
-        super(XIntProp, self).__init__(self.TRACKPAD_RE_STR)
+        super(XIntProp, self).__init__(self._get_trackpad_re_str())
         # Look up the property only when the device exists
         if self.device_exists():
             prop_result = self.lookup_int_prop_id_and_value(prop_name)
             self.prop_id, self.orig_prop_val = prop_result
         else:
             self.prop_id = self.orig_prop_val = None
+
+    def _get_trackpad_re_str(self):
+        xinput_trackpad_string = trackpad_util.read_trackpad_test_conf(
+            'xinput_trackpad_string', '.')
+        return '(?:%s)' % '|'.join(xinput_trackpad_string)
 
     def exists(self):
         ''' Indicating whether the property exists or not. '''
