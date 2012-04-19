@@ -15,7 +15,6 @@ iface=MIXER,name='IEC958 Playback Switch',index=2
 iface=MIXER,name='Master Playback Switch'
 iface=MIXER,name='Master Playback Volume'
 iface=MIXER,name='Mic Capture Volume'
-iface=MIXER,name='PCM Playback Volume'
 iface=MIXER,name='Speaker Boost Playback Volume'
 iface=PCM,name='ELD',device=3
 iface=PCM,name='ELD',device=7

@@ -21,7 +21,7 @@ class sound_infrastructure(test.test):
 
          - Log in to console on device.
          - Set all controls to desired levels.
-         - Execute 'alsactl --file /tmp/asound.state store'.
+         - Execute 'alsactl --file /tmp/asound.state store 0'.
          - Copy new '/tmp/asound.state' from device to correct place
            in source tree.  The correct place should normally
            correspond to the 'audioconfig-board' ebuild file for that
@@ -74,7 +74,7 @@ class sound_infrastructure(test.test):
 
         Execute the following on the DUT:
 
-          amixer controls | cut -d ',' -f 2- | sort >{codec-name}.controls
+          amixer -c0 controls | cut -d ',' -f 2- | sort >{codec-name}.controls
 
         {codec-name} should be replaced with the name of the codec.
         Replace spaces in the codec name with '_'.
@@ -142,7 +142,7 @@ class sound_infrastructure(test.test):
         return True
 
     def control_must_exist(self, control):
-        if self.exec_cmd("amixer controls|grep -e \"%s\"" % (control)) != 0:
+        if self.exec_cmd("amixer -c0 controls|grep -e \"%s\"" % (control)) != 0:
             logging.error("Control missing: '%s'", control)
             return False
         return True
@@ -158,7 +158,7 @@ class sound_infrastructure(test.test):
                    'Cirrus Analog' # Stumpy
                  ]
         for c in codecs:
-            if self.exec_cmd("aplay -l|grep -e '%s'" % (c)) == 0:
+            if self.exec_cmd("aplay -Dhw:0 -l|grep -e '%s'" % (c)) == 0:
                 return c
         raise error.TestError('Unable to determine sound codec.')
 
@@ -209,7 +209,7 @@ class sound_infrastructure(test.test):
                                            open(pathname)]
 
     def load_asound_state(self):
-        if self.exec_cmd("alsactl --file /etc/asound.state restore") != 0:
+        if self.exec_cmd("alsactl --file /etc/asound.state restore 0") != 0:
             raise error.TestError("Unable to load /etc/asound.state")
 
     def run_once(self):
