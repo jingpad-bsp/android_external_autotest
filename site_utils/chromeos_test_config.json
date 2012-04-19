@@ -13,8 +13,8 @@
 
         "x86-alex-release": {
             "platforms": [
-                {"platform": "netbook_ALEX", "au_test": true,
-                                             "test_suite": true},
+                {"platform": "netbook_ALEX", "au_test": false},
+                {"platform": "netbook_ALEX", "test_suite": true},
                 {"platform": "netbook_ALEX",
                  "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
                 {"platform": "netbook_ALEX_enterprise",
@@ -35,8 +35,8 @@
 
         "x86-zgb-release": {
             "platforms": [
-                {"platform": "netbook_ACER_ZGB", "au_test": true,
-                                                 "test_suite": true},
+                {"platform": "netbook_ACER_ZGB", "au_test": false},
+                {"platform": "netbook_ACER_ZGB", "test_suite": true},
                 {"platform": "netbook_ACER_ZGB",
                  "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
                 {"platform": "netbook_ACER_ZGB_enterprise",
@@ -57,8 +57,8 @@
 
         "x86-mario-release": {
             "platforms": [
-                {"platform": "netbook_MARIO_MP", "au_test": true,
-                                                 "test_suite": true},
+                {"platform": "netbook_MARIO_MP", "au_test": false},
+                {"platform": "netbook_MARIO_MP", "test_suite": true},
                 {"platform": "netbook_MARIO_MP",
                  "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
                 {"platform": "netbook_MARIO_MP_enterprise",
@@ -81,8 +81,8 @@
             "platforms": [
                 {"platform": "desktop_STUMPY",
                  "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron", "audio"]},
-                {"platform": "desktop_STUMPY", "au_test": true,
-                                               "test_suite": true}
+                {"platform": "desktop_STUMPY", "au_test": false},
+                {"platform": "desktop_STUMPY", "test_suite": true}
             ]
         },
 
@@ -101,7 +101,8 @@
             "platforms": [
                 {"platform": "netbook_LUMPY",
                  "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron", "audio"]},
-                {"platform": "netbook_LUMPY", "au_test": true, "test_suite": true}
+                {"platform": "netbook_LUMPY", "au_test": false},
+                {"platform": "netbook_LUMPY", "test_suite": true}
             ]
         },
 
