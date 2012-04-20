@@ -99,7 +99,7 @@ class Driver(object):
             if e.ShouldHandle():
                 logging.debug('Handling %s event', e.keyword)
                 for board in boards:
-                    branch_builds = e.GetBranchBuildsForBoard(board, mv)
+                    branch_builds = e.GetBranchBuildsForBoard(board)
                     e.Handle(self._scheduler, branch_builds, board)
 
 

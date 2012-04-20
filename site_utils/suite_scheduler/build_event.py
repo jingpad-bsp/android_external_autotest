@@ -32,16 +32,14 @@ class BuildEvent(base_event.BaseEvent):
         return False  # For now.
 
 
-    def _AllPerBranchBuildsSince(self, board, revision, manifest_versions):
+    def _AllPerBranchBuildsSince(self, board, revision):
         """Get all per-branch, per-board builds since git |revision|.
 
         @param board: the board whose builds we want.
         @param revision: the revision to look back until.
-        @param manifest_versions: ManifestVersions instance to use for querying.
         @return {branch: [build-name1, build-name2]}
         """
-        all_branch_manifests = manifest_versions.ManifestsSinceRev(revision,
-                                                                   board)
+        all_branch_manifests = self._mv.ManifestsSinceRev(revision, board)
         all_branch_builds = {}
         for (type, milestone), manifests in all_branch_manifests.iteritems():
             branch_name = task.PickBranchName(type, milestone)
@@ -51,9 +49,8 @@ class BuildEvent(base_event.BaseEvent):
         return all_branch_builds
 
 
-    def GetBranchBuildsForBoard(self, board, manifest_versions):
-        return self._AllPerBranchBuildsSince(board, self._revision,
-                                             manifest_versions)
+    def GetBranchBuildsForBoard(self, board):
+        return self._AllPerBranchBuildsSince(board, self._revision)
 
 
     def Handle(self, scheduler, branch_builds, board, force=False):
@@ -72,7 +69,7 @@ class BuildEvent(base_event.BaseEvent):
         super(BuildEvent, self).Handle(scheduler, branch_builds, board, force)
         # Get new checkpoint, so that next time we come around, we
         # don't keep looking back to the same revision.
-        self._revision = manifest_versions.GetCheckpoint()
+        self._revision = self._mv.GetCheckpoint()
 
 
 class NewBuild(BuildEvent):

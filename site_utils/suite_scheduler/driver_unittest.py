@@ -59,8 +59,8 @@ class DriverTest(mox.MoxTestBase):
         """
         bbs = {'branch': 'build-string'}
         event.ShouldHandle().InAnyOrder(group).AndReturn(True)
-        event.GetBranchBuildsForBoard(mox.IgnoreArg(),
-                                      self.mv).InAnyOrder(group).AndReturn(bbs)
+        event.GetBranchBuildsForBoard(
+            mox.IgnoreArg()).InAnyOrder(group).AndReturn(bbs)
         event.Handle(mox.IgnoreArg(), bbs, mox.IgnoreArg()).InAnyOrder(group)
 
 

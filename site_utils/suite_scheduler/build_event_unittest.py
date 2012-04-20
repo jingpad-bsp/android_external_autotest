@@ -63,7 +63,7 @@ class BuildEventTestBase(mox.MoxTestBase):
         self.mv.ManifestsSinceRev('HEAD', board).AndReturn(branch_manifests)
         self.mox.ReplayAll()
 
-        return self.CreateEvent().GetBranchBuildsForBoard(board, self.mv)
+        return self.CreateEvent().GetBranchBuildsForBoard(board)
 
 
 class NewBuildTest(BuildEventTestBase):

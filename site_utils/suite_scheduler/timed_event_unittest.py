@@ -87,8 +87,7 @@ class TimedEventTestBase(mox.MoxTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
-        branch_builds = self.CreateEvent().GetBranchBuildsForBoard(board,
-                                                                   self.mv)
+        branch_builds = self.CreateEvent().GetBranchBuildsForBoard(board)
         for (type, milestone), manifests in branch_manifests.iteritems():
             build = None
             if type in task.BARE_BRANCHES:

@@ -122,11 +122,10 @@ class BaseEvent(object):
         self._tasks = set(iterable_of_tasks)
 
 
-    def GetBranchBuildsForBoard(self, board, manifest_versions):
+    def GetBranchBuildsForBoard(self, board):
         """Get per-branch, per-board builds since last run of this event.
 
         @param board: the board whose builds we want.
-        @param manifest_versions: ManifestVersions instance to use for querying.
         @return {branch: [build-name]}
 
         Must be implemented by subclasses.

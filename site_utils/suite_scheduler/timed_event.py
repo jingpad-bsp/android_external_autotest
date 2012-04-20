@@ -44,16 +44,14 @@ class TimedEvent(base_event.BaseEvent):
         return self._now() >= self._deadline
 
 
-    def _LatestPerBranchBuildsSince(self, board, days_ago, manifest_versions):
+    def _LatestPerBranchBuildsSince(self, board, days_ago):
         """Get latest per-branch, per-board builds from last |days_ago| days.
 
         @param board: the board whose builds we want.
         @param days_ago: how many days back to look for manifests.
-        @param manifest_versions: ManifestVersions instance to use for querying.
         @return {branch: [build-name]}
         """
-        all_branch_manifests = manifest_versions.ManifestsSinceDays(days_ago,
-                                                                    board)
+        all_branch_manifests = self._mv.ManifestsSinceDays(days_ago, board)
         latest_branch_builds = {}
         for (type, milestone), manifests in all_branch_manifests.iteritems():
             build = base_event.BuildName(board, type, milestone, manifests[-1])
@@ -112,8 +110,8 @@ class Nightly(TimedEvent):
                                       always_handle, deadline)
 
 
-    def GetBranchBuildsForBoard(self, board, manifest_versions):
-        return self._LatestPerBranchBuildsSince(board, 1, manifest_versions)
+    def GetBranchBuildsForBoard(self, board):
+        return self._LatestPerBranchBuildsSince(board, 1)
 
 
 class Weekly(TimedEvent):
@@ -174,5 +172,5 @@ class Weekly(TimedEvent):
                                      always_handle, deadline)
 
 
-    def GetBranchBuildsForBoard(self, board, manifest_versions):
-        return self._LatestPerBranchBuildsSince(board, 7, manifest_versions)
+    def GetBranchBuildsForBoard(self, board):
+        return self._LatestPerBranchBuildsSince(board, 7)
