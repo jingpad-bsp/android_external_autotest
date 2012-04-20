@@ -23,6 +23,10 @@ class kernel_ConfigVerify(test.test):
         'STRICT_DEVMEM',
         # Security; provides some protections against SYN flooding.
         'SYN_COOKIES',
+        # Security; make sure both PID_NS and NET_NS are enabled
+        # for the SUID sandbox.
+        'PID_NS',
+        'NET_NS',
     ]
     IS_MODULE = [
         # Sanity checks; should be present in builds as modules.
