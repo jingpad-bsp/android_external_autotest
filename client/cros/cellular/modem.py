@@ -3,16 +3,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
 import os
 
 from autotest_lib.client.cros.cellular import cellular
+from autotest_lib.client.cros.cellular import modem1
+import dbus
 
-MMPROVIDERS = [ 'org.chromium', 'org.freedesktop' ]
+
+MMPROVIDERS = ['org.chromium', 'org.freedesktop']
+SERVICE_UNKNOWN = 'org.freedesktop.DBus.Error.ServiceUnknown'
 
 
 class Modem(object):
-
+    """An object which talks to a ModemManager modem."""
     MODEM_INTERFACE = 'org.freedesktop.ModemManager.Modem'
     SIMPLE_MODEM_INTERFACE = 'org.freedesktop.ModemManager.Modem.Simple'
     CDMA_MODEM_INTERFACE = 'org.freedesktop.ModemManager.Modem.Cdma'
@@ -51,13 +54,14 @@ class Modem(object):
     }
 
     def __init__(self, manager, path):
+        self.manager = manager
         self.bus = manager.bus
         self.service = manager.service
         self.path = path
 
     def Modem(self):
-       obj = self.bus.get_object(self.service, self.path)
-       return dbus.Interface(obj, Modem.MODEM_INTERFACE)
+        obj = self.bus.get_object(self.service, self.path)
+        return dbus.Interface(obj, Modem.MODEM_INTERFACE)
 
     def SimpleModem(self):
         obj = self.bus.get_object(self.service, self.path)
@@ -102,11 +106,12 @@ class Modem(object):
             Modem.GOBI_MODEM_INTERFACE]
 
     def GetModemProperties(self):
+        """Returns all DBus Properties of all the modem interfaces."""
         props = dict()
         for iface in self._GetModemInterfaces():
             try:
                 d = self.GetAll(iface)
-            except dbus.exceptions.DBusException, e:
+            except dbus.exceptions.DBusException:
                 continue
             if d:
                 for k, v in d.iteritems():
@@ -122,17 +127,17 @@ class Modem(object):
     def _GetRegistrationState(self):
         try:
             network = self.GsmNetwork()
-            (status, code, name) = network.GetRegistrationInfo()
+            (status, unused_code, unused_name) = network.GetRegistrationInfo()
             # TODO(jglasgow): HOME - 1, ROAMING - 5
             return status == 1 or status == 5
-        except dbus.exceptions.DBusException, e:
+        except dbus.exceptions.DBusException:
             pass
 
         cdma_modem = self.CdmaModem()
         try:
             cdma, evdo = cdma_modem.GetRegistrationState()
             return cdma > 0 or evdo > 0
-        except dbus.exceptions.DBusException, e:
+        except dbus.exceptions.DBusException:
             pass
 
         return False
@@ -143,7 +148,6 @@ class Modem(object):
 
     def ModemIsRegisteredUsing(self, technology):
         """Ensure that modem is registered on the network with a technology."""
-
         if not self.ModemIsRegistered():
             return False
 
@@ -152,19 +156,33 @@ class Modem(object):
         # TODO(jglasgow): Remove this mapping.  Basestation and
         # reported technology should be identical.
         BASESTATION_TO_REPORTED_TECHNOLOGY = {
-            cellular.Technology.GPRS:      cellular.Technology.GPRS,
-            cellular.Technology.EGPRS:     cellular.Technology.GPRS,
-            cellular.Technology.WCDMA:     cellular.Technology.HSDUPA,
-            cellular.Technology.HSDPA:     cellular.Technology.HSDUPA,
-            cellular.Technology.HSUPA:     cellular.Technology.HSDUPA,
-            cellular.Technology.HSDUPA:    cellular.Technology.HSDUPA,
+            cellular.Technology.GPRS: cellular.Technology.GPRS,
+            cellular.Technology.EGPRS: cellular.Technology.GPRS,
+            cellular.Technology.WCDMA: cellular.Technology.HSDUPA,
+            cellular.Technology.HSDPA: cellular.Technology.HSDUPA,
+            cellular.Technology.HSUPA: cellular.Technology.HSDUPA,
+            cellular.Technology.HSDUPA: cellular.Technology.HSDUPA,
             cellular.Technology.HSPA_PLUS: cellular.Technology.HSPA_PLUS
         }
 
         return BASESTATION_TO_REPORTED_TECHNOLOGY[technology] == reported_tech
 
+    def IsEnabled(self):
+        d = self.GetAll(Modem.MODEM_INTERFACE)
+        return d['Enabled']
+
+    def Enable(self, enable):
+        self.Modem().Enable(enable)
+
+    def Connect(self, props):
+        self.SimpleModem().Connect(props)
+
+    def Disconnect(self):
+        self.SimpleModem().Disconnect()
+
 
 class ModemManager(object):
+    """An object which talks to a ModemManager service."""
     INTERFACE = 'org.freedesktop.ModemManager'
 
     def __init__(self, provider=None):
@@ -176,21 +194,24 @@ class ModemManager(object):
             self.bus.get_object(self.service, self.path),
             ModemManager.INTERFACE)
 
+    def EnumerateDevices(self):
+        return self.manager.EnumerateDevices()
 
-def EnumerateDevices(manager=None):
-    """ Enumerate all modems in the system
+    def GetModem(self, path):
+        return Modem(self, path)
 
-    Args:
-        manager - the specific manager to use, if None check all known managers
+
+def GetManagers():
+    """Returns a list of ModemManager objects.
+
+    Attempts to connect to various modemmanagers, including
+    ModemManager classic interfaces, ModemManager using the
+    ModemManager1 interfaces and cromo.
 
     Returns:
-        a list of (ModemManager object, modem dbus path)
+        a list of ModemManager objects.
     """
-    SERVICE_UNKNOWN = 'org.freedesktop.DBus.Error.ServiceUnknown'
-    if manager:
-        managers = [manager]
-    else:
-        managers = []
+    managers = []
     for provider in MMPROVIDERS:
         try:
             managers.append(ModemManager(provider))
@@ -198,38 +219,61 @@ def EnumerateDevices(manager=None):
             if e._dbus_error_name != SERVICE_UNKNOWN:
                 raise
 
+    try:
+        managers.append(modem1.ModemManager())
+    except dbus.exceptions.DBusException, e:
+        if e._dbus_error_name != SERVICE_UNKNOWN:
+            raise
+
+    return managers
+
+
+def EnumerateDevices(manager=None):
+    """Enumerates all modems in the system.
+
+    Args:
+        manager: the specific manager to use, if None check all known managers
+
+    Returns:
+        a list of (ModemManager object, modem dbus path)
+    """
+    if manager:
+        managers = [manager]
+    else:
+        managers = GetManagers()
+
     result = []
     for m in managers:
-        for path in m.manager.EnumerateDevices():
+        for path in m.EnumerateDevices():
             result.append((m, path))
 
     return result
 
 
 def PickOneModem(modem_pattern, manager=None):
-    """ Pick a modem
+    """Pick a modem.
 
     If a machine has a single modem, managed by one one of the
     MMPROVIDERS, return the dbus path and a ModemManager object for
     that modem.
 
     Args:
-        modem_pattern - pattern that should match the modem path
-        manager - the specific manager to use, if None check all known managers
+        modem_pattern: pattern that should match the modem path
+        manager: the specific manager to use, if None check all known managers
 
     Returns:
         Modem object
 
     Raises:
-        ValueError - if there are no matching modems, or there are more
-                     than one
+        ValueError: if there are no matching modems, or there are more
+                    than one
     """
     devices = EnumerateDevices(manager)
 
-    matches = [Modem(m, path) for m, path in devices if modem_pattern in path]
+    matches = [m.GetModem(path) for m, path in devices if modem_pattern in path]
     if not matches:
-        raise ValueError("No modems had substring: " + modem_pattern)
+        raise ValueError('No modems had substring: ' + modem_pattern)
     if len(matches) > 1:
-        raise ValueError("Expected only one modem, got: " +
-                         ", ".join([modem.path for modem in matches]))
+        raise ValueError('Expected only one modem, got: ' +
+                         ', '.join([modem.path for modem in matches]))
     return matches[0]

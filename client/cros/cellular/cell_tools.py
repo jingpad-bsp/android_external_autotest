@@ -408,7 +408,7 @@ class AutoConnectContext(object):
     def __exit__(self, exception, value, traceback):
         """Restore autoconnect state if we changed it."""
         if not self.autoconnect_changed:
-            return
+            return False
 
         try:
             self.PowerOnDevice(self.device)
@@ -429,7 +429,7 @@ class AutoConnectContext(object):
         if not service:
             logging.error('Cannot find cellular service.  '
                           'Autoconnect state not restored.')
-            return
+            return False
         service.SetProperty('AutoConnect', dbus.Boolean(not self.autoconnect))
 
         return False
