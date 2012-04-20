@@ -8,7 +8,7 @@
 
 import logging, mox, unittest
 
-import base_event, board_enumerator, deduping_scheduler, driver
+import base_event, board_enumerator, build_event, deduping_scheduler, driver
 import forgiving_config_parser, manifest_versions, task, timed_event
 
 from autotest_lib.server import frontend
@@ -30,6 +30,8 @@ class DriverTest(mox.MoxTestBase):
         self.nightly.keyword = timed_event.Nightly.KEYWORD
         self.weekly = self.mox.CreateMock(timed_event.Weekly)
         self.weekly.keyword = timed_event.Weekly.KEYWORD
+        self.new_build = self.mox.CreateMock(build_event.NewBuild)
+        self.new_build.keyword = build_event.NewBuild.KEYWORD
 
         self.driver = driver.Driver(self.ds, self.be)
 
@@ -37,10 +39,13 @@ class DriverTest(mox.MoxTestBase):
     def _ExpectSetup(self):
         self.mox.StubOutWithMock(timed_event.Nightly, 'CreateFromConfig')
         self.mox.StubOutWithMock(timed_event.Weekly, 'CreateFromConfig')
+        self.mox.StubOutWithMock(build_event.NewBuild, 'CreateFromConfig')
         timed_event.Nightly.CreateFromConfig(
             mox.IgnoreArg(), self.mv).AndReturn(self.nightly)
         timed_event.Weekly.CreateFromConfig(
             mox.IgnoreArg(), self.mv).AndReturn(self.weekly)
+        build_event.NewBuild.CreateFromConfig(
+            mox.IgnoreArg(), self.mv).AndReturn(self.new_build)
 
 
     def _ExpectEnumeration(self):
@@ -87,6 +92,7 @@ class DriverTest(mox.MoxTestBase):
         self._ExpectEnumeration()
         self._ExpectHandle(self.nightly, 'events')
         self._ExpectHandle(self.weekly, 'events')
+        self._ExpectHandle(self.new_build, 'events')
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config, self.mv)
@@ -99,6 +105,7 @@ class DriverTest(mox.MoxTestBase):
         self._ExpectEnumeration()
         self._ExpectHandle(self.nightly, 'events')
         self.weekly.ShouldHandle().InAnyOrder('events').AndReturn(False)
+        self.new_build.ShouldHandle().InAnyOrder('events').AndReturn(False)
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config, self.mv)

@@ -7,9 +7,7 @@
 """Unit tests for site_utils/build_event.py."""
 
 import datetime, logging, mox, unittest
-
-import build_event, deduping_scheduler, task
-import manifest_versions
+import build_event, manifest_versions, task
 
 
 class BuildEventTestBase(mox.MoxTestBase):
@@ -60,10 +58,14 @@ class BuildEventTestBase(mox.MoxTestBase):
         @param branch_manifests: {(type, milestone): [manifests]}
         @return per-branch builds; {type-or-milestone: [build-names]}
         """
-        self.mv.ManifestsSinceRev('HEAD', board).AndReturn(branch_manifests)
+        head = '1cedcafe'
+        self.mv.GetCheckpoint().AndReturn(head)
+        self.mv.ManifestsSinceRev(head, board).AndReturn(branch_manifests)
         self.mox.ReplayAll()
 
-        return self.CreateEvent().GetBranchBuildsForBoard(board)
+        event = self.CreateEvent()
+        event.Prepare()
+        return event.GetBranchBuildsForBoard(board)
 
 
 class NewBuildTest(BuildEventTestBase):
@@ -87,6 +89,59 @@ class NewBuildTest(BuildEventTestBase):
         """Ensure that we tolerate the appearance of no new branch builds."""
         branch_builds = self.doTestGetBranchBuilds(self.BOARD, {})
         self.assertEquals(branch_builds, {})
+
+
+    def testShouldHandle(self):
+        """Ensure that we suggest Handle() iff new successful builds exist."""
+        initial_hash = '1cedcafe'
+        expected_hash = 'deadbeef'
+        self.mv.GetCheckpoint().AndReturn(initial_hash)
+        self.mv.AnyManifestsSinceRev(initial_hash).AndReturn(False)
+        self.mv.GetCheckpoint().AndReturn(expected_hash)
+        self.mv.AnyManifestsSinceRev(expected_hash).AndReturn(True)
+        self.mox.ReplayAll()
+        new_build = self.CreateEvent()
+        new_build.Prepare()
+        self.assertFalse(new_build.ShouldHandle())
+        new_build.UpdateCriteria()
+        self.assertTrue(new_build.ShouldHandle())
+
+
+    def testRunThrough(self):
+        """Ensure we can run through a couple passes of expected workflow."""
+        initial_hash = '1cedcafe'
+        expected_hash = 'deadbeef'
+        branch_manifests = {('factory','16'): ['last16'],
+                            ('release','17'): ['first17', 'last17']}
+
+        # Expect Prepare()
+        self.mv.GetCheckpoint().AndReturn(initial_hash)
+
+        # Expect one run through.
+        self.mv.AnyManifestsSinceRev(initial_hash).AndReturn(True)
+        self.mv.ManifestsSinceRev(initial_hash,
+                                  self.BOARD).AndReturn(branch_manifests)
+        self.mv.GetCheckpoint().AndReturn(expected_hash)
+
+        # Expect a second run through.
+        self.mv.AnyManifestsSinceRev(expected_hash).AndReturn(True)
+        self.mv.ManifestsSinceRev(expected_hash,
+                                  self.BOARD).AndReturn(branch_manifests)
+        self.mv.GetCheckpoint().AndReturn('')
+
+        self.mox.ReplayAll()
+
+        new_build = self.CreateEvent()
+
+        new_build.Prepare()
+
+        self.assertTrue(new_build.ShouldHandle())
+        self.assertTrue(new_build.GetBranchBuildsForBoard(self.BOARD))
+        new_build.Handle(None, {}, self.BOARD)
+
+        self.assertTrue(new_build.ShouldHandle())
+        self.assertTrue(new_build.GetBranchBuildsForBoard(self.BOARD))
+        new_build.Handle(None, {}, self.BOARD)
 
 
 if __name__ == '__main__':

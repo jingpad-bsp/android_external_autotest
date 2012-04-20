@@ -23,13 +23,23 @@ class BuildEvent(base_event.BaseEvent):
         """
         super(BuildEvent, self).__init__(keyword, manifest_versions,
                                          always_handle)
-        # git log HEAD..HEAD is always a no-op.
-        self._revision = 'HEAD'
+        self._revision = None
+
+
+    def Prepare(self):
+        """Perform any one-time setup that must occur before [Should]Handle().
+
+        Creates initial revision checkpoint.
+        """
+        self._revision = self._mv.GetCheckpoint()
 
 
     def ShouldHandle(self):
-        # TODO(cmasone): Check to see if there's a new build since the last hash
-        return False  # For now.
+        """True if there's been a new successful build since |self._revision|
+
+        @return True if there's been a new build, false otherwise.
+        """
+        return self._mv.AnyManifestsSinceRev(self._revision)
 
 
     def _AllPerBranchBuildsSince(self, board, revision):
@@ -51,25 +61,6 @@ class BuildEvent(base_event.BaseEvent):
 
     def GetBranchBuildsForBoard(self, board):
         return self._AllPerBranchBuildsSince(board, self._revision)
-
-
-    def Handle(self, scheduler, branch_builds, board, force=False):
-        """Runs all tasks in self._tasks.
-
-        @param scheduler: an instance of DedupingScheduler, as defined in
-                          deduping_scheduler.py
-        @param branch_builds: a dict mapping branch name to the build to
-                              install for that branch, e.g.
-                              {'R18': ['x86-alex-release/R18-1655.0.0'],
-                               'R19': ['x86-alex-release/R19-2077.0.0']
-                               'factory': ['x86-alex-factory/R19-2077.0.5']}
-        @param board: the board against which to Run() all of self._tasks.
-        @param force: Tell every Task to always Run().
-        """
-        super(BuildEvent, self).Handle(scheduler, branch_builds, board, force)
-        # Get new checkpoint, so that next time we come around, we
-        # don't keep looking back to the same revision.
-        self._revision = self._mv.GetCheckpoint()
 
 
 class NewBuild(BuildEvent):

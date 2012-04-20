@@ -122,6 +122,14 @@ class BaseEvent(object):
         self._tasks = set(iterable_of_tasks)
 
 
+    def Prepare(self):
+        """Perform any one-time setup that must occur before [Should]Handle().
+
+        Must be implemented by subclasses.
+        """
+        raise NotImplementedError()
+
+
     def GetBranchBuildsForBoard(self, board):
         """Get per-branch, per-board builds since last run of this event.
 

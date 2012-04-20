@@ -39,6 +39,10 @@ class TimedEvent(base_event.BaseEvent):
         return datetime.datetime.now()
 
 
+    def Prepare(self):
+        pass
+
+
     def ShouldHandle(self):
         """Return True if self._deadline has passed; False if not."""
         return self._now() >= self._deadline

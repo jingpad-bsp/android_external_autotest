@@ -80,6 +80,8 @@ class Driver(object):
 
         @param mv: an instance of manifest_versions.ManifestVersions.
         """
+        for event in self._events:
+            event.Prepare()
         while True:
             self.HandleEventsOnce(mv)
             mv.Update()
