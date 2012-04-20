@@ -52,6 +52,7 @@ class ManifestVersions(object):
       """
       manifest_paths = self._ExpandGlobMinusPrefix(
           self._tempdir.name, self._ANY_MANIFEST_GLOB_PATTERN)
+      logging.debug('Checking if any manifests landed since %s', revision)
       log_cmd = self._BuildCommand('log',
                                    revision + '..HEAD',
                                    '--pretty="format:%H"',
@@ -136,7 +137,7 @@ class ManifestVersions(object):
         """
         return utils.system_output(self._BuildCommand('log',
                                                       '--pretty="format:%H"',
-                                                      '-n=1')).strip()
+                                                      '--max-count=1')).strip()
 
 
     def Update(self):
@@ -151,19 +152,20 @@ class ManifestVersions(object):
         @param args: args for the git sub-command.  Will be space-delineated.
         @return a string with the above formatted into it.
         """
-        return '%s --git-dir=%s %s %s' % (
+        return '%s --git-dir=%s --work-tree=%s %s %s' % (
             self._git, os.path.join(self._tempdir.name, '.git'),
-            command, ' '.join(args))
+            self._tempdir.name, command, ' '.join(args))
 
 
     def _Clone(self):
         """Clone self._MANIFEST_VERSIONS_URL into a local temp dir."""
         # Can't use --depth here because the internal gerrit server doesn't
         # support it.  Wish we could.  http://crosbug.com/29047
-        # Also, note that --git-dir is ignored by 'git clone'.
-        utils.system(self._BuildCommand('clone',
-                                        self._MANIFEST_VERSIONS_URL,
-                                        self._tempdir.name))
+        # Also, note that --work-tree and --git-dir interact oddly with
+        # 'git clone', so we don't use them.
+        utils.system('%s clone %s %s' % (self._git,
+                                         self._MANIFEST_VERSIONS_URL,
+                                         self._tempdir.name))
 
 
     def _ShowCmd(self):

@@ -81,7 +81,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         rev = 'rev'
         self.mox.StubOutWithMock(utils, 'system_output')
         utils.system_output(
-            mox.And(mox.StrContains('git log'),
+            mox.And(mox.StrContains('log'),
                     mox.StrContains(rev))).MultipleTimes().AndReturn(
                         self._MANIFESTS_STRING)
         self.mox.ReplayAll()
@@ -93,7 +93,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         rev = 'rev'
         self.mox.StubOutWithMock(utils, 'system_output')
         utils.system_output(
-            mox.And(mox.StrContains('git log'),
+            mox.And(mox.StrContains('log'),
                     mox.StrContains(rev))).MultipleTimes().AndReturn(' ')
         self.mox.ReplayAll()
         self.assertFalse(self.mv.AnyManifestsSinceRev(rev))
@@ -105,7 +105,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         board = 'x86-alex'
         self.mox.StubOutWithMock(utils, 'system_output')
         utils.system_output(
-            mox.StrContains('git log')).MultipleTimes().AndReturn(
+            mox.StrContains('log')).MultipleTimes().AndReturn(
                 self._MANIFESTS_STRING)
         self.mox.ReplayAll()
         br_man = self.mv.ManifestsSinceDays(days_ago, board)
@@ -121,7 +121,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         days_ago = 7
         board = 'x86-alex'
         self.mox.StubOutWithMock(utils, 'system_output')
-        utils.system_output(mox.StrContains('git log')).AndReturn([])
+        utils.system_output(mox.StrContains('log')).AndReturn([])
         self.mox.ReplayAll()
         br_man = self.mv.ManifestsSinceDays(days_ago, board)
         self.assertEquals(br_man, {})
@@ -132,7 +132,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         days_ago = 7
         board = 'x86-alex'
         self.mox.StubOutWithMock(utils, 'system_output')
-        utils.system_output(mox.StrContains('git log')).AndRaise(
+        utils.system_output(mox.StrContains('log')).AndRaise(
             manifest_versions.QueryException())
         self.mox.ReplayAll()
         self.assertRaises(manifest_versions.QueryException,
