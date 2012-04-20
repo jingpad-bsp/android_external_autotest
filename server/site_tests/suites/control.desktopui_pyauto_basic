@@ -51,6 +51,12 @@ GTESTS = [
         'as_chronos': True,
         'tag': 'CHROMEOS_FLASH',
     }),
+    ('desktopui_PyAutoFunctionalTests', {
+        'tests': 'netflix',
+        'auto_login': False,
+        'as_chronos': False,
+        'tag': 'netflix',
+    }),
 ]
 
 
