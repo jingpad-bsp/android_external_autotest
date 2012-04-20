@@ -18,7 +18,7 @@ import task
 class FakeTask(task.Task):
     """A mock Task that can optionally expect triggering."""
     def __init__(self, suite, build, pool, pymox):
-        super(FakeTask, self).__init__(suite, build, pool)
+        super(FakeTask, self).__init__('Fake', suite, build, pool)
         pymox.StubOutWithMock(self, 'Run')
 
 

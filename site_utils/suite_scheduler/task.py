@@ -64,7 +64,7 @@ class Task(object):
         if branches:
             specs = re.split('\s*,\s*', branches)
             Task.CheckBranchSpecs(specs)
-        return keyword, Task(suite, specs, pool)
+        return keyword, Task(section, suite, specs, pool)
 
 
     @staticmethod
@@ -88,7 +88,7 @@ class Task(object):
             raise MalformedConfigEntry('%s is not a valid branch spec.', branch)
 
 
-    def __init__(self, suite, branch_specs, pool=None):
+    def __init__(self, name, suite, branch_specs, pool=None):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -102,7 +102,7 @@ class Task(object):
         would pass only those two specific strings.
 
         Example usage:
-          t = Task('suite', ['factory', '>=R18'])
+          t = Task('Name', 'suite', ['factory', '>=R18'])
           t._FitsSpec('factory')  # True
           t._FitsSpec('R19')  # True
           t._FitsSpec('R17')  # False
@@ -115,6 +115,7 @@ class Task(object):
         @param pool: the pool of machines to use for scheduling purposes.
                      Default: None
         """
+        self._name = name
         self._suite = suite
         self._branch_specs = branch_specs
         self._pool = pool
@@ -219,6 +220,7 @@ class Task(object):
         @param force: Always schedule the suite.
         @return True if the task should be kept, False if not
         """
+        logging.debug('Running %s' % self._name)
         builds = []
         for branch, build in branch_builds.iteritems():
             logging.debug('Checking if %s fits spec %r',

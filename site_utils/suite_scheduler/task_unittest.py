@@ -21,6 +21,7 @@ class TaskTestBase(mox.MoxTestBase):
     @var _MAP: fake branch:build map.
     @var _POOL: fake pool of machines to test on.
     @var _SUITE: fake suite name.
+    @var _TASK_NAME: fake name for tasks in config.
     """
 
     _BUILD = 'build'
@@ -30,6 +31,7 @@ class TaskTestBase(mox.MoxTestBase):
     _MAP = {_BRANCH: [_BUILD]}
     _POOL = 'fake_pool'
     _SUITE = 'suite'
+    _TASK_NAME = 'fake_task_name'
 
 
     def setUp(self):
@@ -40,11 +42,9 @@ class TaskTestBase(mox.MoxTestBase):
 class TaskCreateTest(TaskTestBase):
     """Unit tests for Task.CreateFromConfigSection().
 
-    @var _TASK_NAME: fake name for tasks in config.
     @var _EVENT_KEY: fake event-to-run-on keyword for tasks in config.
     """
 
-    _TASK_NAME = 'fake_task_name'
     _EVENT_KEY = 'fake_keyword'
 
 
@@ -63,8 +63,8 @@ class TaskCreateTest(TaskTestBase):
         keyword, new_task = task.Task.CreateFromConfigSection(self.config,
                                                               self._TASK_NAME)
         self.assertEquals(keyword, self._EVENT_KEY)
-        self.assertEquals(
-            new_task, task.Task(self._SUITE, [self._BRANCH_SPEC], self._POOL))
+        self.assertEquals(new_task, task.Task(self._TASK_NAME, self._SUITE,
+                                              [self._BRANCH_SPEC], self._POOL))
         self.assertTrue(new_task._FitsSpec(self._BRANCH))
         self.assertFalse(new_task._FitsSpec('12'))
 
@@ -75,7 +75,8 @@ class TaskCreateTest(TaskTestBase):
         keyword, new_task = task.Task.CreateFromConfigSection(self.config,
                                                               self._TASK_NAME)
         self.assertEquals(keyword, self._EVENT_KEY)
-        self.assertEquals(new_task, task.Task(self._SUITE, [], self._POOL))
+        self.assertEquals(new_task, task.Task(self._TASK_NAME, self._SUITE,
+                                              [], self._POOL))
         self.assertTrue(new_task._FitsSpec(self._BRANCH))
 
 
@@ -86,7 +87,8 @@ class TaskCreateTest(TaskTestBase):
         keyword, new_task = task.Task.CreateFromConfigSection(self.config,
                                                               self._TASK_NAME)
         self.assertEquals(keyword, self._EVENT_KEY)
-        self.assertEquals(new_task, task.Task(self._SUITE, specs, self._POOL))
+        self.assertEquals(new_task, task.Task(self._TASK_NAME, self._SUITE,
+                                              specs, self._POOL))
         for spec in [specs[0], self._BRANCH]:
             self.assertTrue(new_task._FitsSpec(spec))
 
@@ -123,7 +125,7 @@ class TaskTest(TaskTestBase):
 
     def setUp(self):
         super(TaskTest, self).setUp()
-        self.job = task.Task(self._SUITE, [self._BRANCH_SPEC])
+        self.task = task.Task(self._TASK_NAME, self._SUITE, [self._BRANCH_SPEC])
 
 
     def testRun(self):
@@ -131,82 +133,31 @@ class TaskTest(TaskTestBase):
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, False).AndReturn(True)
         self.mox.ReplayAll()
-        self.assertTrue(self.job.Run(self.sched, self._MAP, self._BOARD))
+        self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
 
     def testRunDuplicate(self):
-        """Test running a task that schedules a duplicate suite job."""
+        """Test running a task that schedules a duplicate suite task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, False).AndReturn(False)
         self.mox.ReplayAll()
-        self.assertTrue(self.job.Run(self.sched, self._MAP, self._BOARD))
+        self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
 
     def testNoRunBranchMismatch(self):
         """Test running a recurring task with no matching builds."""
-        t = task.Task(self._SUITE, task.BARE_BRANCHES)
+        t = task.Task(self._TASK_NAME, self._SUITE, task.BARE_BRANCHES)
         self.mox.ReplayAll()
         self.assertTrue(t.Run(self.sched, self._MAP, self._BOARD))
 
 
     def testRunNoSpec(self):
         """Test running a recurring task with default branch specs."""
-        t = task.Task(self._SUITE, [])
+        t = task.Task(self._TASK_NAME, self._SUITE, [])
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(t.Run(self.sched, self._MAP, self._BOARD))
-
-
-    def testRunExplodes(self):
-        """Test a failure to schedule while running job."""
-        # Barf while scheduling.
-        self.sched.ScheduleSuite(
-            self._SUITE, self._BOARD, self._BUILD, None, False).AndRaise(
-                deduping_scheduler.ScheduleException('Simulated Failure'))
-        self.mox.ReplayAll()
-        self.assertTrue(self.job.Run(self.sched, self._MAP, self._BOARD))
-
-
-    def testForceRun(self):
-        """Test force running a recurring task."""
-        self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
-                                 None, True).AndReturn(True)
-        self.mox.ReplayAll()
-        self.assertTrue(self.job.Run(self.sched, self._MAP, self._BOARD, True))
-
-
-    def testHash(self):
-        """Test hash function for Task classes."""
-        same_job = task.Task(self._SUITE, [self._BRANCH_SPEC])
-        other_job = task.Task(self._SUITE, [self._BRANCH_SPEC, '>=RX1'], 'pool')
-        self.assertEquals(hash(self.job), hash(same_job))
-        self.assertNotEquals(hash(self.job), hash(other_job))
-
-
-class OneShotTaskTest(TaskTestBase):
-    """Unit tests for OneShotTask."""
-
-
-    def setUp(self):
-        super(OneShotTaskTest, self).setUp()
-        self.job = task.OneShotTask(self._SUITE, [self._BRANCH])
-
-
-    def testRun(self):
-        """Test running a one-shot task."""
-        self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
-                                 None, False).AndReturn(True)
-        self.mox.ReplayAll()
-        self.assertFalse(self.job.Run(self.sched, self._MAP, self._BOARD))
-
-
-    def testRunDuplicate(self):
-        """Test running a one-shot task that schedules a duplicate suite job."""
-        self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
-                                 None, False).AndReturn(False)
-        self.mox.ReplayAll()
-        self.assertFalse(self.job.Run(self.sched, self._MAP, self._BOARD))
 
 
     def testRunExplodes(self):
@@ -216,7 +167,60 @@ class OneShotTaskTest(TaskTestBase):
             self._SUITE, self._BOARD, self._BUILD, None, False).AndRaise(
                 deduping_scheduler.ScheduleException('Simulated Failure'))
         self.mox.ReplayAll()
-        self.assertFalse(self.job.Run(self.sched, self._MAP, self._BOARD))
+        self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
+
+
+    def testForceRun(self):
+        """Test force running a recurring task."""
+        self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
+                                 None, True).AndReturn(True)
+        self.mox.ReplayAll()
+        self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD, True))
+
+
+    def testHash(self):
+        """Test hash function for Task classes."""
+        same_task = task.Task(self._TASK_NAME, self._SUITE, [self._BRANCH_SPEC])
+        other_task = task.Task(self._TASK_NAME, self._SUITE,
+                               [self._BRANCH_SPEC, '>=RX1'], 'pool')
+        self.assertEquals(hash(self.task), hash(same_task))
+        self.assertNotEquals(hash(self.task), hash(other_task))
+
+
+class OneShotTaskTest(TaskTestBase):
+    """Unit tests for OneShotTask."""
+
+
+    def setUp(self):
+        super(OneShotTaskTest, self).setUp()
+        self.task = task.OneShotTask(self._TASK_NAME, self._SUITE,
+                                     [self._BRANCH])
+
+
+    def testRun(self):
+        """Test running a one-shot task."""
+        self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
+                                 None, False).AndReturn(True)
+        self.mox.ReplayAll()
+        self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
+
+
+    def testRunDuplicate(self):
+        """Test running a one-shot task that schedules a dup suite task."""
+        self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
+                                 None, False).AndReturn(False)
+        self.mox.ReplayAll()
+        self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
+
+
+    def testRunExplodes(self):
+        """Test a failure to schedule while running task."""
+        # Barf while scheduling.
+        self.sched.ScheduleSuite(
+            self._SUITE, self._BOARD, self._BUILD, None, False).AndRaise(
+                deduping_scheduler.ScheduleException('Simulated Failure'))
+        self.mox.ReplayAll()
+        self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
 
 
     def testForceRun(self):
@@ -224,7 +228,7 @@ class OneShotTaskTest(TaskTestBase):
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, True).AndReturn(True)
         self.mox.ReplayAll()
-        self.assertFalse(self.job.Run(self.sched, self._MAP, self._BOARD,
+        self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD,
                                       force=True))
 
 
