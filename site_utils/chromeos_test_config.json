@@ -1,9 +1,9 @@
 {
     "boards": {
         "x86-alex-r18": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-alex",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R18-*",
+            "build_pattern": "R18-1660.1*",
             "platforms": [
                 {"platform": "netbook_ALEX", "au_test": true},
                 {"platform": "netbook_ALEX",
@@ -23,9 +23,9 @@
         },
 
         "x86-zgb-r18": {
-            "archive_server": "gs://chromeos-releases/beta-channel/x86-zgb",
+            "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "R18-*",
+            "build_pattern": "R18-1660.1*",
             "platforms": [
                 {"platform": "netbook_ACER_ZGB","au_test": true},
                 {"platform": "netbook_ACER_ZGB",
