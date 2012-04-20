@@ -61,11 +61,12 @@ class security_ProfilePermissions(cros_ui_test.UITest):
              ' \\( -name "Singleton*" -a -type l \\) -o '
              ' -path "%s/Downloads" -prune -o '
              ' -path "%s/flimflam" -prune -o '
+             ' -path "%s/shill" -prune -o '
              ' -path "%s/.tpm" -prune -o '
              ' -path "%s/.chaps" -prune -o '
              ' \\( -perm /022 -o \\! -user chronos \\) -ls') %
             (homepath, homepath, user_mountpt, user_mountpt, user_mountpt,
-            user_mountpt),
+            user_mountpt, user_mountpt),
             # /home/chronos/user and /home/chronos/user/Downloads are owned by
             # the chronos-access group and with a group execute permission.
             'find -L "%s" -maxdepth 0 \\( \\! -perm 710 '
@@ -75,6 +76,8 @@ class security_ProfilePermissions(cros_ui_test.UITest):
             '-o \\! -user chronos -o \\! -group chronos-access \\) -ls' %
             user_mountpt,
             'find -L "%s/flimflam" \\( -perm /077 -o \\! -user root \\) -ls' %
+            user_mountpt,
+            'find -L "%s/shill" \\( -perm /077 -o \\! -user root \\) -ls' %
             user_mountpt,
             'find -L "%s/.chaps -name auth_data_salt -prune -o '
             '\\! -user chaps -o \\! -group chronos-access -o -perm /027 -ls' %
