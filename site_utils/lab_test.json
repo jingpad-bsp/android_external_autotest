@@ -8,8 +8,10 @@
 
     "board_platform_map": {
         "x86-alex": "netbook_ALEX",
+        "x86-alex32": "netbook_ALEX",
         "x86-mario": "netbook_MARIO_MP",
         "x86-zgb": "netbook_ACER_ZGB",
+        "x86-zgb32": "netbook_ACER_ZGB",
         "stumpy": "desktop_STUMPY",
         "lumpy": "netbook_LUMPY",
         "tegra2-seaboard": "netbook_TEGRA2_SEABOARD_T25",
