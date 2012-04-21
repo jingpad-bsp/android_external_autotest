@@ -30,7 +30,8 @@ _DEFAULT_MIXER_SETTINGS = [{'name': _CONTROL_MASTER, 'value': "100%"},
                            {'name': _CONTROL_CAPTURE, 'value': "100%"},
                            {'name': _CONTROL_CAPTURE_SWITCH, 'value': "on"}]
 
-_CONTROL_SPEAKER_DEVICE = ['x86-alex', 'x86-mario', 'x86-zgb']
+_CONTROL_SPEAKER_DEVICE = ['x86-alex', 'x86-alex32', 'x86-mario', 'x86-zgb',
+                           'x86-zgb32']
 _CONTROL_SPEAKER_DEVICE_HP = ['stumpy', 'lumpy']
 
 _DEFAULT_NUM_CHANNELS = 2
