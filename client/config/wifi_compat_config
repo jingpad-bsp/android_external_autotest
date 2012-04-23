@@ -11,4 +11,5 @@
 {
   'LinksysAPConfigurator': '172.22.12.107',
   'DLinkAPConfigurator': '172.22.12.124',
+  'TrendnetAPConfigurator': '172.22.12.109',
 }

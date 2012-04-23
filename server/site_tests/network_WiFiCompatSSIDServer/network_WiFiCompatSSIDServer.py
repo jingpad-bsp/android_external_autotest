@@ -43,10 +43,10 @@ class network_WiFiCompatSSIDServer(test.test):
         self.client_test = 'network_WiFiCompatSSID'
 
         if download_chromium_prebuilt.download_chromium_prebuilt_binaries():
-            self.assert_('The binaries were just downloaded.  Please run: '
-                         '(outside-chroot) <path to chroot tmp directory>/'
-                         '%s./chromedriver',
-                         download_chromium_prebuilt.DOWNLOAD_PATH)
+            raise error.TestError('The binaries were just downloaded.  Please '
+                                  'run: (outside-chroot) <path to chroot tmp '
+                                  'directory>/ %s./ chromedriver'
+                                  % download_chromium_prebuilt.DOWNLOAD_PATH)
 
         config_file = os.path.join(self.job.configdir, 'wifi_compat_config')
         factory = ap_configurator_factory.APConfiguratorFactory(config_file)

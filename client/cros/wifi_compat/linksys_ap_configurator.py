@@ -41,6 +41,11 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
                  'modes': [self.mode_b, self.mode_g, self.mode_b |
                            self.mode_g]}]
 
+    def is_security_mode_supported(self, security_mode):
+        return security_mode in (self.security_disabled,
+                                 self.security_wpapsk,
+                                 self.security_wep)
+
     def navigate_to_page(self, page_number):
         if page_number == 1:
             self.driver.get('http://%s/wireless.htm' % self.admin_interface_url)
@@ -49,10 +54,8 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
                             self.admin_interface_url)
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '
-                               '%d, page value sent was %d',
-                               self.get_number_of_pages(), page_number)
-            return False
-        return True
+                               '%d, page value sent was %d' %
+                               (self.get_number_of_pages(), page_number))
 
     def save_page(self, page_number):
         self.wait_for_object_by_id('divBT1')

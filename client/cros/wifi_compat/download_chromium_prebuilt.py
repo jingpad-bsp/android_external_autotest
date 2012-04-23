@@ -19,8 +19,8 @@ def download_chromium_prebuilt_binaries():
     if check_for_chromium_prebuilt_binaries():
         return False
     fetch_prebuilt = os.path.join(os.path.dirname(__file__),
-        '../', '../', 'deps/', 'chrome_test/', 'test_src/', 'chrome/', 'test/',
-        'pyautolib/', 'fetch_prebuilt_pyauto.py')
+        '..', '..', 'deps', 'chrome_test', 'test_src', 'chrome', 'test',
+        'pyautolib', 'fetch_prebuilt_pyauto.py')
     if not os.path.exists(fetch_prebuilt):
         raise IOError('Unable to locate pyauto components.  Is the chromium '
                       'code synced and available?  Checking : %s'

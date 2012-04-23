@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os
 import unittest
 
 import ap_configurator_factory
@@ -30,29 +31,32 @@ class ConfiguratorTest(unittest.TestCase):
                       '(outside-chroot) <path to chroot tmp directory>/'
                       '%s./chromedriver',
                       download_chromium_prebuilt.DOWNLOAD_PATH)
-        factory = ap_configurator_factory.APConfiguratorFactory()
+        config_path = os.path.join(os.path.dirname(__file__),
+                                   '..', '..', 'config', 'wifi_compat_config')
+        factory = ap_configurator_factory.APConfiguratorFactory(config_path)
         # Set self.ap to the one you want to test against.
-        self.ap = factory.get_ap_configurator_by_short_name('WRT54G2')
+        self.ap = factory.get_ap_configurator_by_short_name('TEW-639GR')
 
     def test_make_no_changes(self):
         """Test saving with no changes doesn't throw an error."""
         # Set to a known state.
-        self.ap.set_radio(True)
+        self.ap.set_radio(enabled=True)
         self.ap.apply_settings()
         # Set the same setting again.
-        self.ap.set_radio(True)
+        self.ap.set_radio(enabled=True)
         self.ap.apply_settings()
 
     def test_radio(self):
         """Test we can adjust the radio setting."""
-        self.ap.set_radio(True)
+        self.ap.set_radio(enabled=True)
         self.ap.apply_settings()
-        self.ap.set_radio(False)
+        self.ap.set_radio(enabled=False)
         self.ap.apply_settings()
 
     def test_channel(self):
         """Test adjusting the channel."""
-        self.ap.set_radio(4)
+        self.ap.set_radio(enabled=True)
+        self.ap.set_channel(4)
         self.ap.apply_settings()
 
     def test_visibility(self):
@@ -69,23 +73,25 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_security_wep(self):
         """Test configuring WEP security."""
-        self.ap.set_security_wep('45678', self.ap.wep_authentication_open)
-        self.ap.apply_settings()
-        self.ap.set_security_wep('90123', self.ap.wep_authentication_shared)
-        self.ap.apply_settings()
+        if self.ap.is_security_mode_supported(self.ap.security_wep):
+            self.ap.set_security_wep('45678', self.ap.wep_authentication_open)
+            self.ap.apply_settings()
+            self.ap.set_security_wep('90123', self.ap.wep_authentication_shared)
+            self.ap.apply_settings()
 
     def test_priority_sets(self):
         """Test that commands are run in the right priority."""
-        self.ap.set_radio(False)
+        self.ap.set_radio(enabled=False)
         self.ap.set_visibility(True)
         self.ap.set_ssid('priority_test')
         self.ap.apply_settings()
 
     def test_security_and_general_settings(self):
         """Test updating settings that are general and security related."""
-        self.ap.set_radio(False)
+        self.ap.set_radio(enabled=False)
         self.ap.set_visibility(True)
-        self.ap.set_security_wep('88888', self.ap.wep_authentication_open)
+        if self.ap.is_security_mode_supported(self.ap.security_wep):
+            self.ap.set_security_wep('88888', self.ap.wep_authentication_open)
         self.ap.set_ssid('sec&gen_test')
         self.ap.apply_settings()
 
@@ -115,28 +121,35 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_fast_cycle_security(self):
         """Mini stress for changing security settings rapidly."""
-        self.ap.set_radio(True)
-        self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
-        self.ap.set_security_disabled()
-        self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
+        self.ap.set_radio(enabled=True)
+        if self.ap.is_security_mode_supported(self.ap.security_wep):
+            self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
+        if self.ap.is_security_mode_supported(self.ap.security_disabled):
+            self.ap.set_security_disabled()
+        if self.ap.is_security_mode_supported(self.ap.security_wpapsk):
+            self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
         self.ap.apply_settings()
 
     def test_cycle_security(self):
         """Test switching between different security settings."""
-        self.ap.set_radio(True)
-        self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
+        self.ap.set_radio(enabled=True)
+        if self.ap.is_security_mode_supported(self.ap.security_wep):
+            self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
         self.ap.apply_settings()
-        self.ap.set_security_disabled()
+        if self.ap.is_security_mode_supported(self.ap.security_disabled):
+            self.ap.set_security_disabled()
         self.ap.apply_settings()
-        self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
+        if self.ap.is_security_mode_supported(self.ap.security_wpapsk):
+            self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
         self.ap.apply_settings()
 
     def test_actions_when_radio_disabled(self):
         """Test making changes when the radio is disabled."""
-        self.ap.set_radio(False)
+        self.ap.set_radio(enabled=False)
         self.ap.apply_settings()
-        self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
-        self.ap.set_radio(False)
+        if self.ap.is_security_mode_supported(self.ap.security_wep):
+            self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
+        self.ap.set_radio(enabled=False)
         self.ap.apply_settings()
 
 

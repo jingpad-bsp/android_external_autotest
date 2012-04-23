@@ -6,6 +6,7 @@ import os
 
 import dlink_ap_configurator
 import linksys_ap_configurator
+import trendnet_ap_configurator
 
 
 class APConfiguratorFactory(object):
@@ -15,6 +16,7 @@ class APConfiguratorFactory(object):
         if not os.path.exists(config_dict_file_path):
             raise IOError('The configuration file at path %s is missing' %
                           str(config_dict_file_path))
+
         f = open(config_dict_file_path)
         contents = f.read()
         f.close()
@@ -26,9 +28,11 @@ class APConfiguratorFactory(object):
                                config_dict_file_path)
         self.ap_list = [
             linksys_ap_configurator.LinksysAPConfigurator(
-            config_dict['LinksysAPConfigurator']),
+                config_dict['LinksysAPConfigurator']),
             dlink_ap_configurator.DLinkAPConfigurator(
-            config_dict['DLinkAPConfigurator'])]
+                config_dict['DLinkAPConfigurator']),
+            trendnet_ap_configurator.TrendnetAPConfigurator(
+                config_dict['TrendnetAPConfigurator'])]
 
     def get_ap_configurators(self):
         return self.ap_list

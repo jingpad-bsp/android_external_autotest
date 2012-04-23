@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import binascii
 import copy
 import logging
 import os
@@ -13,11 +14,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__),
 try:
   from selenium import webdriver
 except ImportError:
-  raise ImportError('Could not locate the webdriver at %s.  Did you build? '
-                    'Are you using a prebuilt autotest package?' %
-                     webdriver_path)
+  raise ImportError('Could not locate the webdriver package.  Did you build? '
+                    'Are you using a prebuilt autotest package?')
 
-import selenium.common.exceptions
+from selenium.common.exceptions import TimeoutException as \
+    SeleniumTimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
 
@@ -25,7 +26,6 @@ class APConfigurator(object):
     """Base class for objects to configure access points using webdriver."""
 
     def __init__(self):
-        self.selenium_timeout = selenium.common.exceptions.TimeoutException
         # Possible bands
         self.band_2ghz = '2.4GHz'
         self.band_5ghz = '5GHz'
@@ -56,17 +56,33 @@ class APConfigurator(object):
             return
 
     def wait_for_object_by_id(self, element_id):
+        """Waits for an element to become available; returns a reference to it.
+
+        Args:
+          element_id: the id of the element to wait for
+
+        Returns:
+          Reference to the element if found.
+        """
         xpath = 'id("%s")' % element_id
-        self.wait_for_object_by_xpath(xpath)
+        return self.wait_for_object_by_xpath(xpath)
 
     def wait_for_object_by_xpath(self, xpath):
-        """Waits for an object to appear."""
+        """Waits for an element to become available; returns a reference to it.
+
+        Args:
+          xpath: the xpath of the element to wait for
+
+        Returns:
+          Reference to the element if found.
+        """
         try:
             self.wait.until(lambda _: self.driver.find_element_by_xpath(xpath))
-        except selenium.common.exceptions.TimeoutException, e:
-            raise self.selenium_timeout('Unable to find the object by xpath: '
-                                        '%s\n WebDriver exception: %s', xpath,
-                                        str(e))
+        except SeleniumTimeoutException, e:
+            raise SeleniumTimeoutException('Unable to find the object by xpath:'
+                                           '%s\n WebDriver exception: %s',
+                                           xpath, str(e))
+        return self.driver.find_element_by_xpath(xpath)
 
     def select_item_from_popup_by_id(self, item, element_id,
                                      wait_for_xpath=None):
@@ -89,6 +105,13 @@ class APConfigurator(object):
           wait_for_xpath: an item to wait for before returning
         """
         popup = self.driver.find_element_by_xpath(xpath)
+        try:
+            self.wait.until(lambda _:
+                            len(popup.find_elements_by_tag_name('option')))
+        except SeleniumTimeoutException, e:
+            raise SeleniumTimeoutException('The popup at xpath %s has no items.'
+                                           '\n WebDriver exception: %s', xpath,
+                                           str(e))
         for option in popup.find_elements_by_tag_name('option'):
             if option.text == item:
                 option.click()
@@ -120,10 +143,11 @@ class APConfigurator(object):
         text_field = self.driver.find_element_by_xpath(xpath)
         try:
             self.wait.until(lambda _: text_field.get_attribute('value'))
-        except selenium.common.exceptions.TimeoutException, e:
-            raise self.selenium_timeout('Unable to obtain the value of the text'
-                                        ' field %s. \nWebDriver exception: %s',
-                                        wait_for_xpath, str(e))
+        except SeleniumTimeoutException, e:
+            raise SeleniumTimeoutException('Unable to obtain the value of the '
+                                           'text field %s.\nWebDriver '
+                                           'exception: %s',
+                                           wait_for_xpath, str(e))
         text_field = self.driver.find_element_by_xpath(xpath)
         text_field.clear()
         text_field.send_keys(content)
@@ -234,6 +258,22 @@ class APConfigurator(object):
         """
         raise NotImplementedError
 
+    def is_security_mode_supported(self, security_mode):
+        """Returns if a given security_type is supported.
+
+        Note: The derived class must implement this method.
+
+        Args:
+          security_mode: one of the following modes: self.security_disabled,
+                         self.security_wep, self.security_wpapsk,
+                         self.security_wpa2psk, self.security_wpa8021x,
+                         or self.security_wpa28021x
+
+        Returns:
+          True if the security mode provided is supported; False otherwise.
+        """
+        raise NotImplementedError
+
     def navigate_to_page(self, page_number):
         """Navigates to the page corresponding to the given page number.
 
@@ -244,9 +284,6 @@ class APConfigurator(object):
 
         Args:
           page_number: Page number of the page to load
-
-        Returns:
-          True if navigation is successful; False otherwise.
         """
         raise NotImplementedError
 
@@ -354,9 +391,18 @@ class APConfigurator(object):
 
     def apply_settings(self):
         """Apply all settings to the access point."""
+        # Load the Auth extension
+        extension_path = os.path.join(os.path.dirname(__file__),
+                                      'basic_auth_extension.crx')
+        f = open(extension_path, 'rb')
+        base64_extensions = []
+        base64_ext = (binascii.b2a_base64(f.read()).strip())
+        base64_extensions.append(base64_ext)
+        f.close()
         # Connect to the browser
         try:
-          self.driver = webdriver.Remote('http://127.0.0.1:9515', {})
+            self.driver = webdriver.Remote('http://127.0.0.1:9515',
+                {'chrome.extensions': base64_extensions})
         except Exception, e:
             raise RuntimeError('Could not connect to webdriver, have you '
                                'downloaded the prebuild components to the /tmp '
@@ -373,7 +419,8 @@ class APConfigurator(object):
             page_commands = [x for x in self._command_list if x['page'] == i]
             sorted_page_commands = sorted(page_commands,
                                           key=lambda k: k['priority'])
-            if sorted_page_commands and self.navigate_to_page(i):
+            if sorted_page_commands:
+                self.navigate_to_page(i)
                 for command in sorted_page_commands:
                     command['method'](*command['args'])
                 self.save_page(i)

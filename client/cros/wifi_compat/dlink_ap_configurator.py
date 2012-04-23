@@ -6,8 +6,8 @@ import logging
 import os
 
 import ap_configurator
-import selenium.common.exceptions
-
+from selenium.common.exceptions import TimeoutException as \
+    SeleniumTimeoutException
 
 class DLinkAPConfigurator(ap_configurator.APConfigurator):
     """Derived class to control the DLink DAP-1522."""
@@ -30,14 +30,14 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
         if page_name == 'login.php' or page_name == 'index.php':
             try:
                 self.wait_for_object_by_xpath('//*[@name="login"]')
-            except self.selenium_timeout, e:
+            except SeleniumTimeoutException, e:
                 # Maybe we were re-routed to the configuration page
                 if (os.path.basename(self.driver.current_url) ==
                     'bsc_wizard.php'):
                     return
-                raise self.selenium_timeout('Unable to navigate to the login or'
-                                            ' configuration page. WebDriver '
-                                            'exception: %s', str(e))
+                raise SeleniumTimeoutException('Unable to navigate to the '
+                                               'login or configuration page. '
+                                               'WebDriver exception:%s', str(e))
             login_button = self.driver.find_element_by_xpath(
                 '//*[@name="login"]')
             login_button.click()
@@ -45,7 +45,7 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
     def _open_configuration_page(self):
         self._open_landing_page()
         if os.path.basename(self.driver.current_url) != 'bsc_wizard.php':
-            raise self.selenium_timeout('Taken to an unknown page %s' %
+            raise SeleniumTimeoutException('Taken to an unknown page %s' %
                 os.path.basename(self.driver.current_url))
 
         # Else we are being logged in automatically to the landing page
@@ -80,10 +80,14 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
                  'modes': [self.mode_a, self.mode_n,
                            self.mode_a | self.mode_n]}]
 
+    def is_security_mode_supported(self, security_mode):
+        return security_mode in (self.security_disabled,
+                                 self.security_wpapsk,
+                                 self.security_wep)
+
     def navigate_to_page(self, page_number):
         # All settings are on the same page, so we always open the config page
         self._open_configuration_page()
-        return True
 
     def save_page(self, page_number):
         # All settings are on the same page, we can ignore page_number
@@ -100,7 +104,6 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
             button = self.driver.find_element_by_xpath(button_xpath)
             button.click()
         # We will be returned to the landing page when complete
-        # self.wait_for_object_by_xpath(button_xpath)
         self.wait_for_object_by_id('enable')
 
     def set_mode(self, mode, band=None):
@@ -140,9 +143,9 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
             if band:
                 band_value = band
         else:
-            raise self.selenium_timeout('The mode selected %d is not supported'
-                                         ' by router %s.', hex(mode),
-                                         self.get_router_name())
+            raise SeleniumTimeoutException('The mode selected %s is not '
+                                           'supported by router %s.' %
+                                           (hex(mode), self.get_router_name()))
         # Set the band first
         self._set_band(band_value)
         popup_id = 'mode_80211_11g'
