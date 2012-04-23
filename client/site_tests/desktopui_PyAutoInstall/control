@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chromium OS Project"
-NAME = "desktopui_ServoPyAuto"
+NAME = "desktopui_PyAutoInstall"
 PURPOSE = "Copy over the PyAuto dependency."
 CRITERIA = """
 This test will fail if the PyAuto dependency cannot be copied to the client.
@@ -17,4 +17,4 @@ DOC = """
 An empty test to pull the PyAuto dependency over to the client device.
 """
 
-job.run_test('desktopui_ServoPyAuto', auto_login=False)
+job.run_test('desktopui_PyAutoInstall', auto_login=False)

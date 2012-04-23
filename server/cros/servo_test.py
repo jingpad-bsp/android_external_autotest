@@ -40,7 +40,7 @@ class ServoTest(test.test):
             # Port number of the remote RPC.
             'port': 9988,
             # Client test for installing dependency.
-            'client_test': 'desktopui_ServoPyAuto',
+            'client_test': 'desktopui_PyAutoInstall',
             # The remote command to be run.
             'remote_command': 'python /usr/local/autotest/cros/remote_pyauto.py'
                               ' --no-http-server',
