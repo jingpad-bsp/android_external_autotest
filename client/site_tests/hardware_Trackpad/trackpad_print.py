@@ -22,7 +22,7 @@ def _get_prompt(func, subname):
     if isinstance(subname, tuple):
         subprompt = reduce(lambda s1, s2: s1 + s2,
                            tuple(func.subprompt[s] for s in subname))
-    elif subname is None:
+    elif subname is None or func.subprompt is None:
         subprompt = None
     else:
         subprompt = func.subprompt[subname]
@@ -82,7 +82,7 @@ def print_gestures():
                 prompt = _get_prompt(func, sub)
                 count += 1
 
-    print '\nTotal %d gesture varations.' % count
+    print '\nTotal %d gesture variations.' % count
 
 
 def _usage():
