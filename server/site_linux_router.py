@@ -26,14 +26,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         site_linux_system.LinuxSystem.__init__(self, host, params, "router")
         self._remove_interfaces()
 
-        self.cmd_hostapd = params.get("cmd_hostapd", "/usr/sbin/hostapd")
+        # Router host.
+        self.router = host
+
+        self.cmd_hostapd = self.__must_be_installed(host,
+            params.get("cmd_hostapd", "/usr/sbin/hostapd"))
         self.cmd_hostapd_cli = \
             params.get("cmd_hostapd_cli", "/usr/sbin/hostapd_cli")
         self.dhcpd_conf = "/tmp/dhcpd.conf"
         self.dhcpd_leases = "/tmp/dhcpd.leases"
-
-        # Router host.
-        self.router = host
 
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
@@ -69,6 +70,16 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Place us in the US by default
         self.router.run("%s reg set US" % self.cmd_iw)
+
+    def __must_be_installed(self, host, cmd):
+        if not self.__is_installed(host, cmd):
+            raise error.TestFail('Unable to find %s on %s' % (cmd, host.ip))
+        return cmd
+
+    def __is_installed(self, host, filename):
+        result = host.run("ls %s" % filename, ignore_status=True)
+        m = re.search(filename, result.stdout)
+        return m is not None
 
 
     def create(self, params):
@@ -271,6 +282,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Run hostapd.
         logging.info("Starting hostapd...")
+
         self.router.run("%s -dd %s &> %s &" %
             (self.cmd_hostapd, self.hostapd['file'], self.hostapd['log']))
 

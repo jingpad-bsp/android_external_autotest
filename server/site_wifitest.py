@@ -427,14 +427,17 @@ class WiFiTest(object):
                         # swap the expectation value of a succeeding test,
                         # here.  It's non-intuitive.
                         expect_result = WiFiTest._result_expect_success
-                        raise error.TestFail("Expected failure")
+                        raise error.TestFail("Succeeded (but expected "
+                                             "failure).")
                 except Exception, e:
                     if expect_result is WiFiTest._result_dont_care:
-                        logging.info("%s: failed but we don't care",
+                        logging.info("%s: Failed (but we don't care).",
                                      self.name)
                         continue
                     elif expect_result is WiFiTest._result_expect_failure:
                         if not failure_string:
+                            logging.info("%s: Failed (but we expected that).",
+                                         self.name)
                             continue
 
                         # If test did not explicitly specify an error message,
@@ -443,21 +446,26 @@ class WiFiTest(object):
                             self.error_message = (e.result_obj.stderr +
                                                   e.result_obj.stdout)
                         if re.search(failure_string, self.error_message):
+                            logging.info("%s: Failed (but we expected that).",
+                                         self.name)
                             continue
 
                         logging.error("Expected failure, but error string does "
                                       "not match what was expected")
                     logging.error("%s: Step '%s' failed: %s; abort test",
                         self.name, method, str(e))
+                    logging.info("===========================================")
                     self.cleanup({})
                     traceback.print_exc()
                     raise e
             else:
                 logging.error("%s: Step '%s' unknown; abort test",
                     self.name, method)
+                logging.info("===========================================")
                 self.cleanup({})
                 break
         else:
+            logging.info("===========================================")
             # If all steps ran successfully perform the normal cleanup steps
             self.cleanup({})
 
@@ -632,6 +640,53 @@ class WiFiTest(object):
 
         print "%s: %s" % (self.name, result)
 
+
+    def profile(self, params):
+        """ Display profile information -- for debugging. """
+
+        print "\nSERVICES:"
+        result = self.client.run('%s/test/list-services' %
+                        (self.client_cmd_flimflam_lib),
+                        ignore_status=True)
+        print "%s: %s" % (self.name, result)
+
+        print "\nENTRIES:"
+        result = self.client.run('%s/test/list-entries' %
+                        (self.client_cmd_flimflam_lib),
+                        ignore_status=True)
+        print "%s: %s" % (self.name, result)
+
+    def client_check_profile_properties(self, params):
+        """ Verify that profile/entries properties equal expected values. """
+
+        args = ['--param %s:%s' % (var, val) for var, val in params.iteritems()]
+        if self.ethernet_mac_address:
+          args.append('--ethmac %s' % self.ethernet_mac_address)
+        args.append('--command ClientCheckProfileProperties')
+
+        script_client_file = self.install_script('site_wlan_profiles.py',
+                                                 'site_wlan_dbus_setup.py')
+
+        result = self.client.run('python "%s" %s' %
+             (script_client_file, ' '.join(args))).stdout.rstrip()
+
+        print "%s: %s" % (self.name, result)
+
+    def client_profile_delete_entry(self, params):
+        """ Verify that profile/entries properties equal expected values. """
+
+        args = ['--param %s:%s' % (var, val) for var, val in params.iteritems()]
+        if self.ethernet_mac_address:
+          args.append('--ethmac %s' % self.ethernet_mac_address)
+        args.append('--command ClientProfileDeleteEntry')
+
+        script_client_file = self.install_script('site_wlan_profiles.py',
+                                                 'site_wlan_dbus_setup.py')
+
+        result = self.client.run('python "%s" %s' %
+             (script_client_file, ' '.join(args))).stdout.rstrip()
+
+        print "%s: %s" % (self.name, result)
 
     def __wait_service_start(self, params):
         """ Wait for service transitions on client. """

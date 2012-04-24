@@ -64,7 +64,16 @@ class ConnectStateHandler(StateHandler):
 
 
   def _GetMatchedService(self, service_list):
-    """Get a service matching the connection setting from a list of services."""
+    """Get a service matching the connection setting from a list of services.
+
+    Args:
+      service_list: An array of (1) DBus objects for Services with a specified
+        ssid.
+
+    Returns:
+      The DBus object for the service that matches our connection_settings
+      (None if nothing matched).
+    """
     matched_service = None
     for svc in service_list:
       props = svc.GetProperties()
@@ -125,8 +134,8 @@ class ConnectStateHandler(StateHandler):
       self.acquisition_time = time.time()
 
     # If service isn't already connecting or connected, start now
-    if (service.GetProperties()['State'] not in ('association', 'configuration',
-                                                 'ready')):
+    if (service.GetProperties()['State'] not in
+        ('association', 'configuration', 'ready')):
       try:
         service.Connect()
       except dbus.exceptions.DBusException, e:
@@ -226,9 +235,11 @@ def main(argv):
       'Type': 'wifi',
       'Mode': options.mode,
       'SSID': ssid,
-      'Security': security,
       'SaveCredentials' : options.save_creds
   }
+
+  if security:
+    connection_settings['Security'] = security
 
   if security == '802_1x':
     split_psk(connection_settings, psk)
