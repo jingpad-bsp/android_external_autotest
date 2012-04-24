@@ -13,6 +13,8 @@
 
 
 import gtk
+import logging
+import os
 import pango
 import pyudev
 import pyudev.glib
@@ -26,37 +28,66 @@ from autotest_lib.client.cros.factory import ui as ful
 _UDEV_ACTION_INSERT = 'add'
 _UDEV_ACTION_REMOVE = 'remove'
 
-_PROMPT_FMT_STR = ('插拔每個 USB 端口, 還有 {0} 個待測試...\n'
-                   'Plug and unplug every USB ports, {0} to go...')
+_PROMPT_FMT_STR = ('Plug and unplug each USB port, {0} to go...\n'
+                   '插拔每個 USB 端口, 還有 {0} 個待測試...')
 
 
 class factory_USB(test.test):
     version = 1
 
     def usb_event_cb(self, action, device):
-        if action == _UDEV_ACTION_INSERT:
-            self._plugged_devpath.add(device.device_path)
-        elif action == _UDEV_ACTION_REMOVE:
-            self._unplugged_devpath.add(device.device_path)
-        else:
-            return
-        factory.log('USB %s device path %s' % (action, device.device_path))
+        if action not in [_UDEV_ACTION_INSERT, _UDEV_ACTION_REMOVE]:
+          return
 
-        num_checked = len(
-                self._plugged_devpath.intersection(self._unplugged_devpath))
-        if num_checked >= self._num_usb_ports:
+        factory.log('USB %s device path %s' % (action, device.device_path))
+        bus_path = os.path.dirname(device.sys_path)
+        bus_ver_path = os.path.join(bus_path, 'version')
+        bus_version = int(float(open(bus_ver_path, 'r').read().strip()))
+
+        if bus_version == 2:
+            self._seen_usb2_paths.add(device.device_path)
+        elif bus_version == 3:
+            self._seen_usb3_paths.add(device.device_path)
+        else:
+            logging.warning('usb event for unknown bus version: %r',
+                            bus_version)
+            return True
+
+        usb2_count = len(self._seen_usb2_paths)
+        usb3_count = len(self._seen_usb3_paths)
+        total_count = usb2_count + usb3_count
+
+        finished = True
+        if self._num_usb_ports:
+          finished &= total_count >= self._num_usb_ports
+        if self._num_usb2_ports:
+          finished &= usb2_count >= self._num_usb2_ports
+        if self._num_usb3_ports:
+          finished &= usb3_count >= self._num_usb3_ports
+        if finished:
             gtk.main_quit()
         else:
-            self._prompt.set_text(
-                    _PROMPT_FMT_STR.format(self._num_usb_ports - num_checked))
+            txt = _PROMPT_FMT_STR.format(self._num_usb_ports - total_count)
+            self._prompt.set_text(txt)
 
-    def run_once(self, num_usb_ports=1):
-        if num_usb_ports <= 0:
-            raise error.TestError('Invalid number of USB ports to check')
+    def run_once(self,
+                 num_usb_ports=None,
+                 num_usb2_ports=None,
+                 num_usb3_ports=None):
+
+        assert ((num_usb_ports and (num_usb_ports > 0)) or
+                (num_usb2_ports and (num_usb2_ports > 0)) or
+                (num_usb3_ports and (num_usb3_ports > 0))), (
+                    'USB port count not specified.')
+
+        if not num_usb_ports:
+          num_usb_ports = (num_usb2_ports or 0) + (num_usb3_ports or 0)
 
         self._num_usb_ports = num_usb_ports
-        self._plugged_devpath = set()
-        self._unplugged_devpath = set()
+        self._num_usb2_ports = num_usb2_ports
+        self._num_usb3_ports = num_usb3_ports
+        self._seen_usb2_paths = set()
+        self._seen_usb3_paths = set()
 
         context = pyudev.Context()
         monitor = pyudev.Monitor.from_netlink(context)
