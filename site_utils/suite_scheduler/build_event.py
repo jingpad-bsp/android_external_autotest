@@ -83,3 +83,7 @@ class NewBuild(BuildEvent):
         @param always_handle: If True, make ShouldHandle() always return True.
         """
         super(NewBuild, self).__init__(self.KEYWORD, mv, always_handle)
+
+
+    def UpdateCriteria(self):
+        self._revision = self._mv.GetCheckpoint()

@@ -79,6 +79,32 @@ class TimedEventTestBase(mox.MoxTestBase):
         self.assertTrue(t.ShouldHandle())
 
 
+    def doTestDeadlineUpdate(self, days_to_jump):
+        fake_now = self.TimeBefore(self.BaseTime())
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
+        self.mox.ReplayAll()
+
+        nightly = self.CreateEvent()  # Deadline gets set for tonight.
+        self.assertFalse(nightly.ShouldHandle())
+        self.mox.VerifyAll()
+
+        self.mox.ResetAll()
+        fake_now = self.TimeLaterThan(self.BaseTime())  # Jump past deadline.
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
+        self.mox.ReplayAll()
+
+        self.assertTrue(nightly.ShouldHandle())
+        nightly.UpdateCriteria()  # Deadline moves to tomorrow night
+        self.assertFalse(nightly.ShouldHandle())
+        self.mox.VerifyAll()
+
+        self.mox.ResetAll()
+        fake_now += datetime.timedelta(days=days_to_jump)  # Jump past deadline.
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
+        self.mox.ReplayAll()
+        self.assertTrue(nightly.ShouldHandle())
+
+
     def doTestGetBranchBuilds(self, days):
         board = 'faux_board'
         branch_manifests = {('factory','16'): ['last16'],
@@ -190,6 +216,11 @@ class NightlyTest(TimedEventTestBase):
         self.doTestTOCTOU()
 
 
+    def testDeadlineUpdate(self):
+        """Ensure we update the deadline correctly."""
+        self.doTestDeadlineUpdate(days_to_jump=1)
+
+
     def testGetBranchBuilds(self):
         """Ensure Nightly gets most recent builds in last day."""
         self.doTestGetBranchBuilds(days=1)
@@ -281,6 +312,11 @@ class WeeklyTest(TimedEventTestBase):
     def testTOCTOU(self):
         """Even if deadline passes during initialization, trigger must fire."""
         self.doTestTOCTOU()
+
+
+    def testDeadlineUpdate(self):
+        """Ensure we update the deadline correctly."""
+        self.doTestDeadlineUpdate(days_to_jump=7)
 
 
     def testGetBranchBuilds(self):

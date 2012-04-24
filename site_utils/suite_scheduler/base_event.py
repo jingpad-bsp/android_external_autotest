@@ -134,7 +134,15 @@ class BaseEvent(object):
 
 
     def ShouldHandle(self):
-        """Returns True if this BaseEvent should be fired, False if not.
+        """Returns True if this BaseEvent should be Handle()'d, False if not.
+
+        Must be implemented by subclasses.
+        """
+        raise NotImplementedError()
+
+
+    def UpdateCriteria(self):
+        """Updates internal state used to decide if this event ShouldHandle()
 
         Must be implemented by subclasses.
         """
@@ -158,3 +166,4 @@ class BaseEvent(object):
         for task in list(self.tasks):
             if not task.Run(scheduler, branch_builds, board, force):
                 self._tasks.remove(task)
+        self.UpdateCriteria()

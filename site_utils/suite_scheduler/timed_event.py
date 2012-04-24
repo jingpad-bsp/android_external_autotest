@@ -114,6 +114,10 @@ class Nightly(TimedEvent):
         return self._LatestPerBranchBuildsSince(board, 1)
 
 
+    def UpdateCriteria(self):
+        self._deadline = self._deadline + datetime.timedelta(days=1)
+
+
 class Weekly(TimedEvent):
     """A TimedEvent that happens every week.
 
@@ -174,3 +178,7 @@ class Weekly(TimedEvent):
 
     def GetBranchBuildsForBoard(self, board):
         return self._LatestPerBranchBuildsSince(board, 7)
+
+
+    def UpdateCriteria(self):
+        self._deadline = self._deadline + datetime.timedelta(days=7)
