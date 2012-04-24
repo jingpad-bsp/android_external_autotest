@@ -13,12 +13,12 @@ import StringIO
 from autotest_lib.client.bin import test
 from autotest_lib.client.cros import factory
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros.camera.camera_preview import CameraPreview
 from autotest_lib.client.cros.factory import task
 from autotest_lib.client.cros.factory import ui as ful
 from autotest_lib.client.cros.factory.media_util import MediaMonitor
 from autotest_lib.client.cros.factory.media_util import MountedMedia
+from autotest_lib.client.cros.i2c import usb_to_i2c
 from autotest_lib.client.cros.rf.config import PluggableConfig
 
 
@@ -35,6 +35,9 @@ _MESSAGE_ENTER_SN_HINT = ('Please scan SN on LCD.\n請掃描本體上S/N:')
 _MESSAGE_CAMERA_CHECK = (
     'hit TAB to pass and ENTER to fail.\n' +
     '成功請按 TAB, 錯誤請按 ENTER.\n')
+_MESSAGE_I2C_TESTING = (
+    'I2C testing...\n'
+    '測試中...\n')
 _MESSAGE_WRITING_LOGS = (
     'Writing logs...\n'
     '紀錄中...\n')
@@ -65,7 +68,7 @@ def make_prepare_widget(message,
 
 
 class factory_Connector(test.test):
-    version = 1
+    version = 2
 
     # The state goes from _STATE_INITIAL to _STATE_RESULT_TAB then jumps back
     # to _STATE_PREPARE_PANEL for another testing cycle.
@@ -74,8 +77,9 @@ class factory_Connector(test.test):
     _STATE_PREPARE_PANEL = 1
     _STATE_ENTERING_SN = 2
     _STATE_CAMERA_CHECK = 3
-    _STATE_WRITING_LOGS = 4
-    _STATE_RESULT_TAB = 5
+    _STATE_I2C_CHECK = 4
+    _STATE_WRITING_LOGS = 5
+    _STATE_RESULT_TAB = 6
 
     def advance_state(self):
         if self._state == self._STATE_RESULT_TAB:
@@ -126,7 +130,7 @@ class factory_Connector(test.test):
 
     def setup_tests(self):
         self.setup_camera_preview()
-        # TODO(itspeter): setup the i2c bus related test.
+        self.setup_i2c_bus()
         # TODO(itspeter): setup the external display related test.
         # Setup result tab.
         self.make_result_widget(self.advance_state)
@@ -160,6 +164,38 @@ class factory_Connector(test.test):
         self.camera_preview.capture_stop()
         factory.log('Preview failed.')
         self._update_status('camera', False)
+        self.advance_state()
+
+    def setup_i2c_bus(self):
+        self.bus_config = self.config['bus']
+        factory.log('I2C bus config is [%s]' % self.bus_config)
+        self.i2c_list = self.bus_config['i2c_list']
+        self.chipset = self.bus_config['chipset']
+        # Prepare the status row.
+        for test_name, test_label, _ in self.i2c_list:
+            self._status_names.append(test_name)
+            self._status_labels.append(test_label)
+            self._results_to_check.append(test_name)
+
+    def perform_i2c_bus_test(self):
+        try:
+            controller = usb_to_i2c.create_i2c_controller(self.chipset)
+            # Turn on the led light to indicate test in progress.
+            # http://www.nxp.com/documents/data_sheet/SC18IM700.pdf
+            controller.send_and_check_status(
+                98, [0x11, 0x97, 0x80, 0x00, 0x40, 0xE1])
+            # Probe the peripherals.
+            for test_name, _, i2c_port in self.i2c_list:
+                bus_status = controller.send_and_check_status(
+                    eval(i2c_port), [])
+                factory.log("[%s] at port [%s] tested, returned %d" % (
+                            test_name, i2c_port, bus_status))
+                if bus_status == usb_to_i2c.I2CController.I2C_OK:
+                    self._update_status(test_name, True)
+                else:
+                    self._update_status(test_name, False)
+        except Exception as e:
+            factory.log('Exception - %s' % e)
         self.advance_state()
 
     def on_usb_insert(self, dev_path):
@@ -224,7 +260,6 @@ class factory_Connector(test.test):
         assert result in result_map, 'Unknown result'
         self.display_dict[row_name]['status'] = result_map[result]
 
-
     def generate_final_result(self):
         self._result = all(
            ful.PASSED == self.display_dict[var]['status']
@@ -263,7 +298,7 @@ class factory_Connector(test.test):
         self.advance_state()
         return True
 
-    def run_once(self, set_interface_ip=None):
+    def run_once(self):
         factory.log('%s run_once' % self.__class__)
         # Initialize variables.
         self._status_names = ['sn']
@@ -292,6 +327,9 @@ class factory_Connector(test.test):
 
         self.preview_widget = None
 
+        self.i2c_testing_widget = make_prepare_widget(
+            message=_MESSAGE_I2C_TESTING, key_action_mapping=[])
+
         self.writing_widget = make_prepare_widget(
             message=_MESSAGE_WRITING_LOGS,
             key_action_mapping=[],
@@ -311,6 +349,8 @@ class factory_Connector(test.test):
                 (self.sn_input_widget, None),
             self._STATE_CAMERA_CHECK:
                 (self.preview_widget, None),
+            self._STATE_I2C_CHECK:
+                (self.i2c_testing_widget, self.perform_i2c_bus_test),
             self._STATE_WRITING_LOGS:
                 (self.writing_widget, self.generate_final_result),
             self._STATE_RESULT_TAB:
