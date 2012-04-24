@@ -28,7 +28,7 @@ class WriteHwidTask(task.FactoryTask):
         # Ex: input="BLUE A" => matched to "MARIO BLUE A-B 6868".
         hwid = self.data['hwid']
         assert hwid
-        gooftools.run("gooftool --write_hwid --hwid '%s'" % hwid)
+        gooftools.run("gooftool write_hwid '%s'" % hwid)
         self.stop()
 
     def start(self):

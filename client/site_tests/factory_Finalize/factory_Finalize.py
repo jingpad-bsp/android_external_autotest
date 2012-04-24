@@ -66,7 +66,7 @@ class PreflightTask(task.FactoryTask):
     def check_developer_switch(self):
         """ Checks if developer switch button is disabled """
         try:
-            gooftools.run('gooftool --verify_switch_dev --verbose')
+            gooftools.run('gooftool verify_switch_dev')
         except:
             return False
         return True
@@ -74,7 +74,7 @@ class PreflightTask(task.FactoryTask):
     def check_write_protect(self):
         """ Checks if hardware write protection pin is enabled """
         try:
-            gooftools.run('gooftool --verify_switch_wp --verbose')
+            gooftools.run('gooftool verify_switch_wp')
         except:
             return False
         return True
@@ -182,24 +182,16 @@ class FinalizeTask(task.FactoryTask):
 
     def do_finalize(self):
         upload_method = self.normalize_upload_method(self.upload_method)
-        hwid_cfg = factory.get_shared_data('hwid_cfg')
 
-        command = '--finalize'
+        command = 'gooftool -v 4 -l %s finalize' % factory.CONSOLE_LOG_PATH
         if self.developer_mode:
             self.alert('DEVELOPER MODE ENABLED')
-            command = '--developer_finalize'
+            command += ' --dev'
+        if not self.secure_wipe:
+            command += ' --fast'
+        command += ' --upload_method "%s"' % upload_method
 
-        args = ['gooftool',
-                command,
-                '--verbose',
-                '--wipe_method "%s"' % ('secure' if self.secure_wipe else
-                                        'fast'),
-                '--report_tag "%s"' % hwid_cfg,
-                '--upload_method "%s"' % upload_method,
-                ]
-
-        cmd = ' '.join(args)
-        gooftools.run(cmd)
+        gooftools.run(command)
 
         # TODO(hungte) Use Reboot in test list to replace this, or add a
         # key-press check in developer mode.
