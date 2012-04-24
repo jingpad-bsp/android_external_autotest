@@ -1,5 +1,6 @@
 AUTHOR = "ncrao@google.com (Nikhil Rao)"
 NAME = "Hackbench"
+SUITE = "kernel.per_build.benchmarks"
 TIME = "SHORT"
 TEST_CLASS = "Kernel"
 TEST_CATEGORY = "Benchmark"

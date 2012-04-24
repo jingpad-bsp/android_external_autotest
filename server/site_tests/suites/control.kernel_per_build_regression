@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
 NAME = "Kernel Per Build Regression"
+AUTHOR = "Chrome OS Team"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
@@ -23,16 +23,20 @@ CLIENT_TESTS = [
     # 64  : Number of vfork() subprocesses.
     # 0   : No verbosity. [0..5]
     ('crashme', { 'args_list': '4096 151 1000 64 0' }),
-    ('hardware_MemoryTotalSize', {}),
-    ('kernel_fs_Inplace', {}),
+    # Memory stress.
+    ('hardware_SAT', {}),
     ('kernel_fs_Inplace', {'dir':'/tmp', 'scratch':'/tmp/.inplace'}),
     ('kernel_fs_Inplace', {'dir':'/tmp', 'scratch':'/home/chronos/user/.ecrypt'}),
     # Check that TPM is present and started and we can talk to it.
     ('kernel_TPMPing', {}),
-    ('network_Ping', {}),
-    ('platform_FilePerms', {}),
-    ('platform_KernelVersion', {}),
-    ('platform_OSLimits', {}),
+    # Call every syscall sequentially with special value in a single
+    # register.  The special value will be rotated through each
+    # register parameter.
+    ('scrashme', { 'args_list': '--mode rotate' }),
+    # Pass # pointer to 'structs filled with 0xd5'.
+    ('scrashme', { 'args_list': '--mode rotate -SD5' }),
+    # Use zero as all regparms.
+    ('scrashme', { 'args_list': '--mode rotate -z' }),
     ('sound_infrastructure', {}),
 ]
 

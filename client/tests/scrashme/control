@@ -5,7 +5,7 @@ TEST_CLASS='Kernel'
 TEST_TYPE='client'
 TIME='MEDIUM'
 DOC='''
-Runs the scrashme suite located at: 
+Runs the scrashme suite located at:
 http://www.codemonkey.org.uk/projects/scrashme/
 
 Runs the scrashme syscalls test suite. This test mode will exercise

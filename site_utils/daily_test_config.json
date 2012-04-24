@@ -47,7 +47,8 @@
 
         "x86-mario-release": {
             "platforms": [
-                {"platform": "netbook_MARIO_MP"}
+                {"platform": "netbook_MARIO_MP",
+                 "extra_groups": ["kernel_daily"]}
             ]
         },
 
@@ -71,7 +72,8 @@
 
         "x86-zgb-release": {
             "platforms": [
-                {"platform": "netbook_ACER_ZGB"}
+                {"platform": "netbook_ACER_ZGB",
+                 "extra_groups": ["kernel_daily"]}
             ]
         },
 
@@ -89,7 +91,8 @@
 
         "stumpy-release": {
             "platforms": [
-                {"platform": "desktop_STUMPY"}
+                {"platform": "desktop_STUMPY",
+                 "extra_groups": ["kernel_daily"]}
             ]
         },
 
@@ -107,7 +110,8 @@
 
         "lumpy-release": {
             "platforms": [
-                {"platform": "netbook_LUMPY"}
+                {"platform": "netbook_LUMPY",
+                 "extra_groups": ["kernel_daily"]}
             ]
         }
     },

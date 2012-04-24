@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
 NAME = "Kernel Daily Benchmarks"
+AUTHOR = "Chrome OS Team"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "suite"
@@ -18,18 +18,13 @@ from autotest_lib.client.cros import cros_logging
 
 
 CLIENT_TESTS = [
-# Bonnie: two results come out zero:
-#  randcreate_read_ksec
-#  randcreate_read_pctcp
-# Not enough space to run these tests
-  ('bonnie', {'extra_args':'-s512:256 -r0 -n128'}),
-  ('compilebench', {}),
-  ('dbench', {}),
-  ('ddtest', {}),
-  ('hardware_MemoryThroughput', {'num_iteration': 10, 'test_list': '21'}),
-  ('hardware_StorageFio', {} ),
-  ('iozone', {}),
-  ('kernel_fs_Punybench', {}),
+    ('compilebench', {}),
+    ('dbench', {}),
+    ('ddtest', {}),
+    ('hardware_MemoryThroughput', {'num_iteration': 10, 'test_list': '21'}),
+    ('hardware_StorageFio', {} ),
+    ('iozone', {}),
+    ('kernel_fs_Punybench', {}),
 ]
 
 

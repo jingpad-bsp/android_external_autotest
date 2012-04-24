@@ -1,6 +1,7 @@
 AUTHOR = "Ying Tao <yingtao@cn.ibm.com>"
 TIME = "MEDIUM"
 NAME = "IOzone"
+SUITE = "kernel.daily.benchmarks"
 TEST_TYPE = "client"
 TEST_CLASS = "Kernel"
 TEST_CATEGORY = "Benchmark"

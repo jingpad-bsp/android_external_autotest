@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
 NAME = "Kernel Per Build Benchmarks"
+AUTHOR = "Chrome OS Team"
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "suite"
@@ -18,12 +18,15 @@ from autotest_lib.client.cros import cros_logging
 
 
 CLIENT_TESTS = [
-    ('build_RootFilesystemSize', {}),
+    # Bonnie: two results come out zero:
+    #  randcreate_read_ksec
+    #  randcreate_read_pctcp
+    # Not enough space to run these tests
+    ('bonnie', {'extra_args':'-s512:256 -r0 -n128'}),
     ('hackbench', {}),
     ('hardware_StorageFio', {'quicktest':'True'}), # raw block device testing
     ('kernel_HdParm', {}),
     ('platform_AesThroughput', {}),
-    ('platform_Shutdown', {}),
 ]
 
 

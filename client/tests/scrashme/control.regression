@@ -1,0 +1,26 @@
+NAME='scrashme'
+AUTHOR='Yi Yang <yang.y.yi@gmail.com>'
+SUITE = "kernel.per_build.regression"
+TEST_CATEGORY='Stress'
+TEST_CLASS='Kernel'
+TEST_TYPE='client'
+TIME='MEDIUM'
+
+DOC='''
+Runs the scrashme suite located at:
+http://www.codemonkey.org.uk/projects/scrashme/
+'''
+
+# Call every syscall sequentially with special value in a single
+# register.  The special value will be rotated through each
+# register parameter.
+job.run_test('scrashme', tag='rotate_all',
+             dargs={'args_list':'--mode rotate'})
+
+# Pass # pointer to 'structs filled with 0xd5'.
+job.run_test('scrashme', tag='struct_0xd5',
+             dargs={'args_list':'--mode rotate -SD5'})
+
+# Use zero as all regparms.
+job.run_test('scrashme', tag='zero_regparms',
+             dargs={'args_list':'--mode rotate -z'})

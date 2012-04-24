@@ -1,16 +1,17 @@
-
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'The Chromium OS Authors'
 NAME = 'kernel_fs_Punybench'
-DOC = '''
-Runs a select set of the puny benchmarks.
-'''
+AUTHOR = 'The Chromium OS Authors'
+SUITE = "kernel.daily.benchmarks"
 TIME = 'LONG'
 TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Performance'
 TEST_TYPE = 'client'
+
+DOC = '''
+Runs a select set of the puny benchmarks.
+'''
 
 job.run_test('kernel_fs_Punybench', args=args)

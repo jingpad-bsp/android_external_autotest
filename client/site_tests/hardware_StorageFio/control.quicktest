@@ -5,9 +5,9 @@
 NAME = 'hardware_StorageFio'
 AUTHOR = 'The Chromium OS Authors'
 PURPOSE = 'Benchmark storage performance using an unmounted root partition.'
-CRITERIA = 'This test is a benchmark.'
-SUITE = "kernel.daily.benchmarks"
-TIME = 'MEDIUM'
+CRITERIA = 'This test is a quick benchmark.'
+SUITE = "kernel.per_build.benchmarks"
+TIME = 'SHORT'
 TEST_CLASS = "hardware"
 TEST_CATEGORY = 'Performance'
 TEST_TYPE = 'client'
@@ -22,4 +22,4 @@ NOTE: If autoupdate or another program accesses the spare root partition
 while this test is running corruption may occur.
 """
 
-job.run_test('hardware_StorageFio')
+job.run_test('hardware_StorageFio', {'quicktest':'True'})
