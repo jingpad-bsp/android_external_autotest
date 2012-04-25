@@ -7,6 +7,7 @@ import compiler, logging, os, random, re, time
 from autotest_lib.client.common_lib import base_job, control_data, global_config
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros import control_file_getter, frontend_wrappers
 from autotest_lib.server import frontend
 
@@ -338,8 +339,6 @@ class Reimager(object):
         @param build: the build whose hosts we want to clean up e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         """
-        labels = self._afe.get_labels(name__startswith=VERSION_PREFIX + build)
-        for label in labels: self._afe.run('delete_label', id=label.id)
         for host in self._reimaged_hosts.get('build', []):
             self._clear_build_state(host)
 
@@ -387,9 +386,14 @@ class Reimager(object):
 
         @param name: the label to check for/create.
         """
-        labels = self._afe.get_labels(name=name)
-        if len(labels) == 0:
+        try:
             self._afe.create_label(name=name)
+        except proxy.ValidationError as ve:
+            if ('name' in ve.problem_keys and
+                'This value must be unique' in ve.problem_keys['name']):
+                logging.debug('Version label %s already exists', name)
+            else:
+                raise ve
 
 
     def _schedule_reimage_job(self, build, num_machines, board):

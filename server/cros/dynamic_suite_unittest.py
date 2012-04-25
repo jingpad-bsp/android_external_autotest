@@ -15,6 +15,7 @@ import time
 import unittest
 
 from autotest_lib.client.common_lib import base_job, control_data, global_config
+from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros import control_file_getter, dynamic_suite
 from autotest_lib.server import frontend
 
@@ -155,9 +156,14 @@ class ReimagerTest(mox.MoxTestBase):
 
 
     def testEnsureVersionLabelAlreadyExists(self):
-        """Should not create a label if it already exists."""
+        """Should tolerate a label that already exists."""
         name = 'label'
-        self.afe.get_labels(name=name).AndReturn([name])
+        error = proxy.ValidationError(
+            {'name': 'ValidationError',
+             'message': '{"name": "This value must be unique"}',
+             'traceback': ''},
+            'BAD')
+        self.afe.create_label(name=name).AndRaise(error)
         self.mox.ReplayAll()
         self.reimager._ensure_version_label(name)
 
@@ -165,7 +171,6 @@ class ReimagerTest(mox.MoxTestBase):
     def testEnsureVersionLabel(self):
         """Should create a label if it doesn't already exist."""
         name = 'label'
-        self.afe.get_labels(name=name).AndReturn([])
         self.afe.create_label(name=name)
         self.mox.ReplayAll()
         self.reimager._ensure_version_label(name)
@@ -301,17 +306,6 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._schedule_reimage_job(self._BUILD, self._NUM, self._BOARD)
 
 
-    def expect_label_cleanup(self, build):
-        """Sets up |self.afe| to expect deletion of the version label.
-
-        @param build: the build the label is named after.
-        """
-        label = FakeLabel(id=random.randrange(0, 5))
-        self.afe.get_labels(
-            name__startswith=mox.StrContains(build)).AndReturn([label])
-        self.afe.run('delete_label', id=label.id)
-
-
     def expect_attempt(self, success, ex=None, check_hosts=True):
         """Sets up |self.reimager| to expect an attempt() that returns |success|
 
@@ -349,7 +343,6 @@ class ReimagerTest(mox.MoxTestBase):
             self.afe.poll_job_results(mox.IgnoreArg(),
                                       canary, 0).AndReturn(success)
 
-        self.expect_label_cleanup(self._BUILD)
         self.mox.StubOutWithMock(self.reimager, '_clear_build_state')
 
         return canary
@@ -434,7 +427,6 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END WARN', mox.IgnoreArg(), mox.IgnoreArg(),
                     mox.StrContains('Too few hosts'))
-        self.expect_label_cleanup(self._BUILD)
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
@@ -452,7 +444,6 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
         rjob.record('END ERROR', mox.IgnoreArg(), mox.IgnoreArg(),
                     mox.StrContains('All hosts'))
-        self.expect_label_cleanup(self._BUILD)
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)

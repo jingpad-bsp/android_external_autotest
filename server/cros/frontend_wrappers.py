@@ -6,6 +6,7 @@ import logging, random, time
 import common
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server import frontend
+from autotest_lib.frontend.afe.json_rpc import proxy
 
 
 def jittered_delay(delay):
@@ -26,6 +27,10 @@ def jittered_delay(delay):
 def retry(ExceptionToCheck, timeout_min=1, delay_sec=3):
     """Retry calling the decorated function using a delay with jitter.
 
+    Will raise RPC ValidationError exceptions from the decorated
+    function without retrying; a malformed RPC isn't going to
+    magically become good.
+
     original from:
       http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
 
@@ -45,6 +50,8 @@ def retry(ExceptionToCheck, timeout_min=1, delay_sec=3):
                 try:
                     return func(*args, **kwargs)
                     break
+                except proxy.ValidationError, e:
+                    raise e
                 except ExceptionToCheck, e:
                     msg = "%s(%s), Retrying in %f seconds..." % (e.__class__,
                                                                  e,

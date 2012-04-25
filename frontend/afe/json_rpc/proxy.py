@@ -24,6 +24,39 @@ import urllib2
 class JSONRPCException(Exception):
     pass
 
+class ValidationError(JSONRPCException):
+    """Raised when the RPC is malformed."""
+    def __init__(self, error, formatted_message):
+        """Constructor.
+
+        @param error: a dict of error info like so:
+                      {error['name']: 'ErrorKind',
+                       error['message']: 'Pithy error description.',
+                       error['traceback']: 'Multi-line stack trace'}
+        @formatted_message: string representation of this exception.
+        """
+        self.problem_keys = eval(error['message'])
+        self.traceback = error['traceback']
+        super(ValidationError, self).__init__(formatted_message)
+
+def BuildException(error):
+    """Exception factory.
+
+    Given a dict of error info, determine which subclass of
+    JSONRPCException to build and return.  If can't determine the right one,
+    just return a JSONRPCException with a pretty-printed error string.
+
+    @param error: a dict of error info like so:
+                  {error['name']: 'ErrorKind',
+                   error['message']: 'Pithy error description.',
+                   error['traceback']: 'Multi-line stack trace'}
+    """
+    error_message = '%(name)s: %(message)s\n%(traceback)s' % error
+    for cls in JSONRPCException.__subclasses__():
+        if error['name'] == cls.__name__:
+            return cls(error, error_message)
+    return JSONRPCException(error_message)
+
 class ServiceProxy(object):
     def __init__(self, serviceURL, serviceName=None, headers=None):
         self.__serviceURL = serviceURL
@@ -51,9 +84,6 @@ class ServiceProxy(object):
         except ValueError:
             raise JSONRPCException('Error decoding JSON reponse:\n' + respdata)
         if resp['error'] is not None:
-            error_message = (resp['error']['name'] + ': ' +
-                             resp['error']['message'] + '\n' +
-                             resp['error']['traceback'])
-            raise JSONRPCException(error_message)
+            raise BuildException(resp['error'])
         else:
             return resp['result']
