@@ -329,6 +329,8 @@ class hardware_Trackpad(test.test):
 
         area_name = None
         for tp_func in functionality_list:
+            if not tp_func.enabled:
+                continue
             func_name = tp_func.name
             test_count = tdata.num_files_tested[func_name]
             if test_count == 0:
