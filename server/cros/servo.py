@@ -32,7 +32,7 @@ class Servo(object):
     SLEEP_DELAY = 6
     BOOT_DELAY = 10
     RECOVERY_BOOT_DELAY = 30
-    RECOVERY_INSTALL_DELAY = 180
+    RECOVERY_INSTALL_DELAY = 540
 
     # Servo-specific delays.
     MAX_SERVO_STARTUP_DELAY = 10
