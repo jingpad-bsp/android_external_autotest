@@ -589,6 +589,9 @@ class XEvent:
                     self.motion_trace_len = self.LONG_MOTIOIN_TRACE
                     self.motion_trace_state = 'ButtonRelease.TraceAfterDone'
 
+            elif line[0] == 'NOP':
+                _append_motion(self)
+
         def _append_event(event):
             ''' Append the event into xevent_seq '''
             self.xevent_seq.append(event)
