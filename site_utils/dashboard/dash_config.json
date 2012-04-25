@@ -75,7 +75,7 @@
                         "tturchetto@google.com"]},
                 {"categories": ["enterprise"],
                  "cc": ["chromeos-autotest@google.com",
-                        "frankf@google.com",
+                        "craigdh@google.com",
                         "scunningham@google.com"]},
                 {"categories": ["firmware", "hardware", "hwqual", "power"],
                  "cc": ["chromeos-autotest@google.com",
