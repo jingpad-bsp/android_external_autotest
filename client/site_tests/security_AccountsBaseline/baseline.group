@@ -48,5 +48,6 @@ cras:x:220:gavd,chronos
 gavd:x:221:
 input:x:222:gavd
 chaps:x:223:
+dhcp:x:224:
 ntfs-3g:x:300:
 avfs:x:301:
