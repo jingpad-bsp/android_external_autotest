@@ -57,11 +57,16 @@ function submitAndGo() {
                  pl_responder=None,
                  ta_responder=None):
         self._service_login = constants.SERVICE_LOGIN_URL
+        self._service_login_new = constants.SERVICE_LOGIN_NEW_URL
         self._process_login = constants.PROCESS_LOGIN_URL
+        self._process_login_new = constants.PROCESS_LOGIN_NEW_URL
 
         self._client_login = constants.CLIENT_LOGIN_URL
+        self._client_login_new = constants.CLIENT_LOGIN_NEW_URL
         self._issue_token = constants.ISSUE_AUTH_TOKEN_URL
+        self._issue_token_new = constants.ISSUE_AUTH_TOKEN_URL
         self._token_auth = constants.TOKEN_AUTH_URL
+        self._token_auth_new = constants.TOKEN_AUTH_NEW_URL
         self._test_over = '/webhp'
 
         self._testServer = httpd.SecureHTTPListener(
@@ -83,15 +88,24 @@ function submitAndGo() {
 
         self._testServer.add_url_handler(self._service_login,
                                          self.__service_login_responder)
+        self._testServer.add_url_handler(self._service_login_new,
+                                         self.__service_login_responder_new)
         self._testServer.add_url_handler(self._process_login, pl_responder)
+        self._testServer.add_url_handler(self._process_login_new, pl_responder)
 
         self._testServer.add_url_handler(self._client_login, cl_responder)
+        self._testServer.add_url_handler(self._client_login_new, cl_responder)
         self._testServer.add_url_handler(self._issue_token, it_responder)
+        self._testServer.add_url_handler(self._issue_token_new, it_responder)
         self._testServer.add_url_handler(self._token_auth, ta_responder)
+        self._testServer.add_url_handler(self._token_auth_new, ta_responder)
 
         self._client_latch = self._testServer.add_wait_url(self._client_login)
+        self._client_new_latch = self._testServer.add_wait_url(
+            self._client_login_new)
         self._issue_latch = self._testServer.add_wait_url(self._issue_token)
-
+        self._issue_new_latch = self._testServer.add_wait_url(
+            self._issue_token_new)
 
         self._testHttpServer = httpd.HTTPListener(port=port)
         self._testHttpServer.add_url_handler(self._test_over,
@@ -185,6 +199,19 @@ function submitAndGo() {
         handler.end_headers()
         handler.wfile.write(self.__service_login_html % {
             'form_url': self._process_login,
+            'continue': url_args['continue'][0] })
+
+
+    def __service_login_responder_new(self, handler, url_args):
+        logging.debug(url_args)
+        if not 'continue' in url_args:
+            handler.send_response(httplib.FORBIDDEN)
+            handler.end_headers()
+            raise error.TestError('ServiceLogin called with no continue param')
+        handler.send_response(httplib.OK)
+        handler.end_headers()
+        handler.wfile.write(self.__service_login_html % {
+            'form_url': self._process_login_new,
             'continue': url_args['continue'][0] })
 
 

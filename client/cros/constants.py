@@ -19,6 +19,7 @@ CHROME_LOG_DIR = '/var/log/chrome'
 CLEANUP_LOGS_PAUSED_FILE = '/var/lib/cleanup_logs_paused'
 
 CLIENT_LOGIN_URL = '/accounts/ClientLogin'
+CLIENT_LOGIN_NEW_URL = '/ClientLogin'
 
 CRASH_DIR = '/var/spool/crash'
 CRASH_REPORTER_RESIDUE_DIR = '/tmp/crash_reporter'
@@ -72,19 +73,23 @@ MOCK_OWNER_POLICY = 'mock_owner.policy'
 NETWORK_MANAGER = 'flimflam'
 
 ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
+ISSUE_AUTH_TOKEN_NEW_URL = '/IssueAuthToken'
 
 OWNER_KEY_FILE = WHITELIST_DIR + '/owner.key'
 
 PORTAL_CHECK_URL = '/generate_204'
 PROCESS_LOGIN_URL = '/accounts/ProcessServiceLogin'
+PROCESS_LOGIN_NEW_URL = '/ProcessServiceLogin'
 
 SERVICE_LOGIN_URL = '/accounts/ServiceLogin'
+SERVICE_LOGIN_NEW_URL = '/ServiceLogin'
 SESSION_MANAGER = 'session_manager'
 SESSION_MANAGER_LOG = '/var/log/session_manager'
 SIGNED_POLICY_FILE = WHITELIST_DIR + '/policy'
 SPECIAL_CASE_DOMAIN = 'gmail.com'
 
 TOKEN_AUTH_URL = '/accounts/TokenAuth'
+TOKEN_AUTH_NEW_URL = '/TokenAuth'
 
 UI_LOG = '/var/log/ui/ui.LATEST'
 UPDATE_ENGINE_LOG = '/var/log/update_engine.log'
