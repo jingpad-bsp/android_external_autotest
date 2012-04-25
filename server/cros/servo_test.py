@@ -152,17 +152,7 @@ class ServoTest(test.test):
                 self.launch_client(info)
 
 
-    def assert_ping(self):
-        """Ping to assert that the device is up."""
-        assert self.ping_test(self._client.ip)
-
-
-    def assert_pingfail(self):
-        """Ping to assert that the device is down."""
-        assert not self.ping_test(self._client.ip)
-
-
-    def ping_test(self, hostname, timeout=5):
+    def _ping_test(self, hostname, timeout=5):
         """Verify whether a host responds to a ping.
 
         Args:
@@ -229,7 +219,7 @@ class ServoTest(test.test):
         # Ensure old ssh connections are terminated.
         self._terminate_all_ssh()
         # Wait for the client to come up.
-        while timeout > 0 and not self.ping_test(self._client.ip):
+        while timeout > 0 and not self._ping_test(self._client.ip):
             time.sleep(5)
             timeout -= 1
         assert timeout, 'Timed out waiting for client to reboot.'
@@ -256,7 +246,7 @@ class ServoTest(test.test):
           timeout: Time in seconds to wait the client to come offline.
         """
         # Wait for the client to come offline.
-        while timeout > 0 and self.ping_test(self._client.ip, timeout=1):
+        while timeout > 0 and self._ping_test(self._client.ip, timeout=1):
             time.sleep(1)
             timeout -= 1
         assert timeout, 'Timed out waiting for client offline.'

@@ -1,23 +1,27 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import time
 
-from autotest_lib.server.cros import servo_test
+from autotest_lib.client.common_lib import error
+from autotest_lib.server import test
 
-class platform_LongPressPower(servo_test.ServoTest):
+class platform_LongPressPower(test.test):
     """Uses servo pwr_button gpio to power the host off and back on.
     """
     version = 1
 
     def run_once(self, host):
-        # ensure host starts in a good state
-        self.assert_ping()
+        boot_id = host.get_boot_id()
+
         # turn off device
-        self.servo.power_long_press()
+        host.servo.power_long_press()
+
         # ensure host is now off
-        self.assert_pingfail()
+        if host.is_up():
+            raise error.TestError('DUT still up after long press power')
+
         # ensure host boots
-        self.servo.boot_devmode()
-        self.wait_for_client()
+        host.servo.boot_devmode()
+        host.test_wait_for_boot(boot_id)
