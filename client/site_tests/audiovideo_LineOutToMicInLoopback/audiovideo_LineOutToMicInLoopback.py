@@ -13,6 +13,7 @@ _CONTROL_MASTER = "'Master Playback Volume'"
 _CONTROL_HEADPHONE = "'Headphone Playback Volume'"
 _CONTROL_SPEAKER = "'Speaker Playback Volume'"
 _CONTROL_MIC_BOOST = "'Mic Boost Volume'"
+_CONTROL_MIC_CAPTURE = "'Mic Capture Volume'"
 _CONTROL_CAPTURE = "'Capture Volume'"
 _CONTROL_PCM = "'PCM Playback Volume'"
 _CONTROL_DIGITAL = "'Digital Capture Volume'"
@@ -32,6 +33,7 @@ _DEFAULT_MIXER_SETTINGS = [{'name':_CONTROL_MASTER, 'value': "100%"},
                            {'name':_CONTROL_HEADPHONE, 'value': "100%"},
                            {'name':_CONTROL_SPEAKER, 'value': "0%"},
                            {'name':_CONTROL_MIC_BOOST, 'value': "50%"},
+                           {'name':_CONTROL_MIC_CAPTURE, 'value': "50%"},
                            {'name':_CONTROL_PCM, 'value':"100%"},
                            {'name':_CONTROL_DIGITAL, 'value':"100%"},
                            {'name':_CONTROL_CAPTURE, 'value':"100%"},
@@ -156,11 +158,12 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         utils.system(cmd)
 
 
-    def check_recorded_audio(self, rms_val):
+    def check_recorded_audio(self, rms_val, unused_media_file):
         """Checks if the calculated RMS value is expected.
 
         Args:
             rms_val: The calculated RMS value.
+            unused_media_file: This value is unused in this function.
 
         Raises:
             error.TestFail if the RMS amplitude of the recording isn't above

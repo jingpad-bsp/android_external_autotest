@@ -13,8 +13,8 @@ from autotest_lib.client.cros.audio import audio_helper
 _CONTROL_MASTER = "'Master Playback Volume'"
 _CONTROL_HEADPHONE = "'Headphone Playback Volume'"
 _CONTROL_SPEAKER = "'Speaker Playback Volume'"
-_CONTROL_SPEAKER_HP = "'HP/Speakers'"
 _CONTROL_MIC_BOOST = "'Mic Boost Volume'"
+_CONTROL_MIC_CAPTURE = "'Mic Capture Volume'"
 _CONTROL_CAPTURE = "'Capture Volume'"
 _CONTROL_PCM = "'PCM Playback Volume'"
 _CONTROL_DIGITAL = "'Digital Capture Volume'"
@@ -24,20 +24,18 @@ _CONTROL_CAPTURE_SWITCH = "'Capture Switch'"
 _DEFAULT_CARD = '0'
 _DEFAULT_MIXER_SETTINGS = [{'name': _CONTROL_MASTER, 'value': "100%"},
                            {'name': _CONTROL_HEADPHONE, 'value': "100%"},
+                           {'name': _CONTROL_SPEAKER, 'value': "0%"},
                            {'name': _CONTROL_MIC_BOOST, 'value': "50%"},
+                           {'name': _CONTROL_MIC_CAPTURE, 'value': "50%"},
                            {'name': _CONTROL_PCM, 'value': "100%"},
                            {'name': _CONTROL_DIGITAL, 'value': "100%"},
                            {'name': _CONTROL_CAPTURE, 'value': "100%"},
                            {'name': _CONTROL_CAPTURE_SWITCH, 'value': "on"}]
 
-_CONTROL_SPEAKER_DEVICE = ['x86-alex', 'x86-alex32', 'x86-mario', 'x86-zgb',
-                           'x86-zgb32']
-_CONTROL_SPEAKER_DEVICE_HP = ['stumpy', 'lumpy']
-
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_RECORD_DURATION = 10
 # Minimum RMS value to consider a "pass".
-_DEFAULT_SOX_RMS_THRESHOLD = 0.30
+_DEFAULT_SOX_RMS_THRESHOLD = 0.20
 
 # Media formats to test.
 _MEDIA_FORMATS = ['BBB.mp3', 'BBB.mp4', 'BBB_mulaw.wav', 'BBB.ogv', 'BBB.webm']
@@ -81,15 +79,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         self._testServer.run()
 
     def run_once(self):
-        # Speaker control settings may differ from device to device.
-        if self.pyauto.ChromeOSBoard() in _CONTROL_SPEAKER_DEVICE:
-            self._mixer_settings.append({'name': _CONTROL_SPEAKER,
-                                         'value': "0%"})
-        elif self.pyauto.ChromeOSBoard() in _CONTROL_SPEAKER_DEVICE_HP:
-            self._mixer_settings.append({'name': _CONTROL_SPEAKER_HP,
-                                         'value': "0%"})
         self._ah.set_mixer_controls(self._mixer_settings, self._card)
-
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s' % noise_file.name)
@@ -98,7 +88,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
             for media_file in _MEDIA_FORMATS:
                 self._ah.loopback_test_channels(noise_file,
                         lambda channel: self.play_media(media_file),
-                        self.check_recorded)
+                        self.check_recorded, media_file)
 
     def play_media(self, media_file):
         """Plays a media file in Chromium.
@@ -109,11 +99,12 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         logging.info('Playing back now media file %s.' % media_file)
         self.pyauto.NavigateToURL(self._test_url + media_file)
 
-    def check_recorded(self, rms_val):
+    def check_recorded(self, rms_val, media_file):
         """Checks if the calculated RMS value is expected.
 
         Args:
             rms_val: The calculated RMS value.
+            media_file: Media file name in case we are testing a media file.
 
         Raises:
             error.TestFail if the RMS amplitude of the recording isn't above
@@ -124,9 +115,9 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
             raise error.TestError(
                 'Failed to generate an audio RMS value from playback.')
 
-        logging.info('Got audio RMS value of %f. Minimum pass is %f.' %
-                     (rms_val, self._sox_min_rms))
+        logging.info('%s : Got audio RMS value of %f. Minimum pass is %f.' %
+                     (media_file, rms_val, self._sox_min_rms))
         if rms_val < self._sox_min_rms:
             raise error.TestError(
-                'Audio RMS value %f too low. Minimum pass is %f.' %
-                (rms_val, self._sox_min_rms))
+                'Audio RMS value %f too low for %s. Minimum pass is %f.' %
+                (rms_val, media_file, self._sox_min_rms))

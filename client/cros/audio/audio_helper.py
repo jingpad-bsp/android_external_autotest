@@ -163,7 +163,7 @@ class AudioHelper(object):
         utils.system(cmd_rec)
 
     def loopback_test_channels(self, noise_file, loopback_callback,
-            check_recorded_callback):
+            check_recorded_callback, media_file=''):
         '''Tests loopback on all channels.
 
         Args:
@@ -171,6 +171,8 @@ class AudioHelper(object):
             loopback_callback: The callback to do the loopback for one channel.
             check_recorded_callback: The callback function to check the
                     calculated RMS value.
+            media_file: The media_file we are testing. Ignore this in case
+                    we are testing Youtube/Flash.
         '''
         for channel in xrange(self._num_channels):
             # Temp file for the final noise-reduced file.
@@ -186,4 +188,4 @@ class AudioHelper(object):
                             reduced_file.name)
 
                 rms_val = self.get_audio_rms(reduced_file.name, channel)
-                check_recorded_callback(rms_val)
+                check_recorded_callback(rms_val, media_file)

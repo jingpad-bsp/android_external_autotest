@@ -13,8 +13,8 @@ from autotest_lib.client.cros.audio import audio_helper
 _CONTROL_MASTER = "'Master Playback Volume'"
 _CONTROL_HEADPHONE = "'Headphone Playback Volume'"
 _CONTROL_SPEAKER = "'Speaker Playback Volume'"
-_CONTROL_SPEAKER_HP = "'HP/Speakers'"
 _CONTROL_MIC_BOOST = "'Mic Boost Volume'"
+_CONTROL_MIC_CAPTURE = "'Mic Capture Volume'"
 _CONTROL_CAPTURE = "'Capture Volume'"
 _CONTROL_PCM = "'PCM Playback Volume'"
 _CONTROL_DIGITAL = "'Digital Capture Volume'"
@@ -24,15 +24,13 @@ _CONTROL_CAPTURE_SWITCH = "'Capture Switch'"
 _DEFAULT_CARD = '0'
 _DEFAULT_MIXER_SETTINGS = [{'name': _CONTROL_MASTER, 'value': "100%"},
                            {'name': _CONTROL_HEADPHONE, 'value': "100%"},
+                           {'name': _CONTROL_SPEAKER, 'value': "0%"},
                            {'name': _CONTROL_MIC_BOOST, 'value': "50%"},
+                           {'name': _CONTROL_MIC_CAPTURE, 'value': "50%"},
                            {'name': _CONTROL_PCM, 'value': "100%"},
                            {'name': _CONTROL_DIGITAL, 'value': "100%"},
                            {'name': _CONTROL_CAPTURE, 'value': "100%"},
                            {'name': _CONTROL_CAPTURE_SWITCH, 'value': "on"}]
-
-_CONTROL_SPEAKER_DEVICE = ['x86-alex', 'x86-alex32', 'x86-mario', 'x86-zgb',
-                           'x86-zgb32']
-_CONTROL_SPEAKER_DEVICE_HP = ['stumpy', 'lumpy']
 
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_RECORD_DURATION = 15
@@ -77,15 +75,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         self._testServer.run()
 
     def run_once(self):
-        # Speaker control settings may differ from device to device.
-        if self.pyauto.ChromeOSBoard() in _CONTROL_SPEAKER_DEVICE:
-            self._mixer_settings.append({'name': _CONTROL_SPEAKER,
-                                         'value': "0%"})
-        elif self.pyauto.ChromeOSBoard() in _CONTROL_SPEAKER_DEVICE_HP:
-            self._mixer_settings.append({'name': _CONTROL_SPEAKER_HP,
-                                         'value': "0%"})
         self._ah.set_mixer_controls(self._mixer_settings, self._card)
-
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s' % noise_file.name)
@@ -116,11 +106,12 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
             window.domAutomationController.send('');
         """)
 
-    def check_recorded_audio(self, rms_val):
+    def check_recorded_audio(self, rms_val, unused_media_file):
         """Checks if the calculated RMS value is expected.
 
         Args:
             rms_val: The calculated RMS value.
+            unused_media_file: This value is unused in this function.
 
         Raises:
             error.TestFail if the RMS amplitude of the recording isn't above
