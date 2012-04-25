@@ -6,7 +6,7 @@ import httplib
 import urllib2
 
 from autotest_lib.client.common_lib import global_config
-
+# TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
 CONFIG = global_config.global_config
 
@@ -95,7 +95,7 @@ class DevServer(object):
                 staged before returning.
         @return True if the remote call returns HTTP OK, False if it returns
                 an internal server error.
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @raise urllib2.HTTPError upon any return code that's not 200 or 500.
         """
         call = self._build_call(
             'download',
@@ -120,7 +120,7 @@ class DevServer(object):
         @param image: the image to fetch and stage.
         @return True if the remote call returns HTTP OK, False if it returns
                 an internal server error.
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @raise urllib2.HTTPError upon any return code that's not 200 or 500.
         """
         call = self._build_call(
             'wait_for_status',
@@ -140,7 +140,7 @@ class DevServer(object):
                       whose control files the caller wants listed.
         @return None on failure, or a list of control file paths
                 (e.g. server/site_tests/autoupdate/control)
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @raise urllib2.HTTPError upon any return code that's not 200 or 500.
         """
         call = self._build_call('controlfiles', build=build)
         response = urllib2.urlopen(call)
@@ -151,7 +151,7 @@ class DevServer(object):
     def get_control_file(self, build, control_path):
         """Ask the dev server for the contents of a control file.
 
-        Ask the dev server at |self._dev_server|for the contents of the
+        Ask the dev server at |self._dev_server| for the contents of the
         control file at |control_path| for |build|.
 
         @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
@@ -159,11 +159,38 @@ class DevServer(object):
         @param control_path: The file to list
                              (e.g. server/site_tests/autoupdate/control)
         @return The contents of the desired file, or None
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @raise urllib2.HTTPError upon any return code that's not 200 or 500.
         """
         call = self._build_call('controlfiles',
                                 build=build, control_path=control_path)
         return urllib2.urlopen(call).read()
+
+
+    def symbolicate_dump(self, minidump_path):
+        """Ask the dev server to symbolicate the dump at minidump_path.
+
+        Ask the dev server at |self._dev_server| to symbolicate the dump
+        at minidump_path, using previously staged debug symbols.
+
+        @param minidump_path: the on-disk path of the minidump.
+        @return The contents of the stack trace
+        @raise urllib2.HTTPError upon any return code that's not 200.
+        """
+        call = self._build_call('symbolicate_dump')
+        try:
+            import requests
+        except ImportError:
+            logging.warning("Can't 'import requests' to connect to dev server.")
+            return ''
+        request = requests.post(call,
+                                files={'minidump': open(minidump_path, 'rb')})
+        if request.status_code == requests.codes.OK:
+            return request.text
+        raise urllib2.HTTPError(call,
+                                request.status_code,
+                                '%d' % request.status_code,
+                                request.headers,
+                                None)
 
 
     @remote_devserver_call(None)
@@ -183,7 +210,7 @@ class DevServer(object):
                            to None.
         @return A string of the returned build e.g. R18-1586.0.0-a1-b1514
                 or None.
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @raise urllib2.HTTPError upon any return code that's not 200 or 500.
         """
         call = self._build_call('latestbuild', target=target,
                                 milestone=milestone)
