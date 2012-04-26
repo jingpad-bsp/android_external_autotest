@@ -423,6 +423,7 @@ class Reimager(object):
         return self._afe.create_job(control_file=control_file,
                                     name=build + '-try',
                                     control_type='Server',
+                                    priority='Low',
                                     meta_hosts=[meta_host] * num_machines,
                                     dependencies=job_deps)
 
