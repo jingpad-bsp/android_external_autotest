@@ -4,3 +4,5 @@
 sshd *:ssh
 # Shill internal http proxy. crosbug.com/28235
 shill 127.0.0.1:DYNAMIC
+# VNC server.
+x11vnc 127.0.0.1:5900
