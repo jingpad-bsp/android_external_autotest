@@ -90,6 +90,10 @@ class WiFiTest(object):
     wpa_supplicant directly.
     """
 
+    _result_expect_failure = 1
+    _result_expect_success = 2
+    _result_dont_care = 3
+
     def __init__(self, name, steps, config):
         self.name = name
         self.steps = steps
@@ -224,6 +228,12 @@ class WiFiTest(object):
         if 'client_stats_all' in self.run_options:
             self.__add_hook('config', self.client_start_statistics)
 
+        self.ethernet_mac_address = None
+        string = self.__get_interface_mac(self.client, "eth0")
+        if string:
+          pieces = string.split(":")
+          self.ethernet_mac_address = "".join(pieces)
+
         # NB: do last so code above doesn't need to cleanup on failure
         self.test_profile = {'name':'test'}
         # cleanup in case a previous failure left the profile around
@@ -350,19 +360,31 @@ class WiFiTest(object):
 
     def run(self):
         """
-        Run a WiFi test.  Each step is interpreted as a method either
-        in this class or the ancillary router class and invoked with
-        the supplied parameter dictionary.  If the method is prefixed
-        with '!' then we expect the operation to fail; this is useful,
-        for example, for testing parameter checking in flimflam.
+        Run a WiFi test.  Each step is interpreted as a method either in this
+        class or in one of the ancillary router or server classes and invoked
+        with the supplied parameter dictionary.
+
+        This routine bases its expectation of the method's result on the value
+        (if any) of a prefix before the method name:
+
+          - No prefix: The operation is expected to succeed.
+
+          - '!': The operation is expected to fail; this is useful, for
+            example, for testing parameter checking in flimflam.
+
+          - '~': We don't care whether the operation succeeds or fails; this
+            is especially useful during cleanup (e.g., deleting profiles).
         """
-        for s in self.steps:
+        for step_number, s in enumerate(self.steps):
             method = s[0]
             if method[0] == '!':
-                expect_failure = True
+                expect_result = WiFiTest._result_expect_failure
+                method = method[1:]
+            elif method[0] == '~':
+                expect_result = WiFiTest._result_dont_care
                 method = method[1:]
             else:
-                expect_failure = False
+                expect_result = WiFiTest._result_expect_success
             if len(s) > 1:
                 params = s[1]
             else:
@@ -383,12 +405,13 @@ class WiFiTest(object):
 
             self.__run_hooks(method, params)
 
-            if expect_failure is True:
-                logging.info("%s: step '%s' (expect failure)  params %s",
-                    self.name, method, params)
-            else:
-                logging.info("%s: step '%s' params %s", self.name, method,
-                    params)
+            expectation = (" (expect failure)"
+                           if expect_result is WiFiTest._result_expect_failure
+                           else "")
+
+            logging.info("-------------------------------------------")
+            logging.info("%s: step %d '%s'%s params %s",
+                         self.name, step_number+1, method, expectation, params)
 
             self.error_message = ''
             func = getattr(self, method, None)
@@ -399,11 +422,18 @@ class WiFiTest(object):
             if func is not None:
                 try:
                     func(params)
-                    if expect_failure is True:
-                        expect_failure = False
+                    if expect_result is WiFiTest._result_expect_failure:
+                        # TODO(wdg): This should be rewritten so that we don't
+                        # swap the expectation value of a succeeding test,
+                        # here.  It's non-intuitive.
+                        expect_result = WiFiTest._result_expect_success
                         raise error.TestFail("Expected failure")
                 except Exception, e:
-                    if expect_failure is True:
+                    if expect_result is WiFiTest._result_dont_care:
+                        logging.info("%s: failed but we don't care",
+                                     self.name)
+                        continue
+                    elif expect_result is WiFiTest._result_expect_failure:
                         if not failure_string:
                             continue
 
@@ -778,6 +808,8 @@ class WiFiTest(object):
     def client_check_service_properties(self, params):
         """ Verify that service properties attained their expected values. """
         service = params.pop("service", None)
+        if self.ethernet_mac_address and service == "ethernet":
+          service = "ethernet_%s" % self.ethernet_mac_address
         states = [(service, "%s:%s" % (var, val))
                   for var, val in params.iteritems()]
         self.wait_service({ "run_timeout": 0, "states": states})
