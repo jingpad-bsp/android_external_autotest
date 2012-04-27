@@ -4,7 +4,7 @@
 
 # Utility functions used for PKCS#11 library testing.
 
-import grp, logging, os, pwd, re, stat
+import grp, logging, os, pwd, re, stat, sys, shutil, pwd, grp
 
 import common, constants
 from autotest_lib.client.bin import utils
@@ -13,7 +13,11 @@ CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 PKCS11_DIR = '/var/lib/opencryptoki'
 PKCS11_TOOL = '/usr/bin/pkcs11-tool --module %s %s'
 USER_TOKEN_NAME = 'User-Specific TPM Token'
-USER_TOKEN_DIR= '/home/chronos/user/.tpm'
+USER_TOKEN_DIR = '/home/chronos/user/.tpm'
+USER_CHAPS_DIR = '/home/chronos/user/.chaps'
+SYSTEM_CHAPS_DIR = '/var/lib/chaps'
+TMP_CHAPS_DIR = '/tmp/chaps'
+CHAPS_DIR_PERM = 0750
 
 
 def __run_cmd(cmd, ignore_status=False):
@@ -96,29 +100,46 @@ def __verify_permissions():
     # find /var/lib/opencryptoki -printf "'%p', '%u:%g', 0%m\n"
     # for i in $paths; do echo \(\'$i\', $(stat --format="'%U:%G', 0%a" $i)\),;
     # done
-    expected_permissions = [
-        ('/var/lib/opencryptoki', 'root:pkcs11', 0770),
-        ('/var/lib/opencryptoki/tpm', 'root:pkcs11', 0770),
-        ('/var/lib/opencryptoki/tpm/ipsec', 'root:root', 0777),
-        ('/var/lib/opencryptoki/tpm/chronos', 'root:root', 0777),
-        ('/var/lib/opencryptoki/tpm/root', 'root:root', 0777),
-        ('/var/lib/opencryptoki/pk_config_data', 'chronos:pkcs11', 0664),
-        ('/home/chronos/user/.tpm', 'chronos:pkcs11', 0750),
-        ('/home/chronos/user/.tpm/TOK_OBJ', 'chronos:pkcs11', 0750),
-        ('/home/chronos/user/.tpm/TOK_OBJ/20000000', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/TOK_OBJ/30000000', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/TOK_OBJ/00000000', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/TOK_OBJ/70000000', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/TOK_OBJ/OBJ.IDX', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/TOK_OBJ/10000000', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/TOK_OBJ/60000000', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/TOK_OBJ/50000000', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/TOK_OBJ/40000000', 'chronos:pkcs11', 0640),
-        ('/home/chronos/user/.tpm/.isinitialized', 'chronos:pkcs11', 0644)]
-        # This file does not always have the same permissions. Sometimes it's
-        # 640, sometimes 660. I suspect there is a race condition as to whether
-        # the file exists when cryptohome sets recursive permissions.
-        #('/home/chronos/user/.tpm/NVTOK.DAT', 'root:pkcs11', 0660)
+    if is_chaps_enabled():
+        expected_permissions = [
+            ('/home/chronos/user/.chaps', 'chaps:chronos-access', 0750),
+            ('/home/chronos/user/.chaps/auth_data_salt', 'root:root', 0600),
+            ('/home/chronos/user/.chaps/database', 'chaps:chronos-access',
+                0750)]
+    else:
+        expected_permissions = [
+            ('/var/lib/opencryptoki', 'root:pkcs11', 0770),
+            ('/var/lib/opencryptoki/tpm', 'root:pkcs11', 0770),
+            ('/var/lib/opencryptoki/tpm/ipsec', 'root:root', 0777),
+            ('/var/lib/opencryptoki/tpm/chronos', 'root:root', 0777),
+            ('/var/lib/opencryptoki/tpm/root', 'root:root', 0777),
+            ('/var/lib/opencryptoki/pk_config_data', 'chronos:pkcs11', 0664),
+            ('/home/chronos/user/.tpm', 'chronos:pkcs11', 0750),
+            ('/home/chronos/user/.tpm/TOK_OBJ', 'chronos:pkcs11', 0750),
+            ('/home/chronos/user/.tpm/TOK_OBJ/20000000', 'chronos:pkcs11',
+            0640),
+            ('/home/chronos/user/.tpm/TOK_OBJ/30000000', 'chronos:pkcs11',
+            0640),
+            ('/home/chronos/user/.tpm/TOK_OBJ/00000000', 'chronos:pkcs11',
+            0640),
+            ('/home/chronos/user/.tpm/TOK_OBJ/70000000', 'chronos:pkcs11',
+            0640),
+            ('/home/chronos/user/.tpm/TOK_OBJ/OBJ.IDX', 'chronos:pkcs11',
+            0640),
+            ('/home/chronos/user/.tpm/TOK_OBJ/10000000', 'chronos:pkcs11',
+            0640),
+            ('/home/chronos/user/.tpm/TOK_OBJ/60000000', 'chronos:pkcs11',
+            0640),
+            ('/home/chronos/user/.tpm/TOK_OBJ/50000000', 'chronos:pkcs11',
+            0640),
+            ('/home/chronos/user/.tpm/TOK_OBJ/40000000', 'chronos:pkcs11',
+            0640),
+            ('/home/chronos/user/.tpm/.isinitialized', 'chronos:pkcs11', 0644)]
+            # This file does not always have the same permissions. Sometimes
+            # it's 640, sometimes 660. I suspect there is a race condition as to
+            # whether the file exists when cryptohome sets recursive
+            # permissions.
+            #('/home/chronos/user/.tpm/NVTOK.DAT', 'root:pkcs11', 0660)
     for item in expected_permissions:
         path = item[0]
         (user, group) = item[1].split(':')
@@ -166,7 +187,7 @@ def __verify_symlinks():
 
 
 def verify_pkcs11_initialized():
-    """Check if the PKCS#11 token is initialized properly."""
+    """Checks if the PKCS#11 token is initialized properly."""
     verify_cmd = (CRYPTOHOME_CMD + ' --action=pkcs11_token_status')
     __run_cmd(verify_cmd)
 
@@ -184,13 +205,81 @@ def verify_pkcs11_initialized():
         logging.error(
             'Verification of PKCS#11 subsystem and token permissions failed!')
         verify_result = False
-    if not __verify_symlinks():
+    if not is_chaps_enabled() and not __verify_symlinks():
         logging.error('Symlinks required by PKCS#11 were not correctly setup!')
         verify_result = False
 
     return verify_result
 
 def is_chaps_enabled():
-    """Check if the Chaps PKCS #11 implementation is enabled."""
-    disabled_magic_file = '/home/chronos/.disable_chaps'
-    return not os.path.exists(disabled_magic_file)
+    """Checks if the Chaps PKCS #11 implementation is enabled."""
+    return not os.path.exists('/home/chronos/.disable_chaps')
+
+def load_p11_test_token():
+    """Loads the test token onto a slot."""
+    __run_cmd('sudo p11_replay --load --path=%s --auth="1234"' % TMP_CHAPS_DIR)
+
+def unload_p11_test_token():
+    """Unloads a loaded test token."""
+    __run_cmd('sudo p11_replay --unload --path=%s' % TMP_CHAPS_DIR)
+
+def copytree_with_ownership(src, dst):
+    """ Like shutil.copytree but also copies owner and group attributes."""
+    utils.system('cp -rp %s %s' % (src, dst))
+
+def setup_p11_test_token(unload_user_token):
+    """Configures a PKCS #11 token for testing.
+
+    Any existing test token will be automatically cleaned up.
+
+    Args:
+        unload_user_token: Whether to unload the currently loaded user token.
+    """
+    cleanup_p11_test_token()
+    if unload_user_token:
+        __run_cmd('p11_replay --unload --path=%s' % USER_CHAPS_DIR)
+    os.makedirs(TMP_CHAPS_DIR)
+    uid = pwd.getpwnam('chaps')[2]
+    gid = grp.getgrnam('chronos-access')[2]
+    os.chown(TMP_CHAPS_DIR, uid, gid)
+    os.chmod(TMP_CHAPS_DIR, CHAPS_DIR_PERM)
+    load_p11_test_token()
+    unload_p11_test_token()
+    copytree_with_ownership(TMP_CHAPS_DIR, '%s_bak' % TMP_CHAPS_DIR)
+
+def restore_p11_test_token():
+    """Restores a PKCS #11 test token to its initial state."""
+    shutil.rmtree(TMP_CHAPS_DIR)
+    copytree_with_ownership('%s_bak' % TMP_CHAPS_DIR, TMP_CHAPS_DIR)
+
+def get_p11_test_token_db_path():
+    """Returns the test token database path."""
+    return '%s/database' % TMP_CHAPS_DIR
+
+def verify_p11_test_token():
+    """Verifies that a test token is working and persistent."""
+    output = __run_cmd('p11_replay --generate --replay_wifi',
+                       ignore_status=True)
+    if not re.search('Sign: CKR_OK', output):
+        print >> sys.stderr, output
+        return False
+    unload_p11_test_token()
+    load_p11_test_token()
+    output = __run_cmd('p11_replay --replay_wifi --cleanup',
+                       ignore_status=True)
+    if not re.search('Sign: CKR_OK', output):
+        print >> sys.stderr, output
+        return False
+    return True
+
+def cleanup_p11_test_token():
+    """Deletes the test token."""
+    unload_p11_test_token()
+    shutil.rmtree(TMP_CHAPS_DIR, ignore_errors=True)
+    shutil.rmtree('%s_bak' % TMP_CHAPS_DIR, ignore_errors=True)
+
+def verify_p11_token():
+    """Verifies that a PKCS #11 token is able to generate key pairs and sign."""
+    output = __run_cmd('p11_replay --generate --replay_wifi --cleanup',
+                       ignore_status=True)
+    return re.search('Sign: CKR_OK', output)

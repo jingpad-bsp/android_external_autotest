@@ -23,20 +23,27 @@ class platform_Pkcs11InitOnLogin(cros_ui_test.UITest):
 
 
     def run_once(self):
-        # Make sure we start from a fresh state.
-        if os.access(constants.PKCS11_INIT_MAGIC_FILE, os.F_OK):
-            raise error.TestFail('PKCS#11 already initialized!')
+        if pkcs11.is_chaps_enabled():
+            init_file = constants.CHAPS_USER_DATABASE_PATH
+        else:
+            init_file = constants.PKCS11_INIT_MAGIC_FILE
+            # Make sure we start from a fresh state.
+            if os.access(init_file, os.F_OK):
+                raise error.TestFail('PKCS#11 already initialized!')
         start_time = time.time()
         # Wait for PKCS#11 initialization to complete.
         try:
             utils.poll_for_condition(
-                lambda: os.access(constants.PKCS11_INIT_MAGIC_FILE, os.F_OK),
+                lambda: os.access(init_file, os.F_OK),
                 TimeoutError('Timed out waiting for PKCS#11 initialization!'),
                 timeout=60)
             end_time = time.time()
             self.write_perf_keyval(
                 { 'seconds_pkcs11_onlogin_init': end_time - start_time } )
             if not pkcs11.verify_pkcs11_initialized():
-              raise error.TestFail('Initialized token failed checks!')
+                raise error.TestFail('Initialized token failed checks!')
+            if pkcs11.is_chaps_enabled():
+                if not pkcs11.verify_p11_token():
+                    raise error.TestFail('Token verification failed!')
         except TimeoutError, e:
             logging.error(e)

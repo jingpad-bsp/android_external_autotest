@@ -13,6 +13,8 @@ WHITELIST_DIR = '/var/lib/whitelist'
 BROWSER = 'chrome'
 BROWSER_EXE = '/opt/google/chrome/' + BROWSER
 
+CHAPS_USER_DATABASE_PATH = '/home/chronos/user/.chaps/database'
+
 CHROME_CORE_MAGIC_FILE = '/mnt/stateful_partition/etc/collect_chrome_crashes'
 CHROME_LOG_DIR = '/var/log/chrome'
 
