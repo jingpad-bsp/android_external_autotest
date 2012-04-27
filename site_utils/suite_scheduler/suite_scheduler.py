@@ -107,9 +107,7 @@ def main():
     config = forgiving_config_parser.ForgivingConfigParser()
     config.read(options.config_file)
 
-    afe = frontend_wrappers.RetryingAFE(timeout_min=30,
-                                        delay_sec=10,
-                                        debug=False)
+    afe = frontend_wrappers.RetryingAFE(timeout_min=1, delay_sec=5, debug=False)
     enumerator = board_enumerator.BoardEnumerator(afe)
     scheduler = deduping_scheduler.DedupingScheduler(afe)
     mv = manifest_versions.ManifestVersions()
