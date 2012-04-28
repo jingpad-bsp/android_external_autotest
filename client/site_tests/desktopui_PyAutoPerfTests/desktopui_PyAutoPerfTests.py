@@ -130,7 +130,7 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
           environment['MAX_TIMEOUT_COUNT'] = str(options.max_timeouts)
 
         if options.pgo:
-          environment['USE_PGO'] = 1
+          environment['USE_PGO'] = '1'
 
         proc = subprocess.Popen(
             functional_cmd, shell=True, stdout=subprocess.PIPE,
