@@ -14,7 +14,7 @@ This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
-import getpass, optparse, time, sys
+import datetime, getpass, optparse, time, sys
 import common
 import logging
 from autotest_lib.client.common_lib import global_config
@@ -109,6 +109,80 @@ def get_view_info(suite_job_id, view):
     return job_name, experimental
 
 
+class Timings(object):
+    """Timings for important events during a suite.
+
+    All timestamps are datetime.datetime objects.
+
+    @var suite_start_time: the time the suite started.
+    @var reimage_start_time: the time we started reimaging devices.
+    @var reimage_end_time: the time we finished reimaging devices.
+    @var tests_start_time: the time the first test started running.
+    """
+    suite_start_time = None
+    reimage_start_time = None
+    reimage_end_time = None
+    tests_start_time = None
+    tests_end_time = None
+
+
+    def RecordTiming(self, entry):
+        """Given a test report entry, extract and record pertinent time info.
+
+        get_detailed_test_views() returns a list of entries that provide
+        info about the various parts of a suite run.  This method can take
+        any one of these entries and look up timestamp info we might want
+        and record it.
+
+        @param entry: an entry dict, as returned by get_details_test_views().
+        """
+        time_fmt = '%Y-%m-%d %H:%M:%S'
+        start_candidate = datetime.datetime.strptime(entry['test_started_time'],
+                                                     time_fmt)
+        end_candidate = datetime.datetime.strptime(entry['test_finished_time'],
+                                                   time_fmt)
+        if entry['test_name'] == 'SERVER_JOB':
+            self.suite_start_time = start_candidate
+        elif entry['test_name'] == 'try_new_image':
+            self.reimage_start_time = start_candidate
+            self.reimage_end_time = end_candidate
+        else:
+            self._UpdateFirstTestStartTime(start_candidate)
+            self._UpdateLastTestEndTime(end_candidate)
+
+
+    def _UpdateFirstTestStartTime(self, candidate):
+        """Update self.tests_start_time, iff candidate is an earlier time.
+
+        @param candidate: a datetime.datetime object.
+        """
+        if not self.tests_start_time or candidate < self.tests_start_time:
+            self.tests_start_time = candidate
+
+
+    def _UpdateLastTestEndTime(self, candidate):
+        """Update self.tests_end_time, iff candidate is a later time.
+
+        @param candidate: a datetime.datetime object.
+        """
+        if not self.tests_end_time or candidate > self.tests_end_time:
+            self.tests_end_time = candidate
+
+
+    def __str__(self):
+        return ('\n'
+                'Suite timings:\n'
+                'Suite started at %s\n'
+                'Reimaging started at %s\n'
+                'Reimaging ended at %s\n'
+                'Testing started at %s\n'
+                'Testing ended at %s\n' % (self.suite_start_time,
+                                           self.reimage_start_time,
+                                           self.reimage_end_time,
+                                           self.tests_start_time,
+                                           self.tests_end_time))
+
+
 def main():
     parser, options, args = parse_options()
     if not options.mock_job_id:
@@ -150,8 +224,10 @@ def main():
             # The main suite job most likely failed in SERVER_JOB.
             relevant_views = views
 
+        timings = Timings()
         log_links = []
         for entry in relevant_views:
+            timings.RecordTiming(entry)
             entry['test_name'] = entry['test_name'].replace('SERVER_JOB',
                                                             'Suite prep')
             test_entry = entry['test_name'].ljust(width)
@@ -174,6 +250,7 @@ def main():
                     code = 2
                 else:
                     code = 1
+        print timings
         for link in log_links:
             print link
         break
