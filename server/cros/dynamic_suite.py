@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import common
-import compiler, logging, os, random, re, time
+import compiler, datetime, logging, os, random, re, time, traceback
 from autotest_lib.client.common_lib import base_job, control_data, global_config
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
@@ -84,7 +84,7 @@ def reimage_and_run(**dargs):
 
         suite = Suite.create_from_name(name, build, pool=pool,
                                        results_dir=job.resultdir)
-        suite.run_and_wait(job.record, add_experimental=add_experimental)
+        suite.run_and_wait(job.record_entry, add_experimental=add_experimental)
 
     reimager.clear_reimaged_host_state(build)
 
@@ -459,6 +459,101 @@ class Reimager(object):
                         record('GOOD', None, host)
 
 
+class Status(object):
+    """
+    A class representing a test result.
+
+    Stores all pertinent info about a test result and, given a callable
+    to use, can record start, result, and end info appropriately.
+
+    @var _status: status code, e.g. 'INFO', 'FAIL', etc.
+    @var _test_name: the name of the test whose result this is.
+    @var _reason: message explaining failure, if any.
+    @var _begin_timestamp: when test started (in seconds since the epoch).
+    @var _end_timestamp: when test finished (in seconds since the epoch).
+
+    @var _TIME_FMT: format string for parsing human-friendly timestamps.
+    """
+    _status = None
+    _test_name = None
+    _reason = None
+    _begin_timestamp = None
+    _end_timestamp = None
+    _TIME_FMT = '%Y-%m-%d %H:%M:%S'
+
+
+    def __init__(self, status, test_name, reason='', begin_time_str=None,
+                 end_time_str=None):
+        """
+        Constructor
+
+        @param status: status code, e.g. 'INFO', 'FAIL', etc.
+        @param test_name: the name of the test whose result this is.
+        @param reason: message explaining failure, if any; Optional.
+        @param begin_time_str: when test started (in _TIME_FMT); now() if None.
+        @param end_time_str: when test finished (in _TIME_FMT); now() if None.
+        """
+
+        self._status = status
+        self._test_name = test_name
+        self._reason = reason
+        if begin_time_str:
+            self._begin_timestamp = int(time.mktime(
+                datetime.datetime.strptime(
+                    begin_time_str, self._TIME_FMT).timetuple()))
+        else:
+            self._begin_timestamp = time.time()
+
+        if end_time_str:
+            self._end_timestamp = int(time.mktime(
+                datetime.datetime.strptime(
+                    end_time_str, self._TIME_FMT).timetuple()))
+        else:
+            self._end_timestamp = time.time()
+
+
+    def record_start(self, record_entry):
+        """
+        Use record_entry to log message about start of test.
+
+        @param record_entry: a callable to use for logging.
+               prototype:
+                   record_entry(base_job.status_log_entry)
+        """
+        record_entry(
+            base_job.status_log_entry(
+                'START', None, self._test_name, '',
+                None, self._begin_timestamp))
+
+
+    def record_result(self, record_entry):
+        """
+        Use record_entry to log message about result of test.
+
+        @param record_entry: a callable to use for logging.
+               prototype:
+                   record_entry(base_job.status_log_entry)
+        """
+        record_entry(
+            base_job.status_log_entry(
+                self._status, None, self._test_name, self._reason,
+                None, self._end_timestamp))
+
+
+    def record_end(self, record_entry):
+        """
+        Use record_entry to log message about end of test.
+
+        @param record_entry: a callable to use for logging.
+               prototype:
+                   record_entry(base_job.status_log_entry)
+        """
+        record_entry(
+            base_job.status_log_entry(
+                'END %s' % self._status, None, self._test_name, '',
+                None, self._end_timestamp))
+
+
 class Suite(object):
     """
     A suite of tests, defined by some predicate over control file variables.
@@ -679,27 +774,21 @@ class Suite(object):
         @param add_experimental: schedule experimental tests as well, or not.
         """
         try:
-            record('INFO', None, 'Start %s' % self._tag)
+            Status('INFO', 'Start %s' % self._tag).record_result(record)
             self.schedule(add_experimental)
             try:
                 for result in self.wait_for_results():
-                    # |result| will be a tuple of a maximum of 4 entries and a
-                    # minimum of 3. We use the first 3 for START and END
-                    # entries so we separate those variables out for legible
-                    # variable names, nothing more.
-                    status = result[0]
-                    test_name = result[2]
-                    record('START', None, test_name)
-                    record(*result)
-                    record('END %s' % status, None, test_name)
+                    result.record_start(record)
+                    result.record_result(record)
+                    result.record_end(record)
             except Exception as e:
-                logging.error(e)
-                record('FAIL', None, self._tag,
-                       'Exception waiting for results')
+                logging.error(traceback.format_exc())
+                Status('FAIL', self._tag,
+                       'Exception waiting for results').record_result(record)
         except Exception as e:
-            logging.error(e)
-            record('FAIL', None, self._tag,
-                   'Exception while scheduling suite')
+            logging.error(traceback.format_exc())
+            Status('FAIL', self._tag,
+                   'Exception while scheduling suite').record_result(record)
 
 
     def schedule(self, add_experimental=True):
@@ -781,11 +870,13 @@ class Suite(object):
 
                 entries = self._afe.run('get_host_queue_entries', job=job.id)
                 if reduce(self._collate_aborted, entries, False):
-                    yield('ABORT', None, job.name)
+                    yield Status('ABORT', job.name)
                 else:
                     statuses = self._tko.get_status_counts(job=job.id)
                     for s in filter(self._status_is_relevant, statuses):
-                        yield(s.status, None, s.test_name, s.reason)
+                        yield Status(s.status, s.test_name, s.reason,
+                                     s.test_started_time,
+                                     s.test_finished_time)
             time.sleep(5)
 
 

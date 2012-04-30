@@ -301,7 +301,8 @@ class ReimagerTest(mox.MoxTestBase):
             name=mox.StrContains(self._BUILD),
             control_type='Server',
             meta_hosts=[self._BOARD] * self._NUM,
-            dependencies=[])
+            dependencies=[],
+            priority='Low')
         self.mox.ReplayAll()
         self.reimager._schedule_reimage_job(self._BUILD, self._NUM, self._BOARD)
 
@@ -401,8 +402,7 @@ class ReimagerTest(mox.MoxTestBase):
 
 
     def testSuccessfulReimageThatCouldNotScheduleRightAway(self):
-        """
-        Should attempt a reimage, ignoring host availability and record success.
+        """Should attempt reimage, ignoring host availability; record success.
         """
         canary = self.expect_attempt(success=True, check_hosts=False)
 
@@ -447,6 +447,48 @@ class ReimagerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, rjob.record, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
+
+
+class StatusContains(mox.Comparator):
+    @staticmethod
+    def CreateFromStrings(status=None, test_name=None, reason=None):
+        status_comp = mox.StrContains(status) if status else mox.IgnoreArg()
+        name_comp = mox.StrContains(test_name) if test_name else mox.IgnoreArg()
+        reason_comp = mox.StrContains(reason) if reason else mox.IgnoreArg()
+        return StatusContains(status_comp, name_comp, reason_comp)
+
+
+    def __init__(self, status=mox.IgnoreArg(), test_name=mox.IgnoreArg(),
+                 reason=mox.IgnoreArg()):
+        """Initialize.
+
+        Takes mox.Comparator objects to apply to dynamic_suite.Status
+        member variables.
+
+        @param status: status code, e.g. 'INFO', 'START', etc.
+        @param test_name: expected test name.
+        @param reason: expected reason
+        """
+        self._status = status
+        self._test_name = test_name
+        self._reason = reason
+
+
+    def equals(self, rhs):
+        """Check to see if fields match dynamic_suite.Status obj in rhs.
+
+        @param rhs: dynamic_suite.Status object to match.
+        @return boolean
+        """
+        return (self._status.equals(rhs.status_code) and
+                self._test_name.equals(rhs.operation) and
+                self._reason.equals(rhs.message))
+
+
+    def __repr__(self):
+        return '<Status containing \'%s\t%s\t%s\'>' % (self._status,
+                                                       self._test_name,
+                                                       self._reason)
 
 
 class SuiteTest(mox.MoxTestBase):
@@ -645,14 +687,17 @@ class SuiteTest(mox.MoxTestBase):
                 self.test_name = name
                 self.reason = reason
                 self.entry = {}
+                self.test_started_time = '2012-11-11 11:11:11'
+                self.test_finished_time = '2012-11-11 12:12:12'
                 if aborted:
                     self.entry['aborted'] = True
 
-            def equals_record(self, args):
+            def equals_record(self, status):
                 """Compares this object to a recorded status."""
-                return self._equals_record(*args)
+                return self._equals_record(status._status, status._test_name,
+                                           status._reason)
 
-            def _equals_record(self, status, subdir, name, reason=None):
+            def _equals_record(self, status, name, reason=None):
                 """Compares this object and fields of recorded status."""
                 if 'aborted' in self.entry and self.entry['aborted']:
                     return status == 'ABORT'
@@ -693,23 +738,28 @@ class SuiteTest(mox.MoxTestBase):
         """Should record successful results."""
         suite = self._createSuiteWithMockedTestsAndControlFiles()
 
-        results = [('GOOD', None, 'good'), ('FAIL', None, 'bad', 'reason')]
+        results = [('GOOD', 'good'), ('FAIL', 'bad', 'reason')]
         recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record('INFO', None, 'Start %s' % self._TAG)
+        recorder.record_entry(
+            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
         for result in results:
             status = result[0]
-            test_name = result[2]
-            recorder.record('START', None, test_name)
-            recorder.record(*result).InAnyOrder('results')
-            recorder.record('END %s' % status, None, test_name)
+            test_name = result[1]
+            recorder.record_entry(
+                StatusContains.CreateFromStrings('START', test_name))
+            recorder.record_entry(
+                StatusContains.CreateFromStrings(*result)).InAnyOrder('results')
+            recorder.record_entry(
+                StatusContains.CreateFromStrings('END %s' % status, test_name))
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(True)
         self.mox.StubOutWithMock(suite, 'wait_for_results')
-        suite.wait_for_results().AndReturn(results)
+        suite.wait_for_results().AndReturn(
+            map(lambda r: dynamic_suite.Status(*r), results))
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record, True)
+        suite.run_and_wait(recorder.record_entry, True)
 
 
     def testRunAndWaitFailure(self):
@@ -717,17 +767,18 @@ class SuiteTest(mox.MoxTestBase):
         suite = self._createSuiteWithMockedTestsAndControlFiles()
 
         recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record('INFO', None, 'Start %s' % self._TAG)
-        recorder.record('FAIL', None, self._TAG,
-                        mox.StrContains('waiting'))
+        recorder.record_entry(
+            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
+        recorder.record_entry(
+            StatusContains.CreateFromStrings('FAIL', self._TAG, 'waiting'))
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(True)
         self.mox.StubOutWithMock(suite, 'wait_for_results')
-        suite.wait_for_results().AndRaise(Exception())
+        suite.wait_for_results().AndRaise(Exception('Expected during test.'))
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record, True)
+        suite.run_and_wait(recorder.record_entry, True)
 
 
     def testRunAndWaitScheduleFailure(self):
@@ -735,15 +786,16 @@ class SuiteTest(mox.MoxTestBase):
         suite = self._createSuiteWithMockedTestsAndControlFiles()
 
         recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record('INFO', None, 'Start %s' % self._TAG)
-        recorder.record('FAIL', None, self._TAG,
-                        mox.StrContains('scheduling'))
+        recorder.record_entry(
+            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
+        recorder.record_entry(
+            StatusContains.CreateFromStrings('FAIL', self._TAG, 'scheduling'))
 
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(True).AndRaise(Exception())
+        suite.schedule(True).AndRaise(Exception('Expected during test.'))
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record, True)
+        suite.run_and_wait(recorder.record_entry, True)
 
 
 if __name__ == '__main__':
