@@ -25,7 +25,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 class APConfigurator(object):
     """Base class for objects to configure access points using webdriver."""
 
-    def __init__(self):
+    def __init__(self, router_dict):
         # Possible bands
         self.band_2ghz = '2.4GHz'
         self.band_5ghz = '5GHz'
@@ -47,13 +47,19 @@ class APConfigurator(object):
         self.wep_authentication_open = 'Open'
         self.wep_authentication_shared = 'Shared Key'
 
+        self.admin_interface_url = router_dict['admin_url']
+        self.class_name = router_dict['class_name']
+        self.short_name = router_dict['short_name']
+        self.serial_number = router_dict['serial_number']
+        self.mac_address = router_dict['mac_address']
+
         self._command_list = []
 
     def __del__(self):
         try:
             self.driver.close()
         except:
-            return
+            pass
 
     def wait_for_object_by_id(self, element_id):
         """Waits for an element to become available; returns a reference to it.
@@ -196,18 +202,14 @@ class APConfigurator(object):
                                    'priority': priority})
 
     def get_router_name(self):
-        """Returns a string to describe the router.
-
-        Note: The derived class must implement this method.
-        """
-        raise NotImplementedError
+        """Returns a string to describe the router."""
+        return ('Router name: %s, Controller class: %s, Serial: %s, MAC '
+                'Address: %s' % (self.short_name, self.class_name,
+                                 self.serial_number, self.mac_address))
 
     def get_router_short_name(self):
-        """Returns a short string to describe the router.
-
-        Note: The derived class must implement this method.
-        """
-        raise NotImplementedError
+        """Returns a short string to describe the router."""
+        return self.short_name
 
     def get_number_of_pages(self):
         """Returns the number of web pages used to configure the router.

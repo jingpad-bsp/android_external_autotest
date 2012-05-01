@@ -24,18 +24,6 @@ class network_WiFiCompatSSID(cros_ui_test.UITest):
         if not state:
             raise error.TestFail(message)
 
-    def _search_for_ssid(self, ssid, return_if_exist=True):
-        # With as quickly as we are switching the environment it may take a
-        # scan or two to pick up all of the changes.
-        for i in range(3):
-            wifi_networks = self.pyauto.NetworkScan()['wifi_networks']
-            for key, val in wifi_networks.iteritems():
-                if val['name'] == ssid and return_if_exist:
-                    return key
-            if not return_if_exist:
-                return None
-        return None
-
     def run_once(self, ssid=None, ssid_visible=True):
         if not ssid:
             self.job.set_state('client_passed', False)
@@ -50,10 +38,11 @@ class network_WiFiCompatSSID(cros_ui_test.UITest):
             self.pyauto.ForgetWifiNetwork(service)
 
         logging.debug('Running in mode visibility=%s' % ssid_visible)
-        # logging.debug('All available networks: %s' % wifi_networks)
 
+        device_path = None
         if ssid_visible:
-            device_path = self._search_for_ssid(ssid)
+            if self.WaitUntilWifiNetworkAvailable(ssid):
+                device_path = self.GetServicePath(ssid)
             if not device_path:
                 msg = 'Unable to locate the visible ssid %s.' % ssid
                 self._print_failure_messages_set_state(False, msg)
@@ -69,7 +58,8 @@ class network_WiFiCompatSSID(cros_ui_test.UITest):
                 self._print_failure_messages_set_state(True, msg)
                 self.pyauto.DisconnectFromWifiNetwork()
                 return
-        device_path = self._search_for_ssid(ssid, return_if_exist=False)
+        if self.WaitUntilWifiNetworkAvailable(ssid):
+            device_path = self.GetServicePath(ssid)
         if device_path:
             msg = 'Was able to see the invisible ssid %s.' % ssid
             self._print_failure_messages_set_state(False, msg)

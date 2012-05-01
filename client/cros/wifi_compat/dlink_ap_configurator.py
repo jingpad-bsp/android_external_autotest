@@ -12,8 +12,8 @@ from selenium.common.exceptions import TimeoutException as \
 class DLinkAPConfigurator(ap_configurator.APConfigurator):
     """Derived class to control the DLink DAP-1522."""
 
-    def __init__(self, admin_interface_url):
-        super(DLinkAPConfigurator, self).__init__()
+    def __init__(self, router_dict):
+        super(DLinkAPConfigurator, self).__init__(router_dict)
         # Overrides
         self.security_disabled = 'Disable Wireless Security (not recommended)'
         self.security_wep = 'WEP'
@@ -22,10 +22,8 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
         self.security_wpa8021x = 'WPA-Enterprise'
         self.security_wpa28021x = 'WPA2-Enterprise'
 
-        self.admin_interface_url = admin_interface_url
-
     def _open_landing_page(self):
-        self.driver.get('http://%s/index.php' % self.admin_interface_url)
+        self.driver.get('%s/index.php' % self.admin_interface_url)
         page_name = os.path.basename(self.driver.current_url)
         if page_name == 'login.php' or page_name == 'index.php':
             try:
@@ -55,12 +53,6 @@ class DLinkAPConfigurator(ap_configurator.APConfigurator):
         wlan_button.click()
         # Wait for the main configuration page, look for the radio button
         self.wait_for_object_by_id('enable')
-
-    def get_router_name(self):
-        return 'Router Name: DAP-1522; Class: DLinkAPConfigurator'
-
-    def get_router_short_name(self):
-        return 'DAP-1522'
 
     def get_number_of_pages(self):
         return 1

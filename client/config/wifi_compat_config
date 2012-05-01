@@ -4,12 +4,26 @@
 
 # This file contains a dictonary describing the wireless access point
 # information used in the building 2000 wifi lab.
-
-# The dictionary contains the following pair:
-#   * The class name of the wireless access point configurator.
-#   * The ip of the administrative web interface.
-{
-  'LinksysAPConfigurator': '172.22.12.107',
-  'DLinkAPConfigurator': '172.22.12.124',
-  'TrendnetAPConfigurator': '172.22.12.109',
-}
+[
+  {
+    'class_name': 'LinksysAPConfigurator',
+    'short_name': 'WRT54G2',
+    'admin_url': 'http://172.22.162.118',
+    'serial_number': '',
+    'mac_address': '',
+  },
+  {
+    'class_name': 'DLinkAPConfigurator',
+    'short_name': 'DAP-1522',
+    'admin_url': 'http://172.22.12.107',
+    'serial_number': 'P1RG19B002481',
+    'mac_address': '00:26:5A:78:4E:A6',
+  },
+  {
+    'class_name': 'TrendnetAPConfigurator',
+    'short_name': 'TEW-639GR',
+    'admin_url': 'http://172.22.12.109',
+    'serial_number': 'UM1019R901864',
+    'mac_address': '00:14:D1:CA:FC:3C',
+  },
+]

@@ -35,7 +35,7 @@ class ConfiguratorTest(unittest.TestCase):
                                    '..', '..', 'config', 'wifi_compat_config')
         factory = ap_configurator_factory.APConfiguratorFactory(config_path)
         # Set self.ap to the one you want to test against.
-        self.ap = factory.get_ap_configurator_by_short_name('TEW-639GR')
+        self.ap = factory.get_ap_configurator_by_short_name('WRT54G2')
 
     def test_make_no_changes(self):
         """Test saving with no changes doesn't throw an error."""

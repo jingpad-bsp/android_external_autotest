@@ -11,8 +11,8 @@ import selenium.common.exceptions
 
 class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
-    def __init__(self, admin_interface_url):
-        super(LinksysAPConfigurator, self).__init__()
+    def __init__(self, router_dict):
+        super(LinksysAPConfigurator, self).__init__(router_dict)
         # Overrides
         self.security_disabled = 'Disabled'
         self.security_wep = 'WEP'
@@ -20,14 +20,6 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         self.security_wpa2psk = 'WPA2 Personal'
         self.security_wpa8021x = 'WPA Enterprise'
         self.security_wpa28021x = 'WPA2 Enterprise'
-
-        self.admin_interface_url = admin_interface_url
-
-    def get_router_name(self):
-        return 'Router Name: WRT54G2; Class: LinksysAPConfigurator'
-
-    def get_router_short_name(self):
-        return 'WRT54G2'
 
     def get_number_of_pages(self):
         return 2
@@ -48,9 +40,9 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
     def navigate_to_page(self, page_number):
         if page_number == 1:
-            self.driver.get('http://%s/wireless.htm' % self.admin_interface_url)
+            self.driver.get('%s/wireless.htm' % self.admin_interface_url)
         elif page_number == 2:
-            self.driver.get('http://%s/WSecurity.htm' %
+            self.driver.get('%s/WSecurity.htm' %
                             self.admin_interface_url)
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '

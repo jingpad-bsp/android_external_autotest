@@ -16,19 +16,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 class TrendnetAPConfigurator(ap_configurator.APConfigurator):
     """Derived class to control the Trendnet TEW-639GR."""
 
-    def __init__(self, admin_interface_url):
-        super(TrendnetAPConfigurator, self).__init__()
+    def __init__(self, router_dict):
+        super(TrendnetAPConfigurator, self).__init__(router_dict)
         # Overrides
         self.security_disabled = 'Disable'
         self.security_wpapsk = 'WPA2-PSK'
-
-        self.admin_interface_url = admin_interface_url
-
-    def get_router_name(self):
-        return 'Router Name: TEW-639GR; Class: TrendnetAPConfigurator'
-
-    def get_router_short_name(self):
-        return 'TEW-639GR'
 
     def get_number_of_pages(self):
         return 2
@@ -49,10 +41,10 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
     def navigate_to_page(self, page_number):
         # All settings are on the same page, so we always open the config page
         if page_number == 1:
-            self.driver.get('http://%s/wireless/basic.asp' %
+            self.driver.get('%s/wireless/basic.asp' %
                             self.admin_interface_url)
         elif page_number == 2:
-            self.driver.get('http://%s/wireless/security.asp' %
+            self.driver.get('%s/wireless/security.asp' %
                             self.admin_interface_url)
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '

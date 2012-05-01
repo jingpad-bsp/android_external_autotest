@@ -20,19 +20,28 @@ class APConfiguratorFactory(object):
         f = open(config_dict_file_path)
         contents = f.read()
         f.close()
-        config_dict = None
+        config_list = None
         try:
-            config_dict = eval(contents)
+            config_list = eval(contents)
         except Exception, e:
             raise RuntimeError('%s is an invalid data file.' %
                                config_dict_file_path)
-        self.ap_list = [
-            linksys_ap_configurator.LinksysAPConfigurator(
-                config_dict['LinksysAPConfigurator']),
-            dlink_ap_configurator.DLinkAPConfigurator(
-                config_dict['DLinkAPConfigurator']),
-            trendnet_ap_configurator.TrendnetAPConfigurator(
-                config_dict['TrendnetAPConfigurator'])]
+        self.ap_list = []
+        self._build_all_instances_of_configurator(config_list,
+            'LinksysAPConfigurator',
+            linksys_ap_configurator.LinksysAPConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'DLinkAPConfigurator',
+            dlink_ap_configurator.DLinkAPConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'TrendnetAPConfigurator',
+            trendnet_ap_configurator.TrendnetAPConfigurator)
+
+    def _build_all_instances_of_configurator(self, config_list, name,
+                                             configurator):
+        for current in config_list:
+            if current['class_name'] == name:
+                self.ap_list.append(configurator(current))
 
     def get_ap_configurators(self):
         return self.ap_list
