@@ -76,9 +76,16 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
             self.assertTrue(path in desired_paths)
 
 
+    def _ExpectGlob(self, to_return):
+        self.mox.StubOutWithMock(self.mv, '_ExpandGlobMinusPrefix')
+        self.mv._ExpandGlobMinusPrefix(mox.IgnoreArg(),
+                                       mox.IgnoreArg()).AndReturn(to_return)
+
+
     def testAnyManifestsSinceRev(self):
         """Ensure we can tell if builds have succeeded since a given rev."""
         rev = 'rev'
+        self._ExpectGlob(['some/paths'])
         self.mox.StubOutWithMock(utils, 'system_output')
         utils.system_output(
             mox.And(mox.StrContains('log'),
@@ -91,6 +98,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
     def testNoManifestsSinceRev(self):
         """Ensure we can tell if no builds have succeeded since a given rev."""
         rev = 'rev'
+        self._ExpectGlob(['some/paths'])
         self.mox.StubOutWithMock(utils, 'system_output')
         utils.system_output(
             mox.And(mox.StrContains('log'),
@@ -99,10 +107,19 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         self.assertFalse(self.mv.AnyManifestsSinceRev(rev))
 
 
+    def testNoManifestsPathsSinceRev(self):
+        """Ensure we can tell that we have no paths to check for new builds."""
+        rev = 'rev'
+        self._ExpectGlob([])
+        self.mox.ReplayAll()
+        self.assertFalse(self.mv.AnyManifestsSinceRev(rev))
+
+
     def testManifestsSinceDays(self):
         """Ensure we can get manifests for a board since N days ago."""
         days_ago = 7
         board = 'x86-alex'
+        self._ExpectGlob(['some/paths'])
         self.mox.StubOutWithMock(utils, 'system_output')
         utils.system_output(
             mox.StrContains('log')).MultipleTimes().AndReturn(
@@ -120,8 +137,19 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         """Ensure we can deal with no manifests since N days ago."""
         days_ago = 7
         board = 'x86-alex'
+        self._ExpectGlob(['some/paths'])
         self.mox.StubOutWithMock(utils, 'system_output')
         utils.system_output(mox.StrContains('log')).AndReturn([])
+        self.mox.ReplayAll()
+        br_man = self.mv.ManifestsSinceDays(days_ago, board)
+        self.assertEquals(br_man, {})
+
+
+    def testNoManifestsPathsSinceDays(self):
+        """Ensure we can deal with finding no paths to pass to'git log'."""
+        days_ago = 7
+        board = 'x86-alex'
+        self._ExpectGlob([])
         self.mox.ReplayAll()
         br_man = self.mv.ManifestsSinceDays(days_ago, board)
         self.assertEquals(br_man, {})
@@ -131,6 +159,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         """Ensure we handle failures in querying manifests."""
         days_ago = 7
         board = 'x86-alex'
+        self._ExpectGlob(['some/paths'])
         self.mox.StubOutWithMock(utils, 'system_output')
         utils.system_output(mox.StrContains('log')).AndRaise(
             manifest_versions.QueryException())

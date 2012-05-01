@@ -52,6 +52,9 @@ class ManifestVersions(object):
       """
       manifest_paths = self._ExpandGlobMinusPrefix(
           self._tempdir.name, self._ANY_MANIFEST_GLOB_PATTERN)
+      if not manifest_paths:
+          logging.error('No paths to check for manifests???')
+          return False
       logging.debug('Checking if any manifests landed since %s', revision)
       log_cmd = self._BuildCommand('log',
                                    revision + '..HEAD',
@@ -236,7 +239,7 @@ class ManifestVersions(object):
         try:
             # If we pass nothing to git show, we get unexpected results.
             # So, return early if git log is going to give us nothing.
-            if not utils.system_output(log_cmd):
+            if not manifest_paths or not utils.system_output(log_cmd):
                 return []
             manifests = utils.system_output('%s|xargs %s' % (log_cmd,
                                                              self._ShowCmd()))
