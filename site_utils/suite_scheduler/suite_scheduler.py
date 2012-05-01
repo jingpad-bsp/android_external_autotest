@@ -20,11 +20,12 @@ Tasks:
   suite: power
   run_on: nightly
   pool: remote_power
-  branches: tot,dev
+  branch_spec: >=R20,factory
 
   This specifies a Task that gets run whenever the 'nightly' event occurs.
   The Task schedules a suite of tests called 'power' on the pool of machines
-  called 'remote_power', for both the most recent ToT and dev-channel builds.
+  called 'remote_power', for both the factory branch and all active release
+  branches from R20 on.
 
 
 On startup, the scheduler reads in a config file that provides a few
