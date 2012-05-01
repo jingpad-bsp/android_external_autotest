@@ -60,7 +60,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
                             control_type='Server',
                             control_file=mox.And(mox.StrContains(self._BOARD),
                                                  mox.StrContains(self._BUILD)),
-                            hostless=True).AndReturn(to_return)
+                            hostless=True,
+                            keyvals=mox.And(mox.In('download_started_time'),
+                                            mox.In('payload_finished_time'))
+                            ).AndReturn(to_return)
         self.mox.StubOutWithMock(site_rpc_interface, '_rpc_utils')
         site_rpc_interface._rpc_utils().AndReturn(r)
 

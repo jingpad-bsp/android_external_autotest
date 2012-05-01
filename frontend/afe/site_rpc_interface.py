@@ -5,6 +5,7 @@
 __author__ = 'cmasone@chromium.org (Chris Masone)'
 
 import common
+import datetime
 import logging
 import sys
 from autotest_lib.client.common_lib import global_config
@@ -63,12 +64,19 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     """
     # All suite names are assumed under test_suites/control.XX.
     suite_name = canonicalize_suite_name(suite_name)
+
+    timings = {}
+    time_fmt = '%Y-%m-%d %H:%M:%S'
     # Ensure components of |build| necessary for installing images are staged
     # on the dev server. However set synchronous to False to allow other
     # components to be downloaded in the background.
     ds = dev_server.DevServer.create()
+    timings['download_started_time'] = datetime.datetime.now().strftime(
+        time_fmt)
     if not ds.trigger_download(build, synchronous=False):
         raise StageBuildFailure("Server error while staging " + build)
+    timings['payload_finished_time'] = datetime.datetime.now().strftime(
+        time_fmt)
 
     getter = control_file_getter.DevServerGetter.create(build, ds)
     # Get the control file for the suite.
@@ -87,4 +95,5 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
                                           priority='Medium',
                                           control_type='Server',
                                           control_file=control_file,
-                                          hostless=True)
+                                          hostless=True,
+                                          keyvals=timings)

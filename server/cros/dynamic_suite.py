@@ -81,6 +81,9 @@ def reimage_and_run(**dargs):
         if not ds.finish_download(build):
             raise AsynchronousBuildFailure(
                 "Server error completing staging for " + build)
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        utils.write_keyval(job.resultdir,
+                           {'artifact_finished_time': timestamp})
 
         suite = Suite.create_from_name(name, build, pool=pool,
                                        results_dir=job.resultdir)

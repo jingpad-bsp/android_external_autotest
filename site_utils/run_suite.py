@@ -119,6 +119,9 @@ class Timings(object):
     @var reimage_end_time: the time we finished reimaging devices.
     @var tests_start_time: the time the first test started running.
     """
+    download_start_time = None
+    payload_end_time = None
+    artifact_end_time = None
     suite_start_time = None
     reimage_start_time = None
     reimage_end_time = None
@@ -149,7 +152,11 @@ class Timings(object):
         else:
             self._UpdateFirstTestStartTime(start_candidate)
             self._UpdateLastTestEndTime(end_candidate)
-
+        if 'job_keyvals' in entry:
+            keyvals = entry['job_keyvals']
+            self.download_start_time = keyvals.get('download_started_time')
+            self.payload_end_time = keyvals.get('payload_finished_time')
+            self.artifact_end_time = keyvals.get('artifact_finished_time')
 
     def _UpdateFirstTestStartTime(self, candidate):
         """Update self.tests_start_time, iff candidate is an earlier time.
@@ -172,13 +179,19 @@ class Timings(object):
     def __str__(self):
         return ('\n'
                 'Suite timings:\n'
+                'Downloads started at %s\n'
+                'Payload downloads ended at %s\n'
                 'Suite started at %s\n'
                 'Reimaging started at %s\n'
                 'Reimaging ended at %s\n'
+                'Artifact downloads ended (at latest) at %s\n'
                 'Testing started at %s\n'
-                'Testing ended at %s\n' % (self.suite_start_time,
+                'Testing ended at %s\n' % (self.download_start_time,
+                                           self.payload_end_time,
+                                           self.suite_start_time,
                                            self.reimage_start_time,
                                            self.reimage_end_time,
+                                           self.artifact_end_time,
                                            self.tests_start_time,
                                            self.tests_end_time))
 
