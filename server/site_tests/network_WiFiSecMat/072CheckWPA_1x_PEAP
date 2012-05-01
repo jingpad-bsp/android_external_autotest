@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -19,13 +19,17 @@
                                 site_eap_certs.server_cert_1,
                               "/tmp/hostapd_private_key" :
                                 site_eap_certs.server_private_key_1,
+                              "/tmp/hostapd_expired_server_cert" :
+                                site_eap_certs.server_expired_cert,
+                              "/tmp/hostapd_expired_private_key" :
+                                site_eap_certs.server_expired_key,
                               "/tmp/hostapd_eap_user_file" :
                                 """* PEAP
 "testuser-chapv2" MSCHAPV2 "password" [2]
 "testuser-md5" MD5 "password" [2]""" } } ],
     [ "config",         { "channel":"2412", "mode":"11g",
                           "wpa":"1", "wpa_key_mgmt":"WPA-EAP",
-			  "eap_server" : "1",
+                          "eap_server" : "1",
                           "wpa_pairwise":"CCMP", "ieee8021x":"1",
                           "ca_cert" : "/tmp/hostapd_ca_cert",
                           "server_cert" : "/tmp/hostapd_server_cert",
@@ -39,7 +43,7 @@
                                 site_eap_certs.ca_cert_2} } ],
     [ "connect",        { "security":"802_1x",
                           "psk" : "EAP.Identity:testuser-chapv2"
-			  ":EAP.Password:password"
+                          ":EAP.Password:password"
                           ":EAP.CACert:/tmp/ca-cert.pem"} ],
     [ "client_ping",    { "count":"10" } ],
 
@@ -57,14 +61,14 @@
     [ "disconnect" ],
 
     #
-    # Try authenticating using the wrong client password
+    # Try authenticating using the wrong client password.
     [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t2" } ],
     [ "!connect",        { "security":"802_1x",
                            "psk" : "EAP.Identity:testuser-chapv2"
                            ":EAP.Password:wrongpassword"} ],
     #
-    # Try authenticating with the right client password but wrong CA
+    # Try authenticating with the right client password but wrong CA.
      [ "restart_supplicant" ],
      [ "config",         { "ssid_suffix":"t3" } ],
      [ "!connect",        { "security":"802_1x",
@@ -72,7 +76,20 @@
                             ":EAP.Password:password"
                             ":EAP.CACert:/tmp/ca-cert-other.pem"} ],
 
-
+   # Try authenticating to an AP with an expired server cert.
+     [ "restart_supplicant" ],
+     [ "config",         { "ssid_suffix":"t4",
+                           "ca_cert" : "/tmp/hostapd_ca_cert",
+                           "server_cert" : "/tmp/hostapd_expired_server_cert",
+                           "private_key" : "/tmp/hostapd_expired_private_key",
+                         } ],
+     [ "!connect",       { "security":"802_1x",
+                           "psk" : "EAP.Identity:testuser-chapv2"
+                           ":EAP.Password:password"
+                           ":EAP.CACert:/tmp/ca-cert.pem"},
+                           "TLS: Certificate verification failed, error 10 "
+                           "\(certificate has expired\)"
+                           ],
     [ "destroy" ],
   ],
 }
