@@ -122,7 +122,7 @@ class DriverTest(mox.MoxTestBase):
         manifest = '200.0.02'
         build = base_event.BuildName(board, type, milestone, manifest)
 
-        self.nightly.Handle(mox.IgnoreArg(), {milestone: build}, board,
+        self.nightly.Handle(mox.IgnoreArg(), {milestone: [build]}, board,
                             force=True)
         self.mox.ReplayAll()
 

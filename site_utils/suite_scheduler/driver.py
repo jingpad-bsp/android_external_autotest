@@ -112,7 +112,7 @@ class Driver(object):
         @param build_name: instead of looking up builds to test, test this one.
         """
         board, type, milestone, manifest = base_event.ParseBuildName(build_name)
-        branch_builds = {task.PickBranchName(type, milestone): build_name}
+        branch_builds = {task.PickBranchName(type, milestone): [build_name]}
         logging.info('Testing build %s-%s on %s' % (milestone, manifest, board))
 
         for e in self._events:
