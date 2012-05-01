@@ -42,10 +42,9 @@ def setup(topdir):
         utils.run(cmd)
         utils.make('-j %d' % utils.count_cpus())
         # strip symbols from all binaries to save space
-        # TODO(ihf): strip everything once issue 14447 is resolved
-        # except for fbo-dept-sample-compare
-        utils.run("find bin/ -type f \! -name 'fbo-depth-sample-compare' "
-                  " -exec strip {} \;")
+        # TODO(ihf): strip everything once issue 30287 is resolved
+        #utils.run("find bin/ -type f \! -name 'fbo-depth-sample-compare' "
+        #          " -exec strip {} \;")
         os.chdir(topdir)
     else:
         logging.warning('WARNING: Skip piglit build. OpenGL/x86 boards only')
