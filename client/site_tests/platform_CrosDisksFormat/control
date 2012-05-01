@@ -8,6 +8,7 @@ PURPOSE = "Verify that cros-disks can format supported filesystems correctly"
 
 CRITERIA = """
 """
+SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

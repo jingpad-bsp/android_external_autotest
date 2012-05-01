@@ -9,6 +9,7 @@ CRITERIA = """
 This test will succeed as long as a test account is able to log in, generate
 and register an 'Owner' keypair.
 """
+SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

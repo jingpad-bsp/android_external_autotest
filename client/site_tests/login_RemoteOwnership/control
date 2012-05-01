@@ -13,6 +13,7 @@ PURPOSE = "Validate that the Ownership DBus API works for device policies"
 CRITERIA = """
 Fail if a call does not behave as expected
 """
+SUITE = "regression"
 TEST_CLASS = "login"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"

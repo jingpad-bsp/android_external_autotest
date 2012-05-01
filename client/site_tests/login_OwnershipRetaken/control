@@ -9,6 +9,7 @@ CRITERIA = """
 This test will succeed as long as a test account that is pre-configured as the
 device owner is able to log in, generate and register a new 'Owner' keypair.
 """
+SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
