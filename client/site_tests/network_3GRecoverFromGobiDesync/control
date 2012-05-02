@@ -5,6 +5,7 @@
 AUTHOR = "ChromeOS Team"
 NAME = "network_3GRecoverFromGobiDesync"
 PURPOSE = "Verify that gobi-cromo-plugin recovers from driver failures"
+SUITE = "network3g_gobi"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

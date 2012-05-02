@@ -9,7 +9,7 @@ CRITERIA = """
 This test will fail if any of its subtest programs fails to find or connect to
 the Gobi.
 """
-
+SUITE = "network3g_gobi"
 TIME = "SHORT"
 TEST_CATEGORY = "Regression"
 TEST_CLASS = "network"

@@ -5,6 +5,7 @@
 AUTHOR = "Chrome OS Team"
 TIME = "LONG"
 NAME = "NetworkWiFi"
+SUITE = "network_wifi"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"

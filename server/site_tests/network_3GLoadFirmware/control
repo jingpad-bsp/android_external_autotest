@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "3GLoadFirmware"
+SUITE = "network3g_gobi"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

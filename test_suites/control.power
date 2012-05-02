@@ -3,25 +3,18 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "kernel.per_build.benchmarks"
-PURPOSE = "Gather benchmark/performance data for kernel evaluation."
-CRITERIA = "All tests with SUITE=kernel.per_build.benchmarks must pass."
-
+NAME = "Power Test Suite"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "suite"
 TEST_TYPE = "Server"
 
 DOC = """
-This is the Kernel Per-Build Benchmarks Test suite.  Failures in this test
-suite should not close the tree. It should consist of SHORT tests that gather
-data for long-term kernel performance evaluation.  It runs on every build so
-it should consist of SHORT tests.  Longer running benchmarks should be added
-to kernel.daily.benchmarks or kernel.weekly.benchmarks.
+Run Automated power tests on machines with and without AC.
 
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
-@param board: The board to test on.  Ex: x86-mario
+@param board: The board to test on. Ex: x86-mario
 @param pool: The pool of machines to utilize for scheduling. If pool=None
              board is used.
 @param check_hosts: require appropriate live hosts to exist in the lab.
@@ -32,6 +25,6 @@ import common
 from autotest_lib.server.cros import dynamic_suite
 
 dynamic_suite.reimage_and_run(
-    build=build, board=board, name='kernel.per_build.benchmarks', job=job,
-    pool=pool, check_hosts=check_hosts, add_experimental=True,
+    build=build, board=board, name='power', job=job, pool=pool,
+    check_hosts=check_hosts, add_experimental=True,
     skip_reimage=dynamic_suite.skip_reimage(globals()))

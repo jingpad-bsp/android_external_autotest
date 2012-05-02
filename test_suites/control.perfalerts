@@ -3,21 +3,19 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "kernel.per_build.benchmarks"
-PURPOSE = "Gather benchmark/performance data for kernel evaluation."
-CRITERIA = "All tests with SUITE=kernel.per_build.benchmarks must pass."
-
-TIME = "SHORT"
-TEST_CATEGORY = "General"
+NAME = "perfalerts"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
-TEST_TYPE = "Server"
+TEST_TYPE = "server"
 
 DOC = """
-This is the Kernel Per-Build Benchmarks Test suite.  Failures in this test
-suite should not close the tree. It should consist of SHORT tests that gather
-data for long-term kernel performance evaluation.  It runs on every build so
-it should consist of SHORT tests.  Longer running benchmarks should be added
-to kernel.daily.benchmarks or kernel.weekly.benchmarks.
+Run platform_BootPerfServer 100 times across 3 machines for testing boot
+performance.
+This checks for two things:
+1) check that the average time is in range
+2) check that if you boot repeatedly, the average time doesn't increase each
+boot.
 
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
@@ -32,6 +30,6 @@ import common
 from autotest_lib.server.cros import dynamic_suite
 
 dynamic_suite.reimage_and_run(
-    build=build, board=board, name='kernel.per_build.benchmarks', job=job,
-    pool=pool, check_hosts=check_hosts, add_experimental=True,
+    build=build, board=board, name='perfalerts', job=job, pool=pool,
+    check_hosts=check_hosts, add_experimental=True, num=3,
     skip_reimage=dynamic_suite.skip_reimage(globals()))
