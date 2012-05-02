@@ -15,6 +15,8 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
     # of all failing configurations
     waived_tests = {
           'conformance/constants.html' : 1,
+          'conformance/context/constants.html' : 1,
+          'conformance/context/context-attributes-alpha-depth-stencil-antialias.html' : 1,
           'conformance/context/premultiplyalpha-test.html' : 1,
           'conformance/extensions/oes-standard-derivatives.html' : 15,
           'conformance/gl-get-calls.html' : 1,
@@ -43,7 +45,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
           'conformance/textures/origin-clean-conformance.html' : 4,
           # Alex but not mario or SNB:
           'conformance/textures/texture-formats-test.html' : 8,
-          'conformance/textures/texture-mips.html' : 1,
+          'conformance/textures/texture-mips.html' : 2,
           'conformance/textures/texture-npot.html' : 1,
           'conformance/textures/texture-size.html' : 6,
       }
@@ -118,6 +120,7 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
 
         # handle failed groups/urls and apply waivers
         failTestRun = False
+        tests_fail_not_waived = 0
         i = 0
         for key in results:
             unquote_key = urllib.unquote_plus(key)
@@ -130,15 +133,19 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
                     waived_failures = self.waived_tests[url]
                 if failures > waived_failures:
                     failTestRun = True
+                    tests_fail_not_waived += failures - waived_failures
                     new_key = "failed_url_%03d" % i
                 message = url + " : %d failures (%d waived)"\
                                    % (failures, waived_failures)
                 keyvals[new_key] = message
                 logging.info(new_key + "   " + message)
                 i = i+1
+        logging.info('WebGLConformance: %d tests fail not waived',
+                     tests_fail_not_waived)
+        keyvals['count_tests_fail_not_waived'] = tests_fail_not_waived
         self.write_perf_keyval(keyvals)
 
-        # write transmitted summary to graphics_WebGLConformance/summary.txt
+        # Write transmitted summary to graphics_WebGLConformance/summary.txt
         summary = urllib.unquote_plus(results['summary'])
         logging.info('\n' + summary)
         results_path = os.path.join(self.bindir,
@@ -147,8 +154,8 @@ class graphics_WebGLConformance(cros_ui_test.UITest):
         f.write(summary)
         f.close()
 
-        # if we saw failures that were not waived raise an error now
-        if failTestRun and tests_fail > 53:
+        # If we saw many failures that were not waived raise an error.
+        if failTestRun and tests_fail_not_waived > 20:
             raise error.TestFail('Results: saw failures without waivers. ')
 
 
