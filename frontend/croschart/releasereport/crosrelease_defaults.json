@@ -8,6 +8,5 @@
   "power_LoadTest.WIFI,minutes_battery_life": "highisgood",
   "power_Resume,seconds_system_resume": "lowisgood",
   "power_Resume,seconds_system_suspend": "lowisgood",
-  "desktopui_PageCyclerTests,PageCyclerTest.Alexa_usFile": "lowisgood",
   "desktopui_V8Bench,score_total": "highisgood"
 }

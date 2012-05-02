@@ -205,22 +205,6 @@
                 "mb_per_sec_memory_rw_256k_seq",
                 "mb_per_sec_memory_set_256k_seq",
                 "mb_per_sec_memory_w_256k_seq"]},
-        "72": {
-            "test": "desktopui_PageCyclerTests",
-            "keys": [
-                "PageCyclerTest.Alexa_usFile",
-                "PageCyclerTest.MozFile",
-                "PageCyclerTest.Moz2File"]},
-        "74": {
-            "test": "desktopui_PageCyclerTests",
-            "keys": [
-                "PageCyclerTest.DhtmlFile",
-                "PageCyclerTest.Intl1File",
-                "PageCyclerTest.Intl2File"]},
-        "76": {
-            "test": "desktopui_PageCyclerTests",
-            "keys": [
-                "PageCyclerTest.BloatFile"]},
         "120": {
             "test": "desktopui_V8Bench",
             "keys": [
