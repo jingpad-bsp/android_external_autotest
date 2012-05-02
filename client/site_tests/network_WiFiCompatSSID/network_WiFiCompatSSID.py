@@ -30,19 +30,14 @@ class network_WiFiCompatSSID(cros_ui_test.UITest):
             raise error.TestFail('The ssid was not set; test cannot continue.')
             return
 
-        # Forget all remembered networks
-        # TODO: Remove when https://chromiumcodereview.appspot.com/10119028/ is
-        # upreved and replaced with:
-        # self.pyauto.ForgetAllRememberedNetworks()
-        for service in self.pyauto.GetNetworkInfo()['remembered_wifi']:
-            self.pyauto.ForgetWifiNetwork(service)
+        self.pyauto.ForgetAllRememberedNetworks()
 
         logging.debug('Running in mode visibility=%s' % ssid_visible)
 
         device_path = None
         if ssid_visible:
-            if self.WaitUntilWifiNetworkAvailable(ssid):
-                device_path = self.GetServicePath(ssid)
+            if self.pyauto.WaitUntilWifiNetworkAvailable(ssid):
+                device_path = self.pyauto.GetServicePath(ssid)
             if not device_path:
                 msg = 'Unable to locate the visible ssid %s.' % ssid
                 self._print_failure_messages_set_state(False, msg)
@@ -58,8 +53,8 @@ class network_WiFiCompatSSID(cros_ui_test.UITest):
                 self._print_failure_messages_set_state(True, msg)
                 self.pyauto.DisconnectFromWifiNetwork()
                 return
-        if self.WaitUntilWifiNetworkAvailable(ssid):
-            device_path = self.GetServicePath(ssid)
+        if self.pyauto.WaitUntilWifiNetworkAvailable(ssid):
+            device_path = self.pyauto.GetServicePath(ssid)
         if device_path:
             msg = 'Was able to see the invisible ssid %s.' % ssid
             self._print_failure_messages_set_state(False, msg)

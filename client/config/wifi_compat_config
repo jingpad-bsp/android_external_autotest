@@ -9,8 +9,8 @@
     'class_name': 'LinksysAPConfigurator',
     'short_name': 'WRT54G2',
     'admin_url': 'http://172.22.162.118',
-    'serial_number': '',
-    'mac_address': '',
+    'serial_number': 'CSV01K706755',
+    'mac_address': '98:FC:11:47:21:30',
   },
   {
     'class_name': 'DLinkAPConfigurator',
