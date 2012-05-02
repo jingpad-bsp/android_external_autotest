@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -15,17 +15,6 @@ _IGNORE_PERFORMANCE_TESTS=(
 
 class audiovideo_FFMPEG(test.test):
     version = 1
-
-    def setup(self):
-        """ copy test asset to bindir. """
-        if not os.path.exists(self.srcdir):
-            os.mkdir(self.srcdir)
-        # sysroot = os.environ["SYSROOT"]
-        # testdir = os.path.join(sysroot, "usr/local/autotest-chrome")
-        # testbin = os.path.join(testdir, "ffmpeg_tests")
-        # TODO(jiesun): retrieve chrome test asset from build.
-        # shutil.copy(testbin, self.bindir)
-
 
     def run_once(self, fps_warning=0):
         """ Run FFMPEG performance test! """
@@ -50,9 +39,15 @@ class audiovideo_FFMPEG(test.test):
 
 
     def run_testcase(self, testcase):
-        if utils.get_arch() == 'i386':
+        arch = utils.get_arch()
+        # TODO(ihf): We realy don't want to store these binaries locally but
+        # get them from the chromeos-chrome.ebuild which would solve the CPU
+        # dependency and the dependency on ffmpeg that ships with Chrome.
+        if arch == 'i386':
             executable = os.path.join(self.bindir, "ffmpeg_tests.i686")
-        else:  # TODO(jiesun): we only have ARM and i386.
+        elif arch == 'x86_64':
+            executable = os.path.join(self.bindir, "ffmpeg_tests.x86_64")
+        else:
             executable = os.path.join(self.bindir, "ffmpeg_tests.arm")
         file_url = testcase[0]
 
