@@ -34,6 +34,7 @@ TESTS = [
   ('graphics_SanAngeles', {'creds': '$backdoor'}), # Runtime 0:03
   ('graphics_WebGLConformance', {}),               # Runtime 0:05
   ('graphics_WebGLPerformance', {}),               # Runtime 0:03
+  ('graphics_GLMark2', {}),                        # Runtime 0:05
   ('graphics_GpuReset', {}),                       # Runtime 0:03
   #-----------------------------------------------------------------------------
   # Tests which leave the system in a strange state below. Don't add anything to

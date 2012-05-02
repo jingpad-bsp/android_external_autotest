@@ -55,8 +55,11 @@ class graphics_GLMark2(test.test):
                     score = int(match[0])
             if score is None:
                 raise error.TestFail('Unable to read benchmark score')
+            # Output numbers for plotting by harness.
             logging.info('GLMark2 score: %d', score)
-
+            keyvals = {}
+            keyvals['glmark2_score'] = score
+            self.write_perf_keyval(keyvals)
             if min_score is not None and score < min_score:
                 raise error.TestFail('Benchmark score %d < %d (minimum score '
                                      'requirement)' % (score, min_score))

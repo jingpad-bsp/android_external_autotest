@@ -72,6 +72,7 @@
    "KB_MemLive-EndMemFree-0Tabs0,KB_MemLive-MinMemFree-10Tabs1,KB_MemLive-EndMemFree-0Tabs1,KB_MemLive-MinMemFree-10Tabs2,KB_MemLive-EndMemFree-0Tabs2"],
   ["graphics_GLBench",
    "1280x768_fps_compositing,mpixels_sec_clear_color,mpixels_sec_clear_depth,mpixels_sec_fill_solid,mpixels_sec_yuv_shader_2,mpixels_sec_yuv_shader_4,mtri_sec_triangle_setup"],
+  ["graphics_GLMark2", "glmark2_score"],
   ["graphics_Piglit", "count_subtests_pass"],
   ["graphics_WebGLConformance", "count_tests_pass"],
   ["graphics_WebGLPerformance", "time_ms_geom_mean"]
