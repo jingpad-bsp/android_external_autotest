@@ -116,7 +116,7 @@ the status cells are hyperlinks to details pages.
         {% ifequal total 0 %}
         <td align="center" class="failure"">
             <a class="info" target="_blank"
-               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&row=job_name%252Ctest_name&column=platform&condition=job_name+regexp+%2527{{ pure_board }}.*/{{ build }}.*/bvt/.*%2527+and+not+test_name+regexp+%2527CLIENT_JOB.*%2527"
+               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&row=job_name%252Ctest_name&column=platform&condition=job_name+regexp+%2527{{ pure_board }}.*/{{ build }}.*/.*bvt/.*%2527+and+not+test_name+regexp+%2527CLIENT_JOB.*%2527"
                onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
               <table><tbody><tr>
                 <td>{{ passed }}/{{ total }}</td>
@@ -174,7 +174,7 @@ the status cells are hyperlinks to details pages.
             {% else %}
             <td align="center" class="failure"">
             <a class="info" target="_blank"
-               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&row=job_name%252Ctest_name&column=platform&condition=job_name+regexp+%2527{{ pure_board }}.*/{{ build }}.*/bvt/.*%2527+and+not+test_name+regexp+%2527CLIENT_JOB.*%2527"
+               href="http://cautotest/new_tko/#tab_id=spreadsheet_view&row=job_name%252Ctest_name&column=platform&condition=job_name+regexp+%2527{{ pure_board }}.*/{{ build }}.*/.*bvt/.*%2527+and+not+test_name+regexp+%2527CLIENT_JOB.*%2527"
                onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
               <table><tbody><tr>
                 <td>{{ passed }}/{{ total }}</td>
@@ -229,7 +229,7 @@ the status cells are hyperlinks to details pages.
             </span>
           </a>
           <a class="info" target="_blank"
-             href="emails/test/{{ board }}/Autotest_failure_in_bvt_on_{{ board }}_({{ full_build }}).html"
+             href="https://groups.google.com/a/google.com/forum/?fromgroups#!searchin/chromeos-automated-test-failures/bvt$20{{ board }}$20{{ full_build }}"
              onmouseover="fixTooltip(event, this)" onmouseout="clearTooltip(this)">
             summary
             <span style="width:300px">

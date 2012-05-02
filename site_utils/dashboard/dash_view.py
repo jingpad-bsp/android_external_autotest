@@ -991,7 +991,7 @@ class AutotestDashView(object):
         board = '%s-%s' % (board, milestone.lower())
         # Remove possible sequence artifacts, e.g.'-a1-b1539'
         build = self.ParseSimpleBuild(build)
-        return board, build, suite
+        return board, build, self.TranslateSuffix(suite)
 
       # Old suite style parsing.
       m = re.match(self._jobname_parse, job_name)
@@ -1019,7 +1019,7 @@ class AutotestDashView(object):
           board = board.replace(terminator,
                                 replacement + full_build.split('-')[0][1:])
 
-      return board, full_build, suffix
+      return board, full_build, self.TranslateSuffix(suffix)
 
     def ParseSimpleBuild(self, build):
       """Strip out the 0.x.y.z portion of the build.
@@ -1120,6 +1120,18 @@ class AutotestDashView(object):
         self._ui_categories[netbook] = {}
         self._build_tree[netbook] = {}
 
+    def TranslateSuffix(self, suffix):
+      """Allow processing of suffixes for aligning test suites."""
+      if not suffix:
+        return suffix
+      if suffix.startswith('kernel_'):
+        return KERNELTEST_TAG
+      elif suffix.startswith('enroll_'):
+        return 'enterprise'
+      elif suffix.endswith('_bvt'):
+        return 'bvt'
+      return suffix
+
     def QueryBuilds(self, job_limit=None):
       """Get the boards and builds (jobs) to use.
 
@@ -1147,10 +1159,6 @@ class AutotestDashView(object):
           logging.debug("Ignoring invalid: %s (%s, %s, %s).", name, board,
                         full_build, suffix)
           continue
-        if suffix.startswith('kernel_'):
-          suffix = KERNELTEST_TAG
-        elif suffix.startswith('enroll_'):
-          suffix = 'enterprise'
         if (self._dash_config and
             'blacklistboards' in self._dash_config and
             board in self._dash_config['blacklistboards']):
@@ -1172,10 +1180,6 @@ class AutotestDashView(object):
       for name in incomplete_jobnames:
         logging.debug("Ignoring incomplete: %s.", name)
         board, full_build, suffix = self.ParseJobName(name)
-        if suffix.startswith('kernel_'):
-          suffix = KERNELTEST_TAG
-        elif suffix.startswith('enroll_'):
-          suffix = 'enterprise'
         tracking_name = "%s-%s" % (board, full_build)
         if suffix in jobname_to_jobid[tracking_name]:
           for str_job_id in jobname_to_jobid[tracking_name][suffix]:
@@ -1211,10 +1215,6 @@ class AutotestDashView(object):
           continue
         category = self.ParseTestName(test_name)
         ui_categories = self._ui_categories[netbook].setdefault(board, set())
-        if job_suffix.startswith('kernel_'):
-          job_suffix = KERNELTEST_TAG
-        elif job_suffix.startswith('enroll_'):
-          job_suffix = 'enterprise'
         if job_suffix in SUFFIXES_TO_SHOW:
           ui_categories.add(job_suffix)
         if job_suffix in GTEST_SUFFIXES:
