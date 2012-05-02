@@ -11,6 +11,207 @@ from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros import control_file_getter, frontend_wrappers
 from autotest_lib.server import frontend
 
+"""CrOS dynamic test suite generation and execution module.
+
+This module implements runtime-generated test suites for CrOS.
+Design doc: http://goto.google.com/suitesv2
+
+Individual tests can declare themselves as a part of one or more
+suites, and the code here enables control files to be written
+that can refer to these "dynamic suites" by name.  We also provide
+support for reimaging devices with a given build and running a
+dynamic suite across all reimaged devices.
+
+The public API for defining a suite includes one method: reimage_and_run().
+A suite control file can be written by importing this module and making
+an appropriate call to this single method.  In normal usage, this control
+file will be run in a 'hostless' server-side autotest job, scheduling
+sub-jobs to do the needed reimaging and test running.
+
+Example control file:
+
+import common
+from autotest_lib.server.cros import dynamic_suite
+
+dynamic_suite.reimage_and_run(
+    build=build, board=board, name='bvt', job=job, pool=pool,
+    check_hosts=check_hosts, add_experimental=True, num=4,
+    skip_reimage=dynamic_suite.skip_reimage(globals()))
+
+This will -- at runtime -- find all control files that contain "bvt"
+in their "SUITE=" clause, schedule jobs to reimage 4 devices in the
+specified pool of the specified board with the specified build and,
+upon completion of those jobs, schedule and wait for jobs that run all
+the tests it discovered across those 4 machines.
+
+Suites can be run by using the atest command-line tool:
+  atest suite create -b <board> -i <build/name> <suite>
+e.g.
+  atest suite create -b x86-mario -i x86-mario/R20-2203.0.0 bvt
+
+-------------------------------------------------------------------------
+Implementation details
+
+In addition to the create_suite_job() RPC defined in the autotest frontend,
+there are two main classes defined here: Suite and Reimager.
+
+A Suite instance represents a single test suite, defined by some predicate
+run over all known control files.  The simplest example is creating a Suite
+by 'name'.
+
+The Reimager class provides support for reimaging a heterogenous set
+of devices with an appropriate build, in preparation for a test run.
+One could use a single Reimager, followed by the instantiation and use
+of multiple Suite objects.
+
+create_suite_job() takes the parameters needed to define a suite run (board,
+build to test, machine pool, and which suite to run), ensures important
+preconditions are met, finds the appropraite suite control file, and then
+schedules the hostless job that will do the rest of the work.
+
+reimage_and_run() works by creating a Reimager, using it to perform the
+requested installs, and then instantiating a Suite and running it on the
+machines that were just reimaged.  We'll go through this process in stages.
+
+- create_suite_job()
+The primary role of create_suite_job() is to ensure that the required
+artifacts for the build to be tested are staged on the dev server.  This
+includes payloads required to autoupdate machines to the desired build, as
+well as the autotest control files appropriate for that build.  Then, the
+RPC pulls the control file for the suite to be run from the dev server and
+uses it to create the suite job with the autotest frontend.
+
+     +----------------+
+     | Google Storage |                                Client
+     +----------------+                                   |
+               | ^                                        | create_suite_job()
+ payloads/     | |                                        |
+ control files | | request                                |
+               V |                                        V
+       +-------------+   download request    +--------------------------+
+       |             |<----------------------|                          |
+       | Dev Server  |                       | Autotest Frontend (AFE)  |
+       |             |---------------------->|                          |
+       +-------------+  suite control file   +--------------------------+
+                                                          |
+                                                          V
+                                                      Suite Job (hostless)
+
+- The Reimaging process
+In short, the Reimager schedules and waits for a number of autoupdate 'test'
+jobs that perform image installation and make sure the device comes back up.
+It labels the machines that it reimages with the newly-installed CrOS version,
+so that later steps in the can refer to the machines by version and board,
+instead of having to keep track of hostnames or some such.
+
+The number of machines to use is called the 'sharding_factor', and the default
+is defined in the [CROS] section of global_config.ini.  This can be overridden
+by passing a 'num=N' parameter to reimage_and_run() as shown in the example
+above.
+
+Step by step:
+1) Schedule autoupdate 'tests' across N devices of the appropriate board.
+  - Technically, one job that has N tests across N hosts.
+  - This 'test' is in server/site_tests/autoupdate/
+  - The control file is modified at runtime to inject the name of the build
+    to install, and the URL to get said build from.
+  - This is the _TOT_ version of the autoupdate test; it must be able to run
+    successfully on all currently supported branches at all times.
+2) Wait for this job to get kicked off and run to completion.
+3) Label successfully reimaged devices with a 'cros-version' label
+  - This is actually done by the autoupdate 'test' control file.
+4) Add a host attribute ('job_repo_url') to each reimaged host indicating
+   the URL where packages should be downloaded for subsequent tests
+  - This is actually done by the autoupdate 'test' control file
+  - This information is consumed in server/site_autotest.py
+  - job_repo_url points to some location on the dev server, where build
+    artifacts are staged -- including autotest packages.
+5) Return success or failure.
+
+          +------------+                       +--------------------------+
+          |            |                       |                          |
+          | Dev Server |                       | Autotest Frontend (AFE)  |
+          |            |                       |       [Suite Job]        |
+          +------------+                       +--------------------------+
+           | payloads |                                |   |     |
+           V          V             autoupdate test    |   |     |
+    +--------+       +--------+ <-----+----------------+   |     |
+    | Host 1 |<------| Host 2 |-------+                    |     |
+    +--------+       +--------+              label         |     |
+     VersLabel        VersLabel    <-----------------------+     |
+     job_repo_url     job_repo_url <-----------------------------+
+                                          host-attribute
+
+To sum up, after re-imaging, we have the following assumptions:
+- |num| devices of type |board| have |build| installed.
+- These devices are labeled appropriately
+- They have a host attribute called 'job_repo_url' dictating where autotest
+  packages can be downloaded for test runs.
+
+
+- Running Suites
+A Suite instance uses the labels created by the Reimager to schedule test jobs
+across all the hosts that were just reimaged.  It then waits for all these jobs.
+
+Step by step:
+1) At instantiation time, find all appropriate control files for this suite
+   that were included in the build to be tested.  To do this, we consult the
+   Dev Server, where all these control files are staged.
+
+          +------------+    control files?     +--------------------------+
+          |            |<----------------------|                          |
+          | Dev Server |                       | Autotest Frontend (AFE)  |
+          |            |---------------------->|       [Suite Job]        |
+          +------------+    control files!     +--------------------------+
+
+2) Now that the Suite instance exists, it schedules jobs for every control
+   file it deemed appropriate, to be run on the hosts that were labeled
+   by the Reimager.  We stuff keyvals into these jobs, indicating what
+   build they were testing and which suite they were for.
+
+   +--------------------------+ Job for VersLabel       +--------+
+   |                          |------------------------>| Host 1 | VersLabel
+   | Autotest Frontend (AFE) |            +--------+   +--------+
+   |       [Suite Job]        |----------->| Host 2 |
+   +--------------------------+ Job for    +--------+
+       |                ^       VersLabel        VersLabel
+       |                |
+       +----------------+
+        One job per test
+        {'build': build/name,
+         'suite': suite_name}
+
+3) Now that all jobs are scheduled, they'll be doled out as labeled hosts
+   finish their assigned work and become available again.
+4) As we clean up each job, we check to see if any crashes occurred.  If they
+   did, we look at the 'build' keyval in the job to see which build's debug
+   symbols we'll need to symbolicate the crash dump we just found.
+5) Using this info, we tell the Dev Server to stage the required debug symbols.
+   Once that's done, we ask the dev server to use those symbols to symbolicate
+   the crash dump in question.
+
+     +----------------+
+     | Google Storage |
+     +----------------+
+          |     ^
+ symbols! |     | symbols?
+          V     |
+      +------------+  stage symbols for build  +--------------------------+
+      |            |<--------------------------|                          |
+      |            |                           |                          |
+      | Dev Server |   dump to symbolicate     | Autotest Frontend (AFE)  |
+      |            |<--------------------------|       [Suite Job]        |
+      |            |-------------------------->|                          |
+      +------------+    symbolicated dump      +--------------------------+
+
+6) As jobs finish, we record their success or failure in the status of the suite
+   job.  We also record a 'job keyval' in the suite job for each test, noting
+   the job ID and job owner.  This can be used to refer to test logs later.
+7) Once all jobs are complete, status is recorded for the suite job, and the
+   job_repo_url host attribute is removed from all hosts used by the suite.
+
+"""
+
 
 VERSION_PREFIX = 'cros-version:'
 CONFIG = global_config.global_config
