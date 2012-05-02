@@ -194,6 +194,10 @@ TEST_LIST = [
         label_zh='觸控板'),
 
     OperatorTest(
+        autotest_name='factory_LidSwitch',
+        label_zh='上蓋開關'),
+
+    OperatorTest(
         autotest_name='factory_Display',
         label_zh='顯示'),
 
