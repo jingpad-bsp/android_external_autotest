@@ -130,8 +130,19 @@ class UITest(pyauto_test.PyAutoTest):
             resolv_test = os.path.join(resolv_dir, self._resolv_test_file)
             resolv_bak = os.path.join(resolv_dir, self._resolv_bak_file)
             resolv_contents = 'nameserver 127.0.0.1'
-            # Back up the current resolv.conf.
-            os.rename(resolv, resolv_bak)
+            # Test to make sure the current resolv.conf isn't already our
+            # specially modified version.  If this is the case, we have
+            # probably been interrupted while in the middle of this test
+            # in a previous run.  The last thing we want to do at this point
+            # is to overwrite a legitimate backup.
+            if (utils.read_one_line(resolv) == resolv_contents and
+                os.path.exists(resolv_bak)):
+                logging.error('Current resolv.conf is setup for our local '
+                              'server, and a backup already exists!  '
+                              'Skipping the backup step.')
+            else:
+              # Back up the current resolv.conf.
+              os.rename(resolv, resolv_bak)
             # To stop flimflam from editing resolv.conf while we're working
             # with it, we want to make the directory -r-x-r-x-r-x.  Open an
             # fd to the file first, so that we'll retain the ability to
