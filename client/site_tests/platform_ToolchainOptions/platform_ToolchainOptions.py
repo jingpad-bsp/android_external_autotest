@@ -33,7 +33,8 @@ class ToolchainOptionSet:
             self.whitelist_set = self.whitelist_set.union(set([]))
         else:
             f = open(whitelist_file)
-            whitelist = f.read().splitlines()
+            whitelist = [x for x in f.read().splitlines()
+                                    if not x.startswith('#')]
             f.close()
             self.whitelist_set = self.whitelist_set.union(set(whitelist))
         self.filtered_set = self.bad_set.difference(self.whitelist_set)
@@ -183,6 +184,7 @@ class platform_ToolchainOptions(test.test):
 
         # ARM arch doesn't have hardened.
         if utils.get_cpu_arch() != "arm":
+            # Verify non-static binaries have BIND_NOW in dynamic section.
             now_cmd = ("(%s {} | grep -q statically) ||"
                        "binutils/readelf -d {} 2>&1 | "
                        "egrep -q \"BIND_NOW\"" % FILE_CMD)
@@ -190,6 +192,8 @@ class platform_ToolchainOptions(test.test):
             option_sets.append(self.create_and_filter("-Wl,-z,now",
                                                       now_cmd,
                                                       now_whitelist))
+
+            # Verify non-static binaries have RELRO program header.
             relro_cmd = ("(%s {} | grep -q statically) ||"
                          "binutils/readelf -l {} 2>&1 | "
                          "egrep -q \"GNU_RELRO\"" % FILE_CMD)
@@ -198,6 +202,7 @@ class platform_ToolchainOptions(test.test):
                                                       relro_cmd,
                                                       relro_whitelist))
 
+            # Verify non-static binaries are dynamic (built PIE).
             pie_cmd = ("(%s {} | grep -q statically) ||"
                        "binutils/readelf -l {} 2>&1 | "
                        "egrep -q \"Elf file type is DYN\"" % FILE_CMD)
@@ -205,6 +210,14 @@ class platform_ToolchainOptions(test.test):
             option_sets.append(self.create_and_filter("-fPIE",
                                                       pie_cmd,
                                                       pie_whitelist))
+
+            # Verify all binaries have non-exec STACK program header.
+            stack_cmd = ("binutils/readelf -lW {} 2>&1 | "
+                         "egrep -q \"GNU_STACK.*RW \"")
+            stack_whitelist = os.path.join(self.bindir, "stack_whitelist")
+            option_sets.append(self.create_and_filter("Executable Stack",
+                                                      stack_cmd,
+                                                      stack_whitelist))
 
         if (options.enable_hardfp and utils.get_cpu_arch() == 'arm'):
             hardfp_cmd = ("binutils/readelf -A {} 2>&1 | "
