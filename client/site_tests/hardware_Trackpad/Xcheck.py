@@ -792,7 +792,7 @@ class Xcheck:
 
         op_le = self.op_dict['<=']
         axis_dict = {'left': 'x', 'right': 'x', 'up': 'y', 'down': 'y',
-                     'vert': 'y', 'horiz': 'x', 'alldir': '', None: ''}
+                     'vert': 'y', 'horiz': 'x', 'alldir': 'xy', None: 'xy'}
         self.seq_flag = True
         crit_move_ratio = self.criteria.get('move_ratio', 0)
 
@@ -861,6 +861,7 @@ class Xcheck:
                 motion_val = e_value[0]
                 motion_x_val = e_value[1][1]
                 motion_y_val = e_value[2][1]
+                motion_xy_val = motion_x_val + motion_y_val
                 if crit_e_type.startswith('Motion'):
                     crit_e_op = crit_e[1]
                     crit_e_val = crit_e[2]
@@ -876,7 +877,10 @@ class Xcheck:
                         motion_axis_dict = {'x': {'this': motion_x_val,
                                                   'other': motion_y_val},
                                             'y': {'this': motion_y_val,
-                                                  'other': motion_x_val}}
+                                                  'other': motion_x_val},
+                                            'xy': {'this': motion_xy_val,
+                                                   'other': motion_xy_val},
+                                           }
                         motion_axis_val = motion_axis_dict[axis]['this']
                         motion_other_val = motion_axis_dict[axis]['other']
 
@@ -890,7 +894,12 @@ class Xcheck:
                         check_other_axis = (not other_axis_cond or
                                             op_le(motion_other_val,
                                                   bound_other_axis))
-                        crit_check = check_this_axis and check_other_axis
+
+                        # If this axis is 'x', movement in 'y' should be small.
+                        # If this axis is 'y', movement in 'x' should be small.
+                        # If this axis is 'xy', no need to check the other axis.
+                        crit_check = (check_this_axis and
+                                      (axis == 'xy' or check_other_axis))
                         if not crit_check:
                             fail_msg = ('%s %s does not satisfy %s. '
                                         'Check motion for this axis = %s. '
