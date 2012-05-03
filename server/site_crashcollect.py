@@ -38,6 +38,8 @@ def symbolicate_minidump_with_devserver(minidump_path):
     devserver = dev_server.DevServer.create()
     try:
         trace_text = devserver.symbolicate_dump(minidump_path)
+        if not trace_text:
+            return 400
         with open(minidump_path + '.txt', 'w') as trace_file:
             trace_file.write(trace_text)
     except urllib2.HTTPError as e:
@@ -71,9 +73,9 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
                 return
 
             logging.warn('Failed to generate stack trace locally for ' \
-                         'dump %s (rc=%d)', (minidump, rc))
+                         'dump %s (rc=%d)', minidump, rc)
             logging.warn('Failed to generate stack trace on devserver for ' \
-                         'dump %s (rc=%d)', (minidump, http_rc))
+                         'dump %s (rc=%d)', minidump, http_rc)
 
 
 def fetch_orphaned_crashdumps(host, host_resultdir):
