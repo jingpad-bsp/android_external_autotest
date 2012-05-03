@@ -171,7 +171,9 @@ class UITest(pyauto_test.PyAutoTest):
                 lambda: self.__attempt_resolve('www.google.com.',
                                                '127.0.0.1',
                                                expected=False),
-                utils.TimeoutError('Timed out waiting to revert DNS.'),
+                utils.TimeoutError('Timed out waiting to revert DNS.  '
+                                   'resolv.conf contents are: ' +
+                                   utils.read_one_line(resolv)),
                 timeout=10)
         finally:
             # Set captive portal checking to whatever it was at the start.
