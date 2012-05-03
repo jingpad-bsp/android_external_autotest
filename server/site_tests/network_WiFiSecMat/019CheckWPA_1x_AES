@@ -49,7 +49,7 @@
                               "/tmp/ca-cert-other.pem" :
                                 site_eap_certs.ca_cert_2} } ],
 
-    [ "connect",  "security":"802_1x",
+    [ "connect",  {"security":"802_1x",
                           "psk" : "EAP.Identity:chromeos"
                           ":EAP.ClientCert:/tmp/pkg-client-cert.pem"
                           ":EAP.PrivateKey:/tmp/pkg-client-key.pem"
