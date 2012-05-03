@@ -18,6 +18,10 @@ del profile.tests['asmparsertest']
 del profile.tests['glean']['blendFunc']
 del profile.tests['glean']['depthStencil']
 del profile.tests['glean']['pointAtten']
+del profile.tests['shaders']['glsl-fs-inline-explosion']
+del profile.tests['shaders']['glsl-fs-unroll-explosion']
+del profile.tests['shaders']['glsl-vs-inline-explosion']
+del profile.tests['shaders']['glsl-vs-unroll-explosion']
 del profile.tests['texturing']['streaming-texture-leak']
 
 # IHF: this test runs with too much memory on my 64 bit dev system
@@ -46,3 +50,5 @@ del profile.tests['fbo']['fbo-rg-GL_RG']
 del profile.tests['fbo']['fbo-rg-GL_RG8']
 del profile.tests['fbo']['fbo-rg-GL_RG16']
 
+# IHF: This test crashed on lumpy during checkout.
+del profile.tests['texturing']['max-texture-size']

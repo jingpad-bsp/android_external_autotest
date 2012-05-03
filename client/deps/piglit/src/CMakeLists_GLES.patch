@@ -1,6 +1,6 @@
 --- piglit/CMakeLists.txt	2011-08-10 08:25:17.000000000 -0700
 +++ piglit/CMakeLists.txt	2011-08-11 21:02:18.434579000 -0700
-@@ -77,11 +77,14 @@ else (APPLE)
+@@ -144,11 +144,14 @@ else (APPLE)
  	)
  endif (APPLE)
  

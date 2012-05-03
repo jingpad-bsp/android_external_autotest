@@ -31,7 +31,7 @@ def setup(topdir):
         utils.extract_tarball_to_dir(tarball_path, dst_path)
         # patch in files now
         utils.system('patch -p0 < ' +
-                     os.path.join(srcdir, 'CMakeLists_GLES.patch'))
+                     os.path.join(srcdir, 'CMakeLists_GLES_Release.patch'))
         shutil.copyfile(os.path.join(srcdir, 'cros-driver.tests'),
                         os.path.join(dst_path, 'tests/cros-driver.tests'))
         os.chdir(dst_path)
