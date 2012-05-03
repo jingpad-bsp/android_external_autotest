@@ -19,6 +19,26 @@ class desktopui_EnterprisePolicyServer(test.test):
         self.client.reboot()
 
 
+    def run_client_test(self, subtest, prod, enroll):
+        """Run the client subtest.
+        Args:
+            subtest: Name of the test function to run.
+            prod: Whether to point to production DMServer and gaia auth server.
+            enroll: Whether the test enrolls the device.
+        """
+        logging.info('Server: starting client test "%s"' % subtest)
+        self.job.set_state('client_state', 'RUNNING')
+        self.client_at.run_test(self.client_test, subtest=subtest,
+                                prod=prod, enroll=enroll)
+        if self.job.get_state('client_state') == 'UNRECOVERABLE':
+            raise error.TestFail('Server: client TPM is in a bad state.')
+        elif self.job.get_state('client_state') == 'REBOOT':
+            self.reboot_client()
+            self.run_client_test(subtest, prod, enroll)
+        elif enroll:
+            self.reboot_client()
+
+
     def run_once(self, host=None, subtest=None, prod=False, enroll=False):
         """
         Args:
@@ -30,12 +50,7 @@ class desktopui_EnterprisePolicyServer(test.test):
         enroll = True
         self.client = host
         self.client_at = autotest.Autotest(self.client)
-        logging.info('Server: starting client test "%s"' % subtest)
-        self.job.set_state('client_completed', False)
-        self.client_at.run_test(self.client_test, subtest=subtest, prod=prod,
-                                enroll=enroll)
-        if enroll:
-            self.reboot_client()
+        self.run_client_test(subtest, prod, enroll)
 
-        if not self.job.get_state('client_completed'):
+        if self.job.get_state('client_state') != 'SUCCESS':
             raise error.TestFail('Server: client test failed.')

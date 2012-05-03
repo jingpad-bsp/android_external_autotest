@@ -51,6 +51,7 @@ class EnterpriseUITest(cros_ui_test.UITest):
         self._client_completed = False
         self._enroll = enroll
         if self._enroll:
+            self.__tpm_pretest_check()
             self.__tpm_take_ownership()
             self.__generate_machine_info_file()
         self.auto_login = False
@@ -63,9 +64,11 @@ class EnterpriseUITest(cros_ui_test.UITest):
 
     def cleanup(self):
         cros_ui_test.UITest.cleanup(self)
-        if self._enroll:
+        if self._enroll or self.job.get_state('client_state') == 'REBOOT':
             self.__tpm_clear()
-        self.job.set_state('client_completed', self._client_completed)
+        if self.job.get_state('client_state') == 'RUNNING':
+            self.job.set_state('client_state',
+                               'SUCCESS' if self._client_completed else 'ERROR')
 
 
     def __remove_files(self, list):
@@ -88,15 +91,23 @@ class EnterpriseUITest(cros_ui_test.UITest):
         if not cryptohome.get_tpm_status()['Owned']:
             logging.info('client: TPM not owned. Skipping...')
             return
-        with open(self._TPM_PASSWORD_FILE, 'r') as passwd_file:
+        if not os.path.isfile(self._TPM_PASSWORD_FILE):
+            self.job.set_state('client_state', 'UNRECOVERABLE')
+            raise error.TestError(
+                'TPM is owned and TPM password file %s doesn\'t exist.' %
+                self._TPM_PASSWORD_FILE)
+        with open(self._TPM_PASSWORD_FILE) as passwd_file:
             tpm_password = passwd_file.read().strip()
         tpm_clear = pexpect.spawn('tpm_clear')
-        tpm_clear.expect('password: ')
-        tpm_clear.sendline(tpm_password)
-        out = tpm_clear.read().strip()
-        if 'failed' in out:
-            raise error.TestError('tpm_clear failed: %s' % out)
-        tpm_clear.close()
+        try:
+            tpm_clear.expect('password: ')
+            tpm_clear.sendline(tpm_password)
+            out = tpm_clear.read().strip()
+            if 'failed' in out:
+                self.job.set_state('client_state', 'UNRECOVERABLE')
+                raise error.TestError('tpm_clear failed: %s' % out)
+        finally:
+            tpm_clear.close()
         self.__remove_files(self._TPM_CLEAR_LIST)
 
 
@@ -133,11 +144,28 @@ class EnterpriseUITest(cros_ui_test.UITest):
             os.fchmod(machine_info_file.fileno(), 0644)
 
 
+    def __tpm_pretest_check(self):
+        """Check if the TPM is owned.
+
+        The subtest will not be run if the TPM is owned, and the cleanup stage
+        will attempt to clear the TPM using the saved password file. The server
+        side is responsible for rebooting the client and rerunning the test.
+        """
+        tpm_status = cryptohome.get_tpm_status()
+        if not tpm_status['Owned'] or tpm_status['Password']:
+            logging.info('client: Pretest check passed.')
+            return
+        logging.info('client: TPM already owned. '
+                     'Will attempt to clear TPM and request test rerun.')
+        self.job.set_state('client_state', 'REBOOT')
+
+
     def run_once(self, subtest=None):
         """
         Args:
             subtest: Name of the test function to run.
         """
-        logging.info('client: Running client test %s', subtest)
-        getattr(self, subtest)()
-        self._client_completed = True
+        if self.job.get_state('client_state') == 'RUNNING':
+            logging.info('client: Running client test %s', subtest)
+            getattr(self, subtest)()
+            self._client_completed = True
