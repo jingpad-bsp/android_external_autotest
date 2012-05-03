@@ -607,7 +607,9 @@ class SuiteTest(mox.MoxTestBase):
                              mox.StrContains(test.name)),
                 control_type=mox.IgnoreArg(),
                 meta_hosts=[dynamic_suite.VERSION_PREFIX + self._BUILD],
-                dependencies=[]).AndReturn(FakeJob())
+                dependencies=[],
+                keyvals={'build': self._BUILD, 'suite': self._TAG}
+                ).AndReturn(FakeJob())
 
 
     def testScheduleTests(self):

@@ -28,16 +28,23 @@ def generate_minidump_stacktrace(minidump_path):
     return rc
 
 
-def symbolicate_minidump_with_devserver(minidump_path):
+def symbolicate_minidump_with_devserver(minidump_path, resultdir):
     """
     Generates a stack trace for the specified minidump by consulting devserver.
 
     This function assumes the debug symbols have been staged on the devserver.
     @return HTTP response code of the attempt.
     """
+    # First, look up what build we tested.  If we can't find this, we can't
+    # get the right debug symbols, so we might as well give up right now.
+    keyvals = client_utils.read_keyval(resultdir)
+    if 'build' not in keyvals:
+        logging.warn('Cannot determine build being tested.')
+        return 400
+
     devserver = dev_server.DevServer.create()
     try:
-        trace_text = devserver.symbolicate_dump(minidump_path)
+        trace_text = devserver.symbolicate_dump(minidump_path, keyvals['build'])
         if not trace_text:
             return 400
         with open(minidump_path + '.txt', 'w') as trace_file:
@@ -65,12 +72,13 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
             rc = generate_minidump_stacktrace(minidump)
             if rc == 0:
                 logging.info('Generated stack trace for dump %s', minidump)
-                return
+                continue
 
-            http_rc = symbolicate_minidump_with_devserver(minidump)
+            http_rc = symbolicate_minidump_with_devserver(minidump,
+                                                          host_resultdir)
             if http_rc == 200:
                 logging.info('Generated stack trace for dump %s', minidump)
-                return
+                continue
 
             logging.warn('Failed to generate stack trace locally for ' \
                          'dump %s (rc=%d)', minidump, rc)

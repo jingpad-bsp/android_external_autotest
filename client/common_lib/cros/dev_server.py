@@ -167,22 +167,38 @@ class DevServer(object):
         return urllib2.urlopen(call).read()
 
 
-    def symbolicate_dump(self, minidump_path):
+    def symbolicate_dump(self, minidump_path, build):
         """Ask the dev server to symbolicate the dump at minidump_path.
 
-        Ask the dev server at |self._dev_server| to symbolicate the dump
-        at minidump_path, using previously staged debug symbols.
+        Stage the debug symbols for |build| and, if that works, ask the
+        dev server at |self._dev_server| to symbolicate the dump at
+        minidump_path.
 
         @param minidump_path: the on-disk path of the minidump.
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
+                      whose debug symbols are needed for symbolication.
         @return The contents of the stack trace
         @raise urllib2.HTTPError upon any return code that's not 200.
         """
-        call = self._build_call('symbolicate_dump')
         try:
             import requests
         except ImportError:
             logging.warning("Can't 'import requests' to connect to dev server.")
             return ''
+        # Stage debug symbols.
+        call = self._build_call(
+            'stage_debug',
+            archive_url=_get_image_storage_server() + build)
+        request = requests.get(call)
+        if (request.status_code != requests.codes.ok or
+            request.text != 'Success'):
+            raise urllib2.HTTPError(call,
+                                    request.status_code,
+                                    request.text,
+                                    request.headers,
+                                    None)
+        # Symbolicate minidump.
+        call = self._build_call('symbolicate_dump')
         request = requests.post(call,
                                 files={'minidump': open(minidump_path, 'rb')})
         if request.status_code == requests.codes.OK:
