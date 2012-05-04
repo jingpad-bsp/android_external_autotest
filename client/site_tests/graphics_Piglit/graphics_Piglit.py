@@ -8,10 +8,10 @@ Runs the piglit OpenGL suite of tests.
 import logging, os, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, cros_ui_test, login
+from autotest_lib.client.cros import cros_ui, graphics_ui_test, login
 
 # most graphics tests need the auto_login feature of UITest
-class graphics_Piglit(cros_ui_test.UITest):
+class graphics_Piglit(graphics_ui_test.GraphicsUITest):
     version = 2
     preserve_srcdir = True
 

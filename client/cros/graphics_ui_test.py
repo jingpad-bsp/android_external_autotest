@@ -21,7 +21,8 @@ class GraphicsUITest(cros_ui_test.UITest):
     _MESSAGES_FILE = '/var/log/messages'
     _HANGCHECK = 'drm:i915_hangcheck_elapsed'
 
-    def initialize(self):
+    def initialize(self, creds=None, is_creating_owner=False,
+                   extra_chrome_flags=[], subtract_extra_chrome_flags=[]):
         cmd = 'glxinfo | grep renderer'
         cmd = cros_ui.xcommand(cmd)
         output = utils.run(cmd)
@@ -38,7 +39,8 @@ class GraphicsUITest(cros_ui_test.UITest):
             logging.info(line)
             self.hangs[line] = line
 
-        cros_ui_test.UITest.initialize(self)
+        cros_ui_test.UITest.initialize(self, creds, is_creating_owner,
+            extra_chrome_flags, subtract_extra_chrome_flags)
 
     def cleanup(self):
         cros_ui_test.UITest.cleanup(self)

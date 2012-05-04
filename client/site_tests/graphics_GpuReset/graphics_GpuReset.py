@@ -9,6 +9,7 @@ import urllib2
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.cros import graphics_ui_test
 
 # to run this test manually on a test target
 # ssh root@machine
@@ -17,7 +18,7 @@ from autotest_lib.client.common_lib import error, utils
 # ./gpureset
 # start ui
 
-class graphics_GpuReset(test.test):
+class graphics_GpuReset(graphics_ui_test.GraphicsUITest):
   version = 1
   preserve_srcdir = True
   loops = 5

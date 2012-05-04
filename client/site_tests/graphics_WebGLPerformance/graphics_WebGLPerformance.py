@@ -5,16 +5,17 @@
 import logging, os, shutil, time, urllib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
+from autotest_lib.client.cros import cros_ui, cros_ui_test, graphics_ui_test
+from autotest_lib.client.cros import httpd
 
-class graphics_WebGLPerformance(cros_ui_test.UITest):
+class graphics_WebGLPerformance(graphics_ui_test.GraphicsUITest):
     version = 1
 
     def initialize(self, creds='$default'):
         self._test_url = 'http://localhost:8000/webgl-performance-tests.html'
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
         self._testServer.run()
-        cros_ui_test.UITest.initialize(self, creds,
+        graphics_ui_test.GraphicsUITest.initialize(self, creds,
                                        extra_chrome_flags=['--enable-webgl'])
 
     def setup(self, tarball='webgl-performance-0.0.1.tar.bz2'):
@@ -34,7 +35,7 @@ class graphics_WebGLPerformance(cros_ui_test.UITest):
 
     def cleanup(self):
         self._testServer.stop()
-        cros_ui_test.UITest.cleanup(self)
+        graphics_ui_test.GraphicsUITest.cleanup(self)
 
     def run_once(self, timeout=600):
         # TODO(ihf): Remove when stable. For now we have to expect crashes.
