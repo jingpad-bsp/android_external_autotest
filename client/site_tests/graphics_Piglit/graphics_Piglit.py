@@ -43,6 +43,9 @@ class graphics_Piglit(graphics_ui_test.GraphicsUITest):
             os.listdir(bin_path)):
             os.chdir(piglit_path)
             cmd = 'python piglit-run.py'
+            # Piglit by default wants to run multiple tests in separate
+            # processes concurrently. Strictly serialize this.
+            cmd = cmd + ' --concurrent=0'
             cmd = cmd + ' tests/cros-driver.tests'
             cmd = cmd + ' ' + results_path
             cmd = cros_ui.xcommand(cmd)
