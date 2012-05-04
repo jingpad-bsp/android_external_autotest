@@ -35,7 +35,7 @@ class ConfiguratorTest(unittest.TestCase):
                                    '..', '..', 'config', 'wifi_compat_config')
         factory = ap_configurator_factory.APConfiguratorFactory(config_path)
         # Set self.ap to the one you want to test against.
-        self.ap = factory.get_ap_configurator_by_short_name('WRT54G2')
+        self.ap = factory.get_ap_configurator_by_short_name('DIR-655')
 
     def test_make_no_changes(self):
         """Test saving with no changes doesn't throw an error."""
@@ -71,6 +71,22 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_ssid('AP-automated-ssid')
         self.ap.apply_settings()
 
+    def test_invalid_security(self):
+        """Test an exception is thrown for an invalid configuration."""
+        for mode in self.ap.get_supported_modes():
+            if not self.ap.mode_n in mode['modes']:
+                return
+        if not self.ap.is_security_mode_supported(self.ap.security_wep):
+            return
+        self.ap.set_mode(self.ap.mode_n)
+        self.ap.set_security_wep('77777', self.ap.wep_authentication_open)
+        try:
+            self.ap.apply_settings()
+        except RuntimeError:
+            self.ap.driver.close()
+            return
+        self.fail('An exception should have been thrown but was not.')
+
     def test_security_wep(self):
         """Test configuring WEP security."""
         if self.ap.is_security_mode_supported(self.ap.security_wep):
@@ -97,6 +113,9 @@ class ConfiguratorTest(unittest.TestCase):
 
     def test_modes(self):
         """Tests switching modes."""
+        # Some security settings won't work with some modes
+        self.ap.set_security_disabled()
+        self.ap.apply_settings()
         modes_info = self.ap.get_supported_modes()
         self.assertTrue(modes_info,
                          msg='Returned an invalid mode list.  Is this method'

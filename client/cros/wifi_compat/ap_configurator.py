@@ -86,8 +86,8 @@ class APConfigurator(object):
             self.wait.until(lambda _: self.driver.find_element_by_xpath(xpath))
         except SeleniumTimeoutException, e:
             raise SeleniumTimeoutException('Unable to find the object by xpath:'
-                                           '%s\n WebDriver exception: %s',
-                                           xpath, str(e))
+                                           '%s\n WebDriver exception: %s' %
+                                           (xpath, str(e)))
         return self.driver.find_element_by_xpath(xpath)
 
     def select_item_from_popup_by_id(self, item, element_id,
@@ -147,13 +147,13 @@ class APConfigurator(object):
         """
         # When we can get the value we know the text field is ready.
         text_field = self.driver.find_element_by_xpath(xpath)
-        try:
-            self.wait.until(lambda _: text_field.get_attribute('value'))
-        except SeleniumTimeoutException, e:
-            raise SeleniumTimeoutException('Unable to obtain the value of the '
-                                           'text field %s.\nWebDriver '
-                                           'exception: %s',
-                                           wait_for_xpath, str(e))
+        if text_field.get_attribute('type') != 'password':
+            try:
+                self.wait.until(lambda _: text_field.get_attribute('value'))
+            except SeleniumTimeoutException, e:
+                raise SeleniumTimeoutException('Unable to obtain the value of '
+                                               'the text field %s.\nWebDriver '
+                                               'exception:%s' % (xpath, str(e)))
         text_field = self.driver.find_element_by_xpath(xpath)
         text_field.clear()
         text_field.send_keys(content)

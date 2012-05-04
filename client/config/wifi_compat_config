@@ -26,4 +26,11 @@
     'serial_number': 'UM1019R901864',
     'mac_address': '00:14:D1:CA:FC:3C',
   },
+  {
+    'class_name': 'DLinkDIR655APConfigurator',
+    'short_name': 'DIR-655',
+    'admin_url': 'http://172.22.162.50',
+    'serial_number': '',
+    'mac_address': '84:C9:B2:50:9A:C8',
+  },
 ]
