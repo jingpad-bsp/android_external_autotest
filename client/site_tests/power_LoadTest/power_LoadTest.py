@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -19,6 +19,13 @@ params_dict = {
     'scroll_by_pixels': '_scroll_by_pixels',
     'tasks': '_tasks',
 }
+
+
+# Need to leave time for cleanup before workload completes due to
+# irregularities in the interaction between the extension and the test channel.
+# http://crbug.com/124133
+SECONDS_FOR_CLEANUP = 15
+SECONDS_SLEEP_DELAY = 60
 
 
 class power_LoadTest(cros_ui_test.UITest):
@@ -81,6 +88,10 @@ class power_LoadTest(cros_ui_test.UITest):
         self._tasks = '\'' + tasks.replace(' ','') + '\''
 
         self._power_status.assert_battery_state(percent_initial_charge_min)
+        if self._loop_time <= SECONDS_FOR_CLEANUP:
+            #  To allow for ui creation/teardown, the loop time has a limit.
+            raise error.TestError('Loop time must be more than %ss.' %
+                                  SECONDS_FOR_CLEANUP)
         # If force wifi enabled, convert eth0 to backchannel and connect to the
         # specified WiFi AP.
         if self._force_wifi:
@@ -267,16 +278,19 @@ class power_LoadTest(cros_ui_test.UITest):
         logging.debug(data)
 
 
-    def _do_wait(self, verbose, seconds, latch):
+    def _do_wait(self, verbose, seconds_loop_time, latch):
         latched = False
         low_battery = False
-        total_time = seconds + 60
-        elapsed_time = 0
-        wait_time = 60
+        remaining_time = seconds_loop_time - SECONDS_FOR_CLEANUP
+        seconds_sleep = SECONDS_SLEEP_DELAY
 
-        while elapsed_time < total_time:
-            time.sleep(wait_time)
-            elapsed_time += wait_time
+        # Need to leave time for cleanup before extension workload
+        # actually completes: http://crbug.com/124133
+        while remaining_time > 0:
+            if remaining_time <= seconds_sleep:
+                seconds_sleep = remaining_time
+            time.sleep(seconds_sleep)
+            remaining_time -= seconds_sleep
 
             self._power_status.refresh()
             if verbose:
@@ -295,6 +309,11 @@ class power_LoadTest(cros_ui_test.UITest):
             if latched or low_battery:
                 break
 
+        # TODO: latched will remain False if the loop times out before
+        #       completing (SECONDS_FOR_CLEANUP > 0 forces this).
+        #       When http://crosbug.com/30536 is resolved, use of
+        #       SECONDS_FOR_CLEANUP may be removed and power_extension
+        #       stats will resume getting logged.
         if latched:
             # record chrome power extension stats
             form_data = self._testServer.get_form_entries()
