@@ -27,6 +27,20 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
 
     def initialize(self):
         chrome_test.ChromeTestBase.initialize(self)
+        # The next few lines install the page_cycler depdendency onto the
+        # target.  It is very similar to what happens in the above
+        # function call except that chrome_test is installing the
+        # chrome_test dep.
+        dep = 'page_cycler_dep'
+        dep_dir = os.path.join(self.autodir, 'deps', dep)
+        self.job.install_pkg(dep, 'dep', dep_dir)
+        try:
+            setup_cmd = '/bin/sh %s/%s' % (dep_dir,
+                                           'setup_test_links.sh')
+            utils.system(setup_cmd)  # this might raise an exception
+        except error.CmdError, e:
+            raise error.TestError(e)
+
         assert os.geteuid() == 0, 'Need superuser privileges'
 
         deps_dir = os.path.join(self.autodir, 'deps')
