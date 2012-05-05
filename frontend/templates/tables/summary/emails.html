@@ -17,25 +17,33 @@ one planel to show test emails and the other to show performance emails.
 
 {% block html_block %}
 <h3>Receiving test failure emails:</h3>
-<p>Interested test owners can react to test failures in the automated test lab
-by 'registering' their email address with the ChromeOS test emailer.  The
-test emailer registration can be configured to send email for only one of the
-following conditions:
+<p>Interested test owners can be notified of test failures by the automated
+test lab in two ways:
 <ol>
-  <li>a test in the selected suite <b>fails</b></li>
+  <li>By registering with the ChromeOS test failure emailer to receive
+  mail for test failures that match patterns of a category_regex and/or a
+  test_name_regex. These failure emails then will be sent directly to the
+  supplied @google.com email alias.</li>
+  <li>By following the
+  <b>
+  <a href="https://groups.google.com/a/google.com/forum/#!forum/chromeos-automated-test-failures"
+  target="_blank">Google Group</a>
+  </b> that receives all test failure email
+  from the ChromeOS test failure emailer.</li>
+</ol>
+To register an e-mail address with the ChromeOS test failure emailer, modify
+the <i>resultmail</i> section of the
+<i><b>
+<a href="https://gerrit.chromium.org/gerrit/gitweb?p=chromiumos/third_party/autotest.git;a=blob;f=site_utils/dashboard/dash_config.json"
+target="_blank">site_utils/dashboard/dash_config.json</a>
+</b></i> file in the autotest repo to create a registration entry.
+The emailer registration can be configured to send email for only <b>one</b>
+of the following conditions:
+<ol>
+  <li>a test in the selected suite <b>fails. [DEFAULT if not specified]</b></li>
   <li>a test changes state e.g. <b>passing->failing</b>,
       <b>failing->passing</b></li>
   <li>a test completes (most verbose)</li>
 </ol>
-To register an e-mail address with the ChromeOS test emailer, modify the
-<i>resultmail</i> section of the <i><a
-href="https://gerrit.chromium.org/gerrit/gitweb?p=chromiumos/third_party/autotest.git;a=blob;f=site_utils/dashboard/dash_config.json"
-target="_blank">site_utils/dashboard/dash_config.json
-</a></i> file in the autotest repo to create a registration entry.
 </p>
-<iframe src ="emails/test" name="test_html" id="test_html" scrolling=yes
-        style="height:45%; width:100%; float:left;"></iframe>
-<iframe src ="emails/performance"
-        name="perf_html" id="perf_html" scrolling=yes
-        style="height:50%; width:100%;"></iframe>
 {% endblock %}

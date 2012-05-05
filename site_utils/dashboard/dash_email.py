@@ -10,8 +10,7 @@ links to aid in troubleshooting test failures.  The parameters of these
 emails are generally described in dash_config.json under 'filters'.
 """
 
-__author__ = ['truty@google.com (Mike Truty)',
-              'dalecurtis@google.com (Dale Curtis)']
+__author__ = ['truty@google.com (Mike Truty)']
 
 import logging
 import os
@@ -309,26 +308,28 @@ def EmailFromConfig(dash_base_dir, dash_view, email_options,
     if not 'platforms' in mailer or not 'filters' in mailer:
       logging.warning('Emailer requires platforms and filters.')
       continue
-    for board, netbooks in mailer['platforms'].iteritems():
+    for board_prefix, netbooks in mailer['platforms'].iteritems():
       for netbook in netbooks:
-        for filter_ in mailer['filters']:
-          use_sheriffs = filter_.get('sheriffs', False)
-          cc = filter_.get('cc', None)
-          if not use_sheriffs and not cc:
-            logging.warning('Email requires sheriffs or cc.')
-            continue
-          trigger = filter_.get('trigger', EMAIL_TRIGGER_FAILED)
-          if not trigger in triggers:
-            logging.warning('Unknown trigger encountered, using default %s.',
-                            EMAIL_TRIGGER_FAILED)
-            trigger = EMAIL_TRIGGER_FAILED
-          categories = dash_view.GetCategories(netbook, board,
-                                               regex=filter_.get('categories'))
-          notifier = DashEmailNotifier(dash_base_dir, netbook, board,
-                                       categories, use_sheriffs, cc, trigger,
-                                       prefix + trigger)
-          notifier.CheckItems((categories, filter_.get('tests')))
-          notifier.GenerateEmail()
+        for board in [b for b in dash_view.GetNetbookBoardTypes(netbook)
+                      if b.startswith(board_prefix)]:
+          for filter_ in mailer['filters']:
+            use_sheriffs = filter_.get('sheriffs', False)
+            cc = filter_.get('cc', None)
+            if not use_sheriffs and not cc:
+              logging.warning('Email requires sheriffs or cc.')
+              continue
+            trigger = filter_.get('trigger', EMAIL_TRIGGER_FAILED)
+            if not trigger in triggers:
+              logging.warning('Unknown trigger encountered, using default %s.',
+                              EMAIL_TRIGGER_FAILED)
+              trigger = EMAIL_TRIGGER_FAILED
+            categories = dash_view.GetCategories(netbook, board,
+                                                 filter_.get('categories'))
+            notifier = DashEmailNotifier(dash_base_dir, netbook, board,
+                                         categories, use_sheriffs, cc, trigger,
+                                         prefix + trigger)
+            notifier.CheckItems((categories, filter_.get('tests')))
+            notifier.GenerateEmail()
 
 
 def EmailAllFailures(dash_base_dir, dash_view):

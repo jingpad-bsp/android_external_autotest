@@ -476,7 +476,9 @@ class AutotestDashView(object):
         Unsorted List of boards which have completed tests on the
         given netbook (with netbook_ prefix).
       """
-      return self._build_tree[netbook].keys()
+      if netbook in self._build_tree:
+        return self._build_tree[netbook].keys()
+      return []
 
     def GetAllBuilds(self):
       """Return list of all known builds that we used.

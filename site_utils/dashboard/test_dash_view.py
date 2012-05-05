@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -26,6 +26,10 @@ from dash_strings import LAST_N_JOBS_LIMIT
 def parse_args():
   """Support verbose flag."""
   parser = optparse.OptionParser()
+  parser.add_option('-d', '--dash-dir',
+                    help='base dashboard dir [default: %default]',
+                    dest='dashdir',
+                    default='/usr/local/autotest/results/dashboard')
   parser.add_option('-f', '--file-name', help='output filename',
                     dest='filename', default=None)
   parser.add_option('-j', '--job-limit', help='limit to last n jobs',
@@ -58,7 +62,12 @@ def main():
 
   options, args = parse_args()
 
+  dash_base_dir = options.dashdir
+  if not os.path.exists(dash_base_dir):
+    dash_util.MakeChmodDirs(dash_base_dir)
+
   dash_view = AutotestDashView()
+  dash_view.CrashSetup(dash_base_dir)
   dash_view.LoadFromDB(int(options.joblimit))
   if options.showmodel:
     dash_view.ShowDataModel()
@@ -66,6 +75,7 @@ def main():
 
   dash_view = AutotestDashView()
   if options.showkeyvals:
+    dash_view.CrashSetup(dash_base_dir)
     dash_view.LoadPerfFromDB(int(options.joblimit))
     if options.showmodel:
       dash_view.ShowKeyVals()
