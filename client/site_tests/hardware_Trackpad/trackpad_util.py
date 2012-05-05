@@ -567,6 +567,8 @@ def gs_upload_gesture_set(gesture_path, autotest_dir, extra_name_code,
 
 def write_symlink(source, link_name):
     # Make the link point to the source
-    if os.path.exists(link_name):
+    if os.path.islink(link_name):
         os.remove(link_name)
+    elif os.path.isdir(link_name):
+        shutil.rmtree(link_name, True)
     os.symlink(source, link_name)
