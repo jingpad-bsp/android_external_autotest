@@ -954,8 +954,7 @@ class Suite(object):
             name='/'.join([self._build, self._tag, test.name]),
             control_type=test.test_type.capitalize(),
             meta_hosts=[meta_hosts],
-            dependencies=job_deps,
-            keyvals={'build': self._build, 'suite': self._tag})
+            dependencies=job_deps)
 
         setattr(test_obj, 'test_name', test.name)
 
