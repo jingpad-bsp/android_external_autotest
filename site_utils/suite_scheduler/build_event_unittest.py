@@ -76,6 +76,17 @@ class NewBuildTest(BuildEventTestBase):
         return build_event.NewBuild(self.mv, False)
 
 
+    def testMerge(self):
+        initial_hash = '1cedcafe'
+        self.mv.GetCheckpoint().AndReturn(initial_hash)
+        self.mox.ReplayAll()
+
+        event1 = self.CreateEvent()
+        event1.Prepare()
+        event1.Merge(self.CreateEvent())
+        self.assertEquals(event1._revision, initial_hash)
+
+
     def testGetBranchBuilds(self):
         """Ensure that we handle the appearance of new branch builds."""
         branch_manifests = {('factory','16'): ['last16'],

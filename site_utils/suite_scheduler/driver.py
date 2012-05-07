@@ -16,7 +16,7 @@ class Driver(object):
     @var _scheduler: a DedupingScheduler, used to schedule jobs with the AFE.
     @var _enumerator: a BoardEnumerator, used to list plaforms known to
                       the AFE
-    @var _events: list of BaseEvents to be handled each time through main loop.
+    @var _events: dict of BaseEvents to be handled each time through main loop.
     """
 
     _LOOP_INTERVAL_SECONDS = 5 * 60
@@ -32,22 +32,48 @@ class Driver(object):
         self._enumerator = enumerator
 
 
+    def RereadAndReprocessConfig(self, config, mv):
+        """Re-read config, re-populate self._events and recreate task lists.
+
+        @param config: an instance of ForgivingConfigParser.
+        @param mv: an instance of ManifestVersions.
+        """
+        config.reread()
+        new_events = self._CreateEventsWithTasks(config, mv)
+        for keyword, event in self._events.iteritems():
+            event.Merge(new_events[keyword])
+
+
     def SetUpEventsAndTasks(self, config, mv):
         """Populate self._events and create task lists from config.
 
         @param config: an instance of ForgivingConfigParser.
         @param mv: an instance of ManifestVersions.
         """
-        self._events = [timed_event.Nightly.CreateFromConfig(config, mv),
-                        timed_event.Weekly.CreateFromConfig(config, mv),
-                        build_event.NewBuild.CreateFromConfig(config, mv)]
+        self._events = self._CreateEventsWithTasks(config, mv)
+
+
+    def _CreateEventsWithTasks(self, config, mv):
+        """Create task lists from config, and assign to newly-minted events.
+
+        Calling multiple times should start afresh each time.
+
+        @param config: an instance of ForgivingConfigParser.
+        @param mv: an instance of ManifestVersions.
+        """
+        event_classes = [timed_event.Nightly, timed_event.Weekly,
+                         build_event.NewBuild]
+        events = {}
+        for klass in event_classes:
+            events[klass.KEYWORD] = klass.CreateFromConfig(config, mv)
 
         tasks = self.TasksFromConfig(config)
 
-        for event in self._events:
-            if event.keyword in tasks:
-                event.tasks = tasks[event.keyword]
+        for keyword, event in events.iteritems():
+            if keyword in tasks:
+                event.tasks = tasks[keyword]
         # TODO(cmasone): warn about unknown keywords?
+        return events
 
 
     def TasksFromConfig(self, config):
@@ -75,12 +101,13 @@ class Driver(object):
         return tasks
 
 
-    def RunForever(self, mv):
+    def RunForever(self, config, mv):
         """Main loop of the scheduler.  Runs til the process is killed.
 
+        @param config: an instance of ForgivingConfigParser.
         @param mv: an instance of manifest_versions.ManifestVersions.
         """
-        for event in self._events:
+        for event in self._events.itervalues():
             event.Prepare()
         while True:
             self.HandleEventsOnce(mv)
@@ -88,6 +115,7 @@ class Driver(object):
             # TODO(cmasone): Do we want to run every _LOOP_INTERVAL_SECONDS?
             #                Or is it OK to wait that long between every run?
             time.sleep(self._LOOP_INTERVAL_SECONDS)
+            self.RereadAndReprocessConfig(config, mv)
 
 
     def HandleEventsOnce(self, mv):
@@ -97,7 +125,7 @@ class Driver(object):
         """
         boards = self._enumerator.Enumerate()
         logging.info('Running suites for boards: %r', boards)
-        for e in self._events:
+        for e in self._events.itervalues():
             if e.ShouldHandle():
                 logging.debug('Handling %s event', e.keyword)
                 for board in boards:
@@ -116,6 +144,6 @@ class Driver(object):
         branch_builds = {task.PickBranchName(type, milestone): [build_name]}
         logging.info('Testing build %s-%s on %s' % (milestone, manifest, board))
 
-        for e in self._events:
+        for e in self._events.itervalues():
             if e.keyword in keywords:
                 e.Handle(self._scheduler, branch_builds, board, force=True)

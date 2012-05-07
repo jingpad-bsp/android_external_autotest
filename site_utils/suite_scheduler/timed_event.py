@@ -39,13 +39,26 @@ class TimedEvent(base_event.BaseEvent):
         return datetime.datetime.now()
 
 
+    def Merge(self, to_merge):
+        """Merge this event with to_merge, changing all mutable properties.
+
+        keyword remains unchanged; the following take on values from to_merge:
+          _deadline
+
+        @param to_merge: A TimedEvent instance to merge into this isntance.
+        """
+        super(TimedEvent, self).Merge(to_merge)
+        self._deadline = to_merge._deadline
+
+
     def Prepare(self):
         pass
 
 
     def ShouldHandle(self):
         """Return True if self._deadline has passed; False if not."""
-        return self._now() >= self._deadline
+        if not super(TimedEvent, self).ShouldHandle():
+            return self._now() >= self._deadline
 
 
     def _LatestPerBranchBuildsSince(self, board, days_ago):

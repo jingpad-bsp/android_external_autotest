@@ -29,26 +29,48 @@ class DriverTest(mox.MoxTestBase):
         self.mv = self.mox.CreateMock(manifest_versions.ManifestVersions)
 
         self.config = forgiving_config_parser.ForgivingConfigParser()
-        self.nightly = self.mox.CreateMock(timed_event.Nightly)
-        self.nightly.keyword = timed_event.Nightly.KEYWORD
-        self.weekly = self.mox.CreateMock(timed_event.Weekly)
-        self.weekly.keyword = timed_event.Weekly.KEYWORD
-        self.new_build = self.mox.CreateMock(build_event.NewBuild)
-        self.new_build.keyword = build_event.NewBuild.KEYWORD
+
+        self.nightly_bvt = task.Task(timed_event.Nightly.KEYWORD, '', '')
+        self.weekly_bvt = task.Task(timed_event.Weekly.KEYWORD, '', '')
+        self.new_build_bvt = task.Task(build_event.NewBuild.KEYWORD, '', '')
 
         self.driver = driver.Driver(self.ds, self.be)
 
 
+    def _CreateMockEvent(self, klass):
+        event = self.mox.CreateMock(klass)
+        event.keyword = klass.KEYWORD
+        event.tasks = []
+        return event
+
+
     def _ExpectSetup(self):
+        mock_nightly = self._CreateMockEvent(timed_event.Nightly)
+        mock_weekly = self._CreateMockEvent(timed_event.Weekly)
+        mock_new_build = self._CreateMockEvent(build_event.NewBuild)
+
         self.mox.StubOutWithMock(timed_event.Nightly, 'CreateFromConfig')
         self.mox.StubOutWithMock(timed_event.Weekly, 'CreateFromConfig')
         self.mox.StubOutWithMock(build_event.NewBuild, 'CreateFromConfig')
         timed_event.Nightly.CreateFromConfig(
-            mox.IgnoreArg(), self.mv).AndReturn(self.nightly)
+            mox.IgnoreArg(), self.mv).AndReturn(mock_nightly)
         timed_event.Weekly.CreateFromConfig(
-            mox.IgnoreArg(), self.mv).AndReturn(self.weekly)
+            mox.IgnoreArg(), self.mv).AndReturn(mock_weekly)
         build_event.NewBuild.CreateFromConfig(
-            mox.IgnoreArg(), self.mv).AndReturn(self.new_build)
+            mox.IgnoreArg(), self.mv).AndReturn(mock_new_build)
+        return [mock_nightly, mock_weekly, mock_new_build]
+
+
+    def _ExpectTaskConfig(self):
+        self.config.add_section(timed_event.Nightly.KEYWORD)
+        self.config.add_section(timed_event.Weekly.KEYWORD)
+        self.mox.StubOutWithMock(task.Task, 'CreateFromConfigSection')
+        task.Task.CreateFromConfigSection(
+            self.config, timed_event.Nightly.KEYWORD).InAnyOrder().AndReturn(
+                (timed_event.Nightly.KEYWORD, self.nightly_bvt))
+        task.Task.CreateFromConfigSection(
+            self.config, timed_event.Weekly.KEYWORD).InAnyOrder().AndReturn(
+                (timed_event.Weekly.KEYWORD, self.weekly_bvt))
 
 
     def _ExpectEnumeration(self):
@@ -80,28 +102,49 @@ class DriverTest(mox.MoxTestBase):
 
     def testTasksFromConfig(self):
         """Test that we can build a list of Tasks from a config."""
-        self.config.add_section(self.nightly.keyword)
-        self.config.add_section(self.weekly.keyword)
-        self.mox.StubOutWithMock(task.Task, 'CreateFromConfigSection')
-        task.Task.CreateFromConfigSection(
-            self.config, self.nightly.keyword).InAnyOrder().AndReturn(
-                (self.nightly.keyword, self.nightly))
-        task.Task.CreateFromConfigSection(
-            self.config, self.weekly.keyword).InAnyOrder().AndReturn(
-                (self.weekly.keyword, self.weekly))
+        self._ExpectTaskConfig()
         self.mox.ReplayAll()
         tasks = self.driver.TasksFromConfig(self.config)
-        self.assertTrue(self.nightly in tasks[self.nightly.keyword])
-        self.assertTrue(self.weekly in tasks[self.weekly.keyword])
+        self.assertTrue(self.nightly_bvt in tasks[timed_event.Nightly.KEYWORD])
+        self.assertTrue(self.weekly_bvt in tasks[timed_event.Weekly.KEYWORD])
+
+
+    def testTasksFromConfigRecall(self):
+        """Test that we can build a list of Tasks from a config twice."""
+        events = self._ExpectSetup()
+        self._ExpectTaskConfig()
+        self.mox.ReplayAll()
+
+        self.driver.SetUpEventsAndTasks(self.config, self.mv)
+        for keyword, event in self.driver._events.iteritems():
+            if keyword == timed_event.Nightly.KEYWORD:
+                self.assertTrue(self.nightly_bvt in event.tasks)
+            if keyword == timed_event.Weekly.KEYWORD:
+                self.assertTrue(self.weekly_bvt in event.tasks)
+        self.mox.VerifyAll()
+
+        # Now, change up the config and SetUpEventsAndTasks again!
+        self.mox.ResetAll()
+        self.config.remove_section(timed_event.Weekly.KEYWORD)
+        self._ExpectSetup()
+        task.Task.CreateFromConfigSection(
+            self.config, timed_event.Nightly.KEYWORD).InAnyOrder().AndReturn(
+                (timed_event.Nightly.KEYWORD, self.nightly_bvt))
+        self.mox.ReplayAll()
+        self.driver.SetUpEventsAndTasks(self.config, self.mv)
+        for keyword, event in self.driver._events.iteritems():
+            if keyword == timed_event.Nightly.KEYWORD:
+                self.assertTrue(self.nightly_bvt in event.tasks)
+            elif keyword == timed_event.Weekly.KEYWORD:
+                self.assertFalse(self.weekly_bvt in event.tasks)
 
 
     def testHandleAllEventsOnce(self):
         """Test that all events being ready is handled correctly."""
-        self._ExpectSetup()
+        events = self._ExpectSetup()
         self._ExpectEnumeration()
-        self._ExpectHandle(self.nightly, 'events')
-        self._ExpectHandle(self.weekly, 'events')
-        self._ExpectHandle(self.new_build, 'events')
+        for event in events:
+            self._ExpectHandle(event, 'events')
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config, self.mv)
@@ -110,11 +153,13 @@ class DriverTest(mox.MoxTestBase):
 
     def testHandleNightlyEventOnce(self):
         """Test that one ready event is handled correctly."""
-        self._ExpectSetup()
+        events = self._ExpectSetup()
         self._ExpectEnumeration()
-        self._ExpectHandle(self.nightly, 'events')
-        self.weekly.ShouldHandle().InAnyOrder('events').AndReturn(False)
-        self.new_build.ShouldHandle().InAnyOrder('events').AndReturn(False)
+        for event in events:
+            if event.keyword == timed_event.Nightly.KEYWORD:
+                self._ExpectHandle(event, 'events')
+            else:
+                event.ShouldHandle().InAnyOrder('events').AndReturn(False)
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config, self.mv)
@@ -123,7 +168,7 @@ class DriverTest(mox.MoxTestBase):
 
     def testForceOnceForBuild(self):
         """Test that one event being forced is handled correctly."""
-        self._ExpectSetup()
+        events = self._ExpectSetup()
 
         board = 'board'
         type = 'release'
@@ -131,12 +176,12 @@ class DriverTest(mox.MoxTestBase):
         manifest = '200.0.02'
         build = base_event.BuildName(board, type, milestone, manifest)
 
-        self.nightly.Handle(mox.IgnoreArg(), {milestone: [build]}, board,
+        events[0].Handle(mox.IgnoreArg(), {milestone: [build]}, board,
                             force=True)
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config, self.mv)
-        self.driver.ForceEventsOnceForBuild([self.nightly.keyword], build)
+        self.driver.ForceEventsOnceForBuild([events[0].keyword], build)
 
 
 

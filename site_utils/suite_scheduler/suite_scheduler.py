@@ -122,7 +122,7 @@ def main():
         d.ForceEventsOnceForBuild(keywords, options.build)
     else:
         mv.Initialize()
-        d.RunForever(mv)
+        d.RunForever(config, mv)
 
 
 if __name__ == "__main__":

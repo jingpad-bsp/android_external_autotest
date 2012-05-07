@@ -62,6 +62,7 @@ class BaseEvent(object):
 
     @var _keyword: the keyword/name of this event, e.g. new_build, nightly.
     @var _mv: ManifestVersions instance used to query for new builds, etc.
+    @var _always_handle: whether to make ShouldHandle always return True.
     @var _tasks: set of Task instances that run on this event.
                  Use a set so that instances that encode logically equivalent
                  Tasks get de-duped before we even try to schedule them.
@@ -98,8 +99,7 @@ class BaseEvent(object):
         self._keyword = keyword
         self._mv = manifest_versions
         self._tasks = set()
-        if always_handle:
-            self.ShouldHandle = lambda: True
+        self._always_handle = always_handle
 
 
     @property
@@ -120,6 +120,21 @@ class BaseEvent(object):
         @param iterable_of_tasks: list of Task instances that can fire on this.
         """
         self._tasks = set(iterable_of_tasks)
+
+
+    def Merge(self, to_merge):
+        """Merge this event with to_merge, changing all mutable properties.
+
+        keyword remains unchanged; the following take on values from to_merge:
+          _tasks
+          _mv
+          _always_handle
+
+        @param to_merge: A BaseEvent instance to merge into this instance.
+        """
+        self.tasks = to_merge.tasks
+        self._mv = to_merge._mv
+        self._always_handle = to_merge._always_handle
 
 
     def Prepare(self):
@@ -144,9 +159,9 @@ class BaseEvent(object):
     def ShouldHandle(self):
         """Returns True if this BaseEvent should be Handle()'d, False if not.
 
-        Must be implemented by subclasses.
+        Must be extended by subclasses.
         """
-        raise NotImplementedError()
+        return self._always_handle
 
 
     def UpdateCriteria(self):

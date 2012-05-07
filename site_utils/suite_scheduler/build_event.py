@@ -4,7 +4,6 @@
 
 import base_event, forgiving_config_parser, manifest_versions, task
 
-
 class BuildEvent(base_event.BaseEvent):
     """Base class for events that come from the build system.
 
@@ -26,6 +25,17 @@ class BuildEvent(base_event.BaseEvent):
         self._revision = None
 
 
+    def Merge(self, to_merge):
+        """Merge this event with to_merge, changing all mutable properties.
+
+        self._revision REMAINS UNCHANGED.  That's part of this instance's
+        identity.
+
+        @param to_merge: A BuildEvent instance to merge into this isntance.
+        """
+        super(BuildEvent, self).Merge(to_merge)
+
+
     def Prepare(self):
         """Perform any one-time setup that must occur before [Should]Handle().
 
@@ -39,7 +49,8 @@ class BuildEvent(base_event.BaseEvent):
 
         @return True if there's been a new build, false otherwise.
         """
-        return self._mv.AnyManifestsSinceRev(self._revision)
+        if not super(BuildEvent, self).ShouldHandle():
+            return self._mv.AnyManifestsSinceRev(self._revision)
 
 
     def _AllPerBranchBuildsSince(self, board, revision):
