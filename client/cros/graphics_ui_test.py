@@ -23,15 +23,14 @@ class GraphicsUITest(cros_ui_test.UITest):
 
     def initialize(self, creds=None, is_creating_owner=False,
                    extra_chrome_flags=[], subtract_extra_chrome_flags=[]):
-        cmd = 'glxinfo | grep renderer'
+        cmd = 'glxinfo | grep "OpenGL renderer string"'
         cmd = cros_ui.xcommand(cmd)
         output = utils.run(cmd)
         result = output.stdout.splitlines()[0]
         logging.info('glxinfo: %s', result)
-        if 'llvm' in result.lower() or 'softpipe' in result.lower():
+        # TODO(ihf): Find exhaustive error conditions (especially ARM).
+        if 'llvm' in result.lower() or 'soft' in result.lower():
           raise error.TestFail('Refusing to run on SW rasterizer: ' + result)
-        if not 'intel' in result.lower():
-          raise error.TestFail('Want to run on Intel HW rasterizer: ' + result)
         logging.info('Initialize: Checking for old GPU hangs...')
         f = open(self._MESSAGES_FILE, 'r')
         for line in f:
@@ -45,15 +44,14 @@ class GraphicsUITest(cros_ui_test.UITest):
     def cleanup(self):
         cros_ui_test.UITest.cleanup(self)
 
-        cmd = 'glxinfo | grep renderer'
+        cmd = 'glxinfo | grep "OpenGL renderer string"'
         cmd = cros_ui.xcommand(cmd)
         output = utils.run(cmd)
         result = output.stdout.splitlines()[0]
         logging.info('glxinfo: %s', result)
-        if 'llvm' in result.lower() or 'softpipe' in result.lower():
+        # TODO(ihf): Find exhaustive error conditions (especially ARM).
+        if 'llvm' in result.lower() or 'soft' in result.lower():
           raise error.TestFail('Finished test on SW rasterizer: ' + result)
-        if not 'intel' in result.lower():
-          raise error.TestFail('Finished test not on Intel HW rast: ' + result)
         logging.info('Cleanup: Checking for new GPU hangs...')
         f = open(self._MESSAGES_FILE, 'r')
         for line in f:
