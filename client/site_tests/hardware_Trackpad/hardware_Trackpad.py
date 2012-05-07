@@ -57,6 +57,7 @@ class hardware_Trackpad(test.test):
         self.vlog = trackpad_util.VerificationLog()
         self.local_path = self.bindir
         self.model = trackpad_util.get_model()
+        self.regression_gestures = None
 
         # Get some parameters from the config file
         self.regression_subset_list = read_trackpad_test_conf(
@@ -65,6 +66,10 @@ class hardware_Trackpad(test.test):
                 'regression_default_subset', self.local_path)
         self.functionality_list = read_trackpad_test_conf(
                 'functionality_list', self.local_path)
+        self.regression_gestures_dict = read_trackpad_test_conf(
+                'regression_gestures_dict', self.local_path)
+
+        # Get some file paths from the config file
         self.gesture_files_path_results = self.read_gesture_files_path(
                 self.local_path, 'gesture_files_path_results')
         self.gesture_files_subpath_regression = self.read_gesture_files_path(
@@ -73,12 +78,37 @@ class hardware_Trackpad(test.test):
                 self.local_path, 'regression_gesture_sets')
         self.gesture_files_path_autotest = self.read_gesture_files_path(
                 self.local_path, 'gesture_files_path_autotest')
+        self.gesture_files_path_latest = self.read_gesture_files_path(
+                self.local_path, 'gesture_files_path_latest')
 
     def read_gesture_files_path(self, local_path, name):
         ''' Read gesture file path from config file. '''
         pathname = read_trackpad_test_conf(name, local_path)
         logging.info('Path of %s: %s' % (name, pathname))
         return pathname
+
+    def _is_in_regression_gestures(self, gesture_file):
+        ''' Determine if a gesture file is in the regression gestures list.
+
+        For current settings,
+        - long regression test: self.regression_gestures is None, which means
+                                all gesture files will be used for regression
+                                test.
+        - short regression test: self.regression_gestures is read from the file
+                                 './data/gestures/regression_gestures_short'
+                                 Only gesture files listed in the file will be
+                                 used for regression test.
+
+        A gesture file name looks like
+            'click-no_cursor_wobble.tap-alex-user-20120430_114910.dat'
+        We want to extract the left half part of the file name which looks like
+            'click-no_cursor_wobble.tap'
+        and check if this gesture exists in the regression_gestures.
+        '''
+        result = gesture_file.split('-%s-' % self.model)
+        gesture = None if result is None else result[0]
+        return (self.regression_gestures is None or
+                gesture in self.regression_gestures)
 
     def _extract_tarball_to_work_dir(self, subset):
         ''' Extract the gesture files tarball to working directory '''
@@ -114,18 +144,37 @@ class hardware_Trackpad(test.test):
         logging.info('  Succeeded in executing "%s".' % untar_cmd)
         return gesture_files_path_work
 
+    def _set_regression_gestures(self, subset):
+        ''' Read regression_gestures based on the subset
+
+        When self.regression_gestures is set to None, it means that all of the
+        gesture files in the specified gesture set will be used.
+        '''
+        if subset is None or self.regression_gestures_dict[subset] is None:
+            self.regression_gestures = None
+        else:
+            gestures_path = os.path.join(self.local_path,
+                                         self.regression_gestures_dict[subset])
+            execfile(gestures_path, globals())
+            if self.model in regression_gestures:
+                self.regression_gestures = regression_gestures[self.model]
+            else:
+                self.regression_gestures = baseline_regression_gestures
+
     def _get_regression_gesture_set(self, subset):
         ''' Get the regression gesture set. '''
         model = self.model
+        if subset not in self.regression_subset_list:
+            subset = self.regression_default_subset
         regression_gesture_set = self.regression_gesture_sets[subset][model]
         gesture_set_path = os.path.join(self.local_path,
                 self.gesture_files_subpath_regression, regression_gesture_set)
-        # Create the parent path for autotest symlink if necessary.
-        autotest_dir = os.path.dirname(self.gesture_files_path_autotest)
-        if not os.path.isdir(autotest_dir):
-            os.makedirs(autotest_dir)
+
+        # Make a symlink for autotest.
         trackpad_util.write_symlink(gesture_set_path,
                                     self.gesture_files_path_autotest)
+
+        return subset
 
     def _setup_gesture_files_path(self, test_set, subset):
         ''' Set up gesture files path
@@ -133,18 +182,23 @@ class hardware_Trackpad(test.test):
         If it is a tarball, extract files from the tarball and set up its path.
         If it is an ordinary directory, just returns its path.
         '''
-        # If subset is None or non-existing, set to the deafult one.
-        if subset not in self.regression_subset_list:
-            subset = self.regression_default_subset
+        # If this is a regression test, let gesture_files_path_autotest
+        # point to the regression gesture set specified in conf.
+        if test_set == 'regression':
+            subset = self._get_regression_gesture_set(subset)
 
-        # Let gesture_files_path_autotest point to the regression gesture set
-        # specified in conf for either of the following conditions:
-        #   condition 1: this is a regression test,
-        #   condition 2: this is a test on a local gesture set stored in the
-        #                machine but the local gesture set cannot be found.
-        if (test_set == 'regression' or
-            not os.path.exists(self.gesture_files_path_autotest)):
-            self._get_regression_gesture_set(subset)
+        # If this is a test on a gesture set captured in the local machine,
+        # let gesture_files_path_autotest point to the 'latest' symlink if it
+        # exists. Otherwise, let it point to the default regression gesture set.
+        elif test_set == 'localhost':
+            if os.path.exists(self.gesture_files_path_latest):
+                trackpad_util.write_symlink(self.gesture_files_path_latest,
+                                            self.gesture_files_path_autotest)
+            else:
+                subset = self._get_regression_gesture_set(subset)
+
+        # Determine gestures to test
+        self._set_regression_gestures(subset)
 
         logging.info('  test_set: %s' % test_set)
         logging.info('  subset: %s' % subset)
@@ -221,10 +275,6 @@ class hardware_Trackpad(test.test):
         # Processing every functionality in functionality_list
         # An example functionality is 'any_finger_click'
         for tdata.func in functionality_list:
-            # If this function is not enabled in configuration file, skip it.
-            if not tdata.func.enabled:
-                continue
-
             flag_logging_func_name = False
             tdata.num_files_tested[tdata.func.name] = 0
             tdata.subname_list[tdata.func.name] = []
@@ -282,11 +332,18 @@ class hardware_Trackpad(test.test):
 
                 # Process each specific gesture_file now.
                 for gesture_file in gesture_file_group:
+                    tdata.file_basename = os.path.basename(gesture_file)
+                    # If regression_gestures have been specified, this file
+                    # should be in the regression_gestures.
+                    # Currently, the short regression test has been specified
+                    # the regression_gestures.
+                    if not self._is_in_regression_gestures(tdata.file_basename):
+                        continue
+
                     # Every gesture file name should start with the correct
                     # functionality name, because we use the functionality to
                     # determine the test criteria for the file. Otherwise,
                     # a warning message is shown.
-                    tdata.file_basename = os.path.basename(gesture_file)
                     start_flag0 = tdata.file_basename.startswith(
                                   tdata.func.name)
                     start_flag1 = tdata.file_basename.split('-')[1].startswith(
@@ -365,8 +422,8 @@ class hardware_Trackpad(test.test):
 
         area_name = None
         for tp_func in functionality_list:
-            if not tp_func.enabled:
-                continue
+            # if not tp_func.enabled:
+            #     continue
             func_name = tp_func.name
             test_count = tdata.num_files_tested[func_name]
             if test_count == 0:
