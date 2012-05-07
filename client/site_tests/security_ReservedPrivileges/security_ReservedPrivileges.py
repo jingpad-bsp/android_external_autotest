@@ -68,8 +68,17 @@ class security_ReservedPrivileges(test.test):
         else:
             command = ('ps --no-headers -eo comm:16,rgroup:%d,group:%d' %
                        (groupmax, groupmax))
+
         command_output = utils.system_output(command, ignore_status=True)
-        observed_set = self.reserved_commands(command_output.splitlines())
+        output_lines = command_output.splitlines()
+
+        dump_file = open(os.path.join(self.resultsdir, "ps_output"), 'w')
+        for line in output_lines:
+            dump_file.write(line.strip() + "\n")
+
+        dump_file.close()
+
+        observed_set = self.reserved_commands(output_lines)
         baseline_set = self.load_baseline(owner_type)
 
         # If something in the observed set is not
