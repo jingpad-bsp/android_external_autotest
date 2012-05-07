@@ -174,4 +174,3 @@ class BaseEvent(object):
         for task in list(self.tasks):
             if not task.Run(scheduler, branch_builds, board, force):
                 self._tasks.remove(task)
-        self.UpdateCriteria()

@@ -127,8 +127,6 @@ class NewBuildTest(BuildEventTestBase):
         self.mv.AnyManifestsSinceRev(expected_hash).AndReturn(True)
         self.mv.ManifestsSinceRev(expected_hash,
                                   self.BOARD).AndReturn(branch_manifests)
-        self.mv.GetCheckpoint().AndReturn('')
-
         self.mox.ReplayAll()
 
         new_build = self.CreateEvent()
@@ -138,6 +136,7 @@ class NewBuildTest(BuildEventTestBase):
         self.assertTrue(new_build.ShouldHandle())
         self.assertTrue(new_build.GetBranchBuildsForBoard(self.BOARD))
         new_build.Handle(None, {}, self.BOARD)
+        new_build.UpdateCriteria()
 
         self.assertTrue(new_build.ShouldHandle())
         self.assertTrue(new_build.GetBranchBuildsForBoard(self.BOARD))

@@ -103,6 +103,7 @@ class Driver(object):
                 for board in boards:
                     branch_builds = e.GetBranchBuildsForBoard(board)
                     e.Handle(self._scheduler, branch_builds, board)
+                e.UpdateCriteria()
 
 
     def ForceEventsOnceForBuild(self, keywords, build_name):

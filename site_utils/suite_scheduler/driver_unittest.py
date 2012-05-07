@@ -18,6 +18,9 @@ class DriverTest(mox.MoxTestBase):
     """Unit tests for Driver."""
 
 
+    _BOARDS = ['board1', 'board2']
+
+
     def setUp(self):
         super(DriverTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
@@ -51,9 +54,11 @@ class DriverTest(mox.MoxTestBase):
     def _ExpectEnumeration(self):
         """Expect one call to BoardEnumerator.Enumerate()."""
         prefix = board_enumerator.BoardEnumerator._LABEL_PREFIX
-        mock = self.mox.CreateMock(frontend.Label)
-        mock.name = prefix + 'supported-board'
-        self.afe.get_labels(name__startswith=prefix).AndReturn([mock])
+        mocks = []
+        for board in self._BOARDS:
+            mocks.append(self.mox.CreateMock(frontend.Label))
+            mocks[-1].name = prefix + board
+        self.afe.get_labels(name__startswith=prefix).AndReturn(mocks)
 
 
     def _ExpectHandle(self, event, group):
@@ -64,9 +69,13 @@ class DriverTest(mox.MoxTestBase):
         """
         bbs = {'branch': 'build-string'}
         event.ShouldHandle().InAnyOrder(group).AndReturn(True)
-        event.GetBranchBuildsForBoard(
-            mox.IgnoreArg()).InAnyOrder(group).AndReturn(bbs)
-        event.Handle(mox.IgnoreArg(), bbs, mox.IgnoreArg()).InAnyOrder(group)
+        for board in self._BOARDS:
+            event.GetBranchBuildsForBoard(
+                board).InAnyOrder(group).AndReturn(bbs)
+            event.Handle(mox.IgnoreArg(), bbs, board).InAnyOrder(group)
+        # Should happen once per loop, not once per Handle()
+        # http://crosbug.com/30642
+        event.UpdateCriteria().InAnyOrder(group)
 
 
     def testTasksFromConfig(self):

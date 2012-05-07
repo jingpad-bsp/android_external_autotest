@@ -83,8 +83,6 @@ class BaseEventTest(mox.MoxTestBase):
         tasks = [FakeTask(*task, pymox=self.mox) for task in self._TASKS]
         for task in tasks: task.Arm()
         event = self.CreateEvent()
-        self.mox.StubOutWithMock(event, 'UpdateCriteria')
-        event.UpdateCriteria()
         self.mox.ReplayAll()
 
         event.tasks = tasks
@@ -94,7 +92,6 @@ class BaseEventTest(mox.MoxTestBase):
         # Ensure that all tasks are still around and can be Handle()'d again.
         self.mox.ResetAll()
         for task in tasks: task.Arm()
-        event.UpdateCriteria()  # re-set expectation.
         self.mox.ReplayAll()
         event.Handle(self.sched, {}, [])
 
@@ -105,8 +102,6 @@ class BaseEventTest(mox.MoxTestBase):
         all_tasks = tasks + [FakeOneShot(*self._TASKS[0], pymox=self.mox)]
         for task in all_tasks: task.Arm()
         event = self.CreateEvent()
-        self.mox.StubOutWithMock(event, 'UpdateCriteria')
-        event.UpdateCriteria()
         self.mox.ReplayAll()
 
         event.tasks = all_tasks
@@ -116,6 +111,5 @@ class BaseEventTest(mox.MoxTestBase):
         # Ensure that only recurring tasks can get Handle()'d again.
         self.mox.ResetAll()
         for task in tasks: task.Arm()
-        event.UpdateCriteria()  # re-set expectation.
         self.mox.ReplayAll()
         event.Handle(self.sched, {}, [])
