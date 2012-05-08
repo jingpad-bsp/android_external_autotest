@@ -279,6 +279,13 @@ def file_exists(filename):
                      else None)
 
 
+def get_trackpad_re_str():
+    ''' Get the trackpad device string in regular expression. '''
+    trackpad_str = read_trackpad_test_conf('xinput_trackpad_string', '.')
+    trackpad_re_str = '(?:%s)' % '|'.join(trackpad_str)
+    return trackpad_re_str
+
+
 def _probe_trackpad_device_file():
     ''' Probe trackpad device file in /proc/bus/input/devices '''
     device_info = '/proc/bus/input/devices'
@@ -287,7 +294,7 @@ def _probe_trackpad_device_file():
     with open(device_info) as f:
         device_str = f.read()
     device_iter = iter(device_str.splitlines())
-    trackpad_pattern = re.compile('name=.+t(rack|ouch)pad', re.I)
+    trackpad_pattern = re.compile('name=.+%s' % get_trackpad_re_str(), re.I)
     event_pattern = re.compile('handlers=.*event(\d+)', re.I)
     found_trackpad = False
     trackpad_device_file = None
