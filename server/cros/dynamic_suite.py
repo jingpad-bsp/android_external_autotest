@@ -1104,7 +1104,8 @@ class Suite(object):
         """
         tests = {}
         files = cf_getter.get_control_file_list()
-        for file in files:
+        matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
+        for file in filter(lambda f: not matcher.match(f), files):
             text = cf_getter.get_control_file_contents(file)
             try:
                 found_test = control_data.parse_control_string(text,

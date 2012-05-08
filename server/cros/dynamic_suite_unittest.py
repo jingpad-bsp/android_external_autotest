@@ -525,6 +525,10 @@ class SuiteTest(mox.MoxTestBase):
                       'two': FakeControlData('data_two'),
                       'three': FakeControlData('data_three')}
 
+        self.files_to_filter = {
+            'with/deps/...': FakeControlData('...gets filtered'),
+            'with/profilers/...': FakeControlData('...gets filtered')}
+
 
     def tearDown(self):
         super(SuiteTest, self).tearDown()
@@ -533,7 +537,8 @@ class SuiteTest(mox.MoxTestBase):
 
     def expect_control_file_parsing(self):
         """Expect an attempt to parse the 'control files' in |self.files|."""
-        self.getter.get_control_file_list().AndReturn(self.files.keys())
+        all_files = self.files.keys() + self.files_to_filter.keys()
+        self.getter.get_control_file_list().AndReturn(all_files)
         self.mox.StubOutWithMock(control_data, 'parse_control_string')
         for file, data in self.files.iteritems():
             self.getter.get_control_file_contents(file).AndReturn(data.string)
