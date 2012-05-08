@@ -977,6 +977,9 @@ class Suite(object):
                    record(status, subdir, name, reason)
         @param add_experimental: schedule experimental tests as well, or not.
         """
+        logging.debug('Discovered %d stable tests.', len(self.stable_tests()))
+        logging.debug('Discovered %d unstable tests.',
+                      len(self.unstable_tests()))
         try:
             Status('INFO', 'Start %s' % self._tag).record_result(record)
             self.schedule(add_experimental)
@@ -993,6 +996,14 @@ class Suite(object):
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,
                    'Exception while scheduling suite').record_result(record)
+        # Sanity check
+        tests_at_end = self.find_and_parse_tests(self._cf_getter,
+                                                 self._predicate,
+                                                 add_experimental=True)
+        if len(self.tests) != len(tests_at_end):
+            msg = 'Dev Server enumerated %d tests at start, %d at end.' % (
+                len(self.tests), len(tests_at_end))
+            Status('FAIL', self._tag, msg).record_result(record)
 
 
     def schedule(self, add_experimental=True):
@@ -1106,10 +1117,11 @@ class Suite(object):
         files = cf_getter.get_control_file_list()
         matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
         for file in filter(lambda f: not matcher.match(f), files):
+            logging.debug('Considering %s', file)
             text = cf_getter.get_control_file_contents(file)
             try:
-                found_test = control_data.parse_control_string(text,
-                                                            raise_warnings=True)
+                found_test = control_data.parse_control_string(
+                        text, raise_warnings=True)
                 if not add_experimental and found_test.experimental:
                     continue
 

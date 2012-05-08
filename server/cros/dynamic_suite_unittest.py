@@ -502,17 +502,18 @@ class SuiteTest(mox.MoxTestBase):
     _TAG = 'suite_tag'
 
 
+    class FakeControlData(object):
+        """A fake parsed control file data structure."""
+        def __init__(self, data, expr=False):
+            self.string = 'text-' + data
+            self.name = 'name-' + data
+            self.data = data
+            self.suite = SuiteTest._TAG
+            self.test_type = 'Client'
+            self.experimental = expr
+
+
     def setUp(self):
-        class FakeControlData(object):
-            """A fake parsed control file data structure."""
-            def __init__(self, data, expr=False):
-                self.string = 'text-' + data
-                self.name = 'name-' + data
-                self.data = data
-                self.test_type = 'Client'
-                self.experimental = expr
-
-
         super(SuiteTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.tko = self.mox.CreateMock(frontend.TKO)
@@ -521,13 +522,13 @@ class SuiteTest(mox.MoxTestBase):
 
         self.getter = self.mox.CreateMock(control_file_getter.ControlFileGetter)
 
-        self.files = {'one': FakeControlData('data_one', expr=True),
-                      'two': FakeControlData('data_two'),
-                      'three': FakeControlData('data_three')}
+        self.files = {'one': SuiteTest.FakeControlData('data_one', expr=True),
+                      'two': SuiteTest.FakeControlData('data_two'),
+                      'three': SuiteTest.FakeControlData('data_three')}
 
         self.files_to_filter = {
-            'with/deps/...': FakeControlData('...gets filtered'),
-            'with/profilers/...': FakeControlData('...gets filtered')}
+            'with/deps/...': SuiteTest.FakeControlData('...gets filtered'),
+            'with/profilers/...': SuiteTest.FakeControlData('...gets filtered')}
 
 
     def tearDown(self):
@@ -538,12 +539,47 @@ class SuiteTest(mox.MoxTestBase):
     def expect_control_file_parsing(self):
         """Expect an attempt to parse the 'control files' in |self.files|."""
         all_files = self.files.keys() + self.files_to_filter.keys()
-        self.getter.get_control_file_list().AndReturn(all_files)
-        self.mox.StubOutWithMock(control_data, 'parse_control_string')
-        for file, data in self.files.iteritems():
-            self.getter.get_control_file_contents(file).AndReturn(data.string)
+        self._set_control_file_parsing_expectations(False, all_files,
+                                                    self.files.iteritems())
+
+
+    def expect_control_file_reparsing(self):
+        """Expect re-parsing the 'control files' in |self.files|."""
+        all_files = self.files.keys() + self.files_to_filter.keys()
+        self._set_control_file_parsing_expectations(True, all_files,
+                                                    self.files.iteritems())
+
+
+    def expect_racy_control_file_reparsing(self, new_files):
+        """Expect re-fetching and parsing of control files to return extra.
+
+        @param new_files: extra control files that showed up during scheduling.
+        """
+        all_files = (self.files.keys() + self.files_to_filter.keys() +
+                     new_files.keys())
+        new_files.update(self.files)
+        self._set_control_file_parsing_expectations(True, all_files,
+                                                    new_files.iteritems())
+
+
+    def _set_control_file_parsing_expectations(self, already_stubbed,
+                                               file_list, files_to_parse):
+        """Expect an attempt to parse the 'control files' in |files|.
+
+        @param already_stubbed: parse_control_string already stubbed out.
+        @param file_list: the files the dev server returns
+        @param files_to_parse: the {'name': FakeControlData} dict of files we
+                               expect to get parsed.
+        """
+        if not already_stubbed:
+            self.mox.StubOutWithMock(control_data, 'parse_control_string')
+
+        self.getter.get_control_file_list().AndReturn(file_list)
+        for file, data in files_to_parse:
+            self.getter.get_control_file_contents(
+                file).InAnyOrder().AndReturn(data.string)
             control_data.parse_control_string(
-                data.string, raise_warnings=True).AndReturn(data)
+                data.string, raise_warnings=True).InAnyOrder().AndReturn(data)
 
 
     def testFindAndParseStableTests(self):
@@ -739,14 +775,9 @@ class SuiteTest(mox.MoxTestBase):
                 self.assertTrue(True in map(status.equals_record, results))
 
 
-    def testRunAndWaitSuccess(self):
-        """Should record successful results."""
-        suite = self._createSuiteWithMockedTestsAndControlFiles()
-
-        results = [('GOOD', 'good'), ('FAIL', 'bad', 'reason')]
-        recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record_entry(
-            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
+    def schedule_and_expect_these_results(self, suite, results, recorder):
+        self.mox.StubOutWithMock(suite, 'schedule')
+        suite.schedule(True)
         for result in results:
             status = result[0]
             test_name = result[1]
@@ -756,12 +787,22 @@ class SuiteTest(mox.MoxTestBase):
                 StatusContains.CreateFromStrings(*result)).InAnyOrder('results')
             recorder.record_entry(
                 StatusContains.CreateFromStrings('END %s' % status, test_name))
-
-        self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(True)
         self.mox.StubOutWithMock(suite, 'wait_for_results')
         suite.wait_for_results().AndReturn(
             map(lambda r: dynamic_suite.Status(*r), results))
+
+
+    def testRunAndWaitSuccess(self):
+        """Should record successful results."""
+        suite = self._createSuiteWithMockedTestsAndControlFiles()
+
+        recorder = self.mox.CreateMock(base_job.base_job)
+        recorder.record_entry(
+            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
+
+        results = [('GOOD', 'good'), ('FAIL', 'bad', 'reason')]
+        self.schedule_and_expect_these_results(suite, results, recorder)
+        self.expect_control_file_reparsing()
         self.mox.ReplayAll()
 
         suite.run_and_wait(recorder.record_entry, True)
@@ -781,6 +822,7 @@ class SuiteTest(mox.MoxTestBase):
         suite.schedule(True)
         self.mox.StubOutWithMock(suite, 'wait_for_results')
         suite.wait_for_results().AndRaise(Exception('Expected during test.'))
+        self.expect_control_file_reparsing()
         self.mox.ReplayAll()
 
         suite.run_and_wait(recorder.record_entry, True)
@@ -798,6 +840,28 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(True).AndRaise(Exception('Expected during test.'))
+        self.expect_control_file_reparsing()
+        self.mox.ReplayAll()
+
+        suite.run_and_wait(recorder.record_entry, True)
+
+
+    def testRunAndWaitDevServerRacyFailure(self):
+        """Should record discovery of dev server races in listing files."""
+        suite = self._createSuiteWithMockedTestsAndControlFiles()
+
+        recorder = self.mox.CreateMock(base_job.base_job)
+        recorder.record_entry(
+            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
+
+        results = [('GOOD', 'good'), ('FAIL', 'bad', 'reason')]
+        self.schedule_and_expect_these_results(suite, results, recorder)
+
+        self.expect_racy_control_file_reparsing(
+            {'new': SuiteTest.FakeControlData('!')})
+
+        recorder.record_entry(
+            StatusContains.CreateFromStrings('FAIL', self._TAG, 'Dev Server'))
         self.mox.ReplayAll()
 
         suite.run_and_wait(recorder.record_entry, True)
