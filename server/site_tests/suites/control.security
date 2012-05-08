@@ -20,8 +20,7 @@ TESTS = [
 #   http://code.google.com/p/chromium-os/issues/detail?id=27772
 #  ('platform_DMVerityCorruption', {}),
 #  ('platform_DMVerityBitCorruption', {}),
-# While security-related, this is already included in control.bvt.
-#  ('platform_ToolchainOptions', {}),
+  ('platform_ToolchainOptions', {}),
   ('security_AccountsBaseline', {}),
   ('security_DbusOwners', {}),
   ('security_HardlinkRestrictions', {}),
