@@ -95,10 +95,6 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
             print 'Login cmd', login_cmd
             utils.system(login_cmd)
 
-        # Create fake owner.
-        logging.info('Faking ownership...')
-        cros_ui.fake_ownership()
-
         # Run tests.
         functional_cmd = 'python %s/chrome_test/test_src/' \
             'chrome/test/functional/pyauto_functional.py -v ' % deps_dir
