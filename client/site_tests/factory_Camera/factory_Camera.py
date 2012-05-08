@@ -42,6 +42,7 @@ import glib
 import pango
 import numpy
 import time
+import os
 
 from gtk import gdk
 from random import randrange
@@ -193,7 +194,19 @@ class factory_Camera(test.test):
 
         self.img = None
 
-        # Initialize the camera with OpenCV.
+        # Initialize the camera with OpenCV.  Since it's not too smart
+        # about finding the device, try to find the device for it.  If
+        # multiple devices are present, this grabs the last one.
+        uvc_viddir = '/sys/bus/usb/drivers/uvcvideo'
+        for uvc_direntry in os.listdir(uvc_viddir):
+            if uvc_direntry[0].isdigit():
+                uvc_subdir = os.path.join(uvc_viddir, uvc_direntry,
+                                          'video4linux')
+                if not os.path.isdir(uvc_subdir):
+                    continue;
+                for uvc_devname in os.listdir(uvc_subdir):
+                    if uvc_devname[0:5] == 'video':
+                      DEVICE_INDEX = int(uvc_devname[5:])
         self.dev = dev = cv2.VideoCapture(DEVICE_INDEX)
         if not dev.isOpened():
             raise IOError('Device #%s ' % DEVICE_INDEX +
