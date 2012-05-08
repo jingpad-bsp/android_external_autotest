@@ -203,9 +203,9 @@ class factory_Camera(test.test):
                 uvc_subdir = os.path.join(uvc_viddir, uvc_direntry,
                                           'video4linux')
                 if not os.path.isdir(uvc_subdir):
-                    continue;
+                    continue
                 for uvc_devname in os.listdir(uvc_subdir):
-                    if uvc_devname[0:5] == 'video':
+                    if uvc_devname.startswith('video'):
                       DEVICE_INDEX = int(uvc_devname[5:])
         self.dev = dev = cv2.VideoCapture(DEVICE_INDEX)
         if not dev.isOpened():
