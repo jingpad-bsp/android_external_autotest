@@ -12,9 +12,10 @@
 
 import cairo
 import gtk
+import os
 import pango
 import pyudev
-import os
+import pyudev.glib
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
