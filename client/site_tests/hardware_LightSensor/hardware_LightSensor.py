@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,8 +6,13 @@ import logging, os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
-LIGHT_SENSOR_LOCATIONS = [ "/sys/class/iio/", "/sys/bus/iio/devices/" ]
-LIGHT_SENSOR_FILES = [ "lux", "illuminance0_input" ]
+LIGHT_SENSOR_LOCATIONS = [ "/sys/bus/iio/devices/iio:device0/",
+                           "/sys/bus/iio/devices/device0/"
+                         ]
+LIGHT_SENSOR_FILES = [ "in_illuminance0_input",
+                       "in_illuminance0_raw",
+                       "illuminance0_input"
+                     ]
 
 class hardware_LightSensor(test.test):
     """
@@ -16,7 +21,7 @@ class hardware_LightSensor(test.test):
     Or it could mean the I2C probe for the device failed because of an incorrect
     I2C address or bus specification.
     The ebuild scripts should properly load the udev rules for light sensor so
-    we can find its files in /sys/class/iio/ or /sys/bus/iio/devices, depending
+    we can find its files in LIGHT_SENSOR_LOCATIONS depending
     on the kernel version.
     """
     version = 1
@@ -25,7 +30,7 @@ class hardware_LightSensor(test.test):
         found_light_sensor = 0
         for location in LIGHT_SENSOR_LOCATIONS:
             for file in LIGHT_SENSOR_FILES:
-                path = location + "device0/" + file
+                path = location + file
                 if os.path.exists(path):
                     found_light_sensor = 1
                     break
