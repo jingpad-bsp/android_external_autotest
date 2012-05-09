@@ -17,7 +17,7 @@ from autotest_lib.client.cros import constants, chrome_test, cros_ui, login
 class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
     """Wrapper for running Chrome's PyAuto-based performance tests.
 
-    Performs all setup and fires off the CHROMEOS_PERF PyAuto suite.
+    Performs all setup and fires off the PERFORMANCE PyAuto suite for ChromeOS.
     """
     _PERF_MARKER_PRE = '_PERF_PRE_'
     _PERF_MARKER_POST = '_PERF_POST_'
@@ -77,7 +77,7 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
                                'ignore before failing the test. Defaults to '
                                'the value given in perf.py.')
         parser.add_option('--suite', dest='suite', type='string',
-                          default='CHROMEOS_PERF',
+                          default='PERFORMANCE',
                           help='Name of the suite to run, as specified in the '
                                '"PYAUTO_TESTS" suite file. Defaults to '
                                '%default, which runs all perf tests.')
@@ -153,5 +153,7 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
         # are still graphed.
         if proc.returncode != 0:
             raise error.TestFail(
-                'Unexpected return code from pyauto_functional.py when running '
-                'with the CHROMEOS_PERF suite: %d' % proc.returncode)
+                'Pyauto returned error code %d.  This is likely because at '
+                'least one pyauto test failed.  Refer to the full autotest '
+                'output in desktopui_PyAutoPerfTests.DEBUG for details.'
+                % proc.returncode)

@@ -5,15 +5,15 @@
 AUTHOR = "Chrome OS Team"
 NAME = "desktopui_PyAutoPerfTests"
 PURPOSE = "PyAuto-based Chrome performance tests."
-CRITERIA = "This test will fail if running Chrome returns a command error."
+CRITERIA = "This test will fail if any of the invoked pyauto perf tests fails."
 TIME = "LONG"
-TEST_CATEGORY = "Functional"
+TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
 This is a wrapper test for Chrome pyauto-based performance tests.
-http://dev.chromium.org/developers/testing/pyauto
+http://www.chromium.org/developers/testing/pyauto/perf/
 
 Sample usage:
 
@@ -24,12 +24,12 @@ Sample usage:
   ./run_remote_tests.sh --remote=<DEVICE_IP> desktopui_PyAutoPerfTests \
       -a 'perf.ScrollTest.testTextScroll'
 
-  # Run a single performance test for 10 iterations, rather than the default
+  # Run a single performance test for 2 iterations, rather than the default
   # number of iterations (only applies to perf tests that run iteratively).
   ./run_remote_tests.sh --remote=<DEVICE_IP> desktopui_PyAutoPerfTests \
-      -a 'perf.ScrollTest.testTextScroll --iterations=10'
+      -a 'perf.ScrollTest.testTextScroll --iterations=2'
 
-  # Run a different pyauto suite rather than the default "CHROMEOS_PERF"
+  # Run a different pyauto suite rather than the default "PERFORMANCE"
   # (see the file "PYAUTO_TESTS" in the Chrome tree).
   ./run_remote_tests.sh --remote=<DEVICE_IP> desktopui_PyAutoPerfTests \
       -a '--suite=OTHER_SUITE_NAME'
