@@ -9,6 +9,7 @@
 import common
 import mox
 import unittest
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import site_rpc_interface
 from autotest_lib.server.cros import control_file_getter
@@ -73,7 +74,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         self.dev_server.trigger_download(self._BUILD,
                                          synchronous=False).AndReturn(False)
         self.mox.ReplayAll()
-        self.assertRaises(site_rpc_interface.StageBuildFailure,
+        self.assertRaises(error.StageBuildFailure,
                           site_rpc_interface.create_suite_job,
                           self._NAME,
                           self._BOARD,
@@ -89,7 +90,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn(None)
         self.mox.ReplayAll()
-        self.assertRaises(site_rpc_interface.ControlFileEmpty,
+        self.assertRaises(error.ControlFileEmpty,
                           site_rpc_interface.create_suite_job,
                           self._NAME,
                           self._BOARD,
@@ -103,9 +104,9 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         self.dev_server.trigger_download(self._BUILD,
                                          synchronous=False).AndReturn(True)
         self.getter.get_control_file_contents_by_name(
-            self._SUITE_NAME).AndRaise(control_file_getter.NoControlFileList())
+            self._SUITE_NAME).AndRaise(error.NoControlFileList())
         self.mox.ReplayAll()
-        self.assertRaises(control_file_getter.NoControlFileList,
+        self.assertRaises(error.NoControlFileList,
                           site_rpc_interface.create_suite_job,
                           self._NAME,
                           self._BOARD,

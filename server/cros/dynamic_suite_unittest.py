@@ -14,7 +14,8 @@ import tempfile
 import time
 import unittest
 
-from autotest_lib.client.common_lib import base_job, control_data, global_config
+from autotest_lib.client.common_lib import base_job, control_data, error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros import control_file_getter, dynamic_suite
 from autotest_lib.server import frontend
@@ -73,7 +74,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
     def testVetReimageAndRunBuildArgFail(self):
         """Should fail verification because |build| arg is bad."""
         self._DARGS['build'] = None
-        self.assertRaises(dynamic_suite.SuiteArgumentException,
+        self.assertRaises(error.SuiteArgumentException,
                           dynamic_suite._vet_reimage_and_run_args,
                           **self._DARGS)
 
@@ -81,7 +82,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
     def testVetReimageAndRunBoardArgFail(self):
         """Should fail verification because |board| arg is bad."""
         self._DARGS['board'] = None
-        self.assertRaises(dynamic_suite.SuiteArgumentException,
+        self.assertRaises(error.SuiteArgumentException,
                           dynamic_suite._vet_reimage_and_run_args,
                           **self._DARGS)
 
@@ -89,7 +90,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
     def testVetReimageAndRunNameArgFail(self):
         """Should fail verification because |name| arg is bad."""
         self._DARGS['name'] = None
-        self.assertRaises(dynamic_suite.SuiteArgumentException,
+        self.assertRaises(error.SuiteArgumentException,
                           dynamic_suite._vet_reimage_and_run_args,
                           **self._DARGS)
 
@@ -97,7 +98,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
     def testVetReimageAndRunJobArgFail(self):
         """Should fail verification because |job| arg is bad."""
         self._DARGS['job'] = None
-        self.assertRaises(dynamic_suite.SuiteArgumentException,
+        self.assertRaises(error.SuiteArgumentException,
                           dynamic_suite._vet_reimage_and_run_args,
                           **self._DARGS)
 

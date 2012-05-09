@@ -7,9 +7,9 @@ import compiler, datetime, logging, os, random, re, time, traceback
 from autotest_lib.client.common_lib import base_job, control_data, global_config
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros import control_file_getter, frontend_wrappers
 from autotest_lib.server import frontend
+from autotest_lib.frontend.afe.json_rpc import proxy
 
 """CrOS dynamic test suite generation and execution module.
 
@@ -217,25 +217,7 @@ VERSION_PREFIX = 'cros-version:'
 CONFIG = global_config.global_config
 
 
-class AsynchronousBuildFailure(Exception):
-    """Raised when the dev server throws 500 while finishing staging of a build.
-    """
-    pass
-
-
-class SuiteArgumentException(Exception):
-    """Raised when improper arguments are used to run a suite."""
-    pass
-
-
-class InadequateHostsException(Exception):
-    """Raised when there are too few hosts to run a suite."""
-    pass
-
-
-class NoHostsException(Exception):
-    """Raised when there are no healthy hosts to run a suite."""
-    pass
+# Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 
 def reimage_and_run(**dargs):
@@ -280,7 +262,7 @@ def reimage_and_run(**dargs):
         # Ensure that the image's artifacts have completed downloading.
         ds = dev_server.DevServer.create()
         if not ds.finish_download(build):
-            raise AsynchronousBuildFailure(
+            raise error.AsynchronousBuildFailure(
                 "Server error completing staging for " + build)
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         utils.write_keyval(job.resultdir,
@@ -327,8 +309,8 @@ def _vet_reimage_and_run_args(build=None, board=None, name=None, job=None,
     for key, expected in required_keywords.iteritems():
         value = locals().get(key)
         if not value or not isinstance(value, expected):
-            raise SuiteArgumentException("reimage_and_run() needs %s=<%r>" % (
-                key, expected))
+            raise error.SuiteArgumentException(
+                "reimage_and_run() needs %s=<%r>" % (key, expected))
     return (build, board, name, job, pool, num, check_hosts, skip_reimage,
             add_experimental)
 
@@ -447,7 +429,7 @@ class Reimager(object):
             canary_job.result = self._afe.poll_job_results(self._tko,
                                                            canary_job,
                                                            0)
-        except InadequateHostsException as e:
+        except error.InadequateHostsException as e:
             logging.warning(e)
             record('END WARN', None, wrapper_job_name, str(e))
             return False
@@ -482,14 +464,16 @@ class Reimager(object):
         @param board: which kind of devices to reimage.
         @param pool: the pool of machines to use for scheduling purposes.
         @param num: how many devices to reimage.
+        @raises NoHostsException: if no working hosts.
         @raises InadequateHostsException: if too few working hosts.
         """
         labels = [l for l in [board, pool] if l is not None]
         available = self._count_usable_hosts(labels)
         if available == 0:
-            raise NoHostsException('All hosts with %r are dead!' % labels)
+            raise error.NoHostsException('All hosts with %r are dead!' % labels)
         elif num > available:
-            raise InadequateHostsException('Too few hosts with %r' % labels)
+            raise error.InadequateHostsException(
+                'Too few hosts with %r' % labels)
 
 
     def _wait_for_job_to_start(self, job_id):

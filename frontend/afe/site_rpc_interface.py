@@ -8,14 +8,12 @@ import common
 import datetime
 import logging
 import sys
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import control_file_getter, dynamic_suite
 
 
-class StageBuildFailure(Exception):
-    """Raised when the dev server throws 500 while staging a build."""
-    pass
+# Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 
 class ControlFileEmpty(Exception):
@@ -74,7 +72,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     timings['download_started_time'] = datetime.datetime.now().strftime(
         time_fmt)
     if not ds.trigger_download(build, synchronous=False):
-        raise StageBuildFailure("Server error while staging " + build)
+        raise error.StageBuildFailure("Server error while staging " + build)
     timings['payload_finished_time'] = datetime.datetime.now().strftime(
         time_fmt)
 
@@ -82,7 +80,8 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     # Get the control file for the suite.
     control_file_in = getter.get_control_file_contents_by_name(suite_name)
     if not control_file_in:
-        raise ControlFileEmpty("Fetching %s returned no data." % suite_name)
+        raise error.ControlFileEmpty(
+            "Fetching %s returned no data." % suite_name)
 
     # prepend build and board to the control file
     inject_dict = {'board': board,

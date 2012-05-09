@@ -52,7 +52,7 @@ class DevServerGetterTest(mox.MoxTestBase):
         """Should fail to list control files from the dev server."""
         self.dev_server.list_control_files(self._BUILD).AndRaise(self._403)
         self.mox.ReplayAll()
-        self.assertRaises(control_file_getter.NoControlFileList,
+        self.assertRaises(error.NoControlFileList,
                           self.getter.get_control_file_list)
 
 
@@ -71,7 +71,7 @@ class DevServerGetterTest(mox.MoxTestBase):
         path = self._FILES[0]
         self.dev_server.get_control_file(self._BUILD, path).AndRaise(self._403)
         self.mox.ReplayAll()
-        self.assertRaises(control_file_getter.ControlFileNotFound,
+        self.assertRaises(error.ControlFileNotFound,
                           self.getter.get_control_file_contents,
                           path)
 
@@ -129,6 +129,6 @@ class DevServerGetterTest(mox.MoxTestBase):
 
         self.dev_server.list_control_files(self._BUILD).AndReturn(self._FILES)
         self.mox.ReplayAll()
-        self.assertRaises(control_file_getter.ControlFileNotFound,
+        self.assertRaises(error.ControlFileNotFound,
                           self.getter.get_control_file_contents_by_name,
                           name)

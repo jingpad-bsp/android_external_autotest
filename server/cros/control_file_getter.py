@@ -8,14 +8,7 @@ from autotest_lib.client.common_lib import control_data, error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 
 
-class ControlFileNotFound(Exception):
-    """Raised when a control file cannot be found and/or read."""
-    pass
-
-
-class NoControlFileList(Exception):
-    """Raised when to indicate that a listing can't be done."""
-    pass
+# Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 
 class ControlFileGetter(object):
@@ -93,7 +86,7 @@ class CacheingControlFileGetter(ControlFileGetter):
         @throws ControlFileNotFound if the file cannot be retrieved.
         """
         if not self._files and not self.get_control_file_list():
-            raise ControlFileNotFound('No control files found.')
+            raise error.ControlFileNotFound('No control files found.')
 
         if 'control' not in test_name:
             regexp = re.compile(os.path.join(test_name, 'control'))
@@ -101,9 +94,9 @@ class CacheingControlFileGetter(ControlFileGetter):
             regexp = re.compile(test_name)
         candidates = filter(regexp.search, self._files)
         if not candidates:
-            raise ControlFileNotFound('No control file for ' + test_name)
+            raise error.ControlFileNotFound('No control file for ' + test_name)
         if len(candidates) > 1:
-            raise ControlFileNotFound(test_name + ' is not unique.')
+            raise error.ControlFileNotFound(test_name + ' is not unique.')
         return self.get_control_file_contents(candidates[0])
 
 
@@ -155,7 +148,7 @@ class FileSystemGetter(CacheingControlFileGetter):
                     directories.append(fullpath)
         if not self._files:
             msg = 'No control files under ' + ','.join(self._paths)
-            raise NoControlFileList(msg)
+            raise error.NoControlFileList(msg)
         return [f for f in self._files if self._is_useful_file(f)]
 
 
@@ -172,7 +165,7 @@ class FileSystemGetter(CacheingControlFileGetter):
             msg = "Can't retrieve {0}: {1} ({2})".format(test_path,
                                                          strerror,
                                                          errno)
-            raise ControlFileNotFound(msg)
+            raise error.ControlFileNotFound(msg)
 
 
 class DevServerGetter(CacheingControlFileGetter):
@@ -206,7 +199,7 @@ class DevServerGetter(CacheingControlFileGetter):
         try:
             return self._dev_server.list_control_files(self._build)
         except urllib2.HTTPError as e:
-            raise NoControlFileList(e)
+            raise error.NoControlFileList(e)
 
 
     def get_control_file_contents(self, test_path):
@@ -222,4 +215,4 @@ class DevServerGetter(CacheingControlFileGetter):
         try:
             return self._dev_server.get_control_file(self._build, test_path)
         except urllib2.HTTPError as e:
-            raise ControlFileNotFound(e)
+            raise error.ControlFileNotFound(e)

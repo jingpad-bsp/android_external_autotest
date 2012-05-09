@@ -20,6 +20,7 @@
 """
 
 import urllib2
+from autotest_lib.client.common_lib import error as exceptions
 
 class JSONRPCException(Exception):
     pass
@@ -55,6 +56,9 @@ def BuildException(error):
     for cls in JSONRPCException.__subclasses__():
         if error['name'] == cls.__name__:
             return cls(error, error_message)
+    for cls in exceptions.CrosDynamicSuiteException.__subclasses__():
+        if error['name'] == cls.__name__:
+            return cls(error_message)
     return JSONRPCException(error_message)
 
 class ServiceProxy(object):

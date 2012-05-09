@@ -4,7 +4,7 @@
 
 import logging, random, time
 import common
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import error, utils
 from autotest_lib.server import frontend
 from autotest_lib.frontend.afe.json_rpc import proxy
 
@@ -49,7 +49,8 @@ def retry(ExceptionToCheck, timeout_min=1, delay_sec=3):
                 delay = jittered_delay(delay_sec)
                 try:
                     return func(*args, **kwargs)
-                    break
+                except error.CrosDynamicSuiteException, e:
+                    raise e
                 except proxy.ValidationError, e:
                     raise e
                 except ExceptionToCheck, e:

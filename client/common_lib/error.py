@@ -491,6 +491,54 @@ class RepoError(PackagingError):
     "Raised when a repo isn't working in some way"
 
 
+class CrosDynamicSuiteException(Exception):
+    """
+    Base class for exceptions coming from dynamic suite code in server/cros/*.
+    """
+    pass
+
+
+class StageBuildFailure(CrosDynamicSuiteException):
+    """Raised when the dev server throws 500 while staging a build."""
+    pass
+
+
+class ControlFileEmpty(CrosDynamicSuiteException):
+    """Raised when the control file exists on the server, but can't be read."""
+    pass
+
+
+class AsynchronousBuildFailure(CrosDynamicSuiteException):
+    """Raised when the dev server throws 500 while finishing staging of a build.
+    """
+    pass
+
+
+class SuiteArgumentException(CrosDynamicSuiteException):
+    """Raised when improper arguments are used to run a suite."""
+    pass
+
+
+class InadequateHostsException(CrosDynamicSuiteException):
+    """Raised when there are too few hosts to run a suite."""
+    pass
+
+
+class NoHostsException(CrosDynamicSuiteException):
+    """Raised when there are no healthy hosts to run a suite."""
+    pass
+
+
+class ControlFileNotFound(CrosDynamicSuiteException):
+    """Raised when a control file cannot be found and/or read."""
+    pass
+
+
+class NoControlFileList(CrosDynamicSuiteException):
+    """Raised when to indicate that a listing can't be done."""
+    pass
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():
