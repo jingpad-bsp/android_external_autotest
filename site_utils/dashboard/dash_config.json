@@ -204,21 +204,7 @@
                 "mb_per_sec_memory_r_256k_ran",
                 "mb_per_sec_memory_rw_256k_seq",
                 "mb_per_sec_memory_set_256k_seq",
-                "mb_per_sec_memory_w_256k_seq"]},
-        "120": {
-            "test": "desktopui_V8Bench",
-            "keys": [
-                "score_crypto",
-                "score_deltablue",
-                "score_earleyboyer",
-                "score_raytrace",
-                "score_regexp",
-                "score_richards",
-                "score_splay"]},
-        "121": {
-            "test": "desktopui_V8Bench",
-            "keys": [
-                "score_total"]}},
+                "mb_per_sec_memory_w_256k_seq"]}},
     "alternatelandings": {
         "x86-alex-r18": {
             "netbook_ALEX_CDMA_GOBI2K": "network",

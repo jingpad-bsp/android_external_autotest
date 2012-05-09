@@ -7,6 +7,5 @@
   "build_RootFilesystemSize,bytes_rootfs_prod": "lowisgood",
   "power_LoadTest.WIFI,minutes_battery_life": "highisgood",
   "power_Resume,seconds_system_resume": "lowisgood",
-  "power_Resume,seconds_system_suspend": "lowisgood",
-  "desktopui_V8Bench,score_total": "highisgood"
+  "power_Resume,seconds_system_suspend": "lowisgood"
 }
