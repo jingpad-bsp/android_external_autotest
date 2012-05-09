@@ -176,6 +176,32 @@ class NightlyTest(TimedEventTestBase):
             timed_event.Nightly.CreateFromConfig(config, self.mv))
 
 
+    def testMerge(self):
+        """Test that Merge() works when the deadline time of day changes."""
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
+        self.mox.ReplayAll()
+
+        old = timed_event.Nightly(self.mv, False, self._HOUR)
+        new = timed_event.Nightly(self.mv, False, (self._HOUR + 23) % 24)
+        self.assertNotEquals(old._deadline, new._deadline)
+        old.Merge(new)
+        self.assertEquals(old._deadline, new._deadline)
+
+
+    def testSkipMerge(self):
+        """Test that deadline is unchanged when time of day is unchanged."""
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
+        self.mox.ReplayAll()
+
+        old = timed_event.Nightly(self.mv, False, self._HOUR)
+        new = timed_event.Nightly(self.mv, False, self._HOUR)
+        new._deadline += datetime.timedelta(days=1)
+        self.assertNotEquals(old._deadline, new._deadline)
+        saved_deadline = old._deadline
+        old.Merge(new)
+        self.assertEquals(saved_deadline, old._deadline)
+
+
     def testDeadlineInPast(self):
         """Ensure we work if the deadline aready passed today."""
         fake_now = self.BaseTime() + datetime.timedelta(hours=1)
@@ -265,6 +291,45 @@ class WeeklyTest(TimedEventTestBase):
 
         self.assertEquals(self.CreateEvent(),
                           timed_event.Weekly.CreateFromConfig(config, self.mv))
+
+
+    def testMergeDueToTimeChange(self):
+        """Test that Merge() works when the deadline time of day changes."""
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
+        self.mox.ReplayAll()
+
+        old = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
+        new = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR + 1)
+        self.assertNotEquals(old._deadline, new._deadline)
+        old.Merge(new)
+        self.assertEquals(old._deadline, new._deadline)
+
+
+    def testMergeDueToDayChange(self):
+        """Test that Merge() works when the deadline day of week changes."""
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
+        self.mox.ReplayAll()
+
+        old = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
+        new = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
+        new._deadline += datetime.timedelta(days=1)
+        self.assertNotEquals(old._deadline, new._deadline)
+        old.Merge(new)
+        self.assertEquals(old._deadline, new._deadline)
+
+
+    def testSkipMerge(self):
+        """Test that deadline is unchanged when only the week is changed."""
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
+        self.mox.ReplayAll()
+
+        old = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
+        new = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
+        new._deadline += datetime.timedelta(days=7)
+        self.assertNotEquals(old._deadline, new._deadline)
+        saved_deadline = old._deadline
+        old.Merge(new)
+        self.assertEquals(saved_deadline, old._deadline)
 
 
     def testDeadlineInPast(self):

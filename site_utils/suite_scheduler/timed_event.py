@@ -39,18 +39,6 @@ class TimedEvent(base_event.BaseEvent):
         return datetime.datetime.now()
 
 
-    def Merge(self, to_merge):
-        """Merge this event with to_merge, changing all mutable properties.
-
-        keyword remains unchanged; the following take on values from to_merge:
-          _deadline
-
-        @param to_merge: A TimedEvent instance to merge into this isntance.
-        """
-        super(TimedEvent, self).Merge(to_merge)
-        self._deadline = to_merge._deadline
-
-
     def Prepare(self):
         pass
 
@@ -58,6 +46,8 @@ class TimedEvent(base_event.BaseEvent):
     def ShouldHandle(self):
         """Return True if self._deadline has passed; False if not."""
         if not super(TimedEvent, self).ShouldHandle():
+            logging.info('Checking deadline %s for event %s',
+                         self._deadline, self.keyword)
             return self._now() >= self._deadline
 
 
@@ -73,8 +63,8 @@ class TimedEvent(base_event.BaseEvent):
         for (type, milestone), manifests in all_branch_manifests.iteritems():
             build = base_event.BuildName(board, type, milestone, manifests[-1])
             latest_branch_builds[task.PickBranchName(type, milestone)] = [build]
-        logging.debug('%s event found candidate builds: %r',
-                      self.keyword, latest_branch_builds)
+        logging.info('%s event found candidate builds: %r',
+                     self.keyword, latest_branch_builds)
         return latest_branch_builds
 
 
@@ -125,6 +115,19 @@ class Nightly(TimedEvent):
             deadline = tonight + datetime.timedelta(days=1)
         super(Nightly, self).__init__(self.KEYWORD, manifest_versions,
                                       always_handle, deadline)
+
+
+    def Merge(self, to_merge):
+        """Merge this event with to_merge, changing some mutable properties.
+
+        keyword remains unchanged; the following take on values from to_merge:
+          _deadline iff the time of day in to_merge._deadline is different.
+
+        @param to_merge: A TimedEvent instance to merge into this isntance.
+        """
+        super(TimedEvent, self).Merge(to_merge)
+        if self._deadline.time() != to_merge._deadline.time():
+            self._deadline = to_merge._deadline
 
 
     def GetBranchBuildsForBoard(self, board):
@@ -191,6 +194,20 @@ class Weekly(TimedEvent):
             deadline = this_week_deadline + datetime.timedelta(days=7)
         super(Weekly, self).__init__(self.KEYWORD, manifest_versions,
                                      always_handle, deadline)
+
+
+    def Merge(self, to_merge):
+        """Merge this event with to_merge, changing some mutable properties.
+
+        keyword remains unchanged; the following take on values from to_merge:
+          _deadline iff the time of day in to_merge._deadline is different.
+
+        @param to_merge: A TimedEvent instance to merge into this isntance.
+        """
+        super(TimedEvent, self).Merge(to_merge)
+        if (self._deadline.time() != to_merge._deadline.time() or
+            self._deadline.weekday() != to_merge._deadline.weekday()):
+            self._deadline = to_merge._deadline
 
 
     def GetBranchBuildsForBoard(self, board):
