@@ -4,12 +4,14 @@
 
 import binascii
 import copy
-import logging
 import os
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__),
-    '../../deps/chrome_test/test_src/third_party/webdriver/pylib'))
+import web_driver_core_helpers
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
+                             'chrome_test', 'test_src', 'third_party',
+                             'webdriver', 'pylib'))
 
 try:
   from selenium import webdriver
@@ -22,10 +24,11 @@ from selenium.common.exceptions import TimeoutException as \
 from selenium.webdriver.support.ui import WebDriverWait
 
 
-class APConfigurator(object):
+class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
     """Base class for objects to configure access points using webdriver."""
 
     def __init__(self, router_dict):
+        super(APConfigurator, self).__init__()
         # Possible bands
         self.band_2ghz = '2.4GHz'
         self.band_5ghz = '5GHz'
@@ -60,132 +63,6 @@ class APConfigurator(object):
             self.driver.close()
         except:
             pass
-
-    def wait_for_object_by_id(self, element_id):
-        """Waits for an element to become available; returns a reference to it.
-
-        Args:
-          element_id: the id of the element to wait for
-
-        Returns:
-          Reference to the element if found.
-        """
-        xpath = 'id("%s")' % element_id
-        return self.wait_for_object_by_xpath(xpath)
-
-    def wait_for_object_by_xpath(self, xpath):
-        """Waits for an element to become available; returns a reference to it.
-
-        Args:
-          xpath: the xpath of the element to wait for
-
-        Returns:
-          Reference to the element if found.
-        """
-        try:
-            self.wait.until(lambda _: self.driver.find_element_by_xpath(xpath))
-        except SeleniumTimeoutException, e:
-            raise SeleniumTimeoutException('Unable to find the object by xpath:'
-                                           '%s\n WebDriver exception: %s' %
-                                           (xpath, str(e)))
-        return self.driver.find_element_by_xpath(xpath)
-
-    def select_item_from_popup_by_id(self, item, element_id,
-                                     wait_for_xpath=None):
-        """Selects an item from a popup, by passing the element ID.
-
-        Args:
-          item: the item to select from the popup
-          element_id: the html ID of the item
-          wait_for_xpath: an item to wait for before returning
-        """
-        xpath = 'id("%s")' % element_id
-        self.select_item_from_popup_by_xpath(item, xpath, wait_for_xpath)
-
-    def select_item_from_popup_by_xpath(self, item, xpath, wait_for_xpath=None):
-        """Selects an item from a popup, by passing the xpath of the popup.
-
-        Args:
-          item: the item to select from the popup
-          xpath: the xpath of the popup
-          wait_for_xpath: an item to wait for before returning
-        """
-        popup = self.driver.find_element_by_xpath(xpath)
-        try:
-            self.wait.until(lambda _:
-                            len(popup.find_elements_by_tag_name('option')))
-        except SeleniumTimeoutException, e:
-            raise SeleniumTimeoutException('The popup at xpath %s has no items.'
-                                           '\n WebDriver exception: %s', xpath,
-                                           str(e))
-        for option in popup.find_elements_by_tag_name('option'):
-            if option.text == item:
-                option.click()
-                break
-        if wait_for_xpath: self.wait_for_object_by_xpath(wait_for_xpath)
-
-    def set_content_of_text_field_by_id(self, content, text_field_id,
-                                        wait_for_xpath=None):
-        """Sets the content of a textfield, by passing the element ID.
-
-        Args:
-          content: the content to apply to the textfield
-          text_field_id: the html ID of the textfield
-          wait_for_xpath: an item to wait for before returning
-        """
-        xpath = 'id("%s")' % text_field_id
-        self.set_content_of_text_field_by_xpath(content, xpath, wait_for_xpath)
-
-    def set_content_of_text_field_by_xpath(self, content, xpath,
-                                           wait_for_xpath=None):
-        """Sets the content of a textfield, by passing the xpath.
-
-        Args:
-          content: the content to apply to the textfield
-          xpath: the xpath of the textfield
-          wait_for_xpath: an item to wait for before returning
-        """
-        # When we can get the value we know the text field is ready.
-        text_field = self.driver.find_element_by_xpath(xpath)
-        if text_field.get_attribute('type') != 'password':
-            try:
-                self.wait.until(lambda _: text_field.get_attribute('value'))
-            except SeleniumTimeoutException, e:
-                raise SeleniumTimeoutException('Unable to obtain the value of '
-                                               'the text field %s.\nWebDriver '
-                                               'exception:%s' % (xpath, str(e)))
-        text_field = self.driver.find_element_by_xpath(xpath)
-        text_field.clear()
-        text_field.send_keys(content)
-        if wait_for_xpath: self.wait_for_object_by_xpath(wait_for_xpath)
-
-    def set_check_box_selected_by_id(self, check_box_id, selected=True,
-                                     wait_for_xpath=None):
-        """Sets the state of a checkbox, by passing the ID.
-
-        Args:
-          check_box_id: the html id of the checkbox
-          selected: True to enable the checkbox; False otherwise
-          wait_for_xpath: an item to wait for before returning
-        """
-        xpath = 'id("%s")' % check_box_id
-        self.set_check_box_selected_by_xpath(xpath, selected, wait_for_xpath)
-
-    def set_check_box_selected_by_xpath(self, xpath, selected=True,
-                                        wait_for_xpath=None):
-        """Sets the state of a checkbox, by passing the xpath.
-
-        Args:
-          xpath: the xpath of the checkbox
-          selected: True to enable the checkbox; False otherwise
-          wait_for_xpath: an item to wait for before returning
-        """
-        check_box = self.driver.find_element_by_xpath(xpath)
-        value = check_box.get_attribute('value')
-        if (value == '1' and not selected) or (value == '0' and selected):
-            check_box.click()
-        if wait_for_xpath:
-            self.wait_for_object_by_xpath(wait_for_xpath)
 
     def add_item_to_command_list(self, method, args, page, priority):
         """Adds commands to be executed against the AP web UI.
