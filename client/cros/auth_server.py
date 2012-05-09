@@ -126,16 +126,20 @@ function submitAndGo() {
 
 
     def wait_for_client_login(self, timeout=10):
-        self._client_latch.wait(timeout)
-        if not self._client_latch.is_set():
-            raise error.TestError('Never hit ClientLogin endpoint.')
+        self._client_new_latch.wait(timeout)
+        if not self._client_new_latch.is_set():
+            self._client_latch.wait(timeout)
+            if not self._client_latch.is_set():
+                raise error.TestError('Never hit ClientLogin endpoint.')
 
 
     def wait_for_issue_token(self, timeout=10):
-        self._issue_latch.wait(timeout)
-        if not self._issue_latch.is_set():
-            self.__issue_auth_token_miss_count += 1
-            logging.error('Never hit IssueAuthToken endpoint.')
+        self._issue_new_latch.wait(timeout)
+        if not self._issue_new_latch.is_set():
+            self._issue_latch.wait(timeout)
+            if not self._issue_latch.is_set():
+                self.__issue_auth_token_miss_count += 1
+                logging.error('Never hit IssueAuthToken endpoint.')
 
 
     def wait_for_test_over(self, timeout=10):
