@@ -71,8 +71,10 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     ds = dev_server.DevServer.create()
     timings['download_started_time'] = datetime.datetime.now().strftime(
         time_fmt)
-    if not ds.trigger_download(build, synchronous=False):
-        raise error.StageBuildFailure("Server error while staging " + build)
+    try:
+        ds.trigger_download(build, synchronous=False)
+    except dev_server.DevServerException as e:
+        raise error.StageBuildFailure(e)
     timings['payload_finished_time'] = datetime.datetime.now().strftime(
         time_fmt)
 

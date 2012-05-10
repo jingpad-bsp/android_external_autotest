@@ -193,12 +193,12 @@ class DevServerGetter(CacheingControlFileGetter):
         |self._dev_server|.  Populates |self._files| with that list
         and then returns paths (under the autotest dir) to them.
 
-        @return A list of control file paths.  None on failure.
+        @return A list of control file paths.
         @throws NoControlFileList if there is an error while listing.
         """
         try:
             return self._dev_server.list_control_files(self._build)
-        except urllib2.HTTPError as e:
+        except dev_server.DevServerException as e:
             raise error.NoControlFileList(e)
 
 
@@ -214,5 +214,5 @@ class DevServerGetter(CacheingControlFileGetter):
         """
         try:
             return self._dev_server.get_control_file(self._build, test_path)
-        except urllib2.HTTPError as e:
+        except dev_server.DevServerException as e:
             raise error.ControlFileNotFound(e)
