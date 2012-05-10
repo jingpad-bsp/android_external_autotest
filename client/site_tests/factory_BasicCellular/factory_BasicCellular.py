@@ -16,13 +16,19 @@ DEVICE_NORMAL_RESPONSE = 'OK'
 
 
 class factory_BasicCellular(test.test):
-    version = 1
+    version = 2
 
     def run_once(self, imei_re, iccid_re, dev='/dev/ttyUSB0'):
         '''Connects to the modem, checking the IMEI and ICCID.
 
+        For the iccid test, please note this test requires a SIM card,
+        a test SIM is fine. The SIM does NOT need to have an account
+        provisioned.
+
         @param imei_re: The regular expression of expected IMEI.
+                        None value to skip this item.
         @param iccid_re: The regular expression of expected ICCID.
+                         None value to skip this item.
         @param dev: Path to the modem. Default to /dev/ttyUSB0.
         '''
         def read_response():
@@ -55,16 +61,18 @@ class factory_BasicCellular(test.test):
             check_response(DEVICE_NORMAL_RESPONSE)
 
             # Check IMEI.
-            send_command('AT+CGSN')
-            check_response(imei_re)
-            check_response('')
-            check_response(DEVICE_NORMAL_RESPONSE)
+            if imei_re is not None:
+                send_command('AT+CGSN')
+                check_response(imei_re)
+                check_response('')
+                check_response(DEVICE_NORMAL_RESPONSE)
 
             # Check ICCID.
-            send_command('AT+ICCID')
-            check_response(iccid_re)
-            check_response('')
-            check_response(DEVICE_NORMAL_RESPONSE)
+            if iccid_re is not None:
+                send_command('AT+ICCID')
+                check_response(iccid_re)
+                check_response('')
+                check_response(DEVICE_NORMAL_RESPONSE)
         finally:
             try:
                 # Restart the modem manager.
