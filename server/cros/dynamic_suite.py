@@ -822,7 +822,8 @@ class Suite(object):
 
         suites = set()
         predicate = lambda t: hasattr(t, 'suite')
-        for test in Suite.find_and_parse_tests(cf_getter, predicate):
+        for test in Suite.find_and_parse_tests(cf_getter, predicate,
+                                               add_experimental=True):
             suites.update(Suite.parse_tag(test.suite))
         return list(suites)
 
