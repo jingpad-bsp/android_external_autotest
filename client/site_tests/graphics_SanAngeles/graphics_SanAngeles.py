@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,9 +6,9 @@ import logging, os, re
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, cros_ui_test, login
+from autotest_lib.client.cros import cros_ui, graphics_ui_test, login
 
-class graphics_SanAngeles(cros_ui_test.UITest):
+class graphics_SanAngeles(graphics_ui_test.GraphicsUITest):
     version = 2
     preserve_srcdir = True
 
