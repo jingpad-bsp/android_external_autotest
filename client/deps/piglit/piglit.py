@@ -32,6 +32,9 @@ def setup(topdir):
         # patch in files now
         utils.system('patch -p0 < ' +
                      os.path.join(srcdir, 'CMakeLists_GLES_Release.patch'))
+        utils.system('patch -p0 < ' +
+                     os.path.join(srcdir,
+                     'monitor_tests_for_GPU_hang_and_SW_rasterization.patch'))
         shutil.copyfile(os.path.join(srcdir, 'cros-driver.tests'),
                         os.path.join(dst_path, 'tests/cros-driver.tests'))
         os.chdir(dst_path)

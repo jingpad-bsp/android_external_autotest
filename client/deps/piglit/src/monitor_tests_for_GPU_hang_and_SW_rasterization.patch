@@ -1,0 +1,95 @@
+--- piglit/framework/exectest.py	2012-05-01 13:14:42.000000000 
++++ piglit/framework/exectest.py	2012-05-10 16:07:55.000000000 
+@@ -29,12 +29,18 @@
+ 
+ #############################################################################
+ ##### ExecTest: A shared base class for tests that simply run an executable.
+ #############################################################################
+ 
+ class ExecTest(Test):
++	# Variables for tracking hangs and hardware acceleration status.
++	software = False
++	glxinfo = ''
++	hangs = {}
++	_HANGCHECK = 'drm:i915_hangcheck_elapsed'
++
+ 	def __init__(self, command):
+ 		Test.__init__(self)
+ 		self.command = command
+ 		self.env = {}
+ 
+ 		if isinstance(self.command, basestring):
+@@ -42,12 +48,45 @@
+ 
+ 	def interpretResult(self, out, results):
+ 		raise NotImplementedError
+ 		return out
+ 
+ 	def run(self, valgrind):
++		print "Command: "
++		print self.command
++		# Check if we are on software rendering (considered unrecoverable).
++		if not self.software:
++			cmd = 'DISPLAY=:0 glxinfo | grep "OpenGL renderer string"'
++			proc = subprocess.Popen(
++				cmd,
++				stdout=subprocess.PIPE,
++				shell=True
++				)
++			self.glxinfo = proc.communicate()[0]
++			if 'llvmpipe' in self.glxinfo.lower() or 'soft' in self.glxinfo.lower():
++				self.software = True
++		# Don't run test if we are on software rendering.
++		if self.software:
++			results = {}
++			results['result'] = 'skip'
++			results['note'] = self.glxinfo
++			print "Results:"
++			print results
++			return results
++		# Make a dictionary of all hangs we have seen so far.
++		cmd = 'dmesg | grep "' + self._HANGCHECK + '"'
++		proc = subprocess.Popen(
++			cmd,
++			stdout=subprocess.PIPE,
++			shell=True
++			)
++		dmesg = proc.communicate()[0]
++		for line in dmesg.split('\n'):
++			if self._HANGCHECK in line:
++				self.hangs[line] = line
++
+ 		fullenv = os.environ.copy()
+ 		for e in self.env:
+ 			fullenv[e] = str(self.env[e])
+ 
+ 		if self.command is not None:
+ 			command = self.command
+@@ -129,12 +168,27 @@
+ 
+ 		else:
+ 			results = TestResult()
+ 			if 'result' not in results:
+ 				results['result'] = 'skip'
+ 
++		# Check for GPU hangs again and report the new ones.
++		cmd = 'dmesg | grep "' + self._HANGCHECK + '"'
++		proc = subprocess.Popen(
++			cmd,
++			stdout=subprocess.PIPE,
++			shell=True
++			)
++		dmesg = proc.communicate()[0]
++		for line in dmesg.split('\n'):
++			if self._HANGCHECK in line:
++				if not line in self.hangs.keys():
++					results['note'] = 'Saw GPU hang during test. ' + line
++
++		print "Results:"
++		print results
+ 		return results
+ 
+ 
+ 
+ #############################################################################
+ ##### PlainExecTest: Run a "native" piglit test executable

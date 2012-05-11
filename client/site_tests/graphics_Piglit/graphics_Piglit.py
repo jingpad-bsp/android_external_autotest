@@ -34,6 +34,7 @@ class graphics_Piglit(graphics_ui_test.GraphicsUITest):
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
         # 'results/default/graphics_Piglit/cros-driver')
+        log_path = os.path.join(self.outputdir, 'piglit-run.log')
         results_path = os.path.join(self.outputdir, 'cros-driver')
         piglit_path = os.path.join(dep_dir, 'piglit')
         bin_path = os.path.join(piglit_path, 'bin')
@@ -48,6 +49,9 @@ class graphics_Piglit(graphics_ui_test.GraphicsUITest):
             cmd = cmd + ' --concurrent=0'
             cmd = cmd + ' tests/cros-driver.tests'
             cmd = cmd + ' ' + results_path
+            # Output all commands as run sequentially with results in
+            # piglit-run.log and store everything for future inspection.
+            cmd = cmd + ' | tee ' + log_path
             cmd = cros_ui.xcommand(cmd)
             logging.info('Calling %s' % cmd)
             utils.run(cmd)

@@ -52,3 +52,8 @@ del profile.tests['fbo']['fbo-rg-GL_RG16']
 
 # IHF: This test crashed on lumpy during checkout.
 del profile.tests['texturing']['max-texture-size']
+
+# IHF: These tests cause hangchecks on lumpy/stumpy and often many crashes and a loss
+# of hardware acceleration later. See crosbug.com/30809.
+del profile.tests['spec']['glsl-1.30']['execution']['fs-discard-exit-1']
+del profile.tests['spec']['glsl-1.30']['execution']['fs-discard-exit-2']
