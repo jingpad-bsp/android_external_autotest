@@ -1,4 +1,4 @@
-import logging, os, signal, sys, warnings
+import fcntl, logging, os, signal, sys, warnings
 
 # primary public APIs
 
@@ -533,6 +533,9 @@ class _FdRedirectionStreamManager(_StreamManager):
             os.close(read_end)
             os.dup2(write_end, self._fd) # point FD to the subprocess
             os.close(write_end)
+            fd_flags = fcntl.fcntl(self._fd, fcntl.F_GETFD)
+            fcntl.fcntl(self._fd, fcntl.F_SETFD,
+                        fd_flags | fcntl.FD_CLOEXEC)
             return pid
         else: # child
             try:
