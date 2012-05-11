@@ -10,6 +10,7 @@ import random
 import re
 import socket
 import struct
+import subprocess
 import time
 
 from autotest_lib.client.bin import test, utils
@@ -44,11 +45,19 @@ class network_EthernetStressPlug(test.test):
             net_list = pyudev.Context().list_devices(subsystem='net')
             for dev in net_list:
                 if device in dev.sys_path:
-                    # Currently, we only support usb devices where the
-                    # device path should match something of the form
+                    # Support usb devices where the device path should match
+                    # something of the form
                     # /sys/devices/pci.*/0000.*/usb.*/.*.
                     net_path = re.search('(/sys/devices/pci[^/]*/0000[^/]*/'
                                          'usb[^/]*/[^/]*)', dev.sys_path)
+                    if net_path:
+                        return net_path.groups()[0]
+
+                    # Support onboard Ethernet without usb dongle where the
+                    # device path should match something of the form
+                    # /sys/device/platform/.*/net/.*
+                    net_path = re.search('(/sys/devices/platform/.*/net/[^/]*)',
+                                         dev.sys_path)
                     if net_path:
                         return net_path.groups()[0]
 
@@ -147,10 +156,29 @@ class network_EthernetStressPlug(test.test):
         Args:
           power: 0 to unplug, 1 to plug.
         """
-
-        fp = open(os.path.join(self.eth_syspath, 'authorized'), 'w')
-        fp.write('%d' % power)
-        fp.close()
+        # "authorized" file will disable USB port and in some cases power
+        # off the port.
+        if os.path.exists(os.path.join(self.eth_syspath, 'authorized')):
+            fp = open(os.path.join(self.eth_syspath, 'authorized'), 'w')
+            fp.write('%d' % power)
+            fp.close()
+        # Linux supports standard ioctl to configures network devices by seting
+        # or getting a 16-bit short number flags.
+        # The LSB is IFF_UP, which controls that interface is running or not.
+        elif os.path.exists(os.path.join(self.eth_syspath, 'flags')):
+            fp = open(os.path.join(self.eth_syspath, 'flags'), 'w')
+            fp.write('0x1003' if power else '0x1002')
+            fp.close()
+        # else use ifconfig eth0 up/down to switch
+        else:
+            logging.warning('plug/unplug event control not found. '
+                            'Use ifconfig %s %s instead' %
+                         (self.interface, 'up' if power else 'down'))
+            result = subprocess.check_call(['ifconfig', self.interface,
+                                            'up' if power else 'down'])
+            if result:
+                raise error.TestError('Fail to change the power state of %s' %
+                                      self.interface)
 
     def TestPowerEthernet(self, power=1, timeout=45):
         """ Tests enabling or disabling the ethernet.
