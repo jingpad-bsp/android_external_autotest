@@ -297,7 +297,8 @@ def main():
         new_dev = new_dev_server.DevServer()
         # The variable board is akin to target in the new nomenclature. This is
         # the old style and the new style clashing.
-        for milestone in ['r18', 'r19', 'r20']:
+        # TODO(scottz): remove kludge once we move to suite scheduler.
+        for milestone in ['r18', 'r19', 'r20', 'r21', 'r22']:
           build = new_dev.get_latest_build(board, milestone=milestone)
           if not build:
             continue
