@@ -22,4 +22,4 @@ NOTE: If autoupdate or another program accesses the spare root partition
 while this test is running corruption may occur.
 """
 
-job.run_test('hardware_StorageFio', {'quicktest':'True'})
+job.run_test(url='hardware_StorageFio', dargs={'quicktest':'True'})
