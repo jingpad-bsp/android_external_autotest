@@ -37,64 +37,11 @@ from autotest_lib.client.cros.factory import ui as ful
 # from the real one, hence the constant here
 _GTK_KB_KEYCODE_OFFSET = 8
 
-def GetScanToKeyMap():
-    """
-        Generate the scancode-to-keycode conversion table
-    """
-
-    p = subprocess.Popen('getkeycodes', stdout=subprocess.PIPE)
-    rawTable, useless = p.communicate()
-
-    # plain scancodes (scancode = keycode)
-    r1 = re.search(r'for\s\d+-\d+', rawTable)
-    r1 = re.findall(r'\d+', r1.group())
-    mapping = dict([('%02X' % x, x) for x in xrange(int(r1[0]), int(r1[1])+1)])
-
-    # irregular mappings
-    eights = re.findall(r'0x\d+:\s+[\d-]+\s+[\d-]+\s+[\d-]+\s+[\d-]+'
-                        r'\s+[\d-]+\s+[\d-]+\s+[\d-]+\s+[\d-]+', rawTable)
-    for row in eights:
-        start = int(re.search(r'0x\d+', row).group(), 16)
-
-        kcodes = re.findall(r'\s+\d+', row[5:])
-        for entry in kcodes:
-            if int(entry) != 0:
-                mapping['%02X' % start] = int(entry)
-            start = start + 1
-
-    # special scancodes (with 0xe0 leading byte)
-    eights = re.findall(r'e0\s\d+:\s+[\d-]+\s+[\d-]+\s+[\d-]+\s+[\d-]+'
-                        r'\s+[\d-]+\s+[\d-]+\s+[\d-]+\s+[\d-]+', rawTable)
-    for row in eights:
-        start = int(re.search(r'\s\d+:', row).group()[:-1], 16)
-
-        kcodes = re.findall(r'\s+\d+', row[6:])
-        for entry in kcodes:
-            if int(entry) != 0:
-                mapping['E0 %02X' % start] = int(entry)
-            start = start + 1
-
-    return mapping
-
-def GenerateKeycodeBinding(scan_to_geom):
-    """
-        Convert the scancode-to-geometry binding
-        to keycode-to-geometry binding
-    """
-
-    # Get the scan-to-key mapping
-    scan_to_key = GetScanToKeyMap()
-
-    # Convert scancodes to keycodes in the scan-to-geom bindings
+def GenerateKeycodeBinding(old_bindings):
+    '''Offsets the bindings keycodes for GTK.'''
     key_to_geom = {}
-    for item in scan_to_geom.items():
-        # make binding only for the keys which exist in both mappings
-        # things like power key are skipped here (keycode of power is
-        # inconsistent)
-
-        if(scan_to_key.has_key(item[0])):
-            key_to_geom[scan_to_key[item[0]] + _GTK_KB_KEYCODE_OFFSET] = item[1]
-
+    for item in old_bindings.items():
+        key_to_geom[item[0] + _GTK_KB_KEYCODE_OFFSET] = item[1]
     return key_to_geom
 
 class KeyboardTest:
