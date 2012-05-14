@@ -58,9 +58,10 @@ class SchedulerLoggingConfig(logging_config.LoggingConfig):
 
         if not log_dir:
             return
-        logfile_name = self.get_log_name()
+        base = self.get_log_name()
 
-        self.add_file_handler(logfile_name, logging.DEBUG, log_dir=log_dir)
+        self.add_file_handler(base + '.DEBUG', logging.DEBUG, log_dir=log_dir)
+        self.add_file_handler(base + '.INFO', logging.INFO, log_dir=log_dir)
 
 
 def parse_options():
