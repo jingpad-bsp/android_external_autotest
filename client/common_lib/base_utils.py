@@ -819,7 +819,6 @@ def _wait_for_commands(bg_jobs, start_time, timeout):
                      bg_job.command)
         if nuke_subprocess(bg_job.sp) is None:
             # If process could not be SIGKILL'd, log kernel stack.
-            # TODO(cmasone): Remove when http://crosbug.com/220189 is sorted.
             logging.warn(utils.read_file('/proc/' + bg_job.sp.pid + '/stack'))
         bg_job.result.exit_status = bg_job.sp.poll()
         bg_job.result.duration = time.time() - start_time
