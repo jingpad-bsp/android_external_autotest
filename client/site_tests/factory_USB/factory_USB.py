@@ -28,30 +28,26 @@ from autotest_lib.client.cros.factory import ui as ful
 _UDEV_ACTION_INSERT = 'add'
 _UDEV_ACTION_REMOVE = 'remove'
 
-_PROMPT_FMT_STR = ('Plug and unplug each USB port, {0} to go...\n'
-                   '插拔每個 USB 端口, 還有 {0} 個待測試...')
+_PROMPT_FMT_STR = ('Plug device into each USB port, {0} to go...\n'
+                   '在每個 USB 端口插入裝置, 還有 {0} 個待測試...')
 
 
 class factory_USB(test.test):
     version = 1
 
-    def usb_event_cb(self, action, device):
-        if action not in [_UDEV_ACTION_INSERT, _UDEV_ACTION_REMOVE]:
-          return
-
-        factory.log('USB %s device path %s' % (action, device.device_path))
-        bus_path = os.path.dirname(device.sys_path)
+    def record_path(self, sys_path):
+        bus_path = os.path.dirname(sys_path)
         bus_ver_path = os.path.join(bus_path, 'version')
         bus_version = int(float(open(bus_ver_path, 'r').read().strip()))
 
         if bus_version == 2:
-            self._seen_usb2_paths.add(device.device_path)
+            self._seen_usb2_paths.add(sys_path)
         elif bus_version == 3:
-            self._seen_usb3_paths.add(device.device_path)
+            self._seen_usb3_paths.add(sys_path)
         else:
             logging.warning('usb event for unknown bus version: %r',
                             bus_version)
-            return True
+            return
 
         usb2_count = len(self._seen_usb2_paths)
         usb3_count = len(self._seen_usb3_paths)
@@ -65,12 +61,26 @@ class factory_USB(test.test):
         if self._num_usb3_ports:
           finished &= usb3_count >= self._num_usb3_ports
         if finished:
-            gtk.main_quit()
+            if self._started:
+                gtk.main_quit()
+            else:
+                self._succeed = True
         else:
             txt = _PROMPT_FMT_STR.format(self._num_usb_ports - total_count)
             self._prompt.set_text(txt)
 
+    def usb_event_cb(self, action, device):
+        if action not in [_UDEV_ACTION_INSERT, _UDEV_ACTION_REMOVE]:
+            return
+
+        factory.log('USB %s device path %s' % (action, device.sys_path))
+        if self._expected_paths and device.sys_path not in self._expected_paths:
+            return
+
+        self.record_path(device.sys_path)
+
     def run_once(self,
+                 expected_paths=None,
                  num_usb_ports=None,
                  num_usb2_ports=None,
                  num_usb3_ports=None):
@@ -88,6 +98,10 @@ class factory_USB(test.test):
         self._num_usb3_ports = num_usb3_ports
         self._seen_usb2_paths = set()
         self._seen_usb3_paths = set()
+
+        self._expected_paths = expected_paths
+        self._started = False
+        self._succeed = False
 
         context = pyudev.Context()
         monitor = pyudev.Monitor.from_netlink(context)
@@ -112,6 +126,13 @@ class factory_USB(test.test):
         test_widget.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse('black'))
         test_widget.add(vbox)
 
-        ful.run_test_widget(self.job, test_widget)
+        if self._expected_paths:
+            for path in self._expected_paths:
+                if os.path.exists(path):
+                    self.record_path(path)
+
+        if not self._succeed:
+            self._started = True
+            ful.run_test_widget(self.job, test_widget)
 
         factory.log('%s run_once finished' % self.__class__)
