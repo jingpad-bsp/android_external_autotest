@@ -159,12 +159,8 @@ class XButton:
     Wheel_Right = 7
     Mouse_Wheel_Up = 8
     Mouse_Wheel_Down = 9
-    DEFAULT_BUTTON_LABELS = (
-        'Button Left', 'Button Middle', 'Button Right',
-        'Button Wheel Up', 'Button Wheel Down',
-        'Button Horiz Wheel Left', 'Button Horiz Wheel Right',
-        'Button 0', 'Button 1', 'Button 2', 'Button 3',
-        'Button 4', 'Button 5', 'Button 6', 'Button 7')
+    DEFAULT_BUTTON_LABELS = ('Button Left', 'Button Middle', 'Button Right',
+                             'Button Back', 'Button Forward')
 
     def __init__(self):
         self.display_environ = trackpad_util.Display().get_environ()
@@ -174,10 +170,6 @@ class XButton:
         self.trackpad_dev_id = self._get_trackpad_dev_id()
         self.button_labels = None
         self.get_supported_buttons()
-        self.wheel_label_dict = {'up': self.get_label(XButton.Wheel_Up),
-                                 'down': self.get_label(XButton.Wheel_Down),
-                                 'left': self.get_label(XButton.Wheel_Left),
-                                 'right': self.get_label(XButton.Wheel_Right),}
 
     def _get_trackpad_dev_id(self):
         trackpad_dev_id = None
