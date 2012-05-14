@@ -44,7 +44,7 @@ class DedupingScheduler(object):
 
 
     def _ShouldScheduleSuite(self, suite, board, build):
-        """Return if |suite| has not yet been run for |build| on |board|.
+        """Return True if |suite| has not yet been run for |build| on |board|.
 
         True if |suite| has not been run for |build| on |board|.
         False if it has been.
@@ -58,7 +58,7 @@ class DedupingScheduler(object):
         """
         try:
             return not self._afe.get_jobs(name__startswith=build,
-                                          name__endswith=suite)
+                                          name__endswith='control.'+suite)
         except Exception as e:
             raise DedupException(e)
 

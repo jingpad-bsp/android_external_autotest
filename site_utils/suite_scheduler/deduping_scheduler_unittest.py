@@ -40,7 +40,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         """Test a successful de-dup and suite schedule."""
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
-                          name__endswith=self._SUITE).AndReturn([])
+                          name__endswith='control.'+self._SUITE).AndReturn([])
         # Expect an attempt to schedule; allow it to succeed.
         self.afe.run('create_suite_job',
                      suite_name=self._SUITE,
@@ -58,8 +58,9 @@ class DedupingSchedulerTest(mox.MoxTestBase):
     def testShouldNotScheduleSuite(self):
         """Test a successful de-dup and avoiding scheduling the suite."""
         # A similar suite has already been scheduled.
-        self.afe.get_jobs(name__startswith=self._BUILD,
-                          name__endswith=self._SUITE).AndReturn(['42'])
+        self.afe.get_jobs(
+            name__startswith=self._BUILD,
+            name__endswith='control.'+self._SUITE).AndReturn(['42'])
         self.mox.ReplayAll()
         self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
                                                       self._BOARD,
@@ -87,8 +88,9 @@ class DedupingSchedulerTest(mox.MoxTestBase):
     def testShouldScheduleSuiteExplodes(self):
         """Test a failure to de-dup."""
         # Barf while checking for similar suites.
-        self.afe.get_jobs(name__startswith=self._BUILD,
-                          name__endswith=self._SUITE).AndRaise(Exception())
+        self.afe.get_jobs(
+            name__startswith=self._BUILD,
+            name__endswith='control.'+self._SUITE).AndRaise(Exception())
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.DedupException,
                           self.scheduler.ScheduleSuite,
@@ -102,7 +104,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         """Test a successful de-dup and failure to schedule the suite."""
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
-                          name__endswith=self._SUITE).AndReturn([])
+                          name__endswith='control.'+self._SUITE).AndReturn([])
         # Expect an attempt to create a job for the suite; fail it.
         self.afe.run('create_suite_job',
                      suite_name=self._SUITE,
@@ -123,7 +125,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         """Test a successful de-dup and barf while scheduling the suite."""
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
-                          name__endswith=self._SUITE).AndReturn([])
+                          name__endswith='control.'+self._SUITE).AndReturn([])
         # Expect an attempt to create a job for the suite; barf on it.
         self.afe.run('create_suite_job',
                      suite_name=self._SUITE,
