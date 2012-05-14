@@ -7,15 +7,12 @@ import datetime
 import gtk
 import os
 import pprint
-import re
 import StringIO
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.cros import factory
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.camera.camera_preview import CameraPreview
-from autotest_lib.client.cros.factory import task
-from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.cros.factory import state_machine
 from autotest_lib.client.cros.factory.media_util import MediaMonitor
 from autotest_lib.client.cros.factory.media_util import MountedMedia
 from autotest_lib.client.cros.i2c import usb_to_i2c
@@ -48,122 +45,72 @@ _MESSAGE_RESULT_TAB = (
     '請將AB Panel移除\n')
 
 _TEST_SN_NUMBER = 'TEST-SN-NUMBER'
-_LABEL_SIZE = (300, 30)
 COLOR_MAGENTA = gtk.gdk.color_parse('magenta1')
 
-def make_prepare_widget(message,
-                        key_action_mapping,
-                        fg_color=ful.LIGHT_GREEN):
-    """Returns a widget that display the message and bind proper functions."""
-    widget = gtk.VBox()
-    widget.add(ful.make_label(message, fg=fg_color))
-    def key_release_callback(widget, event):
-        if event.keyval in key_action_mapping:
-            if key_action_mapping[event.keyval] is not None:
-                key_action_mapping[event.keyval]()
-                return True
-
-    widget.key_callback = key_release_callback
-    return widget
-
-
-class factory_Connector(test.test):
-    version = 2
-
-    # The state goes from _STATE_INITIAL to _STATE_RESULT_TAB then jumps back
-    # to _STATE_PREPARE_PANEL for another testing cycle.
-    _STATE_INITIAL = -1
-    _STATE_WAIT_USB = 0
-    _STATE_PREPARE_PANEL = 1
-    _STATE_ENTERING_SN = 2
-    _STATE_CAMERA_CHECK = 3
-    _STATE_I2C_CHECK = 4
-    _STATE_WRITING_LOGS = 5
-    _STATE_RESULT_TAB = 6
-
-    def advance_state(self):
-        if self._state == self._STATE_RESULT_TAB:
-            self._state = self._STATE_PREPARE_PANEL
-        else:
-            self._state = self._state + 1
-        # Update the UI.
-        widget, callback = self._state_widget[self._state]
-        self.switch_widget(widget)
-        # Create an event to invoke function after UI is updated.
-        if callback:
-            task.schedule(callback)
-
-    def switch_widget(self, widget_to_display):
-        if hasattr(self, 'last_widget'):
-            if widget_to_display is not self.last_widget:
-                self.last_widget.hide()
-                self.test_widget.remove(self.last_widget)
-            else:
-                return
-
-        self.last_widget = widget_to_display
-        self.test_widget.add(widget_to_display)
-        self.test_widget.show_all()
-
-    def make_result_widget(self, on_key_enter):
-        self._status_names.append('result')
-        self._status_labels.append('Result')
-
-        widget = gtk.VBox()
-        widget.add(ful.make_label(_MESSAGE_RESULT_TAB))
-
-        self.display_dict = {}
-        for name, label in zip(self._status_names, self._status_labels):
-            td, tw = ful.make_status_row(label, ful.UNTESTED, _LABEL_SIZE)
-            self.display_dict[name] = td
-            widget.add(tw)
-
-        def key_press_callback(widget, event):
-            if event.keyval == gtk.keysyms.Return:
-                on_key_enter()
-                return True
-        widget.key_callback = key_press_callback
-
-        # Update the states map.
-        self.result_widget = widget
-        self._state_widget[self._STATE_RESULT_TAB] = (self.result_widget, None)
+class factory_Connector(state_machine.FactoryStateMachine):
+    version = 3
 
     def setup_tests(self):
+        # Setup serial number input widget.
+        self.sn_input_widget = self.make_serial_number_widget(
+            message=_MESSAGE_ENTER_SN_HINT,
+            default_validate_regex=self.config['sn_regex'],
+            on_complete=self.on_sn_complete,
+            on_keypress=self.on_sn_keypress,
+            generate_status_row=True)
+        self.i2c_testing_widget = self.make_decision_widget(
+            message=_MESSAGE_I2C_TESTING, key_action_mapping={})
+        self.writing_widget = self.make_decision_widget(
+            message=_MESSAGE_WRITING_LOGS,
+            key_action_mapping={},
+            fg_color=COLOR_MAGENTA)
+
         self.setup_camera_preview()
         self.setup_i2c_bus()
         # TODO(itspeter): setup the external display related test.
+
         # Setup result tab.
-        self.make_result_widget(self.advance_state)
+        self.result_widget = self.make_result_widget(
+            _MESSAGE_RESULT_TAB,
+            key_action_mapping={
+                gtk.keysyms.Return: (self.advance_state, [])})
+        # Register more states for test procedure with configuration data
+        # loaded from external media device (USB/SD).
+        self.register_state(self.sn_input_widget)
+        self.register_state(self.preview_widget)
+        self.register_state(self.i2c_testing_widget, None,
+                            self.perform_i2c_bus_test)
+        self.register_state(self.writing_widget, None, self.write_log)
+        # After this state (result), go back to "prepare panel" state.
+        self.register_state(self.result_widget, None, None,
+                            self._STATE_PREPARE_PANEL)
 
     def setup_camera_preview(self):
         self.camera_config = self.config['camera']
         factory.log('Camera config is [%s]' % self.camera_config)
         # Prepare the status row.
-        self._status_names.append('camera')
-        self._status_labels.append('Camera Preview')
+        self._status_rows.append(('camera', 'Camera Preview', True))
         self._results_to_check.append('camera')
         # Setup preview widget
         self.camera_preview = CameraPreview(
-            key_action_mapping={gtk.keysyms.Tab: self.pass_preview_test,
-                                gtk.keysyms.Return: self.fail_preview_test},
+            key_action_mapping={
+                gtk.keysyms.Tab: self.pass_preview_test,
+                gtk.keysyms.Return: self.fail_preview_test},
             msg=_MESSAGE_CAMERA_CHECK,
             width=int(self.camera_config['WIDTH']),
             height=int(self.camera_config['HEIGHT']))
-        # Updates the states map.
         self.preview_widget = self.camera_preview.widget
-        self._state_widget[self._STATE_CAMERA_CHECK] = (self.preview_widget,
-                                                        None)
 
     def pass_preview_test(self):
         self.camera_preview.capture_stop()
         factory.log('Preview passed.')
-        self._update_status('camera', True)
+        self.update_status('camera', True)
         self.advance_state()
 
     def fail_preview_test(self):
         self.camera_preview.capture_stop()
         factory.log('Preview failed.')
-        self._update_status('camera', False)
+        self.update_status('camera', False)
         self.advance_state()
 
     def setup_i2c_bus(self):
@@ -173,8 +120,7 @@ class factory_Connector(test.test):
         self.chipset = self.bus_config['chipset']
         # Prepare the status row.
         for test_name, test_label, _ in self.i2c_list:
-            self._status_names.append(test_name)
-            self._status_labels.append(test_label)
+            self._status_rows.append((test_name, test_label, True))
             self._results_to_check.append(test_name)
 
     def perform_i2c_bus_test(self):
@@ -191,15 +137,15 @@ class factory_Connector(test.test):
                 factory.log("[%s] at port [%s] tested, returned %d" % (
                             test_name, i2c_port, bus_status))
                 if bus_status == usb_to_i2c.I2CController.I2C_OK:
-                    self._update_status(test_name, True)
+                    self.update_status(test_name, True)
                 else:
-                    self._update_status(test_name, False)
+                    self.update_status(test_name, False)
         except Exception as e:
             factory.log('Exception - %s' % e)
         self.advance_state()
 
     def on_usb_insert(self, dev_path):
-        if self._state == self._STATE_WAIT_USB:
+        if self.current_state == self._STATE_WAIT_USB:
             self.dev_path = dev_path
             with MountedMedia(dev_path, 1) as config_dir:
                 # Load configuration.
@@ -211,17 +157,8 @@ class factory_Connector(test.test):
                 self.advance_state()
 
     def on_usb_remove(self, dev_path):
-        if self._state != self._STATE_WAIT_USB:
+        if self.current_state != self._STATE_WAIT_USB:
             raise error.TestNAError('USB removal is not allowed during test')
-
-    def register_callbacks(self, window):
-        def key_press_callback(widget, event):
-            if hasattr(self, 'last_widget'):
-                if hasattr(self.last_widget, 'key_callback'):
-                    return self.last_widget.key_callback(widget, event)
-            return False
-        window.connect('key-press-event', key_press_callback)
-        window.add_events(gtk.gdk.KEY_PRESS_MASK)
 
     def on_sn_keypress(self, entry, key):
         if key.keyval == gtk.keysyms.Tab:
@@ -233,13 +170,8 @@ class factory_Connector(test.test):
         self.serial_number = serial_number
         self.log_to_file.write('Serial_number : %s\n' % serial_number)
         self.log_to_file.write('Started at : %s\n' % datetime.datetime.now())
-        self._update_status('sn', self.check_sn_format(serial_number))
+        self.update_status('sn', serial_number)
         self.perform_camera_preview()
-
-    def check_sn_format(self, sn):
-        if re.search(self.config['sn_format'], sn):
-            return True
-        return False
 
     def perform_camera_preview(self):
         try:
@@ -250,24 +182,16 @@ class factory_Connector(test.test):
         finally:
             self.advance_state()
 
-    def _update_status(self, row_name, result):
-        """Updates status in display_dict."""
-        result_map = {
-            True: ful.PASSED,
-            False: ful.FAILED,
-            None: ful.UNTESTED
-        }
-        assert result in result_map, 'Unknown result'
-        self.display_dict[row_name]['status'] = result_map[result]
-
-    def generate_final_result(self):
-        self._result = all(
-           ful.PASSED == self.display_dict[var]['status']
-           for var in self._results_to_check)
-        self._update_status('result', self._result)
+    def write_log(self):
+        self.generate_final_result()
         self.log_to_file.write('Result in summary:\n%s\n' %
                                pprint.pformat(self.display_dict))
-        self.save_log()
+        try:
+            self.write_to_usb(self.serial_number + '.txt',
+                              self.log_to_file.getvalue())
+        except Exception as e:
+            raise error.TestNAError(
+                'Unable to save current log to USB stick - %s' % e)
         # Switch to result tab.
         self.advance_state()
 
@@ -276,96 +200,36 @@ class factory_Connector(test.test):
             with open(os.path.join(mount_dir, filename), 'a') as f:
                 f.write(content)
         factory.log('Log wrote with filename[ %s ].' % filename)
-        return True
 
-    def save_log(self):
-        try:
-            self.write_to_usb(self.serial_number + '.txt',
-                              self.log_to_file.getvalue())
-        except Exception as e:
-            raise error.TestNAError(
-                'Unable to save current log to USB stick - %s' % e)
 
     def reset_data_for_next_test(self):
         """Resets internal data for the next testing cycle."""
-        factory.log('Data reseted.')
+        self.reset_status_rows()
         self.log_to_file = StringIO.StringIO()
         self.sn_input_widget.get_entry().set_text('')
-        for var in self._status_names:
-            self._update_status(var, None)
-
-    def switch_to_sn_input_widget(self):
-        self.advance_state()
-        return True
+        factory.log('Data reseted.')
 
     def run_once(self):
         factory.log('%s run_once' % self.__class__)
         # Initialize variables.
-        self._status_names = ['sn']
-        self._status_labels = ['Serial Number']
-        self._results_to_check = ['sn']
         self.base_config = PluggableConfig({})
-        self.last_handler = None
 
         # Set up the USB prompt widgets.
-        self.usb_prompt_widget = make_prepare_widget(
+        self.usb_prompt_widget = self.make_decision_widget(
             message=_MESSAGE_USB, key_action_mapping=[])
 
-        self.prepare_panel_widget = make_prepare_widget(
+        self.prepare_panel_widget = self.make_decision_widget(
             message=_MESSAGE_PREPARE_PANEL,
-            key_action_mapping={gtk.keysyms.Return: self.advance_state})
-
-        self.sn_input_widget = ful.make_input_window(
-            prompt=_MESSAGE_ENTER_SN_HINT,
-            on_validate=self.check_sn_format,
-            on_keypress=self.on_sn_keypress,
-            on_complete=self.on_sn_complete)
-        # Make sure the entry in widget will have focus.
-        self.sn_input_widget.connect(
-            'show',
-            lambda *x : self.sn_input_widget.get_entry().grab_focus())
-
-        self.preview_widget = None
-
-        self.i2c_testing_widget = make_prepare_widget(
-            message=_MESSAGE_I2C_TESTING, key_action_mapping=[])
-
-        self.writing_widget = make_prepare_widget(
-            message=_MESSAGE_WRITING_LOGS,
-            key_action_mapping=[],
-            fg_color=COLOR_MAGENTA)
-
-        self.result_widget = None
-        # Setup the map of state transition rules,
-        # in {STATE: (widget, callback)} format.
-        self._state_widget = {
-            self._STATE_INITIAL:
-                (None, None),
-            self._STATE_WAIT_USB:
-                (self.usb_prompt_widget, None),
-            self._STATE_PREPARE_PANEL:
-                (self.prepare_panel_widget, self.reset_data_for_next_test),
-            self._STATE_ENTERING_SN:
-                (self.sn_input_widget, None),
-            self._STATE_CAMERA_CHECK:
-                (self.preview_widget, None),
-            self._STATE_I2C_CHECK:
-                (self.i2c_testing_widget, self.perform_i2c_bus_test),
-            self._STATE_WRITING_LOGS:
-                (self.writing_widget, self.generate_final_result),
-            self._STATE_RESULT_TAB:
-                (self.result_widget, None)
-        }
-        # Setup the usb monitor,
+            key_action_mapping={
+                gtk.keysyms.Return: (self.advance_state, [])})
+        # States after "prepare panel" will be configured in setup_test, after
+        # configuration on external media (USB/SD) is loaded.
+        self._STATE_WAIT_USB = self.register_state(self.usb_prompt_widget)
+        self._STATE_PREPARE_PANEL = self.register_state(
+            self.prepare_panel_widget, None,
+            self.reset_data_for_next_test)
+        # Setup the usb monitor.
         monitor = MediaMonitor()
         monitor.start(on_insert=self.on_usb_insert,
                       on_remove=self.on_usb_remove)
-        # Setup the initial display.
-        self.test_widget = gtk.VBox()
-        self._state = self._STATE_INITIAL
-        self.advance_state()
-
-        ful.run_test_widget(
-                self.job,
-                self.test_widget,
-                window_registration_callback=self.register_callbacks)
+        self.start_state_machine(self._STATE_WAIT_USB)
