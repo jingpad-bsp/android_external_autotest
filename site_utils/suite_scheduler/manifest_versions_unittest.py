@@ -8,7 +8,6 @@
 
 import logging, mox, os, unittest
 
-from autotest_lib.client.common_lib import utils
 import manifest_versions
 
 
@@ -86,8 +85,8 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         """Ensure we can tell if builds have succeeded since a given rev."""
         rev = 'rev'
         self._ExpectGlob(['some/paths'])
-        self.mox.StubOutWithMock(utils, 'system_output')
-        utils.system_output(
+        self.mox.StubOutWithMock(manifest_versions, '_SystemOutput')
+        manifest_versions._SystemOutput(
             mox.And(mox.StrContains('log'),
                     mox.StrContains(rev))).MultipleTimes().AndReturn(
                         self._MANIFESTS_STRING)
@@ -99,8 +98,8 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         """Ensure we can tell if no builds have succeeded since a given rev."""
         rev = 'rev'
         self._ExpectGlob(['some/paths'])
-        self.mox.StubOutWithMock(utils, 'system_output')
-        utils.system_output(
+        self.mox.StubOutWithMock(manifest_versions, '_SystemOutput')
+        manifest_versions._SystemOutput(
             mox.And(mox.StrContains('log'),
                     mox.StrContains(rev))).MultipleTimes().AndReturn(' ')
         self.mox.ReplayAll()
@@ -120,8 +119,8 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         days_ago = 7
         board = 'x86-alex'
         self._ExpectGlob(['some/paths'])
-        self.mox.StubOutWithMock(utils, 'system_output')
-        utils.system_output(
+        self.mox.StubOutWithMock(manifest_versions, '_SystemOutput')
+        manifest_versions._SystemOutput(
             mox.StrContains('log')).MultipleTimes().AndReturn(
                 self._MANIFESTS_STRING)
         self.mox.ReplayAll()
@@ -138,8 +137,8 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         days_ago = 7
         board = 'x86-alex'
         self._ExpectGlob(['some/paths'])
-        self.mox.StubOutWithMock(utils, 'system_output')
-        utils.system_output(mox.StrContains('log')).AndReturn([])
+        self.mox.StubOutWithMock(manifest_versions, '_SystemOutput')
+        manifest_versions._SystemOutput(mox.StrContains('log')).AndReturn([])
         self.mox.ReplayAll()
         br_man = self.mv.ManifestsSinceDays(days_ago, board)
         self.assertEquals(br_man, {})
@@ -160,8 +159,8 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         days_ago = 7
         board = 'x86-alex'
         self._ExpectGlob(['some/paths'])
-        self.mox.StubOutWithMock(utils, 'system_output')
-        utils.system_output(mox.StrContains('log')).AndRaise(
+        self.mox.StubOutWithMock(manifest_versions, '_SystemOutput')
+        manifest_versions._SystemOutput(mox.StrContains('log')).AndRaise(
             manifest_versions.QueryException())
         self.mox.ReplayAll()
         self.assertRaises(manifest_versions.QueryException,

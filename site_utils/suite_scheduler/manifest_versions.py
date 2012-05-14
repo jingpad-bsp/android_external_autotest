@@ -18,6 +18,40 @@ class QueryException(ManifestVersionsException):
     pass
 
 
+def _SystemOutput(command, timeout=None, args=()):
+    """Shell out to run a command, expecting data on stderr. Return stdout.
+
+    Shells out to run |command|, optionally passing escaped |args|.
+    Instead of logging stderr at ERROR level, will log at default
+    stdout log level.  Normal stdout is returned.
+
+    @param command: command string to execute.
+    @param timeout: time limit in seconds before attempting to kill the
+            running process. The function will take a few seconds longer
+            than 'timeout' to complete if it has to kill the process.
+    @param args: sequence of strings of arguments to be given to the command
+            inside " quotes after they have been escaped for that; each
+            element in the sequence will be given as a separate command
+            argument.
+
+    @return a string with the stdout output of the command.
+    """
+    out = utils.run(command, timeout=timeout, ignore_status=False,
+                    stderr_is_expected=True, args=args).stdout
+    return out.rstrip('\n')
+
+
+def _System(command, timeout=None):
+    """Run a command, expecting data on stderr.
+
+    @param command: command string to execute.
+    @param timeout: timeout in seconds
+    """
+    utils.run(command, timeout=timeout, ignore_status=False,
+              stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS,
+              stderr_is_expected=True)
+
+
 class ManifestVersions(object):
     """Class to allow discovery of manifests for new successful CrOS builds.
 
@@ -40,7 +74,7 @@ class ManifestVersions(object):
 
 
     def __init__(self):
-        self._git = utils.system_output('which git')
+        self._git = _SystemOutput('which git')
         self._tempdir = autotemp.tempdir(unique_id='_suite_scheduler')
 
 
@@ -61,7 +95,7 @@ class ManifestVersions(object):
                                    '--pretty="format:%H"',
                                    '--',
                                    ' '.join(manifest_paths))
-      return utils.system_output(log_cmd).strip() != ''
+      return _SystemOutput(log_cmd).strip() != ''
 
 
     def Initialize(self):
@@ -138,14 +172,14 @@ class ManifestVersions(object):
 
         @return the git hash of the latest git revision.
         """
-        return utils.system_output(self._BuildCommand('log',
-                                                      '--pretty="format:%H"',
-                                                      '--max-count=1')).strip()
+        return _SystemOutput(self._BuildCommand('log',
+                                                '--pretty="format:%H"',
+                                                '--max-count=1')).strip()
 
 
     def Update(self):
         """Get latest manifest information."""
-        return utils.system(self._BuildCommand('pull'))
+        return _System(self._BuildCommand('pull'))
 
 
     def _BuildCommand(self, command, *args):
@@ -166,9 +200,9 @@ class ManifestVersions(object):
         # support it.  Wish we could.  http://crosbug.com/29047
         # Also, note that --work-tree and --git-dir interact oddly with
         # 'git clone', so we don't use them.
-        utils.system('%s clone %s %s' % (self._git,
-                                         self._MANIFEST_VERSIONS_URL,
-                                         self._tempdir.name))
+        _System('%s clone %s %s' % (self._git,
+                                    self._MANIFEST_VERSIONS_URL,
+                                    self._tempdir.name))
 
 
     def _ShowCmd(self):
@@ -239,10 +273,10 @@ class ManifestVersions(object):
         try:
             # If we pass nothing to git show, we get unexpected results.
             # So, return early if git log is going to give us nothing.
-            if not manifest_paths or not utils.system_output(log_cmd):
+            if not manifest_paths or not _SystemOutput(log_cmd):
                 return []
-            manifests = utils.system_output('%s|xargs %s' % (log_cmd,
-                                                             self._ShowCmd()))
+            manifests = _SystemOutput('%s|xargs %s' % (log_cmd,
+                                                       self._ShowCmd()))
         except (IOError, OSError) as e:
             raise QueryException(e)
         logging.debug('found %s', manifests)
