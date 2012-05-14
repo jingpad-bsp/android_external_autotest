@@ -88,7 +88,17 @@ class CameraPreview(object):
                 self.key_action_mapping[event.keyval]()
                 return True
 
-    def init_device(self, device_index):
+    def init_device(self, device_index=None, start_capture=True):
+        '''Initializes the camera.
+
+        Args:
+            device_index: Device index for OpenCV. Default to use the
+                          index assigned in the constructor.
+            start_capture: True to capture images immediately. False
+                           to leave caller decides the timing.
+        '''
+        if device_index is None:
+            device_index = self.device_index
         factory.log('Calling init_device with [%s]' % device_index)
         # Initialize the camera with OpenCV.
         self.dev = dev = cv2.VideoCapture(device_index)
@@ -100,7 +110,8 @@ class CameraPreview(object):
                 device_index)
         dev.set(cv.CV_CAP_PROP_FRAME_WIDTH, self.width)
         dev.set(cv.CV_CAP_PROP_FRAME_HEIGHT, self.height)
-        self.capture_start()
+        if start_capture:
+            self.capture_start()
 
     def capture_core(self):
         '''Captures an image and displays it.
@@ -111,9 +122,7 @@ class CameraPreview(object):
         10 ms on an average machine.
         '''
         # Read image from camera.
-        ret, cvImg = self.dev.read()
-        if not ret:
-            raise IOError('Error while capturing. Camera disconnected?')
+        ret, cvImg = self.capture_single()
 
         # Convert from BGR to RGB in-place.
         cv2.cvtColor(cvImg, cv.CV_BGR2RGB, cvImg)
@@ -132,6 +141,16 @@ class CameraPreview(object):
 
         return True
 
+    def capture_single(self, filename=None):
+        # Read image from camera.
+        ret, cvImg = self.dev.read()
+        if not ret:
+            raise IOError('Error while capturing. Camera disconnected?')
+        if filename:
+            logging.info('Save to file %s' % filename)
+            cv2.imwrite(filename, cvImg)
+        return (ret, cvImg)
+
     def capture_start(self):
         # Register the image capturing subroutine using glib.
         # It will be called every PREFERRED_INTERVAL time.
@@ -140,10 +159,10 @@ class CameraPreview(object):
             priority=glib.PRIORITY_LOW)
 
     def capture_stop(self):
+        self.dev.release()
         # Unregister the image capturing subroutine.
         if self.gio_tag:
             glib.source_remove(self.gio_tag)
-            self.dev.release()
             # reset pbuf to blank screen.
             pbuf = gtk.gdk.pixbuf_new_from_data(self.blankImg.data,
                 gtk.gdk.COLORSPACE_RGB, False, GDK_PIXBUF_BIT_PER_SAMPLE,
