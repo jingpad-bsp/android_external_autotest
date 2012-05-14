@@ -32,7 +32,7 @@ syslog:x:202:
 ntp:x:203:
 sshd:x:204:
 polkituser:x:206:
-tss:x:207:
+tss:x:207:root,chaps
 pkcs11:x:208:root,ipsec,chronos,chaps,wpa
 qdlservice:x:209:
 cromo:x:210:
