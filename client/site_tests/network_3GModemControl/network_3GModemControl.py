@@ -2,17 +2,40 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, random, time
+import dbus, logging, random, subprocess, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import emulator_config
+from autotest_lib.client.cros.cellular import modem
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
-import mm
+
+class ModemManagerContext:
+    def __init__(self, start_pseudo_manager):
+        self.process = None
+        self.start_pseudo_manager = start_pseudo_manager
+
+    def __enter__(self):
+        if self.start_pseudo_manager:
+            subprocess.call(['/sbin/stop', 'modemmanager'])
+            self.fp = open('/var/log/pseudo_modem.log', 'a')
+            self.process = subprocess.Popen(
+                ['/usr/local/autotest/cros/cellular/pseudo_modem.py'],
+                stdout=self.fp,
+                stderr=self.fp)
+            print 'Process pseudo_modem: started: %s' % self.process.pid
+        return self
+
+    def __exit__(self, exception, value, traceback):
+        if self.process:
+            print 'Process pseudo_modem: terminate: %s' % self.process.pid
+            self.process.terminate()
+            self.fp.close()
+            subprocess.call(['/sbin/start', 'modemmanager'])
 
 
 class TechnologyCommands():
@@ -39,9 +62,8 @@ class TechnologyCommands():
 
 class ModemCommands():
     """Control the modem using modem manager DBUS interfaces."""
-    def __init__(self, modem, simple_modem):
+    def __init__(self, modem):
         self.modem = modem
-        self.simple_modem = simple_modem
 
     def Enable(self):
         self.modem.Enable(True)
@@ -51,7 +73,7 @@ class ModemCommands():
 
     def Connect(self, simple_connect_props):
         logging.debug('Connecting with properties: %r' % simple_connect_props)
-        self.simple_modem.Connect(simple_connect_props)
+        self.modem.Connect(simple_connect_props)
 
     def Disconnect(self):
         """
@@ -147,12 +169,9 @@ class MixedRandomCommands():
 class network_3GModemControl(test.test):
     version = 1
 
-    def CompareModemPowerState(self, manager, path, expected_state):
+    def CompareModemPowerState(self, modem, expected_state):
         """Compare modem manager power state of a modem to an expected state."""
-        props = manager.Properties(path)
-        state = props['Enabled']
-        logging.info('Modem Enabled = %s' % state)
-        return state == expected_state
+        return modem.IsEnabled() == expected_state
 
     def CompareDevicePowerState(self, device, expected_state):
         """Compare the flimflam device power state to an expected state."""
@@ -176,8 +195,7 @@ class network_3GModemControl(test.test):
             error.TestFail if the states are not consistent.
         """
         utils.poll_for_condition(
-            lambda: self.CompareModemPowerState(self.modem_manager,
-                                                self.modem_path, False),
+            lambda: self.CompareModemPowerState(self.modem, False),
             error.TestFail('Modem failed to enter state Disabled.'))
         utils.poll_for_condition(
             lambda: self.CompareDevicePowerState(self.device, False),
@@ -199,8 +217,7 @@ class network_3GModemControl(test.test):
             error.TestFail if the states are not consistent.
         """
         utils.poll_for_condition(
-            lambda: self.CompareModemPowerState(self.modem_manager,
-                                                self.modem_path, True),
+            lambda: self.CompareModemPowerState(self.modem, True),
             error.TestFail('Modem failed to enter state Enabled'))
         utils.poll_for_condition(
             lambda: self.CompareDevicePowerState(self.device, True),
@@ -283,7 +300,9 @@ class network_3GModemControl(test.test):
         return cell_tools.FindLastGoodAPN(self.flim.FindCellularService(),
                                           default='epc.tmobile.com')
 
-    def run_once(self, autoconnect, mixed_iterations=2,
+    def run_once(self, autoconnect,
+                 pseudo_modem=False,
+                 mixed_iterations=2,
                  config=None, technology=None):
         # Use a backchannel so that flimflam will restart when the
         # test is over.  This ensures flimflam is in a known good
@@ -303,30 +322,30 @@ class network_3GModemControl(test.test):
             self.flim.SetDebugTags(
                 'dbus+service+device+modem+cellular+portal+network+manager')
 
-            self.device = self.flim.FindCellularDevice()
-            self.modem_manager, self.modem_path = mm.PickOneModem('')
-            self.modem = self.modem_manager.Modem(self.modem_path)
-            self.simple_modem = self.modem_manager.SimpleModem(self.modem_path)
+            with ModemManagerContext(pseudo_modem):
+                self.device = self.flim.FindCellularDevice()
+                if not self.device:
+                    raise error.TestFail('Failed to find a cellular device.')
+                self.modem = modem.PickOneModem('')
 
-            modem_commands = ModemCommands(self.modem, self.simple_modem)
-            technology_commands = TechnologyCommands(self.flim,
-                                                     modem_commands)
-            device_commands = DeviceCommands(self.flim, self.device)
+                modem_commands = ModemCommands(self.modem)
+                technology_commands = TechnologyCommands(self.flim,
+                                                         modem_commands)
+                device_commands = DeviceCommands(self.flim, self.device)
 
-            with cell_tools.AutoConnectContext(self.device,
-                                               self.flim,
-                                               autoconnect):
-                # Get to a well known state.
-                self.flim.DisableTechnology('cellular')
-                self.EnsureDisabled()
+                with cell_tools.AutoConnectContext(self.device, self.flim,
+                                                   autoconnect):
+                    # Get to a well known state.
+                    self.flim.DisableTechnology('cellular')
+                    self.EnsureDisabled()
 
-                self.TestCommands(modem_commands)
-                self.TestCommands(technology_commands)
-                self.TestCommands(device_commands)
+                    self.TestCommands(technology_commands)
+                    self.TestCommands(device_commands)
+                    self.TestCommands(modem_commands)
 
-                # Run several times using commands mixed from each type
-                mixed = MixedRandomCommands([modem_commands,
-                                             technology_commands,
-                                             device_commands])
-                for _ in range(mixed_iterations):
-                    self.TestCommands(mixed)
+                    # Run several times using commands mixed from each type
+                    mixed = MixedRandomCommands([modem_commands,
+                                                 technology_commands,
+                                                 device_commands])
+                    for _ in range(mixed_iterations):
+                        self.TestCommands(mixed)
