@@ -274,7 +274,7 @@ def ParseOptions():
   parser.add_option('-m', '--mail', dest='mail',
                     help=('A comma seperated list of email addresses to notify'
                           ' upon job completion.'))
-  parser.add_option('-o', '--override', dest='override', action='store_false',
+  parser.add_option('-o', '--override', dest='override', action='store_true',
                     default=False,
                     help=('Override board and platform safety checks.'
                           ' Experienced users only! Please don\'t brick our'
