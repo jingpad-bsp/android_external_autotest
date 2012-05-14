@@ -124,10 +124,10 @@ class Driver(object):
         @param mv: an instance of manifest_versions.ManifestVersions.
         """
         boards = self._enumerator.Enumerate()
-        logging.info('Running suites for boards: %r', boards)
+        logging.info('Boards currently in the lab: %r', boards)
         for e in self._events.itervalues():
             if e.ShouldHandle():
-                logging.debug('Handling %s event', e.keyword)
+                logging.info('Handling %s event', e.keyword)
                 for board in boards:
                     branch_builds = e.GetBranchBuildsForBoard(board)
                     e.Handle(self._scheduler, branch_builds, board)

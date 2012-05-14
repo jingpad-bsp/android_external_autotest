@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import re
+import logging, re
 import task
 
 """Module containing base class and methods for working with scheduler events.
@@ -185,6 +185,7 @@ class BaseEvent(object):
         @param board: the board against which to Run() all of self._tasks.
         @param force: Tell every Task to always Run().
         """
+        logging.info('Handling %s for %s', self.keyword, board)
         # we need to iterate over an immutable copy of self._tasks
         for task in list(self.tasks):
             if not task.Run(scheduler, branch_builds, board, force):

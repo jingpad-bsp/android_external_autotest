@@ -220,11 +220,11 @@ class Task(object):
         @param force: Always schedule the suite.
         @return True if the task should be kept, False if not
         """
-        logging.debug('Running %s' % self._name)
+        logging.info('Running %s on %s', self._name, board)
         builds = []
         for branch, build in branch_builds.iteritems():
-            logging.debug('Checking if %s fits spec %r',
-                          branch, self.branch_specs)
+            logging.info('Checking if %s fits spec %r',
+                         branch, self.branch_specs)
             if self._FitsSpec(branch):
                 builds.extend(build)
         for build in builds:

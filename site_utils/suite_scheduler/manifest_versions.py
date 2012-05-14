@@ -89,7 +89,7 @@ class ManifestVersions(object):
       if not manifest_paths:
           logging.error('No paths to check for manifests???')
           return False
-      logging.debug('Checking if any manifests landed since %s', revision)
+      logging.info('Checking if any manifests landed since %s', revision)
       log_cmd = self._BuildCommand('log',
                                    revision + '..HEAD',
                                    '--pretty="format:%H"',
