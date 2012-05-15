@@ -365,6 +365,8 @@ def get_model():
                     model = board_str.split('_')[1]
                 else:
                     model = board_str
+                # Some models, e.g. alex, may have board name as alex32
+                model = re.search('(\D+)\d*', model, re.I).group(1)
                 break
     return model
 
