@@ -420,7 +420,7 @@ class UITest(pyauto_test.PyAutoTest):
         (self.username, self.password) = self.__resolve_creds(creds)
         # Ensure there's no stale cryptohome from previous tests.
         try:
-            cryptohome.remove_vault(self.username)
+            cryptohome.remove_all_vaults()
         except cryptohome.ChromiumOSError as err:
             logging.error(err)
 
