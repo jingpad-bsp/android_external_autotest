@@ -71,8 +71,9 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
 
     def testStageBuildFail(self):
         """Ensure that a failure to stage the desired build fails the RPC."""
-        self.dev_server.trigger_download(self._BUILD,
-                                         synchronous=False).AndReturn(False)
+        self.dev_server.trigger_download(
+            self._BUILD, synchronous=False).AndRaise(
+                dev_server.DevServerException())
         self.mox.ReplayAll()
         self.assertRaises(error.StageBuildFailure,
                           site_rpc_interface.create_suite_job,
