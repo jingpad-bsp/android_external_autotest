@@ -5,10 +5,11 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import servo_test
+from autotest_lib.server import test
+from autotest_lib.server.cros import pyauto_proxy
 
 
-class platform_ServoPyAuto(servo_test.ServoTest):
+class platform_ServoPyAuto(test.test):
     """
     A simple test demonstrating the synchronous use of Servo and PyAuto.
 
@@ -20,7 +21,8 @@ class platform_ServoPyAuto(servo_test.ServoTest):
 
 
     def run_once(self, host=None):
-        self.pyauto.LoginToDefaultAccount()
+        pyauto = pyauto_proxy.create_pyauto_proxy(host)
+        pyauto.LoginToDefaultAccount()
 
         # Close and open lid.
         boot_id = host.get_boot_id()
@@ -29,8 +31,8 @@ class platform_ServoPyAuto(servo_test.ServoTest):
         host.servo.lid_open()
         host.test_wait_for_resume(boot_id)
 
-        info = self.pyauto.GetLoginInfo()
+        info = pyauto.GetLoginInfo()
         logging.info(info)
         if not info['is_logged_in']:
-            raise error.TestError(
+            raise error.TestFail(
                 'User is no longer logged in after sleep/resume cycle.')

@@ -2,7 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+import subprocess
 import time
+import xmlrpclib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import global_config, error
@@ -88,6 +91,7 @@ class SiteHost(remote.RemoteHost):
         """
         super(SiteHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
+        self._xmlrpc_proxy_map = {}
         self.servo = servo.Servo.get_lab_servo(hostname)
         if not self.servo and require_servo:
             self.servo = servo.Servo()
@@ -163,6 +167,11 @@ class SiteHost(remote.RemoteHost):
             % self._JUST_UPDATED_FLAG).stdout.strip() == 'T'
 
 
+    def close(self):
+        super(SiteHost, self).close()
+        self.xmlrpc_disconnect_all()
+
+
     def cleanup(self):
         """Special cleanup method to make sure hosts always get power back."""
         super(SiteHost, self).cleanup()
@@ -188,6 +197,104 @@ class SiteHost(remote.RemoteHost):
             global_config.global_config.get_config_value(
                 'SERVER', 'gb_diskspace_required', type=int,
                 default=20))
+
+
+    def xmlrpc_connect(self, command, port, cleanup=None):
+        """Connect to an XMLRPC server on the host.
+
+        The `command` argument should be a simple shell command that
+        starts an XMLRPC server on the given `port`.  The command
+        must not daemonize, and must terminate cleanly on SIGTERM.
+        The command is started in the background on the host, and a
+        local XMLRPC client for the server is created and returned
+        to the caller.
+
+        Note that the process of creating an XMLRPC client makes no
+        attempt to connect to the remote server; the caller is
+        responsible for determining whether the server is running
+        correctly, and is ready to serve requests.
+
+        @param command Shell command to start the server.
+        @param port Port number on which the server is expected to
+                    be serving.
+        """
+        self.xmlrpc_disconnect(port)
+
+        # Chrome OS on the target closes down most external ports
+        # for security.  We could open the port, but doing that
+        # would conflict with security tests that check that only
+        # expected ports are open.  So, to get to the port on the
+        # target we use an ssh tunnel.
+        local_port = utils.get_unused_port()
+        tunnel_options = '-n -N -q -L %d:localhost:%d' % (local_port, port)
+        ssh_cmd = make_ssh_command(opts=tunnel_options)
+        tunnel_cmd = '%s %s' % (ssh_cmd, self.hostname)
+        logging.debug('Full tunnel command: %s', tunnel_cmd)
+        tunnel_proc = subprocess.Popen(tunnel_cmd, shell=True, close_fds=True)
+        logging.debug('Started XMLRPC tunnel, local = %d'
+                      ' remote = %d, pid = %d',
+                      local_port, port, tunnel_proc.pid)
+
+        # Start the server on the host.  Redirection in the command
+        # below is necessary, because 'ssh' won't terminate until
+        # background child processes close stdin, stdout, and
+        # stderr.
+        remote_cmd = '( %s ) </dev/null >/dev/null 2>&1 & echo $!' % command
+        remote_pid = self.run(remote_cmd).stdout.rstrip('\n')
+        logging.debug('Started XMLRPC server on host %s, pid = %s',
+                      self.hostname, remote_pid)
+
+        self._xmlrpc_proxy_map[port] = (cleanup, tunnel_proc)
+        rpc_url = 'http://localhost:%d' % local_port
+        return xmlrpclib.ServerProxy(rpc_url, allow_none=True)
+
+
+    def xmlrpc_disconnect(self, port):
+        """Disconnect from an XMLRPC server on the host.
+
+        Terminates the remote XMLRPC server previously started for
+        the given `port`.  Also closes the local ssh tunnel created
+        for the connection to the host.  This function does not
+        directly alter the state of a previously returned XMLRPC
+        client object; however disconnection will cause all
+        subsequent calls to methods on the object to fail.
+
+        This function does nothing if requested to disconnect a port
+        that was not previously connected via `self.xmlrpc_connect()`
+
+        @param port Port number passed to a previous call to
+                    `xmlrpc_connect()`
+        """
+        if port not in self._xmlrpc_proxy_map:
+            return
+        entry = self._xmlrpc_proxy_map[port]
+        remote_name = entry[0]
+        tunnel_proc = entry[1]
+        if remote_name:
+            # We use 'pkill' to find our target process rather than
+            # a PID, because the host may have rebooted since
+            # connecting, and we don't want to kill an innocent
+            # process with the same PID.
+            #
+            # 'pkill' helpfully exits with status 1 if no target
+            # process  is found, for which run() will throw an
+            # exception.  We don't want that, so we ignore the
+            # status.
+            self.run("pkill -f '%s'" % remote_name, ignore_status=True)
+
+        if tunnel_proc.poll() is None:
+            tunnel_proc.terminate()
+            logging.debug('Terminated tunnel, pid %d', tunnel_proc.pid)
+        else:
+            logging.debug('Tunnel pid %d terminated early, status %d',
+                          tunnel_proc.pid, tunnel_proc.returncode)
+        del self._xmlrpc_proxy_map[port]
+
+
+    def xmlrpc_disconnect_all(self):
+        """Disconnect all known XMLRPC proxy ports."""
+        for port in self._xmlrpc_proxy_map.keys():
+            self.xmlrpc_disconnect(port)
 
 
     def _ping_is_up(self):
