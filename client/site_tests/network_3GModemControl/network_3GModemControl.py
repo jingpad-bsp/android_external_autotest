@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -89,11 +89,11 @@ class DeviceCommands():
         return service
 
     def Enable(self):
-        self.device.SetProperty('Powered', True)
+        self.device.Enable()
 
     def Disable(self):
         self.service = None
-        self.device.SetProperty('Powered', False)
+        self.device.Disable()
 
     def Connect(self, **kwargs):
         self.GetService().Connect()
@@ -213,7 +213,8 @@ class network_3GModemControl(test.test):
         if check_idle:
             utils.poll_for_condition(
                 lambda: self.CompareServiceState(service, ['idle']),
-                error.TestFail('Service failed to enter idle state.'))
+                error.TestFail('Service failed to enter idle state.'),
+                timeout=30)
 
     def EnsureConnected(self):
         """
@@ -227,7 +228,8 @@ class network_3GModemControl(test.test):
         utils.poll_for_condition(
             lambda: self.CompareServiceState(service,
                                              ['ready', 'portal', 'online']),
-            error.TestFail('Service failed to connect.'))
+            error.TestFail('Service failed to connect.'),
+            timeout=30)
 
 
     def TestCommands(self, commands):
@@ -298,7 +300,8 @@ class network_3GModemControl(test.test):
             # Enabling flimflam debugging makes it easier to debug
             # problems.  Tags will be cleared when the Backchannel
             # context exits and flimflam is restarted.
-            self.flim.SetDebugTags('service+device+modem+portal+network')
+            self.flim.SetDebugTags(
+                'dbus+service+device+modem+cellular+portal+network+manager')
 
             self.device = self.flim.FindCellularDevice()
             self.modem_manager, self.modem_path = mm.PickOneModem('')

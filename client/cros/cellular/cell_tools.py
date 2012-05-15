@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -65,7 +65,7 @@ def FindLastGoodAPN(service, default=None):
     props = service.GetProperties()
     if 'Cellular.LastGoodAPN' not in props:
         return default
-    last_good_apn = props['Cellular.LastGoodApn']
+    last_good_apn = props['Cellular.LastGoodAPN']
     return last_good_apn.get('apn', default)
 
 
@@ -351,7 +351,7 @@ class AutoConnectContext(object):
         if device.GetProperties()['Powered']:
             return
         try:
-            device.SetProperty("Powered", True)
+            device.Enable()
         except dbus.exceptions.DBusException, e:
             if e._dbus_error_name != 'org.chromium.flimflam.Error.InProgress':
                 raise e
