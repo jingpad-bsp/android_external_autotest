@@ -18,12 +18,10 @@ import datetime, getpass, optparse, time, sys
 import common
 import logging
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.server.cros import frontend_wrappers
+from autotest_lib.server.cros import dynamic_suite, frontend_wrappers
 from autotest_lib.client.common_lib import logging_config, logging_manager
 
 CONFIG = global_config.global_config
-# This is the prefix that is used to denote an experimental test.
-EXPERIMENTAL_PREFIX = 'experimental_'
 
 
 class RunSuiteLoggingConfig(logging_config.LoggingConfig):
@@ -100,7 +98,7 @@ def get_view_info(suite_job_id, view):
     if 'job_keyvals' in view:
         # The job name depends on whether it's experimental or not.
         std_job_name = view['test_name'].split('.')[0]
-        exp_job_name = EXPERIMENTAL_PREFIX + std_job_name
+        exp_job_name = dynamic_suite.EXPERIMENTAL_PREFIX + std_job_name
         if std_job_name in view['job_keyvals']:
             job_name = view['job_keyvals'][std_job_name]
         elif exp_job_name in view['job_keyvals']:
@@ -139,11 +137,10 @@ class Timings(object):
 
         @param entry: an entry dict, as returned by get_details_test_views().
         """
-        time_fmt = '%Y-%m-%d %H:%M:%S'
         start_candidate = datetime.datetime.strptime(entry['test_started_time'],
-                                                     time_fmt)
+                                                     dynamic_suite.TIME_FMT)
         end_candidate = datetime.datetime.strptime(entry['test_finished_time'],
-                                                   time_fmt)
+                                                   dynamic_suite.TIME_FMT)
         if entry['test_name'] == 'SERVER_JOB':
             self.suite_start_time = start_candidate
         elif entry['test_name'] == 'try_new_image':
@@ -154,9 +151,12 @@ class Timings(object):
             self._UpdateLastTestEndTime(end_candidate)
         if 'job_keyvals' in entry:
             keyvals = entry['job_keyvals']
-            self.download_start_time = keyvals.get('download_started_time')
-            self.payload_end_time = keyvals.get('payload_finished_time')
-            self.artifact_end_time = keyvals.get('artifact_finished_time')
+            self.download_start_time = keyvals.get(
+                dynamic_suite.DOWNLOAD_STARTED_TIME)
+            self.payload_end_time = keyvals.get(
+                dynamic_suite.PAYLOAD_FINISHED_TIME)
+            self.artifact_end_time = keyvals.get(
+                dynamic_suite.ARTIFACT_FINISHED_TIME)
 
     def _UpdateFirstTestStartTime(self, candidate):
         """Update self.tests_start_time, iff candidate is an earlier time.

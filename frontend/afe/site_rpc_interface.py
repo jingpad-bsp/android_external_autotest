@@ -38,6 +38,10 @@ def canonicalize_suite_name(suite_name):
     return 'test_suites/control.%s' % suite_name
 
 
+def formatted_now():
+    return datetime.datetime.now().strftime(dynamic_suite.TIME_FMT)
+
+
 def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     """
     Create a job to run a test suite on the given device with the given image.
@@ -64,19 +68,16 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     suite_name = canonicalize_suite_name(suite_name)
 
     timings = {}
-    time_fmt = '%Y-%m-%d %H:%M:%S'
     # Ensure components of |build| necessary for installing images are staged
     # on the dev server. However set synchronous to False to allow other
     # components to be downloaded in the background.
     ds = dev_server.DevServer.create()
-    timings['download_started_time'] = datetime.datetime.now().strftime(
-        time_fmt)
+    timings[dynamic_suite.DOWNLOAD_STARTED_TIME] = formatted_now()
     try:
         ds.trigger_download(build, synchronous=False)
     except dev_server.DevServerException as e:
         raise error.StageBuildFailure(e)
-    timings['payload_finished_time'] = datetime.datetime.now().strftime(
-        time_fmt)
+    timings[dynamic_suite.PAYLOAD_FINISHED_TIME] = formatted_now()
 
     getter = control_file_getter.DevServerGetter.create(build, ds)
     # Get the control file for the suite.

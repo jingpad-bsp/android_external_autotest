@@ -6,6 +6,7 @@ import logging
 import os
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import installable_object, autoserv_parser
+from autotest_lib.server.cros import dynamic_suite
 
 
 config = global_config.global_config
@@ -37,11 +38,13 @@ class SiteAutotest(installable_object.InstallableObject):
             if self.host:
                 afe = frontend.AFE(debug=False)
                 hosts = afe.get_hosts(hostname=self.host.hostname)
-                if hosts and 'job_repo_url' in hosts[0].attributes:
-                    return hosts[0].attributes['job_repo_url']
-                logging.warning("No job_repo_url for %s", self.host)
+                if hosts and dynamic_suite.JOB_REPO_URL in hosts[0].attributes:
+                    return hosts[0].attributes[dynamic_suite.JOB_REPO_URL]
+                logging.warning("No %s for %s", dynamic_suite.JOB_REPO_URL,
+                                self.host)
         except ImportError:
-            logging.warning('Not attempting to look for job_repo_url')
+            logging.warning('Not attempting to look for %s',
+                            dynamic_suite.JOB_REPO_URL)
             pass
         return None
 

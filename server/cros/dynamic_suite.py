@@ -213,7 +213,22 @@ Step by step:
 """
 
 
+# Job keyvals for finding debug symbols when processing crash dumps.
+JOB_BUILD_KEY = 'build'
+JOB_SUITE_KEY = 'suite'
+
+# Job attribute and label names
+JOB_REPO_URL = 'job_repo_url'
 VERSION_PREFIX = 'cros-version:'
+EXPERIMENTAL_PREFIX = 'experimental_'
+REIMAGE_JOB_NAME = 'try_new_image'
+
+# Timings
+ARTIFACT_FINISHED_TIME = 'artifact_finished_time'
+DOWNLOAD_STARTED_TIME = 'download_started_time'
+PAYLOAD_FINISHED_TIME = 'payload_finished_time'
+TIME_FMT = '%Y-%m-%d %H:%M:%S'
+
 CONFIG = global_config.global_config
 
 
@@ -266,9 +281,9 @@ def reimage_and_run(**dargs):
         except dev_server.DevServerException as e:
             raise error.AsynchronousBuildFailure(e)
 
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.datetime.now().strftime(TIME_FMT)
         utils.write_keyval(job.resultdir,
-                           {'artifact_finished_time': timestamp})
+                           {ARTIFACT_FINISHED_TIME: timestamp})
 
         suite = Suite.create_from_name(name, build, pool=pool,
                                        results_dir=job.resultdir)
@@ -410,8 +425,7 @@ class Reimager(object):
         if not num:
             num = CONFIG.get_config_value('CROS', 'sharding_factor', type=int)
         logging.debug("scheduling reimaging across %d machines", num)
-        wrapper_job_name = 'try_new_image'
-        record('START', None, wrapper_job_name)
+        record('START', None, REIMAGE_JOB_NAME)
         try:
             self._ensure_version_label(VERSION_PREFIX + build)
 
@@ -420,7 +434,7 @@ class Reimager(object):
 
             # Schedule job and record job metadata.
             canary_job = self._schedule_reimage_job(build, num, board)
-            self._record_job_if_possible(wrapper_job_name, canary_job)
+            self._record_job_if_possible(REIMAGE_JOB_NAME, canary_job)
             logging.debug('Created re-imaging job: %d', canary_job.id)
 
             # Poll until reimaging is complete.
@@ -433,19 +447,19 @@ class Reimager(object):
                                                            0)
         except error.InadequateHostsException as e:
             logging.warning(e)
-            record('END WARN', None, wrapper_job_name, str(e))
+            record('END WARN', None, REIMAGE_JOB_NAME, str(e))
             return False
         except Exception as e:
             # catch Exception so we record the job as terminated no matter what.
             logging.error(e)
-            record('END ERROR', None, wrapper_job_name, str(e))
+            record('END ERROR', None, REIMAGE_JOB_NAME, str(e))
             return False
 
         self._remember_reimaged_hosts(build, canary_job)
 
         if canary_job.result is True:
             self._report_results(canary_job, record)
-            record('END GOOD', None, wrapper_job_name)
+            record('END GOOD', None, REIMAGE_JOB_NAME)
             return True
 
         if canary_job.result is None:
@@ -453,7 +467,7 @@ class Reimager(object):
         else:  # canary_job.result is False
             self._report_results(canary_job, record)
 
-        record('END FAIL', None, wrapper_job_name)
+        record('END FAIL', None, REIMAGE_JOB_NAME)
         return False
 
 
@@ -539,7 +553,7 @@ class Reimager(object):
 
         @param machine: the host to clear labels, attributes from.
         """
-        self._afe.set_host_attribute('job_repo_url', None, hostname=machine)
+        self._afe.set_host_attribute(JOB_REPO_URL, None, hostname=machine)
 
 
     def _record_job_if_possible(self, test_name, job):
@@ -669,7 +683,6 @@ class Status(object):
     _reason = None
     _begin_timestamp = None
     _end_timestamp = None
-    _TIME_FMT = '%Y-%m-%d %H:%M:%S'
 
 
     def __init__(self, status, test_name, reason='', begin_time_str=None,
@@ -690,14 +703,14 @@ class Status(object):
         if begin_time_str:
             self._begin_timestamp = int(time.mktime(
                 datetime.datetime.strptime(
-                    begin_time_str, self._TIME_FMT).timetuple()))
+                    begin_time_str, TIME_FMT).timetuple()))
         else:
             self._begin_timestamp = time.time()
 
         if end_time_str:
             self._end_timestamp = int(time.mktime(
                 datetime.datetime.strptime(
-                    end_time_str, self._TIME_FMT).timetuple()))
+                    end_time_str, TIME_FMT).timetuple()))
         else:
             self._end_timestamp = time.time()
 
@@ -942,7 +955,7 @@ class Suite(object):
             control_type=test.test_type.capitalize(),
             meta_hosts=[meta_hosts],
             dependencies=job_deps,
-            keyvals={'build': self._build, 'suite': self._tag})
+            keyvals={JOB_BUILD_KEY: self._build, JOB_SUITE_KEY: self._tag})
 
         setattr(test_obj, 'test_name', test.name)
 
@@ -1008,10 +1021,9 @@ class Suite(object):
             self._jobs.append(self._create_job(test))
 
         if add_experimental:
-            # TODO(cmasone): ensure I can log results from these differently.
             for test in self.unstable_tests():
                 logging.debug('Scheduling experimental %s', test.name)
-                test.name = 'experimental_' + test.name
+                test.name = EXPERIMENTAL_PREFIX + test.name
                 self._jobs.append(self._create_job(test))
         if self._results_dir:
             self._record_scheduled_jobs()
