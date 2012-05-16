@@ -15,6 +15,15 @@ SUSPEND_CMD='/usr/bin/powerd_suspend'
 REQUEST_SUSPEND_CMD = ('/usr/bin/dbus-send --system / '
                        'org.chromium.PowerManager.RequestSuspend')
 
+SUSPEND_RESUME_MESSAGES = {
+    'START_SUSPEND':['Freezing user space'],
+    'END_SUSPEND':['Back to C!', 'Low-level resume complete',
+                   'Entering suspend state', 'sleep: irq wakeup masks:'],
+    'START_RESUME':['Back to C!', 'Low-level resume complete', 'Suspended for',
+                    'Resume caused by', 'post sleep, preparing to return'],
+    'END_RESUME':['Restarting tasks'],
+    }
+
 
 def set_state(state):
     """

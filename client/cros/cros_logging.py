@@ -2,12 +2,28 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re
+import logging, os, re, time
 
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from constants import CLEANUP_LOGS_PAUSED_FILE
+
+
+def extract_kernel_timestamp(msg):
+    """Extract a timestmap that appears in kernel log messages and looks
+    like this:
+    ... kernel: [78791.721832] ...
+
+    Returns:
+        The timestamp as float in seconds since last boot.
+    """
+
+    match = re.search(' \[\s*([0-9.]+)\] ', msg)
+    if match:
+        return float(match.group(1))
+    raise error.TestError('Could not extract timestamp from message: ' + msg)
+
 
 class LogReader(object):
     """
@@ -108,6 +124,40 @@ class LogReader(object):
         @return boolean indicating if we found the string.
         """
         return string in self.get_logs()
+
+
+    def get_last_msg(self, patterns, retries=0, sleep_seconds=1):
+        """Search the logs and return the latest occurrence of a message
+        matching one of the patterns.
+
+        Args:
+            patterns: A regexp or a list of regexps to search the logs with.
+                The function returns as soon as it finds any match to one of
+                the patters, it will not search for the other patterns.
+            retries: Number of times to retry if none of the patterns were
+                found. Default is one attempt.
+            sleep_seconds: Time to sleep between retries.
+
+        Returns:
+            The last occurrence of the first matching pattern. "None" if none
+            of the patterns matched.
+        """
+
+        if not type(patterns) in (list, tuple):
+            patterns = [patterns]
+
+        for retry in xrange(retries + 1):
+            for pattern in patterns:
+                regexp_compiled = re.compile(pattern)
+                last_match = None
+                for line in self.read_all_logs():
+                    if regexp_compiled.search(line):
+                        last_match = line
+                if last_match:
+                    return last_match
+            time.sleep(sleep_seconds)
+
+        return None
 
 
 class LogRotationPauser(object):
