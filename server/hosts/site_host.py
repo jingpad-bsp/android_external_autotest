@@ -51,7 +51,7 @@ class SiteHost(remote.RemoteHost):
     _parser = autoserv_parser.autoserv_parser
 
     # Time to wait for new kernel to be marked successful.
-    _KERNEL_UPDATE_TIMEOUT = 60
+    _KERNEL_UPDATE_TIMEOUT = 120
 
     # Ephemeral file to indicate that an update has just occurred.
     _JUST_UPDATED_FLAG = '/tmp/just_updated'
