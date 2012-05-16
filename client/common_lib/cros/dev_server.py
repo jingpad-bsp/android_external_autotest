@@ -4,11 +4,33 @@
 
 import httplib
 import urllib2
+import HTMLParser
 
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import error, global_config
 
 
 CONFIG = global_config.global_config
+
+
+class MarkupStripper(HTMLParser.HTMLParser):
+    """HTML parser that strips HTML tags, coded characters like &amp;
+
+    Works by, basically, not doing anything for any tags, and only recording
+    the content of text nodes in an internal data structure.
+    """
+    def __init__(self):
+        self.reset()
+        self.fed = []
+
+
+    def handle_data(self, d):
+        """Consume content of text nodes, store it away."""
+        self.fed.append(d)
+
+
+    def get_data(self):
+        """Concatenate and return all stored data."""
+        return ''.join(self.fed)
 
 
 def _get_image_storage_server():
@@ -19,28 +41,27 @@ def _get_dev_server():
     return CONFIG.get_config_value('CROS', 'dev_server', type=str)
 
 
-def remote_devserver_call(internal_error_return_val):
+def remote_devserver_call(method):
     """A decorator to use with remote devserver calls.
 
-    This decorater handles httplib.INTERNAL_SERVER_ERROR's cleanly while
-    raising all other exceptions. It requires that you pass in the value you
-    want the method to return when it receives a httplib.INTERNAL_SERVER_ERROR.
+    This decorator converts urllib2.HTTPErrors into DevServerExceptions with
+    any embedded error info converted into plain text.
     """
-    def wrapper(method):
-      """Wrapper just wraps the method."""
-      def inner_wrapper(*args, **kwargs):
-        """This wrapper actually catches the httplib.INTERNAL_SERVER_ERROR."""
+    def wrapper(*args, **kwargs):
+        """This wrapper actually catches the HTTPError."""
         try:
             return method(*args, **kwargs)
         except urllib2.HTTPError as e:
-            if e.code == httplib.INTERNAL_SERVER_ERROR:
-                return internal_error_return_val
-            else:
-                raise
-
-      return inner_wrapper
+            strip = MarkupStripper()
+            strip.feed(e.read())
+            raise DevServerException(strip.get_data())
 
     return wrapper
+
+
+class DevServerException(Exception):
+    """Raised when the dev server returns a non-200 HTTP response."""
+    pass
 
 
 class DevServer(object):
@@ -77,7 +98,7 @@ class DevServer(object):
                                                  'args': argstr}
 
 
-    @remote_devserver_call(False)
+    @remote_devserver_call
     def trigger_download(self, image, synchronous=True):
         """Tell the dev server to download and stage |image|.
 
@@ -93,9 +114,7 @@ class DevServer(object):
         @param image: the image to fetch and stage.
         @param synchronous: if True, waits until all components of the image are
                 staged before returning.
-        @return True if the remote call returns HTTP OK, False if it returns
-                an internal server error.
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @raise DevServerException upon any return code that's not HTTP OK.
         """
         call = self._build_call(
             'download',
@@ -103,12 +122,14 @@ class DevServer(object):
         response = urllib2.urlopen(call)
         was_successful = response.read() == 'Success'
         if was_successful and synchronous:
-            return self.finish_download(image)
-        else:
-            return was_successful
+            self.finish_download(image)
+        elif not was_successful:
+            raise DevServerException("trigger_download for %s failed;"
+                                     "HTTP OK not accompanied by 'Success'." %
+                                     image)
 
 
-    @remote_devserver_call(False)
+    @remote_devserver_call
     def finish_download(self, image):
         """Tell the dev server to finish staging |image|.
 
@@ -118,18 +139,18 @@ class DevServer(object):
         called after a call to trigger_download.
 
         @param image: the image to fetch and stage.
-        @return True if the remote call returns HTTP OK, False if it returns
-                an internal server error.
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @raise DevServerException upon any return code that's not HTTP OK.
         """
         call = self._build_call(
             'wait_for_status',
             archive_url=_get_image_storage_server() + image)
-        response = urllib2.urlopen(call)
-        return response.read() == 'Success'
+        if urllib2.urlopen(call).read() != 'Success':
+            raise DevServerException("finish_download for %s failed;"
+                                     "HTTP OK not accompanied by 'Success'." %
+                                     image)
 
 
-    @remote_devserver_call(None)
+    @remote_devserver_call
     def list_control_files(self, build):
         """Ask the dev server to list all control files for |build|.
 
@@ -140,14 +161,14 @@ class DevServer(object):
                       whose control files the caller wants listed.
         @return None on failure, or a list of control file paths
                 (e.g. server/site_tests/autoupdate/control)
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @raise DevServerException upon any return code that's not HTTP OK.
         """
         call = self._build_call('controlfiles', build=build)
         response = urllib2.urlopen(call)
         return [line.rstrip() for line in response]
 
 
-    @remote_devserver_call(None)
+    @remote_devserver_call
     def get_control_file(self, build, control_path):
         """Ask the dev server for the contents of a control file.
 
@@ -158,15 +179,15 @@ class DevServer(object):
                       whose control files the caller wants listed.
         @param control_path: The file to list
                              (e.g. server/site_tests/autoupdate/control)
-        @return The contents of the desired file, or None
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @return The contents of the desired file.
+        @raise DevServerException upon any return code that's not HTTP OK.
         """
         call = self._build_call('controlfiles',
                                 build=build, control_path=control_path)
         return urllib2.urlopen(call).read()
 
 
-    @remote_devserver_call(None)
+    @remote_devserver_call
     def get_latest_build(self, target, milestone=''):
         """Ask the dev server for the latest build for a given target.
 
@@ -181,9 +202,8 @@ class DevServer(object):
                            webserver sending an empty string, '', ensures that
                            the variable in the URL is ignored as if it was set
                            to None.
-        @return A string of the returned build e.g. R18-1586.0.0-a1-b1514
-                or None.
-        @throws urllib2.HTTPError upon any return code that's not 200 or 500.
+        @return A string of the returned build e.g. R20-2226.0.0.
+        @raise DevServerException upon any return code that's not HTTP OK.
         """
         call = self._build_call('latestbuild', target=target,
                                 milestone=milestone)

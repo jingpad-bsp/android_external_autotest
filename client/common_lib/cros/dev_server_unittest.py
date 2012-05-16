@@ -35,7 +35,7 @@ class DevServerTest(mox.MoxTestBase):
                                  code=httplib.INTERNAL_SERVER_ERROR,
                                  msg='',
                                  hdrs=None,
-                                 fp=None)
+                                 fp=StringIO.StringIO('Expected.'))
         urllib2.urlopen(mox.IgnoreArg()).AndRaise(e500)
 
 
@@ -45,7 +45,7 @@ class DevServerTest(mox.MoxTestBase):
                                  code=httplib.FORBIDDEN,
                                  msg='',
                                  hdrs=None,
-                                 fp=None)
+                                 fp=StringIO.StringIO('Expected.'))
         urllib2.urlopen(mox.IgnoreArg()).AndRaise(e403)
 
 
@@ -57,12 +57,11 @@ class DevServerTest(mox.MoxTestBase):
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(name))).AndReturn(to_return)
-        self.dev_server.finish_download(name).AndReturn(True)
+        self.dev_server.finish_download(name)
 
         # Synchronous case requires a call to finish download.
         self.mox.ReplayAll()
-        self.assertTrue(self.dev_server.trigger_download(name,
-                                                         synchronous=True))
+        self.dev_server.trigger_download(name, synchronous=True)
         self.mox.VerifyAll()
 
 
@@ -76,23 +75,24 @@ class DevServerTest(mox.MoxTestBase):
                                 mox.StrContains(name))).AndReturn(to_return)
 
         self.mox.ReplayAll()
-        self.assertTrue(self.dev_server.trigger_download(name,
-                                                         synchronous=False))
+        self.dev_server.trigger_download(name, synchronous=False)
         self.mox.VerifyAll()
 
 
-    def testFailedTriggerDownload(self):
+    def testErrorTriggerDownload(self):
         """Should call the dev server's download method, fail gracefully."""
-        self._returnHttpServerError()
+        self._returnHttpForbidden()
         self.mox.ReplayAll()
-        self.assertFalse(self.dev_server.trigger_download(''))
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.trigger_download,
+                          '')
 
 
-    def testExplodingTriggerDownload(self):
+    def testForbiddenTriggerDownload(self):
         """Should call the dev server's download method, get exception."""
         self._returnHttpForbidden()
         self.mox.ReplayAll()
-        self.assertRaises(urllib2.HTTPError,
+        self.assertRaises(dev_server.DevServerException,
                           self.dev_server.trigger_download,
                           '')
 
@@ -107,16 +107,18 @@ class DevServerTest(mox.MoxTestBase):
 
         # Synchronous case requires a call to finish download.
         self.mox.ReplayAll()
-        self.assertTrue(self.dev_server.finish_download(name))
+        self.dev_server.finish_download(name)  # Raises on failure.
         self.mox.VerifyAll()
 
 
-    def testFailedTriggerDownload(self):
+    def testErrorTriggerDownload(self):
         """Should call the dev server's finish download method, fail gracefully.
         """
         self._returnHttpServerError()
         self.mox.ReplayAll()
-        self.assertFalse(self.dev_server.finish_download(''))
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.finish_download,
+                          '')
 
 
     def testListControlFiles(self):
@@ -135,17 +137,19 @@ class DevServerTest(mox.MoxTestBase):
 
 
     def testFailedListControlFiles(self):
-        """Should call the dev server's list-files method, fail gracefully."""
+        """Should call the dev server's list-files method, get exception."""
         self._returnHttpServerError()
         self.mox.ReplayAll()
-        self.assertEquals(self.dev_server.list_control_files(''), None)
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.list_control_files,
+                          '')
 
 
     def testExplodingListControlFiles(self):
         """Should call the dev server's list-files method, get exception."""
         self._returnHttpForbidden()
         self.mox.ReplayAll()
-        self.assertRaises(urllib2.HTTPError,
+        self.assertRaises(dev_server.DevServerException,
                           self.dev_server.list_control_files,
                           '')
 
@@ -165,18 +169,20 @@ class DevServerTest(mox.MoxTestBase):
                           contents)
 
 
-    def testFailedGetControlFile(self):
-        """Should try to get the contents of a control file, fail gracefully."""
+    def testErrorGetControlFile(self):
+        """Should try to get the contents of a control file, get exception."""
         self._returnHttpServerError()
         self.mox.ReplayAll()
-        self.assertEquals(self.dev_server.get_control_file('', ''), None)
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.get_control_file,
+                          '', '')
 
 
-    def testExplodingGetControlFile(self):
+    def testForbiddenGetControlFile(self):
         """Should try to get the contents of a control file, get exception."""
         self._returnHttpForbidden()
         self.mox.ReplayAll()
-        self.assertRaises(urllib2.HTTPError,
+        self.assertRaises(dev_server.DevServerException,
                           self.dev_server.get_control_file,
                           '', '')
 
