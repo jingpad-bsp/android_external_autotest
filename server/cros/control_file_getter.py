@@ -89,9 +89,9 @@ class CacheingControlFileGetter(ControlFileGetter):
             raise error.ControlFileNotFound('No control files found.')
 
         if 'control' not in test_name:
-            regexp = re.compile(os.path.join(test_name, 'control'))
+            regexp = re.compile(os.path.join(test_name, 'control$'))
         else:
-            regexp = re.compile(test_name)
+            regexp = re.compile(test_name + '$')
         candidates = filter(regexp.search, self._files)
         if not candidates:
             raise error.ControlFileNotFound('No control file for ' + test_name)
