@@ -4,6 +4,7 @@
 
 import re
 import serial as pyserial
+import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -16,9 +17,10 @@ DEVICE_NORMAL_RESPONSE = 'OK'
 
 
 class factory_BasicCellular(test.test):
-    version = 2
+    version = 3
 
-    def run_once(self, imei_re, iccid_re, dev='/dev/ttyUSB0'):
+    def run_once(self, imei_re, iccid_re, dev='/dev/ttyUSB0',
+                 reset_modem_waiting=0):
         '''Connects to the modem, checking the IMEI and ICCID.
 
         For the iccid test, please note this test requires a SIM card,
@@ -30,6 +32,10 @@ class factory_BasicCellular(test.test):
         @param iccid_re: The regular expression of expected ICCID.
                          None value to skip this item.
         @param dev: Path to the modem. Default to /dev/ttyUSB0.
+        @param reset_modem_waiting: Interger greater than zero indicates
+                                    a reset command will be issued and
+                                    reconnect to modem after
+                                    reset_modem_waiting secs.
         '''
         def read_response():
             '''Reads response from the modem until a timeout.'''
@@ -55,6 +61,17 @@ class factory_BasicCellular(test.test):
             utils.system("stop modemmanager", ignore_status=True)
 
             serial = pyserial.Serial(dev, timeout=2)
+            serial.read(serial.inWaiting())  # Empty the buffer.
+
+            if reset_modem_waiting > 0:
+                # Reset the modem.
+                send_command('AT+CFUN=6')
+                check_response(DEVICE_NORMAL_RESPONSE)
+                serial.close()
+                time.sleep(reset_modem_waiting)
+                # Reconnect to the modem
+                serial = pyserial.Serial(dev, timeout=2)
+                serial.read(serial.inWaiting())
 
             # Send an AT command and expect 'OK'
             send_command('AT')
