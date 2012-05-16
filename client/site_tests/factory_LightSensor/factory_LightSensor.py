@@ -38,13 +38,13 @@ _DEFAULT_SUBTEST_INSTRUCTION = {
     'Light sensor dark': 'Cover light sensor with finger',
     'Light sensor exact': 'Remove finger from light sensor',
     'Light sensor light': 'Shine light sensor with flashlight'}
-
+_DEFAULT_DEVICE_PATH='/sys/bus/iio/devices/devices0/'
 
 class iio_generic():
     '''
     Object to interface to ambient light sensor over iio.
     '''
-    PARAMS = {'rd': '/sys/bus/iio/devices/device0/illuminance0_input',
+    PARAMS = {'rd': _DEFAULT_DEVICE_PATH + 'illuminance0_input',
               'init': '',
               'min': 0,
               'max': math.pow(2, 16),
@@ -52,9 +52,12 @@ class iio_generic():
               'mindelay': 0.178,
               }
 
-    def __init__(self):
+    def __init__(self, device_path):
         self.buf = []
         self.ambient = None
+
+        if device_path is not None:
+            self.PARAMS['rd'] = device_path + 'illuminance0_input'
 
         if not os.path.isfile(self.PARAMS['rd']):
             self.cfg()
@@ -262,6 +265,7 @@ class factory_LightSensor(test.test):
             self._subtest_instruction = _DEFAULT_SUBTEST_INSTRUCTION
 
     def run_once(self,
+                 device_path=None,
                  timeout_per_subtest=10,
                  subtest_list=None,
                  subtest_cfg=None,
@@ -271,7 +275,7 @@ class factory_LightSensor(test.test):
 
         self.get_subtest(subtest_list, subtest_cfg, subtest_instruction)
 
-        self._als = iio_generic()
+        self._als = iio_generic(device_path)
 
         self._timeout_per_subtest = timeout_per_subtest
 
