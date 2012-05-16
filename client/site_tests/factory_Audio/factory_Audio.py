@@ -115,7 +115,8 @@ class factory_Audio(test.test):
                 cmd = 'arecord -f dat -t wav rec.wav'
             elif event.keyval == ord('p'):
                 # Playback canned audio.
-                cmd = 'aplay %s' % self._audio_sample_path
+                # Add -B 10000 since cras does not accept small buffer_time
+                cmd = 'aplay -B 10000 %s' % self._audio_sample_path
             if cmd:
                 self._active = True
                 self._bg_job = utils.BgJob(cmd, stderr_level=logging.DEBUG)
@@ -139,7 +140,8 @@ class factory_Audio(test.test):
             gtk.main_quit()
         elif event.keyval == ord('r'):
             self.close_bgjob(name)
-            cmd = 'aplay rec.wav'
+            # Add -B 10000 since cras does not accept small buffer_time
+            cmd = 'aplay -B 10000 rec.wav'
             self._bg_job = utils.BgJob(cmd, stderr_level=logging.DEBUG)
             factory.log("cmd: " + cmd)
             # Clear active recording state.
