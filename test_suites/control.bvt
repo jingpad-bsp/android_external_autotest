@@ -14,11 +14,20 @@ TEST_TYPE = "Server"
 
 DOC = """
 This is the Build Verification Test suite. It should consist of SHORT tests
-that validate critical functionality -- ability to acquire connectivity, perform
-crash reporting, get updates, and allow a user to log in, among other things.
+that validate critical functionality. Critical functionality includes but is
+not limited to tests that cover the ability to acquire connectivity, perform
+-crash reporting, get updates, and allow a user to log in. A test failure in
+this suite means that the build is dead in the water and will not be passed
+on to QA. Tests that check critical pathways but are long running need to be
+pared down and added to this suite on a case by case basis. The longer running
+version can continue to run in other suites such as the regression suite. If you
+are unsure if your test belongs in this suite email:
+chromeos-lab-infrastructure@google.com.
+
 This suite sets num to 4 in the reimage_and_run call to make sure we run
 across 4 different machines. This overrides the CROS.sharding_factor option in
 the global_config.
+
 
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
