@@ -11,6 +11,7 @@ import logging
 import mox
 import StringIO
 import unittest
+import urllib2
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
@@ -26,7 +27,11 @@ class DevServerGetterTest(mox.MoxTestBase):
     _BUILD = 'fake/build'
     _FILES = ['a/b/control', 'b/c/control']
     _CONTENTS = 'Multi-line\nControl File Contents\n'
-    _403 = dev_server.DevServerException('HTTP 403 Forbidden!')
+    _403 = urllib2.HTTPError(url='',
+                             code=httplib.FORBIDDEN,
+                             msg='',
+                             hdrs=None,
+                             fp=None)
 
     def setUp(self):
         super(DevServerGetterTest, self).setUp()

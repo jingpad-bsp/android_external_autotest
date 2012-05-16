@@ -260,12 +260,10 @@ def reimage_and_run(**dargs):
                                         num=num):
 
         # Ensure that the image's artifacts have completed downloading.
-        try:
-            ds = dev_server.DevServer.create()
-            ds.finish_download(build)
-        except dev_server.DevServerException as e:
-            raise error.AsynchronousBuildFailure(e)
-
+        ds = dev_server.DevServer.create()
+        if not ds.finish_download(build):
+            raise error.AsynchronousBuildFailure(
+                "Server error completing staging for " + build)
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         utils.write_keyval(job.resultdir,
                            {'artifact_finished_time': timestamp})
