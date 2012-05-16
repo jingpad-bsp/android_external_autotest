@@ -25,6 +25,8 @@ class ECControl(object):
     TEMP_SENSOR_RE = "Reading temperature...([0-9]*)"
     TOGGLE_AUTO_FAN_RE = "Automatic fan control is now on"
     BATTERY_RE = "Cycle count"
+    LIGHTBAR_RE = "^ 05\s+3f\s+3f$"
+
     def ec_command(self, cmd):
         full_cmd = 'ectool %s' % cmd
         result = utils.system_output(full_cmd)
@@ -34,28 +36,25 @@ class ECControl(object):
 
     def hello(self):
         response = self.ec_command('hello')
-        result = re.search(self.HELLO_RE, response)
-        return (result != None)
+        return (re.search(self.HELLO_RE, response) is not None)
 
     def auto_fan_ctrl(self):
         response = self.ec_command('autofanctrl')
-        result = re.search(self.TOGGLE_AUTO_FAN_RE, response)
         logging.info('Turned on auto fan control.')
-        return (result != None)
+        return (re.search(self.TOGGLE_AUTO_FAN_RE, response) is not None)
 
     def get_fanspeed(self):
         response = self.ec_command('pwmgetfanrpm')
         match = re.search(self.GET_FANSPEED_RE, response).group(1)
-        logging.info('Fan speed: %s' % match)
+        logging.info('Fan speed: %s', match)
         if match:
             return int(match)
         raise error.TestError('Unable to read fan speed')
 
     def set_fanspeed(self, rpm):
         response = self.ec_command('pwmsetfanrpm %d' % rpm)
-        result = re.search(self.SET_FANSPEED_RE, response)
-        logging.info('Set fan speed: %d' % rpm)
-        return (result != None)
+        logging.info('Set fan speed: %d', rpm)
+        return (re.search(self.SET_FANSPEED_RE, response) is not None)
 
     def get_temperature(self, idx):
         response = self.ec_command('temps %d' % idx)
@@ -66,8 +65,15 @@ class ECControl(object):
 
     def get_battery(self):
         response = self.ec_command('battery')
-        result = re.search(self.BATTERY_RE, response)
-        return (result != None)
+        return (re.search(self.BATTERY_RE, response) is not None)
+
+    def get_lightbar(self):
+        self.ec_command('lightbar on')
+        self.ec_command('lightbar init')
+        self.ec_command('lightbar 4 255 255 255')
+        response = self.ec_command('lightbar')
+        self.ec_command('lightbar off')
+        return (re.search(self.LIGHTBAR_RE, response, re.MULTILINE) is not None)
 
 
 class hardware_EC(test.test):
@@ -77,9 +83,10 @@ class hardware_EC(test.test):
     def run_once(self,
                  num_temp_sensor=1,
                  temp_sensor_to_test=None,
-                 test_fan=True,
+                 test_fan=False,
                  fan_rpm_error_margin=200,
-                 test_battery=True):
+                 test_battery=False,
+                 test_lightbar=False):
         ec = ECControl()
 
         if not ec.hello():
@@ -116,3 +123,6 @@ class hardware_EC(test.test):
 
         if test_battery and not ec.get_battery():
             raise error.TestError('Battery communication failed')
+
+        if test_lightbar and not ec.get_lightbar():
+            raise error.TestError('Lightbar communication failed')
