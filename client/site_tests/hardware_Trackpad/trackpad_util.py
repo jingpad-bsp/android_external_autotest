@@ -21,7 +21,7 @@ trackpad_test_conf = 'trackpad_usability_test.conf'
 trackpad_device_file_hardcoded = '/dev/input/event6'
 autodir = '/usr/local/autotest'
 autotest_program = os.path.join(autodir, 'bin/autotest')
-autotest_log_subpath = 'results/default/debug/client.INFO'
+autotest_log_subpath = 'results/default/debug/client.0.INFO'
 conf_file_executed = False
 time_format = '%Y%m%d_%H%M%S'
 
@@ -113,8 +113,10 @@ class Display:
 class IterationLog:
     ''' Maintain the log for an iteration '''
 
-    def __init__(self, result_path, autotest_gs_symlink):
+    def __init__(self, result_path, autotest_gs_symlink,
+                 autotest_log_path=None):
         self.open_result_log(result_path, autotest_gs_symlink)
+        self.autotest_log_path = autotest_log_path
 
     def open_result_log(self, result_path, autotest_gs_symlink):
         test_time = 'tested:' + time.strftime(time_format, time.gmtime())
@@ -133,8 +135,9 @@ class IterationLog:
         self.result_fh.close()
 
     def append_detailed_log(self, autodir):
-        detailed_log_path = os.path.join(autodir, autotest_log_subpath)
-        append_cmd = 'cat %s >> %s' % (detailed_log_path, self.result_file)
+        if self.autotest_log_path is None:
+            self.autotest_log_path = os.path.join(autodir, autotest_log_subpath)
+        append_cmd = 'cat %s >> %s' % (self.autotest_log_path, self.result_file)
         try:
             common_util.simple_system(append_cmd)
             logging.info('Append detailed log: "%s"' % append_cmd)
@@ -585,3 +588,11 @@ def write_symlink(source, link_name):
         if not os.path.isdir(parent_dir):
             os.makedirs(parent_dir)
     os.symlink(source, link_name)
+
+
+def get_logger_filename(logger, level):
+    ''' Get the handler filename with the specified level from logger '''
+    for handler in logger.handlers:
+        if handler.level == level:
+            return handler.baseFilename
+    return None

@@ -58,6 +58,8 @@ class hardware_Trackpad(test.test):
         self.local_path = self.bindir
         self.model = trackpad_util.get_model()
         self.regression_gestures = None
+        self.autotest_log_path = trackpad_util.get_logger_filename(
+                logging.getLogger(), logging.INFO)
 
         # Get some parameters from the config file
         self.regression_subset_list = read_trackpad_test_conf(
@@ -255,7 +257,8 @@ class hardware_Trackpad(test.test):
             logging.info('  The result path "%s" is created successfully.' %
                          gesture_files_path_results)
         self.ilog = trackpad_util.IterationLog(gesture_files_path_results,
-                                               gesture_files_path_autotest)
+                                               gesture_files_path_autotest,
+                                               self.autotest_log_path)
 
         # Start tpcontrol log and get the gesture library version
         self.tpcontrol_log = trackpad_util.TpcontrolLog()
