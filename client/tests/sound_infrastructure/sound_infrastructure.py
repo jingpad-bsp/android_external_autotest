@@ -130,10 +130,6 @@ class sound_infrastructure(test.test):
         self.codec_info[codec]['files'] = [line.strip() for line in
                                            open(pathname)]
 
-    def load_asound_state(self):
-        if self.exec_cmd("alsactl --file /etc/asound.state restore 0") != 0:
-            raise error.TestError("Unable to load /etc/asound.state")
-
     def run_once(self):
         codec = self.get_codec()
         self.read_codec_data(codec)
