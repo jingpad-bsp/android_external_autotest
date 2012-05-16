@@ -166,6 +166,14 @@ class hardware_Trackpad(test.test):
         model = self.model
         if subset not in self.regression_subset_list:
             subset = self.regression_default_subset
+
+        # Skip those models that are not specified the regression gesture sets.
+        # There are two possible reasons:
+        #   (1) the gestures are not captured yet.
+        #   (2) it is a model without built-in trackpad.
+        if model not in self.regression_gesture_sets[subset]:
+            return None
+
         regression_gesture_set = self.regression_gesture_sets[subset][model]
         gesture_set_path = os.path.join(self.local_path,
                 self.gesture_files_subpath_regression, regression_gesture_set)
@@ -197,6 +205,10 @@ class hardware_Trackpad(test.test):
             else:
                 subset = self._get_regression_gesture_set(subset)
 
+        # Skip those models without the regression gesture sets.
+        if subset is None:
+            return None
+
         # Determine gestures to test
         self._set_regression_gestures(subset)
 
@@ -225,6 +237,12 @@ class hardware_Trackpad(test.test):
         # Set up regression path
         gesture_files_path_autotest = self._setup_gesture_files_path(test_set,
                                                                      subset)
+
+        # Skip those models without regression gesture sets.
+        if gesture_files_path_autotest is None:
+            logging.info('No gesture sets are specified for this model: %s' %
+                         self.model)
+            return
 
         # Exit if the gesture files path for autotest does not exist.
         if (gesture_files_path_autotest is None or
