@@ -85,7 +85,7 @@ class Task(object):
             if branch.startswith('>=R') and not have_seen_numeric_constraint:
                 have_seen_numeric_constraint = True
                 continue
-            raise MalformedConfigEntry('%s is not a valid branch spec.', branch)
+            raise MalformedConfigEntry("%s isn't a valid branch spec." % branch)
 
 
     def __init__(self, name, suite, branch_specs, pool=None):
