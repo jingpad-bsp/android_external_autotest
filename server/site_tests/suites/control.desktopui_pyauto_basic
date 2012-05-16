@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "PyAuto Basic"
+SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
