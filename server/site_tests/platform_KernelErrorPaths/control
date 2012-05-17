@@ -4,7 +4,7 @@
 
 NAME = "KernelErrorPaths"
 AUTHOR = "Chrome OS Team"
-SUITE = "kernel.daily.regression"
+SUITE = "kernel_daily_regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

@@ -13,7 +13,7 @@ Currently it needs to be updated in its configuration. It is a great test for
 the higher level I/O systems but barely touches the disk right now.
 """
 NAME = 'dbench'
-SUITE = "kernel.daily.benchmarks"
+SUITE = "kernel_daily_benchmarks"
 TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'

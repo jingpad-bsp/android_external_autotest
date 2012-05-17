@@ -4,7 +4,7 @@
 
 NAME = "BootPerfServer"
 AUTHOR = "Chrome OS Team"
-SUITE = "kernel.per_build.benchmarks"
+SUITE = "kernel_per-build_benchmarks"
 EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"

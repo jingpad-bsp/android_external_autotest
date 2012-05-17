@@ -5,7 +5,7 @@
 AUTHOR = "Chrome OS Team"
 NAME = "kernel_HdParm"
 PURPOSE = "Use hdparm to measure disk performance."
-SUITE = "kernel.per_build.benchmarks"
+SUITE = "kernel_per-build_benchmarks"
 EXPERIMENTAL = "True"
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"

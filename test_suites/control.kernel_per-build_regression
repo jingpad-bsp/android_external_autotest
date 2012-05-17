@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "kernel.per_build.regression"
+NAME = "kernel_per-build_regression"
 PURPOSE = "Test required functionality - longer running than bvt tests usually."
-CRITERIA = "All tests with SUITE=kernel.per_build.regression must pass."
+CRITERIA = "All tests with SUITE=kernel_per-build_regression must pass."
 
 TIME = "SHORT"
 TEST_CATEGORY = "General"
@@ -19,7 +19,7 @@ longer than expected for bvt runs.  Since failures here are not tree-closers,
 it may be used to stage SHORT tests prior to admitting them to the bvt to
 ensure they are stable. Other common tests added here are SHORT tests that
 re-assess corrected issues.  Longer running regression tests should be added
-to kernel.daily.regression or kernel.weekly.regression.
+to kernel_daily_regression or kernel_weekly_regression.
 
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
@@ -34,6 +34,6 @@ import common
 from autotest_lib.server.cros import dynamic_suite
 
 dynamic_suite.reimage_and_run(
-    build=build, board=board, name='kernel.per_build.regression', job=job,
+    build=build, board=board, name='kernel_per-build_regression', job=job,
     pool=pool, check_hosts=check_hosts, add_experimental=True,
     skip_reimage=dynamic_suite.skip_reimage(globals()))
