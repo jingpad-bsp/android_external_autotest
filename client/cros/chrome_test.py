@@ -12,8 +12,12 @@ class ChromeTestBase(test.test):
     home_dir = None
     chrome_restart_disabled = False
 
+    _PYAUTO_DEP = 'pyauto_dep'
+    _CHROME_TEST_DEP = 'chrome_test'
+
     def setup(self):
-        self.job.setup_dep(['chrome_test'])
+        self.job.setup_dep([self._PYAUTO_DEP])
+        self.job.setup_dep([self._CHROME_TEST_DEP])
         # create a empty srcdir to prevent the error that checks .version file
         if not os.path.exists(self.srcdir):
             os.mkdir(self.srcdir)
@@ -31,17 +35,23 @@ class ChromeTestBase(test.test):
     def initialize(self, nuke_browser_norestart=True, skip_deps=False):
         self.home_dir = tempfile.mkdtemp()
         os.chmod(self.home_dir, stat.S_IROTH | stat.S_IWOTH |stat.S_IXOTH)
-        dep = 'chrome_test'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
+        chrome_test_dep_dir = os.path.join(
+                self.autodir, 'deps', self._CHROME_TEST_DEP)
+        pyauto_dep_dir = os.path.join(self.autodir, 'deps', self._PYAUTO_DEP)
         if not skip_deps:
-            self.job.install_pkg(dep, 'dep', dep_dir)
-        self.cr_source_dir = '%s/test_src' % dep_dir
+            self.job.install_pkg(self._PYAUTO_DEP, 'dep', pyauto_dep_dir)
+            self.job.install_pkg(self._CHROME_TEST_DEP, 'dep',
+                                 chrome_test_dep_dir)
+        self.cr_source_dir = '%s/test_src' % chrome_test_dep_dir
         self.test_binary_dir = '%s/out/Release' % self.cr_source_dir
-        if (nuke_browser_norestart):
+        if nuke_browser_norestart:
             self.nuke_chrome()
         try:
-            setup_cmd = '/bin/sh %s/%s' % (self.test_binary_dir,
-                                           'setup_test_links.sh')
+            setup_cmd = ('/bin/bash %s/test_src/out/Release/'
+                         'setup_test_links.sh' % pyauto_dep_dir)
+            utils.system(setup_cmd)  # this might raise an exception
+            setup_cmd = ('/bin/bash %s/setup_test_links.sh'
+                         % self.test_binary_dir)
             utils.system(setup_cmd)  # this might raise an exception
         except error.CmdError, e:
             raise error.TestError(e)

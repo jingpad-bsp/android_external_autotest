@@ -87,8 +87,8 @@ class PyAutoTest(test.test):
         test_binary_dir = os.path.join(
             dep_dir, 'test_src', 'out', 'Release')
         try:
-            setup_cmd = '/bin/sh %s/%s' % (test_binary_dir,
-                                           'setup_test_links.sh')
+            setup_cmd = '/bin/bash %s/%s' % (test_binary_dir,
+                                             'setup_test_links.sh')
             utils.system(setup_cmd)  # this might raise an exception
         except error.CmdError, e:
             raise error.TestError(e)
