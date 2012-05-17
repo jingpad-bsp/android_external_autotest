@@ -10,17 +10,9 @@
 TEST_LIST = [
     OperatorTest(
         autotest_name='factory_Start',
-        label_zh='開始',
         dargs={'press_to_continue': False}),
 
-    AutomatedSequence(
-        id='Memory',
-        label_zh='記憶體',
-        subtests=[
-            AutomatedSubTest(
-                label_en='system stress',
-                label_zh='壓力測試',
-                autotest_name='hardware_SAT',
-                dargs={'seconds': 2}),
-        ]),
+    FactoryTest(
+        autotest_name='factory_StressTest',
+        dargs={'seconds': 2}),
 ]

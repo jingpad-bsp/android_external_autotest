@@ -63,13 +63,25 @@ _REPORT_UPLOAD_METHOD = 'shopfloor' if _ENABLE_SHOP_FLOOR else None
 # REPORT UPLOADING IS REQUIRED TO BE SET AT BUILD TIME.
 # REPORTS MUST BE PROVIDED TO GOOGLE, MACHINES WITHOUT LOGS CANNOT BE SUPPORTED.
 
+# Audio sample file for testing.
+_DEFAULT_AUDIO_SAMPLE = 'site_tests/suite_Factory/fhorn.wav'
+
 # -- END OF CUSTOMIZATION VARIABLES --------------------------------
 
 
-# TEST ORDERING: Tests in the test_list will be run in the order
+# TEST ORDERING: Tests in TEST_LIST will be run in the order
 # below, unless the operator interrupts the flow via keyboard
 # shortcut.  To cause immediate execution of the run-in tests, for
 # example, reorder runin to occur as the first test in the test_list.
+
+# FactoryTest: Standard test without UI, only pass and fail.
+# OperatorTest: Test with its own UI.
+# AutomatedSequence: A sequence of automated tests. Each item in subtests will
+#                    be always executed again when re-running AutomatedSequence.
+# AutomatedSubTest: Individual test inside AutomatedSequence.
+# AutomatedRebootSubTest: Reboot test inside AutomatedSequence.
+# TestGroup: A group of tests. Similiar to AutomatedSequence, but you can
+#            trigger individual sub items without re-testing every steps.
 
 TEST_LIST = [
 
@@ -85,44 +97,21 @@ TEST_LIST = [
                'require_shop_floor': _ENABLE_SHOP_FLOOR,
                'shop_floor_server_url': _SHOP_FLOOR_SERVER_URL}),
 
-    # The factory_ScriptWrapper allows interactive execution of
-    # external scripts or programs with the output displayed in the
-    # testing widget area of the screen. This is useful, for example,
-    # to sync-up with the assembly line IT system.
-    # OperatorTest(
-    #    label_en='sync',
-    #    label_zh='同步',
-    #    autotest_name='factory_ScriptWrapper',
-    #    kbd_shortcut='s',
-    #    dargs={'cmdline': job.autodir +
-    #           '/site_tests/factory_ScriptWrapper/dummy.sh'}),
+    # Suggested functional tests (optional): ----------------------------------
 
-    # Suggested tests (optional): ---------------------------------------------
+    OperatorTest(
+        autotest_name='factory_StressTest',
+        label_zh='壓力測試',
+        dargs={'seconds': _SAT_DURATION_SECS}),
 
-    AutomatedSequence(
-        id='Memory',
-        label_zh='記憶體',
-        subtests=[
-
-            OperatorTest(
-                autotest_name='factory_StressTest',
-                label_zh='壓力測試',
-                dargs={'seconds': _SAT_DURATION_SECS}),
-        ]),
-
-    AutomatedSequence(
-        id='Graphics',
+    FactoryTest(
+        id="Graphics",
         label_zh='圖型',
-        subtests=[
-
-            AutomatedSubTest(
-                autotest_name='graphics_GLBench',
-                label_zh='圖型'),
-        ]),
+        autotest_name='graphics_GLBench'),
 
     AutomatedSequence(
-        id='Restart',
-        label_zh='燒機測試',
+        id='PowerCtrl',
+        label_zh='電源管理',
         subtests=[
 
             AutomatedSubTest(
@@ -136,53 +125,64 @@ TEST_LIST = [
                 iterations=_REBOOT_SEQ_ITERATIONS),
         ]),
 
-    AutomatedSequence(
-        id='GPS',
-        label_zh='GPS 硬體',
-        subtests=[
+    # Suggested component tests (optional): -----------------------------------
 
-            AutomatedSubTest(
-                autotest_name='hardware_GPS',
-                label_zh='GPS 硬體'),
-        ]),
-
-    AutomatedSequence(
+    # Remove this group if your device does not have ChromeOS-compatible EC.
+    TestGroup(
         id='EC',
         subtests=[
 
-            AutomatedSubTest(
-                id='ECComm',
-                label_en='EC Communication Test',
-                label_zh='EC',
+            FactoryTest(
+                id='Basic',
+                label_zh='基本測試',
+                autotest_name='hardware_EC'),
+
+            FactoryTest(
+                id='Fan',
+                label_zh='風扇',
                 autotest_name='hardware_EC',
-                dargs={'num_temp_sensor': 0,
-                       'test_fan': False,
-                       'test_battery': False}),
-            AutomatedSubTest(
-                id='ECFan',
-                label_en='Fan Test',
-                label_zh='Fan',
+                dargs={'test_fan': True}),
+
+            FactoryTest(
+                id='Temp Sensor',
+                label_zh='溫度感測',
                 autotest_name='hardware_EC',
-                dargs={'num_temp_sensor': 0,
-                       'test_fan': True,
-                       'test_battery': False}),
-            AutomatedSubTest(
-                id='ECTemp',
-                label_en='Temp Sensor Test',
-                label_zh='Sensor',
+                dargs={'num_temp_sensor': 10}),
+
+            FactoryTest(
+                id='Battery',
+                label_zh='電池',
                 autotest_name='hardware_EC',
-                dargs={'num_temp_sensor': 10,
-                       'test_fan': False,
-                       'test_battery': False}),
-            AutomatedSubTest(
-                id='ECBattery',
-                label_en='Battery Test',
-                label_zh='Battery',
-                autotest_name='hardware_EC',
-                dargs={'num_temp_sensor': 0,
-                       'test_fan': False,
-                       'test_battery': True}),
+                dargs={'test_battery': True}),
         ]),
+
+    OperatorTest(
+        autotest_name='factory_Display',
+        label_zh='顯示'),
+
+    # Remove this test if your device does not have external display.
+    OperatorTest(
+        autotest_name='factory_ExtDisplay',
+        label_zh='外接顯示',
+        dargs={'has_audio':True,
+               'audio_sample_path':_DEFAULT_AUDIO_SAMPLE}),
+
+    OperatorTest(
+        autotest_name='factory_LidSwitch',
+        label_zh='上蓋開關'),
+
+    OperatorTest(
+        autotest_name='factory_Audio',
+        label_zh='音源裝置',
+        dargs={'audio_sample_path':_DEFAULT_AUDIO_SAMPLE}),
+
+    OperatorTest(
+        autotest_name='factory_Camera',
+        label_zh='相機'),
+
+    OperatorTest(
+        autotest_name='factory_LightSensor',
+        label_zh='光感應器'),
 
     OperatorTest(
         id="KbBacklight",
@@ -190,61 +190,26 @@ TEST_LIST = [
         label_zh='鍵盤背光'),
 
     OperatorTest(
-        autotest_name='factory_Touchpad',
-        label_zh='觸控板'),
-
-    OperatorTest(
-        autotest_name='factory_LidSwitch',
-        label_zh='上蓋開關'),
-
-    OperatorTest(
-        autotest_name='factory_Display',
-        label_zh='顯示'),
-
-    OperatorTest(
-        autotest_name='factory_ExtDisplay',
-        label_zh='外接顯示',
-        dargs={'has_audio':True,
-               'audio_sample_path':'site_tests/suite_Factory/fhorn.wav'}),
-
-    OperatorTest(
-        autotest_name='factory_Camera',
-        label_zh='相機'),
-
-    OperatorTest(
-        autotest_name='factory_Audio',
-        label_zh='音源裝置',
-        dargs={'audio_sample_path':'site_tests/suite_Factory/fhorn.wav'}),
-
-    OperatorTest(
-        id='usb',
-        autotest_name='factory_ExternalStorage',
-        dargs={'media':'USB', 'min_read_speed': 20, 'min_write_speed': 10}),
-
-    OperatorTest(
-        id='sd',
-        autotest_name='factory_ExternalStorage',
-        dargs={'media':'SD', 'min_read_speed': 6, 'min_write_speed': 2}),
-
-    OperatorTest(
-        autotest_name='factory_LightSensor',
-        label_zh='光感應器'),
-
-    OperatorTest(
         autotest_name='factory_Keyboard',
         label_zh='鍵盤',
         kbd_shortcut='k'),
 
-    # Required tests (mandatory): ----------------------------------------------
-
-    # THIS IS A GOOGLE REQUIRED TEST.
-    # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
-    # TEST THAT YOU HAVE HAD REVIEWED BY GOOGLE.
     OperatorTest(
-        id='DevRec',
-        autotest_name='factory_DeveloperRecovery',
-        label_zh='還原模式',
-        dargs={'layout':'devrec'}),
+        autotest_name='factory_Touchpad',
+        label_zh='觸控板'),
+
+    OperatorTest(
+        autotest_name='factory_USB',
+        # Change num_usb_ports to real USB ports on device.
+        dargs={'num_usb_ports': 1}),
+
+    OperatorTest(
+        id='CardReader',
+        label_zh='SD 讀卡機',
+        autotest_name='factory_ExternalStorage',
+        dargs={'media':'SD', 'min_read_speed': 6, 'min_write_speed': 2}),
+
+    # Required tests (mandatory): ----------------------------------------------
 
     # THIS IS A GOOGLE REQUIRED TEST.
     # YOU MUST TEST THIS COMPONENT, EITHER WITH THIS TEST, OR ANOTHER EQUIVALENT
