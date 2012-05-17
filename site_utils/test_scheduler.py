@@ -130,7 +130,7 @@ class TestRunner(object):
       else:
         control_file_data = self._dev.GetControlFile(self._board, build,
                                                      test['control'])
-    except (new_dev.DevServerException, common_util.ChromeOSTestError):
+    except (new_dev_server.DevServerException, common_util.ChromeOSTestError):
       logging.error('Missing %s for %s on %s.', test['control'], job_name,
                     platform)
       raise
@@ -331,7 +331,8 @@ def main():
 
           # Process AU targets.
           test_runner.RunAutoupdateTests(platform)
-      except (new_dev.DevServerException, common_util.ChromeOSTestError) as e:
+      except (new_dev_server.DevServerException,
+              common_util.ChromeOSTestError) as e:
         logging.exception(e)
         logging.warning('Exception encountered during processing. Skipping.')
 
