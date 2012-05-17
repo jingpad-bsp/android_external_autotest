@@ -34,12 +34,18 @@ and 'nightly' triggers, for example), and configures all the Tasks
 that will be in play.
 """
 
-import logging, optparse, os, re, signal, sys
+import getpass, logging, logging.handlers, optparse, os, re, signal, sys
 import common
 import board_enumerator, deduping_scheduler, driver, forgiving_config_parser
 import manifest_versions
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.server.cros import frontend_wrappers
+
+
+CONFIG_SECTION = 'SCHEDULER'
+
+CONFIG_SECTION_SMTP = 'SERVER'
 
 
 def signal_handler(signal, frame):
@@ -48,9 +54,52 @@ def signal_handler(signal, frame):
 
 
 class SchedulerLoggingConfig(logging_config.LoggingConfig):
+    def __init__(self):
+        super(SchedulerLoggingConfig, self).__init__()
+        self._from_address = global_config.global_config.get_config_value(
+                CONFIG_SECTION, "notify_email_from", default=getpass.getuser())
+
+        self._notify_address = global_config.global_config.get_config_value(
+                CONFIG_SECTION, "notify_email",
+                default='chromeos-lab-admins@google.com')
+
+        self._smtp_server = global_config.global_config.get_config_value(
+                CONFIG_SECTION_SMTP, "smtp_server", default='localhost')
+
+        self._smtp_port = global_config.global_config.get_config_value(
+                CONFIG_SECTION_SMTP, "smtp_port", default=None)
+
+        self._smtp_user = global_config.global_config.get_config_value(
+                CONFIG_SECTION_SMTP, "smtp_user", default='')
+
+        self._smtp_password = global_config.global_config.get_config_value(
+                CONFIG_SECTION_SMTP, "smtp_password", default='')
+
+
     @classmethod
     def get_log_name(cls):
         return cls.get_timestamped_log_name('suite_scheduler')
+
+
+    def add_smtp_handler(self, subject, level=logging.ERROR):
+        if not self._smtp_user or not self._smtp_password:
+            creds = None
+        else:
+            creds = (self._smtp_user, self._smtp_password)
+        server = self._smtp_server
+        if self._smtp_port:
+            server = (server, self._smtp_port)
+
+        handler = logging.handlers.SMTPHandler(server,
+                                               self._from_address,
+                                               [self._notify_address],
+                                               subject,
+                                               creds)
+        handler.setLevel(level)
+        handler.setFormatter(
+            logging.Formatter('%(asctime)s %(levelname)-5s %(message)s'))
+        self.logger.addHandler(handler)
+        return handler
 
 
     def configure_logging(self, log_dir=None):
@@ -62,6 +111,8 @@ class SchedulerLoggingConfig(logging_config.LoggingConfig):
 
         self.add_file_handler(base + '.DEBUG', logging.DEBUG, log_dir=log_dir)
         self.add_file_handler(base + '.INFO', logging.INFO, log_dir=log_dir)
+        self.add_smtp_handler('Suite scheduler ERROR', logging.ERROR)
+        self.add_smtp_handler('Suite scheduler WARNING', logging.WARN)
 
 
 def parse_options():
