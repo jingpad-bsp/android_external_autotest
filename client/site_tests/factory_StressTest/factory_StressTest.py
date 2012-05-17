@@ -47,18 +47,20 @@ class ECControl(object):
         return result
 
     def get_fanspeed(self):
-        response = self.ec_command('pwmgetfanrpm')
         try:
+            response = self.ec_command('pwmgetfanrpm')
             return int(re.findall(self.GET_FANSPEED_RE, response)[0])
         except Exception:
-            raise error.TestError('Unable to read fan speed.')
+            logging.warn('Unable to read fan speed.')
+            return -1
 
     def get_temperature(self, idx):
-        response = self.ec_command('tempread %d' % idx)
         try:
+            response = self.ec_command('temps %d' % idx)
             return int(re.findall(self.TEMP_SENSOR_RE, response)[0])
         except Exception:
-            raise error.TestError('Unable to read temperature sensor %d.' % idx)
+            logging.warn('Unable to read temperature sensor %d.', idx)
+            return -1
 
 
 class factory_StressTest(test.test):
