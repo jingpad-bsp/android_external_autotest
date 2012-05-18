@@ -7,6 +7,7 @@
 
 import logging, os, select, subprocess, sys, time, xmlrpclib
 from autotest_lib.client.bin import utils as client_utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 
 class Servo(object):
@@ -346,6 +347,8 @@ class Servo(object):
     # TODO(waihong) It may fail if multiple servo's are connected to the same
     # host. Should look for a better way, like the USB serial name, to identify
     # the USB device.
+    # TODO(sbasi) Remove this code from autoserv once firmware tests have been
+    # updated.
     def probe_host_usb_dev(self):
         """Probe the USB disk device plugged-in the servo from the host side.
 
@@ -383,9 +386,10 @@ class Servo(object):
             return None
 
 
-    def install_recovery_image(self, image_path=None, usb_dev=None,
-                               wait_for_completion=True,
-                               wait_timeout=RECOVERY_INSTALL_DELAY):
+    def install_recovery_image(self, image_path=None,
+                               wait_timeout=RECOVERY_INSTALL_DELAY,
+                               make_image_noninteractive=False,
+                               host=None):
         """Install the recovery image specied by the path onto the DUT.
 
         This method uses google recovery mode to install a recovery image
@@ -395,15 +399,14 @@ class Servo(object):
 
         Args:
             image_path: Path on the host to the recovery image.
-            usb_dev:  When servo_sees_usbkey is enabled, which dev
-                      e.g. /dev/sdb will the usb key show up as.
-                      If None, detects it automatically.
-            wait_for_completion: Whether to wait for completion of the
-                                 factory install and disable the USB hub
-                                 before returning.  Currently this is just
-                                 waiting for a predetermined timeout period.
             wait_timeout: How long to wait for completion; default is
                           determined by a constant.
+            make_image_noninteractive: Make the recovery image noninteractive,
+                                       therefore the DUT will reboot
+                                       automatically after installation.
+            host: Host object for the DUT that the installation process is
+                  running on. If provided, will wait to see if the host is back
+                  up after starting recovery mode.
         """
         # Turn the device off. This should happen before USB key detection, to
         # prevent a recovery destined DUT from sensing the USB key due to the
@@ -414,20 +417,16 @@ class Servo(object):
         self.set('prtctl4_pwren', 'on')
         self.enable_usb_hub(host=True)
         if image_path:
-            if not usb_dev:
-                logging.info('Detecting USB stick device...')
-                usb_dev = self.probe_host_usb_dev()
-                if not usb_dev:
-                    raise Exception('USB device not found')
-                logging.info('Found %s', usb_dev)
-            logging.info('Installing image onto usb stick. '
-                         'This takes a while...')
-            client_utils.poll_for_condition(
-                lambda: os.path.exists(usb_dev),
-                timeout=Servo.USB_DETECTION_DELAY,
-                desc="%s exists" % usb_dev)
-            utils.system('sudo dd if=%s of=%s bs=4M status=noxfer' %
-                         (image_path, usb_dev))
+            logging.info('Searching for usb device')
+            if not self._server.download_image_to_usb(image_path):
+                logging.error('Failed to transfer requested image to USB. '
+                              'Please take a look at Servo Logs.')
+                raise error.AutotestError('Download image to usb failed.')
+            if make_image_noninteractive:
+                logging.info('Making image noninteractive')
+                if not self._server.make_image_noninteractive():
+                    logging.error('Failed to make image noninteractive. '
+                                  'Please take a look at Servo Logs.')
 
         # Boot in recovery mode.
         try:
@@ -437,18 +436,20 @@ class Servo(object):
             self.set('usb_mux_sel1', 'dut_sees_usbkey')
             self.disable_recovery_mode()
 
-            if wait_for_completion:
-                # Enable recovery installation.
+            if host:
                 logging.info('Running the recovery process on the DUT. '
-                             'Waiting %d seconds for recovery to complete ...',
-                             wait_timeout)
-                time.sleep(wait_timeout)
-
-                # Go back into normal mode and reboot.
-                # Machine automatically reboots after the usb key is removed.
+                             'Will wait up to %d seconds for recovery to '
+                             'complete.', wait_timeout)
+                start_time = time.time()
+                # Wait for the host to come up.
+                if host.wait_up(timeout=wait_timeout):
+                    logging.info('Recovery process completed successfully in '
+                                 '%d seconds.', time.time() - start_time)
+                else:
+                    logger.error('Host failed to come back up in the allotted '
+                                 'time: %d seconds.', wait_timeout)
                 logging.info('Removing the usb key from the DUT.')
                 self.disable_usb_hub()
-                time.sleep(Servo.BOOT_DELAY)
         except:
             # In case anything went wrong we want to make sure to do a clean
             # reset.

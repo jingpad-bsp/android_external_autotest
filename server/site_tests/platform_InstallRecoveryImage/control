@@ -25,11 +25,10 @@ run_remote_tests --args='image=<recovery_image_path_on_host>'
 def run(machine):
     opts = utils.args_to_dict(args)
     image = opts.get('image')
-    usb = opts.get('usb', None)
 
     # Setup the client machine.
     host = hosts.create_host(machine, require_servo=True)
     job.run_test("platform_InstallRecoveryImage", host=host, cmdline_args=None,
-                 use_pyauto=False, disable_sysinfo=True, image=image, usb=usb)
+                 use_pyauto=False, disable_sysinfo=True, image=image)
 
 parallel_simple(run, machines)

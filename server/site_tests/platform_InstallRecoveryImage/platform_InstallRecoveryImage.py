@@ -8,8 +8,10 @@ class platform_InstallRecoveryImage(test.test):
     """Installs a specified recovery image onto a servo-connected DUT."""
     version = 1
 
-    def run_once(self, host, image, usb):
-        host.servo.install_recovery_image(image, usb)
+    def run_once(self, host, image):
+        host.servo.install_recovery_image(image,
+                                          make_image_noninteractive=True,
+                                          host=host)
 
         # Verify we can ping the machine afterwards.
         # TODO(sosa): Add a better test of valid image recovery.

@@ -276,8 +276,7 @@ class FAFTSequence(ServoTest):
                     'The image in the USB disk should be a test image.')
 
 
-    def install_test_image(self, image_path=None, firmware_update=False,
-                           usb_dev=None):
+    def install_test_image(self, image_path=None, firmware_update=False):
         """Install the test image specied by the path onto the USB and DUT disk.
 
         The method first copies the image to USB disk and reboots into it via
@@ -286,9 +285,6 @@ class FAFTSequence(ServoTest):
         Args:
             image_path: Path on the host to the test image.
             firmware_update: Also update the firmware after installing.
-            usb_dev:  When servo_sees_usbkey is enabled, which dev
-                      e.g. /dev/sdb will the usb key show up as.
-                      If None, detects it automatically.
         """
         install_cmd = 'chromeos-install --yes'
         if firmware_update:
@@ -296,13 +292,10 @@ class FAFTSequence(ServoTest):
         build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
                                                              image_path)
         logging.info('Processing build: %s %s' % (build_ver, build_hash))
-        if not usb_dev:
-            usb_dev = self.servo.probe_host_usb_dev()
 
         # Reuse the install_recovery_image method by using a test image.
         # Don't wait for completion but run chromeos-install to install it.
-        self.servo.install_recovery_image(image_path, usb_dev,
-                                          wait_for_completion=False)
+        self.servo.install_recovery_image(image_path)
         self.wait_for_client(install_deps=True)
         self.run_faft_step({
             'userspace_action': (self.faft_client.run_shell_command,
