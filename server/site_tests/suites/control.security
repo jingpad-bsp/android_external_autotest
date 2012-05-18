@@ -25,6 +25,7 @@ TESTS = [
   ('security_HtpdateHTTP', {}),
   ('security_Minijail_seccomp', {}),
   ('security_NetworkListeners', {}),
+  ('security_OpenFDs', {}),
   ('security_OpenSSLBlacklist', {}),
   ('security_OpenSSLRegressions', {}),
   ('security_ptraceRestrictions', {}),
