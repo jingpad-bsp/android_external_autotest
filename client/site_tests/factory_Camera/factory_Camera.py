@@ -159,7 +159,7 @@ class factory_Camera(test.test):
         glib.source_remove(self.gio_tag)
 
     def run_once(self,
-                 led_rounds=1, show_fps=False):
+                 led_rounds=1, show_fps=False, single_shot=False):
         '''Run the camera test
 
         Parameter
@@ -212,30 +212,38 @@ class factory_Camera(test.test):
             raise IOError('Device #%s ' % DEVICE_INDEX +
                              'does not support video capture interface')
 
-        width, height = (dev.get(cv.CV_CAP_PROP_FRAME_WIDTH),
-                dev.get(cv.CV_CAP_PROP_FRAME_HEIGHT))
+        if single_shot:
+            # Read image from camera.
+            ret, cvImg = self.dev.read()
+            if not ret:
+                raise IOError("Error while capturing. Camera disconnected?")
+        else:
+            width, height = (dev.get(cv.CV_CAP_PROP_FRAME_WIDTH),
+                    dev.get(cv.CV_CAP_PROP_FRAME_HEIGHT))
 
-        # Initialize the canvas.
-        self.pixbuf = gdk.Pixbuf(gdk.COLORSPACE_RGB, False, 8,
-            width, height)
-        self.img = gtk.image_new_from_pixbuf(self.pixbuf)
-        self.test_widget.add(self.img)
-        self.img.show()
+            # Initialize the canvas.
+            self.pixbuf = gdk.Pixbuf(gdk.COLORSPACE_RGB, False, 8,
+                width, height)
+            self.img = gtk.image_new_from_pixbuf(self.pixbuf)
+            self.test_widget.add(self.img)
+            self.img.show()
 
-        if self.show_fps:
-            self.last_capture_time = time.clock()
-            self.current_fps = PREFERRED_FPS
+            if self.show_fps:
+                self.last_capture_time = time.clock()
+                self.current_fps = PREFERRED_FPS
 
-        self.capture_start()
+            self.capture_start()
 
-        ful.run_test_widget(self.job, test_widget,
-            window_registration_callback=self.register_callbacks)
+            ful.run_test_widget(self.job, test_widget,
+                window_registration_callback=self.register_callbacks)
 
-        if self.fail:
-            raise error.TestFail('Camera test failed by user indication\n' \
-                                 '品管人員懷疑攝影鏡頭故障，請檢修')
-        if self.ledfail:
-            raise error.TestFail('Camera LED test failed\n' \
-                                 '攝影鏡頭 LED 測試不通過，請檢修')
+            if self.fail:
+                raise error.TestFail('Camera test failed by user '  \
+                                     'indication\n品管人員懷疑攝影' \
+                                     '鏡頭故障，請檢修')
+            if self.ledfail:
+                raise error.TestFail('Camera LED test failed\n'  \
+                                     '攝影鏡頭 LED 測試不通過，' \
+                                     '請檢修')
 
         factory.log('%s run_once finished' % self.__class__)
