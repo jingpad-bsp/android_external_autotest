@@ -283,3 +283,22 @@ def verify_p11_token():
     output = __run_cmd('p11_replay --generate --replay_wifi --cleanup',
                        ignore_status=True)
     return re.search('Sign: CKR_OK', output)
+
+def wait_for_pkcs11_token():
+    """Waits for the PKCS #11 token to be available.
+
+    This should be called only after a login and is typically called immediately
+    after a login.
+
+    Returns:
+        True if the token is available.
+    """
+    try:
+        utils.poll_for_condition(
+            lambda: utils.system('cryptohome --action=pkcs11_token_status',
+                                 ignore_status=True) == 0,
+            desc='PKCS #11 token.',
+            timeout=300)
+    except utils.TimeoutError:
+        return False
+    return True
