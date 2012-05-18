@@ -13,4 +13,6 @@ ply-image
 sh
 sleep
 sshd
+sudo
 tail
+x11vnc
