@@ -25,6 +25,8 @@ TESTS = [
   ('security_HtpdateHTTP', {}),
   ('security_Minijail_seccomp', {}),
   ('security_NetworkListeners', {}),
+  ('security_OpenSSLBlacklist', {}),
+  ('security_OpenSSLRegressions', {}),
   ('security_ptraceRestrictions', {}),
   ('security_RendererSandbox', {}),
   ('security_ReservedPrivileges', {'owner_type': 'user', 'tag': 'user'}),
