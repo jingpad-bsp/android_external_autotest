@@ -9,6 +9,7 @@ import urllib2
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.cros import cros_ui, graphics_ui_test, login
 
 # to run this test manually on a test target
 # ssh root@machine
@@ -33,7 +34,7 @@ def ReferenceImageExists(images_file, images_url, imagename):
   return found
 
 
-class graphics_GLBench(test.test):
+class graphics_GLBench(graphics_ui_test.GraphicsUITest):
   version = 1
   preserve_srcdir = True
 
