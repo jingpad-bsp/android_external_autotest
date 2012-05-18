@@ -68,11 +68,11 @@ class Driver(object):
             events[klass.KEYWORD] = klass.CreateFromConfig(config, mv)
 
         tasks = self.TasksFromConfig(config)
-
-        for keyword, event in events.iteritems():
-            if keyword in tasks:
-                event.tasks = tasks[keyword]
-        # TODO(cmasone): warn about unknown keywords?
+        for keyword, task_list in tasks.iteritems():
+            if keyword in events:
+                events[keyword].tasks = task_list
+            else:
+                logging.warn('%s, is an unknown keyword.', keyword)
         return events
 
 
@@ -110,10 +110,11 @@ class Driver(object):
         for event in self._events.itervalues():
             event.Prepare()
         while True:
-            self.HandleEventsOnce(mv)
+            try:
+                self.HandleEventsOnce(mv)
+            except EnumeratorException as e:
+                logging.warn('Failed to enumerate boards: %r', e)
             mv.Update()
-            # TODO(cmasone): Do we want to run every _LOOP_INTERVAL_SECONDS?
-            #                Or is it OK to wait that long between every run?
             time.sleep(self._LOOP_INTERVAL_SECONDS)
             self.RereadAndReprocessConfig(config, mv)
 
@@ -122,6 +123,7 @@ class Driver(object):
         """One turn through the loop.  Separated out for unit testing.
 
         @param mv: an instance of manifest_versions.ManifestVersions.
+        @raise EnumeratorException if we can't enumerate any supported boards.
         """
         boards = self._enumerator.Enumerate()
         logging.info('Boards currently in the lab: %r', boards)
