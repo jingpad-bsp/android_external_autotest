@@ -215,35 +215,51 @@ def is_chaps_enabled():
     """Checks if the Chaps PKCS #11 implementation is enabled."""
     return not os.path.exists('/home/chronos/.disable_chaps')
 
-def load_p11_test_token():
-    """Loads the test token onto a slot."""
-    __run_cmd('sudo p11_replay --load --path=%s --auth="1234"' % TMP_CHAPS_DIR)
+def load_p11_test_token(auth_data='1234'):
+    """Loads the test token onto a slot.
+
+    Args:
+        auth_data: The authorization data to use for the token.
+    """
+    utils.system('sudo chaps_client --load --path=%s --auth="%s"' %
+                 (TMP_CHAPS_DIR, auth_data))
+
+def change_p11_test_token_auth_data(auth_data, new_auth_data):
+    """Changes authorization data for the test token.
+
+    Args:
+        auth_data: The current authorization data.
+        new_auth_data: The new authorization data.
+    """
+    utils.system('sudo chaps_client --change_auth --path=%s --auth="%s" '
+                 '--new_auth="%s"' % (TMP_CHAPS_DIR, auth_data, new_auth_data))
 
 def unload_p11_test_token():
     """Unloads a loaded test token."""
-    __run_cmd('sudo p11_replay --unload --path=%s' % TMP_CHAPS_DIR)
+    utils.system('sudo chaps_client --unload --path=%s' % TMP_CHAPS_DIR)
 
 def copytree_with_ownership(src, dst):
     """ Like shutil.copytree but also copies owner and group attributes."""
     utils.system('cp -rp %s %s' % (src, dst))
 
-def setup_p11_test_token(unload_user_token):
+def setup_p11_test_token(unload_user_token, auth_data='1234'):
     """Configures a PKCS #11 token for testing.
 
     Any existing test token will be automatically cleaned up.
 
     Args:
         unload_user_token: Whether to unload the currently loaded user token.
+        auth_data: Initial token authorization data.
     """
     cleanup_p11_test_token()
     if unload_user_token:
-        __run_cmd('p11_replay --unload --path=%s' % USER_CHAPS_DIR)
+        utils.system('chaps_client --unload --path=%s' % USER_CHAPS_DIR)
     os.makedirs(TMP_CHAPS_DIR)
     uid = pwd.getpwnam('chaps')[2]
     gid = grp.getgrnam('chronos-access')[2]
     os.chown(TMP_CHAPS_DIR, uid, gid)
     os.chmod(TMP_CHAPS_DIR, CHAPS_DIR_PERM)
-    load_p11_test_token()
+    load_p11_test_token(auth_data)
     unload_p11_test_token()
     copytree_with_ownership(TMP_CHAPS_DIR, '%s_bak' % TMP_CHAPS_DIR)
 
