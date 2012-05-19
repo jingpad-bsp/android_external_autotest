@@ -30,6 +30,19 @@ def _run_client_test(machine):
     else:
         raise error.TestNAError("No power switch configured")
 
+    # Charge the battery to at least 50% in preparation for the consumption
+    # test. Charging the battery from empty to full can take up to 4 hours.
+    client_at.run_test('power_BatteryCharge', percent_target_charge=50,
+                     max_run_time=60*60*4, tag='CHARGE_50')
+
+    # Turn off power and run power_Consumption test.
+    remote_power.set_power_off()
+
+    try:
+        client_at.run_test('power_Consumption')
+    finally:
+        remote_power.set_power_on()
+
     # Charge the battery to at least 99% in preparation for the load
     # test. Charging the battery from empty to full can take up to 4 hours.
     client_at.run_test('power_BatteryCharge', percent_target_charge=99,
