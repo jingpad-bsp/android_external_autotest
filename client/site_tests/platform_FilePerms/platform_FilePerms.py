@@ -257,29 +257,29 @@ class platform_FilePerms(test.test):
         errors = 0
 
         # Root owned directories with expected permissions.
-        root_dirs = {'/': '0755',
-                     '/bin': '0755',
-                     '/boot': '0755',
-                     '/dev': '0755',
-                     '/etc': '0755',
-                     '/home': '0755',
-                     '/lib': '0755',
-                     '/media': '0777',
-                     '/mnt': '0755',
-                     '/mnt/stateful_partition': '0755',
-                     '/opt': '0755',
-                     '/proc': '0555',
-                     '/sbin': '0755',
-                     '/sys': '0755',
-                     '/tmp': '0777',
-                     '/usr': '0755',
-                     '/usr/bin': '0755',
-                     '/usr/lib': '0755',
-                     '/usr/local': '0755',
-                     '/usr/sbin': '0755',
-                     '/usr/share': '0755',
-                     '/var': '0755',
-                     '/var/cache': '0755'}
+        root_dirs = {'/': ['0755'],
+                     '/bin': ['0755'],
+                     '/boot': ['0755'],
+                     '/dev': ['0755'],
+                     '/etc': ['0755'],
+                     '/home': ['0755'],
+                     '/lib': ['0755'],
+                     '/media': ['0777'],
+                     '/mnt': ['0755'],
+                     '/mnt/stateful_partition': ['0755'],
+                     '/opt': ['0755'],
+                     '/proc': ['0555'],
+                     '/sbin': ['0755'],
+                     '/sys': ['0555', '0755'],
+                     '/tmp': ['0777'],
+                     '/usr': ['0755'],
+                     '/usr/bin': ['0755'],
+                     '/usr/lib': ['0755'],
+                     '/usr/local': ['0755'],
+                     '/usr/sbin': ['0755'],
+                     '/usr/share': ['0755'],
+                     '/var': ['0755'],
+                     '/var/cache': ['0755']}
 
         # Read-only directories
         ro_dirs = ['/', '/bin', '/boot', '/etc', '/lib', '/mnt',
@@ -310,7 +310,7 @@ class platform_FilePerms(test.test):
         # Check permissions on root owned directories.
         for dir in root_dirs:
             fperms = self.get_perm(dir)
-            if fperms != root_dirs[dir]:
+            if fperms not in root_dirs[dir]:
                 logging.warn('%s has %s permissions' % (dir, fperms))
                 errors += 1
 
