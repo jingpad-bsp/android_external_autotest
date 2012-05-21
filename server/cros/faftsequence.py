@@ -92,6 +92,10 @@ class FAFTSequence(ServoTest):
     USB_PLUG_DELAY = 10
     # Delay after running the 'sync' command.
     SYNC_DELAY = 5
+    # Delay for waiting client to return before EC reboot
+    EC_REBOOT_DELAY = 1
+    # Delay between EC reboot and pressing power button
+    POWER_BTN_DELAY = 0.5
 
     CHROMEOS_MAGIC = "CHROMEOS"
     CORRUPTED_MAGIC = "CORRUPTD"
@@ -405,6 +409,25 @@ class FAFTSequence(ServoTest):
         return True
 
 
+    def ec_act_copy_checker(self, expected_copy):
+        """Check the EC running firmware copy matches.
+
+        Args:
+          expected_copy: A string containing 'RO', 'A', or 'B' indicating
+                         the expected copy of EC running firmware.
+
+        Returns:
+          True if the current EC running copy matches; otherwise, False.
+        """
+        lines = self.faft_client.run_shell_command_get_output('ectool version')
+        pattern = re.compile("Firmware copy: (.*)")
+        for line in lines:
+            matched = pattern.match(line)
+            if matched and matched.group(1) == expected_copy:
+                return True
+        return False
+
+
     def check_root_part_on_non_recovery(self, part):
         """Check the partition number of root device and on normal/dev boot.
 
@@ -656,6 +679,16 @@ class FAFTSequence(ServoTest):
         self.faft_client.run_shell_command('sync')
         time.sleep(self.SYNC_DELAY)
         self.servo.warm_reset()
+
+
+    def sync_and_ec_reboot(self):
+        """Request the client sync and do a EC triggered reboot."""
+        self.faft_client.run_shell_command('sync')
+        time.sleep(self.SYNC_DELAY)
+        self.faft_client.run_shell_command('(sleep %d; ectool reboot_ec)&' %
+                                           self.EC_REBOOT_DELAY)
+        time.sleep(self.EC_REBOOT_DELAY + self.POWER_BTN_DELAY)
+        self.servo.power_normal_press()
 
 
     def _modify_usb_kernel(self, usb_dev, from_magic, to_magic):

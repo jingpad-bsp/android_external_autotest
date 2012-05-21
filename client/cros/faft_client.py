@@ -38,7 +38,8 @@ class FAFTClient(object):
 
     Attributes:
         _chromeos_interface: An object to encapsulate OS services functions.
-        _flashrom_handler: An object to automate flashrom testing.
+        _bios_handler: An object to automate BIOS flashrom testing.
+        _ec_handler: An object to automate EC flashrom testing.
         _kernel_handler: An object to provide kernel related actions.
         _tpm_handler: An object to control TPM device.
     """
@@ -54,12 +55,21 @@ class FAFTClient(object):
         self._chromeos_interface.init(state_dir, log_file='/tmp/faft_log.txt')
         os.chdir(state_dir)
 
-        self._flashrom_handler = flashrom_handler.FlashromHandler()
-        self._flashrom_handler.init(saft_flashrom_util,
-                                    self._chromeos_interface,
-                                    None,
-                                    '/usr/share/vboot/devkeys')
-        self._flashrom_handler.new_image()
+        self._bios_handler = flashrom_handler.FlashromHandler()
+        self._bios_handler.init(saft_flashrom_util,
+                                self._chromeos_interface,
+                                None,
+                                '/usr/share/vboot/devkeys',
+                                'bios')
+        self._bios_handler.new_image()
+
+        self._ec_handler = flashrom_handler.FlashromHandler()
+        self._ec_handler.init(saft_flashrom_util,
+                              self._chromeos_interface,
+                              'ec_root_key.vbpubk',
+                              '/usr/share/vboot/devkeys',
+                              'ec')
+        self._ec_handler.new_image()
 
         self._kernel_handler = kernel_handler.KernelHandler()
         # TODO(waihong): The dev_key_path is a new argument. We do that in
@@ -203,7 +213,7 @@ class FAFTClient(object):
             An integer of the GBB flags.
         """
         self._chromeos_interface.log('Getting GBB flags')
-        return self._flashrom_handler.get_gbb_flags()
+        return self._bios_handler.get_gbb_flags()
 
 
     def get_firmware_flags(self, section):
@@ -217,7 +227,55 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Getting preamble flags of firmware %s' %
                                      section)
-        return self._flashrom_handler.get_section_flags(section)
+        return self._bios_handler.get_section_flags(section)
+
+
+    @allow_multiple_section_input
+    def corrupt_EC(self, section):
+        """Corrupt the requested EC section signature.
+
+        Args:
+            section: A EC section, either 'a' or 'b'.
+        """
+        self._chromeos_interface.log('Corrupting EC signature %s' %
+                                     section)
+        self._ec_handler.corrupt_firmware(section)
+
+
+    @allow_multiple_section_input
+    def corrupt_EC_body(self, section):
+        """Corrupt the requested EC section body.
+
+        Args:
+            section: An EC section, either 'a' or 'b'.
+        """
+        self._chromeos_interface.log('Corrupting EC body %s' %
+                                     section)
+        self._ec_handler.corrupt_firmware_body(section)
+
+
+    @allow_multiple_section_input
+    def restore_EC(self, section):
+        """Restore the previously corrupted EC section signature.
+
+        Args:
+            section: An EC section, either 'a' or 'b'.
+        """
+        self._chromeos_interface.log('Restoring EC signature %s' %
+                                     section)
+        self._ec_handler.restore_firmware(section)
+
+
+    @allow_multiple_section_input
+    def restore_EC_body(self, section):
+        """Restore the previously corrupted EC section body.
+
+        Args:
+            section: An EC section, either 'a' or 'b'.
+        """
+        self._chromeos_interface.log('Restoring EC body %s' %
+                                     section)
+        self._ec_handler.restore_firmware_body(section)
 
 
     @allow_multiple_section_input
@@ -229,7 +287,7 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Corrupting firmware signature %s' %
                                      section)
-        self._flashrom_handler.corrupt_firmware(section)
+        self._bios_handler.corrupt_firmware(section)
 
 
     @allow_multiple_section_input
@@ -241,7 +299,7 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Corrupting firmware body %s' %
                                      section)
-        self._flashrom_handler.corrupt_firmware_body(section)
+        self._bios_handler.corrupt_firmware_body(section)
 
 
     @allow_multiple_section_input
@@ -253,7 +311,7 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Restoring firmware signature %s' %
                                      section)
-        self._flashrom_handler.restore_firmware(section)
+        self._bios_handler.restore_firmware(section)
 
 
     @allow_multiple_section_input
@@ -265,7 +323,7 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Restoring firmware body %s' %
                                      section)
-        self._flashrom_handler.restore_firmware_body(section)
+        self._bios_handler.restore_firmware_body(section)
 
 
     def _modify_firmware_version(self, section, delta):
@@ -274,14 +332,14 @@ class FAFTClient(object):
         The passed in delta, a positive or a negative number, is added to the
         original firmware version.
         """
-        original_version = self._flashrom_handler.get_section_version(section)
+        original_version = self._bios_handler.get_section_version(section)
         new_version = original_version + delta
-        flags = self._flashrom_handler.get_section_flags(section)
+        flags = self._bios_handler.get_section_flags(section)
         self._chromeos_interface.log(
                 'Setting firmware section %s version from %d to %d' % (
                 section, original_version, new_version))
-        self._flashrom_handler.set_section_version(section, new_version, flags,
-                                             write_through=True)
+        self._bios_handler.set_section_version(section, new_version, flags,
+                                               write_through=True)
 
     @allow_multiple_section_input
     def move_firmware_backward(self, section):
