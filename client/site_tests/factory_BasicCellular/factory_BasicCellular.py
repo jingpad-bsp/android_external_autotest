@@ -1,7 +1,9 @@
+# -*- coding: utf-8 -*-
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import gtk
 import re
 import serial as pyserial
 import time
@@ -10,17 +12,54 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
-
+from autotest_lib.client.cros.factory import ui as ful
 
 # Modem commands.
 DEVICE_NORMAL_RESPONSE = 'OK'
+_MESSAGE_PROMPT = (
+    'Please insert the SIM card then press enter.\n'
+    '請插入SIM卡後按回車鍵\n')
 
 
 class factory_BasicCellular(test.test):
-    version = 3
+    version = 4
+
+    def make_decision_widget(self,
+                             message,
+                             key_action_mapping,
+                             fg_color=ful.LIGHT_GREEN):
+        '''Returns a widget that display the message and bind proper functions.
+
+        Args:
+          message: Message to display on the widget.
+          key_action_mapping: A dict of tuples indicates functions and keys
+              in the format {gtk_keyval: (function, function_parameters)}
+
+        Returns:
+          A widget binds with proper functions.
+        '''
+        widget = gtk.VBox()
+        widget.add(ful.make_label(message, fg=fg_color))
+        widget.key_callback = (
+            lambda w, e: self._key_action_mapping_callback(
+                w, e, key_action_mapping))
+        return widget
+
+    def _key_action_mapping_callback(self, widget, event, key_action_mapping):
+        if event.keyval in key_action_mapping:
+            callback, callback_parameters = key_action_mapping[event.keyval]
+            callback(*callback_parameters)
+            return True
+
+    def _register_callbacks(self, window):
+        def key_press_callback(widget, event):
+            self.test_widget.key_callback(widget, event)
+            factory.log('calling widget %s' % widget)
+        window.connect('key-press-event', key_press_callback)
+        window.add_events(gtk.gdk.KEY_PRESS_MASK)
 
     def run_once(self, imei_re, iccid_re, dev='/dev/ttyUSB0',
-                 reset_modem_waiting=0):
+                 reset_modem_waiting=0, prompt=False):
         '''Connects to the modem, checking the IMEI and ICCID.
 
         For the iccid test, please note this test requires a SIM card,
@@ -36,7 +75,23 @@ class factory_BasicCellular(test.test):
                                     a reset command will be issued and
                                     reconnect to modem after
                                     reset_modem_waiting secs.
+        @param prompt: True to display a prompt for sim card insertion.
         '''
+        if prompt:
+            key_action_mapping = {
+                gtk.keysyms.Return: (
+                    self._run,
+                    [imei_re, iccid_re, dev, reset_modem_waiting])}
+            self.test_widget = self.make_decision_widget(
+                _MESSAGE_PROMPT, key_action_mapping=key_action_mapping)
+            ful.run_test_widget(
+                    self.job,
+                    self.test_widget,
+                    window_registration_callback=self._register_callbacks)
+        else:
+            self._run(imei_re, iccid_re, dev, reset_modem_waiting)
+
+    def _run(self, imei_re, iccid_re, dev, reset_modem_waiting):
         def read_response():
             '''Reads response from the modem until a timeout.'''
             line = serial.readline()
