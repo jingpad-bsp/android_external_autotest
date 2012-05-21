@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "Power daily tests"
+SUITE = "power_daily"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"

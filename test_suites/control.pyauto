@@ -3,14 +3,17 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "Power Test Suite"
-TIME = "SHORT"
+NAME = "pyauto"
+PURPOSE = "Test basic, required functionality."
+CRITERIA = "All tests with SUITE=pyauto must pass."
+
+TIME = "LONG"
 TEST_CATEGORY = "General"
 TEST_CLASS = "suite"
 TEST_TYPE = "Server"
 
 DOC = """
-Run Automated power tests on machines with and without AC.
+PyAuto functional test suite.
 
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
@@ -25,6 +28,6 @@ import common
 from autotest_lib.server.cros import dynamic_suite
 
 dynamic_suite.reimage_and_run(
-    build=build, board=board, name='power', job=job, pool=pool,
+    build=build, board=board, name='pyauto', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True,
     skip_reimage=dynamic_suite.skip_reimage(globals()))

@@ -8,7 +8,7 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
-SUITE = "regression"
+SUITE = "enterprise"
 
 DOC = """This test suite runs the PyAuto functional CHROMEOS_POLICY suite.
 """
