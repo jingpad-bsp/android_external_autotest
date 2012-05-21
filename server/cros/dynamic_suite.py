@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import common
-import compiler, datetime, logging, os, random, re, time, traceback
+import compiler, datetime, hashlib, logging, os, random, re, time, traceback
 from autotest_lib.client.common_lib import base_job, control_data, global_config
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
@@ -567,7 +567,9 @@ class Reimager(object):
         """
         if self._results_dir:
             job_id_owner = '%s-%s' % (job.id, job.owner)
-            utils.write_keyval(self._results_dir, {test_name: job_id_owner})
+            utils.write_keyval(
+                self._results_dir,
+                {hashlib.md5(test_name).hexdigest(): job_id_owner})
 
 
     def _count_usable_hosts(self, host_spec):
@@ -1035,7 +1037,9 @@ class Suite(object):
         """
         for job in self._jobs:
             job_id_owner = '%s-%s' % (job.id, job.owner)
-            utils.write_keyval(self._results_dir, {job.test_name: job_id_owner})
+            utils.write_keyval(
+                self._results_dir,
+                {hashlib.md5(job.test_name).hexdigest(): job_id_owner})
 
 
     def _status_is_relevant(self, status):

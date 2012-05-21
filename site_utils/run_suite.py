@@ -14,7 +14,7 @@ This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
-import datetime, getpass, optparse, time, sys
+import datetime, getpass, hashlib, optparse, time, sys
 import common
 import logging
 from autotest_lib.client.common_lib import global_config
@@ -99,11 +99,24 @@ def get_view_info(suite_job_id, view):
         # The job name depends on whether it's experimental or not.
         std_job_name = view['test_name'].split('.')[0]
         exp_job_name = dynamic_suite.EXPERIMENTAL_PREFIX + std_job_name
+
+        std_job_hash = hashlib.md5(view['test_name'].split('.')[0]).hexdigest()
+        exp_job_hash = hashlib.md5(dynamic_suite.EXPERIMENTAL_PREFIX +
+                                   std_job_name).hexdigest()
+
+        if std_job_hash in view['job_keyvals']:
+            job_name = view['job_keyvals'][std_job_hash]
+        elif exp_job_hash in view['job_keyvals']:
+            experimental = True
+            job_name = view['job_keyvals'][exp_job_hash]
+
+        # For backward compatibility.
         if std_job_name in view['job_keyvals']:
             job_name = view['job_keyvals'][std_job_name]
         elif exp_job_name in view['job_keyvals']:
             experimental = True
             job_name = view['job_keyvals'][exp_job_name]
+
     return job_name, experimental
 
 

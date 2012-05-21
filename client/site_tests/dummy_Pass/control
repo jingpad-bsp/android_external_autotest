@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "dummy_Pass"
+NAME = "dummy Pass"
 PURPOSE = "Demonstrate success methods of autotests."
 CRITERIA = "This test will always succeed."
 SUITE = "something_else,dummy"
