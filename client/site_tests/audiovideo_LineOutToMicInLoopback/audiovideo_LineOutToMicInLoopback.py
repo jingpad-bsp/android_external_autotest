@@ -158,18 +158,17 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         utils.system(cmd)
 
 
-    def check_recorded_audio(self, rms_val, unused_media_file):
+    def check_recorded_audio(self, sox_output):
         """Checks if the calculated RMS value is expected.
 
         Args:
-            rms_val: The calculated RMS value.
-            unused_media_file: This value is unused in this function.
+            sox_output: The output from sox stat command.
 
         Raises:
             error.TestFail if the RMS amplitude of the recording isn't above
                 the threshold.
         """
+        rms_val = self._ah.get_audio_rms(sox_output)
         logging.info('Got RMS value of %f' % rms_val)
         if rms_val < self._sox_min_rms:
             raise error.TestError( 'RMS value %f too low.' % rms_val)
-

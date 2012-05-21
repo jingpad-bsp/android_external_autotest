@@ -106,17 +106,18 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
             window.domAutomationController.send('');
         """)
 
-    def check_recorded_audio(self, rms_val, unused_media_file):
+    def check_recorded_audio(self, sox_output):
         """Checks if the calculated RMS value is expected.
 
         Args:
-            rms_val: The calculated RMS value.
-            unused_media_file: This value is unused in this function.
+            sox_output: The output from sox stat command.
 
         Raises:
             error.TestFail if the RMS amplitude of the recording isn't above
                 the threshold.
         """
+        rms_val = self._ah.get_audio_rms(sox_output)
+
         # In case sox didn't return an RMS value.
         if rms_val is None:
             raise error.TestError(

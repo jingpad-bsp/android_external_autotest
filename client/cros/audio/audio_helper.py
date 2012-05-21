@@ -20,6 +20,7 @@ _DEFAULT_RECORD_DURATION = 10
 _DEFAULT_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 
 _SOX_RMS_AMPLITUDE_RE = re.compile('RMS\s+amplitude:\s+(.+)')
+_SOX_ROUGH_FREQ_RE = re.compile('Rough\s+frequency:\s+(.+)')
 _SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 
 
@@ -104,16 +105,25 @@ class AudioHelper(object):
                 # fail the test here if we get an error.
                 logging.info('amixer command failed: %s' % cmd)
 
-    def get_audio_rms(self, infile, channel):
+    def sox_stat_output(self, infile, channel):
         sox_mixer_cmd = self.get_sox_mixer_cmd(infile, channel)
         stat_cmd = '%s -c 1 %s - -n stat 2>&1' % (self.sox_path,
                 self._sox_format)
         sox_cmd = '%s | %s' % (sox_mixer_cmd, stat_cmd)
-        sox_output = utils.system_output(sox_cmd, retain_output=True)
+        return utils.system_output(sox_cmd, retain_output=True)
+
+    def get_audio_rms(self, sox_output):
         for rms_line in sox_output.split('\n'):
             m = _SOX_RMS_AMPLITUDE_RE.match(rms_line)
             if m is not None:
                 return float(m.group(1))
+
+    def get_rough_freq(self, sox_output):
+        for rms_line in sox_output.split('\n'):
+            m = _SOX_ROUGH_FREQ_RE.match(rms_line)
+            if m is not None:
+                return int(m.group(1))
+
 
     def get_sox_mixer_cmd(self, infile, channel):
         # Build up a pan value string for the sox command.
@@ -163,7 +173,7 @@ class AudioHelper(object):
         utils.system(cmd_rec)
 
     def loopback_test_channels(self, noise_file, loopback_callback,
-            check_recorded_callback, media_file=''):
+            check_recorded_callback):
         '''Tests loopback on all channels.
 
         Args:
@@ -171,8 +181,6 @@ class AudioHelper(object):
             loopback_callback: The callback to do the loopback for one channel.
             check_recorded_callback: The callback function to check the
                     calculated RMS value.
-            media_file: The media_file we are testing. Ignore this in case
-                    we are testing Youtube/Flash.
         '''
         for channel in xrange(self._num_channels):
             # Temp file for the final noise-reduced file.
@@ -187,5 +195,5 @@ class AudioHelper(object):
                     self.noise_reduce_file(tmpfile.name, noise_file.name,
                             reduced_file.name)
 
-                rms_val = self.get_audio_rms(reduced_file.name, channel)
-                check_recorded_callback(rms_val, media_file)
+                sox_output = self.sox_stat_output(reduced_file.name, channel)
+                check_recorded_callback(sox_output)

@@ -88,7 +88,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
             for media_file in _MEDIA_FORMATS:
                 self._ah.loopback_test_channels(noise_file,
                         lambda channel: self.play_media(media_file),
-                        self.check_recorded, media_file)
+                        lambda output: self.check_recorded(output, media_file))
 
     def play_media(self, media_file):
         """Plays a media file in Chromium.
@@ -99,17 +99,19 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         logging.info('Playing back now media file %s.' % media_file)
         self.pyauto.NavigateToURL(self._test_url + media_file)
 
-    def check_recorded(self, rms_val, media_file):
+    def check_recorded(self, sox_output, media_file):
         """Checks if the calculated RMS value is expected.
 
         Args:
-            rms_val: The calculated RMS value.
+            sox_output: The output from sox stat command.
             media_file: Media file name in case we are testing a media file.
 
         Raises:
             error.TestFail if the RMS amplitude of the recording isn't above
                 the threshold.
         """
+        rms_val = self._ah.get_audio_rms(sox_output)
+
         # In case we don't get a valid RMS value.
         if rms_val is None:
             raise error.TestError(
