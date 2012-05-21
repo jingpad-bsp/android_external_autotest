@@ -6,6 +6,7 @@ import httplib
 import logging
 import urllib2
 import HTMLParser
+import cStringIO
 
 from autotest_lib.client.common_lib import error, global_config
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
@@ -215,22 +216,24 @@ class DevServer(object):
         request = requests.get(call)
         if (request.status_code != requests.codes.ok or
             request.text != 'Success'):
+            error_fd = cStringIO.StringIO(request.text)
             raise urllib2.HTTPError(call,
                                     request.status_code,
                                     request.text,
                                     request.headers,
-                                    None)
+                                    error_fd)
         # Symbolicate minidump.
         call = self._build_call('symbolicate_dump')
         request = requests.post(call,
                                 files={'minidump': open(minidump_path, 'rb')})
         if request.status_code == requests.codes.OK:
             return request.text
+        error_fd = cStringIO.StringIO(request.text)
         raise urllib2.HTTPError(call,
                                 request.status_code,
-                                '%d' % request.status_code,
+                                request.text,
                                 request.headers,
-                                None)
+                                error_fd)
 
 
     @remote_devserver_call
