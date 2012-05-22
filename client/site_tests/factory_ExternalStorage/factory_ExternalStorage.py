@@ -170,9 +170,10 @@ class factory_ExternalStorage(test.test):
                     if self._media != self.get_device_type(device):
                         return True
                 else:
-                    if self._vidpid != self.get_vidpid(device):
+                    device_vidpid = self.get_vidpid(device)
+                    if device_vidpid not in self._vidpid:
                         return True
-                    factory.log('VID:PID == %s' % self._vidpid)
+                    factory.log('VID:PID == %s' % device_vidpid)
                 factory.log('%s device inserted : %s' %
                         (self._media, device.device_node))
                 self._target_device = device.device_node
@@ -222,8 +223,15 @@ class factory_ExternalStorage(test.test):
         os.chdir(self.srcdir)
 
         self._media = media
-        self._vidpid = vidpid
         factory.log('media = %s' % media)
+
+        if vidpid is None:
+            self._vidpid = None
+        elif type(vidpid) != type(list()):
+            # Convert vidpid to a list.
+            self._vidpid = [vidpid]
+        else:
+            self._vidpid = vidpid
 
         self._min_read_speed = min_read_speed
         self._min_write_speed = min_write_speed
