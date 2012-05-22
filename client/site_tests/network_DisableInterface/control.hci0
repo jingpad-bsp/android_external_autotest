@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "network_DisableInterface"
+NAME = "network_DisableInterface hci0 bluetooth"
 PURPOSE = "Verify a network interface can be disabled."
 CRITERIA = "Fails if the interface can not be disabled/reenabled."
-SUITE = "bvt, kaen_bvt, hwqual"
+DEPENDENCIES = "bluetooth"
+SUITE = "hwqual"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
@@ -17,5 +18,4 @@ This test depends on the ifconfig utility to both disable and reenable a
 network interface.
 """
 
-job.run_test('network_DisableInterface', iface_name='wifi_only',
-             tag='wifi_only')
+job.run_test('network_DisableInterface', iface_name='hci0', tag='hci0')

@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -13,6 +13,7 @@ if any of the following conditions occur:
   - If streaming is not supported
   - If a required resolution is not supported when capturing a stream
 """
+SUITE = "hwqual"
 TIME='MEDIUM'
 TEST_CATEGORY = 'V4L2'
 TEST_CLASS = "audiovideo"
