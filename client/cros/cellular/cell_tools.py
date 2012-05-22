@@ -12,27 +12,31 @@ from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam, mm
 
+
 class Error(Exception):
     pass
 
 
-TIMEOUT=30
+TIMEOUT = 30
 
 
 def ConnectToCellular(flim, timeout=TIMEOUT):
     """Attempts to connect to a cell network using FlimFlam.
 
     Args:
-    flim:  A flimflam object
-    timeout:    Timeout (in seconds) before giving up on connect
+        flim: A flimflam object
+        timeout: Timeout (in seconds) before giving up on connect
+
+    Returns:
+        a tuple of the service and the service state
 
     Raises:
-    Error if connection fails or times out
+        Error if connection fails or times out
     """
     service = flim.FindCellularService()
     if not service:
         raise Error('Could not find cell service')
-    properties = service.GetProperties(utf8_strings = True)
+    properties = service.GetProperties(utf8_strings=True)
     logging.error('Properties are: %s', properties)
 
     logging.info('Connecting to cell service: %s', service)
@@ -120,7 +124,7 @@ def _WaitForModemToReturn(manager, preexisting_modems_original, modem_path):
     preexisting_modems.remove(modem_path)
 
     utils.poll_for_condition(
-        lambda : _SawNewModem(manager, preexisting_modems, modem_path),
+        lambda: _SawNewModem(manager, preexisting_modems, modem_path),
         timeout=50,
         exception=Error('Modem did not come back after settings change'))
 
@@ -165,7 +169,7 @@ TEST_PRL_3333 = (
 
 
 # A modem with this MDN will always report itself as activated
-TESTING_MDN = dbus.String("1115551212", variant_level=1)
+TESTING_MDN = dbus.String('1115551212', variant_level=1)
 
 
 def _IsCdmaModemConfiguredCorrectly(manager, modem_path):
@@ -208,7 +212,7 @@ def PrepareCdmaModem(manager, modem_path):
             'mdn': TESTING_MDN,
             'min': TESTING_MDN,
             'prlfile': dbus.String(f.name, variant_level=1),
-            'system_id':  dbus.UInt16(331, variant_level=1), # Default 8960 SID
+            'system_id': dbus.UInt16(331, variant_level=1),  # Default 8960 SID
             'spc': dbus.String('000000'),})
         new_path = _WaitForModemToReturn(
             manager, preexisting_modems, modem_path)
@@ -259,12 +263,14 @@ def FactoryResetModem(modem_pattern, spc='000000'):
 
 class OtherDeviceShutdownContext(object):
     """Context manager that shuts down other devices.
+
     Usage:
-    with cell_tools.OtherDeviceShutdownContext(flim, 'cellular'):
-    block
+        with cell_tools.OtherDeviceShutdownContext(flim, 'cellular'):
+            block
 
     TODO(rochberg):  Replace flimflam.DeviceManager with this
     """
+
     def __init__(self, device_type, flim):
         self.device_manager = flimflam.DeviceManager(flim)
         self.device_manager.ShutdownAllExcept(device_type)
@@ -278,7 +284,7 @@ class OtherDeviceShutdownContext(object):
 
 
 class BlackholeContext(object):
-    """Context manager which uses IP tables to black hole access to hosts
+    """Context manager which uses IP tables to black hole access to hosts.
 
     A host in hosts can be either a hostname or an IP address.  Using a
     hostname is potentially troublesome here due to DNS inconsistencies
@@ -300,7 +306,7 @@ class BlackholeContext(object):
         return set(rules)
 
     def __enter__(self):
-        """Preserve original list of rules and blacklist self.hosts"""
+        """Preserve original list of rules and blacklist self.hosts."""
         self.original_rules = self._rules()
 
         for host, chain in self.hosts:
@@ -316,7 +322,7 @@ class BlackholeContext(object):
         return self
 
     def __exit__(self, exception, value, traceback):
-        """ Remove all rules not in the original list."""
+        """Remove all rules not in the original list."""
         for rule in self._rules():
             if rule in self.original_rules:
                 logging.info('preserving %s' % rule)
@@ -329,7 +335,7 @@ class BlackholeContext(object):
 
 
 class AutoConnectContext(object):
-    """Context manager which sets autoconnect to either true or false
+    """Context manager which sets autoconnect to either true or false.
 
        Enable or Disable autoconnect for the cellular service.
        Restore it when done.

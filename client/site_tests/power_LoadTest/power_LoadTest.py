@@ -79,13 +79,15 @@ class power_LoadTest(cros_ui_test.UITest):
         self._force_wifi = force_wifi
         self._testServer = None
         self._tasks = '\'' + tasks.replace(' ','') + '\''
+        self._backchannel = None
 
         self._power_status.assert_battery_state(percent_initial_charge_min)
         # If force wifi enabled, convert eth0 to backchannel and connect to the
         # specified WiFi AP.
         if self._force_wifi:
             # If backchannel is already running, don't run it again.
-            if not backchannel.setup():
+            self._backchannel = backchannel.Backchannel()
+            if not self._backchannel.setup():
                 raise error.TestError('Could not setup Backchannel network.')
 
             # Note: FlimFlam is flaky after Backchannel setup sometimes. It may
@@ -247,8 +249,8 @@ class power_LoadTest(cros_ui_test.UITest):
         # re-enable powerd
         os.system('start powerd')
         # cleanup backchannel interface
-        if self._force_wifi:
-            backchannel.teardown()
+        if self._backchannel:
+            self._backchannel.teardown()
         if self._testServer:
             self._testServer.stop()
         super(power_LoadTest, self).cleanup()

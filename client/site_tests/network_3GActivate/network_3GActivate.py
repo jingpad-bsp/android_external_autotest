@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -147,31 +147,23 @@ class network_3GActivate(test.test):
 
 
     def run_once(self):
-        backchannel.setup()
+        with backchannel.Backchannel():
 
-        modem = mock_modem.Modem()
+            modem = mock_modem.Modem()
 
-        # Set up the software modem
-        try:
-          # Hack need to wait until name server is working again
-          time.sleep(1)
-          modem.setup()
-        except Exception, e:
-          logging.error(e)
-          backchannel.teardown()
-          raise e
+            # Set up the software modem
+            # Hack need to wait until name server is working again
+            time.sleep(1)
+            modem.setup()
 
-        time.sleep(3)
-        self.flim = flimflam.FlimFlam()
-        self.device_manager = flimflam.DeviceManager(self.flim)
-        try:
-            self.device_manager.ShutdownAllExcept('cellular')
-            self.run_once_internal()
-        finally:
+            time.sleep(3)
+            self.flim = flimflam.FlimFlam()
+            self.device_manager = flimflam.DeviceManager(self.flim)
             try:
-                self.device_manager.RestoreDevices()
+                self.device_manager.ShutdownAllExcept('cellular')
+                self.run_once_internal()
             finally:
                 try:
-                    modem.teardown()
+                    self.device_manager.RestoreDevices()
                 finally:
-                    backchannel.teardown()
+                    modem.teardown()
