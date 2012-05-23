@@ -8,6 +8,8 @@ import dlink_ap_configurator
 import dlink_dir655_ap_configurator
 import linksys_ap_configurator
 import trendnet_ap_configurator
+import buffalo_ap_configurator
+import Netgear3700_ap_configurator
 
 
 class APConfiguratorFactory(object):
@@ -40,6 +42,12 @@ class APConfiguratorFactory(object):
         self._build_all_instances_of_configurator(config_list,
             'DLinkDIR655APConfigurator',
             dlink_dir655_ap_configurator.DLinkDIR655APConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'BuffaloAPConfigurator',
+            buffalo_ap_configurator.BuffaloAPConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'Netgear3700APConfigurator',
+            Netgear_ap_configurator.NetgearAPConfigurator)
 
     def _build_all_instances_of_configurator(self, config_list, name,
                                              configurator):

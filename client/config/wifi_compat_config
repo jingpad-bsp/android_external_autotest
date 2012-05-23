@@ -49,4 +49,18 @@
     'power_outlet_admin_name': 'admin',
     'power_outlet_password': 'password',
   },
+  {
+    'class_name': 'BuffaloAPConfigurator',
+    'short_name': 'Buffalo',
+    'admin_url': 'http://172.22.12.125',
+    'serial_number': '',
+    'mac_address': '00:24:A5:B5:A3:17',
+  },
+  {
+    'class_name': 'Netgear3700APConfigurator',
+    'short_name': 'Netgear3700',
+    'admin_url': 'http://172.22.12.221:8080',
+    'serial_number': '',
+    'mac_address': '20:4e:7f:47:af:c7',
+  },
 ]
