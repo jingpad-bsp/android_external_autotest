@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -122,6 +122,33 @@ class ChromiumOSUpdater():
         return self._cgpt('-T', kernel)
 
 
+    def get_stateful_update_script(self):
+        """Returns the path to the stateful update script on the target."""
+        # Load the Chrome OS source tree location.
+        stateful_update_path = os.path.join(
+                global_config.global_config.get_config_value(
+                        'CROS', 'source_tree', default=''),
+                LOCAL_STATEFUL_UPDATE_PATH)
+
+        if os.path.exists(stateful_update_path):
+            self.host.send_file(
+                    stateful_update_path, STATEFUL_UPDATE, delete_dest=True)
+            statefuldev_script = STATEFUL_UPDATE
+        else:
+            logging.warn('Could not find local stateful_update script, falling'
+                         ' back on client copy.')
+            statefuldev_script = REMOTE_STATEUL_UPDATE_PATH
+
+        return statefuldev_script
+
+
+    def reset_stateful_partition(self):
+        statefuldev_cmd = [self.get_stateful_update_script()]
+        statefuldev_cmd += ['--stateful_change=reset', '2>&1']
+        # This shouldn't take any time at all.
+        self._run(' '.join(statefuldev_cmd), timeout=10)
+
+
     def revert_boot_partition(self):
         part = self.rootdev('-s')
         logging.warn('Reverting update; Boot partition will be %s', part)
@@ -157,21 +184,7 @@ class ChromiumOSUpdater():
         # installed host is testable after update.
         statefuldev_url = self.update_url.replace('update', 'static/archive')
 
-        # Load the Chrome OS source tree location.
-        stateful_update_path = os.path.join(
-            global_config.global_config.get_config_value(
-                'CROS', 'source_tree', default=''),
-            LOCAL_STATEFUL_UPDATE_PATH)
-
-        if os.path.exists(stateful_update_path):
-            self.host.send_file(
-                stateful_update_path, STATEFUL_UPDATE, delete_dest=True)
-            statefuldev_cmd = [STATEFUL_UPDATE]
-        else:
-            logging.warn('Could not find local stateful_update script, falling'
-                         ' back on client copy.')
-            statefuldev_cmd = [REMOTE_STATEUL_UPDATE_PATH]
-
+        statefuldev_cmd = [self.get_stateful_update_script()]
         statefuldev_cmd += [statefuldev_url, '--stateful_change=clean', '2>&1']
         try:
             self._run(' '.join(statefuldev_cmd), timeout=600)
@@ -204,8 +217,9 @@ class ChromiumOSUpdater():
         logging.info('Installing from %s to: %s', self.update_url,
                      self.host.hostname)
 
-        # Reset update_engine's state & check that update_engine is idle.
+        # Reset update state.
         self.reset_update_engine()
+        self.reset_stateful_partition()
 
         try:
             updaters = [
@@ -221,6 +235,7 @@ class ChromiumOSUpdater():
             if not self._update_error_queue.empty():
                 update_error = self._update_error_queue.get()
                 self.revert_boot_partition()
+                self.reset_stateful_partition()
                 raise update_error
 
             logging.info('Update complete.')
