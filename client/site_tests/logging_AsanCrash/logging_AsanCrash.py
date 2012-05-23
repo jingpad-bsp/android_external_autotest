@@ -9,9 +9,13 @@ from autotest_lib.client.cros import constants, cros_logging, cros_ui_test
 
 class logging_AsanCrash(cros_ui_test.UITest):
     version = 1
+    auto_login = False
 
     def run_once(self):
         import pyauto
+
+        if not 'asan' in utils.read_file('/etc/session_manager_use_flags.txt'):
+            raise error.TestFail('Current image not built with ASAN')
 
         ui_log = cros_logging.LogReader(constants.UI_LOG)
         ui_log.set_start_by_current()
@@ -28,9 +32,11 @@ class logging_AsanCrash(cros_ui_test.UITest):
                 exception=error.TestFail(
                     'Found no ui log message about Address Sanitizer catch'))
 
-            if not ui_log.can_find("'testarray'"):
-                raise error.TestFail(
-                    'ASAN caught bug but did not mentioned the cause in log')
+            utils.poll_for_condition(
+                lambda: ui_log.can_find("'testarray'"),
+                timeout=10,
+                exception=error.TestFail(
+                    'ASAN caught bug but did not mentioned the cause in log'))
 
         except:
             logging.debug('UI log: ' + ui_log.get_logs())
