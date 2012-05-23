@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -80,7 +80,6 @@ class platform_ProcessPrivileges(cros_ui_test.UITest):
 
     def run_once(self):
         self._failed = []
-        self.check_process('cashewd', user='cashew')
         self.check_process('chrome')
         self.check_process('cryptohomed', user='root')
         self.check_process('dbus-daemon', user='messagebus',

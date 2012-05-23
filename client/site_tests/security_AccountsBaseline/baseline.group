@@ -36,7 +36,6 @@ tss:x:207:root,chaps
 pkcs11:x:208:root,ipsec,chronos,chaps,wpa
 qdlservice:x:209:
 cromo:x:210:
-cashew:x:211:
 ipsec:x:212:
 cros-disks:x:213:
 tor:x:214:

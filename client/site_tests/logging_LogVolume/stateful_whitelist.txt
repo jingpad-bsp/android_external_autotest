@@ -194,7 +194,6 @@
 /var/log
 /var/log/boot.log
 /var/log/build
-/var/log/cashew(|/.*)
 # Chrome logs when not logged in.  Cleaned, but not by system-wide script.
 /var/log/chrome(|/chrome(_\d{8}-\d{6})?)
 /var/log/cron

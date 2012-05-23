@@ -22,7 +22,6 @@ tss:*:207:207::/dev/null:/bin/false
 pkcs11:*:208:208::/dev/null:/bin/false
 qdlservice:*:209:209::/dev/null:/bin/false
 cromo:*:210:210::/dev/null:/bin/false
-cashew:*:211:211::/dev/null:/bin/false
 ipsec:*:212:212::/dev/null:/bin/false
 cros-disks:*:213:213::/dev/null:/bin/false
 tor:*:214:214::/dev/null:/bin/false
