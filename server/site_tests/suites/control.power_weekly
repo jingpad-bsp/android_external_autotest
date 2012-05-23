@@ -1,0 +1,52 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "Power weekly tests"
+SUITE = "power_weekly"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+This test suite runs automated power tests that should all pass. These tests
+take a long time (several hours) to run and are run only once weekly.
+
+Current tests with runtimes are:
+  power_BatteryCharge : <= 3 hours
+  power_Standby       : 12 hours
+
+"""
+# TODO(tbroch) Deprecate this control file when SUITES= mechanism detailed @
+#    https://sites.google.com/a/chromium.org/dev/chromium-os/testing/test-suites
+#    has ability to assure power states pre/post conditions.
+from autotest_lib.server import site_host_attributes
+from autotest_lib.server import site_remote_power
+from autotest_lib.client.common_lib import error
+
+def _run_client_test(machine):
+    client = hosts.create_host(machine)
+    client_attributes = site_host_attributes.HostAttributes(machine)
+    client_at = autotest.Autotest(client)
+
+    remote_power = site_remote_power.RemotePower(machine)
+    if remote_power:
+        remote_power.set_power_on()
+    else:
+        raise error.TestNAError("No power switch configured")
+
+    # 50% charge should be ample for 12hr Standby test
+    client_at.run_test('power_BatteryCharge', percent_target_charge=50,
+                     max_run_time=60*60*3, tag='CHARGE_50')
+
+    remote_power.set_power_off()
+    try:
+        client_at.run_test('power_Standby', test_hours=12.0, sample_hours=1.0,
+                           constraints=['milliwatts_standby_power <= 500.0'],
+                           max_milliwatts_standby=500.0)
+    finally:
+        remote_power.set_power_on()
+
+job.parallel_on_machines(_run_client_test, machines)
