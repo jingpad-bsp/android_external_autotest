@@ -45,13 +45,6 @@
             ]
         },
 
-        "x86-mario-release": {
-            "platforms": [
-                {"platform": "netbook_MARIO_MP",
-                 "extra_groups": ["kernel_daily"]}
-            ]
-        },
-
         "x86-zgb-r16": {
             "platforms": [
                 {"platform": "netbook_ACER_ZGB"}

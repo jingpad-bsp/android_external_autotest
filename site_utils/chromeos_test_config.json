@@ -55,17 +55,6 @@
             ]
         },
 
-        "x86-mario-release": {
-            "platforms": [
-                {"platform": "netbook_MARIO_MP", "au_test": false},
-                {"platform": "netbook_MARIO_MP", "test_suite": true},
-                {"platform": "netbook_MARIO_MP",
-                 "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
-                {"platform": "netbook_MARIO_MP_enterprise",
-                 "groups": ["enroll_enterprise"]}
-            ]
-        },
-
        "stumpy-r18": {
             "archive_server": "gs://chromeos-releases/dev-channel/stumpy",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
