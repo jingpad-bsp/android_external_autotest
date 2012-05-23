@@ -81,37 +81,18 @@ class Servo(object):
         return None
 
 
-    def __init__(self, servo_host=None, servo_port=9999,
-                 xml_config=[], servo_vid=None, servo_pid=None,
-                 servo_serial=None, cold_reset=False, servo_interfaces=[]):
+    def __init__(self, servo_host='localhost', servo_port=9999,
+                 cold_reset=False):
         """Sets up the servo communication infrastructure.
 
-        Args:
-          servo_host: Host the servod process should listen on.
-          servo_port: Port the servod process should listen on.
-          xml_config: A list of configuration XML files for servod.
-          servo_vid: USB vendor id of servo.
-          servo_pid: USB product id of servo.
-          servo_serial: USB serial id in device descriptor to host to
-            distinguish and control multiple servos.  Note servo's EEPROM must
-            be programmed to use this feature.
-          cold_reset: If True, cold reset device and boot during init,
-                      otherwise perform init with device running.
+        @param servo_host Name of the host where the servod process
+                          is running.
+        @param servo_port Port the servod process is listening on.
+        @param cold_reset If True, cold reset device and boot during init,
+                          otherwise perform init with device running.
         """
         self._servod = None
         self._server = None
-
-        # TODO(tbroch) In case where servo h/w is not connected to the host
-        # running the autotest server, servod will need to be launched by
-        # another means (udev likely).  For now we can use servo_host ==
-        # localhost as a heuristic for determining this.
-        if not servo_host or servo_host == 'localhost':
-            servo_host = 'localhost'
-            self._launch_servod(servo_host, servo_port, xml_config, servo_vid,
-                                servo_pid, servo_serial, servo_interfaces)
-        else:
-            logging.info('servod should already be running on host = %s',
-                         servo_host)
 
         self._do_cold_reset = cold_reset
         self._connect_servod(servo_host, servo_port)
@@ -478,57 +459,6 @@ class Servo(object):
         except:
             # should work without superuser privileges
             assert subprocess.call(['sudo', 'kill', str(self._servod.pid)])
-
-
-    def _launch_servod(self, servo_host, servo_port, xml_config, servo_vid,
-                       servo_pid, servo_serial, servo_interfaces):
-        """Launch the servod process.
-
-        Args:
-          servo_host: Host to start servod listening on.
-          servo_port: Port to start servod listening on.
-          xml_config: A list of XML configuration files for servod.
-          servo_vid: USB vendor id of servo.
-          servo_pid: USB product id of servo.
-          servo_serial: USB serial id in device descriptor to host to
-            distinguish and control multiple servos.  Note servo's EEPROM must
-            be programmed to use this feature.
-          servo_interfaces: a list of servo interface names out of 'gpio',
-            'i2c', 'uart', 'gpiouart' and 'dummy'.
-        """
-        cmdlist = ['sudo', 'servod']
-        for config in xml_config:
-            cmdlist += ['-c', str(config)]
-        if servo_host is not None:
-            cmdlist.append('--host=%s' % str(servo_host))
-        if servo_port is not None:
-            cmdlist.append('--port=%s' % str(servo_port))
-        if servo_vid is not None:
-            cmdlist.append('--vendor=%s' % str(servo_vid))
-        if servo_pid is not None:
-            cmdlist.append('--product=%s' % str(servo_pid))
-        if servo_serial is not None:
-            cmdlist.append('--serialname=%s' % str(servo_serial))
-        if servo_interfaces:
-            cmdlist.append('--interfaces=%s' % ' '.join(servo_interfaces))
-        logging.info('starting servod w/ cmd :: %s', ' '.join(cmdlist))
-        self._servod = subprocess.Popen(cmdlist, 0, None, None, None,
-                                        subprocess.PIPE)
-        # wait for servod to initialize
-        timeout = Servo.MAX_SERVO_STARTUP_DELAY
-        start_time = time.time()
-        listening = False
-        while (time.time() - start_time) < timeout and \
-                self._servod.returncode is None:
-            (rfds, _, _) = select.select([self._servod.stderr], [], [], 0)
-            if len(rfds) > 0:
-                if 'Listening' in rfds[0].readline():
-                    listening = True
-                    break
-
-        if not listening:
-            logging.fatal("Unable to successfully launch servod")
-            sys.exit(-1)
 
 
     def _init_seq(self):

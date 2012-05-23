@@ -4,6 +4,8 @@
 #
 # Test expects to be run on a jailbroken device in developer mode.
 
+from autotest_lib.server import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "platform_LongPressPower"
 PURPOSE = "Servo based ChromeOS functional tests."
@@ -17,8 +19,13 @@ This test uses servo to press and hold the device power button and uses ping
 to validate behavior.
 """
 
+args_dict = utils.args_to_dict(args)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
+
 def run(machine):
-    host = hosts.create_host(machine, require_servo=True)
+    host = hosts.create_host(machine, servo_host=servo_host,
+                             servo_port=servo_port)
     job.run_test("platform_LongPressPower", host=host, disable_sysinfo=True)
 
 parallel_simple(run, machines)

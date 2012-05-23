@@ -22,12 +22,15 @@ run_remote_tests --args='image=<recovery_image_path_on_host>'
                  platform_InstallRecoveryImage
 """
 
-def run(machine):
-    opts = utils.args_to_dict(args)
-    image = opts.get('image')
+args_dict = utils.args_to_dict(args)
+image = args_dict.get('image', None)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
 
+def run(machine):
     # Setup the client machine.
-    host = hosts.create_host(machine, require_servo=True)
+    host = hosts.create_host(machine, servo_host=servo_host,
+                             servo_port=servo_port)
     job.run_test("platform_InstallRecoveryImage", host=host,
                  disable_sysinfo=True, image=image)
 

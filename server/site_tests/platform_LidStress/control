@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.server import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "platform_LidStress"
 PURPOSE = "Servo based ChromeOS functional tests."
@@ -23,8 +25,13 @@ Test takes ~20min to run with default configuration of 50 lid cycles while
 visiting top 50 sites.
 """
 
+args_dict = utils.args_to_dict(args)
+servo_host = args_dict.get('servo_host', 'localhost')
+servo_port = args_dict.get('servo_port', None)
+
 def run(machine):
-    host = hosts.create_host(machine, require_servo=True)
+    host = hosts.create_host(machine, servo_host=servo_host,
+                             servo_port=servo_port)
     job.run_test("platform_LidStress", host=host, disable_sysinfo=True)
 
 parallel_simple(run, machines)

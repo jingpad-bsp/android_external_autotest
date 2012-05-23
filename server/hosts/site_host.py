@@ -77,24 +77,34 @@ class SiteHost(remote.RemoteHost):
     _REBOOT_TIMEOUT = 45
 
 
-    def _initialize(self, hostname, require_servo=False, *args, **dargs):
+    def _initialize(self, hostname, servo_host=None, servo_port=None,
+                    *args, **dargs):
         """Initialize superclasses, and |self.servo|.
 
         For creating the host servo object, there are three
         possibilities:  First, if the host is a lab system known to
         have a servo board, we connect to that servo unconditionally.
         Second, if we're called from a control file that requires
-        servo features for testing, it will pass |require_servo| set
-        to |True|, and we will start a local servod.  If neither of
-        these cases apply, |self.servo| will be |None|.
+        servo features for testing, it will pass settings for
+        `servo_host`, `servo_port`, or both.  If neither of these
+        cases apply, `self.servo` will be `None`.
 
         """
         super(SiteHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
         self._xmlrpc_proxy_map = {}
         self.servo = servo.Servo.get_lab_servo(hostname)
-        if not self.servo and require_servo:
-            self.servo = servo.Servo()
+        if not self.servo:
+            # The Servo constructor generally doesn't accept 'None'
+            # for its parameters.
+            if servo_host is not None:
+                if servo_port is not None:
+                    self.servo = servo.Servo(servo_host=servo_host,
+                                             servo_port=servo_port)
+                else:
+                    self.servo = servo.Servo(servo_host=servo_host)
+            elif servo_port is not None:
+                self.servo = servo.Servo(servo_port=servo_port)
 
 
     def machine_install(self, update_url=None, force_update=False):
