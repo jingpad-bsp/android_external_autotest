@@ -22,7 +22,7 @@ class SelectHwidTask(task.FactoryTask):
         with os.popen("crossystem hwid 2>/dev/null", "r") as p:
             current_hwid = p.read().strip()
 
-        (stdout, _, result) = gooftools.run("hwid_tool.py list_hwids",
+        (stdout, _, result) = gooftools.run("hwid_tool list_hwids",
                                             ignore_status=True)
         known_list = stdout.splitlines()
         if (not known_list) or (result != 0):
