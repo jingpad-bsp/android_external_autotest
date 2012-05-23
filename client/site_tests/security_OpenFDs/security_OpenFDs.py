@@ -125,7 +125,7 @@ class security_OpenFDs(test.test):
                         r'0500 /opt/google/chrome/chrome.pak',
                         r'0500 /opt/google/chrome/locales/en-US.pak',
                         r'0500 /opt/google/chrome/theme_resources_standard.pak',
-                        r'0500 /opt/google/chrome/ui_resources_standard.pak',
+                        r'0500 /opt/google/chrome/ui_resources_.*.pak',
                        ])
         passes.append(self.check_process('chrome', 'type=renderer', filters))
 
