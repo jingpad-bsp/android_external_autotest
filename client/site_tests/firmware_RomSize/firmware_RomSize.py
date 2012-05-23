@@ -8,13 +8,22 @@ from autotest_lib.client.common_lib import error
 class firmware_RomSize(test.test):
     version = 3
 
+    TARGET_BIOS = '-p internal:bus=spi'
+    TARGET_EC = '-p internal:bus=lpc'
+
     def get_size(self, target):
         data = utils.system_output("flashrom --get-size %s" % target)
         return int(data.splitlines()[-1])
 
+    def has_flash_chip(self, target):
+        return utils.system("flashrom --flash-name %s" % target,
+                            ignore_status=True) == 0
+
     def run_once(self):
-        ec_size = self.get_size("-p internal:bus=lpc") / 1024
-        bios_size = self.get_size("-p internal:bus=spi") / 1024
+        ec_size = 0
+        if self.has_flash_chip(self.TARGET_EC):
+            ec_size = self.get_size(self.TARGET_EC) / 1024
+        bios_size = self.get_size(self.TARGET_BIOS) / 1024
 
         self.write_perf_keyval({"kb_system_rom_size": bios_size,
                                 "kb_ec_rom_size": ec_size})
