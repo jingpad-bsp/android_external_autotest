@@ -1945,6 +1945,11 @@ class WiFiTest(object):
                     'client_interface_statistics_%02d.txt'), 'w').write(stats)
             self.client_stats_thread = None
 
+    def client_test_ipaddr(self, params):
+        interface = params.get('interface', self.client_wlanif)
+        self.__get_ipaddr(self.client, interface)
+
+
 class HelperThread(threading.Thread):
     # Class that wraps a ping command in a thread so it can run in the bg.
     def __init__(self, client, cmd):
