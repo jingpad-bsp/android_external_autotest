@@ -31,11 +31,11 @@ class login_BadAuthentication(cros_ui_test.UITest):
 
     def run_once(self, error_string='BadAuthentication'):
         self._errorString = "Error=" + error_string
-        # TODO(cmasone): find better way to determine login has failed (webui).
         try:
             self.login(self.username, self.password)
-        except error.TestError:
+        # TODO(craigdh): Only catch LoginError once Chrome r138619 lands.
+        except:
             pass
-        else:
+        if self.logged_in():
             raise error.TestFail('Should not have logged in')
         self._authServer.wait_for_client_login()
