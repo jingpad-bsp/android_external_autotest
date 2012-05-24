@@ -38,7 +38,7 @@ _DEFAULT_SUBTEST_INSTRUCTION = {
     'Light sensor dark': 'Cover light sensor with finger',
     'Light sensor exact': 'Remove finger from light sensor',
     'Light sensor light': 'Shine light sensor with flashlight'}
-_DEFAULT_DEVICE_PATH='/sys/bus/iio/devices/devices0/'
+_DEFAULT_DEVICE_PATH='/sys/bus/iio/devices/iio:device0/'
 
 class iio_generic():
     '''
