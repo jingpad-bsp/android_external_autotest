@@ -32,9 +32,12 @@ _EDGE_MIN_SQUARE_SIZE_RATIO = 0.024
 
 _POINT_MATCHING_MAX_TOLERANCE_RATIO = 0.020
 
-_MTF_DEFAULT_MAX_CHECK_NUM = 40
+_IMAGE_DEFAULT_MAX_SHIFT = 0.025
+_IMAGE_DEFAULT_MAX_TILT = 1
+
+_MTF_DEFAULT_MAX_CHECK_NUM = 308
 _MTF_DEFAULT_PATCH_WIDTH = 20
-_MTF_DEFAULT_CHECK_PASS_VALUE = 0.30
+_MTF_DEFAULT_CHECK_PASS_VALUE = 0.45
 _MTF_DEFAULT_CHECK_PASS_VALUE_LOWEST = 0.10
 _MTF_DEFAULT_THREAD_COUNT = 4
 
@@ -68,6 +71,34 @@ def _FindCornersOnConvexHull(hull):
     corners = hull[np.sort(np.argsort(angle)[:-5:-1])]
     return corners
 
+def _ComputeCosine(a, b):
+    '''Compute the cosine value of the angle bewteen two vectors a and b.'''
+    return np.sum(a * b) / math.sqrt(np.sum(a ** 2) * np.sum(b ** 2) + 1e-10)
+
+def _ComputeShiftAndTilt(rect, img_size):
+    '''Compute the shift and tilt values for a given rectangle in the form of
+       its four corners.
+
+    Args:
+        rect: The four corners of the rectangle in the contour's order.
+        img_size: The size of the whole image.
+
+    Returns:
+        The shift vector length.
+        The tilt degrees.
+        The shift vector.
+    '''
+    # Compute the shift.
+    center = np.sum(rect, axis=0) / 4.0
+    shift = center - np.array((img_size[1] - 1.0, img_size[0] - 1.0)) / 2.0
+    shift_len = math.sqrt(np.sum(shift ** 2))
+
+    # Compute the tilt
+    va = np.abs((rect[1] - rect[0] + rect[2] - rect[3]) / 2.0)
+    vb = np.abs((rect[2] - rect[1] + rect[3] - rect[0]) / 2.0)
+    da = np.max(va) / math.sqrt(np.sum(va ** 2))
+    db = np.max(vb) / math.sqrt(np.sum(vb ** 2))
+    return shift_len, math.degrees(math.acos((da + db) / 2.0)), shift
 
 def _CheckSquareness(contour, min_square_area):
     '''Check the squareness of a contour.'''
@@ -87,8 +118,7 @@ def _CheckSquareness(contour, min_square_area):
         # Find the minimum inner angle.
         dl = contour[i] - contour[i-1]
         dr = contour[i-2] - contour[i-1]
-        angle = np.sum(dl * dr) / math.sqrt(np.sum(dl ** 2) * np.sum(dr ** 2) +
-                                            1e-10)
+        angle = _ComputeCosine(dl, dr)
 
         ac = abs(angle)
         if ac > min_angle:
@@ -289,7 +319,9 @@ def CheckVisualCorrectness(
     sample, ref_data, register_grid=False,
     min_corner_quality_ratio=_CORNER_QUALITY_RATIO,
     min_square_size_ratio=_EDGE_MIN_SQUARE_SIZE_RATIO,
-    min_corner_distance_ratio=_CORNER_MIN_DISTANCE_RATIO):
+    min_corner_distance_ratio=_CORNER_MIN_DISTANCE_RATIO,
+    max_image_shift=_IMAGE_DEFAULT_MAX_SHIFT,
+    max_image_tilt=_IMAGE_DEFAULT_MAX_TILT):
     '''Check if the test pattern is present.
 
     Args:
@@ -304,6 +336,9 @@ def CheckVisualCorrectness(
                                to the image diagonal length.
         min_corner_distance_ratio: Minimum allowed corner distance in relative
                                    to the image diagonal length.
+        max_image_shift: Maximum allowed image center shift in relative to the
+                         image diagonal length.
+        max_image_tilt: Maximum allowed image tilt amount in degrees.
 
     Returns:
         1: Pass or Fail.
@@ -333,14 +368,24 @@ def CheckVisualCorrectness(
     sample_corners = Unpad(sample_corners)
     ret.sample_corners = sample_corners
 
-    # b) Same amount corners as the reference data.
+    # b) Check if we got the same amount of corners as the reference.
     if sample_corners.shape[0] != ref_data.corners.shape[0]:
         ret.msg = "Can't find the same amount of corners."
         return False, ret
-    # c) They spread sufficiently across the whole image (at least one for
-    #    each cell of a 6x6 grid).
-    if _StratifiedSample2D(sample_corners, 36, sample.shape, True) is None:
-        ret.msg = 'The pattern may be mis-aligned.'
+
+    # Find the 4 corners of the square grid.
+    hull = Unpad(cv2.convexHull(Pad(sample_corners)))
+    ret.four_corners = _FindCornersOnConvexHull(hull)
+
+    # c) Check if the image shift and tilt amount are within the spec.
+    shift_len, ret.tilt, ret.v_shift = _ComputeShiftAndTilt(ret.four_corners,
+                                                            sample.shape)
+    ret.shift = shift_len / diag_len
+    if ret.shift > max_image_shift:
+        ret.msg = 'The image shift is too large.'
+        return False, ret
+    if ret.tilt > max_image_tilt:
+        ret.msg = 'The image tilt is too large.'
         return False, ret
     # TODO(sheckylin) Refine points locations.
 
@@ -352,10 +397,6 @@ def CheckVisualCorrectness(
     ret.register_grid = False
     if register_grid:
         ret.register_grid = True
-        # We now check if all the corners are in the correct place.
-        # First, we find the 4 corners of the square grid.
-        hull = Unpad(cv2.convexHull(Pad(sample_corners)))
-        four_corners = _FindCornersOnConvexHull(hull)
 
         # There are 4 possible mappings of the 4 corners between the reference
         # and the sample due to rotation because we can't tell the starting

@@ -13,6 +13,7 @@ import re
 import serial
 import time
 
+from autotest_lib.client.cros import tty
 
 # Least significant bit of I2C address.
 WRITE_BIT = 0
@@ -31,7 +32,7 @@ def create_i2c_controller(chipset_config):
     if chipset_config.split(':')[0] == 'SC18IM700':
         usb_uart_driver = chipset_config.split(':')[1]
         # Try to find a tty terminal that driver name matches usb_uart_driver.
-        tty_path = _I2CControllerSC18IM700.find_tty_by_driver(usb_uart_driver)
+        tty_path = tty.find_tty_by_driver(usb_uart_driver)
         if tty_path:
             return _I2CControllerSC18IM700(tty_path)
 
@@ -98,18 +99,6 @@ class _I2CControllerSC18IM700(I2CController):
                   0b11110001: I2CController.I2C_NACK_ON_ADDRESS,
                   0b11110011: I2CController.I2C_NACK_ON_DATA,
                   0b11111000: I2CController.I2C_TIME_OUT}
-
-    @staticmethod
-    def find_tty_by_driver(driver_name):
-        '''Finds the tty terminal matched to the given driver_name.'''
-        candidates = glob.glob('/dev/tty*')
-        for path in candidates:
-            if re.search(
-                driver_name,
-                os.path.realpath('/sys/class/tty/%s/device/driver' %
-                                 os.path.basename(path))):
-                return path
-        return None
 
     def __init__(self, device_path):
         '''Connects to NXP via serial port.

@@ -1,0 +1,52 @@
+{
+    'sn_format':r'^\d\d\d\d\d\d\d\d\d\d\d\d\d$',
+    'cam_stat': {
+                    'img_width': 1280,
+                    'img_height': 720,
+                    'buf_time': 3.0,
+                    'n_samples': 15
+                },
+    'cam_vc':   {
+                    'register_grid': False,
+                    'min_corner_quality_ratio': 0.05,
+                    'min_square_size_ratio': 0.024,
+                    'min_corner_distance_ratio': 0.016,
+                    'max_image_shift': 0.025,
+                    'max_image_tilt': 1
+                },
+    'cam_ls':   {
+                    'check_low_freq': False,
+                    'max_response': 0.01,
+                    'max_shading_ratio': 0.35
+                },
+    'cam_mtf':  {
+                    'min_pass_mtf': 0.45,
+                    'min_pass_lowest_mtf': 0.10,
+                    'mtf_sample_count': 308,
+                    'mtf_patch_width': 20,
+                    'use_50p': False,
+                    'n_thread': 4
+                },
+    'fixture':  {
+                    'serial_params':    {
+                                            'baudrate': 9600,
+                                            'bytesize': 8,
+                                            'parity': 'N',
+                                            'stopbits': 1,
+                                            'xonxoff': False,
+                                            'rtscts': False,
+                                            'timeout': None
+                                        },
+                    'driver': 'pl2303',
+                    'off': 'OFF\r',
+                    'light_seq': ['500LUXON\r', '1000LUXON\r', '30LUXON\r', 'OFF\r'],
+                    'echo': r'\s*I\s+G\s*O\s*T\s+',
+                    'light_delay': 3.0,
+                    'serial_delay': 0.06
+                },
+    'als':      {
+                    'val_path': '/sys/bus/iio/devices/iio:device0/illuminance0_input',
+                    'scale_path': '/sys/bus/iio/devices/iio:device0/illuminance0_calibscale',
+                    'luxs': [500, 1000, 30]
+                }
+}

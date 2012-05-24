@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(sheckylin): Refactor the code with the antenna test.
+# TODO(sheckylin): Refactor the code with the new HTML5 framework.
 
 # Import guard for OpenCV.
 try:
@@ -14,9 +14,11 @@ except ImportError:
 
 import gtk
 import logging
+import numpy as np
 import os
 import pprint
 import re
+import serial
 import StringIO
 import time
 
@@ -30,6 +32,7 @@ from autotest_lib.client.cros.factory import leds
 from autotest_lib.client.cros.factory.media_util import MediaMonitor
 from autotest_lib.client.cros.factory.media_util import MountedMedia
 from autotest_lib.client.cros.rf.config import PluggableConfig
+from autotest_lib.client.cros import tty
 
 _MESSAGE_USB = (
     'Please insert the usb stick to load parameters.\n'
@@ -152,6 +155,54 @@ class ALS():
         return s
 
 
+class FixtureException(Exception):
+  pass
+
+
+class Fixture():
+    '''Class for communication with the test fixture.'''
+
+    def __init__(self, params):
+        # Setup the serial port communication.
+        tty_path = tty.find_tty_by_driver(params['driver'])
+        self.fixture = serial.Serial(port=tty_path,
+                                     **params['serial_params'])
+        self.fixture.flush()
+
+        # Load parameters.
+        self.serial_delay = params['serial_delay']
+        self.light_delay = params['light_delay']
+        self.light_seq = params['light_seq']
+        self.fixture_echo = params['echo']
+        self.light_off = params['off']
+
+    def send(self, msg):
+        '''Send control messages to the fixture.'''
+        for c in msg:
+            self.fixture.write(str(c))
+            self.fixture.flush()
+            # The fixture needs some time to process each incoming character.
+            time.sleep(self.serial_delay)
+
+    def read(self):
+        return self.fixture.read(self.fixture.inWaiting())
+
+    def assert_success(self):
+        '''Check if the returned value from the fixture is OK.'''
+        ret = self.read()
+        if not re.search(self.fixture_echo, ret):
+            raise FixtureException('The communication with fixture was broken')
+
+    def set_light(self, idx):
+        self.send(self.light_seq[idx])
+
+    def turn_off_light(self):
+        self.send(self.light_off)
+
+    def wait_for_light_switch(self):
+        time.sleep(self.light_delay)
+
+
 class factory_CameraPerformanceAls(test.test):
     version = 1
     preserve_srcdir = True
@@ -160,6 +211,7 @@ class factory_CameraPerformanceAls(test.test):
     # the index -1.
     _DEVICE_INDEX = -1
     _TEST_CHART_FILE = 'test_chart.png'
+    _TEST_SAMPLE_FILE = 'sample.png'
 
     # States for the state machine.
     _STATE_INITIAL = -1
@@ -271,10 +323,40 @@ class factory_CameraPerformanceAls(test.test):
                 cv2.imwrite(os.path.join(mount_dir, filename), content)
         return True
 
+    def _setup_fixture(self):
+        '''Initialize the communication with the fixture.'''
+        try:
+            self.fixture = Fixture(self.config['fixture'])
+
+            # Go with the default(first) lighting intensity.
+            self.light_state = 0
+            self.fixture.set_light(self.light_state)
+            if not self.unit_test:
+                self.fixture.assert_success()
+        except Exception as e:
+            self.fixture = None
+            self.log('Failed to initialize the test fixture.\n')
+            return False
+        self.log('Test fixture successfully initialized.\n')
+        return True
+
+    def _capture_low_noise_image(self, cam, n_samples):
+        '''Capture a sequence of images and average them to reduce noise.'''
+        if n_samples < 1:
+            n_samples = 1
+        _, img = cam.read()
+        img = img.astype(np.float64)
+        for t in range(n_samples - 1):
+            _, temp_img = cam.read()
+            img += temp_img.astype(np.float64)
+        img /= n_samples
+        return img.round().astype(np.uint8)
+
     def _test_camera_functionality(self):
         # Initialize the camera with OpenCV.
         cam = cv2.VideoCapture(self._DEVICE_INDEX)
         if not cam.isOpened():
+            cam.release()
             self._update_status('cam_stat', False)
             self.log('Failed to initialize the camera. '
                      'Could be bad module, bad connection or '
@@ -287,24 +369,38 @@ class factory_CameraPerformanceAls(test.test):
         cam.set(cv.CV_CAP_PROP_FRAME_HEIGHT, conf['img_height'])
         if (conf['img_width'] != cam.get(cv.CV_CAP_PROP_FRAME_WIDTH) or
             conf['img_height'] != cam.get(cv.CV_CAP_PROP_FRAME_HEIGHT)):
+            cam.release()
             self._update_status('cam_stat', False)
             self.log("Can't set the image size. "
                      "Possibly caused by insufficient USB bandwidth.\n")
             return False
 
-        # Let the camera's auto-exposure algorithm adjust to the fixture
-        # lighting condition.
-        time.sleep(conf['buf_time'])
-        success, img = cam.read()
-        cam.release()
+        # Try reading an image from the camera.
+        success, _ = cam.read()
         if not success:
+            cam.release()
             self._update_status('cam_stat', False)
             self.log("Failed to capture an image with the camera.\n")
             return False
 
+        # Let the camera's auto-exposure algorithm adjust to the fixture
+        # lighting condition.
+        start = time.clock()
+        while time.clock() - start < conf['buf_time']:
+            _, _ = cam.read()
+
+        # Read the image that we will use.
+        n_samples = conf['n_samples']
+        img = self._capture_low_noise_image(cam, n_samples)
         self.target = cv2.cvtColor(img, cv.CV_BGR2GRAY)
         self._update_status('cam_stat', True)
         self.log('Successfully captured an image.\n')
+
+        # Use the sample image in the unit-test mode.
+        if self.unit_test:
+            self.target = cv2.imread(self._TEST_SAMPLE_FILE,
+                                     cv.CV_LOAD_IMAGE_GRAYSCALE)
+        cam.release()
         return True
 
     def _test_camera_core(self):
@@ -316,6 +412,9 @@ class factory_CameraPerformanceAls(test.test):
             self.target, self.ref_data, **self.config['cam_vc'])
 
         self._update_status('cam_vc', success)
+        if hasattr(tar_data, 'shift'):
+            self.log('Image shift percentage: %f\n' % tar_data.shift)
+            self.log('Image tilt: %f degrees\n' % tar_data.tilt)
         if not success:
             if hasattr(tar_data, 'sample_corners'):
                 self.log('Found corners count: %d\n' %
@@ -360,12 +459,37 @@ class factory_CameraPerformanceAls(test.test):
             self.log('Failed to initialize the ALS.\n')
             return
 
-        # Read a value.
-        scale = self.als.get_scale_factor()
-        val = self.als.read_mean(samples=5, delay=0)
+        # Go through all different lighting settings
+        # and record ALS values.
+        try:
+            while True:
+                # Get ALS values.
+                scale = self.als.get_scale_factor()
+                val = self.als.read_mean(samples=5, delay=0)
+                self.log('Lighting preset lux value: %d\n',
+                         conf['luxs'][self.light_state])
+                self.log('ALS value: %d\n' % val)
+                self.log('ALS calibration scale: %d\n' % scale)
+
+                # Go to the next lighting preset.
+                self.light_state += 1
+                self.fixture.set_light(self.light_state)
+                if not self.unit_test:
+                    self.fixture.assert_success()
+                if self.light_state >= len(conf['luxs']):
+                    break
+                self.fixture.wait_for_light_switch()
+        except (FixtureException, serial.serialutil.SerialException) as e:
+            self.fixture = None
+            self._update_status('als_stat', None)
+            self.log("The test fixture was disconnected!\n")
+            return
+        except:
+            self._update_status('als_stat', False)
+            self.log('Failed to read values from ALS.\n')
+            return
         self._update_status('als_stat', True)
-        self.log('ALS ambient value: %d\n' % val)
-        self.log('ALS calibration scale: %d\n' % scale)
+        self.log('Successfully recorded ALS values.\n')
         return
 
     def test_camera(self, skip_flag):
@@ -458,7 +582,14 @@ class factory_CameraPerformanceAls(test.test):
         if self.type == _TEST_TYPE_FULL:
             self.blinker = leds.Blinker(self._LED_PREPARE_CAM_TEST)
             self.blinker.Start()
-
+        # Try to setup the fixture if not yet.
+        # This happens everytime in the full machine test, when the first time
+        # the AB panel test is run and when the fixture is disconnected during
+        # the previous test. This step blocks until we can find the fixture
+        # successfully.
+        if not hasattr(self, 'fixture') or self.fixture is None:
+            if not self._setup_fixture():
+                return False
         self.advance_state()
         return True
 
@@ -479,12 +610,33 @@ class factory_CameraPerformanceAls(test.test):
         widget.key_callback = key_press_callback
         return widget
 
-    def run_once(self, test_type=_TEST_TYPE_FULL):
+    def run_once(self, test_type=_TEST_TYPE_FULL, unit_test=False):
+        '''The entry point of the test.
+
+        Args:
+            test_type: Run the full machine test or the AB panel test. The AB
+                       panel will be run on a host that is used to test
+                       connected AB panels (possibly many), while the full
+                       machine test would test only the machine that runs it
+                       and then exit.
+            unit_test: Run the unit-test mode. The unit-test mode is used to
+                       test the test integrity when the test fixture is not
+                       available. It should be run on a machine that has a
+                       working camera and a working ALS. Please place the
+                       camera parameter file under the src directory on an USB
+                       stick for use and connect the machine with an
+                       USB-to-RS232 converter cable with the designated chipset
+                       in the parameter file. The test will replace the
+                       captured image with the sample test image and run the
+                       camera performance test on it.
+        '''
         factory.log('%s run_once' % self.__class__)
 
         # Initialize variables.
         assert test_type in [_TEST_TYPE_FULL, _TEST_TYPE_AB]
+        assert unit_test in [True, False]
         self.type = test_type
+        self.unit_test = unit_test
         self.display_dict = {}
         self.base_config = PluggableConfig({})
         self.last_handler = None
