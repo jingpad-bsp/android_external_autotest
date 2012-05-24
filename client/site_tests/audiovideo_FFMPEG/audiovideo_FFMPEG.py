@@ -15,6 +15,11 @@ _IGNORE_PERFORMANCE_TESTS=(
 
 class audiovideo_FFMPEG(test.test):
     version = 1
+    dep = 'ffmpeg'
+    test_binary = 'ffmpeg_tests'
+
+    def setup(self):
+        self.job.setup_dep([self.dep])
 
     def run_once(self, fps_warning=0):
         """ Run FFMPEG performance test! """
@@ -39,18 +44,11 @@ class audiovideo_FFMPEG(test.test):
 
 
     def run_testcase(self, testcase):
-        arch = utils.get_arch()
-        # TODO(ihf): We realy don't want to store these binaries locally but
-        # get them from the chromeos-chrome.ebuild which would solve the CPU
-        # dependency and the dependency on ffmpeg that ships with Chrome.
-        if arch == 'i386':
-            executable = os.path.join(self.bindir, "ffmpeg_tests.i686")
-        elif arch == 'x86_64':
-            executable = os.path.join(self.bindir, "ffmpeg_tests.x86_64")
-        else:
-            executable = os.path.join(self.bindir, "ffmpeg_tests.arm")
-        file_url = testcase[0]
+        dep_dir = os.path.join(self.autodir, 'deps', self.dep)
+        self.job.install_pkg(self.dep, 'dep', dep_dir)
+        executable = os.path.join(dep_dir, self.test_binary)
 
+        file_url = testcase[0]
         if file_url.startswith("http"):
             file_name = file_url.split('/')[-1]
             file_path = os.path.join(self.bindir, file_name)
