@@ -253,14 +253,19 @@ class ServoTest(test.test):
         logging.info('Server: Client machine is offline.')
 
 
-    def cleanup(self):
-        """Delete the Servo object, call remote cleanup, and kill ssh."""
-        self._release_servo()
+    def kill_remote(self):
+        """Call remote cleanup and kill ssh."""
         for info in self._remote_infos.itervalues():
             if info['remote_process'] and info['remote_process'].poll() is None:
                 remote_object = getattr(self, info['ref_name'])
                 remote_object.cleanup()
         self._terminate_all_ssh()
+
+
+    def cleanup(self):
+        """Delete the Servo object, call remote cleanup, and kill ssh."""
+        self._release_servo()
+        self.kill_remote()
 
 
     def _launch_ssh_tunnel(self, info):
