@@ -31,6 +31,7 @@ from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import shopfloor
 from autotest_lib.client.cros.factory import task
 from autotest_lib.client.cros.factory import ui
+from autotest_lib.client.cros.factory.event_log import EventLog
 
 
 # Messages for tasks
@@ -162,6 +163,8 @@ class ShopFloorTask(task.FactoryTask):
 
     def complete_serial_task(self, serial):
         serial = serial.strip()
+        EventLog.ForAutoTest().Log('mlb_serial_number',
+                                   serial_number=serial_number)
         factory.log('Serial number: %s' % serial)
         shopfloor.set_serial_number(serial)
         self.stop()

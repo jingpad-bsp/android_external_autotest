@@ -9,11 +9,14 @@ import re
 from autotest_lib.client.bin import test
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.cros.factory.event_log import EventLog
 
 class factory_ScanSN(test.test):
     version = 1
 
     def on_sn_complete(self, serial_number):
+        EventLog.ForAutoTest().Log('ab_serial_number',
+                                   serial_number=serial_number)
         factory.log('Serial number is: %s' % serial_number)
         gtk.main_quit()
 

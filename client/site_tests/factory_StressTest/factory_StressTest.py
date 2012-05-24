@@ -22,6 +22,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import ui
+from autotest_lib.client.cros.factory.event_log import EventLog
 
 
 _MESSAGE_PROMPT = 'Basic Stress Test'
@@ -109,15 +110,22 @@ class factory_StressTest(test.test):
         return True
 
     def log_system_status(self, ectool, num_temp_sensor):
+        fan_speed = ectool.get_fanspeed()
+        temperatures = [ectool.get_temperature(i)
+                        for i in xrange(num_temp_sensor)]
+
+        self._event_log.Log('sensor_measurement',
+                            fan_speed=fan_speed,
+                            temperatures=temperatures)
+
         factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
             datetime.datetime.now().isoformat(),
-            'Fan RPM',
-            ectool.get_fanspeed()))
+            'Fan RPM', fan_speed))
         for i in xrange(num_temp_sensor):
             factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
                 datetime.datetime.now().isoformat(),
                 'Temp%d' % i,
-                ectool.get_temperature(i)))
+                temperatures[i]))
 
     def monitor_event(self, ectool, num_temp_sensor):
         self.log_system_status(ectool, num_temp_sensor)
@@ -144,6 +152,7 @@ class factory_StressTest(test.test):
                             countdown_label, load_label)
         if monitor_interval:
             ectool = ECControl()
+            self._event_log = EventLog.ForAutoTest()
             self.log_system_status(ectool, num_temp_sensor)
             gobject.timeout_add(1000 * monitor_interval,
                                 self.monitor_event,
