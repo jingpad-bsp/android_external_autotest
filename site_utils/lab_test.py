@@ -478,8 +478,8 @@ def main():
         private_key=os.path.join(options.cros_dir, CROS_TEST_KEY_PRIV),
         remote_host=remote_host)
 
-    # Determine if we have any tests to upload. Nothing to upload for suites.
-    tests_to_upload = options.tests and not 'suite' in control_file.lower()
+    # Determine if we have any tests to upload.
+    tests_to_upload = options.tests
 
     # If the user hasn't specified an official build, process their local build.
     if not options.build:
