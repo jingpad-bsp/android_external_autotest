@@ -1,0 +1,39 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chromium OS"
+NAME = "autoupdate_Host.local"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "server"
+
+DOC = """
+A test that reimages the assigned machines and checks for success.
+
+Performs an update using the local devserver and flexes the autoupdater
+pathways. This test presumes that you have already started up a local devserver.
+You can do this by running:
+start_devserver [--pregenerate_update] [--image|--payload=<optional target>].
+
+@param port: Optional port to use to connect to the devsever. By default this is
+  8080.
+"""
+
+import socket
+from autotest_lib.client.common_lib import utils
+
+
+def run(machine):
+    hostname = socket.getfqdn()
+    args_dict = utils.args_to_dict(args)
+    port = args_dict.get('port', '8080')
+
+    image_url = 'http://%s:%s/update' % (hostname, port)
+    host = hosts.create_host(machine, initialize=False)
+    job.run_test('autoupdate', host=host, update_url=image_url,
+                 local_devserver=True)
+
+
+job.parallel_simple(run, machines)

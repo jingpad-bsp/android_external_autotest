@@ -107,7 +107,8 @@ class SiteHost(remote.RemoteHost):
                 self.servo = servo.Servo(servo_port=servo_port)
 
 
-    def machine_install(self, update_url=None, force_update=False):
+    def machine_install(self, update_url=None, force_update=False,
+                        local_devserver=False):
         if not update_url and self._parser.options.image:
             update_url = self._parser.options.image
         elif not update_url:
@@ -115,7 +116,8 @@ class SiteHost(remote.RemoteHost):
                 'Update failed. No update URL provided.')
 
         # Attempt to update the system.
-        updater = autoupdater.ChromiumOSUpdater(update_url, host=self)
+        updater = autoupdater.ChromiumOSUpdater(update_url, host=self,
+                                                local_devserver=local_devserver)
         if updater.run_update(force_update):
             # Figure out active and inactive kernel.
             active_kernel, inactive_kernel = updater.get_kernel_state()
