@@ -58,14 +58,16 @@ class ShopFloorHwidTask(task.FactoryTask):
 class factory_HWID(test.test):
     version = 3
 
-    def run_once(self):
+    def run_once(self, override_hwid=None):
         factory.log('%s run_once' % self.__class__)
 
-        self.data = {'hwid': None}
-        self.tasks = [
-                ShopFloorHwidTask(self.data) if shopfloor.is_enabled() else
-                select_task.SelectHwidTask(self.data),
-                WriteHwidTask(self.data)]
+        self.data = {'hwid': override_hwid}
+        self.tasks = [WriteHwidTask(self.data)]
+        if not override_hwid:
+            self.tasks.insert(0,
+                              ShopFloorHwidTask(self.data)
+                              if shopfloor.is_enabled()
+                              else select_task.SelectHwidTask(self.data))
         task.run_factory_tasks(self.job, self.tasks)
 
         factory.log('%s run_once finished' % repr(self.__class__))

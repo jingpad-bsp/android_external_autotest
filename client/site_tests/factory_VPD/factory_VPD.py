@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import tempfile
 
 import serial_task
 import region_task
@@ -42,13 +41,11 @@ class WriteVpdTask(task.FactoryTask):
 
         vpd = self.vpd
         VPD_LIST = (('RO_VPD', 'ro'), ('RW_VPD', 'rw'))
-        with tempfile.NamedTemporaryFile() as temp_file:
-            name = temp_file.name
-            for (section, vpd_type) in VPD_LIST:
-                if not vpd.get(vpd_type, None):
-                    continue
-                parameter = format_vpd_parameter(vpd[vpd_type])
-                shell('vpd -i %s %s' % (section, parameter))
+        for (section, vpd_type) in VPD_LIST:
+            if not vpd.get(vpd_type, None):
+                continue
+            parameter = format_vpd_parameter(vpd[vpd_type])
+            shell('vpd -i %s %s' % (section, parameter))
         self.stop()
 
     def start(self):
@@ -81,16 +78,17 @@ class ShopFloorVpdTask(task.FactoryTask):
 class factory_VPD(test.test):
     version = 5
 
-    def run_once(self):
+    def run_once(self, override_vpd=None):
         factory.log('%s run_once' % self.__class__)
         self.tasks = []
-        self.vpd = {'ro': {}, 'rw': {}}
+        self.vpd = override_vpd or {'ro': {}, 'rw': {}}
 
-        if shopfloor.is_enabled():
-            self.tasks += [ShopFloorVpdTask(self.vpd)]
-        else:
-            self.tasks += [serial_task.SerialNumberTask(self.vpd),
-                           region_task.SelectRegionTask(self.vpd)]
+        if not override_vpd:
+            if shopfloor.is_enabled():
+                self.tasks += [ShopFloorVpdTask(self.vpd)]
+            else:
+                self.tasks += [serial_task.SerialNumberTask(self.vpd),
+                               region_task.SelectRegionTask(self.vpd)]
         self.tasks += [WriteVpdTask(self.vpd)]
         task.run_factory_tasks(self.job, self.tasks)
 
