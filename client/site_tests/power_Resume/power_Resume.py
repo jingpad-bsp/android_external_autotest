@@ -12,9 +12,10 @@ import flimflam
 
 START_SUSPEND_MESSAGES = [ 'Freezing user space' ]
 END_SUSPEND_MESSAGES = [ 'Back to C!', 'Low-level resume complete',
-                         'Entering suspend state' ]
+                         'Entering suspend state', 'sleep: irq wakeup masks:' ]
 START_RESUME_MESSAGES = [ 'Back to C!', 'Low-level resume complete',
-                          'Suspended for', 'Resume caused by' ]
+                          'Suspended for', 'Resume caused by',
+                          'post sleep, preparing to return']
 END_RESUME_MESSAGES = [ 'Restarting tasks' ]
 
 class power_Resume(test.test):
