@@ -78,7 +78,11 @@ class ShopFloorVpdTask(task.FactoryTask):
 class factory_VPD(test.test):
     version = 5
 
-    def run_once(self, override_vpd=None):
+    SERIAL_TASK_NAME = 'serial'
+    REGION_TASK_NAME = 'region'
+
+    def run_once(self, override_vpd=None,
+                 task_list=[SERIAL_TASK_NAME, REGION_TASK_NAME]):
         factory.log('%s run_once' % self.__class__)
         self.tasks = []
         self.vpd = override_vpd or {'ro': {}, 'rw': {}}
@@ -87,8 +91,10 @@ class factory_VPD(test.test):
             if shopfloor.is_enabled():
                 self.tasks += [ShopFloorVpdTask(self.vpd)]
             else:
-                self.tasks += [serial_task.SerialNumberTask(self.vpd),
-                               region_task.SelectRegionTask(self.vpd)]
+                if self.SERIAL_TASK_NAME in task_list:
+                    self.tasks += [serial_task.SerialNumberTask(self.vpd)]
+                if self.REGION_TASK_NAME in task_list:
+                    self.tasks += [region_task.SelectRegionTask(self.vpd)]
         self.tasks += [WriteVpdTask(self.vpd)]
         task.run_factory_tasks(self.job, self.tasks)
 
