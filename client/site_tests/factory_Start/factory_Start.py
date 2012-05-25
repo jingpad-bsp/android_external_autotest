@@ -145,10 +145,8 @@ class ShopFloorTask(task.FactoryTask):
             # All exceptions
             shopfloor.check_serial_number(serial.strip())
             return True
-        except shopfloor.Fault as e:
-            logging.exception("ServerFault:")
-            raise ui.InputError("Server error:\n%s" %
-                             e.faultString.partition(':')[2])
+        except shopfloor.ServerFault as e:
+            raise ui.InputError("Server error:\n%s" % e)
         except ValueError as e:
             logging.exception("ValueError:")
             raise ui.InputError(e.message)
