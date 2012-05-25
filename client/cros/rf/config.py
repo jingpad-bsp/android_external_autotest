@@ -91,7 +91,7 @@ class PluggableConfig(object):
     def __init__(self, default_config):
         self.default_config = default_config
 
-    def Read(self, config_path=None, timeout=30):
+    def Read(self, config_path=None, timeout=30, event_log=None):
         '''
         Reads and returns the configuration.
 
@@ -115,12 +115,21 @@ class PluggableConfig(object):
                 sleep_interval=0.5,
                 desc='Configuration file %r' % config_path)
             factory.console.info('Read test configuration file %r', config_path)
+            digest = hashlib.md5(config_str).hexdigest(),
             logging.info('Configuration file %r: MD5=%s; contents="""%s"""',
-                         config_path,
-                         hashlib.md5(config_str).hexdigest(),
-                         config_str)
-            return eval(config_str)
+                         config_path, digest, config_str)
+            value = eval(config_str)
+            if event_log:
+                event_log.Log('config_file',
+                              md5=digest,
+                              config_path=config_path,
+                              config_str=config_str,
+                              value=value)
+            return value
         else:
             logging.info('Using default configuration %r', self.default_config)
+            if event_log:
+                event_log.Log('config_file',
+                              value=self.default_config)
             # Return a copy, just in case the caller changes it.
             return copy.deepcopy(self.default_config)

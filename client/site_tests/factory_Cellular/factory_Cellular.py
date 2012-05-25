@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib import error
 
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import leds
+from autotest_lib.client.cros.factory.event_log import EventLog
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import lan_scpi
 from autotest_lib.client.cros.rf import rf_utils
@@ -63,7 +64,8 @@ class factory_Cellular(test.test):
             self._run(ext_host, dev, config_path, use_rfio2_for_aux)
 
     def _run(self, ext_host, dev, config_path, use_rfio2_for_aux):
-        config = base_config.Read(config_path)
+        event_log = EventLog.ForAutoTest()
+        config = base_config.Read(config_path, event_log=event_log)
 
         # Kill off modem manager, which might be holding the device open.
         utils.system("stop modemmanager", ignore_status=True)
@@ -157,6 +159,8 @@ class factory_Cellular(test.test):
                         'Power for channel %s is %g, out of range (%g,%g)' %
                         (channel_id, power, min_power, max_power))
 
+            event_log.Log('cellular_tx_power',
+                          power_by_channel=tx_power_by_channel)
             logging.info("TX power: %s" % [
                     (k, tx_power_by_channel[k])
                     for k in sorted(tx_power_by_channel.keys())])
@@ -209,6 +213,8 @@ class factory_Cellular(test.test):
             logging.info("RX power: %s" % [
                     (k, rx_power_by_channel[k])
                     for k in sorted(rx_power_by_channel.keys())])
+            event_log.Log('cellular_rx_power',
+                          power_by_channel=rx_power_by_channel)
 
             if failures:
                 raise error.TestError('; '.join(failures))

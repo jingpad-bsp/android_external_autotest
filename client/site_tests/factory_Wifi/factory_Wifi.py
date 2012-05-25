@@ -13,6 +13,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory.event_log import EventLog
 from autotest_lib.client.cros.factory import leds
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import lan_scpi
@@ -94,7 +95,8 @@ class factory_Wifi(test.test):
                          ignore_status=True)
 
     def _run(self, n4010a_host, n4010a_port, config_path):
-        config = base_config.Read(config_path)
+        event_log = EventLog.ForAutoTest()
+        config = base_config.Read(config_path, event_log=event_log)
         n4010a = agilent_scpi.N4010ASCPI(n4010a_host, n4010a_port, timeout=5)
 
         logging.info("Tester ID: %s" % n4010a.id)
@@ -138,6 +140,10 @@ class factory_Wifi(test.test):
             if failures:
                 raise error.TestError('; '.join(failures))
         finally:
+            event_log.Log(
+                'wifi_power',
+                power_by_channel=dict((k, v.__dict__)
+                                      for k, v in power_by_channel.iteritems()))
             logging.info("Power: %s" % [
                     (k, power_by_channel[k])
                     for k in sorted(power_by_channel.keys())])
