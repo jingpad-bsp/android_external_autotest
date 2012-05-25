@@ -176,3 +176,26 @@ class _I2CControllerSC18IM700(I2CController):
         self._write(cmd)
         time.sleep(self.SEC_WAIT_I2C)
         return self._read()
+
+    def write_gpio(self, data):
+        self._write([ord('O'), data, ord('P')])
+
+    def read_gpio(self):
+        self._write([ord('I'), ord('P')])
+        time.sleep(self.SEC_WAIT_I2C)
+        return self._read()
+
+    def write_register(self, regs, datas):
+        assert len(regs) == len(datas)
+        cmd = [ord('W')]
+        for i in range(len(regs)):
+            cmd.append(regs[i])
+            cmd.append(datas[i])
+        cmd.append(ord('P'))
+        self._write(cmd)
+
+    def read_register(self, regs):
+        cmd = [ord('R')] + regs + [ord('P')]
+        self._write(cmd)
+        time.sleep(self.SEC_WAIT_I2C)
+        return self._read()
