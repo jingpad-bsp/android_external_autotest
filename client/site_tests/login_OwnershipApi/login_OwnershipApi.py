@@ -29,7 +29,7 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
         cryptohome.mount_vault(self._testuser, self._testpass, create=True)
         # to prime nssdb.
         self._tempdir = autotemp.tempdir(unique_id=self.__class__.__name__)
-        tmpname = self.__generate_temp_filename()
+        tmpname = self.__generate_temp_filename(constants.CRYPTOHOME_MOUNT_PT)
         utils.system_output(cros_ui.xcommand_as('HOME=%s %s %s' %
                                                 (constants.CRYPTOHOME_MOUNT_PT,
                                                  constants.KEYGEN,
@@ -40,8 +40,9 @@ class login_OwnershipApi(cros_ownership_test.OwnershipTest):
         cros_ui.start()
 
 
-    def __generate_temp_filename(self):
-        just_for_name = tempfile.NamedTemporaryFile(mode='w', delete=True)
+    def __generate_temp_filename(self, dir):
+        """Generate a guaranteed-unique filename in dir."""
+        just_for_name = tempfile.NamedTemporaryFile(dir=dir, delete=True)
         basename = just_for_name.name
         just_for_name.close()  # deletes file.
         return basename
