@@ -164,7 +164,7 @@ class ShopFloorTask(task.FactoryTask):
     def complete_serial_task(self, serial):
         serial = serial.strip()
         EventLog.ForAutoTest().Log('mlb_serial_number',
-                                   serial_number=serial_number)
+                                   serial_number=serial)
         factory.log('Serial number: %s' % serial)
         shopfloor.set_serial_number(serial)
         self.stop()
