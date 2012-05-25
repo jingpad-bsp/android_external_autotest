@@ -288,7 +288,7 @@
     ],
 
     "dev_server": {
-        "dev_host": "172.22.50.205",
+        "dev_host": "172.22.50.2",
         "path": "/home/chromeos-test/images",
         "user": "chromeos-test"
     },

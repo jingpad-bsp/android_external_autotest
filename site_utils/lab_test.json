@@ -1,7 +1,7 @@
 {
     "dev_server": {
-        "dev_host": "172.22.50.205",
-        "remote_host": "chromeos-devserver1.mtv.corp.google.com",
+        "dev_host": "172.22.50.2",
+        "remote_host": "chromeos-devserver2.cros.corp.google.com",
         "dir": "/home/chromeos-test/images",
         "user": "chromeos-labtest"
     },
