@@ -35,6 +35,7 @@ _LABEL_CONNECTED = 'Connected\n已連線\n'
 _LABEL_WAITING = 'Waiting for command\n等待指令中\n'
 _LABEL_AUDIOLOOP = 'Audio looping\n音源回放中\n'
 _LABEL_SPEAKER_MUTE_OFF = 'Speaker on\n喇叭開啟\n'
+_LABEL_DMIC_ON = 'Dmic on\nLCD mic開啟\n'
 _LABEL_PLAYTONE_LEFT = ('Playing tone to left channel\n'
                         '播音至左聲道\n')
 _LABEL_PLAYTONE_RIGHT = ('Playing tone to right channel\n'
@@ -52,8 +53,23 @@ _TEST_COMPLETE_RE = re.compile("(?i)test_complete")
 _RESULT_PASS_RE = re.compile("(?i)result_pass")
 _RESULT_FAIL_RE = re.compile("(?i)result_fail")
 
+# Common mixer settings for special audio configurations, board specific
+# settings should goes to each test list.
+_DMIC_SWITCH_MIXER_SETTINGS = []
+_INIT_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
+                         'value': 'on'},
+                        {'name': '"Headphone Playback Switch"',
+                         'value': 'on,on'},
+                        {'name': '"Headphone Playback Volume"',
+                         'value': '100,100'},
+                        {'name': '"Speaker Playback Volume"',
+                         'value': '100,100'}]
+_UNMUTE_SPEAKER_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
+                                   'value': 'off'}]
+
+
 class factory_AudioQuality(test.test):
-    version = 1
+    version = 2
 
     def handle_connection(self, conn, *args):
         '''
@@ -78,16 +94,18 @@ class factory_AudioQuality(test.test):
         '''
         Starts the internal audio loopback.
         '''
-        self._loop_process = subprocess.Popen(
-                [self._ah.sox_path, '-d', '-d'])
+        cmdargs = [self._ah.sox_path, '-t', 'alsa', self._input_dev, '-t',
+                'alsa', self._output_dev]
+        self._loop_process = subprocess.Popen(cmdargs, stderr=subprocess.PIPE)
 
     def play_tone(self):
         '''
         Plays a single tone.
         '''
-        cmdargs  = [self._ah.sox_path, '-t', 'null', '/dev/null', '-d', 'synth',
-                    '20.0', 'sine', '1000.0']
-        self._play_tone_process = subprocess.Popen(cmdargs)
+        cmdargs = [self._ah.sox_path, '-n', '-d', 'synth', '20.0', 'sine',
+                '1000.0']
+        self._play_tone_process = subprocess.Popen(cmdargs,
+                stderr=subprocess.PIPE)
 
     def restore_configuration(self):
         '''
@@ -95,11 +113,12 @@ class factory_AudioQuality(test.test):
         '''
         if hasattr(self, '_play_tone_process') and self._play_tone_process:
             self._play_tone_process.kill()
+            self._play_tone_process = None
         if hasattr(self, '_loop_process') and self._loop_process:
             self._loop_process.kill()
+            self._loop_process = None
             factory.log("Stopped audio loop process")
-        self.mute_headphone_left_right(False, False)
-        self.set_auto_mute(True)
+        self._ah.set_mixer_controls(_INIT_MIXER_SETTINGS)
 
     def handle_send_file(self, *args):
         conn = args[0]
@@ -143,22 +162,28 @@ class factory_AudioQuality(test.test):
         self._loop_status_label.set_text(_LABEL_AUDIOLOOP)
         self.start_loop()
 
+    def handle_loop_from_dmic(self, *args):
+        self.handle_loop()
+        self._loop_status_label.set_text(_LABEL_AUDIOLOOP +
+                _LABEL_DMIC_ON)
+        self._ah.set_mixer_controls(self._dmic_capture_mixer_settings)
+
     def handle_loop_speaker_unmute(self, *args):
         self.handle_loop()
         self._loop_status_label.set_text(_LABEL_AUDIOLOOP +
                 _LABEL_SPEAKER_MUTE_OFF)
-        self.set_auto_mute(False)
+        self.unmute_speaker()
 
     def handle_xtalk_left(self, *args):
         self.restore_configuration()
         self._loop_status_label.set_text(_LABEL_PLAYTONE_LEFT)
-        self.mute_headphone_left_right(False, True)
+        self.headphone_playback_switch(False, True)
         self.play_tone()
 
     def handle_xtalk_right(self, *args):
         self.restore_configuration()
         self._loop_status_label.set_text(_LABEL_PLAYTONE_RIGHT)
-        self.mute_headphone_left_right(True, False)
+        self.headphone_playback_switch(True, False)
         self.play_tone()
 
     def listen(self, sock, *args):
@@ -181,32 +206,30 @@ class factory_AudioQuality(test.test):
         factory.log("Listening at port %d" % _PORT)
         gobject.io_add_watch(sock, gobject.IO_IN, self.listen)
 
-    def mute_headphone_left_right(self, left=False, right=False):
+    def headphone_playback_switch(self, left=False, right=False):
         '''
-        Mutes specified headphone channels.
+        Sets headphone playback switch values.
+
+        Args:
+            left: true to set left channel on.
+            right: true to set right channel on.
         '''
-        left_vol = 100 if left else 0
-        right_vol = 100 if right else 0
-        mixer_settings = [{'name': "'Headphone Playback Volume'",
-                          'value': ('%d%%,%d%%' % (left_vol, right_vol))}]
+        left_switch = 'on' if left else 'off'
+        right_switch = 'on' if right else 'off'
+        mixer_settings = [{'name': "'Headphone Playback Switch'",
+                           'value': ('%s,%s' % (left_switch, right_switch))}]
         self._ah.set_mixer_controls(mixer_settings)
 
-    def set_auto_mute(self, enable=True):
-        '''
-        Sets the auto-mute mode. When auto-mute is enabled, the speaker will be
-        muted automatically when an external mic detected.
-        '''
-        mixer_settings = [{'name': "'Auto-Mute Mode'",
-                           'value': ('Enabled' if enable else 'Disabled')}]
-        self._ah.set_mixer_controls(mixer_settings)
+    def unmute_speaker(self):
+        self._ah.set_mixer_controls(self._unmute_speaker_mixer_settings)
 
     def on_test_complete(self):
         '''
         Restores the original state before exiting the test.
         '''
         os.system('iptables -D INPUT -p tcp --dport %s -j ACCEPT' % _PORT)
-        os.system('ifconfig eth0 down')
-        os.system('ifconfig eth0 up')
+        os.system('ifconfig %s down' % self._eth)
+        os.system('ifconfig %s up' % self._eth)
         self.restore_configuration()
         self._ah.cleanup_deps(['sox'])
 
@@ -220,7 +243,7 @@ class factory_AudioQuality(test.test):
         window.connect('key-release-event', self.key_release_callback)
 
     def check_eth_state(self):
-        path = '/sys/class/net/eth0/carrier'
+        path = '/sys/class/net/%s/carrier' % self._eth
         output = None
         try:
             if os.path.exists(path):
@@ -231,20 +254,32 @@ class factory_AudioQuality(test.test):
             else:
                 return False
 
-    def run_once(self, audio_sample_path=None, audio_init_volume=None):
+    def run_once(self, input_dev='hw:0,0', output_dev='hw:0,0', eth='eth0',
+            dmic_switch_mixer_settings=_DMIC_SWITCH_MIXER_SETTINGS,
+            init_mixer_settings=_INIT_MIXER_SETTINGS,
+            unmute_speaker_mixer_settings=_UNMUTE_SPEAKER_MIXER_SETTINGS):
         factory.log('%s run_once' % self.__class__)
 
-        self._ah = audio_helper.AudioHelper(self)
+        self._ah = audio_helper.AudioHelper(self, input_device=input_dev)
         self._ah.setup_deps(['sox'])
         self._detail_log = ''
+        self._input_dev = input_dev
+        self._output_dev = output_dev
+        self._eth = eth
 
-        factory.log('Checking eth0 state....')
+        # Mixer settings for different configurations.
+        self._init_mixer_settings = init_mixer_settings
+        self._unmute_speaker_mixer_settings = unmute_speaker_mixer_settings
+        self._dmic_switch_mixer_settings = dmic_switch_mixer_settings
+
+        factory.log('Checking %s state....' % self._eth)
         utils.poll_for_condition(self.check_eth_state,
-                                 timeout=30, desc='Checking eth0')
-        factory.log('Checking eth0 done!')
+                                 timeout=30, desc='Checking %s' % self._eth)
+        factory.log('Checking %s done!' % eth)
 
         # Configure local network environment to accept command from test host.
-        os.system('ifconfig eth0 %s netmask 255.255.255.0 up' % _LOCAL_IP)
+        os.system('ifconfig %s %s netmask 255.255.255.0 up' %
+                (self._eth, _LOCAL_IP))
         os.system('iptables -A INPUT -p tcp --dport %s -j ACCEPT' % _PORT)
 
         # Register commands to corresponding handlers.
@@ -254,7 +289,7 @@ class factory_AudioQuality(test.test):
         self._handlers[_RESULT_FAIL_RE] = self.handle_result_fail
         self._handlers[_TEST_COMPLETE_RE] = self.handle_test_complete
         self._handlers[_LOOP_0_RE] = self.handle_loop_none
-        self._handlers[_LOOP_1_RE] = self.handle_loop
+        self._handlers[_LOOP_1_RE] = self.handle_loop_from_dmic
         self._handlers[_LOOP_2_RE] = self.handle_loop_speaker_unmute
         self._handlers[_LOOP_3_RE] = self.handle_loop
         self._handlers[_XTALK_L_RE] = self.handle_xtalk_left
