@@ -13,19 +13,22 @@ import threading
 import time
 import traceback
 
-from autotest_lib.server import autotest, hosts, subcommand
-from autotest_lib.server import site_bsd_router
-from autotest_lib.server import site_cisco_router
-from autotest_lib.server import site_linux_router
-from autotest_lib.server import site_linux_bridge_router
-from autotest_lib.server import site_linux_vm_router
-from autotest_lib.server import site_linux_server
-from autotest_lib.server import site_host_attributes
-from autotest_lib.server import site_host_route
-from autotest_lib.server import site_eap_certs
-from autotest_lib.server import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.server import autotest
+from autotest_lib.server import hosts
+from autotest_lib.server import site_bsd_router
+from autotest_lib.server import site_cisco_router
+from autotest_lib.server import site_eap_certs
+from autotest_lib.server import site_host_attributes
+from autotest_lib.server import site_host_route
+from autotest_lib.server import site_linux_bridge_router
+from autotest_lib.server import site_linux_router
+from autotest_lib.server import site_linux_server
+from autotest_lib.server import site_linux_system
+from autotest_lib.server import site_linux_vm_router
+from autotest_lib.server import subcommand
+from autotest_lib.server import test
 
 class NotImplemented(Exception):
     def __init__(self, what):
@@ -94,9 +97,12 @@ class WiFiTest(object):
     _result_expect_success = 2
     _result_dont_care = 3
 
-    def __init__(self, name, steps, config):
+    _capability_5ghz = "5ghz"
+
+    def __init__(self, name, steps, requirements, config):
         self.name = name
         self.steps = steps
+        self.test_requirements = (requirements + self.__get_step_requirements())
         self.perf_keyvals = {}
 
         self.cur_frequency = None
@@ -242,6 +248,8 @@ class WiFiTest(object):
         self.profile_create(self.test_profile)
         self.profile_push(self.test_profile)
 
+        self.client_capabilities = self.__get_client_capabilities()
+
 
     def cleanup(self, params):
         """ Cleanup state: disconnect client and destroy ap """
@@ -337,6 +345,35 @@ class WiFiTest(object):
         return re.sub('[^a-zA-Z0-9_]', '_', "%s_%s" % (self.name, ipaddr))
 
 
+    def __get_client_capabilities(self):
+        caps = []
+
+        # Find out if this device supports 5GHz
+        system = site_linux_system.LinuxSystem(self.client, {}, '')
+        if [freq for freq in system.phy_for_frequency.keys() if freq > 5000]:
+            caps.append(WiFiTest._capability_5ghz)
+        logging.info("Client system capabilities: %s" % repr(caps))
+        return caps
+
+
+    def __get_step_requirements(self):
+        # This finds out what additional requirements are implicit based on
+        # the steps outlined in the test description.
+        reqs = []
+        for step in self.steps:
+            if len(step) < 2 or step[1].__class__ != dict:
+                continue
+            method = step[0]
+            params = step[1]
+            if method != 'config' or 'channel' not in params:
+                continue
+            if int(params['channel']) > 5000:
+                reqs.append(WiFiTest._capability_5ghz)
+                break
+        logging.info("Step requirements: %s" % repr(reqs))
+        return reqs
+
+
     def __add_hook(self, hook, fn):
         if hook not in self.command_hooks:
             self.command_hooks[hook] = []
@@ -375,6 +412,13 @@ class WiFiTest(object):
           - '~': We don't care whether the operation succeeds or fails; this
             is especially useful during cleanup (e.g., deleting profiles).
         """
+        for requirement in self.test_requirements:
+            if not requirement in self.client_capabilities:
+                logging.info("%s: SKIP: "
+                             "client is missing required capability: %s",
+                             self.name, requirement)
+                return
+
         for step_number, s in enumerate(self.steps):
             method = s[0]
             if method[0] == '!':
@@ -2081,7 +2125,8 @@ class test(test.test):
       if 'skip_test' in testcase and 'no_skip' not in config['run_options']:
         logging.info("%s: SKIP: %s", name, testcase['skip_test'])
       else:
-        wt = WiFiTest(name, testcase['steps'], config)
+        wt = WiFiTest(name, testcase['steps'], testcase.get('requires', []),
+                      config)
         wt.run()
         wt.write_keyvals(self)
     except error.TestFail:
