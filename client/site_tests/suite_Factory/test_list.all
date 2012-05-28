@@ -208,7 +208,10 @@ TEST_LIST = [
         label_zh='SD 讀卡機',
         autotest_name='factory_RemovableStorage',
         dargs={'media': 'SD',
-               'num_blocks_to_test': 3,
+               'block_size': 512 * 1024,       # 512KB block size
+               'random_block_count': 3,        # Randomly r/w 3 blocks
+               'perform_sequential_test': True,
+               'sequential_block_count': 8,    # Sequentially r/w 8 blocks
                'perform_locktest': True}),
 
     # Required tests (mandatory): ----------------------------------------------

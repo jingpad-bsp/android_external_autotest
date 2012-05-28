@@ -19,6 +19,7 @@ import pango
 import pyudev
 import pyudev.glib
 import random
+import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -28,8 +29,8 @@ from autotest_lib.client.cros.factory import task
 from autotest_lib.client.cros.factory import ui
 
 
-_STATE_WAIT_INSERT = 1
-_STATE_WAIT_REMOVE = 2
+_STATE_RW_TEST_WAIT_INSERT = 1
+_STATE_RW_TEST_WAIT_REMOVE = 2
 _STATE_LOCKTEST_WAIT_INSERT = 3
 _STATE_LOCKTEST_WAIT_REMOVE = 4
 
@@ -48,13 +49,18 @@ _USB_CARD_DESCS     = ['card', 'reader']
 # We don't want to upset kernel by changing the partition table.
 # Skip the first 34 and the last 33 512-byte blocks when doing
 # read/write tests.
+_SECTOR_SIZE = 512
 _SKIP_HEAD_BLOCK = 34
 _SKIP_TAIL_BLOCK = 33
 
-_INSERT_FMT_STR = lambda t: (
-    '\n'.join(['insert %s drive...' % t,
+# Read/Write test modes
+_RW_TEST_MODE_RANDOM = 1
+_RW_TEST_MODE_SEQUENTIAL = 2
+
+_RW_TEST_INSERT_FMT_STR = lambda t: (
+    '\n'.join(['insert %s drive for read/write test...' % t,
                'WARNING: DATA ON INSERTED MEDIA WILL BE LOST!\n',
-               '插入%s存儲...' % t,
+               '插入%s存儲以進行讀寫測試...' % t,
                '注意: 插入裝置上的資料將會被清除!',
                ]))
 _REMOVE_FMT_STR = lambda t: 'remove %s drive...\n提取%s存儲...' % (t, t)
@@ -69,8 +75,9 @@ _ERR_TOO_EARLY_REMOVE_FMT_STR = \
         lambda t: \
             'Device removed too early (%s).\n' \
             '太早移除外部儲存裝置 (%s).\n' % (t, t)
-_ERR_TEST_FAILED_FMT_STR = \
-        lambda target_dev: 'IO error while running test on %s.\n' % target_dev
+_ERR_TEST_FAILED_FMT_STR = lambda test_name, target_dev: (
+            'IO error while running %s test on %s.\n' %
+            (test_name, target_dev))
 _ERR_LOCKTEST_FAILED_FMT_STR = \
         lambda target_dev: 'Locktest failed on %s.\n' % target_dev
 _ERR_DEVICE_READ_ONLY_STR = \
@@ -165,85 +172,145 @@ class factory_RemovableStorage(test.test):
         dev_size = self.get_device_size(dev_path)
         dev_fd = None
         ok = True
+        total_time_read = 0.0
+        total_time_write = 0.0
 
-        blocks = dev_size / 512
+        mode = [_RW_TEST_MODE_RANDOM]
+        if self._has_sequential_test is True:
+            mode.append(_RW_TEST_MODE_SEQUENTIAL)
 
-        factory.log('Performing r/w test on %d random blocks' %
-                    self._num_blocks_to_test)
+        for m in mode:
+            if m == _RW_TEST_MODE_RANDOM:
+                # Read/Write one block each time
+                bytes_to_operate = self._block_size
+                loop = self._random_block_count
+                factory.log('Performing r/w test on %d %d-byte random blocks' %
+                            (loop, self._block_size))
+            elif m == _RW_TEST_MODE_SEQUENTIAL:
+                # Converts block counts into bytes
+                bytes_to_operate = (self._sequential_block_count *
+                                    self._block_size)
+                loop = 1
+                factory.log('Performing sequential r/w test of %d bytes' %
+                            bytes_to_operate)
 
-        try:
-            dev_fd = os.open(dev_path, os.O_RDWR)
-        except Exception as e:
-            ok = False
-            factory.log('Unable to open %s : %s' % (dev_path, e))
-
-        if dev_fd is not None:
-            # Determine the range in which the random block is selected
-            rnd_head = _SKIP_HEAD_BLOCK
-            rnd_tail = blocks - _SKIP_TAIL_BLOCK - 1
-
-            # The following try...except section is for system that does not
-            # have large file support enabled for Python. This is typically
-            # observed on 32-bit machines. In some 32-bit machines, doing
-            # seek() with an offset larger than 0x7FFFFFFF (which is the
-            # largest possible value of singned int) will cause OverflowError,
-            # due to failed conversion from long int to int.
             try:
-                # Test whether large file support is enabled or not.
-                os.lseek(dev_fd, 0x7FFFFFFF + 1, os.SEEK_SET)
-            except OverflowError:
-                # The system does not have large file support, so we restrict
-                # the range in which we perform the random r/w test.
-                rnd_tail = min(rnd_tail, int(0x7FFFFFFF / 512) - 1)
-                factory.log('No large file support')
+                dev_fd = os.open(dev_path, os.O_RDWR)
+            except Exception as e:
+                ok = False
+                factory.log('Unable to open %s : %s' % (dev_path, e))
 
-            random.seed()
-            for x in xrange(self._num_blocks_to_test):
-                # Read one random 512-byte block.
-                rnd_block = random.randint(rnd_head, rnd_tail)
-                offset = rnd_block * 512
+            if dev_fd is not None:
+                blocks = dev_size / _SECTOR_SIZE
+                # Determine the range in which the random block is selected
+                random_head = _SKIP_HEAD_BLOCK
+                random_tail = (blocks -
+                            _SKIP_TAIL_BLOCK -
+                            int(bytes_to_operate / _SECTOR_SIZE))
 
+                # The following try...except section is for system that does
+                # not have large file support enabled for Python. This is
+                # typically observed on 32-bit machines. In some 32-bit
+                # machines, doing seek() with an offset larger than 0x7FFFFFFF
+                # (which is the largest possible value of singned int) will
+                # cause OverflowError, due to failed conversion from long int
+                # to int.
                 try:
-                    os.lseek(dev_fd, offset, os.SEEK_SET)
-                    in_block = os.read(dev_fd, 512)
-                except Exception as e:
-                    factory.log('Failed to read block')
-                    ok = False
-                    break
+                    # Test whether large file support is enabled or not.
+                    os.lseek(dev_fd, 0x7FFFFFFF + 1, os.SEEK_SET)
+                except OverflowError:
+                    # The system does not have large file support, so we
+                    # restrict the range in which we perform the random r/w
+                    # test.
+                    random_tail = min(
+                                random_tail,
+                                int(0x7FFFFFFF / _SECTOR_SIZE) -
+                                int(bytes_to_operate / _SECTOR_SIZE))
+                    factory.log('No large file support')
 
-                # Modify the first byte and write the whole block back.
-                out_block = chr(ord(in_block[0]) ^ 0xff) + in_block[1:]
-                try:
+                if random_tail < random_head:
+                    raise Exception('Block size too large for r/w test')
+
+                random.seed()
+                for x in xrange(loop):
+                    # Select one random block as starting point.
+                    random_block = random.randint(random_head, random_tail)
+                    offset = random_block * _SECTOR_SIZE
+
+                    try:
+                        os.lseek(dev_fd, offset, os.SEEK_SET)
+                        read_start = time.time()
+                        in_block = os.read(dev_fd, bytes_to_operate)
+                        read_finish = time.time()
+                    except Exception as e:
+                        factory.log('Failed to read block %s' % e)
+                        ok = False
+                        break
+
+                    if m == _RW_TEST_MODE_RANDOM:
+                        # Modify the first byte and write the whole block back.
+                        out_block = chr(ord(in_block[0]) ^ 0xff) + in_block[1:]
+                    elif m == _RW_TEST_MODE_SEQUENTIAL:
+                        out_block = chr(0x00) * bytes_to_operate
+                    try:
+                        os.lseek(dev_fd, offset, os.SEEK_SET)
+                        write_start = time.time()
+                        os.write(dev_fd, out_block)
+                        os.fsync(dev_fd)
+                        write_finish = time.time()
+                    except Exception as e:
+                        factory.log('Failed to write block %s' % e)
+                        ok = False
+                        break
+
+                    # Check if the block was actually written, and restore the
+                    # original content of the block.
                     os.lseek(dev_fd, offset, os.SEEK_SET)
-                    os.write(dev_fd, out_block)
+                    b = os.read(dev_fd, bytes_to_operate)
+                    if b != out_block:
+                        factory.log('Failed to write block')
+                        ok = False
+                        break
+                    os.lseek(dev_fd, offset, os.SEEK_SET)
+                    os.write(dev_fd, in_block)
                     os.fsync(dev_fd)
-                except Exception as e:
-                    factory.log('Failed to write block')
-                    ok = False
-                    break
 
-                # Check if the block was actually written, and restore the
-                # original content of the block.
-                os.lseek(dev_fd, offset, os.SEEK_SET)
-                b = os.read(dev_fd, 512)
-                if b != out_block:
-                    factory.log('Failed to write block')
-                    ok = False
-                    break
-                os.lseek(dev_fd, offset, os.SEEK_SET)
-                os.write(dev_fd, in_block)
-                os.fsync(dev_fd)
+                    total_time_read += read_finish - read_start
+                    total_time_write += write_finish - write_start
 
-            # Make sure we close() the device file so later tests won't fail.
-            os.close(dev_fd)
+                # Make sure we close() the device file so later tests won't
+                # fail.
+                os.close(dev_fd)
 
-        if ok is False:
-            if self.get_device_ro(dev_path) is True:
-                factory.log('Is write protection on?')
-                self._error += _ERR_DEVICE_READ_ONLY_STR(dev_path)
-            self._error += _ERR_TEST_FAILED_FMT_STR(self._target_device)
+            if ok is False:
+                if self.get_device_ro(dev_path) is True:
+                    factory.log('Is write protection on?')
+                    self._error += _ERR_DEVICE_READ_ONLY_STR(dev_path)
+                test_name = ''
+                if m == _RW_TEST_MODE_RANDOM:
+                    test_name = 'random r/w'
+                elif m == _RW_TEST_MODE_SEQUENTIAL:
+                    test_name = 'sequential r/w'
+                self._error += _ERR_TEST_FAILED_FMT_STR(test_name,
+                                                        self._target_device)
+            else:
+                if m == _RW_TEST_MODE_RANDOM:
+                    factory.log('random_read_speed: %.3f MB/s' %
+                        ((self._block_size * loop) / total_time_read /
+                            1000 / 1000))
+                    factory.log('random_write_speed: %.3f MB/s' %
+                        ((self._block_size * loop) / total_time_write /
+                            1000 / 1000))
+                elif m == _RW_TEST_MODE_SEQUENTIAL:
+                    factory.log('sequential_read_speed: %.3f MB/s' %
+                                    (bytes_to_operate / total_time_read /
+                                        1000 / 1000))
+                    factory.log('sequential_write_speed: %.3f MB/s' %
+                                    (bytes_to_operate / total_time_write /
+                                        1000 / 1000))
+
         self._prompt.set_text(_REMOVE_FMT_STR(self._media))
-        self._state = _STATE_WAIT_REMOVE
+        self._state = _STATE_RW_TEST_WAIT_REMOVE
         self._image = self.removal_image
         self._pictogram.queue_draw()
 
@@ -265,7 +332,7 @@ class factory_RemovableStorage(test.test):
 
     def udev_event_cb(self, action, device):
         if action == _UDEV_ACTION_INSERT:
-            if self._state == _STATE_WAIT_INSERT:
+            if self._state == _STATE_RW_TEST_WAIT_INSERT:
                 if self._vidpid is None:
                     if self._media != self.get_device_type(device):
                         return True
@@ -278,7 +345,7 @@ class factory_RemovableStorage(test.test):
                         (self._media, device.device_node))
                 self._target_device = device.device_node
                 self.test_read_write()
-            if self._state == _STATE_LOCKTEST_WAIT_INSERT:
+            elif self._state == _STATE_LOCKTEST_WAIT_INSERT:
                 factory.log('%s device inserted : %s' %
                         (self._media, device.device_node))
                 if self._target_device == device.device_node:
@@ -286,7 +353,7 @@ class factory_RemovableStorage(test.test):
         elif action == _UDEV_ACTION_REMOVE:
             if self._target_device == device.device_node:
                 factory.log('Device removed : %s' % device.device_node)
-                if self._state == _STATE_WAIT_REMOVE:
+                if self._state == _STATE_RW_TEST_WAIT_REMOVE:
                     if self._has_locktest:
                         self._prompt.set_text(
                             _LOCKTEST_INSERT_FMT_STR(self._media))
@@ -298,7 +365,7 @@ class factory_RemovableStorage(test.test):
                 elif self._state == _STATE_LOCKTEST_WAIT_REMOVE:
                     gtk.main_quit()
                 else:
-                    self._error += _ERR_TOO_EARLY_REMOVE_FMT_STR(
+                    self._error += _ERR_TOO_EARLY_REMOVE_RND_TEST_FMT_STR(
                             self._target_device)
                     factory.log('Device %s removed too early' %
                             self._target_device)
@@ -308,7 +375,10 @@ class factory_RemovableStorage(test.test):
     def run_once(self,
                  media=None,
                  vidpid=None,
-                 num_blocks_to_test=3,
+                 block_size=1024, # in bytes
+                 random_block_count=3, # Number of blocks for random test
+                 perform_sequential_test=False,
+                 sequential_block_count=1024, # Number of blocks for seq. test
                  perform_locktest=False):
 
         factory.log('%s run_once' % self.__class__)
@@ -327,7 +397,11 @@ class factory_RemovableStorage(test.test):
         else:
             self._vidpid = vidpid
 
-        self._num_blocks_to_test = num_blocks_to_test
+        self._block_size = block_size
+        self._random_block_count = random_block_count
+        self._has_sequential_test = perform_sequential_test
+        self._sequential_block_count = sequential_block_count
+
         factory.log('media = %s' % media)
 
         self.insertion_image = cairo.ImageSurface.create_from_png(
@@ -357,8 +431,8 @@ class factory_RemovableStorage(test.test):
         label.modify_fg(gtk.STATE_NORMAL, gtk.gdk.color_parse('light green'))
         self._prompt = label
 
-        self._prompt.set_text(_INSERT_FMT_STR(self._media))
-        self._state = _STATE_WAIT_INSERT
+        self._prompt.set_text(_RW_TEST_INSERT_FMT_STR(self._media))
+        self._state = _STATE_RW_TEST_WAIT_INSERT
         self._image = self.insertion_image
         context = pyudev.Context()
         monitor = pyudev.Monitor.from_netlink(context)
