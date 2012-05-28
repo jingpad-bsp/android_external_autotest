@@ -7,14 +7,16 @@
 
 # DESCRIPTION :
 #
-# Basic stress (CPU, memory, ...) factory test.
+# Stress test on CPU, memory, and graphics. Also checks battery charging status.
 
 
 import datetime
 import gobject
 import gtk
 import logging
+import os
 import re
+import subprocess
 import thread
 import time
 
@@ -25,7 +27,7 @@ from autotest_lib.client.cros.factory import ui
 from autotest_lib.client.cros.factory.event_log import EventLog
 
 
-_MESSAGE_PROMPT = 'Basic Stress Test'
+_MESSAGE_PROMPT = 'Stress Test'
 _MESSAGE_STARTING = '... Starting Test ...'
 _MESSAGE_TIMER = 'Started / 已執行時間: '
 _MESSAGE_COUNTDOWN = 'ETA / 剩餘時間: '
@@ -64,8 +66,32 @@ class ECControl(object):
             return -1
 
 
+class BatteryInfo(object):
+    BATTERY_INFO_PATH = '/sys/class/power_supply/BAT0'
+
+    def get_value(self, key):
+        try:
+            with open(os.path.join(self.BATTERY_INFO_PATH, key), 'r') as f:
+                return f.read().strip()
+        except Exception:
+            logging.warn('Unable to read battery value for %s.', key)
+            return -1
+
+    def get_status(self):
+        return self.get_value('status')
+
+    def get_charge_full(self):
+        return int(self.get_value('charge_full_design'))
+
+    def get_charge_now(self):
+        return int(self.get_value('charge_now'))
+
+    def get_voltage_now(self):
+        return int(self.get_value('voltage_now'))
+
+
 class factory_StressTest(test.test):
-    version = 1
+    version = 2
 
     def thread_SAT(self, seconds):
         try:
@@ -75,10 +101,50 @@ class factory_StressTest(test.test):
             if not result:
                 raise error.TestError('Failed running hardware_SAT')
         finally:
-            self._complete = True
+            self._sat_complete = True
+
+    def thread_Load(self, seconds):
+        try:
+            with open('/dev/null', 'w') as null:
+                p = subprocess.Popen(('cat', '/dev/urandom'), stdout=null)
+                if p.returncode is not None:
+                    raise error.TestError('Failed to start load test')
+                time.sleep(seconds)
+                p.kill()
+        finally:
+            self._load_complete = True
+
+    def thread_Battery(self, seconds):
+        try:
+            battery = BatteryInfo()
+            charge_full = battery.get_charge_full()
+            charge_begin = battery.get_charge_now()
+            if (charge_begin < charge_full and
+                battery.get_status() != 'Charging'):
+                raise error.TestError('Battery not charging')
+            time.sleep(seconds)
+            charge_end = battery.get_charge_now()
+            if charge_end < charge_full and charge_end < charge_begin:
+                raise error.TestError('Battery not charged')
+        finally:
+            self._battery_complete = True
+
+    def thread_Graphics(self, times):
+        count = 0
+        try:
+            while count < times:
+                time.sleep(2)
+                count += 1
+                result = self.job.run_test('graphics_GLMark2',
+                                           subdir_tag=str(count))
+                if not result:
+                    raise error.TestError('Failed running graphics_GLMark2')
+        finally:
+            self._graphics_complete = True
 
     def timer_event(self, timer_label, countdown_label, load_label):
-        if self._complete:
+        if all((self._sat_complete, self._load_complete,
+                self._graphics_complete, self._battery_complete)):
             with ui.gtk_lock:
                 gtk.main_quit()
             return True
@@ -109,14 +175,16 @@ class factory_StressTest(test.test):
             load_label.modify_fg(gtk.STATE_NORMAL, ui.RED)
         return True
 
-    def log_system_status(self, ectool, num_temp_sensor):
+    def log_system_status(self, ectool, num_temp_sensor, battery):
         fan_speed = ectool.get_fanspeed()
         temperatures = [ectool.get_temperature(i)
                         for i in xrange(num_temp_sensor)]
+        battery_info = [battery.get_charge_now(), battery.get_voltage_now()]
 
         self._event_log.Log('sensor_measurement',
                             fan_speed=fan_speed,
-                            temperatures=temperatures)
+                            temperatures=temperatures,
+                            battery_info=battery_info)
 
         factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
             datetime.datetime.now().isoformat(),
@@ -126,20 +194,39 @@ class factory_StressTest(test.test):
                 datetime.datetime.now().isoformat(),
                 'Temp%d' % i,
                 temperatures[i]))
+        factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
+            datetime.datetime.now().isoformat(),
+            'Battery charge_now', battery_info[0]))
+        factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
+            datetime.datetime.now().isoformat(),
+            'Battery voltage_now', battery_info[1]))
 
-    def monitor_event(self, ectool, num_temp_sensor):
-        self.log_system_status(ectool, num_temp_sensor)
+    def monitor_event(self, ectool, num_temp_sensor, battery):
+        self.log_system_status(ectool, num_temp_sensor, battery)
         return True
 
     def run_once(self,
-                 sat_seconds=60,
+                 sat_seconds=None,
+                 sat_only=False,
+                 runin_seconds=60,
+                 graphics_test_times=1,
                  monitor_interval=None,
                  num_temp_sensor=1):
         factory.log('%s run_once' % self.__class__)
-        self._complete = False
+        # sat_seconds is deprecated, please use runin_seconds.
+        # However, if sat_seconds is specified, the test list might want the
+        # original sat behavior and not ready to run graphics/battery tests.
+        if sat_seconds is not None:
+            runin_seconds = sat_seconds
+            sat_only = True
+        self._sat_complete = False
+        self._load_complete = False
+        self._battery_complete = False
+        self._graphics_complete = False
+
         # Add 3 seconds leading time (for autotest / process to start).
         self._start_time = time.time() + 3
-        self._end_time = self._start_time + sat_seconds + 1
+        self._end_time = self._start_time + runin_seconds + 1
 
         gtk.gdk.threads_init()
         vbox = gtk.VBox()
@@ -150,20 +237,42 @@ class factory_StressTest(test.test):
         load_label = ui.make_label(_MESSAGE_STARTING, fg=ui.BLUE)
         gobject.timeout_add(1000, self.timer_event, timer_label,
                             countdown_label, load_label)
+
         if monitor_interval:
             ectool = ECControl()
+            battery = BatteryInfo()
             self._event_log = EventLog.ForAutoTest()
-            self.log_system_status(ectool, num_temp_sensor)
+            self.log_system_status(ectool, num_temp_sensor, battery)
             gobject.timeout_add(1000 * monitor_interval,
                                 self.monitor_event,
                                 ectool,
-                                num_temp_sensor)
+                                num_temp_sensor,
+                                battery)
+
         vbox.add(ui.make_label(_MESSAGE_PROMPT, font=ui.LABEL_LARGE_FONT))
         vbox.pack_start(timer_widget, padding=10)
         vbox.pack_start(load_label, padding=20)
         vbox.pack_start(countdown_widget, padding=10)
 
-        thread.start_new_thread(self.thread_SAT, (sat_seconds, ))
+        if sat_only:
+            thread.start_new_thread(self.thread_SAT, (runin_seconds,))
+            self._load_complete = True
+            self._battery_complete = True
+            self._graphics_complete = True
+        else:
+            if runin_seconds > 0:
+                thread.start_new_thread(self.thread_SAT, (runin_seconds,))
+                thread.start_new_thread(self.thread_Load, (runin_seconds,))
+                thread.start_new_thread(self.thread_Battery, (runin_seconds,))
+            else:
+                self._sat_complete = True
+                self._load_complete = True
+                self._battery_complete = True
+            if graphics_test_times > 0:
+                thread.start_new_thread(self.thread_Graphics,
+                                        (graphics_test_times,))
+            else:
+                self._graphics_complete = True
         ui.run_test_widget(self.job, vbox)
 
         factory.log('%s run_once finished' % self.__class__)
