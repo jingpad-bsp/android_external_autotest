@@ -115,9 +115,10 @@ class power_Consumption(cros_ui_test.UITest):
         self._do_xset()
 
         # Local data and web server settings
-        self._data_sub_dir = 'test_data'
-        self._data_dir = os.path.join(self.bindir, self._data_sub_dir)
-        os.mkdir(self._data_dir)
+        self._static_sub_dir = 'static_sites'
+        utils.extract_tarball_to_dir(
+                'static_sites.tar.gz',
+                os.path.join(self.bindir, self._static_sub_dir))
         self._media_dir = '/home/chronos/user/Downloads/'
         self._httpd_port = 8000
         self._url_base = 'http://localhost:%s/' % self._httpd_port
@@ -158,50 +159,15 @@ class power_Consumption(cros_ui_test.UITest):
         This is also used as payload for download test.
         """
 
-        # TODO (kamrik) find a better place for those files
-        repo = 'http://www.corp.google.com/~kamrik/power/files/'
-        repo2 = 'http://tskir-html5.kir.corp.google.com/testmatrix/mediaFiles/'
-
+        repo = 'http://public-test-data.googlecode.com/files/'
         file_list = [
-            repo + 'video/big_buck_bunny_trailer_400p.ogg',
-            repo + 'video/big_buck_bunny_trailer_1080p.ogg',
-            repo + 'audio/Greensleeves.ogg',
-            repo2 + 'sync/sync0.mp4',
-            repo2 + 'buck/buck0.mp4',
-            repo2 + 'birds/birds0.mp4',
-            repo2 + 'sync/sync0.ogv',
-            repo2 + 'buck/buck0.ogv',
-            repo2 + 'birds/birds0.ogv']
+            repo + 'big_buck_bunny_trailer_400p.ogg',
+            repo + 'big_buck_bunny_trailer_1080p.ogg',
+            repo + 'Greensleeves.ogg',]
 
         for url in file_list:
             logging.info('Downloading %s', url)
             utils.unmap_url('', url, self._media_dir)
-
-
-    def _download_tarballs(self):
-        """Download web pages to be served locally."""
-
-        repo = 'http://www.corp.google.com/~kamrik/power/files/'
-        tarballs_list = [('balls', repo + 'static/balls.tar.gz'),
-                         ('static_sites', repo + 'static/static_sites.tar.gz')
-                        ]
-
-        for (subdir, url) in tarballs_list:
-            logging.info('Downloading tarball %s', url)
-            tarball = utils.unmap_url('', url, self._data_dir)
-
-            # NOTE: extract_tarball_to_dir removes the target dir
-            # before extracting
-            utils.extract_tarball_to_dir(
-                tarball,
-                os.path.join(self._data_dir, subdir))
-
-
-    def _append_tab(self, url='about:blank'):
-        """This is to hide the ugliness of using ._pyauto_module.GURL.
-        See crosbug.com/30562
-        """
-        self.pyauto.AppendTab(self._pyauto_module.GURL(url))
 
 
     def _toggle_fullscreen(self, expected = None):
@@ -341,7 +307,7 @@ class power_Consumption(cros_ui_test.UITest):
         time.sleep(self._stabilization_seconds / 2.)
         tab_title = self.pyauto.GetActiveTabTitle()
         logging.info('App name: %s Tab title: %s.', name, tab_title)
-        self._append_tab()
+        self.pyauto.AppendTab('about:blank')
         self._run_sleep(name, duration)
         self.pyauto.GetBrowserWindow(0).GetTab(1).Close()
 
@@ -355,9 +321,7 @@ class power_Consumption(cros_ui_test.UITest):
 
     def _run_group_webpages(self):
         """Runs a series of web pages as sub-tests."""
-        data_url = self._url_base + self._data_sub_dir + '/'
-        # Download some static data for locally served web pages
-        self._download_tarballs()
+        data_url = self._url_base + self._static_sub_dir + '/'
 
         # URLs to be only tested in foreground tab
         urls = [('AboutBlank', 'about:blank'),
@@ -374,8 +338,6 @@ class power_Consumption(cros_ui_test.UITest):
                     data_url + 'balls/FlexBalls/flexballs.html'),
                    ('Parapluesch',
                     'http://www.parapluesch.de/whiskystore/test.htm'),
-                   ('CNNstatic',
-                    data_url + 'static_sites/cnn/cnn.html'),
             ]
 
         for name, url in urls + bg_urls:
@@ -415,23 +377,18 @@ class power_Consumption(cros_ui_test.UITest):
         """Run video and audio playback in the browser."""
 
         urls = [
-            ('VideoH264Birds', 'birds0.mp4'),
             ('BigBuckBunny_400p', 'big_buck_bunny_trailer_400p.ogg'),
             ('BigBuckBunny_1080p','big_buck_bunny_trailer_1080p.ogg'),
-            ('VideoH264Sync', 'sync0.mp4'),
-            ('VideoH264Buck', 'buck0.mp4'),
-            ('VideoOgvSync', 'sync0.ogv'),
-            ('VideoOgvBuck', 'buck0.ogv'),
-            ('VideoOgvBirds', 'birds0.ogv'),
             ('Greensleeves', 'Greensleeves.ogg'),
+            # TODO: (kamrik) Add more video formats
             ]
 
         fullscreen_urls = [
-            ('VideoH264Birds_fullscreen', 'birds0.mp4'),
+            ('BigBuckBunny_1080p_fullscreen',
+             'big_buck_bunny_trailer_1080p.ogg'),
             ]
 
         bg_urls = [
-            ('bg_VideoH264Birds', 'birds0.mp4'),
             ('bg_BigBuckBunny_400p', 'big_buck_bunny_trailer_400p.ogg'),
             ]
 
@@ -465,7 +422,7 @@ class power_Consumption(cros_ui_test.UITest):
         for name, url in bg_urls:
             self.pyauto.NavigateToURL(full_url(url))
             self.pyauto.ExecuteJavascript(js_loop_enable)
-            self._append_tab()
+            self.pyauto.AppendTab('about:blank')
             self._run_sleep(name, self._duration_secs)
             self.pyauto.GetBrowserWindow(0).GetTab(1).Close()
 
@@ -616,8 +573,6 @@ class power_Consumption(cros_ui_test.UITest):
     def cleanup(self):
         # cleanup() is run by common_lib/test.py
         self._test_server.stop()
-        if os.path.exists(self._data_dir):
-            shutil.rmtree(self._data_dir)
 
         self._set_backlight_level(self._default_brightness)
 
