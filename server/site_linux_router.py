@@ -163,7 +163,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             if k == 'ssid':
                 conf['ssid'] = v
             elif k == 'ssid_suffix':
-                conf['ssid'] = self.defssid + v
+                conf['ssid'] = self.defssid[:(32-len(v))] + v
             elif k == 'channel':
                 freq = int(v)
                 self.hostapd['frequency'] = freq
