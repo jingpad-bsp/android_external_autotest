@@ -32,6 +32,7 @@ class UITest(pyauto_test.PyAutoTest):
     """
     version = 1
 
+    skip_oobe = True
     auto_login = True
     fake_owner = True
     username = None
@@ -449,6 +450,8 @@ class UITest(pyauto_test.PyAutoTest):
             self, auto_login=False,
             extra_chrome_flags=extra_chrome_flags,
             subtract_extra_chrome_flags=subtract_extra_chrome_flags)
+        if self.skip_oobe or self.auto_login:
+            self.pyauto.SkipToLogin()
         if self.auto_login:
             self.login(self.username, self.password)
             if is_creating_owner:
@@ -502,9 +505,6 @@ class UITest(pyauto_test.PyAutoTest):
 
         Forces a log out if already logged in.
         Blocks until login is complete.
-
-        TODO(nirnimesh): Does NOT work with webui login
-                         crosbug.com/18271
 
         Args:
             username: username to log in as, defaults to self.username.

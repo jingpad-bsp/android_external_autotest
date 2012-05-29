@@ -153,6 +153,7 @@ class PyAutoTest(test.test):
         # Enable chrome testing interface and log in to default account
         self.pyauto.setUp()  # connects to pyauto automation
         if auto_login:
+            self.pyauto.SkipToLogin()
             self.LoginToDefaultAccount()
 
 
