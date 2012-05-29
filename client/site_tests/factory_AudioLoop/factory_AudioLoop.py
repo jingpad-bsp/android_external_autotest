@@ -70,19 +70,27 @@ class factory_AudioLoop(test.test):
         return True
 
     def audio_loopback(self):
-        # Record a sample of "silence" to use as a noise profile.
-        with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
-            factory.log('Noise file: %s' % noise_file.name)
-            self._ah.record_sample(noise_file.name)
+        for input_device in self._input_devices:
+            self._ah = audio_helper.AudioHelper(self,
+                    input_device=input_device,
+                    record_duration=self._duration)
+            # TODO(hychao): split deps and I/O devices to different
+            # utils so we can setup deps only once.
+            self._ah.setup_deps(['sox'])
+            for output_device in self._output_devices:
+                # Record a sample of "silence" to use as a noise profile.
+                with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
+                    factory.log('Noise file: %s' % noise_file.name)
+                    self._ah.record_sample(noise_file.name)
 
-            # Playback sine tone and check the recorded audio frequency.
-            self._ah.loopback_test_channels(noise_file,
-                    self.playback_sine,
-                    self.check_recorded_audio)
+                    # Playback sine tone and check the recorded audio frequency.
+                    self._ah.loopback_test_channels(noise_file,
+                            lambda ch: self.playback_sine(ch, output_device),
+                            self.check_recorded_audio)
 
-    def playback_sine(self, unused_channel):
-        cmd = '%s -n -d synth %d sine %d' % (self._ah.sox_path, self._duration,
-                self._freq)
+    def playback_sine(self, unused_channel, output_device='default'):
+        cmd = '%s -n -t alsa %s synth %d sine %d' % (self._ah.sox_path,
+                output_device, self._duration, self._freq)
         utils.system(cmd)
 
     def check_recorded_audio(self, sox_output):
@@ -131,15 +139,18 @@ class factory_AudioLoop(test.test):
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
     def run_once(self, audiofuntest=False, duration=_DEFAULT_DURATION_SEC,
-            input='default', mixer_controls=None):
+            input_devices=['default'], output_devices=['default'],
+            mixer_controls=None):
         factory.log('%s run_once' % self.__class__)
 
         self._audiofuntest = audiofuntest
         self._duration = duration
         self._freq = _DEFAULT_FREQ_HZ
+        self._input_devices = input_devices
+        self._output_devices = output_devices
 
-        self._ah = audio_helper.AudioHelper(self, record_duration=duration,
-                input_device=input)
+        # Create a default audio helper to do the setup jobs.
+        self._ah = audio_helper.AudioHelper(self, record_duration=duration)
         if mixer_controls is not None:
             self._ah.set_mixer_controls(mixer_controls)
 
@@ -173,7 +184,7 @@ class factory_AudioLoop(test.test):
         self._main_widget.add(self._label_list)
 
         ful.run_test_widget(self.job, self._main_widget,
-                window_registration_callback = self.register_callbacks)
+                window_registration_callback=self.register_callbacks)
 
         if not self._result:
             raise error.TestFail('ERROR: loopback test fail')
