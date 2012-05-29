@@ -45,6 +45,7 @@ class iio_generic():
     Object to interface to ambient light sensor over iio.
     '''
     PARAMS = {'rd': _DEFAULT_DEVICE_PATH + 'illuminance0_input',
+              'range_setting': _DEFAULT_DEVICE_PATH + 'range',
               'init': '',
               'min': 0,
               'max': math.pow(2, 16),
@@ -52,15 +53,20 @@ class iio_generic():
               'mindelay': 0.178,
               }
 
-    def __init__(self, device_path):
+    def __init__(self, device_path, range_value):
         self.buf = []
         self.ambient = None
 
         if device_path is not None:
             self.PARAMS['rd'] = device_path + 'illuminance0_input'
+            self.PARAMS['range_setting'] = device_path + 'range'
 
         if not os.path.isfile(self.PARAMS['rd']):
             self.cfg()
+
+        if range_value is not None:
+            with open(self.PARAMS['range_setting'], 'w') as f:
+                f.write('%d\n' % range_value)
 
         self.ambient = self.read('mean', delay=0, samples=10)
         factory.log('ambient light sensor = %d' % self.ambient)
@@ -269,13 +275,14 @@ class factory_LightSensor(test.test):
                  timeout_per_subtest=10,
                  subtest_list=None,
                  subtest_cfg=None,
-                 subtest_instruction=None):
+                 subtest_instruction=None,
+                 range_value=None):
 
         factory.log('%s run_once' % self.__class__)
 
         self.get_subtest(subtest_list, subtest_cfg, subtest_instruction)
 
-        self._als = iio_generic(device_path)
+        self._als = iio_generic(device_path, range_value)
 
         self._timeout_per_subtest = timeout_per_subtest
 
@@ -317,7 +324,10 @@ class factory_LightSensor(test.test):
 
         vbox.pack_start(hbox, False, False)
 
-        gobject.timeout_add(300, self.sensor_event, sensor_value)
+        # This function sets the period of getting sensor value in ms.
+        # If the value is too small, gtk may not redraw message box properly.
+
+        gobject.timeout_add(600, self.sensor_event, sensor_value)
 
         self._test_widget = vbox
         ful.run_test_widget(self.job, vbox,
