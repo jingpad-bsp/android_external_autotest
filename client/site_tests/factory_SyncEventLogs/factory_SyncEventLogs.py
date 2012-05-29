@@ -7,6 +7,7 @@
 import logging
 
 from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.factory.event_log_watcher import EventLogWatcher
 from autotest_lib.client.cros.factory import shopfloor
 
@@ -14,10 +15,15 @@ class factory_SyncEventLogs(test.test):
     version = 1
 
     def run_once(self, require_shop_floor=None):
-        if not require_shop_floor and not shopfloor.get_server_url():
-            return
+        try:
+            self.shopfloor_client = shopfloor.get_instance(detect=True)
+        except:
+            if require_shop_floor:
+                raise
+            else:
+                # That's OK, just don't sync the logs.
+                return
 
-        self.shopfloor_client = shopfloor.get_instance()
         watcher = EventLogWatcher(
             handle_event_logs_callback=self._handle_event_logs)
         try:
