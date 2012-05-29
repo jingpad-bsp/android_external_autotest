@@ -37,17 +37,17 @@ _MESSAGE_PROBING = (
     'Probing components...\n'
     '測試中...\n')
 _MESSAGE_DISPLAY = (
-    'Hit TAB if DUT have displayed this string.\n' +
+    'Hit TAB if DUT have something displayed.\n' +
     'Otherwise, hit ENTER.\n' +
-    '成功在測試品看到此字符請按 TAB, 否則請按 ENTER.\n')
+    '成功在測試品看到畫面請按 TAB, 否則請按 ENTER.\n')
 _MESSAGE_WRITING_LOGS = (
     'Writing logs...\n'
     '紀錄中...\n')
 _MESSAGE_RESULT_TAB = (
     'Results are listed below.\n'
-    'Remove the pnael after backlight dimmed.\n'
+    'Remove the panel after all power is turned off..\n'
     '測試結果顯示如下\n'
-    '確認背光關閉後, 請將Panel移除\n')
+    '確認電源皆斷電後, 將Panel移除\n')
 
 
 _TEST_SN_NUMBER = 'TEST-SN-NUMBER'
@@ -56,7 +56,7 @@ BRIGHTNESS_CONTROL_CMD = (
     'echo %s > /sys/class/backlight/intel_backlight/brightness')
 
 class factory_Connector(state_machine.FactoryStateMachine):
-    version = 4
+    version = 5
 
     def setup_tests(self):
         # Register more states for test procedure with configuration data
@@ -181,7 +181,6 @@ class factory_Connector(state_machine.FactoryStateMachine):
             for cmd, expect_re in commands:
                 if not self.run_cmd(cmd, expect_re):
                     self.update_status(test_name, False)
-                    break
 
     def perform_external_probing(self):
         try:
@@ -318,6 +317,12 @@ class factory_Connector(state_machine.FactoryStateMachine):
 
     def run_once(self, config_file):
         factory.log('%s run_once' % self.__class__)
+        # Display dual screen if external display is connected.
+        self.run_cmd('xrandr --auto', '')
+        # Disable the power management.
+        # Because this test never ends in normal usage, so no need
+        # to enable powerm again.
+        self.run_cmd('stop powerm', 'powerm stop')
         # Initialize variables.
         self.config_file = config_file
         self.base_config = PluggableConfig({})
