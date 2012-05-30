@@ -11,10 +11,12 @@
 
 
 import datetime
+import functools
 import gobject
 import gtk
 import logging
 import os
+import Queue
 import re
 import subprocess
 import thread
@@ -90,9 +92,25 @@ class BatteryInfo(object):
         return int(self.get_value('voltage_now'))
 
 
+def propagate_exception(queue):
+    def wrap(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                queue.put(e)
+        return wrapper
+    return wrap
+
+
 class factory_StressTest(test.test):
     version = 2
 
+    # Queue for worker threads to propagate errors back.
+    _error_queue = Queue.Queue()
+
+    @propagate_exception(_error_queue)
     def thread_SAT(self, seconds):
         try:
             result = self.job.run_test('hardware_SAT',
@@ -103,6 +121,7 @@ class factory_StressTest(test.test):
         finally:
             self._sat_complete = True
 
+    @propagate_exception(_error_queue)
     def thread_Load(self, seconds):
         try:
             with open('/dev/null', 'w') as null:
@@ -114,6 +133,7 @@ class factory_StressTest(test.test):
         finally:
             self._load_complete = True
 
+    @propagate_exception(_error_queue)
     def thread_Battery(self, seconds):
         try:
             battery = BatteryInfo()
@@ -129,6 +149,7 @@ class factory_StressTest(test.test):
         finally:
             self._battery_complete = True
 
+    @propagate_exception(_error_queue)
     def thread_Graphics(self, times):
         count = 0
         try:
@@ -147,7 +168,7 @@ class factory_StressTest(test.test):
                 self._graphics_complete, self._battery_complete)):
             with ui.gtk_lock:
                 gtk.main_quit()
-            return True
+            return False
 
         now = time.time()
         if now <= self._start_time:
@@ -274,5 +295,9 @@ class factory_StressTest(test.test):
             else:
                 self._graphics_complete = True
         ui.run_test_widget(self.job, vbox)
+
+        if not self._error_queue.empty():
+            # Raise only the first exception from worker threads.
+            raise self._error_queue.get_nowait()
 
         factory.log('%s run_once finished' % self.__class__)
