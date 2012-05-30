@@ -1,0 +1,23 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "firmware_ECUsbPorts"
+PURPOSE = "Servo based EC USB ports test"
+CRITERIA = "This test will fail if EC USB port control misbehalved."
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "firmware"
+TEST_TYPE = "server"
+
+DOC = """
+This test check if EC can correctly controls USB port mode.
+"""
+
+def run_ecusbports(machine):
+    host = hosts.create_host(machine)
+    job.run_test("firmware_ECUsbPorts", host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True)
+
+parallel_simple(run_ecusbports, machines)
