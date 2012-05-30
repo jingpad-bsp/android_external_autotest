@@ -22,7 +22,7 @@ _MESSAGE_PROMPT = (
 
 
 class factory_BasicCellular(test.test):
-    version = 4
+    version = 5
 
     def make_decision_widget(self,
                              message,
@@ -81,7 +81,7 @@ class factory_BasicCellular(test.test):
             key_action_mapping = {
                 gtk.keysyms.Return: (
                     self._run,
-                    [imei_re, iccid_re, dev, reset_modem_waiting])}
+                    [imei_re, iccid_re, dev, reset_modem_waiting, prompt])}
             self.test_widget = self.make_decision_widget(
                 _MESSAGE_PROMPT, key_action_mapping=key_action_mapping)
             ful.run_test_widget(
@@ -89,9 +89,9 @@ class factory_BasicCellular(test.test):
                     self.test_widget,
                     window_registration_callback=self._register_callbacks)
         else:
-            self._run(imei_re, iccid_re, dev, reset_modem_waiting)
+            self._run(imei_re, iccid_re, dev, reset_modem_waiting, prompt)
 
-    def _run(self, imei_re, iccid_re, dev, reset_modem_waiting):
+    def _run(self, imei_re, iccid_re, dev, reset_modem_waiting, prompt):
         def read_response():
             '''Reads response from the modem until a timeout.'''
             line = serial.readline()
@@ -151,3 +151,5 @@ class factory_BasicCellular(test.test):
                 utils.system("start modemmanager", ignore_status=True)
             except Exception as e:
                 factory.log('Exception - %s' % e)
+        if prompt:
+            gtk.main_quit()
