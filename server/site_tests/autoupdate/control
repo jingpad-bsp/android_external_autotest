@@ -39,7 +39,7 @@ def clear_version_labels(machine):
 
     @param machine: the host to clear labels, attributes from.
     """
-    labels = AFE.get_labels(name__startswith=vers)
+    labels = AFE.get_labels(name__startswith=vers, host__hostname__in=[machine])
     for label in labels: label.remove_hosts(hosts=[machine])
     AFE.set_host_attribute('job_repo_url', None, hostname=machine)
 
