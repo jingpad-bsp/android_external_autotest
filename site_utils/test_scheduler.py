@@ -299,7 +299,12 @@ def main():
         # the old style and the new style clashing.
         # TODO(scottz): remove kludge once we move to suite scheduler.
         for milestone in ['r18', 'r19', 'r20', 'r21', 'r22']:
-          build = new_dev.get_latest_build(board, milestone=milestone)
+          try:
+            build = new_dev.get_latest_build(board, milestone=milestone)
+          except new_dev_server.DevServerException:
+            continue
+          # Leave just in case we do get an empty response from the server
+          # but we shouldn't.
           if not build:
             continue
           test_runner = TestRunner(
