@@ -105,6 +105,7 @@
                      "puneetster@google.com"]},
              {"categories": "security",
               "cc": ["keescook@google.com",
+                     "sumitg@google.com",
                      "jimhebert@google.com"]},
              {"categories": "sound",
               "cc": ["thutt@google.com"]},
