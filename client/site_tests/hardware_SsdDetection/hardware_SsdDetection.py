@@ -20,9 +20,25 @@ class hardware_SsdDetection(test.test):
     def run_once(self, check_link_speed=()):
         # Use rootdev to find the underlying block device even if the
         # system booted to /dev/dm-0.
-        # If it is an mmcbkl device, then it is SSD.
-        # Else run hdparm to check for SSD.
+
         device = utils.system_output('rootdev -s -d')
+
+        # Check the device is fixed
+
+        def IsFixed(dev):
+            sysfs_path = '/sys/block/%s/removable' % dev
+            return (os.path.exists(sysfs_path) and
+                    open(sysfs_path).read().strip() == '0')
+
+        alpha_re = re.compile(r'^/dev/([a-zA-Z]+)$')
+        alnum_re = re.compile(r'^/dev/([a-zA-Z]+[0-9]+)$')
+        dev = alpha_re.findall(device) + alnum_re.findall(device)
+        if len(dev) != 1 or not IsFixed(dev[0]):
+            raise error.TestFail('The main disk %s is not fixed' % dev)
+
+        # If it is an mmcblk device, then it is SSD.
+        # Else run hdparm to check for SSD.
+
         if re.search("mmcblk", device):
             return
 
