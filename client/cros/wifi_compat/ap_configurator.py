@@ -4,10 +4,12 @@
 
 import binascii
 import copy
+import logging
 import os
 import sys
 
 import web_driver_core_helpers
+import web_power_outlet
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
                              'chrome_test', 'test_src', 'third_party',
@@ -55,6 +57,10 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         self.short_name = router_dict['short_name']
         self.serial_number = router_dict['serial_number']
         self.mac_address = router_dict['mac_address']
+        self.power_outlet = web_power_outlet.WebPowerOutlet(
+            router_dict['power_outlet_ip'], router_dict['power_outlet_number'],
+            router_dict['power_outlet_admin_name'],
+            router_dict['power_outlet_password'])
 
         self._command_list = []
 
@@ -166,6 +172,34 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         raise NotImplementedError
 
+    def power_cycle_router_up(self):
+        """Turns the ap off and then back on again."""
+        self.power_down_router()
+        self.power_up_router()
+
+    def power_down_router(self):
+        """Turns off the power to the ap via the power strip."""
+        self.power_outlet.turn_off_outlet()
+
+    def power_up_router(self):
+        """Turns on the power to the ap via the power strip.
+
+        This method returns once it can navigate to a web page of the ap UI.
+        """
+        self.power_outlet.turn_on_outlet()
+        self.establish_driver_connection()
+        self.wait = WebDriverWait(self.driver, timeout=5)
+        # With the 5 second timeout give the router up to 2 minutes
+        for i in range(24):
+            try:
+                self.navigate_to_page(1)
+                return
+            except SeleniumTimeoutException, e:
+                logging.info('Waiting for router %s to come back up.' %
+                             self.get_router_name)
+        raise RuntimeError('Unable to load admin page after powering on the '
+                           'router: %s' % self.get_router_name)
+
     def save_page(self, page_number):
         """Saves the given page.
 
@@ -268,8 +302,7 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         """
         raise NotImplementedError
 
-    def apply_settings(self):
-        """Apply all settings to the access point."""
+    def establish_driver_connection(self):
         # Load the Auth extension
         extension_path = os.path.join(os.path.dirname(__file__),
                                       'basic_auth_extension.crx')
@@ -278,7 +311,6 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         base64_ext = (binascii.b2a_base64(f.read()).strip())
         base64_extensions.append(base64_ext)
         f.close()
-        # Connect to the browser
         try:
             self.driver = webdriver.Remote('http://127.0.0.1:9515',
                 {'chrome.extensions': base64_extensions})
@@ -289,6 +321,10 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
                                '(outside-chroot) <path to chroot tmp directory>'
                                '/chromium-webdriver-parts/.chromedriver?\n'
                                'Exception message: %s' % str(e))
+
+    def apply_settings(self):
+        """Apply all settings to the access point."""
+        self.establish_driver_connection()
         self.wait = WebDriverWait(self.driver, timeout=5)
         # Pull items by page and then sort
         if self.get_number_of_pages() == -1:

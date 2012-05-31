@@ -171,6 +171,9 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_radio(enabled=False)
         self.ap.apply_settings()
 
+    def test_power_cycle_router(self):
+        """Test powering the ap down and back up again."""
+        self.ap.power_cycle_router_up()
 
 if __name__ == '__main__':
     unittest.main()
