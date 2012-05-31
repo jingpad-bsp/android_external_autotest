@@ -116,7 +116,7 @@
     },
 
     "default_groups": [
-        "bvtx4", "build", "desktopui", "kernel", "perfx3", "power"
+        "build", "desktopui", "kernel", "perfx3", "power"
     ],
 
     "default_tot_groups": [
