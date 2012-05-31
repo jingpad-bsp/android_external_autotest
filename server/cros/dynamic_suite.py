@@ -269,10 +269,10 @@ def reimage_and_run(**dargs):
     board = 'board:%s' % board
     if pool:
         pool = 'pool:%s' % pool
-    reimager = Reimager(job.autodir, pool=pool, results_dir=job.resultdir)
+    reimager = Reimager(job.autodir, results_dir=job.resultdir)
 
-    if skip_reimage or reimager.attempt(build, board, job.record, check_hosts,
-                                        num=num):
+    if skip_reimage or reimager.attempt(build, board, pool, job.record,
+                                        check_hosts, num=num):
 
         # Ensure that the image's artifacts have completed downloading.
         try:
@@ -372,16 +372,13 @@ class Reimager(object):
     """
 
 
-    def __init__(self, autotest_dir, afe=None, tko=None, pool=None,
-                 results_dir=None):
+    def __init__(self, autotest_dir, afe=None, tko=None, results_dir=None):
         """
         Constructor
 
         @param autotest_dir: the place to find autotests.
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
-        @param pool: Specify the pool of machines to use for scheduling
-                purposes.
         @param results_dir: The directory where the job can write results to.
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
@@ -392,7 +389,6 @@ class Reimager(object):
         self._tko = tko or frontend_wrappers.RetryingTKO(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
-        self._pool = pool
         self._results_dir = results_dir
         self._reimaged_hosts = {}
         self._cf_getter = control_file_getter.FileSystemGetter(
@@ -404,7 +400,7 @@ class Reimager(object):
         return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
 
 
-    def attempt(self, build, board, record, check_hosts, num=None):
+    def attempt(self, build, board, pool, record, check_hosts, num=None):
         """
         Synchronously attempt to reimage some machines.
 
@@ -415,6 +411,8 @@ class Reimager(object):
         @param build: the build to install e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param board: which kind of devices to reimage.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
         @param record: callable that records job status.
                        prototype:
                          record(status, subdir, name, reason)
@@ -430,10 +428,12 @@ class Reimager(object):
             self._ensure_version_label(VERSION_PREFIX + build)
 
             if check_hosts:
-                self._ensure_enough_hosts(board, self._pool, num)
+                # TODO make DEPENDENCIES-aware
+                self._ensure_enough_hosts(board, pool, num)
 
             # Schedule job and record job metadata.
-            canary_job = self._schedule_reimage_job(build, num, board)
+            # TODO make DEPENDENCIES-aware
+            canary_job = self._schedule_reimage_job(build, board, pool, num)
             self._record_job_if_possible(REIMAGE_JOB_NAME, canary_job)
             logging.debug('Created re-imaging job: %d', canary_job.id)
 
@@ -602,7 +602,7 @@ class Reimager(object):
                 raise ve
 
 
-    def _schedule_reimage_job(self, build, num_machines, board):
+    def _schedule_reimage_job(self, build, board, pool, num_machines):
         """
         Schedules the reimaging of |num_machines| |board| devices with |image|.
 
@@ -610,16 +610,17 @@ class Reimager(object):
         |num_machines| devices of type |board|
 
         @param build: the build to install (must be unique).
-        @param num_machines: how many devices to reimage.
         @param board: which kind of devices to reimage.
+        @param pool: the pool of machines to use for scheduling purposes.
+        @param num_machines: how many devices to reimage.
         @return a frontend.Job object for the reimaging job we scheduled.
         """
         control_file = inject_vars(
             {'image_url': _image_url_pattern() % build, 'image_name': build},
             self._cf_getter.get_control_file_contents_by_name('autoupdate'))
         job_deps = []
-        if self._pool:
-            meta_host = self._pool
+        if pool:
+            meta_host = pool
             board_label = board
             job_deps.append(board_label)
         else:
@@ -943,7 +944,7 @@ class Suite(object):
                 test_name is used to preserve the higher level TEST_NAME
                 name of the job.
         """
-        job_deps = []
+        job_deps = []  # TODO(cmasone): init from test.dependencies.
         if self._pool:
             meta_hosts = self._pool
             cros_label = VERSION_PREFIX + self._build
