@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,5 +10,5 @@ class cellular_Dummy(test.test):
     version = 1
 
     def run_once(self, config, technology):
-        _, _ = emulator_config.GetDefaultBasestation(config, technology)
+        _, _ = emulator_config.StartDefault(config, technology)
         cell_tools.PrepareModemForTechnology('', technology)
