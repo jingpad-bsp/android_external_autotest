@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import time
+import re
 
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
@@ -43,29 +44,53 @@ class firmware_ECKeyboard(FAFTSequence):
 
 
     def key_down(self, keyname):
+        """Simulate pressing a key."""
         self.faft_client.run_shell_command('ectool kbpress %d %d 1' %
                 (KEYMATRIX[keyname][0], KEYMATRIX[keyname][1]))
 
 
     def key_up(self, keyname):
+        """Simulate releasing a key."""
         self.faft_client.run_shell_command('ectool kbpress %d %d 0' %
                 (KEYMATRIX[keyname][0], KEYMATRIX[keyname][1]))
 
 
     def delayed_key_press(self, keyname):
+        """
+        Same as normal key_press but the call is delayed so that the key is
+        pressed after RPC call returns.
+        """
         r, c = KEYMATRIX[keyname]
         cmd = '(sleep %d; ectool kbpress %d %d 1; ectool kbpress %d %d 0;)&'
         self.faft_client.run_shell_command(cmd % (self.RPC_DELAY, r, c, r, c))
 
 
     def key_press(self, keyname):
+        """Press and then release a key."""
         self.key_down(keyname)
         self.key_up(keyname)
 
 
-    def send_string(self, string):
+    def send_raw_string(self, string):
+        """Send key strokes consisting of only characters."""
         for c in string:
             self.key_press(c)
+
+
+    def send_string(self, string):
+        """Send key strokes including special keys.
+
+        Args:
+          string: Character string including special keys. An example
+            is "this is an<tab>example<enter>".
+        """
+        for m in re.finditer("(<[^>]+>)|([^<>]+)", string):
+            sp, raw = m.groups()
+            if raw is not None:
+                self.send_raw_string(raw)
+            else:
+                self.key_press(sp)
+
 
     def switch_tty2(self):
         """Switch to tty2 console."""
@@ -84,14 +109,11 @@ class firmware_ECKeyboard(FAFTSequence):
         command.
         """
         self.switch_tty2()
-        self.send_string('root')
-        self.key_press('<enter>')
+        self.send_string('root<enter>')
         time.sleep(self.CMD_DELAY)
-        self.send_string('test0000')
-        self.key_press('<enter>')
+        self.send_string('test0000<enter>')
         time.sleep(self.CMD_DELAY)
-        self.send_string('reboot')
-        self.delayed_key_press('<enter>')
+        self.send_string('reboot<enter>')
 
 
     def run_once(self, host=None):
