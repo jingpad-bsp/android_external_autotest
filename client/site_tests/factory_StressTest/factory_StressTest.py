@@ -197,30 +197,17 @@ class factory_StressTest(test.test):
         return True
 
     def log_system_status(self, ectool, num_temp_sensor, battery):
-        fan_speed = ectool.get_fanspeed()
-        temperatures = [ectool.get_temperature(i)
-                        for i in xrange(num_temp_sensor)]
-        battery_info = [battery.get_charge_now(), battery.get_voltage_now()]
+        log_args = dict(
+            fan_speed=ectool.get_fanspeed(),
+            temperatures=[ectool.get_temperature(i)
+                          for i in xrange(num_temp_sensor)],
+            battery={'charge': battery.get_charge_now(),
+                     'voltage': battery.get_voltage_now()})
 
-        self._event_log.Log('sensor_measurement',
-                            fan_speed=fan_speed,
-                            temperatures=temperatures,
-                            battery_info=battery_info)
-
-        factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
-            datetime.datetime.now().isoformat(),
-            'Fan RPM', fan_speed))
-        for i in xrange(num_temp_sensor):
-            factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
+        self._event_log.Log('sensor_measurement', **log_args)
+        factory.log('Status at %s: %s' % (
                 datetime.datetime.now().isoformat(),
-                'Temp%d' % i,
-                temperatures[i]))
-        factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
-            datetime.datetime.now().isoformat(),
-            'Battery charge_now', battery_info[0]))
-        factory.log(_SYSTEM_MONITOR_LOG_FORMAT % (
-            datetime.datetime.now().isoformat(),
-            'Battery voltage_now', battery_info[1]))
+                log_args))
 
     def monitor_event(self, ectool, num_temp_sensor, battery):
         self.log_system_status(ectool, num_temp_sensor, battery)
