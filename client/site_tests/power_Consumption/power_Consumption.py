@@ -199,8 +199,12 @@ class power_Consumption(cros_ui_test.UITest):
         results  = []
 
         for name, tstart, tend in self._times:
+            keyvals[name+'_duration'] = tend - tstart
             # Select all readings taken between tstart and tend timestamps
             pwr_array = power[numpy.bitwise_and(tstart < t, t < tend)]
+            # If sub-test terminated early, avoid calculating avg, std and min
+            if not pwr_array.size:
+                continue
             pwr_mean = pwr_array.mean()
             pwr_std = pwr_array.std()
 
@@ -209,7 +213,6 @@ class power_Consumption(cros_ui_test.UITest):
                             tend - tstart, tstart, tend))
 
             keyvals[name+'_power'] = pwr_mean
-            keyvals[name+'_duration'] = tend - tstart
             keyvals[name+'_power_std'] = pwr_std
             keyvals[name+'_power_min'] = pwr_array.min()
 
