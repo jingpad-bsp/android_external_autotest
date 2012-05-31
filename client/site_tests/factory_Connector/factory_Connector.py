@@ -8,10 +8,12 @@ import gtk
 import os
 import pprint
 import re
+import tempfile
 import StringIO
 
 from autotest_lib.client.cros import factory
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.camera.camera_preview import CameraPreview
 from autotest_lib.client.cros.factory import state_machine
 from autotest_lib.client.cros.factory.media_util import MediaMonitor
@@ -87,7 +89,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
                 message=_MESSAGE_PROBING, key_action_mapping={})
             self.register_state(self.probing_widget, None,
                                 self.perform_probing)
-
+        # TODO(itspeter): add audio related probing.
         self.writing_widget = self.make_decision_widget(
             message=_MESSAGE_WRITING_LOGS,
             key_action_mapping={},
@@ -314,6 +316,50 @@ class factory_Connector(state_machine.FactoryStateMachine):
         self.log_to_file = StringIO.StringIO()
         self.sn_input_widget.get_entry().set_text('')
         factory.log('Data reseted.')
+
+    def audio_loopback(self, test_freq=1000, loop_duration=1,
+            input_device='hw:0,4'):
+        """Tests digital mic function.
+
+        Args:
+            test_freq: the frequency to play and test.
+            loop_duration: the duration in seconds to record.
+            input_device: the alsa device to test.
+
+        Return:
+            List of error messages generated during test.
+        """
+        errors = []
+        ah = audio_helper.AudioHelper(self, input_device=input_device,
+                record_duration=loop_duration)
+        ah.setup_deps(['sox'])
+        ah.set_mixer_controls(
+                [{'name': '"Digital-Mic Capture Switch"',
+                  'value': 'on'},
+                 {'name': '"Digital-Mic Capture Volume"',
+                  'value': '100,100'},
+                 {'name': '"PC Speaker Playback Volume"',
+                  'value': '100,100'}])
+
+        # Callbacks for sound playback and record result check.
+        def playback_sine():
+            cmd = '%s -n -d synth %d sine %d' % (ah.sox_path,
+                    loop_duration, test_freq)
+            utils.system(cmd)
+
+        def check_loop_output(sox_output):
+            freq = ah.get_rough_freq(sox_output)
+            factory.log('Got freq %d' % freq)
+            if abs(freq - test_freq) > 50:
+                errors.append('Frequency not match, expect %d but got %d' %
+                        (test_freq, freq))
+
+        with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
+            ah.record_sample(noise_file.name)
+            ah.loopback_test_channels(noise_file,
+                    lambda ch: playback_sine(),
+                    check_loop_output)
+        return errors
 
     def run_once(self, config_file):
         factory.log('%s run_once' % self.__class__)
