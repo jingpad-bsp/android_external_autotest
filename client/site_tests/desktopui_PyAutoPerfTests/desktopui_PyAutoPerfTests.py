@@ -4,14 +4,12 @@
 
 import optparse
 import os
-import pwd
 import re
-import shutil
-import subprocess
+import sys
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, chrome_test, cros_ui, login
+from autotest_lib.client.cros import chrome_test, cros_ui, ownership
 
 
 class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
@@ -19,14 +17,17 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
 
     Performs all setup and fires off the PERFORMANCE PyAuto suite for ChromeOS.
     """
+
     _PERF_MARKER_PRE = '_PERF_PRE_'
     _PERF_MARKER_POST = '_PERF_POST_'
     _DEFAULT_NUM_ITERATIONS = 10  # Keep synced with perf.py.
 
     version = 1
 
+
     def initialize(self):
         chrome_test.ChromeTestBase.initialize(self)
+
         # The next few lines install the page_cycler depdendency onto the
         # target.  It is very similar to what happens in the above
         # function call except that chrome_test is installing the
@@ -41,42 +42,8 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
         except error.CmdError, e:
             raise error.TestError(e)
 
-        assert os.geteuid() == 0, 'Need superuser privileges'
+        self.setup_for_pyauto()
 
-        deps_dir = os.path.join(self.autodir, 'deps')
-        subprocess.check_call(['chown', '-R', 'chronos', self.cr_source_dir])
-
-        # Setup suid python binary which can enable Chrome testing interface.
-        suid_python = os.path.join(self.test_binary_dir, 'suid-python')
-        py_path = subprocess.Popen(['which', 'python'],
-                                   stdout=subprocess.PIPE).communicate()[0]
-        py_path = py_path.strip()
-        assert os.path.exists(py_path), 'Could not find python'
-        if os.path.islink(py_path):
-            linkto = os.readlink(py_path)
-            py_path = os.path.join(os.path.dirname(py_path), linkto)
-        shutil.copy(py_path, suid_python)
-        os.chown(suid_python, 0, 0)
-        os.chmod(suid_python, 04755)
-
-        # User chronos should own the current directory.
-        chronos_id = pwd.getpwnam('chronos')
-        os.chown(os.getcwd(), chronos_id.pw_uid, chronos_id.pw_gid)
-
-        # Make sure Chrome minidumps are written locally.
-        minidumps_file = '/mnt/stateful_partition/etc/enable_chromium_minidumps'
-        if not os.path.exists(minidumps_file):
-            open(minidumps_file, 'w').close()
-            # Allow browser restart by its babysitter (session_manager).
-            if os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
-                os.remove(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
-            cros_ui.nuke()
-        assert os.path.exists(minidumps_file)
-
-        # Disallow further browser restart by its babysitter.
-        if not os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
-            open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
-        assert os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
 
     def parse_args(self, args):
         """Parses input arguments to this autotest."""
@@ -105,6 +72,7 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
         # run_remote_tests.sh may be individually quoted, and those quotes must
         # be stripped before they are parsed.
         return parser.parse_args(map(lambda arg: arg.strip('\'\"'), args))
+
 
     def run_once(self, args=[]):
         """Runs the PyAuto performance tests."""
@@ -135,22 +103,19 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
             '%s/chrome_test/test_src/chrome/test/functional/'
             'pyauto_functional.py --suite=%s %s' % (
                 deps_dir, options.suite, test_args))
-        environment = os.environ.copy()
 
-        environment['NUM_ITERATIONS'] = str(options.num_iterations)
+        os.putenv('NUM_ITERATIONS', str(options.num_iterations))
         self.write_perf_keyval({'iterations': options.num_iterations})
 
         if options.max_timeouts:
-          environment['MAX_TIMEOUT_COUNT'] = str(options.max_timeouts)
+            os.putenv('MAX_TIMEOUT_COUNT', str(options.max_timeouts))
 
         if options.pgo:
-          environment['USE_PGO'] = '1'
+            os.putenv('USE_PGO', '1')
 
-        proc = subprocess.Popen(
-            functional_cmd, shell=True, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, env=environment)
-        output = proc.communicate()[0]
-        print output  # Ensure pyauto test output is stored in autotest logs.
+        cmd_result = utils.run(functional_cmd, ignore_status=True,
+                               stdout_tee=sys.stdout, stderr_tee=sys.stdout)
+        output = cmd_result.stdout + '\n' + cmd_result.stderr
 
         # Output perf keyvals for any perf results recorded during the tests.
         re_compiled = re.compile('%s(.+)%s' % (self._PERF_MARKER_PRE,
@@ -165,9 +130,14 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
         # Fail the autotest if any pyauto tests failed.  This is done after
         # writing perf keyvals so that any computed results from passing tests
         # are still graphed.
-        if proc.returncode != 0:
+        if cmd_result.exit_status != 0:
             raise error.TestFail(
                 'Pyauto returned error code %d.  This is likely because at '
                 'least one pyauto test failed.  Refer to the full autotest '
                 'output in desktopui_PyAutoPerfTests.DEBUG for details.'
-                % proc.returncode)
+                % cmd_result.exit_status)
+
+
+    def cleanup(self):
+        ownership.clear_ownership()
+        chrome_test.ChromeTestBase.cleanup(self)

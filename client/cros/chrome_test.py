@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, shutil, stat, subprocess, tempfile
+import logging, os, pwd, re, shutil, stat, subprocess, tempfile
 
 import common, constants, cros_ui
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import ownership
 
 class ChromeTestBase(test.test):
     home_dir = None
@@ -15,12 +16,16 @@ class ChromeTestBase(test.test):
     _PYAUTO_DEP = 'pyauto_dep'
     _CHROME_TEST_DEP = 'chrome_test'
 
+    _MINIDUMPS_FILE = '/mnt/stateful_partition/etc/enable_chromium_minidumps'
+
+
     def setup(self):
         self.job.setup_dep([self._PYAUTO_DEP])
         self.job.setup_dep([self._CHROME_TEST_DEP])
         # create a empty srcdir to prevent the error that checks .version file
         if not os.path.exists(self.srcdir):
             os.mkdir(self.srcdir)
+
 
     def nuke_chrome(self):
         try:
@@ -55,6 +60,51 @@ class ChromeTestBase(test.test):
             utils.system(setup_cmd)  # this might raise an exception
         except error.CmdError, e:
             raise error.TestError(e)
+
+
+    def setup_suid_python(self):
+        """Setup suid python binary that can enable chrome testing interface."""
+        suid_python = os.path.join(self.test_binary_dir, 'suid-python')
+        py_path = utils.system_output('which python')
+        py_path = py_path.strip()
+        assert os.path.exists(py_path), 'Could not find python'
+        if os.path.islink(py_path):
+            linkto = os.readlink(py_path)
+            py_path = os.path.join(os.path.dirname(py_path), linkto)
+        shutil.copy(py_path, suid_python)
+        os.chown(suid_python, 0, 0)
+        os.chmod(suid_python, 04755)
+
+
+    def setup_for_pyauto(self):
+        assert os.geteuid() == 0, 'Need superuser privileges'
+
+        deps_dir = os.path.join(self.autodir, 'deps')
+        utils.system('chown -R chronos ' + self.cr_source_dir)
+
+        # chronos should own the current dir.
+        chronos_id = pwd.getpwnam('chronos')
+        os.chown(os.getcwd(), chronos_id.pw_uid, chronos_id.pw_gid)
+
+        # Make sure Chrome minidumps are written locally.
+        if not os.path.exists(self._MINIDUMPS_FILE):
+            open(self._MINIDUMPS_FILE, 'w').close()
+            # Allow browser restart by its babysitter (session_manager).
+            if os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
+                os.remove(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
+            cros_ui.nuke()
+        assert os.path.exists(self._MINIDUMPS_FILE)
+
+        # Disallow further browser restart by its babysitter.
+        if not os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
+            open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
+        assert os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
+
+        # The UI must be taken down to ensure that no stale state persists.
+        cros_ui.stop()
+        # Clear ownership before login.
+        ownership.clear_ownership()
+        cros_ui.start(wait_for_login_prompt=False)
 
 
     def filter_bad_tests(self, tests, blacklist=None):
