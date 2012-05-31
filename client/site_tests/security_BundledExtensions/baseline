@@ -1,0 +1,140 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+{
+  "ignored_extension_names": [
+    "Bookmark Manager",
+    "Chrome Web Store",
+    "GaiaTestAuthExtension"
+  ],
+# TODO(jimhebert): Restore after crbug.com/131486 is fixed.
+  "ignored_crx_files": [
+    "hpfomeedmekonipambfkmjfacahlngjd.crx"
+  ],
+  "bundled_crx_directory": "/opt/google/chrome/extensions",
+  "bundled_crx_baseline": [
+      { "crx_file": "apdfllckaahabafndbhieahigkjlhalf.crx",
+        "name": "Google Docs",
+        "effective_host_permissions": [],
+        "api_permissions": ["background",
+                            "clipboardRead",
+                            "clipboardWrite",
+                            "notifications",
+                            "unlimitedStorage"]
+      },
+      { "crx_file": "blpcfgokakmgnkcojhhkbfbldkacnbeo.crx",
+        "name": "YouTube",
+        "effective_host_permissions": [],
+        "api_permissions": ["appNotifications"]
+      },
+      { "crx_file": "ejjicmeblgpmajnghnpcppodonldlgfn.crx",
+        "name": "Google Calendar",
+        "effective_host_permissions": [],
+        "api_permissions": ["notifications",
+                            "unlimitedStorage"]
+      },
+      { "crx_file": "fobcpibfeplaikcclojfdhfdmbbeofai.crx",
+        "name": "Games",
+        "effective_host_permissions": [],
+        "api_permissions": []
+      },
+      { "crx_file": "hgakehlldcacnfhjampnkihibmkgclhk.crx",
+        "name": "Music",
+        "effective_host_permissions": [],
+        "api_permissions": []
+      },
+# TODO(jimhebert): Restore after crbug.com/131486 is fixed.
+#      { "crx_file": "hpfomeedmekonipambfkmjfacahlngjd.crx",
+#        "name": "Picasa Uploader",
+#        "effective_host_permissions": ["*://www.google.com/*",
+#                                       "https://picasaweb.google.com/*"],
+#        "api_permissions": ["contextMenus",
+#                            "fileBrowserHandler",
+#                            "notifications",
+#                            "tabs"]
+#      },
+      { "crx_file": "kjebfhglflhjjjiceimfkgicifkhjlnm.crx",
+        "name": "Scratchpad",
+        "effective_host_permissions": ["https://docs.google.com/*",
+                                       "https://www.google.com/*"],
+        "api_permissions": ["contextMenus",
+                            "management",
+                            "notifications",
+                            "tabs"]
+      },
+      { "crx_file": "pjkljhegncpnkpknbcohdijeoejaedia.crx",
+        "name": "Gmail",
+        "effective_host_permissions": [],
+        "api_permissions": ["notifications"]
+      },
+      { "crx_file": "lneaknkopdijkpnocmklfnjbeapigfbh.crx",
+        "name": "Google Maps",
+        "effective_host_permissions": [],
+        "api_permissions": []
+      },
+      { "crx_file": "dlppkpafhbajpcmmoheippocdidnckmm.crx",
+        "name": "Google+",
+        "effective_host_permissions": [],
+        "api_permissions": []
+      },
+      { "crx_file": "gbkeegbaiigmenfmjfclcdgdpimamgkj.crx",
+        "name": "Document viewing",
+        "effective_host_permissions": [],
+        "api_permissions": ["fileBrowserHandler", "unlimitedStorage"]
+      },
+      { "crx_file": "coobgpohoikkiipiblmjeljniedjpjpf.crx",
+        "name": "Google Search",
+        "effective_host_permissions": [],
+        "api_permissions": []
+      },
+      { "crx_file": "kbpgddbgniojgndnhlkjbkpknjhppkbk.crx",
+        "name": "Google+ Hangouts",
+        "effective_host_permissions": [],
+        "api_permissions": ["background", "tabs"]
+      },
+      { "crx_file": "hkhhlkdconhgemhegnplaldnmnmkaemd.crx",
+        "name": "Tips and Tricks",
+        "effective_host_permissions": [],
+        "api_permissions": ["unlimitedStorage"]
+      }
+  ],
+  "component_extension_baseline": [
+      { "name": "Files",
+        "effective_host_permissions": ["chrome://extension-icon/*",
+                                       "chrome://resources/*",
+                                       "https://*.googleusercontent.com/*"],
+        "api_permissions": ["fileBrowserHandler",
+                            "fileBrowserPrivate",
+                            "mediaPlayerPrivate",
+                            "metricsPrivate",
+                            "tabs",
+                            "clipboardWrite",
+                            "clipboardRead",
+                            "unlimitedStorage"]
+      },
+      { "name": "Mobile Activation",
+        "effective_host_permissions": [],
+        "api_permissions": []
+      },
+      { "name": "crosh_builtin",
+        "effective_host_permissions": [],
+        "api_permissions": ["terminalPrivate",
+                            "unlimitedStorage"]
+      },
+      { "name": "Chrome OS ECHO Extension",
+        "effective_host_permissions": ["https://*/*"],
+        "api_permissions": ["cookies",
+                            "echoPrivate"]
+      }
+  ],
+  "official_components": [
+      { "name": "Help",
+        "effective_host_permissions": [
+            "http://support.google.com/chromeos/*",
+            "https://support.google.com/*",
+            "https://support.google.com/chromeos/*"],
+        "api_permissions": ["chromeosInfoPrivate",
+                            "tabs"]
+      }
+  ]
+}
