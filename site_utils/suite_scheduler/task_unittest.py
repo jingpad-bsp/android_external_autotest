@@ -151,6 +151,13 @@ class TaskTest(TaskTestBase):
         self.assertTrue(t.Run(self.sched, self._MAP, self._BOARD))
 
 
+    def testNoRunBareBranchMismatch(self):
+        """Test running a recurring task with no matching builds (factory)."""
+        self.mox.ReplayAll()
+        self.assertTrue(
+            self.task.Run(self.sched, {'factory': 'build2'}, self._BOARD))
+
+
     def testRunNoSpec(self):
         """Test running a recurring task with default branch specs."""
         t = task.Task(self._TASK_NAME, self._SUITE, [])
@@ -194,7 +201,7 @@ class OneShotTaskTest(TaskTestBase):
     def setUp(self):
         super(OneShotTaskTest, self).setUp()
         self.task = task.OneShotTask(self._TASK_NAME, self._SUITE,
-                                     [self._BRANCH])
+                                     [self._BRANCH_SPEC])
 
 
     def testRun(self):
@@ -214,7 +221,7 @@ class OneShotTaskTest(TaskTestBase):
 
 
     def testRunExplodes(self):
-        """Test a failure to schedule while running task."""
+        """Test a failure to schedule while running one-shot task."""
         # Barf while scheduling.
         self.sched.ScheduleSuite(
             self._SUITE, self._BOARD, self._BUILD, None, False).AndRaise(

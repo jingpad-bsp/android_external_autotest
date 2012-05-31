@@ -132,7 +132,6 @@ class Task(object):
                         spec.lstrip('>=R'))
                 else:
                     self._bare_branches.append(spec)
-
         # Since we expect __hash__() and other comparitor methods to be used
         # frequently by set operations, and they use str() a lot, pre-compute
         # the string representation of this object.
@@ -150,9 +149,10 @@ class Task(object):
         @param branch: the branch to check.
         @return True if b 'fits' with stored specs, False otherwise.
         """
-        return (branch in self._bare_branches or
-                (self._numeric_constraint and
-                 version.LooseVersion(branch) >= self._numeric_constraint))
+        if branch in BARE_BRANCHES:
+            return branch in self._bare_branches
+        return (self._numeric_constraint and
+                version.LooseVersion(branch) >= self._numeric_constraint)
 
 
     @property
