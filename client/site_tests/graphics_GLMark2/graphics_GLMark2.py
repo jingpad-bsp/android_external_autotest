@@ -40,6 +40,9 @@ class graphics_GLMark2(test.test):
         if not os.getenv('DISPLAY'):
             cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; kill $!' % cmd
 
+        if os.environ.get('CROS_FACTORY'):
+            from autotest_lib.client.cros.factory import ui
+            ui.start_reposition_thread('^glmark')
         result = utils.run(cmd)
         for line in result.stderr.splitlines():
             if line.startswith('Error:'):
