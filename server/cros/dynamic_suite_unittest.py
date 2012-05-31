@@ -476,9 +476,9 @@ class StatusContains(mox.Comparator):
 
 
     def equals(self, rhs):
-        """Check to see if fields match dynamic_suite.Status obj in rhs.
+        """Check to see if fields match base_job.status_log_entry obj in rhs.
 
-        @param rhs: dynamic_suite.Status object to match.
+        @param rhs: base_job.status_log_entry object to match.
         @return boolean
         """
         return (self._status.equals(rhs.status_code) and

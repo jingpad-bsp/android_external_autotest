@@ -675,8 +675,8 @@ class Status(object):
     @var _status: status code, e.g. 'INFO', 'FAIL', etc.
     @var _test_name: the name of the test whose result this is.
     @var _reason: message explaining failure, if any.
-    @var _begin_timestamp: when test started (in seconds since the epoch).
-    @var _end_timestamp: when test finished (in seconds since the epoch).
+    @var _begin_timestamp: when test started (int, in seconds since the epoch).
+    @var _end_timestamp: when test finished (int, in seconds since the epoch).
 
     @var _TIME_FMT: format string for parsing human-friendly timestamps.
     """
@@ -707,14 +707,14 @@ class Status(object):
                 datetime.datetime.strptime(
                     begin_time_str, TIME_FMT).timetuple()))
         else:
-            self._begin_timestamp = time.time()
+            self._begin_timestamp = int(time.time())
 
         if end_time_str:
             self._end_timestamp = int(time.mktime(
                 datetime.datetime.strptime(
                     end_time_str, TIME_FMT).timetuple()))
         else:
-            self._end_timestamp = time.time()
+            self._end_timestamp = int(time.time())
 
 
     def record_start(self, record_entry):
