@@ -8,6 +8,7 @@ NAME = "WiFi SecMat"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "Server"
+SUITE = "wificell"
 SYNC_COUNT = 1
 DOC = """
 WiFiMatFunc is a suite of 3-machine tests to validate basic WiFi functionality.
