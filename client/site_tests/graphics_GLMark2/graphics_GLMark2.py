@@ -17,7 +17,6 @@ from autotest_lib.client.common_lib import error
 
 GLMARK2_SCORE_RE = 'glmark2 Score: (\d+)'
 
-
 class graphics_GLMark2(test.test):
     version = 1
     preserve_srcdir = True
@@ -60,6 +59,9 @@ class graphics_GLMark2(test.test):
                 raise error.TestFail('Unable to read benchmark score')
             # Output numbers for plotting by harness.
             logging.info('GLMark2 score: %d', score)
+            if os.environ.get('CROS_FACTORY'):
+                from autotest_lib.client.cros.factory.event_log import EventLog
+                EventLog('graphics_GLMark2').Log('glmark2_score', score=score)
             keyvals = {}
             keyvals['glmark2_score'] = score
             self.write_perf_keyval(keyvals)

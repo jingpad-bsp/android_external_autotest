@@ -16,16 +16,18 @@ import gobject
 import gtk
 import logging
 import os
-import Queue
+from Queue import Queue
 import re
 import subprocess
 import thread
 import time
+import traceback
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
 from autotest_lib.client.cros.factory import ui
+from autotest_lib.client.cros.factory import utils as factory_utils
 from autotest_lib.client.cros.factory.event_log import EventLog
 
 
@@ -37,7 +39,9 @@ _MESSAGE_LOADAVG = 'System Load: '
 
 _MESSAGE_FAILED_LOADAVG = 'Failed to retrieve system load.'
 
-_SYSTEM_MONITOR_LOG_FORMAT = 'SYSTEM MONITOR [%s] %s: %d'
+
+
+SUBTESTS = factory_utils.Enum(['SAT', 'Load', 'Battery', 'Graphics'])
 
 
 class ECControl(object):
@@ -92,80 +96,70 @@ class BatteryInfo(object):
         return int(self.get_value('voltage_now'))
 
 
-def propagate_exception(queue):
-    def wrap(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                queue.put(e)
-        return wrapper
-    return wrap
-
-
 class factory_StressTest(test.test):
     version = 2
 
-    # Queue for worker threads to propagate errors back.
-    _error_queue = Queue.Queue()
-
-    @propagate_exception(_error_queue)
     def thread_SAT(self, seconds):
-        try:
-            result = self.job.run_test('hardware_SAT',
-                                       drop_caches=True,
-                                       seconds=seconds)
-            if not result:
-                raise error.TestError('Failed running hardware_SAT')
-        finally:
-            self._sat_complete = True
+        if not self.job.run_test('hardware_SAT',
+                                 drop_caches=True,
+                                 seconds=seconds):
+            raise error.TestError('Failed running hardware_SAT')
 
-    @propagate_exception(_error_queue)
     def thread_Load(self, seconds):
-        try:
-            with open('/dev/null', 'w') as null:
-                p = subprocess.Popen(('cat', '/dev/urandom'), stdout=null)
-                if p.returncode is not None:
-                    raise error.TestError('Failed to start load test')
-                time.sleep(seconds)
-                p.kill()
-        finally:
-            self._load_complete = True
-
-    @propagate_exception(_error_queue)
-    def thread_Battery(self, seconds):
-        try:
-            battery = BatteryInfo()
-            charge_full = battery.get_charge_full()
-            charge_begin = battery.get_charge_now()
-            if (charge_begin < charge_full and
-                battery.get_status() != 'Charging'):
-                raise error.TestError('Battery not charging')
+        with open('/dev/null', 'w') as null:
+            p = subprocess.Popen(('cat', '/dev/urandom'), stdout=null)
+            if p.returncode is not None:
+                raise error.TestError('Failed to start load test')
             time.sleep(seconds)
-            charge_end = battery.get_charge_now()
-            if charge_end < charge_full and charge_end < charge_begin:
-                raise error.TestError('Battery not charged')
-        finally:
-            self._battery_complete = True
+            p.kill()
 
-    @propagate_exception(_error_queue)
+    def thread_Battery(self, seconds):
+        battery = BatteryInfo()
+        charge_full = battery.get_charge_full()
+        charge_begin = battery.get_charge_now()
+        if (charge_begin < charge_full and
+            battery.get_status() != 'Charging'):
+            raise error.TestError('Battery not charging')
+        time.sleep(seconds)
+        charge_end = battery.get_charge_now()
+        if charge_end < charge_full and charge_end < charge_begin:
+            raise error.TestError('Battery not charged')
+
     def thread_Graphics(self, times):
         count = 0
-        try:
-            while count < times:
-                time.sleep(2)
-                count += 1
-                result = self.job.run_test('graphics_GLMark2',
-                                           subdir_tag=str(count))
-                if not result:
-                    raise error.TestError('Failed running graphics_GLMark2')
-        finally:
-            self._graphics_complete = True
+        while count < times:
+            time.sleep(2)
+            count += 1
+            result = self.job.run_test('graphics_GLMark2',
+                                       subdir_tag=str(count))
+            if not result:
+                raise error.TestError('Failed running graphics_GLMark2')
+
+    def _start_subtest(self, name, subtest, args):
+        def target(args):
+            start_time = time.time()
+            try:
+                self._event_log.Log('start_stress_subtest',
+                                    name=name, args=args)
+                subtest(args)
+                self._event_log.Log('stop_stress_subtest',
+                                    name=name, args=args,
+                                    duration=(time.time() - start_time),
+                                    status='PASSED')
+            except Exception as e:
+                self._error_queue.put(e)
+                logging.exception('Subtest %s failed', name)
+                self._event_log.Log('stop_stress_subtest',
+                                    name=name, args=args,
+                                    duration=(time.time() - start_time),
+                                    status='FAILED',
+                                    trace=traceback.format_exc())
+            finally:
+                self._complete.add(name)
+        thread.start_new_thread(target, args)
 
     def timer_event(self, timer_label, countdown_label, load_label):
-        if all((self._sat_complete, self._load_complete,
-                self._graphics_complete, self._battery_complete)):
+        if self._complete == SUBTESTS:
             with ui.gtk_lock:
                 gtk.main_quit()
             return False
@@ -227,10 +221,10 @@ class factory_StressTest(test.test):
         if sat_seconds is not None:
             runin_seconds = sat_seconds
             sat_only = True
-        self._sat_complete = False
-        self._load_complete = False
-        self._battery_complete = False
-        self._graphics_complete = False
+
+        self._complete = set()
+        self._event_log = EventLog.ForAutoTest()
+        self._error_queue = Queue()
 
         # Add 3 seconds leading time (for autotest / process to start).
         self._start_time = time.time() + 3
@@ -249,7 +243,6 @@ class factory_StressTest(test.test):
         if monitor_interval:
             ectool = ECControl()
             battery = BatteryInfo()
-            self._event_log = EventLog.ForAutoTest()
             self.log_system_status(ectool, num_temp_sensor, battery)
             gobject.timeout_add(1000 * monitor_interval,
                                 self.monitor_event,
@@ -263,24 +256,26 @@ class factory_StressTest(test.test):
         vbox.pack_start(countdown_widget, padding=10)
 
         if sat_only:
-            thread.start_new_thread(self.thread_SAT, (runin_seconds,))
-            self._load_complete = True
-            self._battery_complete = True
-            self._graphics_complete = True
+            self._start_subtest(SUBTESTS.SAT, self.thread_SAT, (runin_seconds,))
+            self._complete |= SUBTESTS - set([SUBTESTS.SAT])
         else:
             if runin_seconds > 0:
-                thread.start_new_thread(self.thread_SAT, (runin_seconds,))
-                thread.start_new_thread(self.thread_Load, (runin_seconds,))
-                thread.start_new_thread(self.thread_Battery, (runin_seconds,))
+                self._start_subtest(
+                    SUBTESTS.SAT, self.thread_SAT, (runin_seconds,))
+                self._start_subtest(
+                    SUBTESTS.Load, self.thread_Load, (runin_seconds,))
+                self._start_subtest(
+                    SUBTESTS.Battery, self.thread_Battery,
+                        (runin_seconds,))
             else:
-                self._sat_complete = True
-                self._load_complete = True
-                self._battery_complete = True
+                self._complete |= set(
+                    [SUBTESTS.SAT, SUBTESTS.LOAD, SUBTESTS.Battery])
             if graphics_test_times > 0:
-                thread.start_new_thread(self.thread_Graphics,
-                                        (graphics_test_times,))
+                self._start_subtest(SUBTESTS.Graphics,
+                                    self.thread_Graphics,
+                                    (graphics_test_times,))
             else:
-                self._graphics_complete = True
+                self._complete.add(SUBTESTS.GRAPHICS)
         ui.run_test_widget(self.job, vbox)
 
         if not self._error_queue.empty():
