@@ -7,7 +7,8 @@
 
 This modem mimics a GSM (eventually LTE & CDMA) modem and allows a
 user to test shill and UI behaviors when a supported SIM is inserted
-into the device.
+into the device.  Invoked with the proper flags it can test that SMS
+messages are deliver to the UI.
 
 This program creates a virtual network interface to simulate the
 network interface of a modem.  It depends on modemmanager-next to
@@ -167,6 +168,35 @@ class SIM(DBusObjectWithProperties):
     def InterfacesAndProperties(self):
         return {mm1.SIM_INTERFACE: self.Properties()}
 
+class SMS(DBusObjectWithProperties):
+    """SMS Object.
+
+       Mock SMS message.
+    """
+
+    def __init__(self, manager, name='/SMS/0', text='test',
+                 number='123', timestamp='12:00', smsc=''):
+        self.manager = manager
+        self.name = name
+        self.path = manager.path + name
+        self.text = text or 'test sms at %s' % name
+        self.number = number
+        self.timestamp = timestamp
+        self.smsc = smsc
+        DBusObjectWithProperties.__init__(self, manager.bus, self.path)
+
+    def Properties(self):
+        # TODO(jglasgow): State, Validity, Class, Storage are also defined
+        return {
+            'Text': self.text,
+            'Number': self.number,
+            'Timestamp': self.timestamp,
+            'SMSC': self.smsc
+            }
+
+    def InterfacesAndProperties(self):
+        return {mm1.SMS_INTERFACE: self.Properties()}
+
 
 class PseudoNetworkInterface(object):
     """A Pseudo network interface.
@@ -280,6 +310,7 @@ class Modem(DBusObjectWithProperties):
         self.sim = sim
         DBusObjectWithProperties.__init__(self, manager.bus, self.path)
         self.pseudo_interface = PseudoNetworkInterface(self.device, '192.168.7')
+        self.smses = {}
 
     def __enter__(self):
         """Make usable with "with" statement."""
@@ -492,6 +523,28 @@ class Modem(DBusObjectWithProperties):
                           invalidated_properties):
         pass
 
+    def AddSMS(self, sms):
+        logging.info('Adding SMS %s to list', sms.path)
+        self.smses[sms.path] = sms
+        self.Added(self.path, True)
+
+    @dbus.service.method(mm1.MODEM_MESSAGING_INTERFACE, in_signature='',
+                         out_signature='ao')
+    def List(self, *args, **kwargs):
+        logging.info('Modem.Messaging: List: %s',
+                     ', '.join(self.smses.keys()))
+        return self.smses.keys()
+
+    @dbus.service.method(mm1.MODEM_MESSAGING_INTERFACE, in_signature='o',
+                         out_signature='')
+    def Delete(self, sms_path, *args, **kwargs):
+        logging.info('Modem.Messaging: Delete %s', sms_path)
+        del self.smses[sms_path]
+
+    @dbus.service.signal(mm1.MODEM_MESSAGING_INTERFACE, signature='ob')
+    def Added(self, sms_path, complete):
+        pass
+
 
 class GSMModem(Modem):
     """A GSMModem implements the mm1.MODEM_MODEM3GPP_INTERFACE interface."""
@@ -555,8 +608,7 @@ class ModemManager(dbus.service.Object):
         interfaces = device.InterfacesAndProperties().keys()
         self.InterfacesRemoved(device.path, interfaces)
 
-    @dbus.service.method(mm1.OFDOM,
-                         in_signature='', out_signature='a{oa{sa{sv}}}')
+    @dbus.service.method(mm1.OFDOM, out_signature='a{oa{sa{sv}}}')
     def GetManagedObjects(self):
         """Returns the list of managed objects and their properties."""
         results = {}
@@ -577,24 +629,66 @@ class ModemManager(dbus.service.Object):
 def main():
     usage = """
 Run pseudo_modem to simulate a GSM modem using the modemmanager-next
-DBUS interfaces.  This can be used to simpilify the verification
-process of UI features that use overseas sims, or used to test shill
-on a virtual machine without a physical modem.
+DBUS interfaces.  This can be used for the following:
+  - to simpilify the verification process of UI features that use of
+    overseas SIM cards
+  - to test shill on a virtual machine without a physical modem
+  - to test that Chrome property displays SMS messages
 
-To use on a test image:
+To use on a test image you use run_remote_tests to run
+network_3GModemControl which will cause pseudo_modem.py to be
+installed in /usr/local/autotests/cros/cellular.  Then stop
+modemmanager and start the pseudo modem with the commands:
+
   stop modemmanager
-  /usr/local/autotest/cros/cellular/pseudo_modem.py [--carrier=<carrier name>]
+  /usr/local/autotest/cros/cellular/pseudo_modem.py
+
+When done, use Control-C to stop the process and restart modem manager:
   start modemmanager
+
+Additional help documentation is available by invoking pseudo_modem.py
+--help.
+
+SMS testing can be accomnplished by supplying the -s flag to simulate
+the receipt of a number of SMS messages.  The message text can be
+specified with the --text option on the command line, or read from a
+file by using the --file option.  If the messages are located in a
+file, then each line corresponds to a single SMS message.
+
+Chrome should display the SMS messages as soon as a user logs in to
+the Chromebook, or if the user is already logged in, then shortly
+after the pseudo modem is recognized by shill.
 """
-    logging.basicConfig(filename='/var/log/pseudo_modem1.log',
-                        format='%(asctime)-15s %(message)s',
-                        level=logging.DEBUG)
     parser = OptionParser(usage=usage)
     parser.add_option('-c', '--carrier', dest='carrier_name',
                       metavar='<carrier name>',
                       help='<carrier name> := %s' % ' | '.join(
                           SIM.CARRIERS.keys()))
+    parser.add_option('-s', '--smscount', dest='sms_count',
+                      default=0,
+                      metavar='<smscount>',
+                      help='<smscount> := integer')
+    parser.add_option('-l', '--logfile', dest='logfile',
+                      default='',
+                      metavar='<filename>',
+                      help='<filename> := filename for logging output')
+    parser.add_option('-t', '--text', dest='sms_text',
+                      default=None,
+                      metavar='<text>',
+                      help='<text> := text for sms messages')
+    parser.add_option('-f', '--file', dest='filename',
+                      default=None,
+                      metavar='<filename>',
+                      help='<filename> := file with text for sms messages')
+
     (options, args) = parser.parse_args()
+
+    kwargs = {}
+    if options.logfile:
+        kwargs['filename'] = options.logfile
+    logging.basicConfig(format='%(asctime)-15s %(message)s',
+                        level=logging.DEBUG,
+                        **kwargs)
 
     if not options.carrier_name:
         options.carrier_name = DEFAULT_CARRIER
@@ -605,8 +699,20 @@ To use on a test image:
     manager = ModemManager(bus, mm1.OMM)
     sim_card = SIM.FromCarrier(string.lower(options.carrier_name),
                                manager)
+    with GSMModem(manager, sim=sim_card) as modem:
+        if options.filename:
+            f = open(options.filename, 'r')
+            for index, line in enumerate(f.readlines()):
+                line = line.strip()
+                if line:
+                    sms = SMS(manager, name='/SMS/%s' % index, text=line)
+                    modem.AddSMS(sms)
+        else:
+            for index in xrange(int(options.sms_count)):
+                sms = SMS(manager, name='/SMS/%s' % index,
+                          text=options.sms_text)
+                modem.AddSMS(sms)
 
-    with GSMModem(manager, sim=sim_card):
         mainloop = gobject.MainLoop()
 
         def SignalHandler(signum, frame):
