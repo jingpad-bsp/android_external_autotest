@@ -65,7 +65,9 @@ class factory_BasicGPS(test.test):
             utils.system("stop modemmanager", ignore_status=True)
 
             serial_modem = pyserial.Serial(dev_modem, timeout=2)
+            serial_modem.read(serial_modem.inWaiting())  # Empty the buffer.
             serial_gps = pyserial.Serial(dev_gps, timeout=2)
+            serial_gps.read(serial_gps.inWaiting())  # Empty the buffer.
 
             # Send an AT command and expect 'OK'
             send_command(serial_modem, 'AT')
