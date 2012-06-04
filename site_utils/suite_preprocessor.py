@@ -8,7 +8,8 @@
 
 Given an autotest root directory, this tool will aggregate the DEPENDENCIES of
 all tests into a single file ready for later consumption by the dynamic suite
-infrastructure.
+infrastructure.  ALL DATA MUST BE STORED IN LITERAL TYPES!  Dicts, lists,
+strings, etc.
 
 Data will be written to stdout (or, optionally a file).  Format will be:
 
@@ -53,7 +54,9 @@ def main():
         if test.dependencies:
             for suite in dynamic_suite.Suite.parse_tag(test.suite):
                 suite_deps = test_deps.setdefault(suite, {})
-                suite_deps[test.path] = test.dependencies
+                # Force this to a list so that we can parse it later with
+                # ast.literal_eval() -- which is MUCH safer than eval()
+                suite_deps[test.path] = list(test.dependencies)
 
     if options.output_file:
         with open(options.output_file, 'w+') as fd:
