@@ -46,17 +46,19 @@ def main():
     options = parse_options()
 
     fs_getter = dynamic_suite.Suite.create_fs_getter(options.autotest_dir)
-    predicate = lambda t: hasattr(t, 'suite')  # Filter for tests in suites.
+    predicate = lambda t: hasattr(t, 'suite')
     test_deps = {}  #  Format will be {suite: {test: [dep, dep]}}.
     for test in dynamic_suite.Suite.find_and_parse_tests(fs_getter,
                                                          predicate,
                                                          True):
-        if test.dependencies:
-            for suite in dynamic_suite.Suite.parse_tag(test.suite):
-                suite_deps = test_deps.setdefault(suite, {})
-                # Force this to a list so that we can parse it later with
-                # ast.literal_eval() -- which is MUCH safer than eval()
+        for suite in dynamic_suite.Suite.parse_tag(test.suite):
+            suite_deps = test_deps.setdefault(suite, {})
+            # Force this to a list so that we can parse it later with
+            # ast.literal_eval() -- which is MUCH safer than eval()
+            if test.dependencies:
                 suite_deps[test.path] = list(test.dependencies)
+            else:
+                suite_deps[test.path] = []
 
     if options.output_file:
         with open(options.output_file, 'w+') as fd:
