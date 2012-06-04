@@ -29,12 +29,13 @@ class Environment(object):
 
 
 class EmulatedEnvironment(object):
-    def __init__(self, config, flim=None):
+    def __init__(self, config):
         self.config = config
-        self.flim = flim
+        self.flim = None
         self.emulator = None
 
     def __enter__(self):
+        self.flim = flimflam.FlimFlam()
         return self
 
     def __exit__(self, exception, value, traceback):
@@ -91,9 +92,8 @@ class DefaultCellularTestContext(object):
     def __init__(self, config):
         self._nested = contextlib.nested(
             backchannel.Backchannel(),
-            cell_tools.OtherDeviceShutdownContext('cellular',
-                                                     flimflam.FlimFlam()),
-            Environment(config, flimflam.FlimFlam()))
+            cell_tools.OtherDeviceShutdownContext('cellular'),
+            Environment(config))
 
     def __enter__(self):
         (self.backchannel,

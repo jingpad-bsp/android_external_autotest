@@ -265,21 +265,24 @@ class OtherDeviceShutdownContext(object):
     """Context manager that shuts down other devices.
 
     Usage:
-        with cell_tools.OtherDeviceShutdownContext(flim, 'cellular'):
+        with cell_tools.OtherDeviceShutdownContext('cellular'):
             block
 
     TODO(rochberg):  Replace flimflam.DeviceManager with this
     """
 
-    def __init__(self, device_type, flim):
-        self.device_manager = flimflam.DeviceManager(flim)
-        self.device_manager.ShutdownAllExcept(device_type)
+    def __init__(self, device_type):
+        self.device_type = device_type
+        self.device_manager = None
 
     def __enter__(self):
+        self.device_manager = flimflam.DeviceManager(flimflam.FlimFlam())
+        self.device_manager.ShutdownAllExcept(self.device_type)
         return self
 
     def __exit__(self, exception, value, traceback):
-        self.device_manager.RestoreDevices()
+        if self.device_manager:
+            self.device_manager.RestoreDevices()
         return False
 
 
