@@ -729,7 +729,7 @@ void tracer(struct __test_metadata *_metadata, pid_t tracee, unsigned long
 FIXTURE_DATA(TRACE) {
 	struct sock_fprog prog;
 	pid_t tracer;
-	int poked;
+	long poked;
 };
 
 void cont_handler(int num) {
@@ -805,7 +805,7 @@ TEST_F(TRACE, getpid_runs_normally) {
  * TODO:
  * - add microbenchmarks
  * - expand NNP testing
- * - add arch-specific TRACE and TRAP handlers.
+ * - better arch-specific TRACE and TRAP handlers.
  * - endianness checking when appropriate
  * - 64-bit arg prodding
  * - arch value testing (x86 modes especially)
