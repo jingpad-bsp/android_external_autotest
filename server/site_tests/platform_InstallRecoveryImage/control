@@ -28,7 +28,7 @@ def run(machine):
 
     # Setup the client machine.
     host = hosts.create_host(machine, require_servo=True)
-    job.run_test("platform_InstallRecoveryImage", host=host, cmdline_args=None,
-                 use_pyauto=False, disable_sysinfo=True, image=image)
+    job.run_test("platform_InstallRecoveryImage", host=host,
+                 disable_sysinfo=True, image=image)
 
 parallel_simple(run, machines)

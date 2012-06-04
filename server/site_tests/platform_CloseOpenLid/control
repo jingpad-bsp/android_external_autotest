@@ -16,7 +16,6 @@ verified by pinging."""
 
 def run(machine):
     host = hosts.create_host(machine, require_servo=True)
-    job.run_test("platform_CloseOpenLid", host=host, cmdline_args=None,
-                 disable_sysinfo=True)
+    job.run_test("platform_CloseOpenLid", host=host, disable_sysinfo=True)
 
 parallel_simple(run, machines)
