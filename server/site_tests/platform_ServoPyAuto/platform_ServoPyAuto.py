@@ -19,10 +19,16 @@ class platform_ServoPyAuto(test.test):
     """
     version = 1
 
+    def initialize(self, host):
+        self._pyauto = pyauto_proxy.create_pyauto_proxy(host)
+
+
+    def cleanup(self, host):
+        self._pyauto.cleanup()
+
 
     def run_once(self, host=None):
-        pyauto = pyauto_proxy.create_pyauto_proxy(host)
-        pyauto.LoginToDefaultAccount()
+        self._pyauto.LoginToDefaultAccount()
 
         # Close and open lid.
         boot_id = host.get_boot_id()
@@ -31,7 +37,7 @@ class platform_ServoPyAuto(test.test):
         host.servo.lid_open()
         host.test_wait_for_resume(boot_id)
 
-        info = pyauto.GetLoginInfo()
+        info = self._pyauto.GetLoginInfo()
         logging.info(info)
         if not info['is_logged_in']:
             raise error.TestFail(
