@@ -81,7 +81,7 @@ class hardware_EC(test.test):
     FAN_DELAY = 3
 
     def run_once(self,
-                 num_temp_sensor=1,
+                 num_temp_sensor=0,
                  temp_sensor_to_test=None,
                  test_fan=False,
                  fan_rpm_error_margin=200,
