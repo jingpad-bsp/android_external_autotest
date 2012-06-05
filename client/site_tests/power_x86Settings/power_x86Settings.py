@@ -12,7 +12,7 @@ from autotest_lib.client.cros import power_status
 # Specify registers to check.  The format needs to be:
 #   register offset : ('bits', 'expression')
 DMI_BAR_CHECKS = {
-    'cpuA': {
+    'cpuAtom': {
         '0x88':  [('1:0', 3)],
         '0x200': [('27:26', 0)],
         '0x210': [('2:0', 1), ('15:8', 1)],
@@ -21,7 +21,7 @@ DMI_BAR_CHECKS = {
         '0xc30': [('11', 0), ('10:8', 4)],
         '0xc34': [('9:4', 7), ('0', 1)],
         },
-    'cpuB': {
+    'cpuCore': {
         # http://www.intel.com/content/dam/doc/datasheet/2nd-gen-core-family-mobile-vol-2-datasheet.pdf
         # PCIE DMI Link Control Register
         # -- [1:0] : ASPM State 0=Disable, 1=L0s, 2=reserved, 3=L0s&L1
@@ -38,8 +38,8 @@ DMI_BAR_CHECKS = {
 MCH_PM_PDWN_CONFIG = [('12', 0), ('11:8', 0x6), ('7:0', 0x40)]
 
 MCH_BAR_CHECKS = {
-    'cpuA': {},
-    'cpuB': {
+    'cpuAtom': {},
+    'cpuCore': {
         # mmc0
         '0x40b0': MCH_PM_PDWN_CONFIG,
         # mmc1
@@ -50,12 +50,12 @@ MCH_BAR_CHECKS = {
     }
 
 MSR_CHECKS = {
-    'cpuA': {
+    'cpuAtom': {
         '0xe2':  [('7', 0), ('2:0', 4)],
         '0x198': [('28:24', 6)],
         '0x1a0': [('33:32', 3), ('26:25', 3), ('16', 1)],
         },
-    'cpuB': {
+    'cpuCore': {
         # VMX disabled.
         '0x3a':  [('2:0', 1)],
         # IA32_ENERGY_PERF_BIAS[3:0] -- 0 == hi-perf, 6 balanced, 15 powersave
@@ -65,18 +65,19 @@ MSR_CHECKS = {
 
 # Give an ASPM exception for these PCI devices. ID is taken from lspci -n.
 ASPM_EXCEPTED_DEVICES = {
-    'cpuA': [
+    'cpuAtom': [
         # Intel 82801G HDA Controller
         '8086:27d8'
         ],
-    'cpuB': [
+    'cpuCore': [
         # Intel HDA Controller
-        '8086:1c20'
+        '8086:1c20',
+        '8086:1e20'
         ],
     }
 
 GFX_CHECKS = {
-    'cpuB': {'i915_enable_rc6': 1, 'i915_enable_fbc': 1, 'powersave': 1,
+    'cpuCore': {'i915_enable_rc6': 1, 'i915_enable_fbc': 1, 'powersave': 1,
              'semaphores':1 }
     }
 
@@ -124,17 +125,23 @@ class power_x86Settings(test.test):
 
 
     def _check_cpu_type(self):
+        """Identify CPU type.
+
+        See:
+            http://www.intel.com/content/www/us/en/processors/processor-numbers.html
+        for details.
+
+        Returns:
+            Boolean, true if CPU identified false otherwise
+        """
         cpuinfo = utils.read_file('/proc/cpuinfo')
 
-        # Look for Intel Atom N4xx or N5xx series CPUs
-        if re.search(r'Intel.*Atom.*N[45]', cpuinfo):
-            self._cpu_type = 'cpuA'
+        if re.search(r'Intel.*Atom.*[NZ][2-6]', cpuinfo):
+            self._cpu_type = 'cpuAtom'
             return True
-        if re.search(r'Intel.*Celeron.*8[1456][07]', cpuinfo):
-            self._cpu_type = 'cpuB'
-            return True
-        if re.search(r'Intel.*Core.*i[357]-2[357][0-9][0-9]', cpuinfo):
-            self._cpu_type = 'cpuB'
+        if re.search(r'Intel.*Celeron.*8[1456][07]', cpuinfo) or \
+                re.search(r'Intel.*Core.*i[357]-[23][0-9][0-9][0-9]', cpuinfo):
+            self._cpu_type = 'cpuCore'
             return True
 
         logging.info(cpuinfo)
