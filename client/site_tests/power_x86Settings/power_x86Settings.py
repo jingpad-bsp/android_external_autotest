@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, os, re, commands
+import commands, glob, logging, os, re, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import power_rapl
 from autotest_lib.client.cros import power_status
 
 
@@ -79,9 +80,15 @@ GFX_CHECKS = {
              'semaphores':1 }
     }
 
+# max & min are in Watts.  Device should presumably be idle.
+RAPL_CHECKS = {
+    'cpuB': {'pkg': {'max': 5.0, 'min': 1.0},
+             'pp0': {'max': 1.0, 'min': 0.001},
+             'pp1': {'max': 1.0, 'min': 0.001}}
+    }
 
 SUBTESTS = ['dmi', 'mch', 'msr', 'pcie_aspm', 'wifi', 'usb', 'storage',
-            'audio', 'filesystem', 'graphics']
+            'audio', 'filesystem', 'graphics', 'rapl']
 
 
 class power_x86Settings(test.test):
@@ -333,6 +340,32 @@ class power_x86Settings(test.test):
     def _verify_msr_power_settings(self):
         return self._verify_registers('msr', self._read_msr,
                                       MSR_CHECKS[self._cpu_type])
+
+
+    def _verify_rapl_power_settings(self):
+        errors = 0
+        if self._cpu_type not in RAPL_CHECKS:
+            return errors
+
+        test_domains=RAPL_CHECKS[self._cpu_type].keys()
+        rapls = power_rapl.create_rapl(domains=test_domains)
+
+        time.sleep(2)
+        for rapl in rapls:
+            power = rapl.refresh()
+            domain = rapl.domain
+            test_params = RAPL_CHECKS[self._cpu_type][domain]
+            logging.info('RAPL %s power during 2secs was: %.3fW',
+                          domain, power)
+            if power > test_params['max']:
+                errors += 1
+                logging.error('Error(%d), RAPL %s power > %.3fW',
+                              errors, domain, test_params['max'])
+            if power < test_params['min']:
+                errors += 1
+                logging.error('Error(%d), RAPL %s power < %.3fW',
+                              errors, domain, test_params['min'])
+        return errors
 
 
     def _verify_registers(self, reg_type, read_fn, match_list):
