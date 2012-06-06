@@ -2,10 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Class for efficient data retrieval for dash utilities.
+"""Classes for efficient data retrieval for dash utilities.
 
 To see live data for these data structures best, run test_dash_view.py and
 review its output. Output is produced by ShowDataModel() and ShowKeyVals().
+
+Includes: class CrashDashView(object)
+          class AutotestDashView(object)
+          class SummaryRanges(object)
 """
 
 import datetime
@@ -37,7 +41,7 @@ GTEST_SUFFIXES = ["audio", "browsertests", "enterprise", "pagecycler", "pyauto",
 SUFFIXES_TO_SHOW = ["bvt", "flaky", "hwqual", "regression",
                     KERNELTEST_TAG] + GTEST_SUFFIXES
 SERVER_JOB = "SERVER_JOB"
-LEGACY_PLATFORM_PREFIXES = ('netbook_', 'desktop_')
+LEGACY_PLATFORM_PREFIXES = ("netbook_", "desktop_")
 
 
 class CrashDashView(object):
@@ -1076,6 +1080,14 @@ class AutotestDashView(object):
       if not self._perf_keyvals:
         self.QueryKeyVals()
       del diag
+
+    def QueryDjangoSession(self):
+      """Get current row count from django_session table."""
+      query = [
+          "SELECT COUNT(*)",
+          "FROM django_session"]
+      self._cursor.execute(" ".join(query))
+      return self._cursor.fetchone()[0]
 
     def QueryAutotests(self):
       """Get test attributes like author and path."""

@@ -1,0 +1,58 @@
+{% extends "tables/base.html" %}
+{% comment %}
+
+Copyright 2012 Google Inc. All Rights Reserved.
+
+This template builds a page of plots for monitoring admin activities.
+{% endcomment %}
+{% block title %}ChromeOS Test - Monitoring Plots{% endblock %}
+
+{% block header_block %}
+<div>
+  <span style="text-align: left">
+    <a href="/results/dashboard/waterfall_index.html" target="_top">HOME</a>
+    <span style="float: right">
+      <i>last updated: {{ tpl_last_updated }}</i>
+    </span>
+  </span>
+</div>
+{% endblock %}
+
+{% block html_block %}
+<center><h2>Monitoring Plots</h2></center>
+<!--Load the AJAX API-->
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+  // Load the Visualization API and the linechart package.
+  google.load('visualization', '1', {'packages': ['corechart']});
+
+  // Set a callback to run when the Google Visualization API is loaded.
+  google.setOnLoadCallback(drawChart);
+
+  // Callback that creates and populates a data table,
+  // instantiates the charts, passes in the data and
+  // draws them.
+  function drawChart() {
+    var data = google.visualization.arrayToDataTable([
+      ['Time', 'sessions'],
+      {% for stat in tpl_monitoring.django_session|dictsort:'time' %}
+      ['{{ stat.time }}', {{ stat.sessions }}],
+      {% endfor %}
+    ]);
+
+    var options = {
+      pointSize: 4,
+      title: 'Session Count',
+      height: 900,
+      width: 1440
+    };
+
+    var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+    chart.draw(data, options);
+  }
+</script>
+<div id="chart_div"></div>
+{% endblock %}
+
+{% block footer_block %}
+{% endblock %}

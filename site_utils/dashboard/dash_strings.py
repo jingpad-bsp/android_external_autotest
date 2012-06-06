@@ -33,6 +33,7 @@ BUILD_PERFORMANCE_FILE = 'build_performance.html'
 PLOT_FILE = 'index.html'
 PERF_INDEX_FILE = 'perf_index.html'
 PERF_BUILDS_FILE = 'perf_builds.html'
+PLOT_MONITORING_FILE = 'monitoring.html'
 
 LOCAL_TMP_DIR = './dashcache'
 EMAIL_DIR = 'emails'
