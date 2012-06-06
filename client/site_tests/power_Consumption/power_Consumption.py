@@ -2,9 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time, shutil, threading
-import urllib
+import logging
 import numpy
+import os
+import shutil
+import time
+import urllib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
@@ -12,54 +15,6 @@ from autotest_lib.client.cros import cros_ui, cros_ui_test
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros import power_status
 import flimflam
-
-
-def read_file(filename):
-    with file(filename, 'rt') as f:
-        s = f.read()
-    return s
-
-
-class Logger(threading.Thread):
-    """A thread that logs power draw readings."""
-
-    def __init__(self, battery_dir):
-        """
-        Initialize a logger.
-        Args:
-            battery_dir: path to dir containing the files to probe and log.
-                usually something like /sys/class/power_supply/BAT0/
-        """
-        threading.Thread.__init__(self)
-        # Probing interval in seconds
-        self.seconds_period = 1
-        self.battery_dir = battery_dir
-
-        # Files to log voltage and current from
-        self.voltage_file = os.path.join(battery_dir, 'voltage_now')
-        self.current_file = os.path.join(battery_dir, 'current_now')
-        self.readings = []
-        self.times = []
-
-        # A flag for stopping the logger
-        self.done = False
-
-
-    def probe(self):
-        voltage_str = read_file(self.voltage_file).strip()
-        current_str = read_file(self.current_file).strip()
-        self.times.append(time.time())
-
-        # Values in sysfs are in microamps and microvolts
-        # multiply and convert to Watts
-        power = float(voltage_str) * float(current_str) / 10**12
-        self.readings.append(power)
-
-
-    def run(self):
-        while(not self.done):
-            self.probe()
-            time.sleep(self.seconds_period)
 
 
 class power_Consumption(cros_ui_test.UITest):
@@ -549,7 +504,7 @@ class power_Consumption(cros_ui_test.UITest):
                                 daemon, str(e))
 
         self._set_backlight_level(self._default_brightness)
-        self.logger = Logger(self._power_status.battery_path)
+        self.logger = power_status.Logger(self._power_status.battery_path)
         self.logger.start()
 
         # Check that we have a functioning browser and network

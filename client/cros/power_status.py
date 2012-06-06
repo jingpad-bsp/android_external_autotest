@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, math, os, re, time
+import glob, logging, math, os, re, threading, time
 
 import common
 from autotest_lib.client.bin import utils
@@ -579,3 +579,53 @@ class USBSuspendStats(object):
             total_connected += connected
 
         return total_active, total_connected
+
+
+class Logger(threading.Thread):
+    """A thread that logs power draw readings."""
+
+    def __init__(self, battery_dir):
+        """
+        Initialize a logger.
+        Args:
+            battery_dir: path to dir containing the files to probe and log.
+                usually something like /sys/class/power_supply/BAT0/
+        """
+        threading.Thread.__init__(self)
+        # Probing interval in seconds
+        self.seconds_period = 1
+        self.battery_dir = battery_dir
+
+        # Files to log voltage and current from
+        self.voltage_file = os.path.join(battery_dir, 'voltage_now')
+        self.current_file = os.path.join(battery_dir, 'current_now')
+        self.readings = []
+        self.times = []
+
+        # A flag for stopping the logger
+        self.done = False
+
+
+    def _read_file(filename):
+        with file(filename, 'rt') as f:
+            s = f.read()
+        return s
+
+
+    def probe(self):
+        voltage_str = self._read_file(self.voltage_file).strip()
+        current_str = self._read_file(self.current_file).strip()
+        self.times.append(time.time())
+
+        # Values in sysfs are in microamps and microvolts
+        # multiply and convert to Watts
+        power = float(voltage_str) * float(current_str) / 10**12
+        self.readings.append(power)
+
+
+    def run(self):
+        while(not self.done):
+            self.probe()
+            time.sleep(self.seconds_period)
+
+
