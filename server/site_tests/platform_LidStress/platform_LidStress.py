@@ -4,7 +4,8 @@
 import logging, random, re, sgmllib, threading, time, urllib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import servo_test
+from autotest_lib.server import test
+from autotest_lib.server.cros import pyauto_proxy
 
 SLEEP_DEFAULT_SEED = 1
 SLEEP_DEFAULT_SECS = { 'on': {'min': 3, 'max': 6},
@@ -101,7 +102,7 @@ class SurfThread(threading.Thread):
 
 
     def __init__(self, pyauto, sites):
-        threading.Thread.__init__(self)
+        super(SurfThread, self).__init__()
         self._sites = sites
         self._pyauto = pyauto
 
@@ -127,10 +128,10 @@ class LidThread(threading.Thread):
     """Class to continually open and close lid."""
 
 
-    def __init__(self, server, num_cycles, sleep_seed=None, sleep_secs=None):
-        threading.Thread.__init__(self)
+    def __init__(self, servo, num_cycles, sleep_seed=None, sleep_secs=None):
+        super(LidThread, self).__init__()
         self._num_cycles = num_cycles
-        self._server = server
+        self._servo = servo
 
         if not sleep_secs:
             sleep_secs = SLEEP_DEFAULT_SECS
@@ -146,27 +147,34 @@ class LidThread(threading.Thread):
         robj.seed(self._sleep_seed)
         for i in xrange(1, self._num_cycles + 1):
             logging.info("Lid cycle %d of %d", i, self._num_cycles)
-            self._server.servo.set_nocheck('lid_open', 'no')
+            self._servo.set_nocheck('lid_open', 'no')
             time.sleep(robj.uniform(self._sleep_secs['on']['min'],
                                     self._sleep_secs['on']['max']))
-            self._server.servo.set_nocheck('lid_open', 'yes')
+            self._servo.set_nocheck('lid_open', 'yes')
             time.sleep(robj.uniform(self._sleep_secs['off']['min'],
                                     self._sleep_secs['off']['max']))
 
 
-class platform_LidStress(servo_test.ServoTest):
+class platform_LidStress(test.test):
     """Uses servo to repeatedly close & open lid while surfing."""
     version = 1
+
+    def initialize(self, host):
+        self._pyauto = pyauto_proxy.create_pyauto_proxy(host)
+
+
+    def cleanup(self):
+        self._pyauto.cleanup()
 
 
     def run_once(self, host, num_cycles=None):
         if not num_cycles:
             num_cycles = 50
 
-        self.pyauto.LoginToDefaultAccount()
+        self._pyauto.LoginToDefaultAccount()
 
         # open & close lid frequently and quickly
-        lid_fast = LidThread(self, num_cycles, None, SLEEP_FAST_SECS)
+        lid_fast = LidThread(host.servo, num_cycles, None, SLEEP_FAST_SECS)
         lid_fast.start()
         tout = SLEEP_FAST_SECS['on']['max'] + SLEEP_FAST_SECS['off']['max']
         lid_fast.join(timeout=num_cycles * tout)
@@ -174,8 +182,8 @@ class platform_LidStress(servo_test.ServoTest):
         # surf & open & close lid less frequently
         alexa = AlexaSites("http://www.alexa.com/topsites/countries;",
                            "/US", num_cycles)
-        surf = SurfThread(self.pyauto, alexa.get_sites())
-        lid = LidThread(self, num_cycles)
+        surf = SurfThread(self._pyauto, alexa.get_sites())
+        lid = LidThread(host.servo, num_cycles)
 
         surf.start()
         lid.start()
