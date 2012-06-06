@@ -148,28 +148,35 @@ class power_Consumption(cros_ui_test.UITest):
 
     def _calc_power(self):
         """Calculate average power consumption during each of the sub-tests."""
-        power = numpy.array(self.logger.readings)
         t = numpy.array(self.logger.times)
         keyvals = {}
         results  = []
 
-        for name, tstart, tend in self._times:
-            keyvals[name+'_duration'] = tend - tstart
-            # Select all readings taken between tstart and tend timestamps
-            pwr_array = power[numpy.bitwise_and(tstart < t, t < tend)]
-            # If sub-test terminated early, avoid calculating avg, std and min
-            if not pwr_array.size:
-                continue
-            pwr_mean = pwr_array.mean()
-            pwr_std = pwr_array.std()
+        for i, domain_readings in enumerate(zip(*self.logger.readings)):
+            power = numpy.array(domain_readings)
+            domain = self.logger.domains[i]
 
-            # Results list can be used for pretty printing and saving as csv
-            results.append((name, pwr_mean, pwr_std,
-                            tend - tstart, tstart, tend))
+            for tname, tstart, tend in self._times:
+                prefix = '%s_%s' % (tname, domain)
+                keyvals[prefix+'_duration'] = tend - tstart
+                # Select all readings taken between tstart and tend timestamps
+                pwr_array = power[numpy.bitwise_and(tstart < t, t < tend)]
+                # If sub-test terminated early, avoid calculating avg, std and
+                # min
+                if not pwr_array.size:
+                    continue
+                pwr_mean = pwr_array.mean()
+                pwr_std = pwr_array.std()
 
-            keyvals[name+'_power'] = pwr_mean
-            keyvals[name+'_power_std'] = pwr_std
-            keyvals[name+'_power_min'] = pwr_array.min()
+                # Results list can be used for pretty printing and saving as csv
+                results.append((prefix, pwr_mean, pwr_std,
+                                tend - tstart, tstart, tend))
+
+                keyvals[prefix+'_power'] = pwr_mean
+                keyvals[prefix+'_power_cnt'] = pwr_array.size
+                keyvals[prefix+'_power_max'] = pwr_array.max()
+                keyvals[prefix+'_power_min'] = pwr_array.min()
+                keyvals[prefix+'_power_std'] = pwr_std
 
         self._results = results
         return keyvals
@@ -504,7 +511,9 @@ class power_Consumption(cros_ui_test.UITest):
                                 daemon, str(e))
 
         self._set_backlight_level(self._default_brightness)
-        self.logger = power_status.Logger(self._power_status.battery_path)
+        measurements = \
+        [power_status.SystemPower(self._power_status.battery_path)]
+        self.logger = power_status.PowerLogger(measurements)
         self.logger.start()
 
         # Check that we have a functioning browser and network

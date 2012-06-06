@@ -581,51 +581,118 @@ class USBSuspendStats(object):
         return total_active, total_connected
 
 
-class Logger(threading.Thread):
-    """A thread that logs power draw readings."""
+class PowerMeasurement(object):
+    """Class to measure power.
+
+    Public attributes:
+        domain: String name of the power domain being measured.  Example is
+          'system' for total system power
+
+    Public methods:
+        refresh: Performs any power/energy sampling and calculation and returns
+            power as float in watts.  This method MUST be implemented in
+            subclass.
+    """
+
+    def __init__(self, domain):
+        """Constructor."""
+        self.domain = domain
+
+
+    def refresh(self):
+        """Performs any power/energy sampling and calculation.
+
+        MUST be implemented in subclass
+
+        Returns:
+            float, power in watts.
+        """
+        raise NotImplementedError("'refresh' method should be implemented in "
+                                  "subclass.")
+
+
+class SystemPower(PowerMeasurement):
+    """Class to measure system power.
+
+    TODO(tbroch): This class provides a subset of functionality in BatteryStat
+    in hopes of minimizing power draw.  Investigate whether its really
+    significant and if not, deprecate.
+
+    Private Attributes:
+      _voltage_file: path to retrieve voltage in uvolts
+      _current_file: path to retrieve current in uamps
+    """
 
     def __init__(self, battery_dir):
-        """
-        Initialize a logger.
+        """Constructor.
+
         Args:
             battery_dir: path to dir containing the files to probe and log.
                 usually something like /sys/class/power_supply/BAT0/
         """
-        threading.Thread.__init__(self)
-        # Probing interval in seconds
-        self.seconds_period = 1
-        self.battery_dir = battery_dir
-
+        super(SystemPower, self).__init__('system')
         # Files to log voltage and current from
-        self.voltage_file = os.path.join(battery_dir, 'voltage_now')
-        self.current_file = os.path.join(battery_dir, 'current_now')
-        self.readings = []
-        self.times = []
-
-        # A flag for stopping the logger
-        self.done = False
+        self._voltage_file = os.path.join(battery_dir, 'voltage_now')
+        self._current_file = os.path.join(battery_dir, 'current_now')
 
 
-    def _read_file(filename):
-        with file(filename, 'rt') as f:
-            s = f.read()
-        return s
+    def refresh(self):
+        """refresh method.
 
+        See superclass PowerMeasurement for details.
+        """
 
-    def probe(self):
-        voltage_str = self._read_file(self.voltage_file).strip()
-        current_str = self._read_file(self.current_file).strip()
-        self.times.append(time.time())
+        voltage_str = utils.read_one_line(self._voltage_file)
+        current_str = utils.read_one_line(self._current_file)
 
         # Values in sysfs are in microamps and microvolts
         # multiply and convert to Watts
         power = float(voltage_str) * float(current_str) / 10**12
-        self.readings.append(power)
+        return power
+
+
+class PowerLogger(threading.Thread):
+    """A thread that logs power draw readings in watts.
+
+    Public attributes:
+        seconds_period: float, probing interval in seconds.
+        readings: list of lists of floats of power measurements in watts.
+        times: list of floats of time (since Epoch) of when power measurements
+            occurred.  len(time) == len(readings).
+        done: flag to stop the logger.
+        domains: list of power domain strings being measured
+
+    Private attributes:
+       _power_measurements: list of PowerMeasurement objects to be sampled.
+    """
+    def __init__(self, power_measurements, seconds_period=1.0):
+        """Initialize a logger.
+
+        Args:
+            power_measurements: list of PowerMeasurement objects to be sampled.
+            seconds_period: float, probing interval in seconds.  Default 1.0
+        """
+        threading.Thread.__init__(self)
+
+        self.seconds_period = seconds_period
+
+        self.readings = []
+        self.times = []
+
+        self.domains = []
+        self._power_measurements = power_measurements
+        for meas in self._power_measurements:
+            self.domains.append(meas.domain)
+
+        self.done = False
 
 
     def run(self):
+        """Threads run method."""
         while(not self.done):
-            self.probe()
+            self.times.append(time.time())
+            readings = []
+            for meas in self._power_measurements:
+                readings.append(meas.refresh())
+            self.readings.append(readings)
             time.sleep(self.seconds_period)
-
-
