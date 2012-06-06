@@ -208,6 +208,7 @@ class factory_RemovableStorage(test.test):
                             _SKIP_TAIL_BLOCK -
                             int(bytes_to_operate / _SECTOR_SIZE))
 
+                if dev_size > 0x7FFFFFFF:
                 # The following try...except section is for system that does
                 # not have large file support enabled for Python. This is
                 # typically observed on 32-bit machines. In some 32-bit
@@ -215,18 +216,18 @@ class factory_RemovableStorage(test.test):
                 # (which is the largest possible value of singned int) will
                 # cause OverflowError, due to failed conversion from long int
                 # to int.
-                try:
-                    # Test whether large file support is enabled or not.
-                    os.lseek(dev_fd, 0x7FFFFFFF + 1, os.SEEK_SET)
-                except OverflowError:
-                    # The system does not have large file support, so we
-                    # restrict the range in which we perform the random r/w
-                    # test.
-                    random_tail = min(
-                                random_tail,
-                                int(0x7FFFFFFF / _SECTOR_SIZE) -
-                                int(bytes_to_operate / _SECTOR_SIZE))
-                    factory.log('No large file support')
+                    try:
+                        # Test whether large file support is enabled or not.
+                        os.lseek(dev_fd, 0x7FFFFFFF + 1, os.SEEK_SET)
+                    except OverflowError:
+                        # The system does not have large file support, so we
+                        # restrict the range in which we perform the random r/w
+                        # test.
+                        random_tail = min(
+                                    random_tail,
+                                    int(0x7FFFFFFF / _SECTOR_SIZE) -
+                                    int(bytes_to_operate / _SECTOR_SIZE))
+                        factory.log('No large file support')
 
                 if random_tail < random_head:
                     raise Exception('Block size too large for r/w test')
