@@ -269,13 +269,13 @@ class factory_StressTest(test.test):
                         (runin_seconds,))
             else:
                 self._complete |= set(
-                    [SUBTESTS.SAT, SUBTESTS.LOAD, SUBTESTS.Battery])
+                    [SUBTESTS.SAT, SUBTESTS.Load, SUBTESTS.Battery])
             if graphics_test_times > 0:
                 self._start_subtest(SUBTESTS.Graphics,
                                     self.thread_Graphics,
                                     (graphics_test_times,))
             else:
-                self._complete.add(SUBTESTS.GRAPHICS)
+                self._complete.add(SUBTESTS.Graphics)
         ui.run_test_widget(self.job, vbox)
 
         if not self._error_queue.empty():
