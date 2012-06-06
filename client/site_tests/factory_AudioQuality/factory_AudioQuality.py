@@ -10,19 +10,24 @@
 # command through ethernet to configure the audio loop path. Note that it's
 # External equipment's responsibility to capture and analyze the audio signal.
 
-import gobject
-import gtk
 import os
 import re
+import select
 import socket
 import subprocess
 import tempfile
+import threading
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory
+from autotest_lib.client.cros.factory.test_ui import UI
+from autotest_lib.client.cros.factory.event import Event
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.factory import ui as ful
+
+from autotest_lib.client.cros import flimflam_test_path
+import flimflam
 
 # Host test machine crossover connected to DUT, fix local ip and port for
 # communication in between.
@@ -67,6 +72,44 @@ _INIT_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
 _UNMUTE_SPEAKER_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
                                    'value': 'off'}]
 
+_HTML = '''
+<h1 id="message" style="position: absolute; top: 45%">
+  Plug in ethernet and hit S to start
+  | 插上网路线后按下S键开始测试</h1>
+<br>
+<div>Type in test command and enter:
+  <input id="command" type="text" onkeydown="commandEntered(event);">
+</div>
+'''
+
+_JS = '''
+window.onkeydown = function(event) {
+  if (event.keyCode == 83) {
+    test.sendTestEvent("init_audio_server", {});
+    window.onkeydown = null;
+  }
+}
+
+function setMessage(msg) {
+  document.getElementById("message").innerHTML = msg;
+}
+
+function commandEntered(event) {
+  if (event.keyCode == 13) {
+    alert(document.getElementById("command").value);
+    test.sendTestEvent("test_command",
+        {"cmd": document.getElementById("command").value});
+  }
+}
+
+function testPass() {
+  test.pass();
+}
+
+function testFail() {
+  test.fail("Test fail, find more detail in log.");
+}
+'''
 
 class factory_AudioQuality(test.test):
     version = 2
@@ -77,7 +120,7 @@ class factory_AudioQuality(test.test):
         '''
         line = conn.recv(1024)
         if line:
-            factory.log("Received command %s" % line)
+            factory.console.info("Received command %s" % line)
         else:
             return False
 
@@ -87,6 +130,7 @@ class factory_AudioQuality(test.test):
                 break
 
         # Respond by the received command with '_OK' postfix.
+        factory.console.info('Respond OK')
         conn.send(line + '_OK')
         return False
 
@@ -129,7 +173,7 @@ class factory_AudioQuality(test.test):
         size = int(params[2])
 
         with tempfile.NamedTemporaryFile(mode='w+t') as tmp_file:
-            factory.log("created tmp_file: %s\n" % tmp_file.name)
+            factory.console.info("created tmp_file: %s\n" % tmp_file.name)
             tmp_file.write('File name: %s\n' % file_name)
 
             # A message DONE will be concatenated to the end of detailed log.
@@ -142,7 +186,8 @@ class factory_AudioQuality(test.test):
             for line in tmp_file:
                 self._detail_log += line
 
-        factory.log("Received file %s with size %d" % (file_name, size))
+        factory.console.info("Received file %s with size %d" % (
+                file_name, size))
 
     def handle_result_pass(self, *args):
         self._test_passed = True
@@ -151,49 +196,59 @@ class factory_AudioQuality(test.test):
         self._test_passed = False
 
     def handle_test_complete(self, *args):
-        gtk.main_quit()
+        '''Handles test completion.
+
+        Dumps log and runs post test script before ends this test.
+        '''
+        factory.console.info(self._detail_log)
+
+        self.on_test_complete()
+        factory.console.info('%s run_once finished' % self.__class__)
+        if hasattr(self, '_test_passed') and self._test_passed:
+            self.ui.call_js_function('testPass', {})
+        else:
+            self.ui.call_js_function('testFail', {})
 
     def handle_loop_none(self, *args):
         self.restore_configuration()
-        self._loop_status_label.set_text(_LABEL_WAITING)
+        self.ui.call_js_function('setMessage', _LABEL_WAITING)
 
     def handle_loop(self, *args):
         self.restore_configuration()
-        self._loop_status_label.set_text(_LABEL_AUDIOLOOP)
+        self.ui.call_js_function('setMessage', _LABEL_AUDIOLOOP)
         self.start_loop()
 
     def handle_loop_from_dmic(self, *args):
         self.handle_loop()
-        self._loop_status_label.set_text(_LABEL_AUDIOLOOP +
+        self.ui.call_js_function('setMessage', _LABEL_AUDIOLOOP +
                 _LABEL_DMIC_ON)
         self._ah.set_mixer_controls(self._dmic_capture_mixer_settings)
 
     def handle_loop_speaker_unmute(self, *args):
         self.handle_loop()
-        self._loop_status_label.set_text(_LABEL_AUDIOLOOP +
+        self.ui.call_js_function('setMessage', _LABEL_AUDIOLOOP +
                 _LABEL_SPEAKER_MUTE_OFF)
         self.unmute_speaker()
 
     def handle_xtalk_left(self, *args):
         self.restore_configuration()
-        self._loop_status_label.set_text(_LABEL_PLAYTONE_LEFT)
+        self.ui.call_js_function('setMessage', _LABEL_PLAYTONE_LEFT)
         self.headphone_playback_switch(False, True)
         self.play_tone()
 
     def handle_xtalk_right(self, *args):
         self.restore_configuration()
-        self._loop_status_label.set_text(_LABEL_PLAYTONE_RIGHT)
+        self.ui.call_js_function('setMessage', _LABEL_PLAYTONE_RIGHT)
         self.headphone_playback_switch(True, False)
         self.play_tone()
 
-    def listen(self, sock, *args):
-        '''
-        Listens for connection and start handler for it.
-        '''
-        conn, addr = sock.accept()
-        self._loop_status_label.set_text("Connected")
-        gobject.io_add_watch(conn, gobject.IO_IN, self.handle_connection)
-        return True
+    def listen_forever(self, sock):
+        fd = sock.fileno()
+        while True:
+            _rl, _, _ = select.select([fd], [], [])
+            if fd in _rl:
+                conn, addr = sock.accept()
+                self.handle_connection(conn)
 
     def start_server(self):
         '''
@@ -203,8 +258,14 @@ class factory_AudioQuality(test.test):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((_HOST, _PORT))
         sock.listen(1)
-        factory.log("Listening at port %d" % _PORT)
-        gobject.io_add_watch(sock, gobject.IO_IN, self.listen)
+        factory.console.info("Listening at port %d" % _PORT)
+
+        self._listen_thread = threading.Thread(target=self.listen_forever,
+                args=(sock,))
+        self._listen_thread.start()
+
+        self.ui.call_js_function('setMessage',
+                'Ready for connection | 準備完成,等待連結')
 
     def headphone_playback_switch(self, left=False, right=False):
         '''
@@ -227,20 +288,11 @@ class factory_AudioQuality(test.test):
         '''
         Restores the original state before exiting the test.
         '''
-        os.system('iptables -D INPUT -p tcp --dport %s -j ACCEPT' % _PORT)
-        os.system('ifconfig %s down' % self._eth)
-        os.system('ifconfig %s up' % self._eth)
+        utils.system('iptables -D INPUT -p tcp --dport %s -j ACCEPT' % _PORT)
+        utils.system('ifconfig %s down' % self._eth)
+        utils.system('ifconfig %s up' % self._eth)
         self.restore_configuration()
         self._ah.cleanup_deps(['sox'])
-
-    def key_release_callback(self, widget, event):
-        # Hit Q to force quit this test.
-        if event.keyval == ord('Q'):
-            self._test_passed = False
-            gtk.main_quit()
-
-    def register_callbacks(self, window):
-        window.connect('key-release-event', self.key_release_callback)
 
     def check_eth_state(self):
         path = '/sys/class/net/%s/carrier' % self._eth
@@ -254,33 +306,55 @@ class factory_AudioQuality(test.test):
             else:
                 return False
 
+    def get_eth_device(self):
+        flim = flimflam.FlimFlam()
+        for dev in flim.GetObjectList('Device'):
+            properties = dev.GetProperties(utf8_strings=True)
+            if properties.get('Type') == 'ethernet':
+                return str(properties.get('Interface'))
+        return 'eth0'
+
+    def test_command(self, event):
+        factory.console.info('Get event %s' % event)
+        cmd = event.data.get('cmd', '')
+        for key in self._handlers.iterkeys():
+            if key.match(cmd):
+                self._handlers[key]()
+                break
+
+    def init_audio_server(self, event):
+        self._eth = self.get_eth_device()
+        factory.console.info('Got %s for connection' % self._eth)
+
+        # Configure local network environment to accept command from test host.
+        utils.system('ifconfig %s %s netmask 255.255.255.0 up' %
+                (self._eth, _LOCAL_IP))
+        utils.system('iptables -A INPUT -p tcp --dport %s -j ACCEPT' % _PORT)
+
+        self.start_server()
+
     def run_once(self, input_dev='hw:0,0', output_dev='hw:0,0', eth='eth0',
             dmic_switch_mixer_settings=_DMIC_SWITCH_MIXER_SETTINGS,
             init_mixer_settings=_INIT_MIXER_SETTINGS,
             unmute_speaker_mixer_settings=_UNMUTE_SPEAKER_MIXER_SETTINGS):
-        factory.log('%s run_once' % self.__class__)
+        factory.console.info('%s run_once' % self.__class__)
 
         self._ah = audio_helper.AudioHelper(self, input_device=input_dev)
         self._ah.setup_deps(['sox'])
         self._detail_log = ''
         self._input_dev = input_dev
         self._output_dev = output_dev
-        self._eth = eth
+        self._eth = None
+        self._test_passed = False
 
         # Mixer settings for different configurations.
         self._init_mixer_settings = init_mixer_settings
         self._unmute_speaker_mixer_settings = unmute_speaker_mixer_settings
         self._dmic_switch_mixer_settings = dmic_switch_mixer_settings
 
-        factory.log('Checking %s state....' % self._eth)
-        utils.poll_for_condition(self.check_eth_state,
-                                 timeout=30, desc='Checking %s' % self._eth)
-        factory.log('Checking %s done!' % eth)
-
-        # Configure local network environment to accept command from test host.
-        os.system('ifconfig %s %s netmask 255.255.255.0 up' %
-                (self._eth, _LOCAL_IP))
-        os.system('iptables -A INPUT -p tcp --dport %s -j ACCEPT' % _PORT)
+        self.ui = UI()
+        self.ui.set_html(_HTML)
+        self.ui.run_js(_JS)
 
         # Register commands to corresponding handlers.
         self._handlers = {}
@@ -295,18 +369,7 @@ class factory_AudioQuality(test.test):
         self._handlers[_XTALK_L_RE] = self.handle_xtalk_left
         self._handlers[_XTALK_R_RE] = self.handle_xtalk_right
 
-        self.start_server()
+        self.ui.add_event_handler('init_audio_server', self.init_audio_server)
+        self.ui.add_event_handler('test_command', self.test_command)
 
-        self._main_widget = gtk.EventBox()
-        self._main_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        self._loop_status_label = ful.make_label('No audio loop', fg=ful.WHITE)
-        self._main_widget.add(self._loop_status_label)
-
-        ful.run_test_widget(self.job, self._main_widget,
-                window_registration_callback=self.register_callbacks,
-                cleanup_callback=self.on_test_complete)
-        if not self._test_passed:
-            factory.log(self._detail_log)
-            raise error.TestError('Test failed.')
-
-        factory.log('%s run_once finished' % self.__class__)
+        self.ui.run()
