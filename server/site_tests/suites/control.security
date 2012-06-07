@@ -23,6 +23,7 @@ TESTS = [
   ('security_ASLR', {}),
   ('security_DbusOwners', {}),
   ('security_HardlinkRestrictions', {}),
+  ('security_HciconfigDefaultSettings', {}),
   ('security_HtpdateHTTP', {}),
   ('security_Minijail_seccomp', {}),
   ('security_NetworkListeners', {}),
