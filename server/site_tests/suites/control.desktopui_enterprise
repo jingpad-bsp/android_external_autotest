@@ -19,7 +19,6 @@ CLIENT_GTESTS = [
     ('desktopui_PyAutoFunctionalTests', {
         'suite': 'CHROMEOS_POLICY',
         'auto_login': False,
-        'as_chronos': False,
         'tag': 'CHROMEOS_POLICY',
     }),
 ]

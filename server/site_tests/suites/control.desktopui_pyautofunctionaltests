@@ -17,7 +17,6 @@ This test suite runs Chrome PyAuto functional tests FULL suite.
 kwargs = {
     'suite': 'FULL',
     'auto_login': True,
-    'as_chronos': True,
     'tag': 'FULL',
 }
 gtest_runner.run(('desktopui_PyAutoFunctionalTests', kwargs), machines[0])

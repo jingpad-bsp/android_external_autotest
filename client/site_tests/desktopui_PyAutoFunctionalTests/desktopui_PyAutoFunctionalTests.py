@@ -67,14 +67,12 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
         cros_ui.start(wait_for_login_prompt=False)
 
 
-    def run_once(self, suite=None, tests=None,
-                 as_chronos=True, auto_login=True):
+    def run_once(self, suite=None, tests=None, auto_login=True):
         """Run pyauto functional tests.
 
         Args:
             suite: the pyauto functional suite to run.
             tests: the test modules to run.
-            as_chronos: if True, run tests as chronos.
             auto_login: if True, login to default account before firing off.
 
         Either suite or tests should be specified, not both.
@@ -103,10 +101,7 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
         elif tests:
             functional_cmd += tests
 
-        if as_chronos:
-            launch_cmd = cros_ui.xcommand_as(functional_cmd)
-        else:
-            launch_cmd = cros_ui.xcommand(functional_cmd)
+        launch_cmd = cros_ui.xcommand(functional_cmd)
         print 'Test launch cmd', launch_cmd
         utils.system(launch_cmd)
 
