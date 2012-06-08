@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Perf/jrbarnette"
-NAME = "PerfAlerts BootPerfServer 100 iterations"
+NAME = "BootPerf"
 SUITE = "perfalerts"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
@@ -21,37 +21,18 @@ Ideally these are run for each build in order to make blame easier.
 To invoke this from the command line use syntax from the following examples:
   --To modify the iteration count:
     run_remote_tests.sh -a 'iterations=10' control.perfalerts
-  --To disable the udpate check:
-    run_remote_tests.sh -a 'check_updated=False' control.perfalerts
-  --To do both:
-    run_remote_tests.sh -a 'iterations=10 check_updated=False' \
-        control.perfalerts
 """
 
 from autotest_lib.client.common_lib import utils
 
-
 dict_args = utils.args_to_dict(args)
-
-
-def cast_bool(str_value):
-    return 'true' == str_value.lower()
-
-
-dict_args['check_updated'] = cast_bool(dict_args.get('check_updated', 'True'))
-dict_args['disable_sysinfo'] = cast_bool(dict_args.get('disable_sysinfo',
-                                                       'True'))
-dict_args['iterations'] = int(dict_args.get('iterations', 100))
+iterations = int(dict_args.get('iterations', 100))
 
 
 def run_bootperf(machine):
     host = hosts.create_host(machine)
-
-    # Always make sure the host has a fresh install; avoid double fresh install.
-    if dict_args.get('check_updated') and not host.has_just_updated():
-        host.machine_install(force_update=True)
-
-    job.run_test('platform_BootPerfServer', host=host, **dict_args)
+    job.run_test('platform_BootPerfServer', host=host,
+                 iterations=iterations, disable_sysinfo=True)
 
 
 parallel_simple(run_bootperf, machines)
