@@ -20,6 +20,7 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import power_status
 from numpy import uint32
 
 
@@ -48,7 +49,7 @@ def create_rapl(domains=None):
     return rapl_list
 
 
-class Rapl(object):
+class Rapl(power_status.PowerMeasurement):
     """Class to expose RAPL functionality.
 
     Public attibutes:
@@ -106,7 +107,8 @@ class Rapl(object):
         if domain not in VALID_DOMAINS:
             raise error.TestError("domain %s not in valid domains ( %s )" %
                                   (domain, ", ".join(VALID_DOMAINS)))
-        self.domain = domain
+        super(Rapl, self).__init__(domain)
+
         self._joules_per_lsb = self._get_joules_per_lsb()
         logging.debug("RAPL %s joules_per_lsb = %.3e", domain,
                       self._joules_per_lsb)

@@ -29,3 +29,15 @@ def get_x86_cpu_arch():
 
     logging.info(cpuinfo)
     return None
+
+
+def has_rapl_support():
+    """Identify if platform supports Intels RAPL subsytem.
+
+    Returns:
+        Boolean, True if RAPL supported, False otherwise.
+    """
+    cpu_arch = get_x86_cpu_arch()
+    if cpu_arch and ((cpu_arch is 'Celeron') or (cpu_arch is 'Core')):
+        return True
+    return False

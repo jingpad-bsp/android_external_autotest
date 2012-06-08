@@ -13,7 +13,9 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros import cros_ui, cros_ui_test
 from autotest_lib.client.cros import httpd
+from autotest_lib.client.cros import power_rapl
 from autotest_lib.client.cros import power_status
+from autotest_lib.client.cros import power_utils
 import flimflam
 
 
@@ -521,8 +523,11 @@ class power_Consumption(cros_ui_test.UITest):
                                 daemon, str(e))
 
         self._set_backlight_level(self._default_brightness)
+
         measurements = \
         [power_status.SystemPower(self._power_status.battery_path)]
+        if power_utils.has_rapl_support():
+            measurements += power_rapl.create_rapl()
         self.logger = power_status.PowerLogger(measurements)
         self.logger.start()
 
