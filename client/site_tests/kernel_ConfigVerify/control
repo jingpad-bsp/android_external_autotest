@@ -9,7 +9,6 @@ CRITERIA = "Fails if kernel config variables are in an unexpected state"
 SUITE = "bvt, kaen_bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
-SUITE = "security"
 TEST_CLASS = "kernel"
 TEST_TYPE = "client"
 

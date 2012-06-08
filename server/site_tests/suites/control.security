@@ -15,12 +15,12 @@ Security Functional test suite.
 
 # List of client tests with parameters
 TESTS = [
-  ('kernel_ConfigVerify', {}),
   ('platform_DMVerityCorruption', {}),
   ('platform_DMVerityBitCorruption', {}),
   ('platform_ToolchainOptions', {}),
   ('security_AccountsBaseline', {}),
   ('security_ASLR', {}),
+  ('security_BundledExtensions', {}),
   ('security_DbusOwners', {}),
   ('security_HardlinkRestrictions', {}),
   ('security_HciconfigDefaultSettings', {}),
