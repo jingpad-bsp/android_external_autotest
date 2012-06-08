@@ -14,6 +14,7 @@ as the source_dir below.
 import logging
 import os
 import shutil
+import tarfile
 from autotest_lib.client.bin import profiler
 
 
@@ -32,7 +33,9 @@ class pgo(profiler.profiler):
 
     def stop(self, test):
         if os.path.isdir(self._source_dir):
-            shutil.copytree(self._source_dir,
-                            os.path.join(test.profdir, 'pgo'))
+            tar = tarfile.open(name=os.path.join(test.profdir, 'pgo.tar.bz2'),
+                               mode='w:bz2')
+            tar.add(self._source_dir, arcname='chrome', recursive=True)
+            tar.close()
         else:
             logging.error('PGO dir: %s not found', self._source_dir)
