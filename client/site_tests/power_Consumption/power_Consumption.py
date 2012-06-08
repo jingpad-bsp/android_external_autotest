@@ -114,11 +114,15 @@ class power_Consumption(cros_ui_test.UITest):
         This is also used as payload for download test.
         """
 
-        repo = 'http://public-test-data.googlecode.com/files/'
+        repo = 'http://commondatastorage.googleapis.com/chromeos-test-public/'
         file_list = [
-            repo + 'big_buck_bunny_trailer_400p.ogg',
-            repo + 'big_buck_bunny_trailer_1080p.ogg',
-            repo + 'Greensleeves.ogg',]
+            repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.ogg',
+            repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.mp4',
+            repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.webm',
+            repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.ogg',
+            repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.mp4',
+            repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.webm',
+            repo + 'wikimedia/Greensleeves.ogg',]
 
         for url in file_list:
             logging.info('Downloading %s', url)
@@ -342,15 +346,21 @@ class power_Consumption(cros_ui_test.UITest):
         """Run video and audio playback in the browser."""
 
         urls = [
-            ('BigBuckBunny_400p', 'big_buck_bunny_trailer_400p.ogg'),
-            ('BigBuckBunny_1080p','big_buck_bunny_trailer_1080p.ogg'),
+            ('BigBuckBunny_400p_ogg', 'big_buck_bunny_trailer_400p.ogg'),
+            ('BigBuckBunny_400p_h264', 'big_buck_bunny_trailer_400p.mp4'),
+            ('BigBuckBunny_400p_vp8', 'big_buck_bunny_trailer_400p.webm'),
+            ('BigBuckBunny_1080p_ogg','big_buck_bunny_trailer_1080p.ogg'),
+            ('BigBuckBunny_1080p_h264','big_buck_bunny_trailer_1080p.mp4'),
+            ('BigBuckBunny_1080p_vp8','big_buck_bunny_trailer_1080p.webm'),
             ('Greensleeves', 'Greensleeves.ogg'),
             # TODO: (kamrik) Add more video formats
             ]
 
         fullscreen_urls = [
-            ('BigBuckBunny_1080p_fullscreen',
-             'big_buck_bunny_trailer_1080p.ogg'),
+            ('BigBuckBunny_1080p_h264_fullscreen',
+             'big_buck_bunny_trailer_1080p.mp4'),
+            ('BigBuckBunny_1080p_vp8_fullscreen',
+             'big_buck_bunny_trailer_1080p.webm'),
             ]
 
         bg_urls = [
