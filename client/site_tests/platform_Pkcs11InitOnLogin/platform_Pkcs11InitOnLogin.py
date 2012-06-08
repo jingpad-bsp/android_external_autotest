@@ -23,13 +23,7 @@ class platform_Pkcs11InitOnLogin(cros_ui_test.UITest):
 
 
     def run_once(self):
-        if pkcs11.is_chaps_enabled():
-            init_file = constants.CHAPS_USER_DATABASE_PATH
-        else:
-            init_file = constants.PKCS11_INIT_MAGIC_FILE
-            # Make sure we start from a fresh state.
-            if os.access(init_file, os.F_OK):
-                raise error.TestFail('PKCS#11 already initialized!')
+        init_file = constants.CHAPS_USER_DATABASE_PATH
         start_time = time.time()
         # Wait for PKCS#11 initialization to complete.
         try:
@@ -42,8 +36,7 @@ class platform_Pkcs11InitOnLogin(cros_ui_test.UITest):
                 { 'seconds_pkcs11_onlogin_init': end_time - start_time } )
             if not pkcs11.verify_pkcs11_initialized():
                 raise error.TestFail('Initialized token failed checks!')
-            if pkcs11.is_chaps_enabled():
-                if not pkcs11.verify_p11_token():
-                    raise error.TestFail('Token verification failed!')
+            if not pkcs11.verify_p11_token():
+                raise error.TestFail('Token verification failed!')
         except TimeoutError, e:
             logging.error(e)

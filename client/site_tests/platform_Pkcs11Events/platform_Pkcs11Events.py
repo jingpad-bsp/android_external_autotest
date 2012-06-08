@@ -11,8 +11,6 @@ class platform_Pkcs11Events(test.test):
     version = 1
 
     def run_once(self):
-        if not pkcs11.is_chaps_enabled():
-            return
         # Setup some token directories.
         token_list = ['/tmp/chaps%d' % x for x in range(7)]
         pkcs11.setup_p11_test_token(True)

@@ -11,8 +11,6 @@ class platform_Pkcs11LoadPerf(test.test):
     version = 1
 
     def run_once(self):
-        if not pkcs11.is_chaps_enabled():
-            return
         pkcs11.setup_p11_test_token(True)
         pkcs11.load_p11_test_token()
         # Prepare the token with a key.

@@ -10,8 +10,6 @@ class platform_Pkcs11ChangeAuthData(test.test):
     version = 1
 
     def run_once(self):
-        if not pkcs11.is_chaps_enabled():
-            return
         pkcs11.setup_p11_test_token(True, 'auth1')
         pkcs11.load_p11_test_token('auth1')
         utils.system('p11_replay --generate --replay_wifi')
