@@ -71,9 +71,11 @@ def _FindCornersOnConvexHull(hull):
     corners = hull[np.sort(np.argsort(angle)[:-5:-1])]
     return corners
 
+
 def _ComputeCosine(a, b):
     '''Compute the cosine value of the angle bewteen two vectors a and b.'''
     return np.sum(a * b) / math.sqrt(np.sum(a ** 2) * np.sum(b ** 2) + 1e-10)
+
 
 def _ComputeShiftAndTilt(rect, img_size):
     '''Compute the shift and tilt values for a given rectangle in the form of
@@ -93,12 +95,19 @@ def _ComputeShiftAndTilt(rect, img_size):
     shift = center - np.array((img_size[1] - 1.0, img_size[0] - 1.0)) / 2.0
     shift_len = math.sqrt(np.sum(shift ** 2))
 
-    # Compute the tilt
-    va = np.abs((rect[1] - rect[0] + rect[2] - rect[3]) / 2.0)
-    vb = np.abs((rect[2] - rect[1] + rect[3] - rect[0]) / 2.0)
-    da = np.max(va) / math.sqrt(np.sum(va ** 2))
-    db = np.max(vb) / math.sqrt(np.sum(vb ** 2))
-    return shift_len, math.degrees(math.acos((da + db) / 2.0)), shift
+    # Compute the tilt (image rotation).
+    va = (rect[1] - rect[0] + rect[2] - rect[3]) / 2.0
+    vb = (rect[2] - rect[1] + rect[3] - rect[0]) / 2.0
+    la = math.sqrt(np.sum(va ** 2))
+    lb = math.sqrt(np.sum(vb ** 2))
+    # Get the sign of the rotation angle by looking at the long side.
+    sign = (np.sign(-va[1] * va[0]) if la > lb else np.sign(-vb[1] * vb[0]))
+    if sign == 0:
+        sign = 1
+    da = np.max(np.abs(va)) / la
+    db = np.max(np.abs(vb)) / lb
+    return shift_len, sign * math.degrees(math.acos((da + db) / 2.0)), shift
+
 
 def _CheckSquareness(contour, min_square_area):
     '''Check the squareness of a contour.'''
@@ -316,7 +325,7 @@ def CheckLensShading(sample, check_low_freq=True,
 
 
 def CheckVisualCorrectness(
-    sample, ref_data, register_grid=False,
+    sample, ref_data, register_grid=False, corner_only=False,
     min_corner_quality_ratio=_CORNER_QUALITY_RATIO,
     min_square_size_ratio=_EDGE_MIN_SQUARE_SIZE_RATIO,
     min_corner_distance_ratio=_CORNER_MIN_DISTANCE_RATIO,
@@ -330,6 +339,7 @@ def CheckVisualCorrectness(
                   reference pattern using PrepareTest.
         register_grid: Check if the point grid can be matched to the reference
                        one, i.e. whether they are of the same type.
+        corner_only: Check only the corners (skip the edges).
         min_corner_quality_ratio: Minimum acceptable relative corner quality
                                   difference.
         min_square_size_ratio: Minimum allowed square edge length in relative
@@ -375,6 +385,9 @@ def CheckVisualCorrectness(
 
     # Find the 4 corners of the square grid.
     hull = Unpad(cv2.convexHull(Pad(sample_corners)))
+    if hull.shape[0] < 4:
+        ret.msg = "All the corners are co-linear."
+        return False, ret
     ret.four_corners = _FindCornersOnConvexHull(hull)
 
     # c) Check if the image shift and tilt amount are within the spec.
@@ -384,7 +397,7 @@ def CheckVisualCorrectness(
     if ret.shift > max_image_shift:
         ret.msg = 'The image shift is too large.'
         return False, ret
-    if ret.tilt > max_image_tilt:
+    if abs(ret.tilt) > max_image_tilt:
         ret.msg = 'The image tilt is too large.'
         return False, ret
     # TODO(sheckylin) Refine points locations.
@@ -418,6 +431,9 @@ def CheckVisualCorrectness(
             ret.msg = "Can't match the sample to the reference."
             return False, ret
         ret.homography = homography
+
+    if corner_only:
+        return True, ret
 
     # Find squares on the edge map.
     edges = _ExtractEdgeSegments(edge_map, min_square_size_ratio)

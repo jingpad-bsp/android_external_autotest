@@ -466,7 +466,7 @@ class factory_CameraPerformanceAls(test.test):
                 # Get ALS values.
                 scale = self.als.get_scale_factor()
                 val = self.als.read_mean(samples=5, delay=0)
-                self.log('Lighting preset lux value: %d\n',
+                self.log('Lighting preset lux value: %d\n' %
                          conf['luxs'][self.light_state])
                 self.log('ALS value: %d\n' % val)
                 self.log('ALS calibration scale: %d\n' % scale)
@@ -582,14 +582,10 @@ class factory_CameraPerformanceAls(test.test):
         if self.type == _TEST_TYPE_FULL:
             self.blinker = leds.Blinker(self._LED_PREPARE_CAM_TEST)
             self.blinker.Start()
-        # Try to setup the fixture if not yet.
-        # This happens everytime in the full machine test, when the first time
-        # the AB panel test is run and when the fixture is disconnected during
-        # the previous test. This step blocks until we can find the fixture
-        # successfully.
-        if not hasattr(self, 'fixture') or self.fixture is None:
-            if not self._setup_fixture():
-                return False
+        # Try to setup the fixture. This step blocks until we can find the
+        # fixture successfully.
+        if not self._setup_fixture():
+            return False
         self.advance_state()
         return True
 
