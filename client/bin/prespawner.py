@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -19,6 +19,11 @@ if len(sys.argv) == 2 and sys.argv[1] == '--prespawn_autotest':
     # pylint: disable=W0611
     import common
     import autotest_lib.client.bin.job
+
+    if os.environ.get('CROS_DISABLE_SITE_SYSINFO'):
+        from autotest_lib.client.bin import sysinfo, base_sysinfo
+        sysinfo.sysinfo = autotest_lib.client.bin.base_sysinfo.base_sysinfo
+
     # Wait for environment and autotest arguments.
     env, sys.argv = pickle.load(sys.stdin)
     # Run autotest and exit.
