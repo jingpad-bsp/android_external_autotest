@@ -15,16 +15,19 @@ def check_for_chromium_prebuilt_binaries():
             return False
     return True
 
+
 def download_chromium_prebuilt_binaries():
     if check_for_chromium_prebuilt_binaries():
         return False
     fetch_prebuilt = os.path.join(os.path.dirname(__file__),
-        '..', '..', 'deps', 'chrome_test', 'test_src', 'chrome', 'test',
+        '..', '..', 'deps', 'pyauto_dep', 'test_src', 'chrome', 'test',
         'pyautolib', 'fetch_prebuilt_pyauto.py')
     if not os.path.exists(fetch_prebuilt):
         raise IOError('Unable to locate pyauto components.  Is the chromium '
                       'code synced and available?  Checking : %s'
                       % fetch_prebuilt)
-    subprocess.call(['/usr/bin/python', fetch_prebuilt, '-d', DOWNLOAD_PATH,
-                     '-l'], shell=False)
+    if subprocess.call(['/usr/bin/python', fetch_prebuilt, '-d', DOWNLOAD_PATH,
+                       '-l'], shell=False) != 0:
+        raise IOError('fetch_prebuilt_pyauto.py threw an error, the download '
+                      'was aborted.  Please view stdout for more informaion.')
     return True

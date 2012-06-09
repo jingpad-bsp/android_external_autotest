@@ -5,6 +5,7 @@
 import logging
 import os
 import time
+import urlparse
 
 import ap_configurator
 import selenium
@@ -41,11 +42,13 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
     def navigate_to_page(self, page_number):
         # All settings are on the same page, so we always open the config page
         if page_number == 1:
-            self.driver.get('%s/wireless/basic.asp' %
-                            self.admin_interface_url)
+            page_url = urlparse.urljoin(self.admin_interface_url,
+                                        'wireless/basic.asp')
+            self.driver.get(page_url)
         elif page_number == 2:
-            self.driver.get('%s/wireless/security.asp' %
-                            self.admin_interface_url)
+            page_url = urlparse.urljoin(self.admin_interface_url,
+                                        'wireless/security.asp')
+            self.driver.get(page_url)
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '
                                '%d, page value sent was %d' %

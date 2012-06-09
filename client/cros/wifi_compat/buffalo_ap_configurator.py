@@ -7,6 +7,7 @@ import os
 import time
 import urlparse
 
+import ap_configurator
 
 class BuffaloAPConfigurator(ap_configurator.APConfigurator):
 

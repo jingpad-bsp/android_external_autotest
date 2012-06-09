@@ -4,6 +4,7 @@
 
 import logging
 import os
+import urlparse
 
 import ap_configurator
 import selenium.common.exceptions
@@ -40,10 +41,11 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
 
     def navigate_to_page(self, page_number):
         if page_number == 1:
-            self.driver.get('%s/wireless.htm' % self.admin_interface_url)
+            url = urlparse.urljoin(self.admin_interface_url, 'wireless.htm')
+            self.driver.get(url)
         elif page_number == 2:
-            self.driver.get('%s/WSecurity.htm' %
-                            self.admin_interface_url)
+            url = urlparse.urljoin(self.admin_interface_url, 'WSecurity.htm')
+            self.driver.get(url)
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '
                                '%d, page value sent was %d' %

@@ -9,7 +9,6 @@ import dlink_dir655_ap_configurator
 import linksys_ap_configurator
 import trendnet_ap_configurator
 import buffalo_ap_configurator
-import Netgear3700_ap_configurator
 
 
 class APConfiguratorFactory(object):
