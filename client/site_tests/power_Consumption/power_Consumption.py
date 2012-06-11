@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import numpy
 import os
 import shutil
 import time
@@ -58,9 +57,6 @@ class power_Consumption(cros_ui_test.UITest):
         # bluetoothd: bluetooth, scanning for devices can create a spike
         self._daemons_to_stop = ['powerd', 'powerm', 'update-engine',
                                  'htpdate', 'bluetoothd']
-
-        # _times will keep a list of tuples (test_name, start_time, end_time)
-        self._times = []
 
         # Verify that we are running on battery and the battery is
         # sufficiently charged
@@ -152,56 +148,6 @@ class power_Consumption(cros_ui_test.UITest):
         return is_fullscreen
 
 
-    def _calc_power(self):
-        """Calculate average power consumption during each of the sub-tests."""
-        t = numpy.array(self.logger.times)
-        keyvals = {}
-        results  = []
-
-        for i, domain_readings in enumerate(zip(*self.logger.readings)):
-            power = numpy.array(domain_readings)
-            domain = self.logger.domains[i]
-
-            for tname, tstart, tend in self._times:
-                prefix = '%s_%s' % (tname, domain)
-                keyvals[prefix+'_duration'] = tend - tstart
-                # Select all readings taken between tstart and tend timestamps
-                pwr_array = power[numpy.bitwise_and(tstart < t, t < tend)]
-                # If sub-test terminated early, avoid calculating avg, std and
-                # min
-                if not pwr_array.size:
-                    continue
-                pwr_mean = pwr_array.mean()
-                pwr_std = pwr_array.std()
-
-                # Results list can be used for pretty printing and saving as csv
-                results.append((prefix, pwr_mean, pwr_std,
-                                tend - tstart, tstart, tend))
-
-                keyvals[prefix+'_power'] = pwr_mean
-                keyvals[prefix+'_power_cnt'] = pwr_array.size
-                keyvals[prefix+'_power_max'] = pwr_array.max()
-                keyvals[prefix+'_power_min'] = pwr_array.min()
-                keyvals[prefix+'_power_std'] = pwr_std
-
-        self._results = results
-        return keyvals
-
-
-    def _save_results(self):
-        """Save computed results in a nice tab-separated format.
-        This is useful for long manual runs.
-        """
-        fname = 'power_results_%.0f.txt' % time.time()
-        fname = os.path.join(self.resultsdir, fname)
-        with file(fname, 'wt') as f:
-            for row in self._results:
-                # First column is name, the rest are numbers. See _calc_power()
-                fmt_row = [row[0]] + ['%.2f' % x for x in row[1:]]
-                line = '\t'.join(fmt_row)
-                f.write(line + '\n')
-
-
     # Below are a series of generic sub-test runners. They run a given task
     # and record the task name and start-end timestamps for future computation
     # of power consumption during the task.
@@ -210,10 +156,7 @@ class power_Consumption(cros_ui_test.UITest):
         start_time = time.time() + self._stabilization_seconds
         for _ in xrange(repeat):
             ret = func()
-        end_time = time.time()
-        self._times.append((name, start_time, end_time))
-        logging.info('Finished func "%s" between timestamps [%s, %s]',
-                     name, start_time, end_time)
+        self._plog.checkpoint(name, start_time)
         return ret
 
 
@@ -221,10 +164,7 @@ class power_Consumption(cros_ui_test.UITest):
         """Just sleep and record it as a named sub-test"""
         start_time = time.time() + self._stabilization_seconds
         time.sleep(seconds)
-        end_time = time.time()
-        self._times.append((name, start_time, end_time))
-        logging.info('Finished sleep "%s" between timestamps [%s, %s]',
-                     name, start_time, end_time)
+        self._plog.checkpoint(name, start_time)
 
 
     def _run_cmd(self, name, cmd, repeat=1):
@@ -235,10 +175,7 @@ class power_Consumption(cros_ui_test.UITest):
             if exit_status != 0:
                 logging.error('run_cmd: the following command terminated with'
                                 'a non zero exit status: %s', cmd)
-        end_time = time.time()
-        self._times.append((name, start_time, end_time))
-        logging.info('Finished cmd "%s" between timestamps [%s, %s]',
-                     name, start_time, end_time)
+        self._plog.checkpoint(name, start_time)
         return exit_status
 
 
@@ -248,10 +185,7 @@ class power_Consumption(cros_ui_test.UITest):
         """
         start_time = time.time() + self._stabilization_seconds
         self.pyauto.WaitUntil(predicate, expect_retval=retval)
-        end_time = time.time()
-        self._times.append((name, start_time, end_time))
-        logging.info('Finished "%s" between timestamps [%s, %s]',
-                     name, start_time, end_time)
+        self._plog.checkpoint(name, start_time)
 
 
     def _run_url(self, name, url, duration):
@@ -463,9 +397,7 @@ class power_Consumption(cros_ui_test.UITest):
             self._set_backlight_level(i/100.)
             start_time = time.time() + self._stabilization_seconds
             time.sleep(30 * self._repeats)
-            self._times.append(('backlight_%03d' % i,
-                                start_time,
-                                time.time()))
+            self._plog.checkpoint('backlight_%03d' % i, start_time)
         self._set_backlight_level(self._default_brightness)
 
 
@@ -505,7 +437,7 @@ class power_Consumption(cros_ui_test.UITest):
         # reps * 30 seconds. Don't change _base_secs unless you also
         # change the manual tuning in sub-tests
         self._base_secs = 30
-        self._repeats = reps;
+        self._repeats = reps
         self._duration_secs = self._base_secs * reps
 
         # Let the login complete
@@ -528,8 +460,8 @@ class power_Consumption(cros_ui_test.UITest):
         [power_status.SystemPower(self._power_status.battery_path)]
         if power_utils.has_rapl_support():
             measurements += power_rapl.create_rapl()
-        self.logger = power_status.PowerLogger(measurements)
-        self.logger.start()
+        self._plog = power_status.PowerLogger(measurements)
+        self._plog.start()
 
         # Check that we have a functioning browser and network
         self.pyauto.NavigateToURL('http://www.google.com/')
@@ -547,9 +479,9 @@ class power_Consumption(cros_ui_test.UITest):
         self._run_test_groups(test_groups)
 
         # Wrap up
-        keyvals = self._calc_power()
+        keyvals = self._plog.calc()
         self.write_perf_keyval(keyvals)
-        self._save_results()
+        self._plog.save_results(self.resultsdir)
 
 
     def cleanup(self):

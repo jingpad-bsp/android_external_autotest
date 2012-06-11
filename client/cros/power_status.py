@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, math, os, re, threading, time
+import glob, logging, math, numpy, os, re, threading, time
 
 import common
 from autotest_lib.client.bin import utils
@@ -286,9 +286,9 @@ class SysStat(object):
         for thermal_path, thermal_type in thermal_stat_types.items():
             try:
                 self.thermal_path = glob.glob(thermal_path)[0]
-                self.thermal_type = thermal_type;
+                self.thermal_type = thermal_type
                 logging.debug('Using %s for thermal info.' % self.thermal_path)
-                break;
+                break
             except:
                 logging.debug('Could not find thermal path %s, skipping.' %
                               thermal_path)
@@ -654,6 +654,15 @@ class SystemPower(PowerMeasurement):
 class PowerLogger(threading.Thread):
     """A thread that logs power draw readings in watts.
 
+    Example code snippet:
+         mylogger = PowerLogger([PowerMeasurent1, PowerMeasurent2])
+         mylogger.run()
+         for testname in tests:
+             start_time = time.time()
+             #run the test method for testname
+             mlogger.checkpoint(tetname, start_time)
+         keyvals = mylogger.calc()
+
     Public attributes:
         seconds_period: float, probing interval in seconds.
         readings: list of lists of floats of power measurements in watts.
@@ -662,8 +671,23 @@ class PowerLogger(threading.Thread):
         done: flag to stop the logger.
         domains: list of power domain strings being measured
 
+    Public methods:
+        run: launches the thread to gather power measuremnts
+        calc: calculates
+        save_results:
+
     Private attributes:
        _power_measurements: list of PowerMeasurement objects to be sampled.
+       _checkpoint_data: list of tuples.  Tuple contains:
+           tname: String of testname associated with this time interval
+           tstart: Float of time when subtest started
+           tend: Float of time when subtest ended
+       _results: list of results tuples.  Tuple contains:
+           prefix: String of subtest
+           mean: Flost of mean power in watts
+           std: Float of standard deviation of power measurements
+           tstart: Float of time when subtest started
+           tend: Float of time when subtest ended
     """
     def __init__(self, power_measurements, seconds_period=1.0):
         """Initialize a logger.
@@ -678,6 +702,7 @@ class PowerLogger(threading.Thread):
 
         self.readings = []
         self.times = []
+        self._checkpoint_data = []
 
         self.domains = []
         self._power_measurements = power_measurements
@@ -696,3 +721,91 @@ class PowerLogger(threading.Thread):
                 readings.append(meas.refresh())
             self.readings.append(readings)
             time.sleep(self.seconds_period)
+
+
+    def checkpoint(self, tname, tstart, tend=None):
+        """Check point the times in seconds associated with test tname.
+
+        Args:
+           tname: String of testname associated with this time interval
+           tstart: Float in seconds of when tname test started.  Should be based
+                off time.time()
+           tend: Float in seconds of when tname test ended.  Should be based
+                off time.time().  If None, then value computed in the method.
+        """
+        if not tend:
+            tend = time.time()
+        self._checkpoint_data.append((tname, tstart, tend))
+        logging.info('Finished test "%s" between timestamps [%s, %s]',
+                     tname, tstart, tend)
+
+
+    def calc(self):
+        """Calculate average power consumption during each of the sub-tests.
+
+        Method performs the following steps:
+            1. Signals the thread to stop running.
+            2. Calculates mean, max, min, count on the samples for each of the
+               measurements.
+            3. Stores results to be written later.
+            4. Creates keyvals for autotest publishing.
+
+        Returns:
+            dict of keyvals suitable for autotest results.
+        """
+        t = numpy.array(self.times)
+        keyvals = {}
+        results  = []
+
+        if not self.done:
+            self.done = True
+        # times 2 the sleep time in order to allow for readings as well.
+        self.join(timeout=self.seconds_period * 2)
+
+        for i, domain_readings in enumerate(zip(*self.readings)):
+            power = numpy.array(domain_readings)
+            domain = self.domains[i]
+
+            for tname, tstart, tend in self._checkpoint_data:
+                prefix = '%s_%s' % (tname, domain)
+                keyvals[prefix+'_duration'] = tend - tstart
+                # Select all readings taken between tstart and tend timestamps
+                pwr_array = power[numpy.bitwise_and(tstart < t, t < tend)]
+                # If sub-test terminated early, avoid calculating avg, std and
+                # min
+                if not pwr_array.size:
+                    continue
+                pwr_mean = pwr_array.mean()
+                pwr_std = pwr_array.std()
+
+                # Results list can be used for pretty printing and saving as csv
+                results.append((prefix, pwr_mean, pwr_std,
+                                tend - tstart, tstart, tend))
+
+                keyvals[prefix+'_power'] = pwr_mean
+                keyvals[prefix+'_power_cnt'] = pwr_array.size
+                keyvals[prefix+'_power_max'] = pwr_array.max()
+                keyvals[prefix+'_power_min'] = pwr_array.min()
+                keyvals[prefix+'_power_std'] = pwr_std
+
+        self._results = results
+        return keyvals
+
+
+    def save_results(self, resultsdir, fname=None):
+        """Save computed results in a nice tab-separated format.
+        This is useful for long manual runs.
+
+        Args:
+            resultsdir: String, directory to write results to
+            fname: String name of file to write results to
+        """
+        if not fname:
+            fname = 'power_results_%.0f.txt' % time.time()
+        fname = os.path.join(resultsdir, fname)
+        with file(fname, 'wt') as f:
+            for row in self._results:
+                # First column is name, the rest are numbers. See _calc_power()
+                fmt_row = [row[0]] + ['%.2f' % x for x in row[1:]]
+                line = '\t'.join(fmt_row)
+                f.write(line + '\n')
