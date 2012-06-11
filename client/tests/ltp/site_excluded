@@ -208,3 +208,9 @@ mtest06
 profil01
 vma01
 zram01
+
+These_tests_take_too_long_on_arm_and_are_redundant_June_11_2012.
+ftest01
+ftest03
+ftest05
+ftest07
