@@ -67,10 +67,12 @@ class power_Consumption(cros_ui_test.UITest):
         self._max_backlight = int(utils.system_output(cmd).rstrip())
         self._do_xset()
 
-        # Local data and web server settings
+        # Local data and web server settings. Tarballs with traditional names
+        # like *.tgz don't get copied to the image by ebuilds (see
+        # AUTOTEST_FILE_MASK in autotest-chrome ebuild).
         self._static_sub_dir = 'static_sites'
         utils.extract_tarball_to_dir(
-                'static_sites.tar.gz',
+                'static_sites.tgz.keep',
                 os.path.join(self.bindir, self._static_sub_dir))
         self._media_dir = '/home/chronos/user/Downloads/'
         self._httpd_port = 8000
