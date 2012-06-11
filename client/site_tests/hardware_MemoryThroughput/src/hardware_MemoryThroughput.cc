@@ -38,7 +38,7 @@
 #include <algorithm>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 
 // The REPEAT_OP_x macros are defined to minimize the looping overhead
 // to be less than 5% of the total memory operation time.
