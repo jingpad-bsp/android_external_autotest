@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "desktopui_EnterprisePolicyServer"
+SUITE = "enterprise_enroll"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
