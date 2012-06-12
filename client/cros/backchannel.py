@@ -4,7 +4,8 @@
 
 import logging, os
 
-from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 
 # Flag file used to tell backchannel script it's okay to run.
 BACKCHANNEL_FILE = '/mnt/stateful_partition/etc/enable_backchannel_network'
@@ -75,6 +76,13 @@ class Backchannel(object):
                 for ip in open_ssh:
                     # Add route using the pre-backchannel gateway.
                     backchannel('reach %s %s' % (ip, gateway))
+
+            # Make sure we have a route to the gateway before continuing.
+            logging.info('Waiting for route to gateway %s' % gateway)
+            utils.poll_for_condition(
+                lambda: is_route_ready(gateway),
+                exception=utils.TimeoutError('Timed out waiting for route'),
+                timeout=30)
         except Exception, e:
             logging.error(e)
             return False
@@ -103,3 +111,13 @@ def is_network_iface_running(name):
         return False
 
     return out.find('RUNNING') >= 0
+
+
+def is_route_ready(dest):
+    try:
+        out = utils.system_output('ping -c 1 %s' % dest)
+    except error.CmdError, e:
+        logging.error(e)
+        return False
+
+    return True
