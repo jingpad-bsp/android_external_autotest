@@ -17,4 +17,4 @@ This test relies on dmidecode to find the ROM Size.
 """
 
 job.run_test('firmware_RomSize', constraints=['kb_system_rom_size >= 4096',
-                                              'kb_ec_rom_size >= 128']))
+                                              'kb_ec_rom_size >= 128'])
