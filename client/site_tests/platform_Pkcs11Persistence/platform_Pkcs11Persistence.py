@@ -15,11 +15,9 @@ class platform_Pkcs11Persistence(cros_ui_test.UITest):
         super(platform_Pkcs11Persistence, self).initialize(creds)
 
     def run_once(self):
-        if not pkcs11.is_chaps_enabled():
-            return
         if not pkcs11.wait_for_pkcs11_token():
             raise error.TestFail('The PKCS #11 token is not available.')
-        result = utils.system('p11_replay --generate --replay_wifi',
+        result = utils.system('p11_replay --inject --replay_wifi',
                               ignore_status = True)
         if result != 0:
             raise error.TestFail('Failed to setup PKCS #11 object.')

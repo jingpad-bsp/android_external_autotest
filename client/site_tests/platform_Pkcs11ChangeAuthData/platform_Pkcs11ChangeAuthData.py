@@ -12,7 +12,7 @@ class platform_Pkcs11ChangeAuthData(test.test):
     def run_once(self):
         pkcs11.setup_p11_test_token(True, 'auth1')
         pkcs11.load_p11_test_token('auth1')
-        utils.system('p11_replay --generate --replay_wifi')
+        utils.system('p11_replay --inject --replay_wifi')
         # Change auth data while the token is not loaded.
         pkcs11.unload_p11_test_token()
         pkcs11.change_p11_test_token_auth_data('auth1', 'auth2')
@@ -42,7 +42,7 @@ class platform_Pkcs11ChangeAuthData(test.test):
         result = utils.system('p11_replay --replay_wifi', ignore_status=True)
         if result == 0:
             raise error.TestFail('Bad authorization data allowed (1).')
-        utils.system('p11_replay --generate --replay_wifi')
+        utils.system('p11_replay --inject --replay_wifi')
         pkcs11.unload_p11_test_token()
         # Token should have been recreated with 'auth3'.
         pkcs11.load_p11_test_token('auth3')
