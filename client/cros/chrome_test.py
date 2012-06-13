@@ -82,6 +82,8 @@ class ChromeTestBase(test.test):
         deps_dir = os.path.join(self.autodir, 'deps')
         utils.system('chown -R chronos ' + self.cr_source_dir)
 
+        self.setup_suid_python()
+
         # chronos should own the current dir.
         chronos_id = pwd.getpwnam('chronos')
         os.chown(os.getcwd(), chronos_id.pw_uid, chronos_id.pw_gid)
