@@ -178,6 +178,7 @@ class base_server_job(base_job.base_job):
             self.user = getpass.getuser()
 
         self.args = args
+        self.label = label
         self.machines = machines
         self._client = client
         self.warning_loggers = set()

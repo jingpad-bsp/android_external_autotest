@@ -94,14 +94,9 @@ class chromeperf_PGOPageCycler(test.test):
 
     def run_once(self, host=None, args=[]):
         self.parse_args(args)
-        if not self.options.destination:
-            # Would be nice if self.job.label had been kept.
-            properties = utils.read_keyval(self.job.resultdir)
-            job_label = properties.get('label')
-            # Don't use a None, or an empty string for this logic.
-            if job_label:
-                self.options.destination = (self._DEFAULT_UPLOAD_PATTERN %
-                    job_label)
+        if not self.options.destination and self.job.label:
+            self.options.destination = (self._DEFAULT_UPLOAD_PATTERN %
+                self.job.label)
 
         self.client = host
         self.client_test = 'desktopui_PyAutoPerfTests'
