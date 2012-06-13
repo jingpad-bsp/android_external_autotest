@@ -105,7 +105,8 @@ class power_x86Settings(test.test):
         if cpu_arch is not 'Atom':
             self._cpu_type = 'Non-Atom'
 
-        self._rdmsr_cmd = 'iotools rdmsr 0'
+        self._cpu_id = 0
+        self._rdmsr_cmd = 'iotools rdmsr'
         self._pci_read32_cmd = 'iotools pci_read32'
         self._mmio_read32_cmd = 'iotools mmio_read32'
 
@@ -327,8 +328,12 @@ class power_x86Settings(test.test):
 
 
     def _verify_msr_power_settings(self):
-        return self._verify_registers('msr', self._read_msr,
-                                      MSR_CHECKS[self._cpu_type])
+        errors = 0
+        for cpu_id in xrange(0, max(utils.count_cpus(), 1)):
+            self._cpu_id = cpu_id
+            errors += self._verify_registers('msr', self._read_msr,
+                                             MSR_CHECKS[self._cpu_type])
+        return errors
 
 
     def _verify_rapl_power_settings(self):
@@ -404,5 +409,5 @@ class power_x86Settings(test.test):
 
 
     def _read_msr(self, register):
-        cmd = '%s %s' % (self._rdmsr_cmd, register)
+        cmd = '%s %d %s' % (self._rdmsr_cmd, self._cpu_id, register)
         return int(utils.system_output(cmd), 16)
