@@ -103,6 +103,8 @@
              {"categories": "pyauto_perf",
               "cc": ["dennisjeffrey@google.com",
                      "puneetster@google.com"]},
+             {"categories": "pyauto_endurance",
+              "cc": ["dennisjeffrey@google.com"]},
              {"categories": "security",
               "cc": ["keescook@google.com",
                      "sumitg@google.com",
