@@ -5,7 +5,7 @@
 import dbus, logging, time
 
 import common, flimflam_test_path
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.bin import utils
 import mm # Requires flimflam_test_path to be imported first.
 
 def _Bug24628WorkaroundEnable(modem):
@@ -44,7 +44,12 @@ def ResetAllModems(flim):
         modem = manager.Modem(path)
         version = manager.Modem(path).GetInfo()[2]
         modem.Enable(False)
-        time.sleep(1)
+        utils.poll_for_condition(
+            lambda: not manager.Properties(path)['Enabled'],
+            exception=
+                utils.TimeoutError('Timed out waiting for modem disable'),
+            sleep_interval=1,
+            timeout=30)
         if 'Y3300XXKB1' in version:
             _Bug24628WorkaroundEnable(modem)
         else:
