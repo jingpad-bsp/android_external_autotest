@@ -12,7 +12,7 @@ PURPOSE = "Regression and integration tests of minijail0."
 CRITERIA = """
 Fail if any of the minijail0 features fail to isolate properly.
 """
-SUITE = "regression"
+SUITE = "security"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"

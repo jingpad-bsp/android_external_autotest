@@ -25,6 +25,7 @@ TESTS = [
   ('security_HardlinkRestrictions', {}),
   ('security_HciconfigDefaultSettings', {}),
   ('security_HtpdateHTTP', {}),
+  ('security_Minijail0', {}),
   ('security_Minijail_seccomp', {}),
   ('security_NetworkListeners', {}),
   ('security_OpenFDs', {}),
