@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import power_rapl
 from autotest_lib.client.cros import power_status
 from autotest_lib.client.cros import power_utils
+from autotest_lib.client.cros import cros_logging
 
 
 # Specify registers to check.  The format needs to be:
@@ -79,7 +80,7 @@ ASPM_EXCEPTED_DEVICES = {
 
 GFX_CHECKS = {
     'Non-Atom': {'i915_enable_rc6': 1, 'i915_enable_fbc': 1, 'powersave': 1,
-             'semaphores':1 }
+        'semaphores': 1, 'lvds_downclock': 1}
     }
 
 # max & min are in Watts.  Device should presumably be idle.
@@ -253,6 +254,40 @@ class power_x86Settings(test.test):
 
         return errors
 
+    def _verify_lvds_downclock_mode_added(self):
+        """Checks the kernel log for a message that an LVDS downclock mode has
+        been added.
+
+        This test is specific to alex & lumpy, since they use the i915 driver
+        (which has downclocking ability) and use the same LCD. This LCD is
+        special, in that it supports a downclocked refresh rate, but doesn't
+        advertise it in the EDID.
+
+        To counteract this, I added a quirk in drm to add a downclocked mode to
+        the panel. Unfortunately, upstream doesn't want this patch, and we have
+        to carry it locally. The quirk patch was dropped inadvertently from
+        chromeos-3.4, so this test ensures we don't regress again.
+
+        I plan on writing an upstream friendly patch sometime in the near
+        future, at which point I'll revert my drm hack and this test.
+
+        Returns:
+            0 if no errors, otherwise the number of errors that occurred.
+        """
+        # Skip all boards except lumpy and alex
+        cmd = 'cat /etc/lsb-release | grep CHROMEOS_RELEASE_BOARD'
+        output = utils.system_output(cmd)
+        if 'lumpy' not in output and 'alex' not in output:
+            return 0
+
+        # Get the downclock message from the logs
+        reader = cros_logging.LogReader()
+        reader.set_start_by_reboot(-1)
+        if not reader.can_find('Adding LVDS downclock mode'):
+            logging.error('Error, LVDS downclock quirk not applied!')
+            return 1
+
+        return 0
 
     def _verify_graphics_power_settings(self):
         """Verify that power-saving for graphics are configured properly.
@@ -278,7 +313,7 @@ class power_x86Settings(test.test):
                         logging.error('Error(%d), %s = %d but should be %d',
                                       errors, param_path, value,
                                       checks[param_name])
-
+        errors += self._verify_lvds_downclock_mode_added()
         return errors
 
 
