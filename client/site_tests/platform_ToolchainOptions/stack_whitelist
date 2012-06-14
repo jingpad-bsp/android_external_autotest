@@ -1,3 +1,2 @@
-# TODO(keescook): under examination.
-/opt/google/chrome/pepper/libnetflixidd.so
-/opt/google/chrome/pepper/libnetflixplugin2.so
+# Whitelist of ELF files with an executable stack. Hint: this file should
+# have nothing listed. :)
