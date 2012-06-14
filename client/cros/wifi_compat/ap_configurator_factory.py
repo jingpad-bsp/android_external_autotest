@@ -48,12 +48,8 @@ class APConfiguratorFactory(object):
             'AsusAPConfigurator',
             asus_ap_configurator.AsusAPConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'BuffaloAPConfigurator',
-            buffalo_ap_configurator.BuffaloAPConfigurator)
-        self._build_all_instances_of_configurator(config_list,
-            'AsusAPConfigurator',
-            asus_ap_configurator.AsusAPConfigurator)
-
+            'Netgear3700APConfigurator',
+            Netgear3700_ap_configurator.Netgear3700APConfigurator)
 
 
     def _build_all_instances_of_configurator(self, config_list, name,
