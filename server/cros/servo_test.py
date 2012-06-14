@@ -107,16 +107,12 @@ class ServoTest(test.test):
                 else:
                     args[key] = val
 
-        self.servo = servo.Servo(
-            args['servo_host'], args['servo_port'], args['xml_config'],
-            args['servo_vid'], args['servo_pid'], args['servo_serial'])
+        self.servo = servo.Servo()
         self._servo_is_local = True
 
 
     def _release_servo(self):
         """Clean up `self.servo` if it is locally attached."""
-        if self._servo_is_local:
-            del self.servo
         self._servo_is_local = False
 
 

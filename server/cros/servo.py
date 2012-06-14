@@ -91,7 +91,6 @@ class Servo(object):
         @param cold_reset If True, cold reset device and boot during init,
                           otherwise perform init with device running.
         """
-        self._servod = None
         self._server = None
 
         self._do_cold_reset = cold_reset
@@ -445,20 +444,6 @@ class Servo(object):
         self._init_seq()
         self.set('dev_mode', 'on')
         self.boot_devmode()
-
-
-    def __del__(self):
-        """Kill the Servod process."""
-        if not self._servod:
-            return
-
-        # kill servod one way or another
-        try:
-            # won't work without superuser privileges
-            self._servod.terminate()
-        except:
-            # should work without superuser privileges
-            assert subprocess.call(['sudo', 'kill', str(self._servod.pid)])
 
 
     def _init_seq(self):
