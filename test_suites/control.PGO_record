@@ -1,0 +1,38 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "PGO_record"
+PURPOSE = "Exercise Chrome, record profiling data."
+CRITERIA = "The browser should do a reasnoable amout, upload must succeed"
+
+TIME = "LONG"
+TEST_CATEGORY = "General"
+TEST_CLASS = "suite"
+TEST_TYPE = "Server"
+
+DOC = """
+Exercise Chrome, record profiling data.
+
+The image should have been built with pgo_generate turned on for chrome.
+We do this to make branch prediction etc. data driven in future optimizations
+of chrome builds, so realism and source control are important.
+
+Mostly we are just wrapping the labelled tests here.
+
+@param build: The name of the image to test.
+              Ex: x86-mario-release/R17-1412.33.0-a1-b29
+@param board: The board to test on. Ex: x86-mario
+@param pool: The pool of machines to utilize for scheduling. If pool=None
+             board is used.
+@param check_hosts: require appropriate live hosts to exist in the lab.
+"""
+
+import common
+from autotest_lib.server.cros import dynamic_suite
+
+dynamic_suite.reimage_and_run(
+    build=build, board=board, name='PGO_record', job=job, pool=pool,
+    check_hosts=check_hosts, add_experimental=True, num=1,
+    skip_reimage=False)
