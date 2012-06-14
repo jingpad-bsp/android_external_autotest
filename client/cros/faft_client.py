@@ -63,13 +63,16 @@ class FAFTClient(object):
                                 'bios')
         self._bios_handler.new_image()
 
-        self._ec_handler = flashrom_handler.FlashromHandler()
-        self._ec_handler.init(saft_flashrom_util,
-                              self._chromeos_interface,
-                              'ec_root_key.vbpubk',
-                              '/usr/share/vboot/devkeys',
-                              'ec')
-        self._ec_handler.new_image()
+        self._ec_handler = None
+        if not os.system("mosys ec info"):
+            self._ec_handler = flashrom_handler.FlashromHandler()
+            self._ec_handler.init(saft_flashrom_util,
+                                  self._chromeos_interface,
+                                  'ec_root_key.vbpubk',
+                                  '/usr/share/vboot/devkeys',
+                                  'ec')
+            self._ec_handler.new_image()
+
 
         self._kernel_handler = kernel_handler.KernelHandler()
         # TODO(waihong): The dev_key_path is a new argument. We do that in
