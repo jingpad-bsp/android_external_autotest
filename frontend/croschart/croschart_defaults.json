@@ -68,5 +68,9 @@
   ["graphics_GLMark2", "glmark2_score"],
   ["graphics_Piglit", "count_subtests_pass"],
   ["graphics_WebGLConformance", "count_tests_pass"],
-  ["graphics_WebGLPerformance", "time_ms_geom_mean"]
+  ["graphics_WebGLPerformance", "time_ms_geom_mean"],
+  ["power_Consumption",
+   "BigBuckBunny_1080p_h264_fullscreen_pkg_power,BigBuckBunny_1080p_h264_fullscreen_system_power,BigBuckBunny_1080p_h264_pkg_power,BigBuckBunny_1080p_h264_system_power,BigBuckBunny_1080p_vp8_pkg_power,BigBuckBunny_1080p_vp8_system_power,BigBuckBunny_400p_h264_pkg_power,BigBuckBunny_400p_h264_system_power,BigBuckBunny_400p_vp8_pkg_power,BigBuckBunny_400p_vp8_system_power"],
+  ["power_Consumption",
+   "AboutBlank_pkg_power,AboutBlank_system_power,BallsDHTML_pkg_power,BallsDHTML_system_power,BallsFlex_pkg_power,BallsFlex_system_power,PosterCircle_pkg_power,PosterCircle_system_power"]
 ]
