@@ -134,24 +134,32 @@ CELLS['mtv'] = {
             "ethernet_mac": "00:00:00:00:08:4b",
             "name": "alex-gobi-2000",
             "technologies": GOBI_2000_TECHNOLOGIES,
-            "location": "rack2-host11",
+            "location": "rack2-host0",
             "rf_switch_port": 2,
-            },
-        {
-            "address": "172.22.50.12",
-            "ethernet_mac": "58:6d:8f:50:ae:55",
-            "name": "alex-y3300",
-            "technologies": GENERIC_GSM_TECHNOLOGIES,
-            "location": "rack2-host12",
-            "rf_switch_port": 5,
             },
         {
             "address": "172.22.50.85",
             "ethernet_mac": "00:00:00:00:00:c8",
             "name": "alex-gobi-3000",
             "technologies": GENERIC_GSM_TECHNOLOGIES,
-            "location": "rack2-host5",
+            "location": "rack2-host4",
             "rf_switch_port": 4,
+            },
+        {
+            "address": "172.22.50.160",
+            "ethernet_mac": "c0:c1:c0:4b:d7:4f",
+            "name": "alex-y3300",
+            "technologies": GENERIC_GSM_TECHNOLOGIES,
+            "location": "rack2-host1",
+            "rf_switch_port": 5,
+            },
+        {
+            "address": "172.22.50.12",
+            "ethernet_mac": "58:6d:8f:50:ae:55",
+            "name": "alex-y3400",
+            "technologies": GENERIC_GSM_TECHNOLOGIES,
+            "location": "rack2-host5",
+            "rf_switch_port": 1,
             },
         ],
 
@@ -170,7 +178,7 @@ CELLS['mtv'] = {
         "type": "ether_io",
         "name": "rf-switch-1-mtv",
         "ethernet_mac": "00:11:BA:02:12:82",
-        "address":  "172.22.50.137",
+        "address":  "172.22.50.88",
         }
     }
 
