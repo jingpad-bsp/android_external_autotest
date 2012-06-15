@@ -53,6 +53,9 @@ def _AddNewStyleBoards(boards):
   Starting in R19, job names start with a different
   representation like this:
     x86-mario-release-R19
+  Starting in R21, job names scheduled by the suites v2 scheduler start with a
+  different representation like this:
+    x86-mario-release/R19
 
   Args:
     boards: list of old-style boards requested.
@@ -67,7 +70,8 @@ def _AddNewStyleBoards(boards):
     if parts[-1][0] == 'r' and int(parts[-1][1:]) >= 19:
       parts.insert(-1, 'release')
       parts[-1] = parts[-1].upper()
-      new_board_list.append('-'.join(parts))
+      # Make use of regexp '.' operator to catch both '-' and '/'.
+      new_board_list.append('.'.join(parts))
   return new_board_list
 
 

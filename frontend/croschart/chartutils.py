@@ -17,7 +17,7 @@ import re
 FIELD_SEPARATOR = ','
 
 BUILD_PATTERN1 = re.compile(
-    '([\w\-]+-r[\w]+)-(R[\d]+-[\d]+\.[\d]+\.[\d]+)(?:-[ar][\w]+-b[\d]+)?')
+    '([\w\-]+-r[\w]+)[-/](R[\d]+-[\d]+\.[\d]+\.[\d]+)(?:-[ar][\w]+-b[\d]+)?')
 BUILD_PATTERN2 = re.compile(
     '([\w\-]+-r[c0-9]+)-([\d.]+)(?:-[ar][\w]+-b[\d]+)?')
 
