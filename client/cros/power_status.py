@@ -481,13 +481,15 @@ class CPUIdleStats(object):
             states = glob.glob(state_path)
 
             for state in states:
-                latency = int(utils.read_file(os.path.join(state, 'latency')))
+                latency = int(utils.read_one_line(os.path.join(state,
+                                                               'latency')))
+
                 if not latency:
                     # C0 state. Skip it since the stats aren't right for it.
                     continue
 
-                name = utils.read_file(os.path.join(state, 'name')).rstrip('\n')
-                time = int(utils.read_file(os.path.join(state, 'time')))
+                name = utils.read_one_line(os.path.join(state, 'name'))
+                time = int(utils.read_one_line(os.path.join(state, 'time')))
                 if name in cpuidle_stats:
                     cpuidle_stats[name] += time
                 else:
