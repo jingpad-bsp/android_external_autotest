@@ -167,15 +167,18 @@ def main():
     d = driver.Driver(scheduler, enumerator)
     d.SetUpEventsAndTasks(config, mv)
 
-    if options.events:
-        # Act as though listed events have just happened.
-        keywords = re.split('\s*,\s*', options.events)
-        logging.info('Forcing events: %r' % keywords)
-        d.ForceEventsOnceForBuild(keywords, options.build)
-    else:
-        mv.Initialize()
-        d.RunForever(config, mv)
-
+    try:
+        if options.events:
+            # Act as though listed events have just happened.
+            keywords = re.split('\s*,\s*', options.events)
+            logging.info('Forcing events: %r', keywords)
+            d.ForceEventsOnceForBuild(keywords, options.build)
+        else:
+            mv.Initialize()
+            d.RunForever(config, mv)
+    except Exception as e:
+        logging.error('Fatal exception in suite_scheduler: %r', e)
+        return 1
 
 if __name__ == "__main__":
     sys.exit(main())
