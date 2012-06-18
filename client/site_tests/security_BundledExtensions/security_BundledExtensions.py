@@ -128,7 +128,7 @@ class security_BundledExtensions(cros_ui_test.UITest):
         import pyauto_errors
         logging.debug('Installing %s' % crx_file)
         try:
-            self.pyauto.InstallExtension(crx_file)
+            self.pyauto.InstallExtension(crx_file, from_webstore=True)
         except pyauto_errors.JSONInterfaceError:
             logging.error('Installation failed for %s' % crx_file)
 

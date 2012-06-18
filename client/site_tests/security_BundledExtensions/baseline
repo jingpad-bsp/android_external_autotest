@@ -7,9 +7,7 @@
     "Chrome Web Store",
     "GaiaTestAuthExtension"
   ],
-# TODO(jimhebert): Restore after crbug.com/131486 is fixed.
   "ignored_crx_files": [
-    "hpfomeedmekonipambfkmjfacahlngjd.crx"
   ],
   "bundled_crx_directory": "/opt/google/chrome/extensions",
   "bundled_crx_baseline": [
@@ -43,16 +41,16 @@
         "effective_host_permissions": [],
         "api_permissions": []
       },
-# TODO(jimhebert): Restore after crbug.com/131486 is fixed.
-#      { "crx_file": "hpfomeedmekonipambfkmjfacahlngjd.crx",
-#        "name": "Picasa Uploader",
-#        "effective_host_permissions": ["*://www.google.com/*",
-#                                       "https://picasaweb.google.com/*"],
-#        "api_permissions": ["contextMenus",
-#                            "fileBrowserHandler",
-#                            "notifications",
-#                            "tabs"]
-#      },
+      { "crx_file": "hpfomeedmekonipambfkmjfacahlngjd.crx",
+        "name": "Picasa Uploader",
+        "effective_host_permissions": ["*://www.google.com/*",
+                                       "https://picasaweb.google.com/*"],
+        "api_permissions": ["contextMenus",
+                            "experimental",
+                            "fileBrowserHandler",
+                            "notifications",
+                            "tabs"]
+      },
       { "crx_file": "kjebfhglflhjjjiceimfkgicifkhjlnm.crx",
         "name": "Scratchpad",
         "effective_host_permissions": ["https://docs.google.com/*",
