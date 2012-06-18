@@ -53,6 +53,17 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 
+class SeverityFilter(logging.Filter):
+    """Filters out messages of anything other than self._level"""
+    def __init__(self, level):
+        self._level = level
+
+
+    def filter(self, record):
+        """Causes only messages of |self._level| severity to be logged."""
+        return record.levelno == self._level
+
+
 class SchedulerLoggingConfig(logging_config.LoggingConfig):
     def __init__(self):
         super(SchedulerLoggingConfig, self).__init__()
@@ -96,6 +107,9 @@ class SchedulerLoggingConfig(logging_config.LoggingConfig):
                                                subject,
                                                creds)
         handler.setLevel(level)
+        # We want to send mail for the given level, and only the given level.
+        # One can add more handlers to send messages for other levels.
+        handler.addFilter(SeverityFilter(level))
         handler.setFormatter(
             logging.Formatter('%(asctime)s %(levelname)-5s %(message)s'))
         self.logger.addHandler(handler)
