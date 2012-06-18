@@ -30,6 +30,26 @@ def allow_multiple_section_input(image_operator):
     return wrapper
 
 
+class LazyFlashromHandlerProxy:
+    _loaded = False
+    _obj = None
+
+    def __init__(self, *args, **kargs):
+        self._args = args
+        self._kargs = kargs
+
+    def _load(self):
+        self._obj = flashrom_handler.FlashromHandler()
+        self._obj.init(*self._args, **self._kargs)
+        self._obj.new_image()
+        self._loaded = True
+
+    def __getattr__(self, name):
+        if not self._loaded:
+            self._load()
+        return getattr(self._obj, name)
+
+
 class FAFTClient(object):
     """A class of FAFT client which aggregates some useful functions of SAFT.
 
@@ -55,23 +75,21 @@ class FAFTClient(object):
         self._chromeos_interface.init(state_dir, log_file='/tmp/faft_log.txt')
         os.chdir(state_dir)
 
-        self._bios_handler = flashrom_handler.FlashromHandler()
-        self._bios_handler.init(saft_flashrom_util,
+        self._bios_handler = LazyFlashromHandlerProxy(
+                                saft_flashrom_util,
                                 self._chromeos_interface,
                                 None,
                                 '/usr/share/vboot/devkeys',
                                 'bios')
-        self._bios_handler.new_image()
 
         self._ec_handler = None
         if not os.system("mosys ec info"):
-            self._ec_handler = flashrom_handler.FlashromHandler()
-            self._ec_handler.init(saft_flashrom_util,
+            self._ec_handler = LazyFlashromHandlerProxy(
+                                  saft_flashrom_util,
                                   self._chromeos_interface,
-                                  'ec_root_key.vbpubk',
+                                  'ec_root_key.vpubk',
                                   '/usr/share/vboot/devkeys',
                                   'ec')
-            self._ec_handler.new_image()
 
 
         self._kernel_handler = kernel_handler.KernelHandler()
