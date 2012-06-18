@@ -9,6 +9,7 @@ import os
 import pprint
 import re
 import tempfile
+import time
 import StringIO
 
 from autotest_lib.client.cros import factory_setup_modules
@@ -39,6 +40,9 @@ _MESSAGE_CAMERA_CHECK = (
 _MESSAGE_PROBING = (
     'Probing components...\n'
     '測試中...\n')
+_MESSAGE_PLAYING_AUDIO = (
+    'Testing DMIC...\n'
+    '測試麥克風中...請保持安靜\n')
 _MESSAGE_DISPLAY = (
     'Hit TAB if DUT have something displayed.\n' +
     'Otherwise, hit ENTER.\n' +
@@ -52,14 +56,13 @@ _MESSAGE_RESULT_TAB = (
     '測試結果顯示如下\n'
     '確認電源皆斷電後, 將Panel移除\n')
 
-
 _TEST_SN_NUMBER = 'TEST-SN-NUMBER'
 COLOR_MAGENTA = gtk.gdk.color_parse('magenta1')
 BRIGHTNESS_CONTROL_CMD = (
     'echo %s > /sys/class/backlight/intel_backlight/brightness')
 
 class factory_Connector(state_machine.FactoryStateMachine):
-    version = 5
+    version = 6
 
     def setup_tests(self):
         # Register more states for test procedure with configuration data
@@ -90,7 +93,14 @@ class factory_Connector(state_machine.FactoryStateMachine):
                 message=_MESSAGE_PROBING, key_action_mapping={})
             self.register_state(self.probing_widget, None,
                                 self.perform_probing)
-        # TODO(itspeter): add audio related probing.
+
+        if 'audio' in self.config:
+            self.setup_audio()
+            self.audio_widget = self.make_decision_widget(
+                message=_MESSAGE_PLAYING_AUDIO, key_action_mapping={})
+            self.register_state(self.audio_widget, None,
+                                self.perform_audio)
+
         self.writing_widget = self.make_decision_widget(
             message=_MESSAGE_WRITING_LOGS,
             key_action_mapping={},
@@ -105,6 +115,12 @@ class factory_Connector(state_machine.FactoryStateMachine):
         # After this state (result), go back to "prepare panel" state.
         self.register_state(self.result_widget, None, None,
                             self._STATE_PREPARE_PANEL)
+
+        # Execute commands for special SKU.
+        if 'pre_setup' in self.config:
+            for cmd_tuple in self.config['pre_setup']:
+                cmd, expect_re = cmd_tuple
+                self.run_cmd(cmd, expect_re)
 
     def setup_camera_preview(self):
         self.camera_config = self.config['camera']
@@ -170,6 +186,18 @@ class factory_Connector(state_machine.FactoryStateMachine):
             self._status_rows.append((test_name, test_label, True))
             self._results_to_check.append(test_name)
 
+    def setup_audio(self):
+        self.audio_config = self.config['audio']
+        factory.log('Audio config is [%s]' % self.audio_config)
+        self.play_freq = self.audio_config['freq']
+        self.play_repeat = self.audio_config['repeat']
+        self.play_tolerance = self.audio_config['tolerance']
+        self.play_duration = self.audio_config['duration']
+        self.record_device = self.audio_config['input_device']
+        # Prepare the status row.
+        self._status_rows.append(('audio', 'Audio', False))
+        self._results_to_check.append('audio')
+
     def perform_probing(self):
         if self.is_internal:
             self.perform_internal_probing()
@@ -204,6 +232,22 @@ class factory_Connector(state_machine.FactoryStateMachine):
                     self.update_status(test_name, False)
         except Exception as e:
             factory.log('Exception - %s' % e)
+
+    def perform_audio(self):
+        # Repeat several times, if one of them is succeed, mark as a PASS.
+        self.update_status('audio', 'FAILED - freq not match')
+        for i in range(self.play_repeat):
+            error_ret = self.audio_loopback(
+                test_freq=self.play_freq,
+                tolerance=self.play_tolerance,
+                loop_duration=self.play_duration,
+                input_device=self.record_device)
+            self.log_to_file.write('On %d audio loopback, got : %s\n' % (
+                i, pprint.pformat(error_ret)))
+            if len(error_ret) == 0:
+                self.update_status('audio', 'PASSED')
+                break
+        self.advance_state()
 
     def set_brightness(self, brightness):
         if not self.run_cmd(BRIGHTNESS_CONTROL_CMD % brightness, '^$'):
@@ -318,8 +362,8 @@ class factory_Connector(state_machine.FactoryStateMachine):
         self.sn_input_widget.get_entry().set_text('')
         factory.log('Data reseted.')
 
-    def audio_loopback(self, test_freq=1000, loop_duration=1,
-            input_device='hw:0,4'):
+    def audio_loopback(self, test_freq=1000, tolerance=50,
+            loop_duration=1, input_device='hw:0,2'):
         """Tests digital mic function.
 
         Args:
@@ -351,7 +395,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
         def check_loop_output(sox_output):
             freq = ah.get_rough_freq(sox_output)
             factory.log('Got freq %d' % freq)
-            if abs(freq - test_freq) > 50:
+            if abs(freq - test_freq) > tolerance:
                 errors.append('Frequency not match, expect %d but got %d' %
                         (test_freq, freq))
 
