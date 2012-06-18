@@ -32,6 +32,9 @@ class firmware_ECWakeSource(FAFTSequence):
     # Delay between closing and opening lid
     LID_DELAY = 1
 
+    # Delay for waiting client to shut down
+    SHUTDOWN_DELAY = 10
+
 
     @delayed(WAKE_DELAY)
     def wake_by_power_button(self):
@@ -64,6 +67,15 @@ class firmware_ECWakeSource(FAFTSequence):
         wake_func()
 
 
+    def hibernate_and_wake_by_power_button(self):
+        """Shutdown and hibernate EC. Then wake by power button."""
+        self.faft_client.run_shell_command("shutdown -P now")
+        time.sleep(self.SHUTDOWN_DELAY)
+        self.send_uart_command("hibernate 1000")
+        time.sleep(self.WAKE_DELAY)
+        self.servo.power_short_press()
+
+
     def run_once(self, host=None):
         self.register_faft_sequence((
             {   # Step 1, suspend and wake by power button
@@ -74,7 +86,10 @@ class firmware_ECWakeSource(FAFTSequence):
                 'reboot_action': (self.suspend_as_reboot,
                                   self.wake_by_lid_switch),
             },
-            {   # Step 3, dummy step to make sure step 2 reboots
+            {   # Step 3, EC hibernate and wake by power button
+                'reboot_action': self.hibernate_and_wake_by_power_button,
+            },
+            {   # Step 4, dummy step to make sure step 3 reboots
             }
         ))
         self.run_faft_sequence()
