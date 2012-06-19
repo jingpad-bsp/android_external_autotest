@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+import time
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faftsequence import FAFTSequence
 
@@ -12,22 +15,43 @@ class firmware_ECPowerG3(FAFTSequence):
     version = 1
 
     # Time out range for waiting system drop into G3.
-    G3_DELAY = 13
+    G3_TIMEOUT = 13
+
+    # Time out range for waiting system shut down
+    S5_TIMEOUT = 10
 
     # Record failure event
     _failed = False
 
+    def wait_power(self, reg_ex, timeout):
+        """
+        Wait for certain power state.
+
+        Args:
+          reg_ex: Acceptable "powerinfo" response. Can be a regular expression.
+          timeout: Timeout range.
+        """
+        logging.info('Waiting for "%s" in %d seconds.' % (reg_ex, timeout))
+        while timeout > 0:
+            try:
+                timeout = timeout - 1
+                self.send_uart_command_get_output("powerinfo",
+                                                  reg_ex,
+                                                  timeout=1)
+                return True
+            except:
+                pass
+        return False
+
     def check_G3(self):
         """Shutdown the system and check if X86 drop into G3 correctly."""
         self.faft_client.run_shell_command("shutdown -P now")
-        self.send_uart_command_get_output("", "x86 power state 1 = S5")
-        try:
-                self.send_uart_command_get_output("", "x86 power state 0 = G3",
-                                                   timeout=self.G3_DELAY)
-        except:
-                # Catch failure here to gracefully terminate test
-                logging.error("EC fails to drop into G3")
-                self._failed = True
+        if not self.wait_power("x86 power state 1 = S5", self.S5_TIMEOUT):
+            logging.error("Fails to wait for S5 state")
+            self._failed = True
+        elif not self.wait_power("x86 power state 0 = G3", self.G3_TIMEOUT):
+            logging.error("EC fails to drop into G3")
+            self._failed = True
         self.servo.power_short_press()
 
 
