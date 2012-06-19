@@ -38,10 +38,10 @@ fi
 
 if [[ $1 == "dashboard" ]]; then
   # Create and copy regular dash.
-  create_copy_dash ${RESULTS_BASE} 5000 "-t -p"
+  create_copy_dash ${RESULTS_BASE} 10000 "-t -p"
   # Generate alerts.
   create_copy_dash ${RESULTS_BASE} 3000 "-a"
 elif [[ $1 == "email" ]]; then
   # Create and copy regular dash.
-  create_copy_dash ${RESULTS_BASE} 300 "-m"
+  create_copy_dash ${RESULTS_BASE} 1500 "-m"
 fi
