@@ -59,22 +59,33 @@ class SiteHost(remote.RemoteHost):
     # Ephemeral file to indicate that an update has just occurred.
     _JUST_UPDATED_FLAG = '/tmp/just_updated'
 
-    # Timeout values used in test_wait_for_sleep(), et al.
-    #
-    # _RESUME_TIMEOUT has to be big enough to allow time for WiFi
-    # reconnection.
-    #
-    # _REBOOT_TIMEOUT has to be big enough to allow time for the 30
-    # second dev-mode screen delay _and_ time for network startup,
-    # which takes several seconds longer than boot.
+    # Timeout values associated with various Chrome OS state
+    # changes.  In general, the timeouts are the maximum time to
+    # allow between some event X, and the time that the unit is
+    # on (or off) the network.  Note that "time to get on the
+    # network" is typically longer than the time to complete the
+    # operation.
     #
     # TODO(jrbarnette):  None of these times have been thoroughly
     # tested empirically; if timeouts are a problem, increasing the
     # time limit really might be the right answer.
-    _SLEEP_TIMEOUT = 2
-    _RESUME_TIMEOUT = 5
-    _SHUTDOWN_TIMEOUT = 5
-    _REBOOT_TIMEOUT = 45
+    #
+    # SLEEP_TIMEOUT:  Time to allow for suspend to memory.
+    # RESUME_TIMEOUT: Time to allow for resume after suspend.
+    # BOOT_TIMEOUT: Time to allow for boot from power off.  Among
+    #   other things, this includes time for the 30 second dev-mode
+    #   screen delay,
+    # USB_BOOT_TIMEOUT: Time to allow for boot from a USB device,
+    #   including the 30 second dev-mode delay.
+    # SHUTDOWN_TIMEOUT: Time to allow to shut down.
+    # REBOOT_TIMEOUT: Combination of shutdown and reboot times.
+
+    SLEEP_TIMEOUT = 2
+    RESUME_TIMEOUT = 5
+    BOOT_TIMEOUT = 45
+    USB_BOOT_TIMEOUT = 150
+    SHUTDOWN_TIMEOUT = 5
+    REBOOT_TIMEOUT = SHUTDOWN_TIMEOUT + BOOT_TIMEOUT
 
 
     def _initialize(self, hostname, servo_host=None, servo_port=None,
@@ -365,10 +376,10 @@ class SiteHost(remote.RemoteHost):
         @exception TestFail The host did not go to sleep within
                             the allowed time.
         """
-        if not self._ping_wait_down(timeout=self._SLEEP_TIMEOUT):
+        if not self._ping_wait_down(timeout=self.SLEEP_TIMEOUT):
             raise error.TestFail(
                 'client failed to sleep after %d seconds' %
-                    self._SLEEP_TIMEOUT)
+                    self.SLEEP_TIMEOUT)
 
 
     def test_wait_for_resume(self, old_boot_id):
@@ -390,10 +401,10 @@ class SiteHost(remote.RemoteHost):
                             indicated a reboot rather than a sleep
                             cycle.
         """
-        if not self.wait_up(timeout=self._RESUME_TIMEOUT):
+        if not self.wait_up(timeout=self.RESUME_TIMEOUT):
             raise error.TestFail(
                 'client failed to resume from sleep after %d seconds' %
-                    self._RESUME_TIMEOUT)
+                    self.RESUME_TIMEOUT)
         else:
             new_boot_id = self.get_boot_id()
             if new_boot_id != old_boot_id:
@@ -424,10 +435,10 @@ class SiteHost(remote.RemoteHost):
         @exception TestFail The host did not shut down within the
                             allowed time.
         """
-        if not self._ping_wait_down(timeout=self._SHUTDOWN_TIMEOUT):
+        if not self._ping_wait_down(timeout=self.SHUTDOWN_TIMEOUT):
             raise error.TestFail(
                 'client failed to shut down after %d seconds' %
-                    self._SHUTDOWN_TIMEOUT)
+                    self.SHUTDOWN_TIMEOUT)
 
 
     def test_wait_for_boot(self, old_boot_id=None):
@@ -450,10 +461,10 @@ class SiteHost(remote.RemoteHost):
         @exception TestFail The host responded, but the boot id test
                             indicated that there was no reboot.
         """
-        if not self.wait_up(timeout=self._REBOOT_TIMEOUT):
+        if not self.wait_up(timeout=self.REBOOT_TIMEOUT):
             raise error.TestFail(
                 'client failed to reboot after %d seconds' %
-                    self._REBOOT_TIMEOUT)
+                    self.REBOOT_TIMEOUT)
         elif old_boot_id:
             if self.get_boot_id() == old_boot_id:
                 raise error.TestFail(
