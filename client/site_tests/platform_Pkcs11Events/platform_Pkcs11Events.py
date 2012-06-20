@@ -10,9 +10,9 @@ from autotest_lib.client.cros import pkcs11
 class platform_Pkcs11Events(test.test):
     version = 1
 
-    def run_once(self):
+    def run_once(self, num_tokens, num_events):
         # Setup some token directories.
-        token_list = ['/tmp/chaps%d' % x for x in range(7)]
+        token_list = ['/tmp/chaps%d' % x for x in range(num_tokens)]
         pkcs11.setup_p11_test_token(True)
         shutil.rmtree('%s/database' % pkcs11.TMP_CHAPS_DIR, ignore_errors=True)
         for token in token_list:
@@ -34,7 +34,7 @@ class platform_Pkcs11Events(test.test):
             utils.system('chaps_client --unload --path=%s' % token)
 
         # Hit the tokens with a bunch of random login / logout events.
-        for i in range(200):
+        for i in range(num_events):
             token = random.choice(token_list)
             event = random.choice(['login', 'logout'])
             if event == 'login':

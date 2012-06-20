@@ -7,7 +7,7 @@ NAME = "platform_Pkcs11Events"
 PURPOSE = "Tests the response of the PKCS #11 system to login events."
 CRITERIA = "Fails if the PKCS #11 system does not respond correctly to events."
 EXPERIMENTAL = "True"
-SUITE = "bvt, kaen_bvt"
+SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "platform"
@@ -17,4 +17,4 @@ DOC = """
 This tests the response of the PKCS #11 system to login events.
 """
 
-job.run_test('platform_Pkcs11Events', num_tokens=2, num_events=20)
+job.run_test('platform_Pkcs11Events', num_tokens=7, num_events=200)
