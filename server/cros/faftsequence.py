@@ -99,6 +99,8 @@ class FAFTSequence(ServoTest):
     EC_REBOOT_DELAY = 1
     # Delay between EC reboot and pressing power button
     POWER_BTN_DELAY = 0.5
+    # Delay between sending keystroke to firmware
+    FIRMWARE_KEY_DELAY = 0.5
 
     CHROMEOS_MAGIC = "CHROMEOS"
     CORRUPTED_MAGIC = "CORRUPTD"
@@ -697,16 +699,59 @@ class FAFTSequence(ServoTest):
 
     def enable_dev_mode_and_fw(self):
         """Enable developer mode and use developer firmware."""
-        self.servo.enable_development_mode()
-        self.faft_client.run_shell_command(
-                'chromeos-firmwareupdate --mode todev && reboot')
+        if self.client_attr.keyboard_dev:
+            self.enable_keyboard_dev_mode()
+        else:
+            self.servo.enable_development_mode()
+            self.faft_client.run_shell_command(
+                    'chromeos-firmwareupdate --mode todev && reboot')
 
 
     def enable_normal_mode_and_fw(self):
         """Enable normal mode and use normal firmware."""
-        self.servo.disable_development_mode()
-        self.faft_client.run_shell_command(
-                'chromeos-firmwareupdate --mode tonormal && reboot')
+        if self.client_attr.keyboard_dev:
+            self.disable_keyboard_dev_mode()
+        else:
+            self.servo.disable_development_mode()
+            self.faft_client.run_shell_command(
+                    'chromeos-firmwareupdate --mode tonormal && reboot')
+
+
+    def wait_fw_screen_and_switch_keyboard_dev_mode(self, dev):
+        """Wait for firmware screen and then switch into or out of dev mode.
+
+        Args:
+          dev: True if switching into dev mode. Otherwise, False.
+        """
+        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        if dev:
+            self.servo.ctrl_d()
+        else:
+            self.servo.enter_key()
+        time.sleep(self.FIRMWARE_KEY_DELAY)
+        self.servo.enter_key()
+
+
+    def enable_keyboard_dev_mode(self):
+        logging.info("Enabling keyboard controlled developer mode")
+        # Rebooting EC with rec mode on. Should power on AP.
+        self.servo.enable_recovery_mode()
+        self.servo.cold_reset()
+        self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=True)
+        self.servo.disable_recovery_mode()
+
+
+    def disable_keyboard_dev_mode(self):
+        logging.info("Disabling keyboard controlled developer mode")
+        self.servo.disable_recovery_mode()
+        self.servo.cold_reset()
+        # Rebooting EC with rec mode off. Software sync should power on AP,
+        # and then shut down AP after a while.
+        # TODO(victoryang): Figure out the proper delay period before pressing
+        #                   power button after software sync is done.
+        time.sleep(self.POWER_BTN_DELAY)
+        self.servo.power_short_press()
+        self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=False)
 
 
     def setup_dev_mode(self, dev_mode):
@@ -724,28 +769,34 @@ class FAFTSequence(ServoTest):
                                 else None),
         })
         if dev_mode:
-            if not self.crossystem_checker({'devsw_cur': '1'}):
+            if (not self.client_attr.keyboard_dev and
+                not self.crossystem_checker({'devsw_cur': '1'})):
                 logging.info('Dev switch is not on. Now switch it on.')
                 self.servo.enable_development_mode()
             if not self.crossystem_checker({'devsw_boot': '1',
                     'mainfw_type': 'developer'}):
                 logging.info('System is not in dev mode. Reboot into it.')
                 self.run_faft_step({
-                    'userspace_action': (self.faft_client.run_shell_command,
+                    'userspace_action': None if self.client_attr.keyboard_dev
+                        else (self.faft_client.run_shell_command,
                         'chromeos-firmwareupdate --mode todev && reboot'),
-                    'reboot_action': None,
+                    'reboot_action': self.enable_keyboard_dev_mode if
+                        self.client_attr.keyboard_dev else None,
                 })
         else:
-            if not self.crossystem_checker({'devsw_cur': '0'}):
+            if (not self.client_attr.keyboard_dev and
+                not self.crossystem_checker({'devsw_cur': '0'})):
                 logging.info('Dev switch is not off. Now switch it off.')
                 self.servo.disable_development_mode()
             if not self.crossystem_checker({'devsw_boot': '0',
                     'mainfw_type': 'normal'}):
                 logging.info('System is not in normal mode. Reboot into it.')
                 self.run_faft_step({
-                    'userspace_action': (self.faft_client.run_shell_command,
+                    'userspace_action': None if self.client_attr.keyboard_dev
+                        else (self.faft_client.run_shell_command,
                         'chromeos-firmwareupdate --mode tonormal && reboot'),
-                    'reboot_action': None,
+                    'reboot_action': self.disable_keyboard_dev_mode if
+                        self.client_attr.keyboard_dev else None,
                 })
 
 
