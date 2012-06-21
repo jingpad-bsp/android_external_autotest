@@ -25,7 +25,7 @@ class chromeperf_PGOPageCycler(test.test):
         parser = optparse.OptionParser()
 
         parser.add_option('--acl', type='string',
-                          default='bucket-owner-full-control',
+                          default='project-private',
                           help='Place to put the performance data.')
         parser.add_option('--profile-destination', type='string',
                           default=None, dest='destination',
@@ -60,9 +60,10 @@ class chromeperf_PGOPageCycler(test.test):
             Return the arg tuple of two if the upload failed
         """
 
-        CANNED_ACLS = ['public-read', 'private', 'bucket-owner-read',
-                       'authenticated-read', 'bucket-owner-full-control',
-                       'public-read-write']
+        # https://developers.google.com/storage/docs/accesscontrol#extension
+        CANNED_ACLS = ['project-private', 'private', 'public-read',
+                       'public-read-write', 'authenticated-read',
+                       'bucket-owner-read', 'bucket-owner-full-control']
         _GSUTIL_BIN = '/usr/bin/gsutil'
 
         acl_cmd = None
