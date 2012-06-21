@@ -37,5 +37,9 @@ class pgo(profiler.profiler):
                                mode='w:bz2')
             tar.add(self._source_dir, arcname='chrome', recursive=True)
             tar.close()
+            versionfile = '/opt/google/chrome/profilelocation'
+            if os.path.isfile(versionfile):
+               shutil.copyfile(versionfile,
+                               os.path.join(test.profdir, 'profiledestination'))
         else:
             logging.error('PGO dir: %s not found', self._source_dir)

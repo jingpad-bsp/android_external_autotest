@@ -30,6 +30,10 @@ class chromeperf_PGOPageCycler(test.test):
         parser.add_option('--profile-destination', type='string',
                           default=None, dest='destination',
                           help='Place to put the performance data.')
+        parser.add_option('--profile-name', type='string',
+                          default='chromeos-chrome-pgo.tar.bz2',
+                          dest='profilename',
+                          help='Name to call the performance data.')
         parser.add_option('--reboot', dest='reboot', action='store_true',
                           default=True,
                           help='Reboot the client before the test')
@@ -54,7 +58,7 @@ class chromeperf_PGOPageCycler(test.test):
         Args:
             local_file
             remote_file
-            acl me or file used for controlling access to the uploaded file.
+            acl name or file used for controlling access to the uploaded file.
 
         Returns:
             Return the arg tuple of two if the upload failed
@@ -95,9 +99,6 @@ class chromeperf_PGOPageCycler(test.test):
 
     def run_once(self, host=None, args=[]):
         self.parse_args(args)
-        if not self.options.destination and self.job.label:
-            self.options.destination = (self._DEFAULT_UPLOAD_PATTERN %
-                self.job.label)
 
         self.client = host
         self.client_test = 'desktopui_PyAutoPerfTests'
@@ -115,7 +116,7 @@ class chromeperf_PGOPageCycler(test.test):
                 'args=["--pgo", "--suite=PGO", "--iterations=1"])'
                 % (self.client_test, host),
             # Causes the tar file to get written
-            'job.profilers.delete("pgo")',
+            'job.profilers.delete("pgo")'
         ]
 
         if self.options.reboot:
@@ -127,8 +128,13 @@ class chromeperf_PGOPageCycler(test.test):
             self.server_test, self.client_test, 'profiling', 'iteration.1')
         src = os.path.join(client_results_dir, 'pgo.tar.bz2')
         if os.path.exists(src):
+            if not self.options.destination:
+                verfile = os.path.join(client_results_dir, 'profiledestination')
+                if os.path.exists(verfile):
+                    with open(verfile, 'r') as f:
+                        self.options.destination = f.read().strip()
             if self.options.destination:
-                dst = os.path.join(self.options.destination, 'pgo.tar.bz2')
-                copy_text = 'from %s to %s' % (src, dst)
-                if self._gs_upload(src, dst, self.options.acl) is not None:
-                    raise error.TestFail('Unable to copy ' + copy_text)
+                if self._gs_upload(src, self.options.destination,
+                                   self.options.acl) is not None:
+                    raise error.TestFail('Unable to copy from %s to %s' %
+                                         (src, self.options.destination))
