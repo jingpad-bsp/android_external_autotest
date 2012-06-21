@@ -1,11 +1,14 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, power_status
+from autotest_lib.client.cros import cros_ui_test
+from autotest_lib.client.cros import power_rapl
+from autotest_lib.client.cros import power_status
+from autotest_lib.client.cros import power_utils
 
 
 class power_Idle(cros_ui_test.UITest):
@@ -24,6 +27,7 @@ class power_Idle(cros_ui_test.UITest):
         else:
             powerd_running = False
 
+        self._start_time = time.time()
         self.status = power_status.get_status()
 
         # initialize various interesting power related stats
@@ -31,11 +35,21 @@ class power_Idle(cros_ui_test.UITest):
         self._cpufreq_stats = power_status.CPUFreqStats()
         self._cpuidle_stats = power_status.CPUIdleStats()
 
+        measurements = []
+        if not self.status.linepower[0].online:
+            measurements.append(
+                power_status.SystemPower(self.status.battery_path))
+        if power_utils.has_rapl_support():
+            measurements += power_rapl.create_rapl()
+        self._plog = power_status.PowerLogger(measurements,
+                                              seconds_period=sleep)
+        self._plog.start()
 
         for i in range(0, idle_time, sleep):
             time.sleep(sleep)
             self.status.refresh()
         self.status.refresh()
+        self._plog.checkpoint('power_Idle', self._start_time)
 
         # Restore powerd if it was originally running.
         if powerd_running:
@@ -87,5 +101,6 @@ class power_Idle(cros_ui_test.UITest):
             keyvals['v_voltage_now'] = self.status.battery[0].voltage_now
             keyvals['mc_min_temp'] = self.status.min_temp
             keyvals['mc_max_temp'] = self.status.max_temp
+        keyvals.update(self._plog.calc())
 
         self.write_perf_keyval(keyvals)
