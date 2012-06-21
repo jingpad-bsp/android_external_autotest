@@ -41,7 +41,7 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
             # Enable chrome testing interface and Login.
             pyautolib_dir = os.path.join(self.cr_source_dir,
                                          'chrome', 'test', 'pyautolib')
-            login_cmd = cros_ui.xcommand_as(
+            login_cmd = cros_ui.xcommand(
                 'python %s chromeos_utils.ChromeosUtils.LoginToDefaultAccount '
                 '-v --no-http-server' % os.path.join(
                     pyautolib_dir, 'chromeos', 'chromeos_utils.py'))

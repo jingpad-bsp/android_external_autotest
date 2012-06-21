@@ -4,23 +4,19 @@
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import auth_server, cros_ui_test, cryptohome
+from autotest_lib.client.cros import dns_server
 
 class login_CryptohomeIncognitoUnmounted(cros_ui_test.UITest):
     version = 1
 
 
-    def __login_denier(self, handler, url_args):
-        handler.send_response(403)
-        handler.end_headers()
-        handler.wfile.write('Error=BadAuthentication.')
+    def __authenticator(self, email, password):
+        return False
 
 
     def start_authserver(self):
-        self._authServer = auth_server.GoogleAuthServer(
-            cl_responder=self.__login_denier)
-        self._authServer.run()
-
-        self.use_local_dns()
+        super(login_CryptohomeIncognitoUnmounted, self).start_authserver(
+            authenticator=self.__authenticator)
 
 
     def run_once(self):

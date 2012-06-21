@@ -2,14 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, glob, logging, os, re, shutil, socket, stat, subprocess, sys, time
-from dbus.mainloop.glib import DBusGMainLoop
+import glob, logging, os, re, shutil, subprocess, sys, time
 
 import auth_server, common, constants, cros_logging, cros_ui, cryptohome
-import dns_server, flimflam_test_path, login, ownership, pyauto_test
+import dns_server, login, ownership, pyauto_test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-import flimflam # Requires flimflam_test_path to be imported first.
 
 class UITest(pyauto_test.PyAutoTest):
     """Base class for tests that drive some portion of the user interface.
@@ -52,155 +50,20 @@ class UITest(pyauto_test.PyAutoTest):
         '/sys/kernel/debug/tracing/events/signal/signal_generate/filter'
     _ftrace_trace_file = '/sys/kernel/debug/tracing/trace'
 
-    # This is a symlink.  We look up the real path at runtime by following it.
-    _resolv_test_file = 'resolv.conf.test'
-    _resolv_bak_file = 'resolv.conf.bak'
-
     _last_chrome_log = ''
 
 
-    def listen_to_signal(self, callback, signal, interface):
-        """Listens to the given |signal| that is sent to power manager.
-        """
-        self._system_bus.add_signal_receiver(
-            handler_function=callback,
-            signal_name=signal,
-            dbus_interface=interface,
-            bus_name=None,
-            path='/')
-
-
-    def __connect_to_flimflam(self):
-        """Connect to the network manager via DBus.
-
-        Stores dbus connection in self._flim upon success, throws on failure.
-        """
-        self._bus_loop = DBusGMainLoop(set_as_default=True)
-        self._system_bus = dbus.SystemBus(mainloop=self._bus_loop)
-        self._flim = flimflam.FlimFlam(self._system_bus)
-
-
-    def __get_host_by_name(self, hostname):
-        """Resolve the dotted-quad IPv4 address of |hostname|
-
-        This used to use suave python code, like this:
-            hosts = socket.getaddrinfo(hostname, 80, socket.AF_INET)
-            (fam, socktype, proto, canonname, (host, port)) = hosts[0]
-            return host
-
-        But that hangs sometimes, and we don't understand why.  So, use
-        a subprocess with a timeout.
-        """
-        try:
-            host = utils.system_output('%s -c "import socket; '
-                                       'print socket.gethostbyname(\'%s\')"' % (
-                                       sys.executable, hostname),
-                                       ignore_status=True, timeout=2)
-        except Exception as e:
-            logging.warning(e)
-            return None
-        return host or None
-
-
-    def __attempt_resolve(self, hostname, ip, expected=True):
-        logging.debug('Attempting to resolve %s to %s' % (hostname, ip))
-        try:
-            host = self.__get_host_by_name(hostname)
-            logging.debug('Resolve attempt for %s got %s' % (hostname, host))
-            return host and (host == ip) == expected
-        except socket.gaierror as err:
-            logging.error(err)
-
-
-    def use_local_dns(self, dns_port=53):
-        """Set all devices to use our in-process mock DNS server.
-        """
-        self._dnsServer = dns_server.LocalDns(fake_ip='127.0.0.1',
-                                              local_port=dns_port)
-        self._dnsServer.run()
-        # Turn off captive portal checking, until we fix
-        # http://code.google.com/p/chromium-os/issues/detail?id=19640
-        self.check_portal_list = self._flim.GetCheckPortalList()
-        self._flim.SetCheckPortalList('')
-        # Set all devices to use locally-running DNS server.
-        try:
-            # Follow resolv.conf symlink.
-            resolv = os.path.realpath(constants.RESOLV_CONF_FILE)
-            # Grab path to the real file, do following work in that directory.
-            resolv_dir = os.path.dirname(resolv)
-            resolv_test = os.path.join(resolv_dir, self._resolv_test_file)
-            resolv_bak = os.path.join(resolv_dir, self._resolv_bak_file)
-            resolv_contents = 'nameserver 127.0.0.1'
-            # Test to make sure the current resolv.conf isn't already our
-            # specially modified version.  If this is the case, we have
-            # probably been interrupted while in the middle of this test
-            # in a previous run.  The last thing we want to do at this point
-            # is to overwrite a legitimate backup.
-            if (utils.read_one_line(resolv) == resolv_contents and
-                os.path.exists(resolv_bak)):
-                logging.error('Current resolv.conf is setup for our local '
-                              'server, and a backup already exists!  '
-                              'Skipping the backup step.')
-            else:
-              # Back up the current resolv.conf.
-              os.rename(resolv, resolv_bak)
-            # To stop flimflam from editing resolv.conf while we're working
-            # with it, we want to make the directory -r-x-r-x-r-x.  Open an
-            # fd to the file first, so that we'll retain the ability to
-            # alter it.
-            resolv_fd = open(resolv, 'w')
-            self._resolv_dir_mode = os.stat(resolv_dir).st_mode
-            os.chmod(resolv_dir, (stat.S_IRUSR | stat.S_IXUSR |
-                                  stat.S_IRGRP | stat.S_IXGRP |
-                                  stat.S_IROTH | stat.S_IXOTH))
-            resolv_fd.write(resolv_contents)
-            resolv_fd.close()
-            assert utils.read_one_line(resolv) == resolv_contents
-        except Exception as e:
-            logging.error(str(e))
-            raise e
-
-        utils.poll_for_condition(
-            lambda: self.__attempt_resolve('www.google.com.', '127.0.0.1'),
-            utils.TimeoutError('Timed out waiting for DNS changes.'),
-            timeout=10)
-
-
-    def revert_dns(self):
-        """Clear the custom DNS setting for all devices and force them to use
-        DHCP to pull the network's real settings again.
-        """
-        try:
-            # Follow resolv.conf symlink.
-            resolv = os.path.realpath(constants.RESOLV_CONF_FILE)
-            # Grab path to the real file, do following work in that directory.
-            resolv_dir = os.path.dirname(resolv)
-            resolv_bak = os.path.join(resolv_dir, self._resolv_bak_file)
-            os.chmod(resolv_dir, self._resolv_dir_mode)
-            os.rename(resolv_bak, resolv)
-
-            utils.poll_for_condition(
-                lambda: self.__attempt_resolve('www.google.com.',
-                                               '127.0.0.1',
-                                               expected=False),
-                utils.TimeoutError('Timed out waiting to revert DNS.  '
-                                   'resolv.conf contents are: ' +
-                                   utils.read_one_line(resolv)),
-                timeout=10)
-        finally:
-            # Set captive portal checking to whatever it was at the start.
-            self._flim.SetCheckPortalList(self.check_portal_list)
-
-
-    def start_authserver(self):
+    def start_authserver(self, authenticator=None):
         """Spin up a local mock of the Google Accounts server, then spin up
         a local fake DNS server and tell the networking stack to use it.  This
         will trick Chrome into talking to our mock when we login.
         Subclasses can override this method to change this behavior.
         """
-        self._authServer = auth_server.GoogleAuthServer()
+        self._authServer = auth_server.GoogleAuthServer(
+            authenticator=authenticator)
         self._authServer.run()
-        self.use_local_dns()
+        self._dnsServer = dns_server.LocalDns()
+        self._dnsServer.run()
 
 
     def stop_authserver(self):
@@ -209,8 +72,8 @@ class UITest(pyauto_test.PyAutoTest):
         method as well.
         """
         if hasattr(self, '_authServer'):
-            self.revert_dns()
             self._authServer.stop()
+        if hasattr(self, '_dnsServer'):
             self._dnsServer.stop()
 
 
@@ -376,10 +239,10 @@ class UITest(pyauto_test.PyAutoTest):
 
         Authentication is not performed against live servers.  Instead, we spin
         up a local DNS server that will lie and say that all sites resolve to
-        127.0.0.1.  We use DBus to tell flimflam to use this DNS server to
-        resolve addresses.  We then spin up a local httpd that will respond
-        to queries at the Google Accounts endpoints.  We clear the DNS setting
-        and tear down these servers in cleanup().
+        127.0.0.1.  The DNS server tells flimflam via DBus that it should be
+        used to resolve addresses.  We then spin up a local httpd that will
+        respond to queries at the Google Accounts endpoints.  We clear the DNS
+        setting and tear down these servers in cleanup().
 
         Args:
             creds: String specifying the credentials for this test case.  Can
@@ -396,8 +259,6 @@ class UITest(pyauto_test.PyAutoTest):
         # crashed.
         self._log_reader = cros_logging.LogReader()
         self._log_reader.set_start_by_current()
-
-        self.__connect_to_flimflam()
 
         if creds:
             self.start_authserver()

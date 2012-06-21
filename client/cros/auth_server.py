@@ -2,11 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import httplib, logging, os, socket, stat, time
+import httplib, json, logging, os, socket, stat, time, urllib
 
 import common, constants, cryptohome, httpd
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+
+
+def _value(url_arg_value):
+    """Helper unifying the handling of GET and POST arguments."""
+    try:
+        return url_arg_value[0]
+    except AttributeError:
+        return url_arg_value.value
 
 
 class GoogleAuthServer(object):
@@ -37,12 +45,19 @@ function submitAndGo() {
   <FORM action=%(form_url)s method=POST onsubmit='submitAndGo()'>
     <INPUT TYPE=text id="Email" name="Email">
     <INPUT TYPE=text id="Passwd" name="Passwd">
+    <P>%(error_message)s</P>
     <INPUT TYPE=hidden id="continue" name="continue" value=%(continue)s>
     <INPUT TYPE=Submit id="signIn">
   </FORM>
 </BODY>
 </HTML>
     """
+    __oauth1_request_token = 'oauth1_request_token'
+    __oauth1_access_token = 'oauth1_access_token'
+    __oauth1_access_token_secret = 'oauth1_access_token_secret'
+    __oauth2_auth_code = 'oauth2_auth_code'
+    __oauth2_refresh_token = 'oauth2_refresh_token'
+    __oauth2_access_token = 'oauth2_access_token'
     __issue_auth_token_miss_count = 0
     __token_auth_miss_count = 0
 
@@ -52,19 +67,27 @@ function submitAndGo() {
                  key_path='/etc/fake_root_ca/mock_server.key',
                  ssl_port=443,
                  port=80,
-                 cl_responder=None,
-                 it_responder=None,
-                 pl_responder=None,
-                 ta_responder=None):
+                 authenticator=None):
         self._service_login = constants.SERVICE_LOGIN_URL
         self._service_login_new = constants.SERVICE_LOGIN_NEW_URL
-        self._process_login = constants.PROCESS_LOGIN_URL
-        self._process_login_new = constants.PROCESS_LOGIN_NEW_URL
+        self._service_login_auth = constants.SERVICE_LOGIN_AUTH_URL
+
+        self._oauth1_get_request_token = constants.OAUTH1_GET_REQUEST_TOKEN_URL
+        self._oauth1_get_access_token = constants.OAUTH1_GET_ACCESS_TOKEN_URL
+        self._oauth1_get_access_token_new = \
+            constants.OAUTH1_GET_ACCESS_TOKEN_NEW_URL
+        self._oauth1_login = constants.OAUTH1_LOGIN_URL
+        self._oauth1_login_new = constants.OAUTH1_LOGIN_NEW_URL
+
+        self._oauth2_wrap_bridge = constants.OAUTH2_WRAP_BRIDGE_URL
+        self._oauth2_wrap_bridge_new = constants.OAUTH2_WRAP_BRIDGE_NEW_URL
+        self._oauth2_get_auth_code = constants.OAUTH2_GET_AUTH_CODE_URL
+        self._oauth2_get_token = constants.OAUTH2_GET_TOKEN_URL
 
         self._client_login = constants.CLIENT_LOGIN_URL
         self._client_login_new = constants.CLIENT_LOGIN_NEW_URL
         self._issue_token = constants.ISSUE_AUTH_TOKEN_URL
-        self._issue_token_new = constants.ISSUE_AUTH_TOKEN_URL
+        self._issue_token_new = constants.ISSUE_AUTH_TOKEN_NEW_URL
         self._token_auth = constants.TOKEN_AUTH_URL
         self._token_auth_new = constants.TOKEN_AUTH_NEW_URL
         self._test_over = '/webhp'
@@ -77,29 +100,56 @@ function submitAndGo() {
         sa = self._testServer.getsockname()
         logging.info('Serving HTTPS on %s, port %s' % (sa[0], sa[1]))
 
-        if cl_responder is None:
-            cl_responder = self.client_login_responder
-        if it_responder is None:
-            it_responder = self.issue_token_responder
-        if pl_responder is None:
-            pl_responder = self.process_login_responder
-        if ta_responder is None:
-            ta_responder = self.token_auth_responder
+        if authenticator is None:
+            authenticator = self.authenticator
+        self._authenticator = authenticator
 
         self._testServer.add_url_handler(self._service_login,
-                                         self.__service_login_responder)
+                                         self._service_login_responder)
         self._testServer.add_url_handler(self._service_login_new,
-                                         self.__service_login_responder_new)
-        self._testServer.add_url_handler(self._process_login, pl_responder)
-        self._testServer.add_url_handler(self._process_login_new, pl_responder)
+                                         self._service_login_responder)
+        self._testServer.add_url_handler(self._service_login_auth,
+                                         self._service_login_auth_responder)
 
-        self._testServer.add_url_handler(self._client_login, cl_responder)
-        self._testServer.add_url_handler(self._client_login_new, cl_responder)
-        self._testServer.add_url_handler(self._issue_token, it_responder)
-        self._testServer.add_url_handler(self._issue_token_new, it_responder)
-        self._testServer.add_url_handler(self._token_auth, ta_responder)
-        self._testServer.add_url_handler(self._token_auth_new, ta_responder)
+        self._testServer.add_url_handler(
+            self._oauth1_get_request_token,
+            self._oauth1_get_request_token_responder)
+        self._testServer.add_url_handler(
+            self._oauth1_get_access_token,
+            self._oauth1_get_access_token_responder)
+        self._testServer.add_url_handler(
+            self._oauth1_get_access_token_new,
+            self._oauth1_get_access_token_responder)
+        self._testServer.add_url_handler(self._oauth1_login,
+                                         self._oauth1_login_responder)
+        self._testServer.add_url_handler(self._oauth1_login_new,
+                                         self._oauth1_login_responder)
 
+        self._testServer.add_url_handler(self._oauth2_wrap_bridge,
+                                         self._oauth2_wrap_bridge_responder)
+        self._testServer.add_url_handler(self._oauth2_wrap_bridge_new,
+                                         self._oauth2_wrap_bridge_responder)
+        self._testServer.add_url_handler(self._oauth2_get_auth_code,
+                                         self._oauth2_get_auth_code_responder)
+        self._testServer.add_url_handler(self._oauth2_get_token,
+                                         self._oauth2_get_token_responder)
+
+        self._testServer.add_url_handler(self._client_login,
+                                         self._client_login_responder)
+        self._testServer.add_url_handler(self._client_login_new,
+                                         self._client_login_responder)
+        self._testServer.add_url_handler(self._issue_token,
+                                         self._issue_token_responder)
+        self._testServer.add_url_handler(self._issue_token_new,
+                                         self._issue_token_responder)
+        self._testServer.add_url_handler(self._token_auth,
+                                         self._token_auth_responder)
+        self._testServer.add_url_handler(self._token_auth_new,
+                                         self._token_auth_responder)
+
+        self._service_latch = self._testServer.add_wait_url(self._service_login)
+        self._service_new_latch = self._testServer.add_wait_url(
+            self._service_login_new)
         self._client_latch = self._testServer.add_wait_url(self._client_login)
         self._client_new_latch = self._testServer.add_wait_url(
             self._client_login_new)
@@ -111,7 +161,7 @@ function submitAndGo() {
         self._testHttpServer.add_url_handler(self._test_over,
                                              self.__test_over_responder)
         self._testHttpServer.add_url_handler(constants.PORTAL_CHECK_URL,
-                                             self.portal_check_responder)
+                                             self._portal_check_responder)
         self._over_latch = self._testHttpServer.add_wait_url(self._test_over)
 
 
@@ -123,6 +173,14 @@ function submitAndGo() {
     def stop(self):
         self._testServer.stop()
         self._testHttpServer.stop()
+
+
+    def wait_for_service_login(self, timeout=10):
+        self._service_new_latch.wait(timeout)
+        if not self._service_new_latch.is_set():
+            self._service_latch.wait(timeout)
+            if not self._service_latch.is_set():
+                raise error.TestError('Never hit ServiceLogin endpoint.')
 
 
     def wait_for_client_login(self, timeout=10):
@@ -158,80 +216,214 @@ function submitAndGo() {
         return results
 
 
-    def client_login_responder(self, handler, url_args):
-        logging.debug(url_args)
+    def authenticator(self, email, password):
+      return True
+
+
+    def _ensure_params_provided(self, handler, url_args, params):
+      for param in params:
+            if not param in url_args:
+                handler.send_response(httplib.FORBIDDEN)
+                handler.end_headers()
+                raise error.TestError(
+                    '%s did not receive a %s param.' % (handler.path, param))
+
+
+    def _return_login_form(self, handler, error_message, continue_url):
+        handler.send_response(httplib.OK)
+        handler.end_headers()
+        handler.wfile.write(self.__service_login_html % {
+            'form_url': self._service_login_auth,
+            'error_message': error_message,
+            'continue': continue_url})
+
+
+    def _log(self, handler, url_args):
+        logging.debug('%s: %s' % (handler.path, url_args))
+
+
+    def _service_login_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_params_provided(handler, url_args, ['continue'])
+        self._return_login_form(handler, '', _value(url_args['continue']))
+
+
+    def _service_login_auth_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_params_provided(handler,
+                                     url_args,
+                                     ['continue', 'Email', 'Passwd'])
+        if self._authenticator(_value(url_args['Email']),
+                               _value(url_args['Passwd'])):
+            handler.send_response(httplib.SEE_OTHER)
+            handler.send_header('Location', _value(url_args['continue']))
+            handler.end_headers()
+        else:
+            self._return_login_form(handler,
+                                    constants.SERVICE_LOGIN_AUTH_ERROR,
+                                    _value(['continue']))
+
+
+    def _oauth1_get_request_token_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_params_provided(handler,
+                                     url_args,
+                                     ['scope', 'xoauth_display_name'])
+        handler.send_response(httplib.OK)
+        handler.send_header('Set-Cookie',
+                            'oauth_token=%s; Path=%s; Secure; HttpOnly' %
+                                (self.__oauth1_request_token, handler.path))
+        handler.end_headers()
+
+
+    def _ensure_oauth1_params_valid(self, handler, url_args, expected_token):
+        self._ensure_params_provided(handler,
+                                     url_args,
+                                     ['oauth_consumer_key',
+                                      'oauth_token',
+                                      'oauth_signature_method',
+                                      'oauth_signature',
+                                      'oauth_timestamp',
+                                      'oauth_nonce'])
+        if not ('anonymous' == _value(url_args['oauth_consumer_key']) and
+                expected_token == _value(url_args['oauth_token'])):
+            raise error.TestError(
+                '%s called with incorrect params.' % handler.path)
+
+
+    def _oauth1_get_access_token_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_oauth1_params_valid(handler,
+                                         url_args,
+                                         self.__oauth1_request_token)
+        handler.send_response(httplib.OK)
+        handler.send_header('Content-Type', 'application/x-www-form-urlencoded')
+        handler.end_headers()
+        handler.wfile.write(urllib.urlencode({
+            'oauth_token': self.__oauth1_access_token,
+            'oauth_token_secret': self.__oauth1_access_token_secret}))
+
+
+    def _oauth1_login_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_oauth1_params_valid(handler,
+                                         url_args,
+                                         self.__oauth1_access_token)
         handler.send_response(httplib.OK)
         handler.end_headers()
         handler.wfile.write('SID=%s\n' % self.sid)
         handler.wfile.write('LSID=%s\n' % self.lsid)
+        handler.wfile.write('Auth=%s\n' % self.token)
 
 
-    def issue_token_responder(self, handler, url_args):
-        logging.debug(url_args)
-        if url_args['service'].value != constants.LOGIN_SERVICE:
-            handler.send_response(httplib.FORBIDDEN)
-            handler.end_headers()
-            handler.wfile.write(constants.LOGIN_ERROR)
-            return
+    def _oauth2_wrap_bridge_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_oauth1_params_valid(handler,
+                                         url_args,
+                                         self.__oauth1_access_token)
+        handler.send_response(httplib.OK)
+        handler.send_header('Content-Type', 'application/x-www-form-urlencoded')
+        handler.end_headers()
+        handler.wfile.write(urllib.urlencode({
+            'wrap_access_token': self.__oauth2_access_token,
+            'wrap_access_token_expires_in': '3600'}))
 
-        if not (self.sid == url_args['SID'].value and
-                self.lsid == url_args['LSID'].value):
-            raise error.TestError('IssueAuthToken called with incorrect args')
+
+    def _ensure_oauth2_params_valid(self, handler, url_args):
+        self._ensure_params_provided(handler, url_args, ['scope', 'client_id'])
+        if constants.OAUTH2_CLIENT_ID != _value(url_args['client_id']):
+            raise error.TestError(
+                '%s called with incorrect params.' % handler.path)
+
+
+    def _oauth2_get_auth_code_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_oauth2_params_valid(handler, url_args)
+        handler.send_response(httplib.OK)
+        handler.send_header('Set-Cookie',
+                            'oauth_code=%s; Path=%s; Secure; HttpOnly' %
+                                (self.__oauth2_auth_code, handler.path))
+        handler.end_headers()
+
+
+    def _oauth2_get_token_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_oauth2_params_valid(handler, url_args)
+        self._ensure_params_provided(handler,
+                                     url_args,
+                                     ['grant_type', 'client_secret'])
+        if constants.OAUTH2_CLIENT_SECRET != _value(url_args['client_secret']):
+            raise error.TestError(
+                '%s called with incorrect params.' % handler.path)
+        if 'authorization_code' == _value(url_args['grant_type']):
+            self._ensure_params_provided(handler, url_args, ['code'])
+            if self.__oauth2_auth_code != _value(url_args['code']):
+                raise error.TestError(
+                    '%s called with incorrect params.' % handler.path)
+        elif 'refresh_token' == _value(url_args['grant_type']):
+            self._ensure_params_provided(handler, url_args, ['refresh_token'])
+            if self.__oauth2_refresh_token != _value(url_args['refresh_token']):
+                raise error.TestError(
+                    '%s called with incorrect params.' % handler.path)
+        else:
+            raise error.TestError(
+                '%s called with incorrect params.' % handler.path)
         handler.send_response(httplib.OK)
         handler.end_headers()
-        handler.wfile.write(self.token)
+        handler.wfile.write(json.dumps({
+            'refresh_token': self.__oauth2_refresh_token,
+            'access_token': self.__oauth2_access_token,
+            'expires_in': 3600}))
 
 
-    def process_login_responder(self, handler, url_args):
-        logging.debug(url_args)
-        if not 'continue' in url_args:
+    def _client_login_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_params_provided(handler, url_args, ['Email', 'Passwd'])
+        if self._authenticator(_value(url_args['Email']),
+                               _value(url_args['Passwd'])):
+            handler.send_response(httplib.OK)
+            handler.end_headers()
+            handler.wfile.write('SID=%s\n' % self.sid)
+            handler.wfile.write('LSID=%s\n' % self.lsid)
+        else:
             handler.send_response(httplib.FORBIDDEN)
             handler.end_headers()
-            raise error.TestError('ServiceLogin did not pass a continue param')
+            handler.wfile.write('Error=BadAuthentication')
+
+
+    def _issue_token_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_params_provided(handler,
+                                     url_args,
+                                     ['service', 'SID', 'LSID'])
+        if not (self.sid == _value(url_args['SID']) and
+                self.lsid == _value(url_args['LSID'])):
+            raise error.TestError(
+                '%s called with incorrect params.' % handler.path)
+        # Block Chrome sync as we do not currently mock the server for it.
+        if _value(url_args['service']) in ['chromiumsync', 'mobilesync']:
+            handler.send_response(httplib.FORBIDDEN)
+            handler.end_headers()
+            handler.wfile.write('Error=ServiceUnavailable')
+        else:
+            handler.send_response(httplib.OK)
+            handler.end_headers()
+            handler.wfile.write(self.token)
+
+
+    def _token_auth_responder(self, handler, url_args):
+        self._log(handler, url_args)
+        self._ensure_params_provided(handler, url_args, ['auth', 'continue'])
+        if not self.token == _value(url_args['auth']):
+            raise error.TestError(
+                '%s called with incorrect param.' % handler.path)
         handler.send_response(httplib.SEE_OTHER)
-        handler.send_header('Location', url_args['continue'].value)
+        handler.send_header('Location', _value(url_args['continue']))
         handler.end_headers()
 
 
-    def __service_login_responder(self, handler, url_args):
-        logging.debug(url_args)
-        if not 'continue' in url_args:
-            handler.send_response(httplib.FORBIDDEN)
-            handler.end_headers()
-            raise error.TestError('ServiceLogin called with no continue param')
-        handler.send_response(httplib.OK)
-        handler.end_headers()
-        handler.wfile.write(self.__service_login_html % {
-            'form_url': self._process_login,
-            'continue': url_args['continue'][0] })
-
-
-    def __service_login_responder_new(self, handler, url_args):
-        logging.debug(url_args)
-        if not 'continue' in url_args:
-            handler.send_response(httplib.FORBIDDEN)
-            handler.end_headers()
-            raise error.TestError('ServiceLogin called with no continue param')
-        handler.send_response(httplib.OK)
-        handler.end_headers()
-        handler.wfile.write(self.__service_login_html % {
-            'form_url': self._process_login_new,
-            'continue': url_args['continue'][0] })
-
-
-    def token_auth_responder(self, handler, url_args):
-        logging.debug(url_args)
-        if not self.token == url_args['auth'][0]:
-            raise error.TestError('TokenAuth called with incorrect args')
-        if not 'continue' in url_args:
-            raise error.TestError('TokenAuth called with no continue param')
-        handler.send_response(httplib.SEE_OTHER)
-        handler.send_header('Location', url_args['continue'][0])
-        handler.end_headers()
-
-
-    def portal_check_responder(self, handler, url_args):
-        logging.debug('Handling captive portal check')
+    def _portal_check_responder(self, handler, url_args):
+        logging.debug('Handling captive portal check.')
         handler.send_response(httplib.NO_CONTENT)
         handler.end_headers()
 

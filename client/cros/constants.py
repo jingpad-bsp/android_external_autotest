@@ -63,7 +63,6 @@ KEYGEN = 'keygen'
 LOGGED_IN_MAGIC_FILE = '/var/run/state/logged-in'
 
 LOGIN_PROFILE = USER_DATA_DIR + '/Default'
-LOGIN_SERVICE = 'gaia'
 LOGIN_ERROR = 'Error=BadAuthentication'
 LOGIN_PROMPT_VISIBLE_MAGIC_FILE = '/tmp/uptime-login-prompt-visible'
 LOGIN_TRUST_ROOTS = '/etc/login_trust_root.pem'
@@ -77,14 +76,28 @@ NETWORK_MANAGER = 'flimflam'
 ISSUE_AUTH_TOKEN_URL = '/accounts/IssueAuthToken'
 ISSUE_AUTH_TOKEN_NEW_URL = '/IssueAuthToken'
 
+OAUTH1_GET_REQUEST_TOKEN_URL = '/accounts/o8/GetOAuthToken'
+OAUTH1_GET_ACCESS_TOKEN_URL = '/accounts/OAuthGetAccessToken'
+OAUTH1_GET_ACCESS_TOKEN_NEW_URL = '/OAuthGetAccessToken'
+OAUTH1_LOGIN_URL = '/accounts/OAuthLogin'
+OAUTH1_LOGIN_NEW_URL = '/OAuthLogin'
+
+OAUTH2_CLIENT_ID = '77185425430.apps.googleusercontent.com'
+OAUTH2_CLIENT_SECRET = 'OTJgUOQcT7lO7GsGZq2G4IlT'
+OAUTH2_WRAP_BRIDGE_URL = '/accounts/OAuthWrapBridge'
+OAUTH2_WRAP_BRIDGE_NEW_URL = '/OAuthWrapBridge'
+OAUTH2_GET_AUTH_CODE_URL = '/o/oauth2/programmatic_auth'
+OAUTH2_GET_TOKEN_URL = '/o/oauth2/token'
+
 OWNER_KEY_FILE = WHITELIST_DIR + '/owner.key'
 
 PORTAL_CHECK_URL = '/generate_204'
-PROCESS_LOGIN_URL = '/accounts/ProcessServiceLogin'
-PROCESS_LOGIN_NEW_URL = '/ProcessServiceLogin'
 
 SERVICE_LOGIN_URL = '/accounts/ServiceLogin'
 SERVICE_LOGIN_NEW_URL = '/ServiceLogin'
+SERVICE_LOGIN_AUTH_URL = '/ServiceLoginAuth'
+SERVICE_LOGIN_AUTH_ERROR = 'The username or password you entered is incorrect.'
+
 SESSION_MANAGER = 'session_manager'
 SESSION_MANAGER_LOG = '/var/log/session_manager'
 SIGNED_POLICY_FILE = WHITELIST_DIR + '/policy'

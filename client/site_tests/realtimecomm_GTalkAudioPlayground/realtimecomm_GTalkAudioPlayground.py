@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,7 +6,7 @@ import os, re, shutil, sys, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, httpd
+from autotest_lib.client.cros import cros_ui_test, dns_server, httpd
 
 WARMUP_TIME = 30
 SLEEP_DURATION = 90
@@ -36,7 +36,9 @@ class realtimecomm_GTalkAudioPlayground(cros_ui_test.UITest):
 
         # Since the DNS redirection is only activated implicitly when the
         # auth service is used, start it up explicitly.
-        super(realtimecomm_GTalkAudioPlayground, self).use_local_dns()
+        self._dnsServer = dns_server.LocalDns()
+        self._dnsServer.run()
+
 
     def cleanup(self):
         self._test_server.stop()

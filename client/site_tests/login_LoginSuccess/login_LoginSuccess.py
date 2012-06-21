@@ -1,33 +1,22 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import logging
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import auth_server, cros_ui_test
+from autotest_lib.client.cros import auth_server, cros_ui_test, dns_server
 
 class login_LoginSuccess(cros_ui_test.UITest):
     version = 1
 
-    def __creds_checker(self, handler, url_args):
+
+    def __authenticator(self, email, password):
         """Validate credentials before responding positively to an auth attempt.
-
-        This method gets installed as the auth server's client_login_responder.
-        We double-check that the url_args['Email'] matches our username before
-        calling the auth server's default client_login_responder()
-        implementation.
-
-        @param handler: Passed on as handler to GoogleAuthServer's
-                client_login_responder() method.
-        @param url_args: The arguments to check.
-        @raises error.TestError: If the url_args email doesn't match our
-                username.
         """
-        logging.debug('checking %s == %s' % (self.username,
-                                             url_args['Email'].value))
-        if (self.username != url_args['Email'].value):
-            raise error.TestError('Incorrect creds passed to ClientLogin')
-        self._authServer.client_login_responder(handler, url_args)
+        logging.debug('checking %s == %s' % (self.username, email))
+        if self.username != email:
+            raise error.TestError('Incorrect creds passed to login handler.')
+        return self.username == email
 
 
     def initialize(self, creds='$default'):
@@ -45,16 +34,14 @@ class login_LoginSuccess(cros_ui_test.UITest):
 
 
     def start_authserver(self):
-        """Override superclass to pass our creds checker to the auth server."""
-        self._authServer = auth_server.GoogleAuthServer(
-            cl_responder=self.__creds_checker)
-        self._authServer.run()
-        self.use_local_dns()
+        """Override superclass to use our authenticator."""
+        super(login_LoginSuccess, self).start_authserver(
+            authenticator=self.__authenticator)
 
 
     def ensure_login_complete(self):
         """Wait for login to complete, including cookie fetching."""
-        self._authServer.wait_for_client_login()
+        self._authServer.wait_for_service_login()
         self._authServer.wait_for_issue_token()
         self._authServer.wait_for_test_over()
 
