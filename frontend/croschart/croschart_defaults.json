@@ -12,7 +12,7 @@
   ["power_LoadTest.WIFI", "minutes_battery_life"],
   ["power_LoadTest.WIRED", "w_energy_rate"],
   ["power_LoadTest.WIRED", "minutes_battery_life"],
-  ["power_Idle", "w_energy_rate"],
+  ["power_Idle", "w_energy_rate,power_Idle_pkg_power,power_Idle_pp0_power,power_Idle_pp1_power"],
   ["power_Resume",
    "seconds_system_resume,seconds_system_suspend,seconds_system_resume_firmware,seconds_system_resume_kernel"],
   ["hardware_MemoryThroughput",
