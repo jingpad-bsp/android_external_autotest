@@ -208,6 +208,7 @@ class HTTPListener(object):
 
     def stop(self):
         self._server.shutdown()
+        self._server.socket.close()
         self._server_thread.join()
 
 
@@ -260,7 +261,3 @@ class SecureHTTPListener(HTTPListener):
     def getsockname(self):
         return self._server.socket.getsockname()
 
-
-    def stop(self):
-        HTTPListener.stop(self)
-        self._server.socket.close()
