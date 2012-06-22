@@ -46,7 +46,7 @@ bluetooth:x:218:
 wpa:x:219:root
 cras:x:220:gavd,chronos
 gavd:x:221:
-input:x:222:gavd
+input:x:222:cras,gavd
 chaps:x:223:
 dhcp:x:224:
 ntfs-3g:x:300:
