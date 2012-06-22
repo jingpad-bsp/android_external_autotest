@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -68,10 +68,19 @@ class security_RendererSandbox(cros_ui_test.UITest):
     # queries pgrep for the pid of the renderer. since this function is passed
     # as an argument to utils.poll_for_condition, the return values are set
     # to true/false depending on whether a pid has been found
-    def _get_renderer_pid(self):                             
-        pgrep = subprocess.Popen(['pgrep', '-f', '%s' % 'type=renderer'],
+    def _get_renderer_pid(self):
+        pgrep = subprocess.Popen(['pgrep', '-f', '-l', 'type=renderer'],
                                  stdout=subprocess.PIPE)
-        pids = pgrep.communicate()[0].split()
+        procs = pgrep.communicate()[0].splitlines()
+        pids = []
+        # we're adding '--ignored= --type=renderer' to the GPU process cmdline
+        # to fix http://code.google.com/p/chromium/issues/detail?id=129884
+        # this confuses 'pgrep' above, returning the pid of the GPU process,
+        # which is not sandboxed, as the pid of a renderer, breaking the test
+        for proc in procs:
+            if '--ignored= --type=renderer' not in proc:
+                pids.append(proc.split()[0])
+
         if pids:
             self.render_pid = pids[0]
             return True
