@@ -6,8 +6,12 @@ import glob, logging, math, numpy, os, re, threading, time
 
 import common
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, enum
 
+BatteryDataReportType = enum.Enum('CHARGE', 'ENERGY')
+
+# battery data reported at 1e6 scale
+BATTERY_DATA_SCALE = 1e6
 
 class DevStat(object):
     """
@@ -160,6 +164,7 @@ class BatteryStat(DevStat):
     float energy_full:        Last full capacity reached [Wh]
     float energy_full_design: Full capacity by design [Wh]
     float energy_rate:        Battery discharge rate [W]
+    float power_now:          Battery discharge rate [W]
     float remaining_time:     Remaining discharging time [h]
     float voltage_min_design: Minimum voltage by design [V]
     float voltage_now:        Voltage now [V]
@@ -172,13 +177,13 @@ class BatteryStat(DevStat):
         'current_now':          ['current_now', float],
         'voltage_min_design':   ['voltage_min_design', float],
         'voltage_now':          ['voltage_now', float],
-        'energy':               ['', ''],
-        'energy_full':          ['', ''],
-        'energy_full_design':   ['', ''],
+        'energy':               ['energy_now', float],
+        'energy_full':          ['energy_full', float],
+        'energy_full_design':   ['energy_full_design', float],
+        'power_now':            ['power_now', float],
         'energy_rate':          ['', ''],
         'remaining_time':       ['', '']
         }
-
 
     def __init__(self, path=None):
         super(BatteryStat, self).__init__(self.battery_fields, path)
@@ -188,20 +193,59 @@ class BatteryStat(DevStat):
     def update(self):
         self.read_all_vals()
 
-        self.charge_full = self.charge_full / 1000000
-        self.charge_full_design = self.charge_full_design / 1000000
-        self.charge_now = self.charge_now / 1000000
-        self.current_now = math.fabs(self.current_now) / 1000000
-        self.voltage_min_design = self.voltage_min_design / 1000000
-        self.voltage_now = self.voltage_now / 1000000
+        if self.charge_full == 0 and self.energy_full != 0:
+            battery_type = BatteryDataReportType.ENERGY;
+        else:
+            battery_type = BatteryDataReportType.CHARGE;
+
+        # Since charge data is present, calculate parameters based upon
+        # reported charge data.
+        if battery_type == BatteryDataReportType.CHARGE:
+            self.charge_full = self.charge_full / BATTERY_DATA_SCALE
+            self.charge_full_design = self.charge_full_design / \
+                                      BATTERY_DATA_SCALE
+            self.charge_now = self.charge_now / BATTERY_DATA_SCALE
+
+            self.current_now = math.fabs(self.current_now) / \
+                               BATTERY_DATA_SCALE
+
+            self.energy =  self.voltage_now * \
+                           self.charge_now / \
+                           BATTERY_DATA_SCALE
+            self.energy_full = self.voltage_now * \
+                               self.charge_full / \
+                               BATTERY_DATA_SCALE
+            self.energy_full_design = self.voltage_now * \
+                                      self.charge_full_design / \
+                                      BATTERY_DATA_SCALE
+
+        # Charge data not present, so calculate parameters based upon
+        # reported energy data.
+        elif battery_type == BatteryDataReportType.ENERGY:
+            self.charge_full = self.energy_full / self.voltage_now
+            self.charge_full_design = self.energy_full_design / \
+                                      self.voltage_now
+            self.charge_now = self.energy / self.voltage_now
+
+            # TODO(shawnn): check if power_now can really be reported
+            # as negative, in the same way current_now can
+            self.current_now = math.fabs(self.power_now) / self.voltage_now
+
+            self.energy = self.energy / BATTERY_DATA_SCALE
+            self.energy_full = self.energy_full / BATTERY_DATA_SCALE
+            self.energy_full_design = self.energy_full_design / \
+                                      BATTERY_DATA_SCALE
+
+        self.voltage_min_design = self.voltage_min_design / \
+                                  BATTERY_DATA_SCALE
+        self.voltage_now = self.voltage_now / \
+                           BATTERY_DATA_SCALE
 
         if self.charge_full > (self.charge_full_design * 1.5):
             raise error.TestError('Unreasonable charge_full value')
         if self.charge_now > (self.charge_full_design * 1.5):
             raise error.TestError('Unreasonable charge_now value')
-        self.energy =  self.voltage_now * self.charge_now
-        self.energy_full = self.voltage_now * self.charge_full
-        self.energy_full_design = self.voltage_now * self.charge_full_design
+
         self.energy_rate =  self.voltage_now * self.current_now
 
         self.remaining_time = 0
