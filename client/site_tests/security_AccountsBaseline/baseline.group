@@ -25,6 +25,7 @@ utmp:x:406:
 nogroup::65533:
 nobody::65534:
 chronos:x:1000:
+serial:x:402:chronos,uucp
 chronos-access:x:1001:root,ipsec,chronos,ntfs-3g,avfs,chaps
 messagebus:x:201:
 syslog:x:202:
