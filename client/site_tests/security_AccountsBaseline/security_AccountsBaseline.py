@@ -51,7 +51,7 @@ class security_AccountsBaseline(test.test):
         group_actual = self.load_path('/etc/group')
 
         if len(group_actual) != len(group_baseline):
-            raise error.TestFail('User baseline mismatch. '
+            raise error.TestFail('Group baseline mismatch. '
                 'Expected: %d groups. Got: %d.' % (
                 len(group_baseline), len(group_actual)))
         for expected in group_baseline:

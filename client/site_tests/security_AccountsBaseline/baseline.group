@@ -25,7 +25,6 @@ utmp:x:406:
 nogroup::65533:
 nobody::65534:
 chronos:x:1000:
-daemon-store:x:400:
 chronos-access:x:1001:root,ipsec,chronos,ntfs-3g,avfs,chaps
 messagebus:x:201:
 syslog:x:202:
@@ -51,3 +50,5 @@ chaps:x:223:
 dhcp:x:224:
 ntfs-3g:x:300:
 avfs:x:301:
+daemon-store:x:400:
+chrome-usb:x:401:chronos
