@@ -34,6 +34,9 @@ class firmware_ECThermal(FAFTSequence):
     # Pseudo INT_MAX. Used as infinity when comparing temperature readings
     INT_MAX = 10000
 
+    # Sensor type ID of ignored sensors
+    SENSOR_TYPE_IGNORED = 255
+
     # PID of DUT stressing processes
     _stress_pid = list()
 
@@ -331,6 +334,10 @@ class firmware_ECThermal(FAFTSequence):
           error.TestError: Raised when getting unexpected fan speed.
         """
         sensor_type = self._get_temp_sensor_type(sensor_id)
+        if sensor_type == self.SENSOR_TYPE_IGNORED:
+            # This sensor should be ignored
+            return 0x00
+
         if self._thermal_setting[sensor_type][-1] == -273:
             # The fan stepping for this type of sensor is disabled
             return 0x00
