@@ -151,7 +151,7 @@ CELLS['mtv'] = {
             "name": "alex-y3300",
             "technologies": GENERIC_GSM_TECHNOLOGIES,
             "location": "rack2-host1",
-            "rf_switch_port": 5,
+            "rf_switch_port": 1,
             },
         {
             "address": "172.22.50.12",
@@ -159,7 +159,7 @@ CELLS['mtv'] = {
             "name": "alex-y3400",
             "technologies": GENERIC_GSM_TECHNOLOGIES,
             "location": "rack2-host5",
-            "rf_switch_port": 1,
+            "rf_switch_port": 5,
             },
         ],
 
