@@ -11,11 +11,12 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros import cros_ui, cros_ui_test
+from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros import power_rapl
 from autotest_lib.client.cros import power_status
 from autotest_lib.client.cros import power_utils
-import flimflam
+import flimflam  # Requires flimflam_test_path to be imported first.
 
 
 class power_Consumption(cros_ui_test.UITest):

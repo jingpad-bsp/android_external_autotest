@@ -2,12 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, socket, stat, sys, threading, time
-from dbus.mainloop.glib import DBusGMainLoop
+import common, constants, logging, os, socket, stat, sys, threading, time
 
-import common, constants, flimflam_test_path
 from autotest_lib.client.bin import utils
-import flimflam  # Requires flimflam_test_path to be imported first.
 
 class LocalDns(object):
     """A wrapper around miniFakeDns that runs the server in a separate thread
@@ -16,22 +13,12 @@ class LocalDns(object):
     # This is a symlink.  We look up the real path at runtime by following it.
     _resolv_bak_file = 'resolv.conf.bak'
 
-    def __connect_to_flimflam(self):
-        """Connect to the network manager via DBus.
-
-        Stores dbus connection in self._flim upon success, throws on failure.
-        """
-        self._bus_loop = DBusGMainLoop(set_as_default=True)
-        self._system_bus = dbus.SystemBus(mainloop=self._bus_loop)
-        self._flim = flimflam.FlimFlam(self._system_bus)
-
     def __init__(self, fake_ip="127.0.0.1", local_port=53):
         import miniFakeDns  # So we don't need to install it in the chroot.
         self._dns = miniFakeDns.DNSServer(fake_ip=fake_ip, port=local_port)
         self._stopper = threading.Event()
         self._thread = threading.Thread(target=self._dns.run,
                                         args=(self._stopper,))
-        self.__connect_to_flimflam()
 
     def __get_host_by_name(self, hostname):
         """Resolve the dotted-quad IPv4 address of |hostname|
@@ -63,10 +50,6 @@ class LocalDns(object):
     def run(self):
         """Start the mock DNS server and redirect all queries to it."""
         self._thread.start()
-        # Turn off captive portal checking, until we fix
-        # http://code.google.com/p/chromium-os/issues/detail?id=19640
-        self.check_portal_list = self._flim.GetCheckPortalList()
-        self._flim.SetCheckPortalList('')
         # Redirect all DNS queries to the mock DNS server.
         try:
             # Follow resolv.conf symlink.
@@ -129,8 +112,6 @@ class LocalDns(object):
                                    utils.read_one_line(resolv)),
                 timeout=10)
         finally:
-            # Set captive portal checking to whatever it was at the start.
-            self._flim.SetCheckPortalList(self.check_portal_list)
             # Stop the DNS server.
             self._stopper.set()
             self._thread.join()
