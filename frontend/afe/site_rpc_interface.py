@@ -42,6 +42,35 @@ def formatted_now():
     return datetime.datetime.now().strftime(dynamic_suite.TIME_FMT)
 
 
+def get_control_file_contents_by_name(build, board, ds, suite_name):
+    """Return control file contents for |suite_name|.
+
+    Query the dev server at |ds| for the control file |suite_name|, included
+    in |build| for |board|.
+
+    @param build: unique name by which to refer to the image from now on.
+    @param board: the kind of device to run the tests on.
+    @param ds: a dev_server.DevServer instance to fetch control file with.
+    @param suite_name: canonicalized suite name, e.g. test_suites/control.bvt.
+    @raises ControlFileNotFound if a unique suite control file doesn't exist.
+    @raises NoControlFileList if we can't list the control files at all.
+    @raises ControlFileEmpty if the control file exists on the server, but
+                             can't be read.
+
+    @return the contents of the desired control file.
+    """
+    getter = control_file_getter.DevServerGetter.create(build, ds)
+    # Get the control file for the suite.
+    try:
+        control_file_in = getter.get_control_file_contents_by_name(suite_name)
+    except error.CrosDynamicSuiteException as e:
+        raise type(e)("%s while testing %s for %s." % (e, build, board))
+    if not control_file_in:
+        raise error.ControlFileEmpty(
+                "Fetching %s returned no data." % suite_name)
+    return control_file_in
+
+
 def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     """
     Create a job to run a test suite on the given device with the given image.
@@ -56,11 +85,11 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
             purposes.
     @param check_hosts: require appropriate live hosts to exist in the lab.
 
-    @raises ControlFileNotFound if a unique suite control file doesn't exist.
-    @raises NoControlFileList if we can't list the control files at all.
-    @raises StageBuildFailure if the dev server throws 500 while staging build.
-    @raises ControlFileEmpty if the control file exists on the server, but
-                             can't be read.
+    @raises ControlFileNotFound: if a unique suite control file doesn't exist.
+    @raises NoControlFileList: if we can't list the control files at all.
+    @raises StageBuildFailure: if the dev server throws 500 while staging build.
+    @raises ControlFileEmpty: if the control file exists on the server, but
+                              can't be read.
 
     @return: the job ID of the suite; -1 on error.
     """
@@ -76,16 +105,12 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     try:
         ds.trigger_download(build, synchronous=False)
     except dev_server.DevServerException as e:
-        raise error.StageBuildFailure(e)
+        raise error.StageBuildFailure(
+                "Failed to stage %s for %s: %s" % (build, board, e))
     timings[dynamic_suite.PAYLOAD_FINISHED_TIME] = formatted_now()
 
-    getter = control_file_getter.DevServerGetter.create(build, ds)
-    # Get the control file for the suite.
-    control_file_in = getter.get_control_file_contents_by_name(suite_name)
-    if not control_file_in:
-        raise error.ControlFileEmpty(
-            "Fetching %s returned no data." % suite_name)
-
+    control_file_in = get_control_file_contents_by_name(build, board, ds,
+                                                        suite_name)
     # prepend build and board to the control file
     inject_dict = {'board': board,
                    'build': build,
