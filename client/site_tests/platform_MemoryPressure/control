@@ -1,0 +1,23 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "platform_MemoryPressure"
+PURPOSE = "Measure system performance under heavy memory usage."
+CRITERIA = "This test is a benchmark."
+TIME = "SHORT"
+TEST_CATEGORY = "Logging"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+DOC = """
+Pushes memory utilization by Chrome under various loads, and takes
+various measurements.
+
+Opens tabs that allocate large JS data structures, and reports how ma
+tabs are open when the low-memory notifier triggers.
+
+(More tests to come.)
+"""
+job.run_test('platform_MemoryPressure')
