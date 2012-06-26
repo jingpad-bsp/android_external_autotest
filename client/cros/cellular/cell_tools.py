@@ -8,9 +8,10 @@ import copy, dbus, logging, os, string, tempfile
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import cellular
+from autotest_lib.client.cros.cellular import mm
 
 from autotest_lib.client.cros import flimflam_test_path
-import flimflam, mm
+import flimflam
 
 
 class Error(Exception):
@@ -222,16 +223,6 @@ def PrepareCdmaModem(manager, modem_path):
     return new_path
 
 
-def GetCurrentTechnologyFamily(manager, modem_path):
-  """Returns the technology family of the specified modem."""
-
-  try:
-      manager.GetAll(mm.ModemManager.GSM_CARD_INTERFACE, modem_path)
-      return cellular.TechnologyFamily.UMTS
-  except dbus.exceptions.DBusException:
-      return cellular.TechnologyFamily.CDMA
-
-
 def PrepareModemForTechnology(modem_path, target_technology):
     """Prepare modem for the technology: Sets things like firmware, PRL."""
 
@@ -239,7 +230,7 @@ def PrepareModemForTechnology(modem_path, target_technology):
 
     logging.info('Found modem %s' % modem_path)
 
-    current_family = GetCurrentTechnologyFamily(manager, modem_path)
+    current_family = manager.GetModem(modem_path).GetCurrentTechnologyFamily()
     target_family = cellular.TechnologyToFamily[target_technology]
 
     if current_family != target_family:

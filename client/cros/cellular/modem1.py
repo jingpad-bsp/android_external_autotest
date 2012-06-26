@@ -14,14 +14,14 @@ class Modem(object):
     # MM_MODEM_GSM_ACCESS_TECH (not exported)
     # From /usr/include/mm/mm-modem.h
     _MM_MODEM_GSM_ACCESS_TECH_UNKNOWN = 0
-    _MM_MODEM_GSM_ACCESS_TECH_GSM = 1
-    _MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT = 2
-    _MM_MODEM_GSM_ACCESS_TECH_GPRS = 3
-    _MM_MODEM_GSM_ACCESS_TECH_EDGE = 4
-    _MM_MODEM_GSM_ACCESS_TECH_UMTS = 5
-    _MM_MODEM_GSM_ACCESS_TECH_HSDPA = 6
-    _MM_MODEM_GSM_ACCESS_TECH_HSUPA = 7
-    _MM_MODEM_GSM_ACCESS_TECH_HSPA = 8
+    _MM_MODEM_GSM_ACCESS_TECH_GSM = 1 << 1
+    _MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT = 1 << 2
+    _MM_MODEM_GSM_ACCESS_TECH_GPRS = 1 << 3
+    _MM_MODEM_GSM_ACCESS_TECH_EDGE = 1 << 4
+    _MM_MODEM_GSM_ACCESS_TECH_UMTS = 1 << 5
+    _MM_MODEM_GSM_ACCESS_TECH_HSDPA = 1 << 6
+    _MM_MODEM_GSM_ACCESS_TECH_HSUPA = 1 << 7
+    _MM_MODEM_GSM_ACCESS_TECH_HSPA = 1 << 8
 
     # Mapping of modem technologies to cellular technologies
     _ACCESS_TECH_TO_TECHNOLOGY = {
@@ -68,7 +68,7 @@ class Modem(object):
 
     def _GetModemInterfaces(self):
         return [
-            mm1.MODEM_MODEM_INTERFACE,
+            mm1.MODEM_INTERFACE,
             mm1.MODEM_SIMPLE_INTERFACE,
             mm1.MODEM_MODEM3GPP_INTERFACE,
             mm1.MODEM_MODEMCDMA_INTERFACE
@@ -89,13 +89,27 @@ class Modem(object):
         return props
 
     def GetAccessTechnology(self):
+        """Returns the modem access technology."""
         props = self.GetModemProperties()
-        tech = props.get('AccessTechnology')
+        tech = props['AccessTechnologies']
         return Modem._ACCESS_TECH_TO_TECHNOLOGY[tech]
 
+    def GetCurrentTechnologyFamily(self):
+        """Returns the modem technology family."""
+        if self.GetAll(mm1.MODEM_INTERFACE)['Sim']:
+            return cellular.TechnologyFamily.UMTS
+        else:
+            return cellular.TechnologyFamily.CDMA
+
+    def GetVersion(self):
+        """Returns the modem version information."""
+        return self.GetModemProperties()['Revision']
+
     def _GetRegistrationState(self):
-        # TODO(jglasgow): implement
-        return False
+        props = self.SimpleModem().GetStatus()
+        state = props.get('m3gpp-registration-state')
+        # HOME=1, ROAMING=5
+        return state == 1 or state == 5
 
     def ModemIsRegistered(self):
         """Ensure that modem is registered on the network."""
@@ -123,8 +137,19 @@ class Modem(object):
         return BASESTATION_TO_REPORTED_TECHNOLOGY[technology] == reported_tech
 
     def IsEnabled(self):
-        d = self.GetAll(mm1.MODEM_INTERFACE)
-        return d['State'] >= mm1.MM_MODEM_STATE_ENABLED
+        props = self.GetAll(mm1.MODEM_INTERFACE)
+        return props['State'] in [
+            mm1.MM_MODEM_STATE_ENABLED,
+            mm1.MM_MODEM_STATE_SEARCHING,
+            mm1.MM_MODEM_STATE_REGISTERED,
+            mm1.MM_MODEM_STATE_DISCONNECTING,
+            mm1.MM_MODEM_STATE_CONNECTING,
+            mm1.MM_MODEM_STATE_CONNECTED
+        ]
+
+    def IsDisabled(self):
+        props = self.GetAll(mm1.MODEM_INTERFACE)
+        return props['State'] == mm1.MM_MODEM_STATE_DISABLED
 
     def Enable(self, enable):
         self.Modem().Enable(enable)

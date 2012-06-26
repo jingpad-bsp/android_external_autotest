@@ -13,7 +13,7 @@ from autotest_lib.client.cros import backchannel, flimflam_test_path
 from autotest_lib.client.cros.cellular import cellular, cell_tools
 from autotest_lib.client.cros.cellular import emulator_config
 
-import flimflam, mm
+import flimflam
 
 
 TIMEOUT=30

@@ -6,7 +6,8 @@ import dbus, logging, time
 
 import common, flimflam_test_path
 from autotest_lib.client.bin import utils
-import mm # Requires flimflam_test_path to be imported first.
+from autotest_lib.client.cros.cellular import mm
+
 
 def _Bug24628WorkaroundEnable(modem):
     """Enable a modem.  Try again if a SerialResponseTimeout is received."""
@@ -37,15 +38,20 @@ def ResetAllModems(flim):
 
     logging.info('ResetAllModems: found service %s' % service)
 
-    if service and service.GetProperties()['Favorite']:
-        service.SetProperty('AutoConnect', False),
+    try:
+        if service and service.GetProperties()['Favorite']:
+            service.SetProperty('AutoConnect', False),
+    except dbus.exceptions.DBusException, error:
+        # The service object may disappear, we can safely ignore it.
+        if error._dbus_error_name != 'org.freedesktop.DBus.Error.UnknownMethod':
+            raise
 
     for manager, path in mm.EnumerateDevices():
-        modem = manager.Modem(path)
-        version = manager.Modem(path).GetInfo()[2]
+        modem = manager.GetModem(path)
+        version = modem.GetVersion()
         modem.Enable(False)
         utils.poll_for_condition(
-            lambda: not manager.Properties(path)['Enabled'],
+            lambda: modem.IsDisabled(),
             exception=
                 utils.TimeoutError('Timed out waiting for modem disable'),
             sleep_interval=1,
@@ -54,6 +60,12 @@ def ResetAllModems(flim):
             _Bug24628WorkaroundEnable(modem)
         else:
             modem.Enable(True)
+            utils.poll_for_condition(
+                lambda: modem.IsEnabled(),
+                exception=
+                    utils.TimeoutError('Timed out waiting for modem enable'),
+                sleep_interval=1,
+                timeout=30)
 
 
 def ClearGobiModemFaultInjection():
