@@ -74,11 +74,11 @@ _UNMUTE_SPEAKER_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
                                    'value': 'off'}]
 
 _HTML = '''
-<h1 id="message" style="position: absolute; top: 45%">
+<h2 id="message" style="position: absolute; top: 45%">
   Plug in ethernet and hit S to start
-  | 插上网路线后按下S键开始测试</h1>
+  | 插上网路线后按下S键开始测试</h2>
 <br>
-<div>Type in test command and enter:
+<div>Test command:
   <input id="command" type="text" onkeydown="commandEntered(event);">
 </div>
 '''
@@ -163,7 +163,7 @@ class factory_AudioQuality(test.test):
             self._loop_process.kill()
             self._loop_process = None
             factory.log("Stopped audio loop process")
-        self._ah.set_mixer_controls(_INIT_MIXER_SETTINGS)
+        self._ah.set_mixer_controls(self._init_mixer_settings)
 
     def handle_send_file(self, *args):
         conn = args[0]
@@ -223,7 +223,7 @@ class factory_AudioQuality(test.test):
         self.handle_loop()
         self.ui.call_js_function('setMessage', _LABEL_AUDIOLOOP +
                 _LABEL_DMIC_ON)
-        self._ah.set_mixer_controls(self._dmic_capture_mixer_settings)
+        self._ah.set_mixer_controls(self._dmic_switch_mixer_settings)
 
     def handle_loop_speaker_unmute(self, *args):
         self.handle_loop()
