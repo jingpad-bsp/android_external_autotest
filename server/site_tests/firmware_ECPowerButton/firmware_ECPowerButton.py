@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import re
 from threading import Timer
 
 from autotest_lib.client.common_lib import error
@@ -36,6 +37,22 @@ class firmware_ECPowerButton(FAFTSequence):
         self.faft_client.run_shell_command("stop powerd")
 
 
+    def debounce_power_button(self):
+        """Check if power button debouncing works.
+
+        Press power button for a very short period and checks for power
+        button keycode.
+        """
+        # Delay 3 seconds to allow "showkey" to start on client machine.
+        # Press power button for only 10ms. Should be debounced.
+        Timer(3, self.servo.power_key, [0.001]).start()
+        lines = self.faft_client.run_shell_command_get_output("showkey")
+        for line in lines:
+            if re.search("keycode 116", line) is not None:
+                return False
+        return True
+
+
     def shutdown_and_wake(self,
                           shutdown_powerkey_duration,
                           wake_delay,
@@ -53,6 +70,7 @@ class firmware_ECPowerButton(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, Shutdown when powerd is still running and wake from S5
                 #         with short power button press.
+                'state_checker': self.debounce_power_button,
                 'reboot_action': (self.shutdown_and_wake,
                                   self.POWER_BUTTON_POWERD_DURATION,
                                   self.SHORT_WAKE_DELAY,
