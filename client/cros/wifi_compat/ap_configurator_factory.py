@@ -9,7 +9,7 @@ import dlink_dir655_ap_configurator
 import linksys_ap_configurator
 import trendnet_ap_configurator
 import buffalo_ap_configurator
-
+import asus_ap_configurator
 
 class APConfiguratorFactory(object):
     """Class that instantiates all available APConfigurators."""
@@ -45,8 +45,16 @@ class APConfiguratorFactory(object):
             'BuffaloAPConfigurator',
             buffalo_ap_configurator.BuffaloAPConfigurator)
         self._build_all_instances_of_configurator(config_list,
-            'Netgear3700APConfigurator',
-            Netgear_ap_configurator.NetgearAPConfigurator)
+            'AsusAPConfigurator',
+            asus_ap_configurator.AsusAPConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'BuffaloAPConfigurator',
+            buffalo_ap_configurator.BuffaloAPConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'AsusAPConfigurator',
+            asus_ap_configurator.AsusAPConfigurator)
+
+
 
     def _build_all_instances_of_configurator(self, config_list, name,
                                              configurator):

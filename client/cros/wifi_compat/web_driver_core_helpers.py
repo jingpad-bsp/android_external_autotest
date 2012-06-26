@@ -18,6 +18,7 @@ except ImportError:
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import WebDriverException
 
 
 class WebDriverCoreHelpers(object):
@@ -28,23 +29,58 @@ class WebDriverCoreHelpers(object):
         self.driver = None
         self.wait = None
 
-    def click_button_by_id(self, element_id):
+    def _handle_alert(self, xpath, alert_handler):
+        """Calls the alert handler if there is an alert.
+
+        Args:
+          alert_handler: the handler method to call.
+        """
+        try:
+            self.driver.find_element_by_xpath(xpath)
+            return
+        except WebDriverException, e:
+            message = str(e)
+            if message.find('An open modal dialog blocked the operation') == -1:
+                return
+        alert = self.driver.switch_to_alert()
+        if not alert_handler:
+            # The caller did not provide us with a handler, dismiss and raise.
+            try:
+                alert_text = alert.text
+            except WebDriverException:
+                # There is a bug in selenium where the alert object will exist
+                # but you can't get to the text object right away.
+                import time
+                time.sleep(1)
+            alert_text = alert.text
+            alert.accept()
+            raise RuntimeError('An alert was encountered and no handler was '
+                               'specified.  The text from the alert was: %s'
+                               % alert_text)
+        alert_handler(alert)
+
+    def click_button_by_id(self, element_id, alert_handler=None):
         """Clicks a button by id.
 
         Args:
           element_id: the id of the button
+          alert_handler: method invoked if an alert is detected.  The method
+                         must take one parameter, a webdriver alert object
         """
         xpath = 'id("%s")' % element_id
-        return self.click_button_by_xpath(xpath)
+        return self.click_button_by_xpath(xpath, alert_handler)
 
-    def click_button_by_xpath(self, xpath):
+    def click_button_by_xpath(self, xpath, alert_handler=None):
         """Clicks a button by xpath.
 
         Args:
           xpath: the xpath of the button
+          alert_handler: method invoked if an alert is detected.  The method
+                         must take one parameter, a webdriver alert object
         """
         button = self.wait_for_object_by_xpath(xpath)
         button.click()
+        self._handle_alert(xpath, alert_handler)
 
     def wait_for_object_by_id(self, element_id):
         """Waits for an element to become available; returns a reference to it.
@@ -76,7 +112,7 @@ class WebDriverCoreHelpers(object):
         return self.driver.find_element_by_xpath(xpath)
 
     def select_item_from_popup_by_id(self, item, element_id,
-                                     wait_for_xpath=None):
+                                     wait_for_xpath=None, alert_handler=None):
         """Selects an item from a popup, by passing the element ID.
 
         Args:
@@ -84,11 +120,15 @@ class WebDriverCoreHelpers(object):
           element_id: the html ID of the item
           wait_for_xpath: an item to wait for before returning, if not specified
                           the method does not wait.
+          alert_handler: method invoked if an alert is detected.  The method
+                         must take one parameter, a webdriver alert object
         """
         xpath = 'id("%s")' % element_id
-        self.select_item_from_popup_by_xpath(item, xpath, wait_for_xpath)
+        self.select_item_from_popup_by_xpath(item, xpath, wait_for_xpath,
+                                             alert_handler)
 
-    def select_item_from_popup_by_xpath(self, item, xpath, wait_for_xpath=None):
+    def select_item_from_popup_by_xpath(self, item, xpath, wait_for_xpath=None,
+                                        alert_handler=None):
         """Selects an item from a popup, by passing the xpath of the popup.
 
         Args:
@@ -96,6 +136,8 @@ class WebDriverCoreHelpers(object):
           xpath: the xpath of the popup
           wait_for_xpath: an item to wait for before returning, if not specified
                           the method does not wait.
+          alert_handler: method invoked if an alert is detected.  The method
+                         must take one parameter, a webdriver alert object
         """
         popup = self.driver.find_element_by_xpath(xpath)
         try:
@@ -109,6 +151,7 @@ class WebDriverCoreHelpers(object):
             if option.text == item:
                 option.click()
                 break
+        self._handle_alert(xpath, alert_handler)
         if wait_for_xpath:
             self.wait_for_object_by_xpath(wait_for_xpath)
 
@@ -152,7 +195,7 @@ class WebDriverCoreHelpers(object):
         if wait_for_xpath: self.wait_for_object_by_xpath(wait_for_xpath)
 
     def set_check_box_selected_by_id(self, check_box_id, selected=True,
-                                     wait_for_xpath=None):
+                                     wait_for_xpath=None, alert_handler=None):
         """Sets the state of a checkbox, by passing the ID.
 
         Args:
@@ -160,12 +203,16 @@ class WebDriverCoreHelpers(object):
           selected: True to check the checkbox; False to uncheck it
           wait_for_xpath: an item to wait for before returning, if not specified
                           the method does not wait.
+          alert_handler: method invoked if an alert is detected.  The method
+                         must take one parameter, a webdriver alert object
         """
         xpath = 'id("%s")' % check_box_id
-        self.set_check_box_selected_by_xpath(xpath, selected, wait_for_xpath)
+        self.set_check_box_selected_by_xpath(xpath, selected, wait_for_xpath,
+                                             alert_handler)
 
     def set_check_box_selected_by_xpath(self, xpath, selected=True,
-                                        wait_for_xpath=None):
+                                        wait_for_xpath=None,
+                                        alert_handler=None):
         """Sets the state of a checkbox, by passing the xpath.
 
         Args:
@@ -173,10 +220,13 @@ class WebDriverCoreHelpers(object):
           selected: True to check the checkbox; False to uncheck it
           wait_for_xpath: an item to wait for before returning, if not specified
                           the method does not wait.
+          alert_handler: method invoked if an alert is detected.  The method
+                         must take one parameter, a webdriver alert object
         """
         check_box = self.wait_for_object_by_xpath(xpath)
         value = check_box.get_attribute('value')
         if (value == '1' and not selected) or (value == '0' and selected):
             check_box.click()
+        self._handle_alert(xpath, alert_handler)
         if wait_for_xpath:
             self.wait_for_object_by_xpath(wait_for_xpath)
