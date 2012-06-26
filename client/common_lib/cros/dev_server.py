@@ -55,8 +55,12 @@ def remote_devserver_call(method):
         try:
             return method(*args, **kwargs)
         except urllib2.HTTPError as e:
+            error_markup = e.read()
             strip = MarkupStripper()
-            strip.feed(e.read())
+            try:
+                strip.feed(error_markup.decode('utf_32'))
+            except UnicodeDecodeError:
+                strip.feed(error_markup)
             raise DevServerException(strip.get_data())
 
     return wrapper
