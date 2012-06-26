@@ -30,7 +30,7 @@ class RunSuiteLoggingConfig(logging_config.LoggingConfig):
 
 
 def parse_options():
-    usage = "usage: %prog [options] control_file"
+    usage = "usage: %prog [options]"
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-b", "--board", dest="board")
     parser.add_option("-i", "--build", dest="build")
@@ -212,7 +212,20 @@ class Timings(object):
 def main():
     parser, options, args = parse_options()
     if not options.mock_job_id:
-        if args or not options.build or not options.board or not options.name:
+        if args:
+            print 'Unknown arguments: ' + str(args)
+            parser.print_help()
+            return
+        if not options.build:
+            print 'Need to specify which build to use'
+            parser.print_help()
+            return
+        if not options.board:
+            print 'Need to specify board'
+            parser.print_help()
+            return
+        if not options.name:
+            print 'Need to specify suite name'
             parser.print_help()
             return
 
