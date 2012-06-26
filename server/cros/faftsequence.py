@@ -14,6 +14,7 @@ import xmlrpclib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros.faft_client_attribute import FAFTClientAttribute
 from autotest_lib.server.cros.servo_test import ServoTest
 from autotest_lib.site_utils import lab_test
 
@@ -221,6 +222,9 @@ class FAFTSequence(ServoTest):
 
         super(FAFTSequence, self).initialize(host, cmdline_args, use_pyauto,
                 use_faft)
+        if use_faft:
+            self.client_attr = FAFTClientAttribute(
+                    self.faft_client.get_platform_name())
 
 
     def setup(self):
