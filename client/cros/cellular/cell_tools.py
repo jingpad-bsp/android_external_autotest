@@ -145,7 +145,7 @@ def SetFirmwareForTechnologyFamily(manager, modem_path, family):
     preexisting_modems = _EnumerateModems(manager)
 
     # We do not currently support any multi-family modems besides Gobi
-    gobi = manager.GobiModem(modem_path)
+    gobi = manager.GetModem(modem_path).GobiModem()
     if not gobi:
         raise Error('Modem %s does not support %s, cannot change technologies' %
                     modem_path, family)
@@ -178,7 +178,7 @@ def _IsCdmaModemConfiguredCorrectly(manager, modem_path):
     # We don't test for systemID because the PRL should take care of
     # that.
 
-    status = manager.SimpleModem(modem_path).GetStatus()
+    status = manager.GetModem(modem_path).SimpleModem().GetStatus()
 
     required_settings = {'mdn': TESTING_MDN,
                          'min': TESTING_MDN,
@@ -201,7 +201,7 @@ def PrepareCdmaModem(manager, modem_path):
 
     logging.info('Updating modem settings')
     preexisting_modems = _EnumerateModems(manager)
-    cdma = manager.CdmaModem(modem_path)
+    cdma = manager.GetModem(modem_path).CdmaModem()
 
     with tempfile.NamedTemporaryFile() as f:
         os.chmod(f.name, 0744)
@@ -247,7 +247,7 @@ def FactoryResetModem(modem_pattern, spc='000000'):
     """Factory resets modem, returns DBus pathname of modem after reset."""
     manager, modem_path = mm.PickOneModem(modem_pattern)
     preexisting_modems = _EnumerateModems(manager)
-    modem = manager.Modem(modem_path)
+    modem = manager.GetModem(modem_path).Modem()
     modem.FactoryReset(spc)
     return _WaitForModemToReturn(manager, preexisting_modems, modem_path)
 
