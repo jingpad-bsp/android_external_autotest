@@ -21,8 +21,9 @@ import pyudev.glib
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test import ui as ful
 
 
 _UDEV_ACTION_INSERT = 'add'

@@ -17,8 +17,9 @@ import glib
 import pango
 import numpy
 
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import ui as ful
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test import ui as ful
 
 # OpenCV will automatically search for a working camera device if we use the
 # index -1.

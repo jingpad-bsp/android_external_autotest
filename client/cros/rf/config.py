@@ -11,7 +11,8 @@ import tempfile
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
 
 
 REMOVABLE_PREFIX = 'removable:'

@@ -20,11 +20,12 @@ import threading
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory.test_ui import UI
-from autotest_lib.client.cros.factory.event import Event
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test.test_ui import UI
+from cros.factory.test.event import Event
 from autotest_lib.client.cros.audio import audio_helper
-from autotest_lib.client.cros.factory import ui as ful
+from cros.factory.test import ui as ful
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam

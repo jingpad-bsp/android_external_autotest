@@ -11,13 +11,14 @@ import re
 import tempfile
 import StringIO
 
-from autotest_lib.client.cros import factory
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.camera.camera_preview import CameraPreview
-from autotest_lib.client.cros.factory import state_machine
-from autotest_lib.client.cros.factory.media_util import MediaMonitor
-from autotest_lib.client.cros.factory.media_util import MountedMedia
+from cros.factory.test import state_machine
+from cros.factory.test.media_util import MediaMonitor
+from cros.factory.test.media_util import MountedMedia
 from autotest_lib.client.cros.i2c import usb_to_i2c
 from autotest_lib.client.cros.rf.config import PluggableConfig
 from autotest_lib.client.common_lib import utils

@@ -40,7 +40,8 @@ class graphics_GLMark2(test.test):
             cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; kill $!' % cmd
 
         if os.environ.get('CROS_FACTORY'):
-            from autotest_lib.client.cros.factory import ui
+            from autotest_lib.client.cros import factory_setup_modules
+            from cros.factory.test import ui
             ui.start_reposition_thread('^glmark')
         result = utils.run(cmd)
         for line in result.stderr.splitlines():
@@ -60,7 +61,8 @@ class graphics_GLMark2(test.test):
             # Output numbers for plotting by harness.
             logging.info('GLMark2 score: %d', score)
             if os.environ.get('CROS_FACTORY'):
-                from autotest_lib.client.cros.factory.event_log import EventLog
+                from autotest_lib.client.cros import factory_setup_modules
+                from cros.factory.event_log import EventLog
                 EventLog('graphics_GLMark2').Log('glmark2_score', score=score)
             keyvals = {}
             keyvals['glmark2_score'] = score

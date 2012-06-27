@@ -14,8 +14,9 @@ Args:
 import gtk
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.cros.factory import leds
-from autotest_lib.client.cros.factory import ui
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import leds
+from cros.factory.test import ui
 
 
 class factory_Prompt(test.test):

@@ -18,9 +18,10 @@ import utils
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
 from autotest_lib.client.cros.audio import audio_helper
-from autotest_lib.client.cros.factory import ui as ful
+from cros.factory.test import ui as ful
 
 _DEFAULT_FREQ_HZ = 1000
 _DEFAULT_FREQ_THRESHOLD_HZ = 50

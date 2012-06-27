@@ -25,10 +25,11 @@ import traceback
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import ui
-from autotest_lib.client.cros.factory import utils as factory_utils
-from autotest_lib.client.cros.factory.event_log import EventLog
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test import ui
+from cros.factory.test import utils as factory_utils
+from cros.factory.event_log import EventLog
 
 
 _MESSAGE_PROMPT = 'Stress Test'

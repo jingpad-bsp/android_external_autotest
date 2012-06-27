@@ -14,7 +14,8 @@ import sys
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 

@@ -7,8 +7,9 @@ import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import gooftools
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test import gooftools
 
 
 class factory_VerifyComponents(test.test):

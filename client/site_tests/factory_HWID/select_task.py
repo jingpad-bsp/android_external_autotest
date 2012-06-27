@@ -4,10 +4,11 @@
 
 import gtk
 import os
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import gooftools
-from autotest_lib.client.cros.factory import task
-from autotest_lib.client.cros.factory import ui
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test import gooftools
+from cros.factory.test import task
+from cros.factory.test import ui
 
 
 class SelectHwidTask(task.FactoryTask):

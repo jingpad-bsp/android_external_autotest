@@ -7,9 +7,10 @@ import os
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory.event_log import EventLog
-from autotest_lib.client.cros.factory.test_ui import UI
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.event_log import EventLog
+from cros.factory.test.test_ui import UI
 
 _HTML = '''
 <h1>LAN & Bluetooth MAC address probing</h1><br>

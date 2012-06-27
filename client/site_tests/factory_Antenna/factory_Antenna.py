@@ -12,11 +12,12 @@ import StringIO
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import task
-from autotest_lib.client.cros.factory import ui as ful
-from autotest_lib.client.cros.factory.media_util import MediaMonitor
-from autotest_lib.client.cros.factory.media_util import MountedMedia
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test import task
+from cros.factory.test import ui as ful
+from cros.factory.test.media_util import MediaMonitor
+from cros.factory.test.media_util import MountedMedia
 from autotest_lib.client.cros.rf import agilent_scpi
 from autotest_lib.client.cros.rf import rf_utils
 from autotest_lib.client.cros.rf.config import PluggableConfig

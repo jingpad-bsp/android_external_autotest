@@ -6,11 +6,12 @@ import select_task
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import gooftools
-from autotest_lib.client.cros.factory import shopfloor
-from autotest_lib.client.cros.factory import task
-from autotest_lib.client.cros.factory import ui
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test import gooftools
+from cros.factory.test import shopfloor
+from cros.factory.test import task
+from cros.factory.test import ui
 
 _MESSAGE_FETCH_FROM_SHOP_FLOOR = "Fetching HWID from shop floor server..."
 _MESSAGE_WRITING = "Writing HWID:"

@@ -27,12 +27,13 @@ import pango
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import shopfloor
-from autotest_lib.client.cros.factory import task
-from autotest_lib.client.cros.factory import ui
-from autotest_lib.client.cros.factory.event import Event, EventClient
-from autotest_lib.client.cros.factory.event_log import EventLog
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test import shopfloor
+from cros.factory.test import task
+from cros.factory.test import ui
+from cros.factory.test.event import Event, EventClient
+from cros.factory.event_log import EventLog
 
 
 # Messages for tasks

@@ -11,7 +11,8 @@
 
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.cros import factory
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
 
 
 class factory_RebootStub(test.test):

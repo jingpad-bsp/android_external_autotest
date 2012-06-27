@@ -7,9 +7,10 @@ import gtk
 import re
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.cros import factory
-from autotest_lib.client.cros.factory import ui as ful
-from autotest_lib.client.cros.factory.event_log import EventLog
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import factory
+from cros.factory.test import ui as ful
+from cros.factory.event_log import EventLog
 
 class factory_ScanSN(test.test):
     version = 1

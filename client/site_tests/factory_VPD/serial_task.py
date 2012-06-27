@@ -10,8 +10,9 @@ printed on the box and physical device.
 
 import gtk
 
-from autotest_lib.client.cros.factory import task
-from autotest_lib.client.cros.factory import ui
+from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.test import task
+from cros.factory.test import ui
 
 
 # The "ESC" is available primarily for RMA and testing process, when operator
