@@ -16,8 +16,7 @@ SemaphoreRecord = namedtuple('SemaphoreRecord', ['owner', 'perms'])
 
 class security_SysVIPC(test.test):
     version = 1
-    expected_shm = set([ShmRecord(owner='chronos', perms='666',
-                                  attached=('/opt/google/chrome/chrome',))])
+    expected_shm = set()
     expected_sem = set([SemaphoreRecord(owner='root', perms='600')])
 
     def dump_ipcs_to_results(self):
@@ -49,7 +48,7 @@ class security_SysVIPC(test.test):
         """Return a set of ShmRecords representing current system shm usage."""
         seen = set()
         cmd = 'ipcs -m | grep ^0'
-        for line in utils.system_output(cmd).splitlines():
+        for line in utils.system_output(cmd, ignore_status=True).splitlines():
             fields = re.split('\s+', line)
             shmid = fields[1]
             owner = fields[2]
@@ -63,7 +62,7 @@ class security_SysVIPC(test.test):
         """Return a set of SemaphoreRecords representing current usage."""
         seen = set()
         cmd = 'ipcs -s | grep ^0'
-        for line in utils.system_output(cmd).splitlines():
+        for line in utils.system_output(cmd, ignore_status=True).splitlines():
             fields = re.split('\s+', line)
             seen.add(SemaphoreRecord(owner=fields[2], perms=fields[3]))
         return seen
