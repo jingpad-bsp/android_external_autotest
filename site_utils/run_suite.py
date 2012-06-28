@@ -19,6 +19,7 @@ import common
 import logging
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros import dynamic_suite, frontend_wrappers
+from autotest_lib.server.cros import job_status
 from autotest_lib.client.common_lib import logging_config, logging_manager
 
 CONFIG = global_config.global_config
@@ -151,9 +152,9 @@ class Timings(object):
         @param entry: an entry dict, as returned by get_details_test_views().
         """
         start_candidate = datetime.datetime.strptime(entry['test_started_time'],
-                                                     dynamic_suite.TIME_FMT)
+                                                     job_status.TIME_FMT)
         end_candidate = datetime.datetime.strptime(entry['test_finished_time'],
-                                                   dynamic_suite.TIME_FMT)
+                                                   job_status.TIME_FMT)
         if entry['test_name'] == 'SERVER_JOB':
             self.suite_start_time = start_candidate
         elif entry['test_name'] == 'try_new_image':

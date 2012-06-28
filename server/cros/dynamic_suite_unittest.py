@@ -18,27 +18,11 @@ from autotest_lib.client.common_lib import base_job, control_data, error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros import control_file_getter, dynamic_suite
+from autotest_lib.server.cros import job_status
+from autotest_lib.server.cros.dynamic_suite_fakes import FakeControlData
+from autotest_lib.server.cros.dynamic_suite_fakes import FakeHost, FakeJob
+from autotest_lib.server.cros.dynamic_suite_fakes import FakeLabel
 from autotest_lib.server import frontend
-
-class FakeJob(object):
-    """Faked out RPC-client-side Job object."""
-    def __init__(self, id=0, statuses=[]):
-        self.id = id
-        self.hostname = 'host%d' % id
-        self.owner = 'tester'
-        self.name = 'Fake Job %d' % self.id
-        self.statuses = statuses
-
-
-class FakeHost(object):
-    """Faked out RPC-client-side Host object."""
-    def __init__(self, status='Ready'):
-        self.status = status
-
-class FakeLabel(object):
-    """Faked out RPC-client-side Label object."""
-    def __init__(self, id=0):
-        self.id = id
 
 
 class DynamicSuiteTest(mox.MoxTestBase):
@@ -506,17 +490,6 @@ class SuiteTest(mox.MoxTestBase):
     _TAG = 'suite_tag'
 
 
-    class FakeControlData(object):
-        """A fake parsed control file data structure."""
-        def __init__(self, data, expr=False):
-            self.string = 'text-' + data
-            self.name = 'name-' + data
-            self.data = data
-            self.suite = SuiteTest._TAG
-            self.test_type = 'Client'
-            self.experimental = expr
-
-
     def setUp(self):
         super(SuiteTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
@@ -526,13 +499,13 @@ class SuiteTest(mox.MoxTestBase):
 
         self.getter = self.mox.CreateMock(control_file_getter.ControlFileGetter)
 
-        self.files = {'one': SuiteTest.FakeControlData('data_one', expr=True),
-                      'two': SuiteTest.FakeControlData('data_two'),
-                      'three': SuiteTest.FakeControlData('data_three')}
+        self.files = {'one': FakeControlData(self._TAG, 'data_one', expr=True),
+                      'two': FakeControlData(self._TAG, 'data_two'),
+                      'three': FakeControlData(self._TAG, 'data_three')}
 
         self.files_to_filter = {
-            'with/deps/...': SuiteTest.FakeControlData('...gets filtered'),
-            'with/profilers/...': SuiteTest.FakeControlData('...gets filtered')}
+            'with/deps/...': FakeControlData(self._TAG, 'gets filtered'),
+            'with/profilers/...': FakeControlData(self._TAG, 'gets filtered')}
 
 
     def tearDown(self):
@@ -696,15 +669,6 @@ class SuiteTest(mox.MoxTestBase):
         suite.schedule(add_experimental=False)
 
 
-    def expect_result_gathering(self, job):
-        self.afe.get_jobs(id=job.id, finished=True).AndReturn(job)
-        entries = map(lambda s: s.entry, job.statuses)
-        self.afe.run('get_host_queue_entries',
-                     job=job.id).AndReturn(entries)
-        if True not in map(lambda e: 'aborted' in e and e['aborted'], entries):
-            self.tko.get_status_counts(job=job.id).AndReturn(job.statuses)
-
-
     def _createSuiteWithMockedTestsAndControlFiles(self):
         """Create a Suite, using mocked tests and control file contents.
 
@@ -719,68 +683,6 @@ class SuiteTest(mox.MoxTestBase):
         return suite
 
 
-    def testWaitForResults(self):
-        """Should gather status and return records for job summaries."""
-        class FakeStatus(object):
-            """Fake replacement for server-side job status objects.
-
-            @var status: 'GOOD', 'FAIL', 'ERROR', etc.
-            @var test_name: name of the test this is status for
-            @var reason: reason for failure, if any
-            @var aborted: present and True if the job was aborted.  Optional.
-            """
-            def __init__(self, code, name, reason, aborted=None):
-                self.status = code
-                self.test_name = name
-                self.reason = reason
-                self.entry = {}
-                self.test_started_time = '2012-11-11 11:11:11'
-                self.test_finished_time = '2012-11-11 12:12:12'
-                if aborted:
-                    self.entry['aborted'] = True
-
-            def equals_record(self, status):
-                """Compares this object to a recorded status."""
-                return self._equals_record(status._status, status._test_name,
-                                           status._reason)
-
-            def _equals_record(self, status, name, reason=None):
-                """Compares this object and fields of recorded status."""
-                if 'aborted' in self.entry and self.entry['aborted']:
-                    return status == 'ABORT'
-                return (self.status == status and
-                        self.test_name == name and
-                        self.reason == reason)
-
-        suite = self._createSuiteWithMockedTestsAndControlFiles()
-
-        jobs = [FakeJob(0, [FakeStatus('GOOD', 'T0', ''),
-                            FakeStatus('GOOD', 'T1', '')]),
-                FakeJob(1, [FakeStatus('ERROR', 'T0', 'err', False),
-                            FakeStatus('GOOD', 'T1', '')]),
-                FakeJob(2, [FakeStatus('TEST_NA', 'T0', 'no')]),
-                FakeJob(2, [FakeStatus('FAIL', 'T0', 'broken')]),
-                FakeJob(3, [FakeStatus('ERROR', 'T0', 'gah', True)])]
-        # To simulate a job that isn't ready the first time we check.
-        self.afe.get_jobs(id=jobs[0].id, finished=True).AndReturn([])
-        # Expect all the rest of the jobs to be good to go the first time.
-        for job in jobs[1:]:
-            self.expect_result_gathering(job)
-        # Then, expect job[0] to be ready.
-        self.expect_result_gathering(jobs[0])
-        # Expect us to poll twice.
-        self.mox.StubOutWithMock(time, 'sleep')
-        time.sleep(5)
-        time.sleep(5)
-        self.mox.ReplayAll()
-
-        suite._jobs = list(jobs)
-        results = [result for result in suite.wait_for_results()]
-        for job in jobs:
-            for status in job.statuses:
-                self.assertTrue(True in map(status.equals_record, results))
-
-
     def schedule_and_expect_these_results(self, suite, results, recorder):
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(True)
@@ -793,9 +695,9 @@ class SuiteTest(mox.MoxTestBase):
                 StatusContains.CreateFromStrings(*result)).InAnyOrder('results')
             recorder.record_entry(
                 StatusContains.CreateFromStrings('END %s' % status, test_name))
-        self.mox.StubOutWithMock(suite, 'wait_for_results')
-        suite.wait_for_results().AndReturn(
-            map(lambda r: dynamic_suite.Status(*r), results))
+        self.mox.StubOutWithMock(job_status, 'wait_for_results')
+        job_status.wait_for_results(self.afe, self.tko, suite._jobs).AndReturn(
+            map(lambda r: job_status.Status(*r), results))
 
 
     def testRunAndWaitSuccess(self):
@@ -826,8 +728,11 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(True)
-        self.mox.StubOutWithMock(suite, 'wait_for_results')
-        suite.wait_for_results().AndRaise(Exception('Expected during test.'))
+        self.mox.StubOutWithMock(job_status, 'wait_for_results')
+        job_status.wait_for_results(mox.IgnoreArg(),
+                                    mox.IgnoreArg(),
+                                    mox.IgnoreArg()).AndRaise(
+                                            Exception('Expected during test.'))
         self.expect_control_file_reparsing()
         self.mox.ReplayAll()
 
@@ -864,7 +769,7 @@ class SuiteTest(mox.MoxTestBase):
         self.schedule_and_expect_these_results(suite, results, recorder)
 
         self.expect_racy_control_file_reparsing(
-            {'new': SuiteTest.FakeControlData('!')})
+            {'new': FakeControlData(self._TAG, '!')})
 
         recorder.record_entry(
             StatusContains.CreateFromStrings('FAIL', self._TAG, 'Dev Server'))

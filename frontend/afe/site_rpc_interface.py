@@ -11,6 +11,7 @@ import sys
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import control_file_getter, dynamic_suite
+from autotest_lib.server.cros import job_status
 
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
@@ -39,7 +40,7 @@ def canonicalize_suite_name(suite_name):
 
 
 def formatted_now():
-    return datetime.datetime.now().strftime(dynamic_suite.TIME_FMT)
+    return datetime.datetime.now().strftime(job_status.TIME_FMT)
 
 
 def get_control_file_contents_by_name(build, board, ds, suite_name):
