@@ -158,3 +158,16 @@ class Status(object):
             base_job.status_log_entry(
                 'END %s' % self._status, None, self._test_name, '',
                 None, self._end_timestamp))
+
+
+    def record_all(self, record_entry):
+        """
+        Use record_entry to log all messages about test results.
+
+        @param record_entry: a callable to use for logging.
+               prototype:
+                   record_entry(base_job.status_log_entry)
+        """
+        self.record_start(record_entry)
+        self.record_result(record_entry)
+        self.record_end(record_entry)

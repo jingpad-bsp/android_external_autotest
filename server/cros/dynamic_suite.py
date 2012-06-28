@@ -9,6 +9,7 @@ from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import control_file_getter, frontend_wrappers
 from autotest_lib.server.cros import job_status
+from autotest_lib.server.cros.job_status import Status
 from autotest_lib.server import frontend
 from autotest_lib.frontend.afe.json_rpc import proxy
 
@@ -271,9 +272,8 @@ def reimage_and_run(**dargs):
         pool = 'pool:%s' % pool
     reimager = Reimager(job.autodir, results_dir=job.resultdir)
 
-    if skip_reimage or reimager.attempt(build, board, pool, job.record,
+    if skip_reimage or reimager.attempt(build, board, pool, job.record_entry,
                                         check_hosts, num=num):
-
         # Ensure that the image's artifacts have completed downloading.
         try:
             ds = dev_server.DevServer.create()
@@ -414,8 +414,8 @@ class Reimager(object):
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
         @param record: callable that records job status.
-                       prototype:
-                         record(status, subdir, name, reason)
+               prototype:
+                 record(base_job.status_log_entry)
         @param check_hosts: require appropriate hosts to be available now.
         @param num: how many devices to reimage.
         @return True if all reimaging jobs succeed, false otherwise.
@@ -423,7 +423,7 @@ class Reimager(object):
         if not num:
             num = CONFIG.get_config_value('CROS', 'sharding_factor', type=int)
         logging.debug("scheduling reimaging across %d machines", num)
-        record('START', None, REIMAGE_JOB_NAME)
+        begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
         try:
             self._ensure_version_label(VERSION_PREFIX + build)
 
@@ -447,27 +447,30 @@ class Reimager(object):
                                                            0)
         except error.InadequateHostsException as e:
             logging.warning(e)
-            record('END WARN', None, REIMAGE_JOB_NAME, str(e))
+            Status('WARN', REIMAGE_JOB_NAME, str(e),
+                   begin_time_str=begin_time_str).record_all(record)
             return False
         except Exception as e:
             # catch Exception so we record the job as terminated no matter what.
             logging.error(e)
-            record('END ERROR', None, REIMAGE_JOB_NAME, str(e))
+            Status('ERROR', REIMAGE_JOB_NAME, str(e),
+                   begin_time_str=begin_time_str).record_all(record)
             return False
 
         self._remember_reimaged_hosts(build, canary_job)
 
         if canary_job.result is True:
             self._report_results(canary_job, record)
-            record('END GOOD', None, REIMAGE_JOB_NAME)
             return True
 
         if canary_job.result is None:
-            record('FAIL', None, canary_job.name, 'reimaging tasks did not run')
+            Status('FAIL', canary_job.name,
+                   'reimaging tasks did not run',
+                   begin_time_str=begin_time_str).record_all(record)
+
         else:  # canary_job.result is False
             self._report_results(canary_job, record)
 
-        record('END FAIL', None, REIMAGE_JOB_NAME)
         return False
 
 
@@ -643,27 +646,29 @@ class Reimager(object):
                frontend.AFE.poll_job_results.
         @param record: callable that records job status.
                prototype:
-                 record(status, subdir, name, reason)
+                 record(base_job.status_log_entry)
         """
-        if job.result == True:
-            record('GOOD', None, job.name)
-            return
-
+        status_map = {'Failed': 'FAIL', 'Aborted': 'ABORT', 'Completed': 'GOOD'}
         for platform in job.results_platform_map:
             for status in job.results_platform_map[platform]:
                 if status == 'Total':
                     continue
                 for host in job.results_platform_map[platform][status]:
                     if host not in job.test_status:
-                        record('ERROR', None, host, 'Job failed to run.')
-                    elif status == 'Failed':
-                        for test_status in job.test_status[host].fail:
-                            record('FAIL', None, host, test_status.reason)
-                    elif status == 'Aborted':
-                        for test_status in job.test_status[host].fail:
-                            record('ABORT', None, host, test_status.reason)
-                    elif status == 'Completed':
-                        record('GOOD', None, host)
+                        Status('ERROR', host,
+                               'Job failed to run.').record_all(record)
+
+                    elif status in status_map:
+                        for test_status in (job.test_status[host].fail +
+                                            job.test_status[host].good):
+                            result = Status(status_map[status],
+                                            '%s-%s' % (REIMAGE_JOB_NAME, host),
+                                            test_status.reason,
+                                            test_status.test_started_time,
+                                            test_status.test_finished_time)
+                            result.record_all(record)
+                    else:
+                        logging.error('Unknown status ' + status)
 
 
 class Suite(object):
@@ -884,30 +889,28 @@ class Suite(object):
 
         @param record: callable that records job status.
                  prototype:
-                   record(status, subdir, name, reason)
+                   record(base_job.status_log_entry)
         @param add_experimental: schedule experimental tests as well, or not.
         """
         logging.debug('Discovered %d stable tests.', len(self.stable_tests()))
         logging.debug('Discovered %d unstable tests.',
                       len(self.unstable_tests()))
         try:
-            job_status.Status('INFO',
-                              'Start %s' % self._tag).record_result(record)
+            Status('INFO', 'Start %s' % self._tag).record_result(record)
             self.schedule(add_experimental)
             try:
                 for result in job_status.wait_for_results(self._afe,
                                                           self._tko,
                                                           self._jobs):
-                    result.record_start(record)
-                    result.record_result(record)
-                    result.record_end(record)
+                    result.record_all(record)
+
             except Exception as e:
                 logging.error(traceback.format_exc())
-                job_status.Status('FAIL', self._tag,
+                Status('FAIL', self._tag,
                        'Exception waiting for results').record_result(record)
         except Exception as e:
             logging.error(traceback.format_exc())
-            job_status.Status('FAIL', self._tag,
+            Status('FAIL', self._tag,
                    'Exception while scheduling suite').record_result(record)
         # Sanity check
         tests_at_end = self.find_and_parse_tests(self._cf_getter,
@@ -916,7 +919,7 @@ class Suite(object):
         if len(self.tests) != len(tests_at_end):
             msg = 'Dev Server enumerated %d tests at start, %d at end.' % (
                 len(self.tests), len(tests_at_end))
-            job_status.Status('FAIL', self._tag, msg).record_result(record)
+            Status('FAIL', self._tag, msg).record_result(record)
 
 
     def schedule(self, add_experimental=True):

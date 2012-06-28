@@ -135,8 +135,7 @@ class Timings(object):
     payload_end_time = None
     artifact_end_time = None
     suite_start_time = None
-    reimage_start_time = None
-    reimage_end_time = None
+    reimage_times = {}  # {'hostname': (start_time, end_time)}
     tests_start_time = None
     tests_end_time = None
 
@@ -157,9 +156,9 @@ class Timings(object):
                                                    job_status.TIME_FMT)
         if entry['test_name'] == 'SERVER_JOB':
             self.suite_start_time = start_candidate
-        elif entry['test_name'] == 'try_new_image':
-            self.reimage_start_time = start_candidate
-            self.reimage_end_time = end_candidate
+        elif entry['test_name'].startswith('try_new_image'):
+            hostname = entry['test_name'].split('-', 1)[1]
+            self.reimage_times[hostname] = (start_candidate, end_candidate)
         else:
             self._UpdateFirstTestStartTime(start_candidate)
             self._UpdateLastTestEndTime(end_candidate)
@@ -191,20 +190,23 @@ class Timings(object):
 
 
     def __str__(self):
+        reimaging_info = ''
+        for host, (start, end) in self.reimage_times.iteritems():
+            reimaging_info += ('Reimaging %s started at %s\n'
+                               'Reimaging %s ended at %s\n' % (host, start,
+                                                               host, end))
         return ('\n'
                 'Suite timings:\n'
                 'Downloads started at %s\n'
                 'Payload downloads ended at %s\n'
                 'Suite started at %s\n'
-                'Reimaging started at %s\n'
-                'Reimaging ended at %s\n'
+                '%s'
                 'Artifact downloads ended (at latest) at %s\n'
                 'Testing started at %s\n'
                 'Testing ended at %s\n' % (self.download_start_time,
                                            self.payload_end_time,
                                            self.suite_start_time,
-                                           self.reimage_start_time,
-                                           self.reimage_end_time,
+                                           reimaging_info,
                                            self.artifact_end_time,
                                            self.tests_start_time,
                                            self.tests_end_time))
