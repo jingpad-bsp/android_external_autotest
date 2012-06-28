@@ -157,7 +157,10 @@ class Timings(object):
         if entry['test_name'] == 'SERVER_JOB':
             self.suite_start_time = start_candidate
         elif entry['test_name'].startswith('try_new_image'):
-            hostname = entry['test_name'].split('-', 1)[1]
+            if '-' in entry['test_name']:
+                hostname = entry['test_name'].split('-', 1)[1]
+            else:
+                hostname = ''
             self.reimage_times[hostname] = (start_candidate, end_candidate)
         else:
             self._UpdateFirstTestStartTime(start_candidate)
