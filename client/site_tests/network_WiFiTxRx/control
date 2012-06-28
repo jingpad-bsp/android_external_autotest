@@ -1,0 +1,79 @@
+# Copyright (C) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'vivek.dasmohapatra@collabora.co.uk'
+NAME = 'network_WiFiTxRx'
+PURPOSE = '''Check the Tx and Rx signal strength when associating with 802.11
+APs'''
+CRITERIA = '''This test requires that a WiFI AP be set up as described in the
+DOC section.'''
+SUITE = 'hwqual'
+TIME = 'SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'network'
+TEST_TYPE = 'client'
+
+DOC = '''
+The AP used to develop the tests was a TRENDNET TEW-673GRU
+
+The described steps are annotated with the place they need
+to be carried out:
+
+H - hardware (ie something phsyical)
+P - root shell on your laptop/whatever
+S - ordinary shell on your laptop/whatever
+A - root shell on the AP
+W - Web UI on the AP (in a browser on your machine)
+
+=== first time, to flash OpenWRT onto a TRENDNET TEW-673GRU ===
+H Power the AP up
+H Connect a patch cable from your laptop to a LAN port of the AP
+S Get the OpenWRT image from the openwrt.org site
+P dhclient your eth0 interface OR ifconfig eth0 192.168.10.2/24 up
+W connect to 192.168.10.1, login as admin/admin
+W Go to the firmware option in the menu
+W Upload the image, allow to reboot
+
+=== installing packages and initial setup on the AP ===
+P ifconfig eth0 192.168.1.2/24 up
+P iptables -A POSTROUTING -t nat -s 192.168.1.0/24 -j MASQUERADE
+P echo 1 >/proc/sys/net/ipv4/ip_forward
+P telnet 192.168.1.1
+A passwd # set the root password to something here
+P ssh root@192.168.1.1 - check you can get in with the new password!
+A route add default gw 192.168.1.2
+A ssh USER@192.168.1.2 getent hosts downloads.openwrt.org >> /etc/hosts
+A opkg update
+A opkg install luci
+A opkg install iwinfo
+
+=== configuring the AP for our tests ===
+A uci set wireless.radio0.disabled=0
+A uci set wireless.radio1.disabled=0
+A uci set wireless.@wifi-iface[0].ssid=CrOS-test-80211bg
+A uci set wireless.@wifi-iface[1].ssid=CrOS-test-80211an
+A uci commit
+A wifi # your wifi AP interfaces should now come up
+A /etc/init.d/uhttpd restart
+S scp autotest/client/site_tests/network_WiFiTxRx/txinfo \
+  root@192.168.1.1:/www/cgi-bin/txinfo
+A chmod a+rx /www/cgi-bin/txinfo
+S wget http://192.168.1.1/cgi-bin/txinfo # just to make sure it responds
+'''
+
+args = utils.args_to_dict(args)
+min_tx = int(args.get('min_tx', -90)) # dBm
+min_rx = int(args.get('min_rx', -90)) # dBm
+max_tx = int(args.get('max_tx', 20))  # dBm
+max_rx = int(args.get('max_rx', 20))  # dBm
+min_qual = float(args.get('min_qual', 0.14)) # 0 - 1.00
+interface = args.get('interface', None) # 'wlan0', 'wlan1' etc. autodetected.
+
+job.run_test('network_WiFiTxRx',
+             interface=interface,
+             min_rx=min_rx,
+             min_tx=min_tx,
+             max_tx=max_tx,
+             max_rx=max_rx,
+             min_qual=min_qual)
