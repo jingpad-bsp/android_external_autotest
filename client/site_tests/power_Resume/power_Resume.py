@@ -23,12 +23,22 @@ class power_Resume(test.test):
     preserve_srcdir = True
 
 
-    def _get_last_msg(self, msg):
-        cmd = "grep -a '%s' /var/log/messages | tail -n 1" % msg
-        # The order in which processes are un-frozen is indeterminate
-        # and therfore this test may get resumed before the system has gotten
-        # a chance to finalize writes to logfile. Sleep a bit to take care of
-        # this race.
+    def _get_command_output(self, cmd):
+        """Try to execute a command, until we get some output or a limit is
+        reached.
+
+        The order in which processes are un-frozen is indeterminate
+        and therfore this test may get resumed before the system has gotten
+        a chance to finalize writes to logfile. Sleep a bit to take care of
+        this race.
+
+        Args:
+            cmd: The command to execute.
+
+        Returns:
+            The output of the command that was executed, or None, if the
+            command didn't printed anything to standard output.
+        """
         count = 0
         data = commands.getoutput(cmd)
         while len(data) == 0 and count < 5:
@@ -37,9 +47,94 @@ class power_Resume(test.test):
             data = commands.getoutput(cmd)
 
         if count == 5:
-            raise error.TestError("Did not find log message: " + msg)
+            return None
 
         return data
+
+
+    def _get_last_msg(self, pattern):
+        """Search for the last message in /var/log/messages, that matches a
+        given pattern.
+
+            Args:
+                pattern: The pattern for which we search.
+
+            Return:
+                If the pattern is found in /var/log/messages, the last line
+                that matches that pattern.
+
+            Raises:
+                TestError: If the pattern isn't found.
+        """
+        cmd = "grep -a '%s' /var/log/messages | tail -n 1" % pattern
+        data = self._get_command_output(cmd)
+        if data is None:
+            raise error.TestError("Did not find log message: " + pattern)
+        return data
+
+
+    def _get_max_time_device(self, start, stop, action):
+        """Get the device (name and time) that had the longest suspend or
+        resume time in a certain interval.
+
+            Args:
+                start: The beginning of the time interval (in dmesg
+                    timestamps).
+                stop: The ending of the time interval (in dmesg timestamps).
+                action: "suspend" or "resume", used only for logging.
+
+            Return:
+                A tuple containing the name of the slowest device and the time
+                that it took to suspend or resume or (None, 0) if no such
+                device could be found.
+
+            Raise:
+                TestError: If no device was found in *any* interval or if the
+                log is corrupted.
+        """
+        cmd = "grep -a 'call [^ ]\+ returned 0 after [0-9]\+ usecs' " + \
+            "/var/log/messages"
+        data = self._get_command_output(cmd)
+
+        if data is None:
+            raise error.TestError("Did not find any device")
+
+        max_time = 0
+        max_device_name = None
+        call_regexp = re.compile(r'call ([^ ]+) returned 0 after ([0-9]+) '
+                'usecs')
+        for dev_line in data.splitlines():
+            # find the time stamp for each message
+            match_ts = re.search(r' \[\s*([0-9.]+)\] ', dev_line)
+            if match_ts is None:
+                raise error.TestError('Did not find timestamp for log message: '
+                        + dev_line)
+            ts = float(match_ts.group(1))
+
+            if not (ts >= start and ts <= stop):
+                # skip this message, because it's in a different interval
+                continue
+
+            # extract the device name and device time
+            search_groups = call_regexp.search(dev_line)
+
+            if search_groups is None:
+                # this line doesn't contains a call string
+                continue
+
+            (device_name, time) = search_groups.groups()
+            device_time = float(time)
+
+            logging.debug("Device %s took %s to %s" % \
+                    (device_name, device_time, action))
+
+            # calculate the maximal time
+            if device_time > max_time:
+                max_time = device_time
+                max_device_name = device_name
+
+        # convert from usec to seconds
+        return (max_device_name, max_time / 1e6)
 
     def _get_last_msg_time(self, msg):
         data = self._get_last_msg(msg)
@@ -134,6 +229,20 @@ class power_Resume(test.test):
         raise ValueError('Unable to read the hardware clock -- ' +
                          hwclock_output)
 
+    def _set_pm_print_times(self, enabled):
+        cmd = 'echo %s > /sys/power/pm_print_times' % int(bool(enabled))
+        (status, output) = commands.getstatusoutput(cmd)
+        if status != 0:
+            logging.warn('Failed to set pm_print_times to %s' % bool(enabled))
+        else:
+            logging.info('Device resume times set to %s' % bool(enabled))
+
+    def _enable_pm_print_times(self):
+        self._set_pm_print_times(True)
+
+    def _disable_pm_print_times(self):
+        self._set_pm_print_times(False)
+
     def run_once(self):
         # Disconnect from 3G network to take out the variability of
         # disconnection time from suspend_time
@@ -153,6 +262,7 @@ class power_Resume(test.test):
                 logging.error('Could not disconnect: %s.' % status)
                 disconnect_3G_time = -1
 
+        self._enable_pm_print_times()
         # Some idle time before initiating suspend-to-ram
         idle_time = random.randint(1, 10)
         time.sleep(idle_time)
@@ -179,6 +289,18 @@ class power_Resume(test.test):
             end_resume_time = self._get_end_resume_time()
             end_cpu_resume_time = self._get_end_cpu_resume_time()
             kernel_device_resume_time = self._get_device_resume_time()
+
+            (max_device_name_suspend, max_device_time_suspend) = \
+                    self._get_max_time_device(
+                            start_suspend_time,
+                            end_suspend_time,
+                            "suspend")
+
+            (max_device_name_resume, max_device_time_resume) = \
+                    self._get_max_time_device(
+                            start_resume_time,
+                            end_resume_time,
+                            "resume")
 
             # Calculate the suspend/resume times
             total_resume_time = self._get_hwclock_seconds() - alarm_time
@@ -213,4 +335,12 @@ class power_Resume(test.test):
         results['seconds_system_resume_kernel_dev'] = kernel_device_resume_time
         results['seconds_3G_disconnect'] = disconnect_3G_time
         results['num_retry_attempts'] = retry_count
+        results['seconds_max_device_suspend'] = max_device_time_suspend
+        results['max_device_name_suspend'] = max_device_name_suspend
+        results['seconds_max_device_resume'] = max_device_time_resume
+        results['max_device_name_resume'] = max_device_name_resume
         self.write_perf_keyval(results)
+
+
+    def cleanup(self):
+        self._disable_pm_print_times()
