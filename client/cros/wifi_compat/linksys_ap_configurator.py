@@ -26,7 +26,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         return 2
 
     def get_supported_bands(self):
-        return [{'band': self.k2GHz,
+        return [{'band': self.band_2ghz,
                  'channels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}]
 
     def get_supported_modes(self):
@@ -136,7 +136,8 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         text_field = ('//input[@name="wl_passphrase"]')
         self.select_item_from_popup_by_xpath(self.security_wep, popup,
                                              wait_for_xpath=text_field)
-        self.set_content_of_text_field_by_xpath(key_value, text_field)
+        self.set_content_of_text_field_by_xpath(key_value, text_field,
+                                                abort_check=True)
         button = self.driver.find_element_by_xpath('//input[@value="Generate"]')
         button.click()
 
@@ -150,7 +151,8 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         key_field = '//input[@name="PassPhrase"]'
         self.select_item_from_popup_by_xpath(self.security_wpapsk, popup,
                                              wait_for_xpath=key_field)
-        self.set_content_of_text_field_by_xpath(shared_key, key_field)
+        self.set_content_of_text_field_by_xpath(shared_key, key_field,
+                                                abort_check=True)
         interval_field = ('//input[@name="GkuInterval"]')
         self.set_content_of_text_field_by_xpath(str(update_interval),
                                                 interval_field)

@@ -82,4 +82,15 @@
     'power_outlet_admin_name': 'admin',
     'power_outlet_password': 'password',
   },
+  {
+    'class_name': 'LinksysE4200APConfigurator',
+    'short_name': 'E4200',
+    'admin_url': 'http://172.22.12.222:8080',
+    'serial_number': '',
+    'mac_address': '',
+    'power_outlet_ip': '172.22.12.201',
+    'power_outlet_number': '5',
+    'power_outlet_admin_name': 'admin',
+    'power_outlet_password': 'password',
+  },
 ]

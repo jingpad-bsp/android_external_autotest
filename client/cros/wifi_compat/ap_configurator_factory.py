@@ -50,7 +50,9 @@ class APConfiguratorFactory(object):
         self._build_all_instances_of_configurator(config_list,
             'Netgear3700APConfigurator',
             Netgear3700_ap_configurator.Netgear3700APConfigurator)
-
+        self._build_all_instances_of_configurator(config_list,
+            'LinksysE4200APConfigurator',
+            linksysE4200_ap_configurator.LinksysAPConfigurator)
 
     def _build_all_instances_of_configurator(self, config_list, name,
                                              configurator):
