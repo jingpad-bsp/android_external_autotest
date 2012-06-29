@@ -22,7 +22,14 @@ class Servo(object):
     """
 
     # Power button press delays in seconds.
-    LONG_DELAY = 8
+    #
+    # TODO(jrbarnette):  The EC specification says that 8.0 seconds
+    # should be enough for the long power press.  However, on
+    # existing platforms (e.g. Alex), we need a bit more time.
+    # Being generous is the right thing to do for existing platforms,
+    # but if this code is to be used for qualification of new hardware,
+    # we should be less generous.
+    LONG_DELAY = 8.2
     SHORT_DELAY = 0.1
     NORMAL_TRANSITION_DELAY = 1.2
     # Maximum number of times to re-read power button on release.
