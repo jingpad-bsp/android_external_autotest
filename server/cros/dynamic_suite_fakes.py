@@ -4,6 +4,9 @@
 
 """Fakes for dynamic_suite-related unit tests."""
 
+import datetime
+from autotest_lib.server.cros import job_status
+
 
 class FakeControlData(object):
     """A fake parsed control file data structure."""
@@ -67,3 +70,11 @@ class FakeStatus(object):
         return (self.status == status and
                 self.test_name == name and
                 self.reason == reason)
+
+
+class FakeResult(object):
+    def __init__(self, reason):
+        self.reason = reason
+        now = datetime.datetime.now()
+        self.test_started_time = now.strftime(job_status.TIME_FMT)
+        self.test_finished_time = now.strftime(job_status.TIME_FMT)

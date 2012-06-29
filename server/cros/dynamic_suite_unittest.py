@@ -21,8 +21,50 @@ from autotest_lib.server.cros import control_file_getter, dynamic_suite
 from autotest_lib.server.cros import job_status
 from autotest_lib.server.cros.dynamic_suite_fakes import FakeControlData
 from autotest_lib.server.cros.dynamic_suite_fakes import FakeHost, FakeJob
-from autotest_lib.server.cros.dynamic_suite_fakes import FakeLabel
+from autotest_lib.server.cros.dynamic_suite_fakes import FakeLabel, FakeResult
 from autotest_lib.server import frontend
+
+
+class StatusContains(mox.Comparator):
+    @staticmethod
+    def CreateFromStrings(status=None, test_name=None, reason=None):
+        status_comp = mox.StrContains(status) if status else mox.IgnoreArg()
+        name_comp = mox.StrContains(test_name) if test_name else mox.IgnoreArg()
+        reason_comp = mox.StrContains(reason) if reason else mox.IgnoreArg()
+        return StatusContains(status_comp, name_comp, reason_comp)
+
+
+    def __init__(self, status=mox.IgnoreArg(), test_name=mox.IgnoreArg(),
+                 reason=mox.IgnoreArg()):
+        """Initialize.
+
+        Takes mox.Comparator objects to apply to dynamic_suite.Status
+        member variables.
+
+        @param status: status code, e.g. 'INFO', 'START', etc.
+        @param test_name: expected test name.
+        @param reason: expected reason
+        """
+        self._status = status
+        self._test_name = test_name
+        self._reason = reason
+
+
+    def equals(self, rhs):
+        """Check to see if fields match base_job.status_log_entry obj in rhs.
+
+        @param rhs: base_job.status_log_entry object to match.
+        @return boolean
+        """
+        return (self._status.equals(rhs.status_code) and
+                self._test_name.equals(rhs.operation) and
+                self._reason.equals(rhs.message))
+
+
+    def __repr__(self):
+        return '<Status containing \'%s\t%s\t%s\'>' % (self._status,
+                                                       self._test_name,
+                                                       self._reason)
 
 
 class DynamicSuiteTest(mox.MoxTestBase):
@@ -205,13 +247,20 @@ class ReimagerTest(mox.MoxTestBase):
 
     def testReportResultsGood(self):
         """Should report results in the case where all jobs passed."""
-        job = self.mox.CreateMock(frontend.Job)
-        job.name = 'RPC Client job'
+        H1 = 'host1'
+
+        job = FakeJob()
         job.result = True
+        job.results_platform_map = {'netbook': {'Completed' : [H1]}}
+        job.test_status = {H1: frontend.TestResults()}
+        job.test_status[H1].good = [FakeResult('a')]
+
         recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record('GOOD', mox.IgnoreArg(), job.name)
+        recorder.record_entry(StatusContains.CreateFromStrings('START'))
+        recorder.record_entry(StatusContains.CreateFromStrings('GOOD', H1))
+        recorder.record_entry(StatusContains.CreateFromStrings('END GOOD'))
         self.mox.ReplayAll()
-        self.reimager._report_results(job, recorder.record)
+        self.reimager._report_results(job, recorder.record_entry)
 
 
     def testReportResultsBad(self):
@@ -231,10 +280,6 @@ class ReimagerTest(mox.MoxTestBase):
         H4 = 'host4'
         H5 = 'host5'
 
-        class FakeResult(object):
-            def __init__(self, reason):
-                self.reason = reason
-
 
         # The RPC-client-side Job object that is annotated with results.
         job = FakeJob()
@@ -252,22 +297,36 @@ class ReimagerTest(mox.MoxTestBase):
         h2.fail = [FakeResult('a'), FakeResult('b')]
         h3 = frontend.TestResults()
         h3.fail = [FakeResult('a'), FakeResult('b')]
+        h4 = frontend.TestResults()
+        h4.good = [FakeResult('c')]
+        h5 = frontend.TestResults()
+        h5.good = [FakeResult('c')]
         # Skipping H1 in |test_status| dict means that it did not get run.
-        job.test_status = {H2: h2, H3: h3, H4: {}, H5: {}}
+        job.test_status = {H2: h2, H3: h3, H4: h4, H5: h5}
 
         # Set up recording expectations.
         rjob = self.mox.CreateMock(base_job.base_job)
+        def set_recording_expectations(code, hostname, reason):
+            rjob.record_entry(
+                StatusContains.CreateFromStrings('START')).InAnyOrder()
+            rjob.record_entry(
+                StatusContains.CreateFromStrings(code,
+                                                 hostname,
+                                                 reason)).InAnyOrder()
+            rjob.record_entry(
+                StatusContains.CreateFromStrings('END %s' % code)).InAnyOrder()
+
         for res in h2.fail:
-            rjob.record('FAIL', mox.IgnoreArg(), H2, res.reason).InAnyOrder()
+            set_recording_expectations('FAIL', H2, res.reason)
         for res in h3.fail:
-            rjob.record('ABORT', mox.IgnoreArg(), H3, res.reason).InAnyOrder()
-        rjob.record('GOOD', mox.IgnoreArg(), H4).InAnyOrder()
-        rjob.record('GOOD', mox.IgnoreArg(), H5).InAnyOrder()
-        rjob.record(
-            'ERROR', mox.IgnoreArg(), H1, mox.IgnoreArg()).InAnyOrder()
+            set_recording_expectations('ABORT', H3, res.reason)
+
+        set_recording_expectations('GOOD', H4, None)
+        set_recording_expectations('GOOD', H5, None)
+        set_recording_expectations('ERROR', H1, None)
 
         self.mox.ReplayAll()
-        self.reimager._report_results(job, rjob.record)
+        self.reimager._report_results(job, rjob.record_entry)
 
 
     def testScheduleJob(self):
@@ -341,11 +400,10 @@ class ReimagerTest(mox.MoxTestBase):
         canary = self.expect_attempt(success=True)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
-        rjob.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, None, rjob.record, True)
+        self.assertTrue(self.reimager.attempt(self._BUILD, self._BOARD, None,
+                                              rjob.record_entry, True))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -354,11 +412,10 @@ class ReimagerTest(mox.MoxTestBase):
         canary = self.expect_attempt(success=False)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
-        rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, None, rjob.record, True)
+        self.assertFalse(self.reimager.attempt(self._BUILD, self._BOARD, None,
+                                               rjob.record_entry, True))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -367,11 +424,12 @@ class ReimagerTest(mox.MoxTestBase):
         canary = self.expect_attempt(success=None)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
-        rjob.record('FAIL', mox.IgnoreArg(), canary.name, mox.IgnoreArg())
-        rjob.record('END FAIL', mox.IgnoreArg(), mox.IgnoreArg())
+        rjob.record_entry(StatusContains.CreateFromStrings('START'))
+        rjob.record_entry(StatusContains.CreateFromStrings('FAIL'))
+        rjob.record_entry(StatusContains.CreateFromStrings('END FAIL'))
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, None, rjob.record, True)
+        self.reimager.attempt(self._BUILD, self._BOARD, None,
+                              rjob.record_entry, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -381,10 +439,13 @@ class ReimagerTest(mox.MoxTestBase):
         canary = self.expect_attempt(success=None, ex=Exception(ex_message))
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
-        rjob.record('END ERROR', mox.IgnoreArg(), mox.IgnoreArg(), ex_message)
+        rjob.record_entry(StatusContains.CreateFromStrings('START'))
+        rjob.record_entry(StatusContains.CreateFromStrings('ERROR',
+                                                           reason=ex_message))
+        rjob.record_entry(StatusContains.CreateFromStrings('END ERROR'))
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, None, rjob.record, True)
+        self.reimager.attempt(self._BUILD, self._BOARD, None,
+                              rjob.record_entry, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -394,12 +455,10 @@ class ReimagerTest(mox.MoxTestBase):
         canary = self.expect_attempt(success=True, check_hosts=False)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
-        rjob.record('END GOOD', mox.IgnoreArg(), mox.IgnoreArg())
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, None, rjob.record,
-                              False)
+        self.assertTrue(self.reimager.attempt(self._BUILD, self._BOARD, None,
+                                              rjob.record_entry, False))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -412,11 +471,13 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._count_usable_hosts(mox.IgnoreArg()).AndReturn(1)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
-        rjob.record('END WARN', mox.IgnoreArg(), mox.IgnoreArg(),
-                    mox.StrContains('Too few hosts'))
+        rjob.record_entry(StatusContains.CreateFromStrings('START'))
+        rjob.record_entry(
+            StatusContains.CreateFromStrings('WARN', reason='Too few hosts'))
+        rjob.record_entry(StatusContains.CreateFromStrings('END WARN'))
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, None, rjob.record, True)
+        self.reimager.attempt(self._BUILD, self._BOARD, None,
+                              rjob.record_entry, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -429,54 +490,14 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._count_usable_hosts(mox.IgnoreArg()).AndReturn(0)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record('START', mox.IgnoreArg(), mox.IgnoreArg())
-        rjob.record('END ERROR', mox.IgnoreArg(), mox.IgnoreArg(),
-                    mox.StrContains('All hosts'))
+        rjob.record_entry(StatusContains.CreateFromStrings('START'))
+        rjob.record_entry(StatusContains.CreateFromStrings('ERROR',
+                                                           reason='All hosts'))
+        rjob.record_entry(StatusContains.CreateFromStrings('END ERROR'))
         self.mox.ReplayAll()
-        self.reimager.attempt(self._BUILD, self._BOARD, None, rjob.record, True)
+        self.reimager.attempt(self._BUILD, self._BOARD, None,
+                              rjob.record_entry, True)
         self.reimager.clear_reimaged_host_state(self._BUILD)
-
-
-class StatusContains(mox.Comparator):
-    @staticmethod
-    def CreateFromStrings(status=None, test_name=None, reason=None):
-        status_comp = mox.StrContains(status) if status else mox.IgnoreArg()
-        name_comp = mox.StrContains(test_name) if test_name else mox.IgnoreArg()
-        reason_comp = mox.StrContains(reason) if reason else mox.IgnoreArg()
-        return StatusContains(status_comp, name_comp, reason_comp)
-
-
-    def __init__(self, status=mox.IgnoreArg(), test_name=mox.IgnoreArg(),
-                 reason=mox.IgnoreArg()):
-        """Initialize.
-
-        Takes mox.Comparator objects to apply to dynamic_suite.Status
-        member variables.
-
-        @param status: status code, e.g. 'INFO', 'START', etc.
-        @param test_name: expected test name.
-        @param reason: expected reason
-        """
-        self._status = status
-        self._test_name = test_name
-        self._reason = reason
-
-
-    def equals(self, rhs):
-        """Check to see if fields match base_job.status_log_entry obj in rhs.
-
-        @param rhs: base_job.status_log_entry object to match.
-        @return boolean
-        """
-        return (self._status.equals(rhs.status_code) and
-                self._test_name.equals(rhs.operation) and
-                self._reason.equals(rhs.message))
-
-
-    def __repr__(self):
-        return '<Status containing \'%s\t%s\t%s\'>' % (self._status,
-                                                       self._test_name,
-                                                       self._reason)
 
 
 class SuiteTest(mox.MoxTestBase):
