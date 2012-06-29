@@ -260,7 +260,7 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Corrupting EC signature %s' %
                                      section)
-        self._ec_handler.corrupt_firmware(section)
+        self._ec_handler.corrupt_firmware(section, corrupt_all=True)
 
 
     @allow_multiple_section_input
@@ -272,7 +272,7 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Corrupting EC body %s' %
                                      section)
-        self._ec_handler.corrupt_firmware_body(section)
+        self._ec_handler.corrupt_firmware_body(section, corrupt_all=True)
 
 
     @allow_multiple_section_input
@@ -284,7 +284,7 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Restoring EC signature %s' %
                                      section)
-        self._ec_handler.restore_firmware(section)
+        self._ec_handler.restore_firmware(section, restore_all=True)
 
 
     @allow_multiple_section_input
@@ -296,7 +296,7 @@ class FAFTClient(object):
         """
         self._chromeos_interface.log('Restoring EC body %s' %
                                      section)
-        self._ec_handler.restore_firmware_body(section)
+        self._ec_handler.restore_firmware_body(section, restore_all=True)
 
 
     @allow_multiple_section_input
