@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import httplib
+from distutils import version
 import logging
 import urllib2
 import HTMLParser
 import cStringIO
 
-from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.common_lib import global_config
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
 
@@ -40,8 +40,8 @@ def _get_image_storage_server():
     return CONFIG.get_config_value('CROS', 'image_storage_server', type=str)
 
 
-def _get_dev_server():
-    return CONFIG.get_config_value('CROS', 'dev_server', type=str)
+def _get_dev_server_list():
+    return CONFIG.get_config_value('CROS', 'dev_server', type=list, default=[])
 
 
 def remote_devserver_call(method):
@@ -80,8 +80,10 @@ class DevServer(object):
         @param dev_host: Address of the Dev Server.
                          Defaults to None.  If not set, CROS.dev_server is used.
         """
-        self._dev_server = dev_host if dev_host else _get_dev_server()
-
+        if dev_host:
+            self._dev_servers = [dev_host]
+        else:
+            self._dev_servers = _get_dev_server_list()
 
     @staticmethod
     def create(dev_host=None):
@@ -89,8 +91,30 @@ class DevServer(object):
         return DevServer(dev_host)
 
 
-    def _build_call(self, method, **kwargs):
+    def _build_call(self, method, hashing_value, **kwargs):
         """Build a URL that calls |method|, passing |kwargs|.
+
+        Build a URL that calls |method| on the dev server, passing a set
+        of key/value pairs built from the dict |kwargs|.
+
+        @param method: the dev server method to call.
+        @param hashing_value: a value to hash against when determining which
+          devserver to use.
+        @param kwargs: a dict mapping arg names to arg values
+        @return the URL string
+        """
+        # If we have multiple devservers set up, we hash against the hashing
+        # value to give us an index of the devserver to use.  The hashing value
+        # must be the same for RPC's that should go to the same devserver.
+        devserver = self._dev_servers[hash(hashing_value) %
+                                      len(self._dev_servers)]
+        argstr = '&'.join(map(lambda x: "%s=%s" % x, kwargs.iteritems()))
+        return "%(host)s/%(method)s?%(args)s" % {'host': devserver,
+                                                 'method': method,
+                                                 'args': argstr}
+
+    def _build_all_calls(self, method, **kwargs):
+        """Builds a list of URLs that makes RPC calls on all devservers.
 
         Build a URL that calls |method| on the dev server, passing a set
         of key/value pairs built from the dict |kwargs|.
@@ -99,17 +123,19 @@ class DevServer(object):
         @param kwargs: a dict mapping arg names to arg values
         @return the URL string
         """
-        argstr = '&'.join(map(lambda x: "%s=%s" % x, kwargs.iteritems()))
-        return "%(host)s/%(method)s?%(args)s" % {'host': self._dev_server,
-                                                 'method': method,
-                                                 'args': argstr}
+        calls = []
+        for hashing_index in range(len(self._dev_servers)):
+            calls.append(self._build_call(method, hashing_value=hashing_index,
+                                          **kwargs))
+
+        return calls
 
 
     @remote_devserver_call
     def trigger_download(self, image, synchronous=True):
         """Tell the dev server to download and stage |image|.
 
-        Tells the dev server at |self._dev_server| to fetch |image|
+        Tells the corresponding dev server to fetch |image|
         from the image storage server named by _get_image_storage_server().
 
         If |synchronous| is True, waits for the entire download to finish
@@ -124,7 +150,7 @@ class DevServer(object):
         @raise DevServerException upon any return code that's not HTTP OK.
         """
         call = self._build_call(
-            'download',
+            'download', hashing_value=image,
             archive_url=_get_image_storage_server() + image)
         response = urllib2.urlopen(call)
         was_successful = response.read() == 'Success'
@@ -150,6 +176,7 @@ class DevServer(object):
         """
         call = self._build_call(
             'wait_for_status',
+            hashing_value=image,
             archive_url=_get_image_storage_server() + image)
         if urllib2.urlopen(call).read() != 'Success':
             raise DevServerException("finish_download for %s failed;"
@@ -161,7 +188,7 @@ class DevServer(object):
     def list_control_files(self, build):
         """Ask the dev server to list all control files for |build|.
 
-        Ask the dev server at |self._dev_server| to list all control files
+        Ask the corresponding dev server to list all control files
         for |build|.
 
         @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
@@ -170,7 +197,8 @@ class DevServer(object):
                 (e.g. server/site_tests/autoupdate/control)
         @raise DevServerException upon any return code that's not HTTP OK.
         """
-        call = self._build_call('controlfiles', build=build)
+        call = self._build_call('controlfiles', hashing_value=build,
+                                build=build)
         response = urllib2.urlopen(call)
         return [line.rstrip() for line in response]
 
@@ -179,7 +207,7 @@ class DevServer(object):
     def get_control_file(self, build, control_path):
         """Ask the dev server for the contents of a control file.
 
-        Ask the dev server at |self._dev_server| for the contents of the
+        Ask the corresponding dev server for the contents of the
         control file at |control_path| for |build|.
 
         @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
@@ -190,6 +218,7 @@ class DevServer(object):
         @raise DevServerException upon any return code that's not HTTP OK.
         """
         call = self._build_call('controlfiles',
+                                hashing_value=build,
                                 build=build, control_path=control_path)
         return urllib2.urlopen(call).read()
 
@@ -199,7 +228,7 @@ class DevServer(object):
         """Ask the dev server to symbolicate the dump at minidump_path.
 
         Stage the debug symbols for |build| and, if that works, ask the
-        dev server at |self._dev_server| to symbolicate the dump at
+        corresponding dev server to symbolicate the dump at
         minidump_path.
 
         @param minidump_path: the on-disk path of the minidump.
@@ -216,6 +245,7 @@ class DevServer(object):
         # Stage debug symbols.
         call = self._build_call(
             'stage_debug',
+            hashing_value=build,
             archive_url=_get_image_storage_server() + build)
         request = requests.get(call)
         if (request.status_code != requests.codes.ok or
@@ -227,7 +257,7 @@ class DevServer(object):
                                     request.headers,
                                     error_fd)
         # Symbolicate minidump.
-        call = self._build_call('symbolicate_dump')
+        call = self._build_call('symbolicate_dump', hashing_value=build)
         request = requests.post(call,
                                 files={'minidump': open(minidump_path, 'rb')})
         if request.status_code == requests.codes.OK:
@@ -244,7 +274,7 @@ class DevServer(object):
     def get_latest_build(self, target, milestone=''):
         """Ask the dev server for the latest build for a given target.
 
-        Ask the dev server at |self._dev_server|for the latest build for
+        Ask the corresponding dev server for the latest build for
         |target|.
 
         @param target: The build target, typically a combination of the board
@@ -258,6 +288,10 @@ class DevServer(object):
         @return A string of the returned build e.g. R20-2226.0.0.
         @raise DevServerException upon any return code that's not HTTP OK.
         """
-        call = self._build_call('latestbuild', target=target,
-                                milestone=milestone)
-        return urllib2.urlopen(call).read()
+        calls = self._build_all_calls('latestbuild', target=target,
+                                      milestone=milestone)
+        latest_builds = []
+        for call in calls:
+            latest_builds.append(urllib2.urlopen(call).read())
+
+        return max(latest_builds, key=version.LooseVersion)

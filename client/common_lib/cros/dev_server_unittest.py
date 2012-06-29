@@ -197,3 +197,47 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         build = self.dev_server.get_latest_build(target)
         self.assertEquals(build_string, build)
+
+    def testThatWeCorrectlyReHashToTheSameDevserver(self):
+        """Ensure calls with same hashing_value go to the same devserver."""
+        for index in range(10):
+          self.dev_server._dev_servers.append('http://nothing_%d' % index)
+
+        method_name = 'my_method'
+        hv1 = 'iliketacos'
+        hv2 = 'iliketacos'
+        hv3 = 'idontliketacos :('
+        hv4 = 'idontliketacos :('
+
+        call1 = self.dev_server._build_call(method_name, hashing_value=hv1)
+        call2 = self.dev_server._build_call(method_name, hashing_value=hv2,
+                                            some_arg='value')
+        call3 = self.dev_server._build_call(method_name, hashing_value=hv3)
+        call4 = self.dev_server._build_call(method_name, hashing_value=hv4,
+                                            some_arg='value')
+
+        self.assertTrue(call2.startswith(call1))
+        self.assertTrue(call4.startswith(call3))
+
+    def testGetLatestBuildWithManyDevservers(self):
+        """Should successfully return newest build with multiple devservers."""
+        self.dev_server._dev_servers.append('http://nothing_2')
+        self.dev_server._dev_servers.append('http://nothing_3')
+        target = 'x86-generic-release'
+        build_string1 = 'R9-1586.0.0-a1-b1514'
+        build_string2 = 'R19-1586.0.0-a1-b3514'
+        build_string3 = 'R18-1486.0.0-a1-b2514'
+        self.mox.StubOutWithMock(urllib2, 'urlopen')
+        to_return1 = StringIO.StringIO(build_string1)
+        to_return2 = StringIO.StringIO(build_string2)
+        to_return3 = StringIO.StringIO(build_string3)
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(target))).AndReturn(to_return1)
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(target))).AndReturn(to_return2)
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(target))).AndReturn(to_return3)
+
+        self.mox.ReplayAll()
+        build = self.dev_server.get_latest_build(target)
+        self.assertEquals(build_string2, build)
