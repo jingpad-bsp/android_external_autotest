@@ -70,6 +70,10 @@ class sound_infrastructure(test.test):
             'files'   : [ ],
             },
 
+        'ALC269VB': {
+            'files'   : [ ],
+            },
+
         'ALC272': {
             'files'   : [ ],
             }
@@ -91,7 +95,7 @@ class sound_infrastructure(test.test):
         # 'codec_info' above.
         codecs = [ 'ALC272',       # Mario, Alex
                    'WM8903',       # Seaboard, Aebl, Kaen, Asymptote
-                   'ALC271X',      # ZGB
+                   'ALC269VB',     # ZGB
                    'Cirrus Analog' # Stumpy
                  ]
         for c in codecs:
