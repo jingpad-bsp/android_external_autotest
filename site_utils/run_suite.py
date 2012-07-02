@@ -14,20 +14,31 @@ This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
-import datetime, getpass, hashlib, optparse, time, sys
+import datetime, getpass, hashlib, optparse, os, time, sys
 import common
 import logging
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros import dynamic_suite, frontend_wrappers
 from autotest_lib.server.cros import job_status
-from autotest_lib.client.common_lib import logging_config, logging_manager
 
 CONFIG = global_config.global_config
 
 
-class RunSuiteLoggingConfig(logging_config.LoggingConfig):
-    def configure_logging(self, verbose=False):
-        super(RunSuiteLoggingConfig, self).configure_logging(use_console=True)
+def setup_logging(logfile=None):
+    """Setup basic logging with all logging info stripped.
+
+    Calls to logging will only show the message. No severity is logged.
+
+    @param logfile: If specified dump output to a file as well.
+    """
+    screen_handler = logging.StreamHandler()
+    screen_handler.setFormatter(logging.Formatter('%(message)s'))
+    logging.getLogger().addHandler(screen_handler)
+    logging.getLogger().setLevel(logging.INFO)
+    if logfile:
+        file_handler = logging.FileHandler(logfile)
+        file_handler.setLevel(logging.DEBUG)
+        logging.getLogger().addHandler(file_handler)
 
 
 def parse_options():
@@ -234,8 +245,12 @@ def main():
             print 'Need to specify suite name'
             parser.print_help()
             return
-
-    logging_manager.configure_logging(RunSuiteLoggingConfig())
+    # convert build name from containing / to continaing only _
+    log_name = 'run_suite-%s.log' % options.build.replace('/', '_')
+    log_dir = os.path.join(common.autotest_dir, 'logs')
+    if os.path.exists(log_dir):
+        log_name = os.path.join(log_dir, log_name)
+    setup_logging(logfile=log_name)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
@@ -252,6 +267,7 @@ def main():
                          pool=options.pool)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
+    logging.info('Started suite job: %s', job_id)
     # Return code that will be sent back to autotest_rpc_server.py
     # 0 = OK
     # 1 = ERROR
@@ -276,11 +292,10 @@ def main():
             entry['test_name'] = entry['test_name'].replace('SERVER_JOB',
                                                             'Suite prep')
             test_entry = entry['test_name'].ljust(width)
-            print "%s%s" % (test_entry, get_pretty_status(entry['status']))
+            logging.info("%s%s", test_entry, get_pretty_status(entry['status']))
             if entry['status'] != 'GOOD':
-                print "%s  %s: %s" % (test_entry,
-                                      entry['status'],
-                                      entry['reason'])
+                logging.info("%s  %s: %s", test_entry, entry['status'],
+                             entry['reason'])
                 job_name, experimental = get_view_info(job_id, entry)
 
                 log_links.append(generate_log_link(entry['test_name'],
@@ -295,15 +310,15 @@ def main():
                     code = 2
                 else:
                     code = 1
-        print timings
+        logging.info(timings)
         for link in log_links:
-            print link
+            logging.info(link)
         break
     else:
-        print "Created suite job: %r" % job_id
-        print generate_log_link(options.name,
-                                '%s-%s' % (job_id, getpass.getuser()))
-        print "--no_wait specified; Exiting."
+        logging.info('Created suite job: %r', job_id)
+        logging.info(generate_log_link(options.name,
+                                '%s-%s' % (job_id, getpass.getuser())))
+        logging.info('--no_wait specified; Exiting.')
     return code
 
 if __name__ == "__main__":
