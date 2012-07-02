@@ -48,33 +48,36 @@ class FakeStatus(object):
     @var reason: reason for failure, if any
     @var aborted: present and True if the job was aborted.  Optional.
     """
-    def __init__(self, code, name, reason, aborted=None):
+    def __init__(self, code, name, reason, aborted=None, hostname=None):
         self.status = code
         self.test_name = name
         self.reason = reason
+        self.hostname = hostname if hostname else 'hostless'
         self.entry = {}
         self.test_started_time = '2012-11-11 11:11:11'
         self.test_finished_time = '2012-11-11 12:12:12'
         if aborted:
             self.entry['aborted'] = True
+        if hostname:
+            self.entry['host'] = {'hostname': hostname}
+
+    def __repr__(self):
+        return '%s\t%s\t%s: %s' % (self.status, self.test_name, self.reason,
+                                   self.hostname)
 
     def equals_record(self, status):
         """Compares this object to a recorded status."""
-        return self._equals_record(status._status, status._test_name,
-                                   status._reason)
-
-    def _equals_record(self, status, name, reason=None):
-        """Compares this object and fields of recorded status."""
         if 'aborted' in self.entry and self.entry['aborted']:
             return status == 'ABORT'
-        return (self.status == status and
-                self.test_name == name and
-                self.reason == reason)
+        return (self.status == status._status and
+                self.test_name == status._test_name and
+                self.reason == status._reason)
 
+    def equals_hostname_record(self, status):
+        """Compares this object to a recorded status.
 
-class FakeResult(object):
-    def __init__(self, reason):
-        self.reason = reason
-        now = datetime.datetime.now()
-        self.test_started_time = now.strftime(job_status.TIME_FMT)
-        self.test_finished_time = now.strftime(job_status.TIME_FMT)
+        Expects the test name field of |status| to contain |self.hostname|.
+        """
+        return (self.status == status._status and
+                self.hostname in status._test_name and
+                self.reason == status._reason)

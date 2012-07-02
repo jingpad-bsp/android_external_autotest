@@ -53,8 +53,8 @@ class StatusTest(mox.MoxTestBase):
                 FakeJob(1, [FakeStatus('ERROR', 'T0', 'err', False),
                             FakeStatus('GOOD', 'T1', '')]),
                 FakeJob(2, [FakeStatus('TEST_NA', 'T0', 'no')]),
-                FakeJob(2, [FakeStatus('FAIL', 'T0', 'broken')]),
-                FakeJob(3, [FakeStatus('ERROR', 'T0', 'gah', True)])]
+                FakeJob(3, [FakeStatus('FAIL', 'T0', 'broken')]),
+                FakeJob(4, [FakeStatus('ERROR', 'T0', 'gah', True)])]
         # To simulate a job that isn't ready the first time we check.
         self.afe.get_jobs(id=jobs[0].id, finished=True).AndReturn([])
         # Expect all the rest of the jobs to be good to go the first time.
@@ -74,3 +74,30 @@ class StatusTest(mox.MoxTestBase):
         for job in jobs:
             for status in job.statuses:
                 self.assertTrue(True in map(status.equals_record, results))
+
+
+    def testGatherPerHostResults(self):
+        """Should gather per host results."""
+        # For the 0th job, the 1st entry is more bad/specific.
+        # For all the others, it's the 0th that we expect.
+        jobs = [FakeJob(0, [FakeStatus('FAIL', 'T0', '', hostname='h0'),
+                            FakeStatus('FAIL', 'T1', 'bad', hostname='h0')]),
+                FakeJob(1, [FakeStatus('ERROR', 'T0', 'err', False, 'h1'),
+                            FakeStatus('GOOD', 'T1', '', hostname='h1')]),
+                FakeJob(2, [FakeStatus('TEST_NA', 'T0', 'no', hostname='h2')]),
+                FakeJob(3, [FakeStatus('FAIL', 'T0', 'broken', hostname='h3')]),
+                FakeJob(4, [FakeStatus('ERROR', 'T0', 'gah', True, 'h4')]),
+                FakeJob(5, [FakeStatus('GOOD', 'T0', 'Yay', hostname='h5')])]
+        # Method under test returns status available right now.
+        for job in jobs:
+            entries = map(lambda s: s.entry, job.statuses)
+            self.afe.run('get_host_queue_entries',
+                         job=job.id).AndReturn(entries)
+            self.tko.get_status_counts(job=job.id).AndReturn(job.statuses)
+        self.mox.ReplayAll()
+
+        results = job_status.gather_per_host_results(self.afe,
+                                                     self.tko,
+                                                     jobs).values()
+        for status in [jobs[0].statuses[1]] + [j.statuses[0] for j in jobs[1:]]:
+            self.assertTrue(True in map(status.equals_hostname_record, results))

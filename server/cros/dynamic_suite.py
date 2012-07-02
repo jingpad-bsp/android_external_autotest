@@ -442,9 +442,8 @@ class Reimager(object):
             self._wait_for_job_to_finish(canary_job.id)
 
             # Gather job results.
-            canary_job.result = self._afe.poll_job_results(self._tko,
-                                                           canary_job,
-                                                           0)
+            results = self.get_results(canary_job)
+
         except error.InadequateHostsException as e:
             logging.warning(e)
             Status('WARN', REIMAGE_JOB_NAME, str(e),
@@ -457,21 +456,25 @@ class Reimager(object):
                    begin_time_str=begin_time_str).record_all(record)
             return False
 
-        self._remember_reimaged_hosts(build, canary_job)
+        self._remember_reimaged_hosts(build, results.keys())
 
-        if canary_job.result is True:
-            self._report_results(canary_job, record)
-            return True
+        return job_status.record_and_report_results(results.values(), record)
 
-        if canary_job.result is None:
-            Status('FAIL', canary_job.name,
-                   'reimaging tasks did not run',
-                   begin_time_str=begin_time_str).record_all(record)
 
-        else:  # canary_job.result is False
-            self._report_results(canary_job, record)
+    def get_results(self, canary_job):
+        """
+        Gather results for |canary_job|, in a map of Statuses indexed by host.
 
-        return False
+        A host's results will be named REIMAGE_JOB_NAME-<host> in the map, e.g.
+          {'chromeos2-rack1': Status('GOOD', 'try_new_image-chromeos2-rack1')}
+
+        @param canary_job: a completed frontend.Job
+        @return a map of hostname: job_status.Status objects.
+        """
+        return job_status.gather_per_host_results(self._afe,
+                                                  self._tko,
+                                                  [canary_job],
+                                                  REIMAGE_JOB_NAME+'-')
 
 
     def _ensure_enough_hosts(self, board, pool, num):
@@ -517,22 +520,15 @@ class Reimager(object):
         logging.debug('Re-imaging job finished.')
 
 
-    def _remember_reimaged_hosts(self, build, canary_job):
+    def _remember_reimaged_hosts(self, build, hosts):
         """
         Remember hosts that were reimaged with |build| as a part |canary_job|.
 
         @param build: the build that was installed e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
-        @param canary_job: a completed frontend.Job object, possibly populated
-                           by frontend.AFE.poll_job_results.
+        @param hosts: iterable of hostnames.
         """
-        if not hasattr(canary_job, 'results_platform_map'):
-            return
-        if not self._reimaged_hosts.get('build'):
-            self._reimaged_hosts[build] = []
-        for platform in canary_job.results_platform_map:
-            for host in canary_job.results_platform_map[platform]['Total']:
-                self._reimaged_hosts[build].append(host)
+        self._reimaged_hosts[build] = hosts
 
 
     def clear_reimaged_host_state(self, build):
@@ -547,7 +543,8 @@ class Reimager(object):
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         """
         for host in self._reimaged_hosts.get('build', []):
-            self._clear_build_state(host)
+            if not host.startswith('hostless'):
+                self._clear_build_state(host)
 
 
     def _clear_build_state(self, machine):
@@ -636,39 +633,6 @@ class Reimager(object):
                                     priority='Low',
                                     meta_hosts=[meta_host] * num_machines,
                                     dependencies=job_deps)
-
-
-    def _report_results(self, job, record):
-        """
-        Record results from a completed frontend.Job object.
-
-        @param job: a completed frontend.Job object populated by
-               frontend.AFE.poll_job_results.
-        @param record: callable that records job status.
-               prototype:
-                 record(base_job.status_log_entry)
-        """
-        status_map = {'Failed': 'FAIL', 'Aborted': 'ABORT', 'Completed': 'GOOD'}
-        for platform in job.results_platform_map:
-            for status in job.results_platform_map[platform]:
-                if status == 'Total':
-                    continue
-                for host in job.results_platform_map[platform][status]:
-                    if host not in job.test_status:
-                        Status('ERROR', host,
-                               'Job failed to run.').record_all(record)
-
-                    elif status in status_map:
-                        for test_status in (job.test_status[host].fail +
-                                            job.test_status[host].good):
-                            result = Status(status_map[status],
-                                            '%s-%s' % (REIMAGE_JOB_NAME, host),
-                                            test_status.reason,
-                                            test_status.test_started_time,
-                                            test_status.test_finished_time)
-                            result.record_all(record)
-                    else:
-                        logging.error('Unknown status ' + status)
 
 
 class Suite(object):

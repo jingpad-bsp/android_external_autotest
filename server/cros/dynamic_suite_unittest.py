@@ -21,7 +21,7 @@ from autotest_lib.server.cros import control_file_getter, dynamic_suite
 from autotest_lib.server.cros import job_status
 from autotest_lib.server.cros.dynamic_suite_fakes import FakeControlData
 from autotest_lib.server.cros.dynamic_suite_fakes import FakeHost, FakeJob
-from autotest_lib.server.cros.dynamic_suite_fakes import FakeLabel, FakeResult
+from autotest_lib.server.cros.dynamic_suite_fakes import FakeLabel
 from autotest_lib.server import frontend
 
 
@@ -245,90 +245,6 @@ class ReimagerTest(mox.MoxTestBase):
         self.assertTrue(find_all_in(v, dynamic_suite.inject_vars(v, 'ctrl')))
 
 
-    def testReportResultsGood(self):
-        """Should report results in the case where all jobs passed."""
-        H1 = 'host1'
-
-        job = FakeJob()
-        job.result = True
-        job.results_platform_map = {'netbook': {'Completed' : [H1]}}
-        job.test_status = {H1: frontend.TestResults()}
-        job.test_status[H1].good = [FakeResult('a')]
-
-        recorder = self.mox.CreateMock(base_job.base_job)
-        recorder.record_entry(StatusContains.CreateFromStrings('START'))
-        recorder.record_entry(StatusContains.CreateFromStrings('GOOD', H1))
-        recorder.record_entry(StatusContains.CreateFromStrings('END GOOD'))
-        self.mox.ReplayAll()
-        self.reimager._report_results(job, recorder.record_entry)
-
-
-    def testReportResultsBad(self):
-        """Should report results in various job failure cases.
-
-        In this test scenario, there are five hosts, all the 'netbook' platform.
-
-        h1: Did not run
-        h2: Two failed tests
-        h3: Two aborted tests
-        h4: completed, GOOD
-        h5: completed, GOOD
-        """
-        H1 = 'host1'
-        H2 = 'host2'
-        H3 = 'host3'
-        H4 = 'host4'
-        H5 = 'host5'
-
-
-        # The RPC-client-side Job object that is annotated with results.
-        job = FakeJob()
-        job.result = None  # job failed, there are results to report.
-
-        # The semantics of |results_platform_map| and |test_results| are
-        # drawn from frontend.AFE.poll_all_jobs()
-        job.results_platform_map = {'netbook': {'Aborted' : [H3],
-                                                'Completed' : [H1, H4, H5],
-                                                'Failed':     [H2]
-                                                }
-                                    }
-        # Gin up fake results for H2 and H3 failure cases.
-        h2 = frontend.TestResults()
-        h2.fail = [FakeResult('a'), FakeResult('b')]
-        h3 = frontend.TestResults()
-        h3.fail = [FakeResult('a'), FakeResult('b')]
-        h4 = frontend.TestResults()
-        h4.good = [FakeResult('c')]
-        h5 = frontend.TestResults()
-        h5.good = [FakeResult('c')]
-        # Skipping H1 in |test_status| dict means that it did not get run.
-        job.test_status = {H2: h2, H3: h3, H4: h4, H5: h5}
-
-        # Set up recording expectations.
-        rjob = self.mox.CreateMock(base_job.base_job)
-        def set_recording_expectations(code, hostname, reason):
-            rjob.record_entry(
-                StatusContains.CreateFromStrings('START')).InAnyOrder()
-            rjob.record_entry(
-                StatusContains.CreateFromStrings(code,
-                                                 hostname,
-                                                 reason)).InAnyOrder()
-            rjob.record_entry(
-                StatusContains.CreateFromStrings('END %s' % code)).InAnyOrder()
-
-        for res in h2.fail:
-            set_recording_expectations('FAIL', H2, res.reason)
-        for res in h3.fail:
-            set_recording_expectations('ABORT', H3, res.reason)
-
-        set_recording_expectations('GOOD', H4, None)
-        set_recording_expectations('GOOD', H5, None)
-        set_recording_expectations('ERROR', H1, None)
-
-        self.mox.ReplayAll()
-        self.reimager._report_results(job, rjob.record_entry)
-
-
     def testScheduleJob(self):
         """Should be able to create a job with the AFE."""
         # Fake out getting the autoupdate control file contents.
@@ -352,17 +268,16 @@ class ReimagerTest(mox.MoxTestBase):
                                             self._NUM)
 
 
-    def expect_attempt(self, success, ex=None, check_hosts=True):
+    def expect_attempt(self, canary, statuses, ex=None, check_hosts=True):
         """Sets up |self.reimager| to expect an attempt() that returns |success|
 
-        Also stubs out Reimger._clear_build_state(), should the caller wish
+        Also stubs out Reimager._clear_build_state(), should the caller wish
         to set an expectation there as well.
 
         @param success: the value returned by poll_job_results()
         @param ex: if not None, |ex| is raised by get_jobs()
         @return a FakeJob configured with appropriate expectations
         """
-        canary = FakeJob()
         self.mox.StubOutWithMock(self.reimager, '_ensure_version_label')
         self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
 
@@ -376,28 +291,32 @@ class ReimagerTest(mox.MoxTestBase):
             self.reimager._count_usable_hosts(
                 mox.IgnoreArg()).AndReturn(self._NUM)
 
-        if success is not None:
-            self.mox.StubOutWithMock(self.reimager, '_report_results')
-            self.reimager._report_results(canary, mox.IgnoreArg())
-            canary.results_platform_map = {None: {'Total': [canary.hostname]}}
-
-
         self.afe.get_jobs(id=canary.id, not_yet_run=True).AndReturn([])
         if ex is not None:
             self.afe.get_jobs(id=canary.id, finished=True).AndRaise(ex)
         else:
             self.afe.get_jobs(id=canary.id, finished=True).AndReturn([canary])
-            self.afe.poll_job_results(mox.IgnoreArg(),
-                                      canary, 0).AndReturn(success)
+            self.mox.StubOutWithMock(job_status, 'gather_per_host_results')
+            job_status.gather_per_host_results(
+                    mox.IgnoreArg(), mox.IgnoreArg(), [canary],
+                    mox.StrContains(dynamic_suite.REIMAGE_JOB_NAME)).AndReturn(
+                            statuses)
+
+        if statuses:
+            ret_val = reduce(lambda v,s: v and s.is_good(),
+                             statuses.values(), True)
+            self.mox.StubOutWithMock(job_status, 'record_and_report_results')
+            job_status.record_and_report_results(
+                statuses.values(), mox.IgnoreArg()).AndReturn(ret_val)
 
         self.mox.StubOutWithMock(self.reimager, '_clear_build_state')
-
-        return canary
 
 
     def testSuccessfulReimage(self):
         """Should attempt a reimage and record success."""
-        canary = self.expect_attempt(success=True)
+        canary = FakeJob()
+        statuses = {canary.hostname: job_status.Status('GOOD', canary.hostname)}
+        self.expect_attempt(canary, statuses)
 
         rjob = self.mox.CreateMock(base_job.base_job)
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
@@ -409,7 +328,9 @@ class ReimagerTest(mox.MoxTestBase):
 
     def testFailedReimage(self):
         """Should attempt a reimage and record failure."""
-        canary = self.expect_attempt(success=False)
+        canary = FakeJob()
+        statuses = {canary.hostname: job_status.Status('FAIL', canary.hostname)}
+        self.expect_attempt(canary, statuses)
 
         rjob = self.mox.CreateMock(base_job.base_job)
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
@@ -421,12 +342,11 @@ class ReimagerTest(mox.MoxTestBase):
 
     def testReimageThatNeverHappened(self):
         """Should attempt a reimage and record that it didn't run."""
-        canary = self.expect_attempt(success=None)
+        canary = FakeJob()
+        statuses = {'hostless': job_status.Status('ABORT', 'big_job_name')}
+        self.expect_attempt(canary, statuses)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        rjob.record_entry(StatusContains.CreateFromStrings('START'))
-        rjob.record_entry(StatusContains.CreateFromStrings('FAIL'))
-        rjob.record_entry(StatusContains.CreateFromStrings('END FAIL'))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, None,
                               rjob.record_entry, True)
@@ -435,8 +355,9 @@ class ReimagerTest(mox.MoxTestBase):
 
     def testReimageThatRaised(self):
         """Should attempt a reimage that raises an exception and record that."""
+        canary = FakeJob()
         ex_message = 'Oh no!'
-        canary = self.expect_attempt(success=None, ex=Exception(ex_message))
+        self.expect_attempt(canary, statuses={}, ex=Exception(ex_message))
 
         rjob = self.mox.CreateMock(base_job.base_job)
         rjob.record_entry(StatusContains.CreateFromStrings('START'))
@@ -452,7 +373,9 @@ class ReimagerTest(mox.MoxTestBase):
     def testSuccessfulReimageThatCouldNotScheduleRightAway(self):
         """Should attempt reimage, ignoring host availability; record success.
         """
-        canary = self.expect_attempt(success=True, check_hosts=False)
+        canary = FakeJob()
+        statuses = {canary.hostname: job_status.Status('GOOD', canary.hostname)}
+        self.expect_attempt(canary, statuses, check_hosts=False)
 
         rjob = self.mox.CreateMock(base_job.base_job)
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
