@@ -15,7 +15,7 @@ from autotest_lib.client.common_lib import error
 LD_LIBRARY_PATH = 'LD_LIBRARY_PATH'
 
 _DEFAULT_NUM_CHANNELS = 2
-_DEFAULT_INPUT_DEVICE = 'default'
+_DEFAULT_INPUT_DEVICE = 'hw:0,0'
 _DEFAULT_RECORD_DURATION = 10
 _DEFAULT_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 
