@@ -12,6 +12,7 @@ import base_event, board_enumerator, build_event, deduping_scheduler, driver
 import forgiving_config_parser, manifest_versions, task, timed_event
 
 from autotest_lib.server import frontend
+from constants import Labels
 
 
 class DriverTest(mox.MoxTestBase):
@@ -75,7 +76,7 @@ class DriverTest(mox.MoxTestBase):
 
     def _ExpectEnumeration(self):
         """Expect one call to BoardEnumerator.Enumerate()."""
-        prefix = board_enumerator.BoardEnumerator._LABEL_PREFIX
+        prefix = Labels.BOARD_PREFIX
         mocks = []
         for board in self._BOARDS:
             mocks.append(self.mox.CreateMock(frontend.Label))

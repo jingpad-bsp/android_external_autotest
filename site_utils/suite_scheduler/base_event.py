@@ -173,7 +173,8 @@ class BaseEvent(object):
 
 
     def Handle(self, scheduler, branch_builds, board, force=False):
-        """Runs all tasks in self._tasks.
+        """Runs all tasks in self._tasks that if scheduled, can be
+        successfully run.
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
@@ -188,5 +189,6 @@ class BaseEvent(object):
         logging.info('Handling %s for %s', self.keyword, board)
         # we need to iterate over an immutable copy of self._tasks
         for task in list(self.tasks):
-            if not task.Run(scheduler, branch_builds, board, force):
-                self._tasks.remove(task)
+            if task.CanRun(scheduler, board):
+                if not task.Run(scheduler, branch_builds, board, force):
+                    self._tasks.remove(task)

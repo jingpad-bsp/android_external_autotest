@@ -111,3 +111,8 @@ class DedupingScheduler(object):
         if force or self._ShouldScheduleSuite(suite, board, build):
             return self._Schedule(suite, board, build, pool)
         return False
+
+
+    def GetHosts(*args, **kwargs):
+        """Forward a request to get hosts onto the AFE instance's get_hosts."""
+        self._afe.get_hosts(*args, **kwargs)

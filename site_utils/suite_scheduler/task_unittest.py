@@ -144,6 +144,15 @@ class TaskTest(TaskTestBase):
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
 
+    def testRunUnrunnable(self):
+        """Test running a task that cannot run on this board/pool."""
+        self.sched.GetHosts(multiple_labels=mox.IgnoreArg()).AndReturn([])
+        self.mox.ReplayAll()
+        t = task.Task(self._TASK_NAME, self._SUITE,
+                      [self._BRANCH_SPEC], "BadPool")
+        self.assertTrue(not t.CanRun(self.sched, self._BOARD))
+
+
     def testNoRunBranchMismatch(self):
         """Test running a recurring task with no matching builds."""
         t = task.Task(self._TASK_NAME, self._SUITE, task.BARE_BRANCHES)

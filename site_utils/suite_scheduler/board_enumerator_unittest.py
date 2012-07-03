@@ -13,6 +13,7 @@ import unittest
 import board_enumerator
 
 from autotest_lib.server import frontend
+from constants import Labels
 
 
 class BoardEnumeratorTest(mox.MoxTestBase):
@@ -23,7 +24,7 @@ class BoardEnumeratorTest(mox.MoxTestBase):
         super(BoardEnumeratorTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.enumerator = board_enumerator.BoardEnumerator(afe=self.afe)
-        self.prefix = self.enumerator._LABEL_PREFIX
+        self.prefix = Labels.BOARD_PREFIX
 
 
     def _CreateMockLabel(self, name):

@@ -6,6 +6,7 @@
 import logging, re
 import deduping_scheduler, forgiving_config_parser
 from distutils import version
+from constants import Labels
 
 
 class MalformedConfigEntry(Exception):
@@ -201,6 +202,22 @@ class Task(object):
     def __hash__(self):
         """Allows instances to be correctly deduped when used in a set."""
         return hash(str(self))
+
+
+    def CanRun(self, scheduler, board):
+        """Check and see if this test is able to be scheduled on this board.
+
+        @param scheduler: an instance of DedupingScheduler, as defined in
+                          deduping_scheduler.py
+        @param board: the board against which one wants to run the test.
+        @return True if the test can be successfully scheduled, false if
+                scheduling the test will result in the test never being run."""
+        labels = [Labels.BOARD_PREFIX + board]
+        if self._pool:
+          labels.append(Labels.POOL_PREFIX + self._pool)
+
+        hosts = scheduler.GetHosts(multiple_labels=labels)
+        return len(hosts) != 0
 
 
     def Run(self, scheduler, branch_builds, board, force=False):

@@ -5,6 +5,8 @@
 from autotest_lib.server.cros import frontend_wrappers
 from autotest_lib.server import frontend
 
+from constants import Labels
+
 
 class EnumeratorException(Exception):
     """Base class for exceptions from this module."""
@@ -30,8 +32,6 @@ class BoardEnumerator(object):
     @var _afe: a frontend.AFE instance used to talk to autotest.
     """
 
-    _LABEL_PREFIX = 'board:'
-
 
     def __init__(self, afe=None):
         """Constructor
@@ -50,7 +50,7 @@ class BoardEnumerator(object):
         @return list of board names, e.g. 'x86-mario'
         """
         try:
-            labels = self._afe.get_labels(name__startswith=self._LABEL_PREFIX)
+            labels = self._afe.get_labels(name__startswith=Labels.BOARD_PREFIX)
         except Exception as e:
             raise EnumerateException(e)
 

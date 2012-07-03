@@ -22,6 +22,10 @@ class FakeTask(task.Task):
         pymox.StubOutWithMock(self, 'Run')
 
 
+    def CanArm(self, scheduler):
+        scheduler.GetHosts(multiple_labels=mox.IgnoreArg()).AndReturn(['host1'])
+
+
     def Arm(self):
         """Expect to be triggered along with any other FakeTasks."""
         self.Run(mox.IgnoreArg(),
@@ -81,35 +85,43 @@ class BaseEventTest(mox.MoxTestBase):
     def testRecurringTasks(self):
         """Tests that tasks are all run on Handle()."""
         tasks = [FakeTask(*task, pymox=self.mox) for task in self._TASKS]
-        for task in tasks: task.Arm()
+        for task in tasks:
+            task.CanArm(self.sched)
+            task.Arm()
         event = self.CreateEvent()
         self.mox.ReplayAll()
 
         event.tasks = tasks
-        event.Handle(self.sched, {}, [])
+        event.Handle(self.sched, {}, "board1")
         self.mox.VerifyAll()
 
         # Ensure that all tasks are still around and can be Handle()'d again.
         self.mox.ResetAll()
-        for task in tasks: task.Arm()
+        for task in tasks:
+            task.CanArm(self.sched)
+            task.Arm()
         self.mox.ReplayAll()
-        event.Handle(self.sched, {}, [])
+        event.Handle(self.sched, {}, "board1")
 
 
     def testOneShotWithRecurringTasks(self):
         """Tests that one-shot tasks are destroyed correctly."""
         tasks = [FakeTask(*task, pymox=self.mox) for task in self._TASKS]
         all_tasks = tasks + [FakeOneShot(*self._TASKS[0], pymox=self.mox)]
-        for task in all_tasks: task.Arm()
+        for task in all_tasks:
+            task.CanArm(self.sched)
+            task.Arm()
         event = self.CreateEvent()
         self.mox.ReplayAll()
 
         event.tasks = all_tasks
-        event.Handle(self.sched, {}, [])
+        event.Handle(self.sched, {}, "board1")
         self.mox.VerifyAll()
 
         # Ensure that only recurring tasks can get Handle()'d again.
         self.mox.ResetAll()
-        for task in tasks: task.Arm()
+        for task in tasks:
+            task.CanArm(self.sched)
+            task.Arm()
         self.mox.ReplayAll()
-        event.Handle(self.sched, {}, [])
+        event.Handle(self.sched, {}, "board1")
