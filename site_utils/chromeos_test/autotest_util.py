@@ -113,7 +113,7 @@ def ImportTests(hosts, staging_dir):
     hosts: List of Autotest hosts containing host, user, and path; e.g.,
         [{'host': '127.0.0.1', 'user': 'user', 'path': '/usr/local/autotest'},
          {'host': '127.0.0.2', 'user': 'user', 'path': '/usr/local/autotest'}}
-    staging_dir: Directory containing extracted autotest.tar.bz2
+    staging_dir: Directory containing extracted autotest.tar
 
   Returns:
     True if all hosts synced successfully. False otherwise.

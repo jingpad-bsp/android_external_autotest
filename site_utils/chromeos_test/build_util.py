@@ -22,7 +22,7 @@ import common_util
 
 
 # Name of autotest tarball in downloaded archive.
-AUTOTEST = 'autotest.tar.bz2'
+AUTOTEST = 'autotest.tar'
 
 # Directory to mount rootfs to during MountImage.
 ROOTFS_MOUNT_DIR = 'rootfs'
@@ -96,7 +96,7 @@ def DownloadAndExtractBuild(archive_server, board, boto, build,
   """Downloads the specified build and extracts it to a temporary folder.
 
   Looks for the file '<archive_server>/<board>/<build>/image.zip'. The archive
-  is expected to contain chromiumos_test_image.bin and autotest.tar.bz2. Both
+  is expected to contain chromiumos_test_image.bin and autotest.tar. Both
   Google Storage and http(s) URLs are okay. If a Google Storage URL is provided,
   gsutil is used to download the file, while for http(s) wget is used. wget and
   gsutil must be in the path. Downloaded archive is deleted if all steps
@@ -168,9 +168,8 @@ def DownloadAndExtractBuild(archive_server, board, boto, build,
   # Extract autotest components. Use root to ensure when files are inserted into
   # the image later, that they have the proper permissions. Failure to do so
   # will break certain tests.
-  cmd = 'sudo tar xf %s --use-compress-prog=pbzip2' % os.path.join(
-      staging_dir, AUTOTEST)
-  msg = 'Failed to extract autotest.tar.bz2 ! Is pbzip2 installed?'
+  cmd = 'sudo tar xf %s' % os.path.join(staging_dir, AUTOTEST)
+  msg = 'Failed to extract autotest.tar !'
   common_util.RunCommand(cmd=cmd, cwd=staging_dir, error_msg=msg)
 
   # Everything went okay, so remove archive file.
