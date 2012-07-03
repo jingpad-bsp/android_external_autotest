@@ -88,7 +88,7 @@ def listen_to_session_manager_signal(callback, signal):
         signal_name=signal,
         dbus_interface='org.chromium.Chromium',
         bus_name=None,
-        path='/')
+        path='/org/chromium/SessionManager')
 
 POLICY_TYPE = 'google/chromeos/device'
 
