@@ -4,12 +4,15 @@
 
 import os
 
+import asus_ap_configurator
+import buffalo_ap_configurator
 import dlink_ap_configurator
 import dlink_dir655_ap_configurator
 import linksys_ap_configurator
+import linksyse2000_ap_configurator
+import linksysE4200_ap_configurator
+import Netgear3700_ap_configurator
 import trendnet_ap_configurator
-import buffalo_ap_configurator
-import asus_ap_configurator
 
 class APConfiguratorFactory(object):
     """Class that instantiates all available APConfigurators."""
@@ -53,6 +56,9 @@ class APConfiguratorFactory(object):
         self._build_all_instances_of_configurator(config_list,
             'LinksysE4200APConfigurator',
             linksysE4200_ap_configurator.LinksysAPConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'linksyse2000APConfigurator',
+            linksyse2000_ap_configurator.linksyse2000APConfigurator)
 
     def _build_all_instances_of_configurator(self, config_list, name,
                                              configurator):
