@@ -68,11 +68,18 @@ class security_OpenFDs(test.test):
         """
         p1 = subprocess.Popen(['ps', '-C', process, '-o', 'pid,command'],
                               stdout=subprocess.PIPE)
-        p2 = subprocess.Popen(['grep', arg_regex], stdin=p1.stdout,
+        # We're adding '--ignored= --type=renderer' to the GPU process cmdline
+        # to fix http://code.google.com/p/chromium/issues/detail?id=129884.
+        # This process has different characteristics, so we need to avoid
+        # finding it when we find --type=renderer tests processes.
+        p2 = subprocess.Popen(['grep', '-v', '--',
+                               '--ignored=.*%s' % arg_regex],
+                              stdin=p1.stdout, stdout=subprocess.PIPE)
+        p3 = subprocess.Popen(['grep', arg_regex], stdin=p2.stdout,
                               stdout=subprocess.PIPE)
-        p3 = subprocess.Popen(['awk', '{print $1}'], stdin=p2.stdout,
+        p4 = subprocess.Popen(['awk', '{print $1}'], stdin=p3.stdout,
                               stdout=subprocess.PIPE)
-        output = p3.communicate()[0]
+        output = p4.communicate()[0]
         return output.splitlines()
 
 
