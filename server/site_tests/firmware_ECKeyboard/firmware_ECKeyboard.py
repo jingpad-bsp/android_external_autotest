@@ -36,33 +36,20 @@ class firmware_ECKeyboard(FAFTSequence):
     version = 1
 
 
-    # Delay for remote shell command call to return
-    RPC_DELAY = 0.5
-
     # Delay between commands
     CMD_DELAY = 1
 
 
     def key_down(self, keyname):
         """Simulate pressing a key."""
-        self.faft_client.run_shell_command('ectool kbpress %d %d 1' %
-                (KEYMATRIX[keyname][0], KEYMATRIX[keyname][1]))
+        self.send_uart_command('kbpress %d %d 1' %
+                (KEYMATRIX[keyname][1], KEYMATRIX[keyname][0]))
 
 
     def key_up(self, keyname):
         """Simulate releasing a key."""
-        self.faft_client.run_shell_command('ectool kbpress %d %d 0' %
-                (KEYMATRIX[keyname][0], KEYMATRIX[keyname][1]))
-
-
-    def delayed_key_press(self, keyname):
-        """
-        Same as normal key_press but the call is delayed so that the key is
-        pressed after RPC call returns.
-        """
-        r, c = KEYMATRIX[keyname]
-        cmd = '(sleep %d; ectool kbpress %d %d 1; ectool kbpress %d %d 0;)&'
-        self.faft_client.run_shell_command(cmd % (self.RPC_DELAY, r, c, r, c))
+        self.send_uart_command('kbpress %d %d 0' %
+                (KEYMATRIX[keyname][1], KEYMATRIX[keyname][0]))
 
 
     def key_press(self, keyname):
@@ -121,10 +108,7 @@ class firmware_ECKeyboard(FAFTSequence):
             {   # Step 1, use key press simulation to issue reboot command
                 'reboot_action': self.reboot_by_keyboard,
             },
-            {   # Step 2, reboot EC to ensure releasing all simulated key
-                'reboot_action': self.sync_and_ec_reboot,
-            },
-            {   # Step 3, dummy step to ensure reboot
+            {   # Step 2, dummy step to ensure reboot
             }
         ))
         self.run_faft_sequence()
