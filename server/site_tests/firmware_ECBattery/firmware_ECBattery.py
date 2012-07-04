@@ -28,6 +28,12 @@ class firmware_ECBattery(FAFTSequence):
     # Maximum allowed error of current reading in mA
     CURRENT_MA_ERROR_MARGIN = 300
 
+    # Maximum allowed battery temperature in C
+    BATTERY_TEMP_UPPER_BOUND = 70
+
+    # Minimum allowed battery temperature in C
+    BATTERY_TEMP_LOWER_BOUND = 0
+
 
     def _check_voltage_match(self):
         """Check if voltage reading from kernel and servo match.
@@ -67,9 +73,27 @@ class firmware_ECBattery(FAFTSequence):
                     "Current reading from servo and kernel mismatch.")
 
 
+    def _check_temperature(self):
+        """Check if battery temperature is reasonable.
+
+        Raises:
+          error.TestFail: Raised when battery tempearture is higher than
+            BATTERY_TEMP_UPPER_BOUND or lower than BATTERY_TEMP_LOWER_BOUND.
+        """
+        battery_temp = float(self.send_uart_command_get_output("battery",
+                ["Temp:.+\(([0-9\.]+) C\)"])[0].group(1))
+        logging.info("Battery temperature is %f C" % battery_temp)
+        if (battery_temp > self.BATTERY_TEMP_UPPER_BOUND or
+            battery_temp < self.BATTERY_TEMP_LOWER_BOUND):
+            raise error.TestFail("Abnormal battery temperature.")
+
+
     def run_once(self, host=None):
         logging.info("Checking battery current reading...")
         self._check_current_match()
 
         logging.info("Checking battery voltage reading...")
         self._check_voltage_match()
+
+        logging.info("Checking battery temperature...")
+        self._check_temperature()
