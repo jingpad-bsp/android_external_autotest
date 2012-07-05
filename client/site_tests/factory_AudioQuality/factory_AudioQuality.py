@@ -21,10 +21,10 @@ import threading
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
+from autotest_lib.client.cros.audio import audio_helper
 from cros.factory.test import factory
 from cros.factory.test.test_ui import UI
 from cros.factory.test.event import Event
-from autotest_lib.client.cros.audio import audio_helper
 from cros.factory.test import ui as ful
 
 from autotest_lib.client.cros import flimflam_test_path
@@ -206,40 +206,40 @@ class factory_AudioQuality(test.test):
         self.on_test_complete()
         factory.console.info('%s run_once finished' % self.__class__)
         if hasattr(self, '_test_passed') and self._test_passed:
-            self.ui.call_js_function('testPass', {})
+            self.ui.CallJSFunction('testPass', {})
         else:
-            self.ui.call_js_function('testFail', {})
+            self.ui.CallJSFunction('testFail', {})
 
     def handle_loop_none(self, *args):
         self.restore_configuration()
-        self.ui.call_js_function('setMessage', _LABEL_WAITING)
+        self.ui.CallJSFunction('setMessage', _LABEL_WAITING)
 
     def handle_loop(self, *args):
         self.restore_configuration()
-        self.ui.call_js_function('setMessage', _LABEL_AUDIOLOOP)
+        self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP)
         self.start_loop()
 
     def handle_loop_from_dmic(self, *args):
         self.handle_loop()
-        self.ui.call_js_function('setMessage', _LABEL_AUDIOLOOP +
+        self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP +
                 _LABEL_DMIC_ON)
         self._ah.set_mixer_controls(self._dmic_switch_mixer_settings)
 
     def handle_loop_speaker_unmute(self, *args):
         self.handle_loop()
-        self.ui.call_js_function('setMessage', _LABEL_AUDIOLOOP +
+        self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP +
                 _LABEL_SPEAKER_MUTE_OFF)
         self.unmute_speaker()
 
     def handle_xtalk_left(self, *args):
         self.restore_configuration()
-        self.ui.call_js_function('setMessage', _LABEL_PLAYTONE_LEFT)
+        self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_LEFT)
         self.headphone_playback_switch(False, True)
         self.play_tone()
 
     def handle_xtalk_right(self, *args):
         self.restore_configuration()
-        self.ui.call_js_function('setMessage', _LABEL_PLAYTONE_RIGHT)
+        self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_RIGHT)
         self.headphone_playback_switch(True, False)
         self.play_tone()
 
@@ -265,7 +265,7 @@ class factory_AudioQuality(test.test):
                 args=(sock,))
         self._listen_thread.start()
 
-        self.ui.call_js_function('setMessage',
+        self.ui.CallJSFunction('setMessage',
                 'Ready for connection | 準備完成,等待連結')
 
     def headphone_playback_switch(self, left=False, right=False):
@@ -354,8 +354,8 @@ class factory_AudioQuality(test.test):
         self._dmic_switch_mixer_settings = dmic_switch_mixer_settings
 
         self.ui = UI()
-        self.ui.set_html(_HTML)
-        self.ui.run_js(_JS)
+        self.ui.SetHTML(_HTML)
+        self.ui.RunJS(_JS)
 
         # Register commands to corresponding handlers.
         self._handlers = {}
@@ -370,7 +370,7 @@ class factory_AudioQuality(test.test):
         self._handlers[_XTALK_L_RE] = self.handle_xtalk_left
         self._handlers[_XTALK_R_RE] = self.handle_xtalk_right
 
-        self.ui.add_event_handler('init_audio_server', self.init_audio_server)
-        self.ui.add_event_handler('test_command', self.test_command)
+        self.ui.AddEventHandler('init_audio_server', self.init_audio_server)
+        self.ui.AddEventHandler('test_command', self.test_command)
 
-        self.ui.run()
+        self.ui.Run()

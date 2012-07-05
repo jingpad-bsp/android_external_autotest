@@ -54,5 +54,5 @@ class factory_ProbeWifi(test.test):
             event_log.Log('bluetooth_mac', mac=bt_mac)
 
         if display:
-            self.ui.set_html(_HTML % (lan_mac, bt_mac))
-            self.ui.run()
+            self.ui.SetHTML(_HTML % (lan_mac, bt_mac))
+            self.ui.Run()
