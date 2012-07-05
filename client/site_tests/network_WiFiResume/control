@@ -1,0 +1,35 @@
+# Copyright (C) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "vivek.dasmohapatra@collabora.co.uk"
+NAME = "network_WiFiResume"
+PURPOSE = "Check the WiFi module works after a resume"
+CRITERIA = ""
+SUITE = "hwqual"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "network"
+TEST_TYPE = "client"
+
+DOC = """
+This test checks to see if the network is (or becomes, within a timeout)
+traversable by a ping packet after a suspend/resume cycle.
+Optional test args:
+
+reachable: (ip addreess, string) - if this is reachable,
+the network is considered up. The default route"s gateway will be used
+if this is not set, so you can normally leave this out.
+
+wifi_timeout: (seconds, integer) - deadline by which the network must be up
+reachable: (string) an IP address or hostname which is known to be reachable at
+           test time, if unset the default gateway is used
+"""
+args_dict = utils.args_to_dict(args)
+wifi_timeout = int(args_dict.get('wifi_timeout', 5))
+reachable = args_dict.get('reachable_address', None)
+device = args_dict.get('device', None)
+
+job.run_test("network_WiFiResume", reachable=reachable,
+             wifi_timeout=wifi_timeout,
+             dev=device)
