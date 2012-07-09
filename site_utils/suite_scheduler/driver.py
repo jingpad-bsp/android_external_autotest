@@ -112,7 +112,7 @@ class Driver(object):
         while True:
             try:
                 self.HandleEventsOnce(mv)
-            except EnumeratorException as e:
+            except board_enumerator.EnumeratorException as e:
                 logging.warn('Failed to enumerate boards: %r', e)
             mv.Update()
             time.sleep(self._LOOP_INTERVAL_SECONDS)

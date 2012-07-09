@@ -35,6 +35,7 @@ that will be in play.
 """
 
 import getpass, logging, logging.handlers, optparse, os, re, signal, sys
+import traceback
 import common
 import board_enumerator, deduping_scheduler, driver, forgiving_config_parser
 import manifest_versions
@@ -191,7 +192,8 @@ def main():
             mv.Initialize()
             d.RunForever(config, mv)
     except Exception as e:
-        logging.error('Fatal exception in suite_scheduler: %r', e)
+        logging.error('Fatal exception in suite_scheduler: %r\n%s', e,
+                      traceback.format_exc())
         return 1
 
 if __name__ == "__main__":
