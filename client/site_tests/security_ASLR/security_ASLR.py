@@ -129,9 +129,11 @@ class security_ASLR(test.test):
         Args:
             pid: a string containing the pid to be tested.
 
-        Raises:
-            error.TestFail if any addresses are the same after restarting.
+        Returns:
+            A dict containing a Boolean for whether or not the test passed
+            and a list of string messages about passing/failing cases.
         """
+        test_result = dict([('pass', True), ('results', [])])
         name = process.get_name()
         parent = process.get_parent()
         pid1 = self.get_pid_of(process)
@@ -146,11 +148,14 @@ class security_ASLR(test.test):
             match_found = (attempt2.has_key(key) and
                 attempt1[key].get_start() == attempt2[key].get_start())
             if match_found:
-                raise error.TestFail(
-                    'In %s, address for %s had deterministic value: %s'
-                    % (name, key, str(attempt1[key].get_start())))
-        # No addresses match, test was successful.
-        pass
+                test_result['pass'] = False
+                test_result['results'].append(
+                        '[FAIL] Address for %s had deterministic value: '
+                        '%s' % (key, str(attempt1[key].get_start())))
+            else:
+                test_result['results'].append( '[PASS] Address for %s '
+                        'successfully changed.' % key)
+        return test_result
 
     def restart(self, process):
         """Restarts a process given information about it.
@@ -171,7 +176,6 @@ class security_ASLR(test.test):
         initctl_name = process.get_initctl_name()
         status_command = 'initctl status %s' % initctl_name
         initial_status = utils.system_output(status_command)
-        logging.debug('Initial status: %s' % initial_status)
         utils.system('initctl restart %s' % initctl_name)
         utils.poll_for_condition(
             lambda: self.has_restarted(process, status_command,
@@ -204,14 +208,15 @@ class security_ASLR(test.test):
         name = process.get_name()
         initctl_name = process.get_initctl_name()
         current_status = utils.system_output(status_command)
-        logging.debug(initial_status)
-        logging.debug(current_status)
+        logging.debug('Initial status: %s' % initial_status)
+        logging.debug('Current status: %s' % current_status)
         regex = r'%s start/running' % initctl_name
         is_running = re.match(regex, current_status)
         is_new_pid = initial_status != current_status
         try:
             utils.system('ps -C %s' % name)
         except:
+            logging.debug('Restart done: False')
             return False
         logging.debug('Restart done: %r' % (is_running and is_new_pid))
         return (is_running and is_new_pid)
@@ -287,9 +292,26 @@ class security_ASLR(test.test):
 
         Called when test is run.  Gets processes to test and calls test on
         them.
+
+        Raises:
+            error.TestFail if any processes' memory mapping addresses are the
+            same after restarting.
         """
 
         processes = self.get_processes_to_test()
+        aslr_enabled = True
+        full_results = dict()
         for current_process in processes:
-            self.test_randomization(current_process)
+            test_results = self.test_randomization(current_process)
+            full_results[current_process.get_name()] = test_results['results']
+            if not test_results['pass']:
+                aslr_enabled = False
+        logging.debug('SUMMARY:')
+        for process_name, results in full_results.iteritems():
+            logging.debug('Results for %s:' % process_name)
+            for result in results:
+                logging.debug(result)
+        if not aslr_enabled:
+            raise error.TestFail('One or more processes had deterministic '
+                    'memory mappings')
 
