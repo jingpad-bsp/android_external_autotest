@@ -104,28 +104,25 @@ class SiteClientLogger(object):
             serve_packages = global_config.global_config.get_config_value(
                 "PACKAGES", "serve_packages_from_autoserv", type=bool)
             if serve_packages and pkg_name == 'packages.checksum':
-                package_served = False
                 try:
                     checksum_file = os.path.join(
                         self.job.pkgmgr.pkgmgr_dir, 'packages', pkg_name)
                     if os.path.exists(checksum_file):
                         self.host.send_file(checksum_file, dest_path)
-                        package_served = True
                 except error.AutoservRunError:
                     msg = "Package checksum file not found, continuing anyway"
                     logging.exception(msg)
 
-                if package_served:
-                    try:
-                        # When fetching a package, the client expects to be
-                        # notified when the fetching is complete. Autotest
-                        # does this pushing a B to a fifo queue to the client.
-                        self.host.run("echo B > %s" % fifo_path)
-                    except error.AutoservRunError:
-                        msg = "Checksum installation failed, continuing anyway"
-                        logging.exception(msg)
-                    finally:
-                      return
+                try:
+                    # When fetching a package, the client expects to be
+                    # notified when the fetching is complete. Autotest
+                    # does this pushing a B to a fifo queue to the client.
+                    self.host.run("echo B > %s" % fifo_path)
+                except error.AutoservRunError:
+                    msg = "Checksum installation failed, continuing anyway"
+                    logging.exception(msg)
+                finally:
+                    return
 
         # Fall through to process the line using the default method.
         super(SiteClientLogger, self)._process_line(line)
