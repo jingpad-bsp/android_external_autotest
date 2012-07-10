@@ -189,6 +189,6 @@ class BaseEvent(object):
         logging.info('Handling %s for %s', self.keyword, board)
         # we need to iterate over an immutable copy of self._tasks
         for task in list(self.tasks):
-            if task.CanRun(scheduler, board):
+            if task.AvailableHosts(scheduler, board):
                 if not task.Run(scheduler, branch_builds, board, force):
                     self._tasks.remove(task)

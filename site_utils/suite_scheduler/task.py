@@ -204,20 +204,20 @@ class Task(object):
         return hash(str(self))
 
 
-    def CanRun(self, scheduler, board):
-        """Check and see if this test is able to be scheduled on this board.
+    def AvailableHosts(self, scheduler, board):
+        """Query what hosts are able to run a test on a board and pool
+        combination.
 
         @param scheduler: an instance of DedupingScheduler, as defined in
                           deduping_scheduler.py
         @param board: the board against which one wants to run the test.
-        @return True if the test can be successfully scheduled, false if
-                scheduling the test will result in the test never being run."""
+        @return The list of hosts meeting the board and pool requirements,
+                or None if no hosts were found."""
         labels = [Labels.BOARD_PREFIX + board]
         if self._pool:
           labels.append(Labels.POOL_PREFIX + self._pool)
 
-        hosts = scheduler.GetHosts(multiple_labels=labels)
-        return len(hosts) != 0
+        return scheduler.GetHosts(multiple_labels=labels)
 
 
     def Run(self, scheduler, branch_builds, board, force=False):
