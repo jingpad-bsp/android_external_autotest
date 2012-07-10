@@ -18,7 +18,7 @@ from autotest_lib.client.common_lib import base_job, control_data, error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros import control_file_getter, dynamic_suite
-from autotest_lib.server.cros import job_status
+from autotest_lib.server.cros import host_lock_manager, job_status
 from autotest_lib.server.cros.dynamic_suite_fakes import FakeControlData
 from autotest_lib.server.cros.dynamic_suite_fakes import FakeHost, FakeJob
 from autotest_lib.server.cros.dynamic_suite_fakes import FakeLabel
@@ -176,6 +176,7 @@ class ReimagerTest(mox.MoxTestBase):
         super(ReimagerTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.tko = self.mox.CreateMock(frontend.TKO)
+        self.manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         self.reimager = dynamic_suite.Reimager('', afe=self.afe, tko=self.tko)
         self._CONFIG.override_config_value('CROS',
                                            'sharding_factor',
@@ -268,48 +269,59 @@ class ReimagerTest(mox.MoxTestBase):
                                             self._NUM)
 
 
-    def expect_attempt(self, canary, statuses, ex=None, check_hosts=True):
+    def expect_attempt(self, canary_job, statuses, ex=None, check_hosts=True):
         """Sets up |self.reimager| to expect an attempt() that returns |success|
 
         Also stubs out Reimager._clear_build_state(), should the caller wish
         to set an expectation there as well.
 
-        @param success: the value returned by poll_job_results()
+        @param canary_job: a FakeJob representing the job we're expecting.
+        @param statuses: dict mapping a hostname to its job_status.Status.
+                         Will be returned by job_status.gather_per_host_results
         @param ex: if not None, |ex| is raised by get_jobs()
         @return a FakeJob configured with appropriate expectations
         """
         self.mox.StubOutWithMock(self.reimager, '_ensure_version_label')
-        self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
-
         self.mox.StubOutWithMock(self.reimager, '_schedule_reimage_job')
+        self.mox.StubOutWithMock(self.reimager, '_count_usable_hosts')
+        self.mox.StubOutWithMock(self.reimager, '_clear_build_state')
+
+        self.mox.StubOutWithMock(job_status, 'wait_for_job_to_start')
+        self.mox.StubOutWithMock(job_status, 'wait_for_and_lock_job_hosts')
+        self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
+        self.mox.StubOutWithMock(job_status, 'wait_for_job_to_finish')
+        self.mox.StubOutWithMock(job_status, 'gather_per_host_results')
+        self.mox.StubOutWithMock(job_status, 'record_and_report_results')
+
+
+        self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
         self.reimager._schedule_reimage_job(self._BUILD,
                                             self._BOARD,
                                             None,
-                                            self._NUM).AndReturn(canary)
+                                            self._NUM).AndReturn(canary_job)
         if check_hosts:
-            self.mox.StubOutWithMock(self.reimager, '_count_usable_hosts')
             self.reimager._count_usable_hosts(
                 mox.IgnoreArg()).AndReturn(self._NUM)
 
-        self.afe.get_jobs(id=canary.id, not_yet_run=True).AndReturn([])
-        if ex is not None:
-            self.afe.get_jobs(id=canary.id, finished=True).AndRaise(ex)
+        job_status.wait_for_job_to_start(self.afe, canary_job)
+        job_status.wait_for_and_lock_job_hosts(
+            self.afe, canary_job, self.manager).AndReturn(statuses.keys())
+
+        if ex:
+            job_status.wait_for_job_to_finish(self.afe, canary_job).AndRaise(ex)
         else:
-            self.afe.get_jobs(id=canary.id, finished=True).AndReturn([canary])
-            self.mox.StubOutWithMock(job_status, 'gather_per_host_results')
+            job_status.wait_for_job_to_finish(
+                    self.afe, canary_job).AndReturn([canary_job])
             job_status.gather_per_host_results(
-                    mox.IgnoreArg(), mox.IgnoreArg(), [canary],
+                    mox.IgnoreArg(), mox.IgnoreArg(), [canary_job],
                     mox.StrContains(dynamic_suite.REIMAGE_JOB_NAME)).AndReturn(
                             statuses)
 
         if statuses:
             ret_val = reduce(lambda v,s: v and s.is_good(),
                              statuses.values(), True)
-            self.mox.StubOutWithMock(job_status, 'record_and_report_results')
             job_status.record_and_report_results(
                 statuses.values(), mox.IgnoreArg()).AndReturn(ret_val)
-
-        self.mox.StubOutWithMock(self.reimager, '_clear_build_state')
 
 
     def testSuccessfulReimage(self):
@@ -322,7 +334,8 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
         self.assertTrue(self.reimager.attempt(self._BUILD, self._BOARD, None,
-                                              rjob.record_entry, True))
+                                              rjob.record_entry, True,
+                                              self.manager))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -336,7 +349,8 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
         self.assertFalse(self.reimager.attempt(self._BUILD, self._BOARD, None,
-                                               rjob.record_entry, True))
+                                               rjob.record_entry, True,
+                                               self.manager))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -349,7 +363,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob = self.mox.CreateMock(base_job.base_job)
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, None,
-                              rjob.record_entry, True)
+                              rjob.record_entry, True, self.manager)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -366,7 +380,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record_entry(StatusContains.CreateFromStrings('END ERROR'))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, None,
-                              rjob.record_entry, True)
+                              rjob.record_entry, True, self.manager)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -381,7 +395,8 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._clear_build_state(mox.StrContains(canary.hostname))
         self.mox.ReplayAll()
         self.assertTrue(self.reimager.attempt(self._BUILD, self._BOARD, None,
-                                              rjob.record_entry, False))
+                                              rjob.record_entry, False,
+                                              self.manager))
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -400,7 +415,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record_entry(StatusContains.CreateFromStrings('END WARN'))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, None,
-                              rjob.record_entry, True)
+                              rjob.record_entry, True, self.manager)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -419,7 +434,7 @@ class ReimagerTest(mox.MoxTestBase):
         rjob.record_entry(StatusContains.CreateFromStrings('END ERROR'))
         self.mox.ReplayAll()
         self.reimager.attempt(self._BUILD, self._BOARD, None,
-                              rjob.record_entry, True)
+                              rjob.record_entry, True, self.manager)
         self.reimager.clear_reimaged_host_state(self._BUILD)
 
 
@@ -441,6 +456,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.tmpdir = tempfile.mkdtemp(suffix=type(self).__name__)
 
+        self.manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         self.getter = self.mox.CreateMock(control_file_getter.ControlFileGetter)
 
         self.files = {'one': FakeControlData(self._TAG, 'data_one', expr=True),
@@ -630,6 +646,7 @@ class SuiteTest(mox.MoxTestBase):
     def schedule_and_expect_these_results(self, suite, results, recorder):
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(True)
+        self.manager.unlock()
         for result in results:
             status = result[0]
             test_name = result[1]
@@ -657,7 +674,7 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_control_file_reparsing()
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record_entry, True)
+        suite.run_and_wait(recorder.record_entry, self.manager, True)
 
 
     def testRunAndWaitFailure(self):
@@ -672,6 +689,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(True)
+        self.manager.unlock()
         self.mox.StubOutWithMock(job_status, 'wait_for_results')
         job_status.wait_for_results(mox.IgnoreArg(),
                                     mox.IgnoreArg(),
@@ -680,7 +698,7 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_control_file_reparsing()
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record_entry, True)
+        suite.run_and_wait(recorder.record_entry, self.manager, True)
 
 
     def testRunAndWaitScheduleFailure(self):
@@ -698,7 +716,7 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_control_file_reparsing()
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record_entry, True)
+        suite.run_and_wait(recorder.record_entry, self.manager, True)
 
 
     def testRunAndWaitDevServerRacyFailure(self):
@@ -719,7 +737,7 @@ class SuiteTest(mox.MoxTestBase):
             StatusContains.CreateFromStrings('FAIL', self._TAG, 'Dev Server'))
         self.mox.ReplayAll()
 
-        suite.run_and_wait(recorder.record_entry, True)
+        suite.run_and_wait(recorder.record_entry, self.manager, True)
 
 
 if __name__ == '__main__':

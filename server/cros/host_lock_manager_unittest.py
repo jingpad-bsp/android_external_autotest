@@ -20,37 +20,34 @@ class HostLockManagerTest(mox.MoxTestBase):
     """Unit tests for host_lock_manager.HostLockManager.
     """
 
-    _EXPECTED = frozenset(['h1', 'h2'])
+    _EXPECTED = ['h1', 'h2']
 
 
     def setUp(self):
         super(HostLockManagerTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.manager = host_lock_manager.HostLockManager(self.afe)
-        self.manager.prime(self._EXPECTED)
 
 
-    def testPrime(self):
-        """Test that expected hosts are managed after prime() is called."""
-        self.assertEquals(self._EXPECTED, self.manager._hosts)
-
-
-    def testReprimeRaises(self):
-        """Test that prime() can be called once and only once."""
-        self.assertRaises(error.HostLockManagerReuse,
-                          self.manager.prime, ['other'])
+    def testAddSemantics(self):
+        """Test that expected hosts are managed after add() is called."""
+        self.manager.add(self._EXPECTED[1:])
+        self.assertEquals(self._EXPECTED[1:], sorted(self.manager._hosts))
+        self.manager.add(self._EXPECTED)
+        self.assertEquals(sorted(self._EXPECTED), sorted(self.manager._hosts))
 
 
     def testLockUnlock(self):
-        """Test that lock()/unlock() touch all prime()d hosts."""
+        """Test that lock()/unlock() touch all add()d hosts."""
+        self.manager.add(self._EXPECTED)
         self.afe.run('modify_hosts',
-                     host_filter_data=mox.ContainsKeyValue('hostname__in',
-                                                           self._EXPECTED),
+                     host_filter_data=mox.ContainsKeyValue(
+                         'hostname__in', mox.SameElementsAs(self._EXPECTED)),
                      update_data=mox.ContainsKeyValue('locked',
                                                       True)).InAnyOrder()
         self.afe.run('modify_hosts',
-                     host_filter_data=mox.ContainsKeyValue('hostname__in',
-                                                           self._EXPECTED),
+                     host_filter_data=mox.ContainsKeyValue(
+                         'hostname__in', mox.SameElementsAs(self._EXPECTED)),
                      update_data=mox.ContainsKeyValue('locked',
                                                       False)).InAnyOrder()
         self.mox.ReplayAll()
@@ -60,17 +57,17 @@ class HostLockManagerTest(mox.MoxTestBase):
 
     def testDestructorUnlocks(self):
         """Test that failing to unlock manually calls it automatically."""
-        local_manager = host_lock_manager.HostLockManager(self.afe)
-        local_manager.prime(self._EXPECTED)
         self.afe.run('modify_hosts',
-                     host_filter_data=mox.ContainsKeyValue('hostname__in',
-                                                           self._EXPECTED),
+                     host_filter_data=mox.ContainsKeyValue(
+                         'hostname__in', mox.SameElementsAs(self._EXPECTED)),
                      update_data=mox.ContainsKeyValue('locked',
                                                       True)).InAnyOrder()
         self.afe.run('modify_hosts',
-                     host_filter_data=mox.ContainsKeyValue('hostname__in',
-                                                           self._EXPECTED),
+                     host_filter_data=mox.ContainsKeyValue(
+                         'hostname__in', mox.SameElementsAs(self._EXPECTED)),
                      update_data=mox.ContainsKeyValue('locked',
                                                       False)).InAnyOrder()
+        local_manager = host_lock_manager.HostLockManager(self.afe)
+        local_manager.add(self._EXPECTED)
         self.mox.ReplayAll()
         local_manager.lock()

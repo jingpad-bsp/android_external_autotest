@@ -8,7 +8,7 @@ from autotest_lib.client.common_lib import base_job, control_data, global_config
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import control_file_getter, frontend_wrappers
-from autotest_lib.server.cros import job_status
+from autotest_lib.server.cros import host_lock_manager, job_status
 from autotest_lib.server.cros.job_status import Status
 from autotest_lib.server import frontend
 from autotest_lib.frontend.afe.json_rpc import proxy
@@ -270,24 +270,34 @@ def reimage_and_run(**dargs):
     board = 'board:%s' % board
     if pool:
         pool = 'pool:%s' % pool
-    reimager = Reimager(job.autodir, results_dir=job.resultdir)
 
-    if skip_reimage or reimager.attempt(build, board, pool, job.record_entry,
-                                        check_hosts, num=num):
-        # Ensure that the image's artifacts have completed downloading.
-        try:
-            ds = dev_server.DevServer.create()
-            ds.finish_download(build)
-        except dev_server.DevServerException as e:
-            raise error.AsynchronousBuildFailure(e)
+    afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
+                                        debug=False)
+    tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
+                                        debug=False)
+    manager = host_lock_manager.HostLockManager(afe=afe)
+    reimager = Reimager(job.autodir, afe, tko, results_dir=job.resultdir)
 
-        timestamp = datetime.datetime.now().strftime(job_status.TIME_FMT)
-        utils.write_keyval(job.resultdir,
-                           {ARTIFACT_FINISHED_TIME: timestamp})
+    try:
+        if skip_reimage or reimager.attempt(build, board, pool,
+                                            job.record_entry, check_hosts,
+                                            manager, num=num):
+            # Ensure that the image's artifacts have completed downloading.
+            try:
+                ds = dev_server.DevServer.create()
+                ds.finish_download(build)
+            except dev_server.DevServerException as e:
+                raise error.AsynchronousBuildFailure(e)
 
-        suite = Suite.create_from_name(name, build, pool=pool,
-                                       results_dir=job.resultdir)
-        suite.run_and_wait(job.record_entry, add_experimental=add_experimental)
+            timestamp = datetime.datetime.now().strftime(job_status.TIME_FMT)
+            utils.write_keyval(job.resultdir,
+                               {ARTIFACT_FINISHED_TIME: timestamp})
+
+            suite = Suite.create_from_name(name, build, afe=afe, tko=tko,
+                                           pool=pool, results_dir=job.resultdir)
+            suite.run_and_wait(job.record_entry, manager, add_experimental)
+    finally:
+        manager.unlock()
 
     reimager.clear_reimaged_host_state(build)
 
@@ -400,7 +410,8 @@ class Reimager(object):
         return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
 
 
-    def attempt(self, build, board, pool, record, check_hosts, num=None):
+    def attempt(self, build, board, pool, record, check_hosts,
+                manager, num=None):
         """
         Synchronously attempt to reimage some machines.
 
@@ -417,6 +428,8 @@ class Reimager(object):
                prototype:
                  record(base_job.status_log_entry)
         @param check_hosts: require appropriate hosts to be available now.
+        @param manager: an as-yet-unused HostLockManager instance to handle
+                        locking DUTs that we decide to reimage.
         @param num: how many devices to reimage.
         @return True if all reimaging jobs succeed, false otherwise.
         """
@@ -437,12 +450,19 @@ class Reimager(object):
             self._record_job_if_possible(REIMAGE_JOB_NAME, canary_job)
             logging.debug('Created re-imaging job: %d', canary_job.id)
 
-            # Poll until reimaging is complete.
-            self._wait_for_job_to_start(canary_job.id)
-            self._wait_for_job_to_finish(canary_job.id)
+            job_status.wait_for_job_to_start(self._afe, canary_job)
+            logging.debug('Re-imaging job running.')
+
+            hosts = job_status.wait_for_and_lock_job_hosts(self._afe,
+                                                           canary_job, manager)
+            logging.debug('%r locked for reimaging.', hosts)
+
+            job_status.wait_for_job_to_finish(self._afe, canary_job)
+            logging.debug('Re-imaging job finished.')
 
             # Gather job results.
             results = self.get_results(canary_job)
+            self._reimaged_hosts[build] = results.keys()
 
         except error.InadequateHostsException as e:
             logging.warning(e)
@@ -455,8 +475,6 @@ class Reimager(object):
             Status('ERROR', REIMAGE_JOB_NAME, str(e),
                    begin_time_str=begin_time_str).record_all(record)
             return False
-
-        self._remember_reimaged_hosts(build, results.keys())
 
         return job_status.record_and_report_results(results.values(), record)
 
@@ -496,39 +514,6 @@ class Reimager(object):
         elif num > available:
             raise error.InadequateHostsException(
                 'Too few hosts with %r' % labels)
-
-
-    def _wait_for_job_to_start(self, job_id):
-        """
-        Wait for the job specified by |job_id| to start.
-
-        @param job_id: the job ID to poll on.
-        """
-        while len(self._afe.get_jobs(id=job_id, not_yet_run=True)) > 0:
-            time.sleep(10)
-        logging.debug('Re-imaging job running.')
-
-
-    def _wait_for_job_to_finish(self, job_id):
-        """
-        Wait for the job specified by |job_id| to finish.
-
-        @param job_id: the job ID to poll on.
-        """
-        while len(self._afe.get_jobs(id=job_id, finished=True)) == 0:
-            time.sleep(10)
-        logging.debug('Re-imaging job finished.')
-
-
-    def _remember_reimaged_hosts(self, build, hosts):
-        """
-        Remember hosts that were reimaged with |build| as a part |canary_job|.
-
-        @param build: the build that was installed e.g.
-                      x86-alex-release/R18-1655.0.0-a1-b1584.
-        @param hosts: iterable of hostnames.
-        """
-        self._reimaged_hosts[build] = hosts
 
 
     def clear_reimaged_host_state(self, build):
@@ -840,7 +825,7 @@ class Suite(object):
         return test_obj
 
 
-    def run_and_wait(self, record, add_experimental=True):
+    def run_and_wait(self, record, manager, add_experimental=True):
         """
         Synchronously run tests in |self.tests|.
 
@@ -862,6 +847,8 @@ class Suite(object):
         try:
             Status('INFO', 'Start %s' % self._tag).record_result(record)
             self.schedule(add_experimental)
+            # Unlock all hosts, so test jobs can be run on them.
+            manager.unlock()
             try:
                 for result in job_status.wait_for_results(self._afe,
                                                           self._tko,

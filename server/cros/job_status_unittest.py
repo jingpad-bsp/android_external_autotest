@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for server/cros/dynamic_suite.py."""
+"""Unit tests for server/cros/job_status.py."""
 
 import logging
 import mox
@@ -13,8 +13,9 @@ import tempfile
 import time
 import unittest
 
-from autotest_lib.server.cros import job_status
-from autotest_lib.server.cros.dynamic_suite_fakes import FakeJob, FakeStatus
+from autotest_lib.server.cros import job_status, host_lock_manager
+from autotest_lib.server.cros.dynamic_suite_fakes import FakeHost, FakeJob
+from autotest_lib.server.cros.dynamic_suite_fakes import FakeStatus
 from autotest_lib.server import frontend
 
 
@@ -36,9 +37,113 @@ class StatusTest(mox.MoxTestBase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
 
+    def testGatherJobHostnamesAllRan(self):
+        """All entries for the job were assigned hosts."""
+        job = FakeJob(0, [])
+        expected_hosts = ['host2', 'host1']
+        entries = [{'host': {'hostname': h}} for h in expected_hosts]
+        self.afe.run('get_host_queue_entries', job=job.id).AndReturn(entries)
+        self.mox.ReplayAll()
+
+        self.assertEquals(sorted(expected_hosts),
+                          sorted(job_status.gather_job_hostnames(self.afe,
+                                                                 job)))
+
+
+    def testGatherJobHostnamesSomeRan(self):
+        """Not all entries for the job were assigned hosts."""
+        job = FakeJob(0, [])
+        expected_hosts = ['host2', 'host1']
+        entries = [{'host': {'hostname': h}} for h in expected_hosts]
+        entries.append({'host': None})
+        self.afe.run('get_host_queue_entries', job=job.id).AndReturn(entries)
+        self.mox.ReplayAll()
+
+        self.assertEquals(sorted(expected_hosts),
+                          sorted(job_status.gather_job_hostnames(self.afe,
+                                                                 job)))
+
+
+    def testWaitForJobToStart(self):
+        """Ensure we detect when a job has started running."""
+        self.mox.StubOutWithMock(time, 'sleep')
+
+        job = FakeJob(0, [])
+        self.afe.get_jobs(id=job.id, not_yet_run=True).AndReturn([job])
+        self.afe.get_jobs(id=job.id, not_yet_run=True).AndReturn([])
+        time.sleep(mox.IgnoreArg()).MultipleTimes()
+        self.mox.ReplayAll()
+
+        job_status.wait_for_job_to_start(self.afe, job)
+
+
+    def testWaitForJobToStartAlreadyStarted(self):
+        """Ensure we don't wait forever if a job already started."""
+        job = FakeJob(0, [])
+        self.afe.get_jobs(id=job.id, not_yet_run=True).AndReturn([])
+        self.mox.ReplayAll()
+        job_status.wait_for_job_to_start(self.afe, job)
+
+
+    def testWaitForJobToFinish(self):
+        """Ensure we detect when a job has finished."""
+        self.mox.StubOutWithMock(time, 'sleep')
+
+        job = FakeJob(0, [])
+        self.afe.get_jobs(id=job.id, finished=True).AndReturn([])
+        self.afe.get_jobs(id=job.id, finished=True).AndReturn([job])
+        time.sleep(mox.IgnoreArg()).MultipleTimes()
+        self.mox.ReplayAll()
+
+        job_status.wait_for_job_to_finish(self.afe, job)
+
+
+    def testWaitForJobToStartAlreadyFinished(self):
+        """Ensure we don't wait forever if a job already finished."""
+        job = FakeJob(0, [])
+        self.afe.get_jobs(id=job.id, finished=True).AndReturn([job])
+        self.mox.ReplayAll()
+        job_status.wait_for_job_to_finish(self.afe, job)
+
+
+    def testWaitForJobHostsToRunAndGetLocked(self):
+        """Ensure we lock all running hosts as they're discovered."""
+        self.mox.StubOutWithMock(time, 'sleep')
+
+        job = FakeJob(0, [])
+        manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
+        expected_hosts = [FakeHost('host2'), FakeHost('host1')]
+        expected_hostnames = [h.hostname for h in expected_hosts]
+        entries = [{'host': {'hostname': h}} for h in expected_hostnames]
+
+        time.sleep(mox.IgnoreArg()).MultipleTimes()
+        self.afe.run('get_host_queue_entries', job=job.id).AndReturn(entries)
+
+        self.afe.get_hosts(mox.SameElementsAs(expected_hostnames),
+                           status='Running').AndReturn(expected_hosts[1:])
+        manager.add(expected_hostnames[1:]).InAnyOrder('manager1')
+        manager.lock().InAnyOrder('manager1')
+
+        # Returning the same list of hosts more than once should be a noop.
+        self.afe.get_hosts(mox.SameElementsAs(expected_hostnames),
+                           status='Running').AndReturn(expected_hosts[1:])
+
+        self.afe.get_hosts(mox.SameElementsAs(expected_hostnames),
+                           status='Running').AndReturn(expected_hosts)
+        manager.lock().InAnyOrder('manager2')
+        manager.add(expected_hostnames).InAnyOrder('manager2')
+
+        self.mox.ReplayAll()
+        self.assertEquals(
+            sorted(expected_hostnames),
+            sorted(job_status.wait_for_and_lock_job_hosts(self.afe,
+                                                          job,
+                                                          manager)))
+
+
     def expect_result_gathering(self, job):
         self.afe.get_jobs(id=job.id, finished=True).AndReturn(job)
-        entries = map(lambda s: s.entry, job.statuses)
+        entries = [s.entry for s in job.statuses]
         self.afe.run('get_host_queue_entries',
                      job=job.id).AndReturn(entries)
         if True not in map(lambda e: 'aborted' in e and e['aborted'], entries):
@@ -47,7 +152,6 @@ class StatusTest(mox.MoxTestBase):
 
     def testWaitForResults(self):
         """Should gather status and return records for job summaries."""
-
         jobs = [FakeJob(0, [FakeStatus('GOOD', 'T0', ''),
                             FakeStatus('GOOD', 'T1', '')]),
                 FakeJob(1, [FakeStatus('ERROR', 'T0', 'err', False),

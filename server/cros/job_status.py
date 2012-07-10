@@ -2,11 +2,82 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, time
+import datetime, logging, time
 from autotest_lib.client.common_lib import base_job, log
 
 
 TIME_FMT = '%Y-%m-%d %H:%M:%S'
+DEFAULT_POLL_INTERVAL_SECONDS = 10
+
+
+def gather_job_hostnames(afe, job):
+    """
+    Collate and return names of hosts used in |job|.
+
+    @param afe: an instance of AFE as defined in server/frontend.py.
+    @param job: the job to poll on.
+    @return iterable of hostnames on which |job| was run.
+    """
+    hosts = []
+    for e in afe.run('get_host_queue_entries', job=job.id):
+        if not e['host']:
+            logging.warn('Job %s (%s) has an entry with no host!',
+                         job.name, job.id)
+        else:
+            hosts.append(e['host']['hostname'])
+    return hosts
+
+
+def wait_for_job_to_start(afe, job, interval=DEFAULT_POLL_INTERVAL_SECONDS):
+    """
+    Wait for the job specified by |job.id| to start.
+
+    @param afe: an instance of AFE as defined in server/frontend.py.
+    @param job: the job to poll on.
+    """
+    while len(afe.get_jobs(id=job.id, not_yet_run=True)) > 0:
+        time.sleep(interval)
+
+
+def wait_for_job_to_finish(afe, job, interval=DEFAULT_POLL_INTERVAL_SECONDS):
+    """
+    Wait for the job specified by |job.id| to finish.
+
+    @param afe: an instance of AFE as defined in server/frontend.py.
+    @param job: the job to poll on.
+    """
+    while len(afe.get_jobs(id=job.id, finished=True)) == 0:
+        time.sleep(interval)
+
+
+def wait_for_and_lock_job_hosts(afe, job, manager,
+                                interval=DEFAULT_POLL_INTERVAL_SECONDS):
+    """
+    Poll until devices have begun reimaging, locking them as we go.
+
+    Gather the hosts chosen for |job| -- which must be in the Running
+    state itself -- and as they each individually come online and begin
+    Running, lock them.  Poll until all chosen hosts have gone to Running
+    and been locked using |manager|.
+
+    @param afe: an instance of AFE as defined in server/frontend.py.
+    @param job: a Running frontend.Job
+    @param manager: a HostLockManager instance.  Hosts will be added to it
+                    as they start Running, and it will be used to lock them.
+    @return iterable of the hosts that were locked.
+    """
+    expected_hosts = sorted(gather_job_hostnames(afe, job))
+    locked_hosts = []
+    while sorted(locked_hosts) != expected_hosts:
+        hostnames = [h.hostname for h in afe.get_hosts(expected_hosts,
+                                                       status='Running')]
+        if hostnames != locked_hosts:
+            # New hosts to lock!
+            manager.add(hostnames)
+            manager.lock()
+        locked_hosts = hostnames
+        time.sleep(interval)
+    return locked_hosts
 
 
 def _collate_aborted(current_value, entry):
