@@ -121,3 +121,6 @@ INSTALLED_APPS = (
 AUTHENTICATION_BACKENDS = (
     'frontend.apache_auth.SimpleAuthBackend',
 )
+# TODO(scottz): Temporary addition until time can be spent untangling middleware
+# session crosbug.com/31608
+SESSION_COOKIE_AGE = 1200
