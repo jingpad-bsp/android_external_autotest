@@ -2,108 +2,36 @@
     "__base__": "chromeos_test_config.json",
 
     "boards": {
-        "x86-alex-r16": {
-            "platforms": [
-                {"platform": "netbook_ALEX"}
-            ]
-        },
-
-        "x86-alex-r17": {
-            "platforms": [
-                {"platform": "netbook_ALEX"}
-            ]
-        },
-
-        "x86-alex-r18": {
-            "platforms": [
-                {"platform": "netbook_ALEX"}
-            ]
-        },
-
         "x86-alex-release": {
             "platforms": [
-                {"platform": "netbook_ALEX",
+                {"platform": "alex",
                  "extra_groups": ["kernel_daily"]}
             ]
         },
 
-        "x86-mario-r16": {
+        "x86-mario-release": {
             "platforms": [
-                {"platform": "netbook_MARIO_MP"}
-            ]
-        },
-
-        "x86-mario-r17": {
-            "platforms": [
-                {"platform": "netbook_MARIO_MP"}
-            ]
-        },
-
-        "x86-mario-r18": {
-            "platforms": [
-                {"platform": "netbook_MARIO_MP"}
-            ]
-        },
-
-        "x86-zgb-r16": {
-            "platforms": [
-                {"platform": "netbook_ACER_ZGB"}
-            ]
-        },
-
-        "x86-zgb-r17": {
-            "platforms": [
-                {"platform": "netbook_ACER_ZGB"}
-            ]
-        },
-
-        "x86-zgb-r18": {
-            "platforms": [
-                {"platform": "netbook_ACER_ZGB"}
+                {"platform": "mario"}
             ]
         },
 
         "x86-zgb-release": {
             "platforms": [
-                {"platform": "netbook_ACER_ZGB",
+                {"platform": "zgb",
                  "extra_groups": ["kernel_daily"]}
-            ]
-        },
-
-        "stumpy-r17": {
-            "platforms": [
-                {"platform": "desktop_STUMPY"}
-            ]
-        },
-
-        "stumpy-r18": {
-            "platforms": [
-                {"platform": "desktop_STUMPY"}
             ]
         },
 
         "stumpy-release": {
             "platforms": [
-                {"platform": "desktop_STUMPY",
+                {"platform": "stumpy",
                  "extra_groups": ["kernel_daily"]}
-            ]
-        },
-
-        "lumpy-r17": {
-            "platforms": [
-                {"platform": "netbook_LUMPY"}
-            ]
-        },
-
-        "lumpy-r18": {
-            "platforms": [
-                {"platform": "netbook_LUMPY"}
             ]
         },
 
         "lumpy-release": {
             "platforms": [
-                {"platform": "netbook_LUMPY",
+                {"platform": "lumpy",
                  "extra_groups": ["kernel_daily"]}
             ]
         }

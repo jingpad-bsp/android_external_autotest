@@ -1,116 +1,52 @@
 {
     "boards": {
-        "x86-alex-r18": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-alex",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-alex.zip",
-            "build_pattern": "R18-1660.1*",
-            "platforms": [
-                {"platform": "netbook_ALEX", "au_test": true},
-                {"platform": "netbook_ALEX",
-                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf", "pagecycler"]}
-            ]
-        },
-
         "x86-alex-release": {
             "platforms": [
-                {"platform": "netbook_ALEX", "au_test": false},
-                {"platform": "netbook_ALEX", "test_suite": true},
-                {"platform": "netbook_ALEX",
+                {"platform": "alex", "au_test": false},
+                {"platform": "alex", "test_suite": true},
+                {"platform": "alex",
                  "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
-                {"platform": "netbook_ALEX_enterprise",
+                {"platform": "alex_enterprise",
                  "groups": ["enroll_enterprise"]}
-            ]
-        },
-
-        "x86-zgb-r18": {
-            "archive_server": "gs://chromeos-releases/stable-channel/x86-zgb",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-zgb.zip",
-            "build_pattern": "R18-1660.1*",
-            "platforms": [
-                {"platform": "netbook_ACER_ZGB","au_test": true},
-                {"platform": "netbook_ACER_ZGB",
-                 "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf", "pagecycler"]}
             ]
         },
 
         "x86-zgb-release": {
             "platforms": [
-                {"platform": "netbook_ACER_ZGB", "au_test": false},
-                {"platform": "netbook_ACER_ZGB", "test_suite": true},
-                {"platform": "netbook_ACER_ZGB",
+                {"platform": "zgb", "au_test": false},
+                {"platform": "zgb", "test_suite": true},
+                {"platform": "zgb",
                  "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
-                {"platform": "netbook_ACER_ZGB_enterprise",
+                {"platform": "zgb_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
         },
 
-        "x86-mario-r18": {
+        "x86-mario-release": {
             "archive_server": "gs://chromeos-releases/beta-channel/x86-mario",
             "archive_path": "%(build_version)s/ChromeOS-%(build)s-x86-mario.zip",
-            "build_pattern": "R18-*",
             "platforms": [
-                {"platform": "netbook_MARIO_MP", "au_test": true},
-                {"platform": "netbook_MARIO_MP",
+                {"platform": "mario", "au_test": true},
+                {"platform": "mario",
                  "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf", "pagecycler"]}
-            ]
-        },
-
-       "stumpy-r18": {
-            "archive_server": "gs://chromeos-releases/dev-channel/stumpy",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-stumpy.zip",
-            "build_pattern": "R18-*",
-            "platforms": [
-                {"platform": "desktop_STUMPY",
-                 "groups": ["desktopui_pyauto_perf_celeron", "pagecycler_celeron", "audio"]},
-                {"platform": "desktop_STUMPY", "au_test": true}
             ]
         },
 
        "stumpy-release": {
             "platforms": [
-                {"platform": "desktop_STUMPY",
+                {"platform": "stumpy",
                  "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron", "audio"]},
-                {"platform": "desktop_STUMPY", "au_test": false},
-                {"platform": "desktop_STUMPY", "test_suite": true}
-            ]
-        },
-
-       "lumpy-r18": {
-            "archive_server": "gs://chromeos-releases/dev-channel/lumpy",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-lumpy.zip",
-            "build_pattern": "R18-*",
-            "platforms": [
-                {"platform": "netbook_LUMPY",
-                 "groups": ["desktopui_pyauto_perf_celeron", "pagecycler_celeron", "audio"]},
-                {"platform": "netbook_LUMPY", "au_test": true}
+                {"platform": "stumpy", "au_test": false},
+                {"platform": "stumpy", "test_suite": true}
             ]
         },
 
        "lumpy-release": {
             "platforms": [
-                {"platform": "netbook_LUMPY",
+                {"platform": "lumpy",
                  "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron", "audio"]},
-                {"platform": "netbook_LUMPY", "au_test": false},
-                {"platform": "netbook_LUMPY", "test_suite": true}
-            ]
-        },
-
-        "tegra2-kaen-r18": {
-            "archive_server": "gs://chromeos-releases/dev-channel/tegra2-kaen",
-            "archive_path": "%(build_version)s/ChromeOS-%(build)s-tegra2-kaen.zip",
-            "build_pattern": "R18-*",
-            "platforms": [
-                {"platform": "netbook_KAEN",
-                 "groups": ["bvt", "build", "desktopui", "desktopui_tegra2",
-                            "kernel", "pagecycler", "perfx3", "power"]}
-            ]
-        },
-
-        "arm-tegra2_kaen-release": {
-            "platforms": [
-                {"platform": "netbook_KAEN", "test_suite": true,
-                 "groups": ["build", "desktopui", "desktopui_tegra2",
-                            "enterprise", "kernel", "pagecycler", "perfx3", "power"]}
+                {"platform": "lumpy", "au_test": false},
+                {"platform": "lumpy", "test_suite": true}
             ]
         }
     },

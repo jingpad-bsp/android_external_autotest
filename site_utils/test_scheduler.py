@@ -153,6 +153,13 @@ class TestRunner(object):
       else:
         priority = 'medium'
 
+      # Add pool:suites to all jobs to avoid using the BVT machines with the
+      # same platform label.
+      if test['labels'] is None:
+        test['labels'] = ['pool:suites']
+      else:
+         test['labels'].append('pool:suites')
+
       job_id = autotest_util.CreateJob(
           name=job_name, control=temp_fn,
           platforms='%d*%s' % (test['count'], platform), labels=test['labels'],
