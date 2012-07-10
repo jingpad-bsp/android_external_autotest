@@ -192,3 +192,6 @@ class BaseEvent(object):
             if task.AvailableHosts(scheduler, board):
                 if not task.Run(scheduler, branch_builds, board, force):
                     self._tasks.remove(task)
+            else:
+                logging.warning('Skipping %s on %s, due to lack of hosts.',
+                                task, board)

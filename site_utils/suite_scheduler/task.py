@@ -215,7 +215,7 @@ class Task(object):
                 or None if no hosts were found."""
         labels = [Labels.BOARD_PREFIX + board]
         if self._pool:
-          labels.append(Labels.POOL_PREFIX + self._pool)
+            labels.append(Labels.POOL_PREFIX + self._pool)
 
         return scheduler.GetHosts(multiple_labels=labels)
 

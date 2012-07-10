@@ -115,4 +115,4 @@ class DedupingScheduler(object):
 
     def GetHosts(self, *args, **kwargs):
         """Forward a request to get hosts onto the AFE instance's get_hosts."""
-        self._afe.get_hosts(*args, **kwargs)
+        return self._afe.get_hosts(*args, **kwargs)
