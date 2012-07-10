@@ -6,6 +6,7 @@ import logging
 import mox
 import pexpect
 import time
+import unittest
 
 import dli
 
