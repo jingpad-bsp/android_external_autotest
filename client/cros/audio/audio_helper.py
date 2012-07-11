@@ -88,6 +88,17 @@ class AudioHelper(object):
                             os.environ[LD_LIBRARY_PATH].split(':'))
                     os.environ[LD_LIBRARY_PATH] = ':'.join(paths)
 
+    def set_volume_levels(self, volume, capture):
+        '''
+        Sets the volume and capture gain through cras_test_client
+        '''
+        logging.info('Setting volume level to %d' % volume)
+        utils.system('/usr/bin/cras_test_client --volume %d' % volume)
+        logging.info('Setting capture gain to %d' % capture)
+        utils.system('/usr/bin/cras_test_client --capture_gain %d' % capture)
+        utils.system('/usr/bin/cras_test_client --dump_server_info')
+        utils.system('amixer -c 0 contents')
+
     def set_mixer_controls(self, mixer_settings={}, card='0'):
         '''
         Sets all mixer controls listed in the mixer settings on card.

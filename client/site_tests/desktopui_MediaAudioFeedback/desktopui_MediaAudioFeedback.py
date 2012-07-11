@@ -36,6 +36,8 @@ _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_RECORD_DURATION = 10
 # Minimum RMS value to consider a "pass".
 _DEFAULT_SOX_RMS_THRESHOLD = 0.20
+_DEFAULT_VOLUME_LEVEL = 100
+_DEFAULT_CAPTURE_GAIN = 2500
 
 # Media formats to test.
 _MEDIA_FORMATS = ['BBB.mp3', 'BBB.mp4', 'BBB_mulaw.wav', 'BBB.ogv', 'BBB.webm']
@@ -49,7 +51,9 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
                    mixer_settings=_DEFAULT_MIXER_SETTINGS,
                    num_channels=_DEFAULT_NUM_CHANNELS,
                    record_duration=_DEFAULT_RECORD_DURATION,
-                   sox_min_rms=_DEFAULT_SOX_RMS_THRESHOLD):
+                   sox_min_rms=_DEFAULT_SOX_RMS_THRESHOLD,
+                   volume_level=_DEFAULT_VOLUME_LEVEL,
+                   capture_gain=_DEFAULT_CAPTURE_GAIN):
         """Setup the deps for the test.
 
         Args:
@@ -59,6 +63,9 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
             num_channels: The number of channels on the device to test.
             record_duration: How long of a sample to record.
             sox_min_rms: The minimum RMS value to consider a pass.
+            volume_level: The level to set the volume to
+            capture_gain: what to set the capture gain to (in dB * 100, 2500 =
+                25 dB)
 
         Raises:
             error.TestError if the deps can't be run.
@@ -66,6 +73,8 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         self._card = card
         self._mixer_settings = mixer_settings
         self._sox_min_rms = sox_min_rms
+        self._volume_level = volume_level
+        self._capture_gain = capture_gain
 
         self._ah = audio_helper.AudioHelper(self,
                 record_duration=record_duration,
@@ -79,7 +88,7 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         self._testServer.run()
 
     def run_once(self):
-        self._ah.set_mixer_controls(self._mixer_settings, self._card)
+        self._ah.set_volume_levels(self._volume_level, self._capture_gain)
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s' % noise_file.name)

@@ -36,6 +36,8 @@ _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_RECORD_DURATION = 15
 # Minimum RMS value to consider a "pass".
 _DEFAULT_SOX_RMS_THRESHOLD = 0.30
+_DEFAULT_VOLUME_LEVEL = 100
+_DEFAULT_CAPTURE_GAIN = 2500
 
 
 class desktopui_AudioFeedback(cros_ui_test.UITest):
@@ -46,7 +48,9 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
                    mixer_settings=_DEFAULT_MIXER_SETTINGS,
                    num_channels=_DEFAULT_NUM_CHANNELS,
                    record_duration=_DEFAULT_RECORD_DURATION,
-                   sox_min_rms=_DEFAULT_SOX_RMS_THRESHOLD):
+                   sox_min_rms=_DEFAULT_SOX_RMS_THRESHOLD,
+                   volume_level=_DEFAULT_VOLUME_LEVEL,
+                   capture_gain=_DEFAULT_CAPTURE_GAIN):
         """Setup the deps for the test.
 
         Args:
@@ -63,6 +67,8 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         self._card = card
         self._mixer_settings = mixer_settings
         self._sox_min_rms = sox_min_rms
+        self._volume_level = volume_level
+        self._capture_gain = capture_gain
 
         self._ah = audio_helper.AudioHelper(self,
                 record_duration=record_duration,
@@ -75,7 +81,7 @@ class desktopui_AudioFeedback(cros_ui_test.UITest):
         self._testServer.run()
 
     def run_once(self):
-        self._ah.set_mixer_controls(self._mixer_settings, self._card)
+        self._ah.set_volume_levels(self._volume_level, self._capture_gain)
         # Record a sample of "silence" to use as a noise profile.
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s' % noise_file.name)
