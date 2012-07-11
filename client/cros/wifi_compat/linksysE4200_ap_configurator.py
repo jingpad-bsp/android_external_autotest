@@ -173,7 +173,7 @@ class LinksysAPConfigurator(ap_configurator.APConfigurator):
         if band == self.band_5ghz:
            self.current_band = self.band_5ghz
         elif band == self.band_2ghz:
-           self.current_band = self.band_5ghz
+           self.current_band = self.band_2ghz
         else:
            raise RuntimeError('Invalid band sent %s' % band)
 

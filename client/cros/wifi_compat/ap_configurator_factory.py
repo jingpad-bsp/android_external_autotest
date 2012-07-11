@@ -12,7 +12,9 @@ import linksys_ap_configurator
 import linksyse2000_ap_configurator
 import linksysE4200_ap_configurator
 import Netgear3700_ap_configurator
+import netgear4500_ap_configurator
 import trendnet_ap_configurator
+
 
 class APConfiguratorFactory(object):
     """Class that instantiates all available APConfigurators."""
@@ -59,6 +61,9 @@ class APConfiguratorFactory(object):
         self._build_all_instances_of_configurator(config_list,
             'linksyse2000APConfigurator',
             linksyse2000_ap_configurator.linksyse2000APConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'Netgear4500APConfigurator',
+            netgear4500_ap_configurator.NetgearAPConfigurator)
 
     def _build_all_instances_of_configurator(self, config_list, name,
                                              configurator):

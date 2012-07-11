@@ -104,4 +104,15 @@
     'power_outlet_admin_name': 'admin',
     'power_outlet_password': 'password',
   },
+  {
+    'class_name': 'Netgear4500APConfigurator',
+    'short_name': 'WNDR4500',
+    'admin_url': 'https://172.22.12.226:8080',
+    'serial_number': '',
+    'mac_address': '',
+    'power_outlet_ip': '172.22.12.201',
+    'power_outlet_number': '7',
+    'power_outlet_admin_name': 'admin',
+    'power_outlet_password': 'password',
+  },
 ]
