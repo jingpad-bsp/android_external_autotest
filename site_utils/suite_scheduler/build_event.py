@@ -49,7 +49,9 @@ class BuildEvent(base_event.BaseEvent):
 
         @return True if there's been a new build, false otherwise.
         """
-        if not super(BuildEvent, self).ShouldHandle():
+        if super(BuildEvent, self).ShouldHandle():
+            return True
+        else:
             return self._mv.AnyManifestsSinceRev(self._revision)
 
 

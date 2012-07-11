@@ -176,6 +176,21 @@ class NightlyTest(TimedEventTestBase):
             timed_event.Nightly.CreateFromConfig(config, self.mv))
 
 
+    def testCreateFromAlwaysHandleConfig(self):
+        """Test that creating with always_handle works as intended."""
+        config = forgiving_config_parser.ForgivingConfigParser()
+        section = base_event.SectionName(timed_event.Nightly.KEYWORD)
+        config.add_section(section)
+        config.set(section, 'hour', '%d' % (self._HOUR + 1))
+        config.set(section, 'always_handle', 'True')
+
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
+        self.mox.ReplayAll()
+
+        event = timed_event.Nightly.CreateFromConfig(config, self.mv)
+        self.assertTrue(event.ShouldHandle())
+
+
     def testMerge(self):
         """Test that Merge() works when the deadline time of day changes."""
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())

@@ -45,7 +45,9 @@ class TimedEvent(base_event.BaseEvent):
 
     def ShouldHandle(self):
         """Return True if self._deadline has passed; False if not."""
-        if not super(TimedEvent, self).ShouldHandle():
+        if super(TimedEvent, self).ShouldHandle():
+            return True
+        else:
             logging.info('Checking deadline %s for event %s',
                          self._deadline, self.keyword)
             return self._now() >= self._deadline

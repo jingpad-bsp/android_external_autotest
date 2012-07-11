@@ -7,7 +7,7 @@
 """Unit tests for site_utils/build_event.py."""
 
 import datetime, logging, mox, unittest
-import build_event, manifest_versions, task
+import base_event, build_event, forgiving_config_parser, manifest_versions, task
 
 
 class BuildEventTestBase(mox.MoxTestBase):
@@ -85,6 +85,18 @@ class NewBuildTest(BuildEventTestBase):
         event1.Prepare()
         event1.Merge(self.CreateEvent())
         self.assertEquals(event1._revision, initial_hash)
+
+
+    def testCreateFromAlwaysHandleConfig(self):
+        """Test that creating with always_handle works as intended."""
+        config = forgiving_config_parser.ForgivingConfigParser()
+        section = base_event.SectionName(build_event.NewBuild.KEYWORD)
+        config.add_section(section)
+        config.set(section, 'always_handle', 'True')
+        self.mox.ReplayAll()
+
+        event = build_event.NewBuild.CreateFromConfig(config, self.mv)
+        self.assertTrue(event.ShouldHandle())
 
 
     def testGetBranchBuilds(self):
