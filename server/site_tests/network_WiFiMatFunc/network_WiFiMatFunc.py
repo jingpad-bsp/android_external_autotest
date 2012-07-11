@@ -18,4 +18,4 @@ router     - the IP address of the WiFi AP/Router and the names of the
 from autotest_lib.server import site_wifitest
 
 class network_WiFiMatFunc(site_wifitest.test):
-      pass
+    pass

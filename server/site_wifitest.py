@@ -175,6 +175,7 @@ class WiFiTest(object):
         self.client_signal_info = {}
         self.client_installed_scripts = {}
         self.client_logfile = client.get("logfile", "/var/log/messages")
+        self.ping_stats = {}
 
         if 'addr' in server:
             self.server = hosts.SSHHost(server['addr'],
@@ -957,7 +958,7 @@ class WiFiTest(object):
             'phymode'   : self.cur_phymode,
             'security'  : self.cur_security,
         }
-        for k in ('xmit', 'recv', 'loss', 'min', 'avg', 'max'):
+        for k in ('xmit', 'recv', 'loss', 'min', 'avg', 'max', 'dev'):
             stats[k] = '???'
         m = re.search('([0-9]*) packets transmitted,[ ]*([0-9]*)[ ]'
             '(packets |)received, ([0-9]*)', str)
@@ -966,11 +967,12 @@ class WiFiTest(object):
             stats['recv'] = m.group(2)
             stats['loss'] = m.group(4)
         m = re.search('(round-trip|rtt) min[^=]*= '
-                      '([0-9.]*)/([0-9.]*)/([0-9.]*)', str)
+                      '([0-9.]*)/([0-9.]*)/([0-9.]*)/([0-9.]*)', str)
         if m is not None:
             stats['min'] = m.group(2)
             stats['avg'] = m.group(3)
             stats['max'] = m.group(4)
+            stats['dev'] = m.group(5)
         return stats
 
 
@@ -1053,6 +1055,8 @@ class WiFiTest(object):
                                  timeout=3*int(count))
 
         stats = self.__get_pingstats(result.stdout)
+        if "save_stats" in params:
+            self.ping_stats[params["save_stats"]] = stats
         self.write_perf(stats)
         self.__print_pingstats("client_ping ", stats)
 
@@ -1067,10 +1071,66 @@ class WiFiTest(object):
 
 
     def client_ping_bg_stop(self, params):
-        if self.ping_thread is not None:
-            self.client.run("pkill %s" % os.path.basename(self.client_cmd_ping))
-            self.ping_thread.join()
-            self.ping_thread = None
+        if self.ping_thread is None:
+            logging.info("Tried to stop a bg ping, but none was started")
+            return
+        # Sending SIGINT gives us stats at the end, how nice.
+        self.client.run("pkill -INT %s"
+                % os.path.basename(self.client_cmd_ping))
+        self.ping_thread.join()
+        if "save_stats" in params:
+            stats = self.__get_pingstats(self.ping_thread.result.stdout)
+            self.ping_stats[params["save_stats"]] = stats
+        self.ping_thread = None
+
+
+    def assert_ping_similarity(self, params):
+        """ Assert that two specified sets of ping parameters are 'similar' """
+        if "stats0" not in params or "stats1" not in params:
+            raise error.TestFail("Missing ping statistics keys")
+        stats0 = self.ping_stats[params["stats0"]]
+        stats1 = self.ping_stats[params["stats1"]]
+        if "dev" not in stats0 or "dev" not in stats1:
+            raise error.TestFail("Missing standard dev from ping stats")
+        if "min" not in stats0 or "min" not in stats1:
+            raise error.TestFail("Missing max rtt from ping stats")
+        if "avg" not in stats0 or "avg" not in stats1:
+            raise error.TestFail("Missing avg rtt from ping stats")
+        if "max" not in stats0 or "max" not in stats1:
+            raise error.TestFail("Missing max rtt from ping stats")
+        avg0 = float(stats0["avg"])
+        max0 = float(stats0["max"])
+        avg1 = float(stats1["avg"])
+        max1 = float(stats1["max"])
+        # This check is meant to assert that ping latency remains 'similar'
+        # during WiFi background scans.  APs typically send beacons every 100ms,
+        # (the period is configurable) so bgscan algorithms like to sit in a
+        # channel for 100ms to see if they can catch a beacon.
+        #
+        # Assert that the maximum latency is under 200 ms + whatever the
+        # average was for the other sample.  This allows us to go off chanel,
+        # but forces us to serve some real traffic when we go back on.
+        # We'll do this check symmetrically because we don't actually know
+        # which is the control distribution and which is the potentially dirty
+        # distribution.
+        if max0 > 200 + avg1 or max1 > 200 + avg0:
+            logging.error(
+                    "Ping0 min/avg/max/dev = {0}/{1}/{2}/{3}".format(
+                        stats0["min"],
+                        stats0["avg"],
+                        stats0["max"],
+                        stats0["dev"],
+                        )
+                    )
+            logging.error(
+                    "Ping1 min/avg/max/dev = {0}/{1}/{2}/{3}".format(
+                        stats1["min"],
+                        stats1["avg"],
+                        stats1["max"],
+                        stats1["dev"],
+                        )
+                    )
+            raise error.TestFail("Significant difference in rtt due to bgscan")
 
 
     def server_ping(self, params):
@@ -1846,6 +1906,7 @@ class WiFiTest(object):
 
         self.__del_host_route(self.client)
 
+
     def __add_host_route(self, host):
         # What is the local address we use to get to the test host?
         local_ip = site_host_route.LocalHostRoute(host.ip).route_info["src"]
@@ -2103,6 +2164,7 @@ def run_test_dir(test_name, job, args, machine):
 
     for t in read_tests(test_dir, test_pat):
        job.run_test(test_name, testcase=t, config=config, tag=t['file'])
+
 
 class test(test.test):
   """
