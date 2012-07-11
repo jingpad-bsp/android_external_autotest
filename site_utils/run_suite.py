@@ -109,10 +109,11 @@ def get_view_info(suite_job_id, view):
     experimental = False
     if 'job_keyvals' in view:
         # The job name depends on whether it's experimental or not.
-        std_job_name = view['test_name'].split('.')[0]
+        local_test_name = view['test_name'].split('-')[0]  # for try_new_image-*
+        std_job_name = local_test_name.split('.')[0]
         exp_job_name = dynamic_suite.EXPERIMENTAL_PREFIX + std_job_name
 
-        std_job_hash = hashlib.md5(view['test_name'].split('.')[0]).hexdigest()
+        std_job_hash = hashlib.md5(local_test_name.split('.')[0]).hexdigest()
         exp_job_hash = hashlib.md5(dynamic_suite.EXPERIMENTAL_PREFIX +
                                    std_job_name).hexdigest()
 
@@ -228,6 +229,7 @@ class Timings(object):
 
 def main():
     parser, options, args = parse_options()
+    log_name = 'run_suite-default.log'
     if not options.mock_job_id:
         if args:
             print 'Unknown arguments: ' + str(args)
@@ -245,11 +247,11 @@ def main():
             print 'Need to specify suite name'
             parser.print_help()
             return
-    # convert build name from containing / to continaing only _
-    log_name = 'run_suite-%s.log' % options.build.replace('/', '_')
-    log_dir = os.path.join(common.autotest_dir, 'logs')
-    if os.path.exists(log_dir):
-        log_name = os.path.join(log_dir, log_name)
+        # convert build name from containing / to containing only _
+        log_name = 'run_suite-%s.log' % options.build.replace('/', '_')
+        log_dir = os.path.join(common.autotest_dir, 'logs')
+        if os.path.exists(log_dir):
+            log_name = os.path.join(log_dir, log_name)
     setup_logging(logfile=log_name)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
@@ -293,6 +295,7 @@ def main():
                                                             'Suite prep')
             test_entry = entry['test_name'].ljust(width)
             logging.info("%s%s", test_entry, get_pretty_status(entry['status']))
+
             if entry['status'] != 'GOOD':
                 logging.info("%s  %s: %s", test_entry, entry['status'],
                              entry['reason'])
