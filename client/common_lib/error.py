@@ -535,7 +535,12 @@ class ControlFileNotFound(CrosDynamicSuiteException):
 
 
 class NoControlFileList(CrosDynamicSuiteException):
-    """Raised when to indicate that a listing can't be done."""
+    """Raised to indicate that a listing can't be done."""
+    pass
+
+
+class HostLockManagerReuse(CrosDynamicSuiteException):
+    """Raised when a caller tries to re-use a HostLockManager instance."""
     pass
 
 
