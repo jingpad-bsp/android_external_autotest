@@ -16,32 +16,59 @@ class power_Resume(test.test):
     preserve_srcdir = True
 
 
-    def _get_max_time_device(self, start, stop, action):
-        """Get the device (name and time) that had the longest suspend or
-        resume time in a certain interval.
+    def _get_key_name_from_dev_name(self, key_name):
+        """Transform a string in such a way that it will be accepted by
+        autotest framework as a key.
+
+        A device name will contain ':' and '+'. Autotest doesn't allows these
+        characters in the key.
+
+        Args:
+            key_name: The string that it will be transformed.
+
+        Return:
+            A new string that autotest will accept as a key name.
+        """
+
+        return key_name.replace(':', '-').replace('+', '_')
+
+
+    def _get_sr_time_for_each_device(self, sus_time, res_time):
+        """Get how much time each device took to suspend/resume in a certain
+        interval.
 
             Args:
-                start: The beginning of the time interval (in dmesg
-                    timestamps).
-                stop: The ending of the time interval (in dmesg timestamps).
-                action: "suspend" or "resume", used only for logging.
+                sus_time: The time interval for suspend messages (in dmesg
+                    timestamps) described as a tuple. Where sus_time[0] is the
+                    start of the interval and sus_time[1] is the end of the
+                    interval. If the interval is badly specified (i.e.
+                    sus_time[0] > sus_time[1]) then no suspend message is
+                    extracted/parsed and a warning is logged.
+                res_time: The time interval for resume messages (in dmesg
+                    timestamps) described as a tuple. Similar format as
+                    sus_time argument.
 
             Return:
-                A tuple containing the name of the slowest device and the time
-                that it took to suspend or resume or (None, 0) if no such
-                device could be found.
+                A dictionary with the following key format:
+                seconds_dev_<devname>_<action>.  Where <devname> is the name of
+                the device (escaped in such a way that autotest will accept the
+                string as key) and <action> one of the following strings:
+                'resume' or 'suspend'. The value is the number of seconds (as a
+                float) that it took for <devname> to do a suspend or a resume.
 
             Raise:
                 TestError: If the log is corrupted.
         """
 
-        max_time = 0
-        max_device_name = None
+        sr_time = {}
         call_regexp = re.compile(r'call ([^ ]+) returned 0 after ([0-9]+) '
                 'usecs')
 
-        logging.debug("Searching in interval: %f - %f for %s times\n" %
-                (start, stop, action))
+        if sus_time[0] > sus_time[1]:
+            logging.error("Suspend interval is wrong.")
+
+        if res_time[0] > res_time[1]:
+            logging.error("Resume interval is wrong.")
 
         for dev_line in self._log_msg.get_logs().splitlines():
             # find the time stamp for each message
@@ -52,7 +79,15 @@ class power_Resume(test.test):
                 # probabily not an interesting message
                 continue
 
-            if not (ts >= start and ts <= stop):
+            is_suspend = None
+
+            if ts >= sus_time[0] and ts <= sus_time[1]:
+                is_suspend = True
+
+            if ts >= res_time[0] and ts <= res_time[1]:
+                is_suspend = False
+
+            if is_suspend is None:
                 # skip this message, because it's in a different interval
                 continue
 
@@ -66,16 +101,21 @@ class power_Resume(test.test):
             (device_name, time_matched) = search_groups.groups()
             device_time = float(time_matched)
 
-            logging.debug("Device %s took %f usecs to %s" % \
-                    (device_name, device_time, action))
+            action = 'suspend' if is_suspend else 'resume'
 
-            # calculate the maximal time
-            if device_time > max_time:
-                max_time = device_time
-                max_device_name = device_name
+            # convert from usec to seconds and save the result
+            device_name_key = 'seconds_dev_' + \
+                self._get_key_name_from_dev_name(device_name) + '_' + action
 
-        # convert from usec to seconds
-        return (max_device_name, max_time / 1e6)
+            if sr_time.has_key(device_name_key):
+                logging.warn("Duplicate entry for %s (%s)." %
+                    (device_name, action))
+
+            sr_time[device_name_key] = device_time / 1e6
+
+            logging.debug("%s = %s", device_name_key, sr_time[device_name_key])
+
+        return sr_time
 
 
     def _get_last_msg(self, patterns):
@@ -209,7 +249,7 @@ class power_Resume(test.test):
         self._set_pm_print_times(False)
 
 
-    def run_once(self):
+    def run_once(self, max_devs_returned=10):
         # Disconnect from 3G network to take out the variability of
         # disconnection time from suspend_time
         disconnect_3G_time = 0
@@ -236,6 +276,8 @@ class power_Resume(test.test):
         # Safe enough number, can tweek if necessary
         time_to_sleep = 10
 
+        sr_time_for_devs = {}
+
         # Keep trying the suspend/resume several times to get all positive
         # time readings.
         max_num_attempts = 5
@@ -260,17 +302,10 @@ class power_Resume(test.test):
             end_cpu_resume_time = self._get_end_cpu_resume_time()
             kernel_device_resume_time = self._get_device_resume_time()
 
-            (max_device_name_suspend, max_device_time_suspend) = \
-                    self._get_max_time_device(
-                            start_suspend_time,
-                            end_suspend_time,
-                            "suspend")
-
-            (max_device_name_resume, max_device_time_resume) = \
-                    self._get_max_time_device(
-                            start_resume_time,
-                            end_resume_time,
-                            "resume")
+            sr_time_for_devs = \
+                self._get_sr_time_for_each_device(
+                    (start_suspend_time, end_suspend_time),
+                    (start_resume_time, end_resume_time))
 
             # Calculate the suspend/resume times
             total_resume_time = self._get_hwclock_seconds() - alarm_time
@@ -297,6 +332,15 @@ class power_Resume(test.test):
 
         # Prepare the results
         results = {}
+
+        # return as keyvals the slowest n devices
+        slowest_devs = sorted(
+            sr_time_for_devs,
+            key=sr_time_for_devs.get,
+            reverse=True)[:max_devs_returned]
+        for dev in slowest_devs:
+            results[dev] = sr_time_for_devs[dev]
+
         results['seconds_system_suspend'] = suspend_time
         results['seconds_system_resume'] = total_resume_time
         results['seconds_system_resume_firmware'] = firmware_resume_time
@@ -305,10 +349,7 @@ class power_Resume(test.test):
         results['seconds_system_resume_kernel_dev'] = kernel_device_resume_time
         results['seconds_3G_disconnect'] = disconnect_3G_time
         results['num_retry_attempts'] = retry_count
-        results['seconds_max_device_suspend'] = max_device_time_suspend
-        results['max_device_name_suspend'] = max_device_name_suspend
-        results['seconds_max_device_resume'] = max_device_time_resume
-        results['max_device_name_resume'] = max_device_name_resume
+
         self.write_perf_keyval(results)
 
 
