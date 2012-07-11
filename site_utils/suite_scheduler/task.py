@@ -220,6 +220,17 @@ class Task(object):
         return scheduler.GetHosts(multiple_labels=labels)
 
 
+    def ShouldHaveAvailableHosts(self):
+        """As a sanity check, return true if we know for certain that
+        we should be able to schedule this test. If we claim this test
+        should be able to run, and it ends up not being scheduled, then
+        a warning will be reported.
+
+        @return True if this test should be able to run, False otherwise.
+        """
+        return self._pool == 'bvt'
+
+
     def Run(self, scheduler, branch_builds, board, force=False):
         """Run this task.  Returns False if it should be destroyed.
 
