@@ -2,14 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Purpose: This test case verifies that the DUT aheres to the
+# Purpose: This test case verifies that the DUT adheres to the
 # maximum and minimum SSID length requirements.
 { "name":"Limits_Length_SSID",
   "steps":[
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "mode":"11g" } ],
 
-    # Test maximum SSID length
+    # Test maximum SSID length (32 bytes)
     [ "config",         { "ssid":str("Max_Length_SSID"*8)[:32] } ],
     [ "connect",        { "ssid":str("Max_Length_SSID"*8)[:32],
                           "security":"none" } ],
@@ -17,7 +17,7 @@
     [ "disconnect" ],
     [ "deconfig" ],
 
-    # Test minimum SSID length
+    # Test minimum SSID length (1 byte)
     [ "config",         { "ssid": "a" } ],
     [ "connect",        { "ssid":"a", "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
@@ -26,6 +26,12 @@
 
     # Test MAX+1 ssid length
     [ "!connect",        { "ssid":str("Max_Length_SSID"*8)[:33],
+                           "security":"none", "hidden":True },
+                           "org.chromium.flimflam.Error.InvalidNetworkName" ],
+    [ "destroy" ],
+
+    # Test MIN-1 ssid length
+    [ "!connect",        { "ssid": "",
                            "security":"none", "hidden":True },
                            "org.chromium.flimflam.Error.InvalidNetworkName" ],
     [ "destroy" ],
