@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "Power weekly tests"
-SUITE = "power_weekly"
+NAME = "Power Requirements tests"
+SUITE = "power_requirements"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
@@ -12,7 +12,8 @@ TEST_TYPE = "server"
 
 DOC = """
 This test suite runs automated power tests that should all pass. These tests
-take a long time (several hours) to run and are run only once weekly.
+take a long time (several hours) to run and are intended to ensure that the DUT
+complies with the power subsection of our CrOS Requirements doc.
 
 Current tests with runtimes are:
   power_BatteryCharge : <= 3 hours
