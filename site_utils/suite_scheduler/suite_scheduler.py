@@ -148,6 +148,9 @@ def parse_options():
     parser.add_option('-l', '--list_events', dest='list',
                       action='store_true', default=False,
                       help='List supported events and exit.')
+    parser.add_option('-t', '--sanity', dest='sanity', action='store_true',
+                      default=False,
+                      help="Check the config file for any issues.")
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -167,13 +170,20 @@ def main():
                       options.config_file)
         return 1
 
+    config = forgiving_config_parser.ForgivingConfigParser()
+    config.read(options.config_file)
+
+    # If we're just sanity checking, we can stop after we've parsed the
+    # config file.
+    if options.sanity:
+        d = driver.Driver(None, None)
+        d.SetUpEventsAndTasks(config, None)
+        return 0
+
     logging_manager.configure_logging(SchedulerLoggingConfig(),
                                       log_dir=options.log_dir)
     if not options.log_dir:
         logging.info('Not logging to a file, as --log_dir was not passed.')
-
-    config = forgiving_config_parser.ForgivingConfigParser()
-    config.read(options.config_file)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=1, delay_sec=5, debug=False)
     enumerator = board_enumerator.BoardEnumerator(afe)

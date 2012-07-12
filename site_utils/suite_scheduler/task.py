@@ -53,6 +53,17 @@ class Task(object):
         @return keyword, Task object pair.  One or both will be None on error.
         @raise MalformedConfigEntry if there's a problem parsing |section|.
         """
+        allowed = set(['suite', 'run_on', 'branch_specs', 'pool'])
+        # The parameter of union() is the keys under the section in the config
+        # The union merges this with the allowed set, so if any optional keys
+        # are omitted, then they're filled in. If any extra keys are present,
+        # then they will expand unioned set, causing it to fail the following
+        # comparison against the allowed set.
+        section_headers = allowed.union(dict(config.items(section)).keys())
+        if allowed != section_headers:
+            raise MalformedConfigEntry('unknown entries: %s' %
+                      ", ".join(map(str, section_headers.difference(allowed))))
+
         keyword = config.getstring(section, 'run_on')
         suite = config.getstring(section, 'suite')
         branches = config.getstring(section, 'branch_specs')
