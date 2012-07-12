@@ -5,7 +5,7 @@
 # Expects to be run in an environment with sudo and no interactive password
 # prompt, such as within the Chromium OS development chroot.
 
-import logging, os, select, subprocess, sys, time, xmlrpclib
+import logging, os, re, select, subprocess, sys, time, xmlrpclib
 from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
@@ -304,10 +304,36 @@ class Servo(object):
         self.set('warm_reset', 'off')
 
 
+    def _get_xmlrpclib_exception(self, xmlexc):
+        """Get meaningful exception string from xmlrpc.
+
+        Args:
+            xmlexc: xmlrpclib.Fault object
+
+        xmlrpclib.Fault.faultString has the following format:
+
+        <type 'exception type'>:'actual error message'
+
+        Parse and return the real exception from the servod side instead of the
+        less meaningful one like,
+           <Fault 1: "<type 'exceptions.AttributeError'>:'tca6416' object has no
+           attribute 'hw_driver'">
+
+        Returns:
+            string of underlying exception raised in servod.
+        """
+        return re.sub('^.*>:', '', xmlexc.faultString)
+
+
     def get(self, gpio_name):
         """Get the value of a gpio from Servod."""
         assert gpio_name
-        return self._server.get(gpio_name)
+        try:
+            return self._server.get(gpio_name)
+        except  xmlrpclib.Fault as e:
+            err_msg = "Getting '%s' :: %s" % \
+                (gpio_name, self._get_xmlrpclib_exception(e))
+            raise error.TestFail(err_msg)
 
 
     def set(self, gpio_name, gpio_value):
@@ -328,7 +354,12 @@ class Servo(object):
         """Set the value of a gpio using Servod."""
         assert gpio_name and gpio_value
         logging.info('Setting %s to %s', gpio_name, gpio_value)
-        self._server.set(gpio_name, gpio_value)
+        try:
+            self._server.set(gpio_name, gpio_value)
+        except  xmlrpclib.Fault as e:
+            err_msg = "Setting '%s' to '%s' :: %s" % \
+                (gpio_name, gpio_value, self._get_xmlrpclib_exception(e))
+            raise error.TestFail(err_msg)
 
 
     # TODO(waihong) It may fail if multiple servo's are connected to the same
