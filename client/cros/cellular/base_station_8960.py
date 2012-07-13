@@ -336,7 +336,7 @@ class ConfigDictionaries(object):
       'ATT': cellular.UeGsmDataStatus.ATTACHED,
       'STAR': cellular.UeGsmDataStatus.ATTACHING,
       'END': cellular.UeGsmDataStatus.PDP_DEACTIVATING,
-      'TRAN': cellular.UeGsmDataStatus.PDP_ACTIVATING,
+      'TRAN': cellular.UeGsmDataStatus.PDP_ACTIVE,
       'PDPAG': cellular.UeGsmDataStatus.PDP_ACTIVATING,
       'PDP': cellular.UeGsmDataStatus.PDP_ACTIVE,
       'PDPD': cellular.UeGsmDataStatus.PDP_DEACTIVATING,
