@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import emulator_config
-from autotest_lib.client.cros.cellular import modem
+from autotest_lib.client.cros.cellular import mm
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -326,7 +326,8 @@ class network_3GModemControl(test.test):
                 self.device = self.flim.FindCellularDevice()
                 if not self.device:
                     raise error.TestFail('Failed to find a cellular device.')
-                self.modem = modem.PickOneModem('')
+                manager, modem_path = mm.PickOneModem('')
+                self.modem = manager.GetModem(modem_path)
 
                 modem_commands = ModemCommands(self.modem)
                 technology_commands = TechnologyCommands(self.flim,
