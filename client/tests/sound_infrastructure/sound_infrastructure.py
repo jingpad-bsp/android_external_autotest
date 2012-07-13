@@ -5,6 +5,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import test, utils
 import logging
 import os
+import re
 
 class sound_infrastructure(test.test):
     """
@@ -79,15 +80,49 @@ class sound_infrastructure(test.test):
             }
         }
 
+    # These are the card index patterns that may appear in the
+    # filenames.  We will replace the card index with the actual value
+    # before matching the filename. For example, if the actual card
+    # index is 1, we will change "/dev/snd/controlC0" into
+    # "/dev/snd/controlC1" before matching.
+    card_patterns = [
+        "^/dev/snd/controlC(\d+)",
+        "^/dev/snd/hwC(\d+)",
+        "^/dev/snd/pcmC(\d+)",
+        "^/proc/asound/card(\d+)",
+        ]
+
+    def replace_card_index(self, input):
+        for p in self.card_patterns:
+            m = re.match(p, input)
+            if m is None: continue
+            start, end = m.span(1)
+            return input[:start] + str(self.card_index) + input[end:]
+        return input
+
+    # Finds a card with the given codec name. Returns (found, card_index)
+    def find_card(self, codec):
+        r = utils.run("aplay -l|grep -e '%s'" % (codec), ignore_status = True,
+                  stdout_tee = utils.TEE_TO_LOGS,
+                  stderr_tee = utils.TEE_TO_LOGS)
+        if r.exit_status != 0:
+            return False, 0
+        m = re.match("card (\d+):", r.stdout)
+        if m is None:
+            return False, 0
+        return True, int(m.group(1))
+
     def exec_cmd(self, cmd):
         return utils.system(cmd, ignore_status = True)
 
     def pathname_must_exist(self, pathname):
+        pathname = self.replace_card_index(pathname)
         if not os.path.exists(pathname):
             logging.error("File missing: '%s'", pathname)
             return False
         return True
 
+    # Returns (codec, card_index)
     def get_codec(self):
         # When the codec cannot be determined, the whole test cannot
         # proceed.  The unknown codec name must be added to 'codecs'
@@ -98,9 +133,10 @@ class sound_infrastructure(test.test):
                    'ALC269VB',     # ZGB
                    'Cirrus Analog' # Stumpy
                  ]
-        for c in codecs:
-            if self.exec_cmd("aplay -Dhw:0 -l|grep -e '%s'" % (c)) == 0:
-                return c
+        for codec in codecs:
+            found, index = self.find_card(codec)
+            if found:
+                return codec, index
         raise error.TestError('Unable to determine sound codec.')
 
     def get_codec_basename(self, codec):
@@ -135,7 +171,7 @@ class sound_infrastructure(test.test):
                                            open(pathname)]
 
     def run_once(self):
-        codec = self.get_codec()
+        codec, self.card_index = self.get_codec()
         self.read_codec_data(codec)
         err_str = ''
         if codec in self.codec_info:
