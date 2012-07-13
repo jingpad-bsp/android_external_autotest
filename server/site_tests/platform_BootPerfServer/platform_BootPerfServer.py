@@ -5,6 +5,7 @@
 import logging
 import os
 import shutil
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import test, autotest
 
 
@@ -15,6 +16,15 @@ class platform_BootPerfServer(test.test):
     def run_once(self, host=None):
         self.client = host
         self.client_test = 'platform_BootPerf'
+
+        # Run a login test to complete the OOBE flow, if we haven't already.
+        # This is so that we measure boot times for the stable state.
+        try:
+            self.client.run('ls /home/chronos/.oobe_completed')
+        except error.AutoservRunError:
+            logging.info('Taking client through OOBE.')
+            client_at = autotest.Autotest(self.client)
+            client_at.run_test('login_LoginSuccess', disable_sysinfo=True)
 
         # Reboot the client
         logging.info('BootPerfServer: reboot %s' % self.client.hostname)

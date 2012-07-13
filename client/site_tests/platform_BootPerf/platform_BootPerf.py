@@ -149,6 +149,10 @@ class platform_BootPerf(test.test):
         # Parse key metric files and generate key/value pairs
         results = {}
 
+        # Ensure we've completed the OOBE flow.
+        if not os.path.exists('/home/chronos/.oobe_completed'):
+            raise error.TestError('OOBE not completed.')
+
         uptime_files = [
             # N.B.  Keyval attribute names go into a database that
             # truncates after 30 characters.
