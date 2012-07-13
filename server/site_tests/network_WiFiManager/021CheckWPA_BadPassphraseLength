@@ -2,15 +2,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This test tries invalid WPA and RSN passprhase lengths.
+# Purpose: This test verifies that DUT cannot successfully connect to an AP
+# when using WPA and RSN passphrase of invalid lengths.
+
+# Valid passphrase is a sequence of
+# - between 8 and 63 ASCII-encoded characters
+# - between 8 and 64 hex digits.
+
 { "name":"RSNWPABadKeyLength",
   "steps":[             # Channel [any]
-    # Test passphrase that is too small by one
-    [ "!connect",        { "security":"rsn", "psk":"0123456", "hidden":True },
+    # Test an Ascii-only passphrase that is one byte too small
+    # No need to test hex-only short string b/c for WPA/RSN all passphrases
+    # are considered textual unless there are 64 hex-only characters.
+    [ "!connect",        { "security":"rsn", "psk":"x123456", "hidden":True },
                            "org.chromium.flimflam.Error.InvalidPassphrase" ],
-    [ "!connect",        { "security":"wpa", "psk":"0123456", "hidden":True },
+    [ "!connect",        { "security":"wpa", "psk":"x123456", "hidden":True },
                            "org.chromium.flimflam.Error.InvalidPassphrase" ],
-    # Test a textual passphrase that is too large by one
+
+    # Test an Ascii-only passphrase that is one byte too large
     [ "!connect",        { "security":"rsn", "hidden":True,
                            "psk":"x123456789"
                                  "0123456789"
@@ -29,7 +38,8 @@
                                  "0123456789"
                                  "0123" },
                            "org.chromium.flimflam.Error.InvalidPassphrase" ],
-    # Test a hex-only passphrase that is too large by one
+
+    # Test a hex-only passphrase that is one digit too large
      [ "!connect",        { "security":"rsn", "hidden":True,
                            "psk":"0123456789"
                                  "0123456789"
