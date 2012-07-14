@@ -782,7 +782,27 @@ class HostQueueEntry(DBObject):
 
 
     def execution_tag(self):
-        assert self.execution_subdir
+        SQL_SUSPECT_ENTRIES = ('SELECT * FROM afe_host_queue_entries WHERE '
+                               'complete!=1 AND execution_subdir="" AND '
+                               'status!="Queued";')
+        SQL_FIX_SUSPECT_ENTRY = ('UPDATE afe_host_queue_entries SET '
+                                 'status="Aborted" WHERE id=%s;')
+        try:
+            assert self.execution_subdir
+        except AssertionError:
+            # TODO(scottz): Remove temporary fix/info gathering pathway for
+            # crosbug.com/31595 once issue is root caused.
+            logging.error('No execution_subdir for host queue id:%s.', self.id)
+            logging.error('====DB DEBUG====\n%s', SQL_SUSPECT_ENTRIES)
+            for row in _db.execute(SQL_SUSPECT_ENTRIES):
+              logging.error(row)
+            logging.error('====DB DEBUG====\n')
+            fix_query = SQL_FIX_SUSPECT_ENTRY % self.id
+            logging.error('EXECUTING: %s', fix_query)
+            _db.execute(SQL_FIX_SUSPECT_ENTRY % self.id)
+            raise AssertionError(('self.execution_subdir not found. '
+                                  'See log for details.'))
+
         return "%s/%s" % (self.job.tag(), self.execution_subdir)
 
 
