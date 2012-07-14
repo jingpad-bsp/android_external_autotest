@@ -46,7 +46,7 @@ class DroneUtility(object):
 
     All paths going into and out of this class are absolute.
     """
-    _WARNING_DURATION = 60
+    _WARNING_DURATION = 400
 
     def __init__(self):
         # Tattoo ourselves so that all of our spawn bears our mark.
