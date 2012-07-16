@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,12 +11,18 @@ CELLS = {}
 # TODO(rochberg):  Need some way to subset this list for long/short tests
 
 GENERIC_GSM_TECHNOLOGIES = ['GPRS', 'EGPRS', 'WCDMA', 'HSDPA', 'HSUPA',
-                            'HSDUPA', 'HSPA_PLUS',]
+                            'HSDUPA', 'HSPA_PLUS']
+
+ICERA_TECHNOLOGIES = GENERIC_GSM_TECHNOLOGIES[:]
+ICERA_TECHNOLOGIES.remove('HSPA_PLUS')
 
 GOBI_3000_TECHNOLOGIES = GENERIC_GSM_TECHNOLOGIES + ['CDMA_2000', 'EVDO_1X']
 
-GOBI_2000_TECHNOLOGIES = GOBI_3000_TECHNOLOGIES
+GOBI_2000_TECHNOLOGIES = GOBI_3000_TECHNOLOGIES[:]
 GOBI_2000_TECHNOLOGIES.remove('HSPA_PLUS')
+
+# TODO(thieule): Make HSPA_PLUS work with autotest (crosbug.com/32621).
+GOBI_3000_TECHNOLOGIES.remove('HSPA_PLUS')
 
 def combine_trees(a_original, b):
     """Combines two dict-of-dict trees, favoring the second."""
@@ -141,7 +147,7 @@ CELLS['mtv'] = {
             "address": "172.22.50.85",
             "ethernet_mac": "00:00:00:00:00:c8",
             "name": "alex-gobi-3000",
-            "technologies": GENERIC_GSM_TECHNOLOGIES,
+            "technologies": GOBI_3000_TECHNOLOGIES,
             "location": "rack2-host4",
             "rf_switch_port": 4,
             },
@@ -149,7 +155,7 @@ CELLS['mtv'] = {
             "address": "172.22.50.160",
             "ethernet_mac": "c0:c1:c0:4b:d7:4f",
             "name": "alex-y3300",
-            "technologies": GENERIC_GSM_TECHNOLOGIES,
+            "technologies": ICERA_TECHNOLOGIES,
             "location": "rack2-host1",
             "rf_switch_port": 1,
             },
@@ -157,7 +163,7 @@ CELLS['mtv'] = {
             "address": "172.22.50.12",
             "ethernet_mac": "58:6d:8f:50:ae:55",
             "name": "alex-y3400",
-            "technologies": GENERIC_GSM_TECHNOLOGIES,
+            "technologies": ICERA_TECHNOLOGIES,
             "location": "rack2-host5",
             "rf_switch_port": 5,
             },

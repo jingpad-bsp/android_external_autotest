@@ -11,7 +11,7 @@ from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import environment
-from autotest_lib.client.cros.cellular import modem
+from autotest_lib.client.cros.cellular import mm
 
 import time
 
@@ -84,7 +84,8 @@ class cellular_Signal(test.test):
 
             # Step through all technologies, forcing a transition
             failed_technologies = []
-            cell_modem = modem.PickOneModem('')
+            manager, modem_path = mm.PickOneModem('')
+            cell_modem = manager.GetModem(modem_path)
             for tech in technologies:
                 tname = str(tech).replace('Technology:', '')
                 if verify_set_power:
