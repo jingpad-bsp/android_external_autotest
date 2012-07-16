@@ -346,7 +346,8 @@ bool AlsaCaptureClient::Init(int sample_rate, SampleFormat format,
   if (pcm_capture_handle_)
     snd_pcm_close(pcm_capture_handle_);
 
-  last_error_ = snd_pcm_open(&pcm_capture_handle_, capture_device_.c_str(),
+  last_error_ = snd_pcm_open(&pcm_capture_handle_,
+                             capture_device_.c_str(),
                              SND_PCM_STREAM_CAPTURE, 0);
   if (last_error_ < 0) {
     pcm_capture_handle_ = NULL;
@@ -358,15 +359,70 @@ bool AlsaCaptureClient::Init(int sample_rate, SampleFormat format,
     latency_ms_ = 4000 * period_size / sample_rate;
   }
 
-  /* Set format, access, num_channels, sample rate, latency */
+  /* Set format, access, num_channels, sample rate, period, resample */
+  char const* hwdevname = capture_device_.c_str();
+
+  unsigned int rate_set;
+
+  snd_pcm_hw_params_malloc(&hwparams_);
+
+  if (snd_pcm_hw_params_any(pcm_capture_handle_, hwparams_) < 0) {
+    fprintf(stderr, "No config available for PCM device %s\n",
+            hwdevname);
+    return false;
+  }
+
   int soft_resample = 1;
-  if ((last_error_ = snd_pcm_set_params(pcm_capture_handle_,
-                                        SampleFormatToAlsaFormat(format),
-                                        SND_PCM_ACCESS_RW_INTERLEAVED,
-                                        num_channels,
-                                        sample_rate,
-                                        soft_resample,
-                                        1000 * latency_ms_)) < 0) {
+  if (snd_pcm_hw_params_set_rate_resample(pcm_capture_handle_, hwparams_,
+      soft_resample) < 0) {
+    fprintf(stderr, "Resampling not available on PCM device %s\n",
+            hwdevname);
+    return false;
+  }
+
+  if (snd_pcm_hw_params_set_access(pcm_capture_handle_, hwparams_,
+      SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
+    fprintf(stderr, "Access type not available on PCM device %s\n",
+            hwdevname);
+    return false;
+  }
+
+  if (snd_pcm_hw_params_set_format(pcm_capture_handle_, hwparams_,
+      SampleFormatToAlsaFormat(format)) < 0) {
+    fprintf(stderr, "Could not set format for device %s\n", hwdevname);
+    return false;
+  }
+
+  if (snd_pcm_hw_params_set_channels(pcm_capture_handle_, hwparams_,
+         num_channels) < 0) {
+    fprintf(stderr, "Could not set channel count for device %s\n",
+            hwdevname);
+    return false;
+  }
+
+  rate_set = static_cast<unsigned int>(sample_rate);
+  if (snd_pcm_hw_params_set_rate_near(pcm_capture_handle_,
+                                      hwparams_,
+                                      &rate_set,
+                                      0) < 0) {
+    fprintf(stderr, "Could not set bitrate near %u for PCM device %s\n",
+            sample_rate, hwdevname);
+    return false;
+  }
+
+  if (rate_set != static_cast<unsigned int>(sample_rate))
+    fprintf(stderr, "Warning: Actual rate(%u) != Requested rate(%u)\n",
+            rate_set,
+            sample_rate);
+
+  snd_pcm_hw_params_set_periods(pcm_capture_handle_, hwparams_, 2, 0);
+  snd_pcm_hw_params_set_period_size(pcm_capture_handle_,
+                                    hwparams_,
+                                    period_size * num_channels,
+                                    0);
+
+  if (snd_pcm_hw_params(pcm_capture_handle_, hwparams_) < 0) {
+    fprintf(stderr, "Unable to install hw params\n");
     return false;
   }
 

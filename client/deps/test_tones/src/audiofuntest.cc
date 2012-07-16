@@ -14,6 +14,7 @@
 #include <string>
 
 #include <fftw3.h>
+#include <alsa/asoundlib.h>
 
 #include "common.h"
 #include "alsa_client.h"
@@ -308,6 +309,7 @@ struct LoopParam {
       carriers[i].center_bin = bin_start + 2 * i;
     }
     target_carrier = 0;
+    hwparams = capture_client.get_hw_params();
   }
   bool SetTargetCarrier(int c) {
     if (c < 0 ||
@@ -327,6 +329,7 @@ struct LoopParam {
     return carriers[target_carrier].center_bin;
   }
   void Print(FILE* fp) {
+    snd_output_t *log;
     fprintf(fp, "LoopParam::Print()\n");
     fprintf(fp, "  num_frames = %d\n", num_frames);
     fprintf(fp, "  num_freq   = %d\n", num_freq);
@@ -337,6 +340,8 @@ struct LoopParam {
     fprintf(fp, "  num_used_bin  = %d\n", num_used_bin);
     fprintf(fp, "  targte_carrier = %d\n", target_carrier);
     fprintf(fp, "  carriers   = {\n");
+
+
     for (unsigned int i = 0; i < carriers.size(); ++i) {
       fprintf(fp, "    %d: @%d(%.f) (%d, %d): {",
               i, carriers[i].center_bin, carriers[i].center_bin * freq_resol,
@@ -349,6 +354,10 @@ struct LoopParam {
       fprintf(fp, "}\n");
     }
     fprintf(fp, "  }\n");
+
+    fprintf(fp, "hw_params =\n");
+    snd_output_stdio_attach(&log, fp, 0);
+    snd_pcm_hw_params_dump(hwparams, log);
   }
   int num_frames;
   int num_freq;
@@ -360,6 +369,7 @@ struct LoopParam {
   vector<double> frequencies;
   vector<struct Carrier> carriers;
   int target_carrier;
+  snd_pcm_hw_params_t *hwparams;
 };
 
 static double sqmag(double x[2]) {
@@ -465,7 +475,6 @@ void MeasureFilter(struct LoopParam* parm,
 
 
 int LoopControl(AudioFunTestConfig& config) {
-
   srand(time(NULL) + getpid());
   /* AlsaCaptureClient */
   AlsaCaptureClient capture_client(config.capture_alsa_device);

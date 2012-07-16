@@ -226,6 +226,7 @@ class AlsaCaptureClient {
   virtual int Capture();
 
   // Trivial accessors/mutators.
+  virtual snd_pcm_hw_params_t *get_hw_params() const { return hwparams_; }
   virtual void set_state(State state) { state_ = state; }
   virtual State state() const { return state_; }
   virtual int last_error() const { return last_error_; }
@@ -243,6 +244,7 @@ class AlsaCaptureClient {
   //static void StreamFlushed(int success, void* userdata);
 
   _snd_pcm* pcm_capture_handle_;
+  snd_pcm_hw_params_t *hwparams_;
   unsigned int sample_rate_;
   int num_channels_;
   SampleFormat format_;

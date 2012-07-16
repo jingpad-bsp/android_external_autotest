@@ -109,7 +109,7 @@ struct AudioFunTestConfig {
       end_volume(1.0f),
       channels(2),
       fftsize(1024u),
-      verbose(false) {}
+      verbose(false){}
 
   std::string capture_alsa_device;
   std::string playback_alsa_device;
