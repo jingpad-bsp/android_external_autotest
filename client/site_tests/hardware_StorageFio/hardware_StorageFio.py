@@ -1,17 +1,30 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import logging, os, re
+from fio_parser import fio_job_output
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
-class hardware_StorageFio(test.test):
-    version = 3
 
-    # http://brick.kernel.dk/snaps/fio-1.36.tar.bz2
-    def setup(self, tarball = 'fio-1.36.tar.bz2'):
+class hardware_StorageFio(test.test):
+    """
+    Runs several fio jobs and reports results.
+
+    fio (flexible I/O tester) is an I/O tool for benchmark and stress/hardware
+    verification.
+
+    """
+
+    version = 5
+
+    # Version information for the fio parser object.
+    _fio_version = '2.1'
+
+    # http://brick.kernel.dk/snaps/
+    def setup(self, tarball = 'fio-2.1.tar.bz2'):
         # clean
         if os.path.exists(self.srcdir):
             utils.system('rm -rf %s' % self.srcdir)
@@ -27,7 +40,6 @@ class hardware_StorageFio(test.test):
 
         os.chdir(self.srcdir)
         utils.system('patch -p1 < ../Makefile.patch')
-        utils.system('patch -p1 < ../arm.patch')
         utils.make(make='%s %s make' % (var_ldflags, var_cflags))
 
 
@@ -93,48 +105,44 @@ class hardware_StorageFio(test.test):
 
 
     def __parse_fio(self, lines):
-        """Parse the human readable fio output
+        """Parse the terse fio output
 
-        This only collects bandwidth and iops numbers from fio.
+        This collects all metrics given by fio and labels them according to unit
+        of measurement and test case name.
 
         """
-
-        # fio --minimal doesn't output information about the number of ios
-        # that occurred, making it unsuitable for this test.  Instead we parse
-        # the human readable output with some regular expressions
-        read_re = re.compile(r'read :.*bw=([0-9]*K?)B/s.*iops=([0-9]*)')
-        write_re = re.compile(r'write:.*bw=([0-9]*K?)B/s.*iops=([0-9]*)')
+        # fio version 2.0.8+ outputs all needed information with --minimal
+        # Using that instead of the human-readable version, since it's easier
+        # to parse.
+        # Following is a partial example of the semicolon-delimited output.
+        # 3;fio-2.1;quick_write;0;0;0;0;0;0;0;0;0.000000;0.000000;0;0;0.000000;
+        # 0.000000;1.000000%=0;5.000000%=0;10.000000%=0;20.000000%=0;
+        # ...
+        # Refer to the HOWTO file of the fio package for more information.
 
         results = {}
-        for line in lines.split('\n'):
-            line = line.rstrip()
-            match = read_re.search(line)
-            if match:
-                results['read_bw'] = match.group(1)
-                results['read_iops'] = match.group(2)
-                continue
-            match = write_re.search(line)
-            if match:
-                results['write_bw'] = match.group(1)
-                results['write_iops'] = match.group(2)
-                continue
 
-        # Turn the values into numbers
-        for metric, result in results.iteritems():
-            if result[-1] == 'K':
-                result = int(result[:-1]) * 1024
-            else:
-                result = int(result)
-            results[metric] = result
+        # Extract the values from the test.
+        for line in lines.splitlines():
+            # Put the values from the output into an array.
+            values = line.split(';')
+            # This check makes sure that we are parsing the actual values
+            # instead of the job description or possible blank lines.
+            if len(values) <= 128:
+                continue
+            results.update(fio_job_output(self._fio_version, values))
 
-        results['bw'] = (results.get('read_bw', 0) +
-                         results.get('write_bw', 0))
-        results['iops'] = (results.get('read_iops', 0) +
-                           results.get('write_iops', 0))
         return results
 
 
     def __RunFio(self, test):
+        """
+        Runs fio.
+
+        @return fio results.
+
+        """
+
         os.chdir(self.srcdir)
         vars = 'LD_LIBRARY_PATH="' + self.autodir + '/deps/libaio/lib"'
         os.putenv('FILENAME', self.__filename)
@@ -147,8 +155,10 @@ class hardware_StorageFio(test.test):
         # -c 3 = Idle
         # Tried lowest priority for "best effort" but still failed
         ionice = ' ionice -c 3'
-        fio = utils.run(vars + ionice +
-                        ' ./fio "%s"' % os.path.join(self.bindir, test))
+        # Using the --minimal flag for easier results parsing
+        # Newest fio doesn't omit any information in --minimal
+        fio = utils.run(vars + ionice + ' ./fio --minimal "%s"' %
+            os.path.join(self.bindir, test))
         logging.debug(fio.stdout)
         return self.__parse_fio(fio.stdout)
 
@@ -170,6 +180,11 @@ class hardware_StorageFio(test.test):
 
 
     def run_once(self, dev='', quicktest=False, requirements=None):
+        """
+        Runs several fio jobs and reports resutls.
+
+        """
+
         # TODO(ericli): need to find a general solution to install dep packages
         # when tests are pre-compiled, so setup() is not called from client any
         # more.
@@ -180,47 +195,39 @@ class hardware_StorageFio(test.test):
         if requirements is not None:
             pass
         elif quicktest:
-            requirements = {
-                'quick_write': 'bw',
-                'quick_read': 'iops',
-            }
+            requirements = [ 'quick_write', 'quick_read' ]
         elif dev in ['', utils.system_output('rootdev -s -d')]:
-            requirements = {
-                'surfing': 'iops',
-                'boot': 'bw',
-                'login': 'bw',
-                'seq_read': 'bw',
-                'seq_write': 'bw',
-                '16k_read': 'iops',
-                '16k_write': 'iops',
-                '8k_read': 'iops',
-                '8k_write': 'iops',
-                '4k_read': 'iops',
-                '4k_write': 'iops',
-            }
+            requirements = [
+                'surfing',
+                'boot',
+                'login',
+                'seq_read',
+                'seq_write',
+                '16k_read',
+                '16k_write',
+                '8k_read',
+                '8k_write',
+                '4k_read',
+                '4k_write'
+            ]
         else:
             # TODO(waihong@): Add more test cases for external storage
-            requirements = {
-                'seq_read': 'bw',
-                'seq_write': 'bw',
-                '16k_read': 'iops',
-                '16k_write': 'iops',
-                '8k_read': 'iops',
-                '8k_write': 'iops',
-                '4k_read': 'iops',
-                '4k_write': 'iops',
-            }
+            requirements = [
+                'seq_read',
+                'seq_write',
+                '16k_read',
+                '16k_write',
+                '8k_read',
+                '8k_write',
+                '4k_read',
+                '4k_write'
+            ]
 
         results = {}
-        for test, metric_list in requirements.iteritems():
-            if not isinstance(metric_list, list):
-                metric_list = [metric_list]
-            result = self.__RunFio(test)
-            for metric in metric_list:
-                units = metric
-                if metric == 'bw':
-                    units = 'bytes_per_sec'
-                results[units + '_' + test] = result[metric]
+        for test in requirements:
+            # Keys are labeled according to the test case name, which is
+            # unique per run, so they cannot clash
+            results.update(self.__RunFio(test))
 
         # Output keys relevent to the performance, larger filesize will run
         # slower, and sda5 should be slightly slower than sda3 on a rotational
@@ -228,5 +235,5 @@ class hardware_StorageFio(test.test):
         self.write_test_keyval({'filesize': self.__filesize,
                                 'filename': self.__filename,
                                 'device': self.__description})
-        logging.info('Device Description: %s' % self.__description)
+        logging.info('Device Description: %s', self.__description)
         self.write_perf_keyval(results)

@@ -1,21 +1,11 @@
---- src/Makefile	2010-02-16 20:33:16.000000000 +0000
-+++ src.patched/Makefile	2010-02-16 20:33:46.000000000 +0000
-@@ -1,7 +1,7 @@
--CC	= gcc
-+CC	?= gcc
+--- fio-2.1/Makefile	2013-05-14 23:42:26.000000000 -0700
++++ fio-2.1/patched/Makefile	2013-07-14 18:21:18.987246429 -0700
+@@ -15,7 +15,7 @@
  DEBUGFLAGS = -D_FORTIFY_SOURCE=2 -DFIO_INC_DEBUG
- OPTFLAGS= -O2 -g $(EXTFLAGS)
--CFLAGS	= -Wwrite-strings -Wall -D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 $(OPTFLAGS) $(DEBUGFLAGS) -fno-omit-frame-pointer -rdynamic
-+CFLAGS	+= -Wwrite-strings -Wall -D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 $(OPTFLAGS) $(DEBUGFLAGS) -fno-omit-frame-pointer -rdynamic
+ CPPFLAGS= -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 $(DEBUGFLAGS)
+ OPTFLAGS= -O3 -g -ffast-math
+-CFLAGS	= -std=gnu99 -Wwrite-strings -Wall -Wdeclaration-after-statement $(OPTFLAGS) $(EXTFLAGS) $(BUILD_CFLAGS)
++CFLAGS	+= -std=gnu99 -Wwrite-strings -Wall -Wdeclaration-after-statement $(OPTFLAGS) $(EXTFLAGS) $(BUILD_CFLAGS)
+ LIBS	+= -lm $(EXTLIBS)
  PROGS	= fio
  SCRIPTS = fio_generate_plots
- OBJS = gettime.o fio.o ioengines.o init.o stat.o log.o time.o filesetup.o \
-@@ -47,7 +47,7 @@
- %.o: %.c
- 	$(QUIET_CC)$(CC) -o $*.o -c $(CFLAGS) $<
- fio: $(OBJS)
--	$(QUIET_CC)$(CC) $(CFLAGS) -o $@ $(filter %.o,$^) $(EXTLIBS) -lpthread -lm -ldl -laio -lrt
-+	$(QUIET_CC)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(filter %.o,$^) $(EXTLIBS) -lpthread -lm -ldl -laio -lrt
- 
- depend:
- 	$(QUIET_DEP)$(CC) -MM $(ALL_CFLAGS) *.c engines/*.c crc/*.c 1> .depend
