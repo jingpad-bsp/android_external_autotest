@@ -51,5 +51,4 @@ tpmd:x:225:
 ntfs-3g:x:300:
 avfs:x:301:
 daemon-store:x:400:
-chrome-usb:x:401:chronos
 serial:x:402:chronos,uucp
