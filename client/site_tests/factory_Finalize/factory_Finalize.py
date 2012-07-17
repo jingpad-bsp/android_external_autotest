@@ -8,6 +8,7 @@ import os
 import sys
 import time
 
+import gobject
 import gtk
 
 from autotest_lib.client.bin import test
@@ -42,13 +43,19 @@ class PreflightTask(task.FactoryTask):
                    "或是按下 'f' 鍵以強迫開始最終程序。")
     MSG_READY = ("System is READY. Press SPACE to start FINALIZATION!\n"
                  "系統已準備就緒。 請按空白鍵開始最終程序!")
+    MSG_POLLING = ("System is NOT ready. Please fix RED tasks.\n"
+                   "系統尚未就緒。請修正紅色項目。")
+    MSG_POLLING_READY = ("System is READY. Staring FINALIZATION!\n"
+                         "系統已準備就緒。 開始最終程序!")
 
-    def __init__(self, test_list, developer_mode):
+    def __init__(self, test_list, developer_mode, polling_seconds):
         def create_label(message):
             return ui.make_label(message, fg=self.COLOR_DISABLED,
                                  alignment=(0, 0.5))
         self.updating = False
         self.developer_mode = developer_mode
+        self.polling_seconds = polling_seconds
+        self.polling_mode = (self.polling_seconds is not None)
         self.test_list = test_list
         self.items = [(self.check_required_tests,
                        create_label("Verify no tests failed\n"
@@ -94,8 +101,14 @@ class PreflightTask(task.FactoryTask):
 
         def update_summary():
             self.updating = False
-            self.label_status.set_label(
-                    self.MSG_READY if all(self.results) else self.MSG_PENDING)
+            msg_pending = self.MSG_PENDING
+            msg_ready = self.MSG_READY
+            if self.polling_mode:
+                msg_pending = self.MSG_POLLING
+                msg_ready = self.MSG_POLLING_READY
+            self.label_status.set_label(msg_ready if all(self.results) else
+                                        msg_pending)
+
             # In developer mode, provide more visual feedback.
             if self.developer_mode:
                 time.sleep(.5)
@@ -103,6 +116,7 @@ class PreflightTask(task.FactoryTask):
         def next_test():
             if not items:
                 update_summary()
+                self.polling_scheduler()
                 return
             checker, label = items.pop(0)
             result = checker()
@@ -115,6 +129,22 @@ class PreflightTask(task.FactoryTask):
         items = self.items[:]
         self.results = []
         task.schedule(next_test)
+
+    def polling_timeout(self):
+        self.update_results()
+        # Stop timeout callbacks.
+        return False
+
+    def polling_scheduler(self):
+        if not self.polling_mode:
+            return
+
+        if all(self.results):
+            self.stop()
+        else:
+            # schedule next polling event.
+            gobject.timeout_add(self.polling_seconds * 1000,
+                                self.polling_timeout)
 
     def window_key_press(self, widget, event):
         if self.updating:
@@ -145,7 +175,8 @@ class PreflightTask(task.FactoryTask):
         self.widget = vbox
         self.add_widget(self.widget)
         task.schedule(self.update_results)
-        self.connect_window('key-press-event', self.window_key_press)
+        if not self.polling_mode:
+            self.connect_window('key-press-event', self.window_key_press)
 
 
 class FinalizeTask(task.FactoryTask):
@@ -206,6 +237,7 @@ class factory_Finalize(test.test):
 
     def run_once(self,
                  developer_mode=False,
+                 polling_seconds=None,
                  secure_wipe=False,
                  upload_method='none',
                  test_list_path=None):
@@ -213,7 +245,7 @@ class factory_Finalize(test.test):
         factory.log('%s run_once' % self.__class__)
 
         test_list = factory.read_test_list(test_list_path)
-        self.tasks = [PreflightTask(test_list, developer_mode),
+        self.tasks = [PreflightTask(test_list, developer_mode, polling_seconds),
                       FinalizeTask(developer_mode, secure_wipe, upload_method)]
 
         task.run_factory_tasks(self.job, self.tasks)
