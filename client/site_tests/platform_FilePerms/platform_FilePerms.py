@@ -19,9 +19,53 @@ class platform_FilePerms(test.test):
     """
     Test file permissions.
     """
-    version = 1
-    mtab_path = '/etc/mtab'
+    version = 2
     mount_path = '/bin/mount'
+    standard_rw_options = ['rw', 'nosuid', 'nodev', 'noexec', 'relatime']
+    # When adding an expectation that isn't simply "standard_rw_options,"
+    # please leave either an explanation for why that mount is special,
+    # or a bug number tracking work to harden that mount point, in a comment.
+    expected_mount_options = {
+        '/dev': { # crosbug.com/32629
+            'type': 'devtmpfs',
+            'options': ['rw', 'relatime', 'mode=755']},
+        '/dev/pstore': { # crosbug.com/32630
+            'type': 'pstore',
+            'options': ['rw', 'relatime']},
+        '/dev/pts': { # Special case, we want to track gid/mode too.
+            'type': 'devpts',
+            'options': ['rw', 'nosuid', 'noexec', 'relatime', 'gid=5',
+                        'mode=620']},
+        '/dev/shm': {'type': 'tmpfs', 'options': standard_rw_options},
+        '/home': {'type': 'ext4', 'options': standard_rw_options},
+        '/home/chronos': {'type': 'ext4', 'options': standard_rw_options},
+        '/media': {'type': 'tmpfs', 'options': standard_rw_options},
+        '/mnt/stateful_partition': {
+            'type': 'ext4',
+            'options': standard_rw_options},
+        '/mnt/stateful_partition/encrypted': {
+            'type': 'ext4',
+            'options': standard_rw_options},
+        '/proc': {'type': 'proc', 'options': standard_rw_options},
+        '/sys': {'type': 'sysfs', 'options': standard_rw_options},
+        '/sys/fs/fuse/connections': { # crosbug.com/32631
+            'type': 'fusectl',
+            'options': ['rw', 'relatime']},
+        '/sys/kernel/debug': { # crosbug.com/32632
+            'type': 'debugfs',
+            'options': ['rw', 'relatime']},
+        '/tmp': {'type': 'tmpfs', 'options': standard_rw_options},
+        '/tmp/cgroup/cpu': { # crosbug.com/32633
+            'type': 'cgroup',
+            'options': ['rw', 'relatime', 'cpu']},
+        '/var': {'type': 'ext4', 'options': standard_rw_options},
+        '/var/lock': {'type': 'tmpfs', 'options': standard_rw_options},
+        '/var/run': { # Special case, we want to track mode too.
+            'type': 'tmpfs',
+            'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
+                        'mode=755']},
+    }
+    testmode_modded_fses = set(['/home', '/tmp', '/usr/local'])
 
 
     def checkid(self, fs, userid):
@@ -67,7 +111,7 @@ class platform_FilePerms(test.test):
         return fperm
 
 
-    def read_mtab(self):
+    def read_mtab(self, mtab_path='/etc/mtab'):
         """
         Helper function to read the mtab file into a dict
 
@@ -77,7 +121,7 @@ class platform_FilePerms(test.test):
           dict, mount points as keys, and another dict with
           options list, device and type as values.
         """
-        file_handle = open(self.mtab_path, 'r')
+        file_handle = open(mtab_path, 'r')
         lines = file_handle.readlines()
         file_handle.close()
 
@@ -219,34 +263,57 @@ class platform_FilePerms(test.test):
     def check_mount_options(self):
         """
         Check the permissions of all non-rootfs filesystems to make
-        sure they have the right mount options.
+        sure they have the right mount options. In order to do this,
+        both the live system state, and a log-snapshot of what the system
+        looked like prior to dev-mode/test-mode modifications were applied,
+        are validated.
 
-        Skips the root filesystem, and allows "/dev" to be missing
-        "nodev".
+        Note that since this test is not a UITest, and takes place
+        while the system waits at a login screen, mount options are
+        not checked for a mounted cryptohome or guestfs. Consult the
+        security_ProfilePermissions test for those checks.
 
         Args:
             (none)
         Returns:
-            int, number of filesystems with the wrong options.
+            int, the number of errors identified in mount options.
         """
         errors = 0
-
-        mtab = self.read_mtab()
-        for filesystem in mtab.keys():
-            # skip the rootfs mounts, because it needs to have all
-            # three attributes (exec, suid, and dev).
-            if filesystem == "/":
-                continue
-            for option in ['noexec', 'nosuid', 'nodev']:
-                # Let the /dev partition have dev nodes (duh!)
-                if option == "nodev" and filesystem == "/dev":
+        # Perform mount-option checks of both mount options as
+        # captured during boot, and, the live system state.  After the
+        # first pass (where we process mount_options.log), grow the
+        # list of ignored filesystems to include all those we know are
+        # tweaked by devmode/mod-for-test mode. This properly sets
+        # expectations for the second pass.
+        mtabs = ['/var/log/mount_options.log', '/etc/mtab']
+        ignored_fses = set(['/'])
+        for mtab_path in mtabs:
+            mtab = self.read_mtab(mtab_path=mtab_path)
+            for fs in mtab.keys():
+                if fs in ignored_fses:
                     continue
-                # TODO(wad): Disable this check until it's fixed.
-                # See crosbug.com/2285.
-                #if not (option in mtab[filesystem]['options']):
-                #    logging.warn("%s partition doesn't have option %s set" %
-                #                 (filesystem, option))
-                #    errors += 1
+                if not fs in self.expected_mount_options:
+                    logging.warn('No expectations entry for %s' % fs)
+                    errors += 1
+                    continue
+
+                if mtab[fs]['type'] != self.expected_mount_options[fs]['type']:
+                    logging.warn('[%s] Wrong fs type: %s is %s, expected %s' %
+                                 (mtab_path, fs, mtab[fs]['type'],
+                                  self.expected_mount_options[fs]['type']))
+                    errors += 1
+                # For options, require the specified options to be present.
+                # Do not consider it an error if extra options are present.
+                # (This makes it easy to deal with options we don't wish
+                # to track closely, like devtmpfs's nr_inodes= for example.)
+                seen = set(mtab[fs]['options'])
+                expected = set(self.expected_mount_options[fs]['options'])
+                missing = expected - seen
+                if (missing):
+                    logging.warn('[%s] Missing options: %s is missing %s' %
+                                 (mtab_path, fs, missing))
+                    errors += 1
+            ignored_fses.update(self.testmode_modded_fses)
         return errors
 
 
@@ -320,7 +387,7 @@ class platform_FilePerms(test.test):
         errors += self.check_mount_options()
 
         # Check that /bin/mount output and mtab jive,
-        # and that mtab is a symbolic link to /dev/mounts.
+        # and that mtab is a symbolic link to /proc/mounts.
         errors += self.check_mount_setup()
 
         # If errors is not zero, there were errors.
