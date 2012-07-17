@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Connect to a WPA network using a raw PMK value instead of an ASCII passphrase
+# Purpose: This test verifies that DUT can connect to a WPA network using
+# a raw PMK value instead of an ASCII passphrase.
+
 { "name":"CheckWPA_RawPMK",
-  "steps":[             # Channel [any]
+  "steps":[
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "mode":"11g",
                           "wpa":"1", "wpa_key_mgmt":"WPA-PSK",
