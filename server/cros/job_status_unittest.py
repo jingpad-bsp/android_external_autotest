@@ -59,7 +59,7 @@ class StatusTest(mox.MoxTestBase):
         self.afe.run('get_host_queue_entries', job=job.id).AndReturn(entries)
         self.mox.ReplayAll()
 
-        self.assertEquals(sorted(expected_hosts),
+        self.assertEquals(sorted(expected_hosts + [None]),
                           sorted(job_status.gather_job_hostnames(self.afe,
                                                                  job)))
 
@@ -106,32 +106,65 @@ class StatusTest(mox.MoxTestBase):
         job_status.wait_for_job_to_finish(self.afe, job)
 
 
+    def expect_hosts_query_and_lock(self, job, manager, all_hostnames,
+                                    running_hosts, do_lock=True):
+        """Expect asking for a job's hosts and, potentially, lock them.
+
+        job_status.gather_job_hostnames() should be mocked out prior to call.
+
+        @param job: a FakeJob with a valid ID.
+        @param manager: mocked out HostLockManager
+        @param all_hostnames: A hostname for each test in the job.  Tests with
+                              no hostname should have a None entry.
+        @param running_hosts: list of FakeHosts that should be listed as
+                              'Running'.
+        @param do_lock: If |manager| should expect |running_hosts| to get
+                        added and locked.
+        @return nothing, but self.afe, job_status.gather_job_hostnames, and
+                manager will have expectations set.
+        """
+        job_status.gather_job_hostnames(mox.IgnoreArg(),
+                                        job).AndReturn(all_hostnames)
+        used_hostnames = [h for h in all_hostnames if h]
+        self.afe.get_hosts(mox.SameElementsAs(used_hostnames),
+                           status='Running').AndReturn(running_hosts)
+        if do_lock:
+            manager.add([h.hostname for h in running_hosts])
+            manager.lock()
+
+
     def testWaitForJobHostsToRunAndGetLocked(self):
         """Ensure we lock all running hosts as they're discovered."""
         self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
 
         job = FakeJob(0, [])
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         expected_hosts = [FakeHost('host2'), FakeHost('host1')]
         expected_hostnames = [h.hostname for h in expected_hosts]
-        entries = [{'host': {'hostname': h}} for h in expected_hostnames]
 
         time.sleep(mox.IgnoreArg()).MultipleTimes()
-        self.afe.run('get_host_queue_entries', job=job.id).AndReturn(entries)
-
-        self.afe.get_hosts(mox.SameElementsAs(expected_hostnames),
-                           status='Running').AndReturn(expected_hosts[1:])
-        manager.add(expected_hostnames[1:]).InAnyOrder('manager1')
-        manager.lock().InAnyOrder('manager1')
-
-        # Returning the same list of hosts more than once should be a noop.
-        self.afe.get_hosts(mox.SameElementsAs(expected_hostnames),
-                           status='Running').AndReturn(expected_hosts[1:])
-
-        self.afe.get_hosts(mox.SameElementsAs(expected_hostnames),
-                           status='Running').AndReturn(expected_hosts)
-        manager.lock().InAnyOrder('manager2')
-        manager.add(expected_hostnames).InAnyOrder('manager2')
+        # First, only one test in the job has had a host assigned at all.
+        # Since no hosts are running, expect no locking.
+        self.expect_hosts_query_and_lock(job, manager,
+                                         [None] + expected_hostnames[1:],
+                                         [], False)
+        # Then, that host starts running, but no other tests have hosts.
+        self.expect_hosts_query_and_lock(job, manager,
+                                         [None] + expected_hostnames[1:],
+                                         expected_hosts[1:])
+        # The second test gets a host assigned, but it's not yet running.
+        # Since no new running hosts are found, no locking should happen
+        self.expect_hosts_query_and_lock(job, manager,
+                                         expected_hostnames,
+                                         expected_hosts[1:], False)
+        # The second test's host starts running as well.
+        self.expect_hosts_query_and_lock(job, manager,
+                                         expected_hostnames,
+                                         expected_hosts)
+        # The last loop update; doesn't impact behavior.
+        job_status.gather_job_hostnames(mox.IgnoreArg(),
+                                        job).AndReturn(expected_hostnames)
 
         self.mox.ReplayAll()
         self.assertEquals(

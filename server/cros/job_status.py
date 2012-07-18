@@ -16,13 +16,15 @@ def gather_job_hostnames(afe, job):
 
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param job: the job to poll on.
-    @return iterable of hostnames on which |job| was run.
+    @return iterable of hostnames on which |job| was run, using None as
+            placeholders.
     """
     hosts = []
     for e in afe.run('get_host_queue_entries', job=job.id):
         if not e['host']:
             logging.warn('Job %s (%s) has an entry with no host!',
                          job.name, job.id)
+            hosts.append(None)
         else:
             hosts.append(e['host']['hostname'])
     return hosts
@@ -66,17 +68,19 @@ def wait_for_and_lock_job_hosts(afe, job, manager,
                     as they start Running, and it will be used to lock them.
     @return iterable of the hosts that were locked.
     """
-    expected_hosts = sorted(gather_job_hostnames(afe, job))
+    expected_hosts = gather_job_hostnames(afe, job)
     locked_hosts = []
-    while sorted(locked_hosts) != expected_hosts:
-        hostnames = [h.hostname for h in afe.get_hosts(expected_hosts,
-                                                       status='Running')]
+    while sorted(locked_hosts) != sorted(expected_hosts):
+        running_hosts = afe.get_hosts([e for e in expected_hosts if e],
+                                      status='Running')
+        hostnames = [h.hostname for h in running_hosts]
         if hostnames != locked_hosts:
             # New hosts to lock!
             manager.add(hostnames)
             manager.lock()
-        locked_hosts = hostnames
         time.sleep(interval)
+        locked_hosts = hostnames
+        expected_hosts = gather_job_hostnames(afe, job)
     return locked_hosts
 
 
