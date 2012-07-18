@@ -27,6 +27,8 @@ class kernel_ConfigVerify(test.test):
         # for the SUID sandbox.
         'PID_NS',
         'NET_NS',
+        # Security; perform additional validation of credentials.
+        'DEBUG_CREDENTIALS',
     ]
     IS_MODULE = [
         # Sanity checks; should be present in builds as modules.
