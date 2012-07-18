@@ -4,9 +4,13 @@
 
 import os, shutil, re, logging
 
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import utils, global_config
 from autotest_lib.client.bin import base_sysinfo
 from autotest_lib.client.cros import constants
+
+get_value = global_config.global_config.get_config_value
+collect_corefiles = get_value('CLIENT', 'collect_corefiles',
+                              type=bool, default=True)
 
 
 logfile = base_sysinfo.logfile
@@ -14,19 +18,22 @@ command = base_sysinfo.command
 
 
 class logdir(base_sysinfo.loggable):
-    def __init__(self, directory):
+    def __init__(self, directory, additional_exclude=None):
         super(logdir, self).__init__(directory, log_in_keyval=False)
         self.dir = directory
+        self.additional_exclude = additional_exclude
 
 
     def __repr__(self):
-        return "site_sysinfo.logdir(%r)" % self.dir
+        return "site_sysinfo.logdir(%r, %s)" % (self.dir,
+                                                self.additional_exclude)
 
 
     def __eq__(self, other):
         if isinstance(other, logdir):
-            return self.dir == other.dir
-        elif isinstance(other, loggable):
+            return (self.dir == other.dir and
+                    self.additional_exclude == other.additional_exclude)
+        elif isinstance(other, base_sysinfo.loggable):
             return False
         return NotImplemented
 
@@ -39,7 +46,7 @@ class logdir(base_sysinfo.loggable):
 
 
     def __hash__(self):
-        return hash(self.dir)
+        return hash(self.dir) + hash(self.additional_exclude)
 
 
     def run(self, log_dir):
@@ -48,14 +55,19 @@ class logdir(base_sysinfo.loggable):
             utils.system("mkdir -p %s%s" % (log_dir, parent_dir))
             # Take source permissions and add ugo+r so files are accessible via
             # archive server.
+            additional_exclude_str = ""
+            if self.additional_exclude:
+                additional_exclude_str = "--exclude=" + self.additional_exclude
+
             utils.system("rsync --no-perms --chmod=ugo+r -a --exclude=autoserv*"
-                         " %s %s%s" % (self.dir, log_dir, parent_dir))
+                         " %s %s %s%s" % (additional_exclude_str, self.dir,
+                                          log_dir, parent_dir))
 
 
 class purgeable_logdir(logdir):
-    def __init__(self, directory):
-        super(purgeable_logdir, self).__init__(directory)
-
+    def __init__(self, directory, additional_exclude=None):
+        super(purgeable_logdir, self).__init__(directory, additional_exclude)
+        self.additional_exclude = additional_exclude
 
     def run(self, log_dir):
         super(purgeable_logdir, self).run(log_dir)
@@ -64,10 +76,12 @@ class purgeable_logdir(logdir):
             utils.system("rm -rf %s/*" % (self.dir))
 
 
-
 class site_sysinfo(base_sysinfo.base_sysinfo):
     def __init__(self, job_resultsdir):
         super(site_sysinfo, self).__init__(job_resultsdir)
+        crash_exclude_string = None
+        if not collect_corefiles:
+            crash_exclude_string = "*.core"
 
         # add in some extra command logging
         self.boot_loggables.add(command("ls -l /boot",
@@ -83,13 +97,17 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         # (such as a kernel crash) is handled.
         self.after_iteration_loggables.add(
             purgeable_logdir(
-                os.path.join(constants.CRYPTOHOME_MOUNT_PT, "crash")))
+                os.path.join(constants.CRYPTOHOME_MOUNT_PT, "crash"),
+                additional_exclude=crash_exclude_string))
         self.after_iteration_loggables.add(
-            purgeable_logdir(constants.CRASH_DIR))
+            purgeable_logdir(constants.CRASH_DIR,
+                             additional_exclude=crash_exclude_string))
         self.test_loggables.add(
             logfile(os.path.join(constants.USER_DATA_DIR,
                                  ".Google/Google Talk Plugin/gtbplugin.log")))
-        self.test_loggables.add(purgeable_logdir(constants.CRASH_DIR))
+        self.test_loggables.add(purgeable_logdir(
+                constants.CRASH_DIR,
+                additional_exclude=crash_exclude_string))
         # Collect files under /tmp/crash_reporter, which contain the procfs
         # copy of those crashed processes whose core file didn't get converted
         # into minidump. We need these additional files for post-mortem analysis
