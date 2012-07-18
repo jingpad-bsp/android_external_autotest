@@ -53,6 +53,9 @@ class Task(object):
         @return keyword, Task object pair.  One or both will be None on error.
         @raise MalformedConfigEntry if there's a problem parsing |section|.
         """
+        if not config.has_section(section):
+            raise MalformedConfigEntry('unknown section %s' % section)
+
         allowed = set(['suite', 'run_on', 'branch_specs', 'pool'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
