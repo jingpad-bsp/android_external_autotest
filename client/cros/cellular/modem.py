@@ -189,7 +189,7 @@ class Modem(object):
         self.SimpleModem().Connect(props)
 
     def Disconnect(self):
-        self.SimpleModem().Disconnect()
+        self.Modem().Disconnect()
 
 
 class ModemManager(object):

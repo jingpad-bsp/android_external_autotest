@@ -14,6 +14,9 @@ from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
+# Number of seconds we wait for the cellular service to perform an action.
+SERVICE_TIMEOUT=60
+
 class ModemManagerContext:
     def __init__(self, start_pseudo_manager):
         self.process = None
@@ -224,14 +227,14 @@ class network_3GModemControl(test.test):
             error.TestFail('Device failed to enter state Powered=True.'),
             timeout=30)
         # wait for service to appear
-        service = self.flim.FindCellularService()
+        service = self.flim.FindCellularService(timeout=SERVICE_TIMEOUT)
         if not service:
-            error.TestFail('Service failed to appear for enabled modem.')
+            raise error.TestFail('Service failed to appear for enabled modem.')
         if check_idle:
             utils.poll_for_condition(
                 lambda: self.CompareServiceState(service, ['idle']),
                 error.TestFail('Service failed to enter idle state.'),
-                timeout=30)
+                timeout=SERVICE_TIMEOUT)
 
     def EnsureConnected(self):
         """
@@ -246,7 +249,7 @@ class network_3GModemControl(test.test):
             lambda: self.CompareServiceState(service,
                                              ['ready', 'portal', 'online']),
             error.TestFail('Service failed to connect.'),
-            timeout=30)
+            timeout=SERVICE_TIMEOUT)
 
 
     def TestCommands(self, commands):
