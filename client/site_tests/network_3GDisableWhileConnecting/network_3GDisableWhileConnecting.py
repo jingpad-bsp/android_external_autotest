@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import network
+from autotest_lib.client.cros.cellular import mm
 
 import functools, logging, pprint, time, traceback, sys
 import dbus, dbus.mainloop.glib, glib, gobject
@@ -13,7 +14,7 @@ import dbus, dbus.mainloop.glib, glib, gobject
 from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros.mainloop import GenericTesterMainLoop
 from autotest_lib.client.cros.mainloop import ExceptionForward
-import mm, flimflam
+import flimflam
 
 import os
 
@@ -106,29 +107,33 @@ class FlimflamDisableTester(DisableTester):
     self.remaining_requirements = set(['disable'])
     self.start_connect()
 
-  def synchronous_set_powered(self, device, value, timeout_s=10):
+  def compare_powered_state(self, device, enable):
+    return device.GetProperties()['Powered'] == enable
+
+  def synchronous_enable(self, device, value, timeout_s=10):
     try:
-      device.SetProperty('Powered', value)
+      if value:
+        device.Enable()
+      else:
+        device.Disable()
     except dbus.exceptions.DBusException, e:
       if e._dbus_error_name != 'org.chromium.flimflam.Error.InProgress':
         raise
-    start = time.time()
-    end = start + timeout_s
-    while time.time() < end:
-      if device.GetProperties()['Powered'] == value:
-        break
-      time.sleep(0.2)
-    if time.time() > end:
-      raise error.TestError('Timed out waiting to set power to %s' % value)
+    utils.poll_for_condition(
+        lambda: self.compare_powered_state(device, value),
+        error.TestError('Timed out waiting to set power to %s' % value),
+        timeout=timeout_s)
 
   def configure(self):
     self.flimflam = flimflam.FlimFlam()
+    self.flimflam.SetDebugTags(
+        'dbus+service+device+modem+cellular+portal+network+manager')
     network.ResetAllModems(self.flimflam)
 
     self.cellular_device = self.flimflam.FindCellularDevice()
 
-    self.synchronous_set_powered(self.cellular_device, False)
-    self.synchronous_set_powered(self.cellular_device, True)
+    self.synchronous_enable(self.cellular_device, False)
+    self.synchronous_enable(self.cellular_device, True)
 
     self.cellular_service = self.flimflam.FindCellularService()
 
@@ -148,10 +153,14 @@ class FlimflamDisableTester(DisableTester):
                              # self.disable_property_changed
     self.property_changed_actions['Powered'] = self.disable_property_changed
 
-    self.cellular_device.SetProperty(
-        'Powered', value,
-        reply_handler=self.ignore_handler,
-        error_handler=self.expect_einprogress_handler)
+    if value:
+      self.cellular_device.Enable(
+          reply_handler=self.ignore_handler,
+          error_handler=self.expect_einprogress_handler)
+    else:
+      self.cellular_device.Disable(
+          reply_handler=self.ignore_handler,
+          error_handler=self.expect_einprogress_handler)
 
   @ExceptionForward
   def start_connect(self):
@@ -208,8 +217,8 @@ class ModemDisableTester(DisableTester):
 
   def configure(self):
     self.modem_manager, self.modem_path = mm.PickOneModem('')
-    self.modem = self.modem_manager.Modem(self.modem_path)
-    self.simple_modem = self.modem_manager.SimpleModem(self.modem_path)
+    self.modem = self.modem_manager.GetModem(self.modem_path)
+    self.simple_modem = self.modem.SimpleModem()
 
     logging.info('Modem path: %s' % self.modem_path)
 
@@ -222,7 +231,7 @@ class ModemDisableTester(DisableTester):
     self.modem.Enable(True)
 
   def configure_gobi(self):
-    gobi_modem = self.modem_manager.GobiModem(self.modem_path)
+    gobi_modem = self.modem.GobiModem()
 
     if 'async_connect_sleep_ms' in self.test_kwargs:
       sleep_ms = self.test_kwargs.get('async_connect_sleep_ms', 0)
@@ -261,7 +270,7 @@ class ModemDisableTester(DisableTester):
         error_handler=self.build_error_handler('GetStatus'))
 
   def enabled(self):
-    return self.modem_manager.Properties(self.modem_path).get('Enabled', -1)
+    return self.modem.GetModemProperties().get('Enabled', -1)
 
   def enable(self, value):
     self.modem.Enable(value,

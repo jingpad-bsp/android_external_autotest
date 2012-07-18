@@ -151,8 +151,8 @@ class Modem(object):
         props = self.GetAll(mm1.MODEM_INTERFACE)
         return props['State'] == mm1.MM_MODEM_STATE_DISABLED
 
-    def Enable(self, enable):
-        self.Modem().Enable(enable)
+    def Enable(self, enable, **kwargs):
+        self.Modem().Enable(enable, **kwargs)
 
     def Connect(self, props):
         self.SimpleModem().Connect(props)

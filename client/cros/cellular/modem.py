@@ -182,8 +182,8 @@ class Modem(object):
     def IsDisabled(self):
         return not self.IsEnabled()
 
-    def Enable(self, enable):
-        self.Modem().Enable(enable)
+    def Enable(self, enable, **kwargs):
+        self.Modem().Enable(enable, **kwargs)
 
     def Connect(self, props):
         self.SimpleModem().Connect(props)

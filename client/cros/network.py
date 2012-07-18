@@ -76,7 +76,7 @@ def ClearGobiModemFaultInjection():
         # Didn't find a gobi
         return
 
-    gobi = modem_manager.GobiModem(gobi_path)
+    gobi = modem_manager.GetModem(gobi_path).GobiModem()
     if gobi:
         gobi.InjectFault('ClearFaults',1);
 
