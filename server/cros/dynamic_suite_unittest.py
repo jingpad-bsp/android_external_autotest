@@ -741,7 +741,3 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         suite.run_and_wait(recorder.record_entry, self.manager, True)
-
-
-if __name__ == '__main__':
-  unittest.main()

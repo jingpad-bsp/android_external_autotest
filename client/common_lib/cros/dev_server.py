@@ -9,6 +9,7 @@ import HTMLParser
 import cStringIO
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros import retry
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
 
@@ -55,6 +56,7 @@ def remote_devserver_call(method):
     This decorator converts urllib2.HTTPErrors into DevServerExceptions with
     any embedded error info converted into plain text.
     """
+    @retry.retry(urllib2.URLError)
     def wrapper(*args, **kwargs):
         """This wrapper actually catches the HTTPError."""
         try:

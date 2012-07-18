@@ -19,7 +19,7 @@ Assumes that a label including the image name has already been created.
 @param image_name: the name of the image, used to label the device
 """
 
-from autotest_lib.server import frontend
+from autotest_lib.server.cros import frontend_wrappers
 
 vers = 'cros-version:'
 repo_url = None
@@ -28,7 +28,7 @@ if 'image_name' in locals():
     vers = dynamic_suite.VERSION_PREFIX
     repo_url = dynamic_suite._package_url_pattern() % image_name
 
-AFE = frontend.AFE(debug=False)
+AFE = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10, debug=False)
 
 def clear_version_labels(machine):
     """Clear all build-specific labels, attributes from the target.

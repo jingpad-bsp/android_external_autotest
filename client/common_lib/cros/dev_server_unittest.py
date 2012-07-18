@@ -10,6 +10,7 @@ import httplib
 import logging
 import mox
 import StringIO
+import time
 import unittest
 import urllib2
 
@@ -28,10 +29,10 @@ class DevServerTest(mox.MoxTestBase):
     def setUp(self):
         super(DevServerTest, self).setUp()
         self.dev_server = dev_server.DevServer(self._HOST, self._CRASH_HOST)
+        self.mox.StubOutWithMock(urllib2, 'urlopen')
 
 
     def _returnHttpServerError(self):
-        self.mox.StubOutWithMock(urllib2, 'urlopen')
         e500 = urllib2.HTTPError(url='',
                                  code=httplib.INTERNAL_SERVER_ERROR,
                                  msg='',
@@ -41,7 +42,6 @@ class DevServerTest(mox.MoxTestBase):
 
 
     def _returnHttpForbidden(self):
-        self.mox.StubOutWithMock(urllib2, 'urlopen')
         e403 = urllib2.HTTPError(url='',
                                  code=httplib.FORBIDDEN,
                                  msg='',
@@ -53,7 +53,6 @@ class DevServerTest(mox.MoxTestBase):
     def testSuccessfulTriggerDownloadSync(self):
         """Call the dev server's download method with synchronous=True."""
         name = 'fake/image'
-        self.mox.StubOutWithMock(urllib2, 'urlopen')
         self.mox.StubOutWithMock(dev_server.DevServer, 'finish_download')
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
@@ -69,8 +68,6 @@ class DevServerTest(mox.MoxTestBase):
     def testSuccessfulTriggerDownloadASync(self):
         """Call the dev server's download method with synchronous=False."""
         name = 'fake/image'
-        self.mox.StubOutWithMock(urllib2, 'urlopen')
-        self.mox.StubOutWithMock(dev_server.DevServer, 'finish_download')
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(name))).AndReturn(to_return)
@@ -80,9 +77,23 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.VerifyAll()
 
 
+    def testURLErrorRetryTriggerDownload(self):
+        """Should retry on URLError, but pass through real exception."""
+        self.mox.StubOutWithMock(time, 'sleep')
+
+        refused = urllib2.URLError('[Errno 111] Connection refused')
+        urllib2.urlopen(mox.IgnoreArg()).AndRaise(refused)
+        time.sleep(mox.IgnoreArg())
+        self._returnHttpForbidden()
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.trigger_download,
+                          '')
+
+
     def testErrorTriggerDownload(self):
         """Should call the dev server's download method, fail gracefully."""
-        self._returnHttpForbidden()
+        self._returnHttpServerError()
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.trigger_download,
@@ -101,7 +112,6 @@ class DevServerTest(mox.MoxTestBase):
     def testSuccessfulFinishDownload(self):
         """Should successfully call the dev server's finish download method."""
         name = 'fake/image'
-        self.mox.StubOutWithMock(urllib2, 'urlopen')
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(name))).AndReturn(to_return)
@@ -112,7 +122,7 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.VerifyAll()
 
 
-    def testErrorTriggerDownload(self):
+    def testErrorFinishDownload(self):
         """Should call the dev server's finish download method, fail gracefully.
         """
         self._returnHttpServerError()
@@ -126,7 +136,6 @@ class DevServerTest(mox.MoxTestBase):
         """Should successfully list control files from the dev server."""
         name = 'fake/build'
         control_files = ['file/one', 'file/two']
-        self.mox.StubOutWithMock(urllib2, 'urlopen')
         to_return = StringIO.StringIO('\n'.join(control_files))
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(name))).AndReturn(to_return)
@@ -160,7 +169,6 @@ class DevServerTest(mox.MoxTestBase):
         name = 'fake/build'
         file = 'file/one'
         contents = 'Multi-line\nControl File Contents\n'
-        self.mox.StubOutWithMock(urllib2, 'urlopen')
         to_return = StringIO.StringIO(contents)
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(name),
@@ -192,7 +200,6 @@ class DevServerTest(mox.MoxTestBase):
         """Should successfully return a build for a given target."""
         target = 'x86-generic-release'
         build_string = 'R18-1586.0.0-a1-b1514'
-        self.mox.StubOutWithMock(urllib2, 'urlopen')
         to_return = StringIO.StringIO(build_string)
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(target))).AndReturn(to_return)
@@ -231,7 +238,6 @@ class DevServerTest(mox.MoxTestBase):
         build_string1 = 'R9-1586.0.0-a1-b1514'
         build_string2 = 'R19-1586.0.0-a1-b3514'
         build_string3 = 'R18-1486.0.0-a1-b2514'
-        self.mox.StubOutWithMock(urllib2, 'urlopen')
         to_return1 = StringIO.StringIO(build_string1)
         to_return2 = StringIO.StringIO(build_string2)
         to_return3 = StringIO.StringIO(build_string3)

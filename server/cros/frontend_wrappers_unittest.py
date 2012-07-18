@@ -9,6 +9,7 @@ import mox
 import time
 import unittest
 
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server.cros import frontend_wrappers
 from autotest_lib.server import frontend
 
@@ -29,9 +30,7 @@ class FrontendWrappersTest(mox.MoxTestBase):
         """Tests that a wrapped function succeeds without retrying."""
         timeout_min = .1
         timeout_sec = timeout_min * 60
-        @frontend_wrappers.retry(Exception,
-                                 timeout_min=timeout_min,
-                                 delay_sec=1)
+        @retry.retry(Exception, timeout_min=timeout_min, delay_sec=1)
         def succeed():
             return True
 
@@ -44,9 +43,7 @@ class FrontendWrappersTest(mox.MoxTestBase):
         """Tests that a wrapped function can retry and succeed."""
         timeout_min = .1
         timeout_sec = timeout_min * 60
-        @frontend_wrappers.retry(Exception,
-                                 timeout_min=timeout_min,
-                                 delay_sec=1)
+        @retry.retry(Exception, timeout_min=timeout_min, delay_sec=1)
         def flaky_succeed():
             if self._FLAKY_FLAG:
                 return True
@@ -62,9 +59,7 @@ class FrontendWrappersTest(mox.MoxTestBase):
         """Tests that a wrapped function retries til the timeout, then fails."""
         timeout_min = .01
         timeout_sec = timeout_min * 60
-        @frontend_wrappers.retry(Exception,
-                                 timeout_min=timeout_min,
-                                 delay_sec=1)
+        @retry.retry(Exception, timeout_min=timeout_min, delay_sec=1)
         def fail():
             raise Exception()
 
