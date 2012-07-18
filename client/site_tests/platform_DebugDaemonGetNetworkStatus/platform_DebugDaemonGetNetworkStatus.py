@@ -4,6 +4,7 @@
 
 import dbus
 import json
+import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -17,6 +18,7 @@ class platform_DebugDaemonGetNetworkStatus(test.test):
         self.iface = dbus.Interface(proxy,
                                     dbus_interface='org.chromium.debugd')
         result = self.iface.GetNetworkStatus()
+        logging.info('Result: %s' % result)
         networks = json.loads(result)
         if 'services' not in networks or 'devices' not in networks:
             raise error.TestFail('No networks found: %s' % result)
