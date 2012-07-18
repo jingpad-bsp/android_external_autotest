@@ -114,7 +114,12 @@ class Servo(object):
 
     def power_long_press(self):
         """Simulate a long power button press."""
+        # After a long power press, the EC may ignore the next power
+        # button press (at least on Alex).  To guarantee that this
+        # won't happen, we need to allow the EC one second to
+        # collect itself.
         self.power_key(Servo.LONG_DELAY)
+        time.sleep(1.0)
 
 
     def power_normal_press(self):
