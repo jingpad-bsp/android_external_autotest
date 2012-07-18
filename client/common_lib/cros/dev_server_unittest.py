@@ -23,10 +23,11 @@ class DevServerTest(mox.MoxTestBase):
     """
 
     _HOST = 'http://nothing'
+    _CRASH_HOST = 'http://nothing-crashed'
 
     def setUp(self):
         super(DevServerTest, self).setUp()
-        self.dev_server = dev_server.DevServer(self._HOST)
+        self.dev_server = dev_server.DevServer(self._HOST, self._CRASH_HOST)
 
 
     def _returnHttpServerError(self):
@@ -186,6 +187,7 @@ class DevServerTest(mox.MoxTestBase):
                           self.dev_server.get_control_file,
                           '', '')
 
+
     def testGetLatestBuild(self):
         """Should successfully return a build for a given target."""
         target = 'x86-generic-release'
@@ -197,6 +199,7 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         build = self.dev_server.get_latest_build(target)
         self.assertEquals(build_string, build)
+
 
     def testThatWeCorrectlyReHashToTheSameDevserver(self):
         """Ensure calls with same hashing_value go to the same devserver."""
@@ -218,6 +221,7 @@ class DevServerTest(mox.MoxTestBase):
 
         self.assertTrue(call2.startswith(call1))
         self.assertTrue(call4.startswith(call3))
+
 
     def testGetLatestBuildWithManyDevservers(self):
         """Should successfully return newest build with multiple devservers."""
@@ -241,3 +245,11 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         build = self.dev_server.get_latest_build(target)
         self.assertEquals(build_string2, build)
+
+
+    def testCrashesAreSetToTheCrashServer(self):
+        """Should send symbolicate dump rpc calls to crash_server."""
+        hv = 'iliketacos'
+        self.mox.ReplayAll()
+        call = self.dev_server._build_call('symbolicate_dump', hashing_value=hv)
+        self.assertTrue(call.startswith(self._CRASH_HOST))

@@ -44,6 +44,11 @@ def _get_dev_server_list():
     return CONFIG.get_config_value('CROS', 'dev_server', type=list, default=[])
 
 
+def _get_crash_server_list():
+    return CONFIG.get_config_value('CROS', 'crash_server', type=list,
+        default=[])
+
+
 def remote_devserver_call(method):
     """A decorator to use with remote devserver calls.
 
@@ -73,7 +78,10 @@ class DevServerException(Exception):
 
 class DevServer(object):
     """Helper class for interacting with the Dev Server via http."""
-    def __init__(self, dev_host=None):
+
+    _CRASH_SERVER_RPC_CALLS = set(['stage_debug', 'symbolicate_dump'])
+
+    def __init__(self, dev_host=None, crash_host=None):
         """Constructor.
 
         Args:
@@ -85,10 +93,22 @@ class DevServer(object):
         else:
             self._dev_servers = _get_dev_server_list()
 
+        if crash_host:
+            self._crash_servers = [crash_host]
+        else:
+            self._crash_servers = _get_crash_server_list()
+
     @staticmethod
-    def create(dev_host=None):
+    def create(dev_host=None, crash_host=None):
         """Wraps the constructor.  Purely for mocking purposes."""
-        return DevServer(dev_host)
+        return DevServer(dev_host, crash_host)
+
+
+    def _servers_for(self, method):
+        if method in DevServer._CRASH_SERVER_RPC_CALLS:
+            return self._crash_servers
+        else:
+            return self._dev_servers
 
 
     def _build_call(self, method, hashing_value, **kwargs):
@@ -106,8 +126,8 @@ class DevServer(object):
         # If we have multiple devservers set up, we hash against the hashing
         # value to give us an index of the devserver to use.  The hashing value
         # must be the same for RPC's that should go to the same devserver.
-        devserver = self._dev_servers[hash(hashing_value) %
-                                      len(self._dev_servers)]
+        server_pool = self._servers_for(method)
+        devserver = server_pool[hash(hashing_value) % len(server_pool)]
         argstr = '&'.join(map(lambda x: "%s=%s" % x, kwargs.iteritems()))
         return "%(host)s/%(method)s?%(args)s" % {'host': devserver,
                                                  'method': method,
@@ -124,7 +144,7 @@ class DevServer(object):
         @return the URL string
         """
         calls = []
-        for hashing_index in range(len(self._dev_servers)):
+        for hashing_index in range(len(self._servers_for(method))):
             calls.append(self._build_call(method, hashing_value=hashing_index,
                                           **kwargs))
 
