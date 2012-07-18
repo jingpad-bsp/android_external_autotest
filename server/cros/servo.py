@@ -456,7 +456,7 @@ class Servo(object):
         # Turn the device off. This should happen before USB key detection, to
         # prevent a recovery destined DUT from sensing the USB key due to the
         # autodetection procedure.
-        self.power_long_press()
+        self.initialize_dut(cold_reset=True)
 
         # Set up Servo's usb mux.
         self.set('prtctl4_pwren', 'on')
