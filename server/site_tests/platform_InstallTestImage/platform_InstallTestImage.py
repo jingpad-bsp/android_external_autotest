@@ -18,7 +18,7 @@ class platform_InstallTestImage(test.test):
         if not host.wait_up(timeout=host.USB_BOOT_TIMEOUT):
             raise error.TestFail('DUT failed to boot from USB'
                                  ' after %d seconds' % host.USB_BOOT_TIMEOUT)
-        host.run('chromeos-install --yes ; halt',
+        host.run('chromeos-install --yes',
                  timeout=self._INSTALL_TIMEOUT)
         host.servo.power_long_press()
         host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
