@@ -1,7 +1,7 @@
 {% extends "emails/tests_base.html" %}
 {% comment %}
 
-Copyright 2010 Google Inc. All Rights Reserved.
+Copyright 2012 Google Inc. All Rights Reserved.
 
 This template builds an email with details of test(s) that failed.
 {% endcomment %}
@@ -16,7 +16,10 @@ This template builds an email with details of test(s) that failed.
     {% for name, details in row %}
       {% if details %}
         <td style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #eaeef3; text-align: center">
-          <a title="Click to view source." href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.test_path }}" target="_blank">{{ name }}</a>
+          <a title="Click to view source." target="_blank"
+             href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.test_path }}">
+             {{ name }}
+          </a>
         </td>
       {% endif %}
     {% endfor %}
@@ -25,7 +28,10 @@ This template builds an email with details of test(s) that failed.
     {% for name, details in row %}
       {% if details %}
         <td style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #ff9f9f; text-align: center">
-          <a title="Click to view test logs." href="http://cautotest/results/{{ details.tag }}/{{ name }}" target="_blank">{{ details.status }}</a>
+          <a title="Click to view test logs." target="_blank"
+             href="http://cautotest/tko/retrieve_logs.cgi?job=/results/{{ details.tag }}/{{ name }}">
+             {{ details.status }}
+          </a>
         </td>
       {% endif %}
     {% endfor %}
@@ -40,7 +46,10 @@ This template builds an email with details of test(s) that failed.
     <li>{{ crash }}<ul>
     {% for test, details in tests %}
       <li>
-        <a title="Click to view test logs." href="http://cautotest/results/{{ details.tag }}/{{ test }}" target="_blank">{{ test }}</a>
+        <a title="Click to view test logs." target="_blank"
+           href="http://cautotest/tko/retrieve_logs.cgi?job=/results/{{ details.tag }}/{{ test }}">
+           {{ test }}
+        </a>
       </li>
     {% endfor %}
     </ul></li>
@@ -54,10 +63,16 @@ This template builds an email with details of test(s) that failed.
     {% if details %}
       <tr>
         <td width="10%" style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #ff9f9f; text-align: center">
-          <a title="Click to view test logs." href="http://cautotest/results/{{ details.0.tag }}/{{ name }}" target="_blank">{{ details.0.status }}</a>
+          <a title="Click to view test logs." target="_blank"
+             href="http://cautotest/tko/retrieve_logs.cgi?job=/results/{{ details.0.tag }}/{{ name }}">
+             {{ details.0.status }}
+          </a>
         </td>
         <td style="border-width: 1px; padding: 4px; border-style: solid; border-color: #666666; background-color: #eaeef3;">
-          <a title="Click to view source." href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.0.test_path }}" target="_blank">{{ name }}</a>
+          <a title="Click to view source." target="_blank"
+             href="http://git.chromium.org/gitweb/?p=chromiumos/third_party/autotest.git&a=tree&f={{ details.0.test_path }}">
+             {{ name }}
+          </a>
         </td>
       </tr>
       <tr>

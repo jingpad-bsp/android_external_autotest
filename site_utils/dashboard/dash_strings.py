@@ -8,6 +8,7 @@
 AUTOTEST_ARCHIVE = 'gs://chromeos-autotest-results'
 AUTOTEST_PATH = '/usr/local/autotest'
 AUTOTEST_SERVER = 'http://cautotest'
+RESULTS_SERVER = 'http://atlantis2.mtv.corp.google.com'
 AUTOTEST_USER = 'chromeos-test'
 
 BVT_TAG = 'bvt'

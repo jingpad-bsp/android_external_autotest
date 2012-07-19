@@ -22,6 +22,7 @@ from dash_strings import AUTOTEST_ARCHIVE
 from dash_strings import AUTOTEST_PATH
 from dash_strings import AUTOTEST_SERVER
 from dash_strings import GSUTIL_GET_CMD
+from dash_strings import RESULTS_SERVER
 from dash_strings import WGET_CMD
 
 LOG_BASE_PATH = '%s/%s/results.json'
@@ -66,11 +67,10 @@ class TestSummaryInfo(object):
       summary_json = {}
     return summary_json
 
-  def _CheckResultFile(self, job_name, base_dir=None, use_json=True):
-    """Helper to find and retrieve the results file.
+  def _LocalResultFile(self, job_name, base_dir=None, use_json=True):
+    """Helper to find and retrieve the results file on a local machine.
 
-    This common code used to look for a results.json file in different
-    locations: local file cache, autotest server or autotest results archive.
+    The file may be located in a result dir or a cache dir.
 
     Args:
       job_name: a key to finding the job data under autotest results.
@@ -93,12 +93,38 @@ class TestSummaryInfo(object):
         return f.read()
     return None
 
+  def _RetrieveResultsJson(self, server, job_name, use_gs=False):
+    """Helper to retrieve the results.json file from a result server.
+
+    This abstracts the file retrieval to handle either a straight wget
+    from an http share or a gsutil cp from gs.
+
+    Args:
+      server: base server that may hold the job result.json.
+      job_name: used to locate the job-specific result.json.
+      use_gs: if True look on gs else the http server supplied.
+    """
+    log_file_path = os.path.join(AUTOTEST_PATH, 'results')
+    summary_text = self._LocalResultFile(job_name, base_dir=log_file_path,
+                                         use_json=False)
+    if summary_text is None:
+      if use_gs:
+        # gsutil cat it and load it.
+        cmd = GSUTIL_GET_CMD
+        results_base = AUTOTEST_ARCHIVE
+      else:
+        # wget it and load it.
+        cmd = WGET_CMD
+        results_base = os.path.join(server, 'results')
+    log_file_path = LOG_BASE_PATH % (results_base, job_name)
+    return commands.getoutput('%s %s' % (cmd, log_file_path))
+
   def _UpdateFileCache(self, job_name):
     """Helper to update a job file cache with a results Json file.
 
     This is complicated by the fact that results files may be located
-    on the local machine, a local autotest server or remotely in
-    Google Storage.
+    on the local machine, a local autotest server or remotely on a
+    results server or in Google Storage.
 
     Args:
       job_name: a key to finding the job data under autotest results.
@@ -106,19 +132,11 @@ class TestSummaryInfo(object):
     Returns:
       Json valid version of the file content or None.
     """
-    log_file_path = os.path.join(AUTOTEST_PATH, 'results')
-    summary_text = self._CheckResultFile(job_name, base_dir=log_file_path,
-                                         use_json=False)
-    if summary_text is None:
-      log_file_path = LOG_BASE_PATH % (os.path.join(AUTOTEST_SERVER, 'results'),
-                                       job_name)
-      summary_text = commands.getoutput('%s %s' % (WGET_CMD, log_file_path))
-    if not summary_text or not self._GetJsonFromFileOrString(summary_text,
-                                                             is_file=False):
-      # gsutil cat it and load it.
-      log_file_path = LOG_BASE_PATH % (AUTOTEST_ARCHIVE, job_name)
-      summary_text = commands.getoutput('%s %s' % (GSUTIL_GET_CMD,
-                                                   log_file_path))
+    for server, use_gs in [(AUTOTEST_SERVER, False), (RESULTS_SERVER, False),
+                           (AUTOTEST_ARCHIVE, True)]:
+      summary_text = self._RetrieveResultsJson(server, job_name, use_gs)
+      if summary_text and self._GetJsonFromFileOrString(summary_text, False):
+        break
     cache_path = os.path.abspath(LOG_BASE_PATH % (self._job_cache_dir,
                                                   job_name))
     dash_util.MakeChmodDirs(os.path.dirname(cache_path))
@@ -161,7 +179,7 @@ class TestSummaryInfo(object):
     # Get job summary from in-memory cache, then the actual file or file cache.
     if job_name not in self._job_summary_cache:
       # Now ensure the file cache is updated since job entry not in memory.
-      summary_json = self._CheckResultFile(job_name)
+      summary_json = self._LocalResultFile(job_name)
       if summary_json is None:
         summary_json = self._UpdateFileCache(job_name)
       self._job_summary_cache[job_name] = summary_json
