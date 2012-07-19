@@ -86,6 +86,28 @@ class ConfiguratorTest(unittest.TestCase):
         self.ap.set_ssid('AP-automated-ssid')
         self.ap.apply_settings()
 
+    def test_band(self):
+        """Test switching the band."""
+        self.ap.set_band(self.ap.band_2ghz)
+        self.ap.apply_settings()
+        self.ap.set_band(self.ap.band_5ghz)
+        self.ap.apply_settings()
+
+    def test_switching_bands_and_change_settings(self):
+        # Test switching between bands and change settings for each band.
+        bands_info = self.ap.get_supported_bands()
+        self.assertTrue(bands_info, msg='Invalid band sent.')
+        bands_set = []
+        for bands in bands_info:
+           bands_set.append(bands['band'])
+        for band in bands_set:
+           self.ap.set_band(band)
+           self.ap.set_ssid('pqrstu')
+           self.ap.set_visibility(True)
+           if self.ap.is_security_mode_supported(self.ap.security_wep):
+              self.ap.set_security_wep('test2', self.ap.wep_authentication_open)
+           self.ap.apply_settings()
+
     def test_invalid_security(self):
         """Test an exception is thrown for an invalid configuration."""
         # Set security to a good state.

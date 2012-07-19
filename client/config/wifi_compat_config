@@ -115,4 +115,15 @@
     'power_outlet_admin_name': 'admin',
     'power_outlet_password': 'password',
   },
+  {
+    'class_name': 'belkinAPConfigurator',
+    'short_name': 'belkin',
+    'admin_url': 'http://172.22.12.233',
+    'serial_number': '',
+    'mac_address': '00:22:75:A2:3B:08',
+    'power_outlet_ip': '172.22.12.202',
+    'power_outlet_number': '5',
+    'power_outlet_admin_name': 'admin',
+    'power_outlet_password': 'password',
+  },
 ]

@@ -5,6 +5,7 @@
 import os
 
 import asus_ap_configurator
+import belkin_ap_configurator
 import buffalo_ap_configurator
 import dlink_ap_configurator
 import dlink_dir655_ap_configurator
@@ -64,6 +65,9 @@ class APConfiguratorFactory(object):
         self._build_all_instances_of_configurator(config_list,
             'Netgear4500APConfigurator',
             netgear4500_ap_configurator.NetgearAPConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'belkinAPConfigurator',
+            belkin_ap_configurator.belkinAPConfigurator)
 
     def _build_all_instances_of_configurator(self, config_list, name,
                                              configurator):
