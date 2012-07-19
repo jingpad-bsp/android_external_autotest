@@ -7,49 +7,117 @@
 #include <stdio.h>
 #include <signal.h>
 #include <pthread.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "libaudiodev.h"
 
-static unsigned int buffer_count;
-
-static struct mutexed_buffer_s {
+typedef struct {
   unsigned char *data;
-  pthread_mutex_t mutex;
-  pthread_cond_t has_data;
-} *buffers;
+} audio_buffer;
+
+static int verbose = 0;
+
+static int buffer_count;  // Total number of buffer
+static pthread_mutex_t buf_mutex;  // This protects the variables below
+audio_buffer *buffers;
+static int write_index;  // buffer should be written next
+static int read_index;  // buffer should be read next
+static int write_available;  // number of buffers can be write
+static int read_available;  // number of buffers can be read
+static pthread_cond_t has_data;
+static struct timespec cap_start_time, play_start_time;
+static int total_cap_frames, total_play_frames;
 
 /* Termination variable. */
 static int terminate;
-/* Buffer currently being captured to. */
-static unsigned int buf_cap;
+
+static void set_current_time(struct timespec *ts) {
+  clock_gettime(CLOCK_MONOTONIC, ts);
+}
+
+// Returns the time since the given time in nanoseconds.
+static long long since(struct timespec *ts) {
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  long long t = now.tv_sec - ts->tv_sec;
+  t *= 1000000000;
+  t += (now.tv_nsec - ts->tv_nsec);
+  return t;
+}
+
+static void update_stat() {
+  if (verbose) {
+    double cap_rate = total_cap_frames * 1e9 / since(&cap_start_time);
+    double play_rate = total_play_frames * 1e9 / since(&play_start_time);
+    printf("Buffer: %d/%d, Capture: %d, Play: %d    \r", read_available, buffer_count,
+           (int) cap_rate, (int) play_rate);
+  }
+}
 
 static void *play_loop(void *arg) {
   audio_device_t * device = (audio_device_t *)arg;
-  unsigned int buf_play = 0;
-  while (!terminate) {
-    pthread_mutex_lock(&buffers[buf_play].mutex);
-    while (buf_cap == buf_play) {
-      pthread_cond_wait(&buffers[buf_play].has_data, &buffers[buf_play].mutex);
-    }
-    pcm_io(device, buffers[buf_play].data, chunk_size);
-    pthread_mutex_unlock(&buffers[buf_play].mutex);
-    buf_play = (buf_play + 1) % buffer_count;
+  int buf_play;
+
+  pthread_mutex_lock(&buf_mutex);
+  // Wait until half of the buffers are filled.
+  while (!terminate && read_available < buffer_count / 2) {
+    pthread_cond_wait(&has_data, &buf_mutex);
   }
+
+  // Now start playing
+  set_current_time(&play_start_time);
+  total_play_frames = 0;
+  while (!terminate) {
+    while (read_available == 0) {
+      pthread_cond_wait(&has_data, &buf_mutex);
+    }
+    buf_play = read_index;
+    read_index = (read_index + 1) % buffer_count;
+    read_available--;
+
+    pthread_mutex_unlock(&buf_mutex);
+    pcm_io(device, buffers[buf_play].data, chunk_size);
+    pthread_mutex_lock(&buf_mutex);
+
+    total_play_frames += chunk_size;
+    write_available++;
+    update_stat();
+  }
+  pthread_mutex_unlock(&buf_mutex);
+
   return NULL;
 }
 
 static void *cap_loop(void *arg) {
   audio_device_t *device = (audio_device_t *)arg;
-  int last;
+  int buf_cap;
+
+  pthread_mutex_lock(&buf_mutex);
+  total_cap_frames = 0;
+  set_current_time(&cap_start_time);
   while (!terminate) {
-    pthread_mutex_lock(&buffers[buf_cap].mutex);
+    // If we have no more buffer to write, drop the oldest one
+    if (write_available == 0) {
+      read_index = (read_index + 1) % buffer_count;
+      read_available--;
+    } else {
+      write_available--;
+    }
+    buf_cap = write_index;
+    write_index = (write_index + 1) % buffer_count;
+
+    pthread_mutex_unlock(&buf_mutex);
     pcm_io(device, buffers[buf_cap].data, chunk_size);
-    last = buf_cap;
-    buf_cap = (buf_cap + 1) % buffer_count;
-    pthread_cond_signal(&buffers[last].has_data);
-    pthread_mutex_unlock(&buffers[last].mutex);
+    pthread_mutex_lock(&buf_mutex);
+
+    total_cap_frames += chunk_size;
+    read_available++;
+    pthread_cond_signal(&has_data);
+    update_stat();
   }
+  pthread_mutex_unlock(&buf_mutex);
+
   return NULL;
 }
 
@@ -95,23 +163,25 @@ static void get_choice(char *direction_name, audio_device_list_t *list,
   }
 }
 
-static void init_mutexed_buffers(int size) {
+static void init_buffers(int size) {
   int i;
-  buffers = (struct mutexed_buffer_s *)malloc(buffer_count
-      * sizeof(struct mutexed_buffer_s));
+  buffers = (audio_buffer *)malloc(buffer_count * sizeof(audio_buffer));
   if (!buffers) {
     fprintf(stderr, "Error: Could not create audio buffer array.\n");
     exit(EXIT_FAILURE);
   }
+  pthread_mutex_init(&buf_mutex, NULL);
+  pthread_cond_init(&has_data, NULL);
   for (i = 0; i < buffer_count; i++) {
-    pthread_mutex_init(&buffers[i].mutex, NULL);
-    pthread_cond_init(&buffers[i].has_data, NULL);
-    buffers[i].data = (unsigned char *)malloc(size * sizeof(char));
+    buffers[i].data = (unsigned char *)malloc(size);
     if (!buffers[i].data) {
       fprintf(stderr, "Error: Could not create audio buffers.\n");
       exit(EXIT_FAILURE);
     }
   }
+  read_index = write_index = 0;
+  read_available = 0;
+  write_available = buffer_count;
 }
 
 void test(int buffer_size, unsigned int ct, int pdev, int cdev) {
@@ -134,7 +204,7 @@ void test(int buffer_size, unsigned int ct, int pdev, int cdev) {
     return;
   }
 
-  init_mutexed_buffers(buffer_size);
+  init_buffers(buffer_size);
   terminate = 0;
 
   signal(SIGINT, signal_handler);
@@ -144,8 +214,6 @@ void test(int buffer_size, unsigned int ct, int pdev, int cdev) {
   if (create_sound_handle(&(playback_list->devs[pdev - 1]), buffer_size) ||
       create_sound_handle(&(capture_list->devs[cdev - 1]), buffer_size))
     exit(EXIT_FAILURE);
-
-  buf_cap = 0;
 
   pthread_create(&playback_thread, NULL, play_loop,
       &(playback_list->devs[pdev - 1]));
@@ -168,11 +236,11 @@ void test(int buffer_size, unsigned int ct, int pdev, int cdev) {
 int main(int argc, char **argv) {
   int play_dev = -1;
   int cap_dev = -1;
-  int count = 12;
-  int size = 512;
+  int count = 100;
+  int size = 1024;
   int arg;
 
-  while ((arg = getopt(argc, argv, "i:o:c:s:")) != -1) {
+  while ((arg = getopt(argc, argv, "i:o:c:s:v")) != -1) {
     switch(arg) {
       case 'i':
         cap_dev = atoi(optarg);
@@ -185,6 +253,9 @@ int main(int argc, char **argv) {
         break;
       case 's':
         size = atoi(optarg);
+        break;
+      case 'v':
+        verbose = 1;
         break;
       case '?':
         if (optopt == 'i' || optopt == 'o' || optopt == 'c' || optopt == 's') {

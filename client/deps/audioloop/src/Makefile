@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 
-LDFLAGS = -lasound -lpthread \
+LDFLAGS = -lasound -lpthread -lrt \
 	 -L$(SYSROOT)/lib \
 	 -L$(SYSROOT)/usr/lib
 
