@@ -289,6 +289,12 @@ def main(argv):
   if auth_start:
     wpa_select_time = auth_start - assoc_start
     assoc_start = auth_start
+    # auth_start and assoc_start are timestamps coming from two different
+    # processes, and when they are close, auth_start can occur before
+    # assoc_start, resulting in a negative wpa_select_time.  In this case, set
+    # wpa_select_time to zero.
+    if wpa_select_time < 0:
+      wpa_select_time = 0.0
   else:
     wpa_select_time = 0.0
   if config_start:
