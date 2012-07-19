@@ -71,7 +71,7 @@ class desktopui_BrowserTest(chrome_test.ChromeTestBase, cros_ui_test.UITest):
         tests_to_run = self.get_tests_to_run(group, total_groups, arguments)
         last_error_message = None
         for tests in self.split_tests_into_smaller_arrays(tests_to_run):
-          test_args = '--gtest_filter=%s' % ':'.join(tests)
+          test_args = '--use-gpu-in-tests --gtest_filter=%s' % ':'.join(tests)
           args_to_pass = ' --'.join(extract_named_args(PASS_TO_TESTS_ARG,
                                                        arguments))
           if args_to_pass:
