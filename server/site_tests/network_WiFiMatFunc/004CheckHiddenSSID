@@ -2,12 +2,27 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test verifies that DUT can connect to a hidden 802.11 network
+# on both 2.4GHz and 5GHz channels.
+
 { "name":"CheckHiddenSSID",
-  "steps":[             # Channel 6
+  "steps":[             # Channel 6, 48
     [ "create",         { "type":"hostap" } ],
-    [ "config",         { "channel":"2437", "mode":"11g", "hidessid":None } ],
+    # 'hidessid' instructs the AP to send empty (length=0) SSID in beacon and to
+    #  ignore probe request for broadcast SSID.
+    [ "config",         { "channel":"2437", "mode":"11g", "hidessid":None,
+                          "ssid_suffix": "ch6" } ],
     [ "connect",        { "security":"none", "hidden":True } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
+    [ "deconfig" ],
+
+    [ "config",         { "channel":"5240", "mode":"11a", "hidessid":None,
+                          "ssid_suffix": "ch48" } ],
+    [ "connect",        { "security":"none", "hidden":True } ],
+    [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
+
     [ "destroy" ],
   ],
 }
