@@ -6,7 +6,9 @@ class FAFTClientAttribute(object):
     """Class that tests platform name and gives client machine attributes."""
     version = 1
 
-    DEFAULT_SETTING = {'keyboard_dev': True}
+    DEFAULT_SETTING = {'keyboard_dev': True,
+                       'chrome_ec': False,
+                       'ec_capability': list()}
 
     def __init__(self, platform):
         """Initialized.
@@ -25,5 +27,16 @@ class FAFTClientAttribute(object):
         if platform in ['Aebl', 'Alex', 'Kaen', 'Lumpy', 'Mario', 'Seaboard',
                         'Stumpy', 'ZGB']:
             setting['keyboard_dev'] = False
+
+        if platform in ['Link', 'Snow']:
+            setting['chrome_ec'] = True
+
+        if platform == 'Link':
+            setting['ec_capability'] = ['adc_ectemp', 'battery', 'charging',
+                                        'keyboard', 'lid', 'x86', 'thermal',
+                                        'usb']
+        elif platform == 'Snow':
+            setting['ec_capability'] = ['battery', 'charging', 'keyboard',
+                                        'lid', 'arm']
 
         return setting
