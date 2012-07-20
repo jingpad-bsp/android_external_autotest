@@ -56,7 +56,7 @@ static void update_stat() {
 }
 
 static void *play_loop(void *arg) {
-  audio_device_t * device = (audio_device_t *)arg;
+  audio_device_t *device = (audio_device_t *)arg;
   int buf_play;
 
   pthread_mutex_lock(&buf_mutex);
@@ -132,7 +132,7 @@ static void dump_line(FILE *fp) {
   while ((ch = fgetc(fp)) != EOF && ch != '\n') {}
 }
 
-static void get_choice(char *direction_name, audio_device_list_t *list,
+static void get_choice(char *direction_name, audio_device_info_list_t *list,
     int *choice) {
   int i;
   while (1) {
@@ -147,7 +147,7 @@ static void get_choice(char *direction_name, audio_device_list_t *list,
           list->devs[i].card, list->devs[i].dev_id,
           list->devs[i].dev_name, list->devs[i].dev_no,
           list->devs[i].pcm_id, list->devs[i].pcm_name,
-          list->devs[i].hwdevname);
+          list->devs[i].audio_device.hwdevname);
       printf("\n");
     }
     printf("\nChoose one(1 - %d): ",  list->count);
@@ -184,24 +184,39 @@ static void init_buffers(int size) {
   write_available = buffer_count;
 }
 
-void test(int buffer_size, unsigned int ct, int pdev, int cdev) {
+void test(int buffer_size, unsigned int ct, char *pdev_name, char *cdev_name) {
   pthread_t capture_thread;
   pthread_t playback_thread;
   buffer_count = ct;
-  audio_device_list_t* playback_list = get_device_list(SND_PCM_STREAM_PLAYBACK);
-  audio_device_list_t* capture_list = get_device_list(SND_PCM_STREAM_CAPTURE);
 
-  if (pdev == -1) {
+  audio_device_info_list_t *playback_list = NULL;
+  audio_device_info_list_t *capture_list = NULL;
+
+  // Actual playback and capture devices we use to loop. Their
+  // pcm handle will be closed in close_sound_handle.
+  audio_device_t playback_device;
+  audio_device_t capture_device;
+
+  if (pdev_name) {
+    playback_device.direction = SND_PCM_STREAM_PLAYBACK;
+    playback_device.handle = NULL;
+    strcpy(playback_device.hwdevname, pdev_name);
+  } else {
+    playback_list = get_device_list(SND_PCM_STREAM_PLAYBACK);
+    int pdev;
     get_choice("playback", playback_list, &pdev);
-  } else if (pdev == 0 || pdev > playback_list->count) {
-    fprintf(stderr, "Invalid choice for playback device: %d\n", pdev);
-    return;
+    playback_device = playback_list->devs[pdev - 1].audio_device;
   }
-  if (cdev == -1) {
+
+  if (cdev_name) {
+    capture_device.direction = SND_PCM_STREAM_CAPTURE;
+    capture_device.handle = NULL;
+    strcpy(capture_device.hwdevname, cdev_name);
+  } else {
+    capture_list = get_device_list(SND_PCM_STREAM_CAPTURE);
+    int cdev;
     get_choice("capture", capture_list, &cdev);
-  } else if (cdev == 0 || cdev > capture_list->count) {
-    fprintf(stderr, "Invalid ch oice for capture device: %d\n", cdev);
-    return;
+    capture_device = capture_list->devs[cdev - 1].audio_device;
   }
 
   init_buffers(buffer_size);
@@ -211,31 +226,30 @@ void test(int buffer_size, unsigned int ct, int pdev, int cdev) {
   signal(SIGTERM, signal_handler);
   signal(SIGABRT, signal_handler);
 
-  if (create_sound_handle(&(playback_list->devs[pdev - 1]), buffer_size) ||
-      create_sound_handle(&(capture_list->devs[cdev - 1]), buffer_size))
+  if (create_sound_handle(&playback_device, buffer_size) ||
+      create_sound_handle(&capture_device, buffer_size))
     exit(EXIT_FAILURE);
 
-  pthread_create(&playback_thread, NULL, play_loop,
-      &(playback_list->devs[pdev - 1]));
-  pthread_create(&capture_thread, NULL, cap_loop,
-      &(capture_list->devs[cdev - 1]));
+  pthread_create(&playback_thread, NULL, play_loop, &playback_device);
+  pthread_create(&capture_thread, NULL, cap_loop, &capture_device);
 
   pthread_join(capture_thread, NULL);
   pthread_join(playback_thread, NULL);
 
-  close_sound_handle(&(playback_list->devs[pdev - 1]));
-  close_sound_handle(&(capture_list->devs[cdev - 1]));
+  close_sound_handle(&playback_device);
+  close_sound_handle(&capture_device);
 
-  free_device_list(playback_list);
-  free_device_list(capture_list);
+  if (playback_list)
+    free_device_list(playback_list);
+  if (capture_list)
+    free_device_list(capture_list);
 
   printf("Exiting.\n");
-
 }
 
 int main(int argc, char **argv) {
-  int play_dev = -1;
-  int cap_dev = -1;
+  char *play_dev = NULL;
+  char *cap_dev = NULL;
   int count = 100;
   int size = 1024;
   int arg;
@@ -243,10 +257,10 @@ int main(int argc, char **argv) {
   while ((arg = getopt(argc, argv, "i:o:c:s:v")) != -1) {
     switch(arg) {
       case 'i':
-        cap_dev = atoi(optarg);
+        cap_dev = optarg;
         break;
       case 'o':
-        play_dev = atoi(optarg);
+        play_dev = optarg;
         break;
       case 'c':
         count = atoi(optarg);

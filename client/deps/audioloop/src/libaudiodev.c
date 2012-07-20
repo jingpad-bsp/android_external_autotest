@@ -20,7 +20,7 @@ static size_t bits_per_sample;
 static size_t bits_per_frame;
 unsigned int chunk_size;
 
-void free_device_list(audio_device_list_t *list) {
+void free_device_list(audio_device_info_list_t *list) {
   int i;
 
   for (i=0; i < list->count; i++) {
@@ -92,7 +92,7 @@ int get_device_count(snd_pcm_stream_t direction) {
 /*
  * Refresh the list of playback or capture devices as specified by direction.
  */
-audio_device_list_t * get_device_list(snd_pcm_stream_t direction) {
+audio_device_info_list_t *get_device_list(snd_pcm_stream_t direction) {
   int i = 0;
   int cid = -1;
   int ret;
@@ -101,11 +101,12 @@ audio_device_list_t * get_device_list(snd_pcm_stream_t direction) {
   snd_ctl_t *handle;
   snd_ctl_card_info_t *info;
   snd_pcm_info_t *pcminfo;
-  audio_device_list_t *list = (audio_device_list_t *)malloc(
-      sizeof(audio_device_list_t));
+  audio_device_info_list_t *list = (audio_device_info_list_t *)malloc(
+      sizeof(audio_device_info_list_t));
 
   list->count = get_device_count(direction);
-  list->devs = (audio_device_t *)malloc(list->count * sizeof(audio_device_t));
+  list->devs = (audio_device_info_t *)malloc(
+      list->count * sizeof(audio_device_info_t));
 
   snd_ctl_card_info_malloc(&info);
   snd_pcm_info_malloc(&pcminfo);
@@ -153,10 +154,10 @@ audio_device_list_t * get_device_list(snd_pcm_stream_t direction) {
       list->devs[i].dev_name = strdup(snd_ctl_card_info_get_name(info));
       list->devs[i].pcm_id = strdup(snd_pcm_info_get_id(pcminfo));
       list->devs[i].pcm_name = strdup(snd_pcm_info_get_name(pcminfo));
-      list->devs[i].direction = direction;
-      list->devs[i].handle = NULL;
-      snprintf(list->devs[i].hwdevname, MAX_HWNAME_SIZE, "plughw:%d,%d",
-          cid, dev);
+      list->devs[i].audio_device.direction = direction;
+      list->devs[i].audio_device.handle = NULL;
+      snprintf(list->devs[i].audio_device.hwdevname, MAX_HWNAME_SIZE,
+               "plughw:%d,%d", cid, dev);
       i++;
     }
     if (ret == -1) {
@@ -286,7 +287,7 @@ int create_sound_handle(audio_device_t *device, int buffer_size) {
 
   snd_output_stdio_attach(&log, stderr, 0);
 
-  ret = snd_pcm_open(&(device->handle), device->hwdevname,
+  ret = snd_pcm_open(&device->handle, device->hwdevname,
                      device->direction, NON_BLOCKING);
   if (ret < 0) {
     fprintf(stderr, "Could not open sound device %s: %s\n",

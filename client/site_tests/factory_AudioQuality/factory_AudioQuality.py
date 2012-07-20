@@ -103,9 +103,14 @@ class factory_AudioQuality(test.test):
         '''
         Starts the internal audio loopback.
         '''
-        cmdargs = [self._ah.sox_path, '-t', 'alsa', self._input_dev, '-t',
-                'alsa', self._output_dev]
-        self._loop_process = subprocess.Popen(cmdargs, stderr=subprocess.PIPE)
+        if self._use_sox_loop:
+            cmdargs = [self._ah.sox_path, '-t', 'alsa', self._input_dev, '-t',
+                    'alsa', self._output_dev]
+            self._loop_process = subprocess.Popen(cmdargs)
+        else:
+            cmdargs = [self._ah.audioloop_path, '-i', self._input_dev, '-o',
+                    self._output_dev]
+            self._loop_process = subprocess.Popen(cmdargs)
 
     def play_tone(self):
         '''
@@ -113,8 +118,7 @@ class factory_AudioQuality(test.test):
         '''
         cmdargs = [self._ah.sox_path, '-n', '-d', 'synth', '20.0', 'sine',
                 '1000.0']
-        self._play_tone_process = subprocess.Popen(cmdargs,
-                stderr=subprocess.PIPE)
+        self._play_tone_process = subprocess.Popen(cmdargs)
 
     def restore_configuration(self):
         '''
@@ -258,7 +262,7 @@ class factory_AudioQuality(test.test):
         utils.system('ifconfig %s down' % self._eth)
         utils.system('ifconfig %s up' % self._eth)
         self.restore_configuration()
-        self._ah.cleanup_deps(['sox'])
+        self._ah.cleanup_deps(['sox', 'audioloop'])
 
     def check_eth_state(self):
         path = '/sys/class/net/%s/carrier' % self._eth
@@ -302,16 +306,18 @@ class factory_AudioQuality(test.test):
     def run_once(self, input_dev='hw:0,0', output_dev='hw:0,0', eth='eth0',
             dmic_switch_mixer_settings=_DMIC_SWITCH_MIXER_SETTINGS,
             init_mixer_settings=_INIT_MIXER_SETTINGS,
-            unmute_speaker_mixer_settings=_UNMUTE_SPEAKER_MIXER_SETTINGS):
+            unmute_speaker_mixer_settings=_UNMUTE_SPEAKER_MIXER_SETTINGS,
+            use_sox_loop=False):
         factory.console.info('%s run_once' % self.__class__)
 
         self._ah = audio_helper.AudioHelper(self, input_device=input_dev)
-        self._ah.setup_deps(['sox'])
+        self._ah.setup_deps(['sox', 'audioloop'])
         self._detail_log = ''
         self._input_dev = input_dev
         self._output_dev = output_dev
         self._eth = None
         self._test_passed = False
+        self._use_sox_loop = use_sox_loop
 
         # Mixer settings for different configurations.
         self._init_mixer_settings = init_mixer_settings

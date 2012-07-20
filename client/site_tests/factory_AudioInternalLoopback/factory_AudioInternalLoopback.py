@@ -58,7 +58,7 @@ class factory_AudioInternalLoopback(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gdk.KEY_RELEASE_MASK)
 
-    def run_once(self, indev='1', outdev='1'):
+    def run_once(self, indev='hw:0,0', outdev='hw:0,0'):
 
         factory.log('%s run_once' % self.__class__)
 
