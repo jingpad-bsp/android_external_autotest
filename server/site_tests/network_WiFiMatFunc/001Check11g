@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test verfies that DUT can connect to an open 802.11g network
+# on channels 1, 6, 11.
+
 { "name":"Check11g",
   "steps":[             # Channel 1,6,11
     [ "create",         { "type":"hostap" } ],
@@ -12,7 +15,7 @@
     [ "client_ping",    { "count":"10" } ],
     [ "disconnect" ],
     [ "deconfig" ],
-  
+
     [ "config",         { "channel":"2437", "mode":"11g", "pureg":None,
                           "ssid_suffix": "ch6" } ],
     [ "connect",        { "security":"none" } ],

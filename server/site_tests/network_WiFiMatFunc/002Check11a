@@ -2,13 +2,26 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test verfies that DUT can connect to an open 802.11a network
+# on channels 48, 64.
+
 { "name":"Check11a",
-  "steps":[             # Channel 48
+  "steps":[
     [ "create",         { "type":"hostap" } ],
 
-    [ "config",         { "channel":"5240", "mode":"11a" } ],    # XXX freq
+    [ "config",         { "channel":"5240", "mode":"11a",
+                          "ssid_suffix": "ch48" } ],
     [ "connect",        { "security":"none" } ],
     [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
+    [ "deconfig" ],
+
+    # TODO(tgao): do we need to test connection on more channels?
+    [ "config",         { "channel":"5320", "mode":"11a",
+                          "ssid_suffix": "ch64" } ],
+    [ "connect",        { "security":"none" } ],
+    [ "client_ping",    { "count":"10" } ],
+    [ "disconnect" ],
 
     [ "destroy" ],
   ],
