@@ -38,21 +38,7 @@ class factory_InstallServo(FactoryInstallTest):
         def kill_servo():
             del self.servo
         self.cleanup_tasks.append(kill_servo)
-        self.servo.initialize_dut()
-        self.servo.cold_reset()
-
-        # Try a few times to turn cold_reset off.  TODO(jsalz): Figure out
-        # why this retry is necessary, and move into servo.py or fix my logic.
-        # BUG=chromium-os:23626
-        def try_cold_reset():
-            try:
-                self.servo.set("cold_reset", "off")
-                return True
-            except AssertionError:
-                logging.warning("Unable to turn cold_reset off")
-                return False
-        client_utils.poll_for_condition(try_cold_reset, timeout=5,
-                                        desc="Disable cold_reset")
+        self.servo.initialize_dut(cold_reset=True)
 
         self.servo.enable_usb_hub()
         self.servo_usb_disk = self.servo.probe_host_usb_dev()

@@ -42,6 +42,11 @@ class Servo(object):
     RECOVERY_BOOT_DELAY = 10
     RECOVERY_INSTALL_DELAY = 540
 
+    # Time required for the EC to be working after cold reset.
+    # Five seconds is at least twice as big as necessary for Alex,
+    # and is presumably good enough for all future systems.
+    _EC_RESET_DELAY = 5.0
+
     # Servo-specific delays.
     MAX_SERVO_STARTUP_DELAY = 10
     SERVO_SEND_SIGNAL_DELAY = 0.5
@@ -88,28 +93,41 @@ class Servo(object):
         return None
 
 
-    def __init__(self, servo_host='localhost', servo_port=9999,
-                 cold_reset=False):
+    def __init__(self, servo_host='localhost', servo_port=9999):
         """Sets up the servo communication infrastructure.
 
         @param servo_host Name of the host where the servod process
                           is running.
         @param servo_port Port the servod process is listening on.
-        @param cold_reset If True, cold reset device and boot during init,
-                          otherwise perform init with device running.
         """
         self._server = None
-
-        self._do_cold_reset = cold_reset
         self._connect_servod(servo_host, servo_port)
 
 
-    def initialize_dut(self):
-        """Initializes a dut for testing purposes."""
-        if self._do_cold_reset:
-            self._init_seq_cold_reset_devmode()
-        else:
-            self._init_seq()
+    def initialize_dut(self, cold_reset=False):
+        """Initializes a dut for testing purposes.
+
+        This sets various servo signals back to default values
+        appropriate for the target board.  By default, if the DUT
+        is already on, it stays on.  If the DUT is powered off
+        before initialization, its state afterward is unspecified.
+
+        If cold reset is requested, the DUT is guaranteed to be off
+        at the end of initialization, regardless of its initial
+        state.
+
+        Rationale:  Basic initialization of servo sets the lid open,
+        when there is a lid.  This operation won't affect powered on
+        units; however, setting the lid open may power on a unit
+        that's off, depending on factors outside the scope of this
+        function.
+
+        @param cold_reset If True, cold reset the device after
+                          initialization.
+        """
+        self._server.hwinit()
+        if cold_reset:
+            self.cold_reset()
 
 
     def power_long_press(self):
@@ -292,11 +310,15 @@ class Servo(object):
     def cold_reset(self):
         """Perform a cold reset of the EC.
 
-        Has the side effect of shutting off the device.  Device is guaranteed
-        to be off at the end of this call.
+        This has the side effect of shutting off the device.  The
+        device is guaranteed to be off at the end of this call.
         """
+        # After the reset, give the EC the time it needs to
+        # re-initialize.
         self.set('cold_reset', 'on')
         time.sleep(Servo.SERVO_SEND_SIGNAL_DELAY)
+        self.set('cold_reset', 'off')
+        time.sleep(self._EC_RESET_DELAY)
 
 
     def warm_reset(self):
@@ -479,31 +501,6 @@ class Servo(object):
             self.disable_recovery_mode()
             self.warm_reset()
             raise
-
-
-    def _init_seq_cold_reset_devmode(self):
-        """Cold reset, init device, and boot in dev-mode."""
-        self.cold_reset()
-        self._init_seq()
-        self.set('dev_mode', 'on')
-        self.boot_devmode()
-
-
-    def _init_seq(self):
-        """Initiate starting state for servo."""
-        # TODO(tbroch) This is only a servo V1 control.  Need to add ability in
-        # servod to easily identify version so I can make this conditional not
-        # try and fail quietly
-        try:
-            self.set('tx_dir', 'input')
-        except:
-            logging.warning("Failed to set tx_dir.  This is ok if not servo V1")
-
-
-        # TODO(tbroch) Investigate method to determine DUT's type so we can
-        # conditionally set lid if applicable
-        self.set_nocheck('lid_open', 'yes')
-        self.set('rec_mode', 'off')
 
 
     def _connect_servod(self, servo_host, servo_port):
