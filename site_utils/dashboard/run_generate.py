@@ -67,10 +67,6 @@ def ParseArgs(argv):
                     help='max rows in summaries [default: %default]',
                     dest='summarylimit', type='int',
                     default=SUMMARY_TABLE_ROW_LIMIT)
-  parser.add_option('', '--timing-limit',
-                    help='max rows in timing summaries [default: %default]',
-                    dest='timinglimit', type='int',
-                    default=SUMMARY_TABLE_ROW_LIMIT)
   parser.add_option('', '--waterfall-limit',
                     help='max rows in waterfall summaries [default: %default]',
                     dest='waterfalllimit', type='int',
@@ -155,8 +151,7 @@ def DoWork(options, base_dir):
     logging.info("Generating tables.")
     if not options.noexecute:
       BuildAllTables(dash_base_dir, dash_view, dash_options,
-                     options.summarylimit, options.timinglimit,
-                     options.waterfalllimit)
+                     options.summarylimit, options.waterfalllimit)
 
   if options.mailgenerate:
     logging.info("Generating email.")

@@ -26,9 +26,7 @@ from dash_strings import KERNELTEST_TAG
 from dash_strings import PERF_BUILDS_FILE
 from dash_strings import TEST_DETAILS_FILE
 from dash_strings import TEST_LANDING_FILE
-from dash_strings import TEST_TABLE_FILE
 from dash_strings import TEST_WATERFALL_FILE
-from dash_strings import TIMING_SUMMARY_FILE
 from dash_strings import UNKNOWN_TIME_STR
 
 
@@ -114,50 +112,6 @@ def _BuildNetbookHTML(
       render_to_response(
           os.path.join('tables/details', PERF_BUILDS_FILE),
           locals()).content)
-
-
-def BuildTestSummaries(dash_view, category, tots, branches, summary_ranges):
-  """Produces individual table for each board of test summaries per build.
-
-  This produces the data for the 'old-style' (non-waterfall) dashboard summary.
-
-  Args:
-    dash_view: data model with all test result details.
-    category: summary producted for bvt now, maybe something else later.
-    tots: boards to be grouped at the top of page.
-    branches: boards to be grouped next.
-    summary_ranges: limits for data queries in this summary.
-
-  Returns:
-    Tuple of (html divs for tables on top, html divs for tables on bottom).
-  """
-  build_info = BuildInfo()
-  tot_divs = []
-  branch_divs = []
-  loops = ((tots, tot_divs), (branches, branch_divs))
-  for boards, test_divs in loops:
-    for board in boards:
-      rows = []
-      for build_number in summary_ranges.GetBuildNumbers(board):
-        build_details = []
-        for netbook in summary_ranges.GetNetbooks(board):
-          job_attempted, job_good, passed, total = dash_view.GetCategorySummary(
-              netbook, board, category, build_number)
-          kernel = summary_ranges.GetKernel(board, netbook, build_number)
-          build_details.append((netbook, job_attempted, job_good, passed, total,
-                                kernel))
-        rows.append((
-            '', build_number,
-            build_info.GetFormattedStartedTime(board, build_number),
-            build_info.GetFormattedFinishedTime(board, build_number),
-            build_info.GetFormattedFinishedTime(board, build_number, True),
-            build_details))
-      test_divs.append((
-          board,
-          summary_ranges.GetNetbooks(board),
-          len(summary_ranges.GetNetbooks(board)),
-          rows))
-  return tot_divs, branch_divs
 
 
 def _GetLandingDetails(dash_view, summary_ranges, netbook, board, category,
@@ -277,66 +231,12 @@ def BuildLandingSummaries(dash_view, category, tots, branches, summary_ranges):
           'results': organized_results}
 
 
-def BuildTimingSummaries(dash_view, category, tots, branches, summary_ranges):
-  """Produces individual table for each board of timing summaries per build.
-
-  This produces the data for the 'old-style' (non-waterfall) dashboard
-  timing summary. The timing details are used to notice outliers in build time,
-  test time and/or delays in starting tests after builds finish.
-
-  Args:
-    dash_view: data model with all test result details.
-    category: summary producted for bvt now, maybe something else later.
-    tots: boards to be grouped at the top of page.
-    branches: boards to be grouped next.
-    summary_ranges: limits for data queries in this summary.
-
-  Returns:
-    Tuple of (html divs for tables on top, html divs for tables on bottom).
-  """
-  build_info = BuildInfo()
-
-  tot_divs = []
-  branch_divs = []
-  loops = ((tots, tot_divs), (branches, branch_divs))
-  for boards, timing_divs in loops:
-    for board in boards:
-      rows = []
-      for build_number in summary_ranges.GetBuildNumbers(board):
-        build_details = []
-        for netbook in summary_ranges.GetNetbooks(board):
-          started, _, _ = dash_view.GetJobTimes(
-              netbook, board, category, build_number)
-          started_s, finished_s, elapsed_s = dash_view.GetFormattedJobTimes(
-              netbook, board, category, build_number)
-          build_finished = datetime.datetime.fromtimestamp(
-              build_info.GetFinishedTime(board, build_number))
-          if elapsed_s == UNKNOWN_TIME_STR:
-            delayed_s = elapsed_s
-          elif build_finished > started:
-            delayed_s = '-%s' % str(build_finished - started).split('.')[0]
-          else:
-            delayed_s = str(started - build_finished).split('.')[0]
-          build_details.append((
-              started_s, finished_s, elapsed_s, delayed_s))
-        fstarted, ffinished, felapsed, ffinished_short = (
-            build_info.GetFormattedBuildTimes(board, build_number))
-        rows.append(('', build_number, fstarted, ffinished, ffinished_short,
-                     build_details))
-      timing_divs.append((
-          board,
-          summary_ranges.GetNetbooks(board),
-          len(summary_ranges.GetNetbooks(board))*2,
-          rows))
-  return tot_divs, branch_divs
-
-
 def BuildSummaryHTML(base_dir, html_filename, tpl_summary_data, last_updated):
   """Render actual page and save to an html file.
 
   Args:
     base_dir: base where resulting html file goes.
-    html_filename: actual filename differs from test to timing.
+    html_filename: actual filename differs in views.
     tpl_summary_data: this data consumed by the template.
     last_updated: published on output pages.
 
@@ -353,7 +253,7 @@ def BuildSummaryHTML(base_dir, html_filename, tpl_summary_data, last_updated):
 
 
 def BuildAllTables(dash_base_dir, dash_view, dash_options, summary_limit,
-                   timing_limit, waterfall_limit):
+                   waterfall_limit):
   """Build all detail pages and a few summary pages as well.
 
   Builds the detail pages for each netbook/board/category and then a
@@ -364,7 +264,6 @@ def BuildAllTables(dash_base_dir, dash_view, dash_options, summary_limit,
     dash_view: data model with all test result details.
     dash_options: config options used for setting landing pages.
     summary_limit: only show n rows/table on the summary page.
-    timing_limit: only show n rows/table on the timing summary page.
     waterfall_limit: only show n rows on the waterfall summary page.
 
   Render Variables:
@@ -378,10 +277,7 @@ def BuildAllTables(dash_base_dir, dash_view, dash_options, summary_limit,
                         BVT_TAG, dash_options)
 
   for summary_file, build_fn, category, limit in (
-      (TEST_TABLE_FILE, BuildTestSummaries, BVT_TAG, summary_limit),
       (TEST_WATERFALL_FILE, BuildLandingSummaries, BVT_TAG, waterfall_limit),
-      (TIMING_SUMMARY_FILE, BuildTimingSummaries, BVT_TAG, timing_limit),
-      (KERNEL_TABLE_FILE, BuildTestSummaries, KERNELTEST_TAG, summary_limit),
       (KERNEL_WATERFALL_FILE, BuildLandingSummaries, KERNELTEST_TAG,
        waterfall_limit)):
 
