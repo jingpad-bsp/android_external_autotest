@@ -822,6 +822,23 @@ class WiFiTest(object):
         self.client.run("iw dev %s set power_save off" % self.client_wlanif)
 
 
+    def client_check_powersave(self, params):
+        """ Check status of power save mode """
+        result = self.client.run("iw dev %s get power_save" %
+                                 self.client_wlanif)
+        output = result.stdout.rstrip()       # NB: chop \n
+        # output should be either "Power save: on" or "Power save: off"
+        find_re = re.compile('([^:]+):\s+(\w+)')
+        find_results = find_re.match(output)
+        want = params[0]
+        if not find_results:
+            raise error.TestFail("wanted %s but not found" % want)
+        got = find_results.group(2)
+        if got != want:
+            raise error.TestFail("client_check_powersave: wanted %s got %s" %
+                                 (want, got))
+
+
     def __client_check(self, param, want):
         """ Verify negotiated station mode parameter """
         result = self.client.run("cat '%s/%s'" %
