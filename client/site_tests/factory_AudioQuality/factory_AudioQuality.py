@@ -73,44 +73,8 @@ _INIT_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
 _UNMUTE_SPEAKER_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
                                    'value': 'off'}]
 
-_HTML = '''
-<h2 id="message" style="position: absolute; top: 45%">
-  Plug in ethernet and hit S to start
-  | 插上网路线后按下S键开始测试</h2>
-<br>
-<div>Test command:
-  <input id="command" type="text" onkeydown="commandEntered(event);">
-</div>
-'''
-
-_JS = '''
-window.onkeydown = function(event) {
-  if (event.keyCode == 83) {
-    test.sendTestEvent("init_audio_server", {});
-    window.onkeydown = null;
-  }
-}
-
-function setMessage(msg) {
-  document.getElementById("message").innerHTML = msg;
-}
-
-function commandEntered(event) {
-  if (event.keyCode == 13) {
-    alert(document.getElementById("command").value);
-    test.sendTestEvent("test_command",
-        {"cmd": document.getElementById("command").value});
-  }
-}
-
-function testPass() {
-  test.pass();
-}
-
-function testFail() {
-  test.fail("Test fail, find more detail in log.");
-}
-'''
+# Logs
+_LABEL_FAIL_LOGS = 'Test fail, find more detail in log.'
 
 class factory_AudioQuality(test.test):
     version = 2
@@ -199,16 +163,17 @@ class factory_AudioQuality(test.test):
     def handle_test_complete(self, *args):
         '''Handles test completion.
 
-        Dumps log and runs post test script before ends this test.
+        Dumps log and runs post test script before ends this test
+
         '''
         factory.console.info(self._detail_log)
 
         self.on_test_complete()
         factory.console.info('%s run_once finished' % self.__class__)
         if hasattr(self, '_test_passed') and self._test_passed:
-            self.ui.CallJSFunction('testPass', {})
+            self.ui.Pass()
         else:
-            self.ui.CallJSFunction('testFail', {})
+            self.ui.Fail(_LABEL_FAIL_LOGS)
 
     def handle_loop_none(self, *args):
         self.restore_configuration()
@@ -354,8 +319,6 @@ class factory_AudioQuality(test.test):
         self._dmic_switch_mixer_settings = dmic_switch_mixer_settings
 
         self.ui = UI()
-        self.ui.SetHTML(_HTML)
-        self.ui.RunJS(_JS)
 
         # Register commands to corresponding handlers.
         self._handlers = {}

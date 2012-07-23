@@ -8,30 +8,66 @@
 # This is a factory test for the audio function. An external loopback dongle
 # is required to automatically capture and detect the playback tones.
 
-import glib
-import gtk
 import os
 import re
 import subprocess
 import tempfile
+import time
 import utils
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
 from cros.factory.test import factory
+from cros.factory.test.test_ui import UI
+from cros.factory.test.event import Event
 from autotest_lib.client.cros.audio import audio_helper
 from cros.factory.test import ui as ful
 
+
+# Default setting
 _DEFAULT_FREQ_HZ = 1000
 _DEFAULT_FREQ_THRESHOLD_HZ = 50
 _DEFAULT_DURATION_SEC = 1
+
+# Pass threshold
+_PASS_THRESHOLD = 50.0
+
+
+# Label strings.
+_LABEL_HTML_STARTING = '''
+<h1 id="message" style="position: absolute; top:45%">
+<center>
+'''
+
+_LABEL_HTML_ENDING = '''
+</center>
+</h1>
+'''
 
 _LABEL_START_STR = 'Hit s to start loopback test\n' +\
         '按s鍵開始音源回放測試\n\n'
 _LABEL_IN_PROGRESS_STR = 'Loopback testing...\n' +\
         '音源回放測試中...\n\n'
-_LABEL_SUCCESS_RATE = 'Success rate %f\n'
+_LABEL_SUCCESS_RATE = '''
+成功率:
+'''
+
+_LABEL_SUCCESS_MESSAGE = '''
+<h1 id="message" style="position: absolute; top:45%">
+  <center>
+  測試結果: 成功!
+  </center>
+</h1>
+'''
+
+_LABEL_FAIL_MESSAGE = '''
+<h1 id="message" style="position: absolute; top:45%">
+  <center>
+  測試結果: 失敗!<br />
+  </center>
+</h1>
+'''
 
 # Regular expressions to match audiofuntest message.
 _AUDIOFUNTEST_STOP_RE = re.compile('^Stop')
@@ -40,35 +76,63 @@ _AUDIOFUNTEST_SUCCESS_RATE_RE = re.compile('.*rate\s=\s(.*)$')
 class factory_AudioLoop(test.test):
     version = 1
 
-    def key_press_callback(self, widget, event):
-        if event.keyval == ord('s'):
-            self._status_box.remove(self._status_label)
-            self._status_label = None
-            self._status_label = ful.make_label(_LABEL_IN_PROGRESS_STR,
-                                                fg = ful.WHITE)
-            self._status_box.add(self._status_label)
+    def start_run_test(self, event):
         if self._audiofuntest:
-            self._success_rate_box.remove(self._success_rate_label)
-            self._success_rate_label = None
-            self._success_rate_label = ful.make_label("", fg = ful.WHITE)
-            self._success_rate_box.add(self._success_rate_label)
+           self.run_audiofuntest()
+        else:
+           factory.console.info('Run looptest!!')
+           self.audio_loopback()
 
-        self._main_widget.show_all()
-        self._main_widget.queue_draw()
+        factory.console.info('Over Test');
         return True
 
-    def key_release_callback(self, widget, event):
-        if event.keyval == ord('s'):
-            if self._audiofuntest:
-                self._proc = subprocess.Popen(self._audiofuntest_path,
-                        stderr=subprocess.PIPE)
-                self._gio_tag = glib.io_add_watch(self._proc.stderr, glib.IO_IN,
-                        self.audiofuntest_cb, priority=glib.PRIORITY_LOW)
-            else:
-                self.audio_loopback()
-                gtk.main_quit()
+    def run_audiofuntest(self):
+        '''
+        Sample audiofuntest message:
 
+        O: carrier = 41, delay = 6, success = 60, fail = 0, rate = 100.0
+        Stop play tone
+        Stop capturing data
+        '''
+        factory.console.info('Run audiofuntest!!')
+        self._proc = subprocess.Popen([self._audiofuntest_path, '-r', '48000'],
+                stderr=subprocess.PIPE)
+
+        while True:
+          proc_output = self._proc.stderr.readline();
+          factory.console.info(proc_output)
+
+          m = _AUDIOFUNTEST_SUCCESS_RATE_RE.match(proc_output)
+          if m is not None:
+            self._last_success_rate = float(m.group(1))
+            self.ui.SetHTML(_LABEL_HTML_STARTING +
+                            _LABEL_IN_PROGRESS_STR + '<br />' +
+                            _LABEL_SUCCESS_RATE +
+                            str(self._last_success_rate) +
+                            _LABEL_HTML_ENDING)
+          m = _AUDIOFUNTEST_STOP_RE.match(proc_output)
+          if m is not None:
+             if ( hasattr(self, '_last_success_rate') and
+                self._last_success_rate is not None ):
+                self._result = self._last_success_rate > _PASS_THRESHOLD
+                break
+
+        # show instant message and wait for a while
+        if ( hasattr(self, '_result') and self._result ):
+           self.ui.SetHTML(_LABEL_SUCCESS_MESSAGE)
+           time.sleep(0.5)
+           self.ui.Pass();
+        else :
+           self.ui.SetHTML(_LABEL_HTML_STARTING +
+                           '測試結果: 失敗!<br />' +
+                           _LABEL_SUCCESS_RATE +
+                           str(self._last_success_rate) +
+                           _LABEL_HTML_ENDING)
+           time.sleep(0.5)
+           self.ui.Fail('Test Fail. The success rate is %.1f, too low!' %
+                        self._last_success_rate)
         return True
+
 
     def audio_loopback(self):
         for input_device in self._input_devices:
@@ -81,13 +145,18 @@ class factory_AudioLoop(test.test):
             for output_device in self._output_devices:
                 # Record a sample of "silence" to use as a noise profile.
                 with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
-                    factory.log('Noise file: %s' % noise_file.name)
+                    factory.console.info('Noise file: %s' % noise_file.name)
                     self._ah.record_sample(noise_file.name)
 
                     # Playback sine tone and check the recorded audio frequency.
                     self._ah.loopback_test_channels(noise_file,
                             lambda ch: self.playback_sine(ch, output_device),
                             self.check_recorded_audio)
+
+        if self._result is True:
+           self.ui.SetHTML(_LABEL_SUCCESS_MESSAGE)
+           time.sleep(0.5)
+           self.ui.Pass();
 
     def playback_sine(self, unused_channel, output_device='default'):
         cmd = '%s -n -t alsa %s synth %d sine %d' % (self._ah.sox_path,
@@ -97,52 +166,17 @@ class factory_AudioLoop(test.test):
     def check_recorded_audio(self, sox_output):
         freq = self._ah.get_rough_freq(sox_output)
         if abs(freq - self._freq) > _DEFAULT_FREQ_THRESHOLD_HZ:
-            raise error.TestError('Frequency %d not match' % freq)
-        self._result = True
-        factory.log('Got frequency %d' % freq)
-
-    def audiofuntest_cb(self, source, cb_condition):
-        '''
-        Sample audiofuntest message:
-
-        O: carrier = 41, delay =  6, success =  60, fail =   0, rate = 100.0
-        Stop play tone
-        Stop capturing data
-        '''
-        line = source.readline()
-
-        m = _AUDIOFUNTEST_SUCCESS_RATE_RE.match(line)
-        if m is not None:
-            self._last_success_rate = float(m.group(1))
-
-            self._success_rate_box.remove(self._success_rate_label)
-            self._success_rate_label = None
-            self._success_rate_label = ful.make_label(_LABEL_SUCCESS_RATE %
-                    self._last_success_rate, fg = ful.WHITE)
-            self._success_rate_box.add(self._success_rate_label)
-            self._main_widget.show_all()
-            self._main_widget.queue_draw()
-
-        m = _AUDIOFUNTEST_STOP_RE.match(line)
-        if m is not None:
-            glib.source_remove(self._gio_tag)
-            if (hasattr(self, '_last_success_rate') and
-                    self._last_success_rate is not None):
-                self._result = self._last_success_rate > 50.0
-                gtk.main_quit()
-
-        return True
-
-    def register_callbacks(self, window):
-        window.connect('key-press-event', self.key_press_callback)
-        window.add_events(gtk.gdk.KEY_PRESS_MASK)
-        window.connect('key-release-event', self.key_release_callback)
-        window.add_events(gtk.gdk.KEY_RELEASE_MASK)
+            self.ui.SetHTML(_LABEL_FAIL_MESSAGE)
+            time.sleep(0.5)
+            self.ui.Fail('Test Fail')
+        else :
+            self._result = True
+            factory.console.info('Got frequency %d' % freq)
 
     def run_once(self, audiofuntest=False, duration=_DEFAULT_DURATION_SEC,
-            input_devices=['default'], output_devices=['default'],
+            input_devices=['hw:0,0'], output_devices=['hw:0,0'],
             mixer_controls=None):
-        factory.log('%s run_once' % self.__class__)
+        factory.console.info('%s run_once' % self.__class__)
 
         self._audiofuntest = audiofuntest
         self._duration = duration
@@ -164,28 +198,10 @@ class factory_AudioLoop(test.test):
             raise error.TestError(
                     '%s is not an executable' % self._audiofuntest_path)
 
-        # Status box and label
-        self._status_box = gtk.EventBox()
-        self._status_box.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        self._status_label = ful.make_label(_LABEL_START_STR,
-                                            fg = ful.WHITE)
-        self._status_box.add(self._status_label)
+        # Setup HTML UI, and event handler
+        self.ui = UI()
+        self.ui.AddEventHandler('start_run_test', self.start_run_test)
 
-        # Success rate box and label
-        self._success_rate_box = gtk.EventBox()
-        self._success_rate_box.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        self._success_rate_label = ful.make_label("", fg = ful.WHITE)
-        self._success_rate_box.add(self._success_rate_label)
+        factory.console.info('Run UI')
+        self.ui.Run();
 
-        self._label_list = gtk.VBox()
-        self._label_list.pack_start(self._status_box, False, False)
-        self._label_list.pack_end(self._success_rate_box, False, False)
-        self._main_widget = gtk.EventBox()
-        self._main_widget.modify_bg(gtk.STATE_NORMAL, ful.BLACK)
-        self._main_widget.add(self._label_list)
-
-        ful.run_test_widget(self.job, self._main_widget,
-                window_registration_callback=self.register_callbacks)
-
-        if not self._result:
-            raise error.TestFail('ERROR: loopback test fail')
