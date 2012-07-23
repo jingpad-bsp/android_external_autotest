@@ -34,6 +34,7 @@ class security_ASLR(test.test):
 
     _INITCTL_RESTART_TIMEOUT = 30
     _INITCTL_POLL_INTERVAL = 1
+    _TEST_ITERATION_COUNT = 5
 
     def get_processes_to_test(self):
         """Gets processes to test for main function
@@ -121,40 +122,55 @@ class security_ASLR(test.test):
     def test_randomization(self, process):
         """Tests ASLR of a single process.
 
-        This is the main test function for the program.  It creates two data
-        structures out of useful information from /proc/<pid>/maps before
-        and after restarting the process and then compares address starting
-        locations of all executable, stack, and heap memory.
+        This is the main test function for the program.  It creates data
+        structures out of useful information from sampling /proc/<pid>/maps
+        after restarting the process and then compares address starting
+        locations of all executable, stack, and heap memory from each iteration.
 
         Args:
-            pid: a string containing the pid to be tested.
+            process: a process object representing the process to be tested.
 
         Returns:
             A dict containing a Boolean for whether or not the test passed
             and a list of string messages about passing/failing cases.
         """
-        test_result = dict([('pass', True), ('results', [])])
+        test_result = dict([('pass', True), ('results', []), ('cases', dict())])
         name = process.get_name()
         parent = process.get_parent()
-        pid1 = self.get_pid_of(process)
-        attempt1 = self.map(pid1)
+        mappings = list()
+        for i in range(self._TEST_ITERATION_COUNT):
+            pid = self.get_pid_of(process)
+            mappings.append(self.map(pid))
+            self.restart(process)
 
-        self.restart(process)
-
-        pid2 = self.get_pid_of(process)
-        attempt2 = self.map(pid2)
-
-        for key, value in attempt1.iteritems():
-            match_found = (attempt2.has_key(key) and
-                attempt1[key].get_start() == attempt2[key].get_start())
-            if match_found:
-                test_result['pass'] = False
-                test_result['results'].append(
-                        '[FAIL] Address for %s had deterministic value: '
-                        '%s' % (key, str(attempt1[key].get_start())))
-            else:
+        initial_map = mappings[0]
+        for i, mapping in enumerate(mappings[1:]):
+            logging.debug('Iteration %d' % i)
+            for key, value in mapping.iteritems():
+                # Set default case result to fail, pass when an address change
+                # occurs.
+                if not test_result['cases'].has_key(key):
+                    test_result['cases'][key] = dict([('pass', False),
+                            ('number', 0),
+                            ('total', self._TEST_ITERATION_COUNT)])
+                was_same = (initial_map.has_key(key) and
+                        initial_map[key].get_start() ==
+                        mapping[key].get_start())
+                if was_same:
+                    logging.debug('Bad: %s address didn\'t change' % key)
+                else:
+                    logging.debug('Good: %s address changed' % key)
+                    test_result['cases'][key]['number'] += 1;
+                    test_result['cases'][key]['pass'] = True
+        for case, result in test_result['cases'].iteritems():
+            if result['pass']:
                 test_result['results'].append( '[PASS] Address for %s '
-                        'successfully changed.' % key)
+                        'successfully changed' % case)
+            else:
+                test_result['results'].append('[FAIL] Address for %s had '
+                        'deterministic value: %s' % (key,
+                        mapping[key].get_start()))
+            test_result['pass'] = test_result['pass'] and result['pass']
         return test_result
 
     def restart(self, process):
