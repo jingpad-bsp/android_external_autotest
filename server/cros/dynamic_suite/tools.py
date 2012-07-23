@@ -54,3 +54,39 @@ def inject_vars(vars, control_file_in):
         else:
             control_file += "%s=%r\n" % (key, value)
     return control_file + control_file_in
+
+
+def is_usable(host):
+    """
+    Given a host, determine if the host is usable right now.
+
+    @param host: Host instance (as in server/frontend.py)
+    @return True if host is alive and not incorrectly locked.  Else, False.
+    """
+    return alive(host) and not incorrectly_locked(host)
+
+
+def alive(host):
+    """
+    Given a host, determine if the host is alive.
+
+    @param host: Host instance (as in server/frontend.py)
+    @return True if host is not under, or in need of, repair.  Else, False.
+    """
+    return host.status not in ['Repair Failed', 'Repairing']
+
+
+def incorrectly_locked(host):
+    """
+    Given a host, determine if the host is locked by some user.
+
+    If the host is unlocked, or locked by the test infrastructure,
+    this will return False.  Usernames defined as 'part of the test
+    infrastructure' are listed in global_config.ini under the [CROS]
+    section in the 'infrastructure_users' field.
+
+    @param host: Host instance (as in server/frontend.py)
+    @return False if the host is not locked, or locked by the infra.
+            True if the host is locked by someone we haven't blessed.
+    """
+    return (host.locked and host.locked_by not in infrastructure_user_list())

@@ -60,7 +60,7 @@ def parse_options():
     parser.add_option("-m", "--mock_job_id", dest="mock_job_id",
                       help="Skips running suite; creates report for given ID.")
     parser.add_option("-u", "--num", dest="num", type="int", default=None,
-                      help="Run on at most NUM machiens.")
+                      help="Run on at most NUM machines.")
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -68,11 +68,13 @@ def parse_options():
 def get_pretty_status(status):
     if status == 'GOOD':
         return '[ PASSED ]'
+    elif status == 'TEST_NA':
+        return '[  INFO  ]'
     return '[ FAILED ]'
 
 def is_fail_status(status):
     # All the statuses tests can have when they fail.
-    if status in ['FAIL', 'ERROR', 'TEST_NA']:
+    if status in ['FAIL', 'ERROR']:
         return True
     return False
 
@@ -352,6 +354,9 @@ def main():
                 # Don't show links on the buildbot waterfall for tests with
                 # GOOD status.
                 buildbot_links.append(link)
+                if view['status'] == 'TEST_NA':
+                    # Didn't run; nothing to do here!
+                    continue
                 if code == 1:
                     # Failed already, no need to worry further.
                     continue

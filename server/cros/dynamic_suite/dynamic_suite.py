@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import compiler, datetime, hashlib, logging, os, random, re, time, traceback
+import ast, compiler, datetime, hashlib, logging, os, random, re, time
+import traceback
 
 import common
 
@@ -125,26 +126,57 @@ is defined in the [CROS] section of global_config.ini.  This can be overridden
 by passing a 'num=N' parameter to create_suite_job(), which is piped through
 to reimage_and_run() just like the 'build' and 'board' parameters are.
 
+A test control file can specify a list of DEPENDENCIES, which are really just
+the set of labels a host needs to have in order for that test to be scheduled
+on it.  In the case of a dynamic_suite, many tests in the suite may have
+DEPENDENCIES specified.  They may overlap, they may not.  This complicates
+reimaging, as we need to try to cover the DEPENDENCIES of all tests in the
+suite while still staying within the sharding_factor.
+
+A lengthier discussion is available at:
+http://goto.google.com/dynamic-suites-deps
+
+For now, we use a naive algorithm to find a set of machines that can
+satisfy all the test DEPENDENCIES in a given suite.
+Per-test-per-suite DEPENDENCIES information is generated at build
+time, and then fetched and consumed during suite preparation.  If info
+exists for the suite being run, the infrastructure will look for a
+host that matches each unique DEPENDENCY list.  If it can find such a
+set that is <= the suite sharding factor, the infrastructure will
+schedule those machines for reimaging.  If not, the suite will fail.
+If a suite has no DEPENDENCIES info, we just do the standard meta_host-based
+scheduling.
+
+
 Step by step:
-1) Schedule autoupdate 'tests' across N devices of the appropriate board.
+0) Fetch DEPENDENCIES info for the suite to be run.
+1) Process the DEPENDENCIES with whatever board and device 'pool' are
+   specified to create a list of unique dependency lists.
+2) Determine what hosts we need to reimage.
+   2a) If we have no DEPENDENCIES, set up a meta_host that specifies N hosts of
+       the right board in the right pool and move on.
+   2b) If we do, query the AFE to find at least one live host that matches
+       each dependency list.  If some list has no matching hosts, bail.
+       If we have more lists than our sharding_factor, bail.
+3) Schedule autoupdate 'tests' across chosen devices.
   - Technically, one job that has N tests across N hosts.
-  - This 'test' is in server/site_tests/autoupdate/
+  - This 'test' is in server/site_tests/autoupdate/control
   - The control file is modified at runtime to inject the name of the build
     to install, and the URL to get said build from.
   - This is the _TOT_ version of the autoupdate test; it must be able to run
     successfully on all currently supported branches at all times.
-2) Wait for this job to get kicked off.
-3) As each host is chosen by the scheduler and begins reimaging, lock it.
-4) Wait for all reimaging to run to completion.
-5) Label successfully reimaged devices with a 'cros-version' label
+4) Wait for this job to get kicked off.
+5) As each host is chosen by the scheduler and begins reimaging, lock it.
+6) Wait for all reimaging to run to completion.
+7) Label successfully reimaged devices with a 'cros-version' label
   - This is actually done by the autoupdate 'test' control file.
-6) Add a host attribute ('job_repo_url') to each reimaged host indicating
+8) Add a host attribute ('job_repo_url') to each reimaged host indicating
    the URL where packages should be downloaded for subsequent tests
   - This is actually done by the autoupdate 'test' control file
   - This information is consumed in server/site_autotest.py
   - job_repo_url points to some location on the dev server, where build
     artifacts are staged -- including autotest packages.
-7) Return success if at least one device successfully reimaged, or failure
+9) Return success if at least one device successfully reimaged, or failure
    otherwise.
 
           +------------+                       +--------------------------+
@@ -262,6 +294,8 @@ class SuiteSpec(object):
                        Default: False
     @var add_experimental: schedule experimental tests as well, or not.
                            Default: True
+    @var dependencies: map of test names to dependency lists.
+                       Initially {'': []}.
     """
     def __init__(self, build=None, board=None, name=None, job=None,
                  pool=None, num=None, check_hosts=True,
@@ -315,6 +349,7 @@ class SuiteSpec(object):
         self.check_hosts = check_hosts
         self.skip_reimage = skip_reimage
         self.add_experimental = add_experimental
+        self.dependencies = {'': []}
 
 
 def skip_reimage(g):
@@ -349,8 +384,23 @@ def reimage_and_run(**dargs):
                              Default: True
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
+    @raises MalformedDependenciesException: if the dependency_info file for
+                                            the required build fails to parse.
     """
     suite_spec = SuiteSpec(**dargs)
+
+    # Gather per-suite:per-test DEPENDENCIES info, if this build has it.
+    all_dependencies = {}
+    try:
+        all_dependencies = ast.literal_eval(
+            suite_spec.devserver.get_dependencies_file(suite_spec.build))
+    except ValueError as e:
+        raise error.MalformedDependenciesException(
+            '%s has malformed DEPENDENCIES info: %r', suite_spec.build, e)
+    except dev_server.DevServerException:
+        # Not all builds have dependency info at this time, which is OK.
+        logging.info('Proceeding without DEPENDENCIES information.')
+    suite_spec.dependencies = all_dependencies.get(suite_spec.name, {'': []})
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
                                         user=suite_spec.job.user, debug=False)
@@ -370,16 +420,22 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
     Do the work of reimaging hosts and running tests.
 
     @param spec: a populated SuiteSpec object.
+    @param afe: an instance of AFE as defined in server/frontend.py.
+    @param tko: an instance of TKO as defined in server/frontend.py.
     @param reimager: the Reimager to use to reimage DUTs.
     @param manager: the HostLockManager to use to lock/unlock DUTs during
                     reimaging/test scheduling.
     """
     with host_lock_manager.HostsLockedBy(manager):
+        tests_to_skip = []
         if spec.skip_reimage or reimager.attempt(spec.build, spec.board,
                                                  spec.pool, spec.devserver,
                                                  spec.job.record_entry,
                                                  spec.check_hosts,
-                                                 manager, num=spec.num):
+                                                 manager,
+                                                 tests_to_skip,
+                                                 spec.dependencies,
+                                                 num=spec.num):
             # Ensure that the image's artifacts have completed downloading.
             try:
                 spec.devserver.finish_download(spec.build)
@@ -391,10 +447,10 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
                 spec.job.resultdir,
                 {constants.ARTIFACT_FINISHED_TIME: timestamp})
 
-            suite = Suite.create_from_name(spec.name, spec.build,
-                                           spec.devserver,
-                                           afe=afe, tko=tko,
-                                           pool=spec.pool,
-                                           results_dir=spec.job.resultdir)
+            suite = Suite.create_from_name_and_blacklist(
+                spec.name, tests_to_skip, spec.build, spec.devserver,
+                afe=afe, tko=tko, pool=spec.pool,
+                results_dir=spec.job.resultdir)
+
             suite.run_and_wait(spec.job.record_entry, manager,
                                spec.add_experimental)

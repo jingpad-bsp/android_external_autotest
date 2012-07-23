@@ -128,6 +128,19 @@ class DynamicSuiteTest(mox.MoxTestBase):
         self.assertEquals(spec.devserver.url(), self._DEVSERVER_HOST)
 
 
+    def testReimageWithBadDependencies(self):
+        """Should raise if the build has bad dependency info."""
+        ds = self.mox.CreateMock(dev_server.ImageServer)
+        ds.get_dependencies_file(self._DARGS['build']).AndReturn('busted')
+        self.mox.StubOutWithMock(dev_server.ImageServer, 'resolve')
+        dev_server.ImageServer.resolve(self._BUILD).AndReturn(ds)
+
+        self.mox.ReplayAll()
+
+        self.assertRaises(error.MalformedDependenciesException,
+                          dynamic_suite.reimage_and_run, **self._DARGS)
+
+
     def testReimageAndSIGTERM(self):
         """Should reimage_and_run that causes a SIGTERM and fails cleanly."""
         def suicide(_dontcare):
@@ -144,6 +157,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
 
         signal.signal(signal.SIGTERM, handler)
         spec = self.mox.CreateMock(dynamic_suite.SuiteSpec)
+        spec.skip_reimage = True
         spec.build = ''
         spec.devserver = self.mox.CreateMock(dev_server.ImageServer)
         spec.devserver.finish_download(spec.build).WithSideEffects(suicide)
@@ -155,7 +169,6 @@ class DynamicSuiteTest(mox.MoxTestBase):
         # However, since we're throwing an exception, we "gracefully" exit the
         # context manager, so this unlock comes from the |__exit__| call.
         manager.unlock()
-        spec.skip_reimage = True
 
         self.mox.ReplayAll()
 

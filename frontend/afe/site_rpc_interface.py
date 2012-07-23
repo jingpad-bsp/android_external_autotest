@@ -19,11 +19,6 @@ from autotest_lib.server.cros.dynamic_suite import tools
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 
-class ControlFileEmpty(Exception):
-    """Raised when the control file exists on the server, but can't be read."""
-    pass
-
-
 def _rpc_utils():
     """Returns the rpc_utils module.  MUST be mocked for unit tests.
 

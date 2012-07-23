@@ -14,6 +14,7 @@ import time
 import unittest
 
 from autotest_lib.server.cros.dynamic_suite import job_status, host_lock_manager
+from autotest_lib.server.cros.dynamic_suite import host_spec
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost, FakeJob
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeStatus
 from autotest_lib.server import frontend
@@ -407,38 +408,56 @@ class StatusTest(mox.MoxTestBase):
             pass
 
         record_entity = self.mox.CreateMock(callable)
+        group = self.mox.CreateMock(host_spec.HostGroup)
 
-        statuses = []
-        for result in results:
+        statuses = {}
+        for hostname, result in results.iteritems():
             status = self.mox.CreateMock(FakeStatus)
             status.record_all(record_entity)
             status.is_good().AndReturn(result)
             if not result:
                 status.test_name = 'test'
-            statuses.append(status)
+            else:
+                group.mark_host_success(hostname)
+            statuses[hostname] = status
 
-        return (statuses, record_entity)
+        return (statuses, group, record_entity)
 
 
     def testRecordAndReportGoodResults(self):
         """Record and report success across the board."""
-        (statuses, record_entity) = self._prepareForReporting([True, True])
+        results = {'h1': True, 'h2': True}
+        (statuses, group, record_entity) = self._prepareForReporting(results)
+        group.enough_hosts_succeeded().AndReturn(True)
         self.mox.ReplayAll()
-        success = job_status.record_and_report_results(statuses, record_entity)
+
+        success = job_status.record_and_report_results(statuses,
+                                                       group,
+                                                       record_entity)
         self.assertTrue(success)
 
 
     def testRecordAndReportOkayResults(self):
         """Record and report success of at least one host."""
-        (statuses, record_entity) = self._prepareForReporting([False, True])
+        results = {'h1': False, 'h2': True}
+        (statuses, group, record_entity) = self._prepareForReporting(results)
+        group.enough_hosts_succeeded().AndReturn(True)
         self.mox.ReplayAll()
-        success = job_status.record_and_report_results(statuses, record_entity)
+
+        success = job_status.record_and_report_results(statuses,
+                                                       group,
+                                                       record_entity)
         self.assertTrue(success)
 
 
     def testRecordAndReportBadResults(self):
         """Record and report failure across the board."""
-        (statuses, record_entity) = self._prepareForReporting([False, False])
+        results = {'h1': False, 'h2': False}
+        (statuses, group, record_entity) = self._prepareForReporting(results)
+        group.enough_hosts_succeeded().AndReturn(False)
         self.mox.ReplayAll()
-        success = job_status.record_and_report_results(statuses, record_entity)
+
+        success = job_status.record_and_report_results(statuses,
+                                                       group,
+                                                       record_entity)
         self.assertFalse(success)

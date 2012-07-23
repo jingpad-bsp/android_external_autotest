@@ -137,6 +137,45 @@ class Suite(object):
                      name, build, cf_getter, afe, tko, pool, results_dir)
 
 
+    @staticmethod
+    def create_from_name_and_blacklist(name, blacklist, build, devserver,
+                                       cf_getter=None, afe=None, tko=None,
+                                       pool=None, results_dir=None):
+        """
+        Create a Suite using a predicate based on the SUITE control file var.
+
+        Makes a predicate based on |name| and uses it to instantiate a Suite
+        that looks for tests in |autotest_dir| and will schedule them using
+        |afe|.  Pulls control files from the default dev server.
+        Results will be pulled from |tko| upon completion.
+
+        @param name: a value of the SUITE control file variable to search for.
+        @param blacklist: iterable of control file paths to skip.
+        @param build: the build on which we're running this suite.
+        @param devserver: the devserver which contains the build.
+        @param cf_getter: a control_file_getter.ControlFileGetter.
+                          If None, default to using a DevServerGetter.
+        @param afe: an instance of AFE as defined in server/frontend.py.
+        @param tko: an instance of TKO as defined in server/frontend.py.
+        @param pool: Specify the pool of machines to use for scheduling
+                     purposes.
+        @param results_dir: The directory where the job can write results to.
+                            This must be set if you want job_id of sub-jobs
+                            list in the job keyvals.
+        @return a Suite instance.
+        """
+        if cf_getter is None:
+            cf_getter = Suite.create_ds_getter(build, devserver)
+
+        def in_tag_not_in_blacklist_predicate(test):
+            return (Suite.name_in_tag_predicate(name)(test) and
+                    hasattr(test, 'path') and
+                    True not in [b.endswith(test.path) for b in blacklist])
+
+        return Suite(in_tag_not_in_blacklist_predicate,
+                     name, build, cf_getter, afe, tko, pool, results_dir)
+
+
     def __init__(self, predicate, tag, build, cf_getter, afe=None, tko=None,
                  pool=None, results_dir=None):
         """
@@ -205,7 +244,7 @@ class Suite(object):
                 test_name is used to preserve the higher level TEST_NAME
                 name of the job.
         """
-        job_deps = []  # TODO(cmasone): init from test.dependencies.
+        job_deps = list(test.dependencies)
         if self._pool:
             meta_hosts = self._pool
             cros_label = constants.VERSION_PREFIX + self._build
@@ -241,6 +280,8 @@ class Suite(object):
         @param record: callable that records job status.
                  prototype:
                    record(base_job.status_log_entry)
+        @param manager: a populated HostLockManager instance to handle
+                        unlocking DUTs that we already reimaged.
         @param add_experimental: schedule experimental tests as well, or not.
         """
         logging.debug('Discovered %d stable tests.', len(self.stable_tests()))

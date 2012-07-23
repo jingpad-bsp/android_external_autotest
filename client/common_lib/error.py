@@ -525,6 +525,11 @@ class SuiteArgumentException(CrosDynamicSuiteException):
     pass
 
 
+class MalformedDependenciesException(CrosDynamicSuiteException):
+    """Raised when a build has a malformed dependency_info file."""
+    pass
+
+
 class InadequateHostsException(CrosDynamicSuiteException):
     """Raised when there are too few hosts to run a suite."""
     pass

@@ -14,6 +14,14 @@ from autotest_lib.client.common_lib.cros import retry
 
 
 CONFIG = global_config.global_config
+# This file is generated at build time and specifies, per suite and per test,
+# the DEPENDENCIES list specified in each control file.  It's a dict of dicts:
+# {'bvt':   {'/path/to/autotest/control/site_tests/test1/control': ['dep1']}
+#  'suite': {'/path/to/autotest/control/site_tests/test2/control': ['dep2']}
+#  'power': {'/path/to/autotest/control/site_tests/test1/control': ['dep1'],
+#            '/path/to/autotest/control/site_tests/test3/control': ['dep3']}
+# }
+DEPENDENCIES_FILE = 'test_suites/dependency_info'
 
 
 class MarkupStripper(HTMLParser.HTMLParser):
@@ -319,14 +327,33 @@ class ImageServer(DevServer):
         """Ask the devserver for the contents of a control file.
 
         @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
-                      whose control files the caller wants listed.
-        @param control_path: The file to list
+                      whose control file the caller wants to fetch.
+        @param control_path: The file to fetch
                              (e.g. server/site_tests/autoupdate/control)
         @return The contents of the desired file.
         @raise DevServerException upon any return code that's not HTTP OK.
         """
         call = self.build_call('controlfiles', build=build,
                                control_path=control_path)
+        return urllib2.urlopen(call).read()
+
+
+    @remote_devserver_call
+    def get_dependencies_file(self, build):
+        """Ask the dev server for the contents of the suite dependencies file.
+
+        Ask the dev server at |self._dev_server| for the contents of the
+        pre-processed suite dependencies file (at DEPENDENCIES_FILE)
+        for |build|.
+
+        @param build: The build (e.g. x86-mario-release/R21-2333.0.0)
+                      whose dependencies the caller is interested in.
+        @return The contents of the dependencies file, which should eval to
+                a dict of dicts, as per site_utils/suite_preprocessor.py.
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        call = self.build_call('controlfiles',
+                               build=build, control_path=DEPENDENCIES_FILE)
         return urllib2.urlopen(call).read()
 
 

@@ -294,7 +294,7 @@ def gather_per_host_results(afe, tko, jobs, name_prefix=''):
     @param tko: an instance of TKO as defined in server/frontend.py.
     @param jobs: a list of Job objects, as defined in server/frontend.py.
     @param name_prefix: optional string to prepend to Status object names.
-    @return a list of Statuses, one per host used in a Job.
+    @return a dict mapping {hostname: Status}, one per host used in a Job.
     """
     to_return = {}
     for job in jobs:
@@ -322,28 +322,29 @@ def gather_per_host_results(afe, tko, jobs, name_prefix=''):
     return to_return
 
 
-def record_and_report_results(statuses, record_entry):
+def record_and_report_results(per_host_statuses, group, record_entry):
     """
-    Record all Statuses in |statuses| and return True if at least one was GOOD.
+    Record all Statuses in results and return True if at least one was GOOD.
 
-    @param statuses: iterable of Status objects.
+    @param per_host_statuses: dict mapping {hostname: Status}, one per host
+                              used in a Job.
+    @param group: the HostGroup used for the Job whose results we're reporting.
     @param record_entry: a callable to use for logging.
                prototype:
                    record_entry(base_job.status_log_entry)
     @return True if at least one of the Statuses are good.
     """
-    some_good = False
     failures = []
-    for status in statuses:
+    for hostname, status in per_host_statuses.iteritems():
         status.record_all(record_entry)
-        success = status.is_good()
-        some_good = some_good or success
-        if not success:
+        if status.is_good():
+            group.mark_host_success(hostname)
+        else:
             failures.append(status.test_name)
     if failures:
         logging.warn("Some machines failed to reimage: %s.",
                      ', '.join(failures))
-    return some_good
+    return group.enough_hosts_succeeded()
 
 
 class Status(object):

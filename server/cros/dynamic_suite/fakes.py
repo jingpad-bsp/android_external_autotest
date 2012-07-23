@@ -13,6 +13,7 @@ class FakeControlData(object):
     def __init__(self, suite, data, expr=False):
         self.string = 'text-' + data
         self.name = 'name-' + data
+        self.path = None  # Will be set during 'parsing'.
         self.data = data
         self.suite = suite
         self.test_type = 'Client'
@@ -37,6 +38,13 @@ class FakeHost(object):
         self.status = status
         self.locked = locked
         self.locked_by = locked_by
+
+
+    def __str__(self):
+        return '%s: %s.  %s%s' % (
+            self.hostname, self.status,
+            'Locked' if self.locked else 'Unlocked',
+            ' by %s' % self.locked_by if self.locked else '')
 
 
 class FakeLabel(object):

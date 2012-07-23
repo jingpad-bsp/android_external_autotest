@@ -13,6 +13,7 @@ import unittest
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost
 
 
 class DynamicSuiteToolsTest(mox.MoxTestBase):
@@ -35,3 +36,19 @@ class DynamicSuiteToolsTest(mox.MoxTestBase):
         v = {'v1': 'one', 'v2': 'two', 'v3': None, 'v4': False, 'v5': 5}
         self.assertTrue(find_all_in(v, tools.inject_vars(v, '')))
         self.assertTrue(find_all_in(v, tools.inject_vars(v, 'ctrl')))
+
+
+    def testIncorrectlyLocked(self):
+        """Should detect hosts locked by random users."""
+        host = FakeHost(locked=True, locked_by='some guy')
+        self.assertTrue(tools.incorrectly_locked(host))
+
+
+    def testNotIncorrectlyLocked(self):
+        """Should accept hosts locked by the infrastructure."""
+        infra_user = 'an infra user'
+        self.mox.StubOutWithMock(tools, 'infrastructure_user_list')
+        tools.infrastructure_user_list().AndReturn([infra_user])
+        self.mox.ReplayAll()
+        host = FakeHost(locked=True, locked_by=infra_user)
+        self.assertFalse(tools.incorrectly_locked(host))

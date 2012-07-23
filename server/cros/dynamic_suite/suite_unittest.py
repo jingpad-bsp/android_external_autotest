@@ -52,7 +52,8 @@ class SuiteTest(mox.MoxTestBase):
 
         self.files = {'one': FakeControlData(self._TAG, 'data_one', expr=True),
                       'two': FakeControlData(self._TAG, 'data_two'),
-                      'three': FakeControlData(self._TAG, 'data_three')}
+                      'three': FakeControlData(self._TAG, 'data_three'),
+                      'four': FakeControlData('other', 'data_four')}
 
         self.files_to_filter = {
             'with/deps/...': FakeControlData(self._TAG, 'gets filtered'),
@@ -68,7 +69,7 @@ class SuiteTest(mox.MoxTestBase):
         """Expect an attempt to parse the 'control files' in |self.files|."""
         all_files = self.files.keys() + self.files_to_filter.keys()
         self._set_control_file_parsing_expectations(False, all_files,
-                                                    self.files.iteritems())
+                                                    self.files)
 
 
     def _set_control_file_parsing_expectations(self, already_stubbed,
@@ -84,7 +85,7 @@ class SuiteTest(mox.MoxTestBase):
             self.mox.StubOutWithMock(control_data, 'parse_control_string')
 
         self.getter.get_control_file_list().AndReturn(file_list)
-        for file, data in files_to_parse:
+        for file, data in files_to_parse.iteritems():
             self.getter.get_control_file_contents(
                 file).InAnyOrder().AndReturn(data.string)
             control_data.parse_control_string(
@@ -107,13 +108,49 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
 
-        predicate = lambda d: d.text != self.files['two'].string
+        predicate = lambda d: d.suite == self._TAG
         tests = Suite.find_and_parse_tests(self.getter,
                                            predicate,
                                            add_experimental=True)
-        self.assertEquals(len(tests), 2)
+        self.assertEquals(len(tests), 3)
         self.assertTrue(self.files['one'] in tests)
+        self.assertTrue(self.files['two'] in tests)
         self.assertTrue(self.files['three'] in tests)
+
+
+    def testStableUnstableFilter(self):
+        """Should distinguish between experimental and stable tests."""
+        self.expect_control_file_parsing()
+        self.mox.ReplayAll()
+        suite = Suite.create_from_name(self._TAG, self._BUILD,
+                                       devserver=None,
+                                       cf_getter=self.getter,
+                                       afe=self.afe, tko=self.tko)
+
+        self.assertTrue(self.files['one'] in suite.tests)
+        self.assertTrue(self.files['two'] in suite.tests)
+        self.assertTrue(self.files['one'] in suite.unstable_tests())
+        self.assertTrue(self.files['two'] in suite.stable_tests())
+        self.assertFalse(self.files['one'] in suite.stable_tests())
+        self.assertFalse(self.files['two'] in suite.unstable_tests())
+        # Sanity check.
+        self.assertFalse(self.files['four'] in suite.tests)
+
+
+    def testBlacklistFilter(self):
+        """Blacklist unrunnable tests."""
+        self.expect_control_file_parsing()
+        self.mox.ReplayAll()
+        suite = Suite.create_from_name_and_blacklist(
+            self._TAG, ['two'], self._BUILD, self.devserver,
+            cf_getter=self.getter,
+            afe=self.afe, tko=self.tko)
+
+        self.assertFalse(self.files['two'] in suite.tests)
+        self.assertTrue(self.files['one'] in suite.tests)
+        self.assertTrue(self.files['three'] in suite.tests)
+        # Sanity check.
+        self.assertFalse(self.files['four'] in suite.tests)
 
 
     def mock_control_file_parsing(self):
@@ -128,29 +165,16 @@ class SuiteTest(mox.MoxTestBase):
             add_experimental=True).AndReturn(self.files.values())
 
 
-    def testStableUnstableFilter(self):
-        """Should distinguish between experimental and stable tests."""
-        self.mock_control_file_parsing()
-        self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self.tmpdir,
-                                       self.devserver,
-                                       afe=self.afe, tko=self.tko)
-
-        self.assertTrue(self.files['one'] in suite.tests)
-        self.assertTrue(self.files['two'] in suite.tests)
-        self.assertTrue(self.files['one'] in suite.unstable_tests())
-        self.assertTrue(self.files['two'] in suite.stable_tests())
-        self.assertFalse(self.files['one'] in suite.stable_tests())
-        self.assertFalse(self.files['two'] in suite.unstable_tests())
-
-
-    def expect_job_scheduling(self, add_experimental):
+    def expect_job_scheduling(self, add_experimental, tests_to_skip=[]):
         """Expect jobs to be scheduled for 'tests' in |self.files|.
 
         @param add_experimental: expect jobs for experimental tests as well.
+        @param tests_to_skip: [list, of, test, names] that we expect to skip.
         """
         for test in self.files.values():
             if not add_experimental and test.experimental:
+                continue
+            if test.name in tests_to_skip:
                 continue
             self.afe.create_job(
                 control_file=test.text,
@@ -161,18 +185,6 @@ class SuiteTest(mox.MoxTestBase):
                 dependencies=[],
                 keyvals={'build': self._BUILD, 'suite': self._TAG}
                 ).AndReturn(FakeJob())
-
-
-    def testScheduleTests(self):
-        """Should schedule stable and experimental tests with the AFE."""
-        self.mock_control_file_parsing()
-        self.expect_job_scheduling(add_experimental=True)
-
-        self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD,
-                                       self.devserver,
-                                       afe=self.afe, tko=self.tko)
-        suite.schedule()
 
 
     def testScheduleTestsAndRecord(self):
@@ -189,7 +201,7 @@ class SuiteTest(mox.MoxTestBase):
         suite._remember_scheduled_job_ids()
         self.mox.ReplayAll()
         suite.schedule()
-        for job in  suite._jobs:
+        for job in suite._jobs:
           self.assertTrue(hasattr(job, 'test_name'))
 
 
@@ -287,7 +299,7 @@ class SuiteTest(mox.MoxTestBase):
             StatusContains.CreateFromStrings('FAIL', self._TAG, 'scheduling'))
 
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(True).AndRaise(Exception('Expected during test.'))
+        suite.schedule(True, []).AndRaise(Exception('Expected during test.'))
         self.mox.ReplayAll()
 
         suite.run_and_wait(recorder.record_entry, self.manager, True)
