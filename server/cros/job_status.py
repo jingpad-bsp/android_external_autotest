@@ -30,29 +30,43 @@ def gather_job_hostnames(afe, job):
     return hosts
 
 
-def wait_for_job_to_start(afe, job, interval=DEFAULT_POLL_INTERVAL_SECONDS):
+def wait_for_jobs_to_start(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
     """
     Wait for the job specified by |job.id| to start.
 
     @param afe: an instance of AFE as defined in server/frontend.py.
-    @param job: the job to poll on.
+    @param jobs: the jobs to poll on.
     """
-    while len(afe.get_jobs(id=job.id, not_yet_run=True)) > 0:
-        time.sleep(interval)
+    job_ids = [j.id for j in jobs]
+    while job_ids:
+        for job_id in list(job_ids):
+            if len(afe.get_jobs(id=job_id, not_yet_run=True)) > 0:
+                continue
+            job_ids.remove(job_id)
+            logging.debug('Re-imaging job %d running.', job_id)
+        if job_ids:
+            time.sleep(interval)
 
 
-def wait_for_job_to_finish(afe, job, interval=DEFAULT_POLL_INTERVAL_SECONDS):
+def wait_for_jobs_to_finish(afe, jobs, interval=DEFAULT_POLL_INTERVAL_SECONDS):
     """
-    Wait for the job specified by |job.id| to finish.
+    Wait for the jobs specified by each |job.id| to finish.
 
     @param afe: an instance of AFE as defined in server/frontend.py.
-    @param job: the job to poll on.
+    @param jobs: the jobs to poll on.
     """
-    while len(afe.get_jobs(id=job.id, finished=True)) == 0:
-        time.sleep(interval)
+    job_ids = [j.id for j in jobs]
+    while job_ids:
+        for job_id in list(job_ids):
+            if not afe.get_jobs(id=job_id, finished=True):
+                continue
+            job_ids.remove(job_id)
+            logging.debug('Re-imaging job %d finished.', job_id)
+        if job_ids:
+            time.sleep(interval)
 
 
-def wait_for_and_lock_job_hosts(afe, job, manager,
+def wait_for_and_lock_job_hosts(afe, jobs, manager,
                                 interval=DEFAULT_POLL_INTERVAL_SECONDS):
     """
     Poll until devices have begun reimaging, locking them as we go.
@@ -63,16 +77,24 @@ def wait_for_and_lock_job_hosts(afe, job, manager,
     and been locked using |manager|.
 
     @param afe: an instance of AFE as defined in server/frontend.py.
-    @param job: a Running frontend.Job
+    @param jobs: an iterable of Running frontend.Jobs
     @param manager: a HostLockManager instance.  Hosts will be added to it
                     as they start Running, and it will be used to lock them.
     @return iterable of the hosts that were locked.
     """
-    expected_hosts = gather_job_hostnames(afe, job)
+    def get_all_hosts(my_jobs):
+        all_hosts = []
+        for job in my_jobs:
+            all_hosts.extend(gather_job_hostnames(afe, job))
+        return all_hosts
+
     locked_hosts = []
+    expected_hosts = get_all_hosts(jobs)
+
     while sorted(locked_hosts) != sorted(expected_hosts):
         running_hosts = afe.get_hosts([e for e in expected_hosts if e],
                                       status='Running')
+
         hostnames = [h.hostname for h in running_hosts]
         if hostnames != locked_hosts:
             # New hosts to lock!
@@ -80,7 +102,8 @@ def wait_for_and_lock_job_hosts(afe, job, manager,
             manager.lock()
         time.sleep(interval)
         locked_hosts = hostnames
-        expected_hosts = gather_job_hostnames(afe, job)
+        expected_hosts = get_all_hosts(jobs)
+
     return locked_hosts
 
 

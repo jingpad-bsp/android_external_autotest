@@ -17,13 +17,14 @@ class FakeControlData(object):
         self.suite = suite
         self.test_type = 'Client'
         self.experimental = expr
+        self.dependencies = []
 
 
 class FakeJob(object):
     """Faked out RPC-client-side Job object."""
-    def __init__(self, id=0, statuses=[]):
+    def __init__(self, id=0, statuses=[], hostnames=[]):
         self.id = id
-        self.hostname = 'host%d' % id
+        self.hostnames = hostnames if hostnames else ['host%d' % id]
         self.owner = 'tester'
         self.name = 'Fake Job %d' % self.id
         self.statuses = statuses

@@ -286,10 +286,10 @@ class ReimagerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(self.reimager, '_count_usable_hosts')
         self.mox.StubOutWithMock(self.reimager, '_clear_build_state')
 
-        self.mox.StubOutWithMock(job_status, 'wait_for_job_to_start')
+        self.mox.StubOutWithMock(job_status, 'wait_for_jobs_to_start')
         self.mox.StubOutWithMock(job_status, 'wait_for_and_lock_job_hosts')
         self.mox.StubOutWithMock(job_status, 'gather_job_hostnames')
-        self.mox.StubOutWithMock(job_status, 'wait_for_job_to_finish')
+        self.mox.StubOutWithMock(job_status, 'wait_for_jobs_to_finish')
         self.mox.StubOutWithMock(job_status, 'gather_per_host_results')
         self.mox.StubOutWithMock(job_status, 'record_and_report_results')
 
@@ -303,15 +303,15 @@ class ReimagerTest(mox.MoxTestBase):
             self.reimager._count_usable_hosts(
                 mox.IgnoreArg()).AndReturn(self._NUM)
 
-        job_status.wait_for_job_to_start(self.afe, canary_job)
+        job_status.wait_for_jobs_to_start(self.afe, [canary_job])
         job_status.wait_for_and_lock_job_hosts(
-            self.afe, canary_job, self.manager).AndReturn(statuses.keys())
+            self.afe, [canary_job], self.manager).AndReturn(statuses.keys())
 
         if ex:
-            job_status.wait_for_job_to_finish(self.afe, canary_job).AndRaise(ex)
+            job_status.wait_for_jobs_to_finish(self.afe,
+                                               [canary_job]).AndRaise(ex)
         else:
-            job_status.wait_for_job_to_finish(
-                    self.afe, canary_job).AndReturn([canary_job])
+            job_status.wait_for_jobs_to_finish(self.afe, [canary_job])
             job_status.gather_per_host_results(
                     mox.IgnoreArg(), mox.IgnoreArg(), [canary_job],
                     mox.StrContains(dynamic_suite.REIMAGE_JOB_NAME)).AndReturn(
@@ -327,11 +327,12 @@ class ReimagerTest(mox.MoxTestBase):
     def testSuccessfulReimage(self):
         """Should attempt a reimage and record success."""
         canary = FakeJob()
-        statuses = {canary.hostname: job_status.Status('GOOD', canary.hostname)}
+        statuses = {canary.hostnames[0]: job_status.Status('GOOD',
+                                                           canary.hostnames[0])}
         self.expect_attempt(canary, statuses)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        self.reimager._clear_build_state(mox.StrContains(canary.hostname))
+        self.reimager._clear_build_state(mox.StrContains(canary.hostnames[0]))
         self.mox.ReplayAll()
         self.assertTrue(self.reimager.attempt(self._BUILD, self._BOARD, None,
                                               rjob.record_entry, True,
@@ -342,11 +343,12 @@ class ReimagerTest(mox.MoxTestBase):
     def testFailedReimage(self):
         """Should attempt a reimage and record failure."""
         canary = FakeJob()
-        statuses = {canary.hostname: job_status.Status('FAIL', canary.hostname)}
+        statuses = {canary.hostnames[0]: job_status.Status('FAIL',
+                                                           canary.hostnames[0])}
         self.expect_attempt(canary, statuses)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        self.reimager._clear_build_state(mox.StrContains(canary.hostname))
+        self.reimager._clear_build_state(mox.StrContains(canary.hostnames[0]))
         self.mox.ReplayAll()
         self.assertFalse(self.reimager.attempt(self._BUILD, self._BOARD, None,
                                                rjob.record_entry, True,
@@ -388,11 +390,12 @@ class ReimagerTest(mox.MoxTestBase):
         """Should attempt reimage, ignoring host availability; record success.
         """
         canary = FakeJob()
-        statuses = {canary.hostname: job_status.Status('GOOD', canary.hostname)}
+        statuses = {canary.hostnames[0]: job_status.Status('GOOD',
+                                                           canary.hostnames[0])}
         self.expect_attempt(canary, statuses, check_hosts=False)
 
         rjob = self.mox.CreateMock(base_job.base_job)
-        self.reimager._clear_build_state(mox.StrContains(canary.hostname))
+        self.reimager._clear_build_state(mox.StrContains(canary.hostnames[0]))
         self.mox.ReplayAll()
         self.assertTrue(self.reimager.attempt(self._BUILD, self._BOARD, None,
                                               rjob.record_entry, False,
