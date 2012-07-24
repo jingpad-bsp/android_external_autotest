@@ -77,6 +77,9 @@ class firmware_ECWakeSource(FAFTSequence):
 
 
     def run_once(self, host=None):
+        # TODO(victoryang): make this test run on both x86 and arm
+        if not self.check_ec_capability(['x86', 'lid']):
+            return
         self.register_faft_sequence((
             {   # Step 1, suspend and wake by power button
                 'reboot_action': (self.suspend_as_reboot,

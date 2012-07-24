@@ -31,6 +31,8 @@ class firmware_ECWatchdog(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability():
+            return
         self.register_faft_sequence((
             {   # Step 1, trigger a watchdog reset and power on system again.
                 'reboot_action': self.reboot_by_watchdog,

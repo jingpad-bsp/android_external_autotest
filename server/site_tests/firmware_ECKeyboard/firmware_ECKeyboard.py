@@ -104,6 +104,8 @@ class firmware_ECKeyboard(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability(['keyboard']):
+            return
         self.register_faft_sequence((
             {   # Step 1, use key press simulation to issue reboot command
                 'reboot_action': self.reboot_by_keyboard,

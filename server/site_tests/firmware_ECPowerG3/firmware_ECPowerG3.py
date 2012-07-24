@@ -60,6 +60,8 @@ class firmware_ECPowerG3(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability(['x86']):
+            return
         self.register_faft_sequence((
             {   # Step 1, power off and check if system drop into G3 correctly
                 'reboot_action': self.check_G3,

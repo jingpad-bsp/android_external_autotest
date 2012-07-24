@@ -89,6 +89,8 @@ class firmware_ECBattery(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability(['battery']):
+            return
         logging.info("Checking battery current reading...")
         self._check_current_match()
 

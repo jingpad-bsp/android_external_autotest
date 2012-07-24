@@ -33,6 +33,8 @@ class firmware_ECAdc(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability(['adc_ectemp']):
+            return
         logging.info("Reading EC internal temperature for %d times." %
                      self.READ_COUNT)
         for i in xrange(self.READ_COUNT):

@@ -67,6 +67,8 @@ class firmware_ECPowerButton(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability():
+            return
         self.register_faft_sequence((
             {   # Step 1, Shutdown when powerd is still running and wake from S5
                 #         with short power button press.

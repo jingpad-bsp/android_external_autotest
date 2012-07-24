@@ -402,6 +402,29 @@ class FAFTSequence(ServoTest):
         return result_list
 
 
+    def check_ec_capability(self, required_cap=[]):
+        """Check if current platform has required EC capabilities.
+
+        Args:
+          required_cap: A list containing required EC capabilities. Pass in
+            None to only check for presence of Chrome EC.
+
+        Returns:
+          True if requirements are met. Otherwise, False.
+        """
+        if not self.client_attr.chrome_ec:
+            logging.warn('Requires Chrome EC to run this test.')
+            return False
+
+        for cap in required_cap:
+            if cap not in self.client_attr.ec_capability:
+                logging.warn('Requires EC capability "%s" to run this test.' %
+                             cap)
+                return False
+
+        return True
+
+
     def _parse_crossystem_output(self, lines):
         """Parse the crossystem output into a dict.
 

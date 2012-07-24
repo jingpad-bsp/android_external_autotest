@@ -185,6 +185,8 @@ class firmware_ECLidSwitch(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability(['lid']):
+            return
         self.register_faft_sequence((
             {   # Step 1, shutdown and long delayed wake
                 'reboot_action': (self.shutdown_and_wake,

@@ -404,6 +404,8 @@ class firmware_ECThermal(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability(['thermal']):
+            return
         logging.info("Checking host temperature report.")
         self.check_temp_report()
 

@@ -32,6 +32,8 @@ class firmware_ECBootTime(FAFTSequence):
             raise error.TestFail("Boot time longer than 1 second.")
 
     def run_once(self, host=None):
+        if not self.check_ec_capability():
+            return
         self.register_faft_sequence((
             {   # Step 1, Reboot and check EC cold boot time and host boot time
                 'reboot_action': self.check_boot_time,

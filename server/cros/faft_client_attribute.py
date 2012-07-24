@@ -34,7 +34,7 @@ class FAFTClientAttribute(object):
         if platform == 'Link':
             setting['ec_capability'] = ['adc_ectemp', 'battery', 'charging',
                                         'keyboard', 'lid', 'x86', 'thermal',
-                                        'usb']
+                                        'usb', 'peci']
         elif platform == 'Snow':
             setting['ec_capability'] = ['battery', 'charging', 'keyboard',
                                         'lid', 'arm']

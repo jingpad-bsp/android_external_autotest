@@ -40,6 +40,8 @@ class firmware_ECCorruptFwSigA(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability():
+            return
         self.register_faft_sequence((
             {   # Step 1, corrupt firmware signature A
                 'state_checker': (self.ec_act_copy_checker, 'A'),

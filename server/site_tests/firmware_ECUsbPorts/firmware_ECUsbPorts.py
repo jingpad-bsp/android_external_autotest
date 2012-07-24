@@ -107,6 +107,8 @@ class firmware_ECUsbPorts(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if not self.check_ec_capability(['usb']):
+            return
         self.register_faft_sequence((
             {   # Step 1, turn off all USB ports and then turn them on again
                 'reboot_action': self.fake_reboot_by_usb_mode_change,
