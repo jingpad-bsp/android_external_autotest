@@ -2,7 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# TODO(tgao): Add test description. http://crosbug.com/31898
+
 { "name":"CheckSlotTime",
+  "skip_test":"requires quiet channel and slot time",
   "steps":[             # Channel 6
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2437", "mode":"11g" } ],

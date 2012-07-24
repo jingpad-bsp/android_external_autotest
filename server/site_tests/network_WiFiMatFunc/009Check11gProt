@@ -2,7 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test verifies that DUT can connect to an 802.11g AP with
+# protected mode using 802.11b protocol.
+
+# 802.11g protected mode allows both 802.11b and 802.11g devices to connect
+# to the same AP, over the same band, simultaneously and time share.
+
 { "name":"Check11gProtection",
+  "skip_test":"waiting on hostapd support for 802.11g protected mode",
   "steps":[             # Channel 6
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2437", "mode":"11g", "protmode":"rtscts" } ],

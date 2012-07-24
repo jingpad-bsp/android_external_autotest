@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Create and connect to an IBSS (AdHoc) server.
+# Purpose: This test verifies that DUT can connect to an IBSS (AdHoc) server.
+
 { "name":"CheckIBSS",
-  "steps":[             # Channel [1,6,11]
+  "steps":[
     [ "create",         { "type":"ibss" } ],
     [ "config",         { "channel":"2412", "mode":"11b",
                           "local_server": {} } ],
