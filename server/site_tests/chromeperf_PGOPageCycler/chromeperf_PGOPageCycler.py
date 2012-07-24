@@ -68,7 +68,7 @@ class chromeperf_PGOPageCycler(test.test):
         CANNED_ACLS = ['project-private', 'private', 'public-read',
                        'public-read-write', 'authenticated-read',
                        'bucket-owner-read', 'bucket-owner-full-control']
-        _GSUTIL_BIN = '/usr/bin/gsutil'
+        _GSUTIL_BIN = 'gsutil'
 
         acl_cmd = None
         if acl in CANNED_ACLS:
