@@ -15,10 +15,6 @@ class firmware_ECThermal(FAFTSequence):
     """
     version = 1
 
-    # Currently fan steps are not configurable in EC.
-    # Modify this if the values in EC change or become configurable
-    FAN_STEPS = [0, 2200, 4400, 6600, 8800, -1]
-
     # Delay for waiting fan to start or stop
     FAN_DELAY = 5
 
@@ -94,6 +90,26 @@ class firmware_ECThermal(FAFTSequence):
         return setting
 
 
+    def get_fan_steps(self):
+        """Retrieve fan step config from EC"""
+        num_steps = len(self._thermal_setting[0]) - 3
+        self._fan_steps = list()
+        expected_pat = (["Lowest speed: ([0-9-]+) RPM"] +
+                        ["\d+ K:\s+([0-9-]+) RPM"] * num_steps)
+        match = self.send_uart_command_get_output("thermalfan 0", expected_pat)
+        for m in match:
+            self._fan_steps.append(int(m.group(1)))
+
+        # Get the actual value of each fan step
+        for i in xrange(num_steps + 1):
+            if self._fan_steps[i] == 0:
+                continue
+            self.servo.set_nocheck('fan_target_rpm', "%d" % self._fan_steps[i])
+            self._fan_steps[i] = int(self.servo.get('fan_target_rpm'))
+
+        logging.info("Actual fan steps: %s" % self._fan_steps)
+
+
     def get_thermal_setting(self):
         """Retrieve thermal engine setting from EC"""
         self._thermal_setting = list()
@@ -105,14 +121,6 @@ class firmware_ECThermal(FAFTSequence):
             self._thermal_setting.append(setting)
             type_id = type_id + 1
         logging.info("Number of tempearture sensor types: %d" % type_id)
-
-        # Get the actual value of max fan RPM
-        self.max_fan()
-        max_rpm = int(self.servo.get('fan_target_rpm'))
-        for i in range(len(self.FAN_STEPS)):
-            if self.FAN_STEPS[i] == -1:
-                self.FAN_STEPS[i] = max_rpm
-        logging.info("Maximum possible value of fan_target_rpm: %d" % max_rpm)
 
         # Get the number of temperature sensors
         self._num_temp_sensor = 0
@@ -129,6 +137,7 @@ class firmware_ECThermal(FAFTSequence):
     def setup(self):
         super(firmware_ECThermal, self).setup()
         self.get_thermal_setting()
+        self.get_fan_steps()
         self.enable_auto_fan_control()
 
 
@@ -343,14 +352,14 @@ class firmware_ECThermal(FAFTSequence):
             return 0x00
 
         try:
-            idx = self.FAN_STEPS.index(fan_speed)
+            idx = self._fan_steps.index(fan_speed)
         except:
-            raise error.TestError("Unexpected fan speed. " +
-                    "Has EC thermal engine config changed?")
+            raise error.TestError("Unexpected fan speed: %d" % fan_speed)
+
         if idx == 0:
             lower_bound = -self.INT_MAX
             upper_bound = self._thermal_setting[sensor_type][3]
-        elif idx == len(self.FAN_STEPS) - 1:
+        elif idx == len(self._fan_steps) - 1:
             lower_bound = self._thermal_setting[sensor_type][idx + 2] - 3
             upper_bound = self.INT_MAX
         else:
