@@ -67,7 +67,11 @@ def OpenLogs(*logfiles):
 def DumpObjectList(kind):
   print>>sys.stderr, '%s list:' % kind
   for item in GetObjectList(kind, None):
-    PrintProperties(item)
+    try:
+      PrintProperties(item)
+    except Exception, e:
+      # Perhaps this service went away in the meantime
+      pass
 
 
 # Returns the list of the wifi interfaces (e.g. "wlan0") known to flimflam

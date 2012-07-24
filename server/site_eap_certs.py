@@ -5,6 +5,29 @@
 # These certificate trees are for testing only in sealed containers
 # so it is okay that we have them checked into a GIT repository.
 # Nobody will ever use this information on the open air.
+
+# These are the paths used by install_client_auth_data in site_wifitest.
+server_ca_cert_1_install_path = "/tmp/hostapd_ca_cert"
+server_cert_1_install_path = "/tmp/hostapd_server_cert"
+server_key_1_install_path = "/tmp/hostapd_private_key"
+server_expired_cert_install_path = "/tmp/hostapd_expired_server_cert"
+server_expired_key_install_path = "/tmp/hostapd_expired_server_key"
+client_ca_cert_1_install_path = "/tmp/ca-cert.pem"
+client_cert_1_install_path = "/tmp/pkg-client-cert.pem"
+client_key_1_install_path = "/tmp/pkg-client-key.pem"
+client_ca_cert_2_install_path = "/tmp/ca-cert-other.pem"
+client_cert_2_install_path = "/tmp/pkg-client-cert-other.pem"
+client_key_2_install_path = "/tmp/pkg-client-key-other.pem"
+# These are the key/cert identifiers used when we need the TPM.
+ca_cert_1_tpm_key_id = "8711"
+cert_1_tpm_key_id = "8712"
+key_1_tpm_key_id = "8713"
+ca_cert_2_tpm_key_id = "8714"
+cert_2_tpm_key_id = "8715"
+key_2_tpm_key_id = "8716"
+
+auth_pin = "1234"
+
 ca_cert_1 = """-----BEGIN CERTIFICATE-----
 MIIDRjCCAq+gAwIBAgIJANn/MIB1esFIMA0GCSqGSIb3DQEBBQUAMG8xCzAJBgNV
 BAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBW

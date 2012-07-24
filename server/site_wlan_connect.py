@@ -81,7 +81,10 @@ class ConnectStateHandler(StateHandler):
       for key, val in self.connection_settings.items():
         prop_val = convert_dbus_value(props.get(key))
         if key != 'SSID' and  prop_val != val:
-          if key in ['Passphrase', 'SaveCredentials'] or key.startswith('EAP.'):
+          if key == "EAP.UseSystemCAs":
+            set_props[key] = bool(val)
+          elif (key in ['Passphrase', 'SaveCredentials'] or
+              key.startswith('EAP.')):
             set_props[key] = val
           else:
             self.Debug(
@@ -125,10 +128,11 @@ class ConnectStateHandler(StateHandler):
         self.failure = ('GetService: DBus exception %s for settings %s' %
                         (e, self.connection_settings))
         return None
+    elif not service and not self.scan_timeout:
+      self.DoScan()
+      return None
     elif not service:
-      if not self.scan_timeout:
-        self.DoScan()
-        return None
+      return None
 
     if not self.acquisition_time:
       self.acquisition_time = time.time()

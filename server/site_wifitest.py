@@ -30,6 +30,7 @@ from autotest_lib.server import site_linux_vm_router
 from autotest_lib.server import subcommand
 from autotest_lib.server import test
 
+
 class NotImplemented(Exception):
     def __init__(self, what):
         self.what = what
@@ -496,7 +497,10 @@ class WiFiTest(object):
                             continue
 
                         logging.error("Expected failure, but error string does "
-                                      "not match what was expected")
+                                      "not match what was expected. Got %s but "
+                                      "expected %s.",
+                                      self.error_message,
+                                      failure_string)
                     logging.error("%s: Step '%s' failed: %s; abort test",
                         self.name, method, str(e))
                     logging.info("===========================================")
@@ -613,6 +617,67 @@ class WiFiTest(object):
 
         for name,contents in params.get('files', {}).iteritems():
             self.insert_file(system, name, contents)
+
+
+    def __clean_tpm(self):
+        self.client.run("initctl restart chapsd")
+        cryptohome_cmd = "/usr/sbin/cryptohome"
+        self.client.run(cryptohome_cmd + " --action=tpm_take_ownership",
+                ignore_status = True)
+        self.client.run(cryptohome_cmd + " --action=tpm_wait_ownership",
+                ignore_status = True)
+
+
+    def __load_tpm_token(self, token_auth):
+        chaps_dir = "/tmp/chaps/"
+        self.client.run("rm -rf " + chaps_dir)
+        self.client.run("mkdir " + chaps_dir)
+        self.client.run("chown %s:%s %s" % (
+                "chaps",
+                "chronos-access",
+                chaps_dir))
+        self.client.run("chaps_client --load --path=%s --auth=\"%s\"" % (
+                chaps_dir,
+                token_auth))
+
+    def install_tpm_object(self, params):
+        if not "data" in params:
+            raise error.TestFail("Need a data parameter to install a TPM"
+                                 "certificate")
+        if not "id" in params:
+            raise error.TestFail("Need an object id to install a TPM"
+                                 "certificate")
+        if not "object_type" in params:
+            raise error.TestFail("Need to know whether the requested TPM "
+                                 "object is a private key or a certificate.")
+        if params["object_type"] == "cert":
+            conv_cmd = "openssl x509 -in %s -inform PEM -out %s -outform DER"
+            load_cmd = "p11_replay --import --path=%s --type=cert --id=%s"
+        elif params["object_type"] == "key":
+            conv_cmd = "openssl rsa -in %s -inform PEM -out %s -outform DER"
+            load_cmd = "p11_replay --import --path=%s --type=privkey --id=%s"
+        else:
+            raise error.TestFail("Invalid object type, expected either cert "
+                                 "or key.")
+        data = params["data"]
+        object_id = params["id"]
+        pem_path = self.client.run("mktemp").stdout.strip()
+        der_path = self.client.run("mktemp").stdout.strip()
+        self.install_files({ "system":"client", "files":{ pem_path:data } } )
+        # Convert those keys into DER format
+        self.client.run(conv_cmd % (pem_path, der_path))
+        # load that stuff into the TPM
+        self.client.run(load_cmd % (der_path, object_id))
+
+
+    def initialize_tpm(self, params):
+        """ Remove past state from TPM, and install a new token so that we can
+        later install objects to the TPM.  Call this function before calling
+        install_tpm_object. """
+        self.__clean_tpm()
+        token_auth = site_eap_certs.auth_pin
+        self.__load_tpm_token(token_auth)
+
 
 
     def connect(self, params):
