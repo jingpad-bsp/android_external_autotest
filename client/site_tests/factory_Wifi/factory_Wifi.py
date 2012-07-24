@@ -38,20 +38,39 @@ base_config = PluggableConfig({
         ]
 })
 
-SET_BGSCAN = "/usr/local/lib/flimflam/test/set-bgscan"
+delay_secs = 0.5
 
+def run_cmd(command, delay_in_sec, ignore_status=False):
+    try:
+        ret = utils.system_output(command, ignore_status=ignore_status)
+        time.sleep(delay_in_sec)
+        logging.info("Command %s, returned %s" % (command, ret))
+        return ret
+    except:
+        logging.exception("Command Err: %s", command)
+        if not ignore_status:
+            raise
+
+def get_ath9k_path():
+    '''
+    Gets the absolute path of ath9k.
+    '''
+    pattern = "/sys/kernel/debug/ieee80211/phy*/ath9k"
+    matches = glob.glob(pattern)
+    if len(matches) != 1:
+        raise error.TestError('Expected one match for %s but got %s'
+                              % (pattern, matches))
+    return matches[0]
 
 class factory_Wifi(test.test):
-    version = 1
+    version = 3
 
     def run_once(self, n4010a_host, n4010a_port=5025, module_paths=None,
-                 config_path=None, set_ethernet_ip=None, retries=5):
+                 config_path=None, interface=None, set_ethernet_ip=None,
+                 retries=5):
         assert retries >= 1
 
         module_names = []
-
-        if set_ethernet_ip:
-            rf_utils.SetEthernetIp(set_ethernet_ip)
 
         try:
             kernel_release = utils.system_output('uname -r').strip()
@@ -70,15 +89,21 @@ class factory_Wifi(test.test):
                 # Remove the current versions of the modules (in reverse, since
                 # there may be dependencies)
                 for module_name in reversed(module_names):
-                    utils.system('rmmod %s' % module_name, ignore_status=True)
+                    run_cmd('rmmod %s' % module_name,
+                            delay_secs, ignore_status=True)
                 # Insert the custom modules
                 for module in module_paths:
-                    utils.system('insmod %s' % module)
+                    run_cmd('insmod %s' % module, delay_secs)
 
-            # Disable Flimflam background scans, which may interrupt
-            # our test.
-            utils.system("%s ScanInterval=10000" % SET_BGSCAN,
-                         ignore_status=True)
+            # TODO(itspeter): Check services are stopped by ConnectionManager
+
+            if set_ethernet_ip:
+                if interface is None:
+                    # TODO(itspeter): Get from connection manager
+                    pass
+
+                run_cmd("ifconfig %s up" % interface)
+                rf_utils.SetEthernetIp(set_ethernet_ip)
 
             with leds.Blinker(((leds.LED_NUM, 0.25),
                                (leds.LED_CAP, 0.25),
@@ -88,14 +113,12 @@ class factory_Wifi(test.test):
         finally:
             if module_names:
                 # Try to remove the custom modules
-                utils.system('rmmod %s' % ' '.join(reversed(module_names)),
-                             ignore_status=True)
+                run_cmd('rmmod %s' % ' '.join(reversed(module_names)),
+                        delay_secs, ignore_status=True)
                 # Try to modprobe the default modules back in
                 for module_name in module_names:
-                    utils.system('modprobe %s' % module_name,
-                                 ignore_status=True)
-            utils.system("%s ScanInterval=180" % SET_BGSCAN,
-                         ignore_status=True)
+                    run_cmd('modprobe %s' % module_name,
+                            delay_secs, ignore_status=True)
 
     def _run(self, n4010a_host, n4010a_port, config_path, retries):
         event_log = EventLog.ForAutoTest()
@@ -108,12 +131,6 @@ class factory_Wifi(test.test):
         failures = []
 
         try:
-            pattern = "/sys/kernel/debug/ieee80211/phy*/ath9k"
-            matches = glob.glob(pattern)
-            if len(matches) != 1:
-                raise error.TestError('Expected one match for %s but got %s'
-                                      % (pattern, matches))
-            ath9k = matches[0]
             for channel_info in config['channels']:
                 (channel, freq, fixed_rate, range, level, power_adjustment,
                  min_avg_power, max_avg_power) = channel_info
@@ -121,13 +138,15 @@ class factory_Wifi(test.test):
                 for try_number in xrange(retries):
                     logging.info("Try %d for channel %s",
                                  try_number + 1, channel_info)
-                    utils.system("echo 0 > %s/tx99" % ath9k,
-                                 ignore_status=True)
+                    run_cmd("ifconfig wlan0 up")
+                    run_cmd("echo 0 > %s/tx99" % get_ath9k_path(),
+                            delay_secs, ignore_status=True)
                     # Set up TX99 (continuous transmit) and begin sending.
-                    utils.system("iw wlan0 set channel %d" % channel)
-                    utils.system("echo %d > %s/fixed_rate" % (
-                            fixed_rate, ath9k))
-                    utils.system("echo 1 > %s/tx99" % ath9k)
+                    run_cmd("iw wlan0 set channel %d" % channel, delay_secs)
+                    run_cmd("echo %d > %s/fixed_rate" % (
+                            fixed_rate, get_ath9k_path()), delay_secs)
+                    run_cmd("echo 1 > %s/tx99" % get_ath9k_path(),
+                            delay_secs)
                     try:
                         power = n4010a.MeasurePower(freq, range=range,
                                                     level=level)
@@ -161,5 +180,5 @@ class factory_Wifi(test.test):
             logging.info("Power: %s" % [
                     (k, power_by_channel[k])
                     for k in sorted(power_by_channel.keys())])
-            utils.system("echo 0 > %s/tx99" % ath9k,
-                         ignore_status=True)
+            run_cmd("echo 0 > %s/tx99" % get_ath9k_path(),
+                    delay_secs, ignore_status=True)
