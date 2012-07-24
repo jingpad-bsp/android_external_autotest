@@ -448,7 +448,7 @@ class Reimager(object):
             # TODO make DEPENDENCIES-aware
             canary_job = self._schedule_reimage_job(build, board, pool, num)
             self._record_job_if_possible(REIMAGE_JOB_NAME, canary_job)
-            logging.debug('Created re-imaging job: %d', canary_job.id)
+            logging.info('Created re-imaging job: %d', canary_job.id)
 
             job_status.wait_for_jobs_to_start(self._afe, [canary_job])
             logging.debug('Re-imaging job running.')
@@ -456,7 +456,7 @@ class Reimager(object):
             hosts = job_status.wait_for_and_lock_job_hosts(self._afe,
                                                            [canary_job],
                                                            manager)
-            logging.debug('%r locked for reimaging.', hosts)
+            logging.info('%r locked for reimaging.', hosts)
 
             job_status.wait_for_jobs_to_finish(self._afe, [canary_job])
             logging.debug('Re-imaging job finished.')
