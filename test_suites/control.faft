@@ -1,0 +1,39 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "faft"
+PURPOSE = "Test hard-to-automate firmware and ec scenarios."
+CRITERIA = "All tests with SUITE=faft must pass."
+
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "suite"
+TEST_TYPE = "Server"
+
+DOC = """
+This is the faft (FULLY AUTOMATED FIRMWARE TEST) suite.  The tests in this
+suite verify that normal boot scenarios progress properly (with state progress
+checks) and that error scenarios (corrupted blobs) are caught as expected.
+Some of these test failures should close the tree as they may imply that the
+system is unbootable and further tests will only become hung or blocked.
+Other faft tests verify all of the features (some of them security related)
+are functioning.
+
+@param build: The name of the image to test.
+              Ex: x86-mario-release/R17-1412.33.0-a1-b29
+@param board: The board to test on.  Ex: x86-mario
+@param pool: The pool of machines to utilize for scheduling. If pool=None
+             board is used.
+@param check_hosts: require appropriate live hosts to exist in the lab.
+@param SKIP_IMAGE: (optional) If present and True, don't re-image devices.
+"""
+
+import common
+from autotest_lib.server.cros import dynamic_suite
+
+dynamic_suite.reimage_and_run(
+    build=build, board=board, name='faft', job=job,
+    pool=pool, check_hosts=check_hosts, add_experimental=True,
+    skip_reimage=dynamic_suite.skip_reimage(globals()))

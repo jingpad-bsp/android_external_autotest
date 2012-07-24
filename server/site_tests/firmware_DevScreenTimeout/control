@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,6 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "firmware_DevScreenTimeout"
 PURPOSE = "Servo based developer firmware screen timeout test"
 CRITERIA = "This test will fail if the timeout period does not match our spec."
+SUITE = "faft"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
@@ -26,6 +27,7 @@ is close to the developer screen timeout.
 def run_devscreentimeout(machine):
     host = hosts.create_host(machine)
     job.run_test("firmware_DevScreenTimeout", host=host, cmdline_args=args,
-                 use_faft=True, disable_sysinfo=True)
+                 use_faft=True, disable_sysinfo=True,
+                 dev_mode=True, tag="dev",
 
 parallel_simple(run_devscreentimeout, machines)

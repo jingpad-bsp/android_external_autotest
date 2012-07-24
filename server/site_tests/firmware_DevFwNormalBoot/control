@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,6 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "firmware_DevFwNormalBoot"
 PURPOSE = "Servo based test forcing normal boot on dev firmware"
 CRITERIA = "This test will fail if firmware does not enter recovery mode"
+SUITE = "faft"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
@@ -22,6 +23,7 @@ firmware in B. It forces to do a normal boot. Going to recovery is expected.
 def run_devfwnormalboot(machine):
     host = hosts.create_host(machine)
     job.run_test("firmware_DevFwNormalBoot", host=host, cmdline_args=args,
-                 use_faft=True, disable_sysinfo=True)
+                 use_faft=True, disable_sysinfo=True,
+                 dev_mode=True, tag="dev",
 
 parallel_simple(run_devfwnormalboot, machines)
