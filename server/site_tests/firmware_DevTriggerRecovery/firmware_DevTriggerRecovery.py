@@ -67,6 +67,11 @@ class firmware_DevTriggerRecovery(FAFTSequence):
 
 
     def run_once(self, host=None):
+        if self.client_attr.keyboard_dev:
+            logging.info('This test is no longer valid in keyboard controlled '
+                         'dev mode firmware.')
+            return
+
         self.register_faft_sequence((
             {   # Step 1, enable dev mode
                 'state_checker': (self.crossystem_checker, {
