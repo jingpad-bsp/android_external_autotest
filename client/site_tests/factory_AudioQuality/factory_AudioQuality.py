@@ -26,9 +26,8 @@ from cros.factory.test import factory
 from cros.factory.test.test_ui import UI
 from cros.factory.test.event import Event
 from cros.factory.test import ui as ful
+from cros.factory.utils import net_utils
 
-from autotest_lib.client.cros import flimflam_test_path
-import flimflam
 
 # Host test machine crossover connected to DUT, fix local ip and port for
 # communication in between.
@@ -276,14 +275,6 @@ class factory_AudioQuality(test.test):
             else:
                 return False
 
-    def get_eth_device(self):
-        flim = flimflam.FlimFlam()
-        for dev in flim.GetObjectList('Device'):
-            properties = dev.GetProperties(utf8_strings=True)
-            if properties.get('Type') == 'ethernet':
-                return str(properties.get('Interface'))
-        return 'eth0'
-
     def test_command(self, event):
         factory.console.info('Get event %s' % event)
         cmd = event.data.get('cmd', '')
@@ -293,7 +284,9 @@ class factory_AudioQuality(test.test):
                 break
 
     def init_audio_server(self, event):
-        self._eth = self.get_eth_device()
+        self._eth = net_utils.FindUsableEthDevice()
+        if not self._eth:
+            raise error.TestError('No Ethernet interface available')
         factory.console.info('Got %s for connection' % self._eth)
 
         # Configure local network environment to accept command from test host.

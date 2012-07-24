@@ -7,6 +7,7 @@ import re
 import rf_common
 
 from autotest_lib.client.bin import utils
+from cros.factory.utils import net_utils
 
 def SetEthernetIp(ip):
     '''Sets the IP address of the first active Ethernet interface.
@@ -14,10 +15,9 @@ def SetEthernetIp(ip):
     The address is set only if the interface does not already have an
     assigned IP address.
     '''
-    match = re.match('^(eth\d+)', utils.system_output('ifconfig'))
-    if not match:
+    interface = net_utils.FindUsableEthDevice()
+    if not interface:
         raise error.TestError('No Ethernet interface available')
-    interface = match.group(1)
 
     ip_output = utils.system_output(
         'ip addr show dev %s' % interface)
