@@ -33,42 +33,6 @@ _DEFAULT_DURATION_SEC = 1
 # Pass threshold
 _PASS_THRESHOLD = 50.0
 
-
-# Label strings.
-_LABEL_HTML_STARTING = '''
-<h1 id="message" style="position: absolute; top:45%">
-<center>
-'''
-
-_LABEL_HTML_ENDING = '''
-</center>
-</h1>
-'''
-
-_LABEL_START_STR = 'Hit s to start loopback test\n' +\
-        '按s鍵開始音源回放測試\n\n'
-_LABEL_IN_PROGRESS_STR = 'Loopback testing...\n' +\
-        '音源回放測試中...\n\n'
-_LABEL_SUCCESS_RATE = '''
-成功率:
-'''
-
-_LABEL_SUCCESS_MESSAGE = '''
-<h1 id="message" style="position: absolute; top:45%">
-  <center>
-  測試結果: 成功!
-  </center>
-</h1>
-'''
-
-_LABEL_FAIL_MESSAGE = '''
-<h1 id="message" style="position: absolute; top:45%">
-  <center>
-  測試結果: 失敗!<br />
-  </center>
-</h1>
-'''
-
 # Regular expressions to match audiofuntest message.
 _AUDIOFUNTEST_STOP_RE = re.compile('^Stop')
 _AUDIOFUNTEST_SUCCESS_RATE_RE = re.compile('.*rate\s=\s(.*)$')
@@ -95,7 +59,8 @@ class factory_AudioLoop(test.test):
         Stop capturing data
         '''
         factory.console.info('Run audiofuntest!!')
-        self._proc = subprocess.Popen([self._audiofuntest_path, '-r', '48000'],
+        self._proc = subprocess.Popen([self._audiofuntest_path, '-r', '48000',
+                '-i', self._input_devices[0], '-o', self._output_devices[0]],
                 stderr=subprocess.PIPE)
 
         while True:
@@ -105,11 +70,8 @@ class factory_AudioLoop(test.test):
           m = _AUDIOFUNTEST_SUCCESS_RATE_RE.match(proc_output)
           if m is not None:
             self._last_success_rate = float(m.group(1))
-            self.ui.SetHTML(_LABEL_HTML_STARTING +
-                            _LABEL_IN_PROGRESS_STR + '<br />' +
-                            _LABEL_SUCCESS_RATE +
-                            str(self._last_success_rate) +
-                            _LABEL_HTML_ENDING)
+            self.ui.CallJSFunction('testInProgress', self._last_success_rate);
+
           m = _AUDIOFUNTEST_STOP_RE.match(proc_output)
           if m is not None:
              if ( hasattr(self, '_last_success_rate') and
@@ -119,16 +81,12 @@ class factory_AudioLoop(test.test):
 
         # show instant message and wait for a while
         if ( hasattr(self, '_result') and self._result ):
-           self.ui.SetHTML(_LABEL_SUCCESS_MESSAGE)
-           time.sleep(0.5)
+           self.ui.CallJSFunction('testPassResult');
+           time.sleep(1)
            self.ui.Pass();
         else :
-           self.ui.SetHTML(_LABEL_HTML_STARTING +
-                           '測試結果: 失敗!<br />' +
-                           _LABEL_SUCCESS_RATE +
-                           str(self._last_success_rate) +
-                           _LABEL_HTML_ENDING)
-           time.sleep(0.5)
+           self.ui.CallJSFunction('testFailResult', self._last_success_rate);
+           time.sleep(1)
            self.ui.Fail('Test Fail. The success rate is %.1f, too low!' %
                         self._last_success_rate)
         return True
@@ -173,7 +131,7 @@ class factory_AudioLoop(test.test):
             self._result = True
             factory.console.info('Got frequency %d' % freq)
 
-    def run_once(self, audiofuntest=False, duration=_DEFAULT_DURATION_SEC,
+    def run_once(self, audiofuntest=True, duration=_DEFAULT_DURATION_SEC,
             input_devices=['hw:0,0'], output_devices=['hw:0,0'],
             mixer_controls=None):
         factory.console.info('%s run_once' % self.__class__)
