@@ -49,10 +49,13 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
 
 
     def run_once(self, host=None, dev_mode=False):
-        if self.faft_client.get_platform_name() in ('Mario', 'Alex', 'ZGB'):
+        platform = self.faft_client.get_platform_name()
+        if platform in ('Mario', 'Alex', 'ZGB'):
             recovery_reason = self.RECOVERY_REASON['RW_NO_OS']
-        else:
+        elif platform in ('Aebl', 'Kaen'):
             recovery_reason = self.RECOVERY_REASON['RW_INVALID_OS']
+        else:
+            recovery_reason = self.RECOVERY_REASON['RW_NO_DISK']
 
         self.register_faft_sequence((
             {   # Step 1, corrupt kernel A and B
