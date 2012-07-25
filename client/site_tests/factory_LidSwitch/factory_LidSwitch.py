@@ -82,29 +82,39 @@ class factory_LidSwitch(test.test):
     window.connect('key-release-event', self.key_release_callback)
     window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-  def turn_off_powerd(self):
-    '''Probe powerd status and turn off powerd'''
-    powerd_probe = utils.system_output('status powerd | cut -d" " -f2').strip()
-    if powerd_probe == 'start/running,':
-      factory.log('stop powerd')
-      utils.system('stop powerd')
+  def switch_service(self, service, status):
+    '''Probes current status of service and turns it into status.
+    Args:
+      service: Service name, e.g. powerd or powerm.
+      status: True/False. The intended status of that service.
+    Return:
+      True/False: The current status of service before switching.
+      None: Can not decide current status of service.
+    '''
+    status_probe = utils.system_output(
+        'status %s | cut -d" " -f2' % service).strip()
+    if status_probe == 'start/running,':
+      if not status:
+        factory.log('stop %s' % service)
+        utils.system('stop %s' % service)
       return True
-    else:
+    elif status_probe == 'stop/waiting':
+      if status:
+        factory.log('start %s' % service)
+        utils.system('start %s' % service)
       return False
-
-  def turn_back_powerd(self, original_powerd_status):
-    if original_powerd_status is True:
-      factory.log('start powerd')
-      utils.system('start powerd')
+    else:
+      factory.log('service %s can not be found.' % service)
+      return None
 
   def run_once(self, timeout=_DEFAULT_TIMEOUT):
 
     factory.log('STARTED: %s run_once' % self.__class__)
 
-    # TODO(cychiang) Must find a better way to stop powerd in factory image.
-    # However, we should still leave the code here to ensure powerd is closed
-    # before running LidSwitch test. crosbug.com/p/10374
-    original_powerd_status = self.turn_off_powerd()
+    # Ensure powerm is running and powerd is not running for the test.
+
+    original_powerm_status = self.switch_service('powerm', True)
+    original_powerd_status = self.switch_service('powerd', False)
 
     self._error_message = self._MESSAGE_UNKNOWN_ERROR
     self._fail = True
@@ -142,10 +152,10 @@ class factory_LidSwitch(test.test):
         test_widget,
         window_registration_callback=self.register_callbacks)
 
-    # TODO(cychiang) Turn powerd back to its original status
-    # We can omit this line if we don't want powerd to be turned on again.
-    # crosbug.com/p/10374
-    self.turn_back_powerd(original_powerd_status)
+    # Switch back powerd and powerm to their original status.
+
+    self.switch_service('powerd', original_powerd_status)
+    self.switch_service('powerm', original_powerm_status)
 
     if self._fail:
       factory.log(self._error_message)
