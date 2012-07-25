@@ -2,8 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test verifies that DUT can process datagrams transmitted at
+# different Quality of Service (QoS) levels.
+
+# QoS values: BE = best effort, BK = background, VI = video, VO = voice
+
 { "name":"CheckWMM",
-  "steps":[             # Channel 6
+  "steps":[
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2437", "mode":"11g", "wme":None } ],
     [ "connect",        { "security":"none" } ],

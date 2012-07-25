@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test verifies that DUT can connect to an open 802.11n network
+# on 5 GHz channel (20MHz channel only).
+
 { "name":"Check5HT20",
   "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
