@@ -99,7 +99,7 @@ class platform_KernelErrorPaths(test.test):
             ('softlockup', 'BUG: soft lockup', 25, False),
             ('bug', 'kernel BUG at', 10, False),
             ('hungtask', 'hung_task: blocked tasks', 300, False),
-            ('nmilockup', 'Watchdog detected hard LOCKUP', 50, False),
+            ('nmiwatchdog', 'Watchdog detected hard LOCKUP', 50, False),
             ('nullptr',
              # x86 gives "BUG: unable to" while ARM gives "Unable to".
              'nable to handle kernel NULL pointer dereference at', 10,
