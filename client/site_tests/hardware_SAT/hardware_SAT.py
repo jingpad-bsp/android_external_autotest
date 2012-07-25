@@ -38,13 +38,22 @@ class hardware_SAT(test.test):
         utils.make()
 
 
-    def run_once(self, seconds=60):
+    def run_once(self, seconds=60, free_memory_fraction=0.95):
+        '''
+        Args:
+          free_memory_fraction: Fraction of free memory (as determined by
+            utils.freememtotal()) to use.
+        '''
+        assert free_memory_fraction > 0
+        assert free_memory_fraction < 1
+
         # Allow shmem access to all of memory. This is used for 32 bit
         # access to > 1.4G. Virtual address space limitation prevents
         # directly mapping the memory.
         utils.run('mount -o remount,size=100% /dev/shm')
         cpus = max(utils.count_cpus(), 1)
-        mbytes = max(int(utils.freememtotal() * .95 / 1024), 512)
+        mbytes = max(int(utils.freememtotal() * free_memory_fraction / 1024),
+                     512)
         # SAT should use as much memory as possible, while still
         # avoiding OOMs and allowing the kernel to run, so that
         # the maximum amoun tof memory can be tested.
