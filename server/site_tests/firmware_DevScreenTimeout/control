@@ -28,6 +28,6 @@ def run_devscreentimeout(machine):
     host = hosts.create_host(machine)
     job.run_test("firmware_DevScreenTimeout", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
-                 dev_mode=True, tag="dev",
+                 dev_mode=True, tag="dev")
 
 parallel_simple(run_devscreentimeout, machines)
