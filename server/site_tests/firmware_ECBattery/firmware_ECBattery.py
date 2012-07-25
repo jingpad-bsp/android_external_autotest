@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import re
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faftsequence import FAFTSequence
@@ -14,13 +15,13 @@ class firmware_ECBattery(FAFTSequence):
     version = 1
 
     # Battery status path in sysfs
-    BATTERY_STATUS = '/sys/class/power_supply/BAT0/status'
+    BATTERY_STATUS = '/sys/class/power_supply/%s/status'
 
     # Battery voltage reading path in sysfs
-    BATTERY_VOLTAGE_READING = '/sys/class/power_supply/BAT0/voltage_now'
+    BATTERY_VOLTAGE_READING = '/sys/class/power_supply/%s/voltage_now'
 
     # Battery current reading path in sysfs
-    BATTERY_CURRENT_READING = '/sys/class/power_supply/BAT0/current_now'
+    BATTERY_CURRENT_READING = '/sys/class/power_supply/%s/current_now'
 
     # Maximum allowed error of voltage reading in mV
     VOLTAGE_MV_ERROR_MARGIN = 300
@@ -35,6 +36,18 @@ class firmware_ECBattery(FAFTSequence):
     BATTERY_TEMP_LOWER_BOUND = 0
 
 
+    def _get_battery_path(self):
+        """Get battery path in sysfs."""
+        match = self.faft_client.run_shell_command_get_output(
+                'grep -iH --color=no "Battery" /sys/class/power_supply/*/type')
+        name = re.search("/sys/class/power_supply/([^/]+)/",
+                         match[0]).group(1)
+        logging.info("Battery name is %s" % name)
+        self._battery_status = self.BATTERY_STATUS % name
+        self._battery_voltage = self.BATTERY_VOLTAGE_READING % name
+        self._battery_current = self.BATTERY_CURRENT_READING % name
+
+
     def _check_voltage_match(self):
         """Check if voltage reading from kernel and servo match.
 
@@ -45,7 +58,7 @@ class firmware_ECBattery(FAFTSequence):
         servo_reading = int(self.servo.get('ppvar_vbat_mv'))
         # Kernel gives voltage value in uV. Convert to mV here.
         kernel_reading = int(self.faft_client.run_shell_command_get_output(
-                'cat %s' % self.BATTERY_VOLTAGE_READING)[0]) / 1000
+                'cat %s' % self._battery_voltage)[0]) / 1000
         if abs(servo_reading - kernel_reading) > self.VOLTAGE_MV_ERROR_MARGIN:
             raise error.TestFail(
                     "Voltage reading from servo and kernel mismatch.")
@@ -61,9 +74,9 @@ class firmware_ECBattery(FAFTSequence):
         servo_reading = int(self.servo.get('ppvar_vbat_ma'))
         # Kernel gives current value in uA. Convert to mA here.
         kernel_reading = int(self.faft_client.run_shell_command_get_output(
-                'cat %s' % self.BATTERY_CURRENT_READING)[0]) / 1000
+                'cat %s' % self._battery_current)[0]) / 1000
         status = self.faft_client.run_shell_command_get_output(
-                'cat %s' % self.BATTERY_STATUS)[0]
+                'cat %s' % self._battery_status)[0]
 
         # If battery is not discharging, servo gives negative value.
         if status != "Discharging":
@@ -91,6 +104,9 @@ class firmware_ECBattery(FAFTSequence):
     def run_once(self, host=None):
         if not self.check_ec_capability(['battery']):
             return
+
+        self._get_battery_path()
+
         logging.info("Checking battery current reading...")
         self._check_current_match()
 
