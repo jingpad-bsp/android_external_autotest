@@ -9,15 +9,17 @@ import rf_common
 from autotest_lib.client.bin import utils
 from cros.factory.utils import net_utils
 
-def SetEthernetIp(ip):
-    '''Sets the IP address of the first active Ethernet interface.
+def SetEthernetIp(ip, interface=None):
+    '''Sets the IP address for Ethernet.
 
     The address is set only if the interface does not already have an
-    assigned IP address.
+    assigned IP address. The interface will be automatically assigned by
+    Connection Manager if None is given.
     '''
-    interface = net_utils.FindUsableEthDevice()
+    interface = interface or net_utils.FindUsableEthDevice()
     if not interface:
         raise error.TestError('No Ethernet interface available')
+    utils.system('ifconfig %s up' % interface)
 
     ip_output = utils.system_output(
         'ip addr show dev %s' % interface)
