@@ -744,7 +744,11 @@ class FAFTSequence(ServoTest):
     def disable_keyboard_dev_mode(self):
         logging.info("Disabling keyboard controlled developer mode")
         self.servo.disable_recovery_mode()
-        self.servo.cold_reset()
+        # We don't use servo.cold_reset() here because software sync is not yet
+        # finished, and device may or may not come up after cold reset. Pressing
+        # power button before firmware comes up solves this.
+        self.servo.set('cold_reset', 'on')
+        self.servo.set('cold_reset', 'off')
         # Rebooting EC with rec mode off. Software sync should power on AP,
         # and then shut down AP after a while.
         # TODO(victoryang): Figure out the proper delay period before pressing
