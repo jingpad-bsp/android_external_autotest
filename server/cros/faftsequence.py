@@ -725,11 +725,11 @@ class FAFTSequence(ServoTest):
         """
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
         if dev:
-            self.servo.ctrl_d()
+            self.send_ctrl_d_to_dut()
         else:
-            self.servo.enter_key()
+            self.send_enter_to_dut()
         time.sleep(self.FIRMWARE_KEY_DELAY)
-        self.servo.enter_key()
+        self.send_enter_to_dut()
 
 
     def enable_keyboard_dev_mode(self):
