@@ -11,6 +11,7 @@ import re
 import tempfile
 import time
 import StringIO
+import subprocess
 
 from autotest_lib.client.cros import factory_setup_modules
 from cros.factory.test import factory
@@ -60,6 +61,11 @@ _TEST_SN_NUMBER = 'TEST-SN-NUMBER'
 COLOR_MAGENTA = gtk.gdk.color_parse('magenta1')
 BRIGHTNESS_CONTROL_CMD = (
     'echo %s > /sys/class/backlight/intel_backlight/brightness')
+
+# Regular expressions to match audiofuntest message.
+_AUDIOFUNTEST_STOP_RE = re.compile('^Stop')
+_AUDIOFUNTEST_SUCCESS_RATE_RE = re.compile('.*rate\s=\s(.*)$')
+
 
 class factory_Connector(state_machine.FactoryStateMachine):
     version = 6
@@ -247,6 +253,9 @@ class factory_Connector(state_machine.FactoryStateMachine):
             if len(error_ret) == 0:
                 self.update_status('audio', 'PASSED')
                 break
+            else :
+                self.update_status('audio', 'FAILED')
+
         self.advance_state()
 
     def set_brightness(self, brightness):
@@ -362,46 +371,93 @@ class factory_Connector(state_machine.FactoryStateMachine):
         self.sn_input_widget.get_entry().set_text('')
         factory.log('Data reseted.')
 
-    def audio_loopback(self, test_freq=1000, tolerance=50,
-            loop_duration=1, input_device='hw:0,2'):
+    def audio_loopback(self, test_freq=1000, loop_duration=1,
+             tolerance=100 ,input_device='hw:0,0', audiofuntest=True):
         """Tests digital mic function.
 
         Args:
             test_freq: the frequency to play and test.
             loop_duration: the duration in seconds to record.
             input_device: the alsa device to test.
-
+            audiofuntest: choose whether testing with audiofuntest
         Return:
             List of error messages generated during test.
         """
-        errors = []
-        ah = audio_helper.AudioHelper(self, input_device=input_device,
+        self._ah = audio_helper.AudioHelper(self,
                 record_duration=loop_duration)
-        ah.setup_deps(['sox'])
-        ah.set_mixer_controls(
+        if audiofuntest :
+            return self.start_audiofuntest()
+        else :
+            return self.start_audioloop(self, test_freq=test_freq,
+                    tolerance=tolerance,loop_duration=loop_duration)
+
+    def start_audiofuntest(self):
+        '''
+        Run audiofuntest, more reliable
+        '''
+        factory.log('Start audiofuntest')
+        errors = []
+        self._ah.setup_deps(['test_tones'])
+        audiofuntest_path = os.path.join(self.autodir, 'deps',
+                'test_tones', 'src', 'audiofuntest')
+        if not (os.path.exists(audiofuntest_path) and
+                os.access(audiofuntest_path, os.X_OK)):
+            raise error.TestError(
+                   '%s is not an executable' % audiofuntest_path)
+
+        sub_proc = subprocess.Popen([audiofuntest_path, '-r', '48000'],
+                stderr=subprocess.PIPE)
+        success_rate = 0.0
+        while True:
+            line = sub_proc.stderr.readline()
+            factory.log(line)
+            m = _AUDIOFUNTEST_SUCCESS_RATE_RE.match(line)
+            if m:
+                success_rate = float(m.group(1))
+                factory.log('success_rate = %f' % success_rate)
+
+            m = _AUDIOFUNTEST_STOP_RE.match(line)
+            if m:
+                self._audioresult = success_rate > 50.0
+                factory.log(line)
+                break
+
+        if ( hasattr(self, '_audioresult') and (self._audioresult is False) ):
+             errors.append('Success rate is too low: %.1f\n' %
+                           success_rate)
+        return errors
+
+    def start_audioloop(self, test_freq=1000, loop_duration=1, tolerance=100):
+        '''
+        If audiofuntest is not work, change to this test.
+        '''
+        factory.log('Start audioloop')
+        errors = []
+        self._ah.setup_deps(['sox'])
+        self._ah.set_mixer_controls(
                 [{'name': '"Digital-Mic Capture Switch"',
                   'value': 'on'},
                  {'name': '"Digital-Mic Capture Volume"',
                   'value': '100,100'},
-                 {'name': '"PC Speaker Playback Volume"',
+                 {'name': '"Speaker Playback Volume"',
                   'value': '100,100'}])
 
         # Callbacks for sound playback and record result check.
         def playback_sine():
-            cmd = '%s -n -d synth %d sine %d' % (ah.sox_path,
+            cmd = '%s -n -d synth %d sine %d' % (self._ah.sox_path,
                     loop_duration, test_freq)
             utils.system(cmd)
 
         def check_loop_output(sox_output):
-            freq = ah.get_rough_freq(sox_output)
+            freq = self._ah.get_rough_freq(sox_output)
             factory.log('Got freq %d' % freq)
             if abs(freq - test_freq) > tolerance:
                 errors.append('Frequency not match, expect %d but got %d' %
                         (test_freq, freq))
 
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
-            ah.record_sample(noise_file.name)
-            ah.loopback_test_channels(noise_file,
+            self._ah.record_sample(noise_file.name)
+            self._ah.loopback_test_channels(noise_file,
                     lambda ch: playback_sine(),
                     check_loop_output)
         return errors
