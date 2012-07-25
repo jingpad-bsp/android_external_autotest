@@ -35,6 +35,9 @@ class kernel_ConfigVerify(test.test):
         'BLK_DEV_SR',
         'BT',
         'TUN',
+    ]
+    IS_ENABLED = [
+        # Either module or enabled, depending on platform.
         'VIDEO_V4L2',
     ]
     IS_MISSING = [
@@ -125,23 +128,26 @@ class kernel_ConfigVerify(test.test):
 
     def _config_required(self, name, wanted):
         value = self._config.get(name, None)
-        if value == wanted:
+        if value in wanted:
             self._passed('"%s" was "%s" in kernel config' % (name, value))
         else:
-            self._failed('"%s" was "%s" (wanted "%s") in kernel config' %
-                         (name, value, wanted))
+            self._failed('"%s" was "%s" (wanted one of "%s") in kernel config' %
+                         (name, value, '|'.join(wanted)))
 
     def has_value(self, name, value):
         self._config_required('CONFIG_%s' % (name), value)
 
     def has_builtin(self, name):
-        self.has_value(name, 'y')
+        self.has_value(name, ['y'])
 
     def has_module(self, name):
-        self.has_value(name, 'm')
+        self.has_value(name, ['m'])
+
+    def is_enabled(self, name):
+        self.has_value(name, ['y', 'm'])
 
     def is_missing(self, name):
-        self.has_value(name, None)
+        self.has_value(name, [None])
 
     # Checks every config line for the exclusive regex and validate existence
     # of expected entries.
@@ -199,6 +205,7 @@ class kernel_ConfigVerify(test.test):
         # Run the static checks.
         map(self.has_builtin, self.IS_BUILTIN)
         map(self.has_module, self.IS_MODULE)
+        map(self.is_enabled, self.IS_ENABLED)
         map(self.is_missing, self.IS_MISSING)
         map(self.is_exclusive, self.IS_EXCLUSIVE)
 
@@ -212,7 +219,7 @@ class kernel_ConfigVerify(test.test):
             # ... except on ARM where it shouldn't be larger than 32k due
             # to historical ELF load location.
             wanted = '32768'
-        self.has_value('DEFAULT_MMAP_MIN_ADDR', wanted)
+        self.has_value('DEFAULT_MMAP_MIN_ADDR', [wanted])
 
         # Security; make sure NX page table bits are usable.
         if not self._arch.startswith('arm'):
