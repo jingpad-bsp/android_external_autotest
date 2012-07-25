@@ -243,6 +243,13 @@ class FAFTSequence(ServoTest):
         if not self._remote_infos['faft']['used']:
             raise error.TestError('The use_faft flag should be enabled.')
 
+        gbb_flags = self.faft_client.get_gbb_flags()
+        if (gbb_flags & self.GBB_FLAG_FORCE_DEV_SWITCH_ON):
+            logging.info('Disable the GBB_FLAG_FORCE_DEV_SWITCH.')
+            self.faft_client.run_shell_command(
+                    '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' %
+                    (gbb_flags ^ self.GBB_FLAG_FORCE_DEV_SWITCH_ON))
+
         self.register_faft_template({
             'state_checker': (None),
             'userspace_action': (None),
