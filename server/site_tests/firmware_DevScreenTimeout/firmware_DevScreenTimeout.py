@@ -25,8 +25,6 @@ class firmware_DevScreenTimeout(FAFTSequence):
     """
     version = 1
 
-    GBB_FLAG_DEV_SCREEN_SHORT_DELAY = 0x00000001
-
     CTRL_D_REPEAT_COUNT = 10
     CTRL_D_REPEAT_DELAY = 0.5
 

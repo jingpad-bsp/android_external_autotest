@@ -183,6 +183,14 @@ class FAFTSequence(ServoTest):
         'US_UNSPECIFIED':     '255', # 0xFF
     }
 
+    # GBB flags
+    GBB_FLAG_DEV_SCREEN_SHORT_DELAY    = 0x00000001
+    GBB_FLAG_LOAD_OPTION_ROMS          = 0x00000002
+    GBB_FLAG_ENABLE_ALTERNATE_OS       = 0x00000004
+    GBB_FLAG_FORCE_DEV_SWITCH_ON       = 0x00000008
+    GBB_FLAG_FORCE_DEV_BOOT_USB        = 0x00000010
+    GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK = 0x00000020
+
     _faft_template = {}
     _faft_sequence = ()
 
