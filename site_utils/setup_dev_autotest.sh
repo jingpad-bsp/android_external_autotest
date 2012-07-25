@@ -106,12 +106,7 @@ if ! sudo apt-get install -y ${PKG_LIST}; then
 fi
 echo -e "Done!\n"
 
-echo -n "Setting up Database: chromeos_autotest_db in MySQL..."
-SQL_COMMAND="create database chromeos_autotest_db; \
-grant all privileges on chromeos_autotest_db.* TO \
-'chromeosqa-admin'@'%' identified by '${PASSWD}'; \
-FLUSH PRIVILEGES;"
-
+echo "Setting up Database: chromeos_autotest_db in MySQL..."
 if mysql -u root -e ';' 2> /dev/null ; then
   PASSWD_STRING=
 elif mysql -u root -p"${PASSWD}" -e ';' 2> /dev/null ; then
@@ -120,9 +115,33 @@ else
   PASSWD_STRING="-p"
 fi
 
+CLOBBERDB=
+EXISTING_DATABASE=$(mysql -u root "${PASSWD_STRING}" -e "SELECT SCHEMA_NAME \
+FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'chromeos_autotest_db'")
+if [ -n "${EXISTING_DATABASE}" ]; then
+  while read -n 1 -p "Clobber existing MySQL database? [y/N]: " CLOBBERDB; do
+    echo
+    if [[ -z ${CLOBBERDB} || $(echo ${CLOBBERDB} | egrep -qi 'y|n') -eq 0 ]];
+    then
+      break
+    fi
+    echo "Please enter y or n."
+  done
+else
+  CLOBBERDB='y'
+fi
+
+SQL_COMMAND="drop database if exists chromeos_autotest_db; \
+create database chromeos_autotest_db; \
+grant all privileges on chromeos_autotest_db.* TO \
+'chromeosqa-admin'@'%' identified by '${PASSWD}'; \
+FLUSH PRIVILEGES;"
+
 set -e
 
-mysql -u root "${PASSWD_STRING}" -e "${SQL_COMMAND}"
+if [[ "${CLOBBERDB}" = 'y' || "${CLOBBERDB}" = 'Y' ]]; then
+  mysql -u root "${PASSWD_STRING}" -e "${SQL_COMMAND}"
+fi
 echo -e "Done!\n"
 
 AT_DIR=/usr/local/autotest
