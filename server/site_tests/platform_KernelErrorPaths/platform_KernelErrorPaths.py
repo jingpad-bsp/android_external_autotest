@@ -114,19 +114,17 @@ class platform_KernelErrorPaths(test.test):
         no_cpus = 1
 
         for action, text, timeout, all_cpu in test_tuples:
-            if action == "nmilockup":
+            if action == "nmiwatchdog":
                 # ARM systems do not (presently) have NMI, so skip them for now.
                 arch = self.client.get_arch()
                 if arch.startswith('arm'):
                     logging.info("Skipping %s on architecture %s." %
                                  (action, arch))
                     continue;
-                logging.info("Did not skip %s on architecture %s." %
-                             (action, arch))
-                # Pre-3.2 kernels use "nmiwatchdog" rather than "nmilookup".
+                # 3.2 kernels use "nmilockup" rather than "nmiwatchdog".
                 ver = self.client.get_kernel_ver();
-                if utils.compare_versions(ver, "3.2") == -1:
-                    action="nmiwatchdog"
+                if utils.compare_versions(ver, "3.2") == 0:
+                    action="nmilockup"
 
             if not all_cpu:
                 no_cpus = 1
