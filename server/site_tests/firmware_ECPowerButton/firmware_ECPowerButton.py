@@ -17,7 +17,7 @@ class firmware_ECPowerButton(FAFTSequence):
 
     # Delay between shutdown and wake by power button
     LONG_WAKE_DELAY = 13
-    SHORT_WAKE_DELAY = 3
+    SHORT_WAKE_DELAY = 7
 
     # Short duration of holding down power button to power on
     POWER_BUTTON_SHORT_POWER_ON_DURATION = 0.05
