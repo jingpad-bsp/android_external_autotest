@@ -14,15 +14,16 @@ class firmware_ECBootTime(FAFTSequence):
     version = 1
 
     def check_boot_time(self):
+        boot_msg = ("([0-9\.]+) Port 80"
+                if self._x86 else "([0-9\.]+) AP running")
+        power_cmd = "powerbtn" if self._x86 else "power on"
         reboot = self.send_uart_command_get_output("reboot",
                 "([0-9\.]+) idle task started")
-        power_press = self.send_uart_command_get_output("powerbtn",
-                "\[([0-9\.]+) PB pressed\]")
-        firmware_resp = self.send_uart_command_get_output("",
-                "([0-9\.]+) Port 80")
+        power_press = self.send_uart_command_get_output(power_cmd,
+                ["\[([0-9\.]+) PB", boot_msg], timeout=3)
         reboot_time = float(reboot[0].group(1))
         power_press_time = float(power_press[0].group(1))
-        firmware_resp_time = float(firmware_resp[0].group(1))
+        firmware_resp_time = float(power_press[1].group(1))
         boot_time = firmware_resp_time - power_press_time
         logging.info("EC cold boot time: %f s" % reboot_time)
         if reboot_time > 1.0:
@@ -34,6 +35,7 @@ class firmware_ECBootTime(FAFTSequence):
     def run_once(self, host=None):
         if not self.check_ec_capability():
             return
+        self._x86 = ('x86' in self.client_attr.ec_capability)
         self.register_faft_sequence((
             {   # Step 1, Reboot and check EC cold boot time and host boot time
                 'reboot_action': self.check_boot_time,
