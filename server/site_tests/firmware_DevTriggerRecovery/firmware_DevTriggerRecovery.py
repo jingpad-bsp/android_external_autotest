@@ -62,8 +62,8 @@ class firmware_DevTriggerRecovery(FAFTSequence):
     def setup(self):
         super(firmware_DevTriggerRecovery, self).setup()
         self.assert_test_image_in_usb_disk()
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
         self.setup_dev_mode(dev_mode=False)
+        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
 
 
     def run_once(self, host=None):

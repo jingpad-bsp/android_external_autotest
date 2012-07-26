@@ -45,11 +45,11 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
         if (self.faft_client.get_firmware_flags('a') &
                 self.PREAMBLE_USE_RO_NORMAL):
             self.use_ro = True
-            self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+            self.setup_dev_mode(dev_mode)
         else:
             self.assert_test_image_in_usb_disk()
+            self.setup_dev_mode(dev_mode)
             self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
-        self.setup_dev_mode(dev_mode)
 
 
     def cleanup(self):

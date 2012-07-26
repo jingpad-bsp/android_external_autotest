@@ -49,8 +49,8 @@ class firmware_InvalidUSB(FAFTSequence):
         usb_dev = self.servo.probe_host_usb_dev()
         self.assert_test_image_in_usb_disk(usb_dev)
         self.corrupt_usb_kernel(usb_dev)
-        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
         self.setup_dev_mode(dev_mode=False)
+        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
 
 
     def cleanup(self):
