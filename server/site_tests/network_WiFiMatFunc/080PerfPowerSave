@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test uses iperf to measure TCP and UDP throughputs of a DUT
+# connected to an open 802.11g/n network (with Power Save on and off).
+
 { "name":"PerfPS",
   "steps":[             # Channel [1/11g,50/HT20]
     [ "create",         { "type":"hostap" } ],
@@ -23,7 +26,7 @@
     [ "deconfig" ],
 
     [ "config",         { "channel":"5240", "ht20":None,
-                          "pureg":None, "ssid_suffix": "50N" } ],
+                          "puren":None, "ssid_suffix": "50N" } ],
 
     [ "client_powersave_on" ],
     [ "connect",        { "security":"none" } ],

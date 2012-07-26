@@ -2,7 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test verifies that DUT can connect to an 802.11n AP with
+# protected mode using a legacy (802.11a/b/g) protocol.
+
 { "name":"Check11nProtection",
+  "skip_test":"waiting on hostapd support for 802.11n protected mode",
   "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"5240", "mode":"11n", "htprotmode":"rts" } ],

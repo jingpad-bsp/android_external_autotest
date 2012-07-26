@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test uses iperf to measure TCP and UDP throughputs of a DUT
+# connected to an open 802.11a network with Power Save off.
+
 { "name":"Perf11a",
   "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],

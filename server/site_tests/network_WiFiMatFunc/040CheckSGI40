@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test uses netperf to measure receiving TCP throughput of
+# a DUT on an open 802.11n network over 5 GHz band (40MHz-channel),
+# with short guard interval (GI) set.
+
 { "name":"CheckSGI40",
   "skip_test":"Needs a kernel enhancement",
   "steps":[             # Channel 48
