@@ -49,6 +49,9 @@ class LazyFlashromHandlerProxy:
             self._load()
         return getattr(self._obj, name)
 
+    def reload(self):
+        self._loaded = False
+
 
 class FAFTClient(object):
     """A class of FAFT client which aggregates some useful functions of SAFT.
@@ -249,6 +252,11 @@ class FAFTClient(object):
         self._chromeos_interface.log('Getting preamble flags of firmware %s' %
                                      section)
         return self._bios_handler.get_section_flags(section)
+
+
+    def reload_firmware(self):
+        """Reload the firmware image that may be changed."""
+        self._bios_handler.reload()
 
 
     @allow_multiple_section_input

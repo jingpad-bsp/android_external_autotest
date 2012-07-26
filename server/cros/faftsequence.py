@@ -332,6 +332,7 @@ class FAFTSequence(ServoTest):
             self.faft_client.run_shell_command(
                     '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' %
                     (gbb_flags ^ mask))
+            self.faft_client.reload_firmware()
 
 
     def _open_uart_pty(self):
