@@ -65,7 +65,7 @@ def Timeout(secs):
 
 class LANSCPI(object):
     '''A SCPI-over-TCP controller.'''
-    def __init__(self, host, port=5025, timeout=60):
+    def __init__(self, host, port=5025, timeout=6, retries=10):
         '''
         Connects to a device using SCPI-over-TCP.
 
@@ -73,13 +73,26 @@ class LANSCPI(object):
             host: Host to connect to.
             port: Port to connect to.
             timeout: Timeout in seconds.  (Uses the ALRM signal.)
+            retries: maximum attemptis to connect to the host.
         '''
         self.timeout = timeout
         self.logger = logging.getLogger('SCPI')
         self.host = host
         self.port = port
 
-        self._Connect()
+        for times in range(1, retries + 1):
+            try:
+                self.logger.info('Connecting to %s:%d [try %d/%d]...' % (
+                                 host, port, times, retries))
+                self._Connect()
+                return
+            except Exception as e:
+                time.sleep(1)
+                self.logger.info("Unable to connect to %s:%d: %s" % (
+                                 host, port, e))
+
+        raise Error('Failed to connect %s:%d after %d tries' % (
+                    host, port, retries))
 
     def _Connect(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
