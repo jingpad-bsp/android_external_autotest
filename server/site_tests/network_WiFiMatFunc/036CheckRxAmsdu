@@ -2,7 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test uses netperf to measure receiving TCP throughput of
+# a DUT on an open 802.11n network over 5 GHz band (20MHz-channel),
+# with A-MPDU disabled.
+
+# A-MPDU = Aggregation of MAC prototcol data units
+# A-MSDU = Aggregation of MAC service data units
+# ampdu and amsdu are two types of aggregations performed at PHY level to
+# improve user level data rate.
+
 { "name":"CheckRxAmsdu",
+  "skip_test":"waiting on hostapd support for ampdu",
   "steps":[             # Channel 48
     [ "create",         { "type":"hostap" } ],
     # XXX no guarantee that turning off ampdu will generate amsdu
