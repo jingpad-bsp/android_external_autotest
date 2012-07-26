@@ -242,14 +242,7 @@ class FAFTSequence(ServoTest):
         super(FAFTSequence, self).setup()
         if not self._remote_infos['faft']['used']:
             raise error.TestError('The use_faft flag should be enabled.')
-
-        gbb_flags = self.faft_client.get_gbb_flags()
-        if (gbb_flags & self.GBB_FLAG_FORCE_DEV_SWITCH_ON):
-            logging.info('Disable the GBB_FLAG_FORCE_DEV_SWITCH.')
-            self.faft_client.run_shell_command(
-                    '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' %
-                    (gbb_flags ^ self.GBB_FLAG_FORCE_DEV_SWITCH_ON))
-
+        self.clear_gbb_flags(self.GBB_FLAG_FORCE_DEV_SWITCH_ON)
         self.register_faft_template({
             'state_checker': (None),
             'userspace_action': (None),
@@ -324,6 +317,21 @@ class FAFTSequence(ServoTest):
             'userspace_action': (self.faft_client.run_shell_command,
                                  install_cmd)
         })
+
+
+    def clear_gbb_flags(self, mask):
+        """Clear the GBB flags in the current flashrom.
+
+        Args:
+          mask: A mask of flags to be cleared.
+        """
+        gbb_flags = self.faft_client.get_gbb_flags()
+        if (gbb_flags & mask):
+            logging.info('Clear the GBB flags of 0x%x, from 0x%x to 0x%x.' %
+                         (mask, gbb_flags, gbb_flags ^ mask))
+            self.faft_client.run_shell_command(
+                    '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' %
+                    (gbb_flags ^ mask))
 
 
     def _open_uart_pty(self):
