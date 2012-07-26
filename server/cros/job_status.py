@@ -88,21 +88,21 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
             all_hosts.extend(gather_job_hostnames(afe, job))
         return all_hosts
 
-    locked_hosts = []
+    locked_hosts = set()
     expected_hosts = get_all_hosts(jobs)
 
-    while sorted(locked_hosts) != sorted(expected_hosts):
+    while sorted(list(locked_hosts)) != sorted(expected_hosts):
         running_hosts = afe.get_hosts([e for e in expected_hosts if e],
                                       status='Running')
 
         hostnames = [h.hostname for h in running_hosts]
         logging.debug('Discovered %r hosts in Running state.', hostnames)
-        if hostnames != locked_hosts:
+        if set(hostnames) - locked_hosts != set():
             # New hosts to lock!
             manager.add(hostnames)
             manager.lock()
         time.sleep(interval)
-        locked_hosts = hostnames
+        locked_hosts = locked_hosts.union(hostnames)
         expected_hosts = get_all_hosts(jobs)
 
     return locked_hosts
