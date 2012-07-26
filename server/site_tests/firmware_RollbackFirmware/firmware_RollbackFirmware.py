@@ -36,6 +36,7 @@ class firmware_RollbackFirmware(FAFTSequence):
         self.assert_test_image_in_usb_disk()
         self.setup_dev_mode(dev_mode)
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.clear_gbb_flags(self.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK)
 
 
     def cleanup(self):
