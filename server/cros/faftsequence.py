@@ -749,6 +749,8 @@ class FAFTSequence(ServoTest):
 
     def enable_keyboard_dev_mode(self):
         logging.info("Enabling keyboard controlled developer mode")
+        # Plug out USB disk for preventing recovery boot without warning
+        self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         # Rebooting EC with rec mode on. Should power on AP.
         self.servo.enable_recovery_mode()
         self.servo.cold_reset()
