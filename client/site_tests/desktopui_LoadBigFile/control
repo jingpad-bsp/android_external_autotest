@@ -8,8 +8,9 @@ PURPOSE = "Opens a large text file in a tab."
 CRITERIA = """
 This test will fail if the tab fails to load in the default PyAuto timeout.
 """
+SUITE = "bvt"
 TIME = "SHORT"
-TEST_CATEGORY = "General"
+TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
