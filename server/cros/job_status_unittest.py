@@ -161,8 +161,9 @@ class StatusTest(mox.MoxTestBase):
                     mox.IgnoreArg(), job).InAnyOrder().AndReturn(job.hostnames)
             used_hostnames.extend([h for h in job.hostnames if h])
 
-        self.afe.get_hosts(mox.SameElementsAs(used_hostnames),
-                           status='Running').AndReturn(running_hosts)
+        if used_hostnames:
+            self.afe.get_hosts(mox.SameElementsAs(used_hostnames),
+                               status='Running').AndReturn(running_hosts)
         if do_lock:
             manager.add([h.hostname for h in running_hosts])
             manager.lock()
@@ -176,9 +177,10 @@ class StatusTest(mox.MoxTestBase):
         manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
         expected_hostnames=['host1', 'host0']
         expected_hosts = [FakeHost(h) for h in expected_hostnames]
-        job = FakeJob(0, hostnames=[])
+        job = FakeJob(7, hostnames=[None, None])
 
         time.sleep(mox.IgnoreArg()).MultipleTimes()
+        self.expect_hosts_query_and_lock([job], manager, [], False)
         # First, only one test in the job has had a host assigned at all.
         # Since no hosts are running, expect no locking.
         job.hostnames = [None] + expected_hostnames[1:]
