@@ -24,7 +24,8 @@ class ECControl(object):
     SET_FANSPEED_RE = "Fan target RPM set."
     TEMP_SENSOR_RE = "Reading temperature...([0-9]*)"
     TOGGLE_AUTO_FAN_RE = "Automatic fan control is now on"
-    BATTERY_RE = "Cycle count"
+    # For battery, check we can see a non-zero capacity value.
+    BATTERY_RE = "Design capacity:\s+[1-9]\d*\s+mAh"
     LIGHTBAR_RE = "^ 05\s+3f\s+3f$"
 
     def ec_command(self, cmd):
