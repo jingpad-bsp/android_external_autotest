@@ -59,24 +59,24 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
             xpath = ('//input[@type="submit" and @value="Apply"]')
         elif page_number == 2:
             xpath = ('//input[@class="button_submit" and @value="Apply"]')
-        button = self.driver.find_element_by_xpath(xpath)
-        button.click()
+        self.click_button_by_xpath(xpath)
         self.wait = WebDriverWait(self.driver, timeout=60)
-        xpath = ('//input[@value="Reboot the Device"]')
-        button = self.wait_for_object_by_xpath(xpath)
-        button.click()
-        self.wait = WebDriverWait(self.driver, timeout=5)
-        # Give the trendnet up to 2 minutes.  The idea here is to end when the
-        # reboot is complete.
-        for i in xrange(240):
-            progress_value = self.wait_for_object_by_id('progressValue')
-            html = self.driver.execute_script('return arguments[0].innerHTML',
-                                              progress_value)
-            percentage = html.rstrip('%')
-            if int(percentage) < 95:
-                time.sleep(0.5)
-            else:
-                return
+        if self.short_name == 'TEW-691GR':
+          xpath = ('//input[@value="Reboot the Device"]')
+          button = self.wait_for_object_by_xpath(xpath)
+          button.click()
+          self.wait = WebDriverWait(self.driver, timeout=5)
+          # Give the trendnet up to 2 minutes.  The idea here is to end when the
+          # reboot is complete.
+          for i in xrange(240):
+              progress_value = self.wait_for_object_by_id('progressValue')
+              html = self.driver.execute_script('return arguments[0].innerHTML',
+                                                progress_value)
+              percentage = html.rstrip('%')
+              if int(percentage) < 95:
+                  time.sleep(0.5)
+              else:
+                  return
 
     def set_mode(self, mode, band=None):
         self.add_item_to_command_list(self._set_mode, (mode,), 1, 100)
