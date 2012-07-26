@@ -53,6 +53,7 @@ class firmware_RecoveryButton(FAFTSequence):
                     'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.servo.enable_recovery_mode,
+                'reboot_action': self.sync_and_cold_reboot,
                 # When dev_mode ON, directly boot to USB stick if presented.
                 # When dev_mode OFF,
                 #     the old models need users to remove and insert the USB;
