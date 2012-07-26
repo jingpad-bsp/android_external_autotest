@@ -8,6 +8,7 @@ A library to prespawn autotest processes to minimize startup overhead.
 '''
 
 import cPickle as pickle, os, sys
+from setproctitle import setproctitle
 
 
 if len(sys.argv) == 2 and sys.argv[1] == '--prespawn_autotest':
@@ -30,6 +31,10 @@ if len(sys.argv) == 2 and sys.argv[1] == '--prespawn_autotest':
     if env:
         os.environ.clear()
         os.environ.update(env)
+        proc_title = os.environ.get('CROS_PROC_TITLE')
+        if proc_title:
+            setproctitle(proc_title)
+
         execfile('autotest')
     sys.exit(0)
 
