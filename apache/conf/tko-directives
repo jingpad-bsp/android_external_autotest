@@ -15,6 +15,17 @@ Alias /results "/usr/local/autotest/results/"
     AllowOverride None
     Order allow,deny
     Allow from all
+    <FilesMatch "\.(log|INFO|DEBUG|ERROR|WARNING)$">
+        ForceType "text/plain; authoritative=true"
+    </FilesMatch>
+</Directory>
+
+Alias /logs "/usr/local/autotest/logs/"
+<Directory /usr/local/autotest/logs/>
+    Options Indexes FollowSymLinks MultiViews
+    AllowOverride None
+    Order allow,deny
+    Allow from all
     <FilesMatch "\.log$">
         ForceType "text/plain; authoritative=true"
     </FilesMatch>
