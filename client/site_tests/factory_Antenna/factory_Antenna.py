@@ -13,6 +13,7 @@ import StringIO
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.event_log import EventLog
 from cros.factory.test import factory
 from cros.factory.test import task
 from cros.factory.test import ui as ful
@@ -131,7 +132,7 @@ def make_prepare_widget(message,
 
 
 class factory_Antenna(test.test):
-    version = 4
+    version = 5
 
     # The state goes from _STATE_INITIAL to _STATE_RESULT_TAB then jumps back
     # to _STATE_PREPARE_PANEL for another testing cycle.
@@ -216,6 +217,7 @@ class factory_Antenna(test.test):
         self.log_to_file.write('Started at : %s\n' % datetime.datetime.now())
         # TODO(itspeter): display the SN info in the result tab.
         self._update_status('sn', self.check_sn_format(serial_number))
+        self._event_log.Log('vswr_sn', serial_number=serial_number)
         self.advance_state()
 
     @staticmethod
@@ -286,6 +288,9 @@ class factory_Antenna(test.test):
         self._update_status('result', self._result)
         self.log_to_file.write("Result in summary:\n%s\n" %
                                pprint.pformat(self.display_dict))
+        self._event_log.Log('vswr_results',
+                            serial_number=self.serial_number,
+                            results=self.display_dict)
         # Save logs and hint user it is writing in progress.
         self.advance_state()
 
@@ -293,6 +298,8 @@ class factory_Antenna(test.test):
         # TODO(itspeter): Dump more details upon RF teams' request.
         self.log_to_file.write("\n\nRaw traces:\n%s\n" %
                                pprint.pformat(self._raw_traces))
+        self._event_log.Log('vswr_detail',
+                            raw_trace=self._raw_traces)
         try:
             self.write_to_usb(self.serial_number + ".txt",
                               self.log_to_file.getvalue())
@@ -363,6 +370,11 @@ class factory_Antenna(test.test):
                         "Result"))
         self.log_to_file.write("%s results:\n%s\n" %
                                (log_title, pprint.pformat(logs)))
+        self._event_log.Log(
+            'vswr_measurement',
+            config=(log_title, antenna_type, column, ena_parameter),
+            logs=logs)
+
         return all(results)
 
     def reset_data_for_next_test(self):
@@ -408,6 +420,9 @@ class factory_Antenna(test.test):
         if local_ip:
             factory.log('Setup the local ip address to %s' % local_ip)
             rf_utils.SetEthernetIp(local_ip)
+
+        # Initial EventLog
+        self._event_log = EventLog.ForAutoTest()
 
         # Setup the ENA host.
         factory.log('Connecting to the ENA...')
