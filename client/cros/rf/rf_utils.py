@@ -6,6 +6,7 @@ import logging
 import re
 import rf_common
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
 from cros.factory.utils import net_utils
 
