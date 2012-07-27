@@ -52,7 +52,7 @@ READ_RSSI_RESPONSE = r'RSSI: ([-\d]+)'
 
 
 class factory_Cellular(test.test):
-    version = 1
+    version = 2
 
     def run_once(self, ext_host, dev='ttyUSB0', config_path=None,
                  use_rfio2_for_aux=False,
@@ -68,8 +68,8 @@ class factory_Cellular(test.test):
         event_log = EventLog.ForAutoTest()
         config = base_config.Read(config_path, event_log=event_log)
 
-        # Kill off modem manager, which might be holding the device open.
-        utils.system("stop modemmanager", ignore_status=True)
+        # TODO(itspeter): check with connection manager that network
+        #                 related services are stopped.
 
         ext = agilent_scpi.EXTSCPI(ext_host, timeout=5)
         logging.info('Tester ID: %s' % ext.id)
