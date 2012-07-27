@@ -110,7 +110,7 @@ class FAFTClient(object):
         self._tpm_handler.init(self._chromeos_interface)
 
         self._cgpt_state = cgpt_state.CgptState(
-                'AUTO', self._chromeos_interface, self.get_root_dev())
+                'SHORT', self._chromeos_interface, self.get_root_dev())
 
 
     def _dispatch(self, method, params):
