@@ -102,6 +102,9 @@ class FAFTSequence(ServoTest):
     # Delay between sending keystroke to firmware
     FIRMWARE_KEY_DELAY = 0.5
 
+    # The developer screen timeouts fit our spec.
+    DEV_SCREEN_TIMEOUT = 30
+
     CHROMEOS_MAGIC = "CHROMEOS"
     CORRUPTED_MAGIC = "CORRUPTD"
 
