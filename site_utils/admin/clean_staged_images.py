@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import shutil
+import time
 
 import common
 from autotest_lib.server import frontend
@@ -30,6 +31,10 @@ from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.cli.rpc import AFE_RPC_PATH
 from autotest_lib.client.common_lib import global_config, logging_config
 from autotest_lib.server.cros.dynamic_suite import VERSION_PREFIX
+
+# This filename must be kept in sync with devserver's downloader.py
+_TIMESTAMP_FILENAME = 'staged.timestamp'
+_HOURS_TO_SECONDS = 60*60
 
 
 class CleanStagedImagesLoggingConfig(logging_config.LoggingConfig):
@@ -61,17 +66,39 @@ def sort_builds(build_list):
                   reverse=True)
 
 
-def prune_builds(build_dir, keep_builds):
-    """Remove any builds more than |keep_builds|
+def file_is_too_old(build_path, max_age_hours):
+    """Test to see if the build at |build_path| is older than |max_age_hours|.
 
-    Prune a directory down to the |keep| size. If there are multiple milestones
-    the keep variable pertains to each individual milestone so M20 and M19 will
-    both have |keep| amount of builds around after pruning.
+    @param build_path The path to the build (ie. 'build_dir/R21-2035.0.0')
+    @param max_age_hours The maximum allowed age of a build in hours.
+    @return True if the build is older than |max_age|, False otherwise.
+    """
+    cutoff = time.time() - max_age_hours * _HOURS_TO_SECONDS
+    timestamp_path = os.path.join(build_path, _TIMESTAMP_FILENAME)
+    if os.path.exists(timestamp_path):
+        age = os.stat(timestamp_path).st_mtime
+        if age < cutoff:
+            return True
+    else:
+        # If the timestamp doesn't exist, then make one so we can wipe the
+        # build on a later run.
+        with open(timestamp_path, 'a'):
+            os.utime(timestamp_path, None)
+    return False
+
+
+def prune_builds(build_dir, max_age_hours):
+    """Remove any builds older than |max_age_hours| hours old.
+
+    Prune a directory down to only having builds last used sooner than
+    |max_age_hours| seconds ago. This will prune down all milestones to only
+    having fresh builds.
 
     @param build_dir: The build dir to prune builds in.
-    @param keep_builds: The number of builds to keep around.
+    @param max_age_hours: The max age in hours of builds to keep around.
     """
-    logging.debug('Pruning %s down to %s builds', build_dir, keep_builds)
+    logging.debug('Pruning %s down to builds older than %d hours ago.',
+                  build_dir, max_age_hours)
     build_dict = {}
     # Create a dict that is of the format:
     # build_dict[milestone][build_name] = build_path
@@ -86,10 +113,10 @@ def prune_builds(build_dir, keep_builds):
         build_dict.setdefault(milestone, {})[os.path.basename(entry)] = entry
 
     for milestone in build_dict:
-       sorted_keys = sort_builds(build_dict[milestone].keys())
-       for entry in sorted_keys[keep_builds:]:
-         logging.debug('Deleting %s', build_dict[milestone][entry])
-         shutil.rmtree(build_dict[milestone][entry])
+        for (entry, path) in build_dict[milestone].items():
+            if file_is_too_old(path, max_age_hours):
+                logging.debug('Deleting %s', path)
+                shutil.rmtree(path)
 
 
 def delete_labels_of_unstaged_builds(build_dir):
@@ -114,13 +141,13 @@ def delete_labels_of_unstaged_builds(build_dir):
             rpc_interface.delete_label(label['id'])
 
 
-def prune_builds_and_labels(builds_dir, keep_builds, keep_paladin_builds):
+def prune_builds_and_labels(builds_dir, keep_duration, keep_paladin_duration):
     """Prune the build dirs and also delete old labels.
 
     @param builds_dir: The builds dir where all builds are staged.
       on the chromeos-devserver this is ~chromeos-test/images/
-    @param keep_builds: How many regular builds to keep around.
-    @param keep_paladin_builds: How many Paladin builds to keep around.
+    @param keep_duration: How old of regular builds to keep around.
+    @param keep_paladin_duration: How old of Paladin builds to keep around.
     """
     if not os.path.exists(builds_dir):
         logging.error('Builds dir %s does not exist', builds_dir)
@@ -129,21 +156,20 @@ def prune_builds_and_labels(builds_dir, keep_builds, keep_paladin_builds):
     for build_dir in glob.glob(builds_dir + '/*'):
         logging.debug('Processing %s', build_dir)
         if build_dir.endswith('-paladin'):
-            keep = keep_paladin_builds
+            keep = keep_paladin_duration
         else:
-            keep = keep_builds
+            keep = keep_duration
 
         prune_builds(build_dir, keep)
         delete_labels_of_unstaged_builds(build_dir)
 
-
 def main():
     usage = 'usage: %prog [options] images_dir'
     parser = optparse.OptionParser(usage=usage)
-    parser.add_option('-k', '--keep-builds', default=10, type=int,
-                      help='Number of builds to keep default: %default')
-    parser.add_option('-r', '--keep-paladin-builds', default=5, type=int,
-                      help='Number of paladin builds to keep default: %default')
+    parser.add_option('-a', '--max-age', default=24, type=int,
+                      help='Number of hours to keep normal builds: %default')
+    parser.add_option('-p', '--max-paladin-age', default=24, type=int,
+                      help='Number of hours to keep paladin builds: %default')
     parser.add_option('-v', '--verbose',
                       dest='verbose', action='store_true', default=False,
                       help='Run in verbose mode')
@@ -157,8 +183,8 @@ def main():
     else:
         logging.getLogger().setLevel(logging.INFO)
 
-    prune_builds_and_labels(args[0], options.keep_builds,
-                            options.keep_paladin_builds)
+    prune_builds_and_labels(args[0], options.max_age,
+                            options.max_paladin_age)
 
 
 if __name__ == '__main__':
