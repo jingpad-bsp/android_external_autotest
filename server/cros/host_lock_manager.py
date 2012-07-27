@@ -64,17 +64,13 @@ class HostLockManager(object):
 
     def lock(self):
         """Lock all DUTs in self._hosts."""
-        logging.debug('Would lock %r', self._hosts)
-        # TODO(cmasone): re-enable this when http://crosbug.com/32907 is fixed.
-        # self._host_modifier(locked=True)
+        self._host_modifier(locked=True)
         self._hosts_are_locked = True
 
 
     def unlock(self):
         """Unlock all DUTs in self._hosts."""
-        logging.debug('Would unlock %r', self._hosts)
-        # TODO(cmasone): re-enable this when http://crosbug.com/32907 is fixed.
-        # self._host_modifier(locked=False)
+        self._host_modifier(locked=False)
         self._hosts_are_locked = False
 
 

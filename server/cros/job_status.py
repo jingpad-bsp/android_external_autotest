@@ -96,7 +96,6 @@ def wait_for_and_lock_job_hosts(afe, jobs, manager,
         if hosts_to_check:
             running_hosts = afe.get_hosts(hosts_to_check, status='Running')
             hostnames = [h.hostname for h in running_hosts]
-            logging.debug('Discovered %r hosts in Running state.', hostnames)
             if set(hostnames) - locked_hosts != set():
                 # New hosts to lock!
                 manager.add(hostnames)
