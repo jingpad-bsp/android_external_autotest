@@ -15,14 +15,14 @@ TEST_TYPE = "server"
 DOC = """
 This test requires a USB disk plugged-in, which contains a Chrome OS test
 image (built by "build_image --test"). On runtime, this test triggers
-four firmware screens (developer, remove, insert, and yuck screens), and
-then presses the power button in order to power the machine down.
+firmware screens (developer, remove, insert, yuck, and to_norm screens),
+and then presses the power button in order to power the machine down.
 """
 
 def run_fwscreenpresspower(machine):
     host = hosts.create_host(machine)
     job.run_test("firmware_FwScreenPressPower", host=host, cmdline_args=args,
                  use_faft=True, disable_sysinfo=True,
-                 dev_mode=False, tag="normal")
+                 dev_mode=True, tag="dev")
 
 parallel_simple(run_fwscreenpresspower, machines)
