@@ -707,6 +707,12 @@ class FAFTSequence(ServoTest):
         self.servo.lid_close()
 
 
+    def wait_longer_fw_screen_and_close_lid(self):
+        """Wait for firmware screen without timeout and close lid."""
+        time.sleep(self.FIRMWARE_SCREEN_DELAY)
+        self.wait_fw_screen_and_close_lid()
+
+
     def setup_tried_fwb(self, tried_fwb):
         """Setup for fw B tried state.
 
