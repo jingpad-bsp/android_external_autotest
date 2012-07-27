@@ -68,7 +68,7 @@ class factory_KeyboardBacklight(test.test):
             return
         self._current_subtest = self._subtest_queue.pop()
         name = self._current_subtest
-        self._status_map[name] = ful.ACTIVE
+        self.update_status(name, ful.ACTIVE)
         if name == "Light up":
                 result = utils.system_output('ectool pwmsetkblight 100')
         else:
@@ -92,21 +92,22 @@ class factory_KeyboardBacklight(test.test):
                 self.kblight_subtest_widget(name)
             return True
         if event.keyval == gtk.keysyms.Tab:
-            self._status_map[name] = ful.FAILED
+            self.update_status(name, ful.FAILED)
             self.cleanup_subtest()
         elif event.keyval == gtk.keysyms.Return:
-            self._status_map[name] = ful.PASSED
+            self.update_status(name, ful.PASSED)
             self.cleanup_subtest()
         elif event.keyval == ord('Q'):
             gtk.main_quit()
         self._test_widget.queue_draw()
         return True
 
-    def label_status_expose(self, widget, event, label=None, name=None):
-        status = self._status_map[name]
-        if label:
-            label.set_text(status)
-            label.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
+    def update_status(self, name, status):
+        self._status_map[name] = status
+        self._label_status[name].set_text(status)
+        self._label_status[name].modify_fg(gtk.STATE_NORMAL,
+                                           ful.LABEL_COLORS[status])
+        self._label_status[name].queue_draw()
 
     def make_subtest_label_box(self, name):
         eb = gtk.EventBox()
@@ -114,7 +115,7 @@ class factory_KeyboardBacklight(test.test):
         label_status = ful.make_label(ful.UNTESTED, size=_LABEL_STATUS_SIZE,
                                       alignment=(0, 0.5),
                                       fg=ful.LABEL_COLORS[ful.UNTESTED])
-        eb.connect('expose_event', self.label_status_expose, label_status, name)
+        self._label_status[name] = label_status
         label_en = ful.make_label(name, alignment=(1,0.5))
         label_sep = ful.make_label(' : ', alignment=(0.5, 0.5))
         hbox = gtk.HBox()
@@ -134,6 +135,7 @@ class factory_KeyboardBacklight(test.test):
 
         self._subtest_queue = [x for x in reversed(_SUBTEST_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n in _SUBTEST_LIST)
+        self._label_status = dict()
 
         prompt_label = ful.make_label(_LABEL_START_STR, alignment=(0.5, 0.5))
 
