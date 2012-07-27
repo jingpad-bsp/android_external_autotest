@@ -77,7 +77,7 @@ class factory_ExtDisplay(test.test):
             return
         self._current_subtest = self._subtest_queue.pop()
         name, cfg = self._current_subtest
-        self._status_map[name] = ful.ACTIVE
+        self.update_status(name, ful.ACTIVE)
 
     def start_subtest(self):
         subtest_name, subtest_cfg = self._current_subtest
@@ -137,13 +137,13 @@ class factory_ExtDisplay(test.test):
         subtest_name, subtest_cfg = self._current_subtest
         if event.keyval == gtk.keysyms.Tab and \
                 self._status_map[subtest_name] is ful.ACTIVE:
-            self._status_map[subtest_name] = ful.FAILED
+            self.update_status(subtest_name, ful.FAILED)
             self.finish_subtest()
             self.goto_next_subtest()
         elif event.keyval == gtk.keysyms.Return and \
                 self._status_map[subtest_name] is ful.ACTIVE and \
                 'cond' not in subtest_cfg:
-            self._status_map[subtest_name] = ful.PASSED
+            self.update_status(subtest_name, ful.PASSED)
             self.finish_subtest()
             self.goto_next_subtest()
         elif event.keyval == ord('Q'):
@@ -163,17 +163,19 @@ class factory_ExtDisplay(test.test):
         cond = subtest_cfg['cond']
         exit_code = utils.system(command=cond, ignore_status=True)
         if exit_code == 0:
-            self._status_map[subtest_name] = ful.PASSED
+            self.update_status(subtest_name, ful.PASSED)
             self.finish_subtest()
             self.goto_next_subtest()
             self._test_widget.queue_draw()
             return False
         return True
 
-    def label_status_expose(self, widget, event, name=None):
-        status = self._status_map[name]
-        widget.set_text(status)
-        widget.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
+    def update_status(self, name, status):
+        self._status_map[name] = status
+        self._label_status[name].set_text(status)
+        self._label_status[name].modify_fg(gtk.STATE_NORMAL,
+                                           ful.LABEL_COLORS[status])
+        self._label_status[name].queue_draw()
 
     def make_subtest_label_box(self, name):
         eb = gtk.EventBox()
@@ -181,8 +183,7 @@ class factory_ExtDisplay(test.test):
         label_status = ful.make_label(ful.UNTESTED, size=_LABEL_STATUS_SIZE,
                                   alignment=(0, 0.5),
                                       fg=ful.LABEL_COLORS[ful.UNTESTED])
-        expose_cb = lambda *x: self.label_status_expose(*x, **{'name':name})
-        label_status.connect('expose_event', expose_cb)
+        self._label_status[name] = label_status
         label_en = ful.make_label(name, alignment=(1,0.5))
         label_sep = ful.make_label(' : ', alignment=(0.5, 0.5))
         hbox = gtk.HBox()
@@ -232,6 +233,7 @@ class factory_ExtDisplay(test.test):
 
         self._subtest_queue = [x for x in reversed(_SUBTEST_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n, c in _SUBTEST_LIST)
+        self._label_status = dict()
 
 
         if has_audio:
