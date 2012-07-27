@@ -128,10 +128,10 @@ class security_OpenFDs(test.test):
                   ]
         passes.append(self.check_process('chrome', 'type=plugin', filters))
 
-        filters.extend([r'0700 /dev/shm/.com.google.Chrome.*',
+        filters.extend([r'0700 /dev/shm/..*',
                         r'0500 /opt/google/chrome/chrome.pak',
                         r'0500 /opt/google/chrome/locales/en-US.pak',
-                        r'0500 /opt/google/chrome/theme_resources_standard.pak',
+                        r'0500 /opt/google/chrome/theme.*.pak',
                         r'0500 /opt/google/chrome/ui_resources_.*.pak',
                        ])
         passes.append(self.check_process('chrome', 'type=renderer', filters))
