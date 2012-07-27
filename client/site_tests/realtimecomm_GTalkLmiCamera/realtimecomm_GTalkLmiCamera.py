@@ -22,9 +22,9 @@ class realtimecomm_GTalkLmiCamera(test.test):
         result = utils.system_output(test_cmd)
 
         # Get average frame per second.
-        fps = re.search("with fps\:(\d+) requested", result, re.M);
+        fps = re.search("with fps\: ([0-9.]+) requested", result, re.M);
         if fps and fps.group(1):
-            self.camera_measurement['fps'] = int(fps.group(1))
+            self.camera_measurement['fps'] = float(fps.group(1))
         else:
             raise error.TestFail("No fps. Camtool output: %s" % result)
 
