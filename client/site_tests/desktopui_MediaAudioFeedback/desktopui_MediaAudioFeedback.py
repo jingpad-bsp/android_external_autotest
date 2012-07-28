@@ -35,12 +35,16 @@ _DEFAULT_MIXER_SETTINGS = [{'name': _CONTROL_MASTER, 'value': "100%"},
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_RECORD_DURATION = 10
 # Minimum RMS value to consider a "pass".
-_DEFAULT_SOX_RMS_THRESHOLD = 0.20
+_DEFAULT_SOX_RMS_THRESHOLD = 0.45
 _DEFAULT_VOLUME_LEVEL = 100
 _DEFAULT_CAPTURE_GAIN = 2500
 
 # Media formats to test.
-_MEDIA_FORMATS = ['BBB.mp3', 'BBB.mp4', 'BBB_mulaw.wav', 'BBB.ogv', 'BBB.webm']
+_MEDIA_FORMATS = ['sine440.mp3',
+                  'sine440.mp4',
+                  'sine440.wav',
+                  'sine440.ogv',
+                  'sine440.webm']
 
 
 class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
