@@ -38,7 +38,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
             self._NAME)
         self.dev_server = self.mox.CreateMock(dev_server.DevServer)
         self.mox.StubOutWithMock(dev_server.DevServer, 'create')
-        dev_server.DevServer.create().AndReturn(self.dev_server)
+        dev_server.DevServer.create().MultipleTimes().AndReturn(self.dev_server)
 
 
     def _mockDevServerGetter(self):
@@ -115,6 +115,25 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
                           self._BOARD,
                           self._BUILD,
                           None)
+
+
+    def testBadNumArgument(self):
+        """Ensure we handle bad values for the |num| argument."""
+        self.mox.ResetAll()
+        self.assertRaises(error.SuiteArgumentException,
+                          site_rpc_interface.create_suite_job,
+                          self._NAME,
+                          self._BOARD,
+                          self._BUILD,
+                          None,
+                          num='goo')
+        self.assertRaises(error.SuiteArgumentException,
+                          site_rpc_interface.create_suite_job,
+                          self._NAME,
+                          self._BOARD,
+                          self._BUILD,
+                          None,
+                          num=[])
 
 
     def testCreateSuiteJobFail(self):

@@ -72,7 +72,8 @@ def get_control_file_contents_by_name(build, board, ds, suite_name):
     return control_file_in
 
 
-def create_suite_job(suite_name, board, build, pool, check_hosts=True):
+def create_suite_job(suite_name, board, build, pool, check_hosts=True,
+                     num=None):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -85,6 +86,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     @param pool: Specify the pool of machines to use for scheduling
             purposes.
     @param check_hosts: require appropriate live hosts to exist in the lab.
+    @param num: Specify the number of machines to schedule across.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
     @raises NoControlFileList: if we can't list the control files at all.
@@ -96,6 +98,16 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
     """
     # All suite names are assumed under test_suites/control.XX.
     suite_name = canonicalize_suite_name(suite_name)
+    try:
+        if num is None:  # Yes, specifically None
+            numeric_num = None
+        elif num == '0':
+            logging.warning("Can't run on 0 hosts; using default.")
+            numeric_num = None
+        else:
+            numeric_num = int(num)
+    except (ValueError, TypeError) as e:
+        raise error.SuiteArgumentException('Ill-specified num argument: %s' % e)
 
     timings = {}
     # Ensure components of |build| necessary for installing images are staged
@@ -112,11 +124,14 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True):
 
     control_file_in = get_control_file_contents_by_name(build, board, ds,
                                                         suite_name)
+
+
     # prepend build and board to the control file
     inject_dict = {'board': board,
                    'build': build,
                    'check_hosts': check_hosts,
-                   'pool': pool}
+                   'pool': pool,
+                   'num': numeric_num}
     control_file = dynamic_suite.inject_vars(inject_dict, control_file_in)
 
     return _rpc_utils().create_job_common('%s-%s' % (build, suite_name),

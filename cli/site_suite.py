@@ -55,6 +55,9 @@ class site_suite_create(action_common.atest_create, site_suite):
                                     'run this suite. Default False.',
                                action='store_true',
                                metavar='CHECK_HOSTS')
+        self.parser.add_option('-n', '--num',
+                               help='Number of machines to schedule across.',
+                               metavar='NUM')
         self.parser.add_option('-p', '--pool', help='Pool of machines to use.',
                                metavar='POOL')
 
@@ -66,6 +69,8 @@ class site_suite_create(action_common.atest_create, site_suite):
                                                   inline_option='build')
         pool_info = topic_common.item_parse_info(attribute_name='pool',
                                                  inline_option='pool')
+        num_info = topic_common.item_parse_info(attribute_name='num',
+                                                inline_option='num')
         check_info = topic_common.item_parse_info(attribute_name='check_hosts',
                                                   inline_option='check_hosts')
         suite_info = topic_common.item_parse_info(attribute_name='name',
@@ -73,7 +78,8 @@ class site_suite_create(action_common.atest_create, site_suite):
 
         options, leftover = site_suite.parse(
             self,
-            [suite_info, board_info, build_info, pool_info, check_info],
+            [suite_info, board_info, build_info, pool_info, num_info,
+             check_info],
             req_items='name')
         self.data = {}
         name = getattr(self, 'name')
@@ -82,6 +88,7 @@ class site_suite_create(action_common.atest_create, site_suite):
                                 'to receive suite name: %s' % name)
         self.data['suite_name'] = name[0]
         self.data['pool'] = options.pool  # None is OK.
+        self.data['num'] = options.num  # None is OK.
         self.data['check_hosts'] = options.check_hosts
         if options.board:
             self.data['board'] = options.board
