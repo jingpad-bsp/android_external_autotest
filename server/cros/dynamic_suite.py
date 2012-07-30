@@ -277,6 +277,7 @@ def reimage_and_run(**dargs):
                                         debug=False)
     manager = host_lock_manager.HostLockManager(afe=afe)
     reimager = Reimager(job.autodir, afe, tko, results_dir=job.resultdir)
+
     try:
         if skip_reimage or reimager.attempt(build, board, pool,
                                             job.record_entry, check_hosts,
@@ -365,12 +366,6 @@ def _image_url_pattern():
 
 def _package_url_pattern():
     return CONFIG.get_config_value('CROS', 'package_url_pattern', type=str)
-
-
-def get_package_url(build):
-    """Returns the package url for the given build."""
-    devserver_url = dev_server.DevServer.devserver_url_for_build(build)
-    return _package_url_pattern() % (devserver_url, build)
 
 
 def skip_reimage(g):
@@ -498,7 +493,7 @@ class Reimager(object):
         return job_status.gather_per_host_results(self._afe,
                                                   self._tko,
                                                   [canary_job],
-                                                  REIMAGE_JOB_NAME + '-')
+                                                  REIMAGE_JOB_NAME+'-')
 
 
     def _ensure_enough_hosts(self, board, pool, num):
@@ -606,10 +601,8 @@ class Reimager(object):
         @param num_machines: how many devices to reimage.
         @return a frontend.Job object for the reimaging job we scheduled.
         """
-        image_url = _image_url_pattern() % (
-            dev_server.DevServer.devserver_url_for_build(build), build)
         control_file = inject_vars(
-            dict(image_url=image_url, image_name=build),
+            {'image_url': _image_url_pattern() % build, 'image_name': build},
             self._cf_getter.get_control_file_contents_by_name('autoupdate'))
         job_deps = []
         if pool:

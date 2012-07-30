@@ -78,15 +78,10 @@ class DevServerException(Exception):
     pass
 
 
-
-# TODO(sosa): Make this class use sub-classes of a common Server class rather
-# than if/else cases with crash server/devserver.
 class DevServer(object):
     """Helper class for interacting with the Dev Server via http."""
 
-
     _CRASH_SERVER_RPC_CALLS = set(['stage_debug', 'symbolicate_dump'])
-
 
     def __init__(self, dev_host=None, crash_host=None):
         """Constructor.
@@ -105,35 +100,13 @@ class DevServer(object):
         else:
             self._crash_servers = _get_crash_server_list()
 
-
     @staticmethod
     def create(dev_host=None, crash_host=None):
         """Wraps the constructor.  Purely for mocking purposes."""
         return DevServer(dev_host, crash_host)
 
 
-    @staticmethod
-    def _server_for_hashing_value(servers, hashing_value):
-        """Returns the server in servers to use for the given hashing_value.
-        Args:
-        @param servers: List of servers
-        @param hashing_value: The value that determines which server to use.
-        """
-        return servers[hash(hashing_value) % len(servers)]
-
-
-    @classmethod
-    def devserver_url_for_build(cls, build):
-        """Returns the devserver url which contains the build.
-
-        Args:
-        @param build:  The build name i.e. builder/version that is being tested.
-        """
-        return cls._server_for_hashing_value(_get_dev_server_list(), build)
-
-
     def _servers_for(self, method):
-        """Return the list of servers to use for the given method."""
         if method in DevServer._CRASH_SERVER_RPC_CALLS:
             return self._crash_servers
         else:
@@ -156,12 +129,11 @@ class DevServer(object):
         # value to give us an index of the devserver to use.  The hashing value
         # must be the same for RPC's that should go to the same devserver.
         server_pool = self._servers_for(method)
-        server = self._server_for_hashing_value(server_pool, hashing_value)
+        devserver = server_pool[hash(hashing_value) % len(server_pool)]
         argstr = '&'.join(map(lambda x: "%s=%s" % x, kwargs.iteritems()))
-        return "%(host)s/%(method)s?%(args)s" % {'host': server,
+        return "%(host)s/%(method)s?%(args)s" % {'host': devserver,
                                                  'method': method,
                                                  'args': argstr}
-
 
     def _build_all_calls(self, method, **kwargs):
         """Builds a list of URLs that makes RPC calls on all devservers.

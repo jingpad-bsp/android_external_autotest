@@ -16,7 +16,6 @@ import unittest
 
 from autotest_lib.client.common_lib import base_job, control_data, error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros import control_file_getter, dynamic_suite
 from autotest_lib.server.cros import host_lock_manager, job_status
@@ -90,7 +89,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
 
     def testVetRequiredReimageAndRunArgs(self):
         """Should verify only that required args are present and correct."""
-        build, board, name, job, _, _, _, _, _ = \
+        build, board, name, job, _, _, _, _,_ = \
             dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
         self.assertEquals(build, self._DARGS['build'])
         self.assertEquals(board, self._DARGS['board'])
@@ -166,8 +165,7 @@ class ReimagerTest(mox.MoxTestBase):
     @var _BOARD: fake board to reimage
     """
 
-    _DEVSERVER_URL = 'http://nothing:8082'
-    _URL = '%s/%s'
+    _URL = 'http://nothing/%s'
     _BUILD = 'build'
     _NUM = 4
     _BOARD = 'board'
@@ -234,12 +232,12 @@ class ReimagerTest(mox.MoxTestBase):
         """Should inject dict of varibles into provided strings."""
         def find_all_in(d, s):
             """Returns true if all key-value pairs in |d| are printed in |s|."""
-            for k, v in d.iteritems():
+            for k,v in d.iteritems():
                 if isinstance(v, str):
-                    if "%s='%s'\n" % (k, v) not in s:
+                    if "%s='%s'\n" % (k,v) not in s:
                         return False
                 else:
-                    if "%s=%r\n" % (k, v) not in s:
+                    if "%s=%r\n" % (k,v) not in s:
                         return False
             return True
 
@@ -254,17 +252,13 @@ class ReimagerTest(mox.MoxTestBase):
         cf_getter = self.mox.CreateMock(control_file_getter.ControlFileGetter)
         cf_getter.get_control_file_contents_by_name('autoupdate').AndReturn('')
         self.reimager._cf_getter = cf_getter
-        self._CONFIG.override_config_value('CROS',
-                                           'dev_server',
-                                           self._DEVSERVER_URL)
+
         self._CONFIG.override_config_value('CROS',
                                            'image_url_pattern',
                                            self._URL)
         self.afe.create_job(
-            control_file=mox.And(
-                mox.StrContains(self._BUILD),
-                mox.StrContains(self._URL % (self._DEVSERVER_URL,
-                                             self._BUILD))),
+            control_file=mox.And(mox.StrContains(self._BUILD),
+                                 mox.StrContains(self._URL % self._BUILD)),
             name=mox.StrContains(self._BUILD),
             control_type='Server',
             meta_hosts=[self._BOARD] * self._NUM,
@@ -274,18 +268,6 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._schedule_reimage_job(self._BUILD, self._BOARD, None,
                                             self._NUM)
 
-    def testPackageUrl(self):
-        """Should be able to get the package_url for any build."""
-        self._CONFIG.override_config_value('CROS',
-                                           'dev_server',
-                                           self._DEVSERVER_URL)
-        self._CONFIG.override_config_value('CROS',
-                                           'package_url_pattern',
-                                           self._URL)
-        self.mox.ReplayAll()
-        package_url = dynamic_suite.get_package_url(self._BUILD)
-        self.assertEqual(package_url, self._URL % (self._DEVSERVER_URL,
-                                                   self._BUILD))
 
     def expect_attempt(self, canary_job, statuses, ex=None, check_hosts=True):
         """Sets up |self.reimager| to expect an attempt() that returns |success|
@@ -311,6 +293,7 @@ class ReimagerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(job_status, 'gather_per_host_results')
         self.mox.StubOutWithMock(job_status, 'record_and_report_results')
 
+
         self.reimager._ensure_version_label(mox.StrContains(self._BUILD))
         self.reimager._schedule_reimage_job(self._BUILD,
                                             self._BOARD,
@@ -335,7 +318,7 @@ class ReimagerTest(mox.MoxTestBase):
                             statuses)
 
         if statuses:
-            ret_val = reduce(lambda v, s: v and s.is_good(),
+            ret_val = reduce(lambda v,s: v and s.is_good(),
                              statuses.values(), True)
             job_status.record_and_report_results(
                 statuses.values(), mox.IgnoreArg()).AndReturn(ret_val)
