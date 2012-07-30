@@ -16,8 +16,8 @@ class firmware_ECWatchdog(FAFTSequence):
     # Delay of spin-wait in ms. Should be long enough to trigger watchdog reset.
     WATCHDOG_DELAY = 3000
 
-    # Delay of power on in ms.
-    POWER_ON_DELAY = 500
+    # Delay of EC power on.
+    EC_BOOT_DELAY = 1000
 
 
     def reboot_by_watchdog(self):
@@ -26,8 +26,8 @@ class firmware_ECWatchdog(FAFTSequence):
         """
         self.faft_client.run_shell_command("sync")
         self.send_uart_command("waitms %d" % self.WATCHDOG_DELAY)
-        time.sleep((self.WATCHDOG_DELAY + self.POWER_ON_DELAY) / 1000.0)
-        self.servo.power_short_press()
+        time.sleep((self.WATCHDOG_DELAY + self.EC_BOOT_DELAY) / 1000.0)
+        self.check_lid_and_power_on()
 
 
     def run_once(self, host=None):

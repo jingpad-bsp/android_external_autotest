@@ -101,6 +101,8 @@ class FAFTSequence(ServoTest):
     POWER_BTN_DELAY = 0.5
     # Delay between sending keystroke to firmware
     FIRMWARE_KEY_DELAY = 0.5
+    # Delay of EC software sync hash calculating time
+    SOFTWARE_SYNC_DELAY = 6
 
     # The developer screen timeouts fit our spec.
     DEV_SCREEN_TIMEOUT = 30
@@ -908,8 +910,20 @@ class FAFTSequence(ServoTest):
         time.sleep(self.SYNC_DELAY)
         self.faft_client.run_shell_command('(sleep %d; ectool reboot_ec)&' %
                                            self.EC_REBOOT_DELAY)
-        time.sleep(self.EC_REBOOT_DELAY + self.POWER_BTN_DELAY)
-        self.servo.power_normal_press()
+        time.sleep(self.EC_REBOOT_DELAY)
+        self.check_lid_and_power_on()
+
+
+    def check_lid_and_power_on(self):
+        """
+        On devices with EC software sync, system powers on after EC reboots if
+        lid is open. Otherwise, the EC shuts down CPU after about 3 seconds.
+        This method checks lid switch state and presses power button if
+        necessary.
+        """
+        if self.servo.get("lid_open") == "no":
+            time.sleep(self.SOFTWARE_SYNC_DELAY)
+            self.servo.power_short_press()
 
 
     def _modify_usb_kernel(self, usb_dev, from_magic, to_magic):
