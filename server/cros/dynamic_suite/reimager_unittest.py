@@ -223,8 +223,8 @@ class ReimagerTest(mox.MoxTestBase):
                             statuses)
 
         if statuses:
-            ret_val = reduce(lambda v, s: v and s.is_good(),
-                             statuses.values(), True)
+            ret_val = reduce(lambda v, s: v or s.is_good(),
+                             statuses.values(), False)
             job_status.record_and_report_results(
                 statuses.values(), mox.IgnoreArg()).AndReturn(ret_val)
 
@@ -238,6 +238,26 @@ class ReimagerTest(mox.MoxTestBase):
 
         rjob = self.mox.CreateMock(base_job.base_job)
         self.reimager._clear_build_state(mox.StrContains(canary.hostnames[0]))
+        self.mox.ReplayAll()
+        self.assertTrue(self.reimager.attempt(self._BUILD, self._BOARD, None,
+                                              rjob.record_entry, True,
+                                              self.manager))
+        self.reimager.clear_reimaged_host_state(self._BUILD)
+
+
+    def testPartialReimage(self):
+        """Should attempt a reimage with failing hosts and record success."""
+        canary = FakeJob(hostnames=['host1', 'host2'])
+        statuses = {
+            canary.hostnames[0]: job_status.Status('FAIL', canary.hostnames[0]),
+            canary.hostnames[1]: job_status.Status('GOOD', canary.hostnames[1]),
+        }
+        self.expect_attempt(canary, statuses)
+
+        rjob = self.mox.CreateMock(base_job.base_job)
+        comparator = mox.Or(mox.StrContains('host1'), mox.StrContains('host2'))
+        self.reimager._clear_build_state(comparator)
+        self.reimager._clear_build_state(comparator)
         self.mox.ReplayAll()
         self.assertTrue(self.reimager.attempt(self._BUILD, self._BOARD, None,
                                               rjob.record_entry, True,

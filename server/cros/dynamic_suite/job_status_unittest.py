@@ -330,3 +330,42 @@ class StatusTest(mox.MoxTestBase):
                                                      jobs).values()
         for status in [jobs[0].statuses[1]] + [j.statuses[0] for j in jobs[1:]]:
             self.assertTrue(True in map(status.equals_hostname_record, results))
+
+
+    def _prepareForReporting(self, results):
+        def callable(x):
+            pass
+
+        record_entity = self.mox.CreateMock(callable)
+
+        statuses = []
+        for result in results:
+            status = self.mox.CreateMock(FakeStatus)
+            status.record_all(record_entity)
+            status.is_good().AndReturn(result)
+            if not result:
+                status.name().AndReturn('test')
+            statuses.append(status)
+
+        return (statuses, record_entity)
+
+
+    def testRecordAndReportGoodResults(self):
+        (statuses, record_entity) = self._prepareForReporting([True, True])
+        self.mox.ReplayAll()
+        success = job_status.record_and_report_results(statuses, record_entity)
+        self.assertTrue(success)
+
+
+    def testRecordAndReportOkayResults(self):
+        (statuses, record_entity) = self._prepareForReporting([False, True])
+        self.mox.ReplayAll()
+        success = job_status.record_and_report_results(statuses, record_entity)
+        self.assertTrue(success)
+
+
+    def testRecordAndReportBadResults(self):
+        (statuses, record_entity) = self._prepareForReporting([False, False])
+        self.mox.ReplayAll()
+        success = job_status.record_and_report_results(statuses, record_entity)
+        self.assertFalse(success)

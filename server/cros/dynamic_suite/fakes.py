@@ -89,3 +89,14 @@ class FakeStatus(object):
         return (self.status == status._status and
                 self.hostname in status._test_name and
                 self.reason == status._reason)
+
+
+    def record_all(self, record):
+        pass
+
+
+    def is_good(self):
+        pass
+
+    def name(self):
+        return self.test_name

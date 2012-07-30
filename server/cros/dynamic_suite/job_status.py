@@ -221,19 +221,26 @@ def gather_per_host_results(afe, tko, jobs, name_prefix=''):
 
 def record_and_report_results(statuses, record_entry):
     """
-    Record all Statuses in |statuses| and return True if all were GOOD.
+    Record all Statuses in |statuses| and return True if at least one was GOOD.
 
     @param statuses: iterable of Status objects.
     @param record_entry: a callable to use for logging.
                prototype:
                    record_entry(base_job.status_log_entry)
-    @return True if all Statuses are good.
+    @return True if at least one of the Statuses are good.
     """
-    all_good = True
+    some_good = False
+    failures = []
     for status in statuses:
         status.record_all(record_entry)
-        all_good = all_good and status.is_good()
-    return all_good
+        success = status.is_good()
+        some_good = some_good or success
+        if not success:
+            failures.append(status.name())
+    if failures:
+        logging.warn("Some machines failed to reimage: %s." %
+                     ', '.join(failures))
+    return some_good
 
 
 class Status(object):
@@ -372,3 +379,7 @@ class Status(object):
         self.record_start(record_entry)
         self.record_result(record_entry)
         self.record_end(record_entry)
+
+
+    def name(self):
+        return self._test_name
