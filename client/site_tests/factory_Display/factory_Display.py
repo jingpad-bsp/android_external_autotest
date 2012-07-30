@@ -149,7 +149,7 @@ class factory_Display(test.test):
             return
         self._current_pattern = self._pattern_queue.pop()
         name, cb_fn = self._current_pattern
-        self._status_map[name] = ful.ACTIVE
+        self.update_status(name, ful.ACTIVE)
         self._current_pattern_shown = False
 
     def key_press_callback(self, widget, event):
@@ -165,28 +165,29 @@ class factory_Display(test.test):
             self._fs_window = None
             self._current_pattern_shown = True
         elif event.keyval == gtk.keysyms.Tab and self._current_pattern_shown:
-            self._status_map[pattern_name] = ful.FAILED
+            self.update_status(pattern_name, ful.FAILED)
             self.goto_next_pattern()
         elif event.keyval == gtk.keysyms.Return and self._current_pattern_shown:
-            self._status_map[pattern_name] = ful.PASSED
+            self.update_status(pattern_name, ful.PASSED)
             self.goto_next_pattern()
         elif event.keyval == ord('Q'):
             gtk.main_quit()
         self._test_widget.queue_draw()
         return True
 
-    def label_status_expose(self, widget, event, name=None):
-        status = self._status_map[name]
-        widget.set_text(status)
-        widget.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
+    def update_status(self, name, status):
+        self._status_map[name] = status
+        self._label_status[name].set_text(status)
+        self._label_status[name].modify_fg(gtk.STATE_NORMAL,
+                                           ful.LABEL_COLORS[status])
+        self._label_status[name].queue_draw()
 
     def make_pattern_label_box(self, name):
 
         label_status = ful.make_label(
             ful.UNTESTED, size=_LABEL_SIZE,
             alignment=(0, 0.5), fg=_LABEL_UNTESTED_FG)
-        expose_cb = lambda *x: self.label_status_expose(*x, **{'name':name})
-        label_status.connect('expose_event', expose_cb)
+        self._label_status[name] = label_status
 
         label_en = ful.make_label(name, size=_LABEL_SIZE, alignment=(1, 0.5))
         label_sep = ful.make_label(' : ', alignment=(0.5, 0.5))
@@ -213,6 +214,7 @@ class factory_Display(test.test):
 
         self._pattern_queue = [x for x in reversed(_PATTERN_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n, f in _PATTERN_LIST)
+        self._label_status = dict()
 
         self._prompt_label = ful.make_label(_MESSAGE_STR, alignment=(0.5, 0.5))
 

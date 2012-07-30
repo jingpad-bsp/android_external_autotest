@@ -128,7 +128,7 @@ class factory_LightSensor(test.test):
             gtk.main_quit()
             return False
         self._active_subtest = self._subtest_list[self._tested]
-        self._status_map[self._active_subtest] = ful.ACTIVE
+        self.update_status(self._active_subtest, ful.ACTIVE)
         self._status_label[self._active_subtest].queue_draw()
         self._deadline = time.time() + self._timeout_per_subtest
         self._current_iter_remained = self._iter_req_per_subtest
@@ -138,7 +138,7 @@ class factory_LightSensor(test.test):
     def timer_event(self, countdown_label):
         time_remaining = max(0, self._deadline - time.time())
         if time_remaining is 0:
-            self._status_map[self._active_subtest] = ful.FAILED
+            self.update_status(self._active_subtest, ful.FAILED)
             self._status_label[self._active_subtest].queue_draw()
             factory.log('Timeout on subtest "%s"' % self._active_subtest)
             if not self.next_subtest():
@@ -155,7 +155,7 @@ class factory_LightSensor(test.test):
         if event.keyval == ord(' ') and not self._started:
             self._started = True
             self._active_subtest = self._subtest_list[0]
-            self._status_map[self._active_subtest] = ful.ACTIVE
+            self.update_status(self._active_subtest, ful.ACTIVE)
             self._status_label[self._active_subtest].queue_draw()
             self._deadline = time.time() + self._timeout_per_subtest
             gobject.timeout_add(1000, self.timer_event, self._countdown_label)
@@ -165,7 +165,7 @@ class factory_LightSensor(test.test):
     def pass_one_iter(self, name):
         self._current_iter_remained -= 1
         if self._current_iter_remained is 0:
-            self._status_map[name] = ful.PASSED
+            self.update_status(name, ful.PASSED)
             self._status_label[name].queue_draw()
             self._current_iter_remained = self._iter_req_per_subtest
             mean_val = self._cumulative_val / self._iter_req_per_subtest
@@ -210,11 +210,12 @@ class factory_LightSensor(test.test):
         sensor_value.queue_draw()
         return True
 
-    def label_status_expose(self, widget, event, name):
-        status = self._status_map[name]
-        widget.set_text(status)
-        widget.modify_fg(gtk.STATE_NORMAL, ful.LABEL_COLORS[status])
-        return False
+    def update_status(self, name, status):
+        self._status_map[name] = status
+        self._label_status[name].set_text(status)
+        self._label_status[name].modify_fg(gtk.STATE_NORMAL,
+                                           ful.LABEL_COLORS[status])
+        self._label_status[name].queue_draw()
 
     def calc_cfg_description(self, cfg):
         if 'above' in cfg:
@@ -232,7 +233,7 @@ class factory_LightSensor(test.test):
         label_status = ful.make_label(ful.UNTESTED, size=_LABEL_STATUS_SIZE,
                                       alignment=(0, 0.5),
                                       fg=ful.LABEL_COLORS[ful.UNTESTED])
-        label_status.connect('expose_event', self.label_status_expose, name)
+        self._label_status[name] = label_status
         label_desc = ful.make_label(self._subtest_instruction[name],
                                     alignment=(0.5, 0.5), fg=ful.WHITE)
         cfg_desc = self.calc_cfg_description(self._subtest_cfg[name])
@@ -292,6 +293,7 @@ class factory_LightSensor(test.test):
         self._cumulative_val = 0
 
         self._status_map = dict((n, ful.UNTESTED) for n in self._subtest_list)
+        self._label_status = dict()
         self._tested = 0
 
         self._started = False
