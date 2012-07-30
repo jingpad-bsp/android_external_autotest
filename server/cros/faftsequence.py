@@ -779,7 +779,7 @@ class FAFTSequence(ServoTest):
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         # Rebooting EC with rec mode on. Should power on AP.
         self.servo.enable_recovery_mode()
-        self.servo.cold_reset()
+        self.cold_reboot()
         self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=True)
         self.servo.disable_recovery_mode()
 
@@ -787,17 +787,7 @@ class FAFTSequence(ServoTest):
     def disable_keyboard_dev_mode(self):
         logging.info("Disabling keyboard controlled developer mode")
         self.servo.disable_recovery_mode()
-        # We don't use servo.cold_reset() here because software sync is not yet
-        # finished, and device may or may not come up after cold reset. Pressing
-        # power button before firmware comes up solves this.
-        self.servo.set('cold_reset', 'on')
-        self.servo.set('cold_reset', 'off')
-        # Rebooting EC with rec mode off. Software sync should power on AP,
-        # and then shut down AP after a while.
-        # TODO(victoryang): Figure out the proper delay period before pressing
-        #                   power button after software sync is done.
-        time.sleep(self.POWER_BTN_DELAY)
-        self.servo.power_short_press()
+        self.cold_reboot()
         self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=False)
 
 
@@ -884,6 +874,39 @@ class FAFTSequence(ServoTest):
         time.sleep(self.SYNC_DELAY)
 
 
+    def warm_reboot(self):
+        """Request a warm reboot.
+
+        This directly calls the servo warm reset.
+        """
+        self.servo.warm_reset()
+
+
+    def cold_reboot(self):
+        """Request a cold reboot.
+
+        A wrapper for underlying servo cold reset.
+        """
+        if self.check_ec_capability():
+            # We don't use servo.cold_reset() here because software sync is
+            # not yet finished, and device may or may not come up after cold
+            # reset. Pressing power button before firmware comes up solves this.
+            #
+            # The correct behavior should be (not work now):
+            #  - If rebooting EC with rec mode on, power on AP and it boots
+            #    into recovery mode.
+            #  - If rebooting EC with rec mode off, power on AP for software
+            #    sync. Then AP checks if lid open or not. If lid open, continue;
+            #    otherwise, shut AP down and need servo for a power button
+            #    press.
+            self.servo.set('cold_reset', 'on')
+            self.servo.set('cold_reset', 'off')
+            time.sleep(self.POWER_BTN_DELAY)
+            self.servo.power_short_press()
+        else:
+            self.servo.cold_reset()
+
+
     def sync_and_warm_reboot(self):
         """Request the client sync and do a warm reboot.
 
@@ -891,7 +914,7 @@ class FAFTSequence(ServoTest):
         """
         self.faft_client.run_shell_command('sync')
         time.sleep(self.SYNC_DELAY)
-        self.servo.warm_reset()
+        self.warm_reboot()
 
 
     def sync_and_cold_reboot(self):
@@ -901,7 +924,7 @@ class FAFTSequence(ServoTest):
         """
         self.faft_client.run_shell_command('sync')
         time.sleep(self.SYNC_DELAY)
-        self.servo.cold_reset()
+        self.cold_reboot()
 
 
     def sync_and_ec_reboot(self):
