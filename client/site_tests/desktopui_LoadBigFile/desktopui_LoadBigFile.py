@@ -21,7 +21,13 @@ class desktopui_LoadBigFile(cros_ui_test.UITest):
         if os.path.exists(big_file_path):
             os.remove(big_file_path)
         file_handle = open(big_file_path, 'w')
-        for i in xrange(1000000):
+        # Devices with 2GB of RAM can't load a page with a million lines within
+        # a reasonable amount of time.
+        multiplier = 1
+        chromeos_board = self.pyauto.ChromeOSBoard()
+        if chromeos_board == 'stumpy' or chromeos_board == 'lumpy':
+            multiplier = 2
+        for i in xrange(500000 * multiplier):
             file_handle.write('large amount of data that is irrelavent.\n')
         file_handle.write('End of The Project\n')
         file_handle.flush()
@@ -55,11 +61,17 @@ class desktopui_LoadBigFile(cros_ui_test.UITest):
                             self._sanity_test_url),
             timeout = 60,
             sleep_interval=1)
+        # Currently the ActionTimeoutChanger does not work.  Once it works we
+        # can increase the timeout and keep the size of the file static.
+        # See bug http://crbug.com/139926
+        # pyauto_timeout_changer = self.pyauto.ActionTimeoutChanger(
+        #     self.pyauto, 240 * 1000)
         try:
             self.pyauto.NavigateToURL(self._test_url)
         except pyauto_errors.JSONInterfaceError as e:
-            error.TestError('The big file did not load.  Error: %s' % str(e))
-
+            raise error.TestError('The big file did not load.  Error: %s' %
+                                  str(e))
+        # del pyauto_timeout_changer
         find_results = self.pyauto.FindInPage('End of The Project')
         if find_results['match_count'] != 1:
             error.TestError('Could not find text at the end of the file.  '
