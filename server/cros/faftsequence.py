@@ -737,6 +737,19 @@ class FAFTSequence(ServoTest):
                 self.run_faft_step({})
 
 
+    def enable_rec_mode_and_reboot(self):
+        """Switch to rec mode and reboot.
+
+        This method emulates the behavior of the old physical recovery switch,
+        i.e. switch ON + reboot + switch OFF, and the new keyboard controlled
+        recovery mode, i.e. just press Power + Esc + Refresh.
+        """
+        self.servo.enable_recovery_mode()
+        self.cold_reboot()
+        time.sleep(self.EC_REBOOT_DELAY)
+        self.servo.disable_recovery_mode()
+
+
     def enable_dev_mode_and_reboot(self):
         """Switch to developer mode and reboot."""
         if self.client_attr.keyboard_dev:
@@ -777,10 +790,8 @@ class FAFTSequence(ServoTest):
         # Plug out USB disk for preventing recovery boot without warning
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         # Rebooting EC with rec mode on. Should power on AP.
-        self.servo.enable_recovery_mode()
-        self.cold_reboot()
+        self.enable_rec_mode_and_reboot()
         self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=True)
-        self.servo.disable_recovery_mode()
 
 
     def disable_keyboard_dev_mode(self):
