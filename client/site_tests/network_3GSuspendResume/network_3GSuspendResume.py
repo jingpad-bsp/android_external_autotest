@@ -1,10 +1,10 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import dbus
 import logging
-from random import randint
+from random import choice, randint
 import time
 import utils
 
@@ -45,8 +45,8 @@ class network_3GSuspendResume(cros_ui_test.UITest):
     }
 
     modem_status_checks = [
-        lambda s: ('org.chromium.ModemManager' in s) or
-                  ('org.freedesktop.ModemManager' in s),
+        lambda s: ('org/chromium/ModemManager' in s) or
+                  ('org/freedesktop/ModemManager' in s),
         lambda s: ('meid' in s) or ('EquipmentIdentifier' in s),
         lambda s: 'Manufacturer' in s,
         lambda s: 'MasterDevice' in s
@@ -79,15 +79,14 @@ class network_3GSuspendResume(cros_ui_test.UITest):
                      ['off', 'on'][properties['Powered']])
         return properties['Powered']
 
-    def set_powered(self, device, state):
-        self.filterexns(lambda: device.SetProperty('Powered',
-                                                   dbus.Boolean(state)),
-                        network_3GSuspendResume.device_okerrors)
+    def enable_device(self, device, enable):
+        lambda_func = lambda: device.Enable() if enable else device.Disable()
+        self.filterexns(lambda_func, network_3GSuspendResume.device_okerrors)
         # Sometimes if we disable the modem then immediately enable the modem
         # we hit a condition where the modem seems to ignore the enable command
         # and keep the modem disabled.  This is to prevent that from happening.
         time.sleep(4)
-        return self.get_powered(device) == state
+        return self.get_powered(device) == enable
 
     def suspend_resume(self, duration=10):
         alarm_time = rtc.get_seconds() + duration
@@ -137,7 +136,7 @@ class network_3GSuspendResume(cros_ui_test.UITest):
     # 3g is enabled.
     def scenario_suspend_3g_enabled(self):
         device = self.__get_cellular_device()
-        self.set_powered(device, 1)
+        self.enable_device(device, True)
         if not self.cellular_service_available():
             raise error.TestError('Unable to find cellular service.')
         self.suspend_resume(20)
@@ -146,7 +145,7 @@ class network_3GSuspendResume(cros_ui_test.UITest):
     # 3g is disabled.
     def scenario_suspend_3g_disabled(self):
         device = self.__get_cellular_device()
-        self.set_powered(device, 0)
+        self.enable_device(device, False)
         self.suspend_resume(20)
 
         # This verifies that the device is in the same state before and after
@@ -157,7 +156,7 @@ class network_3GSuspendResume(cros_ui_test.UITest):
                                   'to Suspend/Resume.')
 
         # Turn on the device to make sure we can bring it back up.
-        self.set_powered(device, 1)
+        self.enable_device(device, True)
 
     # The suspend_3g_disabled_twice subroutine is here because
     # of bug 9405.  The test will suspend/resume the device twice
@@ -165,7 +164,7 @@ class network_3GSuspendResume(cros_ui_test.UITest):
     # thereafter.
     def scenario_suspend_3g_disabled_twice(self):
         device = self.__get_cellular_device()
-        self.set_powered(device, 0)
+        self.enable_device(device, False)
 
         for _ in [0, 1]:
             self.suspend_resume(20)
@@ -178,22 +177,22 @@ class network_3GSuspendResume(cros_ui_test.UITest):
                                       'to Suspend/Resume.')
 
         # Turn on the device to make sure we can bring it back up.
-        self.set_powered(device, 1)
+        self.enable_device(device, True)
 
     # This test randomly enables or disables the modem.  This
     # is mainly used for stress tests as it does not check the power state of
     # the modem before and after suspend/resume.
     def scenario_suspend_3g_random(self):
         device = self.__get_cellular_device()
-        self.set_powered(device, randint(0,1))
+        self.enable_device(device, choice([True, False]))
         self.suspend_resume(randint(20, 40))
         device = self.__get_cellular_device()
-        self.set_powered(device, 1)
+        self.enable_device(device, True)
 
     # This verifies that autoconnect works.
     def scenario_autoconnect(self):
         device = self.__get_cellular_device()
-        self.set_powered(device, 1)
+        self.enable_device(device, True)
         service = self.flim.FindCellularService(30)
         if not service:
             raise error.TestError('Unable to find cellular service')
@@ -263,7 +262,7 @@ class network_3GSuspendResume(cros_ui_test.UITest):
         device = self.__get_cellular_device()
 
         # Initialize all tests with the power off.
-        self.set_powered(device, 0)
+        self.enable_device(device, False)
 
         function = getattr(self, function_name)
         logging.info('Running %s' % function_name)
@@ -299,7 +298,7 @@ class network_3GSuspendResume(cros_ui_test.UITest):
         device = self.__get_cellular_device()
         if not device:
             raise error.TestFail('Cannot find cellular device.')
-        self.set_powered(device, 1)
+        self.enable_device(device, True)
 
         service = self.flim.FindCellularService(30)
         if not service:
