@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import time
+import yaml
 
 import gobject
 import gtk
@@ -14,6 +15,7 @@ import gtk
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import factory_setup_modules
+from cros.factory import event_log
 from cros.factory.test import factory
 from cros.factory.test import gooftools
 from cros.factory.test import shopfloor
@@ -178,10 +180,12 @@ class PreflightTask(task.FactoryTask):
 
 class FinalizeTask(task.FactoryTask):
 
-    def __init__(self, write_protection, secure_wipe, upload_method):
+    def __init__(self, write_protection, secure_wipe, upload_method,
+                 test_states_path):
         self.write_protection = write_protection
         self.secure_wipe = secure_wipe
         self.upload_method = upload_method
+        self.test_states_path = test_states_path
 
     def alert(self, message, times=3):
         """Alerts user that a required test is bypassed."""
@@ -219,6 +223,7 @@ class FinalizeTask(task.FactoryTask):
         if not self.secure_wipe:
             command += ' --fast'
         command += ' --upload_method "%s"' % upload_method
+        command += ' --add_file "%s"' % self.test_states_path
 
         gooftools.run(command)
 
@@ -239,7 +244,6 @@ class factory_Finalize(test.test):
                  secure_wipe=False,
                  upload_method='none',
                  test_list_path=None):
-
         factory.log('%s run_once' % self.__class__)
 
         if developer_mode is not None:
@@ -247,9 +251,21 @@ class factory_Finalize(test.test):
             factory.log('Warning: "developer_mode" param is deprecated.')
 
         test_list = factory.read_test_list(test_list_path)
+        test_states = test_list.as_dict(
+            factory.get_state_instance().get_test_states())
+
+        test_states_path = os.path.join(factory.get_log_root(),
+                                        'test_states')
+        with open(test_states_path, 'w') as f:
+            yaml.dump(test_states, f)
+
         self.tasks = [
                 PreflightTask(test_list, write_protection, polling_seconds),
-                FinalizeTask(write_protection, secure_wipe, upload_method)]
+                FinalizeTask(write_protection, secure_wipe, upload_method,
+                             test_states_path)]
+
+        event_log.EventLog.ForAutoTest().Log('test_states',
+                                             test_states=test_states)
 
         task.run_factory_tasks(self.job, self.tasks)
 
