@@ -6,8 +6,9 @@ class FAFTClientAttribute(object):
     """Class that tests platform name and gives client machine attributes."""
     version = 1
 
-    DEFAULT_SETTING = {'keyboard_dev': True,
+    DEFAULT_SETTING = {'broken_warm_reset': False,
                        'chrome_ec': False,
+                       'keyboard_dev': True,
                        'ec_capability': list()}
 
     def __init__(self, platform):
@@ -24,12 +25,15 @@ class FAFTClientAttribute(object):
         """Return platform-specific settings."""
         setting = dict()
 
-        if platform in ['Aebl', 'Alex', 'Kaen', 'Lumpy', 'Mario', 'Seaboard',
-                        'Stumpy', 'ZGB']:
-            setting['keyboard_dev'] = False
+        if platform in ['Parrot']:
+            setting['broken_warm_reset'] = True
 
         if platform in ['Link', 'Snow']:
             setting['chrome_ec'] = True
+
+        if platform in ['Aebl', 'Alex', 'Kaen', 'Lumpy', 'Mario', 'Seaboard',
+                        'Stumpy', 'ZGB']:
+            setting['keyboard_dev'] = False
 
         if platform == 'Link':
             setting['ec_capability'] = ['adc_ectemp', 'battery', 'charging',

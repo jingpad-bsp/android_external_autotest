@@ -876,9 +876,13 @@ class FAFTSequence(ServoTest):
     def warm_reboot(self):
         """Request a warm reboot.
 
-        This directly calls the servo warm reset.
+        A wrapper for underlying servo warm reset.
         """
-        self.servo.warm_reset()
+        # Use cold reset if the warm reset is broken.
+        if self.client_attr.broken_warm_reset:
+            self.servo.cold_reset()
+        else:
+            self.servo.warm_reset()
 
 
     def cold_reboot(self):
