@@ -68,11 +68,17 @@ _AUDIOFUNTEST_SUCCESS_RATE_RE = re.compile('.*rate\s=\s(.*)$')
 
 
 class factory_Connector(state_machine.FactoryStateMachine):
-    version = 6
+    version = 7
 
     def setup_tests(self):
         # Register more states for test procedure with configuration data
         # loaded from external media device (USB/SD).
+
+        # Execute board specific commands
+        if 'board_specific' in self.config:
+            self.run_cmds(self.config['board_specific'])
+
+        self.fixture_config = self.config.get('fixture_control', None)
 
         # Setup serial number input widget.
         self.sn_input_widget = self.make_serial_number_widget(
@@ -199,7 +205,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
         self.play_repeat = self.audio_config['repeat']
         self.play_tolerance = self.audio_config['tolerance']
         self.play_duration = self.audio_config['duration']
-        self.record_device = self.audio_config['input_device']
+        self.use_audiofuntest = self.audio_config['audiofuntest']
         # Prepare the status row.
         self._status_rows.append(('audio', 'Audio', False))
         self._results_to_check.append('audio')
@@ -247,7 +253,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
                 test_freq=self.play_freq,
                 tolerance=self.play_tolerance,
                 loop_duration=self.play_duration,
-                input_device=self.record_device)
+                audiofuntest=self.use_audiofuntest)
             self.log_to_file.write('On %d audio loopback, got : %s\n' % (
                 i, pprint.pformat(error_ret)))
             if len(error_ret) == 0:
@@ -323,6 +329,17 @@ class factory_Connector(state_machine.FactoryStateMachine):
         self.update_status('sn', serial_number)
         self.advance_state()
 
+    def run_cmds(self, cmd_tuples):
+        '''Executes consecutive commands.
+
+        Args:
+            cmd_tuples: a list of tuple in following format:
+                        (command, expected regular expression)
+        '''
+        for cmd_tuple in cmd_tuples:
+            cmd, expect_re = cmd_tuple
+            self.run_cmd(cmd, expect_re)
+
     def run_cmd(self, cmd, expect_result):
         '''Runs a command line and compare with expect_result.
 
@@ -346,6 +363,11 @@ class factory_Connector(state_machine.FactoryStateMachine):
 
     def write_log(self):
         self.generate_final_result()
+
+        # Executes additional commands to external fixture.
+        if self.fixture_config and 'ending' in self.fixture_config:
+            self.run_cmds(self.fixture_config['ending'])
+
         self.log_to_file.write('Result in summary:\n%s\n' %
                                pprint.pformat(self.display_dict))
         try:
@@ -363,6 +385,13 @@ class factory_Connector(state_machine.FactoryStateMachine):
                 f.write(content)
         factory.log('Log wrote with filename[ %s ].' % filename)
 
+    def prepare_for_next_test(self):
+        """Prepares for the next test cycle."""
+        if self.fixture_config and 'beginning' in self.fixture_config:
+            # Executes additional commands to external fixture.
+            self.run_cmds(self.fixture_config['beginning'])
+        self.reset_data_for_next_test()
+        self.advance_state()
 
     def reset_data_for_next_test(self):
         """Resets internal data for the next testing cycle."""
@@ -372,24 +401,24 @@ class factory_Connector(state_machine.FactoryStateMachine):
         factory.log('Data reseted.')
 
     def audio_loopback(self, test_freq=1000, loop_duration=1,
-             tolerance=100 ,input_device='hw:0,0', audiofuntest=True):
+                       tolerance=100, audiofuntest=True):
         """Tests digital mic function.
 
         Args:
             test_freq: the frequency to play and test.
             loop_duration: the duration in seconds to record.
-            input_device: the alsa device to test.
             audiofuntest: choose whether testing with audiofuntest
         Return:
             List of error messages generated during test.
         """
         self._ah = audio_helper.AudioHelper(self,
                 record_duration=loop_duration)
-        if audiofuntest :
+        if audiofuntest:
             return self.start_audiofuntest()
-        else :
-            return self.start_audioloop(self, test_freq=test_freq,
-                    tolerance=tolerance,loop_duration=loop_duration)
+        else:
+            return self.start_audioloop(
+                    test_freq=test_freq,
+                    tolerance=tolerance, loop_duration=loop_duration)
 
     def start_audiofuntest(self):
         '''
@@ -481,13 +510,12 @@ class factory_Connector(state_machine.FactoryStateMachine):
         self.prepare_panel_widget = self.make_decision_widget(
             message=_MESSAGE_PREPARE_PANEL,
             key_action_mapping={
-                gtk.keysyms.Return: (self.advance_state, [])})
+                gtk.keysyms.Return: (self.prepare_for_next_test, [])})
         # States after "prepare panel" will be configured in setup_test, after
         # configuration on external media (USB/SD) is loaded.
         self._STATE_WAIT_USB = self.register_state(self.usb_prompt_widget)
         self._STATE_PREPARE_PANEL = self.register_state(
-            self.prepare_panel_widget, None,
-            self.reset_data_for_next_test)
+            self.prepare_panel_widget, None)
         # Setup the usb monitor.
         monitor = MediaMonitor()
         monitor.start(on_insert=self.on_usb_insert,
