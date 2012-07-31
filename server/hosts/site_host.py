@@ -203,6 +203,21 @@ class SiteHost(remote.RemoteHost):
             remote_power.set_power_on()
 
 
+    def reboot(self, **dargs):
+        """
+        This function reboots the site host. The more generic
+        RemoteHost.reboot() performs sync and sleeps for 5
+        seconds. This is not necessary for Chrome OS devices as the
+        sync should be finished in a short time during the reboot
+        command.
+        """
+        dargs['reboot_cmd'] = ('((reboot & sleep 10; reboot -f &)'
+                               ' </dev/null >/dev/null 2>&1 &)')
+        # Enable fastsync to avoid running extra sync commands before reboot.
+        dargs['fastsync'] = True
+        super(SiteHost, self).reboot(**dargs)
+
+
     def verify_software(self):
         """Ensure the stateful partition has space for Autotest and updates.
 
