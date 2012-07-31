@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -18,9 +18,12 @@ class network_3GStressEnable(test.test):
         'org.chromium.flimflam.Error.InProgress'
     ]
 
-    def SetPowered(self, state):
+    def EnableDevice(self, enable):
         try:
-            self.device.SetProperty('Powered', dbus.Boolean(state))
+            if enable:
+                self.device.Enable()
+            else:
+                self.device.Disable()
         except dbus.exceptions.DBusException, err:
             if err._dbus_error_name in network_3GStressEnable.okerrors:
                 return
@@ -28,9 +31,9 @@ class network_3GStressEnable(test.test):
                 raise error.TestFail(err)
 
     def test(self, settle):
-        self.SetPowered(1)
+        self.EnableDevice(True)
         time.sleep(settle)
-        self.SetPowered(0)
+        self.EnableDevice(False)
         time.sleep(settle)
 
     def FindDevice(self, names):
@@ -62,7 +65,7 @@ class network_3GStressEnable(test.test):
                 if err._dbus_error_name != 'org.chromium.flimflam.'\
                                              'Error.InvalidService':
                     raise err
-            self.SetPowered(0)
+            self.EnableDevice(False)
         for t in xrange(max, min, -1):
             for n in xrange(cycles):
                 # deciseconds are an awesome unit.
