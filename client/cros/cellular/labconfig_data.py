@@ -22,6 +22,7 @@ GOBI_2000_TECHNOLOGIES = GOBI_3000_TECHNOLOGIES[:]
 GOBI_2000_TECHNOLOGIES.remove('HSPA_PLUS')
 
 # TODO(thieule): Make HSPA_PLUS work with autotest (crosbug.com/32621).
+GENERIC_GSM_TECHNOLOGIES.remove('HSPA_PLUS')
 GOBI_3000_TECHNOLOGIES.remove('HSPA_PLUS')
 
 def combine_trees(a_original, b):
@@ -166,6 +167,22 @@ CELLS['mtv'] = {
             "technologies": ICERA_TECHNOLOGIES,
             "location": "rack2-host5",
             "rf_switch_port": 5,
+            },
+        {
+            "address": "172.22.50.8",
+            "ethernet_mac": "e8:03:9a:a5:90:d0",
+            "name": "option-gtm681w",
+            "technologies": GENERIC_GSM_TECHNOLOGIES,
+            "location": "rack2-host8",
+            "rf_switch_port": 8,
+            },
+        {
+            "address": "172.22.50.9",
+            "ethernet_mac": "e8:03:9a:a5:a3:a8",
+            "name": "option-gtm689w",
+            "technologies": GOBI_3000_TECHNOLOGIES,
+            "location": "rack2-host9",
+            "rf_switch_port": 9,
             },
         ],
 
