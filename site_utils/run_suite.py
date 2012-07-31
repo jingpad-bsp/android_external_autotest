@@ -55,6 +55,7 @@ def parse_options():
     parser.add_option("-d", "--delay_sec", dest="delay_sec", default=10)
     parser.add_option("-m", "--mock_job_id", dest="mock_job_id",
                       help="Skips running suite; creates report for given ID.")
+    parser.add_option("-u", "--num", dest="num", type="int", default=None)
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -252,6 +253,10 @@ def main():
         log_dir = os.path.join(common.autotest_dir, 'logs')
         if os.path.exists(log_dir):
             log_name = os.path.join(log_dir, log_name)
+    if options.num is not None and options.num < 1:
+        print 'Number of machines must be more than 0, if specified.'
+        parser.print_help()
+        return
     setup_logging(logfile=log_name)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=options.timeout_min,
@@ -261,12 +266,9 @@ def main():
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
     else:
-        job_id = afe.run('create_suite_job',
-                         suite_name=options.name,
-                         board=options.board,
-                         build=options.build,
-                         check_hosts=wait,
-                         pool=options.pool)
+        job_id = afe.run('create_suite_job', suite_name=options.name,
+                         board=options.board, build=options.build,
+                         check_hosts=wait, pool=options.pool, num=options.num)
     TKO = frontend_wrappers.RetryingTKO(timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)
     logging.info('Started suite job: %s', job_id)
