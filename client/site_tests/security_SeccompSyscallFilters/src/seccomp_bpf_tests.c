@@ -419,7 +419,7 @@ TEST_F_SIGNAL(TRAP, ign, SIGSYS) {
 }
 
 static struct siginfo TRAP_info;
-static int TRAP_nr;
+static volatile int TRAP_nr;
 static void TRAP_action(int nr, siginfo_t *info, void *void_context)
 {
 	memcpy(&TRAP_info, info, sizeof(TRAP_info));
