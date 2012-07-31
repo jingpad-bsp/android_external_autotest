@@ -114,7 +114,7 @@ class firmware_FwScreenPressPower(FAFTSequence):
                     'mainfw_type': 'developer',
                     'recoverysw_boot': '0',
                 }),
-                'userspace_action': self.enable_normal_mode_and_fw,
+                'userspace_action': self.enable_normal_mode_and_reboot,
                 'reboot_action': None,
             },
             {   # Step 6, expected normal mode and request recovery boot.

@@ -24,7 +24,7 @@ class firmware_DevMode(FAFTSequence):
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
                 }),
-                'userspace_action': self.enable_dev_mode_and_fw,
+                'userspace_action': self.enable_dev_mode_and_reboot,
                 'reboot_action': None,
                 'firmware_action': self.wait_fw_screen_and_ctrl_d,
             },
@@ -33,7 +33,7 @@ class firmware_DevMode(FAFTSequence):
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
                 }),
-                'userspace_action': self.enable_normal_mode_and_fw,
+                'userspace_action': self.enable_normal_mode_and_reboot,
                 'reboot_action': None,
             },
             {   # Step 3, expected normal mode boot, done

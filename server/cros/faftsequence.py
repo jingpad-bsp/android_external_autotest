@@ -737,8 +737,8 @@ class FAFTSequence(ServoTest):
                 self.run_faft_step({})
 
 
-    def enable_dev_mode_and_fw(self):
-        """Enable developer mode and use developer firmware."""
+    def enable_dev_mode_and_reboot(self):
+        """Switch to developer mode and reboot."""
         if self.client_attr.keyboard_dev:
             self.enable_keyboard_dev_mode()
         else:
@@ -747,8 +747,8 @@ class FAFTSequence(ServoTest):
                     'chromeos-firmwareupdate --mode todev && reboot')
 
 
-    def enable_normal_mode_and_fw(self):
-        """Enable normal mode and use normal firmware."""
+    def enable_normal_mode_and_reboot(self):
+        """Switch to normal mode and reboot."""
         if self.client_attr.keyboard_dev:
             self.disable_keyboard_dev_mode()
         else:
