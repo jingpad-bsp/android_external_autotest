@@ -278,7 +278,7 @@ class FAFTSequence(ServoTest):
         if usb_dev:
             assert self.servo.get('usb_mux_sel1') == 'servo_sees_usbkey'
         else:
-            self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+            self.servo.enable_usb_hub(host=True)
             usb_dev = self.servo.probe_host_usb_dev()
             if not usb_dev:
                 raise error.TestError(
