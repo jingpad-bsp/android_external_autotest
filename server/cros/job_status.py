@@ -150,12 +150,13 @@ def wait_for_results(afe, tko, jobs):
     @param jobs: a list of Job objects, as defined in server/frontend.py.
     @return a list of Statuses, one per test.
     """
-    while jobs:
-        for job in list(jobs):
+    local_jobs = list(jobs)
+    while local_jobs:
+        for job in list(local_jobs):
             if not afe.get_jobs(id=job.id, finished=True):
                 continue
 
-            jobs.remove(job)
+            local_jobs.remove(job)
 
             entries = afe.run('get_host_queue_entries', job=job.id)
             if reduce(_collate_aborted, entries, False):
@@ -166,6 +167,7 @@ def wait_for_results(afe, tko, jobs):
                     yield Status(s.status, s.test_name, s.reason,
                                  s.test_started_time,
                                  s.test_finished_time)
+
         time.sleep(5)
 
 

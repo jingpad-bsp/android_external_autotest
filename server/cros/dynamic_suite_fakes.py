@@ -64,17 +64,20 @@ class FakeStatus(object):
         if hostname:
             self.entry['host'] = {'hostname': hostname}
 
+
     def __repr__(self):
         return '%s\t%s\t%s: %s' % (self.status, self.test_name, self.reason,
                                    self.hostname)
 
+
     def equals_record(self, status):
         """Compares this object to a recorded status."""
         if 'aborted' in self.entry and self.entry['aborted']:
-            return status == 'ABORT'
+            return status._status == 'ABORT'
         return (self.status == status._status and
                 self.test_name == status._test_name and
                 self.reason == status._reason)
+
 
     def equals_hostname_record(self, status):
         """Compares this object to a recorded status.
