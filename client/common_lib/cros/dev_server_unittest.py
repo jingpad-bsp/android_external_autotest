@@ -14,6 +14,7 @@ import time
 import unittest
 import urllib2
 
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 
 
@@ -25,6 +26,8 @@ class DevServerTest(mox.MoxTestBase):
 
     _HOST = 'http://nothing'
     _CRASH_HOST = 'http://nothing-crashed'
+    _CONFIG = global_config.global_config
+
 
     def setUp(self):
         super(DevServerTest, self).setUp()
@@ -251,6 +254,21 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         build = self.dev_server.get_latest_build(target)
         self.assertEquals(build_string2, build)
+
+
+    def testDevserverUrlWithManyDevservers(self):
+        """Should be able to return different urls with multiple devservers."""
+        host0_expected = 'http://host0:8082'
+        host1_expected = 'http://host1:8099'
+        self._CONFIG.override_config_value(
+                'CROS',
+                'dev_server',
+                '%s,%s' % (host0_expected, host1_expected))
+        host0 = dev_server.DevServer.devserver_url_for_build(0)
+        host1 = dev_server.DevServer.devserver_url_for_build(1)
+
+        self.assertEqual(host0, host0_expected)
+        self.assertEqual(host1, host1_expected)
 
 
     def testCrashesAreSetToTheCrashServer(self):
