@@ -254,6 +254,25 @@ class FAFTClient(object):
         return self._bios_handler.get_section_flags(section)
 
 
+    def set_firmware_flags(self, section, flags):
+        """Set the preamble flags of a firmware section.
+
+        Args:
+            section: A firmware section, either 'a' or 'b'.
+            flags: An integer of preamble flags.
+        """
+        self._chromeos_interface.log(
+            'Setting preamble flags of firmware %s to %s' % (section, flags))
+        version = self.get_firmware_version(section)
+        self._bios_handler.set_section_version(section, version, flags,
+                                               write_through=True)
+
+
+    def get_EC_firmware_sha(self):
+        """Get SHA1 hash of EC RW firmware section.  """
+        return self._ec_handler.get_section_sha('rw')
+
+
     def reload_firmware(self):
         """Reload the firmware image that may be changed."""
         self._bios_handler.reload()
@@ -355,13 +374,18 @@ class FAFTClient(object):
         self._bios_handler.restore_firmware_body(section)
 
 
+    def get_firmware_version(self, section):
+        """Retrieve firmware version of a section."""
+        return self._bios_handler.get_section_version(section)
+
+
     def _modify_firmware_version(self, section, delta):
         """Modify firmware version for the requested section, by adding delta.
 
         The passed in delta, a positive or a negative number, is added to the
         original firmware version.
         """
-        original_version = self._bios_handler.get_section_version(section)
+        original_version = self.get_firmware_version(section)
         new_version = original_version + delta
         flags = self._bios_handler.get_section_flags(section)
         self._chromeos_interface.log(
