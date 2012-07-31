@@ -75,7 +75,7 @@ class FakeStatus(object):
         if 'aborted' in self.entry and self.entry['aborted']:
             return status._status == 'ABORT'
         return (self.status == status._status and
-                self.test_name == status._test_name and
+                status._test_name.endswith(self.test_name) and
                 self.reason == status._reason)
 
 

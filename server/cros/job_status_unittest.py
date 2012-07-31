@@ -276,7 +276,14 @@ class StatusTest(mox.MoxTestBase):
                             FakeStatus('GOOD', 'T1', '')]),
                 FakeJob(2, [FakeStatus('TEST_NA', 'T0', 'no')]),
                 FakeJob(3, [FakeStatus('FAIL', 'T0', 'broken')]),
-                FakeJob(4, [FakeStatus('ERROR', 'T0', 'gah', True)])]
+                FakeJob(4, [FakeStatus('ERROR', 'SERVER_JOB', 'server error'),
+                            FakeStatus('GOOD', 'T0', '')]),
+                FakeJob(5, [FakeStatus('ERROR', 'T0', 'gah', True)]),
+                # The next job shouldn't be recorded in the results.
+                FakeJob(6, [FakeStatus('GOOD', 'SERVER_JOB', '')])]
+        for status in jobs[4].statuses:
+            status.entry['job'] = {'name': 'broken_infra_job'}
+
         # To simulate a job that isn't ready the first time we check.
         self.afe.get_jobs(id=jobs[0].id, finished=True).AndReturn([])
         # Expect all the rest of the jobs to be good to go the first time.
@@ -293,7 +300,7 @@ class StatusTest(mox.MoxTestBase):
         results = [result for result in job_status.wait_for_results(self.afe,
                                                                     self.tko,
                                                                     jobs)]
-        for job in jobs:
+        for job in jobs[:6]:  # the 'GOOD' SERVER_JOB shouldn't be there.
             for status in job.statuses:
                 self.assertTrue(True in map(status.equals_record, results))
 

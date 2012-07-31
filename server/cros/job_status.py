@@ -127,7 +127,7 @@ def _collate_aborted(current_value, entry):
     return current_value or ('aborted' in entry and entry['aborted'])
 
 
-def _status_is_relevant(status):
+def _status_for_test(status):
     """
     Indicates whether the status of a given test is meaningful or not.
 
@@ -163,11 +163,19 @@ def wait_for_results(afe, tko, jobs):
                 yield Status('ABORT', job.name)
             else:
                 statuses = tko.get_status_counts(job=job.id)
-                for s in filter(_status_is_relevant, statuses):
-                    yield Status(s.status, s.test_name, s.reason,
-                                 s.test_started_time,
-                                 s.test_finished_time)
-
+                for s in statuses:
+                    if _status_for_test(s):
+                        yield Status(s.status, s.test_name, s.reason,
+                                     s.test_started_time,
+                                     s.test_finished_time)
+                    else:
+                        if s.status != 'GOOD':
+                            yield Status(s.status,
+                                         '%s_%s' % (entries[0]['job']['name'],
+                                                    s.test_name),
+                                         s.reason,
+                                         s.test_started_time,
+                                         s.test_finished_time)
         time.sleep(5)
 
 
