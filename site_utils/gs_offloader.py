@@ -25,7 +25,7 @@ import time
 import is_job_complete
 
 # Google Storage bucket URI to store results in.
-GS_URI = 'gs://chromeos-autotest-results'
+GS_URI = 'gs://chromeos-autotest-results/'
 
 # Set this to True to enable rsync otherwise results are offloaded to GS.
 USE_RSYNC = False
@@ -39,6 +39,9 @@ TIMEOUT = 3 * 60 * 60
 
 # Location of Autotest results on disk.
 RESULTS_DIR = '/usr/local/autotest/results'
+
+# Hosts sub-directory that contains cleanup, verify and repair jobs.
+HOSTS_SUB_DIR = 'hosts'
 
 # Success constant to check if a job is completed.
 JOB_COMPLETED = 0
@@ -64,40 +67,67 @@ def timeout_handler(_signum, _frame):
   raise TimeoutException('Process Timed Out')
 
 
-def get_cmd_list(dir_entry):
+def get_cmd_list(dir_entry, relative_path):
   """
   Generate the cmd_list for the specified directory entry.
 
   @param dir_entry: Directory entry/path that which we need a cmd_list to
                     offload.
+  @param relative_path: Location in google storage or rsync that we want to
+                        store this directory.
 
   @return: A command list to be executed by Popen.
   """
   if USE_RSYNC:
+    dest_path = os.path.join(RSYNC_HOST_PATH, relative_path)
     logging.debug('Using rsync for offloading %s to %s.', dir_entry,
-                  RSYNC_HOST_PATH)
-    return ['rsync', '-a', dir_entry, RSYNC_HOST_PATH]
+                  dest_path)
+    return ['rsync', '-a', dir_entry, dest_path]
   else:
+    dest_path = os.path.join(GS_URI, relative_path)
     logging.debug('Using google storage for offloading %s to %s.',
-                  dir_entry, GS_URI)
+                  dir_entry, dest_path)
     return ['gsutil', '-m', 'cp', '-eR', '-a', 'project-private', dir_entry,
-            GS_URI]
+            dest_path]
 
 
-def offload_dir(dir_entry):
+def offload_hosts_sub_dir():
+  """
+  Loop over the hosts/ sub directory and offload all the Cleanup, Verify and
+  Repair Jobs.
+
+  This will delete the job folders inside each host directory.
+  """
+  logging.debug('Offloading Cleanup, Verify and Repair jobs from'
+                'results/hosts/')
+  # Store these results in gs://chromeos-autotest-results/hosts
+  for host_entry in os.listdir(HOSTS_SUB_DIR):
+    # Inside a host directory.
+    # Store these results in gs://chromeos-autotest-results/hosts/{host_name}
+    host_path = os.path.join(HOSTS_SUB_DIR, host_entry)
+    for job_entry in os.listdir(host_path):
+      # Offload all the verify, clean and repair jobs for this host.
+      dir_path = os.path.join(host_path, job_entry)
+      logging.debug('Processing %s', dir_path)
+      offload_dir(dir_path, dir_path)
+
+
+def offload_dir(dir_entry, dest_path=''):
   """
   Offload the specified directory entry to the Google storage or the RSYNC host,
   but timeout if it takes too long.
 
   @param dir_entry: Directory entry to offload.
+  @param dest_path: Location in google storage or rsync that we want to store
+                    this directory.
   """
   try:
     error = False
     signal.alarm(TIMEOUT)
     stdout_file = tempfile.TemporaryFile('w+')
     stderr_file = tempfile.TemporaryFile('w+')
-    process = subprocess.Popen(get_cmd_list(dir_entry), stdout=stdout_file,
-                               stderr=stderr_file)
+    process = subprocess.Popen(get_cmd_list(dir_entry, dest_path),
+                               stdout=stdout_file, stderr=stderr_file)
     process.wait()
     signal.alarm(0)
     if process.returncode == 0:
@@ -147,6 +177,9 @@ def offload_files(results_dir):
     # Iterate over all directories in results_dir.
     for dir_entry in os.listdir('.'):
       logging.debug('Processing %s', dir_entry)
+      if dir_entry == HOSTS_SUB_DIR:
+        offload_hosts_sub_dir()
+        continue
       if not job_matcher.match(dir_entry):
         logging.debug('Skipping dir %s', dir_entry)
         continue
