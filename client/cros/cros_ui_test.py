@@ -381,26 +381,32 @@ class UITest(pyauto_test.PyAutoTest):
         passwd = password or self.password
 
         try:
+            screenshot_name = 'login-success-screenshot'
             if uname:  # Regular login
                 login_error = self.pyauto.Login(username=uname,
                                                 password=passwd)
                 if login_error:
+                    screenshot_name = 'login-error-screenshot'
                     raise error.TestError(
-                        'Error during login (%s, %s): %s.' % (
-                        uname, passwd, login_error))
-                logging.info('Logged in as %s.' % uname)
+                        'Error during login (%s, %s): %s.  See the file named '
+                        '%s.png in the results folder.' % (uname, passwd,
+                        login_error, screenshot_name))
             else:  # Login as guest
                 self.pyauto.LoginAsGuest()
                 logging.info('Logged in as guest.')
-        except:
-            self.take_screenshot(fname_prefix='login-fail-screenshot')
-            raise
+            if not self.logged_in():
+                screenshot_name = 'login-bizzare-fail-screenshot'
+                raise error.TestError('Not logged in, this should not happen. '
+                                      'Please check the file named %s.png '
+                                      'located in the results folder.' %
+                                      screenshot_name)
         finally:
+            self.take_screenshot(fname_prefix=screenshot_name)
             self.stop_tcpdump(fname_prefix='tcpdump-lo--till-login')
 
-        if not self.logged_in():
-            raise error.TestError('Not logged in')
-
+        logging.info('Logged in as %s.  You can verify with the '
+                     'file named %s.png located in the results '
+                     'folder.' % (uname, screenshot_name))
 
     def logged_in(self):
         return self.pyauto.GetLoginInfo()['is_logged_in']
