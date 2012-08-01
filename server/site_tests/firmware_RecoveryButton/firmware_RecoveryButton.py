@@ -54,11 +54,16 @@ class firmware_RecoveryButton(FAFTSequence):
                 }),
                 'userspace_action': self.enable_rec_mode_and_reboot,
                 'reboot_action': None,
-                # When dev_mode ON, directly boot to USB stick if presented.
-                # When dev_mode OFF,
+                # In the keyboard controlled recovery mode design, it doesn't
+                # require users to remove and insert the USB.
+                #
+                # In the old design, it checks:
+                #   if dev_mode ON, directly boot to USB stick if presented;
+                #   if dev_mode OFF,
                 #     the old models need users to remove and insert the USB;
                 #     the new models directly boot to the USB.
-                'firmware_action': None if dev_mode or not remove_usb else
+                'firmware_action': None if self.client_attr.keyboard_dev or
+                                   dev_mode or not remove_usb else
                                    self.wait_fw_screen_and_plug_usb,
                 'install_deps_after_boot': True,
             },
