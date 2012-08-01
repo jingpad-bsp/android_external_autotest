@@ -82,12 +82,11 @@ class HostAttributes(object):
             host: Host name to find attributes for.
         """
         self._add_attributes(_DEFAULT_ATTRIBUTES)
-        if private_host_attributes is not None:
-            logging.info('Using your private_host_attributes file')
         if host in private_host_attributes:
-            logging.info('Using private_host_attributes file for %s', host)
+            logging.info('Including private_host_attributes file for %s', host)
             self._add_attributes(private_host_attributes[host])
         if has_models:
+            logging.info("Including labels for %s from database", host)
             host_obj = models.Host.valid_objects.get(hostname=host)
             self._add_attributes([label.name for label in
                                   host_obj.labels.all()])
@@ -103,6 +102,9 @@ class HostAttributes(object):
                     splitnames = ['netbook_' + hashlib.sha256(
                         attribute.split('netbook_')[1]).hexdigest()[:8], 'True']
                 else:
+                    splitnames = attribute.split(':')
+                    if len(splitnames) == 2:
+                        setattr(self, splitnames[0], splitnames[1])
                     continue
             value = ','.join(splitnames[1:])
             if value == 'True':
