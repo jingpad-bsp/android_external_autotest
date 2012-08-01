@@ -544,6 +544,12 @@ class HostLockManagerReuse(CrosDynamicSuiteException):
     pass
 
 
+class SignalException(CrosDynamicSuiteException):
+    """Raised when the dynamic scheduler receives a terminating signal during
+    execution of the tests."""
+    pass
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():

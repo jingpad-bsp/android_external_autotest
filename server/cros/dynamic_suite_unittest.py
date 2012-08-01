@@ -8,8 +8,10 @@
 
 import logging
 import mox
+import os
 import random
 import shutil
+import signal
 import tempfile
 import time
 import unittest
@@ -154,6 +156,31 @@ class DynamicSuiteTest(mox.MoxTestBase):
         self.assertEquals(spec.check_hosts, True)
         self.assertEquals(spec.skip_reimage, False)
         self.assertEquals(spec.add_experimental, True)
+
+
+    def testReimageAndSIGTERM(self):
+        """Should reimage_and_run that causes a SIGTERM and fails cleanly."""
+        def suicide():
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        # mox does not play nicely with receiving a bare SIGTERM, but it does
+        # play nicely with unhandled exceptions...
+        class UnhandledSIGTERM(Exception):
+            pass
+
+        self.mox.StubOutWithMock(dev_server.DevServer, 'create')
+        dev_server.DevServer.create().WithSideEffects(suicide)
+        manager = self.mox.CreateMock(host_lock_manager.HostLockManager)
+        manager.unlock()
+        spec = self.mox.CreateMock(dynamic_suite.SuiteSpec)
+        spec.skip_reimage = True
+
+        self.mox.ReplayAll()
+
+        with dynamic_suite.SignalsAsExceptions(UnhandledSIGTERM):
+            self.assertRaises(error.SignalException,
+                              dynamic_suite._perform_reimage_and_run,
+                              spec, None, None, None, manager)
 
 
 class ReimagerTest(mox.MoxTestBase):
