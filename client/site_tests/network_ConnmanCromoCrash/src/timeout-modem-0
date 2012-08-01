@@ -11,7 +11,8 @@ class TimeoutModem(common.Modem):
         sys.exit(0)
 
 def setup():
-    os.system('/usr/local/lib/flimflam/test/connect-service cellular 2>/dev/null &')
+    os.system("/usr/local/lib/flimflam/test/connect-service 'Test Network' "
+              "2>/dev/null &")
     return 0
 
 common.setup(setup)

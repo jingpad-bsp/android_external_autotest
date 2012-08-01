@@ -1,9 +1,11 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import test
 import logging, os, subprocess, time
+
+CONN_MANAGER = 'shill'
 
 tests = [ 'crash-mm-0', 'crash-modem-0', 'crash-modem-1', 'crash-modem-2',
           'crash-modem-3', 'crash-modem-4', 'crash-modem-5', 'crash-modem-6',
@@ -26,7 +28,7 @@ class network_ConnmanCromoCrash(test.test):
         self.callproc('/usr/local/lib/flimflam/test/veth', *args)
 
     def run(self, test):
-        oldpid = self.callproc('pgrep', 'flimflamd').replace("\n", ' ')
+        oldpid = self.callproc('pgrep', CONN_MANAGER).replace("\n", ' ')
         self.callproc('chmod', '755', self.bindir)
         self.callproc('chmod', '755', self.srcdir)
         self.callproc('chmod', '755', '%s/%s' % (self.srcdir, 'common.py'))
@@ -45,10 +47,10 @@ class network_ConnmanCromoCrash(test.test):
             raise RuntimeError('Subprocess %s failed: %d %s %s' % (
                                test, proc.returncode, out, err))
         time.sleep(2)
-        newpid = self.callproc('pgrep', 'flimflamd').replace("\n", ' ')
+        newpid = self.callproc('pgrep', CONN_MANAGER).replace("\n", ' ')
         if newpid != oldpid:
-            raise RuntimeError('Flimflam pid changed: %s != %s' % (
-                               oldpid,newpid))
+            raise RuntimeError('%s pid changed: %s != %s' % (
+                               CONN_MANAGER, oldpid, newpid))
 
     def run_once(self):
         cromo_was_running = True
@@ -63,10 +65,10 @@ class network_ConnmanCromoCrash(test.test):
             for t in tests:
                 logging.info('Running %s' % t)
                 try:
-                    self.veth('setup', 'pseudo-modem0', '172.16.1')
+                    self.veth('setup', 'pseudomodem0', '172.16.1')
                     self.run(t)
                 finally:
-                    self.veth('teardown', 'pseudo-modem0')
+                    self.veth('teardown', 'pseudomodem0')
         finally:
             if cromo_was_running:
                 self.callproc('initctl', 'start', 'cromo')
