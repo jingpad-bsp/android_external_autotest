@@ -62,6 +62,7 @@ class ServoTest(test.test):
             'client_test': 'firmware_FAFTClient',
             'remote_command': 'python /usr/local/autotest/cros/faft_client.py',
             'remote_command_short': 'faft_client',
+            'remote_log_file': '/tmp/faft_client.log',
             'remote_process': None,
             'ssh_tunnel': None,
             'polling_rpc': 'is_available',
@@ -177,9 +178,15 @@ class ServoTest(test.test):
         # Launch RPC server remotely.
         self._kill_remote_process(info)
         logging.info('Client command: %s' % info['remote_command'])
+        if 'remote_log_file' in info:
+                log_file = info['remote_log_file']
+        else:
+                log_file = '/dev/null'
+        logging.info("Logging to %s", log_file)
         info['remote_process'] = subprocess.Popen([
-            'ssh -n -q %s root@%s \'%s\'' % (info['ssh_config'],
-            self._client.ip, info['remote_command'])], shell=True)
+            'ssh -n -q %s root@%s \'%s &> %s\'' % (info['ssh_config'],
+            self._client.ip, info['remote_command'], log_file)],
+            shell=True)
 
         # Connect to RPC object.
         logging.info('Connecting to client RPC server...')
@@ -200,6 +207,14 @@ class ServoTest(test.test):
                 succeed = True
             except:
                 timeout -= 1
+
+        if not succeed:
+            if 'remote_log_file' in info:
+                p = subprocess.Popen([
+                    'ssh -n -q %s root@%s \'cat %s\'' % (info['ssh_config'],
+                    self._client.ip, info['remote_log_file'])], shell=True,
+                    stdout=subprocess.PIPE)
+                logging.info(p.communicate()[0])
         assert succeed, 'Timed out connecting to client RPC server.'
 
 
