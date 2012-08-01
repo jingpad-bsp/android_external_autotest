@@ -243,6 +243,14 @@ class Servo(object):
         self._press_and_release_keys('none', 'refresh')
 
 
+    def ctrl_refresh_key(self):
+        """Simulate Ctrl and Refresh (F3) simultaneous press.
+
+        This key combination is an alternative of Space key.
+        """
+        self._press_and_release_keys('ctrl_r', 'refresh')
+
+
     def imaginary_key(self):
         """Simulate imaginary key button press.
 

@@ -72,6 +72,8 @@ class FAFTSequence(ServoTest):
             instead of sending key via servo board.
         _customized_enter_key_command: The customized Enter key command instead
             of sending key via servo board.
+        _customized_space_key_command: The customized Space key command instead
+            of sending key via servo board.
         _customized_rec_reboot_command: The customized recovery reboot command
             instead of sending key combination of Power + Esc + F3 for
             triggering recovery reboot.
@@ -202,6 +204,7 @@ class FAFTSequence(ServoTest):
 
     _customized_ctrl_d_key_command = None
     _customized_enter_key_command = None
+    _customized_space_key_command = None
     _customized_rec_reboot_command = None
     _install_image_path = None
     _firmware_update = False
@@ -224,6 +227,10 @@ class FAFTSequence(ServoTest):
             self._customized_enter_key_command = args['enter_cmd']
             logging.info('Customized Enter key command: %s' %
                     self._customized_enter_key_command)
+        if 'space_cmd' in args:
+            self._customized_space_key_command = args['space_cmd']
+            logging.info('Customized Space key command: %s' %
+                    self._customized_space_key_command)
         if 'rec_reboot_cmd' in args:
             self._customized_rec_reboot_command = args['rec_reboot_cmd']
             logging.info('Customized recovery reboot command: %s' %
@@ -672,6 +679,16 @@ class FAFTSequence(ServoTest):
             self.servo.enter_key()
 
 
+    def send_space_to_dut(self):
+        """Send Space key to DUT."""
+        if self._customized_space_key_command:
+            logging.info('running the customized Space key command')
+            os.system(self._customized_space_key_command)
+        else:
+            # Send the alternative key combinaton of space key to servo.
+            self.servo.ctrl_refresh_key()
+
+
     def wait_fw_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
@@ -792,6 +809,12 @@ class FAFTSequence(ServoTest):
         if dev:
             self.send_ctrl_d_to_dut()
         else:
+            # Only SPACE can trigger TO_NORM screen officially.
+            # We send both SPACE and ENTER in order to make the old and new
+            # firmware still work. It won't trigger twice since only one of
+            # them takes effect.
+            # TODO Remove to ENTER when all devices use new firmware.
+            self.send_space_to_dut()
             self.send_enter_to_dut()
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
         self.send_enter_to_dut()
