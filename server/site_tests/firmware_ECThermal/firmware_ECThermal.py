@@ -136,13 +136,15 @@ class firmware_ECThermal(FAFTSequence):
 
     def setup(self):
         super(firmware_ECThermal, self).setup()
-        self.get_thermal_setting()
-        self.get_fan_steps()
-        self.enable_auto_fan_control()
+        if self.check_ec_capability(['thermal']):
+            self.get_thermal_setting()
+            self.get_fan_steps()
+            self.enable_auto_fan_control()
 
 
     def cleanup(self):
-        self.enable_auto_fan_control()
+        if self.check_ec_capability(['thermal']):
+            self.enable_auto_fan_control()
         super(firmware_ECThermal, self).cleanup()
 
 
