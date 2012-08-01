@@ -137,4 +137,15 @@
     'power_outlet_admin_name': 'admin',
     'power_outlet_password': 'password',
   },
+  {
+    'class_name': 'Netgear614APConfigurator',
+    'short_name': 'wgr614-v9',
+    'admin_url': 'http://172.22.12.231:8080',
+    'serial_number': '',
+    'mac_address': '',
+    'power_outlet_ip': '172.22.12.202',
+    'power_outlet_number': '4',
+    'power_outlet_admin_name': 'admin',
+    'power_outlet_password': 'password',
+  },
 ]
