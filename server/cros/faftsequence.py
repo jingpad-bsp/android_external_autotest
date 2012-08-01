@@ -89,7 +89,7 @@ class FAFTSequence(ServoTest):
     OTHER_ROOTFS_MAP = {'a':'5', 'b':'3', '2':'5', '4':'3', '3':'5', '5':'3'}
 
     # Delay between power-on and firmware screen.
-    FIRMWARE_SCREEN_DELAY = 5
+    FIRMWARE_SCREEN_DELAY = 10
     # Delay between passing firmware screen and text mode warning screen.
     TEXT_SCREEN_DELAY = 20
     # Delay of loading the USB kernel.
