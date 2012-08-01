@@ -72,6 +72,9 @@ class FAFTSequence(ServoTest):
             instead of sending key via servo board.
         _customized_enter_key_command: The customized Enter key command instead
             of sending key via servo board.
+        _customized_rec_reboot_command: The customized recovery reboot command
+            instead of sending key combination of Power + Esc + F3 for
+            triggering recovery reboot.
         _install_image_path: The path of Chrome OS test image to be installed.
         _firmware_update: Boolean. True if firmware update needed after
             installing the image.
@@ -199,6 +202,7 @@ class FAFTSequence(ServoTest):
 
     _customized_ctrl_d_key_command = None
     _customized_enter_key_command = None
+    _customized_rec_reboot_command = None
     _install_image_path = None
     _firmware_update = False
 
@@ -220,6 +224,10 @@ class FAFTSequence(ServoTest):
             self._customized_enter_key_command = args['enter_cmd']
             logging.info('Customized Enter key command: %s' %
                     self._customized_enter_key_command)
+        if 'rec_reboot_cmd' in args:
+            self._customized_rec_reboot_command = args['rec_reboot_cmd']
+            logging.info('Customized recovery reboot command: %s' %
+                    self._customized_rec_reboot_command)
         if 'image' in args:
             self._install_image_path = args['image']
             logging.info('Install Chrome OS test image path: %s' %
@@ -744,10 +752,14 @@ class FAFTSequence(ServoTest):
         i.e. switch ON + reboot + switch OFF, and the new keyboard controlled
         recovery mode, i.e. just press Power + Esc + Refresh.
         """
-        self.servo.enable_recovery_mode()
-        self.cold_reboot()
-        time.sleep(self.EC_REBOOT_DELAY)
-        self.servo.disable_recovery_mode()
+        if self._customized_rec_reboot_command:
+            logging.info('running the customized rec reboot command')
+            os.system(self._customized_rec_reboot_command)
+        else:
+            self.servo.enable_recovery_mode()
+            self.cold_reboot()
+            time.sleep(self.EC_REBOOT_DELAY)
+            self.servo.disable_recovery_mode()
 
 
     def enable_dev_mode_and_reboot(self):
