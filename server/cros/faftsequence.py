@@ -791,6 +791,7 @@ class FAFTSequence(ServoTest):
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         # Rebooting EC with rec mode on. Should power on AP.
         self.enable_rec_mode_and_reboot()
+        self.wait_for_client_offline()
         self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=True)
 
 
@@ -798,6 +799,7 @@ class FAFTSequence(ServoTest):
         logging.info("Disabling keyboard controlled developer mode")
         self.servo.disable_recovery_mode()
         self.cold_reboot()
+        self.wait_for_client_offline()
         self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=False)
 
 
