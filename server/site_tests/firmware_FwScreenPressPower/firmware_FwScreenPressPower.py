@@ -60,7 +60,6 @@ class firmware_FwScreenPressPower(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
-                    'recoverysw_boot': '0',
                 }),
                 'firmware_action': (self.run_shutdown_process,
                                     self.wait_fw_screen_and_press_power,
@@ -74,7 +73,6 @@ class firmware_FwScreenPressPower(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
-                    'recoverysw_boot': '0',
                 }),
                 'firmware_action': (self.run_shutdown_process,
                                     self.wait_second_screen_and_press_power,
@@ -86,7 +84,6 @@ class firmware_FwScreenPressPower(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
                 'firmware_action': (self.run_shutdown_process,
@@ -100,7 +97,6 @@ class firmware_FwScreenPressPower(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
                 'firmware_action': (self.run_shutdown_process,
@@ -112,7 +108,6 @@ class firmware_FwScreenPressPower(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '1',
                     'mainfw_type': 'developer',
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.enable_normal_mode_and_reboot,
                 'reboot_action': None,
@@ -123,7 +118,6 @@ class firmware_FwScreenPressPower(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
                 'firmware_action': (self.run_shutdown_process,
@@ -135,7 +129,6 @@ class firmware_FwScreenPressPower(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
-                    'recoverysw_boot': '0',
                 }),
             },
         ))

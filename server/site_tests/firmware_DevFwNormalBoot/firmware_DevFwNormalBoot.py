@@ -65,7 +65,6 @@ class firmware_DevFwNormalBoot(FAFTSequence):
                         'mainfw_type': 'recovery',
                         'recovery_reason' :
                                 self.RECOVERY_REASON['RO_INVALID_RW'],
-                        'recoverysw_boot': '0',
                     }),
                     'userspace_action': self.restore_fw_b_and_enable_devsw,
                 },

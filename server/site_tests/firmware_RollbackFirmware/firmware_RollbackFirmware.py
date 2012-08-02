@@ -77,7 +77,6 @@ class firmware_RollbackFirmware(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason' : recovery_reason,
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': (self.faft_client.move_firmware_forward,
                                      ('a', 'b')),

@@ -50,7 +50,6 @@ class firmware_RecoveryButton(FAFTSequence):
             {   # Step 1, switch to recovery mode and reboot
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.enable_rec_mode_and_reboot,
                 'reboot_action': None,
@@ -71,13 +70,11 @@ class firmware_RecoveryButton(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason' : self.RECOVERY_REASON['RO_MANUAL'],
-                    'recoverysw_boot': '1',
                 }),
             },
             {   # Step 3, expected normal boot
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
-                    'recoverysw_boot': '0',
                 }),
             },
         ))

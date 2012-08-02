@@ -49,7 +49,6 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
             {   # Step 1, corrupt both firmware signature A and B
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': (self.faft_client.corrupt_firmware,
                                      ('a', 'b')),
@@ -62,7 +61,6 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
                     'mainfw_type': 'recovery',
                     'recovery_reason': (self.RECOVERY_REASON['RO_INVALID_RW'],
                             self.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.faft_client.set_try_fw_b,
                 'firmware_action': None if dev_mode else
@@ -73,7 +71,6 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
                     'mainfw_type': 'recovery',
                     'recovery_reason': (self.RECOVERY_REASON['RO_INVALID_RW'],
                             self.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': (self.faft_client.restore_firmware,
                                      ('a', 'b')),
@@ -81,7 +78,6 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
             {   # Step 4, expected normal boot, done
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
-                    'recoverysw_boot': '0',
                 }),
             },
         ))

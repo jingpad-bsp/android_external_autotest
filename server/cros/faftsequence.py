@@ -106,6 +106,8 @@ class FAFTSequence(ServoTest):
     POWER_BTN_DELAY = 0.5
     # Delay of EC software sync hash calculating time
     SOFTWARE_SYNC_DELAY = 6
+    # Delay between EC boot and EC console functional
+    EC_BOOT_DELAY = 2
 
     # The developer screen timeouts fit our spec.
     DEV_SCREEN_TIMEOUT = 30
@@ -598,7 +600,6 @@ class FAFTSequence(ServoTest):
         return self.root_part_checker(part) and \
                 self.crossystem_checker({
                     'mainfw_type': ('normal', 'developer'),
-                    'recoverysw_boot': '0',
                 })
 
 
@@ -772,6 +773,11 @@ class FAFTSequence(ServoTest):
         if self._customized_rec_reboot_command:
             logging.info('running the customized rec reboot command')
             os.system(self._customized_rec_reboot_command)
+        elif self.client_attr.ec_fake_rec_mode:
+            self.send_uart_command("reboot hard ap-off")
+            time.sleep(self.EC_BOOT_DELAY)
+            self.send_uart_command("hostevent set 0x4000")
+            self.servo.power_short_press()
         else:
             self.servo.enable_recovery_mode()
             self.cold_reboot()
@@ -832,7 +838,8 @@ class FAFTSequence(ServoTest):
 
     def disable_keyboard_dev_mode(self):
         logging.info("Disabling keyboard controlled developer mode")
-        self.servo.disable_recovery_mode()
+        if not self.client_attr.ec_fake_rec_mode:
+            self.servo.disable_recovery_mode()
         self.cold_reboot()
         self.wait_for_client_offline()
         self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=False)

@@ -66,7 +66,6 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                 {   # Step 1, corrupt both firmware body A and B
                     'state_checker': (self.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
-                        'recoverysw_boot': '0',
                     }),
                     'userspace_action': (self.faft_client.corrupt_firmware_body,
                                          ('a', 'b')),
@@ -74,7 +73,6 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                 {   # Step 2, still expected normal/developer boot and restore
                     'state_checker': (self.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
-                        'recoverysw_boot': '0',
                     }),
                     'userspace_action': (self.faft_client.restore_firmware_body,
                                          ('a', 'b')),
@@ -85,7 +83,6 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                 {   # Step 1, corrupt both firmware body A and B
                     'state_checker': (self.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
-                        'recoverysw_boot': '0',
                     }),
                     'userspace_action': (self.faft_client.corrupt_firmware_body,
                                          ('a', 'b')),
@@ -98,7 +95,6 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                         'mainfw_type': 'recovery',
                         'recovery_reason':
                             self.RECOVERY_REASON['RO_INVALID_RW'],
-                        'recoverysw_boot': '0',
                     }),
                     'userspace_action': (self.faft_client.restore_firmware_body,
                                          ('a', 'b')),
@@ -106,7 +102,6 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
                 {   # Step 3, expected normal boot, done
                     'state_checker': (self.crossystem_checker, {
                         'mainfw_type': 'developer' if dev_mode else 'normal',
-                        'recoverysw_boot': '0',
                     }),
                 },
             ))

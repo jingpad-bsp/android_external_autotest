@@ -9,7 +9,8 @@ class FAFTClientAttribute(object):
     DEFAULT_SETTING = {'broken_warm_reset': False,
                        'chrome_ec': False,
                        'keyboard_dev': True,
-                       'ec_capability': list()}
+                       'ec_capability': list(),
+                       'ec_fake_rec_mode': False}
 
     def __init__(self, platform):
         """Initialized.
@@ -25,16 +26,20 @@ class FAFTClientAttribute(object):
         """Return platform-specific settings."""
         setting = dict()
 
+        # Set 'broken_warm_reset'
         if platform in ['Parrot']:
             setting['broken_warm_reset'] = True
 
+        # Set 'chrome_ec'
         if platform in ['Link', 'Snow']:
             setting['chrome_ec'] = True
 
+        # Set 'keyboard_dev'
         if platform in ['Aebl', 'Alex', 'Kaen', 'Lumpy', 'Mario', 'Seaboard',
                         'Stumpy', 'ZGB']:
             setting['keyboard_dev'] = False
 
+        # Set 'ec_capability'
         if platform == 'Link':
             setting['ec_capability'] = ['adc_ectemp', 'battery', 'charging',
                                         'keyboard', 'lid', 'x86', 'thermal',
@@ -42,5 +47,9 @@ class FAFTClientAttribute(object):
         elif platform == 'Snow':
             setting['ec_capability'] = ['battery', 'charging', 'keyboard',
                                         'lid', 'arm']
+
+        # Set 'ec_fake_rec_mode'
+        if platform == 'Snow':
+            setting['ec_fake_rec_mode'] = True
 
         return setting

@@ -46,7 +46,6 @@ class firmware_UserRequestRecovery(FAFTSequence):
             {   # Step 1, request recovery boot
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
                 'firmware_action': None if dev_mode else
@@ -57,13 +56,11 @@ class firmware_UserRequestRecovery(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason' : self.RECOVERY_REASON['US_TEST'],
-                    'recoverysw_boot': '0',
                 }),
             },
             {   # Step 3, expected normal boot
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
-                    'recoverysw_boot': '0',
                 }),
             },
         ))

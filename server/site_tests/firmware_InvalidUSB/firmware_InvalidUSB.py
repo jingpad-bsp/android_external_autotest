@@ -66,7 +66,6 @@ class firmware_InvalidUSB(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': self.faft_client.request_recovery_boot,
                 'firmware_action': self.insert_corrupted_usb_and_restore,
@@ -76,14 +75,12 @@ class firmware_InvalidUSB(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason' : self.RECOVERY_REASON['US_TEST'],
-                    'recoverysw_boot': '0',
                 }),
             },
             {   # Step 3, expected to normal boot and done.
                 'state_checker': (self.crossystem_checker, {
                     'devsw_boot': '0',
                     'mainfw_type': 'normal',
-                    'recoverysw_boot': '0',
                 }),
             },
         ))

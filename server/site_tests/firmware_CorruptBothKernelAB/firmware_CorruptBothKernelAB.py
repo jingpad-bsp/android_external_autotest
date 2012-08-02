@@ -72,7 +72,6 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
                 'state_checker': (self.crossystem_checker, {
                     'mainfw_type': 'recovery',
                     'recovery_reason': recovery_reason,
-                    'recoverysw_boot': '0',
                 }),
                 'userspace_action': (self.faft_client.run_shell_command,
                                      'chromeos-install --yes'),
