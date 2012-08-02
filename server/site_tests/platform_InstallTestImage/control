@@ -2,7 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server import host_attributes
 
 AUTHOR = "Chrome OS Team"
 NAME = "platform_InstallTestImage"
@@ -23,8 +27,9 @@ servo:
                      platform_InstallTestImage
 """
 
+DEFAULT_URL_FORMAT = '/static/servo-images/%s_test_image.bin'
+
 args_dict = utils.args_to_dict(args)
-image = args_dict.get("image", None)
 servo_host = args_dict.get("servo_host", "localhost")
 servo_port = args_dict.get("servo_port", None)
 
@@ -32,6 +37,15 @@ def run(machine):
     # Setup the client machine.
     host = hosts.create_host(machine, servo_host=servo_host,
                              servo_port=servo_port)
+
+    image = args_dict.get("image", None)
+    if image is None:
+        attributes = host_attributes.host_attributes(machine)
+        if hasattr(attributes, 'board'):
+            board = attributes.board
+            server = dev_server.DevServer.devserver_url_for_servo(board)
+            image = server + (DEFAULT_URL_FORMAT % board)
+            logging.info("image URL is %s", image)
     job.run_test("platform_InstallTestImage", host=host,
                  disable_sysinfo=True, image=image)
 

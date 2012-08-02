@@ -132,6 +132,21 @@ class DevServer(object):
         return cls._server_for_hashing_value(_get_dev_server_list(), build)
 
 
+    @classmethod
+    def devserver_url_for_servo(cls, build):
+        """Returns the devserver url for use with servo recovery.
+
+        Args:
+        @param board:  The board type to be recovered.
+        """
+        # To simplify manual steps on the server side, we ignore the
+        # board type and hard-code the server as first in the list.
+        #
+        # TODO(jrbarnette) Once we have automated selection of the
+        # build for recovery, we should revisit this.
+        return _get_dev_server_list()[0]
+
+
     def _servers_for(self, method):
         """Return the list of servers to use for the given method."""
         if method in DevServer._CRASH_SERVER_RPC_CALLS:
