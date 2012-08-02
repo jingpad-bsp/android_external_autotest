@@ -1,6 +1,6 @@
 import os, re, shutil, signal, subprocess, errno, time, heapq, traceback
 import common, logging
-from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.common_lib import error, global_config, utils
 from autotest_lib.scheduler import email_manager, drone_utility, drones
 from autotest_lib.scheduler import scheduler_config
 
@@ -124,7 +124,7 @@ class _DroneHeapWrapper(object):
         return cmp(self.drone.used_capacity(), other.drone.used_capacity())
 
 
-class DroneManager(object):
+class BaseDroneManager(object):
     """
     This class acts as an interface from the scheduler to drones, whether it be
     only a single "drone" for localhost or multiple remote drones.
@@ -694,6 +694,15 @@ class DroneManager(object):
         full_path = self.absolute_path(
                 file_path, on_results_repository=on_results_repository)
         drone.queue_call('write_to_file', full_path, file_contents)
+
+
+SiteDroneManager = utils.import_site_class(
+   __file__, 'autotest_lib.scheduler.site_drone_manager',
+   'SiteDroneManager', BaseDroneManager)
+
+
+class DroneManager(SiteDroneManager):
+    pass
 
 
 _the_instance = None
