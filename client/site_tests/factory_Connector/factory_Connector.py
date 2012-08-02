@@ -14,6 +14,7 @@ import StringIO
 import subprocess
 
 from autotest_lib.client.cros import factory_setup_modules
+from cros.factory.event_log import EventLog
 from cros.factory.test import factory
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
@@ -186,7 +187,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
     def setup_internal_probing(self):
         # Prepare the status row.
         self.probe_list = self.probing_config['items']
-        for test_name in sorted(self.probe_list):
+        for test_name in sorted(self.probe_list.iterkeys()):
             self._status_rows.append((test_name, test_name, True))
             self._results_to_check.append(test_name)
 
@@ -218,7 +219,7 @@ class factory_Connector(state_machine.FactoryStateMachine):
         self.advance_state()
 
     def perform_internal_probing(self):
-        for test_name in sorted(self.probe_list):
+        for test_name in sorted(self.probe_list.iterkeys()):
             commands = self.probe_list[test_name]
             self.update_status(test_name, True)
             for cmd, expect_re in commands:
@@ -256,6 +257,9 @@ class factory_Connector(state_machine.FactoryStateMachine):
                 audiofuntest=self.use_audiofuntest)
             self.log_to_file.write('On %d audio loopback, got : %s\n' % (
                 i, pprint.pformat(error_ret)))
+            self._event_log.Log(
+                'connectivity_audio', ab_serial_number=self.serial_number,
+                repeated=i, audio_result=error_ret)
             if len(error_ret) == 0:
                 self.update_status('audio', 'PASSED')
                 break
@@ -324,6 +328,8 @@ class factory_Connector(state_machine.FactoryStateMachine):
 
     def on_sn_complete(self, serial_number):
         self.serial_number = serial_number
+        self._event_log.Log(
+            'connectivity_start', ab_serial_number=self.serial_number)
         self.log_to_file.write('Serial_number : %s\n' % serial_number)
         self.log_to_file.write('Started at : %s\n' % datetime.datetime.now())
         self.update_status('sn', serial_number)
@@ -351,14 +357,24 @@ class factory_Connector(state_machine.FactoryStateMachine):
             True if the result matches.
         '''
         factory.log('Running command [%s]' % cmd)
+        ret = exception_str = ''
         try:
             ret = utils.system_output(cmd)
             factory.log('Command returns [%s, expecting %s]' % (
                 ret, expect_result))
             if re.search(expect_result, ret, re.MULTILINE):
+                self._event_log.Log(
+                    'connectivity_command', ab_serial_number=self.serial_number,
+                    status='PASSED', command=cmd,
+                    expecting=expect_result, ret=ret)
                 return True
         except Exception as e:
-            factory.log('Command failed with exception - %s' % e)
+            exception_str = '%s' % e
+            factory.log('Command failed with exception - %s' % exception_str)
+        self._event_log.Log(
+            'connectivity_command', ab_serial_number=self.serial_number,
+            status='FAILED', exception=exception_str,
+            command=cmd, expecting=expect_result, ret=ret)
         return False
 
     def write_log(self):
@@ -368,6 +384,9 @@ class factory_Connector(state_machine.FactoryStateMachine):
         if self.fixture_config and 'ending' in self.fixture_config:
             self.run_cmds(self.fixture_config['ending'])
 
+        self._event_log.Log(
+            'connectivity_end', ab_serial_number=self.serial_number,
+            result=self.display_dict)
         self.log_to_file.write('Result in summary:\n%s\n' %
                                pprint.pformat(self.display_dict))
         try:
@@ -492,6 +511,10 @@ class factory_Connector(state_machine.FactoryStateMachine):
         return errors
 
     def run_once(self, config_file):
+        # Initial EventLog
+        self._event_log = EventLog.ForAutoTest()
+        self.serial_number = 'Initialize'
+
         factory.log('%s run_once' % self.__class__)
         # Display dual screen if external display is connected.
         self.run_cmd('xrandr --auto', '')
