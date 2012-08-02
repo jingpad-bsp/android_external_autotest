@@ -1057,7 +1057,7 @@ class Agent(object):
                 self.finished = True
 
 
-class AgentTask(object):
+class BaseAgentTask(object):
     class _NullMonitor(object):
         pidfile_id = None
 
@@ -1213,15 +1213,15 @@ class AgentTask(object):
     @property
     def num_processes(self):
         """
-        Return the number of processes forked by this AgentTask's process.  It
-        may only be approximate.  To be overridden if necessary.
+        Return the number of processes forked by this BaseAgentTask's process.
+        It may only be approximate.  To be overridden if necessary.
         """
         return 1
 
 
     def _paired_with_monitor(self):
         """
-        If this AgentTask's process must run on the same machine as some
+        If this BaseAgentTask's process must run on the same machine as some
         previous process, this method should be overridden to return a
         PidfileRunMonitor for that process.
         """
@@ -1239,15 +1239,15 @@ class AgentTask(object):
 
     def _working_directory(self):
         """
-        Return the directory where this AgentTask's process executes.  Must be
-        overridden.
+        Return the directory where this BaseAgentTask's process executes.
+        Must be overridden.
         """
         raise NotImplementedError
 
 
     def _pidfile_name(self):
         """
-        Return the name of the pidfile this AgentTask's process uses.  To be
+        Return the name of the pidfile this BaseAgentTask's process uses.  To be
         overridden if necessary.
         """
         return drone_manager.AUTOSERV_PID_FILE
@@ -1296,7 +1296,7 @@ class AgentTask(object):
                     self.task, self.task.requested_by)
 
         job_ids = hqes.values_list('job', flat=True).distinct()
-        assert job_ids.count() == 1, ("AgentTask's queue entries "
+        assert job_ids.count() == 1, ("BaseAgentTask's queue entries "
                                       "span multiple jobs")
 
         job = models.Job.objects.get(id=job_ids[0])
@@ -1370,6 +1370,14 @@ class AgentTask(object):
                         '%s attempting to start on queue entry with invalid '
                         'host status %s: %s'
                         % (class_name, entry.host.status, entry))
+
+
+SiteAgentTask = utils.import_site_class(
+    __file__, 'autotest_lib.scheduler.site_monitor_db',
+    'SiteAgentTask', BaseAgentTask)
+
+class AgentTask(SiteAgentTask):
+    pass
 
 
 class TaskWithJobKeyvals(object):

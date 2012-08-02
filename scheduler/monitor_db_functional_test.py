@@ -349,6 +349,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
                                           1)
         self.mock_config.set_config_value('SCHEDULER', 'gc_stats_interval_mins',
                                           999999)
+        self.mock_config.set_config_value('SCHEDULER', 'enable_archiving', True)
 
 
     def _initialize_test(self):
@@ -1071,6 +1072,52 @@ class SchedulerFunctionalTest(unittest.TestCase,
                            for line in keyval_contents.splitlines())
         self.assert_('job_queued' in keyval_dict, keyval_dict)
         self.assertEquals(keyval_dict['mykey'], 'myvalue')
+
+
+# This tests the scheduler functions with archiving step disabled
+class SchedulerFunctionalTestNoArchiving(SchedulerFunctionalTest):
+    def _set_global_config_values(self):
+        self.mock_config.set_config_value('SCHEDULER', 'pidfile_timeout_mins',
+                                          1)
+        self.mock_config.set_config_value('SCHEDULER', 'gc_stats_interval_mins',
+                                          999999)
+        self.mock_config.set_config_value('SCHEDULER', 'enable_archiving',
+                                          False)
+
+
+    def _finish_parsing_and_cleanup(self, queue_entry):
+        self.mock_drone_manager.finish_process(_PidfileType.CLEANUP)
+        self.mock_drone_manager.finish_process(_PidfileType.PARSE)
+        self._run_dispatcher()
+
+
+    def _run_post_job_cleanup_failure_up_to_repair(self, queue_entry,
+                                                   include_verify=True):
+        if include_verify:
+            self._run_pre_job_verify(queue_entry)
+        self._run_dispatcher() # job
+        self.mock_drone_manager.finish_process(_PidfileType.JOB)
+        self._run_dispatcher() # parsing + cleanup
+        self.mock_drone_manager.finish_process(_PidfileType.PARSE)
+        self.mock_drone_manager.finish_process(_PidfileType.CLEANUP,
+                                               exit_status=256)
+        self._run_dispatcher() # repair, HQE unaffected
+        return queue_entry
+
+
+    def test_hostless_job(self):
+        job = self._create_job(hostless=True)
+        entry = job.hostqueueentry_set.all()[0]
+
+        self._run_dispatcher()
+        self._check_entry_status(entry, HqeStatus.RUNNING)
+
+        self.mock_drone_manager.finish_process(_PidfileType.JOB)
+        self._run_dispatcher()
+        self._check_entry_status(entry, HqeStatus.PARSING)
+        self.mock_drone_manager.finish_process(_PidfileType.PARSE)
+        self._run_dispatcher()
+        self._check_entry_status(entry, HqeStatus.COMPLETED)
 
 
 if __name__ == '__main__':
