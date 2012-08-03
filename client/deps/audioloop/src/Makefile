@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 
-LDFLAGS = -lasound -lpthread -lrt \
+LDFLAGS = -lasound -lcras -lm -lpthread -lrt \
 	 -L$(SYSROOT)/lib \
 	 -L$(SYSROOT)/usr/lib
 
@@ -14,13 +14,15 @@ OFILES += libaudiodev.o looptest.o
 
 .PHONY: clean run all install
 
-all: looptest
+all: looptest loopback_latency
 
 looptest: $(OFILES)
 
 libaudiodev.o: libaudiodev.c libaudiodev.h
 
 looptest.o: looptest.c libaudiodev.h
+
+loopback_latency: loopback_latency.c
 
 install: looptest
 	install -m 0755 looptest $(SYSROOT)/usr/local/bin
@@ -29,4 +31,4 @@ run:
 	./looptest
 
 clean:
-	rm -rf looptest $(OFILES)
+	rm -rf looptest loopback_latency $(OFILES)

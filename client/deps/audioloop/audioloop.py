@@ -12,6 +12,7 @@ version = 1
 def setup(topdir):
     srcdir = os.path.join(topdir, 'src')
     os.chdir(srcdir)
+    os.system('make clean')
     utils.make()
     os.chdir(topdir)
 
