@@ -396,10 +396,17 @@ class UITest(pyauto_test.PyAutoTest):
                 logging.info('Logged in as guest.')
             if not self.logged_in():
                 screenshot_name = 'login-bizzare-fail-screenshot'
-                raise error.TestError('Not logged in, this should not happen. '
+                raise error.TestError('Login was successful, but logged_in() '
+                                      'returned False. This should not happen. '
                                       'Please check the file named %s.png '
                                       'located in the results folder.' %
                                       screenshot_name)
+        except:
+            # If Login() times out, update error messages.
+            screenshot_name = 'login-timeout-fail-screenshot'
+            raise error.TestError('Login timed out. Please check the file '
+                                  'named  %s.png located in the results '
+                                  'folder.' % screenshot_name)
         finally:
             self.take_screenshot(fname_prefix=screenshot_name)
             self.stop_tcpdump(fname_prefix='tcpdump-lo--till-login')
