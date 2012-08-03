@@ -75,7 +75,7 @@ def get_phy_name(ath9k_path):
 
 
 class factory_Wifi(test.test):
-    version = 4
+    version = 5
 
     def run_once(self, n4010a_host, n4010a_port=5025, module_paths=None,
                  config_path=None, interface=None, set_ethernet_ip=None,
@@ -168,19 +168,21 @@ class factory_Wifi(test.test):
                         power.tries = try_number + 1
                         if not rf_utils.IsInRange(
                             power.avg_power, min_avg_power, max_avg_power):
-                            failures.append('Power for config %s is %g, '
-                                            'out of range (%g,%g)'
+                            failures.append('Power for config %s is %s, '
+                                            'out of range (%s,%s)'
                                             % ((channel, antenna, fixed_rate),
                                                power.avg_power,
                                                min_avg_power, max_avg_power))
                         break  # Success: Don't retry
                     except lan_scpi.TimeoutError:
                         # Try again
-                        logging.info("Timeout on channel %d", channel)
+                        logging.info("Timeout on config %s",
+                                     (channel, antenna, fixed_rate))
                         n4010a.Reopen()
                         power = None
                 else:
-                    failures.append("Timeout on channel %d" % channel)
+                    failures.append("Timeout on config (%s, %s, %s)" %
+                                    (channel, antenna, fixed_rate))
 
                 power_by_config[(channel, antenna, fixed_rate)] = power
 

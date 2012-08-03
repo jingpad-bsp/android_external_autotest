@@ -52,7 +52,7 @@ READ_RSSI_RESPONSE = r'RSSI: ([-\d]+)'
 
 
 class factory_Cellular(test.test):
-    version = 2
+    version = 3
 
     def run_once(self, ext_host, dev='ttyUSB0', config_path=None,
                  use_rfio2_for_aux=False,
@@ -157,7 +157,7 @@ class factory_Cellular(test.test):
                 tx_power_by_channel[channel_id] = power
                 if not rf_utils.IsInRange(power, min_power, max_power):
                     failures.append(
-                        'Power for channel %s is %g, out of range (%g,%g)' %
+                        'Power for channel %s is %s, out of range (%s,%s)' %
                         (channel_id, power, min_power, max_power))
 
             event_log.Log('cellular_tx_power',
@@ -204,7 +204,7 @@ class factory_Cellular(test.test):
                                                  timeout=5, sleep_interval=0.5)
                     except utils.TimeoutError:
                         failures.append(
-                            'RSSI for %s/%s out of range (%g, %g); read %s' % (
+                            'RSSI for %s/%s out of range (%s, %s); read %s' % (
                                 antenna, channel_id,
                                 min_power, max_power, power_readings))
 
