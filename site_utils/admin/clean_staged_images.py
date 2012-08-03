@@ -161,7 +161,9 @@ def prune_builds_and_labels(builds_dir, keep_duration, keep_paladin_duration):
             keep = keep_duration
 
         prune_builds(build_dir, keep)
-        delete_labels_of_unstaged_builds(build_dir)
+        # TODO(scottz): Skip label pruning for now.
+        # Refer to bug crosbug.com/33247
+        # delete_labels_of_unstaged_builds(build_dir)
 
 def main():
     usage = 'usage: %prog [options] images_dir'
