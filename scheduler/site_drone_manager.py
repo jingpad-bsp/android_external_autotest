@@ -7,6 +7,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.scheduler import scheduler_config
 
 HOSTS_JOB_SUBDIR = 'hosts/'
+PARSE_LOG = '.parse.log'
 
 
 class SiteDroneManager(object):
@@ -22,11 +23,19 @@ class SiteDroneManager(object):
         Agent Tasks (Cleanup, Verify, Repair) that reside in the hosts/
         subdirectory of results if the copy_task_results_back flag has been set
         to True inside global_config.ini
+
+        It will also only copy .parse.log files back to the scheduler if the
+        copy_parse_log_back flag in global_config.ini has been set to True.
         """
         copy_task_results_back = global_config.global_config.get_config_value(
                 scheduler_config.CONFIG_SECTION, 'copy_task_results_back',
                 type=bool)
+        copy_parse_log_back = global_config.global_config.get_config_value(
+                scheduler_config.CONFIG_SECTION, 'copy_parse_log_back',
+                type=bool)
         special_task = source_path.startswith(HOSTS_JOB_SUBDIR)
-        if copy_task_results_back or not special_task:
+        parse_log = source_path.endswith(PARSE_LOG)
+        if (copy_task_results_back or not special_task) and (
+                copy_parse_log_back or not parse_log):
             super(SiteDroneManager, self).copy_to_results_repository(process,
                     source_path, destination_path)
