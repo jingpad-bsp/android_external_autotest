@@ -44,10 +44,7 @@ class factory_AudioLoop(test.test):
         if self._audiofuntest:
            self.run_audiofuntest()
         else:
-           factory.console.info('Run looptest!!')
            self.audio_loopback()
-
-        factory.console.info('Over Test');
         return True
 
     def run_audiofuntest(self):
@@ -58,39 +55,42 @@ class factory_AudioLoop(test.test):
         Stop play tone
         Stop capturing data
         '''
-        factory.console.info('Run audiofuntest!!')
+        factory.console.info('Run audiofuntest')
         self._proc = subprocess.Popen([self._audiofuntest_path, '-r', '48000',
                 '-i', self._input_devices[0], '-o', self._output_devices[0]],
                 stderr=subprocess.PIPE)
 
         while True:
-          proc_output = self._proc.stderr.readline();
-          factory.console.info(proc_output)
-
-          m = _AUDIOFUNTEST_SUCCESS_RATE_RE.match(proc_output)
-          if m is not None:
-            self._last_success_rate = float(m.group(1))
-            self.ui.CallJSFunction('testInProgress', self._last_success_rate);
-
-          m = _AUDIOFUNTEST_STOP_RE.match(proc_output)
-          if m is not None:
-             if ( hasattr(self, '_last_success_rate') and
-                self._last_success_rate is not None ):
-                self._result = self._last_success_rate > _PASS_THRESHOLD
+            proc_output = self._proc.stderr.readline()
+            if not proc_output:
                 break
 
-        # show instant message and wait for a while
-        if ( hasattr(self, '_result') and self._result ):
-           self.ui.CallJSFunction('testPassResult');
-           time.sleep(1)
-           self.ui.Pass();
-        else :
-           self.ui.CallJSFunction('testFailResult', self._last_success_rate);
-           time.sleep(1)
-           self.ui.Fail('Test Fail. The success rate is %.1f, too low!' %
-                        self._last_success_rate)
-        return True
+            m = _AUDIOFUNTEST_SUCCESS_RATE_RE.match(proc_output)
+            if m is not None:
+                self._last_success_rate = float(m.group(1))
+                self.ui.CallJSFunction('testInProgress',
+                                       self._last_success_rate)
 
+            m = _AUDIOFUNTEST_STOP_RE.match(proc_output)
+            if m is not None:
+                 if (hasattr(self, '_last_success_rate') and
+                         self._last_success_rate is not None):
+                     self._result = self._last_success_rate > _PASS_THRESHOLD
+                     break
+
+        # Show instant message and wait for a while
+        if hasattr(self, '_result') and self._result:
+            self.ui.CallJSFunction('testPassResult')
+            time.sleep(1)
+            self.ui.Pass()
+        elif hasattr(self, '_last_success_rate'):
+            self.ui.CallJSFunction('testFailResult', self._last_success_rate)
+            time.sleep(1)
+            self.ui.Fail('Test Fail. The success rate is %.1f, too low!' %
+                         self._last_success_rate)
+        else:
+            self.ui.Fail('audiofuntest terminated unexpectedly')
+        return True
 
     def audio_loopback(self):
         for input_device in self._input_devices:
@@ -114,7 +114,7 @@ class factory_AudioLoop(test.test):
         if self._result is True:
            self.ui.SetHTML(_LABEL_SUCCESS_MESSAGE)
            time.sleep(0.5)
-           self.ui.Pass();
+           self.ui.Pass()
 
     def playback_sine(self, unused_channel, output_device='default'):
         cmd = '%s -n -t alsa %s synth %d sine %d' % (self._ah.sox_path,
@@ -161,5 +161,5 @@ class factory_AudioLoop(test.test):
         self.ui.AddEventHandler('start_run_test', self.start_run_test)
 
         factory.console.info('Run UI')
-        self.ui.Run();
+        self.ui.Run()
 
