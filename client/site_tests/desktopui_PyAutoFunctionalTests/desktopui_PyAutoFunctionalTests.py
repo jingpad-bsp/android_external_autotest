@@ -5,7 +5,7 @@
 import os
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.cros import chrome_test, cros_ui, ownership
+from autotest_lib.client.cros import chrome_test, cros_ui
 
 
 class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
@@ -16,19 +16,19 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
 
     version = 1
 
-
-    def initialize(self):
+    def initialize(self, auto_login):
+        # Control whether we want to auto login
+        # (auto_login is defined in cros_ui_test.py)
+        self.auto_login = auto_login
         chrome_test.ChromeTestBase.initialize(self)
-        self.setup_for_pyauto()
 
 
-    def run_once(self, suite=None, tests=None, auto_login=True):
+    def run_once(self, suite=None, tests=None):
         """Run pyauto functional tests.
 
         Args:
             suite: the pyauto functional suite to run.
             tests: the test modules to run.
-            auto_login: if True, login to default account before firing off.
 
         Either suite or tests should be specified, not both.
         """
@@ -37,16 +37,6 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
             'Should specify either suite or tests, not both'
 
         deps_dir = os.path.join(self.autodir, 'deps')
-        if auto_login:
-            # Enable chrome testing interface and Login.
-            pyautolib_dir = os.path.join(self.cr_source_dir,
-                                         'chrome', 'test', 'pyautolib')
-            login_cmd = cros_ui.xcommand(
-                'python %s chromeos_utils.ChromeosUtils.LoginToDefaultAccount '
-                '-v --no-http-server' % os.path.join(
-                    pyautolib_dir, 'chromeos', 'chromeos_utils.py'))
-            print 'Login cmd', login_cmd
-            utils.system(login_cmd)
 
         # Run tests.
         functional_cmd = 'python %s/chrome_test/test_src/' \
@@ -60,7 +50,3 @@ class desktopui_PyAutoFunctionalTests(chrome_test.ChromeTestBase):
         print 'Test launch cmd', launch_cmd
         utils.system(launch_cmd)
 
-
-    def cleanup(self):
-        ownership.clear_ownership()
-        chrome_test.ChromeTestBase.cleanup(self)

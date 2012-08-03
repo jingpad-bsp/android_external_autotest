@@ -21,11 +21,6 @@ class desktopui_PyAutoEnduranceTests(chrome_test.ChromeTestBase):
     version = 1
 
 
-    def initialize(self):
-        chrome_test.ChromeTestBase.initialize(self)
-        self.setup_for_pyauto()
-
-
     def parse_args(self, args):
         """Parses input arguments to this autotest."""
         parser = optparse.OptionParser()
@@ -51,15 +46,7 @@ class desktopui_PyAutoEnduranceTests(chrome_test.ChromeTestBase):
             args = args.split()
         options, _ = self.parse_args(args)
 
-        # Enable Chrome testing interface and login to a default account.
         deps_dir = os.path.join(self.autodir, 'deps')
-        pyautolib_dir = os.path.join(self.cr_source_dir,
-                                     'chrome', 'test', 'pyautolib')
-        login_cmd = cros_ui.xcommand_as(
-            'python %s chromeos_utils.ChromeosUtils.LoginToDefaultAccount '
-            '-v --no-http-server' %
-                os.path.join(pyautolib_dir, 'chromeos', 'chromeos_utils.py'))
-        utils.system(login_cmd)
 
         # Run the PyAuto endurance tests.
         print 'About to run the pyauto endurance tests.'

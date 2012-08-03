@@ -4,25 +4,32 @@
 
 import logging, os, pwd, re, shutil, stat, subprocess, tempfile
 
-import common, constants, cros_ui
-from autotest_lib.client.bin import test, utils
+import constants, cros_ui
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import ownership
+from autotest_lib.client.cros import cros_ui_test, ownership
 
-class ChromeTestBase(test.test):
+
+class ChromeTestBase(cros_ui_test.UITest):
+    """Base class for running tests obtained from the chrome tree.
+
+    Sets up chrome_test subtree, test binaries, logs in and
+    provides utility functions to run chrome binary tests or
+    pyauto functional tests.
+    """
+    # TODO(nirnimesh): Split this class into two, for binary tests and
+    #                  pyauto functional tests.
+
     home_dir = None
     chrome_restart_disabled = False
-
-    _PYAUTO_DEP = 'pyauto_dep'
     _CHROME_TEST_DEP = 'chrome_test'
-
     _MINIDUMPS_FILE = '/mnt/stateful_partition/etc/enable_chromium_minidumps'
 
 
     def setup(self):
-        self.job.setup_dep([self._PYAUTO_DEP])
+        cros_ui_test.UITest.setup(self)
         self.job.setup_dep([self._CHROME_TEST_DEP])
-        # create a empty srcdir to prevent the error that checks .version file
+        # create an empty srcdir to prevent the error that checks .version file
         if not os.path.exists(self.srcdir):
             os.mkdir(self.srcdir)
 
@@ -31,20 +38,25 @@ class ChromeTestBase(test.test):
         try:
             open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
             self.chrome_restart_disabled = True
-        except IOError, e:
+        except IOError as e:
             logging.debug(e)
             raise error.TestError('Failed to disable browser restarting.')
         utils.nuke_process_by_name(name=constants.BROWSER, with_prejudice=True)
 
 
+    def start_authserver(self):
+        # Do not fake login
+        pass
+
+
     def initialize(self, nuke_browser_norestart=True, skip_deps=False):
+        cros_ui_test.UITest.initialize(self, creds='$default')
+
         self.home_dir = tempfile.mkdtemp()
         os.chmod(self.home_dir, stat.S_IROTH | stat.S_IWOTH |stat.S_IXOTH)
         chrome_test_dep_dir = os.path.join(
                 self.autodir, 'deps', self._CHROME_TEST_DEP)
-        pyauto_dep_dir = os.path.join(self.autodir, 'deps', self._PYAUTO_DEP)
         if not skip_deps:
-            self.job.install_pkg(self._PYAUTO_DEP, 'dep', pyauto_dep_dir)
             self.job.install_pkg(self._CHROME_TEST_DEP, 'dep',
                                  chrome_test_dep_dir)
         self.cr_source_dir = '%s/test_src' % chrome_test_dep_dir
@@ -52,37 +64,19 @@ class ChromeTestBase(test.test):
         if nuke_browser_norestart:
             self.nuke_chrome()
         try:
-            setup_cmd = ('/bin/bash %s/test_src/out/Release/'
-                         'setup_test_links.sh' % pyauto_dep_dir)
-            utils.system(setup_cmd)  # this might raise an exception
             setup_cmd = ('/bin/bash %s/setup_test_links.sh'
                          % self.test_binary_dir)
             utils.system(setup_cmd)  # this might raise an exception
-        except error.CmdError, e:
+        except error.CmdError as e:
             raise error.TestError(e)
+        self._setup_for_chrome_test()
 
 
-    def setup_suid_python(self):
-        """Setup suid python binary that can enable chrome testing interface."""
-        suid_python = os.path.join(self.test_binary_dir, 'suid-python')
-        py_path = utils.system_output('which python')
-        py_path = py_path.strip()
-        assert os.path.exists(py_path), 'Could not find python'
-        if os.path.islink(py_path):
-            linkto = os.readlink(py_path)
-            py_path = os.path.join(os.path.dirname(py_path), linkto)
-        shutil.copy(py_path, suid_python)
-        os.chown(suid_python, 0, 0)
-        os.chmod(suid_python, 04755)
-
-
-    def setup_for_pyauto(self):
+    def _setup_for_chrome_test(self):
         assert os.geteuid() == 0, 'Need superuser privileges'
 
         deps_dir = os.path.join(self.autodir, 'deps')
         utils.system('chown -R chronos ' + self.cr_source_dir)
-
-        self.setup_suid_python()
 
         # chronos should own the current dir.
         chronos_id = pwd.getpwnam('chronos')
@@ -101,12 +95,6 @@ class ChromeTestBase(test.test):
         if not os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
             open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
         assert os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
-
-        # The UI must be taken down to ensure that no stale state persists.
-        cros_ui.stop()
-        # Clear ownership before login.
-        ownership.clear_ownership()
-        cros_ui.start(wait_for_login_prompt=False)
 
 
     def filter_bad_tests(self, tests, blacklist=None):
@@ -140,13 +128,14 @@ class ChromeTestBase(test.test):
                     last_suite = stripped.rstrip()
                 else:
                   all_tests.append(last_suite+stripped.rstrip())
-        except OSError, e:
+        except OSError as e:
             logging.debug(e)
             raise error.TestFail('Failed to list tests in %s!' % test_binary)
         return all_tests
 
 
     def run_chrome_test(self, test_to_run, extra_params='', prefix=''):
+        """Run chrome binary test."""
         try:
             os.chdir(self.home_dir)
             cmd = '%s/%s %s' % (self.test_binary_dir, test_to_run, extra_params)
@@ -154,7 +143,7 @@ class ChromeTestBase(test.test):
                                                     self.cr_source_dir,
                                                     prefix + cmd)
             cros_ui.xsystem_as(cmd)
-        except error.CmdError, e:
+        except error.CmdError as e:
             logging.debug(e)
             raise error.TestFail('%s failed!' % test_to_run)
 
@@ -165,12 +154,17 @@ class ChromeTestBase(test.test):
         return all_tests[group*group_size:group*group_size+group_size]
 
 
+    def run_pyauto_functional(self, suite, tests):
+        """Run pyauto functional tests."""
+        pass
+        # TODO(nirnimesh): Move the pyauto_functional.py commands in individual
+        #                  tests to here
+
+
     def cleanup(self):
         if self.chrome_restart_disabled:
             # Allow chrome to be restarted again.
             os.unlink(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
-        # Reset the UI.
-        cros_ui.nuke()
         if self.home_dir:
             shutil.rmtree(self.home_dir, ignore_errors=True)
-        test.test.cleanup(self)
+        cros_ui_test.UITest.cleanup(self)

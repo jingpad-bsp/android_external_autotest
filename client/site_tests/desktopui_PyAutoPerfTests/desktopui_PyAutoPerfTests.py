@@ -9,7 +9,7 @@ import sys
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import chrome_test, cros_ui, ownership
+from autotest_lib.client.cros import chrome_test, cros_ui
 
 
 class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
@@ -39,10 +39,8 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
             setup_cmd = '/bin/sh %s/%s' % (dep_dir,
                                            'setup_test_links.sh')
             utils.system(setup_cmd)  # this might raise an exception
-        except error.CmdError, e:
+        except error.CmdError as e:
             raise error.TestError(e)
-
-        self.setup_for_pyauto()
 
 
     def parse_args(self, args):
@@ -81,15 +79,7 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
         options, test_args = self.parse_args(args)
         test_args = ' '.join(test_args)
 
-        # Enable Chrome testing interface and login to a default account.
         deps_dir = os.path.join(self.autodir, 'deps')
-        pyautolib_dir = os.path.join(self.cr_source_dir,
-                                     'chrome', 'test', 'pyautolib')
-        login_cmd = cros_ui.xcommand_as(
-            'python %s chromeos_utils.ChromeosUtils.LoginToDefaultAccount '
-            '-v --no-http-server' %
-                os.path.join(pyautolib_dir, 'chromeos', 'chromeos_utils.py'))
-        utils.system(login_cmd)
 
         # Run the PyAuto performance tests.
         print 'About to run the pyauto performance tests.'
@@ -136,8 +126,3 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
                 'least one pyauto test failed.  Refer to the full autotest '
                 'output in desktopui_PyAutoPerfTests.DEBUG for details.'
                 % cmd_result.exit_status)
-
-
-    def cleanup(self):
-        ownership.clear_ownership()
-        chrome_test.ChromeTestBase.cleanup(self)

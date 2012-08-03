@@ -73,8 +73,10 @@ class UITest(pyauto_test.PyAutoTest):
         """
         if hasattr(self, '_authServer'):
             self._authServer.stop()
+            del self._authServer
         if hasattr(self, '_dnsServer'):
             self._dnsServer.stop()
+            del self._dnsServer
 
 
     def start_chrome_event_tracing(self):

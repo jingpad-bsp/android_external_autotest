@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import chrome_test, cros_ui, cros_ui_test
+from autotest_lib.client.cros import chrome_test, cros_ui
 from blacklists import blacklist, blacklist_vm
 
 SKIP_DEPS_ARG = 'skip_deps'
@@ -29,23 +29,16 @@ def get_binary_prefix(arguments=[]):
     return ''
 
 
-class desktopui_BrowserTest(chrome_test.ChromeTestBase, cros_ui_test.UITest):
+class desktopui_BrowserTest(chrome_test.ChromeTestBase):
     version = 1
     binary_to_run = 'browser_tests'
 
     MAX_TESTS_TO_RUN = 100
 
-    def initialize(self, creds='$default', arguments=[]):
-        if SKIP_DEPS_ARG in arguments:
-            skip_deps = True
-        else:
-            skip_deps = False
-        chrome_test.ChromeTestBase.initialize(self, False, skip_deps=skip_deps)
-        cros_ui_test.UITest.initialize(self, creds)
-
-    def cleanup(self):
-        cros_ui_test.UITest.cleanup(self)
-        chrome_test.ChromeTestBase.cleanup(self)
+    def initialize(self, arguments=[]):
+        chrome_test.ChromeTestBase.initialize(
+            self, nuke_browser_norestart=False,
+            skip_deps=bool(SKIP_DEPS_ARG in arguments))
 
     def get_tests_to_run(self, group=0, total_groups=1, arguments=[]):
         # Tests specified in arguments override default test behavior
