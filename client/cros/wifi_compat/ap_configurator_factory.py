@@ -9,6 +9,7 @@ import belkin_ap_configurator
 import buffalo_ap_configurator
 import dlink_ap_configurator
 import dlink_dir655_ap_configurator
+import dlinkwbr1310_ap_configurator
 import linksys_ap_configurator
 import linksyse2000_ap_configurator
 import linksysE4200_ap_configurator
@@ -72,6 +73,9 @@ class APConfiguratorFactory(object):
         self._build_all_instances_of_configurator(config_list,
             'Netgear614APConfigurator',
             netgear614_ap_configurator.NetgearAPConfigurator)
+        self._build_all_instances_of_configurator(config_list,
+            'dlinkwbr1310APConfigurator',
+            dlinkwbr1310_ap_configurator.dlinkwbr1310APConfigurator)
 
     def _build_all_instances_of_configurator(self, config_list, name,
                                              configurator):

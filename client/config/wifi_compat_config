@@ -148,4 +148,15 @@
     'power_outlet_admin_name': 'admin',
     'power_outlet_password': 'password',
   },
+  {
+    'class_name': 'dlinkwbr1310APConfigurator',
+    'short_name': 'dlinkwbr1310',
+    'admin_url': 'http://172.22.12.232',
+    'serial_number': '',
+    'mac_address': '00:24:01:6c:ec:56',
+    'power_outlet_ip': '172.22.12.202',
+    'power_outlet_number': '2',
+    'power_outlet_admin_name': 'admin',
+    'power_outlet_password': 'password',
+  },
 ]
