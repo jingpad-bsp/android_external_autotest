@@ -105,9 +105,13 @@ def offload_hosts_sub_dir():
     # Inside a host directory.
     # Store these results in gs://chromeos-autotest-results/hosts/{host_name}
     host_path = os.path.join(HOSTS_SUB_DIR, host_entry)
+    if not os.path.isdir(host_path):
+      continue
     for job_entry in os.listdir(host_path):
       # Offload all the verify, clean and repair jobs for this host.
       dir_path = os.path.join(host_path, job_entry)
+      if not os.path.isdir(dir_path):
+        continue
       logging.debug('Processing %s', dir_path)
       offload_dir(dir_path, dir_path)
 
