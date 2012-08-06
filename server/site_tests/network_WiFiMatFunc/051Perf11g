@@ -9,7 +9,8 @@
   "steps":[             # Channel 1
     [ "create",         { "type":"hostap" } ],
 
-    [ "config",         { "channel":"2412", "mode":"11g"} ],
+    [ "config",         { "channel":"2412", "mode":"11g",
+                          "ssid_suffix":"ch1" } ],
     [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
     [ "client_iperf",   { "udp":None } ],
@@ -20,7 +21,8 @@
     # XXX mixed streams
     [ "deconfig" ],
 
-    [ "config",         { "channel":"2437", "mode":"11g"} ],
+    [ "config",         { "channel":"2437", "mode":"11g",
+                          "ssid_suffix":"ch6" } ],
     [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
     [ "client_iperf",   { "udp":None } ],
@@ -31,7 +33,8 @@
     # XXX mixed streams
     [ "deconfig" ],
 
-    [ "config",         { "channel":"2462", "mode":"11g"} ],
+    [ "config",         { "channel":"2462", "mode":"11g",
+                          "ssid_suffix":"ch11" } ],
     [ "client_powersave_off" ],
     [ "connect",        { "security":"none" } ],
     [ "client_iperf",   { "udp":None } ],
