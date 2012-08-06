@@ -1,0 +1,13 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+DOC = "Pulls ONC policy and verifies DUT can properly connect to the network"
+NAME = "network_ONC"
+PURPOSE = "Verify ONC functionality works."
+CRITERIA = "Fails if device fails to pull ONC policy or connect to ONC."
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "network"
+TEST_TYPE = "client"

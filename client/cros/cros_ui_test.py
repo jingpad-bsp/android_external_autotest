@@ -228,7 +228,8 @@ class UITest(pyauto_test.PyAutoTest):
 
 
     def initialize(self, creds=None, is_creating_owner=False,
-                   extra_chrome_flags=[], subtract_extra_chrome_flags=[]):
+                   extra_chrome_flags=[], subtract_extra_chrome_flags=[],
+                   *args, **kwargs):
         """Overridden from test.initialize() to log out and (maybe) log in.
 
         If self.auto_login is True, this will automatically log in using the
@@ -312,7 +313,8 @@ class UITest(pyauto_test.PyAutoTest):
         pyauto_test.PyAutoTest.initialize(
             self, auto_login=False,
             extra_chrome_flags=extra_chrome_flags,
-            subtract_extra_chrome_flags=subtract_extra_chrome_flags)
+            subtract_extra_chrome_flags=subtract_extra_chrome_flags,
+            *args, **kwargs)
         if self.skip_oobe or self.auto_login:
             self.pyauto.SkipToLogin()
         if self.auto_login:

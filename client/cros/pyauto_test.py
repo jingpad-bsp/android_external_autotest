@@ -113,8 +113,28 @@ class PyAutoTest(test.test):
         os.chmod(suid_python, 04755)
 
 
+    def _get_pyuitest_class(self, class_name):
+        """Obtains a object reference of a class with the indicated name.
+        Assumes pyauto deps has already been installed.
+
+        Args:
+          class_name: string in <package>.<class> format that represents
+                      the PYUITest to be used (eg. 'policy_base.PolicyBaseTest')
+
+        Returns:
+          An instance of pyauto.PyUITest.
+        """
+        import pyauto
+        module, _, name = class_name.rpartition('.')
+        mod = getattr(__import__(module), name)
+        assert issubclass(mod, pyauto.PyUITest), '%s is not a subclass of ' \
+                                                 'PyUITest' % name
+        return mod
+
+
     def initialize(self, auto_login=True, extra_chrome_flags=[],
-                   subtract_extra_chrome_flags=[]):
+                   subtract_extra_chrome_flags=[],
+                   pyuitest_class='pyauto.PyUITest'):
         """Initialize.
 
         Expects session_manager to be alive.
@@ -130,14 +150,16 @@ class PyAutoTest(test.test):
         self._install_deps()
         import pyauto
 
-        class PyUITestInAutotest(pyauto.PyUITest):
+        pyauto_class = self._get_pyuitest_class(pyuitest_class)
+
+        class PyUITestInAutotest(pyauto_class):
             """Adaptation of PyUITest for use in Autotest."""
             def runTest(self):
                 # unittest framework expects runTest.
                 pass
 
             def ExtraChromeFlags(self):
-                args = pyauto.PyUITest.ExtraChromeFlags(self)
+                args = pyauto_class.ExtraChromeFlags(self)
                 return list((set(args) - set(subtract_extra_chrome_flags))
                             | set(extra_chrome_flags))
 

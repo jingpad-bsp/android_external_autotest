@@ -242,15 +242,18 @@ class WiFiTest(object):
           pieces = string.split(":")
           self.ethernet_mac_address = "".join(pieces)
 
-        # NB: do last so code above doesn't need to cleanup on failure
-        self.test_profile = {'name':'test'}
-        # cleanup in case a previous failure left the profile around
-        self.profile_pop(self.test_profile, ignore_status=True)
-        self.profile_remove(self.test_profile, ignore_status=True)
-        self.profile_create(self.test_profile)
-        self.profile_push(self.test_profile)
-
+        self.init_profile()
         self.client_capabilities = self.__get_client_capabilities()
+
+
+    def init_profile(self):
+       # NB: do last so code above doesn't need to cleanup on failure
+       self.test_profile = {'name':'test'}
+       # cleanup in case a previous failure left the profile around
+       self.profile_pop(self.test_profile, ignore_status=True)
+       self.profile_remove(self.test_profile, ignore_status=True)
+       self.profile_create(self.test_profile)
+       self.profile_push(self.test_profile)
 
 
     def cleanup(self, params):
@@ -260,8 +263,9 @@ class WiFiTest(object):
             self.wifi.destroy({})
 
         self.wifi.cleanup({})
-        self.profile_pop(self.test_profile)
-        self.profile_remove(self.test_profile)
+        if hasattr(self, 'test_profile'):
+          self.profile_pop(self.test_profile)
+          self.profile_remove(self.test_profile)
         self.client_stop_capture({})
         self.client_stop_statistics({})
         self.firewall_cleanup({})
@@ -2254,6 +2258,7 @@ class test(test.test):
   directory for each test suite
   """
   version = 1
+  testtype = WiFiTest
 
   def expect_failure(self, name, reason):
     if reason is None:
@@ -2269,8 +2274,8 @@ class test(test.test):
       if 'skip_test' in testcase and 'no_skip' not in config['run_options']:
         logging.info("%s: SKIP: %s", name, testcase['skip_test'])
       else:
-        wt = WiFiTest(name, testcase['steps'], testcase.get('requires', []),
-                      config)
+        wt = self.testtype(name, testcase['steps'],
+                           testcase.get('requires', []), config)
         wt.run()
         wt.write_keyvals(self)
     except error.TestFail:
