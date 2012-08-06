@@ -8,9 +8,10 @@ NAME = "WiFi Perf"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "Server"
+SUITE = "wificell"
 SYNC_COUNT = 1
 DOC = """
-WiFiMatFunc is a suite of 3-machine tests to validate basic WiFi functionality.
+WiFiPerf is a suite of 3-machine tests to validate basic WiFi functionality.
 One client, one server, and one programmable WiFi AP/Router are required
 (either off-the-shelf with a network-accesible CLI or a Linux/BSD system
 with a WiFi card that supports HostAP functionality).
