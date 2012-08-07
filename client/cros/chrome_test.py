@@ -162,7 +162,7 @@ class ChromeTestBase(cros_ui_test.UITest):
 
 
     def cleanup(self):
-        if self.chrome_restart_disabled:
+        if os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
             # Allow chrome to be restarted again.
             os.unlink(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
         if self.home_dir:
