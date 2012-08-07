@@ -217,7 +217,7 @@ class power_Consumption(cros_ui_test.UITest):
         logging.info('App name: %s Tab title: %s.', name, tab_title)
         self.pyauto.AppendTab('about:blank')
         self._run_sleep(name, duration)
-        self.pyauto.GetBrowserWindow(0).GetTab(1).Close()
+        self.pyauto.CloseTab(tab_index=1, windex=0)
 
 
     def _run_group_download(self):
@@ -339,7 +339,7 @@ class power_Consumption(cros_ui_test.UITest):
             self.pyauto.ExecuteJavascript(js_loop_enable)
             self.pyauto.AppendTab('about:blank')
             self._run_sleep(name, self._duration_secs)
-            self.pyauto.GetBrowserWindow(0).GetTab(1).Close()
+            self.pyauto.CloseTab(tab_index=1, windex=0)
 
 
     def _run_group_sound(self):
