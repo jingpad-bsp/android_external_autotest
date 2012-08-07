@@ -8,7 +8,7 @@
 """Provides utility methods for controlling powerd in ChromiumOS.
 """
 
-import os, upstart
+import os, upstart, rtc
 
 
 SUSPEND_CMD='/usr/bin/powerd_suspend'
@@ -32,10 +32,14 @@ def set_state(state):
     file('/sys/power/state', 'w').write("%s\n" % state)
 
 
-def suspend_to_ram():
+def suspend_to_ram(seconds=None):
     """
-    Suspend the system to RAM (S3)
+    Suspend the system to RAM (S3), optionally waking up after |seconds|
     """
+    if seconds:
+        now = rtc.get_seconds()
+        rtc.set_wake_alarm(now + seconds)
+
     if os.path.exists(SUSPEND_CMD):
         os.system(SUSPEND_CMD + ' --test')
     else:
