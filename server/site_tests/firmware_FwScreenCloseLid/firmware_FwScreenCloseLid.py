@@ -19,8 +19,6 @@ class firmware_FwScreenCloseLid(FAFTSequence):
     """
     version = 1
 
-    has_lid = False
-
 
     def wait_second_screen_and_close_lid(self):
         """Wait and trigger TO_NORM or RECOVERY INSERT screen and close lid."""
@@ -38,8 +36,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
 
     def setup(self):
         super(firmware_FwScreenCloseLid, self).setup()
-        if self.faft_client.get_platform_name() not in ('Stumpy'):
-            self.has_lid = True
+        if self.client_attr.has_lid:
             self.setup_dev_mode(dev_mode=True)
             self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
             usb_dev = self.servo.probe_host_usb_dev()
@@ -49,7 +46,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
 
 
     def cleanup(self):
-        if self.has_lid:
+        if self.client_attr.has_lid:
             self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
             usb_dev = self.servo.probe_host_usb_dev()
             # Restore the kernel of USB stick which is corrupted on setup phase.
@@ -137,7 +134,7 @@ class firmware_FwScreenCloseLid(FAFTSequence):
                 }),
             },
         ))
-        if self.has_lid:
+        if self.client_attr.has_lid:
             self.run_faft_sequence()
         else:
             logging.info('This test does nothing on devices without lid.')
