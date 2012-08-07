@@ -66,7 +66,6 @@
     [ "disconnect" ],
 
     # Ensure authentication fails if server's cert is missing.
-    [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t1" } ],
     [ "!connect",       { "security":"802_1x",
                           "psk" : "EAP.Identity:chromeos"
@@ -77,7 +76,6 @@
                           "TLS: Certificate verification failed"],
 
     # Ensure authentication fails if server's cert doesn't match our CA cert.
-    [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t2" } ],
     [ "!connect",       { "security":"802_1x",
                           "psk" : "EAP.Identity:chromeos"
@@ -92,7 +90,6 @@
     # However, authentication should succeed when we don't care that the server
     # certs don't match our local CA cert.  This is only when we're not aware
     # of any ca certificates at all.
-    [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t3" } ],
     [ "connect",        { "security":"802_1x",
                           "psk" : "EAP.Identity:chromeos" +
@@ -105,7 +102,6 @@
     [ "disconnect" ],
 
     # Try authenticating using the wrong client certiificate.
-    [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t4" } ],
     [ "!connect",       { "security":"802_1x",
                           "psk" : "EAP.Identity:chromeos"
@@ -119,7 +115,6 @@
                           "\(remote end reported an error\):fatal:unknown CA" ],
 
     # Try authenticating using an expired server certiificate.
-    [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t5",
                           "server_cert" :
                                 site_eap_certs.server_expired_cert_install_path,

@@ -2,11 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Try 802.1x authentication.  The supplicant must be restarted between
-# trials because it is "sticky" with regards to various parameters
-# related to certificate authentication.  A thread is currently afoot
-# in the hostap mailing list about this, but for the time being we will
-# do supplicant restarts to test.
+# Try 802.1x authentication.
 
 { "name":"Check1x_PEAP",
   "steps":[             # Channel [any]
@@ -50,7 +46,6 @@
     [ "disconnect" ],
 
     # Try MD5 inner auth
-    [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t1" } ],
     [ "connect",        { "security":"802_1x",
                           "psk" : "EAP.Identity:testuser-md5"
@@ -62,14 +57,12 @@
 
     #
     # Try authenticating using the wrong client password.
-    [ "restart_supplicant" ],
     [ "config",         { "ssid_suffix":"t2" } ],
     [ "!connect",        { "security":"802_1x",
                            "psk" : "EAP.Identity:testuser-chapv2"
                            ":EAP.Password:wrongpassword"} ],
     #
     # Try authenticating with the right client password but wrong CA.
-     [ "restart_supplicant" ],
      [ "config",         { "ssid_suffix":"t3" } ],
      [ "!connect",        { "security":"802_1x",
                             "psk" : "EAP.Identity:testuser-chapv2"
@@ -77,7 +70,6 @@
                             ":EAP.CACert:/tmp/ca-cert-other.pem"} ],
 
    # Try authenticating to an AP with an expired server cert.
-     [ "restart_supplicant" ],
      [ "config",         { "ssid_suffix":"t4",
                            "ca_cert" : "/tmp/hostapd_ca_cert",
                            "server_cert" : "/tmp/hostapd_expired_server_cert",
