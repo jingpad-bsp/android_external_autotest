@@ -43,9 +43,6 @@ RESULTS_DIR = '/usr/local/autotest/results'
 # Hosts sub-directory that contains cleanup, verify and repair jobs.
 HOSTS_SUB_DIR = 'hosts'
 
-# Success constant to check if a job is completed.
-JOB_COMPLETED = 0
-
 LOG_FILENAME_FORMAT = ('/usr/local/autotest/logs/'
                        'gs_offloader_log_%Y%m%d_%H%M%S.txt')
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
@@ -111,6 +108,11 @@ def offload_hosts_sub_dir():
       # Offload all the verify, clean and repair jobs for this host.
       dir_path = os.path.join(host_path, job_entry)
       if not os.path.isdir(dir_path):
+        continue
+      job_id = os.path.basename(dir_path).split('-')[0]
+      if not is_job_complete.is_special_task_complete(job_id):
+        logging.debug('Special Task %s is not yet complete; skipping.',
+                      dir_path)
         continue
       logging.debug('Processing %s', dir_path)
       offload_dir(dir_path, dir_path)
@@ -190,7 +192,7 @@ def offload_files(results_dir):
       # Directory names are in the format of <job #>-<job user>. We want just
       # the job # to see if it has completed.
       job_id = os.path.basename(dir_entry).split('-')[0]
-      if is_job_complete.is_job_complete(job_id) is not JOB_COMPLETED:
+      if not is_job_complete.is_job_complete(job_id):
         logging.debug('Job %s is not yet complete; skipping.', dir_entry)
         continue
       if (job_matcher.match(dir_entry) and os.path.isdir(dir_entry)):
