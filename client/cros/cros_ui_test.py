@@ -479,8 +479,8 @@ class UITest(pyauto_test.PyAutoTest):
 
     def __log_crashed_processes(self, processes):
         """Runs through the log watched by |watcher| to see if a crash was
-        reported for any process names listed in |processes|. SIGABRT crashes in
-        chrome or supplied-chrome during ui restart are ignored.
+        reported for any process names not listed in |processes|. SIGABRT
+        crashes in chrome or supplied-chrome during ui restart are ignored.
         """
         ui_restart_begin_regex = re.compile(cros_ui.UI_RESTART_ATTEMPT_MSG)
         crash_regex = re.compile(
