@@ -828,11 +828,11 @@ class PowerLogger(threading.Thread):
                 results.append((prefix, pwr_mean, pwr_std,
                                 tend - tstart, tstart, tend))
 
-                keyvals[prefix+'_power'] = pwr_mean
-                keyvals[prefix+'_power_cnt'] = pwr_array.size
-                keyvals[prefix+'_power_max'] = pwr_array.max()
-                keyvals[prefix+'_power_min'] = pwr_array.min()
-                keyvals[prefix+'_power_std'] = pwr_std
+                keyvals[prefix+'_pwr'] = pwr_mean
+                keyvals[prefix+'_pwr_cnt'] = pwr_array.size
+                keyvals[prefix+'_pwr_max'] = pwr_array.max()
+                keyvals[prefix+'_pwr_min'] = pwr_array.min()
+                keyvals[prefix+'_pwr_std'] = pwr_std
 
         self._results = results
         return keyvals

@@ -284,26 +284,27 @@ class power_Consumption(cros_ui_test.UITest):
     def _run_group_video(self):
         """Run video and audio playback in the browser."""
 
+        # Note: for perf keyvals, key names are defined as VARCHAR(30) in the
+        # results DB. Chars above 30 are truncated when saved to DB.
         urls = [
-            ('BigBuckBunny_400p_ogg', 'big_buck_bunny_trailer_400p.ogg'),
-            ('BigBuckBunny_400p_h264', 'big_buck_bunny_trailer_400p.mp4'),
-            ('BigBuckBunny_400p_vp8', 'big_buck_bunny_trailer_400p.webm'),
-            ('BigBuckBunny_1080p_ogg','big_buck_bunny_trailer_1080p.ogg'),
-            ('BigBuckBunny_1080p_h264','big_buck_bunny_trailer_1080p.mp4'),
-            ('BigBuckBunny_1080p_vp8','big_buck_bunny_trailer_1080p.webm'),
-            ('Greensleeves', 'Greensleeves.ogg'),
-            # TODO: (kamrik) Add more video formats
+            ('vid400p_ogg', 'big_buck_bunny_trailer_400p.ogg'),
+            ('vid400p_h264', 'big_buck_bunny_trailer_400p.mp4'),
+            ('vid400p_vp8', 'big_buck_bunny_trailer_400p.webm'),
+            ('vid1080_ogg','big_buck_bunny_trailer_1080p.ogg'),
+            ('vid1080_h264','big_buck_bunny_trailer_1080p.mp4'),
+            ('vid1080_vp8','big_buck_bunny_trailer_1080p.webm'),
+            ('audio', 'Greensleeves.ogg'),
             ]
 
         fullscreen_urls = [
-            ('BigBuckBunny_1080p_h264_fullscreen',
+            ('vid1080_h264_fs',
              'big_buck_bunny_trailer_1080p.mp4'),
-            ('BigBuckBunny_1080p_vp8_fullscreen',
+            ('vid1080_vp8_fs',
              'big_buck_bunny_trailer_1080p.webm'),
             ]
 
         bg_urls = [
-            ('bg_BigBuckBunny_400p', 'big_buck_bunny_trailer_400p.ogg'),
+            ('bg_vid400p', 'big_buck_bunny_trailer_400p.webm'),
             ]
 
         # The video files are run from a file:// url. In order to work properly
@@ -345,7 +346,7 @@ class power_Consumption(cros_ui_test.UITest):
         """Run non-UI sound test using 'speaker-test'."""
 
         cmd = 'speaker-test -l %s -t sine -c 2' % (self._repeats * 6)
-        self._run_cmd('speaker_test_spk', cmd)
+        self._run_cmd('speaker_test', cmd)
 
 
     def _run_group_lowlevel(self):
