@@ -2,12 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test case verifies that the DUT can connect to an AP using
+# WEP shared key authentication with 104-bit pre-shared keys (Ascii only).
+
 { "name":"CheckSharedKey_WEP104",
   "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "mode":"11g",
                           "authmode":"shared", "wepmode":"on",
-                          # 26 digits : 01234567890123456789012345
+                          # 26 hex digits : 01234567890123456789012345
                           "wep_key0":  "0123456789abcdef0123456789",
                           "wep_key1":  "89abcdef0123456789abcdef01",
                           "wep_key2":  "fedcba9876543210fedcba9876",

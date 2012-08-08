@@ -2,17 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Purpose: This test case verifies that the DUT can connect to an AP using
+# WEP open system authentication with 40-bit pre-shared keys.
+
 { "name":"CheckStaticKey_WEP40",
   "steps":[             # Channel [1,6,11]
     [ "create",         { "type":"hostap" } ],
     [ "config",         { "channel":"2412", "mode":"11g",
-#                          "authmode":"open", "wepmode":"on",
                           "wepmode":"on",
-                          # 10 digits : 0123456789
+                          # use quoted characters or unquoted hex digits
+                          # hostapd supports up to 4 keys.
+                          # key length = 10 hex digits
                           "wep_key0":  "0123456789",
                           "wep_key1":  "89abcdef01",
                           "wep_key2":  "9876543210",
-                          "wep_key3":  "fedcba9876" 
+                          "wep_key3":  "fedcba9876"
                         }
     ],
 
