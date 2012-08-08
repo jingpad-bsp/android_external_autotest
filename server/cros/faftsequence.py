@@ -1084,7 +1084,7 @@ class FAFTSequence(ServoTest):
             args = action_tuple[1:]
             if callable(action):
                 logging.info('calling %s with parameter %s' % (
-                        str(action), str(action_tuple[1])))
+                        str(action), str(args)))
                 return action(*args)
             else:
                 logging.info('action is not callable!')
