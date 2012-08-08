@@ -29,8 +29,9 @@ Sample usage:
       -a auto_login=False,suite=CHROMEOS_LOGIN
 """
 
+# Either suite or tests should be specified, not both.
 suite = None
-tests = None
+tests = []
 auto_login = True
 
 # Parse comma-separated args.
@@ -40,7 +41,7 @@ for arg in args:
         if key == 'suite':
             suite = val
         elif key == 'tests':
-            tests = val
+            tests.append(val)
         elif key == 'auto_login':
             if val in ('0', 'False', 'false'):
                 auto_login = False

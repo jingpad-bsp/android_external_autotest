@@ -2,33 +2,39 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, pwd, re, shutil, stat, subprocess, tempfile
+import logging
+import os
+import pwd
+import re
+import shutil
+import stat
+import subprocess
+import tempfile
 
-import constants, cros_ui
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, ownership
+from autotest_lib.client.cros import constants, cros_ui, cros_ui_test, ownership
 
 
 class ChromeTestBase(cros_ui_test.UITest):
     """Base class for running tests obtained from the chrome tree.
 
     Sets up chrome_test subtree, test binaries, logs in and
-    provides utility functions to run chrome binary tests or
-    pyauto functional tests.
+    provides utility functions to run chrome binary tests.
     """
-    # TODO(nirnimesh): Split this class into two, for binary tests and
-    #                  pyauto functional tests.
+
+    # TODO(nirnimesh): Split this class into two, a base class and another
+    #                  for binary tests.
 
     home_dir = None
     chrome_restart_disabled = False
-    _CHROME_TEST_DEP = 'chrome_test'
+    CHROME_TEST_DEP = 'chrome_test'
     _MINIDUMPS_FILE = '/mnt/stateful_partition/etc/enable_chromium_minidumps'
 
 
     def setup(self):
         cros_ui_test.UITest.setup(self)
-        self.job.setup_dep([self._CHROME_TEST_DEP])
+        self.job.setup_dep([self.CHROME_TEST_DEP])
         # create an empty srcdir to prevent the error that checks .version file
         if not os.path.exists(self.srcdir):
             os.mkdir(self.srcdir)
@@ -55,9 +61,9 @@ class ChromeTestBase(cros_ui_test.UITest):
         self.home_dir = tempfile.mkdtemp()
         os.chmod(self.home_dir, stat.S_IROTH | stat.S_IWOTH |stat.S_IXOTH)
         chrome_test_dep_dir = os.path.join(
-                self.autodir, 'deps', self._CHROME_TEST_DEP)
+                self.autodir, 'deps', self.CHROME_TEST_DEP)
         if not skip_deps:
-            self.job.install_pkg(self._CHROME_TEST_DEP, 'dep',
+            self.job.install_pkg(self.CHROME_TEST_DEP, 'dep',
                                  chrome_test_dep_dir)
         self.cr_source_dir = '%s/test_src' % chrome_test_dep_dir
         self.test_binary_dir = '%s/out/Release' % self.cr_source_dir
@@ -154,13 +160,6 @@ class ChromeTestBase(cros_ui_test.UITest):
         return all_tests[group*group_size:group*group_size+group_size]
 
 
-    def run_pyauto_functional(self, suite, tests):
-        """Run pyauto functional tests."""
-        pass
-        # TODO(nirnimesh): Move the pyauto_functional.py commands in individual
-        #                  tests to here
-
-
     def cleanup(self):
         if os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
             # Allow chrome to be restarted again.
@@ -168,3 +167,45 @@ class ChromeTestBase(cros_ui_test.UITest):
         if self.home_dir:
             shutil.rmtree(self.home_dir, ignore_errors=True)
         cros_ui_test.UITest.cleanup(self)
+
+
+class PyAutoFunctionalTest(ChromeTestBase):
+    """Run chrome pyauto functional tests."""
+
+    def initialize(self, auto_login=True):
+        # Control whether we want to auto login
+        # (auto_login is defined in cros_ui_test.py)
+        self.auto_login = auto_login
+        ChromeTestBase.initialize(self)
+
+
+    def run_pyauto_functional(self, suite=None, tests=[], as_chronos=False):
+        """Run pyauto functional tests.
+
+        Either suite or tests need to be specified, not both.
+
+        Args:
+            suite: the pyauto suite name for the tests to run
+            tests: the list of pyauto tests to run
+            as_chronos: specify whether tests should be run as chronos
+                        (Default: run as root)
+        """
+        if not (suite or tests):
+            raise error.TestError('Should specify suite or tests')
+        if suite and tests:
+            raise error.TestError('Should specify either suite or tests, '
+                                  'not both')
+
+        # Run tests.
+        functional_cmd = 'python %s/deps/%s/test_src/' \
+            'chrome/test/functional/pyauto_functional.py -v ' % (
+            self.autodir, self.CHROME_TEST_DEP)
+        if suite:
+            functional_cmd += ' --suite=%s' % suite
+        elif tests:
+            functional_cmd += ' '.join(tests)
+
+        xcommand_func = cros_ui.xcommand_as if as_chronos else cros_ui.xcommand
+        launch_cmd = xcommand_func(functional_cmd)
+        logging.info('Test launch cmd: %s', launch_cmd)
+        utils.system(launch_cmd)
