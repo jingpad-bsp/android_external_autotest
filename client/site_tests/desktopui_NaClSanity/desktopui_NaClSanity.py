@@ -5,7 +5,7 @@
 from autotest_lib.client.cros import chrome_test
 
 
-class desktopui_NaclSanity(chrome_test.PyAutoFunctionalTest):
+class desktopui_NaClSanity(chrome_test.PyAutoFunctionalTest):
     """Sanity test for NaCl.
 
     Secure shell uses NaCl, so verifying that secure shell
