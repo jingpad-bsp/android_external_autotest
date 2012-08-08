@@ -39,7 +39,7 @@
     # this specific example.
     [ "wait_service_suspend_bg",
                         { "suspend_time": "20",  # How long to sleep
-                          "run_timeout":20,      # Maximum time to wait
+                          "run_timeout":40,      # Maximum time to wait
                           "debug":True,          # Output all state changes
                           "states": [(None, 'ready')]  # Wait for "ready" state
                         } ],
