@@ -265,80 +265,131 @@ def reimage_and_run(**dargs):
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
     """
-    (build, board, name, job, pool, num, check_hosts, skip_reimage,
-     add_experimental) = _vet_reimage_and_run_args(**dargs)
-    board = 'board:%s' % board
-    if pool:
-        pool = 'pool:%s' % pool
+    suite_spec = SuiteSpec(**dargs)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
                                         debug=False)
     tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
                                         debug=False)
     manager = host_lock_manager.HostLockManager(afe=afe)
-    reimager = Reimager(job.autodir, afe, tko, results_dir=job.resultdir)
+    reimager = Reimager(suite_spec.job.autodir, afe, tko,
+                        results_dir=suite_spec.job.resultdir)
+
+    _perform_reimage_and_run(suite_spec, afe, tko, reimager, manager)
+
+    reimager.clear_reimaged_host_state(suite_spec.build)
+
+
+def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
+    """
+    Do the work of reimaging hosts and running tests.
+
+    @param spec: a populated SuiteSpec object.
+    @param reimager: the Reimager to use to reimage DUTs.
+    @param manager: the HostLockManager to use to lock/unlock DUTs during
+                    reimaging/test scheduling.
+    """
     try:
-        if skip_reimage or reimager.attempt(build, board, pool,
-                                            job.record_entry, check_hosts,
-                                            manager, num=num):
+        if spec.skip_reimage or reimager.attempt(spec.build, spec.board,
+                                                 spec.pool,
+                                                 spec.job.record_entry,
+                                                 spec.check_hosts,
+                                                 manager, num=spec.num):
             # Ensure that the image's artifacts have completed downloading.
             try:
                 ds = dev_server.DevServer.create()
-                ds.finish_download(build)
+                ds.finish_download(spec.build)
             except dev_server.DevServerException as e:
                 raise error.AsynchronousBuildFailure(e)
 
             timestamp = datetime.datetime.now().strftime(job_status.TIME_FMT)
-            utils.write_keyval(job.resultdir,
+            utils.write_keyval(spec.job.resultdir,
                                {ARTIFACT_FINISHED_TIME: timestamp})
 
-            suite = Suite.create_from_name(name, build, afe=afe, tko=tko,
-                                           pool=pool, results_dir=job.resultdir)
-            suite.run_and_wait(job.record_entry, manager, add_experimental)
+            suite = Suite.create_from_name(spec.name, spec.build,
+                                           afe=afe, tko=tko,
+                                           pool=spec.pool,
+                                           results_dir=spec.job.resultdir)
+            suite.run_and_wait(spec.job.record_entry, manager,
+                               spec.add_experimental)
     finally:
         manager.unlock()
 
-    reimager.clear_reimaged_host_state(build)
 
-
-def _vet_reimage_and_run_args(build=None, board=None, name=None, job=None,
-                              pool=None, num=None, check_hosts=True,
-                              skip_reimage=False, add_experimental=True,
-                              **dargs):
+class SuiteSpec(object):
     """
-    Vets arguments for reimage_and_run().
+    This class contains the info that defines a suite run.
 
-    Currently required args:
-    @param build: the build to install e.g.
+    Currently required:
+    @var build: the build to install e.g.
                   x86-alex-release/R18-1655.0.0-a1-b1584.
-    @param board: which kind of devices to reimage.
-    @param name: a value of the SUITE control file variable to search for.
-    @param job: an instance of client.common_lib.base_job representing the
+    @var board: which kind of devices to reimage.
+    @var name: a value of the SUITE control file variable to search for.
+    @var job: an instance of client.common_lib.base_job representing the
                 currently running suite job.
 
-    Currently supported optional args:
-    @param pool: specify the pool of machines to use for scheduling purposes.
-                 Default: None
-    @param num: how many devices to reimage.
-                Default in global_config
-    @param check_hosts: require appropriate hosts to be available now.
-    @param skip_reimage: skip reimaging, used for testing purposes.
-                         Default: False
-    @param add_experimental: schedule experimental tests as well, or not.
-                             Default: True
-    @return a tuple of args set to provided (or default) values.
+    Currently supported optional fields:
+    @var pool: specify the pool of machines to use for scheduling purposes.
+               Default: None
+    @var num: how many devices to reimage.
+              Default in global_config
+    @var check_hosts: require appropriate hosts to be available now.
+    @var skip_reimage: skip reimaging, used for testing purposes.
+                       Default: False
+    @var add_experimental: schedule experimental tests as well, or not.
+                           Default: True
     """
-    required_keywords = {'build': str,
-                         'board': str,
-                         'name': str,
-                         'job': base_job.base_job}
-    for key, expected in required_keywords.iteritems():
-        value = locals().get(key)
-        if not value or not isinstance(value, expected):
-            raise error.SuiteArgumentException(
-                "reimage_and_run() needs %s=<%r>" % (key, expected))
-    return (build, board, name, job, pool, num, check_hosts, skip_reimage,
-            add_experimental)
+    def __init__(self, build=None, board=None, name=None, job=None,
+                 pool=None, num=None, check_hosts=True,
+                 skip_reimage=False, add_experimental=True,
+                 **dargs):
+        """
+        Vets arguments for reimage_and_run() and populates self with supplied
+        values.
+
+        Currently required args:
+        @param build: the build to install e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        @param board: which kind of devices to reimage.
+        @param name: a value of the SUITE control file variable to search for.
+        @param job: an instance of client.common_lib.base_job representing the
+                    currently running suite job.
+
+        Currently supported optional args:
+        @param pool: specify the pool of machines to use for scheduling purposes
+                     Default: None
+        @param num: how many devices to reimage.
+                    Default in global_config
+        @param check_hosts: require appropriate hosts to be available now.
+        @param skip_reimage: skip reimaging, used for testing purposes.
+                             Default: False
+        @param add_experimental: schedule experimental tests as well, or not.
+                                 Default: True
+        @param **dargs: these arguments will be ignored.  This allows us to
+                        deprecate and remove arguments in ToT while not
+                        breaking branch builds.
+        """
+        required_keywords = {'build': str,
+                             'board': str,
+                             'name': str,
+                             'job': base_job.base_job}
+        for key, expected in required_keywords.iteritems():
+            value = locals().get(key)
+            if not value or not isinstance(value, expected):
+                raise error.SuiteArgumentException(
+                    "reimage_and_run() needs %s=<%r>" % (key, expected))
+        self.build = build
+        self.board = 'board:%s' % board
+        self.name = name
+        self.job = job
+        if pool:
+            self.pool = 'pool:%s' % pool
+        else:
+            self.pool = pool
+        self.num = num
+        self.check_hosts = check_hosts
+        self.skip_reimage = skip_reimage
+        self.add_experimental = add_experimental
 
 
 def inject_vars(vars, control_file_in):

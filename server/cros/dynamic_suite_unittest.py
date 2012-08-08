@@ -90,19 +90,18 @@ class DynamicSuiteTest(mox.MoxTestBase):
 
     def testVetRequiredReimageAndRunArgs(self):
         """Should verify only that required args are present and correct."""
-        build, board, name, job, _, _, _, _, _ = \
-            dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
-        self.assertEquals(build, self._DARGS['build'])
-        self.assertEquals(board, self._DARGS['board'])
-        self.assertEquals(name, self._DARGS['name'])
-        self.assertEquals(job, self._DARGS['job'])
+        spec = dynamic_suite.SuiteSpec(**self._DARGS)
+        self.assertEquals(spec.build, self._DARGS['build'])
+        self.assertEquals(spec.board, 'board:' + self._DARGS['board'])
+        self.assertEquals(spec.name, self._DARGS['name'])
+        self.assertEquals(spec.job, self._DARGS['job'])
 
 
     def testVetReimageAndRunBuildArgFail(self):
         """Should fail verification because |build| arg is bad."""
         self._DARGS['build'] = None
         self.assertRaises(error.SuiteArgumentException,
-                          dynamic_suite._vet_reimage_and_run_args,
+                          dynamic_suite.SuiteSpec,
                           **self._DARGS)
 
 
@@ -110,7 +109,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
         """Should fail verification because |board| arg is bad."""
         self._DARGS['board'] = None
         self.assertRaises(error.SuiteArgumentException,
-                          dynamic_suite._vet_reimage_and_run_args,
+                          dynamic_suite.SuiteSpec,
                           **self._DARGS)
 
 
@@ -118,7 +117,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
         """Should fail verification because |name| arg is bad."""
         self._DARGS['name'] = None
         self.assertRaises(error.SuiteArgumentException,
-                          dynamic_suite._vet_reimage_and_run_args,
+                          dynamic_suite.SuiteSpec,
                           **self._DARGS)
 
 
@@ -126,19 +125,19 @@ class DynamicSuiteTest(mox.MoxTestBase):
         """Should fail verification because |job| arg is bad."""
         self._DARGS['job'] = None
         self.assertRaises(error.SuiteArgumentException,
-                          dynamic_suite._vet_reimage_and_run_args,
+                          dynamic_suite.SuiteSpec,
                           **self._DARGS)
 
 
     def testOverrideOptionalReimageAndRunArgs(self):
         """Should verify that optional args can be overridden."""
-        _, _, _, _, pool, num, check, skip, expr = \
-            dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
-        self.assertEquals(pool, self._DARGS['pool'])
-        self.assertEquals(num, self._DARGS['num'])
-        self.assertEquals(check, self._DARGS['check_hosts'])
-        self.assertEquals(skip, self._DARGS['skip_reimage'])
-        self.assertEquals(expr, self._DARGS['add_experimental'])
+        spec = dynamic_suite.SuiteSpec(**self._DARGS)
+        self.assertEquals(spec.pool, 'pool:' + self._DARGS['pool'])
+        self.assertEquals(spec.num, self._DARGS['num'])
+        self.assertEquals(spec.check_hosts, self._DARGS['check_hosts'])
+        self.assertEquals(spec.skip_reimage, self._DARGS['skip_reimage'])
+        self.assertEquals(spec.add_experimental,
+                          self._DARGS['add_experimental'])
 
 
     def testDefaultOptionalReimageAndRunArgs(self):
@@ -148,13 +147,13 @@ class DynamicSuiteTest(mox.MoxTestBase):
         del(self._DARGS['check_hosts'])
         del(self._DARGS['add_experimental'])
         del(self._DARGS['num'])
-        _, _, _, _, pool, num, check, skip, expr = \
-            dynamic_suite._vet_reimage_and_run_args(**self._DARGS)
-        self.assertEquals(pool, None)
-        self.assertEquals(num, None)
-        self.assertEquals(check, True)
-        self.assertEquals(skip, False)
-        self.assertEquals(expr, True)
+
+        spec = dynamic_suite.SuiteSpec(**self._DARGS)
+        self.assertEquals(spec.pool, None)
+        self.assertEquals(spec.num, None)
+        self.assertEquals(spec.check_hosts, True)
+        self.assertEquals(spec.skip_reimage, False)
+        self.assertEquals(spec.add_experimental, True)
 
 
 class ReimagerTest(mox.MoxTestBase):
