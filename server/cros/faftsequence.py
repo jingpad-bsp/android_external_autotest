@@ -263,14 +263,14 @@ class FAFTSequence(ServoTest):
         super(FAFTSequence, self).setup()
         if not self._remote_infos['faft']['used']:
             raise error.TestError('The use_faft flag should be enabled.')
-        self.clear_gbb_flags(self.GBB_FLAG_FORCE_DEV_SWITCH_ON |
-                             self.GBB_FLAG_DEV_SCREEN_SHORT_DELAY)
         self.register_faft_template({
             'state_checker': (None),
             'userspace_action': (None),
             'reboot_action': (self.sync_and_warm_reboot),
             'firmware_action': (None)
         })
+        self.clear_gbb_flags(self.GBB_FLAG_FORCE_DEV_SWITCH_ON |
+                             self.GBB_FLAG_DEV_SCREEN_SHORT_DELAY)
         if self._install_image_path:
             self.install_test_image(self._install_image_path,
                                     self._firmware_update)
@@ -355,6 +355,11 @@ class FAFTSequence(ServoTest):
             self.faft_client.run_shell_command(
                     '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' % new_flags)
             self.faft_client.reload_firmware()
+            # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
+            if (gbb_flags & mask & self.GBB_FLAG_FORCE_DEV_SWITCH_ON):
+                self.run_faft_step({
+                    'firmware_action': self.wait_fw_screen_and_ctrl_d,
+                })
 
 
     def _open_uart_pty(self):
