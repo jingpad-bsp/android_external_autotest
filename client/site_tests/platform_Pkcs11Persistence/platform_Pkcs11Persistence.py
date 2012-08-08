@@ -22,6 +22,9 @@ class platform_Pkcs11Persistence(cros_ui_test.UITest):
         if result != 0:
             raise error.TestFail('Failed to setup PKCS #11 object.')
         self.logout()
+        # Work around until crosbug.com/139166 is fixed
+        self.pyauto.ExecuteJavascriptInOOBEWebUI('Oobe.showSigninUI();'
+            'window.domAutomationController.send("ok");')
         self.login()
         if not pkcs11.wait_for_pkcs11_token():
             raise error.TestFail('The PKCS #11 token is no longer available.')
