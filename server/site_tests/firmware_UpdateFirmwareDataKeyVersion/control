@@ -1,0 +1,36 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "firmware_UpdateFirmwareDataKeyVersion"
+PURPOSE = """
+Servo based firmware update test which check firmware datakey version.
+"""
+CRITERIA = """
+Prerequirement is that fwid does not match shellball's
+(/usr/sbin/chromeos-firmwareupdate) fwid.
+
+This test will fail if following requrements are met:
+1. fwid does not match shellball's (/usr/sbin/chromeos-firmwareupdate) fwid
+2. Firmware datakey version does not match original datakey version.
+"""
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "firmware"
+TEST_TYPE = "server"
+
+DOC = """
+This test requires firmware id matches fwid of shellball
+chromeos-firmwareupdate. On runtime, this test modifies shellball and runs
+autoupdate. Check firmware datakey version after boot with firmware B, and then
+recover firmware A and B to original shellball.
+"""
+
+def run_updatefirmwaredatakeyversion(machine):
+    host = hosts.create_host(machine)
+    job.run_test("firmware_UpdateFirmwareDataKeyVersion",
+                 host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True)
+
+parallel_simple(run_updatefirmwaredatakeyversion, machines)
