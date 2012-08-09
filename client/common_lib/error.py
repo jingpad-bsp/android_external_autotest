@@ -570,6 +570,11 @@ class BoardIsDisabledException(Exception):
     pass
 
 
+class NoUniquePackageFound(Exception):
+    """Raised when an executable cannot be mapped back to a single package."""
+    pass
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():
