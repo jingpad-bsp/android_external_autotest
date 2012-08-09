@@ -28,6 +28,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
     _BOARD = 'board'
     _SUITE = 'suite'
     _POOL = 'pool'
+    _NUM = 2
 
 
     def setUp(self):
@@ -47,12 +48,14 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,
-                     pool=self._POOL).AndReturn(7)
+                     pool=self._POOL,
+                     num=self._NUM).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
                                                      self._BUILD,
-                                                     self._POOL))
+                                                     self._POOL,
+                                                     self._NUM))
 
 
     def testShouldNotScheduleSuite(self):
@@ -65,7 +68,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
                                                       self._BOARD,
                                                       self._BUILD,
-                                                      self._POOL))
+                                                      self._POOL,
+                                                      None))
 
 
     def testForceScheduleSuite(self):
@@ -76,12 +80,14 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,
+                     num=None,
                      pool=self._POOL).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
                                                      self._BUILD,
                                                      self._POOL,
+                                                     None,
                                                      force=True))
 
 
@@ -97,7 +103,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self._SUITE,
                           self._BOARD,
                           self._BUILD,
-                          self._POOL)
+                          self._POOL,
+                          self._NUM)
 
 
     def testScheduleFail(self):
@@ -111,6 +118,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,
+                     num=None,
                      pool=None).AndReturn(None)
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
@@ -118,6 +126,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self._SUITE,
                           self._BOARD,
                           self._BUILD,
+                          None,
                           None)
 
 
@@ -132,6 +141,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,
+                     num=None,
                      pool=None).AndRaise(Exception())
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
@@ -139,6 +149,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self._SUITE,
                           self._BOARD,
                           self._BUILD,
+                          None,
                           None)
 
 

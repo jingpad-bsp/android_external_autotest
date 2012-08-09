@@ -45,6 +45,7 @@ class Task(object):
         run_on: event_on which to run  # Required
         branch_specs: factory,firmware,>=R12  # Optional
         pool: pool_of_devices  # Optional
+        num: sharding_factor  # int, Optional
 
         By default, Tasks run on all release branches, not factory or firmware.
 
@@ -56,7 +57,7 @@ class Task(object):
         if not config.has_section(section):
             raise MalformedConfigEntry('unknown section %s' % section)
 
-        allowed = set(['suite', 'run_on', 'branch_specs', 'pool'])
+        allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -71,6 +72,10 @@ class Task(object):
         suite = config.getstring(section, 'suite')
         branches = config.getstring(section, 'branch_specs')
         pool = config.getstring(section, 'pool')
+        try:
+            num = config.getint(section, 'num')
+        except ValueError as e:
+            raise MalformedConfigEntry("Ill-specified 'num': %r" %e)
         if not keyword:
             raise MalformedConfigEntry('No event to |run_on|.')
         if not suite:
@@ -79,7 +84,7 @@ class Task(object):
         if branches:
             specs = re.split('\s*,\s*', branches)
             Task.CheckBranchSpecs(specs)
-        return keyword, Task(section, suite, specs, pool)
+        return keyword, Task(section, suite, specs, pool, num)
 
 
     @staticmethod
@@ -103,7 +108,7 @@ class Task(object):
             raise MalformedConfigEntry("%s isn't a valid branch spec." % branch)
 
 
-    def __init__(self, name, suite, branch_specs, pool=None):
+    def __init__(self, name, suite, branch_specs, pool=None, num=None):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -124,16 +129,20 @@ class Task(object):
           t._FitsSpec('firmware')  # False
           t._FitsSpec('goober')  # False
 
+        @param name: name of this task, e.g. 'NightlyPower'
         @param suite: the name of the suite to run, e.g. 'bvt'
         @param branch_specs: a pre-vetted iterable of branch specifiers,
                              e.g. ['>=R18', 'factory']
         @param pool: the pool of machines to use for scheduling purposes.
                      Default: None
+        @param num: the number of devices across which to shard the test suite.
+                    Default: None
         """
         self._name = name
         self._suite = suite
         self._branch_specs = branch_specs
         self._pool = pool
+        self._num = '%d' % num if num else None
 
         self._bare_branches = []
         if not branch_specs:
@@ -150,8 +159,8 @@ class Task(object):
         # Since we expect __hash__() and other comparitor methods to be used
         # frequently by set operations, and they use str() a lot, pre-compute
         # the string representation of this object.
-        self._str = '%s: %s on %s with pool %s' % (self.__class__.__name__,
-                                                   suite, branch_specs, pool)
+        self._str = '%s: %s on %s with pool %s, across %r machines' % (
+            self.__class__.__name__, suite, branch_specs, pool, num)
 
 
     def _FitsSpec(self, branch):
@@ -186,6 +195,10 @@ class Task(object):
 
 
     def __str__(self):
+        return self._str
+
+
+    def __repr__(self):
         return self._str
 
 
@@ -272,7 +285,7 @@ class Task(object):
         for build in builds:
             try:
                 if not scheduler.ScheduleSuite(self._suite, board, build,
-                                               self._pool, force):
+                                               self._pool, self._num, force):
                     logging.info('Skipping scheduling %s on %s for %s',
                                  self._suite, build, board)
             except deduping_scheduler.DedupingSchedulerException as e:

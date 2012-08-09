@@ -63,7 +63,7 @@ class DedupingScheduler(object):
             raise DedupException(e)
 
 
-    def _Schedule(self, suite, board, build, pool):
+    def _Schedule(self, suite, board, build, pool, num):
         """Schedule |suite|, if it hasn't already been run.
 
         @param suite: the name of the suite to run, e.g. 'bvt'
@@ -72,6 +72,8 @@ class DedupingScheduler(object):
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param pool: the pool of machines to use for scheduling purposes.
                      Default: None
+        @param num: the number of devices across which to shard the test suite.
+                    Default: None (uses sharding factor in global_config.ini).
         @return True if the suite got scheduled
         @raise ScheduleException if an error occurs while scheduling.
         """
@@ -83,6 +85,7 @@ class DedupingScheduler(object):
                              board=board,
                              build=build,
                              check_hosts=False,
+                             num=num,
                              pool=pool) is not None:
                 return True
             else:
@@ -92,7 +95,7 @@ class DedupingScheduler(object):
             raise ScheduleException(e)
 
 
-    def ScheduleSuite(self, suite, board, build, pool, force=False):
+    def ScheduleSuite(self, suite, board, build, pool, num, force=False):
         """Schedule |suite|, if it hasn't already been run.
 
         If |suite| has not already been run against |build| on |board|,
@@ -103,13 +106,14 @@ class DedupingScheduler(object):
         @param build: the build to install e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param pool: the pool of machines to use for scheduling purposes.
+        @param num: the number of devices across which to shard the test suite.
         @param force: Always schedule the suite.
         @return True if the suite got scheduled, False if not
         @raise DedupException if we can't check for dups.
         @raise ScheduleException if the suite cannot be scheduled.
         """
         if force or self._ShouldScheduleSuite(suite, board, build):
-            return self._Schedule(suite, board, build, pool)
+            return self._Schedule(suite, board, build, pool, num)
         return False
 
 
