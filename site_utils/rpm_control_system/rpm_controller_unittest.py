@@ -18,9 +18,10 @@ class TestSentryRPMController(mox.MoxTestBase):
 
     def setUp(self):
         super(TestSentryRPMController, self).setUp()
-        self.ssh = self.mox.CreateMock(pexpect.spawn)
-        self.rpm = rpm_controller.SentryRPMController('chromeos-rack1-host8',
-                                                      self.ssh)
+        self.ssh = self.mox.CreateMockAnything()
+        rpm_controller.pexpect.spawn = self.mox.CreateMockAnything()
+        rpm_controller.pexpect.spawn(mox.IgnoreArg()).AndReturn(self.ssh)
+        self.rpm = rpm_controller.SentryRPMController('chromeos-rack1-host8')
 
 
     def testSuccessfullyChangeOutlet(self):
