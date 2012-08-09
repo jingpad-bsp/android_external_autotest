@@ -46,10 +46,11 @@ class network_3GSuspendResume(cros_ui_test.UITest):
 
     modem_status_checks = [
         lambda s: ('org/chromium/ModemManager' in s) or
-                  ('org/freedesktop/ModemManager' in s),
+                  ('org/freedesktop/ModemManager' in s) or
+                  ('org/freedesktop/ModemManager1' in s),
         lambda s: ('meid' in s) or ('EquipmentIdentifier' in s),
         lambda s: 'Manufacturer' in s,
-        lambda s: 'MasterDevice' in s
+        lambda s: 'Device' in s
     ]
 
     def filterexns(self, function, exn_list):
