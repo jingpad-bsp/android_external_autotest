@@ -887,7 +887,8 @@ def nuke_pid(pid, signal_queue=(signal.SIGTERM, signal.SIGKILL)):
             return
 
     # no signal successfully terminated the process
-    raise error.AutoservRunError('Could not kill %d' % pid, None)
+    raise error.AutoservRunError('Could not kill %d for process name: %s' % (
+            pid, get_process_name(pid)), None)
 
 
 def system(command, timeout=None, ignore_status=False):
@@ -1520,8 +1521,12 @@ def get_process_name(pid):
     """
     Get process name from PID.
     @param pid: PID of process.
+    @return: Process name if PID stat file exists or 'Dead PID' if it does not.
     """
-    return get_field(read_file("/proc/%d/stat" % pid), 1)[1:-1]
+    pid_stat_path = "/proc/%d/stat"
+    if not os.path.exists(pid_stat_path % pid):
+        return "Dead Pid"
+    return get_field(read_file(pid_stat_path % pid), 1)[1:-1]
 
 
 def program_is_alive(program_name):
