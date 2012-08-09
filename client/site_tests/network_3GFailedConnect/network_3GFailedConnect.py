@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error
 import logging, time
 import dbus, dbus.mainloop.glib, gobject
 
-from autotest_lib.client.cros import flimflam_test_path
+from autotest_lib.client.cros import flimflam_test_path, network
 import flimflam, mm
 
 
@@ -44,27 +44,12 @@ class network_3GFailedConnect(test.test):
             raise error.TestFail('Service state should be failure not %s' %
                                  state)
 
-    def ResetAllModems(self):
-        """Disable/Enable cycle all modems to ensure valid starting state."""
-
-        service = self.flim.FindCellularService()
-        if not service:
-          raise error.TestFail('No cellular service available')
-
-        print 'ResetAllModems: service %s' % service
-        if service.GetProperties()['Favorite']:
-            service.SetProperty('AutoConnect', False)
-        for manager, path in mm.EnumerateDevices():
-            modem = manager.Modem(path)
-            modem.Enable(False)
-            modem.Enable(True)
-
     def run_once_internal(self, connect_count):
         bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus(mainloop=bus_loop)
 
         # Get to a good starting state
-        self.ResetAllModems()
+        network.ResetAllModems(self.flim)
 
         for ii in xrange(connect_count):
             self.ConnectTo3GNetwork(config_timeout=15)
