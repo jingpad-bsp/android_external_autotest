@@ -16,8 +16,12 @@ _HTML = '''
 <h1>LAN & Bluetooth MAC address probing</h1><br>
 <h2>%s</h2><br>
 <h2>%s</h2><br>
-<input type="button" value="Finished"
+<input type="button" value="Finished" id="pass"
   onClick="test.pass()">
+'''
+
+_JS = '''
+document.getElementById("pass").focus();
 '''
 
 LAN_MAC_PATH = "/sys/class/net/%s/address"
@@ -55,4 +59,5 @@ class factory_ProbeWifi(test.test):
 
         if display:
             self.ui.SetHTML(_HTML % (lan_mac, bt_mac))
+            self.ui.RunJS(_JS)
             self.ui.Run()
