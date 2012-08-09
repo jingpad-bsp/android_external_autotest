@@ -6,6 +6,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "firmware_CorruptFwBodyAB"
 PURPOSE = "Servo based both firmware body A and B corruption test"
 CRITERIA = "This test will fail if firmware does not enter recovery mode"
+SUITE = "faft"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
@@ -15,7 +16,7 @@ DOC = """
 This test corrupts both firmware body A and B and checks the next boot results.
 
 The expected behavior is different if the firmware preamble USE_RO_NORMAL
-flag is enabled. In the case USE_RO_NORMAL ON, the firmware corruption 
+flag is enabled. In the case USE_RO_NORMAL ON, the firmware corruption
 doesn't hurt the boot results since it boots the RO path directly and does
 not load and verify the RW firmware body. In the case USE_RO_NORMAL OFF,
 the firmware verification fails on loading RW firmware and enters recovery

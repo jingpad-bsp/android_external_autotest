@@ -1,1 +1,25 @@
-control.both
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "firmware_CorruptFwSigB"
+PURPOSE = "Servo based firmware signature B corruption test"
+CRITERIA = "This test will fail if firmware verification mis-behaved"
+SUITE = "faft"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "firmware"
+TEST_TYPE = "server"
+
+DOC = """
+This test corrupts firmware signature B and checks the next boot results.
+"""
+
+def run_corruptfwsigb(machine):
+    host = hosts.create_host(machine)
+    job.run_test("firmware_CorruptFwSigB", host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True,
+                 dev_mode=False, tag="normal")
+
+parallel_simple(run_corruptfwsigb, machines)
