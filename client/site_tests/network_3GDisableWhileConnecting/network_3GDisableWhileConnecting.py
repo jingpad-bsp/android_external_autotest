@@ -18,6 +18,8 @@ import flimflam
 
 import os
 
+DEVICE_TIMEOUT=60
+
 class DisableTester(GenericTesterMainLoop):
   def __init__(self, *args, **kwargs):
     super(DisableTester, self).__init__(*args, **kwargs)
@@ -110,12 +112,12 @@ class FlimflamDisableTester(DisableTester):
   def compare_powered_state(self, device, enable):
     return device.GetProperties()['Powered'] == enable
 
-  def synchronous_enable(self, device, value, timeout_s=10):
+  def synchronous_enable(self, device, value, timeout_s=DEVICE_TIMEOUT):
     try:
       if value:
-        device.Enable()
+        device.Enable(timeout=timeout_s)
       else:
-        device.Disable()
+        device.Disable(timeout=timeout_s)
     except dbus.exceptions.DBusException, e:
       if e._dbus_error_name != 'org.chromium.flimflam.Error.InProgress':
         raise
