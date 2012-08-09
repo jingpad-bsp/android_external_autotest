@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "desktopui_NaClSanity"
-PURPOSE = "PyAuto based NaCl sanity tests."
-CRITERIA = "This test will fail if secure shell fails."
+NAME = "enterprise_DevicePolicy"
+PURPOSE = "Tests for device policy."
+CRITERIA = ""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
@@ -14,9 +14,7 @@ SUITE = "bvt"
 EXPERIMENTAL = "True"
 
 DOC = """
-Sanity test for Native Client (NaCl).
-
-Secure shell uses NaCl.
+Tests for device policy.
 """
 
-job.run_test('desktopui_NaClSanity')
+job.run_test('enterprise_DevicePolicy')
