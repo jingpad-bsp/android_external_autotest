@@ -1,0 +1,35 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Team"
+NAME = "firmware_UpdateFirmwareVersion"
+PURPOSE = "Servo based firmware update test which checks the firmware version."
+CRITERIA = """
+Prerequirement is that fwid should match shellball's
+(/usr/sbin/chromeos-firmwareupdate) fwid.
+
+This test will fail if one of the following conditions is met:
+1. Firmware update fails.
+2. After firmware update, device restart with firmware A.
+3. Firmware version does not increase after firmware update.
+4. Firmware version does not recover to original version after recovery.
+"""
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "firmware"
+TEST_TYPE = "server"
+
+DOC = """
+This test requires the firmware id of the current running firmware
+matches the system shellball's. On runtime, this test modifies the firmware
+version of the shellball and runs autoupdate. Check firmware version after
+boot with firmware B, and then recover firmware A and B to original shellball.
+"""
+
+def run_updatefirmwareversion(machine):
+    host = hosts.create_host(machine)
+    job.run_test("firmware_UpdateFirmwareVersion", host=host, cmdline_args=args,
+                 use_faft=True, disable_sysinfo=True)
+
+parallel_simple(run_updatefirmwareversion, machines)
