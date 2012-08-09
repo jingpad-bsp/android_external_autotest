@@ -37,17 +37,34 @@ _PASS_THRESHOLD = 50.0
 _AUDIOFUNTEST_STOP_RE = re.compile('^Stop')
 _AUDIOFUNTEST_SUCCESS_RATE_RE = re.compile('.*rate\s=\s(.*)$')
 
+_MUTE_LEFT_MIXER_SETTINGS = [{'name': '"Headphone Playback Switch"',
+                              'value': 'off,on'},
+                             {'name': '"Speaker Playback Switch"',
+                              'value': 'off,on'}]
+_MUTE_RIGHT_MIXER_SETTINGS = [{'name': '"Headphone Playback Switch"',
+                               'value': 'on,off'},
+                              {'name': '"Speaker Playback Switch"',
+                               'value': 'on,off'}]
+
 class factory_AudioLoop(test.test):
     version = 1
 
     def start_run_test(self, event):
         if self._audiofuntest:
-           self.run_audiofuntest()
+            for odev in self._output_devices:
+                for settings in [_MUTE_LEFT_MIXER_SETTINGS,
+                        _MUTE_RIGHT_MIXER_SETTINGS]:
+                    for idev in self._input_devices:
+                        self._ah.set_mixer_controls(settings)
+                        self.run_audiofuntest(idev, odev)
+                        time.sleep(0.5)
+
+            self.ui.Pass()
         else:
-           self.audio_loopback()
+            self.audio_loopback()
         return True
 
-    def run_audiofuntest(self):
+    def run_audiofuntest(self, idev, odev):
         '''
         Sample audiofuntest message:
 
@@ -57,8 +74,7 @@ class factory_AudioLoop(test.test):
         '''
         factory.console.info('Run audiofuntest')
         self._proc = subprocess.Popen([self._audiofuntest_path, '-r', '48000',
-                '-i', self._input_devices[0], '-o', self._output_devices[0]],
-                stderr=subprocess.PIPE)
+                '-i', idev, '-o', odev], stderr=subprocess.PIPE)
 
         while True:
             proc_output = self._proc.stderr.readline()
@@ -80,9 +96,7 @@ class factory_AudioLoop(test.test):
 
         # Show instant message and wait for a while
         if hasattr(self, '_result') and self._result:
-            self.ui.CallJSFunction('testPassResult')
-            time.sleep(1)
-            self.ui.Pass()
+            return True
         elif hasattr(self, '_last_success_rate'):
             self.ui.CallJSFunction('testFailResult', self._last_success_rate)
             time.sleep(1)
@@ -112,9 +126,9 @@ class factory_AudioLoop(test.test):
                             self.check_recorded_audio)
 
         if self._result is True:
-           self.ui.SetHTML(_LABEL_SUCCESS_MESSAGE)
-           time.sleep(0.5)
-           self.ui.Pass()
+            self.ui.CallJSFunction('testPassResult')
+            time.sleep(0.5)
+            self.ui.Pass()
 
     def playback_sine(self, unused_channel, output_device='default'):
         cmd = '%s -n -t alsa %s synth %d sine %d' % (self._ah.sox_path,
@@ -127,7 +141,7 @@ class factory_AudioLoop(test.test):
             self.ui.SetHTML(_LABEL_FAIL_MESSAGE)
             time.sleep(0.5)
             self.ui.Fail('Test Fail')
-        else :
+        else:
             self._result = True
             factory.console.info('Got frequency %d' % freq)
 
