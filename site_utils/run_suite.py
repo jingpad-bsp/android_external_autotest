@@ -295,14 +295,17 @@ def main():
             timings.RecordTiming(entry)
             entry['test_name'] = entry['test_name'].replace('SERVER_JOB',
                                                             'Suite prep')
-            test_entry = entry['test_name'].ljust(width)
+            job_name, experimental = get_view_info(job_id, entry)
+            if experimental:
+                test_entry = (dynamic_suite.EXPERIMENTAL_PREFIX +
+                              entry['test_name']).ljust(width)
+            else:
+                test_entry = entry['test_name'].ljust(width)
             logging.info("%s%s", test_entry, get_pretty_status(entry['status']))
 
             if entry['status'] != 'GOOD':
                 logging.info("%s  %s: %s", test_entry, entry['status'],
                              entry['reason'])
-                job_name, experimental = get_view_info(job_id, entry)
-
                 log_links.append(generate_log_link(entry['test_name'],
                                                    job_name))
                 if code == 1:
