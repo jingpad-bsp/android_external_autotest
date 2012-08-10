@@ -134,7 +134,7 @@ class PyAutoTest(test.test):
 
     def initialize(self, auto_login=True, extra_chrome_flags=[],
                    subtract_extra_chrome_flags=[],
-                   pyuitest_class='pyauto.PyUITest'):
+                   pyuitest_class='pyauto.PyUITest', *args, **kwargs):
         """Initialize.
 
         Expects session_manager to be alive.
