@@ -158,6 +158,13 @@ class PyAutoTest(test.test):
                 # unittest framework expects runTest.
                 pass
 
+            def ShouldOOBESkipToLogin(self):
+                return False
+
+            def ShouldAutoLogin(self):
+                # Do not auto login
+                return False
+
             def ExtraChromeFlags(self):
                 args = pyauto_class.ExtraChromeFlags(self)
                 return list((set(args) - set(subtract_extra_chrome_flags))
