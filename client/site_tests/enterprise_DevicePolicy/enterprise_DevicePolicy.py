@@ -10,4 +10,13 @@ class enterprise_DevicePolicy(chrome_test.PyAutoFunctionalTest):
 
 
     def run_once(self):
-        self.run_pyauto_functional(tests=['chromeos_device_policy'])
+        tests = [
+            'testGuestModeEnabled',
+            'testShowUserNamesOnSignin',
+            'testUserWhitelistInAccountPicker',
+            # testUserWhitelistAndAllowNewUsers is broken
+            # crosbug.com/33435
+        ]
+        tests = ['chromeos_device_policy.ChromeosDevicePolicy.' + x
+                 for x in tests]
+        self.run_pyauto_functional(tests=tests)
