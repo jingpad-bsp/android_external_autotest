@@ -29,5 +29,5 @@ from autotest_lib.server.cros import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='pyauto_perf', job=job, pool=pool,
-    check_hosts=check_hosts, add_experimental=True,
+    check_hosts=check_hosts, add_experimental=True, num=num,
     skip_reimage=dynamic_suite.skip_reimage(globals()))

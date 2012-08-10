@@ -34,5 +34,5 @@ from autotest_lib.server.cros import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='PGO_record', job=job, pool=pool,
-    check_hosts=check_hosts, add_experimental=True, num=1,
+    check_hosts=check_hosts, add_experimental=True, num=num,
     skip_reimage=False)
