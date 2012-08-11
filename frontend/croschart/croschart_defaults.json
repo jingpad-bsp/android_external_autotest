@@ -70,7 +70,9 @@
   ["graphics_WebGLConformance", "count_tests_pass"],
   ["graphics_WebGLPerformance", "time_ms_geom_mean"],
   ["power_Consumption",
-   "BigBuckBunny_1080p_h264_fullscreen_pkg_power,BigBuckBunny_1080p_h264_fullscreen_system_power,BigBuckBunny_1080p_h264_pkg_power,BigBuckBunny_1080p_h264_system_power,BigBuckBunny_1080p_vp8_pkg_power,BigBuckBunny_1080p_vp8_system_power,BigBuckBunny_400p_h264_pkg_power,BigBuckBunny_400p_h264_system_power,BigBuckBunny_400p_vp8_pkg_power,BigBuckBunny_400p_vp8_system_power"],
+   "vid1080_h264_fs_pkg_pwr,vid1080_h264_fs_system_pwr,vid1080_h264_pkg_pwr,vid1080_h264_system_pwr,vid1080_vp8_pkg_pwr,vid1080_vp8_system_pwr,vid400p_h264_pkg_pwr,vid400p_h264_system_pwr,vid400p_vp8_pkg_pwr,vid400p_vp8_system_pwr"],
   ["power_Consumption",
-   "AboutBlank_pkg_power,AboutBlank_system_power,BallsDHTML_pkg_power,BallsDHTML_system_power,BallsFlex_pkg_power,BallsFlex_system_power,PosterCircle_pkg_power,PosterCircle_system_power"]
+   "AboutBlank_system_pwr,BallsDHTML_system_pwr,BallsFlex_system_pwr,PosterCircle_system_pwr"],
+  ["power_Consumption",
+   "AboutBlank_pkg_pwr,BallsDHTML_pkg_pwr,BallsFlex_pkg_pwr,PosterCircle_pkg_pwr"]
 ]
