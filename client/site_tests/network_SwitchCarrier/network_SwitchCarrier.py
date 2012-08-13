@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -27,9 +27,17 @@ class network_SwitchCarrier(test.test):
         if not self.carriers:
             self.loop.quit() # success!
             return
-        self.to_carrier = self.carriers[0]
-        self.carriers = self.carriers[1:]
-        self.set_carrier(self.to_carrier)
+        while len(self.carriers):
+            try:
+                self.to_carrier = self.carriers[0]
+                self.carriers = self.carriers[1:]
+                self.set_carrier(self.to_carrier)
+                break
+            except dbus.exceptions.DBusException, e:
+                if e.get_dbus_message() == "Unknown carrier name":
+                    print 'Ignoring invalid carrier %s' % self.to_carrier
+                    continue
+                raise
 
     def device_removed(self, *args, **kwargs):
         print 'Device removed.'
@@ -83,12 +91,7 @@ class network_SwitchCarrier(test.test):
         if not carrier:
             raise self.failed
         self.to_carrier = carrier
-        if carrier != start_carrier:
-            self.to_carrier = start_carrier
-            print 'start %s -> %s' % (carrier, start_carrier)
-            self.set_carrier(start_carrier)
-        else:
-            self.device_added(self.modem.__dbus_object_path__) # start test
+        self.device_added(self.modem.__dbus_object_path__) # start test
         self.loop.run()
         self.find_modem()
         if self.modem and self.to_carrier != carrier:
