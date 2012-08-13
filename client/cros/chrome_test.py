@@ -56,6 +56,13 @@ class ChromeTestBase(cros_ui_test.UITest):
 
 
     def initialize(self, nuke_browser_norestart=True, skip_deps=False):
+        # Make sure Chrome minidumps are written locally.
+        # Requires UI restart to take effect. It'll be done by parent's
+        # initialize().
+        if not os.path.exists(self._MINIDUMPS_FILE):
+            open(self._MINIDUMPS_FILE, 'w').close()
+        assert os.path.exists(self._MINIDUMPS_FILE)
+
         cros_ui_test.UITest.initialize(self, creds='$default')
 
         self.home_dir = tempfile.mkdtemp()
@@ -69,17 +76,16 @@ class ChromeTestBase(cros_ui_test.UITest):
         self.test_binary_dir = '%s/out/Release' % self.cr_source_dir
         if nuke_browser_norestart:
             self.nuke_chrome()
+        self._setup_for_chrome_test()
+
+
+    def _setup_for_chrome_test(self):
         try:
             setup_cmd = ('/bin/bash %s/setup_test_links.sh'
                          % self.test_binary_dir)
             utils.system(setup_cmd)  # this might raise an exception
         except error.CmdError as e:
             raise error.TestError(e)
-        self._setup_for_chrome_test()
-
-
-    def _setup_for_chrome_test(self):
-        assert os.geteuid() == 0, 'Need superuser privileges'
 
         deps_dir = os.path.join(self.autodir, 'deps')
         utils.system('chown -R chronos ' + self.cr_source_dir)
@@ -87,15 +93,6 @@ class ChromeTestBase(cros_ui_test.UITest):
         # chronos should own the current dir.
         chronos_id = pwd.getpwnam('chronos')
         os.chown(os.getcwd(), chronos_id.pw_uid, chronos_id.pw_gid)
-
-        # Make sure Chrome minidumps are written locally.
-        if not os.path.exists(self._MINIDUMPS_FILE):
-            open(self._MINIDUMPS_FILE, 'w').close()
-            # Allow browser restart by its babysitter (session_manager).
-            if os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
-                os.remove(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
-            cros_ui.nuke()
-        assert os.path.exists(self._MINIDUMPS_FILE)
 
         # Disallow further browser restart by its babysitter.
         if not os.path.exists(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE):
