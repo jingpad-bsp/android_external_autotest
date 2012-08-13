@@ -38,14 +38,14 @@ from autotest_lib.server.cros import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='bvt', job=job, pool=pool,
-    check_hosts=check_hosts, add_experimental=True, num=4,
+    check_hosts=check_hosts, add_experimental=True, num=num,
     skip_reimage=dynamic_suite.skip_reimage(globals()))
 
 This will -- at runtime -- find all control files that contain "bvt"
-in their "SUITE=" clause, schedule jobs to reimage 4 devices in the
+in their "SUITE=" clause, schedule jobs to reimage |num| devices in the
 specified pool of the specified board with the specified build and,
 upon completion of those jobs, schedule and wait for jobs that run all
-the tests it discovered across those 4 machines.
+the tests it discovered across those |num| machines.
 
 Suites can be run by using the atest command-line tool:
   atest suite create -b <board> -i <build/name> <suite>
@@ -76,6 +76,10 @@ reimage_and_run() works by creating a Reimager, using it to perform the
 requested installs, and then instantiating a Suite and running it on the
 machines that were just reimaged.  We'll go through this process in stages.
 
+Note that we have more than one Dev server in our test lab architecture.
+We currently load balance per-build being tested, so one and only one dev
+server is used by any given run through the reimaging/testing flow.
+
 - create_suite_job()
 The primary role of create_suite_job() is to ensure that the required
 artifacts for the build to be tested are staged on the dev server.  This
@@ -105,12 +109,16 @@ In short, the Reimager schedules and waits for a number of autoupdate 'test'
 jobs that perform image installation and make sure the device comes back up.
 It labels the machines that it reimages with the newly-installed CrOS version,
 so that later steps in the can refer to the machines by version and board,
-instead of having to keep track of hostnames or some such.
+instead of having to keep track of hostnames or some such.  Furthermore, these
+machines are 'Locked' in the AFE as soon as they have started to go through
+reimaging.  They will be unlocked as soon as the suite's actual test jobs
+have been scheduled against them.  This is to avoid races between different
+suites trying to grab machines at the same time.
 
 The number of machines to use is called the 'sharding_factor', and the default
 is defined in the [CROS] section of global_config.ini.  This can be overridden
-by passing a 'num=N' parameter to reimage_and_run() as shown in the example
-above.
+by passing a 'num=N' parameter to create_suite_job(), which is piped through
+to reimage_and_run() just like the 'build' and 'board' parameters are.
 
 Step by step:
 1) Schedule autoupdate 'tests' across N devices of the appropriate board.
@@ -120,16 +128,18 @@ Step by step:
     to install, and the URL to get said build from.
   - This is the _TOT_ version of the autoupdate test; it must be able to run
     successfully on all currently supported branches at all times.
-2) Wait for this job to get kicked off and run to completion.
-3) Label successfully reimaged devices with a 'cros-version' label
+2) Wait for this job to get kicked off.
+3) As each host is chosen by the scheduler and begins reimaging, lock it.
+4) Wait for all reimaging to run to completion.
+5) Label successfully reimaged devices with a 'cros-version' label
   - This is actually done by the autoupdate 'test' control file.
-4) Add a host attribute ('job_repo_url') to each reimaged host indicating
+6) Add a host attribute ('job_repo_url') to each reimaged host indicating
    the URL where packages should be downloaded for subsequent tests
   - This is actually done by the autoupdate 'test' control file
   - This information is consumed in server/site_autotest.py
   - job_repo_url points to some location on the dev server, where build
     artifacts are staged -- including autotest packages.
-5) Return success or failure.
+7) Return success or failure.
 
           +------------+                       +--------------------------+
           |            |                       |                          |
@@ -155,6 +165,11 @@ To sum up, after re-imaging, we have the following assumptions:
 - Running Suites
 A Suite instance uses the labels created by the Reimager to schedule test jobs
 across all the hosts that were just reimaged.  It then waits for all these jobs.
+As an optimization, the Dev server stages the payloads necessary to run a suite
+in the background _after_ it has completed all the things necessary for
+reimaging.  Before running a suite, reimage_and_run() calls out to the Dev
+server and blocks until it's completed staging all build artifacts needed to
+run test suites.
 
 Step by step:
 1) At instantiation time, find all appropriate control files for this suite
@@ -174,7 +189,7 @@ Step by step:
 
    +--------------------------+ Job for VersLabel       +--------+
    |                          |------------------------>| Host 1 | VersLabel
-   | Autotest Frontend (AFE) |            +--------+   +--------+
+   | Autotest Frontend (AFE)  |            +--------+   +--------+
    |       [Suite Job]        |----------->| Host 2 |
    +--------------------------+ Job for    +--------+
        |                ^       VersLabel        VersLabel
@@ -189,9 +204,9 @@ Step by step:
 4) As we clean up each job, we check to see if any crashes occurred.  If they
    did, we look at the 'build' keyval in the job to see which build's debug
    symbols we'll need to symbolicate the crash dump we just found.
-5) Using this info, we tell the Dev Server to stage the required debug symbols.
-   Once that's done, we ask the dev server to use those symbols to symbolicate
-   the crash dump in question.
+5) Using this info, we tell a special Crash Server to stage the required debug
+   symbols. Once that's done, we ask the Crash Server to use those symbols to
+   symbolicate the crash dump in question.
 
      +----------------+
      | Google Storage |
@@ -201,8 +216,8 @@ Step by step:
           V     |
       +------------+  stage symbols for build  +--------------------------+
       |            |<--------------------------|                          |
-      |            |                           |                          |
-      | Dev Server |   dump to symbolicate     | Autotest Frontend (AFE)  |
+      |   Crash    |                           |                          |
+      |   Server   |   dump to symbolicate     | Autotest Frontend (AFE)  |
       |            |<--------------------------|       [Suite Job]        |
       |            |-------------------------->|                          |
       +------------+    symbolicated dump      +--------------------------+
