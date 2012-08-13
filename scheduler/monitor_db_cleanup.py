@@ -218,7 +218,7 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
            http://www.djangoproject.com/documentation/0.96/sessions/
         """
         logging.info('Deleting old sessions from django_session')
-        sql = 'DELETE FROM django_session WHERE expire_date < NOW()'
+        sql = 'TRUNCATE TABLE django_session'
         self._db.execute(sql)
 
 
