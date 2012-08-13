@@ -5,6 +5,7 @@
 # This test run is designed to check that we roam successfully when signal
 # strength varies.
 { "name":"MultiSwitch",
+  "skip_test":"this test is known to be flaky",
   "steps":[
     [ "create",         { "type":"hostap" } ],
 
