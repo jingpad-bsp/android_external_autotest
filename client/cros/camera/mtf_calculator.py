@@ -12,10 +12,8 @@ except ImportError:
 import math
 import numpy as np
 
-_MTF_PATCH_CROP_SAFE_MARGIN = 0.25
 
-
-def _ExtractPatch(sample, edge_start, edge_end, desired_width):
+def _ExtractPatch(sample, edge_start, edge_end, desired_width, crop_ratio):
     '''Crop a patch from the test target.'''
     # Identify the edge direction.
     vec = edge_end - edge_start
@@ -23,7 +21,6 @@ def _ExtractPatch(sample, edge_start, edge_end, desired_width):
     # Discard both ends so that we MIGHT not include other edges
     # in the resulting patch.
     # TODO: Auto-detect if the patch covers more than one edge!
-    crop_ratio = _MTF_PATCH_CROP_SAFE_MARGIN
     safe_start = (1 - crop_ratio) * edge_start + crop_ratio * edge_end
     safe_end = crop_ratio * edge_start + (1 - crop_ratio) * edge_end
     minx = int(round(min(safe_start[0], safe_end[0])))
@@ -153,7 +150,8 @@ def _FindMTF50P(freqs, attns, use_50p):
     return freqs[idx - 1] + (freqs[idx] - freqs[idx - 1]) * ratio
 
 
-def Compute(sample, edge_start, edge_end, desired_width, use_50p=True):
+def Compute(sample, edge_start, edge_end, desired_width, crop_ratio,
+            use_50p=True):
     '''Compute the MTF50P value of an edge.
 
     This function implements the slanted-edge MTF calculation method as used in
@@ -168,6 +166,7 @@ def Compute(sample, edge_start, edge_end, desired_width, use_50p=True):
         edge_start: The (rough) start point of the edge.
         edge_end: The (rough) end point of the edge.
         desired_width: Desired margin width on both sides of the edge.
+        crop_ratio: The truncation ratio at the both ends of the edge.
         use_50p: Compute whether the MTF50P value or the MTF50 value.
 
     Returns:
@@ -175,7 +174,8 @@ def Compute(sample, edge_start, edge_end, desired_width, use_50p=True):
         2, 3: The MTF curve, represented by lists of frequencies and
               attenuation values.
     '''
-    patch = _ExtractPatch(sample, edge_start, edge_end, desired_width)
+    patch = _ExtractPatch(sample, edge_start, edge_end, desired_width,
+                          crop_ratio)
     angle, centers = _FindEdgeSubPix(patch, desired_width)
     psf = _AccumulateLine(patch, centers)
     freqs, attns = _GetResponse(psf, angle)

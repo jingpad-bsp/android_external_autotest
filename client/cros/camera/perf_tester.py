@@ -37,6 +37,7 @@ _IMAGE_DEFAULT_MAX_TILT = 1
 
 _MTF_DEFAULT_MAX_CHECK_NUM = 308
 _MTF_DEFAULT_PATCH_WIDTH = 20
+_MTF_DEFAULT_CROP_RATIO = 0.25
 _MTF_DEFAULT_CHECK_PASS_VALUE = 0.45
 _MTF_DEFAULT_CHECK_PASS_VALUE_LOWEST = 0.10
 _MTF_DEFAULT_THREAD_COUNT = 4
@@ -48,9 +49,13 @@ _SHADING_DEFAULT_MAX_RESPONSE = 0.01
 _SHADING_DEFAULT_MAX_TOLERANCE_RATIO = 0.15
 
 
+class ReturnValue(Pod):
+    pass
+
+
 def _MTFComputeWrapper(args):
-  '''Parallel MTF computation wrapper function.'''
-  return mtf_calculator.Compute(*args)[0]
+    '''Parallel MTF computation wrapper function.'''
+    return mtf_calculator.Compute(*args)[0]
 
 
 def _FindCornersOnConvexHull(hull):
@@ -221,9 +226,7 @@ def PrepareTest(pat_file):
 
     The data will be used in the actual test as the ground truth.
     '''
-    class CamTestData(Pod):
-        pass
-    ret = CamTestData()
+    ret = ReturnValue()
 
     # Locate corners.
     pat = cv2.imread(pat_file, cv.CV_LOAD_IMAGE_GRAYSCALE)
@@ -267,8 +270,6 @@ def CheckLensShading(sample, check_low_freq=True,
         2: A structure contains the response value and the error message in case
            the test failed.
     '''
-    class ReturnValue(Pod):
-        pass
     ret = ReturnValue(msg=None)
 
     # Downsample for speed.
@@ -355,8 +356,6 @@ def CheckVisualCorrectness(
         2: A structure contains the found corners and edges and the error
            message in case the test failed.
     '''
-    class ReturnValue(Pod):
-        pass
     ret = ReturnValue(msg=None)
 
     # CHECK 1:
@@ -452,6 +451,7 @@ def CheckSharpness(sample, edges,
                    min_pass_lowest_mtf=_MTF_DEFAULT_CHECK_PASS_VALUE_LOWEST,
                    mtf_sample_count=_MTF_DEFAULT_MAX_CHECK_NUM,
                    mtf_patch_width=_MTF_DEFAULT_PATCH_WIDTH,
+                   mtf_crop_ratio=_MTF_DEFAULT_CROP_RATIO,
                    use_50p=True,
                    n_thread=_MTF_DEFAULT_THREAD_COUNT):
     '''Check if the captured image is sharp.
@@ -465,6 +465,9 @@ def CheckSharpness(sample, edges,
         mtf_sample_count: How many edges we are going to compute MTF values.
         mtf_patch_width: The desired margin on the both side of an edge. Larger
                          margins provides more precise MTF values.
+        mtf_crop_ratio: How much we want to truncate at the beginning and the
+                        end of the edge. Lower value (less truncation) better
+                        reduces the MTF value variations between each test.
         use_50p: Compute whether the MTF50P value or the MTF50 value.
         n_thread: Number of threads to use to compute MTF values.
 
@@ -473,11 +476,10 @@ def CheckSharpness(sample, edges,
         2: A structure contains the median MTF value (MTF50P) and the error
            message in case the test failed.
     '''
-    class ReturnValue(Pod):
-        pass
     ret = ReturnValue(msg=None)
 
-    if mtf_sample_count <= 0 or mtf_patch_width <= 0 or edges is None:
+    if (mtf_sample_count <= 0 or mtf_patch_width <= 0 or mtf_crop_ratio < 0 or
+        mtf_crop_ratio > 1 or edges is None):
         ret.msg = 'Input values are invalid.'
         return False, ret
     line_start = edges[:, [0, 1]]
@@ -497,26 +499,27 @@ def CheckSharpness(sample, edges,
         pool = Pool(processes=min(n_thread, n_check))
         mtfs = pool.map(_MTFComputeWrapper, itertools.izip(
             itertools.repeat(sample), line_start[perm], line_end[perm],
-            itertools.repeat(mtf_patch_width),
+            itertools.repeat(mtf_patch_width), itertools.repeat(mtf_crop_ratio),
             itertools.repeat(use_50p)))
         pool.close()
         pool.join()
     else:
         mtfs = [mtf_calculator.Compute(sample, line_start[t], line_end[t],
-                                       mtf_patch_width,
+                                       mtf_patch_width, mtf_crop_ratio,
                                        use_50p)[0] for t in perm]
 
     # CHECK 1:
     # Check if the median of MTF values pass the threshold.
-    mtfs = np.array(mtfs)
-    ret.mtf = np.median(mtfs)
+    ret.perm = perm
+    ret.mtfs = np.array(mtfs)
+    ret.mtf = np.median(ret.mtfs)
     if  ret.mtf < min_pass_mtf:
         ret.msg = 'The MTF values are too low.'
         return False, ret
 
     # CHECK 2:
     # Check if the minimum of MTF values pass the threshold.
-    ret.min_mtf = np.amin(mtfs)
+    ret.min_mtf = np.amin(ret.mtfs)
     if  ret.min_mtf < min_pass_lowest_mtf:
         ret.msg = 'The min MTF value is too low.'
         return False, ret
