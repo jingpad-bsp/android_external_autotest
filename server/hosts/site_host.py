@@ -211,10 +211,12 @@ class SiteHost(remote.RemoteHost):
         sync should be finished in a short time during the reboot
         command.
         """
-        dargs['reboot_cmd'] = ('((reboot & sleep 10; reboot -f &)'
-                               ' </dev/null >/dev/null 2>&1 &)')
+        if 'reboot_cmd' not in dargs:
+            dargs['reboot_cmd'] = ('((reboot & sleep 10; reboot -f &)'
+                                   ' </dev/null >/dev/null 2>&1 &)')
         # Enable fastsync to avoid running extra sync commands before reboot.
-        dargs['fastsync'] = True
+        if 'fastsync' not in dargs:
+            dargs['fastsync'] = True
         super(SiteHost, self).reboot(**dargs)
 
 
