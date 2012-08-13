@@ -10,8 +10,7 @@ class FAFTClientAttribute(object):
                        'chrome_ec': False,
                        'has_lid': True,
                        'keyboard_dev': True,
-                       'ec_capability': list(),
-                       'ec_fake_rec_mode': False}
+                       'ec_capability': list()}
 
     def __init__(self, platform):
         """Initialized.
@@ -52,9 +51,5 @@ class FAFTClientAttribute(object):
         elif platform == 'Snow':
             setting['ec_capability'] = ['battery', 'charging', 'keyboard',
                                         'lid', 'arm']
-
-        # Set 'ec_fake_rec_mode'
-        if platform == 'Snow':
-            setting['ec_fake_rec_mode'] = True
 
         return setting

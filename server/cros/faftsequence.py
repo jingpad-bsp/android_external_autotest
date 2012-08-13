@@ -779,7 +779,7 @@ class FAFTSequence(ServoTest):
         if self._customized_rec_reboot_command:
             logging.info('running the customized rec reboot command')
             os.system(self._customized_rec_reboot_command)
-        elif self.client_attr.ec_fake_rec_mode:
+        elif self.client_attr.chrome_ec:
             self.send_uart_command("reboot hard ap-off")
             time.sleep(self.EC_BOOT_DELAY)
             self.send_uart_command("hostevent set 0x4000")
@@ -844,7 +844,7 @@ class FAFTSequence(ServoTest):
 
     def disable_keyboard_dev_mode(self):
         logging.info("Disabling keyboard controlled developer mode")
-        if not self.client_attr.ec_fake_rec_mode:
+        if not self.client_attr.chrome_ec:
             self.servo.disable_recovery_mode()
         self.cold_reboot()
         self.wait_for_client_offline()
