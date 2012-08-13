@@ -510,11 +510,6 @@ class Reimager(object):
             [os.path.join(autotest_dir, 'server/site_tests')])
 
 
-    def skip(self, g):
-        """Deprecated in favor of dynamic_suite.skip_reimage()."""
-        return 'SKIP_IMAGE' in g and g['SKIP_IMAGE']
-
-
     def attempt(self, build, board, pool, record, check_hosts,
                 manager, num=None):
         """
