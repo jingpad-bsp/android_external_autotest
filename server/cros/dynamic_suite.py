@@ -314,9 +314,9 @@ def reimage_and_run(**dargs):
     suite_spec = SuiteSpec(**dargs)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
-                                        debug=False)
+                                        user=suite_spec.job.user, debug=False)
     tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
-                                        debug=False)
+                                        user=suite_spec.job.user, debug=False)
     manager = host_lock_manager.HostLockManager(afe=afe)
     reimager = Reimager(suite_spec.job.autodir, afe, tko,
                         results_dir=suite_spec.job.resultdir)
