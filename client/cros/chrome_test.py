@@ -190,7 +190,7 @@ class PyAutoFunctionalTest(_ChromeTestBase):
         _ChromeTestBase.initialize(self)
 
 
-    def run_pyauto_functional(self, suite=None, tests=[], as_chronos=False):
+    def run_pyauto_functional(self, suite='', tests=[], as_chronos=False):
         """Run pyauto functional tests.
 
         Either suite or tests need to be specified, not both.
@@ -201,6 +201,8 @@ class PyAutoFunctionalTest(_ChromeTestBase):
             as_chronos: specify whether tests should be run as chronos
                         (Default: run as root)
         """
+        assert isinstance(suite, basestring), '|suite| should be a string'
+        assert isinstance(tests, list), '|tests| should be a list'
         if not (suite or tests):
             raise error.TestError('Should specify suite or tests')
         if suite and tests:
