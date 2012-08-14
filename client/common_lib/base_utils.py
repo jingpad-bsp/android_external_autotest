@@ -882,6 +882,12 @@ def nuke_subprocess(subproc):
 def nuke_pid(pid, signal_queue=(signal.SIGTERM, signal.SIGKILL)):
     # the process has not terminated within timeout,
     # kill it via an escalating series of signals.
+    pid_path = '/proc/%d/'
+    if not os.path.exists(pid_path % pid):
+        # Assume that if the pid does not exist in proc it is already dead.
+        logging.error('No listing in /proc for pid:%d.', pid)
+        raise error.AutoservPidAlreadyDeadError('Could not kill nonexistant '
+                                                'pid: %s.', pid)
     for sig in signal_queue:
         if signal_pid(pid, sig):
             return

@@ -165,7 +165,12 @@ class DroneUtility(object):
 
     def kill_process(self, process):
         signal_queue = (signal.SIGCONT, signal.SIGTERM, signal.SIGKILL)
-        utils.nuke_pid(process.pid, signal_queue=signal_queue)
+        try:
+            utils.nuke_pid(process.pid, signal_queue=signal_queue)
+        except error.AutoservPidAlreadyDeadError:
+            self._warn('Tried to kill a pid:%d that did not exist.' %
+                       process.pid)
+
 
 
     def _convert_old_host_log(self, log_path):

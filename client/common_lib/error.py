@@ -453,6 +453,11 @@ class AutoservInstallError(AutoservError):
     pass
 
 
+class AutoservPidAlreadyDeadError(AutoservError):
+    """Error occured by trying to kill a nonexistant PID"""
+    pass
+
+
 # packaging system errors
 
 class PackagingError(AutotestError):
