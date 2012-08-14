@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for server/cros/job_status.py."""
+"""Unit tests for server/cros/dynamic_suite/job_status.py."""
 
 import logging
 import mox
@@ -13,9 +13,9 @@ import tempfile
 import time
 import unittest
 
-from autotest_lib.server.cros import job_status, host_lock_manager
-from autotest_lib.server.cros.dynamic_suite_fakes import FakeHost, FakeJob
-from autotest_lib.server.cros.dynamic_suite_fakes import FakeStatus
+from autotest_lib.server.cros.dynamic_suite import job_status, host_lock_manager
+from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost, FakeJob
+from autotest_lib.server.cros.dynamic_suite.fakes import FakeStatus
 from autotest_lib.server import frontend
 
 

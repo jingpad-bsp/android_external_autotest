@@ -21,7 +21,8 @@ dynamic suite infrastructure in server/cros/dynamic_suite.py.
 
 import optparse, os, sys, time
 import common
-from autotest_lib.server.cros import control_file_getter, dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 def parse_options():
     usage = "usage: %prog [options] suite_name"

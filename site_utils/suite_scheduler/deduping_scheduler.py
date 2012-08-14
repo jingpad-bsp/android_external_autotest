@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import logging
-from autotest_lib.server.cros import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server import frontend
 
 

@@ -41,7 +41,7 @@ import board_enumerator, deduping_scheduler, driver, forgiving_config_parser
 import manifest_versions
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config, logging_manager
-from autotest_lib.server.cros import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
 CONFIG_SECTION = 'SCHEDULER'

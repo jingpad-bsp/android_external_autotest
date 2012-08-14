@@ -5,7 +5,7 @@
 """Fakes for dynamic_suite-related unit tests."""
 
 import datetime
-from autotest_lib.server.cros import job_status
+from autotest_lib.server.cros.dynamic_suite import job_status
 
 
 class FakeControlData(object):

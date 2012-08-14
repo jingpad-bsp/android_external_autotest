@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.server.cros import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server import frontend
 
 from constants import Labels

@@ -10,8 +10,9 @@ import logging
 import sys
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.server.cros import control_file_getter, dynamic_suite
-from autotest_lib.server.cros import job_status
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import job_status
 
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.

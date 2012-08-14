@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for server/cros/frontend_wrappers.py."""
+"""Unit tests for server/cros/dynamic_suite/frontend_wrappers.py."""
 
 import logging
 import mox
@@ -10,7 +10,7 @@ import time
 import unittest
 
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.server.cros import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server import frontend
 
 class FrontendWrappersTest(mox.MoxTestBase):

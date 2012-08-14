@@ -498,7 +498,8 @@ class RepoError(PackagingError):
 
 class CrosDynamicSuiteException(Exception):
     """
-    Base class for exceptions coming from dynamic suite code in server/cros/*.
+    Base class for exceptions coming from dynamic suite code in
+    server/cros/dynamic_suite/*.
     """
     pass
 

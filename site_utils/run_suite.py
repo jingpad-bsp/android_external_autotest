@@ -18,8 +18,9 @@ import datetime, getpass, hashlib, optparse, os, time, sys
 import common
 import logging
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.server.cros import dynamic_suite, frontend_wrappers
-from autotest_lib.server.cros import job_status
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import job_status
 
 CONFIG = global_config.global_config
 

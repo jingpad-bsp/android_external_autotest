@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for server/cros/host_lock_manager.py."""
+"""Unit tests for server/cros/dynamic_suite/host_lock_manager.py."""
 
 import logging
 import mox
@@ -12,7 +12,7 @@ import shutil
 import unittest
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import host_lock_manager
+from autotest_lib.server.cros.dynamic_suite import host_lock_manager
 from autotest_lib.server import frontend
 
 

@@ -19,12 +19,12 @@ Assumes that a label including the image name has already been created.
 @param image_name: the name of the image, used to label the device a.k.a. build
 """
 
-from autotest_lib.server.cros import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 vers = 'cros-version:'
 repo_url = None
 if 'image_name' in locals():
-    from autotest_lib.server.cros import dynamic_suite
+    from autotest_lib.server.cros.dynamic_suite import dynamic_suite
     vers = dynamic_suite.VERSION_PREFIX
     repo_url = dynamic_suite.get_package_url(build=image_name)
 

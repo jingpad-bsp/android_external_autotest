@@ -8,9 +8,10 @@ import signal
 from autotest_lib.client.common_lib import base_job, control_data, global_config
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.server.cros import control_file_getter, frontend_wrappers
-from autotest_lib.server.cros import host_lock_manager, job_status
-from autotest_lib.server.cros.job_status import Status
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import host_lock_manager, job_status
+from autotest_lib.server.cros.dynamic_suite.job_status import Status
 from autotest_lib.server import frontend
 from autotest_lib.frontend.afe.json_rpc import proxy
 
@@ -34,7 +35,7 @@ sub-jobs to do the needed reimaging and test running.
 Example control file:
 
 import common
-from autotest_lib.server.cros import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='bvt', job=job, pool=pool,

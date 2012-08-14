@@ -6,7 +6,7 @@ import logging
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 """HostLockManager class, for the dynamic_suite module.
 

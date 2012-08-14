@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for server/cros/dynamic_suite.py."""
+"""Unit tests for server/cros/dynamic_suite/dynamic_suite.py."""
 
 import logging
 import mox
@@ -20,11 +20,12 @@ from autotest_lib.client.common_lib import base_job, control_data, error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe.json_rpc import proxy
-from autotest_lib.server.cros import control_file_getter, dynamic_suite
-from autotest_lib.server.cros import host_lock_manager, job_status
-from autotest_lib.server.cros.dynamic_suite_fakes import FakeControlData
-from autotest_lib.server.cros.dynamic_suite_fakes import FakeHost, FakeJob
-from autotest_lib.server.cros.dynamic_suite_fakes import FakeLabel
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import host_lock_manager, job_status
+from autotest_lib.server.cros.dynamic_suite.fakes import FakeControlData
+from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost, FakeJob
+from autotest_lib.server.cros.dynamic_suite.fakes import FakeLabel
 from autotest_lib.server import frontend
 
 

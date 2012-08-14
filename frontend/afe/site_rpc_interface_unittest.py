@@ -12,7 +12,8 @@ import unittest
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import site_rpc_interface
-from autotest_lib.server.cros import control_file_getter, dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 
 class SiteRpcInterfaceTest(mox.MoxTestBase):
