@@ -10,8 +10,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
-# crosbug.com/33446
-# SUITE = "bvt"
+SUITE = "bvt"
 EXPERIMENTAL = "True"
 
 DOC = """
