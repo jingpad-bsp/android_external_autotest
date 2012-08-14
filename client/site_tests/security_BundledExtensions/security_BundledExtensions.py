@@ -14,11 +14,6 @@ class security_BundledExtensions(cros_ui_test.UITest):
     version = 1
 
 
-    def initialize(self, mode=None):
-      # Ignore |mode|
-      cros_ui_test.UITest.initialize(self)
-
-
     def load_baseline(self):
         bfile = open(os.path.join(self.bindir, 'baseline'))
         with open(os.path.join(self.bindir, 'baseline')) as bfile:
