@@ -4,11 +4,11 @@
 
 from autotest_lib.client.cros import chrome_test
 
-class desktopui_SyncIntegrationTests(chrome_test.ChromeTestBase):
+class desktopui_SyncIntegrationTests(chrome_test.ChromeBinaryTest):
     version = 1
 
     binary_to_run = 'sync_integration_tests'
     cmd_line_params = '--test-terminate-timeout=120000'
 
     def run_once(self):
-        self.run_chrome_test(self.binary_to_run, self.cmd_line_params)
+        self.run_chrome_binary_test(self.binary_to_run, self.cmd_line_params)

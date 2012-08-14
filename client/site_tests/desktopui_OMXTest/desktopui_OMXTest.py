@@ -5,7 +5,7 @@
 import os
 from autotest_lib.client.cros import chrome_test
 
-class desktopui_OMXTest(chrome_test.ChromeTestBase):
+class desktopui_OMXTest(chrome_test.ChromeBinaryTest):
   version = 1
 
   def run_once(self):
@@ -15,5 +15,5 @@ class desktopui_OMXTest(chrome_test.ChromeTestBase):
     # the bots green.
     cmd_line_params = ('--test_video_data="%s:320:240:250:258:35:150:1"' %
                        test_video_file)
-    self.run_chrome_test('omx_video_decode_accelerator_unittest',
-                         cmd_line_params)
+    self.run_chrome_binary_test('omx_video_decode_accelerator_unittest',
+                                cmd_line_params)

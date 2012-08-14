@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_test, cros_ui
 
 
-class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
+class desktopui_PyAutoPerfTests(chrome_test.PyAutoFunctionalTest):
     """Wrapper for running Chrome's PyAuto-based performance tests.
 
     Performs all setup and fires off the PERFORMANCE PyAuto suite for ChromeOS.
@@ -26,7 +26,7 @@ class desktopui_PyAutoPerfTests(chrome_test.ChromeTestBase):
 
 
     def initialize(self):
-        chrome_test.ChromeTestBase.initialize(self)
+        chrome_test.PyAutoFunctionalTest.initialize(self)
 
         # The next few lines install the page_cycler depdendency onto the
         # target.  It is very similar to what happens in the above

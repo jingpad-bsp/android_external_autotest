@@ -29,14 +29,14 @@ def get_binary_prefix(arguments=[]):
     return ''
 
 
-class desktopui_BrowserTest(chrome_test.ChromeTestBase):
+class desktopui_BrowserTest(chrome_test.ChromeBinaryTest):
     version = 1
     binary_to_run = 'browser_tests'
 
     MAX_TESTS_TO_RUN = 100
 
     def initialize(self, arguments=[]):
-        chrome_test.ChromeTestBase.initialize(
+        chrome_test.ChromeBinaryTest.initialize(
             self, nuke_browser_norestart=False,
             skip_deps=bool(SKIP_DEPS_ARG in arguments))
 
@@ -71,9 +71,9 @@ class desktopui_BrowserTest(chrome_test.ChromeTestBase):
               test_args += ' --' + args_to_pass
 
           try:
-              self.run_chrome_test(self.binary_to_run,
-                                   test_args,
-                                   prefix=get_binary_prefix(arguments))
+              self.run_chrome_binary_test(self.binary_to_run,
+                                          test_args,
+                                          prefix=get_binary_prefix(arguments))
           except error.TestFail as test_error:
               # We only track the last_error message as we rely on gtest_runnner
               # to parse the failures for us when run. Right now all this

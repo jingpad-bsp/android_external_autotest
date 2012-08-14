@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_test, cros_ui, ownership
 
 
-class desktopui_PyAutoEnduranceTests(chrome_test.ChromeTestBase):
+class desktopui_PyAutoEnduranceTests(chrome_test.PyAutoFunctionalTest):
     """Wrapper for running Chrome's PyAuto-based endurance tests."""
 
     _DEFAULT_TEST_LENGTH_SEC = 60 * 60 * 2  # Tests run for 2 hours.
@@ -70,8 +70,3 @@ class desktopui_PyAutoEnduranceTests(chrome_test.ChromeTestBase):
                 'least one pyauto test failed.  Refer to the full autotest '
                 'output in desktopui_PyAutoPerfTests.DEBUG for details.'
                 % cmd_result.exit_status)
-
-
-    def cleanup(self):
-        ownership.clear_ownership()
-        chrome_test.ChromeTestBase.cleanup(self)
