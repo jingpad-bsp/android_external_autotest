@@ -26,6 +26,9 @@ class login_OwnershipNotRetaken(cros_ui_test.UITest):
         hash = hashlib.md5(key.read())
         key.close()
         mtime = os.stat(constants.OWNER_KEY_FILE).st_mtime
+        # Work around until crosbug.com/139166 is fixed
+        self.pyauto.ExecuteJavascriptInOOBEWebUI('Oobe.showSigninUI();'
+            'window.domAutomationController.send("ok");')
         self.login(self._TEST_USER, self._TEST_PASS)
         if os.stat(constants.OWNER_KEY_FILE).st_mtime > mtime:
             raise error.TestFail("Owner key was touched on second login!")
