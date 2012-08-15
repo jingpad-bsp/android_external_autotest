@@ -30,7 +30,7 @@ from autotest_lib.server import frontend
 from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.cli.rpc import AFE_RPC_PATH
 from autotest_lib.client.common_lib import global_config, logging_config
-from autotest_lib.server.cros.dynamic_suite.dynamic_suite import VERSION_PREFIX
+from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
 
 # This filename must be kept in sync with devserver's downloader.py
 _TIMESTAMP_FILENAME = 'staged.timestamp'

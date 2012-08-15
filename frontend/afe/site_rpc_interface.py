@@ -10,9 +10,10 @@ import logging
 import sys
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
-from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 from autotest_lib.server.cros.dynamic_suite import job_status
+from autotest_lib.server.cros.dynamic_suite import tools
 
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
@@ -115,13 +116,13 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     # on the dev server. However set synchronous to False to allow other
     # components to be downloaded in the background.
     ds = dev_server.DevServer.create()
-    timings[dynamic_suite.DOWNLOAD_STARTED_TIME] = formatted_now()
+    timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
     try:
         ds.trigger_download(build, synchronous=False)
     except dev_server.DevServerException as e:
         raise error.StageBuildFailure(
                 "Failed to stage %s for %s: %s" % (build, board, e))
-    timings[dynamic_suite.PAYLOAD_FINISHED_TIME] = formatted_now()
+    timings[constants.PAYLOAD_FINISHED_TIME] = formatted_now()
 
     control_file_in = get_control_file_contents_by_name(build, board, ds,
                                                         suite_name)
@@ -133,7 +134,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                    'check_hosts': check_hosts,
                    'pool': pool,
                    'num': numeric_num}
-    control_file = dynamic_suite.inject_vars(inject_dict, control_file_in)
+    control_file = tools.inject_vars(inject_dict, control_file_in)
 
     return _rpc_utils().create_job_common('%s-%s' % (build, suite_name),
                                           priority='Medium',

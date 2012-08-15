@@ -22,7 +22,7 @@ dynamic suite infrastructure in server/cros/dynamic_suite.py.
 import optparse, os, sys, time
 import common
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
-from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite.suite import Suite
 
 def parse_options():
     usage = "usage: %prog [options] suite_name"
@@ -52,14 +52,14 @@ def main():
         parser.print_help()
         return
 
-    fs_getter = dynamic_suite.Suite.create_fs_getter(options.autotest_dir)
+    fs_getter = Suite.create_fs_getter(options.autotest_dir)
 
     if options.listall:
-        for suite in dynamic_suite.Suite.list_all_suites('', fs_getter):
+        for suite in Suite.list_all_suites('', fs_getter):
             print suite
         return
 
-    suite = dynamic_suite.Suite.create_from_name(args[0], '', fs_getter)
+    suite = Suite.create_from_name(args[0], '', fs_getter)
     for test in suite.stable_tests():
         print test.path
     if options.add_experimental:

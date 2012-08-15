@@ -24,9 +24,10 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 vers = 'cros-version:'
 repo_url = None
 if 'image_name' in locals():
-    from autotest_lib.server.cros.dynamic_suite import dynamic_suite
-    vers = dynamic_suite.VERSION_PREFIX
-    repo_url = dynamic_suite.get_package_url(build=image_name)
+    from autotest_lib.server.cros.dynamic_suite import constants
+    from autotest_lib.server.cros.dynamic_suite import tools
+    vers = constants.VERSION_PREFIX
+    repo_url = tools.get_package_url(build=image_name)
 
 AFE = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10, debug=False)
 

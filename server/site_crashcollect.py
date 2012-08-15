@@ -8,7 +8,7 @@ import urllib2
 from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.cros import constants
-from autotest_lib.server.cros import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite.constants import JOB_BUILD_KEY
 from autotest_lib.server import utils
 
 def generate_minidump_stacktrace(minidump_path):
@@ -40,13 +40,13 @@ def symbolicate_minidump_with_devserver(minidump_path, resultdir):
     # First, look up what build we tested.  If we can't find this, we can't
     # get the right debug symbols, so we might as well give up right now.
     keyvals = client_utils.read_keyval(resultdir)
-    if dynamic_suite.JOB_BUILD_KEY not in keyvals:
+    if JOB_BUILD_KEY not in keyvals:
         raise dev_server.DevServerException(
             'Cannot determine build being tested.')
 
     devserver = dev_server.DevServer.create()
     trace_text = devserver.symbolicate_dump(
-        minidump_path, keyvals[dynamic_suite.JOB_BUILD_KEY])
+        minidump_path, keyvals[JOB_BUILD_KEY])
     if not trace_text:
         raise dev_server.DevServerException('Unknown error!!')
     with open(minidump_path + '.txt', 'w') as trace_file:

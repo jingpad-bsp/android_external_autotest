@@ -6,11 +6,11 @@ import logging
 import os
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import installable_object, autoserv_parser
-from autotest_lib.server.cros import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite.constants import JOB_REPO_URL
 
 
-config = global_config.global_config
-parser = autoserv_parser.autoserv_parser
+_CONFIG = global_config.global_config
+_PARSER = autoserv_parser.autoserv_parser
 
 
 class SiteAutotest(installable_object.InstallableObject):
@@ -38,13 +38,11 @@ class SiteAutotest(installable_object.InstallableObject):
             if self.host:
                 afe = frontend.AFE(debug=False)
                 hosts = afe.get_hosts(hostname=self.host.hostname)
-                if hosts and dynamic_suite.JOB_REPO_URL in hosts[0].attributes:
-                    return hosts[0].attributes[dynamic_suite.JOB_REPO_URL]
-                logging.warning("No %s for %s", dynamic_suite.JOB_REPO_URL,
-                                self.host)
+                if hosts and JOB_REPO_URL in hosts[0].attributes:
+                    return hosts[0].attributes[JOB_REPO_URL]
+                logging.warning("No %s for %s", JOB_REPO_URL, self.host)
         except ImportError:
-            logging.warning('Not attempting to look for %s',
-                            dynamic_suite.JOB_REPO_URL)
+            logging.warning('Not attempting to look for %s', JOB_REPO_URL)
             pass
         return None
 
@@ -61,11 +59,11 @@ class SiteAutotest(installable_object.InstallableObject):
         """
         repos = super(SiteAutotest, self).get_fetch_location()
 
-        if parser.options.image:
+        if _PARSER.options.image:
             # The old way.
             # Add our new repo to the end, the package manager will later
             # reverse the list of repositories resulting in ours being first.
-            repos.append(parser.options.image.replace(
+            repos.append(_PARSER.options.image.replace(
                 'update', 'static/archive').rstrip('/') + '/autotest')
         else:
             # The new way.
@@ -101,7 +99,7 @@ class SiteClientLogger(object):
         fetch_package_match = self.fetch_package_parser.search(line)
         if fetch_package_match:
             pkg_name, dest_path, fifo_path = fetch_package_match.groups()
-            serve_packages = global_config.global_config.get_config_value(
+            serve_packages = _CONFIG.get_config_value(
                 "PACKAGES", "serve_packages_from_autoserv", type=bool)
             if serve_packages and pkg_name == 'packages.checksum':
                 try:

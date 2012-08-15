@@ -26,7 +26,7 @@ import optparse, os, sys
 import common
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
-from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite.suite import Suite
 
 def parse_options():
     parser = optparse.OptionParser()
@@ -46,13 +46,11 @@ def parse_options():
 def main():
     options = parse_options()
 
-    fs_getter = dynamic_suite.Suite.create_fs_getter(options.autotest_dir)
+    fs_getter = Suite.create_fs_getter(options.autotest_dir)
     predicate = lambda t: hasattr(t, 'suite')
     test_deps = {}  #  Format will be {suite: {test: [dep, dep]}}.
-    for test in dynamic_suite.Suite.find_and_parse_tests(fs_getter,
-                                                         predicate,
-                                                         True):
-        for suite in dynamic_suite.Suite.parse_tag(test.suite):
+    for test in Suite.find_and_parse_tests(fs_getter, predicate, True):
+        for suite in Suite.parse_tag(test.suite):
             suite_deps = test_deps.setdefault(suite, {})
             # Force this to a list so that we can parse it later with
             # ast.literal_eval() -- which is MUCH safer than eval()

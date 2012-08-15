@@ -18,7 +18,7 @@ import datetime, getpass, hashlib, optparse, os, time, sys
 import common
 import logging
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 
@@ -113,10 +113,10 @@ def get_view_info(suite_job_id, view):
         # The job name depends on whether it's experimental or not.
         local_test_name = view['test_name'].split('-')[0]  # for try_new_image-*
         std_job_name = local_test_name.split('.')[0]
-        exp_job_name = dynamic_suite.EXPERIMENTAL_PREFIX + std_job_name
+        exp_job_name = constants.EXPERIMENTAL_PREFIX + std_job_name
 
         std_job_hash = hashlib.md5(local_test_name.split('.')[0]).hexdigest()
-        exp_job_hash = hashlib.md5(dynamic_suite.EXPERIMENTAL_PREFIX +
+        exp_job_hash = hashlib.md5(constants.EXPERIMENTAL_PREFIX +
                                    std_job_name).hexdigest()
 
         if std_job_hash in view['job_keyvals']:
@@ -182,11 +182,12 @@ class Timings(object):
         if 'job_keyvals' in entry:
             keyvals = entry['job_keyvals']
             self.download_start_time = keyvals.get(
-                dynamic_suite.DOWNLOAD_STARTED_TIME)
+                constants.DOWNLOAD_STARTED_TIME)
             self.payload_end_time = keyvals.get(
-                dynamic_suite.PAYLOAD_FINISHED_TIME)
+                constants.PAYLOAD_FINISHED_TIME)
             self.artifact_end_time = keyvals.get(
-                dynamic_suite.ARTIFACT_FINISHED_TIME)
+                constants.ARTIFACT_FINISHED_TIME)
+
 
     def _UpdateFirstTestStartTime(self, candidate):
         """Update self.tests_start_time, iff candidate is an earlier time.
@@ -298,7 +299,7 @@ def main():
                                                             'Suite prep')
             job_name, experimental = get_view_info(job_id, entry)
             if experimental:
-                test_entry = (dynamic_suite.EXPERIMENTAL_PREFIX +
+                test_entry = (constants.EXPERIMENTAL_PREFIX +
                               entry['test_name']).ljust(width)
             else:
                 test_entry = entry['test_name'].ljust(width)

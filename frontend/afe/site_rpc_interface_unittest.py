@@ -6,14 +6,17 @@
 
 """Unit tests for frontend/afe/site_rpc_interface.py."""
 
-import common
+
 import mox
 import unittest
+
+import common
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import site_rpc_interface
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
-from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import constants
 
 
 class SiteRpcInterfaceTest(mox.MoxTestBase):
@@ -55,8 +58,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         @param to_return: the value that rpc_utils.create_job_common() should
                           be mocked out to return.
         """
-        download_started_time = dynamic_suite.DOWNLOAD_STARTED_TIME
-        payload_finished_time = dynamic_suite.PAYLOAD_FINISHED_TIME
+        download_started_time = constants.DOWNLOAD_STARTED_TIME
+        payload_finished_time = constants.PAYLOAD_FINISHED_TIME
         r = self.mox.CreateMock(SiteRpcInterfaceTest.rpc_utils)
         r.create_job_common(mox.And(mox.StrContains(self._NAME),
                                     mox.StrContains(self._BUILD)),
