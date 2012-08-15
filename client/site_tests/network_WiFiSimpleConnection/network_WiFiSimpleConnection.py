@@ -4,7 +4,6 @@
 
 import logging, os, urllib
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test, wifi_simple_connector
 
@@ -14,12 +13,10 @@ class network_WiFiSimpleConnection(cros_ui_test.UITest):
 
 
     def initialize(self):
-        super(network_WiFiSimpleConnection, self).initialize(creds='$default')
-
-
-    def setup(self):
-        super(network_WiFiSimpleConnection, self).setup()
-        self.pyauto.RunSuperuserActionOnChromeOS('CleanFlimflamDir')
+        base_class = 'chromeos_network.PyNetworkUITest'
+        # Switch wifi to be the primary connection
+        cros_ui_test.UITest.initialize(self, pyuitest_class=base_class,
+                                       creds='$default')
 
 
     def start_authserver(self):
@@ -44,4 +41,3 @@ class network_WiFiSimpleConnection(cros_ui_test.UITest):
         self.pyauto.NavigateToURL('http://www.msn.com')
         self.job.set_state('client_passed', True)
         logging.debug('Connection establish, client test exiting.')
-

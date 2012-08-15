@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 import logging
-import cros_ui
+
+from autotest_lib.client.common_lib import error
+
 
 class WifiSimpleConnector(object):
     """Simple class that uses pyauto calls to connected to a wifi network."""
