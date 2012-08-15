@@ -125,7 +125,13 @@ class DynamicSuiteTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
 
-        with dynamic_suite.SignalsAsExceptions(UnhandledSIGTERM):
-            self.assertRaises(error.SignalException,
-                              dynamic_suite._perform_reimage_and_run,
-                              spec, None, None, None, manager)
+        def test_code():
+            with dynamic_suite.SignalsAsExceptions(UnhandledSIGTERM):
+                self.assertRaises(error.SignalException,
+                                  dynamic_suite._perform_reimage_and_run,
+                                  spec, None, None, None, manager)
+                # rethrow the exception to simulate never catching it
+                raise error.SignalException()
+
+        # make sure that the original signal handler is still called
+        self.assertRaises(UnhandledSIGTERM, test_code)

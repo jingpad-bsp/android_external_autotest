@@ -249,6 +249,8 @@ class SignalsAsExceptions(object):
 
     def _make_handler(self):
         def _raising_signal_handler(signal_number, frame):
+            self.signal_number = signal_number
+            self.frame = frame
             raise self.exception_type()
         return _raising_signal_handler
 
@@ -267,7 +269,16 @@ class SignalsAsExceptions(object):
 
 
     def __exit__(self, exntype, exnvalue, backtrace):
+        # If we receive another sigterm while calling the old handler below,
+        # we'll throw an exception in the context of the old handler. Thus we
+        # should vacate our spot as the signal handler first.
         signal.signal(signal.SIGTERM, self.old_handler)
+        # We've caught the signal that we're looking for, and the scope within
+        # this context manager has been cleaned up successfully, so we can now
+        # trigger the previous signal handler.
+        if (exntype == self.exception_type and
+            not isinstance(self.old_handler, int)):
+            self.old_handler(self.signal_number, self.frame)
 
 
 class SuiteSpec(object):
