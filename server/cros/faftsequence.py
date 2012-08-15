@@ -661,8 +661,10 @@ class FAFTSequence(ServoTest):
           part: A string of kernel partition number or 'a'/'b'.
         """
         if not self.root_part_checker(part):
-            self.copy_kernel_and_rootfs(from_part=self.OTHER_KERNEL_MAP[part],
-                                        to_part=part)
+            if self.faft_client.diff_kernel_a_b():
+                self.copy_kernel_and_rootfs(
+                        from_part=self.OTHER_KERNEL_MAP[part],
+                        to_part=part)
             self.run_faft_step({
                 'userspace_action': (self.reset_and_prioritize_kernel, part),
             })
@@ -910,8 +912,9 @@ class FAFTSequence(ServoTest):
           part: A string of kernel partition number or 'a'/'b'.
         """
         self.ensure_kernel_boot(part)
-        self.copy_kernel_and_rootfs(from_part=part,
-                                    to_part=self.OTHER_KERNEL_MAP[part])
+        if self.faft_client.diff_kernel_a_b():
+            self.copy_kernel_and_rootfs(from_part=part,
+                                        to_part=self.OTHER_KERNEL_MAP[part])
         self.reset_and_prioritize_kernel(part)
 
 

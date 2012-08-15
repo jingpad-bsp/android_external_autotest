@@ -453,6 +453,24 @@ class FAFTClient(object):
         """Increase kernel version for the requested section."""
         self._modify_kernel_version(section, 1)
 
+    def diff_kernel_a_b(self):
+        """Compare kernel A with B.
+
+        Returns:
+            True: if kernel A is different with B.
+            False: if kernel A is the same as B.
+        """
+        rootdev = self._chromeos_interface.get_root_dev()
+        kernel_a = self._chromeos_interface.join_part(rootdev, '3')
+        kernel_b = self._chromeos_interface.join_part(rootdev, '5')
+
+        # The signature (some kind of hash) for the kernel body is stored in
+        # the beginning. So compare the first 64KB (including header, preamble,
+        # and signature) should be enough to check them identical.
+        header_a = self._chromeos_interface.read_partition(kernel_a, 0x10000)
+        header_b = self._chromeos_interface.read_partition(kernel_b, 0x10000)
+
+        return header_a != header_b
 
     def run_cgpt_test_loop(self):
         """Run the CgptState test loop. The tst logic is handled in the client.
