@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,7 +11,10 @@ import dash_util
 from build_info import BuildInfo
 from dash_view import AutotestDashView
 
+# String resources.
+from dash_strings import BVT_TAG
 
+# Constants
 DEFAULT_TEST_NAME_LENGTH = 18
 
 
@@ -29,10 +32,12 @@ class TableBuilder(object):
     self._test_list.sort()
     self._build_numbers = self._dash_view.GetBuilds(
         netbook, board_type, category)
+    self._good_set, self._failed_list = self._SplitTestList()
 
   def  _SplitTestList(self):
     """Determine and list the tests that passed and failed."""
     all_set = set(self._test_list)
+    experimental_set = set()
     failed_list = []  # Maintains order discovered.
 
     for build in self._build_numbers:
@@ -40,10 +45,13 @@ class TableBuilder(object):
         test_details = self._GetTestDetails(test_name, build)
         if test_details:
           for t in test_details:
+            if t['experimental'] and self._category == BVT_TAG:
+              experimental_set.add(test_name)
+              continue
             test_status = t['status']
             if not test_status == 'GOOD' and not test_name in failed_list:
               failed_list.append(test_name)
-    return sorted(all_set - set(failed_list)), failed_list
+    return sorted(all_set - experimental_set - set(failed_list)), failed_list
 
   def _BuildTableHeader(self, test_list):
     """Generate header with test names for columns."""
@@ -131,15 +139,14 @@ class TableBuilder(object):
 
   def BuildTables(self):
     """Generate table body with test results in cells."""
-    good_tests, failed_tests = self._SplitTestList()
-    good_table_header = self._BuildTableHeader(good_tests)
-    good_table_body = self._BuildTableBody(good_tests)
+    good_table_header = self._BuildTableHeader(self._good_set)
+    good_table_body = self._BuildTableBody(self._good_set)
     result = [{'label': 'Good Tests',
                'header': good_table_header,
                'body': good_table_body}]
-    if failed_tests:
-      failed_table_header = self._BuildTableHeader(failed_tests)
-      failed_table_body = self._BuildTableBody(failed_tests)
+    if self._failed_list:
+      failed_table_header = self._BuildTableHeader(self._failed_list)
+      failed_table_body = self._BuildTableBody(self._failed_list)
       result.insert(0, {'label': 'Failed Tests',
                         'header': failed_table_header,
                         'body': failed_table_body})
@@ -148,15 +155,6 @@ class TableBuilder(object):
   def CountTestList(self):
     """Count the number of tests and failed ones."""
     if self._build_numbers:
-      failed_list = []
-      build = self._build_numbers[0]
-      for test_name in self._test_list:
-        test_details = self._GetTestDetails(test_name, build)
-        if test_details:
-          for t in test_details:
-            test_status = t['status']
-            if not test_status == 'GOOD' and not test_name in failed_list:
-              failed_list.append(test_name)
-      return len(self._test_list), len(failed_list)
+      return len(self._good_set)+len(self._failed_list), len(self._failed_list)
     else:
       return 0, 0

@@ -243,8 +243,8 @@ class AutotestDashView(object):
           "WHERE job_owner = %s"
           "  AND NOT ISNULL(test_finished_time)"
           "  AND NOT ISNULL(job_finished_time)"
-          "  AND NOT test_name REGEXP 'CLIENT_JOB.*'"
-          "  AND NOT test_name REGEXP '^boot\..*'"
+          "  AND NOT test_name LIKE 'CLIENT_JOB%%'"
+          "  AND NOT test_name LIKE 'boot.%%'"
           "  AND NOT test_name IN ('Autotest.install', 'cleanup_test', "
           "                        'lmbench', 'logfile.monitor', 'repair', "
           "                        'sleeptest', 'tsc')")
@@ -986,7 +986,7 @@ class AutotestDashView(object):
         job_name: complex string created by test_scheduler from a build image.
 
       Returns:
-        Tuple of the board, a long build# and a possible job suffix (group).
+        Tuple of: board, a build#, a job group, and a bool True if experimental.
       """
       #  (x86-zgb)-release/((R19)-1913.0.0-a1-b1539) \
       #   /(bvt)/(network_DisableInterface)
@@ -997,12 +997,13 @@ class AutotestDashView(object):
         board = '%s-%s' % (board, milestone.lower())
         # Remove possible sequence artifacts, e.g.'-a1-b1539'
         build = self.ParseSimpleBuild(build)
-        return board, build, self.TranslateSuffix(suite)
+        return (board, build, self.TranslateSuffix(suite),
+                suffix.startswith('experimental_'))
 
       # Old suite style parsing.
       m = re.match(self._jobname_parse, job_name)
       if not m or not len(m.groups()) == 3:
-        return None, None, None
+        return None, None, None, None
 
       board, subjob, suffix = m.group(1, 2, 3)
 
@@ -1025,7 +1026,7 @@ class AutotestDashView(object):
           board = board.replace(terminator,
                                 replacement + full_build.split('-')[0][1:])
 
-      return board, full_build, self.TranslateSuffix(suffix)
+      return board, full_build, self.TranslateSuffix(suffix), False
 
     def ParseSimpleBuild(self, build):
       """Strip out the 0.x.y.z portion of the build.
@@ -1157,6 +1158,8 @@ class AutotestDashView(object):
           "FROM afe_jobs AS j",
           "INNER JOIN afe_host_queue_entries AS q ON j.id = q.job_id",
           "WHERE owner = %s",
+          "  AND NOT name LIKE '%%-try'"
+          "  AND NOT name LIKE '%%-test_suites/%%'"
           "ORDER BY created_on DESC",
           "LIMIT %s"]
       if not job_limit:
@@ -1168,7 +1171,7 @@ class AutotestDashView(object):
       jobname_to_jobid = {}
 
       for job_id, name, complete in self._cursor.fetchall():
-        board, full_build, suffix = self.ParseJobName(name)
+        board, full_build, suffix, _ = self.ParseJobName(name)
         if not board or not full_build or not suffix:
           logging.debug("Ignoring invalid: %s (%s, %s, %s).", name, board,
                         full_build, suffix)
@@ -1193,7 +1196,7 @@ class AutotestDashView(object):
       # Now go prune out incomplete jobs.
       for name in incomplete_jobnames:
         logging.debug("Ignoring incomplete: %s.", name)
-        board, full_build, suffix = self.ParseJobName(name)
+        board, full_build, suffix, _ = self.ParseJobName(name)
         tracking_name = "%s-%s" % (board, full_build)
         if suffix in jobname_to_jobid[tracking_name]:
           for str_job_id in jobname_to_jobid[tracking_name][suffix]:
@@ -1224,15 +1227,15 @@ class AutotestDashView(object):
         netbook = self.ScrubNetbook(netbook)
         if not netbook in self.netbooks:
           continue
-        board, full_build, job_suffix = self.ParseJobName(job_name)
-        if not board or not full_build or not job_suffix:
+        board, full_build, suffix, experimental = self.ParseJobName(job_name)
+        if not board or not full_build or not suffix:
           continue
         category = self.ParseTestName(test_name)
         ui_categories = self._ui_categories[netbook].setdefault(board, set())
-        if job_suffix in SUFFIXES_TO_SHOW:
-          ui_categories.add(job_suffix)
-        if job_suffix in GTEST_SUFFIXES:
-          category = job_suffix
+        if suffix in SUFFIXES_TO_SHOW:
+          ui_categories.add(suffix)
+        if suffix in GTEST_SUFFIXES:
+          category = suffix
         category_dict = self._test_tree[netbook].setdefault(board, {})
 
         if not test_name == SERVER_JOB:
@@ -1241,17 +1244,18 @@ class AutotestDashView(object):
           attribute_dict["hostname"] = hostname
           attribute_dict["tag"] = job_tag
           attribute_dict["status"] = status
+          attribute_dict["experimental"] = experimental
           attribute_dict["attr"] = {}
           if not status == 'GOOD':
             attribute_dict["attr"]["reason"] = reason[:min(len(reason), 120)]
           self._tests[str(idx)] = attribute_dict
           ui_categories.add(category)
-          categories_to_load = [category, job_suffix]
+          categories_to_load = [category, suffix]
           # Add crash string summary details.
           self._crashes.AddToCrashTree(netbook, board, full_build, test_name,
                                        idx, job_tag)
         else:
-          categories_to_load = [job_suffix]
+          categories_to_load = [suffix]
 
         for c in categories_to_load:
           self._crashes.AddCrashCategory(
@@ -1263,8 +1267,8 @@ class AutotestDashView(object):
           build_info = build_category_dict.setdefault(full_build, {
               "start": datetime.datetime.now(),
               "finish": datetime.datetime(2010, 1, 1),
-              "ngood": 0,
-              "ntotal": 0,
+              "ngood": 0, # number of good test results excluding experimental
+              "ntotal": 0, # number of tests run excluding experimental
               "server_good": True})
 
           if start_time < build_info["start"]:
@@ -1284,12 +1288,14 @@ class AutotestDashView(object):
           test_index_list[0].add(str(idx))
           if not test_index_list[1]:
             test_index_list[1] = status
-            build_info["ntotal"] += 1
-            if status == "GOOD":
-              build_info["ngood"] += 1
+            if not experimental:
+              build_info["ntotal"] += 1
+              if status == "GOOD":
+                build_info["ngood"] += 1
           elif not status == "GOOD" and test_index_list[1] == "GOOD":
-            build_info["ngood"] -= 1
             test_index_list[1] = status
+            if not experimental:
+              build_info["ngood"] -= 1
 
       query = [
           "SELECT test_idx, attribute, value",
@@ -1323,7 +1329,7 @@ class AutotestDashView(object):
            iteration_key, iteration, iteration_value) in results:
         if iteration_value < 0:
           continue
-        board, full_build, _ = self.ParseJobName(job_name)
+        board, full_build, _, _ = self.ParseJobName(job_name)
         if not board or not full_build:
           continue
         netbook = self.ScrubNetbook(netbook)
