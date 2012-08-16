@@ -14,8 +14,7 @@
       { "crx_file": "apdfllckaahabafndbhieahigkjlhalf.crx",
         "name": "Google Drive",
         "effective_host_permissions": [],
-        "api_permissions": ["background",
-                            "clipboardRead",
+        "api_permissions": ["clipboardRead",
                             "clipboardWrite",
                             "notifications",
                             "unlimitedStorage"]
@@ -35,6 +34,15 @@
         "name": "Games",
         "effective_host_permissions": [],
         "api_permissions": []
+      },
+      { "crx_file": "gbchcmhmhahfdphkhkmpfmihenigjmpp.crx",
+        "name": "Chrome Remote Desktop BETA",
+        "effective_host_permissions": ["https://accounts.google.com/*",
+                                       "https://relay.google.com/*",
+                                       "https://talkgadget.google.com/*",
+"https://talkgadget.google.com/talkgadget/oauth/chrome-remote-desktop/rel/*",
+                                       "https://www.googleapis.com/*"],
+        "api_permissions": ["clipboardRead", "clipboardWrite"]
       },
       { "crx_file": "hgakehlldcacnfhjampnkihibmkgclhk.crx",
         "name": "Music",
