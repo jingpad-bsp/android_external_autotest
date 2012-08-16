@@ -19,14 +19,14 @@ TESTS_ON_NORMAL_MODE = [
     ('firmware_DevMode', {}),
     ('firmware_DevTriggerRecovery', {}),
     ('firmware_InvalidUSB', {}),
-    ('firmware_FwScreenPressPower', {}),
-    ('firmware_FwScreenCloseLid', {}),
     ('firmware_CgptState', {}),
 ]
 
 TESTS_ON_DEV_MODE = [
     ('firmware_DevFwNormalBoot', {}),
     ('firmware_DevScreenTimeout', {}),
+    ('firmware_FwScreenPressPower', {}),
+    ('firmware_FwScreenCloseLid', {}),
 ]
 
 TESTS_ON_BOTH_MODES = [
@@ -42,6 +42,9 @@ TESTS_ON_BOTH_MODES = [
     ('firmware_CorruptKernelA', {}),
     ('firmware_CorruptKernelB', {}),
     ('firmware_CorruptBothKernelAB', {}),
+    ('firmware_RollbackFirmware', {}),
+    ('firmware_RollbackKernel', {}),
+    ('firmware_RONormalBoot', {}),
 ]
 
 
