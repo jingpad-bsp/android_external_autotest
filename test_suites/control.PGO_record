@@ -30,7 +30,7 @@ Mostly we are just wrapping the labelled tests here.
 """
 
 import common
-from autotest_lib.server.cros import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='PGO_record', job=job, pool=pool,

@@ -33,7 +33,7 @@ The machine should reboot after finishing the suite or timing out.
 """
 
 import common
-from autotest_lib.server.cros import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='graphicsGLES', job=job, pool=pool,

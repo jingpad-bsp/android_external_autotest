@@ -21,7 +21,7 @@ Run automated 3g tests to ensure that 3g has not regressed.
 """
 
 import common
-from autotest_lib.server.cros import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='network3g_gobi', job=job, pool=pool,

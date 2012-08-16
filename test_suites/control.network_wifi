@@ -27,7 +27,7 @@ Linux/BSD system with a WiFi card that supports HostAP functionality).
 """
 
 import common
-from autotest_lib.server.cros import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='network_wifi', job=job, pool=pool,
