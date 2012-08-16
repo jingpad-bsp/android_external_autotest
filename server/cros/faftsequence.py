@@ -201,6 +201,7 @@ class FAFTSequence(ServoTest):
     GBB_FLAG_FORCE_DEV_SWITCH_ON       = 0x00000008
     GBB_FLAG_FORCE_DEV_BOOT_USB        = 0x00000010
     GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK = 0x00000020
+    GBB_FLAG_ENTER_TRIGGERS_TONORM     = 0x00000040
 
     _faft_template = {}
     _faft_sequence = ()
@@ -269,8 +270,9 @@ class FAFTSequence(ServoTest):
             'reboot_action': (self.sync_and_warm_reboot),
             'firmware_action': (None)
         })
-        self.clear_gbb_flags(self.GBB_FLAG_FORCE_DEV_SWITCH_ON |
-                             self.GBB_FLAG_DEV_SCREEN_SHORT_DELAY)
+        self.clear_set_gbb_flags(self.GBB_FLAG_FORCE_DEV_SWITCH_ON |
+                                 self.GBB_FLAG_DEV_SCREEN_SHORT_DELAY,
+                                 self.GBB_FLAG_ENTER_TRIGGERS_TONORM)
         if self._install_image_path:
             self.install_test_image(self._install_image_path,
                                     self._firmware_update)
@@ -341,22 +343,24 @@ class FAFTSequence(ServoTest):
         })
 
 
-    def clear_gbb_flags(self, mask):
-        """Clear the GBB flags in the current flashrom.
+    def clear_set_gbb_flags(self, clear_mask, set_mask):
+        """Clear and set the GBB flags in the current flashrom.
 
         Args:
-          mask: A mask of flags to be cleared.
+          clear_mask: A mask of flags to be cleared.
+          set_mask: A mask of flags to be set.
         """
         gbb_flags = self.faft_client.get_gbb_flags()
-        if (gbb_flags & mask):
-            new_flags = gbb_flags & ctypes.c_uint32(~mask).value
-            logging.info('Clear the GBB flags of 0x%x, from 0x%x to 0x%x.' %
-                         (mask, gbb_flags, new_flags))
+        new_flags = gbb_flags & ctypes.c_uint32(~clear_mask).value | set_mask
+
+        if (gbb_flags != new_flags):
+            logging.info('Change the GBB flags from 0x%x to 0x%x.' %
+                         (gbb_flags, new_flags))
             self.faft_client.run_shell_command(
                     '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' % new_flags)
             self.faft_client.reload_firmware()
             # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
-            if (gbb_flags & mask & self.GBB_FLAG_FORCE_DEV_SWITCH_ON):
+            if ((gbb_flags ^ new_flags) & self.GBB_FLAG_FORCE_DEV_SWITCH_ON):
                 self.run_faft_step({
                     'firmware_action': self.wait_fw_screen_and_ctrl_d,
                 })
@@ -826,12 +830,6 @@ class FAFTSequence(ServoTest):
         if dev:
             self.send_ctrl_d_to_dut()
         else:
-            # Only SPACE can trigger TO_NORM screen officially.
-            # We send both SPACE and ENTER in order to make the old and new
-            # firmware still work. It won't trigger twice since only one of
-            # them takes effect.
-            # TODO Remove to ENTER when all devices use new firmware.
-            self.send_space_to_dut()
             self.send_enter_to_dut()
         time.sleep(self.FIRMWARE_SCREEN_DELAY)
         self.send_enter_to_dut()
