@@ -52,6 +52,7 @@ class ShopFloorHwidTask(task.FactoryTask):
         task.schedule(self.fetch_hwid)
 
     def fetch_hwid(self):
+        shopfloor.update_local_hwid_data()
         self.data['hwid'] = shopfloor.get_hwid()
         self.stop()
 
