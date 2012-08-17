@@ -186,7 +186,7 @@ def get_device_info(blockdev):
         # we want to check if within |spath| there are subdevices with
         # partitions
         # e.g., if within /sys/block/sda sda1 and other partition are present
-        if not re.match("%s[0-1]+" % blockdev, basename):
+        if not re.match("%s[0-9]+" % blockdev, basename):
             continue # ignore what is not a subdevice
 
         # |blockdev| has subdevices: get info for them
