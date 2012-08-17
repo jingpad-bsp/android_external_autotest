@@ -98,15 +98,6 @@ class ReimagerTest(mox.MoxTestBase):
         self.assertEquals(self.reimager._count_usable_hosts(spec), 0)
 
 
-    def testCountZeroUnlockedHostsByBoard(self):
-        """Should count the available hosts, by board, getting a locked host."""
-        spec = [self._BOARD]
-        self.afe.get_hosts(multiple_labels=spec).AndReturn(
-            [FakeHost(locked=True)])
-        self.mox.ReplayAll()
-        self.assertEquals(self.reimager._count_usable_hosts(spec), 0)
-
-
     def testScheduleJob(self):
         """Should be able to create a job with the AFE."""
         # Fake out getting the autoupdate control file contents.
