@@ -18,8 +18,8 @@ import subprocess
 import tempfile
 import threading
 
-from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.cros import factory_setup_modules
 from autotest_lib.client.cros.audio import audio_helper
 from cros.factory.test import factory
@@ -63,12 +63,8 @@ _RESULT_FAIL_RE = re.compile("(?i)result_fail")
 _DMIC_SWITCH_MIXER_SETTINGS = []
 _INIT_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
                          'value': 'on'},
-                        {'name': '"Headphone Playback Switch"',
-                         'value': 'on,on'},
-                        {'name': '"Headphone Playback Volume"',
-                         'value': '100,100'},
-                        {'name': '"Speaker Playback Volume"',
-                         'value': '100,100'}]
+                        {'name': '"Master Playback Volume"',
+                         'value': '90,90'}]
 _UNMUTE_SPEAKER_MIXER_SETTINGS = [{'name': '"HP/Speaker Playback Switch"',
                                    'value': 'off'}]
 
@@ -77,6 +73,7 @@ _LABEL_FAIL_LOGS = 'Test fail, find more detail in log.'
 
 class factory_AudioQuality(test.test):
     version = 2
+    preserve_srcdir = True
 
     def handle_connection(self, conn, *args):
         '''
@@ -115,14 +112,28 @@ class factory_AudioQuality(test.test):
         '''
         Plays a single tone.
         '''
-        cmdargs = [self._ah.sox_path, '-n', '-d', 'synth', '20.0', 'sine',
+        cmdargs = [self._ah.sox_path, '-n', '-d', 'synth', '10.0', 'sine',
                 '1000.0']
-        self._play_tone_process = subprocess.Popen(cmdargs)
+        self._tone_job = utils.BgJob(' '.join(cmdargs))
 
     def restore_configuration(self):
         '''
         Stops all the running process and restore the mute settings.
         '''
+        if hasattr(self, '_wav_job'):
+            job = self._wav_job
+            if job:
+                utils.nuke_subprocess(job.sp)
+                utils.join_bg_jobs([job], timeout=1)
+                self._wav_job = None
+
+        if hasattr(self, '_tone_job'):
+            job = self._tone_job
+            if job:
+                utils.nuke_subprocess(job.sp)
+                utils.join_bg_jobs([job], timeout=1)
+                self._tone_job = None
+
         if hasattr(self, '_play_tone_process') and self._play_tone_process:
             self._play_tone_process.kill()
             self._play_tone_process = None
@@ -187,6 +198,17 @@ class factory_AudioQuality(test.test):
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP)
         self.start_loop()
 
+    def play_wav(self):
+        '''Plays the multi-tone wav file'''
+        wav_path = os.path.join(self.srcdir, '10SEC.wav')
+        cmdargs = ['aplay', wav_path]
+        self._wav_job = utils.BgJob(' '.join(cmdargs))
+
+    def handle_loop_jack(self, *args):
+        self.restore_configuration()
+        self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP)
+        self.play_wav()
+
     def handle_loop_from_dmic(self, *args):
         self.handle_loop()
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP +
@@ -194,21 +216,24 @@ class factory_AudioQuality(test.test):
         self._ah.set_mixer_controls(self._dmic_switch_mixer_settings)
 
     def handle_loop_speaker_unmute(self, *args):
-        self.handle_loop()
+        self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_AUDIOLOOP +
                 _LABEL_SPEAKER_MUTE_OFF)
         self.unmute_speaker()
+        self.play_wav()
 
     def handle_xtalk_left(self, *args):
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_LEFT)
-        self.headphone_playback_switch(False, True)
+        self.playback_switch(False, True)
+        self.unmute_speaker()
         self.play_tone()
 
     def handle_xtalk_right(self, *args):
         self.restore_configuration()
         self.ui.CallJSFunction('setMessage', _LABEL_PLAYTONE_RIGHT)
-        self.headphone_playback_switch(True, False)
+        self.playback_switch(True, False)
+        self.unmute_speaker()
         self.play_tone()
 
     def listen_forever(self, sock):
@@ -236,9 +261,9 @@ class factory_AudioQuality(test.test):
         self.ui.CallJSFunction('setMessage',
                 'Ready for connection | 準备完成,等待链接')
 
-    def headphone_playback_switch(self, left=False, right=False):
+    def playback_switch(self, left=False, right=False):
         '''
-        Sets headphone playback switch values.
+        Sets playback switch values.
 
         Args:
             left: true to set left channel on.
@@ -246,7 +271,7 @@ class factory_AudioQuality(test.test):
         '''
         left_switch = 'on' if left else 'off'
         right_switch = 'on' if right else 'off'
-        mixer_settings = [{'name': "'Headphone Playback Switch'",
+        mixer_settings = [{'name': "'Master Playback Switch'",
                            'value': ('%s,%s' % (left_switch, right_switch))}]
         self._ah.set_mixer_controls(mixer_settings)
 
@@ -328,7 +353,7 @@ class factory_AudioQuality(test.test):
         self._handlers[_LOOP_0_RE] = self.handle_loop_none
         self._handlers[_LOOP_1_RE] = self.handle_loop_from_dmic
         self._handlers[_LOOP_2_RE] = self.handle_loop_speaker_unmute
-        self._handlers[_LOOP_3_RE] = self.handle_loop
+        self._handlers[_LOOP_3_RE] = self.handle_loop_jack
         self._handlers[_XTALK_L_RE] = self.handle_xtalk_left
         self._handlers[_XTALK_R_RE] = self.handle_xtalk_right
 
