@@ -213,7 +213,7 @@ class Reimager(object):
         """
         count = 0
         for h in self._afe.get_hosts(multiple_labels=host_spec):
-            if h.status not in ['Repair Failed', 'Repairing']:
+            if not h.locked and h.status not in ['Repair Failed', 'Repairing']:
                 count += 1
         return count
 

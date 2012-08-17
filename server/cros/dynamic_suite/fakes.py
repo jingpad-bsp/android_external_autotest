@@ -32,9 +32,10 @@ class FakeJob(object):
 
 class FakeHost(object):
     """Faked out RPC-client-side Host object."""
-    def __init__(self, hostname='', status='Ready'):
+    def __init__(self, hostname='', status='Ready', locked=False):
         self.hostname = hostname
         self.status = status
+        self.locked = locked
 
 
 class FakeLabel(object):
