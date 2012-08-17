@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib import error
 
 import logging
 import os
+import pprint
 import re
 
 """A test verifying Address Space Layout Randomization
@@ -95,6 +96,9 @@ class security_ASLR(test.test):
         def get_start(self):
             return self.__start
 
+        def __repr__(self):
+            return "<mapping %s %s>" % (self.__name, self.__start)
+
     def get_pid_of(self, process):
         """Gets pid of process
 
@@ -142,6 +146,8 @@ class security_ASLR(test.test):
             pid = self.get_pid_of(process)
             mappings.append(self.map(pid))
             self.restart(process)
+        logging.debug('Complete mappings dump for process %s:\n%s' %
+                      (name, pprint.pformat(mappings,4)))
 
         initial_map = mappings[0]
         for i, mapping in enumerate(mappings[1:]):
@@ -168,8 +174,8 @@ class security_ASLR(test.test):
                         'successfully changed' % case)
             else:
                 test_result['results'].append('[FAIL] Address for %s had '
-                        'deterministic value: %s' % (key,
-                        mapping[key].get_start()))
+                        'deterministic value: %s' % (case,
+                        mapping[case].get_start()))
             test_result['pass'] = test_result['pass'] and result['pass']
         return test_result
 
