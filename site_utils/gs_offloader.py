@@ -199,8 +199,10 @@ def offload_files(results_dir):
         # The way we collect results currently is naive and results in a lot
         # of extra data collection. Clear these for now until we can be more
         # exact about what logs we care about. crosbug.com/26784.
-        logging.debug('Cleaning %s of extra data.', dir_entry)
-        os.system(CLEAN_CMD % dir_entry)
+        # logging.debug('Cleaning %s of extra data.', dir_entry)
+        # os.system(CLEAN_CMD % dir_entry)
+        # TODO(scottz): Monitor offloading and make sure chrome logs are
+        # no longer an issue.
         offload_dir(dir_entry)
 
 
