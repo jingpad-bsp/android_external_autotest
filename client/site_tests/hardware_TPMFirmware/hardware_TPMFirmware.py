@@ -13,16 +13,14 @@ class hardware_TPMFirmware(test.test):
     version = 1
     preserve_srcdir = True
 
-    # Cross-compiles TLCL test suite and other needed code.
-    # TODO(semenzato): tpm_takeownership is currently available by making
-    # tpm-tools an RDEPEND in the autotest ebuild.  See that file for a
-    # better way.
+    # Copies the TLCL test suite which is not installed by default on the test
+    # image.
     def setup(self):
-        sysroot = os.environ['SYSROOT']
-        bin_path = os.path.join(sysroot, 'usr/sbin/tpm_takeownership')
-        shutil.copy(bin_path, self.bindir)
-        utils.make('-C %s' % self.srcdir)
-
+        sysroot = os.environ.get('SYSROOT', '/')
+        bin_path = os.path.join(sysroot, 'usr/bin')
+        for f in os.listdir(bin_path):
+            if re.match('tpmtest_.*', f):
+                shutil.copy(os.path.join(bin_path, f), self.bindir)
 
     # Runs a command, logs the output, and returns the exit status.
     def tpm_run(self, cmd, ignore_status=False):
@@ -40,10 +38,10 @@ class hardware_TPMFirmware(test.test):
         utils.run('modprobe tpm_tis force=1 interrupts=0', ignore_status=True)
 
         if (with_tcsd):
-            utils.run('/usr/sbin/tcsd')
+            utils.run('start tcsd')
         else:
             # It will be a problem if upstart automatically restarts tcsd.
-            utils.run('pkill tcsd', ignore_status=True)
+            utils.run('stop tcsd', ignore_status=True)
 
 
     def run_once(self, subtest='None'):
@@ -53,9 +51,9 @@ class hardware_TPMFirmware(test.test):
             self.tpm_write_status(0)
         elif (subtest == 'takeownership'):
             self.tpm_setup(with_tcsd=True)
-            own_cmd = os.path.join(self.bindir, "tpm_takeownership -y -z")
+            own_cmd = '/usr/local/sbin/tpm_takeownership -y -z'
             self.tpm_run(own_cmd)
-	else:
+        else:
             self.tpm_setup()
-            cmd = os.path.join(self.srcdir, subtest)
+            cmd = os.path.join(self.bindir, subtest)
             self.tpm_run(cmd, ignore_status=True)
