@@ -162,6 +162,47 @@ class Reimager(object):
                 'Too few hosts with %r' % labels)
 
 
+    def _count_usable_hosts(self, host_spec):
+        """
+        Given a set of host labels, count the live hosts that have them all.
+
+        @param host_spec: list of labels specifying a set of hosts.
+        @return the number of live hosts that satisfy |host_spec|.
+        """
+        count = 0
+        for host in self._afe.get_hosts(multiple_labels=host_spec):
+            if self._alive(host) and not self._incorrectly_locked(host):
+                count += 1
+        return count
+
+
+    def _alive(self, host):
+        """
+        Given a host, determine if the host is alive.
+
+        @param host: Host instance (as in server/frontend.py)
+        @return True if host is not under, or in need of, repair.  Else, False.
+        """
+        return host.status not in ['Repair Failed', 'Repairing']
+
+
+    def _incorrectly_locked(self, host):
+        """
+        Given a host, determine if the host is locked by some user.
+
+        If the host is unlocked, or locked by the test infrastructure,
+        this will return False.  Usernames defined as 'part of the test
+        infrastructure' are listed in global_config.ini under the [CROS]
+        section in the 'infrastructure_users' field.
+
+        @param host: Host instance (as in server/frontend.py)
+        @return False if the host is not locked, or locked by the infra.
+                True if the host is locked by someone we haven't blessed.
+        """
+        return (host.locked and
+                host.locked_by not in tools.infrastructure_user_list())
+
+
     def clear_reimaged_host_state(self, build):
         """
         Clear per-host state created in the autotest DB for this job.
@@ -202,20 +243,6 @@ class Reimager(object):
             utils.write_keyval(
                 self._results_dir,
                 {hashlib.md5(test_name).hexdigest(): job_id_owner})
-
-
-    def _count_usable_hosts(self, host_spec):
-        """
-        Given a set of host labels, count the live hosts that have them all.
-
-        @param host_spec: list of labels specifying a set of hosts.
-        @return the number of live hosts that satisfy |host_spec|.
-        """
-        count = 0
-        for h in self._afe.get_hosts(multiple_labels=host_spec):
-            if h.status not in ['Repair Failed', 'Repairing']:
-                count += 1
-        return count
 
 
     def _ensure_version_label(self, name):

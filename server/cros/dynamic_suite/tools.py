@@ -18,6 +18,11 @@ def sharding_factor():
     return _CONFIG.get_config_value('CROS', 'sharding_factor', type=int)
 
 
+def infrastructure_user_list():
+    return _CONFIG.get_config_value('CROS', 'infrastructure_users', type=list,
+                                    default=[])
+
+
 def package_url_pattern():
     return _CONFIG.get_config_value('CROS', 'package_url_pattern', type=str)
 

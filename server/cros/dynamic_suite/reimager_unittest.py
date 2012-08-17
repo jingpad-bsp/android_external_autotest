@@ -74,6 +74,23 @@ class ReimagerTest(mox.MoxTestBase):
         self.reimager._ensure_version_label(name)
 
 
+    def testIncorrectlyLocked(self):
+        """Should detect hosts locked by random users."""
+        host = FakeHost(locked=True)
+        host.locked_by = 'some guy'
+        self.assertTrue(self.reimager._incorrectly_locked(host))
+
+
+    def testNotIncorrectlyLocked(self):
+        """Should accept hosts locked by the infrastructure."""
+        infra_user = 'an infra user'
+        self.mox.StubOutWithMock(tools, 'infrastructure_user_list')
+        tools.infrastructure_user_list().AndReturn([infra_user])
+        host = FakeHost(locked=True, locked_by=infra_user)
+        self.mox.ReplayAll()
+        self.assertFalse(self.reimager._incorrectly_locked(host))
+
+
     def testCountHostsByBoardAndPool(self):
         """Should count available hosts by board and pool."""
         spec = [self._BOARD, 'pool:bvt']
@@ -96,6 +113,27 @@ class ReimagerTest(mox.MoxTestBase):
         self.afe.get_hosts(multiple_labels=spec).AndReturn([])
         self.mox.ReplayAll()
         self.assertEquals(self.reimager._count_usable_hosts(spec), 0)
+
+
+    def testCountAllHostsIncorrectlyLockedByBoard(self):
+        """Should count the available hosts, by board, getting a locked host."""
+        spec = [self._BOARD]
+        badly_locked_host = FakeHost(locked=True, locked_by = 'some guy')
+        self.afe.get_hosts(multiple_labels=spec).AndReturn([badly_locked_host])
+        self.mox.ReplayAll()
+        self.assertEquals(self.reimager._count_usable_hosts(spec), 0)
+
+
+    def testCountAllHostsInfraLockedByBoard(self):
+        """Should count the available hosts, get a host locked by infra."""
+        infra_user = 'an infra user'
+        self.mox.StubOutWithMock(tools, 'infrastructure_user_list')
+        spec = [self._BOARD]
+        self.afe.get_hosts(multiple_labels=spec).AndReturn(
+            [FakeHost(locked=True, locked_by=infra_user)])
+        tools.infrastructure_user_list().AndReturn([infra_user])
+        self.mox.ReplayAll()
+        self.assertEquals(self.reimager._count_usable_hosts(spec), 1)
 
 
     def testScheduleJob(self):
