@@ -1618,7 +1618,7 @@ class WiFiTest(object):
                                                 "client.pcap")
         cmd = "%s -i %s -w %s -s %s" % (self.client_cmd_netdump, devname,
                                   self.client_netdump_file,
-                                  params.get('snaplen', '152'))
+                                  params.get('snaplen', '0'))
         logging.info(cmd)
         self.client_netdump_thread = HelperThread(self.client, cmd)
         self.client_netdump_thread.start()

@@ -97,7 +97,7 @@ class LinuxSystem(object):
                       (self.cmd_tcpdump,
                        self.capture_interface,
                        self.capture_file,
-                       params.get('snaplen', '152'),
+                       params.get('snaplen', '0'),
                        self.capture_logfile))
         self.capture_running = True
 
