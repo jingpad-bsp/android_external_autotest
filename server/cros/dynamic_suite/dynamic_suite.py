@@ -270,6 +270,86 @@ class SignalsAsExceptions(object):
         signal.signal(signal.SIGTERM, self.old_handler)
 
 
+class SuiteSpec(object):
+    """
+    This class contains the info that defines a suite run.
+
+    Currently required:
+    @var build: the build to install e.g.
+                  x86-alex-release/R18-1655.0.0-a1-b1584.
+    @var board: which kind of devices to reimage.
+    @var name: a value of the SUITE control file variable to search for.
+    @var job: an instance of client.common_lib.base_job representing the
+                currently running suite job.
+
+    Currently supported optional fields:
+    @var pool: specify the pool of machines to use for scheduling purposes.
+               Default: None
+    @var num: how many devices to reimage.
+              Default in global_config
+    @var check_hosts: require appropriate hosts to be available now.
+    @var skip_reimage: skip reimaging, used for testing purposes.
+                       Default: False
+    @var add_experimental: schedule experimental tests as well, or not.
+                           Default: True
+    """
+    def __init__(self, build=None, board=None, name=None, job=None,
+                 pool=None, num=None, check_hosts=True,
+                 skip_reimage=False, add_experimental=True,
+                 **dargs):
+        """
+        Vets arguments for reimage_and_run() and populates self with supplied
+        values.
+
+        Currently required args:
+        @param build: the build to install e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        @param board: which kind of devices to reimage.
+        @param name: a value of the SUITE control file variable to search for.
+        @param job: an instance of client.common_lib.base_job representing the
+                    currently running suite job.
+
+        Currently supported optional args:
+        @param pool: specify the pool of machines to use for scheduling purposes
+                     Default: None
+        @param num: how many devices to reimage.
+                    Default in global_config
+        @param check_hosts: require appropriate hosts to be available now.
+        @param skip_reimage: skip reimaging, used for testing purposes.
+                             Default: False
+        @param add_experimental: schedule experimental tests as well, or not.
+                                 Default: True
+        @param **dargs: these arguments will be ignored.  This allows us to
+                        deprecate and remove arguments in ToT while not
+                        breaking branch builds.
+        """
+        required_keywords = {'build': str,
+                             'board': str,
+                             'name': str,
+                             'job': base_job.base_job}
+        for key, expected in required_keywords.iteritems():
+            value = locals().get(key)
+            if not value or not isinstance(value, expected):
+                raise error.SuiteArgumentException(
+                    "reimage_and_run() needs %s=<%r>" % (key, expected))
+        self.build = build
+        self.board = 'board:%s' % board
+        self.name = name
+        self.job = job
+        if pool:
+            self.pool = 'pool:%s' % pool
+        else:
+            self.pool = pool
+        self.num = num
+        self.check_hosts = check_hosts
+        self.skip_reimage = skip_reimage
+        self.add_experimental = add_experimental
+
+
+def skip_reimage(g):
+    return g.get('SKIP_IMAGE')
+
+
 def reimage_and_run(**dargs):
     """
     Backward-compatible API for dynamic_suite.
@@ -352,83 +432,3 @@ def _perform_reimage_and_run(spec, afe, tko, reimager, manager):
                                    spec.add_experimental)
         finally:
             manager.unlock()
-
-
-class SuiteSpec(object):
-    """
-    This class contains the info that defines a suite run.
-
-    Currently required:
-    @var build: the build to install e.g.
-                  x86-alex-release/R18-1655.0.0-a1-b1584.
-    @var board: which kind of devices to reimage.
-    @var name: a value of the SUITE control file variable to search for.
-    @var job: an instance of client.common_lib.base_job representing the
-                currently running suite job.
-
-    Currently supported optional fields:
-    @var pool: specify the pool of machines to use for scheduling purposes.
-               Default: None
-    @var num: how many devices to reimage.
-              Default in global_config
-    @var check_hosts: require appropriate hosts to be available now.
-    @var skip_reimage: skip reimaging, used for testing purposes.
-                       Default: False
-    @var add_experimental: schedule experimental tests as well, or not.
-                           Default: True
-    """
-    def __init__(self, build=None, board=None, name=None, job=None,
-                 pool=None, num=None, check_hosts=True,
-                 skip_reimage=False, add_experimental=True,
-                 **dargs):
-        """
-        Vets arguments for reimage_and_run() and populates self with supplied
-        values.
-
-        Currently required args:
-        @param build: the build to install e.g.
-                      x86-alex-release/R18-1655.0.0-a1-b1584.
-        @param board: which kind of devices to reimage.
-        @param name: a value of the SUITE control file variable to search for.
-        @param job: an instance of client.common_lib.base_job representing the
-                    currently running suite job.
-
-        Currently supported optional args:
-        @param pool: specify the pool of machines to use for scheduling purposes
-                     Default: None
-        @param num: how many devices to reimage.
-                    Default in global_config
-        @param check_hosts: require appropriate hosts to be available now.
-        @param skip_reimage: skip reimaging, used for testing purposes.
-                             Default: False
-        @param add_experimental: schedule experimental tests as well, or not.
-                                 Default: True
-        @param **dargs: these arguments will be ignored.  This allows us to
-                        deprecate and remove arguments in ToT while not
-                        breaking branch builds.
-        """
-        required_keywords = {'build': str,
-                             'board': str,
-                             'name': str,
-                             'job': base_job.base_job}
-        for key, expected in required_keywords.iteritems():
-            value = locals().get(key)
-            if not value or not isinstance(value, expected):
-                raise error.SuiteArgumentException(
-                    "reimage_and_run() needs %s=<%r>" % (key, expected))
-        self.build = build
-        self.board = 'board:%s' % board
-        self.name = name
-        self.job = job
-        if pool:
-            self.pool = 'pool:%s' % pool
-        else:
-            self.pool = pool
-        self.num = num
-        self.check_hosts = check_hosts
-        self.skip_reimage = skip_reimage
-        self.add_experimental = add_experimental
-
-
-def skip_reimage(g):
-    return g.get('SKIP_IMAGE')
