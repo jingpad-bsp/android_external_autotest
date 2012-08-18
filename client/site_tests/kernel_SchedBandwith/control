@@ -1,0 +1,29 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "The Chromium OS Authors"
+DOC = """
+Runs a C program that puts itself into the Chrome renderer background
+group, which is CPU bandwidth limited, and starts a secondary worker
+thread to consume all available CPU time, up to the bandwidth limit,
+and then terminates the thread after a set period of time (default 30
+seconds).
+Checks that the CPU consumption is as expected, rather than 100% of
+the total CPU.
+"""
+NAME = "kernel_SchedBandwith"
+PURPOSE = """
+Checks that /tmp/cgroup/cpu/chrome_renderers/background/cpu.cfs_quota_us
+is enforced.
+"""
+CRITERIA = """
+Fails if CONFIG_CFS_BANDWIDTH components do not exist or behave incorrectly.
+"""
+SUITE = "hwqual"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "kernel"
+TEST_TYPE = "client"
+
+job.run_test('kernel_SchedBandwith')
