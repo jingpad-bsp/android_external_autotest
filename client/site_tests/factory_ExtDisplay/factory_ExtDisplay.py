@@ -35,14 +35,14 @@ _VERBOSE = False
 _SUBTEST_LIST = [
     ('External Display Video',
      {'msg' : 'Do you see video on External Display\n' + \
-          '請檢查外接螢幕是否有顯示畫面\n\n' + \
+          '请检查外接萤幕是否有显示画面\n\n' + \
           _LABEL_RESPONSE_STR,
       'cfg_disp' : True,
       }),
     ]
 _OPTIONAL = ('External Display Audio',
              {'msg' : 'Do you hear audio from External Display\n' + \
-                  '請檢查是否有聽到聲音\n\n' + \
+                  '请检查是否有听到声音\n\n' + \
                   _LABEL_RESPONSE_STR,
               'cfg':['amixer -c 0 cset name="IEC958 Playback Switch" on'],
               'cmd':'aplay -q',
@@ -50,9 +50,9 @@ _OPTIONAL = ('External Display Audio',
               })
 _CLEANUP = ('Disconnect Display',
             {'msg':'Disconnect external display\n' + \
-                 '移除外接螢幕\n\n' + \
+                 '移除外接萤幕\n\n' + \
                  'Or press TAB to fail\n' + \
-                 '若無法通過測試請按TAB',
+                 '若无法通过测试请按TAB',
                  'disp_off' : True,
                  'cond':'[ $(xrandr -d :0 | grep " connected" | wc -l) == "1" ]'
             })

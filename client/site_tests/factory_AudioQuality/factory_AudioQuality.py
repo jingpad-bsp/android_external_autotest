@@ -36,15 +36,15 @@ _PORT = 8888
 _LOCAL_IP = '192.168.1.2'
 
 # Label strings.
-_LABEL_CONNECTED = 'Connected\n已連線\n'
+_LABEL_CONNECTED = 'Connected\n已连线\n'
 _LABEL_WAITING = 'Waiting for command\n等待指令中\n'
 _LABEL_AUDIOLOOP = 'Audio looping\n音源回放中\n'
-_LABEL_SPEAKER_MUTE_OFF = 'Speaker on\n喇叭開啟\n'
-_LABEL_DMIC_ON = 'Dmic on\nLCD mic開啟\n'
+_LABEL_SPEAKER_MUTE_OFF = 'Speaker on\n喇叭开启\n'
+_LABEL_DMIC_ON = 'Dmic on\nLCD mic开启\n'
 _LABEL_PLAYTONE_LEFT = ('Playing tone to left channel\n'
-                        '播音至左聲道\n')
+                        '播音至左声道\n')
 _LABEL_PLAYTONE_RIGHT = ('Playing tone to right channel\n'
-                         '播音至右聲道\n')
+                         '播音至右声道\n')
 
 # Regular expression to match external commands.
 _LOOP_0_RE = re.compile("(?i)loop_0")
@@ -234,7 +234,7 @@ class factory_AudioQuality(test.test):
         self._listen_thread.start()
 
         self.ui.CallJSFunction('setMessage',
-                'Ready for connection | 準備完成,等待連結')
+                'Ready for connection | 準备完成,等待链接')
 
     def headphone_playback_switch(self, left=False, right=False):
         '''

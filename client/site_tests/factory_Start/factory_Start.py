@@ -39,13 +39,13 @@ from cros.factory.event_log import EventLog
 # Messages for tasks
 _MSG_TASK_POWER = (
         'Plug in external power to continue.\n'
-        '請插上外接電源以繼續。')
+        '请插上外接电源以继续。')
 _MSG_TASK_SERIAL = (
         'Enter valid serial number:\n'
-        '請輸入有效的序號:')
+        '请输入有效的序号:')
 _MSG_TASK_SPACE = (
         'Hit SPACE to start testing...\n'
-        '按 "空白鍵" 開始測試...')
+        '按 "空白键" 开始测试...')
 
 _MSG_NO_SHOP_FLOOR_SERVER_URL = (
         'No shop floor server URL. Auto-testing stopped.\n\n'
@@ -53,10 +53,10 @@ _MSG_NO_SHOP_FLOOR_SERVER_URL = (
         'rather than booting from a USB drive.\n\n'
         'For debugging or development, use the listed hot-keys to start\n'
         'individual tests.\n\n'
-        '未指定 Shop Floor 伺服器位址，停止自動測試。\n\n'
-        '請使用完整的 mini-Omaha 伺服器安裝測試程式，\n'
-        '不要直接從 USB 碟開機執行。\n\n'
-        '若想除錯或執行部份測試，請直接按下對應熱鍵。')
+        '未指定 Shop Floor 服务器位址，停止自动测试。\n\n'
+        '请使用完整的 mini-Omaha 服务器安装测试程式，\n'
+        '不要直接从 USB 碟开机执行。\n\n'
+        '若想除错或执行部份测试，请直接按下对应热键。')
 
 _LABEL_FONT = pango.FontDescription('courier new condensed 24')
 

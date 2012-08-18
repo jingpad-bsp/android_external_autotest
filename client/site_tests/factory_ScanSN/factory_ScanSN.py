@@ -44,7 +44,7 @@ class factory_ScanSN(test.test):
             self._sn_format = None
 
         self.sn_input_widget = ful.make_input_window(
-            prompt='請掃描A/B面板條碼\nScan A/B panel serial number:',
+            prompt='请扫描A/B面板条码\nScan A/B panel serial number:',
             on_validate=self.on_validate,
             on_keypress=None,
             on_complete=self.on_sn_complete)

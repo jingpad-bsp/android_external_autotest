@@ -36,19 +36,19 @@ class PreflightTask(task.FactoryTask):
 
     # Messages for localization
     MSG_CHECKING = ("Checking system status for finalization...\n"
-                    "正在檢查系統是否已可執行最終程序...")
+                    "正在检查系统是否已可执行最终程序...")
     MSG_PENDING = ("System is NOT ready. Please fix RED tasks and then\n"
                    " press SPACE to continue.\n"
-                   "系統尚未就緒。\n"
-                   "請修正紅色項目後按空白鍵重新檢查。")
+                   "系统尚未就绪。\n"
+                   "请修正红色项目后按空白键重新检查。")
     MSG_FORCE = ("Press 'f' to force starting finalization procedure.\n"
-                 "按下 'f' 鍵以強迫開始最終程序。")
+                 "按下 'f' 键以强迫开始最终程序。")
     MSG_READY = ("System is READY. Press SPACE to start FINALIZATION!\n"
-                 "系統已準備就緒。 請按空白鍵開始最終程序!")
+                 "系统已準备就绪。 请按空白键开始最终程序!")
     MSG_POLLING = ("System is NOT ready. Please fix RED tasks.\n"
-                   "系統尚未就緒。請修正紅色項目。")
+                   "系统尚未就绪。请修正红色项目。")
     MSG_POLLING_READY = ("System is READY. Staring FINALIZATION!\n"
-                         "系統已準備就緒。 開始最終程序!")
+                         "系统已準备就绪。 开始最终程序!")
 
     def __init__(self, test_list, write_protection, polling_seconds,
                  allow_force_finalize):
@@ -63,10 +63,10 @@ class PreflightTask(task.FactoryTask):
         self.allow_force_finalize = allow_force_finalize
         self.items = [(self.check_required_tests,
                        create_label("Verify no tests failed\n"
-                                    "確認無測試項目失敗")),
+                                    "确认无测试项目失败")),
                       (self.check_developer_switch,
                        create_label("Turn off Developer Switch\n"
-                                    "停用開發者開關(DevSwitch)"))]
+                                    "停用开发者开关(DevSwitch)"))]
         if not write_protection:
             return
 
@@ -74,7 +74,7 @@ class PreflightTask(task.FactoryTask):
         self.items += [
                        (self.check_write_protect,
                         create_label("Enable write protection pin\n"
-                                     "確認硬體寫入保護已開啟"))]
+                                     "确认硬体写入保护已开启"))]
 
     def check_developer_switch(self):
         """ Checks if developer switch button is disabled """

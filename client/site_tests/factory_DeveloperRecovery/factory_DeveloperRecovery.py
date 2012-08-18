@@ -290,13 +290,13 @@ class DevRecGpio:
         if name not in self.table:
             raise error.TestNAError(
                     'Unable to locate definition for gpio %s\n'
-                    '測試程式找不到 gpio %s' % (name, name))
+                    '测试程式找不到 gpio %s' % (name, name))
         try:
             return self._gpio.read(name)
         except:
             raise error.TestError(
                     'Unable to read gpio value "%s"\n'
-                    '測試程式無法讀取 gpio 數值 "%s"' % (name, name))
+                    '测试程式无法读取 gpio 数值 "%s"' % (name, name))
 
     def cur_gpio(self):
         if self._cur_gpio is None:

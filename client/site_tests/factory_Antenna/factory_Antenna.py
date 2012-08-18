@@ -27,41 +27,41 @@ COLOR_MAGENTA = gtk.gdk.color_parse('magenta1')
 
 _MESSAGE_USB = (
     'Please insert the usb stick to load parameters.\n'
-    '請插入usb以讀取測試參數\n')
+    '请插入usb以读取测试参数\n')
 _MESSAGE_PREPARE_PANEL = (
     'Please place the LCD panel into the fixture.\n'
     'Then press ENTER to scan the barcode.\n'
-    '請放置LCD本體在治具上\n'
+    '请放置LCD本体在治具上\n'
     '完成后按ENTER\n')
-_MESSAGE_ENTER_SN_HINT = ('Scan barcode on LCD.\n掃描LCD本體上S/N:')
+_MESSAGE_ENTER_SN_HINT = ('Scan barcode on LCD.\n扫描LCD本体上S/N:')
 _MESSAGE_PREPARE_MAIN_ANTENNA = (
     'Make sure the main WWAN antennta is connected to Port 1\n'
     'Make sure the main WLAN antennta is connected to Port 2\n'
     'Then press key "A" to next stage.\n'
-    '連接 主WWAN天線至 Port 1\n'
-    '連接 主WLAN天線至 Port 2\n'
-    '完成後按"A"鍵\n')
+    '连接 主WWAN天线至 Port 1\n'
+    '连接 主WLAN天线至 Port 2\n'
+    '完成后按"A"键\n')
 _MESSAGE_TEST_IN_PROGRESS_MAIN = (
     'Testing MAIN antenna...\n'
-    '測試 主天線 中...\n')
+    '测试 主天线 中...\n')
 _MESSAGE_PREPARE_AUX_ANTENNA = (
     'Make sure the aux WWAN antennta is connected to Port 1\n'
     'Make sure the aux WLAN antennta is connected to Port 2\n'
     'Then press key "K" to next stage.\n'
-    '連接 副WWAN天線至 Port 1\n'
-    '連接 副WLAN天線至 Port 2\n'
-    '完成後按"K"鍵\n')
+    '连接 副WWAN天线至 Port 1\n'
+    '连接 副WLAN天线至 Port 2\n'
+    '完成后按"K"键\n')
 _MESSAGE_TEST_IN_PROGRESS_AUX = (
     'Testing AUX antenna...\n'
-    '測試 副天線 中...\n')
+    '测试 副天线 中...\n')
 _MESSAGE_WRITING_IN_PROGRESS = (
     'Writing log....\n'
-    '記錄中...\n')
+    '记录中...\n')
 _MESSAGE_RESULT_TAB = (
     'Results are listed below.\n'
     'Please disconnect the panel and press ENTER to write log.\n'
-    '測試結果顯示如下\n'
-    '請將AB Panel移除, 並按ENTER完成測試\n')
+    '测试结果显示如下\n'
+    '请将AB Panel移除, 并按ENTER完成测试\n')
 
 _TEST_SN_NUMBER = 'TEST-SN-NUMBER'
 _LABEL_SIZE = (300, 30)

@@ -25,7 +25,7 @@ from cros.factory.test import ui as ful
 _LABEL_BIG_SIZE = (280, 60)
 _LABEL_STATUS_SIZE = (140, 30)
 _LABEL_START_STR = ('hit SPACE to start keyboard backlight test\n'
-                    '按空白鍵開始各項鍵盤背光測試\n\n')
+                    '按空白键开始各项键盘背光测试\n\n')
 _SUBTEST_LIST = ['Light up', 'Dim']
 
 
@@ -42,10 +42,10 @@ class factory_KeyboardBacklight(test.test):
         vb.pack_start(ful.make_vsep(3), False, False)
         if name == "Light up":
             lab_str = ('Check if keyboard backlight lights up.\n'
-                       '請檢查鍵盤背光是否點亮\n')
+                       '请检查键盘背光是否点亮\n')
         else:
             lab_str = ('Check if keyboard backlight turns off.\n'
-                       '請檢查鍵盤背光是否熄滅\n')
+                       '请检查键盘背光是否熄灭\n')
         vb.pack_start(ful.make_label(lab_str, fg=ful.WHITE))
         vb.pack_start(ful.make_vsep(3), False, False)
         vb.pack_start(ful.make_label(ful.USER_PASS_FAIL_SELECT_STR,

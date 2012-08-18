@@ -61,7 +61,7 @@ class KeyboardTest:
         if not missing_keys:
             return ''
         return ('Missing following keys\n' +
-                '沒有偵測到下列按鍵，鍵盤可能故障，請檢修: %s' %
+                '没有侦测到下列按键，键盘可能故障，请检修: %s' %
                 ', '.join(missing_keys))
 
     def timer_event(self, countdown_label):

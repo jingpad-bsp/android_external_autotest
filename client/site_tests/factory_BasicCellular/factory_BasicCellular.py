@@ -19,7 +19,7 @@ from cros.factory.test import ui as ful
 DEVICE_NORMAL_RESPONSE = 'OK'
 _MESSAGE_PROMPT = (
     'Please insert the SIM card then press enter.\n'
-    '請插入SIM卡後按回車鍵\n')
+    '请插入SIM卡后按回车键\n')
 
 
 class factory_BasicCellular(test.test):

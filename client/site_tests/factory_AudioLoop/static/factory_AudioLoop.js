@@ -26,7 +26,7 @@ testInProgress = function(success_rate) {
   msgs.innerHTML = "";
   msgs.appendChild(createLabel(
     "Loopback testing...\nSuccess Rate: " + success_rate,
-    "音源回放測試中...\n成功率: " + success_rate));
+    "音源回放测试中...\n成功率: " + success_rate));
 }
 
 testFailResult = function(success_rate) {
@@ -34,7 +34,7 @@ testFailResult = function(success_rate) {
   msgs.innerHTML = "";
   msgs.appendChild(createLabel(
     "Testing Result: Fail\nSuccess Rate : " + success_rate,
-    "測試結果: 失敗\n成功率: " + success_rate));
+    "测试结果: 失败\n成功率: " + success_rate));
 }
 
 testPassResult = function(success_rate) {
@@ -42,5 +42,5 @@ testPassResult = function(success_rate) {
   msgs.innerHTML = "";
   msgs.appendChild(createLabel(
     "Testing Result: Success!",
-    "測試結果: 成功!"));
+    "测试结果: 成功!"));
 }

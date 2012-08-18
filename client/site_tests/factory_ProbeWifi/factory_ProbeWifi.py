@@ -38,7 +38,7 @@ class factory_ProbeWifi(test.test):
         if lan_device:
             path = LAN_MAC_PATH % lan_device
             if os.path.exists(path):
-                lan_mac = 'LAN[%s](網路) MAC address: [%s]' % (
+                lan_mac = 'LAN[%s](网路) MAC address: [%s]' % (
                     lan_device, open(path).read().strip())
             else:
                 raise error.TestFail(
@@ -49,7 +49,7 @@ class factory_ProbeWifi(test.test):
         if bt_device:
             path = BT_MAC_PATH % bt_device
             if os.path.exists(path):
-                bt_mac = 'Bluetooth[%s](藍芽) MAC address: [%s]' % (
+                bt_mac = 'Bluetooth[%s](蓝牙) MAC address: [%s]' % (
                     bt_device, open(path).read().strip())
             else:
                 raise error.TestFail(

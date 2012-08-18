@@ -43,22 +43,22 @@ _USB_CARD_DESCS     = ['card', 'reader']
 _INSERT_FMT_STR = lambda t: (
     '\n'.join(['insert %s drive...' % t,
                'WARNING: DATA ON INSERTED MEDIA WILL BE LOST!\n',
-               '插入%s存儲...' % t,
-               '注意: 插入裝置上的資料將會被清除!',
+               '插入%s存储...' % t,
+               '注意: 插入装置上的资料将会被清除!',
                ]))
-_REMOVE_FMT_STR = lambda t: 'remove %s drive...\n提取%s存儲...' % (t, t)
-_TESTING_FMT_STR = lambda t:'testing %s...\n%s 檢查當中...' % (t, t)
+_REMOVE_FMT_STR = lambda t: 'remove %s drive...\n提取%s存储...' % (t, t)
+_TESTING_FMT_STR = lambda t:'testing %s...\n%s 检查当中...' % (t, t)
 _LOCKTEST_INSERT_FMT_STR = lambda t: (
     '\n'.join(['toggle lock switch and insert %s drive again...' % t,
-               '切換防寫開關並再次插入%s存儲...' % t]))
+               '切换写保护开关并再次插入%s存储...' % t]))
 _LOCKTEST_REMOVE_FMT_STR = lambda t: (
     '\n'.join(['remove %s drive and toggle lock switch...' % t,
-               '提取%s存儲並關閉防寫開關...' % t]))
+               '提取%s存储并关闭写保护开关...' % t]))
 
 _ERR_TOO_EARLY_REMOVE_FMT_STR = \
         lambda t: \
             'Device removed too early (%s).\n' \
-            '太早移除外部儲存裝置 (%s).\n' % (t, t)
+            '太早移除外部储存装置 (%s).\n' % (t, t)
 _ERR_FIO_TEST_FAILED_FMT_STR = \
         lambda target_dev: 'IO error while running test on %s.\n' % target_dev
 

@@ -29,8 +29,8 @@ _LABEL_UNTESTED_FG = gtk.gdk.color_parse('grey40')
 
 _MESSAGE_STR = ('hold SPACE to display pattern,\n' +
                 'hit TAB to fail and ENTER to pass\n' +
-                '壓住空白鍵以顯示檢查用的圖樣,\n' +
-                '錯誤請按 TAB，成功請按 ENTER\n')
+                '压住空白键以显示检查用的图样,\n' +
+                '错误请按 TAB，成功请按 ENTER\n')
 
 
 def pattern_cb_solid(widget, event, color=None):
@@ -241,7 +241,7 @@ class factory_Display(test.test):
                          if status is not ful.PASSED)
         if failed_set:
             raise error.TestFail('some patterns failed\n' \
-                                 '以下圖樣測試未通過: %s' %
+                                 '以下图样测试未通过: %s' %
                                  ', '.join(failed_set))
 
         factory.log('%s run_once finished' % self.__class__)

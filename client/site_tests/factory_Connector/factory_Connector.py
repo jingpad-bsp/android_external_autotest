@@ -27,35 +27,35 @@ from autotest_lib.client.common_lib import utils
 
 _MESSAGE_USB = (
     'Please insert the usb stick, adapter board and golden reference.\n'
-    '請插入USB隨身碟, 測試板, 良品 以讀取測試參數\n')
+    '请插入USB随身碟, 测试板, 良品 以读取测试参数\n')
 _MESSAGE_PREPARE_PANEL = (
     'Please prepare the next AB panel.\n'
     'Be sure all the connector is connected.\n'
     'Press ENTER to execute connectivity test.\n'
-    '請連接下一塊AB Panel\n'
-    '備妥後按ENTER執行測試\n')
-_MESSAGE_ENTER_SN_HINT = ('Please scan SN on LCD.\n請掃描本體上S/N:')
+    '请连接下一块AB Panel\n'
+    '备妥后按ENTER执行测试\n')
+_MESSAGE_ENTER_SN_HINT = ('Please scan SN on LCD.\n请扫描本体上S/N:')
 _MESSAGE_CAMERA_CHECK = (
     'hit TAB to pass and ENTER to fail.\n' +
-    '成功請按 TAB, 錯誤請按 ENTER.\n')
+    '成功请按 TAB, 错误请按 ENTER.\n')
 _MESSAGE_PROBING = (
     'Probing components...\n'
-    '測試中...\n')
+    '测试中...\n')
 _MESSAGE_PLAYING_AUDIO = (
     'Testing DMIC...\n'
-    '測試麥克風中...請保持安靜\n')
+    '测试麦克风中...请保持安静\n')
 _MESSAGE_DISPLAY = (
     'Hit TAB if DUT have something displayed.\n' +
     'Otherwise, hit ENTER.\n' +
-    '成功在測試品看到畫面請按 TAB, 否則請按 ENTER.\n')
+    '成功在测试品看到画面请按 TAB, 否则请按 ENTER.\n')
 _MESSAGE_WRITING_LOGS = (
     'Writing logs...\n'
-    '紀錄中...\n')
+    '纪录中...\n')
 _MESSAGE_RESULT_TAB = (
     'Results are listed below.\n'
     'Remove the panel after all power is turned off..\n'
-    '測試結果顯示如下\n'
-    '確認電源皆斷電後, 將Panel移除\n')
+    '测试结果显示如下\n'
+    '确认电源皆断电后, 将Panel移除\n')
 
 _TEST_SN_NUMBER = 'TEST-SN-NUMBER'
 COLOR_MAGENTA = gtk.gdk.color_parse('magenta1')

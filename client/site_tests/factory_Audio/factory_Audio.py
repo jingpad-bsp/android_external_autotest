@@ -29,7 +29,7 @@ from cros.factory.test import ui as ful
 _LABEL_BIG_SIZE = (280, 60)
 _LABEL_STATUS_SIZE = (140, 30)
 _LABEL_START_STR = 'hit SPACE to start each audio test\n' +\
-    '按空白鍵開始各項聲音測試\n\n'
+    '按空白键开始各项声音测试\n\n'
 _LABEL_RESPONSE_STR = ful.USER_PASS_FAIL_SELECT_STR + '\n'
 _SAMPLE_LIST = ['Headset Audio Test', 'Built-in Audio Test']
 _VERBOSE = False
@@ -47,16 +47,16 @@ class factory_Audio(test.test):
         vb.pack_start(ebh)
         vb.pack_start(ful.make_vsep(3), False, False)
         if re.search('Headset', name):
-            lab_str = 'Connect headset to device\n將耳機接上音源孔'
+            lab_str = 'Connect headset to device\n将耳机接上音源孔'
         else:
-            lab_str = 'Remove headset from device\n將耳機移開音源孔'
+            lab_str = 'Remove headset from device\n将耳机移开音源孔'
         vb.pack_start(ful.make_label(lab_str, fg=ful.WHITE))
         vb.pack_start(ful.make_vsep(3), False, False)
         vb.pack_start(ful.make_label(\
-                'Press & hold \'r\' to record\n壓住 \'r\' 鍵開始錄音\n' + \
-                    '[Playback will follow]\n[之後會重播錄到的聲音]\n\n' + \
+                'Press & hold \'r\' to record\n压住 \'r\' 键开始录音\n' + \
+                    '[Playback will follow]\n[之后会重播录到的声音]\n\n' + \
                     'Press & hold \'p\' to play sample\n' + \
-                    '壓住 \'p\' 鍵以播放範例'))
+                    '压住 \'p\' 键以播放范例'))
         vb.pack_start(ful.make_vsep(3), False, False)
         vb.pack_start(ful.make_label(ful.USER_PASS_FAIL_SELECT_STR,
                                      fg=ful.WHITE))

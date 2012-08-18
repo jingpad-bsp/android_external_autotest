@@ -30,7 +30,7 @@ _UDEV_ACTION_INSERT = 'add'
 _UDEV_ACTION_REMOVE = 'remove'
 
 _PROMPT_FMT_STR = ('Plug device into each USB port, {0} to go...\n'
-                   '在每個 USB 端口插入裝置, 還有 {0} 個待測試...')
+                   '在每个 USB 端口插入装置, 还有 {0} 个待测试...')
 
 
 class factory_USB(test.test):

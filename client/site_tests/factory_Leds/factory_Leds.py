@@ -34,7 +34,7 @@ _LABEL_FONT = pango.FontDescription('courier new condensed 16')
 _LABEL_FG = gtk.gdk.color_parse('light green')
 _LABEL_UNTESTED_FG = gtk.gdk.color_parse('grey40')
 
-_PATTERN_LABEL_STR = 'pattern / 圖樣: '
+_PATTERN_LABEL_STR = 'pattern / 图样: '
 
 _ORANGE = gtk.gdk.color_parse('orange')
 
@@ -260,7 +260,7 @@ class factory_Leds(test.test):
                          if status is not ful.PASSED)
         if failed_set:
             raise error.TestFail('Some patterns failed\n' \
-                                 '以下圖樣測試未通過: %s' %
+                                 '以下图样测试未通过: %s' %
                                  ', '.join(failed_set))
 
         factory.log('%s run_once finished' % self.__class__)

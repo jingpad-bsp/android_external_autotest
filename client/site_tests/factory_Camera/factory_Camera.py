@@ -69,9 +69,9 @@ KEY_BAD = gdk.keyval_from_name('Tab')
 LABEL_FONT = pango.FontDescription('courier new condensed 16')
 
 MESSAGE_STR = ('hit TAB to fail and ENTER to pass\n' +
-               '錯誤請按 TAB，成功請按 ENTER\n')
+               '错误请按 TAB，成功请按 ENTER\n')
 MESSAGE_STR2 = ('hit TAB if the LED is off and ENTER if the LED is on\n' +
-                '請檢查攝像頭 LED 指示燈, 沒亮請按 TAB, 燈亮請按 ENTER\n')
+                '请检查摄像头 LED 指示灯, 没亮请按 TAB, 灯亮请按 ENTER\n')
 
 
 class factory_Camera(test.test):
@@ -240,11 +240,11 @@ class factory_Camera(test.test):
 
             if self.fail:
                 raise error.TestFail('Camera test failed by user '  \
-                                     'indication\n品管人員懷疑攝影' \
-                                     '鏡頭故障，請檢修')
+                                     'indication\n品管人员怀疑摄影' \
+                                     '镜头故障，请检修')
             if self.ledfail:
                 raise error.TestFail('Camera LED test failed\n'  \
-                                     '攝影鏡頭 LED 測試不通過，' \
-                                     '請檢修')
+                                     '摄影镜头 LED 测试不通过，' \
+                                     '请检修')
 
         factory.log('%s run_once finished' % self.__class__)

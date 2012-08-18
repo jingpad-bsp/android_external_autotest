@@ -34,8 +34,8 @@ from cros.factory.event_log import EventLog
 
 _MESSAGE_PROMPT = 'Stress Test'
 _MESSAGE_STARTING = '... Starting Test ...'
-_MESSAGE_TIMER = 'Started / 已執行時間: '
-_MESSAGE_COUNTDOWN = 'ETA / 剩餘時間: '
+_MESSAGE_TIMER = 'Started / 已执行时间: '
+_MESSAGE_COUNTDOWN = 'ETA / 剩余时间: '
 _MESSAGE_LOADAVG = 'System Load: '
 
 _MESSAGE_FAILED_LOADAVG = 'Failed to retrieve system load.'

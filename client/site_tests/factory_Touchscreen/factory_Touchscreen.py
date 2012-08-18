@@ -71,7 +71,7 @@ class TouchscreenTest:
             i for i, v in self._motion_grid.items() if v is False)
         if missing_motion_sectors:
             missing.append('Missing following motion sectors\n'
-                    '未偵測到下列位置的觸控移動訊號 [%s]' %
+                    '未侦测到下列位置的触控移动讯号 [%s]' %
                     ', '.join(missing_motion_sectors))
         return '\n'.join(missing)
 

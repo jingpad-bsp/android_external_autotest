@@ -80,20 +80,20 @@ class TouchpadTest:
             i for i, v in self._motion_grid.items() if v is False)
         if missing_motion_sectors:
             missing.append('Missing following motion sectors\n'
-                           '未偵測到下列位置的觸控移動訊號 [%s]' %
+                           '未侦测到下列位置的触控移动讯号 [%s]' %
                            ', '.join(missing_motion_sectors))
         missing_scroll_segments = sorted(
             str(i) for i, v in self._scroll_array.items() if v is False)
         if missing_scroll_segments:
             missing.append('Missing following scroll segments\n'
-                           '未偵測到下列位置的觸控捲動訊號 [%s]' %
+                           '未侦测到下列位置的触控卷动讯号 [%s]' %
                            ', '.join(missing_scroll_segments))
         if not self._l_click:
             missing.append('Missing left click\n'
-                           '沒有偵測到左鍵被按下，請檢修')
+                           '没有侦测到左键被按下，请检修')
         if not self._r_click:
             missing.append('Missing right click\n'
-                           '沒有偵測到右鍵被按下，請檢修')
+                           '没有侦测到右键被按下，请检修')
         return '\n'.join(missing)
 
     def device_event(self, x, y, z, fingers, left, right):
