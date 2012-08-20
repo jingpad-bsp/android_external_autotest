@@ -103,6 +103,11 @@ class SiteHost(remote.RemoteHost):
         """
         super(SiteHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
+        # self.env is a dictionary of environment variable settings
+        # to be exported for commands run on the host.
+        # LIBC_FATAL_STDERR_ can be useful for diagnosing certain
+        # errors that might happen.
+        self.env['LIBC_FATAL_STDERR_'] = '1'
         self._xmlrpc_proxy_map = {}
         self.servo = servo.Servo.get_lab_servo(hostname)
         if not self.servo:
