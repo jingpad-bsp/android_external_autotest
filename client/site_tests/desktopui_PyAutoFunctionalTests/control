@@ -30,7 +30,7 @@ Sample usage:
 """
 
 # Either suite or tests should be specified, not both.
-suite = None
+suite = ''
 tests = []
 auto_login = True
 
