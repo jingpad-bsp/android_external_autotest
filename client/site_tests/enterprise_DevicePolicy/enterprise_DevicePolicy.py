@@ -13,7 +13,9 @@ class enterprise_DevicePolicy(chrome_test.PyAutoFunctionalTest):
         tests = [
             'testGuestModeEnabled',
             'testShowUserNamesOnSignin',
-            'testUserWhitelistInAccountPicker',
+            # TODO(nirnimesh): Re-enable when crrev.com/152368 reaches chromeos.
+            # 'testUserWhitelistInAccountPicker',
+
             # testUserWhitelistAndAllowNewUsers is broken
             # crosbug.com/33435
         ]
