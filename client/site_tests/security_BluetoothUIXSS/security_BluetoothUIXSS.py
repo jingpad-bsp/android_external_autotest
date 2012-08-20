@@ -105,7 +105,10 @@ class security_BluetoothUIXSS(cros_ui_test.UITest):
         Returns:
             A boolean representing whether or not XSS was successful.
         """
-        _NUMBER_OF_EXPECTED_NEW_NODES = 5
+        if paired:
+            _NUMBER_OF_EXPECTED_NEW_NODES = 0
+        else:
+            _NUMBER_OF_EXPECTED_NEW_NODES = 5
 
         output = json.loads(self.pyauto.ExecuteJavascript("""
                 %s
