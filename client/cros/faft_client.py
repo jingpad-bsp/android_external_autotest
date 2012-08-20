@@ -525,6 +525,9 @@ class FAFTClient(object):
         Devkeys are copied to _key_path. Then, shellball,
         /usr/sbin/chromeos-firmwareupdate, is extracted to _work_path.
         """
+
+        self.cleanup_firmwareupdate_temp_dir()
+
         os.mkdir(self._temp_path)
         os.chdir(self._temp_path)
 
@@ -555,7 +558,8 @@ class FAFTClient(object):
 
     def cleanup_firmwareupdate_temp_dir(self):
         """Cleanup temporary directory."""
-        shutil.rmtree(self._temp_path)
+        if os.path.isdir(self._temp_path):
+            shutil.rmtree(self._temp_path)
 
 
     def repack_firmwareupdate_shellball(self, append):
@@ -570,9 +574,10 @@ class FAFTClient(object):
             os.path.join(self._temp_path,
                          'chromeos-firmwareupdate-%s' % append))
 
-        self.run_shell_command(
-                'sh %schromeos-firmwareupdate-%s  --sb_repack %s'
-                % (self._temp_path, append, self._work_path))
+        self.run_shell_command('sh %s  --sb_repack %s' % (
+            os.path.join(self._temp_path,
+                         'chromeos-firmwareupdate-%s' % append),
+            self._work_path))
 
         args = ['-i']
         args.append('"s/TARGET_FWID=\\"\\(.*\\)\\"/TARGET_FWID=\\"\\1.%s\\"/g"'
@@ -650,11 +655,6 @@ class FAFTClient(object):
     def get_temp_path(self):
         """Get temporary directory path."""
         return self._temp_path
-
-
-    def get_keys_path(self):
-        """Get temporary ke path."""
-        return self._keys_path
 
 
     def cleanup(self):
