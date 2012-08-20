@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import time
 import urlparse
@@ -55,6 +56,10 @@ class belkinAPConfigurator(ap_configurator.APConfigurator):
 
   def get_number_of_pages(self):
      return 2
+
+  def set_radio(self, enabled=True):
+     logging.info('set_radio is not supported on router : %s' %
+                  self.get_router_short_name())
 
   def is_security_mode_supported(self, security_mode):
         return security_mode in (self.security_disabled,

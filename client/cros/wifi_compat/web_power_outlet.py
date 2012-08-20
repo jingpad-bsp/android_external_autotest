@@ -38,7 +38,7 @@ class WebPowerOutlet(web_driver_core_helpers.WebDriverCoreHelpers):
         self.power_strip_ip = power_strip_ip
         self.username = username
         self.password = password
-        self.admin_url = 'http://%s/index.htm' % power_strip_ip
+        self.admin_url = 'http://%s/index.htm' % self.power_strip_ip
         self.outlet_number = str(outlet_number)
         self.outlet_on = 'Switch ON'
         self.outlet_off = 'Switch OFF'

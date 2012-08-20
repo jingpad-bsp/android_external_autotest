@@ -94,5 +94,4 @@ class APConfiguratorFactory(object):
 
     def turn_off_all_routers(self):
         for ap in self.ap_list:
-            ap.set_radio(enabled=False)
-            ap.apply_settings()
+            ap.power_down_router()

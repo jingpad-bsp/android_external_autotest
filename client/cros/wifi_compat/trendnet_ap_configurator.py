@@ -45,6 +45,8 @@ class TrendnetAPConfigurator(ap_configurator.APConfigurator):
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless/basic.asp')
             self.driver.get(page_url)
+            if not self.driver.title.startswith('TEW'):
+                raise RuntimeError('Page loaded does not match what we want.')
         elif page_number == 2:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless/security.asp')

@@ -51,6 +51,10 @@ class linksyse2000APConfigurator(ap_configurator.APConfigurator):
                               self.security_wpapsk,
                               self.security_wep)
 
+  def set_radio(self, enabled=True):
+     logging.info('set_radio is not supported on router : %s' %
+                  self.get_router_short_name())
+
   def navigate_to_page(self, page_number):
     if page_number == 1:
      page_url = urlparse.urljoin(self.admin_interface_url,'Wireless_Basic.asp')

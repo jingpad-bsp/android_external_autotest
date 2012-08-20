@@ -52,7 +52,7 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
 
   def save_page(self, page_number):
      apply_set = '//input[@name="apply_button"]'
-     self.click_button_by_xpath(appy_set)
+     self.click_button_by_xpath(apply_set)
      if self.driver.find_element_by_class_name("ddwrt_message"):
         time.sleep(2)
      else:
@@ -73,10 +73,14 @@ class BuffaloAPConfigurator(ap_configurator.APConfigurator):
      if mode in mode_mapping:
         mode_name = mode_mapping[mode]
      else:
-        raise RuntimeError('The mode selected %d not supported by router %s. ',
+        raise RuntimeError('The mode selected %d not supported by router %s. ' %
                            hex(mode), self.get_router_name())
      xpath = '//select[@name="ath0_net_mode"]'
      self.select_item_from_popup_by_xpath(mode_name, xpath)
+
+  def set_radio(self, enabled=True):
+     logging.debug('Router: %s does not support the set_radio command.' %
+                   self.get_router_short_name())
 
   def set_ssid(self, ssid):
      self.add_item_to_command_list(self._set_ssid, (ssid,), 1, 900)

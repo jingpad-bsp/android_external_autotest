@@ -193,10 +193,15 @@ class APConfigurator(web_driver_core_helpers.WebDriverCoreHelpers):
         for i in range(24):
             try:
                 self.navigate_to_page(1)
+                logging.debug('Page navigation complete')
                 return
-            except SeleniumTimeoutException, e:
+            # Navigate to page may throw a Selemium error or its own
+            # RuntimeError depending on the implementation.  Either way we are
+            # bringing a router back from power off, we need to be patient.
+            except:
+                self.driver.refresh()
                 logging.info('Waiting for router %s to come back up.' %
-                             self.get_router_name)
+                             self.get_router_name())
         raise RuntimeError('Unable to load admin page after powering on the '
                            'router: %s' % self.get_router_name)
 

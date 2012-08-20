@@ -35,6 +35,9 @@ class Netgear3700APConfigurator(ap_configurator.APConfigurator):
 
   def _open_configuration_page(self):
      self._open_landing_page()
+     if not self.driver.title.startswith('NETGEAR'):
+        raise RuntimeError('The web page loaded is not for the router: %s' %
+                           self.get_router_short_name())
      if os.path.basename(self.driver.current_url) != 'index.htm':
         raise RuntimeError('Invalid url %s' %
                            os.path.basename(self.driver.current_url))
