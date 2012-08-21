@@ -789,7 +789,9 @@ class FAFTSequence(ServoTest):
             logging.info('running the customized rec reboot command')
             os.system(self._customized_rec_reboot_command)
         elif self.client_attr.chrome_ec:
-            self.send_uart_command("reboot hard ap-off")
+            # Cold reset to clear EC_IN_RW signal
+            self.servo.cold_reset()
+            self.send_uart_command("reboot ap-off")
             time.sleep(self.EC_BOOT_DELAY)
             self.send_uart_command("hostevent set 0x4000")
             self.servo.power_short_press()
