@@ -251,7 +251,7 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
     return autoserv_argv + extra_args
 
 
-class Dispatcher(object):
+class BaseDispatcher(object):
     def __init__(self):
         self._agents = []
         self._last_clean_time = time.time()
@@ -824,6 +824,14 @@ class Dispatcher(object):
                     rrun.start_date = rrun.start_date + difference
                     rrun.loop_count -= 1
                     rrun.save()
+
+
+SiteDispatcher = utils.import_site_class(
+    __file__, 'autotest_lib.scheduler.site_monitor_db',
+    'SiteDispatcher', BaseDispatcher)
+
+class Dispatcher(SiteDispatcher):
+    pass
 
 
 class PidfileRunMonitor(object):
