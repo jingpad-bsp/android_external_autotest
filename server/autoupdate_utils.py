@@ -46,8 +46,7 @@ class AutoUpdateTester():
 
         logging.info('Starting devserver...')
 
-        opts = ('--client_prefix ChromeOSUpdateEngine '
-                '--image %s' % image_path)
+        opts = '--image %s' % image_path
         cmd = 'python devserver.py %s &>%s &' % (opts, DEVSERVER_LOG)
         logging.info('devserver cmd: %s' % cmd)
 

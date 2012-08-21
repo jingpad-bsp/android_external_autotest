@@ -26,8 +26,7 @@ declare -r PID_FILE="/tmp/dev_server.pid"
 function start_dev_server {
   echo "Starting a new Dev Server instance..."
   cd ${DEV_SERVER_PATH}
-  python devserver.py 8080 --archive_dir ${IMAGES_PATH} -t \
-                           --client_prefix ChromeOSUpdateEngine &>/dev/null&
+  python devserver.py 8080 --archive_dir ${IMAGES_PATH} -t &>/dev/null&
   echo $!>${PID_FILE}
 }
 
