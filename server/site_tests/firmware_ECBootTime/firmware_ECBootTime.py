@@ -18,7 +18,7 @@ class firmware_ECBootTime(FAFTSequence):
                 if self._x86 else "([0-9\.]+) AP running")
         power_cmd = "powerbtn" if self._x86 else "power on"
         reboot = self.send_uart_command_get_output("reboot",
-                "([0-9\.]+) idle task started")
+                "([0-9\.]+) Inits done")
         power_press = self.send_uart_command_get_output(power_cmd,
                 ["\[([0-9\.]+) PB", boot_msg], timeout=3)
         reboot_time = float(reboot[0].group(1))
@@ -36,9 +36,12 @@ class firmware_ECBootTime(FAFTSequence):
         if not self.check_ec_capability():
             return
         self._x86 = ('x86' in self.client_attr.ec_capability)
+        dev_mode = self.crossystem_checker({'dev_sw_boot': '1'})
         self.register_faft_sequence((
             {   # Step 1, Reboot and check EC cold boot time and host boot time
                 'reboot_action': self.check_boot_time,
+                'firmware_action': (self.wait_fw_screen_and_ctrl_d
+                                    if dev_mode else None)
             },
             {   # Step 2, dummy step to make step 1 reboot
             }
