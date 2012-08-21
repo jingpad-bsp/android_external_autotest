@@ -55,6 +55,7 @@ class Servo(object):
     # Servo-specific delays.
     MAX_SERVO_STARTUP_DELAY = 10
     SERVO_SEND_SIGNAL_DELAY = 0.5
+    SERVO_KEY_PRESS_DELAY = 0.1
 
     # Time between an usb disk plugged-in and detected in the system.
     USB_DETECTION_DELAY = 10
@@ -192,7 +193,7 @@ class Servo(object):
 
 
     def _press_and_release_keys(self, m1, m2,
-                                press_secs=SERVO_SEND_SIGNAL_DELAY):
+                                press_secs=SERVO_KEY_PRESS_DELAY):
         """Simulate button presses."""
         # set keys to none
         (m2_a1, m2_a0) = self.KEY_MATRIX['m2']['none']
