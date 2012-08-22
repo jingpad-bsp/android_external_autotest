@@ -79,7 +79,11 @@ class verity_image(object):
             self.device = None
 
         if self.loop is not None:
-            system('losetup -d %s' % self.loop)
+            cmd = 'losetup -d %s' % (self.loop)
+            rc = utils.system(cmd, ignore_status=True)
+            if rc != 0:
+                lsblk = utils.system_output('lsblk %s' % (self.loop))
+                raise error.TestFail('"%s" failed:\n%s' % (cmd, lsblk))
             self.loop = None
 
         if self.file is not None:
@@ -141,8 +145,7 @@ class verity_image(object):
 
     def _setup_loop(self):
         # Setup a loop device
-        self.loop = utils.system_output('losetup -f')
-        system('losetup %s %s' % (self.loop, self.file))
+        self.loop = utils.system_output('losetup -f --show %s' % (self.file))
 
     def _setup_target(self):
         # Update the table with the loop dev
