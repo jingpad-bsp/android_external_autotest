@@ -188,16 +188,6 @@ class factory_Audio(test.test):
         window.connect('key-release-event', self.key_release_callback)
         window.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-    def locate_audio_sample(self, path):
-        if path is None:
-            raise error.TestFail('ERROR: Must provide an audio sample')
-        if not os.path.isabs(path):
-            # Assume the relative path is based in autotest directory.
-            path = os.path.join(self.job.autodir, path)
-        if not os.path.exists(path):
-            raise error.TestFail('ERROR: Unable to find audio sample %s' % path)
-        return path
-
     def run_once(self, audio_sample_path=None, audio_init_volume=None,
                  amixer_init_cmd=None):
 
@@ -214,7 +204,10 @@ class factory_Audio(test.test):
         os.chdir(self.tmpdir)
 
         self._bg_job = None
-        self._audio_sample_path = self.locate_audio_sample(audio_sample_path)
+        self._audio_sample_path = utils.locate_file(audio_sample_path,
+                                                    base_dir=self.job.autodir)
+        if self._audio_sample_path is None:
+          raise error.TestFail('ERROR: Must provide an audio sample.')
 
         self._sample_queue = [x for x in reversed(_SAMPLE_LIST)]
         self._status_map = dict((n, ful.UNTESTED) for n in _SAMPLE_LIST)

@@ -161,7 +161,6 @@ def set_ip_local_port_range(lower, upper):
                    '%d %d\n' % (lower, upper))
 
 
-
 def send_email(mail_from, mail_to, subject, body):
     """
     Sends an email via smtp
@@ -232,6 +231,27 @@ def open_write_close(filename, data):
         f.write(data)
     finally:
         f.close()
+
+
+def locate_file(path, base_dir=None):
+  """Locates a file.
+
+  @param path: The path of the file being located. Could be absolute or relative
+      path. For relative path, it tries to locate the file from base_dir.
+  @param base_dir (optional): Base directory of the relative path.
+
+  @returns Absolute path of the file if found. None if path is None.
+  @raises error.TestFail if the file is not found.
+  """
+  if path is None:
+    return None
+
+  if not os.path.isabs(path) and base_dir is not None:
+    # Assume the relative path is based in autotest directory.
+    path = os.path.join(base_dir, path)
+  if not os.path.isfile(path):
+    raise error.TestFail('ERROR: Unable to find %s' % path)
+  return path
 
 
 def matrix_to_string(matrix, header=None):
