@@ -445,6 +445,42 @@ class Servo(object):
             return None
 
 
+    def image_to_servo_usb(self, image_path=None,
+                           make_image_noninteractive=False):
+        """Install an image to the USB key plugged into the servo.
+
+        This method may copy any image to the servo USB key including a
+        recovery image or a test image.  These images are frequently used
+        for test purposes such as restoring a corrupted image or conducting
+        an upgrade of ec/fw/kernel as part of a test of a specific image part.
+
+        Args:
+            image_path: Path on the host to the recovery image.
+            make_image_noninteractive: Make the recovery image noninteractive,
+                                       therefore the DUT will reboot
+                                       automatically after installation.
+        """
+        # Turn the device off. This should happen before USB key detection, to
+        # prevent a recovery destined DUT from sensing the USB key due to the
+        # autodetection procedure.
+        self.initialize_dut(cold_reset=True)
+
+        # Set up Servo's usb mux.
+        self.set('prtctl4_pwren', 'on')
+        self.enable_usb_hub(host=True)
+        if image_path:
+            logging.info('Searching for usb device and copying image to it.')
+            if not self._server.download_image_to_usb(image_path):
+                logging.error('Failed to transfer requested image to USB. '
+                              'Please take a look at Servo Logs.')
+                raise error.AutotestError('Download image to usb failed.')
+            if make_image_noninteractive:
+                logging.info('Making image noninteractive')
+                if not self._server.make_image_noninteractive():
+                    logging.error('Failed to make image noninteractive. '
+                                  'Please take a look at Servo Logs.')
+
+
     def install_recovery_image(self, image_path=None,
                                wait_timeout=RECOVERY_INSTALL_DELAY,
                                make_image_noninteractive=False,
@@ -467,25 +503,7 @@ class Servo(object):
                   running on. If provided, will wait to see if the host is back
                   up after starting recovery mode.
         """
-        # Turn the device off. This should happen before USB key detection, to
-        # prevent a recovery destined DUT from sensing the USB key due to the
-        # autodetection procedure.
-        self.initialize_dut(cold_reset=True)
-
-        # Set up Servo's usb mux.
-        self.set('prtctl4_pwren', 'on')
-        self.enable_usb_hub(host=True)
-        if image_path:
-            logging.info('Searching for usb device')
-            if not self._server.download_image_to_usb(image_path):
-                logging.error('Failed to transfer requested image to USB. '
-                              'Please take a look at Servo Logs.')
-                raise error.AutotestError('Download image to usb failed.')
-            if make_image_noninteractive:
-                logging.info('Making image noninteractive')
-                if not self._server.make_image_noninteractive():
-                    logging.error('Failed to make image noninteractive. '
-                                  'Please take a look at Servo Logs.')
+        self.image_to_servo_usb(image_path, make_image_noninteractive)
 
         # Boot in recovery mode.
         try:

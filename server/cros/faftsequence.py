@@ -320,27 +320,73 @@ class FAFTSequence(ServoTest):
         """Install the test image specied by the path onto the USB and DUT disk.
 
         The method first copies the image to USB disk and reboots into it via
-        recovery mode. Then runs 'chromeos-install' to install it to DUT disk.
+        recovery mode. Then runs 'chromeos-install' (and possible
+        chromeos-firmwareupdate') to install it to DUT disk.
+
+        Sample command line:
+
+        run_remote_tests.sh --servo --board=daisy --remote=w.x.y.z \
+            --args="image=/tmp/chromiumos_test_image.bin firmware_update=True" \
+            server/site_tests/firmware_XXXX/control
+
+        This test requires an automated recovery to occur while simulating
+        inserting and removing the usb key from the servo. To allow this the
+        following hardware setup is required:
+        1. servo2 board connected via servoflex.
+        2. USB key inserted in the servo2.
+        3. servo2 connected to the dut via dut_hub_in in the usb 2.0 slot.
+        4. network connected via usb dongle in the dut in usb 3.0 slot.
 
         Args:
             image_path: Path on the host to the test image.
             firmware_update: Also update the firmware after installing.
         """
-        install_cmd = 'chromeos-install --yes'
-        if firmware_update:
-            install_cmd += ' && chromeos-firmwareupdate --mode recovery'
         build_ver, build_hash = lab_test.VerifyImageAndGetId(cros_dir,
                                                              image_path)
         logging.info('Processing build: %s %s' % (build_ver, build_hash))
 
-        # Reuse the install_recovery_image method by using a test image.
-        # Don't wait for completion but run chromeos-install to install it.
-        self.servo.install_recovery_image(image_path)
-        self.wait_for_client(install_deps=True)
-        self.run_faft_step({
-            'userspace_action': (self.faft_client.run_shell_command,
-                                 install_cmd)
-        })
+        # Reuse the servo method that uses the servo USB key to install
+        # the test image.
+        self.servo.image_to_servo_usb(image_path)
+
+        # DUT is powered off while imaging servo USB.
+        # Now turn it on.
+        self.servo.power_short_press()
+        self.wait_for_client()
+        self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+
+        install_cmd = 'chromeos-install --yes'
+        if firmware_update:
+            install_cmd += ' && chromeos-firmwareupdate --mode recovery'
+
+        self.register_faft_sequence((
+            {   # Step 1, request recovery boot
+                'state_checker': (self.crossystem_checker, {
+                    'mainfw_type': ('developer', 'normal'),
+                }),
+                'userspace_action': self.faft_client.request_recovery_boot,
+                'firmware_action': self.wait_fw_screen_and_plug_usb,
+                'install_deps_after_boot': True,
+            },
+            {   # Step 2, expected recovery boot
+                'state_checker': (self.crossystem_checker, {
+                    'mainfw_type': 'recovery',
+                    'recovery_reason' : self.RECOVERY_REASON['US_TEST'],
+                }),
+                'userspace_action': (self.faft_client.run_shell_command,
+                                     install_cmd),
+                'reboot_action': self.cold_reboot,
+                'install_deps_after_boot': True,
+            },
+            {   # Step 3, expected normal or developer boot (not recovery)
+                'state_checker': (self.crossystem_checker, {
+                    'mainfw_type': ('developer', 'normal')
+                }),
+            },
+        ))
+        self.run_faft_sequence()
+        # 'Unplug' any USB keys in the servo from the dut.
+        self.servo.disable_usb_hub()
 
 
     def clear_set_gbb_flags(self, clear_mask, set_mask):
@@ -720,11 +766,16 @@ class FAFTSequence(ServoTest):
             self.send_ctrl_d_to_dut()
 
 
-    def wait_fw_screen_and_plug_usb(self):
-        """Wait for firmware warning screen and then unplug and plug the USB."""
+    def wait_fw_screen_and_unplug_usb(self):
+        """Wait for firmware warning screen and then unplug the servo USB."""
         time.sleep(self.USB_LOAD_DELAY)
         self.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         time.sleep(self.USB_PLUG_DELAY)
+
+
+    def wait_fw_screen_and_plug_usb(self):
+        """Wait for firmware warning screen and then unplug and plug the USB."""
+        self.wait_fw_screen_and_unplug_usb()
         self.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
 
 
