@@ -957,7 +957,13 @@ class FAFTSequence(ServoTest):
 
         A wrapper for underlying servo cold reset.
         """
-        if self.check_ec_capability():
+        if self.client_attr.platform == 'Parrot':
+            self.servo.set('pwr_button', 'press')
+            self.servo.set('cold_reset', 'on')
+            self.servo.set('cold_reset', 'off')
+            time.sleep(self.POWER_BTN_DELAY)
+            self.servo.set('pwr_button', 'release')
+        elif self.check_ec_capability():
             # We don't use servo.cold_reset() here because software sync is
             # not yet finished, and device may or may not come up after cold
             # reset. Pressing power button before firmware comes up solves this.

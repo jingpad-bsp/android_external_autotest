@@ -26,6 +26,8 @@ class FAFTClientAttribute(object):
         """Return platform-specific settings."""
         setting = dict()
 
+        setting['platform'] = platform
+
         # Set 'broken_warm_reset'
         if platform in ['Parrot']:
             setting['broken_warm_reset'] = True
