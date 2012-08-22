@@ -40,7 +40,7 @@ class power_ProbeDriver(test.test):
 
         # if there are batteries, test fails if one of them is discharging
         # note: any([]) == False, so we don't have to test len(bat_paths) > 0
-        if any(self._read_status(bat_path) == 'Discharging'
+        if any(self._is_discharging(bat_path, ac_paths)
                for bat_path in bat_paths
                if self._present(bat_path)):
             raise error.TestFail('One of batteries is discharging')
@@ -54,8 +54,8 @@ class power_ProbeDriver(test.test):
         if len(presented) == 0:
             raise error.TestFail('No batteries are presented')
 
-        if all(self._read_status(bat_path) != 'Discharging'
-               for bat_path in presented):
+        if all(not self._is_discharging(bat_path, ac_paths) for bat_path
+               in presented):
             raise error.TestFail('No batteries are discharging')
 
         if any(self._online(ac_path) for ac_path in ac_paths):
@@ -68,14 +68,70 @@ class power_ProbeDriver(test.test):
         online = utils.read_one_line(online_path)
         return online == '1'
 
-    def _present(self, bat_path):
-        present_path = os.path.join(bat_path, 'present')
-        if not os.path.exists(present_path):
-            return False
-        return utils.read_one_line(present_path) == '1'
+    def _has_property(self, bat_path, field):
+        """
+        Indicates whether a battery sysfs has the given field.
 
-    def _read_status(self, bat_path):
-        status_path = os.path.join(bat_path, 'status')
-        if not os.path.exists(status_path):
-            raise error.TestNAError('Status not found: %s' % status_path)
-        return utils.read_one_line(status_path)
+        Fields:
+        str     bat_path:           Battery sysfs path
+        str     field:              Sysfs field to test for.
+
+        Return value:
+        bool    True if the field exists, False otherwise.
+        """
+        return os.path.exists(os.path.join(bat_path, field))
+
+    def _read_property(self, bat_path, field):
+        """
+        Reads the contents of a sysfs field for a battery sysfs.
+
+        Fields:
+        str     bat_path:           Battery sysfs path
+        str     field:              Sysfs field to read.
+
+        Return value:
+        str     The contents of the sysfs field.
+        """
+        property_path = os.path.join(bat_path, field)
+        if not self._has_property(bat_path, field):
+            raise error.TestNAError('Path not found: %s' % property_path)
+        return utils.read_one_line(property_path)
+
+    def _present(self, bat_path):
+        """
+        Indicates whether a battery is present, based on sysfs status.
+
+        Fields:
+        str     bat_path:           Battery sysfs path
+
+        Return value:
+        bool    True if the battery is present, False otherwise.
+        """
+        return self._read_property(bat_path, 'present') == '1'
+
+    def _is_discharging(self, bat_path, ac_paths):
+        """
+        Indicates whether a battery is discharging, based on sysfs status.
+
+        Sometimes the sysfs will not show status='Discharging' when actually
+        discharging.  So this function looks at both battery sysfs and AC sysfs.
+        If the battery is discharging, there will be no line power and the
+        power/current draw will be nonzero.
+
+        Fields:
+        str     bat_path:           Battery sysfs path
+        str[]   ac_paths:           List of AC sysfs paths
+
+        Return value:
+        bool    True if the battery is discharging, False otherwise.
+        """
+        if self._read_property(bat_path, 'status') == 'Discharging':
+            return True
+        if all(not self._online(ac_path) for ac_path in ac_paths):
+            if (self._has_property(bat_path, 'power_now') and
+                self._read_property(bat_path, 'power_now') != '0'):
+                return True
+            if (self._has_property(bat_path, 'current_now') and
+                self._read_property(bat_path, 'current_now') != '0'):
+                return True
+        return False
