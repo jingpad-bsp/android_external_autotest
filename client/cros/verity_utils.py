@@ -61,6 +61,22 @@ class verity_image(object):
     mkfs_cmd = 'mkfs.ext3 -b 4096 -F %s'
     dmsetup_cmd = "dmsetup -r create autotest_%s --table '%s'"
 
+    def _device_release(self, cmd, device):
+        if utils.system(cmd, ignore_status=True) == 0:
+            return
+        logging.warn("Could not release %s. Retrying..." % (device))
+        # Other things (like cros-disks) may have the device open briefly,
+        # so if we initially fail, try again and attempt to gather details
+        # on who else is using the device.
+        fuser = utils.system_output('fuser -v %s' % (device),
+                                    retain_output=True)
+        lsblk = utils.system_output('lsblk %s' % (device),
+                                    retain_output=True)
+        time.sleep(1)
+        if utils.system(cmd, ignore_status=True) == 0:
+            return
+        raise error.TestFail('"%s" failed: %s\n%s' % (cmd, fuser, lsblk))
+
     def reset(self):
         """Idempotent call which will free any claimed system resources"""
         # Pre-initialize these values to None
@@ -74,16 +90,12 @@ class verity_image(object):
             self.mountpoint = None
 
         if self.device is not None:
-            time.sleep(1)  # give it time to settle
-            system('dmsetup remove %s' % self.device)
+            self._device_release('dmsetup remove %s' % (self.device),
+                                 self.device)
             self.device = None
 
         if self.loop is not None:
-            cmd = 'losetup -d %s' % (self.loop)
-            rc = utils.system(cmd, ignore_status=True)
-            if rc != 0:
-                lsblk = utils.system_output('lsblk %s' % (self.loop))
-                raise error.TestFail('"%s" failed:\n%s' % (cmd, lsblk))
+            self._device_release('losetup -d %s' % (self.loop), self.loop)
             self.loop = None
 
         if self.file is not None:
