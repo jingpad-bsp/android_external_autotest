@@ -7,6 +7,11 @@
 # DESCRIPTION :
 #
 # This is a factory test to check the functionality of the lid switch.
+# dargs:
+#   timeout: the test runs at most #seconds (default: 30 seconds).
+#   ok_audio_path: (optional) an audio file's path to notify an operator to open
+#       the lid.
+#   audio_volume: (optional) volume to play the ok audio. Default 100%.
 
 import dbus
 import gobject
@@ -50,11 +55,18 @@ class factory_LidSwitch(test.test):
       gtk.main_quit()
       return True
 
+  def play_ok_audio(self):
+    if self._ok_audio_path:
+      cmd = 'aplay %s' % self._ok_audio_path
+      factory.log(cmd)
+      utils.system(cmd)
+
   def dbus_event(self, *args, **kwargs):
     event = kwargs[self._DBUS_MEMBER_KEYWORD]
     if event == self._DBUS_LID_CLOSED:
       self._status = TestStatus.IN_PROGRESS
       self._prompt.set_text(self._MESSAGE_PROMPT_OPEN)
+      self.play_ok_audio()
     elif event == self._DBUS_LID_OPENED:
       self._status = TestStatus.COMPLETE
       self._prompt.set_text(self._MESSAGE_PASSED)
@@ -107,18 +119,23 @@ class factory_LidSwitch(test.test):
       factory.log('service %s can not be found.' % service)
       return None
 
-  def run_once(self, timeout=_DEFAULT_TIMEOUT):
+  def run_once(self, timeout=_DEFAULT_TIMEOUT, ok_audio_path=None,
+               audio_volume=100):
 
     factory.log('STARTED: %s run_once' % self.__class__)
 
     # Ensure powerm is running and powerd is not running for the test.
-
     original_powerm_status = self.switch_service('powerm', True)
     original_powerd_status = self.switch_service('powerd', False)
 
     self._error_message = self._MESSAGE_UNKNOWN_ERROR
     self._fail = True
     self._status = TestStatus.WAITING
+
+    # Try to locate audio wav for lid test ok. None if not found.
+    self._ok_audio_path = utils.locate_file(ok_audio_path, self.job.autodir)
+    if self._ok_audio_path:
+      utils.system('amixer -c 0 sset Master %d%%' % audio_volume)
 
     vbox = gtk.VBox(spacing=20)
 
