@@ -17,7 +17,8 @@ SemaphoreRecord = namedtuple('SemaphoreRecord', ['owner', 'perms'])
 class security_SysVIPC(test.test):
     version = 1
     expected_shm = set([ShmRecord(owner='cras', perms='640',
-                                  attached=('/usr/bin/cras',))])
+                                  attached=('/usr/bin/cras',
+                                            '/usr/bin/powerd',))])
     expected_sem = set([SemaphoreRecord(owner='root', perms='600')])
 
     def dump_ipcs_to_results(self):
