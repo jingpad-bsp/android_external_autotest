@@ -34,12 +34,11 @@ and 'nightly' triggers, for example), and configures all the Tasks
 that will be in play.
 """
 
-import getpass, logging, logging.handlers, optparse, os, re, signal, sys
+import logging, optparse, os, re, signal, sys
 import traceback
 import common
 import board_enumerator, deduping_scheduler, driver, forgiving_config_parser
 import manifest_versions
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
@@ -54,67 +53,14 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 
-class SeverityFilter(logging.Filter):
-    """Filters out messages of anything other than self._level"""
-    def __init__(self, level):
-        self._level = level
-
-
-    def filter(self, record):
-        """Causes only messages of |self._level| severity to be logged."""
-        return record.levelno == self._level
-
-
 class SchedulerLoggingConfig(logging_config.LoggingConfig):
     def __init__(self):
         super(SchedulerLoggingConfig, self).__init__()
-        self._from_address = global_config.global_config.get_config_value(
-                CONFIG_SECTION, "notify_email_from", default=getpass.getuser())
-
-        self._notify_address = global_config.global_config.get_config_value(
-                CONFIG_SECTION, "notify_email",
-                default='chromeos-lab-admins@google.com')
-
-        self._smtp_server = global_config.global_config.get_config_value(
-                CONFIG_SECTION_SMTP, "smtp_server", default='localhost')
-
-        self._smtp_port = global_config.global_config.get_config_value(
-                CONFIG_SECTION_SMTP, "smtp_port", default=None)
-
-        self._smtp_user = global_config.global_config.get_config_value(
-                CONFIG_SECTION_SMTP, "smtp_user", default='')
-
-        self._smtp_password = global_config.global_config.get_config_value(
-                CONFIG_SECTION_SMTP, "smtp_password", default='')
 
 
     @classmethod
     def get_log_name(cls):
         return cls.get_timestamped_log_name('suite_scheduler')
-
-
-    def add_smtp_handler(self, subject, level=logging.ERROR):
-        if not self._smtp_user or not self._smtp_password:
-            creds = None
-        else:
-            creds = (self._smtp_user, self._smtp_password)
-        server = self._smtp_server
-        if self._smtp_port:
-            server = (server, self._smtp_port)
-
-        handler = logging.handlers.SMTPHandler(server,
-                                               self._from_address,
-                                               [self._notify_address],
-                                               subject,
-                                               creds)
-        handler.setLevel(level)
-        # We want to send mail for the given level, and only the given level.
-        # One can add more handlers to send messages for other levels.
-        handler.addFilter(SeverityFilter(level))
-        handler.setFormatter(
-            logging.Formatter('%(asctime)s %(levelname)-5s %(message)s'))
-        self.logger.addHandler(handler)
-        return handler
 
 
     def configure_logging(self, log_dir=None):
@@ -126,8 +72,16 @@ class SchedulerLoggingConfig(logging_config.LoggingConfig):
 
         self.add_file_handler(base + '.DEBUG', logging.DEBUG, log_dir=log_dir)
         self.add_file_handler(base + '.INFO', logging.INFO, log_dir=log_dir)
-        self.add_smtp_handler('Suite scheduler ERROR', logging.ERROR)
-        self.add_smtp_handler('Suite scheduler WARNING', logging.WARN)
+
+        warning_smtp_handler = logging_config.create_smtp_handler(
+            CONFIG_SECTION, CONFIG_SECTION_SMTP, 'Suite scheduler WARNING',
+            logging.WARNING)
+        self.logger.addHandler(warning_smtp_handler)
+
+        error_smtp_handler = logging_config.create_smtp_handler(
+            CONFIG_SECTION, CONFIG_SECTION_SMTP, 'Suite scheduler ERROR',
+            logging.ERROR)
+        self.logger.addHandler(error_smtp_handler)
 
 
 def parse_options():

@@ -1,4 +1,5 @@
 import logging, os, sys, time
+import utils
 
 # set up a simple catchall configuration for use during import time.  some code
 # may log messages at import time and we don't want those to get completely
@@ -124,3 +125,14 @@ class TestingConfig(LoggingConfig):
 
     def configure_logging(self, **kwargs):
         pass
+
+
+class NullHandler(logging.StreamHandler):
+    def emit(self, text):
+        pass
+
+
+create_smtp_handler = utils.import_site_function(__file__,
+    'autotest_lib.client.common_lib.site_logging_config',
+    'create_smtp_handler',
+    lambda a,b,c,d: NullHandler())
