@@ -184,13 +184,17 @@ class LinuxServer(site_linux_system.LinuxSystem):
                        'adv_send_advert': 'on',
                        'min_adv_interval': '3',
                        'max_adv_interval': '10',
-                       # NB: Address below is is within the 2001:0db8/32
+                       # NB: Addresses below are within the 2001:0db8/32
                        # "documentation only" prefix (RFC3849), which is
                        # guaranteed never to be assigned to a real network.
                        'prefix': '2001:0db8:0100:f101::/64',
                        'adv_on_link': 'on',
                        'adv_autonomous': 'on',
-                       'adv_router_addr': 'on' }
+                       'adv_router_addr': 'on',
+                       'rdnss_servers': '2001:0db8:0100:f101::0001 '
+                                        '2001:0db8:0100:f101::0002',
+                       'adv_rdnss_lifetime': 'infinity',
+                       'dnssl_list': 'a.com b.com' }
         radvd_opts.update(params)
 
         config = ('interface %(interface)s {\n'
@@ -201,6 +205,11 @@ class LinuxServer(site_linux_system.LinuxSystem):
                   '    AdvOnLink %(adv_on_link)s;\n'
                   '    AdvAutonomous %(adv_autonomous)s;\n'
                   '    AdvRouterAddr %(adv_router_addr)s;\n'
+                  '  };\n'
+                  '  RDNSS %(rdnss_servers)s {\n'
+                  '    AdvRDNSSLifetime %(adv_rdnss_lifetime)s;\n'
+                  '  };\n'
+                  '  DNSSL %(dnssl_list)s {\n'
                   '  };\n'
                   '};\n') % radvd_opts
         cfg_file = params.get('config_file', self.radvd_config['file'])
