@@ -472,6 +472,17 @@ class FAFTClient(object):
         """Increase kernel version for the requested section."""
         self._modify_kernel_version(section, 1)
 
+
+    def retrieve_kernel_version(self, section):
+        """Return kernel version."""
+        return self._kernel_handler.get_version(section)
+
+
+    def retrieve_kernel_datakey_version(self, section):
+        """Return kernel datakey version."""
+        return self._kernel_handler.get_datakey_version(section)
+
+
     def diff_kernel_a_b(self):
         """Compare kernel A with B.
 
@@ -551,7 +562,7 @@ class FAFTClient(object):
                                    'RW_FWID_A'))
 
         [fwid] = self.run_shell_command_get_output(
-                'eu-strings RW_FWID_A')
+                "cat RW_FWID_A | tr '\\0' '\\t' | cut -f1")
 
         return fwid
 
@@ -655,6 +666,16 @@ class FAFTClient(object):
     def get_temp_path(self):
         """Get temporary directory path."""
         return self._temp_path
+
+
+    def get_keys_path(self):
+        """Get keys path in temporary directory."""
+        return self._keys_path
+
+
+    def resign_kernel_with_keys(self, section, key_path=None):
+        """Resign kernel with temporary key."""
+        self._kernel_handler.resign_kernel(section, key_path)
 
 
     def cleanup(self):
