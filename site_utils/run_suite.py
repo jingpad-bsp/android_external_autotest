@@ -74,19 +74,6 @@ def is_fail_status(status):
     return False
 
 
-def generate_log_link(anchor, job_string):
-    """
-    Generate a link to this job's logs, for consumption by buildbot.
-
-    @param anchor: Link anchor text.
-    @param job_id: the job whose logs we'd like to link to.
-    @return A link formatted for the buildbot log annotator.
-    """
-    host = CONFIG.get_config_value('SERVER', 'hostname', type=str)
-    pattern = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
-    return "@@@STEP_LINK@%s@%s@@@" % (anchor, pattern % (host, job_string))
-
-
 def get_view_info(suite_job_id, view):
     """
     Parse a view for the slave job name and job_id.
@@ -127,6 +114,44 @@ def get_view_info(suite_job_id, view):
             job_name = view['job_keyvals'][exp_job_name]
 
     return job_name, experimental
+
+
+class LogLink(object):
+    """
+    Link to a log.
+
+    @var anchor: the link text.
+    @var url: the link url.
+    """
+    def __init__(self, anchor, job_string):
+        """
+        Initialize the LogLink by generating the log URL.
+
+        @param anchor: the link text.
+        @param job_string: the job whose logs we'd like to link to.
+        """
+        self.anchor = anchor
+        host = CONFIG.get_config_value('SERVER', 'hostname', type=str)
+        pattern = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
+        self.url = pattern % (host, job_string)
+
+
+    def GenerateBuildbotLink(self):
+        """
+        Generate a link to the job's logs, for consumption by buildbot.
+
+        @return A link formatted for the buildbot log annotator.
+        """
+        return "@@@STEP_LINK@%s@%s@@@" % (self.anchor, self.url)
+
+
+    def GenerateWebLink(self):
+        """
+        Generate a link to the job's logs, for consumption by a web browser.
+
+        @return A link formatted in HTML for a web browser.
+        """
+        return "<a href=\"%s\">%s</a>" % (self.url, self.anchor)
 
 
 class Timings(object):
@@ -286,7 +311,8 @@ def main():
             relevant_views = views
 
         timings = Timings()
-        log_links = []
+        web_links = []
+        buildbot_links = []
         for view in relevant_views:
             timings.RecordTiming(view)
             if job_status.view_is_for_suite_prep(view):
@@ -299,12 +325,15 @@ def main():
             else:
                 test_view = view['test_name'].ljust(width)
             logging.info("%s%s", test_view, get_pretty_status(view['status']))
+            link = LogLink(view['test_name'], job_name)
+            web_links.append(link)
 
             if view['status'] != 'GOOD':
                 logging.info("%s  %s: %s", test_view, view['status'],
                              view['reason'])
-                log_links.append(generate_log_link(view['test_name'],
-                                                   job_name))
+                # Don't show links on the buildbot waterfall for tests with
+                # GOOD status.
+                buildbot_links.append(link)
                 if code == 1:
                     # Failed already, no need to worry further.
                     continue
@@ -316,13 +345,19 @@ def main():
                 else:
                     code = 1
         logging.info(timings)
-        for link in log_links:
-            logging.info(link)
+        logging.info('\n'
+                     'Links to test logs:')
+        for link in web_links:
+            logging.info(link.GenerateWebLink())
+        logging.info('\n'
+                     'Output below this line is for buildbot consumption:')
+        for link in buildbot_links:
+            logging.info(link.GenerateBuildbotLink())
         break
     else:
         logging.info('Created suite job: %r', job_id)
-        logging.info(generate_log_link(options.name,
-                                '%s-%s' % (job_id, getpass.getuser())))
+        link = LogLink(options.name, '%s-%s' % (job_id, getpass.getuser()))
+        logging.info(link.GenerateBuildbotLink())
         logging.info('--no_wait specified; Exiting.')
     return code
 
