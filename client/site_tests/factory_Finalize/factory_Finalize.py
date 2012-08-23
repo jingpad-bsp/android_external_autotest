@@ -38,11 +38,11 @@ class PreflightTask(task.FactoryTask):
     MSG_CHECKING = ("Checking system status for finalization...\n"
                     "正在檢查系統是否已可執行最終程序...")
     MSG_PENDING = ("System is NOT ready. Please fix RED tasks and then\n"
-                   " press SPACE to continue,\n"
-                   " or press 'f' to force starting finalization procedure.\n"
+                   " press SPACE to continue.\n"
                    "系統尚未就緒。\n"
-                   "請修正紅色項目後按空白鍵重新檢查，\n"
-                   "或是按下 'f' 鍵以強迫開始最終程序。")
+                   "請修正紅色項目後按空白鍵重新檢查。")
+    MSG_FORCE = ("Press 'f' to force starting finalization procedure.\n"
+                 "按下 'f' 鍵以強迫開始最終程序。")
     MSG_READY = ("System is READY. Press SPACE to start FINALIZATION!\n"
                  "系統已準備就緒。 請按空白鍵開始最終程序!")
     MSG_POLLING = ("System is NOT ready. Please fix RED tasks.\n"
@@ -50,7 +50,8 @@ class PreflightTask(task.FactoryTask):
     MSG_POLLING_READY = ("System is READY. Staring FINALIZATION!\n"
                          "系統已準備就緒。 開始最終程序!")
 
-    def __init__(self, test_list, write_protection, polling_seconds):
+    def __init__(self, test_list, write_protection, polling_seconds,
+                 allow_force_finalize):
         def create_label(message):
             return ui.make_label(message, fg=self.COLOR_DISABLED,
                                  alignment=(0, 0.5))
@@ -59,6 +60,7 @@ class PreflightTask(task.FactoryTask):
         self.polling_seconds = polling_seconds
         self.polling_mode = (self.polling_seconds is not None)
         self.test_list = test_list
+        self.allow_force_finalize = allow_force_finalize
         self.items = [(self.check_required_tests,
                        create_label("Verify no tests failed\n"
                                     "確認無測試項目失敗")),
@@ -105,6 +107,8 @@ class PreflightTask(task.FactoryTask):
         def update_summary():
             self.updating = False
             msg_pending = self.MSG_PENDING
+            if self.allow_force_finalize:
+                msg_pending += "\n\n" + self.MSG_FORCE
             msg_ready = self.MSG_READY
             if self.polling_mode:
                 msg_pending = self.MSG_POLLING
@@ -149,7 +153,7 @@ class PreflightTask(task.FactoryTask):
         if self.updating:
             return True
 
-        if event.keyval == ord('f'):
+        if event.keyval == ord('f') and self.allow_force_finalize:
             factory.log("WARNING: Operator manually forced finalization.")
         elif event.keyval == ord(' '):
             if not all(self.results):
@@ -243,7 +247,8 @@ class factory_Finalize(test.test):
                  polling_seconds=None,
                  secure_wipe=False,
                  upload_method='none',
-                 test_list_path=None):
+                 test_list_path=None,
+                 allow_force_finalize=True):
         factory.log('%s run_once' % self.__class__)
 
         if developer_mode is not None:
@@ -260,7 +265,8 @@ class factory_Finalize(test.test):
             yaml.dump(test_states, f)
 
         self.tasks = [
-                PreflightTask(test_list, write_protection, polling_seconds),
+                PreflightTask(test_list, write_protection, polling_seconds,
+                              allow_force_finalize),
                 FinalizeTask(write_protection, secure_wipe, upload_method,
                              test_states_path)]
 
