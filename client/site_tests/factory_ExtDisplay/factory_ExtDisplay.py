@@ -53,6 +53,7 @@ _CLEANUP = ('Disconnect Display',
                  '移除外接螢幕\n\n' + \
                  'Or press TAB to fail\n' + \
                  '若無法通過測試請按TAB',
+                 'disp_off' : True,
                  'cond':'[ $(xrandr -d :0 | grep " connected" | wc -l) == "1" ]'
             })
 
@@ -105,6 +106,11 @@ class factory_ExtDisplay(test.test):
             cmd = "%s %s" % (subtest_cfg['cmd'], self._sample)
             factory.log("cmd: " + cmd)
             self._job = utils.BgJob(cmd, stderr_level=logging.DEBUG)
+        elif 'disp_off' in subtest_cfg:
+            if (self._ext_display is not None):
+                cmd = "xrandr -d :0 --output %s --off" % (self._ext_display)
+                factory.log("cmd: " + cmd)
+                self._job = utils.BgJob(cmd, stderr_level=logging.DEBUG)
         else:
             self._job = None
 
