@@ -63,6 +63,7 @@ class FAFTClient(object):
         _chromeos_interface: An object to encapsulate OS services functions.
         _bios_handler: An object to automate BIOS flashrom testing.
         _ec_handler: An object to automate EC flashrom testing.
+        _ec_image: An object to automate EC image for autest.
         _kernel_handler: An object to provide kernel related actions.
         _tpm_handler: An object to control TPM device.
         _temp_path: Path of a temp directory.
@@ -501,6 +502,53 @@ class FAFTClient(object):
         header_b = self._chromeos_interface.read_partition(kernel_b, 0x10000)
 
         return header_a != header_b
+
+
+    def setup_EC_image(self, ec_path):
+        """Setup the new EC image for later update.
+
+        Args:
+            ec_path: The path of the EC image to be updated.
+        """
+        self._ec_image = flashrom_handler.FlashromHandler()
+        self._ec_image.init(saft_flashrom_util,
+                            self._chromeos_interface,
+                            'ec_root_key.vpubk',
+                            '/usr/share/vboot/devkeys',
+                            'ec')
+        self._ec_image.new_image(ec_path)
+
+
+    def get_EC_image_sha(self):
+        """Get SHA1 hash of RW firmware section of the EC autest image."""
+        return self._ec_image.get_section_sha('rw')
+
+
+    def update_EC_from_image(self, section, flags):
+        """Update EC via software sync design.
+
+        It copys the RW section from the EC image, which is loaded by calling
+        setup_EC_image(), to the EC area of the specified RW section on the
+        current AP firmware.
+
+        Args:
+            section: A firmware section on current BIOS, either 'a' or 'b'.
+            flags: An integer of preamble flags.
+        """
+        blob = self._ec_image.get_section_body('rw')
+        self._bios_handler.set_section_ecbin(section, blob,
+                                             write_through=True)
+        self.set_firmware_flags(section, flags)
+
+
+    def dump_EC_firmware(self, ec_path):
+        """Dump the current EC firmware to a file, specified by ec_path.
+
+        Args:
+            ec_path: The path of the EC image to be written.
+        """
+        self._ec_handler.dump_whole(ec_path)
+
 
     def run_cgpt_test_loop(self):
         """Run the CgptState test loop. The tst logic is handled in the client.
