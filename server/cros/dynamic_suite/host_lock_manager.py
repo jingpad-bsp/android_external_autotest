@@ -49,8 +49,8 @@ class HostLockManager(object):
 
     def __del__(self):
         if self._hosts_are_locked:
-            logging.error('Caller failed to unlock %r!  '
-                          'Forcing unlock now.' % self._hosts)
+            logging.info('Caller failed to unlock %r!  '
+                         'Forcing unlock now.' % self._hosts)
             self.unlock()
 
 
