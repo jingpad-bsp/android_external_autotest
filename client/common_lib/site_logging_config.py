@@ -35,19 +35,20 @@ def create_smtp_handler(section, smtp_section, subject, level):
     from_address = hostname.partition('.')[0]
 
     notify_address = global_config.global_config.get_config_value(
-            section, "notify_email")
+            section, "notify_email",
+            default='chromeos-lab-infrastructure@google.com')
 
     smtp_server = global_config.global_config.get_config_value(
-            smtp_section, "smtp_server")
+            smtp_section, "smtp_server", default='localhost')
 
     smtp_port = global_config.global_config.get_config_value(
-            smtp_section, "smtp_port")
+            smtp_section, "smtp_port", default=None)
 
     smtp_user = global_config.global_config.get_config_value(
-            smtp_section, "smtp_user")
+            smtp_section, "smtp_user", default='')
 
     smtp_password = global_config.global_config.get_config_value(
-            smtp_section, "smtp_password")
+            smtp_section, "smtp_password", default='')
 
     if not smtp_user or not smtp_password:
         creds = None
