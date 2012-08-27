@@ -104,10 +104,10 @@ class FileSystemGetter(CacheingControlFileGetter):
     """
     Class that can list and fetch known control files from disk.
 
-    @var _CONTROL_PATTERN: control file name format to match.
+    @var _CONTROL_REGEX: control file name regex object to match.
     """
 
-    _CONTROL_PATTERN = '^control(?:\..+)?$'
+    _CONTROL_REGEX = re.compile(r'^control(?:\..+)?$')
 
     def __init__(self, paths):
         """
@@ -115,6 +115,18 @@ class FileSystemGetter(CacheingControlFileGetter):
         """
         super(FileSystemGetter, self).__init__()
         self._paths = paths
+
+
+    @classmethod
+    def _IsAutotestControlFile(cls, fullpath):
+        """Identify if this is an autotest control file.
+
+        @param fullpath: The full path to the control file.
+        @return True if the file is an autotest control file, False otherwise.
+        """
+        basename = os.path.basename(fullpath)
+        return (cls._CONTROL_REGEX.match(basename) and
+                'src/debian/control' not in fullpath)
 
 
     def _is_useful_file(self, name):
@@ -126,13 +138,12 @@ class FileSystemGetter(CacheingControlFileGetter):
         Gather a list of paths to control files under |self._paths|.
 
         Searches under |self._paths| for files that match
-        |self._CONTROL_PATTERN|.  Populates |self._files| with that list
+        |self._CONTROL_REGEX|.  Populates |self._files| with that list
         and then returns the paths to all useful files in the list.
 
-        @return A list of files that match |self._CONTROL_PATTERN|.
+        @return A list of files that match |self._CONTROL_REGEX|.
         @throws NoControlFileList if we find no files.
         """
-        regexp = re.compile(self._CONTROL_PATTERN)
         directories = self._paths
         while len(directories) > 0:
             directory = directories.pop()
@@ -141,7 +152,7 @@ class FileSystemGetter(CacheingControlFileGetter):
             for name in os.listdir(directory):
                 fullpath = os.path.join(directory, name)
                 if os.path.isfile(fullpath):
-                    if regexp.search(name):
+                    if self._IsAutotestControlFile(fullpath):
                         # if we are a control file
                         self._files.append(fullpath)
                 elif os.path.isdir(fullpath):
