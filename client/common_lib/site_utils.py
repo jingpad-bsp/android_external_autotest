@@ -1,6 +1,7 @@
 # Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import re
 import socket
 
 from autotest_lib.client.common_lib import base_utils, global_config
@@ -48,3 +49,16 @@ def host_is_in_lab_zone(hostname):
         return True
     except socket.gaierror:
       return False
+
+
+def get_current_board():
+    """Return the current board name.
+
+    @return current board name, e.g "lumpy", None on fail.
+    """
+    with open('/etc/lsb-release') as lsb_release_file:
+        for line in lsb_release_file:
+            m = re.match(r'^CHROMEOS_RELEASE_BOARD=(.+)$', line)
+            if m:
+                return m.group(1)
+    return None

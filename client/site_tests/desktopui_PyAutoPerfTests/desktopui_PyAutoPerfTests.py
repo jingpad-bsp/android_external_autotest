@@ -9,6 +9,7 @@ import sys
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.perf_expectations import expectation_checker
 from autotest_lib.client.cros import chrome_test, cros_ui
 
 
@@ -126,3 +127,16 @@ class desktopui_PyAutoPerfTests(chrome_test.PyAutoFunctionalTest):
                 'least one pyauto test failed.  Refer to the full autotest '
                 'output in desktopui_PyAutoPerfTests.DEBUG for details.'
                 % cmd_result.exit_status)
+
+        # TODO(dennisjeffrey): need further investigation on where
+        # we should put the checking logic, i.e. integrated
+        # with autotest or in each individual test.
+        checker = expectation_checker.perf_expectation_checker(
+                self.__class__.__name__)
+        result = checker.compare_multiple_traces(perf_dict)
+        if result['regress']:
+            raise error.TestFail('Pyauto perf tests regression detected: %s' %
+                                 result['regress'])
+        if result['improve']:
+            raise error.TestWarn('Pyauto perf tests improvement detected: %s' %
+                                 result['improve'])
