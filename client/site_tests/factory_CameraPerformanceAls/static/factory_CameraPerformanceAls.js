@@ -1,13 +1,13 @@
 var USBLoaded = '<span class="goofy-label-en">LOADED</span>' +
-    '<span class="goofy-label-zh">已載入</span>';
+    '<span class="goofy-label-zh">已载入</span>';
 var USBUnloaded = '<span class="goofy-label-en">UNLOADED</span>' +
-    '<span class="goofy-label-zh">未載入</span>';
+    '<span class="goofy-label-zh">未载入</span>';
 var fxtAvailable = '<span class="goofy-label-en">OK</span>' +
-    '<span class="goofy-label-zh">已連接</span>';
+    '<span class="goofy-label-zh">已连接</span>';
 var fxtUnavailable = '<span class="goofy-label-en">UNAVAILABLE</span>' +
-    '<span class="goofy-label-zh">未連接</span>';
+    '<span class="goofy-label-zh">未连接</span>';
 var fxtDetecting = '<span class="goofy-label-en">DETECTING</span>' +
-    '<span class="goofy-label-zh">偵測中</span>';
+    '<span class="goofy-label-zh">侦测中</span>';
 var statIdle = '<span class="color_idle goofy-label-en">IDLE</span>' +
     '<span class="color_idle goofy-label-zh">閒置中</span>';
 
