@@ -720,6 +720,17 @@ class FAFTSequence(ServoTest):
             })
 
 
+    def enable_write_protect(self, enable):
+        """Set hardware write protect pin.
+
+        Args:
+          enable: True if asserting write protect pin. Otherwise, False.
+        """
+        self.servo.set('fw_wp_vref', self.client_attr.wp_voltage)
+        self.servo.set('fw_wp_en', 'on')
+        self.servo.set('fw_wp', 'on' if enable else 'off')
+
+
     def send_ctrl_d_to_dut(self):
         """Send Ctrl-D key to DUT."""
         if self._customized_ctrl_d_key_command:

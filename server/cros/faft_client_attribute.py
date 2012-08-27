@@ -10,7 +10,8 @@ class FAFTClientAttribute(object):
                        'chrome_ec': False,
                        'has_lid': True,
                        'keyboard_dev': True,
-                       'ec_capability': list()}
+                       'ec_capability': list(),
+                       'wp_voltage': 'pp1800'}
 
     def __init__(self, platform):
         """Initialized.
@@ -53,5 +54,9 @@ class FAFTClientAttribute(object):
         elif platform == 'Snow':
             setting['ec_capability'] = ['battery', 'charging', 'keyboard',
                                         'lid', 'arm']
+
+        # Set 'wp_voltage'
+        if platform == 'Link':
+            setting['wp_voltage'] = 'pp3300'
 
         return setting
