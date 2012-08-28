@@ -1065,12 +1065,21 @@ class FAFTSequence(ServoTest):
         self.cold_reboot()
 
 
-    def sync_and_ec_reboot(self):
-        """Request the client sync and do a EC triggered reboot."""
+    def sync_and_ec_reboot(self, args=''):
+        """Request the client sync and do a EC triggered reboot.
+
+        Args:
+          args: Arguments passed to "ectool reboot_ec". Including:
+                  RO: jump to EC RO firmware.
+                  RW: jump to EC RW firmware.
+                  cold: Cold/hard reboot.
+        """
         self.faft_client.run_shell_command('sync')
         time.sleep(self.SYNC_DELAY)
-        self.faft_client.run_shell_command('(sleep %d; ectool reboot_ec)&' %
-                                           self.EC_REBOOT_DELAY)
+        # Since EC reboot happens immediately, delay before actual reboot to
+        # allow FAFT client returning.
+        self.faft_client.run_shell_command('(sleep %d; ectool reboot_ec %s)&' %
+                                           (self.EC_REBOOT_DELAY, args))
         time.sleep(self.EC_REBOOT_DELAY)
         self.check_lid_and_power_on()
 
