@@ -268,6 +268,9 @@ class BaseDispatcher(object):
                 global_config.global_config.get_config_value(
                         scheduler_config.CONFIG_SECTION,
                         'gc_stats_interval_mins', type=int, default=6*60))
+        self._tick_debug = global_config.global_config.get_config_value(
+                scheduler_config.CONFIG_SECTION, 'tick_debug', type=bool,
+                default=False)
 
 
     def initialize(self, recover_hosts=True):
@@ -283,20 +286,45 @@ class BaseDispatcher(object):
         self._host_scheduler.recovery_on_startup()
 
 
+    def _log_tick_msg(self, msg):
+        if self._tick_debug:
+            logging.debug(msg)
+
+
     def tick(self):
+        """
+        This is an altered version of tick() where we keep track of when each
+        major step begins so we can try to figure out where we are using most
+        of the tick time.
+        """
+        self._log_tick_msg('Starting new tick, starting garbage collection().')
         self._garbage_collection()
+        self._log_tick_msg('Starting _drone_manager.refresh().')
         _drone_manager.refresh()
+        self._log_tick_msg('Starting _run_cleanup().')
         self._run_cleanup()
+        self._log_tick_msg('Starting _find_aborting().')
         self._find_aborting()
+        self._log_tick_msg('Starting _process_recurring_runs().')
         self._process_recurring_runs()
+        self._log_tick_msg('Starting _schedule_delay_tasks().')
         self._schedule_delay_tasks()
+        self._log_tick_msg('Starting _schedule_running_host_queue_entries().')
         self._schedule_running_host_queue_entries()
+        self._log_tick_msg('Starting _schedule_special_tasks().')
         self._schedule_special_tasks()
+        self._log_tick_msg('Starting _schedule_new_jobs().')
         self._schedule_new_jobs()
+        self._log_tick_msg('Starting _handle_agents().')
         self._handle_agents()
+        self._log_tick_msg('Starting _host_scheduler.tick().')
         self._host_scheduler.tick()
+        self._log_tick_msg('Starting _drone_manager.execute_actions().')
         _drone_manager.execute_actions()
+        self._log_tick_msg('Starting '
+                           'email_manager.manager.send_queued_emails().')
         email_manager.manager.send_queued_emails()
+        self._log_tick_msg('Starting django.db.reset_queries().')
         django.db.reset_queries()
         self._tick_count += 1
 
