@@ -720,7 +720,7 @@ class FAFTSequence(ServoTest):
             })
 
 
-    def enable_write_protect(self, enable):
+    def set_hardware_write_protect(self, enabled):
         """Set hardware write protect pin.
 
         Args:
@@ -728,7 +728,37 @@ class FAFTSequence(ServoTest):
         """
         self.servo.set('fw_wp_vref', self.client_attr.wp_voltage)
         self.servo.set('fw_wp_en', 'on')
-        self.servo.set('fw_wp', 'on' if enable else 'off')
+        self.servo.set('fw_wp', 'on' if enabled else 'off')
+
+
+    def set_EC_write_protect_and_reboot(self, enabled):
+        """Set EC write protect status and reboot to take effect.
+
+        EC write protect is only activated if both hardware write protect pin
+        is asserted and software write protect flag is set. Also, a reboot is
+        required for write protect to take effect.
+
+        Since the software write protect flag cannot be unset if hardware write
+        protect pin is asserted, we need to deasserted the pin first if we are
+        deactivating write protect. Similarly, a reboot is required before we
+        can modify the software flag.
+
+        This method asserts/deasserts hardware write protect pin first, and
+        set corresponding EC software write protect flag.
+
+        Args:
+          enable: True if activating EC write protect. Otherwise, False.
+        """
+        self.set_hardware_write_protect(enabled)
+        if enabled:
+            # Set write protect flag and reboot to take effect.
+            self.send_uart_command("flashwp enable")
+            self.sync_and_ec_reboot()
+        else:
+            # Reboot after deasserting hardware write protect pin to deactivate
+            # write protect. And then remove software write protect flag.
+            self.sync_and_ec_reboot()
+            self.send_uart_command("flashwp disable")
 
 
     def send_ctrl_d_to_dut(self):
