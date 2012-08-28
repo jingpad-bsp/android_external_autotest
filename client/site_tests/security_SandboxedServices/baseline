@@ -11,8 +11,7 @@ htpdate,ntp,No,No,No,No,No
 chapsd,chaps,No,No,No,No,No
 cryptohomed,root,No,No,No,No,No
 powerd,chronos,Yes,No,No,No,No
-modem-manager,root,No,No,No,No,No
-gavd,gavd,Yes,Yes,No,No,No
+ModemManager,root,No,No,No,No,No
 dhcpcd,dhcp,No,No,No,No,No
 metrics_daemon,root,No,No,No,No,No
 disks,root,No,No,No,No,No
@@ -24,3 +23,6 @@ keyboard_touchp,root,No,No,No,No,No
 tcsd,tss,No,No,No,No,No
 cromo,cromo,No,No,No,No,No
 unclutter,chronos,No,No,No,No,No
+login,root,No,No,No,No,No
+logger,root,No,No,No,No,No
+wimax-manager,root,No,No,No,No,No
