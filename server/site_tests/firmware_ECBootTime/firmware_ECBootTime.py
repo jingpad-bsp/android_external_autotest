@@ -17,7 +17,7 @@ class firmware_ECBootTime(FAFTSequence):
         boot_msg = ("([0-9\.]+) Port 80"
                 if self._x86 else "([0-9\.]+) AP running")
         power_cmd = "powerbtn" if self._x86 else "power on"
-        reboot = self.send_uart_command_get_output("reboot",
+        reboot = self.send_uart_command_get_output("reboot ap-off",
                 "([0-9\.]+) Inits done")
         power_press = self.send_uart_command_get_output(power_cmd,
                 ["\[([0-9\.]+) PB", boot_msg], timeout=3)
