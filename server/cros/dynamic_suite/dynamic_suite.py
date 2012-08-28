@@ -9,7 +9,6 @@ import common
 
 from autotest_lib.client.common_lib import base_job, control_data, global_config
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.common_lib import logging_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -238,10 +237,6 @@ Step by step:
 """
 
 
-CONFIG_SECTION = "DYNAMIC_SUITE"
-CONFIG_SECTION_SMTP = "SERVER"
-
-
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 class SignalsAsExceptions(object):
@@ -395,14 +390,6 @@ def reimage_and_run(**dargs):
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
     """
-    warning_handler = logging_config.create_smtp_handler(CONFIG_SECTION,
-                CONFIG_SECTION_SMTP, "Dynamic suite WARNING", logging.WARNING)
-    logging.getLogger().addHandler(warning_handler)
-
-    error_handler = logging_config.create_smtp_handler(CONFIG_SECTION,
-                CONFIG_SECTION_SMTP, "Dynamic suite ERROR", logging.ERROR)
-    logging.getLogger().addHandler(error_handler)
-
     suite_spec = SuiteSpec(**dargs)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
