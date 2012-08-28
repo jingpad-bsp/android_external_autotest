@@ -33,8 +33,9 @@ class firmware_ECUsbPorts(FAFTSequence):
         """
         for_all_ports_cmd = ('id=0; while ectool usbchargemode "$id" %d;' +
                              'do id=$((id+1)); sleep 0.5; done')
+        # Mode 0 = Port disabled. Mode 1 = Standard downstream port.
         ports_off_cmd = for_all_ports_cmd % 0
-        ports_on_cmd = for_all_ports_cmd % 3
+        ports_on_cmd = for_all_ports_cmd % 1
         cmd = ("(sleep %d; %s; sleep %d; %s)&" %
                 (self.RPC_DELAY, ports_off_cmd, self.REBOOT_DELAY, ports_on_cmd))
         self.faft_client.run_shell_command(cmd)
