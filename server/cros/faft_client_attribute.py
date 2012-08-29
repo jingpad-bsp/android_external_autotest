@@ -53,7 +53,7 @@ class FAFTClientAttribute(object):
                                         'usb', 'peci']
         elif platform == 'Snow':
             setting['ec_capability'] = ['battery', 'charging', 'keyboard',
-                                        'lid', 'arm']
+                                        'arm']
 
         # Set 'wp_voltage'
         if platform == 'Link':
