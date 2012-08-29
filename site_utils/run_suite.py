@@ -21,6 +21,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
+from autotest_lib.server.cros.dynamic_suite.reimager import Reimager
 
 CONFIG = global_config.global_config
 
@@ -73,16 +74,6 @@ def is_fail_status(status):
     return False
 
 
-def status_is_relevant(status):
-    """
-    Indicates whether the status of a given test is meaningful or not.
-
-    @param status: frontend.TestStatus object to look at.
-    @return True if this is a test result worth looking at further.
-    """
-    return not status['test_name'].startswith('CLIENT_JOB')
-
-
 def generate_log_link(anchor, job_string):
     """
     Generate a link to this job's logs, for consumption by buildbot.
@@ -111,13 +102,16 @@ def get_view_info(suite_job_id, view):
     experimental = False
     if 'job_keyvals' in view:
         # The job name depends on whether it's experimental or not.
-        local_test_name = view['test_name'].split('-')[0]  # for try_new_image-*
-        std_job_name = local_test_name.split('.')[0]
+        if view['test_name'].startswith(Reimager.JOB_NAME):
+            std_job_name = Reimager.JOB_NAME
+        elif job_status.view_is_for_infrastructure_fail(view):
+            std_job_name = view['test_name']
+        else:
+            std_job_name = view['test_name'].split('.')[0]
         exp_job_name = constants.EXPERIMENTAL_PREFIX + std_job_name
 
-        std_job_hash = hashlib.md5(local_test_name.split('.')[0]).hexdigest()
-        exp_job_hash = hashlib.md5(constants.EXPERIMENTAL_PREFIX +
-                                   std_job_name).hexdigest()
+        std_job_hash = hashlib.md5(std_job_name).hexdigest()
+        exp_job_hash = hashlib.md5(exp_job_name).hexdigest()
 
         if std_job_hash in view['job_keyvals']:
             job_name = view['job_keyvals'][std_job_hash]
@@ -154,33 +148,33 @@ class Timings(object):
     tests_end_time = None
 
 
-    def RecordTiming(self, entry):
-        """Given a test report entry, extract and record pertinent time info.
+    def RecordTiming(self, view):
+        """Given a test report view, extract and record pertinent time info.
 
         get_detailed_test_views() returns a list of entries that provide
         info about the various parts of a suite run.  This method can take
         any one of these entries and look up timestamp info we might want
         and record it.
 
-        @param entry: an entry dict, as returned by get_details_test_views().
+        @param view: a view dict, as returned by get_detailed_test_views().
         """
-        start_candidate = datetime.datetime.strptime(entry['test_started_time'],
+        start_candidate = datetime.datetime.strptime(view['test_started_time'],
                                                      job_status.TIME_FMT)
-        end_candidate = datetime.datetime.strptime(entry['test_finished_time'],
+        end_candidate = datetime.datetime.strptime(view['test_finished_time'],
                                                    job_status.TIME_FMT)
-        if entry['test_name'] == 'SERVER_JOB':
+        if job_status.view_is_for_suite_prep(view):
             self.suite_start_time = start_candidate
-        elif entry['test_name'].startswith('try_new_image'):
-            if '-' in entry['test_name']:
-                hostname = entry['test_name'].split('-', 1)[1]
+        elif view['test_name'].startswith(Reimager.JOB_NAME):
+            if '-' in view['test_name']:
+                hostname = view['test_name'].split('-', 1)[1]
             else:
                 hostname = ''
             self.reimage_times[hostname] = (start_candidate, end_candidate)
         else:
             self._UpdateFirstTestStartTime(start_candidate)
             self._UpdateLastTestEndTime(end_candidate)
-        if 'job_keyvals' in entry:
-            keyvals = entry['job_keyvals']
+        if 'job_keyvals' in view:
+            keyvals = view['job_keyvals']
             self.download_start_time = keyvals.get(
                 constants.DOWNLOAD_STARTED_TIME)
             self.payload_end_time = keyvals.get(
@@ -286,35 +280,36 @@ def main():
         views = TKO.run('get_detailed_test_views', afe_job_id=job_id)
         width = len(max(map(lambda x: x['test_name'], views), key=len)) + 3
 
-        relevant_views = filter(status_is_relevant, views)
+        relevant_views = filter(job_status.view_is_relevant, views)
         if not relevant_views:
             # The main suite job most likely failed in SERVER_JOB.
             relevant_views = views
 
         timings = Timings()
         log_links = []
-        for entry in relevant_views:
-            timings.RecordTiming(entry)
-            entry['test_name'] = entry['test_name'].replace('SERVER_JOB',
-                                                            'Suite prep')
-            job_name, experimental = get_view_info(job_id, entry)
-            if experimental:
-                test_entry = (constants.EXPERIMENTAL_PREFIX +
-                              entry['test_name']).ljust(width)
-            else:
-                test_entry = entry['test_name'].ljust(width)
-            logging.info("%s%s", test_entry, get_pretty_status(entry['status']))
+        for view in relevant_views:
+            timings.RecordTiming(view)
+            if job_status.view_is_for_suite_prep(view):
+                view['test_name'] = 'Suite prep'
 
-            if entry['status'] != 'GOOD':
-                logging.info("%s  %s: %s", test_entry, entry['status'],
-                             entry['reason'])
-                log_links.append(generate_log_link(entry['test_name'],
+            job_name, experimental = get_view_info(job_id, view)
+            if experimental:
+                test_view = (constants.EXPERIMENTAL_PREFIX +
+                              view['test_name']).ljust(width)
+            else:
+                test_view = view['test_name'].ljust(width)
+            logging.info("%s%s", test_view, get_pretty_status(view['status']))
+
+            if view['status'] != 'GOOD':
+                logging.info("%s  %s: %s", test_view, view['status'],
+                             view['reason'])
+                log_links.append(generate_log_link(view['test_name'],
                                                    job_name))
                 if code == 1:
                     # Failed already, no need to worry further.
                     continue
-                if (entry['status'] == 'WARN' or
-                    (is_fail_status(entry['status']) and experimental)):
+                if (view['status'] == 'WARN' or
+                    (is_fail_status(view['status']) and experimental)):
                     # Failures that produce a warning. Either a test with WARN
                     # status or any experimental test failure.
                     code = 2

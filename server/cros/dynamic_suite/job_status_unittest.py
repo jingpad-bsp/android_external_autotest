@@ -344,7 +344,7 @@ class StatusTest(mox.MoxTestBase):
             status.record_all(record_entity)
             status.is_good().AndReturn(result)
             if not result:
-                status.name().AndReturn('test')
+                status.test_name = 'test'
             statuses.append(status)
 
         return (statuses, record_entity)

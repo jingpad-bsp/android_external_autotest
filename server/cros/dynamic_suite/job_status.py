@@ -10,6 +10,48 @@ TIME_FMT = '%Y-%m-%d %H:%M:%S'
 DEFAULT_POLL_INTERVAL_SECONDS = 10
 
 
+def view_is_relevant(view):
+    """
+    Indicates whether the view of a given test is meaningful or not.
+
+    @param view: a detailed test 'view' from the TKO DB to look at.
+    @return True if this is a test result worth looking at further.
+    """
+    return not view['test_name'].startswith('CLIENT_JOB')
+
+
+def view_is_for_suite_prep(view):
+    """
+    Indicates whether the given test view is the view of Suite prep.
+
+    @param view: a detailed test 'view' from the TKO DB to look at.
+    @return True if this is view of suite preparation.
+    """
+    return view['test_name'] == 'SERVER_JOB'
+
+
+def view_is_for_infrastructure_fail(view):
+    """
+    Indicates whether the given test view is from an infra fail.
+
+    @param view: a detailed test 'view' from the TKO DB to look at.
+    @return True if this view indicates an infrastructure-side issue during
+                 a test.
+    """
+    return view['test_name'].endswith('SERVER_JOB')
+
+
+def is_for_infrastructure_fail(status):
+    """
+    Indicates whether the given Status is from an infra fail.
+
+    @param view: the Status object to look at.
+    @return True if this Status indicates an infrastructure-side issue during
+                 a test.
+    """
+    return view_is_for_infrastructure_fail({'test_name': status.test_name})
+
+
 def gather_job_hostnames(afe, job):
     """
     Collate and return names of hosts used in |job|.
@@ -167,7 +209,8 @@ def wait_for_results(afe, tko, jobs):
                     if _status_for_test(s):
                         yield Status(s.status, s.test_name, s.reason,
                                      s.test_started_time,
-                                     s.test_finished_time)
+                                     s.test_finished_time,
+                                     job.id, job.owner)
                     else:
                         if s.status != 'GOOD':
                             yield Status(s.status,
@@ -175,7 +218,8 @@ def wait_for_results(afe, tko, jobs):
                                                     s.test_name),
                                          s.reason,
                                          s.test_started_time,
-                                         s.test_finished_time)
+                                         s.test_finished_time,
+                                         job.id, job.owner)
         time.sleep(5)
 
 
@@ -236,7 +280,7 @@ def record_and_report_results(statuses, record_entry):
         success = status.is_good()
         some_good = some_good or success
         if not success:
-            failures.append(status.name())
+            failures.append(status.test_name)
     if failures:
         logging.warn("Some machines failed to reimage: %s." %
                      ', '.join(failures))
@@ -255,6 +299,8 @@ class Status(object):
     @var _reason: message explaining failure, if any.
     @var _begin_timestamp: when test started (int, in seconds since the epoch).
     @var _end_timestamp: when test finished (int, in seconds since the epoch).
+    @var _id: the ID of the job that generated this Status.
+    @var _owner: the owner of the job that generated this Status.
 
     @var STATUS_MAP: a dict mapping host queue entry status strings to canonical
                      status codes; e.g. 'Aborted' -> 'ABORT'
@@ -279,7 +325,7 @@ class Status(object):
 
 
     def __init__(self, status, test_name, reason='', begin_time_str=None,
-                 end_time_str=None):
+                 end_time_str=None, job_id=None, owner=None):
         """
         Constructor
 
@@ -288,11 +334,15 @@ class Status(object):
         @param reason: message explaining failure, if any; Optional.
         @param begin_time_str: when test started (in TIME_FMT); now() if None.
         @param end_time_str: when test finished (in TIME_FMT); now() if None.
+        @param job_id: the ID of the job that generated this Status.
+        @param owner: the owner of the job that generated this Status.
         """
 
         self._status = status
         self._test_name = test_name
         self._reason = reason
+        self._id = job_id
+        self._owner = owner
         if begin_time_str:
             self._begin_timestamp = int(time.mktime(
                 datetime.datetime.strptime(
@@ -381,5 +431,21 @@ class Status(object):
         self.record_end(record_entry)
 
 
-    def name(self):
+    @property
+    def test_name(self):
         return self._test_name
+
+
+    @test_name.setter
+    def test_name(self, value):
+        self._test_name = value
+
+
+    @property
+    def id(self):
+        return self._id
+
+
+    @property
+    def owner(self):
+        return self._owner

@@ -198,8 +198,8 @@ class SuiteTest(mox.MoxTestBase):
                                        results_dir=self.tmpdir)
         self.mox.ResetAll()
         self.expect_job_scheduling(add_experimental=True)
-        self.mox.StubOutWithMock(suite, '_record_scheduled_jobs')
-        suite._record_scheduled_jobs()
+        self.mox.StubOutWithMock(suite, '_remember_scheduled_job_ids')
+        suite._remember_scheduled_job_ids()
         self.mox.ReplayAll()
         suite.schedule()
         for job in  suite._jobs:

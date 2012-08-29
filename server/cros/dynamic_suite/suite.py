@@ -252,6 +252,9 @@ class Suite(object):
                                                           self._tko,
                                                           self._jobs):
                     result.record_all(record)
+                    if (self._results_dir and
+                        job_status.is_for_infrastructure_fail(result)):
+                        self._remember_provided_job_id(result)
 
             except Exception as e:
                 logging.error(traceback.format_exc())
@@ -290,15 +293,28 @@ class Suite(object):
                 test.name = constants.EXPERIMENTAL_PREFIX + test.name
                 self._jobs.append(self._create_job(test))
         if self._results_dir:
-            self._record_scheduled_jobs()
+            self._remember_scheduled_job_ids()
 
 
-    def _record_scheduled_jobs(self):
+    def _remember_scheduled_job_ids(self):
         """
         Record scheduled job ids as keyvals, so they can be referenced later.
         """
         for job in self._jobs:
+            self._remember_provided_job_id(job)
+
+
+    def _remember_provided_job_id(self, job):
+        """
+        Record provided job as a suite job keyval, for later referencing.
+
+        @param job: some representation of a job, including id, test_name
+                    and owner
+        """
+        if job.id and job.owner and job.test_name:
             job_id_owner = '%s-%s' % (job.id, job.owner)
+            logging.debug('Adding job keyval for %s=%s',
+                          job.test_name,job_id_owner)
             utils.write_keyval(
                 self._results_dir,
                 {hashlib.md5(job.test_name).hexdigest(): job_id_owner})
