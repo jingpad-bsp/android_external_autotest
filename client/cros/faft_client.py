@@ -102,11 +102,13 @@ class FAFTClient(object):
         # order not to break the old image and still be able to run.
         try:
             self._kernel_handler.init(self._chromeos_interface,
-                                      dev_key_path='/usr/share/vboot/devkeys')
+                                      dev_key_path='/usr/share/vboot/devkeys',
+                                      internal_disk=True)
         except:
             # Copy the key to the current working directory.
             shutil.copy('/usr/share/vboot/devkeys/kernel_data_key.vbprivk', '.')
-            self._kernel_handler.init(self._chromeos_interface)
+            self._kernel_handler.init(self._chromeos_interface,
+                                      internal_disk=True)
 
         self._tpm_handler = tpm_handler.TpmHandler()
         self._tpm_handler.init(self._chromeos_interface)

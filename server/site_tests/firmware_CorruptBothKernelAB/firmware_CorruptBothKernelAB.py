@@ -73,8 +73,8 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
                     'mainfw_type': 'recovery',
                     'recovery_reason': recovery_reason,
                 }),
-                'userspace_action': (self.faft_client.run_shell_command,
-                                     'chromeos-install --yes'),
+                'userspace_action': (self.faft_client.restore_kernel,
+                                     ('a', 'b')),
             },
             {   # Step 3, expected kernel A normal/dev boot
                 'state_checker': (self.check_root_part_on_non_recovery, 'a'),

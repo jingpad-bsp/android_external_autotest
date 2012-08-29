@@ -94,8 +94,8 @@ class firmware_RollbackKernel(FAFTSequence):
                         'mainfw_type': 'recovery',
                         'recovery_reason' : recovery_reason,
                     }),
-                    'userspace_action': (self.faft_client.run_shell_command,
-                            'chromeos-install --yes'),
+                    'userspace_action': (self.faft_client.move_kernel_forward,
+                                         ('a', 'b')),
                 },
                 {   # Step 4, expected kernel A boot and done.
                     'state_checker':
